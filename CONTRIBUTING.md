@@ -181,14 +181,6 @@ Note,
 1. Fill the form in honestly: what you saw, how to make it happen, and which version, browser and mode.
 2. Yes, I see the open count. The issues, in this repo, partly acts as a to-watch ledger; `severity: watch` tracks observed signals with no confirmed defect, those and `severity: minor` stay open - i believe knowing of their existence is relatively more improtant than recklessly tidying them away.
 
-## The paperwork
-
-Before your first pull request, sign the contributor license agreement, [`CLA.md`](CLA.md). It's a comment on the pull request, the bot tells you the exact sentence, and it covers every pr after.
-
-Basically, the implications of the cla is that you keep your copyright, your code stays open source forever, and voithos-labs gets to license the project as a whole under other terms too. That last bit is for [limestone](https://github.com/voithos-labs/limestone), the app this editor came out of; it's under FSL-1.1-Apache-2.0, and the AGPL won't let it carry your code without your say-so.
-
-I do recommend you to read the whole thing anyway; it's a page.
-
 ## Two ton slab of stone
 
 ![stone](./docs/assets/stone.png)

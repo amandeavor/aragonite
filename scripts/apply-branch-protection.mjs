@@ -23,8 +23,6 @@ const CI_CONTEXTS = [
 // Checks reported from outside ci.yml, each named against the workflow that reports it so the
 // test can hold the pair. An undeclared workflow reporting a required name is a way past the door.
 const EXTERNAL_CONTEXTS = {
-	// Signing the CLA is a merge gate, and its bot answers from its own workflow.
-	'cla.yml': ['cla'],
 	// The second-engine lane keeps its own workflow so its browser cache and cancel rule stay its own.
 	'webkit.yml': ['webkit']
 };
