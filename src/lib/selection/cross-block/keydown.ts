@@ -400,10 +400,9 @@ async function handleDocEdgeExtend(
 
 // ── CompositionStart ───────────────────────────────────────────────────────
 
-/** Unawaited: the removal commits before the replace's first await, so the range is gone before
- *  the IME writes, and the composed text joins its undo entry. */
+/** Unawaited: the replace only awaits ticks, so the range is gone and the caret is in the block
+ *  the removal kept before the IME writes, and the composed text joins its undo entry. */
 function handleCompositionStart(ctx: CrossBlockDispatchContext): boolean {
-	ctx.caretMemory.forget();
 	if (!ctx.selection.isCrossBlock) return false;
 	void replaceRange(ctx, { kind: 'composition' });
 	return true;

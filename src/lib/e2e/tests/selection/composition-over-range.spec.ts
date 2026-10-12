@@ -78,6 +78,18 @@ const ROUTES: RangeRoute[] = [
 			await drawIntoPrevious(editor, 'ArrowUp');
 		},
 		after: (text) => `- ${text}\n\nafter\n`
+	},
+	{
+		name: 'both cells of a table row',
+		source: '| a | b |\n| - | - |\n| cc | dd |\n',
+		async draw(editor) {
+			await editor.page.locator('.table-cell').nth(2).click();
+			await editor.page.keyboard.press('Home');
+			await editor.page.keyboard.press('Shift+End');
+			await editor.page.keyboard.press('Shift+ArrowRight');
+			await editor.page.keyboard.press('Shift+ArrowRight');
+		},
+		after: (text) => `| a | b |\n| - | - |\n| ${text} |  |\n`
 	}
 ];
 

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 // Every destructive gesture over a live range is one undo entry holding the document as it stood,
-// and the replace puts one caret down (none for a composition; a command's block lands its own).
+// and the replace puts one caret down (a command's block lands its own too).
 // Miss-analysis: no suite counted the carets a gesture put down, or set a command key's removal
-// over a grid beside Backspace's.
+// over a grid beside Backspace's, and the composition rows pinned no caret at all.
 import { describe, it, expect } from 'vitest';
 import { serialize } from '#lib/core/serializer.js';
 import { CURSOR_START } from '#lib/block-component.js';
@@ -25,9 +25,9 @@ interface Shape {
 }
 
 type Landed = [leafPath: number[], offset: number];
-/** What a gesture leaves: the bytes, the replace's one landing (null: none), and a command's own
- *  landing when its block commits. */
-type Outcome = [bytes: string, lands: Landed | null, commandLands?: Landed];
+/** What a gesture leaves: the bytes, the replace's one landing, and a command's own landing when
+ *  its block commits. */
+type Outcome = [bytes: string, lands: Landed, commandLands?: Landed];
 
 const PROSE = 'alpha\n\nbeta\n\ngamma\n';
 const RULE = 'lead\n\n---\n\ntail\n';
@@ -71,7 +71,7 @@ const OUTCOMES: Record<string, Record<Removal, Outcome>> = {
 		cut: ['alma\n', [[0], 2]],
 		type: ['alxma\n', [[0], 3]],
 		paste: ['alPma\n', [[0], 3]],
-		compose: ['alma\n', null],
+		compose: ['alma\n', [[0], 2]],
 		Enter: ['al\n\nma\n', [[0], 2], [[1], CURSOR_START]]
 	},
 	'a rule held whole': {
@@ -79,7 +79,7 @@ const OUTCOMES: Record<string, Record<Removal, Outcome>> = {
 		cut: [GONE, [[1], 0]],
 		type: ['lead\n\nx\n\ntail\n', [[1], 1]],
 		paste: ['lead\n\nP\n\ntail\n', [[1], 1]],
-		compose: [GONE, null],
+		compose: [GONE, [[0], 4]],
 		Enter: [GONE, [[0], 4]]
 	},
 	'a whole table': {
@@ -87,7 +87,7 @@ const OUTCOMES: Record<string, Record<Removal, Outcome>> = {
 		cut: [GONE, [[1], 0]],
 		type: ['lead\n\nx\n\ntail\n', [[1], 1]],
 		paste: ['lead\n\nP\n\ntail\n', [[1], 1]],
-		compose: [TABLE_CLEARED, null],
+		compose: [TABLE_CLEARED, [[1, 0, 0], 0]],
 		Enter: [GONE, [[0], 4]]
 	},
 	'a whole row': {
@@ -95,7 +95,7 @@ const OUTCOMES: Record<string, Record<Removal, Outcome>> = {
 		cut: [ROW_GONE, [[0, 1, 0], 0]],
 		type: [rowWith('x'), [[0, 1, 0], 1]],
 		paste: [rowWith('P'), [[0, 1, 0], 1]],
-		compose: [ROW_CLEARED, null],
+		compose: [ROW_CLEARED, [[0, 1, 0], 0]],
 		Enter: [ROW_GONE, [[0, 1, 0], 0]]
 	},
 	'a whole column': {
@@ -103,7 +103,7 @@ const OUTCOMES: Record<string, Record<Removal, Outcome>> = {
 		cut: [COLUMN_GONE, [[0, 0, 1], 0]],
 		type: [columnWith('x'), [[0, 0, 1], 1]],
 		paste: [columnWith('P'), [[0, 0, 1], 1]],
-		compose: [COLUMN_CLEARED, null],
+		compose: [COLUMN_CLEARED, [[0, 0, 1], 0]],
 		Enter: [COLUMN_GONE, [[0, 0, 1], 0]]
 	},
 	'a cell rectangle': {
@@ -111,7 +111,7 @@ const OUTCOMES: Record<string, Record<Removal, Outcome>> = {
 		cut: [GRID_CLEARED, [[0, 0, 0], 0]],
 		type: [gridWith('x'), [[0, 0, 0], 1]],
 		paste: [gridWith('P'), [[0, 0, 0], 1]],
-		compose: [GRID_CLEARED, null],
+		compose: [GRID_CLEARED, [[0, 0, 0], 0]],
 		Enter: [GRID_CLEARED, [[0, 0, 0], 0]]
 	}
 };
@@ -149,7 +149,7 @@ const landedAt = (env: Awaited<ReturnType<typeof perform>>) =>
 describe('a destructive gesture over a live range', () => {
 	for (const [shapeName, shape] of Object.entries(SHAPES)) {
 		for (const [gesture, [bytes, lands, commandLands]] of Object.entries(OUTCOMES[shapeName])) {
-			it(`${gesture} over ${shapeName}: one undo entry, ${lands ? 'one landing' : 'no landing'}`, async () => {
+			it(`${gesture} over ${shapeName}: one undo entry, one landing`, async () => {
 				const env = await perform(gesture as Gesture, shape);
 
 				expect(serialize(env.doc)).toBe(bytes);

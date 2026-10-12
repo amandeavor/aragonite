@@ -532,6 +532,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// listener's microtask checkpoint.
 	function onBeforeInput(e: InputEvent): void {
 		endsDroppedComposition(e);
+		adoptsComposition(e);
 		if (!e.isComposing) recordPreEditOffset();
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);
@@ -586,27 +587,40 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		});
 	}
 
-	// Held from composition start, whose cross-block step forgets the caret memory, to the commit.
+	// Held from the composition's opening to its commit.
 	let heldForComposition: HeldInsertion | null = null;
 
 	function onCompositionStart(): void {
 		if (!deps.getEl()) return;
 		endsDroppedComposition('compositionstart');
-		// Captured first: the cross-block step below clears the arrival side.
-		deps.compositionSeat?.noteStart();
 		traceCompositionStart();
-		// Capture before `crossBlock.handleCompositionStart()`, whose delete moves the caret.
+		// A range across blocks goes first, and whichever block its removal leaves the caret in opens
+		// the composition at its first update.
+		if (!crossBlock.handleCompositionStart()) openComposition();
+	}
+
+	// Read before the caret memory forgets, so the pending marks and the held insertion survive it.
+	function openComposition(): void {
+		deps.compositionSeat?.noteStart();
 		preEditOffset = deps.backend.getRaw() ?? 0;
 		heldForComposition?.finish(true);
 		heldForComposition = holdInsertion();
-		crossBlock.handleCompositionStart();
+		deps.caretMemory.forget();
 		deps.setComposing(true);
 		placeholder.setComposing(true);
 	}
 
+	// A composed run arriving with no composition open here started in a block a range's removal
+	// took, so this block, which now holds the caret, opens it before the run lands.
+	function adoptsComposition(e: InputEvent): void {
+		if (e.isComposing && e.inputType === 'insertCompositionText' && !deps.getComposing()) {
+			openComposition();
+		}
+	}
+
 	function onCompositionEnd(): void {
-		// `onCompositionStart` always sets the flag, so an unpaired end means a consumer
-		// wired compositionend without compositionstart (G1.27).
+		// A composition opens at its start or at its first run, so an unpaired end means a consumer
+		// wired compositionend without compositionstart.
 		assertInvariant('composition-window', () => checkCompositionEndPaired(deps.getComposing()));
 		endComposition();
 	}
