@@ -83,6 +83,17 @@ describe('acceptsQuery: a shared prefix leaves the word with the row its head na
 		expect(acceptsQuery(shared, query)).toBe(accepted);
 	});
 
+	// Miss-analysis: every accept row was one word and an argument, so none typed a label in full.
+	it.each([
+		['table of', true],
+		['table of contents', true],
+		['bulleted l', true],
+		['bulleted list', true],
+		['bulleted x', false]
+	])('a query a label starts with, spaces and all: %j → %s', (query, accepted) => {
+		expect(acceptsQuery(shared, query)).toBe(accepted);
+	});
+
 	it('gives the word to neither of two argument takers the head names exactly', () => {
 		expect(acceptsQuery([...shared, row('Table data', [], true)], 'table 3x4')).toBe(false);
 	});
