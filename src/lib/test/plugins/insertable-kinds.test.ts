@@ -10,6 +10,7 @@ import { insertCatalogue } from '#lib/schema/insert-catalogue.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { installPlugins, type EditorPlugin } from '#lib/schema/plugin-install.js';
 import { pluginKindOwner } from '#lib/schema/plugin-kind.js';
+import { acceptsQuery } from '#lib/plugins/slash-commands/filter.js';
 import { bundledPluginDirs } from '../invariants/lint/scan-source';
 import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
 import { detailsPlugin } from '#lib/plugins/details/index.js';
@@ -81,5 +82,22 @@ describe('insertable plugin kinds', () => {
 			(kind) => !installed.has(kind) || inserted.has(kind)
 		);
 		expect(stale, 'a listed kind that is gone or now has an entry').toEqual([]);
+	});
+});
+
+describe('the bundled insert entries together', () => {
+	// A second row matching the same word ends the `/` query at its space, so `/table 3x4` would
+	// insert a default table.
+	it('leave each entry that takes a word the only row its label names', () => {
+		const rows = insertCatalogue(everyInstalledPlugin).map((entry) => ({
+			label: entry.label,
+			keywords: entry.keywords,
+			takesArgument: entry.withArgument !== undefined
+		}));
+		const shadowed = rows
+			.filter((row) => row.takesArgument)
+			.filter((row) => !acceptsQuery(rows, `${row.label.split(' ')[0].toLowerCase()} 1`))
+			.map((row) => row.label);
+		expect(shadowed, 'an entry another row shares its first word with').toEqual([]);
 	});
 });
