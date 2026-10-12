@@ -123,12 +123,14 @@ describe('built-in rows', () => {
 		});
 	});
 
-	it.each(['escape', 'hardLineBreak'] as const)(
-		'%s is an atomic marker run that never reveals',
-		(kind) => {
-			expect(getInlineConstructPolicy(kind)).toEqual(atomic);
-		}
-	);
+	// Half an escape is a literal backslash, so a split takes it whole; a hard break's moved cut
+	// doesn't parse back, so its literal cut stands.
+	it.each([
+		['escape', 'whole'],
+		['hardLineBreak', 'plain']
+	] as const)('%s is an atomic marker run that never reveals, split %s', (kind, splitBehavior) => {
+		expect(getInlineConstructPolicy(kind)).toEqual({ ...atomic, splitBehavior });
+	});
 });
 
 describe('revealable membership', () => {

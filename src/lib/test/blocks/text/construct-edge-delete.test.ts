@@ -199,6 +199,29 @@ describe('an atomic hidden run deletes as one unit', () => {
 	});
 });
 
+// An autolink's text is its URL, so a key in it takes one character, as in any word; in the angle
+// form the brackets are the hidden runs. `See <https://x.y> here`: brackets at 4 and 16.
+describe("an autolink's text deletes a character at a time", () => {
+	const ANGLE = 'See <https://x.y> here';
+
+	it('takes the last letter from the caret before the hidden closer, in prose and a cell', () => {
+		const one = { raw: 'See <https://x.> here', caret: 15, unwrappedMarks: [] };
+		expect(del(ANGLE, 16)).toEqual(one);
+		expect(delInCell(ANGLE, 16)).toEqual(one);
+	});
+
+	it('leaves a key with no hidden run beside it to the browser', () => {
+		expect(del(ANGLE, 10, 'forward')).toBeNull();
+		expect(del(ANGLE, 10)).toBeNull();
+		expect(del('See https://x.y here', 15)).toBeNull();
+	});
+
+	// `<ab:>` less its colon is `<ab>`, an HTML tag, and no cut reads back as one letter fewer.
+	it('takes the autolink whole where every cut would unmake it', () => {
+		expect(del('a <ab:> b', 6)).toEqual({ raw: 'a  b', caret: 2, unwrappedMarks: [] });
+	});
+});
+
 // `**a *b***` emptied of `b` is `**a **`, whose stars render literally, and the browser's own
 // delete wrecks both constructs, so taking nothing is the only answer that hides the markers.
 describe('a rewrite the parser would not read back takes nothing', () => {

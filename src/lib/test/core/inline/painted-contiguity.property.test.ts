@@ -38,16 +38,9 @@ function firstGap(runs: readonly VisibleRun[]): string | null {
 }
 
 describe('a childless construct paints one contiguous stretch', () => {
-	// The shapes `paintedRange` was written for, stated outright: an escape, both autolink
-	// spellings, a hard break, and the content-empty link and image whose whole node is markers.
-	it.each([
-		'x \\* y',
-		'see <http://e.com> now',
-		'a <mail@e.com> b',
-		'end  \nnext',
-		'A [](u) B',
-		'A ![](u) B'
-	])('over %j', (raw) => {
+	// The shapes `paintedRange` was written for, stated outright: an escape, a hard break, and the
+	// content-empty link and image whose whole node is markers.
+	it.each(['x \\* y', 'end  \nnext', 'A [](u) B', 'A ![](u) B'])('over %j', (raw) => {
 		const nodes = parseInline(raw, 0, raw.length);
 		const childless = childlessConstructs(nodes);
 		expect(childless.length).toBeGreaterThan(0);
@@ -75,10 +68,22 @@ describe('a childless construct paints one contiguous stretch', () => {
 		);
 
 		// Non-vacuity: a generator that drew no childless construct would pass every arm above.
-		expect([...kindsSeen].sort()).toEqual(
-			expect.arrayContaining(['autolink', 'escape', 'hardLineBreak'])
-		);
+		expect([...kindsSeen].sort()).toEqual(expect.arrayContaining(['escape', 'hardLineBreak']));
 	});
+
+	// An autolink carries its content range, so the edge rules read it instead of the paint; the
+	// two have to agree, or a letter typed at its edge would land in bytes the user can't see.
+	it.each(['see <http://e.com> now', 'a <mail@e.com> b', 'x https://e.com y'])(
+		"an autolink's content range is what it paints, over %j",
+		(raw) => {
+			const autolink = parseInline(raw, 0, raw.length).find((n) => n.kind === 'autolink')!;
+			const painted = paintedRunsOf(autolink, raw);
+			expect(constructContentRange(autolink)).toEqual({
+				start: painted[0].start,
+				end: painted[painted.length - 1].end
+			});
+		}
+	);
 
 	// The gap finder's own non-vacuity: a stretch with a hidden run through the middle is exactly
 	// the shape that would make `paintedRange`'s outer bounds span bytes the user never saw.

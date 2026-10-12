@@ -182,7 +182,10 @@
 				...linkCardQuery(el, cursor.getRawSelection()),
 				card: linkCard,
 				enterWidget: widgetInteraction.enterWidget,
-				placeCaret: (offset) => cursor.setRaw(asRawOffset(offset), { clamp: 'exact' })
+				placeCaretInText: (offset) => {
+					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
+					editableSurface.insideCloser.open(offset);
+				}
 			});
 		}
 	};
@@ -230,7 +233,8 @@
 		getNode: () => node,
 		reading,
 		caretMemory,
-		heldSpace: () => editableSurface.heldSpace
+		heldSpace: () => editableSurface.heldSpace,
+		insideCloser: () => editableSurface.insideCloser
 	});
 	// Set on the block's first focus: until then a render has no shown marker to re-apply.
 	let caretHasEntered = false;
@@ -415,6 +419,7 @@
 		enterWidget: (widget, fromTrailingEdge) =>
 			widgetInteraction.enterWidget(widget, fromTrailingEdge),
 		isReading: () => readOnly,
+		insideCloser: () => editableSurface.insideCloser,
 		pendingMarks: caretMemory.pendingMarks,
 		offsetFor: typedPlacement.offsetFor,
 		caretWriter

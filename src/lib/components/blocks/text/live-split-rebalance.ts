@@ -6,6 +6,7 @@
 
 import {
 	constructContentRange,
+	constructHoldsOffset,
 	constructKinds,
 	getContentRange,
 	inlineDescendants,
@@ -127,14 +128,12 @@ export interface ChainLink {
 	contentEnd: number;
 }
 
-/** Where a cut inside a childless never-extend construct (a URL, an escape) moves to: the edge the
- *  caret was nearer, so the construct goes whole to one half (`docs/design/live-mode.md` § 4.4). */
+/** Where a cut inside a construct split whole (a URL, an escape) moves to: the edge the caret was
+ *  nearer, so the construct goes whole to one half (`docs/design/live-mode.md` § 4.4). */
 function wholeConstructEdge(inlines: readonly InlineNode[], offset: number): number | null {
 	let found: number | null = null;
 	for (const node of inlineDescendants(inlines)) {
-		const childless = node.kind !== 'text' && constructContentRange(node) === null;
-		const takesWhole =
-			childless && getInlineConstructPolicy(node.kind)?.edgeAffinity === 'never-extend';
+		const takesWhole = getInlineConstructPolicy(node.kind)?.splitBehavior === 'whole';
 		if (takesWhole && offset > node.start && offset < node.end) {
 			found = offset - node.start <= node.end - offset ? node.start : node.end;
 		}
@@ -149,7 +148,7 @@ export function splittableChainAt(
 	offset: number
 ): ChainLink[] | null {
 	const chain: ChainLink[] = [];
-	const holds = (node: InlineNode): boolean => holdsOffset(node, offset);
+	const holds = (node: InlineNode): boolean => constructHoldsOffset(node, offset);
 	for (const node of inlineDescendants(inlines, holds)) {
 		if (!holds(node)) continue;
 		const content = constructContentRange(node);
@@ -164,16 +163,6 @@ export function splittableChainAt(
 		});
 	}
 	return chain;
-}
-
-/** Whether a cut at `offset` lands in this construct: one with children includes its content
- *  bounds; one without counts only its strict interior, since its edges are ordinary cut points. */
-function holdsOffset(node: InlineNode, offset: number): boolean {
-	if (node.kind === 'text') return false;
-	const content = constructContentRange(node);
-	return content
-		? offset >= content.start && offset <= content.end
-		: offset > node.start && offset < node.end;
 }
 
 // ── Candidates ───────────────────────────────────────────────────────────────

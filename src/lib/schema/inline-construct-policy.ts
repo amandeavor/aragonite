@@ -47,7 +47,7 @@ export type EdgePolicy = (typeof EDGE_POLICIES)[number];
 export interface InlineConstructPolicy {
 	edgeAffinity: EdgePolicy;
 	autoUnwrapOnEmpty: boolean;
-	splitBehavior: 'close-and-reopen' | 'plain';
+	splitBehavior: SplitBehavior;
 	revealable: boolean;
 	/** Present when a click follows the construct, saying how Edit link and Mod+K edit it then.
 	 *  Absent reads as a construct a click never follows. */
@@ -62,6 +62,10 @@ export interface InlineConstructPolicy {
 }
 
 export type InlineProseExtent = 'none' | 'content' | 'all';
+
+/** What Enter inside the construct does: close it before the cut and reopen it after, move the cut
+ *  to its nearer edge so one half takes it whole, or leave the literal cut (live-mode.md § 4.4). */
+export type SplitBehavior = 'close-and-reopen' | 'whole' | 'plain';
 
 /** `card`: the link card edits the destination, the only way in a mode that hides the URL
  *  (`docs/design/live-mode.md` § 4.6 The link card). `text`: the destination is the construct's

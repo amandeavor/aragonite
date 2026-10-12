@@ -409,6 +409,8 @@ export interface InlineNode {
 	height?: number;
 	/** Pan/zoom inside the `|WxH` frame, read from a `@X,Y[,Z]` tail on the hint. */
 	crop?: ImageCrop;
+	/** On an autolink written inside `<` and `>`: its text is the bytes between them. */
+	angle?: true;
 	/** Discriminator for `unresolvedReference` nodes: which form they would have been. */
 	refKind?: 'link' | 'image';
 	/**

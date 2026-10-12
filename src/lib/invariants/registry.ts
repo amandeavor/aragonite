@@ -220,7 +220,7 @@ export interface InlineConstructPolicyEntry {
 	kind: AnyInlineKind;
 	revealable: boolean;
 	autoUnwrapOnEmpty: boolean;
-	splitBehavior: 'close-and-reopen' | 'plain';
+	splitBehavior: 'close-and-reopen' | 'whole' | 'plain';
 	/** The mark vocabulary, for a kind a format chord addresses. */
 	mark?: { nestingRank: number; command: string };
 }

@@ -70,6 +70,7 @@ export function makeEdgeDispatch(
 	};
 	const deps: EdgePolicyDispatchDeps = {
 		caretWriter: testCaretWriter,
+		insideCloser: () => ({ at: () => null, open: () => {} }),
 		get node() {
 			return readNode();
 		},
@@ -115,7 +116,8 @@ export function makeEdgeDispatch(
 		getNode: readNode,
 		reading: deps.reading,
 		caretMemory: { side: () => side, noteOutside: () => {} },
-		heldSpace: () => ({ at: () => null, inside: () => null, passCloser: () => false })
+		heldSpace: () => ({ at: () => null, inside: () => null, passCloser: () => false }),
+		insideCloser: () => ({ at: () => null, open: () => {} })
 	});
 	const dispatch = createEdgePolicyDispatch(deps);
 	// A held range reads as its start, as the block's caret read does.

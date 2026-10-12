@@ -14,8 +14,14 @@ import { asPresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { installEdgeDispatchCleanup, mountSurface } from './edge-policy-fixture';
 
-/** `node` drawn in `mode`, with `record` on the caret memory: its placement, and its displayed text. */
-function placementOf(node: CstNode, mode: string, record: EdgeAffinity | null) {
+/** `node` drawn in `mode`, with `record` on the caret memory (and Edit link's caret at `inside`):
+ *  its placement, and its displayed text. */
+function placementOf(
+	node: CstNode,
+	mode: string,
+	record: EdgeAffinity | null,
+	inside: number | null = null
+) {
 	const display = trimTrailingLineEnding(node.raw);
 	const reading = fixtureReading({}, asPresentationMode(mode));
 	const placement = createTypedPlacement({
@@ -23,7 +29,8 @@ function placementOf(node: CstNode, mode: string, record: EdgeAffinity | null) {
 		getNode: () => node,
 		reading,
 		caretMemory: { side: () => record, noteOutside: () => {} },
-		heldSpace: () => ({ at: () => null, inside: () => null, passCloser: () => false })
+		heldSpace: () => ({ at: () => null, inside: () => null, passCloser: () => false }),
+		insideCloser: () => ({ at: () => inside, open: () => {} })
 	});
 	const el = mountSurface(display, mode);
 	/** `typed` inserted at `at`, as the write passes it on: placed, or null where it stands. */
@@ -42,6 +49,17 @@ const block = (source: string) => parse(source).children[0];
 installEdgeDispatchCleanup();
 
 const BOLD = 'Some **bold** text\n';
+
+// `See <https://x.y> here`: the hidden `>` at 16. The auto-pair, the pending marks, a composition
+// and the caret's look all ask `offsetFor`, so Edit link's caret has to answer inside there too.
+describe("Edit link's caret before a URL's hidden closer", () => {
+	const ANGLE = block('See <https://x.y> here\n');
+
+	it('reads inside the URL, where the edge rule alone reads past the closer', () => {
+		expect(placementOf(ANGLE, 'live', null).placement.offsetFor(16, 'X')).toBe(17);
+		expect(placementOf(ANGLE, 'live', null, 16).placement.offsetFor(16, 'X')).toBe(16);
+	});
+});
 
 describe('a mark takes the byte by the character before it', () => {
 	it('leaves a byte the browser put inside where it is', () => {

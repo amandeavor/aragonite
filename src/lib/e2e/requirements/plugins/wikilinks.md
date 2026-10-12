@@ -37,17 +37,22 @@ autolink (`<https://...>`) in block 5.
 
 ## Autolinks
 
-A bare URL is its own destination, so "editing" it means a caret at the URL's end. Every row runs
-on both hosts: the seed's plain-click one, and Ctrl-click after the toggle.
+A bare URL is its own destination, so "editing" it means a caret at the URL's end, ready to edit:
+the next letters typed land in the URL and Backspace takes one letter. Every row runs on both
+hosts: the seed's plain-click one, and Ctrl-click after the toggle.
 
-- Edit link in the right-click menu on a bare URL puts the caret right after its last letter, where
-  a letter typed one step back lands in the URL; nothing opens, no card.
+- Edit link in the right-click menu on a bare URL puts the caret right after its last letter, and
+  two letters typed there land in the URL; nothing opens, no card.
 - Edit link on an angle autolink puts the caret inside the closing `>` (hidden in live mode), and
-  the same letter lands in the URL, not past the bracket.
-- Mod+K with the caret inside either one does the same.
+  two letters typed there land in the URL, not past the bracket.
+- Mod+K with the caret inside either one puts the caret there too, and Backspace takes one letter,
+  not the whole URL.
+- Delete inside an angle autolink takes one letter.
+- After Edit link on an angle autolink, Backspace then a letter keeps the letter in the URL.
 - A bare URL in a table cell follows its click on both hosts: following asks the same lookup as
   editing, and a cell resolves through it too.
-- Edit link on a bare URL in a table cell, from the table's own menu, puts the caret at its end too.
+- Edit link on a bare URL in a table cell, from the table's own menu, leaves letters typed in the
+  URL, and Backspace taking one letter.
 
 Miss-analysis: the harness widget acted on every click by hand instead of asking the editor, so a
 widget that read the shared Ctrl/Cmd check (as limestone's did) and did nothing on a plain click
@@ -62,3 +67,7 @@ the reading mode alone, a second copy of the rule that no test held against a ho
 
 Miss-analysis (autolinks): following asked the page for an `a[href]` and editing asked a policy flag
 only bracketed links had, and no row checked that everything a click follows has an edit path.
+
+Miss-analysis (ready to edit): the rows pressed ArrowLeft before typing and never pressed Backspace,
+so they stepped around both gaps: an autolink had no content range, so a key deleted it whole, and
+a letter at the caret Edit link placed went past the hidden `>`.

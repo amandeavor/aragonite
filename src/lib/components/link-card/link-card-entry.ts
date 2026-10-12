@@ -30,8 +30,9 @@ export interface LinkCardEntryQuery extends LinkCardTargetQuery {
 	card: LinkCardState;
 	/** Shows a widget's source with the caret at the edge it touched. */
 	enterWidget(widget: InlineNode, fromTrailingEdge: boolean): void;
-	/** Puts the caret at a raw offset in this block. */
-	placeCaret(offset: number): void;
+	/** Puts the caret at a raw offset in this block, at the end of a construct's own text, which
+	 *  the next letter extends even where a hidden closer follows. */
+	placeCaretInText(offset: number): void;
 }
 
 /** What the chord would edit. */
@@ -66,7 +67,7 @@ export function enterLinkCardAtCaret(query: LinkCardEntryQuery): void {
 		return;
 	}
 	if (target?.edit === 'text') {
-		query.placeCaret(target.caretAt);
+		query.placeCaretInText(target.caretAt);
 		return;
 	}
 	if (query.reading.mode() !== 'live') return;

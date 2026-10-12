@@ -112,7 +112,8 @@ function matchAngleConstruct(raw: string, pos: number, end: number): InlineNode 
 			kind: 'autolink',
 			start: pos,
 			end: pos + email[0].length,
-			url: percentEncodeUri('mailto:' + email[1])
+			url: percentEncodeUri('mailto:' + email[1]),
+			angle: true
 		};
 	}
 	const uri = URI_AUTOLINK.exec(ahead);
@@ -121,7 +122,8 @@ function matchAngleConstruct(raw: string, pos: number, end: number): InlineNode 
 			kind: 'autolink',
 			start: pos,
 			end: pos + uri[0].length,
-			url: percentEncodeUri(uri[0].slice(1, -1))
+			url: percentEncodeUri(uri[0].slice(1, -1)),
+			angle: true
 		};
 	}
 	const tag = matchHtmlFormAt(raw, pos, end);

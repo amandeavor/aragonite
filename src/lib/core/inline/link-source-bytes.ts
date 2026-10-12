@@ -4,7 +4,7 @@
  * destination that breaks its own construct shows up as literal source.
  */
 
-import { inlineDescendants, readInline } from './index';
+import { constructContentRange, inlineDescendants, readInline } from './index';
 import { encodeDestination, escapeTitle } from './destination-bytes';
 import type { Reading } from '../../schema/reading';
 import { CONTENT_VISIBILITY, renderedText } from './visibility';
@@ -157,8 +157,8 @@ function spliced(candidate: string, start: number, end: number, display: string)
  *  brackets for an autolink, the whole node for the bare forms. */
 export function linkTextRange(link: InlineNode, display: string): [number, number] {
 	if (link.kind === 'autolink') {
-		const angle = display[link.start] === '<' && display[link.end - 1] === '>';
-		return angle ? [link.start + 1, link.end - 1] : [link.start, link.end];
+		const text = constructContentRange(link)!;
+		return [text.start, text.end];
 	}
 	const children = link.children ?? [];
 	if (children.length === 0) {

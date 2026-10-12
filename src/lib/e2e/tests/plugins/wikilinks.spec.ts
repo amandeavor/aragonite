@@ -250,15 +250,22 @@ test.describe('wikilinks that follow on a plain click', () => {
 	});
 });
 
-// An autolink's destination is its own text, so editing it means a caret at the URL's end: past the
-// last letter of a bare URL, and inside the closing `>` of an angle one, which live mode hides.
+// Edit link leaves a caret at the URL's end, ready to edit: past a bare URL's last letter, inside
+// an angle one's hidden `>`. A letter typed there lands in the URL, and Backspace takes one.
 const AUTOLINKS = [
-	{ name: 'a bare URL', block: 4, caret: 24, edited: '\nhttps://example.org/barXe\n' },
+	{
+		name: 'a bare URL',
+		block: 4,
+		caret: 24,
+		typed: '\nhttps://example.org/bareXY\n',
+		backspaced: '\nhttps://example.org/bar\n'
+	},
 	{
 		name: 'an angle autolink',
 		block: 5,
 		caret: 30,
-		edited: 'See <https://example.org/anglXe> here'
+		typed: 'See <https://example.org/angleXY> here',
+		backspaced: 'See <https://example.org/angl> here'
 	}
 ] as const;
 
@@ -272,42 +279,37 @@ test.describe('autolinks a click follows can be edited', () => {
 		await editor.waitForRenderFlush();
 	});
 
-	/** The caret sits at the URL's end, and a letter typed one step back lands in the URL. */
-	async function expectEditingAtUrlEnd(
-		page: Page,
-		autolink: (typeof AUTOLINKS)[number]
-	): Promise<void> {
+	async function expectCaretAtUrlEnd(autolink: (typeof AUTOLINKS)[number]): Promise<void> {
 		await expect
 			.poll(async () => (await editor.bridge.getSelectionPaths())?.focus)
 			.toEqual({ path: [autolink.block], offset: autolink.caret });
-		await page.keyboard.press('ArrowLeft');
-		await page.keyboard.type('X');
-		await editor.bridge.waitForSourceContains(autolink.edited);
+	}
+
+	async function editLinkFromMenu(page: Page, on: string): Promise<void> {
+		const box = await page.locator(on).boundingBox();
+		if (!box) throw new Error(`no box for ${on}`);
+		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+		await page.getByRole('menuitem', { name: 'Edit link' }).click();
 	}
 
 	for (const host of ['plain', 'modifier'] as const) {
 		for (const autolink of AUTOLINKS) {
-			test(`Edit link on ${autolink.name} puts the caret at its end, ${host} click host`, async ({
+			test(`Edit link on ${autolink.name} leaves letters typed in the URL, ${host} click host`, async ({
 				page
 			}) => {
 				const opened = await recordOpens(page);
 				if (host === 'modifier') await page.getByTestId('link-click-toggle').click();
-				const box = await page
-					.locator(`[data-block-path="[${autolink.block}]"] a.md-autolink`)
-					.boundingBox();
-				if (!box) throw new Error('no autolink box');
 
-				await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
-					button: 'right'
-				});
-				await page.getByRole('menuitem', { name: 'Edit link' }).click();
+				await editLinkFromMenu(page, `[data-block-path="[${autolink.block}]"] a.md-autolink`);
+				await expectCaretAtUrlEnd(autolink);
+				await page.keyboard.type('XY');
 
-				await expectEditingAtUrlEnd(page, autolink);
+				await editor.bridge.waitForSourceContains(autolink.typed);
 				expect(await opened()).toEqual([]);
 				await expect(page.locator('[data-link-card]')).toHaveCount(0);
 			});
 
-			test(`Mod+K inside ${autolink.name} puts the caret at its end, ${host} click host`, async ({
+			test(`Mod+K inside ${autolink.name} leaves Backspace taking one letter, ${host} click host`, async ({
 				page
 			}) => {
 				if (host === 'modifier') await page.getByTestId('link-click-toggle').click();
@@ -315,12 +317,35 @@ test.describe('autolinks a click follows can be edited', () => {
 				for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
 
 				await page.keyboard.press('ControlOrMeta+k');
+				await expectCaretAtUrlEnd(autolink);
+				await page.keyboard.press('Backspace');
 
-				await expectEditingAtUrlEnd(page, autolink);
+				await editor.bridge.waitForSourceContains(autolink.backspaced);
 				await expect(page.locator('[data-link-card]')).toHaveCount(0);
 			});
 		}
 	}
+
+	test('Delete inside an angle autolink takes one letter', async ({ page }) => {
+		await editor.focusBlockStart(5);
+		for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
+		await page.keyboard.press('ControlOrMeta+k');
+		for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowLeft');
+
+		await page.keyboard.press('Delete');
+
+		await editor.bridge.waitForSourceContains('See <https://example.org/anle> here');
+	});
+
+	// The edit a user makes to fix a typo at the URL's end: take a letter back, type the right one.
+	test('after Edit link, Backspace then a letter keeps the letter in the URL', async ({ page }) => {
+		await editLinkFromMenu(page, '[data-block-path="[5]"] a.md-autolink');
+		await expectCaretAtUrlEnd(AUTOLINKS[1]);
+		await page.keyboard.press('Backspace');
+		await page.keyboard.type('X');
+
+		await editor.bridge.waitForSourceContains('See <https://example.org/anglX> here');
+	});
 
 	for (const host of ['plain', 'modifier'] as const) {
 		test(`a bare URL in a table cell follows its click, ${host} click host`, async ({ page }) => {
@@ -334,15 +359,21 @@ test.describe('autolinks a click follows can be edited', () => {
 		});
 	}
 
-	test('Edit link on a bare URL in a table cell puts the caret at its end', async ({ page }) => {
-		const box = await page.locator('.table-cell a.md-autolink').boundingBox();
-		if (!box) throw new Error('no cell autolink box');
+	test('Edit link on a bare URL in a table cell leaves letters typed in the URL', async ({
+		page
+	}) => {
+		await editLinkFromMenu(page, '.table-cell a.md-autolink');
+		await page.keyboard.type('XY');
 
-		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
-		await page.getByRole('menuitem', { name: 'Edit link' }).click();
-		await page.keyboard.press('ArrowLeft');
-		await page.keyboard.type('X');
+		await editor.bridge.waitForSourceContains('https://example.org/cellXY |');
+	});
 
-		await editor.bridge.waitForSourceContains('https://example.org/celXl |');
+	test('Edit link on a bare URL in a table cell leaves Backspace taking one letter', async ({
+		page
+	}) => {
+		await editLinkFromMenu(page, '.table-cell a.md-autolink');
+		await page.keyboard.press('Backspace');
+
+		await editor.bridge.waitForSourceContains('https://example.org/cel |');
 	});
 });

@@ -88,6 +88,26 @@ describe('the link editor’s pressed state on a prose surface', () => {
 		expect(pressed(LINKED, 10, 10, 'source')).toBe(false);
 	});
 
+	// `See <https://x.com> now`: the autolink spans [4, 19), its URL [5, 18).
+	describe('an autolink, which Edit link edits as its own text', () => {
+		const ANGLE = 'See <https://x.com> now\n';
+
+		it('a caret inside the URL paints pressed', () => {
+			expect(pressed(ANGLE, 10)).toBe(true);
+		});
+
+		it('a selection inside the URL is inside the autolink', () => {
+			expect(pressed(ANGLE, 6, 12)).toBe(true);
+		});
+
+		it('a backward selection whose anchor left the autolink paints nothing', () => {
+			mounted = mountText(ANGLE, 'live');
+			mounted.instance.setSelection(10, 22);
+			reverseSelection();
+			expect(mounted.instance.isCommandActive('link.openCard')).toBe(false);
+		});
+	});
+
 	it('a mark command keeps answering from its own row', () => {
 		mounted = mountText('a **bold** b\n', 'source');
 		mounted.instance.setSelection(4, 8);

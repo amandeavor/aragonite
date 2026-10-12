@@ -193,23 +193,26 @@ function registerBuiltInInlinePolicies(): void {
 		// Its alt text is an attribute of the picture, not prose on the page.
 		prose: 'none'
 	});
-	// An autolink's text is its destination, so neither edge extends, a split stays plain
-	// (`docs/design/live-mode.md` § 4.2 Typing at a hidden edge) and editing it is editing the text.
+	// An autolink's text is its destination, so neither edge extends (`docs/design/live-mode.md`
+	// § 4.2 Typing at a hidden edge), half a URL is no URL, and editing it is editing the text.
 	registerInlineConstructPolicy('autolink', {
 		edgeAffinity: 'never-extend',
 		autoUnwrapOnEmpty: false,
-		splitBehavior: 'plain',
+		splitBehavior: 'whole',
 		revealable: false,
 		followEdit: 'text',
 		prose: 'none'
 	});
-	// Marker runs with no data attribute, always hidden in live mode: the `\X` pair and the
-	// trailing-space run delete as one unit, so nothing may rewrite their markers around an edit.
-	for (const kind of ['escape', 'hardLineBreak'] as const) {
+	// Always hidden in live mode, and a key deletes each as one unit. Half an escape is a literal
+	// backslash, so a split takes it whole; a hard break's moved cut doesn't parse back.
+	for (const [kind, splitBehavior] of [
+		['escape', 'whole'],
+		['hardLineBreak', 'plain']
+	] as const) {
 		registerInlineConstructPolicy(kind, {
 			edgeAffinity: 'never-extend',
 			autoUnwrapOnEmpty: false,
-			splitBehavior: 'plain',
+			splitBehavior,
 			revealable: false
 		});
 	}

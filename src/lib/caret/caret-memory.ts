@@ -12,6 +12,7 @@ import { classifyCaretKey, type EdgeAffinity } from './edge-affinity';
 import { flipMark, type PendingMarks } from './pending-marks';
 import { createPendingBreak, type BlockPendingBreak } from './pending-break.svelte';
 import { createHeldSpace, type HeldSpaceView } from './held-space';
+import { createInsideCloser, type InsideCloserView } from './inside-closer';
 import {
 	createInsertionRecords,
 	type HeldInsertion,
@@ -46,6 +47,9 @@ export interface CaretMemory {
 	/** The space typed at a hidden closer while the caret still means inside; anything that names
 	 *  a side ends it, a format toggle included, which leaves the construct. */
 	readonly heldSpace: { forBlock(block: object): HeldSpaceView };
+	/** The caret Edit link left before a URL's hidden closer, which types inside the URL until the
+	 *  caret moves another way; anything that names a side ends it. */
+	readonly insideCloser: { forBlock(block: object): InsideCloserView };
 	/** Takes what the next insertion in `block` spends, with the caret's side and the block's move of
 	 *  an insertion across a hidden edge (`place`), so a route that forgets the memory can spend them. */
 	holdInsertion(block: object, place?: PlaceInsertion): HeldInsertion;
@@ -91,8 +95,9 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 	let marks: ReadonlySet<InlineMarkKind> | null = null;
 	const pendingBreak = createPendingBreak();
 	const heldSpace = createHeldSpace();
+	const insideCloser = createInsideCloser();
 	// Everything the next insertion spends: a new kind of record is one more entry here.
-	const records = createInsertionRecords([pendingBreak, heldSpace]);
+	const records = createInsertionRecords([pendingBreak, heldSpace, insideCloser]);
 
 	function dropColumn(): void {
 		// Runs on nearly every keystroke, so the enabled check short-circuits first.
@@ -111,13 +116,14 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 		deps.onChange?.();
 	}
 
-	// Promised marks and a held space belong to one side of the caret, so a caret that changed
-	// sides drops them.
-	function settleSide(next: EdgeAffinity | null): void {
+	// Promised marks, a held space and the caret inside a closer belong to one side of the caret;
+	// a key that edits leaves the last to its write, which ends it unless the caret stays inside.
+	function settleSide(next: EdgeAffinity | null, editing = false): void {
 		const moved = !sameSide(side, next) || marks !== null;
 		side = next;
 		marks = null;
-		if (records.end(heldSpace) || moved) changed();
+		const ended = [records.end(heldSpace), !editing && records.end(insideCloser)].includes(true);
+		if (ended || moved) changed();
 	}
 
 	return {
@@ -175,6 +181,18 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 				};
 			}
 		},
+		insideCloser: {
+			forBlock: (block) => {
+				const view = insideCloser.forBlock(block);
+				return {
+					at: view.at,
+					open: (at) => {
+						view.open(at);
+						changed();
+					}
+				};
+			}
+		},
 		holdInsertion: (block, place) => records.hold(block, side, place),
 		previewInsertion: (block, place) => records.preview(block, side, place),
 		changeCount: () => changes + records.holdChanges(),
@@ -201,7 +219,10 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 			// character that spends it both preserve, so neither may clear the marks.
 			if (keyAction === 'preserve') return;
 			arrivedByKey = keyAction === 'navigate';
-			settleSide(keyAction === 'navigate' && landing !== null ? { offset: landing } : null);
+			settleSide(
+				keyAction === 'navigate' && landing !== null ? { offset: landing } : null,
+				keyAction === 'reset'
+			);
 		},
 		noteTyping: () => {
 			dropColumn();
