@@ -243,7 +243,6 @@ export { headingLevel } from './core/nodes';
 export { isProseKind } from './core/inline';
 // Pre-order over a document or subtree, with 'skip' and 'stop', so a plugin writes no recursion.
 export { walkBlocks, type WalkControl } from './core/paths';
-// The block at a path, or null for the root or a path that leads nowhere.
 export { blockNodeAt } from './tree-operations/node-primitives';
 
 /**
