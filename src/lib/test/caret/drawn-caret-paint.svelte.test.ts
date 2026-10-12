@@ -212,7 +212,7 @@ describe('the widget edge a click meant', () => {
 		const unregister = caret.register({
 			el: document.createElement('div'),
 			drawable: () => true,
-			widgetEdge: { owner, box: () => null, pressed: () => false }
+			widgetEdge: { owner, box: () => null }
 		});
 		caret.armWidgetEdge(owner, 3);
 		unregister();

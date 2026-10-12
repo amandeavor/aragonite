@@ -703,8 +703,8 @@ e2e run through the invariant watcher, and `e2e/tests/caret/drawn-caret.spec.ts`
 **G1.77 · One caret showing** (`one-caret-showing`). After every paint, the `data-caret-drawn`
 attribute (which hides the browser's caret) sits on exactly the editable the bar draws for, and on
 none while the bar draws nothing, so the page never shows two carets or none. The one exception is
-a pointer-down beside a widget, where the attribute goes on before the click draws the bar, since
-the browser's caret flashes taller there. An attribute, since Svelte rewrites an editable's whole
+a press whose click will move the caret (beside a widget, inside a marker prefix), where the
+attribute goes on before the click draws the bar, so the browser's caret doesn't paint the spot. An attribute, since Svelte rewrites an editable's whole
 class list when its kind changes. Predicate
 `invariants/drawn-caret.ts :: checkOneCaretShowing` · run after each paint in
 `caret/drawn-caret.svelte.ts` · `e2e/tests/caret/drawn-caret.spec.ts` (`caretsShowing`, one caret in

@@ -71,6 +71,12 @@ export function markerPrefixLength(container: ParentNode): number {
 	return markerPrefixOf(container)?.textContent?.length ?? 0;
 }
 
+/** Whether a live `(node, offset)` position in `container` lies inside its marker prefix, where a
+ *  caret never stays. */
+export function isInMarkerPrefix(container: HTMLElement, node: Node, offset: number): boolean {
+	return domTextOffsetAtNode(container, node, offset) < markerPrefixLength(container);
+}
+
 /** The raw offset of a live `(node, offset)` DOM position in `el`; a position inside the marker
  *  prefix reads as raw 0. */
 export function rawOffsetAt(el: HTMLElement, node: Node, offset: number): RawOffset {

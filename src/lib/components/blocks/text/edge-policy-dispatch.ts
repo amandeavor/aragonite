@@ -24,7 +24,8 @@ import {
 	type CaretWriter
 } from '../../../caret/widget-offset';
 import { recordIslandKeyScan } from '../../../perf/instruments';
-import { caretIsInTextContent, hasModifier, isPlainTypingKey } from './click-snap-guard';
+import { hasModifier, isPlainTypingKey } from './click-snap-guard';
+import { caretIsInTextContent } from '../../../caret/text-seat';
 import { createMarkerCompletion } from './marker-completion';
 import {
 	resolveEdgeDeletion,
