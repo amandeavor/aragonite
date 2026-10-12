@@ -15,6 +15,7 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { checkReadsBack, READ_BACK_LIMIT, takeReadBackBytes } from '#lib/invariants/reads-back.js';
 import { installPlugins } from '#lib/schema/plugin-install.js';
 import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
+import { initDocument } from '#lib/components/editor-root-document-swap.js';
 import { makeContainerHarness, makeTopHarness } from '../harness/editor-actions';
 
 function typeAtEnd(source: string, leaf: number[], text: string) {
@@ -74,6 +75,27 @@ describe('G1.55 checkReadsBack', () => {
 			/live has 2 children, reparsed has 1/
 		);
 	});
+
+	it('fails a list whose rebuild left it no bytes while it still holds an item', () => {
+		const list = parse('- a').children[0];
+		const item = list.children![0];
+		item.children![0].raw = '';
+		item.raw = '';
+		list.raw = '';
+
+		expect(checkReadsBack(list, defaultGrammarView)?.message).toMatch(
+			/live has 1 children, reparsed has 0/
+		);
+	});
+
+	it.each(['- ', '- [ ] ', '>', '> - '])(
+		'passes %j, which the editor reads with an empty paragraph to type in',
+		(source) => {
+			const top = initDocument(source, defaultGrammarView).doc.children[0];
+
+			expect(checkReadsBack(top, defaultGrammarView)).toBeNull();
+		}
+	);
 
 	it('passes the list a keystroke in the same item leaves', () => {
 		const doc = typeAtEnd('  - a\n  - b\n', [0, 0, 0], 'Q');

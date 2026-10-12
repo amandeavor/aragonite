@@ -145,7 +145,8 @@ export function rebuildFootnoteDefRaw(node: CstNode): void {
 		else if (text === '' && (separator || i < lastContent)) raw += lineEnding;
 		else raw += CONTINUATION_MARKER + text + lineEnding;
 	});
-	node.raw = raw;
+	// A body with no lines still keeps the label line, or a reload would read no definition.
+	node.raw = raw === '' ? marker : raw;
 }
 
 export function registerFootnoteDefinition(): void {

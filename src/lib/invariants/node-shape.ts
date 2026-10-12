@@ -1,6 +1,7 @@
 import { makeBlockNode, metadataOf, type CstNode } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import { readBlocks } from '../core/parser';
+import { readAsOpened } from '../schema/opened-reading';
 import { concatChildren } from '../core/serializer';
 import { countsCells, getBlockKindDescriptor } from '../schema/block-kind-descriptor';
 import { reservedChromeKindOf } from '../schema/reserved-chrome';
@@ -286,7 +287,7 @@ export function checkTaskMarkerSlot(
 	grammar: GrammarView
 ): InvariantViolation | null {
 	if (!holdsListItem(node)) return null;
-	const reread = readBlocks(node.raw, { grammar, scope: 'fragment' }).children;
+	const reread = readAsOpened(node.raw, { grammar, scope: 'fragment' }).children;
 	const reloaded =
 		node.kind === 'listItem' ? soleItem(reread) : reread.length === 1 ? reread[0] : null;
 	return reloaded ? itemDrift(node, reloaded) : null;

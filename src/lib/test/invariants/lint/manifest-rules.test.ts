@@ -5,6 +5,7 @@
  * rule under the same G-number. The scan is `file-rule.ts`.
  */
 
+import { describe, it, expect } from 'vitest';
 import { MARKER_FAMILY_CLASSES } from '#lib/core/inline/visibility.js';
 import { collectEditorSources, quotedSpecifierEnding, type SourceFile } from './scan-source';
 import {
@@ -251,6 +252,67 @@ const EDGE_INTERCEPTORS: Record<string, string> = {
 		'Backspace on the line a pending break opened ends the break and deletes nothing, ahead of the edge-policy dispatch'
 };
 
+// ── G4.83 plain reads ────────────────────────────────────────────────────────
+
+/** Readers of bytes into block nodes without the empty paragraphs; `readAsOpened` and
+ *  `parseContainerRaw` fill in, and `parseContainerBody` runs inside an opener's own parse. */
+const PLAIN_READ =
+	/(?<![\w.])(?:readBlocks|parse|parseTaskItemBody|fragmentReaderAt|slotReaderAt|readThroughItemMarker)\s*\(/;
+
+/** Why a plain read is safe, one of a closed list: a read whose nodes reach the live tree gets the
+ *  editor's empty paragraphs (`readAsOpened`), or names who gives them. */
+const PLAIN_READ_KINDS = [
+	'probe',
+	'installs after backfill',
+	'opened reading',
+	'hands on'
+] as const;
+const PLAIN_READ_KIND = new RegExp(`^(?:${PLAIN_READ_KINDS.join('|')}): `);
+/** The kinds this file must back with the fill-in call itself. */
+const BACKFILLS_HERE = /^(?:installs after backfill|opened reading): /;
+const BACKFILL_CALL = /\b(?:ensureEditableContainers|readAsOpened)\s*\(/;
+
+const PLAIN_READS: Record<string, string> = {
+	'src/lib/schema/opened-reading.ts':
+		'opened reading: defines `readAsOpened`, the parse every reader of nodes the editor holds goes through',
+	'src/lib/schema/container-raw.ts':
+		'probe: reads one line alone to name the kind it opens; a container’s own bytes go through `parseContainerRaw`, which fills in',
+	'src/lib/tree-operations/list/task-paragraph.ts':
+		'hands on: defines the slot readers every write of bytes into a child slot reads through (`fragmentReaderAt`, `readThroughItemMarker`, `slotReaderAt`); each caller that installs what they read fills in at the splice, and `content-write` must see the read before the fill-in to know whether to rebuild the container',
+	'src/lib/tree-operations/content-write.ts':
+		'installs after backfill: a write read at its slot gives its first block a paragraph, reading the plain result first to know whether to rebuild the container; `reclassifyContainer` reads through `parseContainerRaw`',
+	'src/lib/tree-operations/node-ops.ts':
+		'installs after backfill: counts the blocks joined or split bytes read as, a probe, and installs a joined leaf read at its slot after giving it its paragraph (`installMergedLeaf`)',
+	'src/lib/tree-operations/node-primitives.ts':
+		'probe: re-derives the metadata of a block written in place under its own kind, and installs none of the read’s nodes',
+	'src/lib/tree-operations/stored-as.ts':
+		'probe: answers how a slot reads bytes, for the write rules and the live join’s comparisons; nothing it reads is installed here',
+	'src/lib/tree-operations/paste/paste-replacement.ts':
+		'installs after backfill: a pasted block ended on the cut line keeps the kind the clipboard’s parse gave it, as every other pasted block does; what it does to a checkbox it lands behind is #624’s question',
+	'src/lib/tree-operations/paste/body-write.ts':
+		'installs after backfill: re-reads a body-rule container’s escaped child; no list item declares a body rule',
+	'src/lib/tree-operations/paste/dispatch.ts':
+		'hands on: reads the clipboard’s own blocks to pick the paste strategy, which a childless container steers; the routes that land them fill in at the splice',
+	'src/lib/tree-operations/reorder.ts':
+		'probe: asks whether two neighbours still read as a pair, and installs nothing',
+	'src/lib/tree-operations/settle.ts':
+		'installs after backfill: merges a window of whole sibling blocks by how their joined bytes read, comparing block counts on the plain read',
+	'src/lib/tree-operations/list/list-builders.ts':
+		'hands on: a split item’s halves are read at the slot and land through list absorb and list break-out, which fill in at the splice',
+	'src/lib/tree-operations/list/reconcile-task.ts':
+		'hands on: the blocks read behind a bare bullet land through `replaceBlock`, which fills in',
+	'src/lib/selection/cross-block/range-replace.ts':
+		'hands on: a block a range holds whole is replaced by its text read at the slot, through `replaceBlock`, which fills in',
+	'src/lib/selection/selection-drop.ts':
+		'hands on: the dragged-out block’s rest is read at its slot and lands through `replaceBlock`, which fills in',
+	'src/lib/selection/range-delete-ceremony.ts':
+		'installs after backfill: the survivor of a range delete is read at its slot and given its paragraph before the splice',
+	'src/lib/invariants/node-shape.ts':
+		'probe: G1.1 and G1.12 compare a container’s bytes with its children’s bytes, which the empty paragraph would hide; G1.42 compares block kinds and reads through `readAsOpened`',
+	'src/lib/plugins/admonitions/convert-document.ts':
+		'probe: converts a document’s alerts to admonitions as text, headless; no editor holds the nodes'
+};
+
 // ── The manifests ────────────────────────────────────────────────────────────
 
 const MANIFESTS: ManifestRule[] = [
@@ -396,43 +458,31 @@ const MANIFESTS: ManifestRule[] = [
 		misses: ['// checkLandableCaret asks once']
 	},
 	{
-		id: 'G4.83 every fragment read in the edit layers is declared, with why it needs no slot reader',
+		id: 'G4.83 every plain read of bytes into block nodes outside the parser is declared, with why its nodes need no fill-in',
 		population: (file) =>
-			[SOURCE_DIR.treeOperations, SOURCE_DIR.selection, SOURCE_DIR.editorActions].some((dir) =>
-				file.relPath.startsWith(dir)
-			),
-		matches: /(?<![\w.])readBlocks\s*\(/,
-		declared: {
-			'src/lib/tree-operations/list/task-paragraph.ts':
-				'defines `fragmentReaderAt`, the slot reader every write of bytes into a child slot reads through, and `readThroughItemMarker`, which reads a list item’s first slot through its marker line',
-			'src/lib/tree-operations/node-ops.ts':
-				'counts the blocks joined or split bytes read as, to refuse a join or place a split; what it installs is read at the slot',
-			'src/lib/tree-operations/node-primitives.ts':
-				're-derives the metadata of a block written in place under its own kind; nothing changes kind here',
-			'src/lib/tree-operations/paste/paste-replacement.ts':
-				'a pasted block ended on the cut line keeps the kind the clipboard’s parse gave it, as every other pasted block does; what it does to a checkbox it lands behind is #624’s question',
-			'src/lib/tree-operations/paste/body-write.ts':
-				're-reads a body-rule container’s escaped child; no list item declares a body rule',
-			'src/lib/tree-operations/paste/dispatch.ts':
-				'reads the clipboard’s own blocks to pick the paste strategy; the routes that land them write at the slot',
-			'src/lib/tree-operations/reorder.ts':
-				'asks whether two neighbours still read as a pair, a probe that installs nothing',
-			'src/lib/tree-operations/settle.ts':
-				'merges a window of whole sibling blocks by how their joined bytes read',
-			'src/lib/editor-actions/enter-completion.ts':
-				'the Enter completer’s lines are the construct the user committed; the replace reconciles the task marker',
-			'src/lib/editor-actions/search-replace.ts':
-				're-reads a whole top-level block, which no task marker stands before'
-		},
+			file.relPath.startsWith(SOURCE_DIR.library) &&
+			notUnder(SOURCE_DIR.library + 'core/', SOURCE_DIR.testing)(file),
+		matches: PLAIN_READ,
+		declared: PLAIN_READS,
 		reason:
-			'bytes written into a child slot read as a reload reads them there (`fragmentReaderAt`); a new plain fragment read says why it is no slot write',
+			'nodes built from bytes reach the live tree the way a reload builds them (`readAsOpened`), and bytes written into a child slot read as a reload reads them there (`fragmentReaderAt`); a new plain read names its kind from PLAIN_READ_KINDS; the parser in core/ and the headless kits in testing/ are outside it',
 		hits: [
 			at(
 				'src/lib/selection/x.ts',
 				"const blocks = readBlocks(raw, { grammar, scope: 'fragment' });"
-			)
+			),
+			at('src/lib/selection/x.ts', 'const doc = parse(source);'),
+			at('src/lib/selection/x.ts', 'const read = fragmentReaderAt(owner, 0, grammar)(bytes);')
 		],
-		misses: [at('src/lib/selection/x.ts', "import { readBlocks } from '../core/parser';")]
+		misses: [
+			at('src/lib/selection/x.ts', "import { readBlocks } from '../core/parser';"),
+			at('src/lib/selection/x.ts', 'const blocks = parseContainerRaw(raw, grammar);'),
+			at(
+				'src/lib/selection/x.ts',
+				"const doc = readAsOpened(raw, { grammar, scope: 'fragment' });"
+			),
+			at('src/lib/selection/x.ts', 'const value = JSON.parse(text);')
+		]
 	},
 	{
 		id: 'G4.11 exactly the declared sites call applyPasteTransforms',
@@ -626,6 +676,26 @@ const MANIFESTS: ManifestRule[] = [
 
 const OBLIGATIONS: FileRule[] = [
 	{
+		id: 'G4.83 a file whose plain read installs nodes runs the backfill itself',
+		population: (file) => BACKFILLS_HERE.test(PLAIN_READS[file.relPath] ?? ''),
+		matches: (file) => !BACKFILL_CALL.test(file.code),
+		reason:
+			'a plain read declared as installing after the backfill must give each container its empty paragraph in the same file, or a reload shows a tree the edit did not',
+		reaches: Object.keys(PLAIN_READS).filter((path) => BACKFILLS_HERE.test(PLAIN_READS[path])),
+		hits: [
+			at(
+				SOURCE_DIR.treeOperations + 'settle.ts',
+				"const read = readBlocks(bytes, { grammar, scope: 'fragment' });"
+			)
+		],
+		misses: [
+			at(
+				SOURCE_DIR.treeOperations + 'settle.ts',
+				'for (const block of blocks) ensureEditableContainers(block, ending);'
+			)
+		]
+	},
+	{
 		id: 'G4.21 the properties popover compares the bytes a commit would write, not GFM',
 		population: (file) => file.relPath === IMAGE_POPOVER,
 		matches: (file) => !/\bbuildBytes\s*\(/.test(file.code),
@@ -681,4 +751,10 @@ const OBLIGATIONS: FileRule[] = [
 
 const sources = collectEditorSources();
 describeManifests(MANIFESTS, sources);
+
+describe('G4.83 every declared plain read names its kind', () => {
+	it.each(Object.entries(PLAIN_READS))('%s', (_path, why) => {
+		expect(why).toMatch(PLAIN_READ_KIND);
+	});
+});
 describeFileRules(OBLIGATIONS, sources);

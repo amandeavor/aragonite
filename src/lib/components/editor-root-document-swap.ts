@@ -4,8 +4,6 @@
  */
 
 import type { Document } from '../core/nodes';
-import { documentLineEnding } from '../core/lines';
-import { readBlocks } from '../core/parser';
 import type { GrammarView } from '../schema/block-openers';
 import {
 	buildLinkReferenceMap,
@@ -14,7 +12,8 @@ import {
 import type { CaretMemory } from '../caret/caret-memory';
 import type { LayoutState } from '../windowing/layout-state.svelte';
 import type { SelectionState } from '../selection/selection-state.svelte';
-import { emptyParagraph, ensureEditableContainers } from '../tree-operations';
+import { emptyParagraph } from '../tree-operations';
+import { readAsOpened } from '../schema/opened-reading';
 import type { UndoManager } from '../undo/types';
 import type { EditorEvents } from '../editor-events';
 import type { MenuPresence } from './menu/menu-presence.svelte';
@@ -29,14 +28,12 @@ export interface ParsedDocument {
 
 /** The parse every document goes through, at mount and at each swap, in the editor's grammar. */
 export function initDocument(source: string, grammar: GrammarView): ParsedDocument {
-	const doc = readBlocks(source, { grammar, scope: 'document' });
+	const doc = readAsOpened(source, { grammar, scope: 'document' });
 	if (doc.children.length === 0) {
 		// Only the empty source parses to zero blocks (a blank line is a block of its own), so
 		// there is no authored ending to inherit and LF is the whole answer.
 		doc.children.push(emptyParagraph('', '\n'));
 	}
-	const lineEnding = documentLineEnding(doc);
-	for (const child of doc.children) ensureEditableContainers(child, lineEnding);
 	const refs = buildLinkReferenceMap(doc.children);
 	return { doc, resolver: refs.resolve, signature: refs.signature };
 }

@@ -37,11 +37,11 @@ import { checkSingleNodeSink } from '../invariants/single-node-sink';
 import {
 	NEXT_PROSE_LINE,
 	asBody,
-	ensureEditableContainers,
 	forBody,
 	parentLineEnding,
 	type BodyParentArg
 } from './node-primitives';
+import { ensureEditableContainers } from '../schema/opened-reading';
 import { absorbSeamReading, deleteNode, type TrackedPosition } from './settle';
 import { cutKeepingStructure } from './structural-suffix';
 import { leafAtRawOffset, rawOffsetOfLeaf } from './container-offsets';

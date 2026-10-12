@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
-import {
-	ensureEditableContainers,
-	emptyParagraph,
-	nodeAt
-} from '../../tree-operations/node-primitives';
+import { emptyParagraph, nodeAt } from '../../tree-operations/node-primitives';
+import { ensureEditableContainers } from '#lib/schema/opened-reading.js';
 import { rebuildListItemRaw, rebuildBlockquoteRaw } from '../../schema/container-rebuilders';
 import { checkOpaqueStaleRaw } from '../../invariants/node-shape';
 import type { CstNode } from '../../core/nodes';

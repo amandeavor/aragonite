@@ -9,14 +9,8 @@ import type { CstNode, Document } from '../core/nodes';
 import type { DocumentView, NodeView } from '../core/node-views';
 import { readBlocks } from '../core/parser';
 import type { GrammarView } from '../schema/block-openers';
-import {
-	documentLineEnding,
-	ownTrailingLineEnding,
-	trailingLineEnding,
-	type LineEnding
-} from '../core/lines';
-import { mustHoldChild, tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
-import { reservedChromeKindOf } from '../schema/reserved-chrome';
+import { documentLineEnding, type LineEnding } from '../core/lines';
+import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
 import { adoptParsedMetadata } from '../schema/container-raw';
 
 // ── Parent shapes and the kind's write rules ──
@@ -139,8 +133,6 @@ export function paragraphNode(leadingTrivia: string, text: string, lineEnding: s
 	return { kind: 'paragraph', leadingTrivia, raw: text + lineEnding };
 }
 
-/** An empty paragraph: the one block an emptied document keeps, and the backfill for a container a
- *  parse or a write builds with no children (one a delete empties is removed instead). */
 export function emptyParagraph(leadingTrivia: string, lineEnding: string): CstNode {
 	return paragraphNode(leadingTrivia, '', lineEnding);
 }
@@ -193,32 +185,4 @@ export function normalizeReplacementTrivia(original: CstNode, replacement: CstNo
 		copy.leadingTrivia = i === 0 ? originalTrivia : (copy.leadingTrivia ?? '');
 		return copy;
 	});
-}
-
-// ── Editable container backfill ──
-
-/** Give every container that must hold a child an empty paragraph, so the caret always has a
- *  target. A container with no bytes yet backfills its lines in `ending`, the document's. */
-export function ensureEditableContainers(node: CstNode, ending: LineEnding): void {
-	if (!node.children) return;
-	if (node.children.length === 0 && mustHoldChild(node.kind)) {
-		// An in-place write on a descendant found by walking, see the file header.
-		const chromeKind = reservedChromeKindOf(node.kind);
-		const lineEnding = trailingLineEnding(node.raw, ending);
-		// A container with a reserved title child re-creates that child too, or the backfilled
-		// paragraph would occupy its position (G1.14).
-		if (chromeKind !== undefined) {
-			// The title child's kind is only known at runtime, so the literal takes the generic cast.
-			node.children.push({ kind: chromeKind, leadingTrivia: '', raw: lineEnding } as CstNode);
-		}
-		// The paragraph holds the container's last line, so an open last line stays open in it.
-		const lastLineEnding = node.raw === '' ? lineEnding : ownTrailingLineEnding(node.raw);
-		node.children.push(emptyParagraph('', lastLineEnding));
-		// The synthesized paragraph's ending already represents the blank `parseBlocks`
-		// routed into innerPrefix; keeping both double-counts the line on rebuild.
-		node.innerPrefix = '';
-	}
-	for (const child of node.children) {
-		ensureEditableContainers(child, ending);
-	}
 }

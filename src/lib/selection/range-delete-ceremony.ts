@@ -39,6 +39,7 @@ import {
 	taskMarkerCaretShift,
 	writeKeepingTaskMarker
 } from '../tree-operations/list/reconcile-task';
+import { ensureEditableContainers } from '../schema/opened-reading';
 /** Deletes in reverse order, each path only while it holds its captured node (cleanup can move a
  *  survivor there); the caller copies parent chains first so the check compares copies (G1.9). */
 function deleteSubtreesIdentityGated(
@@ -108,6 +109,8 @@ export function installSurvivor(
 		// so it stays in raw.
 		replacement[replacement.length - 1].raw += reparsed.suffix;
 	}
+	// The slot reader reads plain, so a survivor that reads as a bare container gets its paragraph.
+	for (const node of replacement) ensureEditableContainers(node, ending);
 	const owner = blockNodeAt(doc, path.slice(0, -1)) ?? undefined;
 	const slot = path[path.length - 1];
 	const shift = slot === 0 && owner ? taskMarkerCaretShift(owner, written) : 0;

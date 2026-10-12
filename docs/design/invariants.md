@@ -649,12 +649,13 @@ armed). Predicate `invariants/top-level-untouched.ts :: checkTopLevelUntouched` 
 **G1.55 · A rebuilt container reads back as itself** (`reads-back`). After a keystroke's rebuild
 and after every commit, dev parses each top-level container the edit wrote in, on its own, and
 compares the shape (kinds, child counts, metadata) with the tree's; a dropped leading space that
-re-nests a list passes every byte check and fails this one. The edit names those containers itself,
-so the check never searches the document. It skips a container over 16K characters, an empty one,
-and anything the perf instruments time; the empty-container skip hides a bullet a range delete
-emptied, an open defect. Predicate `invariants/reads-back.ts :: checkReadsBack` · run by
-`editor-actions/leaf-write.ts` and `editor-actions/commit/undo-controller.ts` ·
-`test/invariants/reads-back.test.ts`.
+re-nests a list passes every byte check and fails this one. It reads the bytes the way the editor
+opens a file (`schema/opened-reading.ts :: readAsOpened`), so a bare `- ` reads back with
+the empty paragraph you type into, and a container left with no bytes at all fails, since a reload
+wouldn't show it. The edit names those containers itself, so the check never searches the document.
+It skips a container over 16K characters and anything the perf instruments time. Predicate
+`invariants/reads-back.ts :: checkReadsBack` · run by `editor-actions/leaf-write.ts` and
+`editor-actions/commit/undo-controller.ts` · `test/invariants/reads-back.test.ts`.
 
 **G1.58 · An indent key over a range keeps every word, in order** (`range-indent-keeps-text`). Tab,
 Shift+Tab or a rebound indent key over a range moves list items, shifts code lines, or does what a
@@ -1001,7 +1002,7 @@ unguarded.
 | G4.80  | In `selection/`, only the range coverage and the caret walks ask if a container is closed | L       |
 | G4.81  | The cross-block table row snap runs in the range coverage and the stored pair only        | L       |
 | G4.82  | The task-marker rule runs in one wrapper, and its callers are declared                    | L       |
-| G4.83  | Every plain fragment read in the edit layers says why it needs no slot reader             | L       |
+| G4.83  | Every plain read of bytes into blocks outside the parser and test kits names its kind     | L       |
 | G4.84  | Where a leaf's bytes are stored is made in one place, from the tree                       | L       |
 | G4.85  | A live rewrite that removes bytes reads its candidate where it will be stored             | L       |
 | G4.86  | A list item's marker is read only where the list is built, drawn or dumped                | L       |
@@ -1051,6 +1052,7 @@ unguarded.
 | G4.152 | Every rendered link has an Edit link target, and only the root click follows one          | T·L     |
 | G4.155 | Every composing-flag holder asks both composition questions: a drop, and an opening       | L       |
 | G4.157 | Every block kind a bundled plugin installs has an insert entry, or says why it has none   | harness |
+| G4.159 | An emptied quote, list item or bundled strip container keeps bytes that reload as it      | harness |
 
 ### The entries
 
@@ -1603,12 +1605,18 @@ survivor wrap their write, and the rest say why they need no wrapper (a table ce
 item). A file listed as wrapping must call the wrapper. `lint/leaf-write-doors.test.ts` (the G4.82
 and G4.82b rows), with G1.42 as the runtime half.
 
-**G4.83 · Every plain fragment read says why.** Bytes written into a child slot are read the way a
+**G4.83 · Every plain read says why.** Nodes built from bytes reach the tree the way a reload
+builds them, through `schema/opened-reading.ts :: readAsOpened`, which gives every container that
+must hold a child an empty paragraph; `schema/container-raw.ts :: parseContainerRaw`, a container's
+re-read of its own bytes, goes through it too. Bytes written into a child slot are read the way a
 reload reads them there, through `tree-operations/list/task-paragraph.ts :: fragmentReaderAt` (in a
 list item's first slot, behind its whole marker line), or `slotReaderAt` and `childSlotAt` for a
-caller holding only a path. A plain `readBlocks` left in `tree-operations/`, `selection/` or
-`editor-actions/` is listed in the manifest with its reason (a probe that installs nothing, the
-paste's re-read of a clipboard block). `lint/manifest-rules.test.ts`.
+caller holding only a path. Those read plain, so a caller that installs what they read fills in at
+the splice. Any plain reader (`readBlocks`, `parse`, `parseTaskItemBody` or a slot reader) outside
+`core/` and `testing/` is listed in the manifest under one of four kinds: a probe that installs
+nothing, a read whose file fills in before it installs, the opened reading itself, or a read handed
+to a route that fills in at the splice. A file declared as installing must call the fill-in itself.
+`lint/manifest-rules.test.ts`.
 
 **G4.84 · One place says where a leaf's bytes are stored.** A `StoredAs`
 (`src/lib/schema/stored-as.ts`) answers four things about a position: block or plain text (a table
@@ -1982,6 +1990,12 @@ installs every plugin under `src/lib/plugins/` from its zero-argument factory an
 they register: each one is in the tree some insert entry's Markdown parses to (a title row comes
 with its container), or is listed with why no entry makes it. A listed kind that's gone or has
 gained an entry fails too.
+
+**G4.159 · An emptied container keeps its opening line.** Each container kind (bullet, ordered and
+task item, quote, nested pairs of them, footnote definition, alert, admonition) has its last text
+deleted at the very end of the document, through the text write and through the ancestry rebuild,
+and the bytes must reload as the empty container the editor still shows: `- `, `>`, `[^1]: `.
+`test/schema/emptied-body-bytes.test.ts`.
 
 ## Accessibility
 

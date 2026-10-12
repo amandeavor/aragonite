@@ -26,7 +26,7 @@ import { rangeDelete } from '../../selection/range-delete';
 import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import type { SelectionPoint } from '../../selection/primitives';
 import { createSharingState } from '../../tree-operations/sharing';
-import { ensureEditableContainers } from '../../tree-operations/node-primitives';
+import { ensureEditableContainers } from '#lib/schema/opened-reading.js';
 import { buildExitReplacement } from '../../tree-operations/list/exit-replacement';
 import { pasteDispatch } from '../../tree-operations/paste/dispatch';
 import { parseReplacement } from '../../tree-operations/paste/replacement-parse';

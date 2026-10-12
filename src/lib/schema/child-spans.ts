@@ -86,6 +86,8 @@ export function rebuildStripRaw(
 	changed?: ChildRawChange,
 	previous: LineCodec = lines
 ): StripRebuild {
+	// Written whole, since the region and line-by-line writes give an empty body no line at all.
+	if (bodyHasNoBytes(node)) return rebuildWholeStrip(node, lines, previous);
 	if (changed && previous === lines) {
 		const outcome = { rereads: false };
 		const rewrite: RegionRewrite = (region, at) => {
@@ -179,6 +181,13 @@ function runsIntoTail(old: OldLine[], fresh: BodyLineOut[], first: KeptLine): bo
 	return old.length < fresh.length
 		? holds(first.old, fresh[shorter])
 		: holds(old[shorter], first.fresh);
+}
+
+function bodyHasNoBytes(node: CstNode): boolean {
+	if (node.innerSuffix) return false;
+	// Stops at the first child with bytes, which is the first child in all but an emptied body.
+	for (const child of node.children!) if (child.leadingTrivia || child.raw) return false;
+	return true;
 }
 
 function opensMidLine(children: CstNode[], suffix: string): boolean {
@@ -397,6 +406,9 @@ function lineAt(text: string, start: number): { text: string; ending: string } {
 function rebuildWholeStrip(node: CstNode, lines: LineCodec, previous: LineCodec): StripRebuild {
 	const fresh: BodyLineOut[] = [];
 	pushLines(fresh, concatChildren(node.children!) + (node.innerSuffix ?? ''), true, () => true);
+	// An empty body still sits on the container's opening line, which holds its marker; with no
+	// line written, a reload reads no container at all.
+	if (fresh.length === 0) fresh.push({ text: '', ending: '', place: FIRST_LINE });
 	const written = writeLines(readOldLines(node.raw, previous, true), fresh, lines);
 	node.childSpans = undefined;
 	node.raw = written.out;

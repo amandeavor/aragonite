@@ -8,7 +8,7 @@ import type { CstNode } from '../../core/nodes';
 import type { NodeView } from '../../core/node-views';
 import { ownTrailingLineEnding, trailingLineEnding, type LineEnding } from '../../core/lines';
 import { isBlankParagraph, readBlocks } from '../../core/parser';
-import { ensureEditableContainers } from '../node-primitives';
+import { ensureEditableContainers } from '../../schema/opened-reading';
 import { parseCutResidue, parseFirstBlock } from '../parse-block';
 import { cutKeepingStructure } from '../structural-suffix';
 import type { GrammarView } from '../../schema/block-openers';
