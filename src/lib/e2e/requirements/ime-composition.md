@@ -4,7 +4,8 @@ Drives real `compositionstart` → mid-composition input → `compositionend` se
 Chromium against the three blocks built on the shared editable core (paragraph, code block,
 table cell). Complements the handler-level unit contract in
 `src/lib/test/blocks/editable-surface-composition.test.ts`: this half pins the browser's
-event order and the wiring from the real contenteditable listeners down to the CST.
+event order and the wiring from the real contenteditable listeners down to the CST. A
+composition over a range across blocks has its own file, `selection/composition-over-range.md`.
 
 ## Happy paths
 
@@ -21,11 +22,6 @@ event order and the wiring from the real contenteditable listeners down to the C
 
 - A composition started over a selection replaces it: the browser's own composition window owns
   that delete, so the committed run leaves one copy and the selected bytes are gone.
-- A composition started over a range across two blocks removes the range first, then composes
-  where it was. One Ctrl+Z takes back both the composed text and the removal. The range is drawn
-  downward, so the caret sits in the block the removal keeps.
-  - Miss-analysis: every composition here started inside one block, where nothing gets removed
-    first, so the two undo entries a range composition left behind were never seen.
 - Composing into an empty block the editor put the caret in commits once, with no stray first
   update and nothing doubled. The routes are Enter at the end of a paragraph or a quote, a
   Backspace that empties a paragraph, the arrows back into an empty paragraph, Tab into an empty

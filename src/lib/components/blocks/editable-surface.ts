@@ -90,6 +90,7 @@ import type { Reading } from '../../schema/reading';
 import { createPlaceholderHint, type PlaceholderPolicy } from './placeholder-hint.svelte';
 import type { CompositionSeat } from './text/composition-seat';
 import {
+	opensComposition,
 	reportDroppedComposition,
 	type CompositionSignal
 } from '../../editor-actions/dropped-composition';
@@ -532,6 +533,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// listener's microtask checkpoint.
 	function onBeforeInput(e: InputEvent): void {
 		endsDroppedComposition(e);
+		adoptsComposition(e);
 		if (!e.isComposing) recordPreEditOffset();
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);
@@ -586,27 +588,38 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		});
 	}
 
-	// Held from composition start, whose cross-block step forgets the caret memory, to the commit.
+	// Held from the composition's opening to its commit.
 	let heldForComposition: HeldInsertion | null = null;
 
 	function onCompositionStart(): void {
 		if (!deps.getEl()) return;
 		endsDroppedComposition('compositionstart');
-		// Captured first: the cross-block step below clears the arrival side.
-		deps.compositionSeat?.noteStart();
 		traceCompositionStart();
-		// Capture before `crossBlock.handleCompositionStart()`, whose delete moves the caret.
+		// A range across blocks goes first, and whichever block its removal leaves the caret in opens
+		// the composition at its first update.
+		if (!crossBlock.handleCompositionStart()) openComposition();
+	}
+
+	// The pending marks and the held insertion are read from the caret memory before it forgets.
+	function openComposition(): void {
+		deps.compositionSeat?.noteStart();
 		preEditOffset = deps.backend.getRaw() ?? 0;
 		heldForComposition?.finish(true);
 		heldForComposition = holdInsertion();
-		crossBlock.handleCompositionStart();
+		deps.caretMemory.forget();
 		deps.setComposing(true);
 		placeholder.setComposing(true);
 	}
 
+	// No composition open here means a range across blocks claimed the start. This block holds
+	// the caret its removal left, so it opens the composition before the first run lands.
+	function adoptsComposition(e: InputEvent): void {
+		if (opensComposition(e, deps.getComposing())) openComposition();
+	}
+
 	function onCompositionEnd(): void {
-		// `onCompositionStart` always sets the flag, so an unpaired end means a consumer
-		// wired compositionend without compositionstart (G1.27).
+		// A composition opens at its start or at its first run, so an unpaired end means a consumer
+		// wired compositionend without compositionstart.
 		assertInvariant('composition-window', () => checkCompositionEndPaired(deps.getComposing()));
 		endComposition();
 	}

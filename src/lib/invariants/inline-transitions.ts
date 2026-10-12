@@ -50,12 +50,12 @@ export function checkRevealSourceLength(
 	};
 }
 
-/** G1.27: a `compositionend` arrives only inside a composition the element saw start, so an
- *  unpaired end means `compositionstart` was never wired and IME keystrokes reached the tree. */
+/** G1.27: a `compositionend` arrives only inside a composition the surface opened (at its start or
+ *  its first composed run), so an unpaired end means IME keystrokes reached the tree unguarded. */
 export function checkCompositionEndPaired(composing: boolean): InvariantViolation | null {
 	if (composing) return null;
 	return {
 		code: 'end-without-start',
-		message: 'compositionend with no open composition: the surface never saw compositionstart'
+		message: 'compositionend with no open composition: the surface never opened one'
 	};
 }

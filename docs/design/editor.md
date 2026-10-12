@@ -751,7 +751,7 @@ The landing is a value, not a callback that places anything: a position (a docum
 - When an enclosing container collapsed during the commit, the collapse's position replaces the caller's, because the collapse rebuilt the blocks the caller's position names.
 - In a dev build, reading the landing must leave focus and the selection alone, so a landing that sneaks in a caret of its own gets caught the first time a test runs it.
 - A commit can say how far its landing moves the viewport (`reveal`). An ordinary edit scrolls only when the caret isn't fully on screen, just far enough to show it, and holds nothing after; a navigation holds its block where it landed.
-- A gesture over a range that spans blocks gets one caret from the range replace, which holds each commit's landing instead of placing it (`CommitController`'s `holdLandings`) and then places the last one that wrote. An IME composition lands none, since the IME owns the caret.
+- A gesture over a range that spans blocks gets one caret from the range replace, which holds each commit's landing instead of placing it (`CommitController`'s `holdLandings`) and then places the last one that wrote. An IME composition gets one too, before the IME writes anything, so the composition carries on in the block the removal kept.
 
 Callers pick a scope; they never assemble the steps, and **this is the canonical entry for any new structural mutation** (the op-log isn't a commit step; it subscribes to `edit` downstream). The top-level and container action factories share one core through a `CommitScope` adapter, so the structural-edit sequence is single-sourced and the factories differ only in scope wiring and container-only concerns.
 

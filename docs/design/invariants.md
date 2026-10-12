@@ -224,7 +224,7 @@ These checks run in three kinds of place:
 | G1.24 | A kind's closure block agrees with the rest of its descriptor                              | A·N     |
 | G1.25 | Widget-pool acquires happen only inside an open render pass                                | A·N     |
 | G1.26 | A fold implies an active reveal, and an open reveal blocks command mutation                | A·N     |
-| G1.27 | `compositionend` lands only inside a composition the surface saw start                     | A·N     |
+| G1.27 | `compositionend` lands only inside a composition the surface opened                        | A·N     |
 | G1.28 | A code block's render and a painted leaf source carry the block's bytes exactly            | A·N     |
 | G1.29 | A selection endpoint's offset means what its own block's coordinate space says             | A·N     |
 | G1.30 | Every registered kind declares a `mergeRole` from the known set                            | A·N     |
@@ -429,8 +429,9 @@ closures in `components/blocks/text/widget-interaction.ts` (the fold halves) and
 `checkRevealSourceLength` (`inline-transitions.ts`) at `caret/reveal-source.ts` ·
 `test/blocks/text/widget-reveal-transitions.test.ts`.
 
-**G1.27 · Composition window.** `compositionend` lands only inside a composition the surface saw
-start. An unpaired end means `compositionend` was wired without `compositionstart`, and every
+**G1.27 · Composition window.** `compositionend` lands only inside a composition the surface
+opened, at its start or, when a range across blocks was live at the start, at its first composed
+character. An unpaired end means `compositionend` was wired without `compositionstart`, and every
 composed keystroke committed mid-IME. Predicate `checkCompositionEndPaired`
 (`inline-transitions.ts`) · run in `components/blocks/editable-surface.ts :: onCompositionEnd` ·
 `inline-transitions.test.ts`, `test/blocks/editable-surface-composition.test.ts`.
@@ -1046,6 +1047,7 @@ unguarded.
 | G4.149 | A preview of the next insertion runs a write's own spend, and changes no record           | harness |
 | G4.150 | One placer for a hidden edge: no other file reads the caret's side or how it arrived      | L       |
 | G4.151 | One click-side check, called from the click entry both prose blocks share                 | L       |
+| G4.155 | Every composing-flag holder asks both composition questions: a drop, and an opening       | L       |
 
 ### The entries
 
@@ -1955,6 +1957,13 @@ start past a line's end, or the side of a code chip's border) is called only fro
 `widget-interaction.ts :: snapClickToWidgetEdge`, the click entry both prose blocks' `onClick` go
 through, and neither `onClick` measures the press against its text itself.
 `lint/edge-rule-guards.test.ts`.
+
+**G4.155 · Every composing-flag holder asks both composition questions.** A holder of a composing
+flag (the editable surface, the caret host) asks `editor-actions/dropped-composition.ts` whether the
+browser dropped its composition (`reportDroppedComposition`) and whether a composed run opens one
+there (`opensComposition`). A range across blocks claims a composition's start, so the block its
+removal leaves the caret in, a rule's hidden host included, only ever sees the runs. The guard knows a holder by its call to `reportDroppedComposition`, so a new holder asks that one too.
+`lint/composition-holders.test.ts`.
 
 ## Accessibility
 

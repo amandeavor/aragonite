@@ -21,6 +21,8 @@ import {
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import { type EdgeAffinity } from '#lib/caret/edge-affinity.js';
 import { createCaretMemory } from '#lib/caret/caret-memory.js';
+import { asEditorX } from '#lib/caret/coordinate-spaces.js';
+import type { EditableSurfaceDeps } from '#lib/components/blocks/editable-surface.js';
 import { createTypedPlacement } from '#lib/components/blocks/text/edge-seat.js';
 import { fixtureReading, topLevelStore } from '../harness/fixture-grammar';
 
@@ -60,7 +62,9 @@ describe('composing gate', () => {
 			// The IME advances the caret as it composes, and its beforeinput events are gated on the
 			// composing flag, so 5 must survive.
 			setCaret(7);
-			surface.onBeforeInput(new InputEvent('beforeinput', { inputType: 'insertCompositionText' }));
+			surface.onBeforeInput(
+				new InputEvent('beforeinput', { inputType: 'insertCompositionText', isComposing: true })
+			);
 			el.textContent = 'helloかん';
 			surface.onCompositionEnd();
 
@@ -145,6 +149,57 @@ describe('composing gate', () => {
 			surface.onCompositionEnd();
 			expect(takeDevWarns()).toEqual([]);
 		});
+	});
+
+	// Miss-analysis: every composition here started in the block it ended in, so no test sent a
+	// composed run to a block that never heard the start.
+	describe('editable surface: a composition whose start went to a block a range removal took', () => {
+		const composingBeforeInput = (): InputEvent =>
+			new InputEvent('beforeinput', { inputType: 'insertCompositionText', isComposing: true });
+
+		it('the first composed run opens it here, and the end commits once from that caret', () => {
+			const { surface, commits, el, setCaret } = makeSurface();
+			el.textContent = 'mma';
+			setCaret(0);
+
+			surface.onBeforeInput(composingBeforeInput());
+			el.textContent = 'かmma';
+			setCaret(1);
+			surface.onInput(composingInput());
+			expect(commits).toHaveLength(0);
+
+			surface.onCompositionEnd();
+			expect(commits).toEqual([{ text: 'かmma', preEdit: 0, saved: 1 }]);
+			expect(takeDevWarns()).toEqual([]);
+		});
+
+		// So a block that keeps its place but not the caret (a table cell the range emptied) holds
+		// no composition open.
+		it('a compositionstart over a range across blocks opens nothing here', () => {
+			const { surface, commits, el } = makeSurface({
+				overrides: { selection: { isCrossBlock: true } as EditableSurfaceDeps['selection'] }
+			});
+			el.textContent = 'hello';
+			surface.onCompositionStart();
+
+			el.textContent = 'hello!';
+			surface.onInput(new InputEvent('input', { inputType: 'insertText', data: '!' }));
+			expect(commits.map((c) => c.text)).toEqual(['hello!']);
+			expect(takeDevWarns()).toEqual([]);
+		});
+	});
+
+	// The pending marks and the held insertion are taken first, so forgetting loses neither.
+	it('opening a composition forgets the column and the side the caret memory held', () => {
+		const caretMemory = createCaretMemory();
+		const { surface } = makeSurface({ caretMemory });
+		caretMemory.captureColumn(asEditorX(600));
+		caretMemory.noteKey({ key: 'ArrowRight' }, null);
+
+		surface.onCompositionStart();
+
+		expect(caretMemory.column()).toBeNull();
+		expect(caretMemory.side()).toBeNull();
 	});
 });
 
