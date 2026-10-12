@@ -12,65 +12,65 @@ import type {
 	ContentWrite,
 	FocusActions,
 	HistoryActions
-} from '../../action-contracts';
-import type { CaretLanding } from '../../selection/caret-landing';
+} from '../../../action-contracts';
+import type { CaretLanding } from '../../../selection/caret-landing';
 import {
 	CURSOR_EXACT_START,
 	CURSOR_START,
 	type StickyColumnDirection
-} from '../../block-component';
-import type { UserScrollport } from '../../windowing/scroll-ancestors';
-import type { ScrollOwner } from '../../windowing/scroll-owner';
-import type { BlockElLookup, DocumentGetter, PasteImageHook } from '../../editor-keys';
-import { emitClipboardError, emitCommandError, type EditorEvents } from '../../editor-events';
-import type { InlineMenuCombobox } from '../../inline-menu/inline-menu-state.svelte';
-import type { NodeView } from '../../core/node-views';
-import { blockAccessibleName } from '../../a11y-strings';
-import type { CommandDispatchContext } from '../../schema/block-commands';
-import type { PluginActivation } from '../../schema/plugin-activation';
-import type { UndoController } from '../../editor-actions/deps';
-import type { PasteCommitCoordinator } from '../../tree-operations/paste/paste-deps';
-import type { CaretMemory } from '../../caret/caret-memory';
-import type { SelectionState } from '../../selection/selection-state.svelte';
-import { placeCaret, selectInBlock } from '../../selection/place-caret';
-import { deleteSnapshot } from '../../selection/primitives';
-import { asEditorX, asRawOffset, type RawOffset } from '../../caret/coordinate-spaces';
-import type { SurfaceBackend } from '../../caret/surface-backend';
-import type { DrawnCaret, WidgetEdgeSource } from '../../caret/drawn-caret.svelte';
-import type { HeldInsertion } from '../../caret/next-insertion';
-import type { TypedPlacement } from './text/edge-seat';
-import { caretLook, type NextByte } from '../../caret/caret-look';
-import type { InlineNode } from '../../core/nodes';
-import { recordCaretLook } from '../../perf/instruments';
-import { createNextByte } from './text/next-byte';
-import type { BlockPendingBreak } from '../../caret/pending-break.svelte';
-import type { HeldSpaceView } from '../../caret/held-space';
-import type { InsideCloserView } from '../../caret/inside-closer';
-import type { BlockPendingMarks } from '../../caret/pending-marks';
-import { findOffsetNearestX } from '../../caret/sticky-measure';
-import { measurePartialRectsInContentEditable } from '../overlays/rects';
+} from '../../../block-component';
+import type { UserScrollport } from '../../../windowing/scroll-ancestors';
+import type { ScrollOwner } from '../../../windowing/scroll-owner';
+import type { BlockElLookup, DocumentGetter, PasteImageHook } from '../../../editor-keys';
+import { emitClipboardError, emitCommandError, type EditorEvents } from '../../../editor-events';
+import type { InlineMenuCombobox } from '../../../inline-menu/inline-menu-state.svelte';
+import type { NodeView } from '../../../core/node-views';
+import { blockAccessibleName } from '../../../a11y-strings';
+import type { CommandDispatchContext } from '../../../schema/block-commands';
+import type { PluginActivation } from '../../../schema/plugin-activation';
+import type { UndoController } from '../../../editor-actions/deps';
+import type { PasteCommitCoordinator } from '../../../tree-operations/paste/paste-deps';
+import type { CaretMemory } from '../../../caret/caret-memory';
+import type { SelectionState } from '../../../selection/selection-state.svelte';
+import { placeCaret, selectInBlock } from '../../../selection/place-caret';
+import { deleteSnapshot } from '../../../selection/primitives';
+import { asEditorX, asRawOffset, type RawOffset } from '../../../caret/coordinate-spaces';
+import type { SurfaceBackend } from './surface-backend';
+import type { DrawnCaret, WidgetEdgeSource } from '../../../caret/drawn-caret.svelte';
+import type { HeldInsertion } from '../../../caret/next-insertion';
+import type { TypedPlacement } from '../text/edge-seat';
+import { caretLook, type NextByte } from '../../../caret/caret-look';
+import type { InlineNode } from '../../../core/nodes';
+import { recordCaretLook } from '../../../perf/instruments';
+import { createNextByte } from '../text/next-byte';
+import type { BlockPendingBreak } from '../../../caret/pending-break.svelte';
+import type { HeldSpaceView } from '../../../caret/held-space';
+import type { InsideCloserView } from '../../../caret/inside-closer';
+import type { BlockPendingMarks } from '../../../caret/pending-marks';
+import { findOffsetNearestX } from '../../../caret/sticky-measure';
+import { measurePartialRectsInContentEditable } from '../../overlays/rects';
 import {
 	documentLineEnding,
 	normalizeLineEndings,
 	trailingLineEnding,
 	trimTrailingLineEnding,
 	type LineEnding
-} from '../../core/lines';
-import type { KindCue } from '../kind-cue.svelte';
-import type { BlockAutoPairs } from './text/auto-pair-record';
+} from '../../../core/lines';
+import type { KindCue } from '../../kind-cue.svelte';
+import type { BlockAutoPairs } from '../text/auto-pair-record';
 import { createSurfaceWrite, type TextWrite } from './surface-write';
 import {
 	createCrossBlockHandlers,
 	type CrossBlockHandlers
-} from '../../selection/cross-block/dispatch';
-import { crossBlockClipboardArm } from '../../selection/cross-block/clipboard';
+} from '../../../selection/cross-block/dispatch';
+import { crossBlockClipboardArm } from '../../../selection/cross-block/clipboard';
 import {
 	runClipboardCut,
 	takeCopy,
 	writeShownSelection,
 	type ClipboardArm
 } from './clipboard-step';
-import { createImagePasteArm, type ImagePasteArm } from '../paste-image-arm';
+import { createImagePasteArm, type ImagePasteArm } from '../../paste-image-arm';
 import {
 	rawOfWalkOffset,
 	revealsNoMarkers,
@@ -78,24 +78,24 @@ import {
 	walkOffsetOfRaw,
 	type CaretWriter,
 	type RawRange
-} from '../../caret/widget-offset';
-import type { SharedKeydownContext } from '../../selection/shared-keydown';
+} from '../../../caret/widget-offset';
+import type { SharedKeydownContext } from '../../../selection/shared-keydown';
 import {
 	isInteractionTraceEnabled,
 	traceCompositionEnd,
 	traceCompositionStart,
 	traceKeydownVerdict
-} from '../../debug/interaction-trace';
-import { assertInvariant } from '../../assert';
-import { checkCompositionEndPaired } from '../../invariants/inline-transitions';
-import type { Reading } from '../../schema/reading';
-import { createPlaceholderHint, type PlaceholderPolicy } from './placeholder-hint.svelte';
-import type { CompositionSeat } from './text/composition-seat';
+} from '../../../debug/interaction-trace';
+import { assertInvariant } from '../../../assert';
+import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
+import type { Reading } from '../../../schema/reading';
+import { createPlaceholderHint, type PlaceholderPolicy } from '../placeholder-hint.svelte';
+import type { CompositionSeat } from '../text/composition-seat';
 import {
 	opensComposition,
 	reportDroppedComposition,
 	type CompositionSignal
-} from '../../editor-actions/dropped-composition';
+} from '../../../editor-actions/dropped-composition';
 
 // ── Keydown verdict ─────────────────────────────────────────────────────────
 

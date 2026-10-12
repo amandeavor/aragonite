@@ -3,7 +3,7 @@
 Drives real `compositionstart` → mid-composition input → `compositionend` sequences in
 Chromium against the three blocks built on the shared editable core (paragraph, code block,
 table cell). Complements the handler-level unit contract in
-`src/lib/test/blocks/editable-surface-composition.test.ts`: this half pins the browser's
+`src/lib/test/blocks/editable/editable-surface-composition.test.ts`: this half pins the browser's
 event order and the wiring from the real contenteditable listeners down to the CST. A
 composition over a range across blocks has its own file, `selection/composition-over-range.md`.
 

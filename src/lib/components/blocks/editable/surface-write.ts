@@ -4,16 +4,16 @@
  * caret goes; the write picks the undo caret, adds the block's line ending and puts the caret back.
  */
 
-import type { BlockEditActions, ContentWrite } from '../../action-contracts';
-import type { NodeView } from '../../core/node-views';
-import type { WriteMode } from '../../schema/block-kind-descriptor';
-import type { LeafRangeEdit } from '../../tree-operations/leaf-range';
-import type { KindCue } from '../kind-cue.svelte';
-import type { BlockAutoPairs } from './text/auto-pair-record';
-import type { HeldInsertion, TextEdit } from '../../caret/next-insertion';
-import { shownKind } from '../../core/parsers/heading';
-import { ownTrailingLineEnding, trimTrailingLineEnding } from '../../core/lines';
-import { withStoredCaret } from '../../editor-actions/stored-caret';
+import type { BlockEditActions, ContentWrite } from '../../../action-contracts';
+import type { NodeView } from '../../../core/node-views';
+import type { WriteMode } from '../../../schema/block-kind-descriptor';
+import type { LeafRangeEdit } from '../../../tree-operations/leaf-range';
+import type { KindCue } from '../../kind-cue.svelte';
+import type { BlockAutoPairs } from '../text/auto-pair-record';
+import type { HeldInsertion, TextEdit } from '../../../caret/next-insertion';
+import { shownKind } from '../../../core/parsers/heading';
+import { ownTrailingLineEnding, trimTrailingLineEnding } from '../../../core/lines';
+import { withStoredCaret } from '../../../editor-actions/stored-caret';
 
 /** `typed` is a keystroke's own edit, which can name a new block kind and complete its line;
  *  `command` is a chord, a menu row, a clipboard edit or a shown source's commit, and `repair`

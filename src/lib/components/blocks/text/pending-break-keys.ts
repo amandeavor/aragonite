@@ -8,7 +8,7 @@
 import type { ContentWrite } from '../../../action-contracts';
 import type { BlockPendingBreak } from '../../../caret/pending-break.svelte';
 import { BARE_MODIFIER_KEYS } from '../../../schema/keybindings';
-import type { TextWrite } from '../surface-write';
+import type { TextWrite } from '../editable/surface-write';
 import { hasModifier, isPlainTypingKey } from './click-snap-guard';
 
 export interface PendingBreakKeyDeps {

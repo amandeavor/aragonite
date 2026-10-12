@@ -49,7 +49,7 @@ const CLIPBOARD_READ_RE =
 /** Each site reading external text, and the name that carries its text to a declared route.
  *  `editor-root/clipboard.ts` forwards the carrier and reads no payload of its own. */
 const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
-	'src/lib/components/blocks/editable-surface.ts': {
+	'src/lib/components/blocks/editable/editable-surface.ts': {
 		handoff: 'pasteTail',
 		why: 'the shared paste handler hands the text to the block’s pasteTail, which dispatches through the paste tree-op'
 	},
@@ -104,7 +104,7 @@ const WALK_CONTAINER_SURFACES: Record<string, string> = {
 	'src/lib/components/blocks/code/CodeBlock.svelte': 'the fenced-code surface',
 	'src/lib/components/blocks/table/cell-render.ts': 'the table-cell surface',
 	'src/lib/components/blocks/text/text-render.ts': 'the prose surface',
-	'src/lib/components/blocks/editable-leaf.ts':
+	'src/lib/components/blocks/editable/editable-leaf.ts':
 		'the plugin leaf surface, when its host paints source'
 };
 
@@ -432,8 +432,8 @@ const MANIFESTS: ManifestRule[] = [
 				quotedSpecifierEnding('place-caret')
 		),
 		declared: {
-			'src/lib/components/blocks/editable-leaf.ts': 'the plugin leaf surface',
-			'src/lib/components/blocks/editable-surface.ts': 'the shared editable factory',
+			'src/lib/components/blocks/editable/editable-leaf.ts': 'the plugin leaf surface',
+			'src/lib/components/blocks/editable/editable-surface.ts': 'the shared editable factory',
 			'src/lib/components/blocks/table/TableBlock.svelte': 'the cell-addressed grid surface',
 			'src/lib/components/blocks/ThematicBreakBlock.svelte': 'the whole-block-focus leaf',
 			'src/lib/editor-actions/container-block-component.ts': 'the container walk-in shim'

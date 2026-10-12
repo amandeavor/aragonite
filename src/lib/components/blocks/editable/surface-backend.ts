@@ -4,7 +4,7 @@
  * Reads answer only while the element holds focus.
  */
 
-import { asRawOffset, type RawOffset } from './coordinate-spaces';
+import { asRawOffset, type RawOffset } from '../../../caret/coordinate-spaces';
 import {
 	isInMarkerPrefix,
 	markerPrefixOf,
@@ -12,7 +12,7 @@ import {
 	rawSelectionFocus,
 	type CaretClamp,
 	type CaretWriter
-} from './widget-offset';
+} from '../../../caret/widget-offset';
 
 export interface SurfaceBackendDeps {
 	getEl: () => HTMLElement | null;

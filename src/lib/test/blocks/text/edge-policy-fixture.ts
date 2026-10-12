@@ -10,7 +10,7 @@ import { parse } from '#lib/core/parser.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import type { BlockEditActions } from '#lib/action-contracts.js';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
-import { createSurfaceWrite } from '#lib/components/blocks/surface-write.js';
+import { createSurfaceWrite } from '#lib/components/blocks/editable/surface-write.js';
 import { stubBlockEdit } from '#lib/testing/headless-actions.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import { recordingPendingMarks } from '#lib/test/harness/editor-actions.js';

@@ -14,7 +14,7 @@ import {
 import { createCaretMemory } from '#lib/caret/caret-memory.js';
 import { createHeldSpace } from '#lib/caret/held-space.js';
 import { createPendingBreak } from '#lib/caret/pending-break.svelte.js';
-import { createSurfaceWrite } from '#lib/components/blocks/surface-write.js';
+import { createSurfaceWrite } from '#lib/components/blocks/editable/surface-write.js';
 import { stubBlockEdit } from '#lib/testing/headless-actions.js';
 import type { NodeView } from '#lib/core/node-views.js';
 

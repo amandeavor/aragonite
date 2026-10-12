@@ -2,14 +2,14 @@
 // The editable surface's composition window: the gate, the commit through real actions,
 // and where a composed run is placed.
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
-import { takeDevWarns } from '../support/warn-gate';
-import { makeSurface, type SurfaceHarness } from '../harness/editable-surface';
+import { takeDevWarns } from '../../support/warn-gate';
+import { makeSurface, type SurfaceHarness } from '../../harness/editable-surface';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { rangeSelectionOf } from '#lib/test/support/undo-entry.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
-import { makeEditorActionsDeps, type EditorActionsHarness } from '../harness/editor-actions';
+import { makeEditorActionsDeps, type EditorActionsHarness } from '../../harness/editor-actions';
 import { createCompositionSeat } from '#lib/components/blocks/text/composition-seat.js';
 import { replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
 import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
@@ -21,9 +21,9 @@ import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import { type EdgeAffinity } from '#lib/caret/edge-affinity.js';
 import { createCaretMemory } from '#lib/caret/caret-memory.js';
 import { asEditorX } from '#lib/caret/coordinate-spaces.js';
-import type { EditableSurfaceDeps } from '#lib/components/blocks/editable-surface.js';
+import type { EditableSurfaceDeps } from '#lib/components/blocks/editable/editable-surface.js';
 import { createTypedPlacement } from '#lib/components/blocks/text/edge-seat.js';
-import { fixtureReading, topLevelStore } from '../harness/fixture-grammar';
+import { fixtureReading, topLevelStore } from '../../harness/fixture-grammar';
 
 /** An `input` the browser sends mid-composition. */
 const composingInput = (): InputEvent =>

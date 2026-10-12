@@ -65,10 +65,10 @@
 	import { assertInvariant } from '../../../assert';
 	import { widgetElByStart, widgetsIn } from './widget-adjacency';
 	import { caretLandableBounds, handleSharedKeydown } from '../../../selection/shared-keydown';
-	import { createEditableSurface, consumePendingRestore } from '../editable-surface';
-	import { rangeWrite, withOwnEnding } from '../surface-write';
+	import { createEditableSurface, consumePendingRestore } from '../editable/editable-surface';
+	import { rangeWrite, withOwnEnding } from '../editable/surface-write';
 	import type { ContentWrite } from '../../../action-contracts';
-	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../surface-wiring.svelte';
+	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import {
 		rawOffsetAt,
 		rawTextOfContent,
@@ -77,7 +77,7 @@
 		caretOnPendingBreakLine
 	} from '../../../caret/widget-offset';
 	import { asRawOffset } from '../../../caret/coordinate-spaces';
-	import { createSurfaceBackend } from '../../../caret/surface-backend';
+	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { type CommandId } from '../../../schema/commands';
 	import type { CommandRun } from '../../../schema/block-commands';
 	import { planTypedCompletion } from '../../../editor-actions/enter-completion';

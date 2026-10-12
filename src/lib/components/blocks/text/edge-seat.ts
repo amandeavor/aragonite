@@ -33,7 +33,7 @@ import type { HeldSpaceView } from '../../../caret/held-space';
 import type { InsideCloserView } from '../../../caret/inside-closer';
 import type { NodeView } from '../../../core/node-views';
 import { resolvedInlineContent } from '../../../core/inline/inline-cache';
-import { withOwnEnding } from '../surface-write';
+import { withOwnEnding } from '../editable/surface-write';
 import { revealsNoMarkers, screenVisibilityOf } from '../../../caret/widget-offset';
 import { resolveMarkedInsertion } from './pending-mark-insert';
 

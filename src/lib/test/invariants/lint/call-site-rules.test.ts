@@ -70,7 +70,7 @@ const RULES: CallSiteRule[] = [
 		calls: ['trailingLineEnding', 'ownTrailingLineEnding'],
 		holds: () => false,
 		allowed: {
-			'src/lib/components/blocks/editable-surface.ts :: lineEnding':
+			'src/lib/components/blocks/editable/editable-surface.ts :: lineEnding':
 				'the getter for the ending a typed line break takes: its own, else the document’s',
 			'src/lib/components/blocks/text/text-keydown.ts :: insertHardBreak':
 				'a hard break inside the text, a command that keeps the block’s own ending until it moves onto the surface write with the other commands',
@@ -154,7 +154,7 @@ const RULES: CallSiteRule[] = [
 		calls: ['.setData'],
 		holds: () => false,
 		allowed: {
-			'src/lib/components/blocks/clipboard-step.ts :: writeShownSelection':
+			'src/lib/components/blocks/editable/clipboard-step.ts :: writeShownSelection':
 				'the copy of what the user sees: reading mode, a copy no `ClipboardArm` takes, and the code block',
 			'src/lib/components/blocks/text/text-clipboard.ts :: copyWidget':
 				'the text block’s copy of a selected widget',
@@ -162,7 +162,7 @@ const RULES: CallSiteRule[] = [
 				'the text block’s copy of its own range',
 			'src/lib/components/blocks/table/TableCellBlock.svelte :: copyCellRange':
 				'the cell’s copy of its own range',
-			'src/lib/components/blocks/editable-leaf.ts :: copyRange':
+			'src/lib/components/blocks/editable/editable-leaf.ts :: copyRange':
 				'a plugin leaf’s copy of its own range',
 			'src/lib/selection/cross-block/clipboard.ts :: copyCrossBlock':
 				'the copy of a range across blocks, a cell rectangle included',
@@ -193,15 +193,15 @@ const RULES: CallSiteRule[] = [
 				'the line break a key types over a selection',
 			'src/lib/components/blocks/code/CodeBlock.svelte :: bareFenceCompletion':
 				'a bare fence gets its body and closing lines, on Enter or as the caret arrives',
-			'src/lib/components/blocks/editable-leaf.ts :: reshapeSource':
+			'src/lib/components/blocks/editable/editable-leaf.ts :: reshapeSource':
 				'a plugin source shown or edited gets the lines its kind adds, a bare one a body line',
 			'src/lib/components/blocks/code/CodeBlock.svelte :: closeUnclosedFenceAndDescend':
 				'Enter past an unclosed fence adds the closing line and the paragraph below',
 			'src/lib/components/blocks/text/TextEditableBlock.svelte :: writeHardBreak':
 				'Shift+Enter types a new line',
-			'src/lib/components/blocks/editable-leaf.ts :: breakLine':
+			'src/lib/components/blocks/editable/editable-leaf.ts :: breakLine':
 				'Enter in a multi-line plugin source types a new line',
-			'src/lib/components/blocks/editable-leaf.ts :: onBeforeInput':
+			'src/lib/components/blocks/editable/editable-leaf.ts :: onBeforeInput':
 				'a line break with no key in a painted plugin source types a new line',
 			'src/lib/components/blocks/text/TextEditableBlock.svelte :: handleDelimiterAutoPair':
 				'asks whether a completion is planned, and writes nothing'

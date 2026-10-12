@@ -2,11 +2,11 @@
 // The editable surface's caret: memory after an input, the pre-edit caret, the parkCaret
 // clamp, and the pending restore.
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
-import { makeSurface, type SurfaceHarness } from '../harness/editable-surface';
+import { makeSurface, type SurfaceHarness } from '../../harness/editable-surface';
 import { createCaretMemory } from '#lib/caret/caret-memory.js';
 import { asEditorX } from '#lib/caret/coordinate-spaces.js';
-import { CURSOR_END, CURSOR_EXACT_START, CURSOR_START } from '../../block-component';
-import { consumePendingRestore } from '../../components/blocks/editable-surface';
+import { CURSOR_END, CURSOR_EXACT_START, CURSOR_START } from '../../../block-component';
+import { consumePendingRestore } from '../../../components/blocks/editable/editable-surface';
 import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 describe('caret memory', () => {

@@ -4,10 +4,10 @@ import { describe, it, expect } from 'vitest';
 import {
 	createClipboardHandlers,
 	type ClipboardSurfaceDeps
-} from '../../components/blocks/editable-surface';
-import { type ClipboardArm } from '../../components/blocks/clipboard-step';
+} from '../../../components/blocks/editable/editable-surface';
+import { type ClipboardArm } from '../../../components/blocks/editable/clipboard-step';
 import { createInsertionRecords } from '#lib/caret/next-insertion.js';
-import { type PastedImage } from '../../editor-keys';
+import { type PastedImage } from '../../../editor-keys';
 
 describe('step order', () => {
 	// The order of steps `createClipboardHandlers` runs: reading check, each arm, a cut's payload before the hide, paste's `preventDefault` before any await.

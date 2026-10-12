@@ -6,7 +6,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BlockEditActions } from '#lib/action-contracts.js';
 import type { NodeView } from '#lib/core/node-views.js';
-import { createSurfaceWrite, type TextWrite } from '#lib/components/blocks/surface-write.js';
+import {
+	createSurfaceWrite,
+	type TextWrite
+} from '#lib/components/blocks/editable/surface-write.js';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
 import { stubBlockEdit } from '#lib/testing/headless-actions.js';
 import { createInsertionRecords } from '#lib/caret/next-insertion.js';

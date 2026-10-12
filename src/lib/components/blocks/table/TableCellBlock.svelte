@@ -42,17 +42,17 @@
 		type RawRange
 	} from '../../../caret/widget-offset';
 	import { asRawOffset, rowMajorCellIndex, type RawOffset } from '../../../caret/coordinate-spaces';
-	import { createSurfaceBackend } from '../../../caret/surface-backend';
+	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { getCurrentCursorEditorRelativeX } from '../../../caret/sticky-measure';
 	import { handleEdgeStep, handleSharedKeydown } from '../../../selection/shared-keydown';
 	import {
 		createEditableSurface,
 		createClipboardHandlers,
 		consumePendingRestore
-	} from '../editable-surface';
-	import type { ClipboardCopy } from '../clipboard-step';
-	import { rangeWrite } from '../surface-write';
-	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../surface-wiring.svelte';
+	} from '../editable/editable-surface';
+	import type { ClipboardCopy } from '../editable/clipboard-step';
+	import { rangeWrite } from '../editable/surface-write';
+	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import { resetForPointerDown } from '../../../selection/cross-block/pointer';
 	import type { PointerPressOptions } from '../../../selection/cross-block/dispatch';
 	import { publishRefSlot, type RefSlots } from '../../../block-lists/child-refs';

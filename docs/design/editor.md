@@ -121,7 +121,7 @@ if (write.admitted && write.keepsCaret) requestCaret(write.caret); // 6, unless 
 await write; // true once the bytes are in
 ```
 
-A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it does the rest:
+A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/editable/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it does the rest:
 
 - undo's caret is the one recorded when the key or input arrived
 - the block keeps the line ending it had, so a last line saved without one stays that way

@@ -5,7 +5,7 @@
  */
 
 import { getContext } from 'svelte';
-import type { BlockEditActions, FocusActions, HistoryActions } from '../../action-contracts';
+import type { BlockEditActions, FocusActions, HistoryActions } from '../../../action-contracts';
 import {
 	BLOCK_EDIT_KEY,
 	EDITOR_DOC_KEY,
@@ -16,13 +16,13 @@ import {
 	type EditorDoc,
 	type EditorPolicies,
 	type EditorServices
-} from '../../editor-keys';
-import { eventToChord } from '../../schema/keybindings';
-import { dispatchKeyCommand, type KindCommandTarget } from '../../schema/block-commands';
-import { commandForKey } from '../../schema/commands';
-import type { AnyBlockKind } from '../../core/nodes';
-import type { AnyCommandId } from '../../schema/command-id';
-import { parkFocusOnEditorRoot } from '../../selection/native-bridge';
+} from '../../../editor-keys';
+import { eventToChord } from '../../../schema/keybindings';
+import { dispatchKeyCommand, type KindCommandTarget } from '../../../schema/block-commands';
+import { commandForKey } from '../../../schema/commands';
+import type { AnyBlockKind } from '../../../core/nodes';
+import type { AnyCommandId } from '../../../schema/command-id';
+import { parkFocusOnEditorRoot } from '../../../selection/native-bridge';
 import type { EditableSurfaceDeps } from './editable-surface';
 
 /** The context half of `EditableSurfaceDeps`: the fields every block passes through unchanged. */

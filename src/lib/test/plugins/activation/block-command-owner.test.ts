@@ -10,7 +10,7 @@ import {
 	type KindCommandTarget
 } from '#lib/schema/block-commands.js';
 import type { AnyCommandId } from '#lib/schema/command-id.js';
-import { buildLeafCommandContext } from '#lib/components/blocks/editable-leaf.js';
+import { buildLeafCommandContext } from '#lib/components/blocks/editable/editable-leaf.js';
 import { buildContainerKindTarget } from '#lib/editor-actions/plugin/container.js';
 import { createEditorEvents, emitCommandError } from '#lib/editor-events.js';
 import type { CstNode } from '#lib/core/nodes.js';

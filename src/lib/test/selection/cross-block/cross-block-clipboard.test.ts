@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
 import { crossBlockClipboardArm } from '#lib/selection/cross-block/clipboard.js';
-import { runClipboardCut } from '#lib/components/blocks/clipboard-step.js';
+import { runClipboardCut } from '#lib/components/blocks/editable/clipboard-step.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { parse } from '#lib/core/parser.js';
 import type { CrossBlockHandlers } from '#lib/selection/cross-block/dispatch.js';

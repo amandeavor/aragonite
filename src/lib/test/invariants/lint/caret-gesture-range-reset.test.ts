@@ -49,7 +49,7 @@ const CARET_GESTURE_DOORS: Record<string, Door> = {
 	'src/lib/components/blocks/code/CodeBlock.svelte': 'delegate',
 	// Two calls: the dispatcher hit-tests against source text the rendered view does not have,
 	// so the rendered view calls the preamble itself rather than delegating.
-	'src/lib/components/blocks/editable-leaf.ts': 'both',
+	'src/lib/components/blocks/editable/editable-leaf.ts': 'both',
 	// The dead-space click (the root's own padding, the area below the last block) and the
 	// margin drag, both of which land a caret the browser did not place.
 	'src/lib/components/editor-root/gestures.ts': 'reset'
@@ -109,7 +109,7 @@ const PARK_DOOR_CALLERS: Record<string, string> = {
 		"park — the extend's endpoint (cross-block/keydown.ts :: revealActiveEndpoint), mounted and given the dispatch caret while the extend still owns the range",
 	'src/lib/editor-actions/container-block-component.ts':
 		"implementation: the container walk lands through its child's park door",
-	'src/lib/components/blocks/editable-leaf.ts':
+	'src/lib/components/blocks/editable/editable-leaf.ts':
 		"implementation: the leaf's park door over the shared surface",
 	'src/lib/components/blocks/table/TableBlock.svelte':
 		'implementation: the 2D park collapses to a cell park',

@@ -7,18 +7,18 @@
 
 import { getContext, onDestroy } from 'svelte';
 import { createAttachmentKey } from 'svelte/attachments';
-import type { BlockEditActions } from '../../action-contracts';
-import type { EditableLeafBlockApi, StickyColumnDirection } from '../../block-component';
-import type { NodeView } from '../../core/node-views';
+import type { BlockEditActions } from '../../../action-contracts';
+import type { EditableLeafBlockApi, StickyColumnDirection } from '../../../block-component';
+import type { NodeView } from '../../../core/node-views';
 import {
 	EDITOR_POLICIES_KEY,
 	EDITOR_SERVICES_KEY,
 	type EditorPolicies,
 	type EditorServices
-} from '../../editor-keys';
-import { asRawOffset } from '../../caret/coordinate-spaces';
-import { createSurfaceBackend } from '../../caret/surface-backend';
-import { handleSharedKeydown } from '../../selection/shared-keydown';
+} from '../../../editor-keys';
+import { asRawOffset } from '../../../caret/coordinate-spaces';
+import { createSurfaceBackend } from './surface-backend';
+import { handleSharedKeydown } from '../../../selection/shared-keydown';
 import {
 	createEditableSurface,
 	createClipboardHandlers,
@@ -35,25 +35,25 @@ import {
 	clampToLandableRaw,
 	holdsOnlyMarkerChrome,
 	type RawRange
-} from '../../caret/widget-offset';
-import { parkFocusOnEditorRoot } from '../../selection/native-bridge';
-import { assertInvariant } from '../../assert';
-import { checkRenderedTextFidelity } from '../../invariants/render-fidelity';
-import { resetForPointerDown } from '../../selection/cross-block/pointer';
-import { placeCaret } from '../../selection/place-caret';
-import { createSourceReveal } from '../../caret/reveal-source';
-import { traceRevealOpen, traceRevealFold } from '../../debug/interaction-trace';
-import { isBlankText, trimTrailingLineEnding, type LineEnding } from '../../core/lines';
-import type { PresentationMode } from '../../presentation-mode';
-import { tryGetBlockKindDescriptor } from '../../schema/block-kind-descriptor';
-import { type BlockCommandTarget, type CommandRun } from '../../schema/block-commands';
-import type { EditorContext } from '../../schema/plugin-install';
+} from '../../../caret/widget-offset';
+import { parkFocusOnEditorRoot } from '../../../selection/native-bridge';
+import { assertInvariant } from '../../../assert';
+import { checkRenderedTextFidelity } from '../../../invariants/render-fidelity';
+import { resetForPointerDown } from '../../../selection/cross-block/pointer';
+import { placeCaret } from '../../../selection/place-caret';
+import { createSourceReveal } from '../../../caret/reveal-source';
+import { traceRevealOpen, traceRevealFold } from '../../../debug/interaction-trace';
+import { isBlankText, trimTrailingLineEnding, type LineEnding } from '../../../core/lines';
+import type { PresentationMode } from '../../../presentation-mode';
+import { tryGetBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
+import { type BlockCommandTarget, type CommandRun } from '../../../schema/block-commands';
+import type { EditorContext } from '../../../schema/plugin-install';
 import {
 	componentPluginEditor,
 	componentPluginOptions
-} from '../../schema/block-component-registry';
-import { createTextBatch } from '../../editor-actions/commit/text-batch';
-import type { Draft } from '../../schema/drafts';
+} from '../../../schema/block-component-registry';
+import { createTextBatch } from '../../../editor-actions/commit/text-batch';
+import type { Draft } from '../../../schema/drafts';
 
 export type EditableLeafMode = 'plain' | 'render-primary';
 

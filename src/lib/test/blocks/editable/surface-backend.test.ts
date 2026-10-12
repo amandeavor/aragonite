@@ -2,8 +2,8 @@
 // The caret reads and writes every editable surface builds, behind a list item's marker prefix.
 // Miss-analysis: every case here handed the backend a live element, never a dead one.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createSurfaceBackend } from '../../caret/surface-backend';
-import { asRawOffset } from '../../caret/coordinate-spaces';
+import { createSurfaceBackend } from '../../../components/blocks/editable/surface-backend';
+import { asRawOffset } from '../../../caret/coordinate-spaces';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 
 // Fixture: a list item's prose element: the marker span "- " (traversal offsets [0,2)) then

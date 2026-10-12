@@ -79,7 +79,7 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		note: 'Previous match from the find input. Reachable only with the bar open, and the prose keymap binds the same chord anyway.'
 	},
 	{
-		file: 'components/blocks/editable-leaf.ts',
+		file: 'components/blocks/editable/editable-leaf.ts',
 		chords: [],
 		keys: ['Backspace', 'Enter'],
 		note: "Shift-click gate on the rendered surface, a pointer read; plain Backspace (no modifier) at the top of an empty painted source deletes the block, as the code block does. The reveal's own undo resolves its chord through the keymap, so it claims none here."
