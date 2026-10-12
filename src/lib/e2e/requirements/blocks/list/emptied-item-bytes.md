@@ -4,9 +4,10 @@ An item at the very end of the document has no line ending, so once its text is 
 
 ## User interactions
 
-- Load `- **a**`, select the text, press Backspace (source and live): the source is `- `, one bullet still shows, a reload of that source still shows one bullet, and a typed character lands in it
-- The same with Delete instead of Backspace (source and live)
-- The same with a cut instead of Backspace (source and live)
+- Load `- **a**` in source mode, select the text, press Backspace: the source is `- `, one bullet still shows, a reload of that source still shows one bullet, and a typed character lands in it
+- The same in live mode, loading `- a` (live mode keeps the hidden `**` around deleted bold text, so that item never empties)
+- The same with Delete instead of Backspace, in both modes
+- The same with a cut instead of Backspace, in both modes
 
 ## Edge cases
 

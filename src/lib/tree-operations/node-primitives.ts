@@ -196,6 +196,15 @@ export function normalizeReplacementTrivia(original: CstNode, replacement: CstNo
 
 // ── Editable container backfill ──
 
+/** `source` read the way the editor opens it: parsed, then every container that must hold a
+ *  child given its empty paragraph. The tree a reload shows, so what a write's bytes must read as. */
+export function readAsOpened(source: string, read: Parameters<typeof readBlocks>[1]): Document {
+	const doc = readBlocks(source, read);
+	const ending = documentLineEnding(doc);
+	for (const child of doc.children) ensureEditableContainers(child, ending);
+	return doc;
+}
+
 /** Give every container that must hold a child an empty paragraph, so the caret always has a
  *  target. A container with no bytes yet backfills its lines in `ending`, the document's. */
 export function ensureEditableContainers(node: CstNode, ending: LineEnding): void {
