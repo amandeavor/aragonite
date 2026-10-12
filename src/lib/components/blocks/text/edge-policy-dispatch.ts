@@ -16,6 +16,7 @@ import { getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
 import { trimTrailingLineEnding } from '../../../core/lines';
 import { type RawOffset } from '../../../caret/coordinate-spaces';
 import type { PendingMarks } from '../../../caret/pending-marks';
+import type { InsideCloserView } from '../../../caret/inside-closer';
 import {
 	landableRawBounds,
 	markerPrefixOf,
@@ -24,7 +25,8 @@ import {
 	type CaretWriter
 } from '../../../caret/widget-offset';
 import { recordIslandKeyScan } from '../../../perf/instruments';
-import { caretIsInTextContent, hasModifier, isPlainTypingKey } from './click-snap-guard';
+import { hasModifier, isPlainTypingKey } from './click-snap-guard';
+import { caretIsInTextContent } from '../../../caret/text-seat';
 import { createMarkerCompletion } from './marker-completion';
 import {
 	resolveEdgeDeletion,
@@ -107,6 +109,8 @@ export interface EdgePolicyDispatchDeps {
 	offsetFor: (caret: number, typed: string) => number;
 	/** The editor's caret writer, which selects a decoration widget whole. */
 	caretWriter: CaretWriter;
+	/** The caret Edit link left before a hidden closer, which a letter taken back keeps there. */
+	insideCloser: () => InsideCloserView;
 }
 
 export interface EdgePolicyDispatch {
@@ -239,9 +243,14 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 
 	/** A keypress with no safe rewrite writes nothing: the browser's version would show the
 	 *  delimiters the rule was hiding. */
-	function applyEdgeDeletion(deletion: EdgeDeletion): void {
+	function applyEdgeDeletion(deletion: EdgeDeletion, caret: number): void {
 		if ('swallow' in deletion) return;
+		// A letter taken back from Edit link's caret leaves the caret inside the URL still; the
+		// write ends every record, so it is opened again where the cut left the caret.
+		const tookOnlyBefore = deletion.caret + display().length - deletion.raw.length === caret;
+		const stillInside = deps.insideCloser().at() === caret && tookOnlyBefore;
 		writeDisplay(deletion.raw, deletion.caret, 'construct-delete');
+		if (stillInside) deps.insideCloser().open(deletion.caret);
 		// Pended after the write, since the write clears pending marks; the caret has not moved, so
 		// the format waits for the next insertion (live-mode.md § 4.4).
 		for (const kind of deletion.unwrappedMarks) deps.pendingMarks.toggle(kind);
@@ -408,7 +417,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			// Beside a hidden delimiter run the construct-edge rule decides which byte a key takes
 			// (`docs/design/live-mode.md` § 4.4), and this branch outranks it, so it asks that rule.
 			const deletion = edgeDeletionAt(el, caretOffset, direction);
-			if (deletion) applyEdgeDeletion(deletion);
+			if (deletion) applyEdgeDeletion(deletion, caretOffset);
 			else if (direction === 'backward') editDisplay(caretOffset - 1, caretOffset, '');
 			else editDisplay(caretOffset, caretOffset + 1, '');
 			return true;
@@ -476,7 +485,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		if (!deletion) return false;
 		e.preventDefault();
 		deps.setSnapTarget(null);
-		applyEdgeDeletion(deletion);
+		applyEdgeDeletion(deletion, caretOffset);
 		return true;
 	}
 

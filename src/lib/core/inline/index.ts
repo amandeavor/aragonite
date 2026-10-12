@@ -89,9 +89,26 @@ export function constructContentRange(node: InlineNode): ContentRange | null {
 	if (children && children.length > 0) {
 		return { start: children[0].start, end: children[children.length - 1].end };
 	}
+	// An autolink's content is the URL it shows, inside the angle form's brackets.
+	if (node.kind === 'autolink') {
+		return node.angle
+			? { start: node.start + 1, end: node.end - 1 }
+			: { start: node.start, end: node.end };
+	}
 	// A code span carries its content as `text` rather than children.
 	const fence = node.kind === 'inlineCode' ? codeSpanFence(node) : 0;
 	return fence > 0 ? { start: node.start + fence, end: node.end - fence } : null;
+}
+
+/** Whether a cut or an insertion at `offset` lands inside `node`: its content, bounds included,
+ *  or the strict interior of a construct with no delimiters of its own (a bare URL, an escape). */
+export function constructHoldsOffset(node: InlineNode, offset: number): boolean {
+	if (node.kind === 'text') return false;
+	const content = constructContentRange(node);
+	const delimited = content && (content.start > node.start || content.end < node.end);
+	return delimited
+		? offset >= content.start && offset <= content.end
+		: offset > node.start && offset < node.end;
 }
 
 /** Uncached and free of reactive reads, so the render path can call it directly. An editor

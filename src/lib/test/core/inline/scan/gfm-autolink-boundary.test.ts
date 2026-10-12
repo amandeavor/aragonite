@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { scanInline } from '#lib/core/inline/scan/index.js';
 import {
+	angleAutolinkNode,
 	autolinkNode,
 	codeNode,
 	describeScanCases,
@@ -18,14 +19,14 @@ describeScanCases('a claimed construct right before a url is no boundary', [
 	[
 		'after an angle autolink',
 		'<http://a.com>www.b.com',
-		[autolinkNode(0, 14, 'http://a.com'), textNode(14, 23, 'www.b.com')]
+		[angleAutolinkNode(0, 14, 'http://a.com'), textNode(14, 23, 'www.b.com')]
 	],
 	['after a code span', '`c`http://a.b', [codeNode(0, 3, 'c'), textNode(3, 13, 'http://a.b')]],
 	['after an entity', '&amp;www.a.com', [entityNode(0, 5, '&'), textNode(5, 14, 'www.a.com')]],
 	[
 		'an email after an angle autolink',
 		'<http://a.com>x@y.co',
-		[autolinkNode(0, 14, 'http://a.com'), textNode(14, 20, 'x@y.co')]
+		[angleAutolinkNode(0, 14, 'http://a.com'), textNode(14, 20, 'x@y.co')]
 	]
 ]);
 

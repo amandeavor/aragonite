@@ -41,9 +41,10 @@ export interface DrawnCaretReads {
 	source: { drawable: boolean } | null;
 	/** Focus is in the gap caret's proxy, the editable that takes input between two blocks. */
 	gap: boolean;
-	/** The widget edge a click meant, as the bar's box; a null box while a pointer-down beside a
-	 *  widget waits for its click. Null when neither. */
-	widgetEdge: { box: WidgetEdgeBox | null } | null;
+	/** The bar beside the widget edge a click meant, or null. */
+	widgetEdge: WidgetEdgeBox | null;
+	/** A held press whose click will move the caret from where the press put it. */
+	pressed: boolean;
 	/** The caret sits beside an inline widget, where the range has no box of its own. */
 	besideWidget: boolean;
 	/** The caret sits where a line wraps, which the range reads as the first line's end whichever
@@ -73,7 +74,8 @@ export type DrawnCaretTarget =
 	| { state: 'native' }
 	| { state: 'text'; rect: DrawnCaretRect }
 	| { state: 'chip'; rect: DrawnCaretRect }
-	| { state: 'widget'; rect: (DrawnCaretRect & { width: number }) | null }
+	| { state: 'widget'; rect: DrawnCaretRect & { width: number } }
+	| { state: 'pressed' }
 	| { state: 'gap' };
 
 export function drawnCaretTarget(reads: DrawnCaretReads): DrawnCaretTarget {
@@ -83,13 +85,13 @@ export function drawnCaretTarget(reads: DrawnCaretReads): DrawnCaretTarget {
 	if (hides(reads)) return { state: 'hidden' };
 	if (reads.gap) return { state: 'gap' };
 	const { source, caret, host, widgetEdge } = reads;
-	if (!source || !source.drawable || !host) return { state: 'native' };
+	if (!source || !source.drawable) return { state: 'native' };
+	// Nothing draws until the click lands, so no frame shows a caret where it won't stay.
+	if (reads.pressed) return { state: 'pressed' };
+	if (!host) return { state: 'native' };
 	if (widgetEdge) {
-		const { box } = widgetEdge;
-		return {
-			state: 'widget',
-			rect: box && { ...inHost(box.left, box, host), width: box.width / host.scale }
-		};
+		const rect = inHost(widgetEdge.left, widgetEdge, host);
+		return { state: 'widget', rect: { ...rect, width: widgetEdge.width / host.scale } };
 	}
 	// Snapped in client pixels, where the device grid is, so a 1px bar never smears over two.
 	const dpr = reads.devicePixelRatio;
@@ -100,7 +102,7 @@ export function drawnCaretTarget(reads: DrawnCaretReads): DrawnCaretTarget {
 }
 
 /** Whether the paint hides the browser's caret on the editable: wherever a bar would draw, and
- *  for a pointer-down beside a widget, where the browser's caret would flash taller. */
+ *  during a press the click will move the caret away from. */
 export function hidesBrowserCaret(target: DrawnCaretTarget): boolean {
 	return target.state !== 'hidden' && target.state !== 'native';
 }
@@ -113,10 +115,12 @@ function inHost(left: number, box: ClientCaretBox, host: HostBox): DrawnCaretRec
 	};
 }
 
-// The browser draws no caret at a gap, a widget edge or a chip's outside stop, so the editor
-// draws there whatever the caret prop or the pointer says.
+// The browser draws no caret at a gap, a widget edge or a chip's outside stop, and none should show
+// during a press the click moves, so the editor decides there whatever the caret prop says.
 function drawsHere(reads: DrawnCaretReads): boolean {
-	return reads.draws || reads.gap || reads.widgetEdge !== null || reads.chip !== null;
+	return (
+		reads.draws || reads.gap || reads.widgetEdge !== null || reads.chip !== null || reads.pressed
+	);
 }
 
 // Where the range's box isn't where the browser's own caret is, the browser's caret is the truth.

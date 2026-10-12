@@ -66,7 +66,7 @@ getInlineConstructPolicy('strong');
 //   mark: { nestingRank: 0, markerBytes: '**', command: 'format.toggleStrong' } }
 getInlineConstructPolicy('link');
 // { edgeAffinity: 'never-extend', autoUnwrapOnEmpty: true, splitBehavior: 'close-and-reopen',
-//   revealable: true, cardEditable: true, prose: 'content' }
+//   revealable: true, followEdit: 'card', prose: 'content' }
 getInlineConstructPolicy('text'); // undefined: no row, so no live-mode behavior at all
 ```
 
@@ -74,9 +74,9 @@ Field by field:
 
 - `edgeAffinity`: which side of the delimiters a typed byte lands on (§ 4.2).
 - `autoUnwrapOnEmpty`: whether emptying the construct takes its delimiters with it (§ 4.4).
-- `splitBehavior`: what Enter inside it does (§ 4.4).
+- `splitBehavior`: what Enter inside it does (§ 4.4). `close-and-reopen` closes it before the cut and reopens it after, and `plain` leaves the literal cut. `whole` (an autolink, an escape) says no part of the construct stands alone: Enter moves the cut to its nearer edge, and a delete whose every cut unmakes it takes it whole.
 - `revealable`: whether preview-inline may show its markers when the caret enters.
-- `cardEditable`: whether the link card (§ 4.6) is the way to its destination.
+- `followEdit`: whether a click follows the construct, and how "Edit link" and Mod+K edit it then. A link's `'card'` opens the link card (§ 4.6); an autolink's `'text'` puts the caret at the URL's end, since the URL is the text you see. The follow path reads this too, so nothing follows that can't be edited.
 - `prose`: how much of the construct is text the author writes, which decides where a trigger like `#` may open the inline menu. All of it (bold), only its content (a link's text, not its URL), or none (a code span, an image). A kind whose row declares no `prose`, or that has no row at all, counts as all of it, unless it's an inline widget (a plugin's formula), which counts as none.
 - `mark`: what a format chord writes for it. The delimiter run, the rank it nests at when one insertion carries several marks, the command that toggles it, and a wrap function for a kind whose delimiters depend on what they enclose (a code span sizes its backtick fence past the longest run inside it).
 
@@ -85,7 +85,7 @@ The same table holds the two registered rewrite slots, the split rebalancer (§ 
 Two things stay outside the table on purpose, and a lint records both with their reasons so they can't drift:
 
 - The caret-edge dispatch's list of handlers. That's a total order over gesture families (which press wins when several could claim the key), a different question from a per-construct row.
-- Whether a destructive key or a join takes a construct whole. That's a fact about one node, not about its kind: an empty link `[](url)` paints nothing though its kind normally encloses content, and an image's alt text is content though the kind renders as an atomic widget (a `contenteditable="false"` span the caret can't enter). The inline-widget registry is the second table, and it answers the widget question. `image` sits in both, legitimately.
+- Whether a destructive key or a join takes a construct whole. That's a fact about one node, not about its kind: an empty link `[](url)` paints nothing though its kind normally encloses content, and an image's alt text is content though the kind renders as an atomic widget (a `contenteditable="false"` span the caret can't enter). The one place a row answers it: a cut no candidate reads back right takes a `whole` kind whole (§ 4.4). The inline-widget registry is the second table, and it answers the widget question. `image` sits in both, legitimately.
 
 ## 4. The editing rules
 
@@ -134,7 +134,8 @@ It doesn't matter how the text got there. A hardware key, a soft keyboard, an au
   - a **fresh start**, outside every construct at the caret: Enter's new block (even mid-bold, so `**bo|ld**` then Enter and `X` gives `X**ld**`) and a click in the blank space past a line's end;
   - a **typed closer**, outside the construct it closed;
   - a **held space** (below), inside the construct it was typed at;
-  - a **chip stop**, the side of a chip's border the bar is drawn on.
+  - a **chip stop**, the side of a chip's border the bar is drawn on;
+  - **Edit link's caret**, inside the URL whose hidden `>` it sits before. Edit link on an angle autolink is you asking to edit the URL, so letters you type there extend it, and so does a letter after a Backspace there (`caret/inside-closer.ts`). A space ends it, since no URL holds one, and goes past the `>` where the word after the link belongs. So do an arrow, End or a click, and then the rule above puts the next letter past the `>` again.
 - Everything else lands on text and follows the character before the caret: a click on the text, Home, End, an arrow, a merge, a collapse.
 - Pending marks (§ 4.3) resolve where the next letter would land, so the chord at the end of a bold turns the bold off for that letter.
 - A space can't sit right before a closer (`**two **` isn't bold, and its markers would show up again), so a space typed at a hidden closer goes past it: `a **two** `. The caret still means inside though, and the next letter takes the space back in with it, giving `a **two w**`. That's the held space (`caret/held-space.ts`), and it's what lets you type a whole bold phrase without the bold stopping after the first word.
@@ -250,7 +251,7 @@ rebalanceLiveSplit(image, 5, 'a ![a\n', 'lt](i.png) b\n', stores); // null: a pl
 - Enter inside a `close-and-reopen` construct closes it before the cut and reopens it after, innermost first, so neither half strands a run, and a split link carries its destination into both halves (`live-split-rebalance.ts`). A `plain` kind with content declines, and the byte-literal cut stands.
 - Each half has to re-parse to one prose block that a reload of the file would keep, read where it lands: whitespace-only halves are refused, a boundary space may move outside the runs, and only terminal whitespace the screen never painted may drop. So in a to-do item, a `# **bo**` half above the cut is read behind the checkbox, where it stays text (not a heading), just as it was before the cut.
 - In a list item the second half becomes the first line of a new item, and that item takes the marker its bytes read as. `- **bo ld**` cut after `bo` writes `- **bo**` and `-  **ld**`: the space stays (live drops only what it never showed), the new item's marker is `-  `, and the tree matches a reload. Source mode does the same with `- a b` cut after `a`.
-- An autolink or an escape has no interior for a cut to land in at all. Two halves of a URL are not two URLs, and half an escape is a literal backslash, so the cut moves to its nearer edge and one half takes the construct whole, every byte kept (which is what rules out the alternative, dropping the delimiter pair). A hard break is childless and `never-extend` too, but its moved cut doesn't parse back, so there the literal cut stands.
+- A `whole` kind (autolink, escape) has no interior for a cut to land in at all. Two halves of a URL are not two URLs, and half an escape is a literal backslash, so the cut moves to its nearer edge and one half takes the construct whole, every byte kept (which is what rules out the alternative, dropping the delimiter pair). A hard break is `plain`: its moved cut doesn't parse back, so there the literal cut stands.
 - A side left with no content takes the whole construct rather than a pair enclosing nothing.
 
 Then the destructive presses (`live` as in § 2; `store` says where the block keeps its bytes, see § 4.5):
@@ -275,6 +276,7 @@ press('Some **bold** text', 9, 'backward'); // null: no hidden run beside the cu
 
 - A destructive key at a hidden run takes the adjacent content character, never an invisible delimiter byte, plus every delimiter the cut leaves enclosing nothing (`autoUnwrapOnEmpty`, `construct-edge-delete.ts`).
 - A construct the press unwraps hands its mark back. The delimiters are gone but the caret hasn't moved, so the kind goes pending (§ 4.3) and the next byte is written inside the construct again. That's what makes the next toggle chord turn the format off here, the job the visible empty pair does in the preview modes. Only a kind a chord can write comes back; a link the cut emptied leaves nothing pending.
+- An autolink's text is its URL, so a key in it takes one character like in any word. In the angle form the brackets are the hidden runs: Backspace before the hidden `>` takes the URL's last letter. A cut that would unmake the autolink (`<ab:>` less its colon is `<ab>`, an HTML tag) takes it whole instead, the way a split does. A cut in the middle of the URL touches no hidden run, so it's the browser's, and if it unmakes the link the brackets show up, which you can see and undo. The two answers differ on purpose: at the edge the most a take-whole can lose is the scheme left over, while in the middle it'd be the whole URL on one keypress, so there the brackets show instead.
 - A press this branch owns but can't rewrite soundly takes nothing, since the browser's version would paint the markers.
 - Chrome that paints (§ 4.1) isn't a hidden run, so the branch declines the block outright rather than reading its own bytes as unseen.
 - A block's own hidden structure gets the same first claim: `contentStart: { range, backspace: 'demote-first' }` in a kind's registration makes Backspace at a heading's content start give up its markers (the `## ` and any closing `#` run, or the underline) before any merge. That's the first press a user can aim at markers they can't see.

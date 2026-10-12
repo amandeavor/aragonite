@@ -10,6 +10,8 @@ import { tick, untrack } from 'svelte';
 import { MediaQuery } from 'svelte/reactivity';
 import type { SelectionState } from '../selection/selection-state.svelte';
 import { caretHost, chipStopBox, codeChipEdge, hostBox, measureCaret } from './drawn-caret-measure';
+import { caretSeatInElement } from './point-offset';
+import { clickMovesSeat } from './text-seat';
 import {
 	drawnCaretTarget,
 	hidesBrowserCaret,
@@ -51,8 +53,6 @@ export interface WidgetEdgeSource {
 	readonly owner: object;
 	/** The bar beside the widget at `offset`, or null when no widget sits there. */
 	box(offset: number): WidgetEdgeBox | null;
-	/** A pointer-down left the browser's caret beside a widget, where it flashes taller. */
-	pressed(): boolean;
 }
 
 export interface DrawnCaret {
@@ -116,6 +116,9 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 	let requested = false;
 	let frame = 0;
 	let watched: { el: Element; stop: () => void } | null = null;
+	// The editable a held press sits in, and whether its click will move the caret from where the
+	// press put it; the click, a key or a blur ends it.
+	let press: { el: HTMLElement; moves: boolean } | null = null;
 
 	function request(): void {
 		if (requested) return;
@@ -137,7 +140,40 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 
 	// A key the editor took writes its own caret, which asks for its paint.
 	function onKeyDown(e: KeyboardEvent): void {
+		endPress();
 		if (!e.defaultPrevented) armFrame();
+	}
+
+	// Read at the pointer-down, not at the selection change after it, which can land after a frame
+	// has already painted the press's spot. Only a primary press ends in a click.
+	function onPointerDown(e: PointerEvent): void {
+		press = null;
+		const el = e.button === 0 ? editableAt(e.target) : null;
+		const seat = el && caretSeatInElement(el, e.clientX, e.clientY);
+		if (el && seat && el.contains(seat.node)) press = { el, moves: clickMovesSeat(el, seat) };
+		armFrame();
+	}
+
+	function editableAt(target: EventTarget | null): HTMLElement | null {
+		for (let n = target instanceof Element ? target : null; n; n = n.parentElement) {
+			if (n instanceof HTMLElement && sources.has(n)) return n;
+		}
+		return null;
+	}
+
+	// Where the browser really put the caret decides, and a caret that later moves into text on its
+	// own (a press whose click landed outside the editor) shows again.
+	function notePressSeat(): void {
+		const sel = window.getSelection();
+		if (!press || !sel?.isCollapsed || sel.rangeCount === 0) return;
+		const { startContainer: node, startOffset: offset } = sel.getRangeAt(0);
+		if (press.el.contains(node)) press.moves = clickMovesSeat(press.el, { node, offset });
+	}
+
+	function endPress(): void {
+		if (press === null) return;
+		press = null;
+		armFrame();
 	}
 
 	function paintAtFrame(): void {
@@ -190,6 +226,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 				reading: deps.isReading(),
 				windowFocused: document.hasFocus(),
 				focused: active !== null && root.contains(active),
+				pressed: !!press?.moves && press.el === owned?.el,
 				store: {
 					crossBlock: selection.isCrossBlock,
 					wholeBlock: selection.wholeUnitPath !== null,
@@ -216,9 +253,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		const edges = source.widgetEdge;
 		if (!edges) return null;
 		const offset = widgetEdge.heldFor(edges.owner);
-		const box = offset === null ? null : edges.box(offset);
-		if (box) return { box };
-		return edges.pressed() ? { box: null } : null;
+		return offset === null ? null : edges.box(offset);
 	}
 
 	function draw(target: DrawnCaretTarget, read: CaretRead, atFrame: boolean): void {
@@ -301,6 +336,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 
 	// At a selection change the painted bar must still sit on its caret, unless the caret moved.
 	function onSelectionChange(): void {
+		notePressSeat();
 		assertInvariant('drawn-caret-agrees', () => {
 			const root = deps.getRoot();
 			if (!root || !painted || requested || frame !== 0) return null;
@@ -334,16 +370,29 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		root.addEventListener('compositionstart', request, on);
 		root.addEventListener('compositionend', armFrame, on);
 		root.addEventListener('keydown', onKeyDown, on);
-		root.addEventListener('pointerdown', armFrame, on);
+		root.addEventListener('pointerdown', onPointerDown, on);
 		root.addEventListener('pointerup', armFrame, on);
+		root.addEventListener('pointercancel', endPress, on);
+		// Capture, since a click handler may stop the click; the frame paint still runs after every
+		// handler has moved the caret.
+		root.addEventListener('click', endPress, { capture: true, ...on });
+		root.addEventListener(
+			'focusout',
+			(e) => {
+				if (e.target === press?.el) endPress();
+			},
+			on
+		);
 		root.addEventListener('scroll', onScroll, { capture: true, passive: true, ...on });
 		window.addEventListener('blur', request, on);
+		window.addEventListener('blur', endPress, on);
 		window.addEventListener('focus', armFrame, on);
 		document.addEventListener('selectionchange', onSelectionChange, on);
 		return () => {
 			listening.abort();
 			cancelAnimationFrame(frame);
 			frame = 0;
+			press = null;
 			watched?.stop();
 			watched = null;
 			markDrawnFor(null);

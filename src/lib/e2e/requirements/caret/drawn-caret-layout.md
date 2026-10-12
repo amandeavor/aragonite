@@ -12,9 +12,11 @@ browser's own caret would do there, and the observer to every block that shares 
   - Miss-analysis: no row scrolled an inner scroller with the caret parked, though the drawn caret
     listens for exactly that scroll; the repaint moved the bar, and nothing clipped it
 - The clipped caret wheeled back into view: the bar draws again, where the browser paints
-  - Skipped in the WebKit lane until #716 (Linux WebKit doesn't repaint after the scroll back)
   - Miss-analysis: the clip rows only scrolled the caret out; the scroll repaint ran only while a
     bar showed, so nothing brought it back until the caret moved
+  - Miss-analysis (Linux WebKit, #716): the row read the bar while the wheel's scroll still
+    animated and the browser's caret after it stopped; Chromium and Windows WebKit scroll a wheel in
+    one step, Linux WebKit over about 280 ms, and no row ran there. Both are read once it stops now
 - A caret at a cell's end, a table of 18 columns wheeled sideways until that cell leaves its box: no
   bar shows outside the table
   - Miss-analysis: the clip rows scrolled only a code block, whose scroller is the editable itself,

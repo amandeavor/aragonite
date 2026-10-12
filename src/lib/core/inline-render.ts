@@ -244,8 +244,8 @@ function openLink(
 
 // ── Autolinks ────────────────────────────────────────────────────────────────
 
-/** The angle form's `<`/`>` render as markers the mode CSS can hide. Read off the raw bytes, never
- *  `node.url`, which a bare form may synthesize (`http://`, `mailto:`). */
+/** The angle form's `<`/`>` render as markers the mode CSS can hide. The text is read off the raw
+ *  bytes, never `node.url`, which a bare form may synthesize (`http://`, `mailto:`). */
 function appendAutolink(
 	node: InlineNode,
 	raw: string,
@@ -257,14 +257,13 @@ function appendAutolink(
 	el.className = href !== undefined ? 'md-autolink' : 'md-autolink md-link-blocked';
 	if (href !== undefined) el.setAttribute('href', href);
 
-	const isAngleForm = raw[node.start] === '<' && raw[node.end - 1] === '>';
-	const textStart = isAngleForm ? node.start + 1 : node.start;
-	const textEnd = isAngleForm ? node.end - 1 : node.end;
+	const textStart = node.angle ? node.start + 1 : node.start;
+	const textEnd = node.angle ? node.end - 1 : node.end;
 	el.textContent = raw.slice(textStart, textEnd);
 
-	if (isAngleForm) container.appendChild(markerSpan(raw.slice(node.start, textStart)));
+	if (node.angle) container.appendChild(markerSpan(raw.slice(node.start, textStart)));
 	container.appendChild(el);
-	if (isAngleForm) container.appendChild(markerSpan(raw.slice(textEnd, node.end)));
+	if (node.angle) container.appendChild(markerSpan(raw.slice(textEnd, node.end)));
 }
 
 // ── Images ───────────────────────────────────────────────────────────────────

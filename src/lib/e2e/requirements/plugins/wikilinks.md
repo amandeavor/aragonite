@@ -7,7 +7,8 @@ prefix-override priority, and a widget registered with `revealSource` and
 plain click follows a link, the way it does on a web page. The widget decides whether to act by
 asking its `isActivationClick` prop, so these tests go through the same answer the editor uses.
 Seed `wikilinks`: a link mid-prose in block 0, a plain place to type in block 1, a Markdown link
-in block 2, and a link in a table cell in block 3.
+in block 2, a link and a bare URL in a table cell in block 3, a bare URL in block 4 and an angle
+autolink (`<https://...>`) in block 5.
 
 ## User interactions
 
@@ -34,6 +35,28 @@ in block 2, and a link in a table cell in block 3.
 - Switch the host back to Ctrl-click after mount (the harness toggle) and a plain click no longer
   follows either link.
 
+## Autolinks
+
+A bare URL is its own destination, so "editing" it means a caret at the URL's end, ready to edit:
+the next letters typed land in the URL and Backspace takes one letter. Every row runs on both
+hosts: the seed's plain-click one, and Ctrl-click after the toggle.
+
+- Edit link in the right-click menu on a bare URL puts the caret right after its last letter, and
+  two letters typed there land in the URL; nothing opens, no card.
+- Edit link on an angle autolink puts the caret inside the closing `>` (hidden in live mode), and
+  two letters typed there land in the URL, not past the bracket.
+- Mod+K with the caret inside either one puts the caret there too, and Backspace takes one letter,
+  not the whole URL.
+- Mod+K inside an angle autolink leaves two letters typed there in the URL too.
+- Delete inside an angle autolink takes one letter.
+- After Edit link on an angle autolink, Backspace then a letter keeps the letter in the URL.
+- After Edit link on either form, a space and a word land past the URL, and the link stays a link:
+  no URL holds a space.
+- A bare URL in a table cell follows its click on both hosts: following asks the same lookup as
+  editing, and a cell resolves through it too.
+- Edit link on a bare URL in a table cell, from the table's own menu, leaves letters typed in the
+  URL, and Backspace taking one letter.
+
 Miss-analysis: the harness widget acted on every click by hand instead of asking the editor, so a
 widget that read the shared Ctrl/Cmd check (as limestone's did) and did nothing on a plain click
 passed every test here.
@@ -44,3 +67,13 @@ every row here; no row double-clicked or dragged inside a Markdown link.
 
 Miss-analysis (the pointer cursor): the link cursor decided "a plain click follows here" in CSS off
 the reading mode alone, a second copy of the rule that no test held against a host that opts in.
+
+Miss-analysis (autolinks): following asked the page for an `a[href]` and editing asked a policy flag
+only bracketed links had, and no row checked that everything a click follows has an edit path.
+
+Miss-analysis (ready to edit): the rows pressed ArrowLeft before typing and never pressed Backspace,
+so they stepped around both gaps: an autolink had no content range, so a key deleted it whole, and
+a letter at the caret Edit link placed went past the hidden `>`.
+
+Miss-analysis (a space after Edit link): every row after Edit link typed letters, and the record
+keeping them inside the angle form took a space too, which unmade the link.

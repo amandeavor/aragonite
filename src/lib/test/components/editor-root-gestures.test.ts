@@ -13,14 +13,35 @@ import { asEditorX } from '#lib/caret/coordinate-spaces.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 import { bindActivationClick, createPressTracker, type LinkClick } from '#lib/activation-click.js';
 import { ACTIVATION_CLICK_CASES } from '#lib/test/support/activation-click-cases.js';
+import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
+import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 
 // Miss-analysis: the click and margin drag were driven only through Playwright, never a refusal.
 
 const BOX = { left: 40, right: 400, top: 20, bottom: 60 };
+/** Where the link blocks sit, out of reach of every margin row. */
+const FAR_BELOW = { left: 40, right: 400, top: 1000, bottom: 1040 };
 /** In the root's left margin, level with the block's first line. */
 const MARGIN = { clientX: 10, clientY: 40 };
 /** The text of the block a margin click resolves to, which a click run there selects. */
 const NEAREST_TEXT = 'nearest block text';
+
+// A plugin widget, `%%w%%`, that goes somewhere on a click and draws its own anchor to do it.
+function registerAnchorWidget(): void {
+	const kind = declarePluginInlineKind('gestureAnchorWidget');
+	registerInlineSyntax('%', (raw, pos, end) => {
+		if (!raw.startsWith('%%', pos)) return null;
+		const close = raw.indexOf('%%', pos + 2);
+		if (close < 0 || close + 2 > end) return null;
+		return { kind, start: pos, end: close + 2, children: [] };
+	});
+	registerInlineWidgetKind(kind, {
+		isWidget: () => true,
+		buildWidget: () => document.createElement('span'),
+		editing: { revealSource: true, claimsActivationClick: true }
+	});
+}
 
 const teardowns: (() => void)[] = [];
 const origFromPoint = document.elementFromPoint;
@@ -64,13 +85,46 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 	nearestText.setAttribute('contenteditable', 'true');
 	nearestText.textContent = NEAREST_TEXT;
 	nearest.append(nearestText);
+	// A Markdown link as the render draws it, so the DOM text is the block's raw.
 	const link = document.createElement('a');
 	link.setAttribute('href', 'https://example.com/');
+	link.textContent = 'link';
+	const linkText = document.createElement('div');
+	linkText.append('a [', link, '](https://example.com/) b');
+	const linkHost = document.createElement('div');
+	linkHost.setAttribute('data-block-path', '[2]');
+	linkHost.getBoundingClientRect = () => FAR_BELOW as DOMRect;
+	linkHost.append(linkText);
+	// An anchor over plain words, which no construct a click follows draws.
+	const strayLink = document.createElement('a');
+	strayLink.setAttribute('href', 'https://stray.example/');
+	strayLink.textContent = 'words';
+	const strayText = document.createElement('div');
+	strayText.append('plain ', strayLink, ' here');
+	const strayHost = document.createElement('div');
+	strayHost.setAttribute('data-block-path', '[3]');
+	strayHost.getBoundingClientRect = () => FAR_BELOW as DOMRect;
+	strayHost.append(strayText);
+	// The widget's shell over `%%w%%` (2..7), holding the anchor the widget draws itself.
+	const widgetLink = document.createElement('a');
+	widgetLink.setAttribute('href', 'https://widget.example/');
+	widgetLink.textContent = 'w';
+	const widgetShell = document.createElement('span');
+	widgetShell.setAttribute('data-inline-widget', '');
+	widgetShell.setAttribute('data-source-start', '2');
+	widgetShell.setAttribute('data-source-end', '7');
+	widgetShell.append(widgetLink);
+	const widgetText = document.createElement('div');
+	widgetText.append('x ', widgetShell, ' y');
+	const widgetHost = document.createElement('div');
+	widgetHost.setAttribute('data-block-path', '[4]');
+	widgetHost.getBoundingClientRect = () => FAR_BELOW as DOMRect;
+	widgetHost.append(widgetText);
 	const header = document.createElement('div');
 	const headerLink = document.createElement('a');
 	headerLink.setAttribute('href', 'https://host.example/');
 	header.append(headerLink);
-	list.append(host, editable, proxy, widget, link, nearest);
+	list.append(host, editable, proxy, widget, linkHost, strayHost, widgetHost, nearest);
 	root.append(header, list);
 	document.body.append(root);
 	// The margin resolves to the root; a point pulled into the box resolves to the block.
@@ -79,7 +133,9 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 
 	const mode = opts.mode ?? 'source';
 	const selection = createSelectionState();
-	const doc = parse('---\n\nafter\n');
+	const doc = parse(
+		'---\n\nafter\n\na [link](https://example.com/) b\n\nplain words here\n\nx %%w%% y\n'
+	);
 	const refs = buildLinkReferenceMap(doc.children);
 	const startDragAtPoint = vi.fn(() => true);
 	const focus = vi.fn();
@@ -97,7 +153,7 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 		getDoc: () => doc,
 		selection,
 		caretMemory,
-		getBlockElByPath: () => nearest,
+		getBlockElByPath: (path) => [linkText, strayText, widgetText][path[0] - 2] ?? nearest,
 		getBlockComponent: () => component,
 		land: async () => 'placed',
 		getScrollHost: () => root,
@@ -125,6 +181,8 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 		widget,
 		nearest,
 		link,
+		strayLink,
+		widgetLink,
 		headerLink,
 		selection,
 		caretMemory,
@@ -256,6 +314,22 @@ describe('editor-root gestures: the click priority order', () => {
 			expect(h.activateLink.mock.calls).toEqual(follows ? followed : []);
 		});
 	}
+
+	it('an anchor no followed construct draws follows nothing, even in reading mode', () => {
+		const h = harness({ mode: 'reading' });
+		expect(h.click(h.strayLink).defaultPrevented).toBe(true);
+		expect(h.activateLink).not.toHaveBeenCalled();
+	});
+
+	// Edit link shows a claiming widget's source, so its own anchor is something a click follows.
+	it('an anchor a widget that claims the click draws follows', () => {
+		registerAnchorWidget();
+		const h = harness();
+		expect(h.click(h.widgetLink, { ctrlKey: true }).defaultPrevented).toBe(true);
+		expect(h.activateLink.mock.calls).toEqual([
+			['https://widget.example/', expect.any(MouseEvent)]
+		]);
+	});
 
 	it("host chrome keeps the page's own link behaviour", () => {
 		const h = harness();

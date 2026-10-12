@@ -32,12 +32,8 @@ import {
 } from '../../../debug/interaction-trace';
 import { assertInvariant } from '../../../assert';
 import type { RevealFold } from '../editable-surface';
-import {
-	caretIsInTextContent,
-	hasModifier,
-	isPlainTypingKey,
-	surfaceHoldsRange
-} from './click-snap-guard';
+import { hasModifier, isPlainTypingKey, surfaceHoldsRange } from './click-snap-guard';
+import { caretIsInTextContent } from '../../../caret/text-seat';
 import {
 	findFirstEdgeWidget,
 	findLastEdgeWidget,

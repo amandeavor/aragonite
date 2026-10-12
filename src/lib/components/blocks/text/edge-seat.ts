@@ -24,8 +24,9 @@ import type { GrammarView } from '../../../schema/block-openers';
 import type { Reading } from '../../../schema/reading';
 import { insertsExactly } from './screen-diff';
 import type { CaretMemory } from '../../../caret/caret-memory';
-import type { PlacedEdit, PlaceInsertion } from '../../../caret/next-insertion';
+import { insertedText, type PlacedEdit, type PlaceInsertion } from '../../../caret/next-insertion';
 import type { HeldSpaceView } from '../../../caret/held-space';
+import type { InsideCloserView } from '../../../caret/inside-closer';
 import type { NodeView } from '../../../core/node-views';
 import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 import { withOwnEnding } from '../surface-write';
@@ -97,6 +98,8 @@ export interface TypedPlacementDeps {
 	caretMemory: Pick<CaretMemory, 'side' | 'noteOutside'>;
 	/** The block's held space (`caret/held-space.ts`), read lazily: the block makes it later. */
 	heldSpace: () => HeldSpaceView;
+	/** The caret Edit link left before a hidden closer (`caret/inside-closer.ts`), read lazily too. */
+	insideCloser: () => InsideCloserView;
 }
 
 /** Where text typed into a block lands while its screen hides markers: the step every insertion's
@@ -127,13 +130,15 @@ export function createTypedPlacement(deps: TypedPlacementDeps): TypedPlacement {
 		insertion: (before, edit, at, side, caret) => {
 			const screen = hidingScreen();
 			if (!screen) return null;
-			const typed = edit.text.slice(at, at + edit.text.length - before.length);
+			const typed = insertedText(before, edit, at);
 			const inlines = inlinesOf(before);
 			return relocateInsertion(before, at, typed, inlines, side, screen, deps.reading, caret);
 		},
 		offsetFor: (caret, typed) => {
 			const screen = hidingScreen();
 			if (!screen) return caret;
+			// Edit link's caret types inside the URL, which no edge rule would choose.
+			if (deps.insideCloser().at() === caret) return caret;
 			const node = deps.getNode();
 			// The closer a held space was written past is still the caret's to type over.
 			const inside = deps.heldSpace().at() === caret ? deps.heldSpace().inside() : null;

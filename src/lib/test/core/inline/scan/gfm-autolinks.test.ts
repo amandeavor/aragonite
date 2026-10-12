@@ -2,6 +2,7 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { describe, it, expect } from 'vitest';
 import { scanInline } from '../../../../core/inline/scan';
 import {
+	angleAutolinkNode,
 	autolinkNode,
 	codeNode,
 	describeScanCases,
@@ -112,7 +113,7 @@ describeScanCases('urls stop where claimed constructs start', [
 	[
 		'spec autolink ends the url',
 		'www.x.com<https://a.b>',
-		[autolinkNode(0, 9, 'http://www.x.com'), autolinkNode(9, 22, 'https://a.b')]
+		[autolinkNode(0, 9, 'http://www.x.com'), angleAutolinkNode(9, 22, 'https://a.b')]
 	],
 	// The hard-break claim wins over url continuation, so the break survives
 	// instead of the backslash being absorbed into the destination.

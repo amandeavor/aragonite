@@ -333,7 +333,7 @@ const INSTALLS_BEFOREINPUT = /\bonbeforeinput\s*=/;
 /** Hosting inline constructs is what makes a surface prose: the delimiter runs a keystroke can
  *  reach are exactly what the policy table answers for. */
 const READS_INLINE_POLICY =
-	/(?<![\w.])(getInlineConstructPolicy|getInlineMarkPolicy|inlineMarkForCommand|isCardEditableInlineKind|isRevealableInlineKind)\s*\(/;
+	/(?<![\w.])(getInlineConstructPolicy|getInlineMarkPolicy|inlineMarkForCommand|followEditOf|isRevealableInlineKind)\s*\(/;
 
 /** The editable blocks every prose `beforeinput` handler has to reach (G4.44, G4.65). */
 export function isProseSurface(file: SourceFile): boolean {

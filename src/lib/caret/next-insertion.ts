@@ -161,6 +161,17 @@ export function insertionStart(before: string, edit: TextEdit): number | null {
 	return insertsAt(before, edit.text, at) ? at : null;
 }
 
+/** The text an insertion at `at` put into `before`. */
+export function insertedText(before: string, edit: TextEdit, at: number): string {
+	return edit.text.slice(at, at + edit.text.length - before.length);
+}
+
+/** Spaces or tabs only: what a held space holds, and what ends the record inside a URL, which
+ *  never holds one. */
+export function isSpaceRun(text: string): boolean {
+	return /^[^\S\r\n]+$/.test(text);
+}
+
 /** Whether `after` is `before` with text inserted at `at` and nothing else changed. */
 export function insertsAt(before: string, after: string, at: number): boolean {
 	return (

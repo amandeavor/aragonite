@@ -95,9 +95,9 @@ export interface EditorProps {
 	 *  guide's Presentation modes section describes what each mode shows and allows. */
 	presentationMode?: PresentationMode;
 	/** Which click follows a link, or a widget that goes somewhere, in live mode, read live:
-	 *  `'modifier'` (default) is Ctrl/Cmd-click, and `'plain'` any click, as on a web page, with the
-	 *  caret reaching a link by the arrow keys. Reading mode follows any click; source and preview
-	 *  modes, which show a link's syntax, keep Ctrl/Cmd. */
+	 *  `'modifier'` (default) is Ctrl/Cmd-click, and `'plain'` any click, as on a web page, with a
+	 *  link edited by the arrow keys, Mod+K or its "Edit link" menu row. Reading mode follows any
+	 *  click; source and preview modes, which show a link's syntax, keep Ctrl/Cmd. */
 	linkClick?: LinkClick;
 	/** Per-instance keymap overrides over the built-in command vocabulary. */
 	keybindings?: KeybindingOverride[];

@@ -85,7 +85,7 @@ describe('the split inverse: a closer and an opener meeting at the join', () => 
 	});
 
 	// Only the constructs whose family declares close-and-reopen: an image's brackets are not a
-	// pair a join may cut, and an autolink has no content of its own to rejoin.
+	// pair a join may cut, and two halves of URLs are not one URL.
 	it('declines for families that declare no rejoin', () => {
 		expect(merge('![a](u)\n', '![b](u)\n')).toBeNull();
 		expect(merge('<https://a.example>\n', '<https://b.example>\n')).toBeNull();
@@ -122,10 +122,11 @@ describe('a truncation that strands a delimiter run', () => {
 		expect(deleteBetween('__bold__ x\n', 3, 'y **more**\n', 7)).toBe('be\n');
 	});
 
-	// A construct with no content of its own cannot be cut into halves, so the cleanup does
-	// nothing and the caller keeps bytes that are at least honest about what they are.
-	it('declines a cut through an atomic run', () => {
+	// A URL or an escape cannot be cut into halves, so the cleanup does nothing and the caller
+	// keeps bytes that are at least honest about what they are.
+	it('declines a cut through a URL or an escape', () => {
 		expect(sameBlock('a <https://example.com> b\n', 10, 24)).toBeNull();
+		expect(sameBlock('a https://example.com b\n', 8, 23)).toBeNull();
 		expect(sameBlock('a \\* b\n', 3, 5)).toBeNull();
 	});
 });

@@ -319,7 +319,7 @@ describe('a reference form rebalances only when the resolver reaches the join', 
 
 // Two halves of a URL are not two URLs, so the cut moves to a childless construct's nearer edge.
 // Miss-analysis: GH #118, the split e2e and this suite both asserted the literal cut as correct.
-describe('a childless never-extend construct is taken whole', () => {
+describe('a construct whose row splits it whole is taken whole', () => {
 	it('an autolink lands entirely in the half its caret was nearer', () => {
 		expect(split('<https://example.com> tail\n', 13)).toEqual({
 			firstRaw: '<https://example.com>\n',
@@ -351,6 +351,15 @@ describe('a childless never-extend construct is taken whole', () => {
 		});
 		expect(split('**a <https://e.com> b**\n', 14)).toEqual({
 			firstRaw: '**a <https://e.com>**\n',
+			secondRaw: ' **b**\n'
+		});
+	});
+
+	// A bare URL's text is the whole node, so a cut at its end is outside it and the pair around
+	// it still closes there.
+	it("a cut at a bare URL's end inside a pair closes the pair", () => {
+		expect(split('**a https://e.com b**\n', 17)).toEqual({
+			firstRaw: '**a https://e.com**\n',
 			secondRaw: ' **b**\n'
 		});
 	});

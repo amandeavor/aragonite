@@ -47,11 +47,11 @@ export type EdgePolicy = (typeof EDGE_POLICIES)[number];
 export interface InlineConstructPolicy {
 	edgeAffinity: EdgePolicy;
 	autoUnwrapOnEmpty: boolean;
-	splitBehavior: 'close-and-reopen' | 'plain';
+	splitBehavior: SplitBehavior;
 	revealable: boolean;
-	/** Whether the link card edits this construct's destination, the only way in a mode that hides
-	 *  the URL (`docs/design/live-mode.md` § 4.6 The link card). Absent reads as no. */
-	cardEditable?: boolean;
+	/** Present when a click follows the construct, saying how Edit link and Mod+K edit it then.
+	 *  Absent reads as a construct a click never follows. */
+	followEdit?: FollowEdit;
 	/** Absent for a construct no format chord addresses. */
 	mark?: InlineMarkPolicy;
 	/**
@@ -62,6 +62,17 @@ export interface InlineConstructPolicy {
 }
 
 export type InlineProseExtent = 'none' | 'content' | 'all';
+
+/** How a cut inside the construct treats it. `close-and-reopen` closes it before an Enter's cut and
+ *  reopens it after, `plain` leaves the literal cut, and `whole` means no part stands alone: Enter
+ *  moves the cut to its nearer edge, and a delete whose every cut unmakes it takes it whole
+ *  (live-mode.md § 4.4). */
+export type SplitBehavior = 'close-and-reopen' | 'whole' | 'plain';
+
+/** `card`: the link card edits the destination, the only way in a mode that hides the URL
+ *  (`docs/design/live-mode.md` § 4.6 The link card). `text`: the destination is the construct's
+ *  own text, edited with the caret at its end. */
+export type FollowEdit = 'card' | 'text';
 
 // Read with no editor at hand: a row matters only for a node of its kind, and only an editor
 // that activated the kind's plugin parses one, so the rows answer for every installed plugin.
@@ -76,7 +87,6 @@ export function registerInlineConstructPolicy(
 	policy: InlineConstructPolicy
 ): void {
 	assertMarkCommandMintable(kind, policy.mark);
-	assertCardImpliesRevealable(kind, policy);
 	policies.register(
 		kind,
 		policy,
@@ -93,15 +103,6 @@ function assertMarkCommandMintable(kind: AnyInlineKind, mark: InlineMarkPolicy |
 	);
 }
 
-/** The card opens only on revealable kinds (`link-at-point.ts`), so a row asking for it without
- *  `revealable` throws here rather than failing silently at the click. */
-function assertCardImpliesRevealable(kind: AnyInlineKind, policy: InlineConstructPolicy): void {
-	if (!policy.cardEditable || policy.revealable) return;
-	throw new Error(
-		`registerInlineConstructPolicy: "${kind}" declares cardEditable without revealable; the card's open chain reaches only revealable kinds, so the entry point would never open`
-	);
-}
-
 /** Undefined for a kind with no row: absent means "no live-mode construct behavior at all". */
 export function getInlineConstructPolicy(kind: AnyInlineKind): InlineConstructPolicy | undefined {
 	return policyOf(kind);
@@ -112,9 +113,9 @@ export function isRevealableInlineKind(kind: AnyInlineKind): boolean {
 	return policyOf(kind)?.revealable === true;
 }
 
-/** Whether the link card may address this kind's destination. */
-export function isCardEditableInlineKind(kind: AnyInlineKind): boolean {
-	return policyOf(kind)?.cardEditable === true;
+/** How Edit link edits a construct of this kind a click follows, or undefined for one it doesn't. */
+export function followEditOf(kind: AnyInlineKind): FollowEdit | undefined {
+	return policyOf(kind)?.followEdit;
 }
 
 export function listInlineConstructPolicies(): readonly (InlineConstructPolicy & {

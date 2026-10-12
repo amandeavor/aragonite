@@ -36,6 +36,8 @@ At a code chip's edge the bar draws against the chip's own box, since there the 
 
 A click beside a widget hands the drawn caret the edge it meant (`EditorServices.drawnCaret` :: `armWidgetEdge`), keyed by an object the block makes for itself. The editor holds one such edge, and a paint only reads it back through the focused block's own key. Typing, an arrow key or a click elsewhere lets it go.
 
+Some clicks move the caret after the browser put it down on the pointer-down: beside a widget, in hidden marker text, or inside a container's marker prefix (a task checkbox's own `[ ]`, say). For those nothing draws, bar or browser caret, until the click lands, so no frame shows a caret where it won't stay. The drawn caret decides at its own pointer-down (`caret/text-seat.ts :: clickMovesSeat`), so a click handler that starts moving the caret out of some new kind of spot adds that spot there.
+
 Two things move the caret, and each gets painted its own way:
 
 - **The editor writes it.** Every caret and range the editor puts down goes through the editor's one caret writer, `EditorServices.caretWriter` (`caret/widget-offset.ts :: createCaretWriter`), and each write asks for a paint. The paint runs once per task after `tick()`, past Svelte's flush and the block's height measure, so it reads a layout that's already clean and the bar lands in the same frame as the letter. If your code changes the caret's line after the paint without writing the caret, call `EditorServices.drawnCaret.request()` yourself. The dev check G1.76 catches a missing one only at a `selectionchange` that finds no paint pending, so don't count on it.

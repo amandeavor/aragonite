@@ -35,7 +35,7 @@ const WIDGET_REGISTRY = SOURCE.inlineWidgets;
 
 /** Every function that reads the policy table, the table's own module excluded. */
 const POLICY_READ =
-	/(?<![\w.])(getInlineConstructPolicy|getInlineMarkPolicy|inlineMarkForCommand|isCardEditableInlineKind|isRevealableInlineKind|listInlineConstructPolicies|listInlineMarks|getLiveSplitRebalancer|getLiveJoinSeamCleaner)\s*\(/;
+	/(?<![\w.])(getInlineConstructPolicy|getInlineMarkPolicy|inlineMarkForCommand|followEditOf|isRevealableInlineKind|listInlineConstructPolicies|listInlineMarks|getLiveSplitRebalancer|getLiveJoinSeamCleaner)\s*\(/;
 
 const readsPolicyTable = (file: SourceFile): boolean =>
 	file.relPath !== POLICY_TABLE && POLICY_READ.test(file.code);
@@ -71,12 +71,13 @@ const namesConstructKind = (file: SourceFile): boolean => KIND_LITERAL.test(file
  *  reader is a decision rather than one more silent opinion on a row's meaning. */
 const POLICY_ARMS: Record<string, string> = {
 	'src/lib/components/blocks/text/construct-edge-delete.ts':
-		'the destructive arm: autoUnwrapOnEmpty, and the mark column to say which unwrapped construct a chord can write again',
+		'the destructive arm: autoUnwrapOnEmpty, the mark column to say which unwrapped construct a chord can write again, and splitBehavior for a construct no part of which stands alone',
 	'src/lib/components/blocks/text/construct-reveal.ts': "preview-inline's reveal chain: revealable",
 	'src/lib/components/blocks/text/edge-seat.ts': 'the typing seat: edgeAffinity',
 	'src/lib/caret/caret-look.ts':
 		'the look: edgeAffinity, whether the next letter sits inside a box whose border has two stops',
-	'src/lib/components/blocks/text/link-at-point.ts': 'the card entry: cardEditable',
+	'src/lib/components/blocks/text/link-at-point.ts':
+		'what a click follows and how Edit link edits it: followEdit',
 	'src/lib/components/blocks/text/next-byte.ts':
 		'the caret look: the mark column, for which constructs a typed letter would carry',
 	'src/lib/components/blocks/text/live-join-seam.ts':
@@ -105,7 +106,7 @@ const BOTH_TABLE_READERS: Record<string, string> = {
 	'src/lib/inline-menu/inline-menu-session.ts':
 		'a row declares how much of a construct is prose; a widget kind with no row shows source, not prose',
 	'src/lib/components/blocks/text/link-at-point.ts':
-		'what Mod+K and the Edit link row edit is a link the card edits (cardEditable) or a widget whose kind claims the activation click, one answer across both tables'
+		'what a click follows and Edit link edits is a construct whose row declares followEdit or a widget whose kind claims the activation click, one answer across both tables'
 };
 
 // ── The branches that answer by hand ─────────────────────────────────────────
@@ -154,7 +155,7 @@ const HAND_WRITTEN_ARMS: readonly HandWrittenArm[] = [
 		detection: 'declared',
 		fate: 'outside',
 		reason:
-			'which constructs it takes whole is a per-node fact: `[](u)` is a link with no content range, `![a](u)` an atomic widget with one, so a kind column would swap both answers'
+			'which constructs a key takes whole is a per-node fact: `[](u)` is a link with no content range, `![a](u)` an atomic widget with one, so a kind column would swap both answers; the row only says what an unmade URL falls back to'
 	},
 	{
 		path: 'src/lib/components/blocks/text/live-join-seam.ts',

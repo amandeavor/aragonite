@@ -206,7 +206,8 @@
 		getNode: () => node,
 		reading,
 		caretMemory,
-		heldSpace: () => editableSurface.heldSpace
+		heldSpace: () => editableSurface.heldSpace,
+		insideCloser: () => editableSurface.insideCloser
 	});
 
 	// The same placement rules the keydown dispatch uses, for the one insertion it cannot reach.
@@ -342,6 +343,7 @@
 				: undefined;
 		},
 		isReading: () => readOnly,
+		insideCloser: () => editableSurface.insideCloser,
 		pendingMarks: caretMemory.pendingMarks,
 		offsetFor: typedPlacement.offsetFor,
 		caretWriter
@@ -465,7 +467,11 @@
 				enterLinkCardAtCaret({
 					...linkCardQuery(contentEl, null),
 					card: linkCard,
-					enterWidget: widgetInteraction.enterWidget
+					enterWidget: widgetInteraction.enterWidget,
+					placeCaretInText: (offset) => {
+						cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
+						editableSurface.insideCloser.open(offset);
+					}
 				});
 		}
 		const axisCommand = tableAxisCommand(id);

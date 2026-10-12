@@ -211,9 +211,9 @@ describe('a candidate that would not parse back is not written', () => {
 	});
 });
 
-// A childless construct has no content range, so the chain scan holds it by its node bounds; an
-// autolink is the reachable case, one span whose angle brackets are marker spans.
-describe('a childless construct is in the chain, so nothing may cut it open', () => {
+// The chain scan holds a construct whose text is all of it (a bare URL) or that has none (an
+// escape) by its strict interior, and an angle autolink by its text.
+describe('a construct a mark would cut open is in the chain', () => {
 	const ANGLE = 'see <https://example.com> now';
 
 	it('declines a mark applied inside an angle autolink’s URL', () => {
@@ -237,6 +237,13 @@ describe('a childless construct is in the chain, so nothing may cut it open', ()
 	// check cannot see it; the chain check refuses, since `intended` carries the link kind.
 	it('declines a mark applied inside a bare autolink', () => {
 		expect(insert('see https://example.com now', 10, 'X', ['strong'])).toBeNull();
+	});
+
+	// A bare URL's text is the whole node, so its edges are ordinary cut points, not inside it.
+	it('still marks before a bare autolink', () => {
+		const before = insert('see https://example.com now', 4, 'X', ['strong']);
+		expect(before?.raw).toBe('see **X**https://example.com now');
+		expect(kindsAround(before!.raw, 'X')).toEqual(['strong']);
 	});
 
 	it('declines inside an escape and inside a hard break’s run', () => {

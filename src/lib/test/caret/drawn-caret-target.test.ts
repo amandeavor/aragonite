@@ -2,7 +2,11 @@
 // aside for the browser's own caret, or draws a bar, and where the bar lands on the device grid.
 // Miss-analysis: the table had no widget-edge or gap rows, since each of those carets drew itself.
 import { describe, expect, it } from 'vitest';
-import { drawnCaretTarget, type DrawnCaretReads } from '#lib/caret/drawn-caret-target.js';
+import {
+	drawnCaretTarget,
+	hidesBrowserCaret,
+	type DrawnCaretReads
+} from '#lib/caret/drawn-caret-target.js';
 
 /** A focused caret in a drawable surface, at x 40.3 on a host whose box starts at (10, 20). */
 const DRAWING: DrawnCaretReads = {
@@ -16,6 +20,7 @@ const DRAWING: DrawnCaretReads = {
 	source: { drawable: true },
 	gap: false,
 	widgetEdge: null,
+	pressed: false,
 	besideWidget: false,
 	atSoftWrap: false,
 	clipped: false,
@@ -32,9 +37,7 @@ const store = (change: Partial<DrawnCaretReads['store']>): Partial<DrawnCaretRea
 });
 
 /** The bar a click beside a widget asks for, 1.5px wide at x 52.5 from y 24 to 44. */
-const EDGE = { box: { left: 52.5, top: 24, bottom: 44, width: 1.5 } };
-/** A pointer-down beside a widget, before its click says which edge it meant. */
-const PRESSED = { box: null };
+const EDGE = { left: 52.5, top: 24, bottom: 44, width: 1.5 };
 /** The caret beside the widget, where the range has no box of its own. */
 const BESIDE = { besideWidget: true, caret: null };
 const AT_GAP = { ...store({ gapCaret: true }), gap: true, caret: null };
@@ -129,11 +132,14 @@ describe('the drawn caret draws where the browser can’t', () => {
 		});
 	});
 
-	it('nothing during a pointer-down beside a widget, with the browser’s caret hidden', () => {
-		expect(drawnCaretTarget(read({ ...BESIDE, widgetEdge: PRESSED }))).toEqual({
-			state: 'widget',
-			rect: null
-		});
+	it.each([
+		['beside a widget', BESIDE],
+		['in text, as in a task checkbox', {}],
+		['when the caret prop is native', { draws: false }]
+	])('nothing during a press the click will move the caret from, %s', (_, change) => {
+		const target = drawnCaretTarget(read({ ...change, pressed: true }));
+		expect(target).toEqual({ state: 'pressed' });
+		expect(hidesBrowserCaret(target), 'the browser’s caret hides too').toBe(true);
 	});
 
 	it('across the gap while the gap proxy holds focus', () => {

@@ -6,8 +6,7 @@
 
 import { asRawOffset, type RawOffset } from './coordinate-spaces';
 import {
-	domTextOffsetAtNode,
-	markerPrefixLength,
+	isInMarkerPrefix,
 	markerPrefixOf,
 	rawOffsetAt,
 	rawSelectionFocus,
@@ -89,8 +88,7 @@ export function createSurfaceBackend(deps: SurfaceBackendDeps): SurfaceBackend {
 		const live = readLiveRange(deps.getEl());
 		if (live.state !== 'live' || !live.collapsed) return;
 		const { startContainer, startOffset } = live.range;
-		const walk = domTextOffsetAtNode(live.el, startContainer, startOffset);
-		if (walk < markerPrefixLength(live.el))
+		if (isInMarkerPrefix(live.el, startContainer, startOffset))
 			deps.caretWriter.placeCaretAtRaw(live.el, 0, { clamp: 'exact' });
 	}
 

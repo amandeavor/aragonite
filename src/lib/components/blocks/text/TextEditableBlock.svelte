@@ -26,8 +26,6 @@
 	import { devWarn } from '../../../dev-warn';
 	import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 	import { trimTrailingLineEnding } from '../../../core/lines';
-	import { caretIsInTextContent, seatIsInTextContent } from './click-snap-guard';
-	import { caretSeatInElement } from '../../../caret/point-offset';
 	import { widgetEdgeBox } from '../../../caret/drawn-caret-measure';
 	import type { WidgetEdgeBox } from '../../../caret/drawn-caret-target';
 	import { FALLBACK_CONTENT_WIDTH } from '../../../windowing/typography-estimates';
@@ -183,7 +181,11 @@
 			enterLinkCardAtCaret({
 				...linkCardQuery(el, cursor.getRawSelection()),
 				card: linkCard,
-				enterWidget: widgetInteraction.enterWidget
+				enterWidget: widgetInteraction.enterWidget,
+				placeCaretInText: (offset) => {
+					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
+					editableSurface.insideCloser.open(offset);
+				}
 			});
 		}
 	};
@@ -201,16 +203,6 @@
 	const widgetEdgeOwner = {};
 	const holdWidgetEdge = (offset: number | null) =>
 		drawnCaret.armWidgetEdge(widgetEdgeOwner, offset);
-	// Beside a non-editable widget Chromium paints a taller caret while the button is down, so the
-	// drawn caret hides it from the pointer-down rather than from the click.
-	let downBesideWidget = false;
-	let pressPending = false;
-
-	function markDownBesideWidget(down: boolean): void {
-		if (down === downBesideWidget) return;
-		downBesideWidget = down;
-		drawnCaret.request();
-	}
 
 	// The one place a pending cursor is written, tagged so the interaction trace names
 	// which gesture set the restore; the render effect reads and clears it.
@@ -241,7 +233,8 @@
 		getNode: () => node,
 		reading,
 		caretMemory,
-		heldSpace: () => editableSurface.heldSpace
+		heldSpace: () => editableSurface.heldSpace,
+		insideCloser: () => editableSurface.insideCloser
 	});
 	// Set on the block's first focus: until then a render has no shown marker to re-apply.
 	let caretHasEntered = false;
@@ -292,8 +285,7 @@
 		},
 		widgetEdge: {
 			owner: widgetEdgeOwner,
-			box: (offset) => widgetEdgeBoxAt(offset),
-			pressed: () => downBesideWidget
+			box: (offset) => widgetEdgeBoxAt(offset)
 		},
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
@@ -427,6 +419,7 @@
 		enterWidget: (widget, fromTrailingEdge) =>
 			widgetInteraction.enterWidget(widget, fromTrailingEdge),
 		isReading: () => readOnly,
+		insideCloser: () => editableSurface.insideCloser,
 		pendingMarks: caretMemory.pendingMarks,
 		offsetFor: typedPlacement.offsetFor,
 		caretWriter
@@ -781,25 +774,6 @@
 		return null;
 	}
 
-	/** Whether the press left the browser's caret at an element-level offset in this block, the
-	 *  position Chromium paints at the line box's height rather than at the text's. */
-	function notePressSeat(root: HTMLElement): void {
-		if (!pressPending) return;
-		const sel = window.getSelection();
-		markDownBesideWidget(
-			!!sel &&
-				sel.isCollapsed &&
-				sel.rangeCount > 0 &&
-				root.contains(sel.getRangeAt(0).startContainer) &&
-				!caretIsInTextContent(root, sel)
-		);
-	}
-
-	function endPress(): void {
-		pressPending = false;
-		markDownBesideWidget(false);
-	}
-
 	// The widget edge is cleared even during composition, since an IME caret move invalidates it;
 	// the source and marker updates skip composition as `onInput` does.
 	$effect(() => {
@@ -807,7 +781,6 @@
 		if (!root) return;
 		const handler = () => {
 			clearSnapTargetIfMoved(root);
-			notePressSeat(root);
 			if (composing) return;
 			// The line goes once the caret leaves it, whatever moved the caret.
 			if (pendingBreak.at() !== null && !caretOnPendingBreakLine(root)) pendingBreak.end();
@@ -968,14 +941,6 @@
 		lastClickClientX = e.clientX;
 		lastClickClientY = e.clientY;
 		holdWidgetEdge(null);
-		// Only a primary press ends in a click; a context-menu press would keep the caret hidden.
-		pressPending = e.button === 0;
-		// Read now, not at the `selectionchange` that follows: that event can arrive after a frame
-		// has already painted the native caret. Level with a line, where a padding press lands.
-		const seat = pressPending && el ? caretSeatInElement(el, e.clientX, e.clientY) : null;
-		markDownBesideWidget(
-			!!seat && !!el && el.contains(seat.node) && !seatIsInTextContent(el, seat.node)
-		);
 		// A click on a widget that can show its source is this editor's gesture: cancelling the
 		// browser's caret default leaves that code as the only writer of the selection.
 		if (widgetInteraction.isPointOnRevealWidget(e.clientX, e.clientY)) e.preventDefault();
@@ -987,7 +952,6 @@
 		widgetInteraction.commitRevealOnBlur();
 		pendingBreak.end();
 		holdWidgetEdge(null);
-		endPress();
 		demoteEmptyHeadingOnBlur();
 		syncCaretChrome();
 	}
@@ -1032,8 +996,6 @@
 			// would unmount the widget the drag just painted a range across.
 			moved: presses.travelled(e)
 		});
-		// The click has decided: from here the widget edge hides the browser's caret, or nothing does.
-		endPress();
 	}
 
 	// ── Formatting shortcuts ────────────────────────────────────────────
