@@ -34,6 +34,21 @@ describe('caret host input', () => {
 		expect(inserted).toEqual(['k漢', 'a']);
 	});
 
+	// Miss-analysis: every host composition started in the host, so none arrived with its start
+	// claimed by a range across blocks, whose removal put the caret on a rule's host.
+	it('a composed run with no composition open opens one, and the end inserts once', () => {
+		const { el, inserted, input } = host();
+		input.onBeforeInput(beforeInput('insertCompositionText', 'か', true));
+		el.textContent = 'か';
+		input.onBeforeInput(beforeInput('insertCompositionText', 'かん', true));
+		el.textContent = '漢';
+		expect(inserted).toEqual([]);
+
+		input.onCompositionEnd();
+		expect(inserted).toEqual(['漢']);
+		expect(takeDevWarns()).toEqual([]);
+	});
+
 	it('ends a dropped composition at a second compositionstart', () => {
 		const { el, inserted, input } = host();
 		input.onCompositionStart();

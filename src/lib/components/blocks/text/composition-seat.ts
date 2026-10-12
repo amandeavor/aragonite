@@ -1,5 +1,5 @@
 /**
- * What an IME composition needs remembered, captured at `compositionstart`: the pending marks and
+ * What an IME composition needs remembered, captured as it opens: the pending marks and
  * the selection belong to the caret the composition opened at, and both are gone by the time the
  * composed run arrives. A plain run goes to the block's write, which places it like any insertion.
  */
@@ -25,7 +25,7 @@ export interface CompositionSeatDeps {
 	/** Give them back when the composition wrote nothing: a cancelled IME run inserts nothing, so
 	 *  the marks are still pending. Required, so every block answers the same way. */
 	restorePendingMarks: (marks: ReadonlySet<InlineMarkKind>) => void;
-	/** The block's selection, read at `compositionstart`: composing over one goes to
+	/** The block's selection, read as the composition opens: composing over one goes to
 	 *  `resolveRangeEdit`. Omit to keep ranges as the browser wrote them. */
 	getRawSelection?: () => { start: number; end: number } | null;
 	/** How this block resolves a range replace, in displayed bytes; null keeps the browser's own
@@ -37,8 +37,8 @@ export interface CompositionSeatDeps {
 }
 
 export interface CompositionSeat {
-	/** Capture the state the composition opened in. Call it before the block's own
-	 *  `compositionstart` and the first `input`, which both end the caret memory's records. */
+	/** Capture the state the composition opened in. Call it as the composition opens, before the
+	 *  caret memory forgets its records. */
 	noteStart(): void;
 	/** The bytes the commit should write, or null to write the DOM read as an insertion. */
 	relocate(after: string, composedAt: number): { raw: string; caret: number } | null;
@@ -55,8 +55,8 @@ interface CompositionWindow {
 }
 
 export function createCompositionSeat(deps: CompositionSeatDeps): CompositionSeat {
-	// One nullable capture rather than a stack: a composition runs from `compositionstart` to the
-	// single commit `compositionend` drives.
+	// One nullable capture rather than a stack: a composition runs from its opening to the single
+	// commit `compositionend` drives.
 	let started: CompositionWindow | null = null;
 
 	return {

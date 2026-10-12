@@ -62,7 +62,9 @@ describe('composing gate', () => {
 			// The IME advances the caret as it composes, and its beforeinput events are gated on the
 			// composing flag, so 5 must survive.
 			setCaret(7);
-			surface.onBeforeInput(new InputEvent('beforeinput', { inputType: 'insertCompositionText' }));
+			surface.onBeforeInput(
+				new InputEvent('beforeinput', { inputType: 'insertCompositionText', isComposing: true })
+			);
 			el.textContent = 'helloかん';
 			surface.onCompositionEnd();
 

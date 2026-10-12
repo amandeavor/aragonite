@@ -4,7 +4,7 @@
  * to empty. Every other input is refused at `beforeinput`.
  */
 
-import { reportDroppedComposition } from './dropped-composition';
+import { opensComposition, reportDroppedComposition } from './dropped-composition';
 
 export interface CaretHostInput {
 	onBeforeInput(event: InputEvent): void;
@@ -34,6 +34,7 @@ export function createCaretHostInput(
 
 	return {
 		onBeforeInput(event) {
+			if (opensComposition(event, composing)) composing = true;
 			// The browser owns the host between compositionstart and compositionend, as it does
 			// everywhere in the editor: refusing here would swallow the composition.
 			if (composing && !reportDroppedComposition(event, composing)) return;

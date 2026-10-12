@@ -430,7 +430,7 @@ closures in `components/blocks/text/widget-interaction.ts` (the fold halves) and
 `test/blocks/text/widget-reveal-transitions.test.ts`.
 
 **G1.27 · Composition window.** `compositionend` lands only inside a composition the surface
-opened, at its start or, when a range's removal took the block it started in, at its first composed
+opened, at its start or, when a range across blocks was live at the start, at its first composed
 character. An unpaired end means `compositionend` was wired without `compositionstart`, and every
 composed keystroke committed mid-IME. Predicate `checkCompositionEndPaired`
 (`inline-transitions.ts`) · run in `components/blocks/editable-surface.ts :: onCompositionEnd` ·
@@ -1047,6 +1047,7 @@ unguarded.
 | G4.149 | A preview of the next insertion runs a write's own spend, and changes no record           | harness |
 | G4.150 | One placer for a hidden edge: no other file reads the caret's side or how it arrived      | L       |
 | G4.151 | One click-side check, called from the click entry both prose blocks share                 | L       |
+| G4.155 | Every composing-flag holder asks both composition questions: a drop, and an opening       | L       |
 
 ### The entries
 
@@ -1956,6 +1957,13 @@ start past a line's end, or the side of a code chip's border) is called only fro
 `widget-interaction.ts :: snapClickToWidgetEdge`, the click entry both prose blocks' `onClick` go
 through, and neither `onClick` measures the press against its text itself.
 `lint/edge-rule-guards.test.ts`.
+
+**G4.155 · Every composing-flag holder asks both composition questions.** A holder of a composing
+flag (the editable surface, the caret host) asks `editor-actions/dropped-composition.ts` whether the
+browser dropped its composition (`reportDroppedComposition`) and whether a composed run opens one
+there (`opensComposition`). A range across blocks claims a composition's start, so the block its
+removal leaves the caret in, a rule's hidden host included, only ever sees the runs.
+`lint/composition-holders.test.ts`.
 
 ## Accessibility
 

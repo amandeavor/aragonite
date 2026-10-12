@@ -90,6 +90,7 @@ import type { Reading } from '../../schema/reading';
 import { createPlaceholderHint, type PlaceholderPolicy } from './placeholder-hint.svelte';
 import type { CompositionSeat } from './text/composition-seat';
 import {
+	opensComposition,
 	reportDroppedComposition,
 	type CompositionSignal
 } from '../../editor-actions/dropped-composition';
@@ -599,7 +600,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		if (!crossBlock.handleCompositionStart()) openComposition();
 	}
 
-	// Read before the caret memory forgets, so the pending marks and the held insertion survive it.
+	// The pending marks and the held insertion are read from the caret memory before it forgets.
 	function openComposition(): void {
 		deps.compositionSeat?.noteStart();
 		preEditOffset = deps.backend.getRaw() ?? 0;
@@ -610,12 +611,10 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		placeholder.setComposing(true);
 	}
 
-	// A composed run arriving with no composition open here started in a block a range's removal
-	// took, so this block, which now holds the caret, opens it before the run lands.
+	// No composition open here means a range across blocks claimed the start. This block holds
+	// the caret its removal left, so it opens the composition before the first run lands.
 	function adoptsComposition(e: InputEvent): void {
-		if (e.isComposing && e.inputType === 'insertCompositionText' && !deps.getComposing()) {
-			openComposition();
-		}
+		if (opensComposition(e, deps.getComposing())) openComposition();
 	}
 
 	function onCompositionEnd(): void {
