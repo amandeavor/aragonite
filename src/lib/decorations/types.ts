@@ -17,7 +17,7 @@ export interface MarkDecoration {
 }
 
 /** Where a hovered mark sits, in viewport coordinates: `anchor` is the rect the pointer entered,
- *  `rects` every rect the mark paints (one per visual line, one per table cell). */
+ *  `rects` every rect the mark paints (one per visual line, or a table cell's whole cell). */
 export interface MarkHover {
 	anchor: DOMRect;
 	rects: DOMRect[];
@@ -36,7 +36,7 @@ interface MarkHandlers {
  * A mark's handlers, at least one. A mark with `onClick` takes the click; a hover-only mark lets
  * it through to the text. A hover ends once: the pointer leaves the mark (into your popup too),
  * or the mark is removed, scrolled away, or goes with its document or editor. Its `null` says
- * only that the pointer left; whether a popup closes is up to you.
+ * only that the hover is over; whether a popup closes is up to you.
  */
 export type MarkInteractions =
 	| (Pick<MarkHandlers, 'onClick'> & Partial<MarkHandlers>)

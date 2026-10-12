@@ -133,10 +133,10 @@ const handle = editor.decorations.addSource({
 What you can count on:
 
 - **One hover per mark.** A mark that wraps paints one rect per line, and moving between them (across the gap between the lines too) fires nothing. `anchor` is the rect the pointer came in through, and `rects` is all of them.
-- **Every hover ends exactly once.** The pointer leaving, your source dropping the mark, its block scrolling out of the rendered range, a new document, the editor unmounting: whichever happens first sends the `null`, and nothing sends a second. So a popup never outlives its word.
-- **`null` means the pointer left, nothing more.** Moving onto your popup counts as leaving too, even where the popup covers another mark. Whether the popup closes is your call; the usual move is a short grace period so the pointer can travel onto it, and the editor won't time that for you.
-- **Only a mouse, or a pen held above the screen, hovers.** A touch never does, and pressing a button (to drag a selection, say) ends the hover and starts none until it's up.
-- **Restyling keeps the hover.** A hover belongs to your source, the mark's block and its range, not its class, so an `invalidate()` that adds a `glossary-term-hovered` class doesn't end and restart it. Move the range and it's a new mark (which it is, really).
+- **Every hover ends exactly once.** The pointer leaving, your source dropping the mark, its block scrolling out of the rendered range, a new document, the editor unmounting: whichever happens first sends the `null`, and nothing sends a second.
+- **`null` means the hover's over, nothing more.** Moving onto your popup counts as leaving too, even where the popup covers another mark, and so does moving onto a menu the editor opens over the text. Whether the popup closes is your call; the usual move is a short grace period so the pointer can travel onto it, and the editor won't time that for you.
+- **Only a mouse, or a pen held above the screen, hovers.** A touch never does, and moving with a button down (dragging a selection, say) ends the hover and starts none until the button's up. A plain click leaves the hover alone.
+- **Restyling keeps the hover.** A hover belongs to your source, the mark's block and its range, not its class, so an `invalidate()` that adds a `glossary-term-hovered` class doesn't end and restart it. Move the range and it's a new mark (which it is, really). Two hover marks from one source over the same range are told apart by their order in your answer, so swap them mid-hover and the `null` goes to the other one.
 - **Throws stay contained.** A handler that throws shows up on the `error` event as origin `decoration`, with the mark's `path`, and the editor carries on.
 
 When marks overlap, the shortest range wins, then the earlier-registered source, then the earlier mark in its answer. The pointer follows the same rule, for hovers and clicks alike. A table cell is the one place marks merge: every mark in the cell paints as one whole-cell rect, and the same rule picks which mark the click and the hover go to.
@@ -149,7 +149,7 @@ registerGlobalCommand('glossary.lookup', (editor) => editor.runCommand('decorati
 });
 ```
 
-Either way it answers like any other command, which is handy for a host's own button:
+The built-in id answers like any other command, which is handy for a host's own button (a plugin's wrapper can't pass that on, so its `canRunCommand` stays true):
 
 ```ts
 editor.canRunCommand('decorations.activateAtCaret'); // false: no mark with onActivate under the caret

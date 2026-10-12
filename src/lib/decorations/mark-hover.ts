@@ -72,6 +72,8 @@ export function createMarkHover(deps: MarkHoverDeps): MarkHoverTracker {
 	}
 
 	function enter(dec: MarkDecoration, hover: MarkHover): void {
+		// Moving inside the hovered mark between repaints skips `identify`, a scan of every decoration.
+		if (current?.dec === dec) return;
 		const id = deps.identify(dec);
 		if (!id) return;
 		if (current && sameMark(current.id, id)) {
@@ -137,10 +139,13 @@ export function createMarkHover(deps: MarkHoverDeps): MarkHoverTracker {
 	};
 }
 
-// A host popup or menu rendered inside the editor root sits outside every block, so a pointer
-// over it is off the document even where the popup covers a mark.
+// A pointer over a popup is off the document even where the popup covers a mark: a host's popup
+// sits outside every block, and a block's own menu sits between the target and the block.
+const POPUP = '[role="menu"], [role="listbox"], [role="dialog"], [role="toolbar"]';
+
 function inDocumentContent(target: EventTarget | null): boolean {
-	return target instanceof Element && target.closest('.block-host') !== null;
+	if (!(target instanceof Element)) return false;
+	return target.closest(`${POPUP}, .block-host`)?.classList.contains('block-host') === true;
 }
 
 function sameMark(a: MarkIdentity, b: MarkIdentity): boolean {

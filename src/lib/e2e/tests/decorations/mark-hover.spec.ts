@@ -292,6 +292,22 @@ test.describe('mark hover', () => {
 		await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('hello');
 	});
 
+	test("a right-click inside a hover-only mark places the caret and opens the editor's menu", async ({
+		page
+	}) => {
+		await editor.loadContent('hello world\n\nsecond\n');
+		await addHoverSource(page, 'menu', [{ path: [0], start: 0, end: 5, cls: 'hv-menu' }]);
+		await editor.focusBlockEnd(1);
+		const at = await pointAtRaw(page, [0], 3);
+
+		await page.mouse.click(at.x, at.y, { button: 'right' });
+		await expect(page.getByRole('menu', { name: 'Block actions' })).toBeVisible();
+		expect(await page.evaluate(() => (window as any).__test.getSelection()?.focus)).toEqual({
+			path: [0],
+			offset: 3
+		});
+	});
+
 	test('a hover-only mark shows the text cursor, not a hand', async ({ page }) => {
 		await editor.loadContent('hello world\n');
 		await addHoverSource(page, 'cursor', [{ path: [0], start: 0, end: 5, cls: 'hv-cursor' }]);
@@ -407,6 +423,36 @@ test.describe('mark hover', () => {
 		]);
 	});
 
+	test('a menu a table opens over its own cells does not hover the cell under it', async ({
+		page
+	}) => {
+		await editor.loadContent('| A | B |\n| --- | --- |\n| c | d |\n| e | f |\n| g | h |\n');
+		const cells: MarkSpec[] = [];
+		for (let row = 0; row < 4; row++) {
+			for (let col = 0; col < 2; col++) {
+				cells.push({ path: [0, row, col], start: 0, end: 1, cls: `hv-r${row}c${col}` });
+			}
+		}
+		await addHoverSource(page, 'cells', cells);
+		const first = (await page.locator('.table-cell').first().boundingBox())!;
+		const opened = { x: first.x + first.width / 2, y: first.y + first.height / 2 };
+		await moveTo(page, opened);
+		await expect.poll(() => hovers(page)).toHaveLength(1);
+
+		await page.mouse.click(opened.x, opened.y, { button: 'right' });
+		const menu = (await page.locator('.table-action-menu').boundingBox())!;
+		// Inside the menu and over the first column's next row, which carries a hover mark.
+		const over = { x: menu.x + 12, y: first.y + first.height + 12 };
+		expect(over.y, 'the menu covers the next row').toBeLessThan(menu.y + menu.height);
+		await moveTo(page, over, 8);
+
+		const run = await settledHovers(page);
+		expect(run.map((r) => [r.cls, r.anchor === null])).toEqual([
+			['hv-r0c0', false],
+			['hv-r0c0', true]
+		]);
+	});
+
 	test('a throwing onHover reaches the error event and the editor keeps working', async ({
 		page
 	}) => {
@@ -448,14 +494,18 @@ test.describe('mark hover', () => {
 test.describe('mark hover under touch', () => {
 	test.use({ hasTouch: true });
 
-	test('a touch tap on a hover mark starts no hover', async ({ page }) => {
+	test('a touch tap on a hover mark places the caret and starts no hover', async ({ page }) => {
 		const editor = new EditorPage(page);
 		await editor.goto();
-		await editor.loadContent('hello world\n');
+		await editor.loadContent('hello world\n\nsecond\n');
 		await addHoverSource(page, 'tap', [{ path: [0], start: 0, end: 5, cls: 'hv-tap' }]);
-		const at = center(await textRunRect(page, 'hello', { path: [0] }));
+		await editor.focusBlockEnd(1);
+		const at = await pointAtRaw(page, [0], 3);
 
 		await page.touchscreen.tap(at.x, at.y);
+		await expect
+			.poll(() => page.evaluate(() => (window as any).__test.getSelection()?.focus))
+			.toEqual({ path: [0], offset: 3 });
 		expect(await settledHovers(page)).toEqual([]);
 	});
 });

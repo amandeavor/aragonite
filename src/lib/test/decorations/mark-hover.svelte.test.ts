@@ -7,7 +7,7 @@ import DecorationOverlay from '#lib/components/DecorationOverlay.svelte';
 import type { BlockComponent } from '#lib/block-component.js';
 import { parse } from '#lib/core/parser.js';
 import { createDecorationEngine } from '#lib/decorations/decoration-state.svelte.js';
-import type { HoverPointer } from '#lib/decorations/mark-hover.js';
+import { createMarkHover, type HoverPointer } from '#lib/decorations/mark-hover.js';
 import type { Decoration, MarkDecoration, MarkHover } from '#lib/decorations/types.js';
 import { editorMountContext } from '../harness/mount-context';
 
@@ -80,7 +80,7 @@ function setup(opts: { path?: number[]; leaf?: BlockComponent; container?: boole
 			target: blockEl,
 			...over
 		});
-	return { engine, errors, pointer };
+	return { engine, errors, pointer, blockEl };
 }
 
 /** A source whose answer the test swaps, then re-runs with `invalidate`. */
@@ -236,6 +236,22 @@ describe('which pointers hover', () => {
 		pointer(10, 8, { target: popup });
 		expect(calls.map((c) => c.hover === null)).toEqual([false, true]);
 	});
+
+	// Miss-analysis: the popup row put its popup outside every block; none covered a menu a block renders inside itself.
+	it('ends the hover over a menu a block renders over its own text', () => {
+		const calls: HoverCall[] = [];
+		const { engine, pointer, blockEl } = setup();
+		swappableSource(engine, [hoverMark(calls)]);
+		const menu = document.createElement('div');
+		menu.setAttribute('role', 'menu');
+		const item = document.createElement('button');
+		menu.append(item);
+		blockEl.append(menu);
+
+		pointer(10, 8);
+		pointer(10, 8, { target: item });
+		expect(calls.map((c) => c.hover === null)).toEqual([false, true]);
+	});
 });
 
 describe('only marks with a click handler take pointer events', () => {
@@ -284,6 +300,7 @@ describe('a table cell names its decoration by the precedence rule', () => {
 		expect(calls.map((c) => c.cls)).toEqual(['inner']);
 	});
 
+	// Miss-analysis: no test clicked a mark in a table cell; every click-mark row was prose.
 	it('keeps a cell clickable when a plain mark from a later source shares it', () => {
 		let clicks = 0;
 		const { engine } = setup({ path: [1], leaf: paintingGrid(), container: true });
@@ -309,5 +326,55 @@ describe('a table cell names its decoration by the precedence rule', () => {
 			.querySelector('.decoration-overlay')!
 			.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(clicks).toBe(1);
+	});
+
+	it("reports a throwing onClick on a cell with the cell's path, not the table's", () => {
+		const { engine, errors } = setup({ path: [1], leaf: paintingGrid(), container: true });
+		engine.addSource({
+			name: 'boom',
+			provide: () => [
+				{
+					type: 'mark',
+					path: [1, 1, 0],
+					start: 0,
+					end: 1,
+					class: 'boom',
+					interactive: {
+						onClick: () => {
+							throw new Error('cell onClick blew up');
+						}
+					}
+				}
+			]
+		});
+		flushSync();
+		document
+			.querySelector('.decoration-overlay')!
+			.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(errors.map((e) => e.path)).toEqual([[1, 1, 0]]);
+	});
+});
+
+describe('what a pointer move costs', () => {
+	it('identifies the hovered mark once, not on every move inside it', () => {
+		let identifies = 0;
+		const dec = hoverMark([]);
+		const tracker = createMarkHover({
+			identify: (d) => {
+				identifies++;
+				return { source: 'probe', path: d.path, start: d.start, end: d.end, ordinal: 0 };
+			},
+			runHandler: (_dec, call) => call()
+		});
+		const block = document.createElement('div');
+		block.className = 'block-host';
+		document.body.append(block);
+		tracker.paint({}, block, [
+			{ mark: { dec, index: 0 }, rects: [{ left: 0, top: 0, width: 40, height: 16 }] }
+		]);
+		for (const x of [2, 10, 20, 30]) {
+			tracker.move({ clientX: x, clientY: 8, pointerType: 'mouse', buttons: 0, target: block });
+		}
+		expect(identifies).toBe(1);
 	});
 });

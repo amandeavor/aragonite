@@ -9,7 +9,12 @@
 	} from '../editor-keys';
 	import type { MarkDecoration } from '../decorations/types';
 	import { collapseCellMarks, type IndexedDecoration } from '../decorations/buckets';
-	import { leafMarkRects, paintOrder, winningMark } from '../decorations/mark-interactions';
+	import {
+		leafMarkRects,
+		paintOrder,
+		takesPointer,
+		winningMark
+	} from '../decorations/mark-interactions';
 	import type { HoverTarget } from '../decorations/mark-hover';
 	import { wireOverlayRemeasure } from '../caret/overlay-remeasure';
 
@@ -108,7 +113,7 @@
 				const { dec } = mark;
 				const own = leafMarkRects(leaf, dec).map((r) => ({
 					...toLocal(r, blockRect, dec.class, dec.attrs),
-					clickMark: dec.interactive?.onClick ? dec : undefined
+					clickMark: takesPointer(dec) ? dec : undefined
 				}));
 				for (const painted of own) out.push(painted);
 				if (dec.interactive?.onHover && own.length > 0) hover.push({ mark, rects: own });
@@ -130,7 +135,7 @@
 				if (!r) continue;
 				const painted = {
 					...toLocal(r, blockRect, cell.class, cell.dec.attrs),
-					clickMark: winningMark(cell.marks, (d) => !!d.interactive?.onClick)?.dec
+					clickMark: winningMark(cell.marks, takesPointer)?.dec
 				};
 				out.push(painted);
 				for (const mark of cell.marks) {
