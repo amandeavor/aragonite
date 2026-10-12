@@ -355,6 +355,8 @@ export type { PasteTransform } from './tree-operations/paste/paste-transforms';
 export type {
 	Decoration,
 	MarkDecoration,
+	MarkInteractions,
+	MarkHover,
 	WidgetDecoration,
 	ReplaceDecoration,
 	BlockDecoration,

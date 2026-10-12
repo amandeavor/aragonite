@@ -104,6 +104,8 @@ export type {
 export type {
 	Decoration,
 	MarkDecoration,
+	MarkInteractions,
+	MarkHover,
 	WidgetDecoration,
 	ReplaceDecoration,
 	BlockDecoration,

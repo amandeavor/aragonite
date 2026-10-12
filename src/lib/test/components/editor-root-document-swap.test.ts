@@ -45,6 +45,7 @@ describe('the swap commit sequence', () => {
 			currentSource: () => (adopted ? serialize(adopted) : 'held\n'),
 			stamps: { retire: step('stamps') },
 			drafts: { closeAll: (cause) => void order.push(`drafts:${cause}`) },
+			markHover: { end: step('hover') },
 			flushDebouncedCheckpoint: step('flush'),
 			noteTreeSwap: step('landings'),
 			adoptDocument: (doc) => {
@@ -80,6 +81,7 @@ describe('the swap commit sequence', () => {
 		expect(h.order).toEqual([
 			'stamps',
 			'drafts:document-swap',
+			'hover',
 			'flush',
 			'landings',
 			'adopt',

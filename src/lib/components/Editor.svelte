@@ -411,6 +411,8 @@
 		menus: menuPresence,
 		stamps,
 		drafts,
+		// Built below; a swap runs post-init.
+		markHover: { end: () => decorationEngine.markHover.end() },
 		selection: selectionState,
 		// The counter bumps only when the link-reference signature differs; the resolver
 		// refreshes regardless.
@@ -604,7 +606,9 @@
 	const decorationEngine = createDecorationEngine({
 		getDoc,
 		onSourceError: (source, error) =>
-			events.emit('error', { origin: 'decoration', error, context: { source } })
+			events.emit('error', { origin: 'decoration', error, context: { source } }),
+		onMarkError: (path, error) =>
+			events.emit('error', { origin: 'decoration', error, context: { path } })
 	});
 	const decorations: DecorationRegistry = { addSource: decorationEngine.addSource };
 

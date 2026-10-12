@@ -19,6 +19,7 @@ import type { EditorEvents } from '../editor-events';
 import type { MenuPresence } from './menu/menu-presence.svelte';
 import type { DraftRegistry } from './draft-registry';
 import type { DocumentStamps } from '../editor-actions/commit/document-stamp';
+import type { MarkHoverTracker } from '../decorations/mark-hover';
 
 export interface ParsedDocument {
 	doc: Document;
@@ -48,6 +49,9 @@ export interface DocumentSwapDeps {
 	stamps: Pick<DocumentStamps, 'retire'>;
 	/** Then dropped, so a block the swap tears down blurs without trying to commit its draft. */
 	drafts: Pick<DraftRegistry, 'closeAll'>;
+	/** A hovered mark belongs to the outgoing document; ended while that document is still the
+	 *  one a host's handler reads. */
+	markHover: Pick<MarkHoverTracker, 'end'>;
 	/** Called before the tree changes, so a caret landing still waiting gives up. */
 	noteTreeSwap(): void;
 	/** Writes the tree into the `$state` root and re-keys its blocks. */
@@ -92,6 +96,7 @@ export function createDocumentSwap(deps: DocumentSwapDeps): DocumentSwap {
 	function replace(source: string): void {
 		deps.stamps.retire();
 		deps.drafts.closeAll('document-swap');
+		deps.markHover.end();
 		deps.flushDebouncedCheckpoint();
 		deps.noteTreeSwap();
 		const reset = initDocument(source, deps.grammar);

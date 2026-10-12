@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { FIXTURE_BYTES } from '../perf/vr-helpers';
 
 /**
  * Mark hover (requirements/decorations/mark-hover.md). Each source records its `onHover` calls on
@@ -161,14 +162,13 @@ test.describe('mark hover', () => {
 	test('scrolling the hovered block out of the rendered range ends its hover once', async ({
 		page
 	}) => {
-		const blocks = Array.from({ length: 400 }, (_, i) => `paragraph number ${i}`);
-		await editor.loadContent(`${blocks.join('\n\n')}\n`);
-		await addHoverSource(page, 'far', [{ path: [0], start: 0, end: 9, cls: 'hv-far' }]);
+		const count = await editor.loadLargeFixture('flat-prose', FIXTURE_BYTES);
+		await addHoverSource(page, 'far', [{ path: [0], start: 0, end: 4, cls: 'hv-far' }]);
 		const { x, y } = await centerOf(page, '.decoration-overlay.hv-far');
 		await page.mouse.move(x, y, { steps: 4 });
 		await expect.poll(() => hovers(page)).toHaveLength(1);
 
-		await page.evaluate((last) => (window as any).__test.rects.scrollTo([last]), 798);
+		await page.evaluate((last) => (window as any).__test.rects.scrollTo([last]), count - 1);
 		await expect
 			.poll(() => page.evaluate(() => (window as any).__test.isBlockMounted([0])))
 			.toBe(false);

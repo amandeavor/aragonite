@@ -1,15 +1,14 @@
 // @vitest-environment jsdom
-// A mark's `interactive.onClick` is plugin code running on a user gesture, and editor.md §12
-// makes the `error` channel the one place every contained failure is reported, so this click
-// handler has to report a throw there like every other decoration entry point does.
+// A mark's `interactive.onClick` is plugin code running on a user gesture, so a throw from it is
+// reported through the decoration engine's mark error sink, which the editor turns into an
+// `error` event, like every other decoration entry point.
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import DecorationOverlay from '#lib/components/DecorationOverlay.svelte';
 import type { BlockComponent } from '#lib/block-component.js';
-import { createEditorEvents } from '#lib/editor-events.js';
-import type { EditorError } from '#lib/editor-events.js';
-import type { EditorServices } from '#lib/editor-keys.js';
-import type { MarkDecoration } from '#lib/decorations/types.js';
+import { parse } from '#lib/core/parser.js';
+import { createDecorationEngine } from '#lib/decorations/decoration-state.svelte.js';
+import type { MarkDecoration, MarkInteractions } from '#lib/decorations/types.js';
 import { editorMountContext } from '../harness/mount-context';
 
 /** jsdom measures every real range at zero width, which the overlay skips as too thin to
@@ -24,14 +23,6 @@ function paintingLeaf(): BlockComponent {
 	} as unknown as BlockComponent;
 }
 
-function markEngine(mark: MarkDecoration): EditorServices['decorations'] {
-	return {
-		sourceCount: 1,
-		marksForPath: () => [{ dec: mark, index: 0 }],
-		marksForDescendants: () => []
-	} as unknown as EditorServices['decorations'];
-}
-
 let instance: ReturnType<typeof mount> | null = null;
 afterEach(async () => {
 	if (instance) await unmount(instance);
@@ -39,7 +30,7 @@ afterEach(async () => {
 	document.body.innerHTML = '';
 });
 
-function mountOverlay(onClick: MarkDecoration['interactive']): EditorError[] {
+function mountOverlay(interactive: MarkInteractions): { path: number[]; error: unknown }[] {
 	const target = document.createElement('div');
 	document.body.appendChild(target);
 	const blockEl = document.createElement('div');
@@ -51,17 +42,20 @@ function mountOverlay(onClick: MarkDecoration['interactive']): EditorError[] {
 		start: 0,
 		end: 3,
 		class: 'probe-mark',
-		interactive: onClick
+		interactive
 	};
-	const events = createEditorEvents();
-	const errors: EditorError[] = [];
-	events.on('error', (e) => errors.push(e));
+	const errors: { path: number[]; error: unknown }[] = [];
+	const doc = parse('one\n');
+	const engine = createDecorationEngine({
+		getDoc: () => doc,
+		onMarkError: (path, error) => errors.push({ path, error })
+	});
+	engine.addSource({ name: 'probe', provide: () => [mark] });
 
-	const blockRef = paintingLeaf();
 	instance = mount(DecorationOverlay, {
 		target,
-		props: { path: [0], blockRef, blockEl },
-		context: editorMountContext({ services: { events, decorations: markEngine(mark) } })
+		props: { path: [0], blockRef: paintingLeaf(), blockEl },
+		context: editorMountContext({ services: { decorations: engine } })
 	});
 	flushSync();
 	return errors;
@@ -74,7 +68,7 @@ function clickPaintedMark(): void {
 }
 
 describe('an interactive mark contains and attributes its click handler', () => {
-	it('routes a throwing onClick to the error path as origin decoration', () => {
+	it("reports a throwing onClick with the mark's path", () => {
 		const errors = mountOverlay({
 			onClick: () => {
 				throw new Error('plugin onClick blew up');
@@ -84,8 +78,7 @@ describe('an interactive mark contains and attributes its click handler', () => 
 		clickPaintedMark();
 
 		expect(errors).toHaveLength(1);
-		expect(errors[0].origin).toBe('decoration');
-		expect(errors[0].context?.path).toEqual([0]);
+		expect(errors[0].path).toEqual([0]);
 		expect((errors[0].error as Error).message).toBe('plugin onClick blew up');
 	});
 
