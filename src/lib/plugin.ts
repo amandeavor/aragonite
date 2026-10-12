@@ -62,6 +62,7 @@ export type {
 	BlockKindRegistration,
 	BlockKindAugmentation,
 	ContainerDescriptorGroup,
+	ContentStart,
 	MergeRole,
 	ContainerUnwrapRole,
 	WriteContext,
@@ -241,8 +242,7 @@ export { headingLevel } from './core/nodes';
 // traversal so a code block's bytes are never inline-scanned.
 export { isProseKind } from './core/inline';
 // Pre-order over a document or subtree, with 'skip' and 'stop', so a plugin writes no recursion.
-export { walkBlocks } from './core/paths';
-// The block at a path, or null for the root or a path that leads nowhere.
+export { walkBlocks, type WalkControl } from './core/paths';
 export { blockNodeAt } from './tree-operations/node-primitives';
 
 /**

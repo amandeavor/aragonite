@@ -28,6 +28,7 @@ const title = () => ({ kind: declarePluginKind('pair-title') });
 const pairs: Record<IncoherentPairId, () => object> = {
 	'content-start-without-range': () => ({ ...leaf, contentStart: { backspace: 'demote-first' } }),
 	'whole-block-inline': () => ({ ...leaf, blockFocus: 'whole-block', supportsInline: true }),
+	'container-inline': () => ({ ...leaf, supportsInline: true, container: group }),
 	'whole-block-content-start': () => ({
 		...leaf,
 		blockFocus: 'whole-block',

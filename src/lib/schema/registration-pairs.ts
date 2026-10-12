@@ -39,6 +39,12 @@ export const INCOHERENT_REGISTRATION_PAIRS = [
 		holds: (r) => wholeBlock(r) && r.supportsInline === true
 	},
 	{
+		id: 'container-inline',
+		fields: 'container with supportsInline',
+		reason: "a container's text lives in its children, so its own bytes carry no inline content",
+		holds: (r) => r.container !== undefined && r.supportsInline === true
+	},
+	{
 		id: 'whole-block-content-start',
 		fields: "blockFocus: 'whole-block' with contentStart",
 		reason: "no caret enters a block focused as one unit, so there's no content start",

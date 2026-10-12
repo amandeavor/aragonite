@@ -35,6 +35,9 @@ const typePins = (): void => {
 	// @ts-expect-error [whole-block-inline] a whole-block unit has no caret positions for inline content
 	registerBlockKind(kind, { ...leaf, blockFocus: 'whole-block', supportsInline: true });
 
+	// @ts-expect-error [container-inline] a container's text lives in its children, not its own bytes
+	registerBlockKind(kind, { ...leaf, supportsInline: true, container: group });
+
 	// @ts-expect-error [whole-block-content-start] a whole-block unit has no caret, so no content start
 	registerBlockKind(kind, { ...leaf, blockFocus: 'whole-block', contentStart: { range } });
 

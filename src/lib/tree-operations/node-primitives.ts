@@ -149,9 +149,9 @@ export function emptyParagraph(leadingTrivia: string, lineEnding: string): CstNo
 
 // Overloaded rather than view-only so a mutable document yields mutable nodes:
 // a walk cannot introduce sharing, so the input's writability is the output's.
-export function nodeAt(doc: Document, path: number[]): CstNode | Document | null;
-export function nodeAt(doc: DocumentView, path: number[]): NodeView | DocumentView | null;
-export function nodeAt(doc: DocumentView, path: number[]): NodeView | DocumentView | null {
+export function nodeAt(doc: Document, path: readonly number[]): CstNode | Document | null;
+export function nodeAt(doc: DocumentView, path: readonly number[]): NodeView | DocumentView | null;
+export function nodeAt(doc: DocumentView, path: readonly number[]): NodeView | DocumentView | null {
 	let cur: NodeView | DocumentView = doc;
 	for (const idx of path) {
 		if (!cur.children || idx < 0 || idx >= cur.children.length) return null;
@@ -160,10 +160,11 @@ export function nodeAt(doc: DocumentView, path: number[]): NodeView | DocumentVi
 	return cur;
 }
 
-/** `nodeAt` pre-narrowed through `isBlockNode`: null at the document root or on no match. */
-export function blockNodeAt(doc: Document, path: number[]): CstNode | null;
-export function blockNodeAt(doc: DocumentView, path: number[]): NodeView | null;
-export function blockNodeAt(doc: DocumentView, path: number[]): NodeView | null {
+/** The block at `path`, or null for a path that leads nowhere and for the empty path, which is
+ *  the document itself. */
+export function blockNodeAt(doc: Document, path: readonly number[]): CstNode | null;
+export function blockNodeAt(doc: DocumentView, path: readonly number[]): NodeView | null;
+export function blockNodeAt(doc: DocumentView, path: readonly number[]): NodeView | null {
 	const node = nodeAt(doc, path);
 	return node !== null && isBlockNode(node) ? node : null;
 }

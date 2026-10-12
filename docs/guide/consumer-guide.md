@@ -703,7 +703,7 @@ Two editors in one process can list different depths this way; the factory form,
 The two options:
 
 - `entries` adds rows of your own, listed after the built-in ones. A row either inserts Markdown (`insert`) or runs a function (`run`, handed the editor's context for that pick and, if the row sets `takesArgument: true`, the word typed after a space). A `run` may be async: if it opens a picker and waits, the context it was handed writes nothing once you've loaded another note, so a choice made after a note switch lands nowhere. A row whose id matches a built-in one hides that built-in, and yours shows up with your other rows.
-- `exclude` hides built-in rows by id: `bullet`, `numbered`, `todo`, `quote`, `divider`, `code`, `table`, `h1`, `h2`, `h3`, plus whatever ids your installed plugins add to `getInsertCatalogue()` (`math`, `note`).
+- `exclude` hides built-in rows by id: `bullet`, `numbered`, `todo`, `quote`, `divider`, `code`, `table`, `h1`, `h2`, `h3`, plus whatever ids your installed plugins add to `getInsertCatalogue()` (the bundled ones add `note`, `details`, `math`, `mermaid` and `toc`).
 
 Options passed to the factory are every editor's defaults, and an editor's `{ plugin, options }` entry swaps out only the fields it names. So an entry of `{ exclude: ['table'] }` still lists the factory's `entries`, and `{ entries: [] }` is how one editor drops them. A row with both `insert` and `run`, or neither, is refused: the factory throws, and in an editor's entry the editor reports it on the `error` event and keeps the factory's options.
 

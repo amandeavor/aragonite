@@ -886,11 +886,12 @@ calls `forget`, which drops all three. There's no method that forgets one alone,
 column and leaving the side behind doesn't compile. Retired: G4.31's reset half and G2.10's
 capture-without-reset pairing.
 
-**G3.10 · Coherent registration pairs.** `BlockKindRegistration` is one of two shapes: a block
-focused as one unit (`blockFocus: 'whole-block'`, so `supportsInline: false`, no `contentStart` and
-no title row), or a block the caret enters. A content range and its Backspace behavior register
-together as `contentStart`, and a container with a title row declares only its middle-child unwrap
-strategy. `augmentBlockKind` takes none of these fields.
+**G3.10 · Coherent registration pairs.** `BlockKindRegistration` is a block focused as one unit
+(`blockFocus: 'whole-block'`, so `supportsInline: false`, no `contentStart` and no title row), or a
+block the caret enters: a leaf, or a container, which never declares inline content since its
+children hold its text. A content range and its Backspace behavior register together as
+`contentStart`, and a container with a title row declares only its middle-child unwrap strategy.
+`augmentBlockKind` takes none of these fields.
 
 A cast or a plain JavaScript plugin never meets the types, so both calls throw at runtime too:
 `registerBlockKind` checks each pair against
@@ -1048,6 +1049,7 @@ unguarded.
 | G4.150 | One placer for a hidden edge: no other file reads the caret's side or how it arrived      | L       |
 | G4.151 | One click-side check, called from the click entry both prose blocks share                 | L       |
 | G4.155 | Every composing-flag holder asks both composition questions: a drop, and an opening       | L       |
+| G4.157 | Every block kind a bundled plugin installs has an insert entry, or says why it has none   | harness |
 
 ### The entries
 
@@ -1964,6 +1966,12 @@ browser dropped its composition (`reportDroppedComposition`) and whether a compo
 there (`opensComposition`). A range across blocks claims a composition's start, so the block its
 removal leaves the caret in, a rule's hidden host included, only ever sees the runs. The guard knows a holder by its call to `reportDroppedComposition`, so a new holder asks that one too.
 `lint/composition-holders.test.ts`.
+
+**G4.157 · Every bundled block kind can be inserted.** `test/plugins/insertable-kinds.test.ts`
+installs every plugin under `src/lib/plugins/` from its zero-argument factory and reads the kinds
+they register: each one is in the tree some insert entry's Markdown parses to (a title row comes
+with its container), or is listed with why no entry makes it. A listed kind that's gone or has
+gained an entry fails too.
 
 ## Accessibility
 

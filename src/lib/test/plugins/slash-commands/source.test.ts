@@ -88,6 +88,93 @@ describe('a plugin insert entry with an argument', () => {
 	});
 });
 
+// Miss-analysis: the source was only typed into beside the built-ins, where no two rows share a word.
+describe('an argument beside a row sharing its word', () => {
+	const contents: InsertEntry = {
+		id: 'contents',
+		label: 'Table of contents',
+		icon: 'list-tree',
+		keywords: ['toc'],
+		markdown: '[[toc]]\n'
+	};
+
+	it('/table 2x3 lists only the table, and Enter inserts the sized grid', async () => {
+		installPlugins([
+			definePlugin({ name: 'contents', setup: () => registerInsertEntry(contents) })
+		]);
+		const h = slashHarness('');
+		await h.type('/table');
+		expect(h.rows()).toEqual(['Table', 'Table of contents']);
+		await h.type(' 2x3');
+		expect(h.rows()).toEqual(['Table']);
+		expect(h.details()).toEqual(['2×3']);
+		await h.pick();
+		expect(h.inserted).toEqual([
+			{ markdown: '| Column | Column |\n| --- | --- |\n|  |  |\n|  |  |\n', placement: 'caret' }
+		]);
+	});
+});
+
+// Miss-analysis: every typed query was one word, or one word and an argument, so a label with a
+// space was never typed in full.
+describe('a label typed in full, spaces and all', () => {
+	const contents: InsertEntry = {
+		id: 'contents',
+		label: 'Table of contents',
+		icon: 'list-tree',
+		keywords: ['toc'],
+		markdown: '[[toc]]\n'
+	};
+
+	// Miss-analysis: the full-label rows typed past the space, never stopped on it before the size.
+	it('/table with a trailing space lists Table first, and Enter inserts the table', async () => {
+		installPlugins([
+			definePlugin({ name: 'contents', setup: () => registerInsertEntry(contents) })
+		]);
+		const h = slashHarness('');
+		await h.type('/table ');
+		expect(h.rows()).toEqual(['Table', 'Table of contents']);
+		expect(h.details()).toEqual([undefined, undefined]);
+		await h.pick();
+		expect(h.inserted).toEqual([
+			{ markdown: '| Column | Column |\n| --- | --- |\n|  |  |\n', placement: 'caret' }
+		]);
+	});
+
+	it.each(['/table of', '/table of c', '/table of contents'])(
+		'%s lists only Table of contents, and Enter inserts it',
+		async (query) => {
+			installPlugins([
+				definePlugin({ name: 'contents', setup: () => registerInsertEntry(contents) })
+			]);
+			const h = slashHarness('');
+			await h.type(query);
+			expect(h.rows()).toEqual(['Table of contents']);
+			expect(h.details()).toEqual([undefined]);
+			await h.pick();
+			expect(h.inserted).toEqual([{ markdown: '[[toc]]\n', placement: 'caret' }]);
+		}
+	);
+
+	it('/bulleted l lists the bulleted list, which takes no word', async () => {
+		const h = slashHarness('');
+		await h.type('/bulleted l');
+		expect(h.rows()).toEqual(['Bulleted list']);
+		await h.pick();
+		expect(h.inserted).toEqual([{ markdown: '- ', placement: 'caret' }]);
+	});
+
+	it('a host row taking a word gets none when its own label was typed', async () => {
+		const run = vi.fn();
+		const stamp: SlashCommandEntry = { id: 'stamp', label: 'Stamp date', run, takesArgument: true };
+		const h = slashHarness('', { entries: [stamp] });
+		await h.type('/stamp d');
+		expect(h.rows()).toEqual(['Stamp date']);
+		await h.pick();
+		expect(run.mock.calls[0][1]).toBeUndefined();
+	});
+});
+
 describe('a pick', () => {
 	it('/h2 on a text line removes its bytes, then runs the heading command with 2', async () => {
 		const h = slashHarness('Title ');
