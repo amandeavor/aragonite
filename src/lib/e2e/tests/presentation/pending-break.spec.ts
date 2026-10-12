@@ -2,7 +2,13 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import type { EditorPage } from '../../editor-page';
 import { attachIme } from '../../simulation/ime';
-import { clickBlockSettled, enterPresentationMode } from './helpers';
+import {
+	clickBlockSettled,
+	clickWordSettled,
+	enterPresentationMode,
+	focusOffset,
+	focusPath
+} from './helpers';
 
 // Shift+Enter at a block's end opens a line and writes nothing; whatever is inserted next writes
 // the break in front of itself, and anything else drops the line without leaving a byte.
@@ -95,22 +101,80 @@ test.describe('live mode: a composed run after a hidden closer', () => {
 	}
 });
 
+/** `doc`'s first block, `def`'s line ended by Shift+Enter, `x` and a Backspace: the break's bytes
+ *  stay, and the line after them is empty, with the caret on it. */
+async function emptiedBreak(ep: EditorPage, page: Page): Promise<void> {
+	await clickWordSettled(ep, page, 'def');
+	await page.keyboard.press('End');
+	await page.keyboard.press('Shift+Enter');
+	await ep.typeSlowly('x');
+	await page.keyboard.press('Backspace');
+	await ep.waitForRenderFlush();
+}
+
 test.describe('live mode: a hard break at a block end, emptied again', () => {
-	test('Backspace takes the emptied line', async ({ page }) => {
-		test.fail(
-			true,
-			'#690: the edge delete reparses the block without its emptied last line, where the break reads as text'
-		);
-		const ep = await enterPresentationMode(page, 'live', 'abc def\n');
-		await openBreak(ep, page);
-		await ep.typeSlowly('x');
-		await expect.poll(() => ep.bridge.getSource()).toBe('abc def\\\nx\n');
+	for (const [name, doc, emptied, deleted] of [
+		['a paragraph', 'abc def\n', 'abc def\\\n\n', 'abc def\n'],
+		[
+			'a list item followed by another',
+			'- abc def\n- next\n',
+			'- abc def\\\n  \n- next\n',
+			'- abc def\n- next\n'
+		],
+		['a quote', '> abc def\n', '> abc def\\\n>\n', '> abc def\n']
+	]) {
+		test(`in ${name}, Backspace takes the emptied line and its break`, async ({ page }) => {
+			const ep = await enterPresentationMode(page, 'live', doc);
+			await emptiedBreak(ep, page);
+			expect(await ep.bridge.getSource()).toBe(emptied);
+
+			await page.keyboard.press('Backspace');
+
+			await expect.poll(() => ep.bridge.getSource()).toBe(deleted);
+			expect(await focusOffset(ep)).toBe(7);
+		});
+
+		test(`in ${name}, Delete at the end of the line above takes them`, async ({ page }) => {
+			const ep = await enterPresentationMode(page, 'live', doc);
+			await emptiedBreak(ep, page);
+			await page.keyboard.press('ArrowLeft');
+			await ep.waitForRenderFlush();
+			expect(await focusOffset(ep)).toBe(7);
+
+			await page.keyboard.press('Delete');
+
+			await expect.poll(() => ep.bridge.getSource()).toBe(deleted);
+		});
+	}
+
+	test('in a list item followed by another, the line is gone after a blur', async ({ page }) => {
+		const ep = await enterPresentationMode(page, 'live', '- abc def\n- next\n');
+		await emptiedBreak(ep, page);
 		await page.keyboard.press('Backspace');
 		await ep.waitForRenderFlush();
-		const emptied = await ep.bridge.getSource();
 
-		await page.keyboard.press('Backspace');
+		await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+		await ep.waitForRenderFlush();
 
-		await expect.poll(() => ep.bridge.getSource()).not.toBe(emptied);
+		expect(await ep.bridge.getSource()).toBe('- abc def\n- next\n');
 	});
 });
+
+for (const mode of MODES) {
+	test.describe(`${mode} mode: the emptied line after a hard break at a block end`, () => {
+		test('ArrowDown from the line above lands on it, not on the next item', async ({ page }) => {
+			const ep = await enterPresentationMode(page, mode, '- abc def\n- next\n');
+			await emptiedBreak(ep, page);
+			const onEmptied = await focusOffset(ep);
+			await page.keyboard.press('ArrowUp');
+			await ep.waitForRenderFlush();
+			expect(await focusPath(ep)).toEqual([0, 0, 0]);
+
+			await page.keyboard.press('ArrowDown');
+			await ep.waitForRenderFlush();
+
+			expect(await focusPath(ep)).toEqual([0, 0, 0]);
+			expect(await focusOffset(ep)).toBe(onEmptied);
+		});
+	});
+}
