@@ -4,7 +4,7 @@
 // handler has to report a throw there like every other decoration entry point does.
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import DecorationOverlay from '#lib/components/DecorationOverlay.svelte';
+import DecorationOverlay from '#lib/components/overlays/DecorationOverlay.svelte';
 import type { BlockComponent } from '#lib/block-component.js';
 import { createEditorEvents } from '#lib/editor-events.js';
 import type { EditorError } from '#lib/editor-events.js';

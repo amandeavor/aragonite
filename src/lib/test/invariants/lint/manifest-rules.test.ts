@@ -398,7 +398,8 @@ const MANIFESTS: ManifestRule[] = [
 		),
 		declared: {
 			'src/lib/caret/widget-offset.ts': 'defines the walk and the one caret writer over it',
-			'src/lib/caret/overlay-rects.ts': "measures a range's client rects, and writes no caret",
+			'src/lib/components/overlays/rects.ts':
+				"measures a range's client rects, and writes no caret",
 			'src/lib/caret/sticky-measure.ts':
 				'measures the caret box a column scan compares, and writes no caret'
 		},

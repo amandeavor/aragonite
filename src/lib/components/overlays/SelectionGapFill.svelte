@@ -5,10 +5,10 @@
 	 * the range reads as one region spanning the block column, the way a code editor paints it.
 	 */
 	import { getContext, tick } from 'svelte';
-	import { EDITOR_SERVICES_KEY, type EditorServices } from '../editor-keys';
-	import { regionGaps } from '../caret/overlay-rects';
-	import { observeResize } from '../windowing/observe-resize';
-	import { rangeSpansBlocks } from '../selection/primitives';
+	import { EDITOR_SERVICES_KEY, type EditorServices } from '../../editor-keys';
+	import { regionGaps } from './rects';
+	import { observeResize } from '../../windowing/observe-resize';
+	import { rangeSpansBlocks } from '../../selection/primitives';
 
 	let { getEditorEl }: { getEditorEl: () => HTMLElement | null } = $props();
 

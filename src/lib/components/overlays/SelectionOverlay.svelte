@@ -1,20 +1,20 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import type { BlockComponent } from '../block-component';
+	import type { BlockComponent } from '../../block-component';
 	import {
 		EDITOR_DOC_KEY,
 		EDITOR_SERVICES_KEY,
 		type EditorDoc,
 		type EditorServices
-	} from '../editor-keys';
+	} from '../../editor-keys';
 	import {
 		blockPaintsWholeBox,
 		classifyBlockForSelection,
 		endpointMeasureSpan
-	} from '../selection/primitives';
-	import { wireOverlayRemeasure } from '../caret/overlay-remeasure';
-	import { mergeRectsPerLine, reachLineEdges, type LocalRect } from '../caret/overlay-rects';
-	import { WHOLE_BLOCK_INPUT_ATTR } from '../editor-actions/whole-block-focus-surface';
+	} from '../../selection/primitives';
+	import { wireOverlayRemeasure } from './remeasure';
+	import { mergeRectsPerLine, reachLineEdges, type LocalRect } from './rects';
+	import { WHOLE_BLOCK_INPUT_ATTR } from '../../editor-actions/whole-block-focus-surface';
 
 	let {
 		path,

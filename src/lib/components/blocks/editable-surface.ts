@@ -48,7 +48,7 @@ import type { HeldSpaceView } from '../../caret/held-space';
 import type { InsideCloserView } from '../../caret/inside-closer';
 import type { BlockPendingMarks } from '../../caret/pending-marks';
 import { findOffsetNearestX } from '../../caret/sticky-measure';
-import { measurePartialRectsInContentEditable } from '../../caret/overlay-rects';
+import { measurePartialRectsInContentEditable } from '../overlays/rects';
 import {
 	documentLineEnding,
 	normalizeLineEndings,

@@ -96,7 +96,7 @@ export const SOURCE = {
 	blockList: 'src/lib/components/BlockList.svelte',
 	blockHost: 'src/lib/components/BlockHost.svelte',
 	searchBar: 'src/lib/components/SearchBar.svelte',
-	selectionOverlay: 'src/lib/components/SelectionOverlay.svelte',
+	selectionOverlay: 'src/lib/components/overlays/SelectionOverlay.svelte',
 	editableLeaf: 'src/lib/components/blocks/editable-leaf.ts',
 	surfaceWrite: 'src/lib/components/blocks/surface-write.ts',
 	textBlockComponent: 'src/lib/components/blocks/text/TextEditableBlock.svelte',

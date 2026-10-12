@@ -8,7 +8,7 @@ import {
 	measurePartialRectsInContentEditable,
 	reachLineEdges,
 	regionGaps
-} from '../../caret/overlay-rects';
+} from '../../components/overlays/rects';
 
 describe('measurePartialRectsInContentEditable', () => {
 	let el: HTMLDivElement;

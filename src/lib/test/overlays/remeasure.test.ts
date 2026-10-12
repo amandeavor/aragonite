@@ -3,7 +3,7 @@
 // re-measure triggers.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { BlockComponent } from '#lib/block-component.js';
-import { wireOverlayRemeasure } from '#lib/caret/overlay-remeasure.js';
+import { wireOverlayRemeasure } from '#lib/components/overlays/remeasure.js';
 
 let resizeCallback: ResizeObserverCallback | null = null;
 

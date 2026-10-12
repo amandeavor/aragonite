@@ -6,9 +6,12 @@
  */
 
 import { untrack } from 'svelte';
-import type { BlockComponent } from '../block-component';
-import { firstScrollableDescendant, nearestScrollContainer } from '../windowing/scroll-ancestors';
-import { observeResize } from '../windowing/observe-resize';
+import type { BlockComponent } from '../../block-component';
+import {
+	firstScrollableDescendant,
+	nearestScrollContainer
+} from '../../windowing/scroll-ancestors';
+import { observeResize } from '../../windowing/observe-resize';
 
 export function wireOverlayRemeasure(opts: {
 	el: HTMLElement;

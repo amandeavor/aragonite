@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import type { BlockComponent } from '../block-component';
+	import type { BlockComponent } from '../../block-component';
 	import {
 		EDITOR_DOC_KEY,
 		EDITOR_SERVICES_KEY,
 		type EditorDoc,
 		type EditorServices
-	} from '../editor-keys';
-	import type { MarkDecoration } from '../decorations/types';
-	import { collapseCellMarks, type IndexedDecoration } from '../decorations/buckets';
-	import { wireOverlayRemeasure } from '../caret/overlay-remeasure';
+	} from '../../editor-keys';
+	import type { MarkDecoration } from '../../decorations/types';
+	import { collapseCellMarks, type IndexedDecoration } from '../../decorations/buckets';
+	import { wireOverlayRemeasure } from './remeasure';
 
 	let {
 		path,
