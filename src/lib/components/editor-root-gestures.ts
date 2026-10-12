@@ -21,7 +21,7 @@ import { isBlockNode, nodeAt } from '../tree-operations/node-primitives';
 import { widgetSourceRange } from '../core/inline/inline-widgets';
 import {
 	LINK_ELEMENT_SELECTOR,
-	followedConstructAt,
+	clickFollowsAt,
 	resolveLinkAtPoint,
 	type LinkPointQuery
 } from './blocks/text/link-at-point';
@@ -117,13 +117,13 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		return hit ? deps.linkCard.open(hit.target) : false;
 	}
 
-	/** Whether the construct a rendered anchor draws is one a click follows: the same rows that
-	 *  give Edit link its target, so nothing follows that can't be edited. */
+	/** Whether a rendered anchor draws something a click follows (a construct, or a widget that
+	 *  claims the click): the answer Edit link edits by, so nothing follows that can't be edited. */
 	function anchorFollows(anchor: Element): boolean {
 		const at = blockAt(anchor);
 		if (!at) return false;
 		const offset = rawOffsetAt(at.contentEl, anchor, 0);
-		return followedConstructAt(at.block, offset, deps.reading) !== null;
+		return clickFollowsAt(at.block, offset, deps.reading);
 	}
 
 	function blurEditingSurface(root: HTMLElement): void {

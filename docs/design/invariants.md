@@ -1046,7 +1046,7 @@ unguarded.
 | G4.149 | A preview of the next insertion runs a write's own spend, and changes no record           | harness |
 | G4.150 | One placer for a hidden edge: no other file reads the caret's side or how it arrived      | L       |
 | G4.151 | One click-side check, called from the click entry both prose blocks share                 | L       |
-| G4.152 | Every link the editor renders follows by a policy row that gives Edit link a target       | harness |
+| G4.152 | Every rendered link has an Edit link target, and only the root click follows one          | T·L     |
 
 ### The entries
 
@@ -1957,12 +1957,14 @@ start past a line's end, or the side of a code chip's border) is called only fro
 through, and neither `onClick` measures the press against its text itself.
 `lint/edge-rule-guards.test.ts`.
 
-**G4.152 · Everything a click follows can be edited.** The follow path and Edit link both resolve
-a construct through `components/blocks/text/link-at-point.ts :: followedConstructAt`, which only
-finds kinds whose policy row declares `followEdit`. `test/blocks/text/follow-edit-parity.test.ts`
-renders a sample of every built-in inline kind (its table typed over the kind union) plus the
-other link shapes, and every `a[href]` in the result must resolve to such a construct with an edit
-target in live mode.
+**G4.152 · Everything a click follows can be edited.** Following and Edit link read one answer,
+`components/blocks/text/link-at-point.ts :: clickFollowsAt`: a construct whose policy row declares
+`followEdit` (`followedConstructAt`), or a widget whose kind claims the activation click.
+`test/blocks/text/follow-edit-parity.test.ts` renders a sample of every built-in inline kind (its
+table typed over the kind union) plus the other link shapes, and every `a[href]` in the result must
+resolve to such a construct with an edit target in live mode. `lint/file-rules.test.ts` holds the
+route half: following a link (`window.open`, `activateLink`, a `closest('a[href]')` lookup) happens
+only in the root click, `components/editor-root-gestures.ts`, which asks `clickFollowsAt` first.
 
 ## Accessibility
 

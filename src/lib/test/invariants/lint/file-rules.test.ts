@@ -2487,6 +2487,41 @@ const CODE_EDIT_SPAN: FileRule[] = [
 	}
 ];
 
+// ── G4.152 a link is followed only where the shared lookup is asked ─────────
+
+const ROOT_CLICK = `${SOURCE_DIR.components}editor-root-gestures.ts`;
+
+const FOLLOW_ROUTE: FileRule = {
+	id: 'G4.152 a link is followed only by the root click, which asks the shared lookup first',
+	matches:
+		/\bwindow\.open\s*\(|\b(?:activateLink|onLinkActivate)\s*\(|\.closest\(\s*['"`]a\[href\]['"`]\s*\)|\blocation\.(?:assign|replace)\s*\(|\blocation\.href\s*=(?!=)/,
+	allowed: {
+		[ROOT_CLICK]:
+			'the root click: it locates the anchor, and follows only when `clickFollowsAt` says a click follows what that anchor draws',
+		[`${SOURCE_DIR.components}Editor.svelte`]:
+			"binds the follow to the host's `onLinkActivate`, or the default, for the root click and the link card to call",
+		[`${SOURCE_DIR.library}core/url-policy.ts`]:
+			"the default follow, which a host's `onLinkActivate` replaces"
+	},
+	reaches: [ROOT_CLICK],
+	reason:
+		'a second place that follows a link can follow something Edit link has no way to edit: follow through the root click, whose `clickFollowsAt` is the lookup Edit link reads',
+	hits: [
+		at(
+			`${SOURCE_DIR.blocks}table/TableCellBlock.svelte`,
+			"if (follows) window.open(url, '_blank');"
+		),
+		at(`${SOURCE_DIR.plugins}x/x.ts`, "const a = el.closest('a[href]');"),
+		at(`${SOURCE_DIR.textBlock}x.ts`, 'deps.activateLink(href, e);'),
+		at(`${SOURCE_DIR.blocks}x.ts`, 'location.href = url;')
+	],
+	misses: [
+		at(`${SOURCE_DIR.textBlock}x.ts`, 'if (follows && anchorFollows(anchor)) open();'),
+		at(`${SOURCE_DIR.textBlock}x.ts`, "const href = anchor.getAttribute('href');"),
+		at(`${SOURCE_DIR.blocks}x.ts`, 'if (location.href === url) return;')
+	]
+};
+
 const SOURCES = collectEditorSources();
 describeFileRules(
 	[
@@ -2496,6 +2531,7 @@ describeFileRules(
 		RANGE_PAINT,
 		PIECES_UNDER_ORDER_CHECK,
 		WIDGET_LIST,
+		FOLLOW_ROUTE,
 		...CODE_EDIT_SPAN,
 		...SYNTAX_MODULES
 	],

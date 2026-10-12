@@ -11,7 +11,7 @@ import type { NodeView } from '../../../core/node-views';
 import { rawOffsetAt } from '../../../caret/widget-offset';
 import { followEditOf } from '../../../schema/inline-construct-policy';
 import { linkTextRange } from '../../../core/inline/link-source-bytes';
-import { getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
+import { claimsActivationClick, getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
 import { widgetsIn } from './widget-adjacency';
 import type { Reading } from '../../../schema/reading';
 
@@ -73,13 +73,25 @@ export function followTargetAt(
 		const construct = followedConstructAt(block, offset, reading);
 		if (construct) return constructTarget(construct, block.raw);
 	}
-	const widget = widgetsIn(block, reading).find(
-		(w) =>
-			w.start <= offset &&
-			offset <= w.end &&
-			getInlineWidgetEditing(w.kind, reading.grammar)?.claimsActivationClick === true
-	);
+	const widget = claimingWidgetAt(block, offset, reading);
 	return widget ? { edit: 'source', widget, atEnd: offset === widget.end } : null;
+}
+
+/** Whether a click at `offset` follows something: a construct whose row says so, or a widget whose
+ *  kind claims the activation click, the two things Edit link edits. */
+export function clickFollowsAt(block: NodeView, offset: number, reading: Reading): boolean {
+	return (
+		followedConstructAt(block, offset, reading) !== null ||
+		claimingWidgetAt(block, offset, reading) !== null
+	);
+}
+
+function claimingWidgetAt(block: NodeView, offset: number, reading: Reading): InlineNode | null {
+	const claims = (w: InlineNode) =>
+		claimsActivationClick(getInlineWidgetEditing(w.kind, reading.grammar));
+	return (
+		widgetsIn(block, reading).find((w) => w.start <= offset && offset <= w.end && claims(w)) ?? null
+	);
 }
 
 function constructTarget(construct: InlineNode, raw: string): FollowTarget {

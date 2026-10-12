@@ -102,6 +102,11 @@ export interface InlineWidgetEditingPolicy {
 	claimsActivationClick?: boolean;
 }
 
+/** Whether a widget goes somewhere on a click: what following it and Edit link both read. */
+export function claimsActivationClick(policy: InlineWidgetEditingPolicy | undefined): boolean {
+	return policy?.claimsActivationClick === true;
+}
+
 /** The one answer both sides of a click on a widget read: the editable element leaves the source
  *  hidden for it, and the widget's component (its `isActivationClick` prop) acts on it. */
 export function widgetActivates(
@@ -109,7 +114,7 @@ export function widgetActivates(
 	click: ClickInput,
 	activationClick: ActivationClick
 ): boolean {
-	return policy?.claimsActivationClick === true && activationClick(click);
+	return claimsActivationClick(policy) && activationClick(click);
 }
 
 export interface InlineWidgetEditingContext {
