@@ -326,6 +326,16 @@ test.describe('autolinks a click follows can be edited', () => {
 		}
 	}
 
+	test('Mod+K inside an angle autolink leaves letters typed in the URL', async ({ page }) => {
+		await editor.focusBlockStart(5);
+		for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
+		await page.keyboard.press('ControlOrMeta+k');
+		await expectCaretAtUrlEnd(AUTOLINKS[1]);
+		await page.keyboard.type('XY');
+
+		await editor.bridge.waitForSourceContains(AUTOLINKS[1].typed);
+	});
+
 	test('Delete inside an angle autolink takes one letter', async ({ page }) => {
 		await editor.focusBlockStart(5);
 		for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');

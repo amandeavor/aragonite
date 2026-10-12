@@ -47,6 +47,7 @@ hosts: the seed's plain-click one, and Ctrl-click after the toggle.
   two letters typed there land in the URL, not past the bracket.
 - Mod+K with the caret inside either one puts the caret there too, and Backspace takes one letter,
   not the whole URL.
+- Mod+K inside an angle autolink leaves two letters typed there in the URL too.
 - Delete inside an angle autolink takes one letter.
 - After Edit link on an angle autolink, Backspace then a letter keeps the letter in the URL.
 - A bare URL in a table cell follows its click on both hosts: following asks the same lookup as
