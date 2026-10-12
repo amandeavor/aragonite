@@ -1,6 +1,7 @@
 /**
- * What you'd go to at the caret: a link (the card edits it) or a widget that goes somewhere (its
- * source edits it), and how to find a link again after an edit rebuilt the tree.
+ * What a click at a point goes to and how Edit link edits it: a link in its card, an autolink as
+ * its own text, a widget by its source. The follow path and the edit path both ask here, so
+ * anything a click follows can be edited. Also how to find a link again after an edit.
  */
 
 import { inlineDescendants } from '../../../core/inline';
@@ -8,10 +9,10 @@ import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 import type { InlineNode } from '../../../core/nodes';
 import type { NodeView } from '../../../core/node-views';
 import { rawOffsetAt } from '../../../caret/widget-offset';
-import { isCardEditableInlineKind } from '../../../schema/inline-construct-policy';
+import { followEditOf } from '../../../schema/inline-construct-policy';
+import { linkTextRange } from '../../../core/inline/link-source-bytes';
 import { getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
 import { widgetsIn } from './widget-adjacency';
-import { constructChainAtOffset } from './construct-reveal';
 import type { Reading } from '../../../schema/reading';
 
 /** Both DOM shapes a bracketed link takes: `a` for an allowed scheme, `span.md-link-blocked` for a
@@ -38,12 +39,29 @@ export interface LinkPointQuery {
 	reading: Reading;
 }
 
-/** What you'd go to at a raw offset, by how it's edited: a link in its card, a widget by its source. */
+/** What you'd go to at a raw offset, by how it's edited: a link in its card, an autolink by a caret
+ *  at its text's end, a widget by its source. */
 export type FollowTarget =
-	{ edit: 'card'; link: InlineNode } | { edit: 'source'; widget: InlineNode; atEnd: boolean };
+	| { edit: 'card'; link: InlineNode }
+	| { edit: 'text'; construct: InlineNode; caretAt: number }
+	| { edit: 'source'; widget: InlineNode; atEnd: boolean };
 
-/** The innermost link around `offset` in live mode, else (any editable mode) a widget it touches
- *  whose kind claims the activation click. */
+/** The innermost construct around `offset` that a click follows, in any mode. */
+export function followedConstructAt(
+	block: NodeView,
+	offset: number,
+	reading: Reading
+): InlineNode | null {
+	const holds = (node: InlineNode): boolean => offset >= node.start && offset <= node.end;
+	let innermost: InlineNode | null = null;
+	for (const node of inlineDescendants(resolvedInlineContent(block, reading), holds)) {
+		if (holds(node) && followEditOf(node.kind)) innermost = node;
+	}
+	return innermost;
+}
+
+/** What Edit link edits at `offset`: the construct a click follows, in live mode only since the
+ *  others show its syntax, or in any editable mode a widget it touches that claims the click. */
 export function followTargetAt(
 	block: NodeView,
 	offset: number,
@@ -51,11 +69,9 @@ export function followTargetAt(
 ): FollowTarget | null {
 	const mode = reading.mode();
 	if (mode === 'reading') return null;
-	const inlines = resolvedInlineContent(block, reading);
 	if (mode === 'live') {
-		// The chain is outermost first, so its last card-editable link encloses the offset most tightly.
-		const link = constructChainAtOffset(inlines, offset).filter(isCardEditable).at(-1);
-		if (link) return { edit: 'card', link };
+		const construct = followedConstructAt(block, offset, reading);
+		if (construct) return constructTarget(construct, block.raw);
 	}
 	const widget = widgetsIn(block, reading).find(
 		(w) =>
@@ -64,6 +80,12 @@ export function followTargetAt(
 			getInlineWidgetEditing(w.kind, reading.grammar)?.claimsActivationClick === true
 	);
 	return widget ? { edit: 'source', widget, atEnd: offset === widget.end } : null;
+}
+
+function constructTarget(construct: InlineNode, raw: string): FollowTarget {
+	return followEditOf(construct.kind) === 'card'
+		? { edit: 'card', link: construct }
+		: { edit: 'text', construct, caretAt: linkTextRange(construct, raw)[1] };
 }
 
 /** What you'd go to at the caret, read after a click or a key has placed it. */
@@ -79,8 +101,6 @@ export function resolveLinkAtPoint(query: LinkPointQuery): LinkPointResolution |
 	return { target: { path: query.path, sourceStart: hit.link.start }, link: hit.link };
 }
 
-const isCardEditable = (node: InlineNode): boolean => isCardEditableInlineKind(node.kind);
-
 /** The construct an open card is anchored to, re-read from the live tree; null once an edit moved
  *  or removed it. */
 export function linkConstructAt(
@@ -89,7 +109,7 @@ export function linkConstructAt(
 	reading: Reading
 ): InlineNode | null {
 	for (const node of inlineDescendants(resolvedInlineContent(block, reading))) {
-		if (isCardEditable(node) && node.start === sourceStart) return node;
+		if (followEditOf(node.kind) === 'card' && node.start === sourceStart) return node;
 	}
 	return null;
 }

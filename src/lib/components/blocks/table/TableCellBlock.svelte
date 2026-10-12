@@ -465,7 +465,8 @@
 				enterLinkCardAtCaret({
 					...linkCardQuery(contentEl, null),
 					card: linkCard,
-					enterWidget: widgetInteraction.enterWidget
+					enterWidget: widgetInteraction.enterWidget,
+					placeCaret: (offset) => cursor.setRaw(asRawOffset(offset), { clamp: 'exact' })
 				});
 		}
 		const axisCommand = tableAxisCommand(id);

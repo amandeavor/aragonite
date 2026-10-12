@@ -19,7 +19,13 @@ import { claimsPointerGesture } from '../selection/pointer-gesture';
 import type { SelectionState } from '../selection/selection-state.svelte';
 import { isBlockNode, nodeAt } from '../tree-operations/node-primitives';
 import { widgetSourceRange } from '../core/inline/inline-widgets';
-import { LINK_ELEMENT_SELECTOR, resolveLinkAtPoint } from './blocks/text/link-at-point';
+import {
+	LINK_ELEMENT_SELECTOR,
+	followedConstructAt,
+	resolveLinkAtPoint,
+	type LinkPointQuery
+} from './blocks/text/link-at-point';
+import { rawOffsetAt } from '../caret/widget-offset';
 import { onRoot, removeAll } from './editor-root-listeners';
 import type { LinkCardState } from './link-card/link-card-state.svelte';
 import type { Reading } from '../schema/reading';
@@ -93,18 +99,31 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		return target.closest(NOT_A_DRAG_START) === null;
 	}
 
+	/** The editable block `el` sits in, its node and its content element. */
+	function blockAt(el: Element): LinkPointQuery | null {
+		const path = findSurfacePathForElement(el);
+		if (!path) return null;
+		const block = nodeAt(deps.getDoc(), path);
+		if (block === null || !isBlockNode(block)) return null;
+		const contentEl = deps.getBlockElByPath(path);
+		return contentEl ? { contentEl, block, path, reading: deps.reading } : null;
+	}
+
 	/** Open the card on the link `el` renders, or report that nothing there is one. The caret
 	 *  has already landed from mousedown, which is the one the card state snapshots. */
 	function openLinkCard(el: Element): boolean {
-		const path = findSurfacePathForElement(el);
-		if (!path) return false;
-		const block = nodeAt(deps.getDoc(), path);
-		if (block === null || !isBlockNode(block)) return false;
-		const contentEl = deps.getBlockElByPath(path);
-		if (!contentEl) return false;
-		const hit = resolveLinkAtPoint({ contentEl, block, path, reading: deps.reading });
-		if (!hit) return false;
-		return deps.linkCard.open(hit.target);
+		const at = blockAt(el);
+		const hit = at && resolveLinkAtPoint(at);
+		return hit ? deps.linkCard.open(hit.target) : false;
+	}
+
+	/** Whether the construct a rendered anchor draws is one a click follows: the same rows that
+	 *  give Edit link its target, so nothing follows that can't be edited. */
+	function anchorFollows(anchor: Element): boolean {
+		const at = blockAt(anchor);
+		if (!at) return false;
+		const offset = rawOffsetAt(at.contentEl, anchor, 0);
+		return followedConstructAt(at.block, offset, deps.reading) !== null;
 	}
 
 	function blurEditingSurface(root: HTMLElement): void {
@@ -117,19 +136,12 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		let marginDrag = false;
 		let marginSession: { dispose(): void } | null = null;
 
-		const handleAnchorClick = (anchor: HTMLAnchorElement, e: MouseEvent) => {
-			// The host's own header follows the page's link behaviour, not click-to-edit.
-			if (deps.isHostChrome(anchor)) return;
-			const href = anchor.getAttribute('href');
-			if (!href) return;
-			// Always suppressed: cursor placement comes from mousedown.
-			e.preventDefault();
-			if (deps.activationClick(e)) deps.activateLink(href, e);
-		};
-
 		const handleClick = (e: MouseEvent) => {
 			const target = e.target as Element | null;
-			const anchor = target?.closest('a[href]') as HTMLAnchorElement | null;
+			// The anchor carries the destination after the host's rewrite and the scheme check.
+			const anchor = target?.closest('a[href]') ?? null;
+			// The host's own header follows the page's link behaviour, not click-to-edit.
+			if (anchor && deps.isHostChrome(anchor)) return;
 			// A plain click the link doesn't follow opens its card, as does one on a blocked-scheme
 			// link (a plain span, and exactly the link a user opens the card to fix).
 			const follows = anchor !== null && deps.activationClick(e);
@@ -141,7 +153,9 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 				}
 			}
 			if (anchor) {
-				handleAnchorClick(anchor, e);
+				// Always suppressed: cursor placement comes from mousedown.
+				e.preventDefault();
+				if (follows && anchorFollows(anchor)) deps.activateLink(anchor.getAttribute('href')!, e);
 				return;
 			}
 			// A double or triple click places no caret: the multi-click select painted its range.

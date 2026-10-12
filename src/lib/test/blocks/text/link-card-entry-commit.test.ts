@@ -183,6 +183,7 @@ describe('create entry', () => {
 				path: [0],
 				card,
 				enterWidget: () => {},
+				placeCaret: () => {},
 				selection,
 				crossBlockRange,
 				reading: fixtureReading({}, mode)
@@ -276,6 +277,7 @@ describe('range entry', () => {
 			reading: fixtureReading(reading, 'live'),
 			card,
 			enterWidget: () => {},
+			placeCaret: () => {},
 			selection: start === end ? null : { start, end },
 			crossBlockRange
 		});

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// G4.152: every anchor the editor renders, which a click follows, has an edit target in live mode.
-// The sample table is typed over every built-in inline kind, so a new kind gets a row.
+// G4.152: every anchor the editor renders resolves, by the lookup a click follows through, to a
+// construct with an edit target in live mode. The samples are typed over every built-in kind.
 // Miss-analysis: following read the DOM and editing read a policy flag only links had, and no test
 // asked whether everything a click follows could be edited, so a bare URL had no Edit link.
 import { describe, it, expect, afterEach } from 'vitest';
@@ -10,7 +10,7 @@ import { inlineDescendants } from '#lib/core/inline/index.js';
 import { resolvedInlineContent } from '#lib/core/inline/inline-cache.js';
 import type { InlineNodeKind } from '#lib/core/nodes.js';
 import { createTextRender } from '#lib/components/blocks/text/text-render.js';
-import { followTargetAt } from '#lib/components/blocks/text/link-at-point.js';
+import { followTargetAt, followedConstructAt } from '#lib/components/blocks/text/link-at-point.js';
 import { rawOffsetAt } from '#lib/caret/widget-offset.js';
 import { makeRenderHarness } from '#lib/test/harness/text-render.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
@@ -72,7 +72,9 @@ describe('everything a click follows can be edited (G4.152)', () => {
 		expect(kinds, 'the sample holds its kind').toContain(kind);
 		for (const anchor of el.querySelectorAll('a[href]')) {
 			const offset = rawOffsetAt(el, anchor, 0);
-			expect(followTargetAt(node, offset, reading), anchor.outerHTML).not.toBeNull();
+			const shown = anchor.outerHTML;
+			expect(followedConstructAt(node, offset, reading), `${shown} follows`).not.toBeNull();
+			expect(followTargetAt(node, offset, reading), `${shown} has an edit`).not.toBeNull();
 		}
 	});
 });

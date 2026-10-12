@@ -66,7 +66,7 @@ getInlineConstructPolicy('strong');
 //   mark: { nestingRank: 0, markerBytes: '**', command: 'format.toggleStrong' } }
 getInlineConstructPolicy('link');
 // { edgeAffinity: 'never-extend', autoUnwrapOnEmpty: true, splitBehavior: 'close-and-reopen',
-//   revealable: true, cardEditable: true, prose: 'content' }
+//   revealable: true, followEdit: 'card', prose: 'content' }
 getInlineConstructPolicy('text'); // undefined: no row, so no live-mode behavior at all
 ```
 
@@ -76,7 +76,7 @@ Field by field:
 - `autoUnwrapOnEmpty`: whether emptying the construct takes its delimiters with it (§ 4.4).
 - `splitBehavior`: what Enter inside it does (§ 4.4).
 - `revealable`: whether preview-inline may show its markers when the caret enters.
-- `cardEditable`: whether the link card (§ 4.6) is the way to its destination.
+- `followEdit`: whether a click follows the construct, and how "Edit link" and Mod+K edit it then. A link's `'card'` opens the link card (§ 4.6); an autolink's `'text'` puts the caret at the URL's end, since the URL is the text you see. The follow path reads this too, so nothing follows that can't be edited.
 - `prose`: how much of the construct is text the author writes, which decides where a trigger like `#` may open the inline menu. All of it (bold), only its content (a link's text, not its URL), or none (a code span, an image). A kind whose row declares no `prose`, or that has no row at all, counts as all of it, unless it's an inline widget (a plugin's formula), which counts as none.
 - `mark`: what a format chord writes for it. The delimiter run, the rank it nests at when one insertion carries several marks, the command that toggles it, and a wrap function for a kind whose delimiters depend on what they enclose (a code span sizes its backtick fence past the longest run inside it).
 

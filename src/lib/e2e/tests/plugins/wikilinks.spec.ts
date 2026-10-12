@@ -4,10 +4,9 @@ import { PluginsPage, capturedErrors } from './helpers';
 
 /**
  * `[[note]]` links as inline widgets in a host whose links follow on a plain click, the limestone
- * integration reproduced in the harness (`routes/test/plugins/wikilinks`, `linkClick: 'plain'`).
- * Seed `wikilinks`: a link mid-prose (block 0), a typing target (block 1), a Markdown link
- * (block 2), a link in a table cell (block 3), a bare URL (block 4), an angle autolink (block 5).
- * Requirements: e2e/requirements/plugins/wikilinks.md.
+ * integration reproduced in the harness (`routes/test/plugins/wikilinks`, `linkClick: 'plain'`),
+ * and the Markdown links and autolinks beside them. The seed's blocks and the scenarios are in
+ * e2e/requirements/plugins/wikilinks.md.
  */
 
 const link = (editor: PluginsPage) => editor.page.locator('.wikilink[data-target="Meeting notes"]');
@@ -254,8 +253,13 @@ test.describe('wikilinks that follow on a plain click', () => {
 // An autolink's destination is its own text, so editing it means a caret at the URL's end: past the
 // last letter of a bare URL, and inside the closing `>` of an angle one, which live mode hides.
 const AUTOLINKS = [
-	{ name: 'a bare URL', block: 4, caret: 24, edited: '\nhttps://example.org/bar\n' },
-	{ name: 'an angle autolink', block: 5, caret: 30, edited: 'See <https://example.org/angl> here' }
+	{ name: 'a bare URL', block: 4, caret: 24, edited: '\nhttps://example.org/barXe\n' },
+	{
+		name: 'an angle autolink',
+		block: 5,
+		caret: 30,
+		edited: 'See <https://example.org/anglXe> here'
+	}
 ] as const;
 
 test.describe('autolinks a click follows can be edited', () => {
@@ -268,7 +272,7 @@ test.describe('autolinks a click follows can be edited', () => {
 		await editor.waitForRenderFlush();
 	});
 
-	/** Backspace takes the URL's last letter only when the caret sits at the URL's end. */
+	/** The caret sits at the URL's end, and a letter typed one step back lands in the URL. */
 	async function expectEditingAtUrlEnd(
 		page: Page,
 		autolink: (typeof AUTOLINKS)[number]
@@ -276,7 +280,8 @@ test.describe('autolinks a click follows can be edited', () => {
 		await expect
 			.poll(async () => (await editor.bridge.getSelectionPaths())?.focus)
 			.toEqual({ path: [autolink.block], offset: autolink.caret });
-		await page.keyboard.press('Backspace');
+		await page.keyboard.press('ArrowLeft');
+		await page.keyboard.type('X');
 		await editor.bridge.waitForSourceContains(autolink.edited);
 	}
 
@@ -316,4 +321,16 @@ test.describe('autolinks a click follows can be edited', () => {
 			});
 		}
 	}
+
+	test('Edit link on a bare URL in a table cell puts the caret at its end', async ({ page }) => {
+		const box = await page.locator('.table-cell a.md-autolink').boundingBox();
+		if (!box) throw new Error('no cell autolink box');
+
+		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+		await page.getByRole('menuitem', { name: 'Edit link' }).click();
+		await page.keyboard.press('ArrowLeft');
+		await page.keyboard.type('X');
+
+		await editor.bridge.waitForSourceContains('https://example.org/celXl |');
+	});
 });

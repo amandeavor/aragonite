@@ -7,8 +7,8 @@ prefix-override priority, and a widget registered with `revealSource` and
 plain click follows a link, the way it does on a web page. The widget decides whether to act by
 asking its `isActivationClick` prop, so these tests go through the same answer the editor uses.
 Seed `wikilinks`: a link mid-prose in block 0, a plain place to type in block 1, a Markdown link
-in block 2, a link in a table cell in block 3, a bare URL in block 4 and an angle autolink
-(`<https://...>`) in block 5.
+in block 2, a link and a bare URL in a table cell in block 3, a bare URL in block 4 and an angle
+autolink (`<https://...>`) in block 5.
 
 ## User interactions
 
@@ -40,11 +40,12 @@ in block 2, a link in a table cell in block 3, a bare URL in block 4 and an angl
 A bare URL is its own destination, so "editing" it means a caret at the URL's end. Every row runs
 on both hosts: the seed's plain-click one, and Ctrl-click after the toggle.
 
-- Edit link in the right-click menu on a bare URL puts the caret right after its last letter, and
-  Backspace takes that letter; nothing opens, no card.
+- Edit link in the right-click menu on a bare URL puts the caret right after its last letter, where
+  a letter typed one step back lands in the URL; nothing opens, no card.
 - Edit link on an angle autolink puts the caret inside the closing `>` (hidden in live mode), and
-  Backspace takes the URL's last letter, not the bracket.
+  the same letter lands in the URL, not past the bracket.
 - Mod+K with the caret inside either one does the same.
+- Edit link on a bare URL in a table cell, from the table's own menu, puts the caret at its end too.
 
 Miss-analysis: the harness widget acted on every click by hand instead of asking the editor, so a
 widget that read the shared Ctrl/Cmd check (as limestone's did) and did nothing on a plain click

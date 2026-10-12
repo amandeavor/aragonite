@@ -180,7 +180,7 @@ function registerBuiltInInlinePolicies(): void {
 		autoUnwrapOnEmpty: true,
 		splitBehavior: 'close-and-reopen',
 		revealable: true,
-		cardEditable: true,
+		followEdit: 'card',
 		// The text is prose; the destination and the title are not.
 		prose: 'content'
 	});
@@ -193,13 +193,14 @@ function registerBuiltInInlinePolicies(): void {
 		// Its alt text is an attribute of the picture, not prose on the page.
 		prose: 'none'
 	});
-	// An autolink's text is its destination, so neither edge extends and a split stays plain
-	// (`docs/design/live-mode.md` § 4.2 Typing at a hidden edge).
+	// An autolink's text is its destination, so neither edge extends, a split stays plain
+	// (`docs/design/live-mode.md` § 4.2 Typing at a hidden edge) and editing it is editing the text.
 	registerInlineConstructPolicy('autolink', {
 		edgeAffinity: 'never-extend',
 		autoUnwrapOnEmpty: false,
 		splitBehavior: 'plain',
 		revealable: false,
+		followEdit: 'text',
 		prose: 'none'
 	});
 	// Marker runs with no data attribute, always hidden in live mode: the `\X` pair and the
