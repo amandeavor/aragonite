@@ -51,7 +51,7 @@ export interface MarkHoverTracker {
 	unpaint(owner: object): void;
 	/** The editor root's `pointermove`. */
 	move(ev: HoverPointer): void;
-	/** The pointer left the editor root. */
+	/** The pointer left the editor root, or the editor is unmounting. */
 	leave(): void;
 	end(): void;
 }
@@ -112,7 +112,18 @@ export function createMarkHover(deps: MarkHoverDeps): MarkHoverTracker {
 		});
 	}
 
+	// Any scroll up to the window moves content under a still pointer with no pointermove (and in
+	// host scroll mode no repaint); armed only while a pointer position is held.
+	const onScroll = () => recheck();
+	const SCROLL_CAPTURE = { capture: true, passive: true } as const;
+
+	function hold(next: { x: number; y: number }): void {
+		if (!point) window.addEventListener('scroll', onScroll, SCROLL_CAPTURE);
+		point = next;
+	}
+
 	function release(): void {
+		if (point) window.removeEventListener('scroll', onScroll, SCROLL_CAPTURE);
 		point = null;
 		end();
 	}
@@ -131,7 +142,7 @@ export function createMarkHover(deps: MarkHoverDeps): MarkHoverTracker {
 			// A touch never hovers; a pressed button or a pen in contact is a drag, which holds none.
 			if (ev.pointerType === 'touch') return;
 			if (ev.buttons !== 0 || !inDocumentContent(ev.target)) return release();
-			point = { x: ev.clientX, y: ev.clientY };
+			hold({ x: ev.clientX, y: ev.clientY });
 			recheck();
 		},
 		leave: release,

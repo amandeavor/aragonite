@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { gotoReady } from '../../goto-ready';
 import { pointAtRaw, textRunRect, type Point, type TextRunRect } from '../../text-runs';
 import { FIXTURE_BYTES } from '../perf/vr-helpers';
 
@@ -507,5 +508,69 @@ test.describe('mark hover under touch', () => {
 			.poll(() => page.evaluate(() => (window as any).__test.getSelection()?.focus))
 			.toEqual({ path: [0], offset: 3 });
 		expect(await settledHovers(page)).toEqual([]);
+	});
+});
+
+// Host scroll mode, both shapes: the window scrolls (`/test/page-scroll`), or a scroller between
+// the editor and the window does (`/test/flow`). Neither scroll repaints an overlay.
+test.describe('mark hover under host scrolling', () => {
+	/** Records hovers on `window.__hovers` from a mark on `path` 0..9, through `registry`. */
+	const recordHovers = (registry: string, path: number[]) =>
+		`(() => {
+			const w = window;
+			w.__hovers = [];
+			${registry}.addSource({
+				name: 'host-scroll',
+				provide: () => [{
+					type: 'mark', path: ${JSON.stringify(path)}, start: 0, end: 9, class: 'hv-host',
+					interactive: { onHover: (dec, hover) => w.__hovers.push({ cls: dec.class, anchor: hover ? { left: hover.anchor.left, top: hover.anchor.top, width: hover.anchor.width } : null }) }
+				}]
+			});
+		})()`;
+
+	async function hoverRect(
+		page: Page,
+		r: { left: number; top: number; right: number; bottom: number }
+	) {
+		await moveTo(page, { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 });
+		await expect.poll(() => hovers(page)).toHaveLength(1);
+	}
+
+	test('the page scrolling a little under a still pointer ends the hover once', async ({
+		page
+	}) => {
+		await gotoReady(page, '/test/page-scroll?blocks=40');
+		await page.evaluate(recordHovers('w.__test.decorations', [2]));
+		await expect(page.locator('.decoration-overlay.hv-host')).toHaveCount(1);
+		const [word] = await page.evaluate(() =>
+			(window as any).__test.rects
+				.rangeRects([2], 0, 9)
+				.map((r: DOMRect) => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom }))
+		);
+		await hoverRect(page, word);
+
+		await page.evaluate(() => window.scrollBy(0, 120));
+		// The scroll event lands a frame later, so wait for the end before reading the whole run.
+		await expect.poll(() => hovers(page)).toHaveLength(2);
+		const run = await settledHovers(page);
+		expect(run.map((r) => r.anchor === null)).toEqual([false, true]);
+	});
+
+	test('a host scroller scrolling a little under a still pointer ends the hover once', async ({
+		page
+	}) => {
+		await gotoReady(page, '/test/flow');
+		const scroller = page.getByTestId('scroller');
+		await scroller.evaluate((el) => (el.scrollTop = 1000));
+		await page.evaluate(recordHovers("w.__flow.decorations('a')", [3]));
+		await expect(page.locator('.decoration-overlay.hv-host')).toHaveCount(1);
+		const [word] = await page.evaluate(() => (window as any).__flow.rangeRects('a', [3], 0, 9));
+		await hoverRect(page, word);
+
+		await scroller.evaluate((el) => (el.scrollTop += 120));
+		// The scroll event lands a frame later, so wait for the end before reading the whole run.
+		await expect.poll(() => hovers(page)).toHaveLength(2);
+		const run = await settledHovers(page);
+		expect(run.map((r) => r.anchor === null)).toEqual([false, true]);
 	});
 });

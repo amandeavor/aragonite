@@ -33,7 +33,10 @@ pointer aims at the text the mark covers, through Playwright's mouse.
   class) while the pointer stays still: no `null` and no second hover; invalidated so the mark is
   gone: exactly one `null`
 - Hover started, then the document scrolls a little under the still pointer, moving the mark out
-  from under it: exactly one `null`
+  from under it: exactly one `null`, in each place a scroll can happen: the editor's own scroller,
+  the window in host scroll mode (`/test/page-scroll`), and a host scroller between the editor and
+  the window (`/test/flow`). Miss-analysis: the row ran only in self scroll mode, where every scroll
+  repaints the overlays, so host mode (no repaint, no `pointermove` on a wheel) kept a stale hover
 - Hover started, then the document scrolls far enough that the hovered block leaves the rendered
   range: exactly one `null`
 - Hover started, then `loadContent` replaces the document: exactly one `null` for the old

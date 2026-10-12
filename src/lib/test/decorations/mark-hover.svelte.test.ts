@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // A mark's hover comes from hit-testing the pointer against the painted rects, starts once and
 // ends once per hover, keyed by the decoration rather than the rect the overlay repaints.
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import DecorationOverlay from '#lib/components/overlays/DecorationOverlay.svelte';
 import type { BlockComponent } from '#lib/block-component.js';
@@ -191,6 +191,39 @@ describe('a started hover ends exactly once, whatever ends it', () => {
 		provide([hoverMark(calls)]);
 		pointer(10, 8);
 		expect(calls).toHaveLength(1);
+	});
+});
+
+describe('a scroll under a still pointer', () => {
+	it('re-runs the check from a scroll anywhere on the page, with no repaint', () => {
+		const calls: HoverCall[] = [];
+		const { engine, pointer, blockEl } = setup();
+		swappableSource(engine, [hoverMark(calls)]);
+		pointer(10, 8);
+
+		// The block moves up under the pointer, as a host scroller or the window scrolling does.
+		blockEl.getBoundingClientRect = () => new DOMRect(0, -120, 400, 200);
+		const elsewhere = document.createElement('div');
+		document.body.append(elsewhere);
+		elsewhere.dispatchEvent(new Event('scroll'));
+
+		expect(calls.map((c) => c.hover === null)).toEqual([false, true]);
+	});
+
+	it('listens for scrolls only while the pointer is over the editor', () => {
+		const add = vi.spyOn(window, 'addEventListener');
+		const remove = vi.spyOn(window, 'removeEventListener');
+		const { engine, pointer } = setup();
+		const scrolls = (spy: typeof add) => spy.mock.calls.filter(([type]) => type === 'scroll');
+
+		expect(scrolls(add)).toHaveLength(0);
+		pointer(10, 8);
+		pointer(12, 8);
+		expect(scrolls(add)).toHaveLength(1);
+		engine.markHover.leave();
+		expect(scrolls(remove)).toHaveLength(1);
+		add.mockRestore();
+		remove.mockRestore();
 	});
 });
 

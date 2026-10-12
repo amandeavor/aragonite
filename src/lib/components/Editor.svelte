@@ -696,6 +696,8 @@
 	$effect(() => () => {
 		// Cancels the typing batch's pause timer, which would outlive the editor.
 		controller.flushDebouncedCheckpoint();
+		// Drops the hover's page scroll listener, which a pointer resting here would keep.
+		decorationEngine.markHover.leave();
 		lifetimeController.abort();
 	});
 
