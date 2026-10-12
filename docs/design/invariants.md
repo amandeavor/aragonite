@@ -648,12 +648,13 @@ armed). Predicate `invariants/top-level-untouched.ts :: checkTopLevelUntouched` 
 **G1.55 · A rebuilt container reads back as itself** (`reads-back`). After a keystroke's rebuild
 and after every commit, dev parses each top-level container the edit wrote in, on its own, and
 compares the shape (kinds, child counts, metadata) with the tree's; a dropped leading space that
-re-nests a list passes every byte check and fails this one. The edit names those containers itself,
-so the check never searches the document. It skips a container over 16K characters, an empty one,
-and anything the perf instruments time; the empty-container skip hides a bullet a range delete
-emptied, an open defect. Predicate `invariants/reads-back.ts :: checkReadsBack` · run by
-`editor-actions/leaf-write.ts` and `editor-actions/commit/undo-controller.ts` ·
-`test/invariants/reads-back.test.ts`.
+re-nests a list passes every byte check and fails this one. It reads the bytes the way the editor
+opens a file (`tree-operations/node-primitives.ts :: readAsOpened`), so a bare `- ` reads back with
+the empty paragraph you type into, and a container left with no bytes at all fails, since a reload
+wouldn't show it. The edit names those containers itself, so the check never searches the document.
+It skips a container over 16K characters and anything the perf instruments time. Predicate
+`invariants/reads-back.ts :: checkReadsBack` · run by `editor-actions/leaf-write.ts` and
+`editor-actions/commit/undo-controller.ts` · `test/invariants/reads-back.test.ts`.
 
 **G1.58 · An indent key over a range keeps every word, in order** (`range-indent-keeps-text`). Tab,
 Shift+Tab or a rebound indent key over a range moves list items, shifts code lines, or does what a
@@ -1046,6 +1047,7 @@ unguarded.
 | G4.149 | A preview of the next insertion runs a write's own spend, and changes no record           | harness |
 | G4.150 | One placer for a hidden edge: no other file reads the caret's side or how it arrived      | L       |
 | G4.151 | One click-side check, called from the click entry both prose blocks share                 | L       |
+| G4.159 | Every container kind keeps bytes that reload as it when its last text is deleted          | harness |
 
 ### The entries
 
@@ -1955,6 +1957,12 @@ start past a line's end, or the side of a code chip's border) is called only fro
 `widget-interaction.ts :: snapClickToWidgetEdge`, the click entry both prose blocks' `onClick` go
 through, and neither `onClick` measures the press against its text itself.
 `lint/edge-rule-guards.test.ts`.
+
+**G4.159 · An emptied container keeps its opening line.** Each container kind (bullet, ordered and
+task item, quote, nested pairs of them, footnote definition, alert, admonition) has its last text
+deleted at the very end of the document, through the text write and through the ancestry rebuild,
+and the bytes must reload as the empty container the editor still shows: `- `, `>`, `[^1]: `.
+`test/schema/emptied-body-bytes.test.ts`.
 
 ## Accessibility
 
