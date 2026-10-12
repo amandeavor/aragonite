@@ -11,7 +11,7 @@ import {
 	placeCaret
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { pressKey } from '#lib/test/harness/settle.js';
-import { TEXT_HOSTS, insertBy, type InsertionRoute } from '#lib/test/harness/insertion-routes.js';
+import { INSERTION_ROUTES, TEXT_HOSTS, insertBy } from '#lib/test/harness/insertion-routes.js';
 import {
 	caretMarks,
 	installDrawnCaretStubs,
@@ -31,9 +31,6 @@ afterEach(destroyMountedEditors);
 const LINE = 'Some **bold** text';
 const OFFSETS = [11, 13];
 
-/** Pending marks are spent by these two; the rest are a separate gap. */
-const SPENDING_ROUTES: InsertionRoute[] = ['hardware key', 'composition'];
-
 describe.each(TEXT_HOSTS)('the bold chord at the end of a bold, in $name', (host) => {
 	async function chordAt(at: number) {
 		const editor = mountEditor<DrawnCaretSeam>({
@@ -52,7 +49,7 @@ describe.each(TEXT_HOSTS)('the bold chord at the end of a bold, in $name', (host
 		expect(caretMarks(editor)).toEqual([]);
 	});
 
-	describe.each(SPENDING_ROUTES)('typed by %s', (route) => {
+	describe.each(INSERTION_ROUTES)('typed by %s', (route) => {
 		it.each(OFFSETS)('types the letter plain, from %i', async (at) => {
 			const { editor, el } = await chordAt(at);
 			await insertBy(route, el, 'X');

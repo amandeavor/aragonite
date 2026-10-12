@@ -10,10 +10,10 @@ import { parse } from '#lib/core/parser.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import type { BlockEditActions } from '#lib/action-contracts.js';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
-import { createSurfaceWrite } from '#lib/components/blocks/surface-write.js';
+import { createSurfaceWrite } from '#lib/components/blocks/editable/surface-write.js';
 import { stubBlockEdit } from '#lib/testing/headless-actions.js';
 import type { CstNode } from '#lib/core/nodes.js';
-import { makePendingMarks } from '#lib/test/harness/editor-actions.js';
+import { recordingPendingMarks } from '#lib/test/harness/editor-actions.js';
 import { asPresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading, topLevelStore } from '../../harness/fixture-grammar';
 import { createInsertionRecords } from '#lib/caret/next-insertion.js';
@@ -107,8 +107,7 @@ export function makeEdgeDispatch(
 		isRevealing: () => false,
 		enterWidget: () => {},
 		isReading: () => false,
-		pendingMarks: makePendingMarks(),
-		offsetFor: (caret, typed) => placement.offsetFor(caret, typed),
+		pendingMarks: recordingPendingMarks(),
 		...overrides
 	};
 	const placement = createTypedPlacement({

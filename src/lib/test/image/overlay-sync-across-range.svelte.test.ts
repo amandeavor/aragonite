@@ -7,7 +7,7 @@ import {
 	destroyMountedEditors,
 	mountEditor
 } from '#lib/test/harness/mount-editor.svelte.js';
-import type { EditorTestSurface } from '#lib/components/editor-root-test-surface.js';
+import type { EditorTestSurface } from '#lib/components/editor-root/test-surface.js';
 
 const syncRuns = vi.hoisted(() => ({ count: 0 }));
 

@@ -15,7 +15,7 @@ import { getContentRange } from '../../../core/inline';
 import { getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
 import { trimTrailingLineEnding } from '../../../core/lines';
 import { type RawOffset } from '../../../caret/coordinate-spaces';
-import type { PendingMarks } from '../../../caret/pending-marks';
+import type { BlockPendingMarks } from '../../../caret/pending-marks';
 import type { InsideCloserView } from '../../../caret/inside-closer';
 import {
 	landableRawBounds,
@@ -34,12 +34,10 @@ import {
 	type EdgeDeletion
 } from './construct-edge-delete';
 import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
-import { resolveMarkedInsertion } from './pending-mark-insert';
-import { PROBE_BYTE } from './edge-seat';
 import { widgetAtCursor, widgetsIn } from './widget-adjacency';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
-import { rangeWrite, type TextWrite } from '../surface-write';
+import { rangeWrite, withOwnEnding, type TextWrite } from '../editable/surface-write';
 
 /** The part of the inline-widget editing policy the built-in widget rules reuse, in the same
  *  terms but without widening the public API. */
@@ -101,12 +99,8 @@ export interface EdgePolicyDispatchDeps {
 	/** Reading mode: the decoration-widget and marker-prefix branches do nothing at all, and the
 	 *  widget branch writes nothing, though it still selects. */
 	isReading: () => boolean;
-	/** The constructs a toggle at a collapsed caret promised the next insertion. Read and spent
-	 *  here: the first byte after the chord is the insertion they were waiting for. */
-	pendingMarks: PendingMarks;
-	/** Where a byte typed at a raw offset lands (`TypedPlacement.offsetFor`): the chord's marks
-	 *  resolve where a letter would, so a caret either side of a hidden closer means one thing. */
-	offsetFor: (caret: number, typed: string) => number;
+	/** The block's pending marks, where a press that unwraps a construct pends the kinds it took. */
+	pendingMarks: BlockPendingMarks;
 	/** The editor's caret writer, which selects a decoration widget whole. */
 	caretWriter: CaretWriter;
 	/** The caret Edit link left before a hidden closer, which a letter taken back keeps there. */
@@ -136,12 +130,6 @@ interface DispatchArm {
 export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePolicyDispatch {
 	const markerCompletion = createMarkerCompletion();
 	const arms: readonly DispatchArm[] = [
-		{
-			id: 'pending-marks',
-			reason:
-				'an explicit instruction about the very next byte, so it outranks every classification below, which decide by where the caret happens to be',
-			claims: handlePendingMarks
-		},
 		{
 			id: 'cst-widget',
 			reason: 'a key aimed at an atomic construct is the widget branch’s before any byte rule',
@@ -232,6 +220,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		if (!revealsNoMarkers(el)) return null;
 		return resolveEdgeDeletion({
 			display: display(),
+			asWritten: (text) => withOwnEnding(deps.node, text),
 			content: getContentRange(deps.node),
 			caret,
 			direction,
@@ -486,35 +475,6 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		e.preventDefault();
 		deps.setSnapTarget(null);
 		applyEdgeDeletion(deletion, caretOffset);
-		return true;
-	}
-
-	// ── Pending marks ──────────────────────────────────────────────────────────
-
-	/** A printable key while a toggle at a collapsed caret has marks pending. The marks are the newer
-	 *  instruction, so they outrank the arrival side (`docs/design/live-mode.md` § 4.3). */
-	function handlePendingMarks(e: KeyboardEvent, caretOffset: RawOffset | null): boolean {
-		if (!isPlainTypingKey(e) || caretOffset === null || heldRange()) return false;
-		// Only a block that draws no delimiters holds pending marks; switching mode clears them, so
-		// nothing is stranded.
-		const el = deps.getEl();
-		if (!el || !revealsNoMarkers(el)) return false;
-		// Spent on the conditions above, not on the outcome: one insertion was promised the
-		// marks, and this is it whether or not the rewrite below finds anything to do.
-		const marks = deps.pendingMarks.consume();
-		if (!marks) return false;
-		const marked = resolveMarkedInsertion(
-			display(),
-			deps.offsetFor(caretOffset, PROBE_BYTE),
-			e.key,
-			marks,
-			inlinesOf(deps.node),
-			deps.reading
-		);
-		if (!marked) return false;
-		e.preventDefault();
-		deps.setSnapTarget(null);
-		writeDisplay(marked.raw, marked.caret, 'pending-marks');
 		return true;
 	}
 

@@ -12,7 +12,7 @@ import { fixtureReading, topLevelStore } from '../../harness/fixture-grammar';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
 import { mountBodyRow } from '../../harness/editor-actions';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
-import { createSurfaceWrite, rangeWrite } from '#lib/components/blocks/surface-write.js';
+import { createSurfaceWrite, rangeWrite } from '#lib/components/blocks/editable/surface-write.js';
 import type { BlockEditActions } from '#lib/action-contracts.js';
 import type { LeafRangeEdit } from '#lib/tree-operations/leaf-range.js';
 import type { NodeView } from '#lib/core/node-views.js';

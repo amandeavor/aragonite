@@ -20,7 +20,7 @@ import { testLeaf } from '#lib/test/harness/test-kinds.js';
 import PlainLeafBlock from '../plugins/fixtures/PlainLeafBlock.svelte';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
 import type { MathRenderer } from '#lib/plugins/latex/math-renderer.js';
-import type { EditorTestSurface } from '#lib/components/editor-root-test-surface.js';
+import type { EditorTestSurface } from '#lib/components/editor-root/test-surface.js';
 
 const stubRenderer: MathRenderer = () => ({ dom: document.createElement('span') });
 

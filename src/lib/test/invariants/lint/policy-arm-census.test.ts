@@ -130,7 +130,7 @@ const HAND_WRITTEN_ARMS: readonly HandWrittenArm[] = [
 			'the menu noun "image" for a paragraph of pictures, not the inline kind: no gesture reads it and no construct policy hangs on it'
 	},
 	{
-		path: 'src/lib/components/editor-root-menus.ts',
+		path: 'src/lib/components/editor-root/menus.ts',
 		detection: 'kind-literal',
 		fate: 'outside',
 		reason:

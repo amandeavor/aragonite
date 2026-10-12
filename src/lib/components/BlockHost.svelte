@@ -8,8 +8,8 @@
 	} from '../block-component';
 	import type { NodeView } from '../core/node-views';
 	import { useBlockDecorations } from '../decorations/use-block-decorations.svelte';
-	import SelectionOverlay from './SelectionOverlay.svelte';
-	import DecorationOverlay from './DecorationOverlay.svelte';
+	import SelectionOverlay from './overlays/SelectionOverlay.svelte';
+	import DecorationOverlay from './overlays/DecorationOverlay.svelte';
 	import BlockDragHandle from './BlockDragHandle.svelte';
 	import { showsDragHandle } from './drag-handle';
 	import TextEditableBlock from './blocks/text/TextEditableBlock.svelte';

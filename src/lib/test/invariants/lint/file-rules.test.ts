@@ -323,7 +323,7 @@ const RULES: FileRule[] = [
 		matches: /\b(?:setTimeout|setInterval|queueMicrotask|requestAnimationFrame)\s*\(/,
 		allowed: {
 			'src/lib/selection/autoscroll.ts': 'rAF autoscroll loop: an animation cadence, not ordering',
-			'src/lib/components/blocks/editable-leaf.ts':
+			'src/lib/components/blocks/editable/editable-leaf.ts':
 				'rAF fold of a revealed source after a range drag: the blur it answers arrives inside the frame that measured the range',
 			'src/lib/windowing/observe-resize.ts':
 				'rAF start of a size observation: one begun while a frame delivers resize notifications is skipped and reported as a loop error',
@@ -350,29 +350,6 @@ const RULES: FileRule[] = [
 		],
 		misses: [
 			'clearTimeout(id);\ncancelAnimationFrame(raf);\nlet t: ReturnType<typeof setTimeout> | null = null;'
-		]
-	},
-	{
-		id: 'G4.31 the pending marks are spent only where typed or composed text is written',
-		matches: /\bpendingMarks\.consume\b/,
-		allowed: {
-			'src/lib/components/blocks/text/edge-policy-dispatch.ts':
-				'the typed byte at a collapsed live caret, written with the marks around it',
-			'src/lib/components/blocks/text/TextEditableBlock.svelte':
-				'hands the spend to the composition write, which writes the composed text',
-			'src/lib/components/blocks/table/TableCellBlock.svelte':
-				'hands the spend to the cell’s composition write, which writes the composed text'
-		},
-		reason:
-			'a set spent where no text is written is a promise dropped with nothing written: route the spend through the typing or composition write',
-		reaches: [SOURCE.edgePolicyDispatch],
-		hits: [
-			'const marks = deps.pendingMarks.consume();',
-			'consumePendingMarks: caretMemory.pendingMarks.consume,'
-		],
-		misses: [
-			'caretMemory.pendingMarks.toggle(format);',
-			'restore: caretMemory.pendingMarks.restore'
 		]
 	},
 	{
@@ -535,7 +512,7 @@ const RULES: FileRule[] = [
 			// Modules that own a coordinate space.
 			'src/lib/caret/widget-offset.ts': 'DomTextOffset home: the walk brands its returns',
 			'src/lib/caret/sticky-measure.ts': 'EditorX/ViewportX home + walk-offset candidate scan',
-			'src/lib/caret/surface-backend.ts':
+			'src/lib/components/blocks/editable/surface-backend.ts':
 				'RawOffset home for the caret intent a block records as a plain number (the snap target)',
 			'src/lib/selection/table-endpoint-snap.ts':
 				'CellIndex home: a row-major cell index from table geometry',
@@ -546,9 +523,9 @@ const RULES: FileRule[] = [
 			'src/lib/editor-actions/commit/undo-controller.ts':
 				'DocPath at the commit sequence, gating the G1.16 guard entry',
 			// Public boundaries, where plain-number offsets are branded on entry.
-			'src/lib/components/blocks/editable-surface.ts':
+			'src/lib/components/blocks/editable/editable-surface.ts':
 				'BlockComponent boundary: public number offsets branded at entry',
-			'src/lib/components/blocks/editable-leaf.ts':
+			'src/lib/components/blocks/editable/editable-leaf.ts':
 				'plugin-leaf surface: zero-prefix DOM-text mutations brand raw offsets in place',
 			'src/lib/components/blocks/code/CodeBlock.svelte':
 				'code surface: zero-prefix DOM-text mutations brand raw offsets in place',
@@ -788,9 +765,9 @@ const RULES: FileRule[] = [
 		population: (file) => ACTIVE_IDENTITY_RE.test(file.code),
 		matches: (file) => !HOST_AWARE_RE.test(file.code),
 		allowed: {
-			'src/lib/caret/surface-backend.ts':
+			'src/lib/components/blocks/editable/surface-backend.ts':
 				'the editable surface this backend was built over; a whole-block kind builds none',
-			'src/lib/components/blocks/editable-surface.ts':
+			'src/lib/components/blocks/editable/editable-surface.ts':
 				'the pending-restore guard, reachable only from an editable leaf surface',
 			'src/lib/caret/reveal-source.ts':
 				'the reveal target is a text surface; the host paints no source',
@@ -1189,7 +1166,7 @@ const RULES: FileRule[] = [
 			/\.ctrlKey\s*\|\|\s*\w+\.metaKey|\.metaKey\s*\|\|\s*\w+\.ctrlKey|!\s*\w+\.ctrlKey\s*&&\s*!\s*\w+\.metaKey|!\s*\w+\.metaKey\s*&&\s*!\s*\w+\.ctrlKey/,
 		allowed: {
 			'src/lib/activation-click.ts': 'the rule itself',
-			'src/lib/components/blocks/editable-leaf.ts':
+			'src/lib/components/blocks/editable/editable-leaf.ts':
 				'a modified Backspace is a shortcut, not the plain key the leaf handles',
 			'src/lib/components/blocks/table/TableCellBlock.svelte':
 				'a modified Enter or arrow is a shortcut, not the plain key the cell handles',
@@ -1321,9 +1298,9 @@ const LEAF_RANGE_RULES: FileRule[] = [
 				'remembers a pair the auto-pair wrote and writes nothing',
 			'src/lib/components/blocks/table/TableCellBlock.svelte':
 				'a `<br>` inserted at the caret, which deletes nothing',
-			'src/lib/components/blocks/editable-leaf.ts':
+			'src/lib/components/blocks/editable/editable-leaf.ts':
 				'a shown source’s own text, where every marker is on screen',
-			'src/lib/components/blocks/editable-surface.ts':
+			'src/lib/components/blocks/editable/editable-surface.ts':
 				'text typed at an offset once a range is gone, which deletes nothing',
 			'src/lib/components/image/image-widget-editing.ts':
 				'an image replaced by its own edited bytes, one whole construct for another',
@@ -1515,7 +1492,7 @@ const CORRECTIONS: Record<string, { calls: number; reason: string }> = {
 		calls: 1,
 		reason: 'the one distance the round corrects by, read through the same walk as `resolve`'
 	},
-	'src/lib/components/editor-root-geometry.ts :: <module> :: compensate': {
+	'src/lib/components/editor-root/geometry.ts :: <module> :: compensate': {
 		calls: 1,
 		reason:
 			'the header slot sits above every list, so no list’s pick applies: it keeps the document still unless the page is at its top'
@@ -1662,7 +1639,8 @@ const MARK_HANDLER_CALLERS: ManifestRule = {
 			'`onHover`, started and ended by the one lifecycle keyed on the decoration',
 		'src/lib/decorations/mark-activation.ts':
 			'`onActivate`, run by `decorations.activateAtCaret` on the mark the precedence rule picks',
-		'src/lib/components/DecorationOverlay.svelte': '`onClick`, on the rect the click landed on'
+		'src/lib/components/overlays/DecorationOverlay.svelte':
+			'`onClick`, on the rect the click landed on'
 	},
 	reason:
 		'a mark handler called from anywhere else skips the hover lifecycle’s one-end rule or the `error` event: route the gesture through `DecorationEngine.markHover` or `runMarkHandler`',
@@ -1853,7 +1831,7 @@ const TYPED_WRITE_ASKS: ManifestRule[] = [
 		population: under(SOURCE_DIR.components, SOURCE_DIR.caret, SOURCE_DIR.selection),
 		matches: /\.(?:afterTypedWrite|completeLineOnType)\s*\(/,
 		declared: {
-			'src/lib/components/blocks/surface-write.ts':
+			'src/lib/components/blocks/editable/surface-write.ts':
 				'`writeText`, which asks both for a `typed` write and for no other'
 		},
 		reason:
@@ -1948,7 +1926,7 @@ const RANGE_INDENT: ManifestRule[] = [
 		declared: {
 			'src/lib/editor-actions/container-block-component.ts':
 				'the container dispatch, which leaves a key a live range owns to the range, whose handler claims it only after an await',
-			'src/lib/components/blocks/surface-wiring.svelte.ts':
+			'src/lib/components/blocks/editable/surface-wiring.svelte.ts':
 				'a leaf’s own chords, which the leaf runs once the range’s handler has passed on the key',
 			'src/lib/selection/cross-block/keydown.ts':
 				'the range’s own handler: what the caret memory notes, whether a key indents, and a format chord over the range',
@@ -2516,7 +2494,7 @@ const CODE_EDIT_SPAN: FileRule[] = [
 
 // ── G4.152 a link is followed only where the shared lookup is asked ─────────
 
-const ROOT_CLICK = `${SOURCE_DIR.components}editor-root-gestures.ts`;
+const ROOT_CLICK = `${SOURCE_DIR.components}editor-root/gestures.ts`;
 
 const FOLLOW_ROUTE: FileRule = {
 	id: 'G4.152 a link is followed only by the root click, which asks the shared lookup first',

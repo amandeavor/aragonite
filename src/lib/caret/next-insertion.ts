@@ -1,12 +1,13 @@
 /**
  * The one step every insertion passes before it is written: the block moves it to the side of a
- * hidden edge the caret means, then the caret memory's records spend it (a key that wrote nothing
- * until something is inserted after it, such as Shift+Enter at a block's end). Every route holds
- * the records through `CaretMemory.holdInsertion` and spends them on its own write, so a new record
- * joins every route at once; anything that isn't an insertion there ends them.
+ * hidden edge the caret means, then the caret memory's records spend it (the marks a format chord
+ * promised, a line Shift+Enter opened). Every route holds the records through
+ * `CaretMemory.holdInsertion` and spends them on its own write, so a new record joins every route at
+ * once; anything that isn't an insertion there ends them.
  */
 
 import type { EdgeAffinity } from './edge-affinity';
+import type { InlineMarkKind } from '../schema/inline-construct-policy';
 
 /** A block's displayed text after an edit, and where the caret goes in it. */
 export interface TextEdit {
@@ -16,6 +17,9 @@ export interface TextEdit {
 
 /** A record's answer to an insertion it applies to. */
 export interface SpentEdit extends TextEdit {
+	/** The record put the bytes where the caret means (a pending mark's wrap), so no record after it
+	 *  moves them or holds a space past them. */
+	inPlace?: true;
 	/** The record waits on for the next insertion too: this sets it to what the insertion left, and
 	 *  the hold runs it when the write lets go, so `apply` itself changes nothing. */
 	kept?: () => void;
@@ -37,10 +41,26 @@ export type PlaceInsertion = (
 	caret?: number
 ) => PlacedEdit | null;
 
-/** The block's move of an insertion with the side the records were held at, for a record that
- *  moves bytes across a hidden edge itself. */
-export interface Placement {
+/** `edit`, an insertion at `at` in `before`, wrapped in `marks` or escaped from them where a letter
+ *  typed there with `side` would land; null where no bytes read back that way, or where the block
+ *  draws every marker. */
+export type MarkInsertion = (
+	before: string,
+	edit: TextEdit,
+	at: number,
+	marks: ReadonlySet<InlineMarkKind>,
+	side: EdgeAffinity | null
+) => TextEdit | null;
+
+/** What a block does to an insertion for the records: moves it across a hidden edge, marks it. */
+export interface InsertionPlacement {
 	place: PlaceInsertion;
+	mark: MarkInsertion;
+}
+
+/** The block's placement with the side the records were held at, for a record that moves bytes
+ *  across a hidden edge or marks them. */
+export interface Placement extends InsertionPlacement {
 	side: EdgeAffinity | null;
 }
 
@@ -55,8 +75,9 @@ export interface InsertionRecord {
 
 /** A record held for one write. */
 export interface InsertionSpend {
-	/** The offset an insertion has to land at to spend the record. */
-	readonly at: number;
+	/** The offset an insertion has to land at to spend the record; null when an insertion anywhere
+	 *  in the block spends it, wherever the block places it. */
+	readonly at: number | null;
 	/** `edit` with the record's bytes in it when it inserts at `at` in `before`, else null. Pure, so
 	 *  a preview can ask it too. `placement` is null where the block draws every marker. */
 	apply(before: string, edit: TextEdit, placement: Placement | null): SpentEdit | null;
@@ -71,7 +92,7 @@ export type PreviewInsertion = Omit<HeldInsertion, 'finish'>;
 export interface HeldInsertion {
 	/** The caret's side as the records were held, for a route that forgets the memory first. */
 	readonly side: EdgeAffinity | null;
-	/** Whether a record waits for an insertion at `offset`. */
+	/** Whether a record waits for an insertion at `offset`, or for any insertion here. */
 	waitsAt(offset: number): boolean;
 	/** `edit` moved to the side the caret means, unless a record waits where it inserts, then
 	 *  `spendInPlace`. */
@@ -86,11 +107,17 @@ export interface HeldInsertion {
 
 /** The caret memory's records, and which of them a write holds right now. */
 export interface InsertionRecords {
-	hold(block: object, side: EdgeAffinity | null, place?: PlaceInsertion): HeldInsertion;
+	hold(block: object, side: EdgeAffinity | null, placement?: InsertionPlacement): HeldInsertion;
 	/** The same spend as `hold`, run dry: no record is held, kept or ended by it. */
-	preview(block: object, side: EdgeAffinity | null, place?: PlaceInsertion): PreviewInsertion;
+	preview(
+		block: object,
+		side: EdgeAffinity | null,
+		placement?: InsertionPlacement
+	): PreviewInsertion;
 	/** Grows each time a write takes a record or lets go of one, which changes what `preview` sees. */
 	holdChanges(): number;
+	/** Whether a write holds `record` right now. */
+	holds(record: InsertionRecord): boolean;
 	/** Ends `record` (every record when omitted), in `block` when one is named; true when one ended.
 	 *  A record a write holds stays in effect, drawn and spendable, until that hold lets go of it. */
 	end(record?: InsertionRecord, block?: object): boolean;
@@ -107,7 +134,11 @@ export function createInsertionRecords(records: readonly InsertionRecord[]): Ins
 			return spend ? [{ record, spend, state: 'held' as const }] : [];
 		});
 
-	function hold(block: object, side: EdgeAffinity | null, place?: PlaceInsertion): HeldInsertion {
+	function hold(
+		block: object,
+		side: EdgeAffinity | null,
+		placement?: InsertionPlacement
+	): HeldInsertion {
 		const held = taken(block);
 		for (const h of held) holding.add(h.record);
 		if (held.length > 0) holdChanges++;
@@ -122,7 +153,7 @@ export function createInsertionRecords(records: readonly InsertionRecord[]): Ins
 			...spending(
 				() => held,
 				side,
-				place,
+				placement,
 				(h) => release(h, false)
 			),
 			finish: (changed) => {
@@ -135,15 +166,16 @@ export function createInsertionRecords(records: readonly InsertionRecord[]): Ins
 	function preview(
 		block: object,
 		side: EdgeAffinity | null,
-		place?: PlaceInsertion
+		placement?: InsertionPlacement
 	): PreviewInsertion {
-		return spending(() => taken(block), side, place, endsNothing);
+		return spending(() => taken(block), side, placement, endsNothing);
 	}
 
 	return {
 		hold,
 		preview,
 		holdChanges: () => holdChanges,
+		holds: (record) => holding.has(record),
 		end: (record, block) => {
 			let ended = false;
 			for (const each of record ? [record] : records) {
@@ -198,39 +230,44 @@ interface Taken {
 function spending(
 	entries: () => Taken[],
 	side: EdgeAffinity | null,
-	place: PlaceInsertion | undefined,
+	placement: InsertionPlacement | undefined,
 	ended: (h: Taken) => void
 ): PreviewInsertion {
 	const waitsIn = (held: Taken[], offset: number) =>
 		held.some((h) => h.state === 'held' && h.spend.at === offset);
+	const placed: Placement | null = placement ? { ...placement, side } : null;
 	const spendAll = (
 		held: Taken[],
 		before: string,
 		edit: TextEdit,
-		placement: Placement | null
+		by: Placement | null
 	): TextEdit => {
 		let out = edit;
+		let placing = by;
 		for (const h of held) {
 			if (h.state !== 'held') continue;
-			const spent = h.spend.apply(before, out, placement);
+			const spent = h.spend.apply(before, out, placing);
 			if (spent?.kept) {
 				h.state = 'kept';
 				h.kept = spent.kept;
 			} else ended(h);
-			if (spent) out = { text: spent.text, caretAfter: spent.caretAfter };
+			if (!spent) continue;
+			out = { text: spent.text, caretAfter: spent.caretAfter };
+			if (spent.inPlace) placing = null;
 		}
 		return out;
 	};
 	return {
 		side,
-		waitsAt: (offset) => waitsIn(entries(), offset),
+		waitsAt: (offset) =>
+			entries().some((h) => h.state === 'held' && (h.spend.at === offset || h.spend.at === null)),
 		spend: (before, edit, caret) => {
 			const held = entries();
 			const at = insertionStart(before, edit);
 			// A record waiting where the text goes in is what that insertion was for.
-			const placed =
-				place && at !== null && !waitsIn(held, at) && place(before, edit, at, side, caret);
-			return spendAll(held, before, placed || edit, place ? { place, side } : null);
+			const moved =
+				placed && at !== null && !waitsIn(held, at) && placed.place(before, edit, at, side, caret);
+			return spendAll(held, before, moved || edit, placed);
 		},
 		spendInPlace: (before, edit) => spendAll(entries(), before, edit, null)
 	};

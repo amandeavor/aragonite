@@ -7,7 +7,7 @@ import type { BlockEditActions } from '../../../action-contracts';
 import type { NodeView } from '../../../core/node-views';
 import type { DocumentGetter, PasteImageHook } from '../../../editor-keys';
 import type { EditorEvents } from '../../../editor-events';
-import type { SurfaceBackend } from '../../../caret/surface-backend';
+import type { SurfaceBackend } from '../editable/surface-backend';
 import type { CrossBlockHandlers } from '../../../selection/cross-block/dispatch';
 import type { PasteCommitCoordinator } from '../../../tree-operations/paste/paste-deps';
 import type { PluginActivation } from '../../../schema/plugin-activation';
@@ -18,8 +18,8 @@ import {
 	type ClipboardCaretIO,
 	type ClipboardHandlers,
 	type RevealFold
-} from '../editable-surface';
-import type { ClipboardCopy } from '../clipboard-step';
+} from '../editable/editable-surface';
+import type { ClipboardCopy } from '../editable/clipboard-step';
 import { pasteDispatch } from '../../../tree-operations/paste/dispatch';
 import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 import { replaceSelectedWidget } from './widget-interaction';

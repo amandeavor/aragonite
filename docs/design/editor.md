@@ -121,7 +121,7 @@ if (write.admitted && write.keepsCaret) requestCaret(write.caret); // 6, unless 
 await write; // true once the bytes are in
 ```
 
-A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it does the rest:
+A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/editable/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it does the rest:
 
 - undo's caret is the one recorded when the key or input arrived
 - the block keeps the line ending it had, so a last line saved without one stays that way
@@ -138,7 +138,7 @@ Markdown syntax is on screen by default, styled: markers dimmed, content styled 
 
 The presentation modes sit on top of that as view treatments over the same render path. `presentationMode` is `'source'` (the default, and the editing substrate), then `'reading'`, `'preview-block'`, `'preview-inline'` and `'live'`. Marker visibility flips via CSS keyed on focus and caret proximity, so no mode can break the round-trip. A mode that hides the markers at the caret does change editing, though: where a caret may sit (a code block's fence lines included), and how a few rewrites write their bytes (a format toggle, a paste, a split or join, the delimiter auto-pair).
 
-A press is the one wrinkle: the browser focuses the block first and only then works out where the caret goes, so the markers wait for the button (or a tap's late mouse press) to come up, or they'd move the text under the pointer (`src/lib/components/editor-root-focus.ts`). How a plugin reads the mode is in [`plugin-contract.md`](plugin-contract.md) § Presentation-mode reads.
+A press is the one wrinkle: the browser focuses the block first and only then works out where the caret goes, so the markers wait for the button (or a tap's late mouse press) to come up, or they'd move the text under the pointer (`src/lib/components/editor-root/focus.ts`). How a plugin reads the mode is in [`plugin-contract.md`](plugin-contract.md) § Presentation-mode reads.
 
 Live mode hides every marker standing over content and stays editable, which turns the hidden runs into a caret problem rather than a paint one: a hidden run paints nothing, so one screen position names two raw offsets. Two mechanisms answer that:
 
@@ -155,7 +155,9 @@ A hard break in Markdown is a backslash at the end of a line, and a backslash wi
 
 The next insertion writes the break in front of itself, whichever way it arrives (a typed key, text the browser put in, an IME commit, a paste), as one write and one undo entry. The line goes, with no byte left, as soon as the caret leaves it, and Delete, a click, blur, an undo, a mode switch and a document swap end it too.
 
-Every route spends the pending break in one place. While `writeText` (§ 3) writes, it holds whatever the caret memory keeps for its block (`src/lib/caret/next-insertion.ts` :: `createInsertionRecords`). A composition and a paste have to clear the caret memory before they write, so they take the hold earlier, for the whole gesture. The pending break, the held space and Edit link's caret in a URL (`live-mode.md` § 4.2) are the kinds of record in that list, so another kind is one more entry every route picks up.
+Every route spends the pending break in one place. While `writeText` (§ 3) writes, it holds whatever the caret memory keeps for its block (`src/lib/caret/next-insertion.ts` :: `createInsertionRecords`). A composition and a paste have to clear the caret memory before they write, so they take the hold earlier, for the whole gesture. The pending marks (`live-mode.md` § 4.3), the pending break, the held space and Edit link's caret in a URL (§ 4.2) are the kinds of record in that list, so another kind is one more entry every route picks up.
+
+Once the break is written it's ordinary bytes. Delete the text after it and the empty line stays, a line like any other: Backspace on it, or Delete at the end of the line above, takes the break with it (live mode reads the block back with that line still in it, `live-mode.md` § 4.4), and the arrows land on it from above and below.
 
 Shift+Enter anywhere inside the text still writes its `\` and line ending right away. Both routes get their bytes from one writer, `src/lib/core/inline/index.ts` :: `withHardBreak`.
 

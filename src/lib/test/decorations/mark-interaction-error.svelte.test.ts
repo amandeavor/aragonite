@@ -4,7 +4,7 @@
 // `error` event, like every other decoration entry point.
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import DecorationOverlay from '#lib/components/DecorationOverlay.svelte';
+import DecorationOverlay from '#lib/components/overlays/DecorationOverlay.svelte';
 import type { BlockComponent } from '#lib/block-component.js';
 import { parse } from '#lib/core/parser.js';
 import { createDecorationEngine } from '#lib/decorations/decoration-state.svelte.js';

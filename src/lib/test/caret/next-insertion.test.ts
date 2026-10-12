@@ -7,14 +7,14 @@ import {
 	createInsertionRecords,
 	insertsAt,
 	type InsertionRecord,
+	type InsertionPlacement,
 	type InsertionSpend,
-	type PlaceInsertion,
 	type TextEdit
 } from '#lib/caret/next-insertion.js';
 import { createCaretMemory } from '#lib/caret/caret-memory.js';
 import { createHeldSpace } from '#lib/caret/held-space.js';
 import { createPendingBreak } from '#lib/caret/pending-break.svelte.js';
-import { createSurfaceWrite } from '#lib/components/blocks/surface-write.js';
+import { createSurfaceWrite } from '#lib/components/blocks/editable/surface-write.js';
 import { stubBlockEdit } from '#lib/testing/headless-actions.js';
 import type { NodeView } from '#lib/core/node-views.js';
 
@@ -99,10 +99,13 @@ describe('the block’s move of an insertion', () => {
 	/** A move that would put any insertion at the text's start, and the offsets it was asked at. */
 	function toStart() {
 		const asked: number[] = [];
-		const place = (before: string, edit: { text: string }, at: number) => {
-			asked.push(at);
-			const typed = edit.text.slice(at, at + edit.text.length - before.length);
-			return { text: typed + before, caretAfter: typed.length, crossed: [] };
+		const place: InsertionPlacement = {
+			place: (before, edit, at) => {
+				asked.push(at);
+				const typed = edit.text.slice(at, at + edit.text.length - before.length);
+				return { text: typed + before, caretAfter: typed.length, crossed: [] };
+			},
+			mark: () => null
 		};
 		return { asked, place };
 	}
@@ -143,10 +146,13 @@ describe('the block’s move of an insertion', () => {
 
 /** A letter typed at 4 in `ab**` joins the bold before its closer at 2, so a space typed there is
  *  held; any other insertion stays where it was typed. */
-const BOLD_CLOSER: PlaceInsertion = (before, edit, at) =>
-	at === 4 && edit.text[at] === 'a'
-		? { text: before.slice(0, 2) + 'a' + before.slice(2), caretAfter: 3, crossed: ['strong'] }
-		: null;
+const BOLD_CLOSER: InsertionPlacement = {
+	place: (before, edit, at) =>
+		at === 4 && edit.text[at] === 'a'
+			? { text: before.slice(0, 2) + 'a' + before.slice(2), caretAfter: 3, crossed: ['strong'] }
+			: null,
+	mark: () => null
+};
 
 /** Each record the caret memory keeps, opened in `BLOCK` and read back from its own view. */
 const MEMORY_RECORDS = [
@@ -274,7 +280,7 @@ describe.each(RECORD_STATES)('G4.149 $name', ({ make, edits }) => {
 		const spend = record.take(BLOCK)!;
 		const was = state();
 
-		const placement = { place: BOLD_CLOSER, side: null };
+		const placement = { ...BOLD_CLOSER, side: null };
 		spend.apply(before, edit, placement);
 		spend.apply(before, edit, placement);
 

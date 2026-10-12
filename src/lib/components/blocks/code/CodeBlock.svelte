@@ -15,16 +15,16 @@
 		holdsOnlyMarkerChrome,
 		type RawRange
 	} from '../../../caret/widget-offset';
-	import { createSurfaceBackend } from '../../../caret/surface-backend';
+	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { handleSharedKeydown } from '../../../selection/shared-keydown';
 	import {
 		createEditableSurface,
 		createClipboardHandlers,
 		consumePendingRestore
-	} from '../editable-surface';
-	import { writeShownSelection, type ClipboardCopy } from '../clipboard-step';
-	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../surface-wiring.svelte';
-	import { anchorTrailingNewline, plainTextOf } from '../plain-text-backend';
+	} from '../editable/editable-surface';
+	import { writeShownSelection, type ClipboardCopy } from '../editable/clipboard-step';
+	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
+	import { anchorTrailingNewline, plainTextOf } from '../editable/plain-text-backend';
 	import { renderCodeBlock, sliceFencedCode } from './code-renderer';
 	import {
 		getCloserFor,
@@ -52,7 +52,7 @@
 	} from './code-fence-boundary';
 	import { metadataOf, type CstNode } from '../../../core/nodes';
 	import { isBlankText, trimTrailingLineEnding } from '../../../core/lines';
-	import type { WriteIntent } from '../surface-write';
+	import type { WriteIntent } from '../editable/surface-write';
 	import type { ContentWrite } from '../../../action-contracts';
 	import type { CommandRun } from '../../../schema/block-commands';
 	import { pasteDispatch } from '../../../tree-operations/paste/dispatch';

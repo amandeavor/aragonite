@@ -6,7 +6,7 @@
 
 import { domDescendants } from './dom-walk';
 import { FALLBACK_LINE_HEIGHT } from '../windowing/typography-estimates';
-import { isHiddenMarkerText } from './widget-offset';
+import { caretAnchorAfter, isHiddenMarkerText } from './widget-offset';
 
 // Fraction of a line height within which the cursor Y counts as the boundary line; under one
 // line, so sub/superscript or inline-image jitter doesn't read as a different line.
@@ -121,6 +121,16 @@ export interface CaretBounds {
 	end: number;
 }
 
+/** The box of the empty line after `text`'s final line ending, which the caret anchor after it
+ *  paints; null where none follows. The line ending itself measures on the line it ends. */
+export function lineAfterEnding(text: Text, root: ParentNode): DOMRect | null {
+	const anchor = text.data.endsWith('\n') ? caretAnchorAfter(text, root) : null;
+	if (!anchor) return null;
+	const range = document.createRange();
+	range.selectNode(anchor);
+	return firstUsefulRect(range);
+}
+
 /** True if the caret, or a selection's moving end, sits on `el`'s first visual line. The fallback
  *  offset answers with no live range, which Chromium drops beside a widget. */
 export function isAtFirstVisualLine(
@@ -149,7 +159,10 @@ export function isAtLastVisualLine(
 		toStart: false,
 		boundaryTop: () => {
 			const lastText = findLastTextNode(el);
-			const top = lastText ? getCharRangeTop(lastText, lastText.textContent!.length, true) : null;
+			if (!lastText) return collapsedContentsTop(el, false);
+			const top =
+				lineAfterEnding(lastText, el)?.top ??
+				getCharRangeTop(lastText, lastText.textContent!.length, true);
 			return top ?? collapsedContentsTop(el, false);
 		}
 	});

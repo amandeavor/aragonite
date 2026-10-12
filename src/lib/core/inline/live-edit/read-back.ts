@@ -1,6 +1,7 @@
 /**
  * A live rewrite's candidate read back where it will be stored (`docs/design/live-mode.md` § 2):
- * through the position's write rules and read at its slot, as a reload reads it there. Every
+ * through the position's write rules and read at its slot, as a reload reads it there, except that
+ * an empty last line stays the block's own, as a write keeps it and the screen draws it. Every
  * rewrite that removes bytes reads its candidate through here.
  */
 
@@ -38,9 +39,14 @@ export function readBack(bytes: string, store: StoredAs): ReadBack | null {
 	}
 	const blocks = store.readSlot(raw)?.children ?? [];
 	if (blocks.length !== 1 || !isProseKind(blocks[0].kind)) return null;
-	const block = blocks[0];
-	const lead = raw.endsWith(block.raw) ? raw.slice(0, raw.length - block.raw.length) : '';
+	const parsed = blocks[0];
+	const at = raw.indexOf(parsed.raw);
+	// The reload reads an empty last line as a blank line after the block; the block keeps it.
+	const tail = at < 0 ? '' : raw.slice(at + parsed.raw.length);
+	const kept = isBlankText(tail);
+	const lead = at < 0 || !kept ? '' : raw.slice(0, at);
 	if (!isBlankText(lead)) return null;
+	const block = kept && tail !== '' ? { ...parsed, raw: parsed.raw + tail } : parsed;
 	const range = getContentRange(block);
 	return {
 		raw,

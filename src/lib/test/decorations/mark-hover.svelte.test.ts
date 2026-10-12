@@ -3,7 +3,7 @@
 // ends once per hover, keyed by the decoration rather than the rect the overlay repaints.
 import { describe, it, expect, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import DecorationOverlay from '#lib/components/DecorationOverlay.svelte';
+import DecorationOverlay from '#lib/components/overlays/DecorationOverlay.svelte';
 import type { BlockComponent } from '#lib/block-component.js';
 import { parse } from '#lib/core/parser.js';
 import { createDecorationEngine } from '#lib/decorations/decoration-state.svelte.js';

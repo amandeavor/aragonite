@@ -8,16 +8,16 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 import { installLayoutStubs, placeCaret } from '#lib/test/harness/mount-editor.svelte.js';
 import { pressKey, settleEditor } from '#lib/test/harness/settle.js';
 import { UNDO_DEBOUNCE_MS } from '#lib/editor-actions/commit/text-batch.js';
-import type { DocumentSwap } from '#lib/components/editor-root-document-swap.js';
+import type { DocumentSwap } from '#lib/components/editor-root/document-swap.js';
 import { serialize } from '#lib/core/serializer.js';
 import SourceHost from './fixtures/SourceHost.svelte';
 
 // Every `swapTo` call, and whether it replaced the document: the swap check itself has no
 // public trace, and a mount-time swap fires before a host can subscribe.
 const swapLog = vi.hoisted(() => ({ calls: [] as { source: string; swapped: boolean }[] }));
-vi.mock('#lib/components/editor-root-document-swap.js', async (importOriginal) => {
+vi.mock('#lib/components/editor-root/document-swap.js', async (importOriginal) => {
 	const actual =
-		await importOriginal<typeof import('#lib/components/editor-root-document-swap.js')>();
+		await importOriginal<typeof import('#lib/components/editor-root/document-swap.js')>();
 	return {
 		...actual,
 		createDocumentSwap: (deps: Parameters<typeof actual.createDocumentSwap>[0]): DocumentSwap => {

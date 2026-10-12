@@ -3,7 +3,7 @@
 // with no mode check of its own; the commit's reading-mode check is what answers it.
 // Miss-analysis (GH #517): every reading-mode test switched modes before opening a menu.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root-menus.js';
+import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root/menus.js';
 import { registerDefaultContextActions } from '#lib/components/menu/default-context-actions.js';
 import { serialize } from '#lib/core/serializer.js';
 import { replaceBlockRaw } from '#lib/editor-actions/block-edit-core.js';
@@ -78,6 +78,6 @@ describe('a block menu left open across a switch to reading mode (#517)', () => 
 		const fires = takeDevWarns().filter((w) => w.tag === READING_WRITE_TAG);
 		expect(fires).toHaveLength(1);
 		expect(fires[0].message).toContain("declined 'delete' in reading mode");
-		expect(fires[0].message).toContain('components/editor-root-menus.ts');
+		expect(fires[0].message).toContain('components/editor-root/menus.ts');
 	});
 });

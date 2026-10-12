@@ -34,13 +34,13 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		note: 'Ctrl/Cmd on a click that may follow a link or a widget, read for every such route: no keystroke is consumed.'
 	},
 	{
-		file: 'components/editor-root-gestures.ts',
+		file: 'components/editor-root/gestures.ts',
 		chords: [],
 		keys: [],
 		note: 'A modified press declines the margin drag, and a live-mode Mod-click skips the link card: no keystroke is consumed.'
 	},
 	{
-		file: 'components/editor-root-keydown.ts',
+		file: 'components/editor-root/keydown.ts',
 		chords: [],
 		keys: ['Escape', 'H'],
 		note: 'Escape closes the find bar, and Mod+H picks the replace row as the bar opens (reserved UI chords, enumerated). The modifier read is a refusal: an unchorded character over a live range is written as text, a chorded one goes to the handlers below it.'
@@ -79,7 +79,7 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		note: 'Previous match from the find input. Reachable only with the bar open, and the prose keymap binds the same chord anyway.'
 	},
 	{
-		file: 'components/blocks/editable-leaf.ts',
+		file: 'components/blocks/editable/editable-leaf.ts',
 		chords: [],
 		keys: ['Backspace', 'Enter'],
 		note: "Shift-click gate on the rendered surface, a pointer read; plain Backspace (no modifier) at the top of an empty painted source deletes the block, as the code block does. The reveal's own undo resolves its chord through the keymap, so it claims none here."
