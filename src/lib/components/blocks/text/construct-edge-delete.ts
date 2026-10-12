@@ -27,6 +27,9 @@ export type DeleteDirection = 'backward' | 'forward';
 export interface EdgeDeletionQuery {
 	/** The block's displayed text: its raw without the trailing line ending. */
 	display: string;
+	/** A displayed text as the block's write stores it, its own line ending added: without that
+	 *  ending, an empty last line after a hard break reads back as no line at all. */
+	asWritten: (display: string) => string;
 	/** The bytes the block's own kind calls content; a cut never reaches past them. */
 	content: ContentRange;
 	caret: number;
@@ -240,9 +243,9 @@ function isDelimiterByte(constructs: readonly PolicyConstruct[], at: number): bo
 
 /** What the user sees of the bytes read back where they are stored, or null where they do not
  *  read back as one prose block: a cut can push two runs together into a fence opener. */
-function visibleText(raw: string, { store }: EdgeDeletionQuery): string | null {
+function visibleText(raw: string, { store, asWritten }: EdgeDeletionQuery): string | null {
 	// A cut that empties the block leaves no block to read, and empty shows nothing wherever it is.
 	if (raw === '') return '';
-	const read = readBack(raw, store);
+	const read = readBack(asWritten(raw), store);
 	return read && shownOf(read, store);
 }

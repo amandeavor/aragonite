@@ -176,5 +176,21 @@ for (const mode of MODES) {
 			expect(await focusPath(ep)).toEqual([0, 0, 0]);
 			expect(await focusOffset(ep)).toBe(onEmptied);
 		});
+
+		test('ArrowUp from the start of the next item lands on it', async ({ page }) => {
+			const ep = await enterPresentationMode(page, mode, '- abc def\n- next\n');
+			await emptiedBreak(ep, page);
+			const onEmptied = await focusOffset(ep);
+			await page.keyboard.press('ArrowDown');
+			await page.keyboard.press('Home');
+			await ep.waitForRenderFlush();
+			expect(await focusPath(ep)).toEqual([0, 1, 0]);
+
+			await page.keyboard.press('ArrowUp');
+			await ep.waitForRenderFlush();
+
+			expect(await focusPath(ep)).toEqual([0, 0, 0]);
+			expect(await focusOffset(ep)).toBe(onEmptied);
+		});
 	});
 }

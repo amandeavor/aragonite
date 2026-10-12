@@ -76,6 +76,7 @@ describe('a destructive key inside a reference link', () => {
 		const node = makeBlockNode({ kind, leadingTrivia: '', raw: display });
 		return resolveEdgeDeletion({
 			display,
+			asWritten: (text) => text,
 			content: { start: 0, end: display.length },
 			caret,
 			direction,

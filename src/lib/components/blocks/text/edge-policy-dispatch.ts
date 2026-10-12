@@ -37,7 +37,7 @@ import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 import { widgetAtCursor, widgetsIn } from './widget-adjacency';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
-import { rangeWrite, type TextWrite } from '../surface-write';
+import { rangeWrite, withOwnEnding, type TextWrite } from '../surface-write';
 
 /** The part of the inline-widget editing policy the built-in widget rules reuse, in the same
  *  terms but without widening the public API. */
@@ -220,6 +220,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		if (!revealsNoMarkers(el)) return null;
 		return resolveEdgeDeletion({
 			display: display(),
+			asWritten: (text) => withOwnEnding(deps.node, text),
 			content: getContentRange(deps.node),
 			caret,
 			direction,

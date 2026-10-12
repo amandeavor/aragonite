@@ -21,6 +21,7 @@ function del(
 ) {
 	return resolveEdgeDeletion({
 		display,
+		asWritten: (text) => text,
 		content,
 		caret,
 		direction,
@@ -34,6 +35,7 @@ function del(
 function delInCell(display: string, caret: number, direction: DeleteDirection = 'backward') {
 	return resolveEdgeDeletion({
 		display,
+		asWritten: (text) => text,
 		content: { start: 0, end: display.length },
 		caret,
 		direction,
