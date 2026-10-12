@@ -105,8 +105,7 @@ export function createSlashSource(editor: EditorContext<SlashCommandsOptions>): 
 				await action.run(pick, argument ?? undefined);
 			} else {
 				// An empty line becomes the block; a line with text keeps it and gets the block below.
-				// Copied because `blockNodeAt` takes a mutable path and the range's is readonly.
-				const empty = isBlankText(blockNodeAt(pick.document, [...range.path])?.raw ?? '');
+				const empty = isBlankText(blockNodeAt(pick.document, range.path)?.raw ?? '');
 				// Awaited, so the block lands inside the pick's undo entry.
 				await pick.insertMarkdown(action.build(argument).markdown, {
 					placement: empty ? 'caret' : 'below'

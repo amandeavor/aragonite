@@ -3,7 +3,7 @@
 import type { CstNode, Document } from './nodes';
 import type { DocumentView, NodeView } from './node-views';
 
-type WalkControl = void | 'skip' | 'stop';
+export type WalkControl = void | 'skip' | 'stop';
 type Parent<N> = { readonly children?: readonly N[] };
 
 /** Every block under `root`, not `root` itself, parents first; each path starts with `basePath` and

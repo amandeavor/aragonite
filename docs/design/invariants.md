@@ -887,9 +887,9 @@ capture-without-reset pairing.
 
 **G3.10 · Coherent registration pairs.** `BlockKindRegistration` is one of two shapes: a block
 focused as one unit (`blockFocus: 'whole-block'`, so `supportsInline: false`, no `contentStart` and
-no title row), or a block the caret enters. A content range and its Backspace behavior register
-together as `contentStart`, and a container with a title row declares only its middle-child unwrap
-strategy. `augmentBlockKind` takes none of these fields.
+no title row), or a block the caret enters. A container never declares inline content, since its
+children hold its text. A content range and its Backspace behavior register together as
+`contentStart`, and a container with a title row declares only its middle-child unwrap strategy. `augmentBlockKind` takes none of these fields.
 
 A cast or a plain JavaScript plugin never meets the types, so both calls throw at runtime too:
 `registerBlockKind` checks each pair against

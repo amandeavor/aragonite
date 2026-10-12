@@ -28,6 +28,7 @@ const title = () => ({ kind: declarePluginKind('pair-title') });
 const pairs: Record<IncoherentPairId, () => object> = {
 	'content-start-without-range': () => ({ ...leaf, contentStart: { backspace: 'demote-first' } }),
 	'whole-block-inline': () => ({ ...leaf, blockFocus: 'whole-block', supportsInline: true }),
+	'container-inline': () => ({ ...leaf, supportsInline: true, container: group }),
 	'whole-block-content-start': () => ({
 		...leaf,
 		blockFocus: 'whole-block',
@@ -71,15 +72,6 @@ describe('registerBlockKind refuses an incoherent pair the types refuse', () => 
 			expect(tryGetBlockKindDescriptor(kind)).toBeUndefined();
 		});
 	}
-
-	it('refuses a container declaring inline content and registers nothing', () => {
-		const kind = declarePluginKind('pair-container-inline');
-		const registration = { ...leaf, supportsInline: true, container: group };
-		expect(() => registerBlockKind(kind, registration as unknown as BlockKindRegistration)).toThrow(
-			'registerBlockKind: "pair-container-inline" declares container with supportsInline;'
-		);
-		expect(tryGetBlockKindDescriptor(kind)).toBeUndefined();
-	});
 
 	// The table holds only runtime checks; each row's type pin carries its id in brackets.
 	it('pairs every table row with a compile-time pin in the types test, and back', () => {
