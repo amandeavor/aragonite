@@ -45,6 +45,8 @@ on both hosts: the seed's plain-click one, and Ctrl-click after the toggle.
 - Edit link on an angle autolink puts the caret inside the closing `>` (hidden in live mode), and
   the same letter lands in the URL, not past the bracket.
 - Mod+K with the caret inside either one does the same.
+- A bare URL in a table cell follows its click on both hosts: following asks the same lookup as
+  editing, and a cell resolves through it too.
 - Edit link on a bare URL in a table cell, from the table's own menu, puts the caret at its end too.
 
 Miss-analysis: the harness widget acted on every click by hand instead of asking the editor, so a

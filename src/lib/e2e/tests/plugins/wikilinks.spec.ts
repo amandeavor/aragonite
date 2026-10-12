@@ -322,6 +322,18 @@ test.describe('autolinks a click follows can be edited', () => {
 		}
 	}
 
+	for (const host of ['plain', 'modifier'] as const) {
+		test(`a bare URL in a table cell follows its click, ${host} click host`, async ({ page }) => {
+			const opened = await recordOpens(page);
+			if (host === 'modifier') await page.getByTestId('link-click-toggle').click();
+			if (host === 'modifier') await page.keyboard.down('Control');
+			await page.locator('.table-cell a.md-autolink').click();
+			if (host === 'modifier') await page.keyboard.up('Control');
+
+			await expect.poll(opened).toEqual(['https://example.org/cell']);
+		});
+	}
+
 	test('Edit link on a bare URL in a table cell puts the caret at its end', async ({ page }) => {
 		const box = await page.locator('.table-cell a.md-autolink').boundingBox();
 		if (!box) throw new Error('no cell autolink box');
