@@ -13,8 +13,36 @@ export interface MarkDecoration {
 	end: number;
 	class: string;
 	attrs?: Record<string, string>;
-	interactive?: { onClick: (dec: MarkDecoration, ev: MouseEvent) => void };
+	interactive?: MarkInteractions;
 }
+
+/** Where a hovered mark sits, in viewport coordinates: `anchor` is the rect the pointer entered,
+ *  `rects` every rect the mark paints (one per visual line, one per table cell). */
+export interface MarkHover {
+	anchor: DOMRect;
+	rects: DOMRect[];
+}
+
+interface MarkHandlers {
+	onClick: (dec: MarkDecoration, ev: MouseEvent) => void;
+	/** `hover` when the pointer enters the mark, `null` once the hover ends. */
+	onHover: (dec: MarkDecoration, hover: MarkHover | null) => void;
+	/** Run by the `decorations.activateAtCaret` command when the caret is in the mark; `anchor`
+	 *  is the mark's rect on the caret's line. */
+	onActivate: (dec: MarkDecoration, ctx: { anchor: DOMRect }) => void;
+}
+
+/**
+ * A mark's handlers, at least one; only `onClick` and `onHover` make it take pointer events. A
+ * hover ends once: when the pointer leaves every rect, or the mark is removed, scrolled out of
+ * the rendered range, or goes with its document or editor. Its `null` says only that the
+ * pointer left; whether a popup closes is up to you.
+ */
+export type MarkInteractions =
+	| (Pick<MarkHandlers, 'onClick'> & Partial<MarkHandlers>)
+	| (Pick<MarkHandlers, 'onHover'> & Partial<MarkHandlers>)
+	| (Pick<MarkHandlers, 'onActivate'> & Partial<MarkHandlers>);
+
 export interface WidgetDecoration {
 	type: 'widget';
 	path: number[];

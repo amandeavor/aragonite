@@ -124,7 +124,7 @@
 			dec: MarkDecoration,
 			cls = dec.class
 		): Painted {
-			const interactive = dec.interactive;
+			const onClick = dec.interactive?.onClick;
 			return {
 				left: r.left - blockRect.left,
 				top: r.top - blockRect.top,
@@ -132,9 +132,7 @@
 				height: r.height,
 				cls,
 				attrs: dec.attrs,
-				onClick: interactive
-					? (ev: MouseEvent) => runInteraction(() => interactive.onClick(dec, ev))
-					: undefined
+				onClick: onClick ? (ev: MouseEvent) => runInteraction(() => onClick(dec, ev)) : undefined
 			};
 		}
 
