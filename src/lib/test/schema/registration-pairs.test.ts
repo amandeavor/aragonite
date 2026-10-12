@@ -72,6 +72,15 @@ describe('registerBlockKind refuses an incoherent pair the types refuse', () => 
 		});
 	}
 
+	it('refuses a container declaring inline content and registers nothing', () => {
+		const kind = declarePluginKind('pair-container-inline');
+		const registration = { ...leaf, supportsInline: true, container: group };
+		expect(() => registerBlockKind(kind, registration as unknown as BlockKindRegistration)).toThrow(
+			'registerBlockKind: "pair-container-inline" declares container with supportsInline;'
+		);
+		expect(tryGetBlockKindDescriptor(kind)).toBeUndefined();
+	});
+
 	// The table holds only runtime checks; each row's type pin carries its id in brackets.
 	it('pairs every table row with a compile-time pin in the types test, and back', () => {
 		const pins = readFileSync('src/lib/test/schema/descriptor-groups.types.test.ts', 'utf8');
