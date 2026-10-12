@@ -6,7 +6,7 @@ import { PluginsPage, capturedErrors } from './helpers';
  * `[[note]]` links as inline widgets in a host whose links follow on a plain click, the limestone
  * integration reproduced in the harness (`routes/test/plugins/wikilinks`, `linkClick: 'plain'`).
  * Seed `wikilinks`: a link mid-prose (block 0), a typing target (block 1), a Markdown link
- * (block 2), a link in a table cell (block 3).
+ * (block 2), a link in a table cell (block 3), a bare URL (block 4), an angle autolink (block 5).
  * Requirements: e2e/requirements/plugins/wikilinks.md.
  */
 
@@ -249,4 +249,71 @@ test.describe('wikilinks that follow on a plain click', () => {
 		await expect(link(editor)).toHaveCount(1);
 		expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toContain('today');
 	});
+});
+
+// An autolink's destination is its own text, so editing it means a caret at the URL's end: past the
+// last letter of a bare URL, and inside the closing `>` of an angle one, which live mode hides.
+const AUTOLINKS = [
+	{ name: 'a bare URL', block: 4, caret: 24, edited: '\nhttps://example.org/bar\n' },
+	{ name: 'an angle autolink', block: 5, caret: 30, edited: 'See <https://example.org/angl> here' }
+] as const;
+
+test.describe('autolinks a click follows can be edited', () => {
+	let editor: PluginsPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new PluginsPage(page);
+		await editor.gotoPlugins('wikilinks');
+		await editor.setPresentationMode('live');
+		await editor.waitForRenderFlush();
+	});
+
+	/** Backspace takes the URL's last letter only when the caret sits at the URL's end. */
+	async function expectEditingAtUrlEnd(
+		page: Page,
+		autolink: (typeof AUTOLINKS)[number]
+	): Promise<void> {
+		await expect
+			.poll(async () => (await editor.bridge.getSelectionPaths())?.focus)
+			.toEqual({ path: [autolink.block], offset: autolink.caret });
+		await page.keyboard.press('Backspace');
+		await editor.bridge.waitForSourceContains(autolink.edited);
+	}
+
+	for (const host of ['plain', 'modifier'] as const) {
+		for (const autolink of AUTOLINKS) {
+			test(`Edit link on ${autolink.name} puts the caret at its end, ${host} click host`, async ({
+				page
+			}) => {
+				const opened = await recordOpens(page);
+				if (host === 'modifier') await page.getByTestId('link-click-toggle').click();
+				const box = await page
+					.locator(`[data-block-path="[${autolink.block}]"] a.md-autolink`)
+					.boundingBox();
+				if (!box) throw new Error('no autolink box');
+
+				await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, {
+					button: 'right'
+				});
+				await page.getByRole('menuitem', { name: 'Edit link' }).click();
+
+				await expectEditingAtUrlEnd(page, autolink);
+				expect(await opened()).toEqual([]);
+				await expect(page.locator('[data-link-card]')).toHaveCount(0);
+			});
+
+			test(`Mod+K inside ${autolink.name} puts the caret at its end, ${host} click host`, async ({
+				page
+			}) => {
+				if (host === 'modifier') await page.getByTestId('link-click-toggle').click();
+				await editor.focusBlockStart(autolink.block);
+				for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowRight');
+
+				await page.keyboard.press('ControlOrMeta+k');
+
+				await expectEditingAtUrlEnd(page, autolink);
+				await expect(page.locator('[data-link-card]')).toHaveCount(0);
+			});
+		}
+	}
 });

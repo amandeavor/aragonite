@@ -7,7 +7,8 @@ prefix-override priority, and a widget registered with `revealSource` and
 plain click follows a link, the way it does on a web page. The widget decides whether to act by
 asking its `isActivationClick` prop, so these tests go through the same answer the editor uses.
 Seed `wikilinks`: a link mid-prose in block 0, a plain place to type in block 1, a Markdown link
-in block 2, and a link in a table cell in block 3.
+in block 2, a link in a table cell in block 3, a bare URL in block 4 and an angle autolink
+(`<https://...>`) in block 5.
 
 ## User interactions
 
@@ -34,6 +35,17 @@ in block 2, and a link in a table cell in block 3.
 - Switch the host back to Ctrl-click after mount (the harness toggle) and a plain click no longer
   follows either link.
 
+## Autolinks
+
+A bare URL is its own destination, so "editing" it means a caret at the URL's end. Every row runs
+on both hosts: the seed's plain-click one, and Ctrl-click after the toggle.
+
+- Edit link in the right-click menu on a bare URL puts the caret right after its last letter, and
+  Backspace takes that letter; nothing opens, no card.
+- Edit link on an angle autolink puts the caret inside the closing `>` (hidden in live mode), and
+  Backspace takes the URL's last letter, not the bracket.
+- Mod+K with the caret inside either one does the same.
+
 Miss-analysis: the harness widget acted on every click by hand instead of asking the editor, so a
 widget that read the shared Ctrl/Cmd check (as limestone's did) and did nothing on a plain click
 passed every test here.
@@ -44,3 +56,6 @@ every row here; no row double-clicked or dragged inside a Markdown link.
 
 Miss-analysis (the pointer cursor): the link cursor decided "a plain click follows here" in CSS off
 the reading mode alone, a second copy of the rule that no test held against a host that opts in.
+
+Miss-analysis (autolinks): following asked the page for an `a[href]` and editing asked a policy flag
+only bracketed links had, and no row checked that everything a click follows has an edit path.
