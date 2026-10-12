@@ -330,7 +330,7 @@ const RULES: FileRule[] = [
 			'src/lib/components/drag-handle.ts':
 				'rAF placement of the drag handle once its block has laid out; the handle is its own hit target before any hover',
 			'src/lib/caret/drawn-caret.svelte.ts':
-				'frame-time paint of a caret the browser moved: reads layout, writes only the caret element (G4.143)',
+				'frame-time paint of a caret the browser moved, frame by frame while a scroller under it still moves: reads layout, writes only the caret element (G4.143)',
 			'src/lib/selection/pointer-session.ts':
 				'rAF pointermove coalescing: the one place every drag lifecycle runs',
 			'src/lib/editor-actions/commit/text-batch.ts':

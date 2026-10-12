@@ -166,6 +166,13 @@ function callsIn(code: string, fn: string): string[] | null {
 	return [...body.matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]);
 }
 
+/** What the drawn caret's frame callback may call, and why each orders nothing. */
+const FRAME_CALLS: Record<string, string> = {
+	paint: 'reads the layout and writes only the bar and the mark',
+	followScroll:
+		'asks for the next frame while a scroller under the caret moved since the last paint: an animation cadence that ends when the scroller holds still'
+};
+
 /** Every frame callback in `code` and what it calls; an inline callback reads as `null`. */
 function frameCallbacks(code: string): Array<{ callback: string; calls: string[] | null }> {
 	return [...code.matchAll(/\brequestAnimationFrame\s*\(/g)].map((match) => {
@@ -188,12 +195,12 @@ describe('G4.143 every caret write asks the drawn caret to repaint', () => {
 		).toEqual([]);
 	});
 
-	it('the paint at an animation frame calls the paint and nothing else', () => {
+	it('the paint at an animation frame only paints, and follows a scroll still moving', () => {
 		const callbacks = frameCallbacks(readSource(DRAWN_CARET).code);
 		expect(callbacks.length).toBeGreaterThan(0);
 		for (const { callback, calls } of callbacks) {
 			expect(
-				calls?.filter((name) => name !== 'paint'),
+				calls?.filter((name) => !(name in FRAME_CALLS)),
 				`${callback}: a frame callback only reads and paints, so it orders nothing`
 			).toEqual([]);
 		}

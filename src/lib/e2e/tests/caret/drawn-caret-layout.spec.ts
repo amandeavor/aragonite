@@ -30,6 +30,26 @@ function barAgainst(page: Page, scroller: string) {
 	}, scroller);
 }
 
+type ScrollTrace = Window & { __scrollFrames?: string[] };
+
+/** Records, for a failure message, the code block's scroll events and its offset and the bar's x
+ *  on each of the next 60 frames: what an engine with no local repro did instead. */
+function recordScrollFrames(page: Page): Promise<void> {
+	return page.evaluate(() => {
+		const probe = window as ScrollTrace;
+		const frames: string[] = (probe.__scrollFrames = []);
+		const scroller = document.querySelector('.code-block')!;
+		scroller.addEventListener('scroll', () => frames.push(`scroll@${scroller.scrollLeft}`));
+		const sample = (left: number) => {
+			const bar = document.querySelector<HTMLElement>('.md-drawn-caret');
+			const x = bar && !bar.hidden ? Math.round(bar.getBoundingClientRect().left) : '-';
+			frames.push(`${scroller.scrollLeft}:${x}`);
+			if (left > 0) requestAnimationFrame(() => sample(left - 1));
+		};
+		requestAnimationFrame(() => sample(60));
+	});
+}
+
 /** No bar shows, or it shows inside the scroller's box. */
 async function noBarOutside(page: Page, scroller: string): Promise<boolean> {
 	const { left, right, x } = await barAgainst(page, scroller);
@@ -73,22 +93,46 @@ test.describe('the drawn caret in a code block scrolled sideways', () => {
 	}
 
 	test('a clipped caret scrolled back into view draws again where the browser paints', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(
-			browserName === 'webkit',
-			"#716: Linux WebKit doesn't repaint the drawn caret after a scroll back"
-		);
 		const over = await parkInLongLine(page);
 		await page.mouse.move(over.x, over.y);
 		await page.mouse.wheel(600, 0);
 		await nextFrames(page);
 		await expect.poll(async () => (await barAgainst(page, '.code-block')).x).toBeNull();
 
+		await recordScrollFrames(page);
 		await page.mouse.wheel(-600, 0);
 
-		expect(await oneCaretOnTheBrowsersLine(page)).toBe('drawn');
+		try {
+			expect(await oneCaretOnTheBrowsersLine(page)).toBe('drawn');
+		} catch (error) {
+			const trace = await page.evaluate(() => (window as ScrollTrace).__scrollFrames ?? []);
+			throw new Error(`${(error as Error).message}\nper frame: ${trace.join(' ')}`, {
+				cause: error
+			});
+		}
+	});
+
+	// Stands in for a browser that keeps a scroll moving after the last scroll event the editor
+	// hears: no gesture makes Chromium do that, so a smooth scroll lets only its first event through.
+	test('a scroll still moving after its last scroll event moves the bar until it stops', async ({
+		page
+	}) => {
+		await parkInLongLine(page);
+		await page.evaluate(() => {
+			let heard = 0;
+			window.addEventListener(
+				'scroll',
+				(e) => {
+					if (heard++ > 0) e.stopImmediatePropagation();
+				},
+				{ capture: true }
+			);
+			document.querySelector('.code-block')!.scrollTo({ left: 600, behavior: 'smooth' });
+		});
+
+		await expect.poll(async () => (await barAgainst(page, '.code-block')).x).toBeNull();
 	});
 });
 

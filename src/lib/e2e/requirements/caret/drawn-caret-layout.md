@@ -12,9 +12,14 @@ browser's own caret would do there, and the observer to every block that shares 
   - Miss-analysis: no row scrolled an inner scroller with the caret parked, though the drawn caret
     listens for exactly that scroll; the repaint moved the bar, and nothing clipped it
 - The clipped caret wheeled back into view: the bar draws again, where the browser paints
-  - Skipped in the WebKit lane until #716 (Linux WebKit doesn't repaint after the scroll back)
   - Miss-analysis: the clip rows only scrolled the caret out; the scroll repaint ran only while a
     bar showed, so nothing brought it back until the caret moved
+  - Miss-analysis (Linux WebKit): the repaint ran once per scroll event, so nothing followed a
+    scroller that kept moving after its last event reached the editor, and no row ran on that
+    engine; a failure there now prints the scroller's offset and the bar per frame
+- A scroll that keeps moving after the last scroll event the editor hears: the bar follows it until
+  it stops. No gesture makes Chromium do that, so the row stands in for it with a smooth scroll that
+  lets only its first scroll event through
 - A caret at a cell's end, a table of 18 columns wheeled sideways until that cell leaves its box: no
   bar shows outside the table
   - Miss-analysis: the clip rows scrolled only a code block, whose scroller is the editable itself,
