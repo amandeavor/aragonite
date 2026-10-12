@@ -1,0 +1,19 @@
+# Feature: deleting the only text of the last item
+
+An item at the very end of the document has no line ending, so once its text is gone the marker is all that's left of it. The marker stays in the source, so saving and opening the file again shows the same empty item you're looking at.
+
+## User interactions
+
+- Load `- **a**`, select the text, press Backspace (source and live): the source is `- `, one bullet still shows, a reload of that source still shows one bullet, and a typed character lands in it
+- The same with Delete instead of Backspace (source and live)
+- The same with a cut instead of Backspace (source and live)
+
+## Edge cases
+
+- Load `- a\n- b`, select `b`, Backspace: the source is `- a\n- ` and a reload still shows two bullets
+- Load `- [ ] a`, select `a`, Backspace: the source is `- [ ] ` and a reload still shows a task item
+- Load `> a`, select `a`, Backspace: the source is `>` and a reload still shows a quote
+
+## Miss-analysis
+
+- GH #685: the dev check that a rebuilt container reads back as itself skipped any container with no bytes, which is exactly the shape that loses the item, and every emptying test ended its item with a line ending, which keeps the marker.
