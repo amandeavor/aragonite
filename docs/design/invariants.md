@@ -224,7 +224,7 @@ These checks run in three kinds of place:
 | G1.24 | A kind's closure block agrees with the rest of its descriptor                              | A·N     |
 | G1.25 | Widget-pool acquires happen only inside an open render pass                                | A·N     |
 | G1.26 | A fold implies an active reveal, and an open reveal blocks command mutation                | A·N     |
-| G1.27 | `compositionend` lands only inside a composition the surface saw start                     | A·N     |
+| G1.27 | `compositionend` lands only inside a composition the surface opened                        | A·N     |
 | G1.28 | A code block's render and a painted leaf source carry the block's bytes exactly            | A·N     |
 | G1.29 | A selection endpoint's offset means what its own block's coordinate space says             | A·N     |
 | G1.30 | Every registered kind declares a `mergeRole` from the known set                            | A·N     |
@@ -429,8 +429,9 @@ closures in `components/blocks/text/widget-interaction.ts` (the fold halves) and
 `checkRevealSourceLength` (`inline-transitions.ts`) at `caret/reveal-source.ts` ·
 `test/blocks/text/widget-reveal-transitions.test.ts`.
 
-**G1.27 · Composition window.** `compositionend` lands only inside a composition the surface saw
-start. An unpaired end means `compositionend` was wired without `compositionstart`, and every
+**G1.27 · Composition window.** `compositionend` lands only inside a composition the surface
+opened, at its start or, when a range's removal took the block it started in, at its first composed
+character. An unpaired end means `compositionend` was wired without `compositionstart`, and every
 composed keystroke committed mid-IME. Predicate `checkCompositionEndPaired`
 (`inline-transitions.ts`) · run in `components/blocks/editable-surface.ts :: onCompositionEnd` ·
 `inline-transitions.test.ts`, `test/blocks/editable-surface-composition.test.ts`.

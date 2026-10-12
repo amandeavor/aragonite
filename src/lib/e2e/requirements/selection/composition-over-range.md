@@ -18,10 +18,16 @@ through a real CDP composition.
   - first block to last, drawn downward, so the caret starts in the block the removal keeps
   - both paragraphs of a quote, which the removal empties
   - both items of a list, which the removal empties
+  - both cells of a table row, drawn from the first cell into the second, so the caret starts in
+    the second. The removal empties both cells and the text lands in the first one, where typing
+    over the same cells puts it.
 
 ## Edge cases
 
 - An abandoned composition (compose `か`, then commit nothing) over each of those ranges leaves the
   removal and types nothing.
+- Miss-analysis, for the one Ctrl+Z: the first composition rows all started inside one block,
+  where nothing gets removed first, so the two undo entries a range composition left behind went
+  unseen.
 - Miss-analysis: the only composition row over a range drew it downward, so the caret sat in the
   block the removal keeps, and no row composed over a range whose removal took the caret's block.
