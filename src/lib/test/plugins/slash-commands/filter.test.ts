@@ -103,6 +103,10 @@ describe('acceptsQuery: a shared prefix leaves the word with the row its head na
 		expect(acceptsQuery(ROWS, 'divider ')).toBe(false);
 	});
 
+	it('gives the word to the taker a keyword names exactly, beside a row sharing the prefix', () => {
+		expect(acceptsQuery([...shared, row('Gridlines')], 'grid 3x4')).toBe(true);
+	});
+
 	it('gives the word to neither of two argument takers the head names exactly', () => {
 		expect(acceptsQuery([...shared, row('Table data', [], true)], 'table 3x4')).toBe(false);
 	});
