@@ -142,6 +142,21 @@ describe('the next insertion in the block spends them', () => {
 		);
 	});
 
+	// The set a write holds is that write's to spend, so a chord meanwhile is a newer instruction.
+	it('a chord while a write holds them starts a set of its own', () => {
+		const memory = createCaretMemory();
+		const block = {};
+		memory.pendingMarks.forBlock(block).toggle('strong');
+		const held = memory.holdInsertion(block, PLACEMENT);
+
+		memory.pendingMarks.forBlock(block).toggle('emphasis');
+		expect(held.spend('ab', typed('ab', 2, 'X')).text).toBe('absXs');
+		held.finish(true);
+
+		const next = memory.holdInsertion(block, PLACEMENT);
+		expect(next.spend('ab', typed('ab', 2, 'X')).text).toBe('abeXe');
+	});
+
 	it('another block’s insertion types plain and leaves them pending', () => {
 		const memory = createCaretMemory();
 		const block = {};

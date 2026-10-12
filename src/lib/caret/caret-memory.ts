@@ -143,7 +143,11 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 						// mark past it, as at any caret.
 						const ownChord = heldSpace.holdsInside(kind);
 						records.end(heldSpace);
-						if (!ownChord) view.toggle(kind);
+						if (!ownChord) {
+							// A set a write holds is that write's to spend, so the chord starts a new one.
+							if (records.holds(pendingMarks)) pendingMarks.end();
+							view.toggle(kind);
+						}
 						changed();
 					}
 				};

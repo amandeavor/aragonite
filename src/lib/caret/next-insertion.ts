@@ -116,6 +116,8 @@ export interface InsertionRecords {
 	): PreviewInsertion;
 	/** Grows each time a write takes a record or lets go of one, which changes what `preview` sees. */
 	holdChanges(): number;
+	/** Whether a write holds `record` right now. */
+	holds(record: InsertionRecord): boolean;
 	/** Ends `record` (every record when omitted), in `block` when one is named; true when one ended.
 	 *  A record a write holds stays in effect, drawn and spendable, until that hold lets go of it. */
 	end(record?: InsertionRecord, block?: object): boolean;
@@ -173,6 +175,7 @@ export function createInsertionRecords(records: readonly InsertionRecord[]): Ins
 		hold,
 		preview,
 		holdChanges: () => holdChanges,
+		holds: (record) => holding.has(record),
 		end: (record, block) => {
 			let ended = false;
 			for (const each of record ? [record] : records) {
