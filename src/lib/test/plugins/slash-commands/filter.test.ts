@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	acceptsQuery,
 	filterEntries,
+	readQuery,
 	splitQuery,
 	type FilterableEntry
 } from '#lib/plugins/slash-commands/filter.js';
@@ -92,6 +93,14 @@ describe('acceptsQuery: a shared prefix leaves the word with the row its head na
 		['bulleted x', false]
 	])('a query a label starts with, spaces and all: %j → %s', (query, accepted) => {
 		expect(acceptsQuery(shared, query)).toBe(accepted);
+	});
+
+	it('lists the argument taker first on a trailing space, wherever it sits, and claims no word', () => {
+		const later = [row('Table of contents', ['toc']), row('Table', ['grid'], true)];
+		const reading = readQuery(later, 'table ');
+		expect(reading?.listed.map((r) => r.label)).toEqual(['Table', 'Table of contents']);
+		expect(reading?.argument).toBeNull();
+		expect(acceptsQuery(ROWS, 'divider ')).toBe(false);
 	});
 
 	it('gives the word to neither of two argument takers the head names exactly', () => {

@@ -126,6 +126,21 @@ describe('a label typed in full, spaces and all', () => {
 		markdown: '[[toc]]\n'
 	};
 
+	// Miss-analysis: the full-label rows typed past the space, never stopped on it before the size.
+	it('/table with a trailing space lists Table first, and Enter inserts the table', async () => {
+		installPlugins([
+			definePlugin({ name: 'contents', setup: () => registerInsertEntry(contents) })
+		]);
+		const h = slashHarness('');
+		await h.type('/table ');
+		expect(h.rows()).toEqual(['Table', 'Table of contents']);
+		expect(h.details()).toEqual([undefined, undefined]);
+		await h.pick();
+		expect(h.inserted).toEqual([
+			{ markdown: '| Column | Column |\n| --- | --- |\n|  |  |\n', placement: 'caret' }
+		]);
+	});
+
 	it.each(['/table of', '/table of c', '/table of contents'])(
 		'%s lists only Table of contents, and Enter inserts it',
 		async (query) => {
