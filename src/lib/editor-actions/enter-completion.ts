@@ -5,7 +5,6 @@
  * a keystroke's write.
  */
 
-import { readBlocks } from '../core/parser';
 import {
 	displayLength,
 	isBlankText,
@@ -18,6 +17,7 @@ import type { CommandRun } from '../schema/block-commands';
 import type { CstNode } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import { getBlockKindDescriptor } from '../schema/block-kind-descriptor';
+import { readAsOpened } from '../tree-operations/node-primitives';
 import type { GrammarView } from '../schema/block-openers';
 import {
 	completeLineOnType,
@@ -106,7 +106,7 @@ function planCompletion(
 	// are exactly what a reload of those bytes produces.
 	const lineEnding = trailingLineEnding(node.raw, ending);
 	const raw = claim.lines.map((text) => text + lineEnding).join('');
-	const replacement = readBlocks(raw, { grammar, scope: 'fragment' }).children;
+	const replacement = readAsOpened(raw, { grammar, scope: 'fragment' }).children;
 	// A completion of only blank lines would replace the typed line with a delete; the check is per
 	// node because blank lines parse back as empty paragraphs.
 	if (replacement.every((node) => isBlankText(node.raw))) return null;

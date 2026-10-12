@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { getContext, onDestroy, tick, untrack } from 'svelte';
 	import { CURSOR_START, type AmbientPrefix, type BlockComponent } from '../../../block-component';
-	import { readBlocks } from '../../../core/parser';
 	import { ambientHoldsTaskBox } from '../list/task-checkbox';
 	import type { DocumentView, NodeView } from '../../../core/node-views';
 	import type { EditorRects } from '../../../editor-rects';
@@ -48,7 +47,7 @@
 		type TextEditResult
 	} from './text-keydown';
 	import { tryGetBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
-	import { blockNodeAt } from '../../../tree-operations/node-primitives';
+	import { blockNodeAt, readAsOpened } from '../../../tree-operations/node-primitives';
 	import { createTextClipboard } from './text-clipboard';
 	import { createTextRender } from './text-render';
 	import { createWidgetInteraction } from './widget-interaction';
@@ -612,7 +611,7 @@
 						// Text after a task box is the to-do's own text, so a written `# ` would stay
 						// text there; replacing the block makes the heading and gives the box up.
 						if (ambientHoldsTaskBox(ambientPrefix)) {
-							const heading = readBlocks(cycled.newRaw, { grammar, scope: 'fragment' }).children;
+							const heading = readAsOpened(cycled.newRaw, { grammar, scope: 'fragment' }).children;
 							const focus = { replacementIndex: 0, offset: cycled.caretOffset };
 							void blockEdit.replaceBlock(index, heading, focus, { snapshotOffset: offset });
 							return;
