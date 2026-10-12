@@ -38,12 +38,23 @@ function recordScrollFrames(page: Page): Promise<void> {
 	return page.evaluate(() => {
 		const probe = window as ScrollTrace;
 		const frames: string[] = (probe.__scrollFrames = []);
+		(window as unknown as { __caretPaints: string[] }).__caretPaints = frames;
 		const scroller = document.querySelector('.code-block')!;
-		scroller.addEventListener('scroll', () => frames.push(`scroll@${scroller.scrollLeft}`));
+		const t = () => Math.round(performance.now());
+		scroller.addEventListener('scroll', () => frames.push(`${t()} scroll@${scroller.scrollLeft}`));
+		document.addEventListener('selectionchange', () => frames.push(`${t()} selchange`));
+		const bar0 = document.querySelector<HTMLElement>('.md-drawn-caret');
+		if (bar0)
+			new MutationObserver(() => {
+				const r = window.getSelection()?.getRangeAt(0).getClientRects()[0];
+				frames.push(
+					`${t()} M ${bar0.dataset.caretState} h=${bar0.hidden} tr=${bar0.style.translate} bx=${Math.round(bar0.getBoundingClientRect().left)} fresh=${r ? Math.round(r.left) : 'none'} sl=${scroller.scrollLeft}`
+				);
+			}).observe(bar0, { attributes: true });
 		const sample = (left: number) => {
 			const bar = document.querySelector<HTMLElement>('.md-drawn-caret');
 			const x = bar && !bar.hidden ? Math.round(bar.getBoundingClientRect().left) : '-';
-			frames.push(`${scroller.scrollLeft}:${x}`);
+			frames.push(`${t()} raf ${scroller.scrollLeft}:${x}`);
 			if (left > 0) requestAnimationFrame(() => sample(left - 1));
 		};
 		requestAnimationFrame(() => sample(60));
@@ -107,7 +118,15 @@ test.describe('the drawn caret in a code block scrolled sideways', () => {
 		try {
 			expect(await oneCaretOnTheBrowsersLine(page)).toBe('drawn');
 		} catch (error) {
-			const trace = await page.evaluate(() => (window as ScrollTrace).__scrollFrames ?? []);
+			const trace = await page.evaluate(() => {
+				const bar = document.querySelector<HTMLElement>('.md-drawn-caret')!;
+				const r = window.getSelection()?.getRangeAt(0).getClientRects()[0];
+				const box = document.querySelector('.code-block')!.getBoundingClientRect();
+				return [
+					...((window as ScrollTrace).__scrollFrames ?? []),
+					`END ${bar.dataset.caretState} h=${bar.hidden} tr=${bar.style.translate} fresh=${r ? Math.round(r.left) : 'none'} block=${Math.round(box.left)}..${Math.round(box.right)} drawnAttr=${document.querySelector('[data-caret-drawn]') ? 'y' : 'n'}`
+				];
+			});
 			throw new Error(`${(error as Error).message}\nper frame: ${trace.join(' ')}`, {
 				cause: error
 			});

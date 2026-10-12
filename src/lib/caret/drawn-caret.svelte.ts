@@ -202,6 +202,16 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		const read = readCaret(root);
 		const target = drawnCaretTarget(read.reads);
 		draw(target, read, atFrame);
+		// DIAGNOSTIC (#716 CI round), stripped before the final commit.
+		const diag = (window as unknown as { __caretPaints?: string[] }).__caretPaints;
+		if (diag) {
+			const sc = document.querySelector('.code-block');
+			const r = read.reads;
+			const own = read.range?.getClientRects()[0];
+			diag.push(
+				`${Math.round(performance.now())}${atFrame ? 'F' : 'R'} sl=${sc?.scrollLeft} st=${target.state} rx=${'rect' in target ? Math.round(target.rect.x) : '-'} own=${own ? Math.round(own.left) : 'none'} cl=${r.caret ? Math.round(r.caret.left) : 'null'} clip=${r.clipped} hostL=${r.host ? Math.round(r.host.left) : '-'} off=${read.range?.startOffset} foc=${r.focused}/${r.windowFocused} pr=${r.pressed} col=${r.collapsed}`
+			);
+		}
 		assertInvariant('one-caret-showing', () =>
 			checkOneCaretShowing(root, DRAWN_ATTR, target, read.source?.el ?? null)
 		);
