@@ -1,10 +1,10 @@
 /**
  * The caret Edit link leaves before a URL's hidden closing bracket means inside the URL, so what is
  * typed there extends it, letter after letter, where a caret arriving any other way types past the
- * bracket (`docs/design/live-mode.md` § 4.2). A move that isn't typing there ends it.
+ * bracket (`docs/design/live-mode.md` § 4.2). A space, or a move that isn't typing there, ends it.
  */
 
-import { insertionStart, type InsertionRecord } from './next-insertion';
+import { insertedText, insertionStart, isSpaceRun, type InsertionRecord } from './next-insertion';
 
 export interface InsideCloser extends InsertionRecord {
 	/** One block's view; `block` is the identity its writes take the record with. */
@@ -33,8 +33,13 @@ export function createInsideCloser(): InsideCloser {
 				at: taken.at,
 				// Waiting where the text goes in keeps the block from moving it past the closer; the
 				// record moves on with the caret, so the next letter lands inside too.
-				apply: (before, edit) => {
-					if (insertionStart(before, edit) !== taken.at) return null;
+				apply: (before, edit, placement) => {
+					const at = insertionStart(before, edit);
+					if (at !== taken.at) return null;
+					// A space ends the URL, so it ends the record and goes where the block puts it.
+					if (isSpaceRun(insertedText(before, edit, at))) {
+						return (placement && placement.place(before, edit, at, placement.side)) || edit;
+					}
 					const next = { block, at: edit.caretAfter };
 					return { ...edit, kept: () => void (held = next) };
 				},

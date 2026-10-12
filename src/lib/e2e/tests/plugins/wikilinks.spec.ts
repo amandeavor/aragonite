@@ -258,14 +258,16 @@ const AUTOLINKS = [
 		block: 4,
 		caret: 24,
 		typed: '\nhttps://example.org/bareXY\n',
-		backspaced: '\nhttps://example.org/bar\n'
+		backspaced: '\nhttps://example.org/bar\n',
+		spaced: '\nhttps://example.org/bare more\n'
 	},
 	{
 		name: 'an angle autolink',
 		block: 5,
 		caret: 30,
 		typed: 'See <https://example.org/angleXY> here',
-		backspaced: 'See <https://example.org/angl> here'
+		backspaced: 'See <https://example.org/angl> here',
+		spaced: 'See <https://example.org/angle> more here'
 	}
 ] as const;
 
@@ -356,6 +358,22 @@ test.describe('autolinks a click follows can be edited', () => {
 
 		await editor.bridge.waitForSourceContains('See <https://example.org/anglX> here');
 	});
+
+	// No URL holds a space, so the word typed after fixing the URL goes after the link.
+	for (const autolink of AUTOLINKS) {
+		test(`after Edit link on ${autolink.name}, a space and a word land past the URL`, async ({
+			page
+		}) => {
+			await editLinkFromMenu(page, `[data-block-path="[${autolink.block}]"] a.md-autolink`);
+			await expectCaretAtUrlEnd(autolink);
+			await page.keyboard.type(' more');
+
+			await editor.bridge.waitForSourceContains(autolink.spaced);
+			await expect(
+				page.locator(`[data-block-path="[${autolink.block}]"] a.md-autolink`)
+			).toHaveCount(1);
+		});
+	}
 
 	for (const host of ['plain', 'modifier'] as const) {
 		test(`a bare URL in a table cell follows its click, ${host} click host`, async ({ page }) => {

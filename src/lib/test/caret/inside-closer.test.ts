@@ -1,5 +1,5 @@
 // The caret Edit link leaves before a URL's hidden closer types inside the URL, letter after letter,
-// until a move that isn't typing there ends it.
+// until a space or a move that isn't typing there ends it.
 // Miss-analysis: Edit link's rows pressed ArrowLeft before typing, so no row typed at the caret it
 // placed, where the next letter landed past the closing bracket.
 import { describe, it, expect } from 'vitest';
@@ -18,11 +18,12 @@ function type(
 	memory: ReturnType<typeof createCaretMemory>,
 	block: object,
 	before: string,
-	at: number
+	at: number,
+	typed = 'Z'
 ) {
 	const held = memory.holdInsertion(block, pastCloser);
 	memory.noteTyping();
-	const edit = { text: before.slice(0, at) + 'Z' + before.slice(at), caretAfter: at + 1 };
+	const edit = { text: before.slice(0, at) + typed + before.slice(at), caretAfter: at + 1 };
 	const spent = held.spend(before, edit);
 	held.finish(true);
 	return spent;
@@ -38,6 +39,16 @@ describe('the caret inside a closer', () => {
 		expect(first.text).toBe('<ab:cZ>');
 		expect(memory.insideCloser.forBlock(block).at()).toBe(6);
 		expect(type(memory, block, first.text, 6).text).toBe('<ab:cZZ>');
+	});
+
+	// No URL holds a space, so the word typed after a fix goes after the link.
+	it('ends at a space, which goes where the block puts it, past the closer', () => {
+		const memory = createCaretMemory();
+		const block = {};
+		memory.insideCloser.forBlock(block).open(5);
+
+		expect(type(memory, block, BEFORE, 5, ' ').text).toBe('<ab:c> ');
+		expect(memory.insideCloser.forBlock(block).at()).toBeNull();
 	});
 
 	it('ends at a navigation key, and the block decides again', () => {

@@ -378,7 +378,7 @@ What the boolean means:
 
 Two more things before you wire buttons:
 
-- **`editLink` edits what the caret would go to.** On a link that's its card, and only in `'live'` mode, since every other editable mode already shows the URL (there the call's consumed, `true`, and no card opens, same as pressing `Mod+K`). On a bare URL or a `<https://...>` one, also live mode only, there's no hidden destination to open, so it just puts the caret at the URL's end, and what you type next goes into the URL. Beside a plugin widget that goes somewhere (a footnote reference, say) it shows the widget's source, in any editable mode.
+- **`editLink` edits what the caret would go to.** On a link that's its card, and only in `'live'` mode, since every other editable mode already shows the URL (there the call's consumed, `true`, and no card opens, same as pressing `Mod+K`). On a bare URL or a `<https://...>` one, also live mode only, there's no hidden destination to open, so it just puts the caret at the URL's end, and the letters you type next go into the URL. Beside a plugin widget that goes somewhere (a footnote reference, say) it shows the widget's source, in any editable mode.
 - **Over a selection spanning blocks**, a format toggle rewrites every block the range touches (the first block's tail, each middle block whole, the last block's head) as one undo entry. It applies everywhere unless every block already carries the mark, in which case it removes it everywhere. Blocks that can't hold inline syntax (a code block, a thematic break) are skipped and the rest still change. A table joins by its cells: the range covers each cell whole, so the cells it lights up are the cells it marks.
 
 `canRunCommand(commandId: string): boolean`

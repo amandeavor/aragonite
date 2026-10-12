@@ -2494,7 +2494,7 @@ const ROOT_CLICK = `${SOURCE_DIR.components}editor-root-gestures.ts`;
 const FOLLOW_ROUTE: FileRule = {
 	id: 'G4.152 a link is followed only by the root click, which asks the shared lookup first',
 	matches:
-		/\bwindow\.open\s*\(|\b(?:activateLink|onLinkActivate)\s*\(|\.closest\(\s*['"`]a\[href\]['"`]\s*\)|\blocation\.(?:assign|replace)\s*\(|\blocation\.href\s*=(?!=)/,
+		/\bwindow\.open\b|\b(?:activateLink|onLinkActivate)\s*\(|\.closest\(\s*['"`]a\[href\]['"`]\s*\)|\blocation\.(?:assign|replace)\s*\(|\blocation\.href\s*=(?!=)/,
 	allowed: {
 		[ROOT_CLICK]:
 			'the root click: it locates the anchor, and follows only when `clickFollowsAt` says a click follows what that anchor draws',
@@ -2513,7 +2513,8 @@ const FOLLOW_ROUTE: FileRule = {
 		),
 		at(`${SOURCE_DIR.plugins}x/x.ts`, "const a = el.closest('a[href]');"),
 		at(`${SOURCE_DIR.textBlock}x.ts`, 'deps.activateLink(href, e);'),
-		at(`${SOURCE_DIR.blocks}x.ts`, 'location.href = url;')
+		at(`${SOURCE_DIR.blocks}x.ts`, 'location.href = url;'),
+		at(`${SOURCE_DIR.blocks}x.ts`, 'const go = window.open.bind(window);')
 	],
 	misses: [
 		at(`${SOURCE_DIR.textBlock}x.ts`, 'if (follows && anchorFollows(anchor)) open();'),

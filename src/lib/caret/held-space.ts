@@ -7,7 +7,9 @@
 
 import type { EdgeAffinity } from './edge-affinity';
 import {
+	insertedText,
 	insertionStart,
+	isSpaceRun,
 	type InsertionRecord,
 	type Placement,
 	type TextEdit
@@ -71,15 +73,15 @@ export function createHeldSpace(): HeldSpace {
 				apply: (before, edit, placement) => {
 					const at = insertionStart(before, edit);
 					if (at === null || !placement) return null;
-					const typed = edit.text.slice(at, at + edit.text.length - before.length);
+					const typed = insertedText(before, edit, at);
 					// A space opens or extends the hold once its write lets go of it.
 					const keep = (next: Hold) => ({ ...edit, kept: () => void (hold = next) });
 					if (taken && at === taken.end) {
-						if (isWhitespace(typed)) return keep({ ...taken, end: taken.end + typed.length });
+						if (isSpaceRun(typed)) return keep({ ...taken, end: taken.end + typed.length });
 						if (taken.closing) return edit;
 						return carried(before, taken, typed, placement.place) ?? edit;
 					}
-					if (taken || !isWhitespace(typed)) return null;
+					if (taken || !isSpaceRun(typed)) return null;
 					const letter = letterPlaced(before, at, placement);
 					if (letter === null || letter.inside >= at) return null;
 					const { inside, kinds } = letter;
@@ -105,8 +107,6 @@ export function createHeldSpace(): HeldSpace {
 		}
 	};
 }
-
-const isWhitespace = (text: string): boolean => /^[^\S\r\n]+$/.test(text);
 
 /** Where a letter typed at `at` would be put, and the constructs it would join on the way. */
 function letterPlaced(

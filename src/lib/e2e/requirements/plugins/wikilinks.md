@@ -50,6 +50,8 @@ hosts: the seed's plain-click one, and Ctrl-click after the toggle.
 - Mod+K inside an angle autolink leaves two letters typed there in the URL too.
 - Delete inside an angle autolink takes one letter.
 - After Edit link on an angle autolink, Backspace then a letter keeps the letter in the URL.
+- After Edit link on either form, a space and a word land past the URL, and the link stays a link:
+  no URL holds a space.
 - A bare URL in a table cell follows its click on both hosts: following asks the same lookup as
   editing, and a cell resolves through it too.
 - Edit link on a bare URL in a table cell, from the table's own menu, leaves letters typed in the
@@ -72,3 +74,6 @@ only bracketed links had, and no row checked that everything a click follows has
 Miss-analysis (ready to edit): the rows pressed ArrowLeft before typing and never pressed Backspace,
 so they stepped around both gaps: an autolink had no content range, so a key deleted it whole, and
 a letter at the caret Edit link placed went past the hidden `>`.
+
+Miss-analysis (a space after Edit link): every row after Edit link typed letters, and the record
+keeping them inside the angle form took a space too, which unmade the link.

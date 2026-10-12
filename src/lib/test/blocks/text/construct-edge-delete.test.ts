@@ -220,6 +220,11 @@ describe("an autolink's text deletes a character at a time", () => {
 	it('takes the autolink whole where every cut would unmake it', () => {
 		expect(del('a <ab:> b', 6)).toEqual({ raw: 'a  b', caret: 2, unwrappedMarks: [] });
 	});
+
+	// Only the construct the cut aimed into goes whole; a failed cut elsewhere writes nothing.
+	it('leaves an autolink alone when a cut beside another construct fails', () => {
+		expect(del('**a *b*** z <https://x.y>', 6)).toEqual({ swallow: true });
+	});
 });
 
 // `**a *b***` emptied of `b` is `**a **`, whose stars render literally, and the browser's own

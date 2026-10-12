@@ -63,8 +63,10 @@ export interface InlineConstructPolicy {
 
 export type InlineProseExtent = 'none' | 'content' | 'all';
 
-/** What Enter inside the construct does: close it before the cut and reopen it after, move the cut
- *  to its nearer edge so one half takes it whole, or leave the literal cut (live-mode.md § 4.4). */
+/** How a cut inside the construct treats it. `close-and-reopen` closes it before an Enter's cut and
+ *  reopens it after, `plain` leaves the literal cut, and `whole` means no part stands alone: Enter
+ *  moves the cut to its nearer edge, and a delete whose every cut unmakes it takes it whole
+ *  (live-mode.md § 4.4). */
 export type SplitBehavior = 'close-and-reopen' | 'whole' | 'plain';
 
 /** `card`: the link card edits the destination, the only way in a mode that hides the URL
