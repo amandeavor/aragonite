@@ -27,12 +27,12 @@ setup(ctx) {
 
 ## The four decoration types
 
-| Type      | Shape                                                    | Renders as                                                                                                                                                                                                                                                                                                                                    |
-| --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mark`    | `{ type: 'mark', path, start, end, class, attrs? }`      | A positioned overlay span over the inline range; style it via the class                                                                                                                                                                                                                                                                       |
-| `widget`  | `{ type: 'widget', path, offset, widget, side? }`        | A zero-width atomic inline widget at the offset (ghost text's shape), drawn `'after'` it by default or `'before'`                                                                                                                                                                                                                             |
-| `replace` | `{ type: 'replace', path, start, end, widget?, class? }` | An atomic inline widget covering the range; the hidden bytes stay in the document                                                                                                                                                                                                                                                             |
-| `block`   | `{ type: 'block', path, class?, attrs?, badge? }`        | A class/attrs treatment on the whole block (a list item, table row or cell included), plus an optional badge widget (not on a row or cell). Attributes the editor already uses on the block's element (the `data-` names it sets or looks up there, `role`, `tabindex` and friends) get dropped with a dev warning, so pick names of your own |
+| Type      | Shape                                                             | Renders as                                                                                                                                                                                                                                                                                                                                    |
+| --------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mark`    | `{ type: 'mark', path, start, end, class, attrs?, interactive? }` | A positioned overlay span over the inline range; style it via the class. `interactive` makes it answer clicks, hovers and the keyboard ([Interactive marks](#interactive-marks-click-hover-and-the-keyboard))                                                                                                                                 |
+| `widget`  | `{ type: 'widget', path, offset, widget, side? }`                 | A zero-width atomic inline widget at the offset (ghost text's shape), drawn `'after'` it by default or `'before'`                                                                                                                                                                                                                             |
+| `replace` | `{ type: 'replace', path, start, end, widget?, class? }`          | An atomic inline widget covering the range; the hidden bytes stay in the document                                                                                                                                                                                                                                                             |
+| `block`   | `{ type: 'block', path, class?, attrs?, badge? }`                 | A class/attrs treatment on the whole block (a list item, table row or cell included), plus an optional badge widget (not on a row or cell). Attributes the editor already uses on the block's element (the `data-` names it sets or looks up there, `role`, `tabindex` and friends) get dropped with a dev warning, so pick names of your own |
 
 One `provide` answer using two of them, shapes side by side:
 
@@ -43,7 +43,7 @@ provide: (doc) => [
 ];
 ```
 
-Offsets are **raw offsets** into the target block, dimmed markers included, which is the same coordinate space `getContentRange` describes. A `widget`, `replace` widget, or `badge` takes a `DecorationWidgetSpec`: a Svelte `component` (receives the decoration as its prop) or a hand-built `buildDom`. An interactive mark takes `interactive: { onClick }`, not a top-level `onClick`; interactive DOM inside a widget is native, so wire your own listeners in `buildDom`.
+Offsets are **raw offsets** into the target block, dimmed markers included, which is the same coordinate space `getContentRange` describes. A `widget`, `replace` widget, or `badge` takes a `DecorationWidgetSpec`: a Svelte `component` (receives the decoration as its prop) or a hand-built `buildDom`. A mark's handlers live in its `interactive` field, covered at the end of this page; interactive DOM inside a widget is native, so wire your own listeners in `buildDom`.
 
 All four work in table cells as well as prose blocks. Arrows step over a `widget` or a `replace`; Backspace and Delete treat a `widget` as if it weren't there, and select a `replace` whole before a second press deletes it.
 
@@ -92,3 +92,67 @@ Pair a source with `editor.rects` when you need geometry (anchor a popup to a de
 ```ts
 editor.rects.rangeRects([2], 4, 9); // [DOMRect { x: 96, y: 412, width: 38, height: 22, ... }], one per visual line the range crosses
 ```
+
+## Interactive marks: click, hover and the keyboard
+
+A mark answers the user through its `interactive` field. It takes up to three handlers, and at least one (an empty `interactive: {}` doesn't compile):
+
+| Handler                       | Runs when                                                                     | Gets                                         |
+| ----------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------- |
+| `onClick(dec, ev)`            | the mark is clicked                                                           | the click event                              |
+| `onHover(dec, hover)`         | the pointer enters the mark, then once more with `null` when the hover's over | `{ anchor, rects }`, in viewport coordinates |
+| `onActivate(dec, { anchor })` | the `decorations.activateAtCaret` command runs with the caret in the mark     | the mark's rect on the caret's line          |
+
+Only `onClick` and `onHover` make a mark take pointer events, so a document full of plain marks (or keyboard-only ones) costs no hit-testing.
+
+Here's a glossary: hover a term for its definition, or reach the same popup from the keyboard. `popup` is yours; the editor never sees it.
+
+```ts
+const handle = editor.decorations.addSource({
+	name: 'glossary',
+	provide: (doc) =>
+		findTerms(doc).map(({ path, start, end, term }) => ({
+			type: 'mark',
+			path,
+			start,
+			end,
+			class: 'glossary-term',
+			interactive: {
+				onHover: (dec, hover) => (hover ? popup.show(term, hover.anchor) : popup.pointerLeft()),
+				onActivate: (dec, { anchor }) => popup.show(term, anchor)
+			}
+		}))
+});
+
+// pointer onto "aragonite" in block [3]:
+//   onHover(dec, { anchor: DOMRect { x: 212, y: 388, width: 71, height: 20 }, rects: [that same rect] })
+// pointer off it:
+//   onHover(dec, null)
+```
+
+What you can count on:
+
+- **One hover per mark.** A mark that wraps paints one rect per line, and moving between them (across the gap between the lines too) fires nothing. `anchor` is the rect the pointer came in through, and `rects` is all of them.
+- **Every hover ends exactly once.** The pointer leaving, your source dropping the mark, its block scrolling out of the rendered range, a new document, the editor unmounting: whichever happens first sends the `null`, and nothing sends a second. So a popup never outlives its word.
+- **`null` means the pointer left, nothing more.** Whether the popup closes is your call. The usual move is a short grace period so the pointer can travel onto the popup; the editor won't time that for you.
+- **Restyling keeps the hover.** A hover belongs to your source, the mark's block and its range, not its class, so an `invalidate()` that adds a `glossary-term-hovered` class doesn't end and restart it. Move the range and it's a new mark (which it is, really).
+- **Throws stay contained.** A handler that throws shows up on the `error` event as origin `decoration`, with the mark's `path`, and the editor carries on.
+
+When marks overlap, the shortest range wins, then the earlier-registered source, then the earlier mark in its answer. The pointer follows the same rule, since the winner's rect is the one painted on top. A table cell is the one place marks merge: every mark in the cell paints as one whole-cell rect, and the same rule picks which mark the click and the hover go to.
+
+The keyboard's way in is one command instead of a tab stop per mark. `decorations.activateAtCaret` runs the `onActivate` of the mark under the caret (a caret on either edge counts, and over a selection it's the end you're extending). It ships with no chord. A host binds one through its `keybindings` prop (`{ chord: 'Alt+Enter', command: 'decorations.activateAtCaret' }`), and a plugin that wants its own key wraps it in a global command:
+
+```ts
+registerGlobalCommand('glossary.lookup', (editor) => editor.runCommand('decorations.activateAtCaret'), {
+	chord: 'Alt+L'
+});
+```
+
+Either way it answers like any other command, which is handy for a host's own button:
+
+```ts
+editor.canRunCommand('decorations.activateAtCaret'); // false: no mark with onActivate under the caret
+editor.runCommand('decorations.activateAtCaret'); // true: the mark's onActivate ran
+```
+
+Off every such mark, `runCommand` answers false as well and runs nothing.

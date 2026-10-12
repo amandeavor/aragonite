@@ -481,15 +481,15 @@ events.on('error', (err) => err);
 
 `origin` is one of `subscriber`, `render`, `commit`, `command`, `decoration`, `clipboard`, or `link`, and `context` carries what's known for it:
 
-| Origin       | `context`                                                                                                                       |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `render`     | `path` of the block                                                                                                             |
-| `commit`     | `op` and `path`                                                                                                                 |
-| `command`    | `kind`, `command`, and `plugin` when a plugin owns the command                                                                  |
-| `decoration` | `source`, the decoration source's name; `path` instead when a mark's `interactive.onClick` threw                                |
-| `clipboard`  | `path` the paste was aimed at, when it was aimed at a range                                                                     |
-| `link`       | `url` the editor refused                                                                                                        |
-| `subscriber` | nothing when one of your own handlers threw; `plugin` when a plugin's callback threw; `source` when an inline menu source threw |
+| Origin       | `context`                                                                                                                           |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `render`     | `path` of the block                                                                                                                 |
+| `commit`     | `op` and `path`                                                                                                                     |
+| `command`    | `kind`, `command`, and `plugin` when a plugin owns the command                                                                      |
+| `decoration` | `source`, the decoration source's name; `path` instead when one of a mark's own handlers (`onClick`, `onHover`, `onActivate`) threw |
+| `clipboard`  | `path` the paste was aimed at, when it was aimed at a range                                                                         |
+| `link`       | `url` the editor refused                                                                                                            |
+| `subscriber` | nothing when one of your own handlers threw; `plugin` when a plugin's callback threw; `source` when an inline menu source threw     |
 
 **`presentationModeChange`** and **`themeChange`** carry bare values (`'reading'`, `'light'`), not envelopes, and never fire at mount. Only plugin content that paints its own colors needs `themeChange`; anything styled through the tokens rethemes itself through the CSS cascade.
 
@@ -1118,6 +1118,8 @@ handle.dispose(); // gone
 ```
 
 Authoring semantics, the four decoration types, and the memoization recipe are in the [plugin guide](plugin-guide/decorations.md#decorations); everything there applies verbatim to a consumer-registered source.
+
+A mark's `onActivate` (the keyboard's way into a hover definition, say) has no key until you give it one. Bind the built-in command in `keybindings`, `{ chord: 'Alt+Enter', command: 'decorations.activateAtCaret' }`, or call `runCommand('decorations.activateAtCaret')` from your own UI; [Interactive marks](plugin-guide/decorations.md#interactive-marks-click-hover-and-the-keyboard) has the rest.
 
 ### Screen geometry
 
