@@ -1,9 +1,13 @@
 /**
- * The one hover lifecycle for an editor's marks. A hover is keyed by the decoration (its source,
- * range and place among that source's hover marks), never by a painted rect, so a repaint keeps
- * it, and every route that takes the mark away ends it exactly once.
+ * The one hover lifecycle for an editor's marks. Hover comes from a hit-test of the pointer
+ * against the rects the overlays painted, so a hover-only mark renders nothing that takes the
+ * pointer, and a hover is keyed by the decoration, never by a rect: a repaint keeps it, and every
+ * route that takes the mark away ends it exactly once.
  */
 
+import type { LocalRect } from '../caret/overlay-rects';
+import type { IndexedDecoration } from './buckets';
+import { comparePrecedence, hitRect } from './mark-interactions';
 import type { MarkDecoration, MarkHover } from './types';
 
 /** Which decoration a hover is on. The class is left out on purpose: a source restyling the
@@ -17,31 +21,49 @@ export interface MarkIdentity {
 	ordinal: number;
 }
 
+/** A hover mark one overlay painted, its rects in the block's own pixels. */
+export interface HoverTarget {
+	mark: IndexedDecoration<MarkDecoration>;
+	rects: LocalRect[];
+}
+
+/** The fields of a pointer event the hit-test reads. */
+export interface HoverPointer {
+	clientX: number;
+	clientY: number;
+	pointerType: string;
+	buttons: number;
+	target: EventTarget | null;
+}
+
 export interface MarkHoverDeps {
 	/** Null for a mark no live source offers, or one without `onHover`. */
 	identify(dec: MarkDecoration): MarkIdentity | null;
-	/** The mark a source offers now under this identity, if any. */
-	find(id: MarkIdentity): MarkDecoration | undefined;
 	/** Runs a plugin's handler, reporting a throw instead of raising it. */
 	runHandler(dec: MarkDecoration, call: () => void): void;
 }
 
-/** `owner` is the overlay instance that painted the rect, so its teardown ends what it began. */
+/** `owner` is the overlay instance that painted the targets; `block` is its block's element. */
 export interface MarkHoverTracker {
-	enter(owner: object, dec: MarkDecoration, hover: MarkHover): void;
-	/** Ends the hover `owner` began: the pointer left its rects, or the overlay unmounted. */
-	release(owner: object): void;
-	/** Ends the hover when no source offers its mark any more; called after every source run. */
-	refresh(): void;
+	/** Replaces what `owner` painted and re-runs the hit-test at the last pointer position. */
+	paint(owner: object, block: HTMLElement | null, targets: HoverTarget[]): void;
+	/** Called when the overlay unmounts. */
+	unpaint(owner: object): void;
+	/** The editor root's `pointermove`. */
+	move(ev: HoverPointer): void;
+	/** The pointer left the editor root. */
+	leave(): void;
 	end(): void;
 }
 
 export function createMarkHover(deps: MarkHoverDeps): MarkHoverTracker {
-	let current: { owner: object; id: MarkIdentity; dec: MarkDecoration } | null = null;
+	const painted = new Map<object, { block: HTMLElement; targets: HoverTarget[] }>();
+	let point: { x: number; y: number } | null = null;
+	let current: { id: MarkIdentity; dec: MarkDecoration } | null = null;
 
 	// Cleared before the handler runs, so a handler that invalidates its source re-enters with
 	// no hover left to end twice.
-	function finish(): void {
+	function end(): void {
 		const ended = current;
 		if (!ended) return;
 		current = null;
@@ -49,31 +71,76 @@ export function createMarkHover(deps: MarkHoverDeps): MarkHoverTracker {
 		deps.runHandler(dec, () => dec.interactive?.onHover?.(dec, null));
 	}
 
-	return {
-		enter(owner, dec, hover) {
-			const id = deps.identify(dec);
-			if (!id) return;
-			if (current && sameMark(current.id, id)) {
-				current.owner = owner;
-				current.dec = dec;
-				return;
+	function enter(dec: MarkDecoration, hover: MarkHover): void {
+		const id = deps.identify(dec);
+		if (!id) return;
+		if (current && sameMark(current.id, id)) {
+			current.dec = dec;
+			return;
+		}
+		end();
+		// Set before the handler runs: a start that throws still gets its end.
+		current = { id, dec };
+		deps.runHandler(dec, () => dec.interactive?.onHover?.(dec, hover));
+	}
+
+	// Costs one block-box read per painted block holding a hover mark, and one comparison per
+	// hover rect; nothing at all when no hover mark is painted.
+	function recheck(): void {
+		if (!point) return;
+		let best: { target: HoverTarget; rect: LocalRect; origin: DOMRect } | undefined;
+		for (const { block, targets } of painted.values()) {
+			const origin = block.getBoundingClientRect();
+			const x = point.x - origin.left;
+			const y = point.y - origin.top;
+			for (const target of targets) {
+				const rect = hitRect(target.rects, x, y);
+				if (rect && (!best || comparePrecedence(target.mark, best.target.mark) < 0)) {
+					best = { target, rect, origin };
+				}
 			}
-			finish();
-			// Set before the handler runs: a start that throws still gets its end.
-			current = { owner, id, dec };
-			deps.runHandler(dec, () => dec.interactive?.onHover?.(dec, hover));
+		}
+		if (!best) return end();
+		const { origin } = best;
+		const toViewport = (r: LocalRect) =>
+			new DOMRect(origin.left + r.left, origin.top + r.top, r.width, r.height);
+		enter(best.target.mark.dec, {
+			anchor: toViewport(best.rect),
+			rects: best.target.rects.map(toViewport)
+		});
+	}
+
+	function release(): void {
+		point = null;
+		end();
+	}
+
+	return {
+		paint(owner, block, targets) {
+			const had = painted.delete(owner);
+			if (block && targets.length > 0) painted.set(owner, { block, targets });
+			else if (!had) return;
+			recheck();
 		},
-		release(owner) {
-			if (current?.owner === owner) finish();
+		unpaint(owner) {
+			if (painted.delete(owner)) recheck();
 		},
-		refresh() {
-			if (!current) return;
-			const live = deps.find(current.id);
-			if (live) current.dec = live;
-			else finish();
+		move(ev) {
+			// A touch never hovers; a pressed button or a pen in contact is a drag, which holds none.
+			if (ev.pointerType === 'touch') return;
+			if (ev.buttons !== 0 || !inDocumentContent(ev.target)) return release();
+			point = { x: ev.clientX, y: ev.clientY };
+			recheck();
 		},
-		end: finish
+		leave: release,
+		end
 	};
+}
+
+// A host popup or menu rendered inside the editor root sits outside every block, so a pointer
+// over it is off the document even where the popup covers a mark.
+function inDocumentContent(target: EventTarget | null): boolean {
+	return target instanceof Element && target.closest('.block-host') !== null;
 }
 
 function sameMark(a: MarkIdentity, b: MarkIdentity): boolean {

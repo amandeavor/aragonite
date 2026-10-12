@@ -1358,6 +1358,8 @@
 	role="group"
 	aria-label={EDITOR_LABEL}
 	oncontextmenu={rootMenus.onRootContextMenu}
+	onpointermove={decorationEngine.markHover.move}
+	onpointerleave={decorationEngine.markHover.leave}
 >
 	{#if searchBar}
 		<!-- A zero-height sticky anchor; portaled out, it takes the theme class instead, since

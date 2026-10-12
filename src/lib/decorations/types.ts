@@ -33,10 +33,10 @@ interface MarkHandlers {
 }
 
 /**
- * A mark's handlers, at least one; only `onClick` and `onHover` make it take pointer events. A
- * hover ends once: when the pointer leaves every rect, or the mark is removed, scrolled out of
- * the rendered range, or goes with its document or editor. Its `null` says only that the
- * pointer left; whether a popup closes is up to you.
+ * A mark's handlers, at least one. A mark with `onClick` takes the click; a hover-only mark lets
+ * it through to the text. A hover ends once: the pointer leaves the mark (into your popup too),
+ * or the mark is removed, scrolled away, or goes with its document or editor. Its `null` says
+ * only that the pointer left; whether a popup closes is up to you.
  */
 export type MarkInteractions =
 	| (Pick<MarkHandlers, 'onClick'> & Partial<MarkHandlers>)

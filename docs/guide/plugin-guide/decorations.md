@@ -103,7 +103,7 @@ A mark answers the user through its `interactive` field. It takes up to three ha
 | `onHover(dec, hover)`         | the pointer enters the mark, then once more with `null` when the hover's over | `{ anchor, rects }`, in viewport coordinates |
 | `onActivate(dec, { anchor })` | the `decorations.activateAtCaret` command runs with the caret in the mark     | the mark's rect on the caret's line          |
 
-Only `onClick` and `onHover` make a mark take pointer events, so a document full of plain marks (or keyboard-only ones) costs no hit-testing.
+The two pointer handlers differ in one way. A mark with `onClick` takes the click, so clicking it runs your handler and doesn't move the caret. A hover-only mark lets every click, drag and double-click through to the text under it, so a defined word still edits like any other word (and keeps the text cursor). The editor works out the hover from where the pointer is, and it skips that work when no hover mark is on screen.
 
 Here's a glossary: hover a term for its definition, or reach the same popup from the keyboard. `popup` is yours; the editor never sees it.
 
@@ -134,11 +134,12 @@ What you can count on:
 
 - **One hover per mark.** A mark that wraps paints one rect per line, and moving between them (across the gap between the lines too) fires nothing. `anchor` is the rect the pointer came in through, and `rects` is all of them.
 - **Every hover ends exactly once.** The pointer leaving, your source dropping the mark, its block scrolling out of the rendered range, a new document, the editor unmounting: whichever happens first sends the `null`, and nothing sends a second. So a popup never outlives its word.
-- **`null` means the pointer left, nothing more.** Whether the popup closes is your call. The usual move is a short grace period so the pointer can travel onto the popup; the editor won't time that for you.
+- **`null` means the pointer left, nothing more.** Moving onto your popup counts as leaving too, even where the popup covers another mark. Whether the popup closes is your call; the usual move is a short grace period so the pointer can travel onto it, and the editor won't time that for you.
+- **Only a mouse, or a pen held above the screen, hovers.** A touch never does, and pressing a button (to drag a selection, say) ends the hover and starts none until it's up.
 - **Restyling keeps the hover.** A hover belongs to your source, the mark's block and its range, not its class, so an `invalidate()` that adds a `glossary-term-hovered` class doesn't end and restart it. Move the range and it's a new mark (which it is, really).
 - **Throws stay contained.** A handler that throws shows up on the `error` event as origin `decoration`, with the mark's `path`, and the editor carries on.
 
-When marks overlap, the shortest range wins, then the earlier-registered source, then the earlier mark in its answer. The pointer follows the same rule, since the winner's rect is the one painted on top. A table cell is the one place marks merge: every mark in the cell paints as one whole-cell rect, and the same rule picks which mark the click and the hover go to.
+When marks overlap, the shortest range wins, then the earlier-registered source, then the earlier mark in its answer. The pointer follows the same rule, for hovers and clicks alike. A table cell is the one place marks merge: every mark in the cell paints as one whole-cell rect, and the same rule picks which mark the click and the hover go to.
 
 The keyboard's way in is one command instead of a tab stop per mark. `decorations.activateAtCaret` runs the `onActivate` of the mark under the caret (a caret on either edge counts, and over a selection it's the end you're extending). It ships with no chord. A host binds one through its `keybindings` prop (`{ chord: 'Alt+Enter', command: 'decorations.activateAtCaret' }`), and a plugin that wants its own key wraps it in a global command:
 

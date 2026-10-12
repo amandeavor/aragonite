@@ -1,19 +1,20 @@
 // @vitest-environment jsdom
-// A mark's hover starts once and ends once per hover, keyed by the decoration rather than the
-// rendered rect, since the overlay repaints its rects on every invalidate and scroll.
+// A mark's hover comes from hit-testing the pointer against the painted rects, starts once and
+// ends once per hover, keyed by the decoration rather than the rect the overlay repaints.
 import { describe, it, expect, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import DecorationOverlay from '#lib/components/DecorationOverlay.svelte';
 import type { BlockComponent } from '#lib/block-component.js';
 import { parse } from '#lib/core/parser.js';
 import { createDecorationEngine } from '#lib/decorations/decoration-state.svelte.js';
+import type { HoverPointer } from '#lib/decorations/mark-hover.js';
 import type { Decoration, MarkDecoration, MarkHover } from '#lib/decorations/types.js';
 import { editorMountContext } from '../harness/mount-context';
 
-const doc = parse('hello world, a longer line\n\n| a | b |\n| - | - |\n| x | y |\n');
+const doc = parse('hello world, a longer line\n');
 
 /** jsdom measures every range at zero size, so the leaf answers with the rects a browser would:
- *  one per visual line, `wrapAt` splitting a range that crosses it. */
+ *  8px a character, 16px tall, a range crossing `wrapAt` continuing 22px lower. */
 function paintingLeaf(wrapAt = Infinity): BlockComponent {
 	return {
 		focus: () => {},
@@ -27,7 +28,7 @@ function paintingLeaf(wrapAt = Infinity): BlockComponent {
 	} as unknown as BlockComponent;
 }
 
-/** A grid's overlay paints its cells' marks as whole-cell rects. */
+/** A grid's overlay paints its cells' marks as whole-cell rects, 40 by 20. */
 function paintingGrid(): BlockComponent {
 	return {
 		focus: () => {},
@@ -50,14 +51,14 @@ afterEach(async () => {
 function setup(opts: { path?: number[]; leaf?: BlockComponent; container?: boolean } = {}) {
 	const path = opts.path ?? [0];
 	const errors: { path: number[]; error: unknown }[] = [];
-	// A variable, not a literal, so the deps type grows without this suite changing.
-	const deps = {
+	const engine = createDecorationEngine({
 		getDoc: () => doc,
-		onMarkError: (errPath: number[], error: unknown) => errors.push({ path: errPath, error })
-	};
-	const engine = createDecorationEngine(deps);
+		onMarkError: (errPath, error) => errors.push({ path: errPath, error })
+	});
 	const target = document.createElement('div');
+	// The block's own element sits at the viewport origin in jsdom, so local and viewport agree.
 	const blockEl = document.createElement('div');
+	blockEl.className = 'block-host';
 	document.body.append(target, blockEl);
 	instance = mount(DecorationOverlay, {
 		target,
@@ -70,7 +71,16 @@ function setup(opts: { path?: number[]; leaf?: BlockComponent; container?: boole
 		context: editorMountContext({ services: { decorations: engine } })
 	});
 	flushSync();
-	return { engine, errors };
+	const pointer = (x: number, y: number, over: Partial<HoverPointer> = {}) =>
+		engine.markHover.move({
+			clientX: x,
+			clientY: y,
+			pointerType: 'mouse',
+			buttons: 0,
+			target: blockEl,
+			...over
+		});
+	return { engine, errors, pointer };
 }
 
 /** A source whose answer the test swaps, then re-runs with `invalidate`. */
@@ -97,27 +107,15 @@ function hoverMark(calls: HoverCall[], over: Partial<MarkDecoration> = {}): Mark
 	};
 }
 
-function painted(): HTMLElement[] {
-	return [...document.querySelectorAll<HTMLElement>('.decoration-overlay')];
-}
-
-function enter(el: Element, from: Element | null = null): void {
-	el.dispatchEvent(new MouseEvent('pointerenter', { relatedTarget: from }));
-}
-
-function leave(el: Element, to: Element | null = document.body): void {
-	el.dispatchEvent(new MouseEvent('pointerleave', { relatedTarget: to }));
-}
-
 describe('a mark reports one hover per decoration', () => {
-	it('reports the entered rect as the anchor, then one end on leaving', () => {
+	it('reports the rect under the pointer as the anchor, then one end off the mark', () => {
 		const calls: HoverCall[] = [];
-		const { engine } = setup();
+		const { engine, pointer } = setup();
 		swappableSource(engine, [hoverMark(calls)]);
 
-		const [rect] = painted();
-		enter(rect);
-		leave(rect);
+		pointer(10, 8);
+		pointer(20, 8);
+		pointer(60, 8);
 
 		expect(calls).toHaveLength(2);
 		expect(calls[0].hover?.anchor).toMatchObject({ left: 0, top: 0, width: 40, height: 16 });
@@ -125,20 +123,18 @@ describe('a mark reports one hover per decoration', () => {
 		expect(calls[1].hover).toBeNull();
 	});
 
-	it('fires nothing between two rects of a wrapped mark, and ends once leaving both', () => {
+	it('fires nothing across the space between two lines of a mark, and ends once off it', () => {
 		const calls: HoverCall[] = [];
-		const { engine } = setup({ leaf: paintingLeaf(3) });
+		const { engine, pointer } = setup({ leaf: paintingLeaf(3) });
 		swappableSource(engine, [hoverMark(calls)]);
 
-		const [first, second] = painted();
-		expect(second, 'the wrapped mark painted one rect per line').toBeDefined();
-		enter(first);
-		leave(first, second);
-		enter(second, first);
+		pointer(4, 8);
+		pointer(4, 19);
+		pointer(4, 30);
 		expect(calls).toHaveLength(1);
 		expect(calls[0].hover?.rects).toHaveLength(2);
 
-		leave(second);
+		pointer(4, 50);
 		expect(calls.map((c) => c.hover)).toEqual([calls[0].hover, null]);
 	});
 });
@@ -146,9 +142,9 @@ describe('a mark reports one hover per decoration', () => {
 describe('a started hover ends exactly once, whatever ends it', () => {
 	it('survives the source re-providing the same mark, and ends once when it is gone', () => {
 		const calls: HoverCall[] = [];
-		const { engine } = setup();
+		const { engine, pointer } = setup();
 		const provide = swappableSource(engine, [hoverMark(calls)]);
-		enter(painted()[0]);
+		pointer(10, 8);
 
 		provide([hoverMark(calls)]);
 		provide([hoverMark(calls, { class: 'probe probe-hovered' })]);
@@ -161,9 +157,9 @@ describe('a started hover ends exactly once, whatever ends it', () => {
 
 	it('ends once when the overlay unmounts, as a block windowed out does', async () => {
 		const calls: HoverCall[] = [];
-		const { engine } = setup();
+		const { engine, pointer } = setup();
 		swappableSource(engine, [hoverMark(calls)]);
-		enter(painted()[0]);
+		pointer(10, 8);
 
 		await unmount(instance!);
 		instance = null;
@@ -174,7 +170,7 @@ describe('a started hover ends exactly once, whatever ends it', () => {
 
 	it('routes a throwing onHover to the error sink and keeps reporting later hovers', () => {
 		const calls: HoverCall[] = [];
-		const { engine, errors } = setup();
+		const { engine, errors, pointer } = setup();
 		const boom: MarkDecoration = {
 			...hoverMark(calls),
 			interactive: {
@@ -184,8 +180,8 @@ describe('a started hover ends exactly once, whatever ends it', () => {
 			}
 		};
 		const provide = swappableSource(engine, [boom]);
-		enter(painted()[0]);
-		leave(painted()[0]);
+		pointer(10, 8);
+		pointer(60, 8);
 		expect(errors.map((e) => (e.error as Error).message)).toEqual([
 			'plugin onHover blew up',
 			'plugin onHover blew up'
@@ -193,13 +189,58 @@ describe('a started hover ends exactly once, whatever ends it', () => {
 		expect(errors[0].path).toEqual([0]);
 
 		provide([hoverMark(calls)]);
-		enter(painted()[0]);
+		pointer(10, 8);
 		expect(calls).toHaveLength(1);
 	});
 });
 
-describe('only marks with a pointer handler take pointer events', () => {
-	it('paints many plain marks and a keyboard-only mark with none taking pointer events', () => {
+describe('which pointers hover', () => {
+	it('never starts a hover from a touch', () => {
+		const calls: HoverCall[] = [];
+		const { engine, pointer } = setup();
+		swappableSource(engine, [hoverMark(calls)]);
+
+		pointer(10, 8, { pointerType: 'touch' });
+		expect(calls).toHaveLength(0);
+		pointer(10, 8, { pointerType: 'pen' });
+		expect(calls).toHaveLength(1);
+	});
+
+	it('ends the hover when a button goes down, and starts none until it is up', () => {
+		const calls: HoverCall[] = [];
+		const { engine, pointer } = setup();
+		swappableSource(engine, [
+			hoverMark(calls),
+			hoverMark(calls, { start: 6, end: 11, class: 'b' })
+		]);
+
+		pointer(10, 8);
+		pointer(12, 8, { buttons: 1 });
+		pointer(60, 8, { buttons: 1 });
+		expect(calls.map((c) => [c.cls, c.hover === null])).toEqual([
+			['probe', false],
+			['probe', true]
+		]);
+		pointer(60, 8);
+		expect(calls.at(-1)?.cls).toBe('b');
+	});
+
+	it('ends the hover over anything outside the blocks, such as a host popup in the root', () => {
+		const calls: HoverCall[] = [];
+		const { engine, pointer } = setup();
+		swappableSource(engine, [hoverMark(calls)]);
+		const popup = document.createElement('div');
+		document.body.append(popup);
+
+		pointer(10, 8);
+		pointer(10, 8, { target: popup });
+		expect(calls.map((c) => c.hover === null)).toEqual([false, true]);
+	});
+});
+
+describe('only marks with a click handler take pointer events', () => {
+	it('gives hover-only, keyboard-only and plain marks no pointer-taking element', () => {
+		const calls: HoverCall[] = [];
 		const { engine } = setup();
 		const plain: Decoration[] = Array.from({ length: 200 }, (_, i) => ({
 			type: 'mark',
@@ -216,25 +257,30 @@ describe('only marks with a pointer handler take pointer events', () => {
 			class: 'kbd',
 			interactive: { onActivate: () => {} }
 		};
-		swappableSource(engine, [...plain, keyboardOnly]);
+		const clickable: MarkDecoration = {
+			...keyboardOnly,
+			class: 'click',
+			interactive: { onClick: () => {}, onHover: () => {} }
+		};
+		swappableSource(engine, [...plain, keyboardOnly, hoverMark(calls), clickable]);
 
-		expect(painted()).toHaveLength(201);
-		expect(document.querySelectorAll('.decoration-overlay-interactive')).toHaveLength(0);
+		expect(document.querySelectorAll('.decoration-overlay')).toHaveLength(203);
+		const taking = document.querySelectorAll('.decoration-overlay-interactive');
+		expect([...taking].map((el) => el.classList.contains('click'))).toEqual([true]);
 	});
 });
 
 describe('a table cell names its decoration by the precedence rule', () => {
-	it('hovers the innermost of two hover marks collapsed into one cell rect', () => {
+	it('hovers the innermost of the hover marks collapsed into one cell rect', () => {
 		const calls: HoverCall[] = [];
-		const { engine } = setup({ path: [1], leaf: paintingGrid(), container: true });
+		const { engine, pointer } = setup({ path: [1], leaf: paintingGrid(), container: true });
 		const cell = [1, 1, 0];
 		swappableSource(engine, [
 			hoverMark(calls, { path: cell, start: 0, end: 3, class: 'outer' }),
 			hoverMark(calls, { path: cell, start: 1, end: 2, class: 'inner' }),
 			hoverMark(calls, { path: cell, start: 1, end: 2, class: 'later-same-span' })
 		]);
-		const [rect] = painted();
-		enter(rect);
+		pointer(20, 30);
 		expect(calls.map((c) => c.cls)).toEqual(['inner']);
 	});
 
@@ -259,7 +305,9 @@ describe('a table cell names its decoration by the precedence rule', () => {
 			provide: () => [{ type: 'mark', path: [1, 1, 0], start: 0, end: 1, class: 'hl' }]
 		});
 		flushSync();
-		painted()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		document
+			.querySelector('.decoration-overlay')!
+			.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(clicks).toBe(1);
 	});
 });

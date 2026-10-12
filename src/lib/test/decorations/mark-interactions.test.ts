@@ -1,8 +1,8 @@
-// Which interactive mark answers, and how far a hover mark's lines reach toward each other: the
-// rules the overlay, a table cell and the activate command all read.
+// Which interactive mark answers, and where a hover mark's hit area reaches: the rules the
+// overlay, the hover hit-test and the activate command all read.
 import { describe, it, expect } from 'vitest';
 import {
-	lineGapReach,
+	hitRect,
 	paintOrder,
 	takesPointer,
 	winningMark
@@ -23,6 +23,7 @@ function mark(
 }
 
 const hover = { onHover: () => {} };
+const click = { onClick: () => {} };
 
 describe('the precedence rule', () => {
 	it('picks the shortest range, then the earliest entry', () => {
@@ -36,49 +37,54 @@ describe('the precedence rule', () => {
 		expect(winningMark([mark(0, 0, 1)], (d) => !!d.interactive)).toBeUndefined();
 	});
 
-	it('paints plain marks first, then pointer marks with the winner last', () => {
+	it('paints plain and hover-only marks first, then click marks with the winner last', () => {
 		const marks = [
-			mark(0, 2, 4, hover),
-			mark(1, 0, 9),
-			mark(2, 0, 9, { onClick: () => {} }),
-			mark(3, 2, 4, hover)
+			mark(0, 2, 4, click),
+			mark(1, 0, 9, hover),
+			mark(2, 0, 9, click),
+			mark(3, 2, 4, click)
 		];
 		expect(paintOrder(marks).map((m) => m.index)).toEqual([1, 2, 3, 0]);
 	});
 
-	it('takes the pointer only for a click or hover handler', () => {
+	it('takes the pointer only for a click handler', () => {
+		expect(takesPointer(mark(0, 0, 1, click).dec)).toBe(true);
+		expect(takesPointer(mark(0, 0, 1, { ...hover, ...click }).dec)).toBe(true);
+		expect(takesPointer(mark(0, 0, 1, hover).dec)).toBe(false);
 		expect(takesPointer(mark(0, 0, 1, { onActivate: () => {} }).dec)).toBe(false);
-		expect(takesPointer(mark(0, 0, 1, hover).dec)).toBe(true);
 		expect(takesPointer(mark(0, 0, 1).dec)).toBe(false);
 	});
 });
 
-describe('lineGapReach', () => {
-	it('meets halfway across the space between two lines, and reaches nowhere past the ends', () => {
-		const lines = [
-			{ left: 0, top: 0, width: 100, height: 20 },
-			{ left: 0, top: 26, width: 40, height: 20 }
-		];
-		expect(lineGapReach(lines)).toEqual([
-			{ above: 0, below: 3 },
-			{ above: 3, below: 0 }
-		]);
+describe('hitRect', () => {
+	const lines = [
+		{ left: 40, top: 0, width: 60, height: 20 },
+		{ left: 0, top: 26, width: 30, height: 20 }
+	];
+
+	it('finds the rect holding the point, edges included', () => {
+		expect(hitRect(lines, 50, 10)).toBe(lines[0]);
+		expect(hitRect(lines, 30, 46)).toBe(lines[1]);
+		expect(hitRect(lines, 35, 36)).toBeNull();
 	});
 
-	it('gives every rect on one line the same edges, a short fragment reaching the line box', () => {
-		const rects = [
+	it('counts the space between two lines on the rect above or below that spans the point', () => {
+		expect(hitRect(lines, 60, 23)).toBe(lines[0]);
+		expect(hitRect(lines, 10, 23)).toBe(lines[1]);
+		expect(hitRect(lines, 35, 23)).toBeNull();
+	});
+
+	it('reaches no further than the first and last lines', () => {
+		expect(hitRect(lines, 60, -2)).toBeNull();
+		expect(hitRect(lines, 10, 48)).toBeNull();
+	});
+
+	it('treats rects that overlap vertically as one line', () => {
+		const sameLine = [
 			{ left: 0, top: 0, width: 50, height: 20 },
 			{ left: 50, top: 4, width: 10, height: 12 },
 			{ left: 0, top: 30, width: 40, height: 20 }
 		];
-		const [tall, short] = lineGapReach(rects);
-		expect(tall.below).toBe(5);
-		expect(short.below).toBe(5 + 4);
-	});
-
-	it('reaches nowhere for a single line', () => {
-		expect(lineGapReach([{ left: 0, top: 0, width: 10, height: 20 }])).toEqual([
-			{ above: 0, below: 0 }
-		]);
+		expect(hitRect(sameLine, 55, 25)).toBe(sameLine[1]);
 	});
 });

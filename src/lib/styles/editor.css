@@ -114,12 +114,6 @@
 	pointer-events: auto;
 	cursor: pointer;
 }
-/* Reaches into the space between a hover mark's lines, so crossing it never leaves the mark. */
-:where(.editor) .decoration-overlay-reach {
-	position: absolute;
-	left: 0;
-	right: 0;
-}
 
 /* Search matches build on the rule above. */
 :where(.editor) .match-overlay {

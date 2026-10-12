@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getContext, untrack } from 'svelte';
 	import type { BlockComponent } from '../block-component';
 	import {
 		EDITOR_DOC_KEY,
@@ -9,13 +9,8 @@
 	} from '../editor-keys';
 	import type { MarkDecoration } from '../decorations/types';
 	import { collapseCellMarks, type IndexedDecoration } from '../decorations/buckets';
-	import {
-		leafMarkRects,
-		lineGapReach,
-		paintOrder,
-		winningMark,
-		type HitReach
-	} from '../decorations/mark-interactions';
+	import { leafMarkRects, paintOrder, winningMark } from '../decorations/mark-interactions';
+	import type { HoverTarget } from '../decorations/mark-hover';
 	import { wireOverlayRemeasure } from '../caret/overlay-remeasure';
 
 	let {
@@ -52,39 +47,21 @@
 		cls: string;
 		attrs?: Record<string, string>;
 		clickMark?: MarkDecoration;
-		hoverMark?: MarkDecoration;
-		reach?: HitReach;
 	}
 	let rects = $state.raw<Painted[]>([]);
-	// Rendered keyed by index, so an element keeps its index for as long as it lives.
-	const rectIndex = new WeakMap<Element, number>();
 
-	// The hover tracker's key for this overlay, so unmounting it ends a hover it began.
+	// The hover tracker's key for what this overlay painted, dropped when it unmounts.
 	const owner = {};
-	$effect(() => () => engine?.markHover.release(owner));
+	$effect(() => () => engine?.markHover.unpaint(owner));
 
 	function click(r: Painted, ev: MouseEvent): void {
 		const mark = r.clickMark;
 		if (mark) engine?.runMarkHandler(mark, () => mark.interactive?.onClick?.(mark, ev));
 	}
 
-	function enter(i: number): void {
-		const mark = rects[i]?.hoverMark;
-		if (!mark || !blockEl || !engine) return;
-		const origin = blockEl.getBoundingClientRect();
-		const toViewport = (r: Painted) =>
-			new DOMRect(origin.left + r.left, origin.top + r.top, r.width, r.height);
-		const own = rects.filter((r) => r.hoverMark === mark).map(toViewport);
-		engine.markHover.enter(owner, mark, { anchor: toViewport(rects[i]), rects: own });
-	}
-
-	// Moving onto another rect of the same mark is not a leave.
-	function leave(i: number, ev: PointerEvent): void {
-		const mark = rects[i]?.hoverMark;
-		const to = (ev.relatedTarget as Element | null)?.closest?.('.decoration-overlay');
-		const j = to ? rectIndex.get(to) : undefined;
-		if (mark && j !== undefined && rects[j]?.hoverMark === mark) return;
-		engine?.markHover.release(owner);
+	// Untracked: the hit-test runs plugin code, whose reads must not subscribe this effect.
+	function paintHover(el: HTMLElement | null, targets: HoverTarget[]): void {
+		untrack(() => engine?.markHover.paint(owner, el, targets));
 	}
 
 	$effect(() => {
@@ -98,59 +75,67 @@
 				? eng.marksForDescendants(path)
 				: eng.marksForPath(path)
 			: [];
-		if (!eng || eng.sourceCount === 0 || !el) {
+		if (
+			!eng ||
+			eng.sourceCount === 0 ||
+			!el ||
+			(isContainer && !containerPaintsCells && !containerPaintsRects)
+		) {
 			rects = [];
-			return;
-		}
-		if (isContainer && !containerPaintsCells && !containerPaintsRects) {
-			rects = [];
+			paintHover(null, []);
 			return;
 		}
 
 		function measure(): void {
 			if (!el) return;
 			const blockRect = el.getBoundingClientRect();
+			const hover: HoverTarget[] = [];
 			rects = containerPaintsCells
-				? measureCells(marks, blockRect)
-				: measureLeaf(marks, ref, blockRect);
+				? measureCells(marks, blockRect, hover)
+				: measureLeaf(marks, ref, blockRect, hover);
+			paintHover(el, hover);
 		}
 
 		function measureLeaf(
 			leafMarks: IndexedDecoration<MarkDecoration>[],
 			leaf: BlockComponent | undefined,
-			blockRect: DOMRect
+			blockRect: DOMRect,
+			hover: HoverTarget[]
 		): Painted[] {
 			if (!leaf?.measurePartialRects) return [];
 			const out: Painted[] = [];
-			for (const { dec } of paintOrder(leafMarks)) {
-				const first = out.length;
-				for (const r of leafMarkRects(leaf, dec)) {
-					out.push({ ...toLocal(r, blockRect, dec.class, dec.attrs), ...handlersOf(dec) });
-				}
-				if (dec.interactive?.onHover) {
-					const own = out.slice(first);
-					lineGapReach(own).forEach((reach, k) => (own[k].reach = reach));
-				}
+			for (const mark of paintOrder(leafMarks)) {
+				const { dec } = mark;
+				const own = leafMarkRects(leaf, dec).map((r) => ({
+					...toLocal(r, blockRect, dec.class, dec.attrs),
+					clickMark: dec.interactive?.onClick ? dec : undefined
+				}));
+				for (const painted of own) out.push(painted);
+				if (dec.interactive?.onHover && own.length > 0) hover.push({ mark, rects: own });
 			}
 			return out;
 		}
 
 		// Several marks in one cell collapse to a single rect whose class is their union; the
-		// precedence rule names which of them answers a click and a hover.
+		// precedence rule names which of them answers a click, and the hit-test which a hover.
 		function measureCells(
 			descMarks: IndexedDecoration<MarkDecoration>[],
-			blockRect: DOMRect
+			blockRect: DOMRect,
+			hover: HoverTarget[]
 		): Painted[] {
 			if (!ref?.cellRect) return [];
 			const out: Painted[] = [];
 			for (const cell of collapseCellMarks(descMarks, path.length)) {
 				const r = ref.cellRect(cell.rowIdx, cell.colIdx);
 				if (!r) continue;
-				out.push({
+				const painted = {
 					...toLocal(r, blockRect, cell.class, cell.dec.attrs),
-					clickMark: winningMark(cell.marks, (d) => !!d.interactive?.onClick)?.dec,
-					hoverMark: winningMark(cell.marks, (d) => !!d.interactive?.onHover)?.dec
-				});
+					clickMark: winningMark(cell.marks, (d) => !!d.interactive?.onClick)?.dec
+				};
+				out.push(painted);
+				for (const mark of cell.marks) {
+					if (mark.dec.interactive?.onHover) hover.push({ mark, rects: [painted] });
+				}
 			}
 			return out;
 		}
@@ -171,13 +156,6 @@
 			};
 		}
 
-		function handlersOf(dec: MarkDecoration): Pick<Painted, 'clickMark' | 'hoverMark'> {
-			return {
-				clickMark: dec.interactive?.onClick ? dec : undefined,
-				hoverMark: dec.interactive?.onHover ? dec : undefined
-			};
-		}
-
 		const editorRoot = getEditorRoot?.() ?? null;
 		return wireOverlayRemeasure({ el, editorRoot, blockRef: ref, measure });
 	});
@@ -186,20 +164,10 @@
 {#each rects as r, i (i)}
 	<div
 		{...r.attrs}
-		{@attach (el) => void rectIndex.set(el, i)}
 		class="decoration-overlay {r.cls}"
-		class:decoration-overlay-interactive={!!(r.clickMark || r.hoverMark)}
+		class:decoration-overlay-interactive={!!r.clickMark}
 		contenteditable="false"
 		style="left:{r.left}px;top:{r.top}px;width:{r.width}px;height:{r.height}px;"
 		onclick={r.clickMark ? (ev) => click(r, ev) : undefined}
-		onpointerenter={r.hoverMark ? () => enter(i) : undefined}
-		onpointerleave={r.hoverMark ? (ev) => leave(i, ev) : undefined}
-	>
-		{#if r.reach && (r.reach.above || r.reach.below)}
-			<span
-				class="decoration-overlay-reach"
-				style="top:{-r.reach.above}px;bottom:{-r.reach.below}px;"
-			></span>
-		{/if}
-	</div>
+	></div>
 {/each}

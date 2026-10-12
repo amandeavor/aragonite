@@ -1,11 +1,13 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { pointAtRaw, textRunRect, type Point, type TextRunRect } from '../../text-runs';
 import { FIXTURE_BYTES } from '../perf/vr-helpers';
 
 /**
  * Mark hover (requirements/decorations/mark-hover.md). Each source records its `onHover` calls on
- * `window.__hovers`, an anchor as plain numbers and an end as null, so a spec reads the whole run.
+ * `window.__hovers`, an anchor as plain numbers and an end as null. The pointer aims at the text
+ * the mark covers, never at an overlay element: a hover-only mark renders none that takes it.
  */
 
 type Recorded = { cls: string; anchor: { left: number; top: number; width: number } | null };
@@ -15,6 +17,7 @@ interface MarkSpec {
 	start: number;
 	end: number;
 	cls: string;
+	click?: boolean;
 }
 
 /** Registers a hover source whose marks the page can swap with `window.__setMarks(name, marks)`. */
@@ -23,6 +26,7 @@ async function addHoverSource(page: Page, name: string, marks: MarkSpec[]): Prom
 		({ name, marks }) => {
 			const w = window as any;
 			w.__hovers ??= [];
+			w.__clicks ??= 0;
 			w.__marks ??= {};
 			w.__marks[name] = marks;
 			w.__setMarks = (source: string, next: MarkSpec[]) => {
@@ -46,7 +50,8 @@ async function addHoverSource(page: Page, name: string, marks: MarkSpec[]): Prom
 										? { left: hover.anchor.left, top: hover.anchor.top, width: hover.anchor.width }
 										: null
 								});
-							}
+							},
+							...(m.click ? { onClick: () => w.__clicks++ } : {})
 						}
 					}))
 			});
@@ -59,9 +64,12 @@ function hovers(page: Page): Promise<Recorded[]> {
 	return page.evaluate(() => [...((window as any).__hovers ?? [])]);
 }
 
-async function centerOf(page: Page, selector: string, nth = 0): Promise<{ x: number; y: number }> {
-	const box = (await page.locator(selector).nth(nth).boundingBox())!;
-	return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+function center(r: TextRunRect): Point {
+	return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
+async function moveTo(page: Page, at: Point, steps = 4): Promise<void> {
+	await page.mouse.move(at.x, at.y, { steps });
 }
 
 /** Somewhere on the page no mark covers: the harness's top-left corner, above the editor. */
@@ -83,6 +91,13 @@ async function settledHovers(page: Page): Promise<Recorded[]> {
 	return hovers(page);
 }
 
+async function hoverWord(page: Page, needle: string, path: number[] = [0]): Promise<Point> {
+	const at = center(await textRunRect(page, needle, { path }));
+	await moveTo(page, at);
+	await expect.poll(() => hovers(page)).not.toHaveLength(0);
+	return at;
+}
+
 test.describe('mark hover', () => {
 	let editor: EditorPage;
 
@@ -96,18 +111,14 @@ test.describe('mark hover', () => {
 	}) => {
 		await editor.loadContent('hello world\n');
 		await addHoverSource(page, 'one', [{ path: [0], start: 0, end: 5, cls: 'hv-one' }]);
-		const overlay = page.locator('.decoration-overlay.hv-one');
-		await expect(overlay).toHaveCount(1);
-		const box = (await overlay.boundingBox())!;
+		const word = await textRunRect(page, 'hello', { path: [0] });
 
-		const { x, y } = await centerOf(page, '.decoration-overlay.hv-one');
-		await page.mouse.move(x, y, { steps: 4 });
-		await expect.poll(() => hovers(page)).toHaveLength(1);
+		await hoverWord(page, 'hello');
 		const [start] = await hovers(page);
 		expect(start.anchor).toEqual({
-			left: expect.closeTo(box.x, 0),
-			top: expect.closeTo(box.y, 0),
-			width: expect.closeTo(box.width, 0)
+			left: expect.closeTo(word.left, 0),
+			top: expect.closeTo(word.top, 0),
+			width: expect.closeTo(word.width, 0)
 		});
 
 		await moveAway(page);
@@ -120,17 +131,20 @@ test.describe('mark hover', () => {
 		const line = 'word '.repeat(120).trim();
 		await editor.loadContent(`${line}\n`);
 		await addHoverSource(page, 'wrap', [{ path: [0], start: 0, end: line.length, cls: 'hv-wrap' }]);
-		const overlays = page.locator('.decoration-overlay.hv-wrap');
-		await expect.poll(() => overlays.count()).toBeGreaterThanOrEqual(2);
-
-		const first = (await overlays.nth(0).boundingBox())!;
-		const second = (await overlays.nth(2).boundingBox())!;
-		expect(second.y, 'the third rect sits on the second line').toBeGreaterThan(first.y);
-		const x = first.x + 200;
-		await page.mouse.move(x, first.y + first.height / 2, { steps: 4 });
+		const lines: { top: number; bottom: number; left: number }[] = await page.evaluate(
+			(end) =>
+				(window as any).__test.rects
+					.rangeRects([0], 0, end)
+					.map((r: DOMRect) => ({ top: r.top, bottom: r.bottom, left: r.left })),
+			line.length
+		);
+		const [first, second] = [lines[0], lines.find((r) => r.top > lines[0].bottom)!];
+		expect(second.top, 'the space between the lines is real').toBeGreaterThan(first.bottom);
+		const x = first.left + 200;
+		await moveTo(page, { x, y: (first.top + first.bottom) / 2 });
 		await expect.poll(() => hovers(page)).toHaveLength(1);
 		// Straight down, in small steps, so the pointer passes through the space between the lines.
-		await page.mouse.move(x, second.y + second.height / 2, { steps: 12 });
+		await moveTo(page, { x, y: (second.top + second.bottom) / 2 }, 12);
 		expect(await settledHovers(page)).toHaveLength(1);
 
 		await moveAway(page);
@@ -141,9 +155,7 @@ test.describe('mark hover', () => {
 	test('a re-provided mark keeps its hover, and a removed one ends it once', async ({ page }) => {
 		await editor.loadContent('hello world\n');
 		await addHoverSource(page, 'live', [{ path: [0], start: 0, end: 5, cls: 'hv-live' }]);
-		const { x, y } = await centerOf(page, '.decoration-overlay.hv-live');
-		await page.mouse.move(x, y, { steps: 4 });
-		await expect.poll(() => hovers(page)).toHaveLength(1);
+		await hoverWord(page, 'hello');
 
 		await page.evaluate(() => {
 			const w = window as any;
@@ -159,13 +171,31 @@ test.describe('mark hover', () => {
 		expect(run.slice(1)).toEqual([{ cls: 'hv-live hv-hovered', anchor: null }]);
 	});
 
+	test('scrolling a little under a still pointer ends the hover once', async ({ page }) => {
+		await editor.loadLargeFixture('flat-prose', FIXTURE_BYTES);
+		await addHoverSource(page, 'near', [{ path: [0], start: 0, end: 4, cls: 'hv-near' }]);
+		const word = await page.evaluate(() => {
+			const [r] = (window as any).__test.rects.rangeRects([0], 0, 4);
+			return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+		});
+		await moveTo(page, { x: (word.left + word.right) / 2, y: (word.top + word.bottom) / 2 });
+		await expect.poll(() => hovers(page)).toHaveLength(1);
+
+		await editor.scrollEditorTo(120);
+		const run = await settledHovers(page);
+		expect(run.map((r) => r.anchor === null)).toEqual([false, true]);
+	});
+
 	test('scrolling the hovered block out of the rendered range ends its hover once', async ({
 		page
 	}) => {
 		const count = await editor.loadLargeFixture('flat-prose', FIXTURE_BYTES);
 		await addHoverSource(page, 'far', [{ path: [0], start: 0, end: 4, cls: 'hv-far' }]);
-		const { x, y } = await centerOf(page, '.decoration-overlay.hv-far');
-		await page.mouse.move(x, y, { steps: 4 });
+		const word = await page.evaluate(() => {
+			const [r] = (window as any).__test.rects.rangeRects([0], 0, 4);
+			return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+		});
+		await moveTo(page, { x: (word.left + word.right) / 2, y: (word.top + word.bottom) / 2 });
 		await expect.poll(() => hovers(page)).toHaveLength(1);
 
 		await page.evaluate((last) => (window as any).__test.rects.scrollTo([last]), count - 1);
@@ -179,9 +209,7 @@ test.describe('mark hover', () => {
 	test('replacing the document ends the hover once', async ({ page }) => {
 		await editor.loadContent('hello world\n');
 		await addHoverSource(page, 'swap', [{ path: [0], start: 0, end: 5, cls: 'hv-swap' }]);
-		const { x, y } = await centerOf(page, '.decoration-overlay.hv-swap');
-		await page.mouse.move(x, y, { steps: 4 });
-		await expect.poll(() => hovers(page)).toHaveLength(1);
+		await hoverWord(page, 'hello');
 
 		// The source keeps offering the same mark, so only the swap itself can end the hover.
 		await editor.loadContent('hello again\n');
@@ -193,9 +221,7 @@ test.describe('mark hover', () => {
 	test('unmounting the editor ends the hover once', async ({ page }) => {
 		await editor.loadContent('hello world\n');
 		await addHoverSource(page, 'gone', [{ path: [0], start: 0, end: 5, cls: 'hv-gone' }]);
-		const { x, y } = await centerOf(page, '.decoration-overlay.hv-gone');
-		await page.mouse.move(x, y, { steps: 4 });
-		await expect.poll(() => hovers(page)).toHaveLength(1);
+		await hoverWord(page, 'hello');
 
 		// The host's own toggle remounts the editor under `{#key}`; clicked from script so the
 		// pointer stays on the mark and only the unmount can end the hover.
@@ -215,20 +241,77 @@ test.describe('mark hover', () => {
 		await editor.loadContent('hello world\n');
 		await addHoverSource(page, 'inner', [{ path: [0], start: 2, end: 4, cls: 'hv-inner' }]);
 		await addHoverSource(page, 'outer', [{ path: [0], start: 0, end: 11, cls: 'hv-outer' }]);
-		const { x, y } = await centerOf(page, '.decoration-overlay.hv-inner');
-		await page.mouse.move(x, y, { steps: 4 });
+		await moveTo(page, await pointAtRaw(page, [0], 2));
 		await expect.poll(() => hovers(page)).not.toHaveLength(0);
 		const run = await settledHovers(page);
 		expect(run.at(-1)?.cls).toBe('hv-inner');
 	});
 
-	test('two hundred plain marks and a keyboard-only mark take no pointer events', async ({
+	test('a click inside a hover-only mark places the caret there', async ({ page }) => {
+		await editor.loadContent('hello world\n\nsecond\n');
+		await addHoverSource(page, 'caret', [{ path: [0], start: 0, end: 5, cls: 'hv-caret' }]);
+		await editor.focusBlockEnd(1);
+
+		const at = await pointAtRaw(page, [0], 3);
+		await page.mouse.click(at.x, at.y);
+		await expect
+			.poll(() => page.evaluate(() => (window as any).__test.getSelection()?.focus))
+			.toEqual({ path: [0], offset: 3 });
+	});
+
+	test('a drag from inside a hover-only mark selects, and holds no hover while pressed', async ({
 		page
 	}) => {
 		await editor.loadContent('hello world\n');
+		await addHoverSource(page, 'drag', [
+			{ path: [0], start: 0, end: 5, cls: 'hv-drag' },
+			{ path: [0], start: 6, end: 11, cls: 'hv-other' }
+		]);
+		await hoverWord(page, 'hello');
+
+		await page.mouse.down();
+		await moveTo(page, center(await textRunRect(page, 'world', { path: [0] })), 8);
+		await page.mouse.up();
+
+		const selected = await page.evaluate(() => window.getSelection()?.toString() ?? '');
+		expect(selected.length).toBeGreaterThan(3);
+		expect('hello world').toContain(selected);
+		const run = await settledHovers(page);
+		expect(run.map((r) => [r.cls, r.anchor === null])).toEqual([
+			['hv-drag', false],
+			['hv-drag', true]
+		]);
+	});
+
+	test('a double-click inside a hover-only mark selects the word', async ({ page }) => {
+		await editor.loadContent('hello world\n');
+		await addHoverSource(page, 'word', [{ path: [0], start: 0, end: 5, cls: 'hv-word' }]);
+		const at = center(await textRunRect(page, 'hello', { path: [0] }));
+
+		await page.mouse.dblclick(at.x, at.y);
+		await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('hello');
+	});
+
+	test('a hover-only mark shows the text cursor, not a hand', async ({ page }) => {
+		await editor.loadContent('hello world\n');
+		await addHoverSource(page, 'cursor', [{ path: [0], start: 0, end: 5, cls: 'hv-cursor' }]);
+		await expect(page.locator('.decoration-overlay.hv-cursor')).toHaveCount(1);
+		const at = center(await textRunRect(page, 'hello', { path: [0] }));
+
+		const cursor = await page.evaluate(
+			({ x, y }) => getComputedStyle(document.elementFromPoint(x, y)!).cursor,
+			at
+		);
+		expect(cursor).not.toBe('pointer');
+	});
+
+	test('only click marks take pointer events: hover-only, keyboard-only and plain take none', async ({
+		page
+	}) => {
+		await editor.loadContent('hello world and more words\n');
 		await page.evaluate(() => {
 			(window as any).__test.decorations.addSource({
-				name: 'plain-many',
+				name: 'mixed',
 				provide: () => [
 					...Array.from({ length: 200 }, (_, i) => ({
 						type: 'mark',
@@ -244,15 +327,84 @@ test.describe('mark hover', () => {
 						end: 5,
 						class: 'hv-kbd',
 						interactive: { onActivate: () => {} }
+					},
+					{
+						type: 'mark',
+						path: [0],
+						start: 6,
+						end: 11,
+						class: 'hv-h',
+						interactive: { onHover: () => {} }
+					},
+					{
+						type: 'mark',
+						path: [0],
+						start: 12,
+						end: 15,
+						class: 'hv-h',
+						interactive: { onHover: () => {} }
+					},
+					{
+						type: 'mark',
+						path: [0],
+						start: 16,
+						end: 20,
+						class: 'hv-c',
+						interactive: { onClick: () => {} }
+					},
+					{
+						type: 'mark',
+						path: [0],
+						start: 21,
+						end: 26,
+						class: 'hv-c',
+						interactive: { onClick: () => {}, onHover: () => {} }
 					}
 				]
 			});
 		});
-		await expect(page.locator('.decoration-overlay')).toHaveCount(201);
+		await expect(page.locator('.decoration-overlay')).toHaveCount(205);
 		const taking = await page
 			.locator('.decoration-overlay')
-			.evaluateAll((els) => els.filter((el) => getComputedStyle(el).pointerEvents !== 'none'));
-		expect(taking).toHaveLength(0);
+			.evaluateAll((els) =>
+				els.filter((el) => getComputedStyle(el).pointerEvents !== 'none').map((el) => el.className)
+			);
+		expect(taking).toHaveLength(2);
+		expect(taking.every((cls) => cls.includes('hv-c'))).toBe(true);
+	});
+
+	test('a host popup inside the editor, over another mark, does not hover that mark', async ({
+		page
+	}) => {
+		await editor.loadContent('hello world\n');
+		await addHoverSource(page, 'pop', [
+			{ path: [0], start: 0, end: 5, cls: 'hv-a' },
+			{ path: [0], start: 6, end: 11, cls: 'hv-b' }
+		]);
+		await hoverWord(page, 'hello');
+
+		const b = await textRunRect(page, 'world', { path: [0] });
+		await page.evaluate((r) => {
+			const popup = document.createElement('div');
+			popup.className = 'host-popup';
+			Object.assign(popup.style, {
+				position: 'fixed',
+				left: `${r.left - 4}px`,
+				top: `${r.top - 4}px`,
+				width: `${r.width + 8}px`,
+				height: `${r.height + 8}px`,
+				zIndex: '50',
+				background: 'white'
+			});
+			document.querySelector('.editor')!.appendChild(popup);
+		}, b);
+		await moveTo(page, center(b), 8);
+
+		const run = await settledHovers(page);
+		expect(run.map((r) => [r.cls, r.anchor === null])).toEqual([
+			['hv-a', false],
+			['hv-a', true]
+		]);
 	});
 
 	test('a throwing onHover reaches the error event and the editor keeps working', async ({
@@ -280,8 +432,7 @@ test.describe('mark hover', () => {
 				]
 			});
 		});
-		const { x, y } = await centerOf(page, '.decoration-overlay.hv-boom');
-		await page.mouse.move(x, y, { steps: 4 });
+		await moveTo(page, center(await textRunRect(page, 'hello', { path: [0] })));
 		await expect
 			.poll(() => page.evaluate(() => (window as any).__test.getCapturedErrors()))
 			.toContain('decoration');
@@ -291,5 +442,20 @@ test.describe('mark hover', () => {
 		await expect
 			.poll(() => page.evaluate(() => (window as any).__test.getSource()))
 			.toBe('hello world!\n');
+	});
+});
+
+test.describe('mark hover under touch', () => {
+	test.use({ hasTouch: true });
+
+	test('a touch tap on a hover mark starts no hover', async ({ page }) => {
+		const editor = new EditorPage(page);
+		await editor.goto();
+		await editor.loadContent('hello world\n');
+		await addHoverSource(page, 'tap', [{ path: [0], start: 0, end: 5, cls: 'hv-tap' }]);
+		const at = center(await textRunRect(page, 'hello', { path: [0] }));
+
+		await page.touchscreen.tap(at.x, at.y);
+		expect(await settledHovers(page)).toEqual([]);
 	});
 });

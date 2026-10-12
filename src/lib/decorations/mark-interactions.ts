@@ -1,16 +1,16 @@
 /**
- * Which interactive marks take the pointer, where their hit area reaches, and which of several
- * marks answers: one precedence rule for the overlay's stacking, a table cell's collapsed rect
- * and the keyboard's activate command, so the pointer and the keyboard pick the same mark.
+ * Which marks take the click, where a hover mark's hit area reaches, and which of several marks
+ * answers: one precedence rule for the overlay's stacking, the hover hit-test and the keyboard's
+ * activate command, so the pointer and the keyboard pick the same mark.
  */
 
 import type { LocalRect } from '../caret/overlay-rects';
 import type { IndexedDecoration } from './buckets';
 import type { MarkDecoration } from './types';
 
-/** Only a click or hover handler costs hit-testing; a keyboard-only mark stays inert. */
+/** Only a click handler takes the pointer; a hover-only mark lets it through to the text. */
 export function takesPointer(dec: MarkDecoration): boolean {
-	return !!(dec.interactive?.onClick || dec.interactive?.onHover);
+	return !!dec.interactive?.onClick;
 }
 
 /** Negative when `a` wins: the shorter range, then the earlier entry in the merged list, which
@@ -34,8 +34,8 @@ export function winningMark(
 	return best;
 }
 
-/** Plain marks in their own order, then the pointer-taking ones with the winner last, so the
- *  rect painted on top of an overlap is the mark the precedence rule names. */
+/** Plain marks in their own order, then the click marks with the winner last, so a click on an
+ *  overlap lands on the mark the precedence rule names. */
 export function paintOrder(
 	marks: readonly IndexedDecoration<MarkDecoration>[]
 ): IndexedDecoration<MarkDecoration>[] {
@@ -71,28 +71,23 @@ export function leafMarkRects(leaf: MarkMeasurer, dec: MarkDecoration): DOMRect[
 	return (leaf.measurePartialRects?.(dec.start, dec.end) ?? []).filter((r) => r.width > 0);
 }
 
-/** How far each of one mark's line rects reaches into the space between its lines, so the
- *  pointer crossing from one line of the mark to the next never leaves it. */
-export interface HitReach {
-	above: number;
-	below: number;
-}
-
-export function lineGapReach(rects: readonly LocalRect[]): HitReach[] {
-	const bands: { top: number; bottom: number }[] = [];
+/** The rect the point falls on, or null; a point between two consecutive lines of the mark
+ *  counts on the rect above or below spanning it, so crossing lines never leaves the mark. */
+export function hitRect(rects: readonly LocalRect[], x: number, y: number): LocalRect | null {
+	const spansX = (r: LocalRect) => r.left <= x && x <= r.left + r.width;
+	const direct = rects.find((r) => spansX(r) && r.top <= y && y <= r.top + r.height);
+	if (direct) return direct;
+	const bands: { top: number; bottom: number; rects: LocalRect[] }[] = [];
 	for (const r of [...rects].sort((a, b) => a.top - b.top)) {
 		const last = bands.at(-1);
-		if (last && r.top < last.bottom) last.bottom = Math.max(last.bottom, r.top + r.height);
-		else bands.push({ top: r.top, bottom: r.top + r.height });
+		if (last && r.top < last.bottom) {
+			last.bottom = Math.max(last.bottom, r.top + r.height);
+			last.rects.push(r);
+		} else bands.push({ top: r.top, bottom: r.top + r.height, rects: [r] });
 	}
-	return rects.map((r) => {
-		const i = bands.findIndex((band) => r.top >= band.top && r.top < band.bottom);
-		const band = bands[i];
-		const prev = bands[i - 1];
-		const next = bands[i + 1];
-		return {
-			above: prev ? (band.top - prev.bottom) / 2 + (r.top - band.top) : 0,
-			below: next ? (next.top - band.bottom) / 2 + (band.bottom - r.top - r.height) : 0
-		};
-	});
+	for (let i = 0; i + 1 < bands.length; i++) {
+		if (y <= bands[i].bottom || y >= bands[i + 1].top) continue;
+		return bands[i].rects.find(spansX) ?? bands[i + 1].rects.find(spansX) ?? null;
+	}
+	return null;
 }

@@ -86,7 +86,6 @@ export function createDecorationEngine(deps: DecorationEngineDeps): DecorationEn
 		const copy = results.slice();
 		copy[i] = next;
 		results = copy;
-		markHover.refresh();
 	}
 
 	function runMarkHandler(dec: MarkDecoration, call: () => void): void {
@@ -97,7 +96,7 @@ export function createDecorationEngine(deps: DecorationEngineDeps): DecorationEn
 		}
 	}
 
-	const markHover = createMarkHover({ identify, find: findHoverMark, runHandler: runMarkHandler });
+	const markHover = createMarkHover({ identify, runHandler: runMarkHandler });
 
 	function identify(dec: MarkDecoration): MarkIdentity | null {
 		if (!dec.interactive?.onHover) return null;
@@ -107,13 +106,6 @@ export function createDecorationEngine(deps: DecorationEngineDeps): DecorationEn
 			.slice(0, results[i].indexOf(dec))
 			.filter((d) => sameHoverRange(d, dec)).length;
 		return { source: sources[i].name, path: dec.path, start: dec.start, end: dec.end, ordinal };
-	}
-
-	function findHoverMark(id: MarkIdentity): MarkDecoration | undefined {
-		const i = sources.findIndex((source) => source.name === id.source);
-		if (i < 0) return undefined;
-		return results[i].filter((d) => sameHoverRange(d, id))[id.ordinal] as
-			MarkDecoration | undefined;
 	}
 
 	/** Why the render path will apply nothing for this inline widget, or null when it will.
@@ -209,7 +201,6 @@ export function createDecorationEngine(deps: DecorationEngineDeps): DecorationEn
 				sources.splice(i, 1);
 				names.delete(source.name);
 				results = results.filter((_, idx) => idx !== i);
-				markHover.refresh();
 			}
 		};
 	}
