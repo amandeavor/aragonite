@@ -48,9 +48,13 @@ export function readQuery<T extends FilterableEntry>(
 	if (/[\r\n]/.test(query)) return null;
 	const whole = filterEntries(entries, query);
 	const { head, argument } = splitQuery(query);
-	if (whole.length > 0 || argument === null) return { listed: whole, argument: null };
-	if (/\s/.test(argument)) return null;
-	const entry = argumentTaker(entries, head);
+	if (argument === null) return { listed: whole, argument: null };
+	const entry = /\s/.test(argument) ? null : argumentTaker(entries, head);
+	// A space with no word yet keeps the row the word would go to, first, so Enter still picks it.
+	if (entry && argument === '') {
+		return { listed: [entry, ...whole.filter((other) => other !== entry)], argument: null };
+	}
+	if (whole.length > 0) return { listed: whole, argument: null };
 	return entry ? { listed: [entry], argument } : null;
 }
 
