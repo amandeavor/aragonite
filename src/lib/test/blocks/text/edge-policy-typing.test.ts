@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// The caret-edge dispatch's typing branches: marker completion, pending marks, branch
-// order, and what a keystroke reads of the tree.
+// The caret-edge dispatch's typing branches: marker completion, the marks a delete hands back,
+// branch order, and what a keystroke reads of the tree.
 import { describe, expect, it } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
@@ -14,14 +14,8 @@ import {
 	type EdgeDispatchHarness
 } from './edge-policy-fixture';
 import { type CstNode, type Document } from '#lib/core/nodes.js';
-import { type EdgeAffinity } from '#lib/caret/edge-affinity.js';
-import { type PendingMarks } from '#lib/caret/pending-marks.js';
-import { type InlineMarkKind } from '#lib/schema/inline-construct-policy.js';
-import { makePendingMarks, makeTopHarness } from '#lib/test/harness/editor-actions.js';
-import { serialize } from '#lib/core/serializer.js';
-import { READING_WRITE_TAG } from '#lib/editor-actions/commit/reading-write-gate.js';
+import { recordingPendingMarks } from '#lib/test/harness/editor-actions.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
-import { takeDevWarns } from '../../support/warn-gate';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
@@ -54,7 +48,6 @@ describe('branch order', () => {
 
 		it('ranks the families as the design states, cut line included', () => {
 			expect(dispatch.arms.map((arm) => arm.id)).toEqual([
-				'pending-marks',
 				'cst-widget',
 				'reading-mode',
 				'decoration-island',
@@ -68,8 +61,8 @@ describe('branch order', () => {
 			expect(dispatch.arms.filter((arm) => arm.reason.trim() === '')).toEqual([]);
 		});
 
-		// The reading-mode entry sits in the list, not ahead of it: the two branches above it still
-		// run in reading mode, and everything below does nothing. A check at the top loses that half.
+		// The reading-mode entry sits in the list, not ahead of it: the widget branch above it still
+		// runs in reading mode, and everything below does nothing. A check at the top loses that half.
 		it('reading mode stops the walk at its cut and leaves the key unclaimed', () => {
 			const e = new KeyboardEvent('keydown', { key: 'Backspace', cancelable: true });
 			expect(mount(true).dispatch.handleKeydown(e, asRawOffset(11))).toBe(false);
@@ -223,163 +216,43 @@ describe('marker completion', () => {
 });
 
 describe('pending marks', () => {
-	// A chord at a collapsed caret leaves a mark pending; the first printable key spends it once, in one commit.
-
 	interface Harness extends EdgeDispatchHarness {
-		marks: PendingMarks;
+		marks: ReturnType<typeof recordingPendingMarks>;
 	}
 
-	function mount(
-		source: string,
-		pending: InlineMarkKind[],
-		{ affinity = null }: { affinity?: EdgeAffinity | null } = {}
-	): Harness {
+	function mount(source: string): Harness {
 		const node = parse(source).children[0];
 		const el = mountSurface(trimTrailingLineEnding(node.raw), 'live');
-		const marks = makePendingMarks(...pending);
-		return {
-			...makeEdgeDispatch(node, el, {
-				side: affinity,
-				pendingMarks: marks
-			}),
-			marks
-		};
+		const marks = recordingPendingMarks();
+		return { ...makeEdgeDispatch(node, el, { pendingMarks: marks }), marks };
 	}
-
-	describe('the first byte after a chord carries the mark', () => {
-		it('wraps the byte and anchors the undo entry at the pre-toggle caret', () => {
-			const h = mount('hi\n', ['strong']);
-			const e = key('X');
-
-			expect(h.handleKeydown(e, at(2))).toBe(true);
-			expect(e.defaultPrevented).toBe(true);
-			expect(h.edits).toEqual([[0, 'hi**X**\n', 2, 5]]);
-		});
-
-		it('spends the set exactly once: the second byte types plain', () => {
-			const h = mount('hi\n', ['strong']);
-			h.handleKeydown(key('X'), at(2));
-
-			expect(h.marks.get()).toBeNull();
-			expect(h.handleKeydown(key('Y'), at(5))).toBe(false);
-			expect(h.edits).toHaveLength(1);
-		});
-
-		it('carries two marks into one insertion', () => {
-			const h = mount('hi\n', ['strong', 'emphasis']);
-			expect(h.handleKeydown(key('X'), at(2))).toBe(true);
-			expect(h.edits).toEqual([[0, 'hi***X***\n', 2, 6]]);
-		});
-
-		// The chain already has strong at this caret, so the mark removes it: the byte escapes the
-		// construct rather than being wrapped in a second pair.
-		it('escapes the construct when the chain already carries the mark', () => {
-			const h = mount('Some **bold** text\n', ['strong']);
-			expect(h.handleKeydown(key('X'), at(9))).toBe(true);
-			expect(h.edits).toEqual([[0, 'Some **bo**X**ld** text\n', 9, 12]]);
-		});
-	});
-
-	describe('a pending mark applies where the next letter would land', () => {
-		// Offset 11 is bold's trailing content edge, and the letter before it is bold.
-		it('marks the letter inside the construct the caret means', () => {
-			const h = mount('Some **bold** text\n', ['emphasis']);
-			expect(h.handleKeydown(key('X'), at(11))).toBe(true);
-			expect(h.edits).toEqual([[0, 'Some **bold*X*** text\n', 11, 13]]);
-		});
-
-		// A typed closer or a fresh start put the letter outside, and the mark applies there.
-		it('marks the letter outside it with the outside record', () => {
-			const h = mount('Some **bold** text\n', ['emphasis'], { affinity: 'outside' });
-			expect(h.handleKeydown(key('X'), at(11))).toBe(true);
-			expect(h.edits).toEqual([[0, 'Some **bold***X* text\n', 11, 15]]);
-		});
-
-		// The next byte is the browser's again, placed by the write as any insertion is.
-		it('leaves the next byte to the record once the set is spent', () => {
-			const h = mount('Some **bold** text\n', ['emphasis']);
-			h.handleKeydown(key('X'), at(11));
-			h.edits.length = 0;
-
-			expect(h.handleKeydown(key('Y'), at(11))).toBe(false);
-			expect(h.edits).toHaveLength(0);
-		});
-	});
-
-	describe('the toggle caret position claims only a plain byte at a collapsed caret', () => {
-		it('declines with nothing pending, whatever the key', () => {
-			const h = mount('hi\n', []);
-			expect(h.handleKeydown(key('X'), at(2))).toBe(false);
-			expect(h.edits).toHaveLength(0);
-		});
-
-		it('declines a chord, which is a command rather than a typed byte', () => {
-			const h = mount('hi\n', ['strong']);
-			for (const mods of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
-				expect(h.handleKeydown(key('X', mods), at(2))).toBe(false);
-			}
-			// Declining a chord must not spend the marks: Mod+I after Mod+B leaves both pending.
-			expect(h.marks.get()).not.toBeNull();
-		});
-
-		it('declines a non-printable key and keeps the set for the byte that follows', () => {
-			const h = mount('hi\n', ['strong']);
-			for (const name of ['Enter', 'Tab', 'ArrowLeft', 'Backspace']) {
-				expect(h.handleKeydown(key(name), at(2))).toBe(false);
-			}
-			expect(h.marks.get()).not.toBeNull();
-		});
-
-		it('declines a null caret', () => {
-			const h = mount('hi\n', ['strong']);
-			expect(h.handleKeydown(key('X'), null)).toBe(false);
-		});
-
-		// Miss-analysis: only the arm's own reading-mode check was tested, never the write's refusal.
-		it('forced in reading mode, where no mark can be pending, writes nothing and warns', async () => {
-			const top = makeTopHarness('hi\n', { reading: fixtureReading({}, 'reading') });
-			const node = top.deps.doc.children[0];
-			const el = mountSurface('hi', 'live');
-			const { handleKeydown } = makeEdgeDispatch(node, el, {
-				isReading: () => true,
-				pendingMarks: makePendingMarks('strong'),
-				blockEdit: top.actions
-			});
-
-			expect(handleKeydown(key('X'), at(2))).toBe(true);
-			await Promise.resolve();
-
-			expect(serialize(top.deps.doc)).toBe('hi\n');
-			expect(takeDevWarns().map((w) => w.tag)).toEqual([READING_WRITE_TAG]);
-		});
-	});
 
 	// A construct the key empties is unwrapped, so its mark is handed back: the next byte keeps the
 	// format, and the next chord still turns it off.
 	describe('a press that empties a construct hands its mark back', () => {
 		it('leaves the emptied construct’s mark pending for the next byte', () => {
-			const h = mount('plain*x*\n', []);
+			const h = mount('plain*x*\n');
 
 			expect(h.handleKeydown(key('Backspace'), at(7))).toBe(true);
 			expect(h.edits).toEqual([[0, 'plain\n', 7, 5]]);
-			expect(h.marks.get()).toEqual(new Set(['emphasis']));
+			expect(h.marks.pended).toEqual(['emphasis']);
 		});
 
 		it('pends nothing where the press empties no construct', () => {
-			const h = mount('Some **bold** text\n', []);
+			const h = mount('Some **bold** text\n');
 
 			expect(h.handleKeydown(key('Backspace'), at(13))).toBe(true);
-			expect(h.marks.get()).toBeNull();
+			expect(h.marks.pended).toEqual([]);
 		});
 
 		// A link unwraps on empty like a mark does, but no chord writes one, so there is nothing to
 		// hand back and a pended `link` would be a promise the insertion cannot keep.
 		it('pends nothing for an unwrapped kind no format chord writes', () => {
-			const h = mount('a [x](u) b\n', []);
+			const h = mount('a [x](u) b\n');
 
 			expect(h.handleKeydown(key('Backspace'), at(4))).toBe(true);
 			expect(h.edits).toEqual([[0, 'a  b\n', 4, 2]]);
-			expect(h.marks.get()).toBeNull();
+			expect(h.marks.pended).toEqual([]);
 		});
 	});
 });

@@ -13,6 +13,7 @@ import {
 } from '#lib/schema/keybinding-overrides.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { commandContextWith } from '#lib/test/support/command-context.js';
+import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 function makeDeps(isReading = () => false, keybindings: KeybindingOverride[] = []) {
 	const splitBlock = vi.fn();
@@ -208,21 +209,21 @@ describe('handleWholeBlockKeys: the reorder chord follows a rebinding', () => {
 	it('the freed Alt+ArrowUp classifies as an arrow and drops the pending marks', () => {
 		const { deps, caretMemory } = makeDeps(() => false, REBOUND);
 		seedColumn(caretMemory, 200);
-		caretMemory.pendingMarks.toggle('strong');
+		pendMark(caretMemory);
 		handleWholeBlockKeys(press('ArrowUp', { altKey: true }), deps);
 		expect(caretMemory.arrivedByKey()).toBe(true);
-		expect(caretMemory.pendingMarks.get()).toBeNull();
+		expect(marksPending(caretMemory)).toBe(false);
 	});
 
 	it('the new reorder chord keeps the column, the record and the marks', () => {
 		const { deps, caretMemory } = makeDeps(() => false, REBOUND);
 		seedColumn(caretMemory, 200);
 		caretMemory.noteOutside();
-		caretMemory.pendingMarks.toggle('strong');
+		pendMark(caretMemory);
 		handleWholeBlockKeys(press('ArrowUp', { ctrlKey: true, shiftKey: true }), deps);
 		expect(caretMemory.column()).toBe(200);
 		expect(caretMemory.side()).toBe('outside');
-		expect([...(caretMemory.pendingMarks.get() ?? [])]).toEqual(['strong']);
+		expect(marksPending(caretMemory)).toBe(true);
 	});
 });
 

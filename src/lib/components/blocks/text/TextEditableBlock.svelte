@@ -239,14 +239,8 @@
 	// Set on the block's first focus: until then a render has no shown marker to re-apply.
 	let caretHasEntered = false;
 
-	// The same placement rules the keydown dispatch uses, for the one insertion it cannot reach.
 	const compositionSeat = createCompositionSeat({
 		getDisplayText: () => getDisplayText(),
-		getInlines: () => resolvedInlineContent(node, reading),
-		reading,
-		offsetFor: typedPlacement.offsetFor,
-		consumePendingMarks: caretMemory.pendingMarks.consume,
-		restorePendingMarks: caretMemory.pendingMarks.restore,
 		getRawSelection: () => cursor.getRawSelection(),
 		// The in-leaf range replace `handleLiveSelectionEdit` uses, as the displayed text the
 		// composition commit writes.
@@ -420,8 +414,7 @@
 			widgetInteraction.enterWidget(widget, fromTrailingEdge),
 		isReading: () => readOnly,
 		insideCloser: () => editableSurface.insideCloser,
-		pendingMarks: caretMemory.pendingMarks,
-		offsetFor: typedPlacement.offsetFor,
+		pendingMarks: editableSurface.pendingMarks,
 		caretWriter
 	});
 
@@ -804,7 +797,6 @@
 		pendingBreak,
 		getCaret: () => (cursor.getRawSelection() ? null : cursor.getRaw()),
 		getDisplayText,
-		hasPendingMarks: () => caretMemory.pendingMarks.get() !== null,
 		opensBreak: (ev) => wiring.resolveChord(ev, node.kind) === 'block.hardBreak',
 		writeText,
 		requestCaret: (at) => setPendingCursorOffset(at, 'pending-break')
@@ -1011,7 +1003,7 @@
 			// The insertion that spends the mark starts its own undo entry, so it is never
 			// merged into the burst the chord interrupted.
 			controller.flushDebouncedCheckpoint();
-			caretMemory.pendingMarks.toggle(format);
+			editableSurface.pendingMarks.toggle(format);
 			return;
 		}
 

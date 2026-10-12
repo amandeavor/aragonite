@@ -52,7 +52,7 @@ import {
 	containerBundleOver,
 	makeEditorActionsDeps,
 	makeNestedHarness,
-	makePendingMarks
+	recordingPendingMarks
 } from '#lib/test/harness/editor-actions.js';
 import { proseLeaves, type ProseLeaf } from './live-screen-reading';
 import { fixtureReading, renderOptions } from '../harness/fixture-grammar';
@@ -419,8 +419,7 @@ async function pressEdgeKey(
 		isRevealing: () => false,
 		enterWidget: () => {},
 		isReading: () => false,
-		pendingMarks: makePendingMarks(),
-		offsetFor: placement.offsetFor
+		pendingMarks: recordingPendingMarks()
 	});
 	const event = new KeyboardEvent('keydown', { key, cancelable: true });
 	if (dispatch.handleKeydown(event, asRawOffset(offset) as RawOffset)) return true;

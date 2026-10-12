@@ -949,7 +949,7 @@ unguarded.
 | G4.28  | A leaf raw write outside the content write names the kind's rule                          | L       |
 | G4.29  | Every file claiming a hardcoded chord is manifested with its chords and keys              | L       |
 | G4.30  | Hidden-marker classification has one rule, applied in both spaces                         | L       |
-| G4.31  | The pending marks are spent only where typed or composed text is written                  | L       |
+| G4.31  | _Retired upward_: pending marks are a record only the block's write spends                | T       |
 | G4.32  | Every non-render inline read goes through `resolvedInlineContent`                         | L       |
 | G4.33  | Live-mode byte candidates verify against what actually paints                             | L       |
 | G4.34  | Link bytes are written only through the one link byte module                              | L       |
@@ -1247,10 +1247,11 @@ different question, and every file naming a marker class in code is manifested w
 runtime backstop is the dev probe in `invariants/marker-css-parity.ts`, which compares
 `getComputedStyle` with the predicate once per mode change. `lint/manifest-rules.test.ts`.
 
-**G4.31 · Pending marks are spent by a write.** The pending marks (a format toggled at a collapsed
-caret, waiting to wrap the next typed character) are spent only where typed or composed text is
-written: the edge-policy dispatch's typed-byte handler and the two prose surfaces' composition
-writes. A spend anywhere else drops the format with nothing written. `lint/file-rules.test.ts`.
+**G4.31 · Retired upward.** The rule was: the pending marks (a format toggled at a collapsed caret,
+waiting for the next insertion) are spent only where typed or composed text is written. They're one
+of the caret memory's insertion records now (`caret/pending-marks.ts`), so the block's write, which
+every insertion route goes through, is the only thing that spends them, and there's no method left
+that reads and clears them. A spend anywhere else doesn't compile.
 
 **G4.32 · Inline-cache one spelling.** Every non-render consumer reads the inline tree through
 `resolvedInlineContent`, so the resolver and the signature travel together; dropping the signature

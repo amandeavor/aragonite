@@ -54,12 +54,46 @@ describe.each(TEXT_HOSTS)('in $name', (host) => {
 			expect(host.line(editor.source())).toBe('**a**X**b**');
 		});
 
+		// The mark applies where the letter lands: inside the bold the character before it is in, or
+		// past it once a typed closer said outside.
+		it('the italic chord at a bold’s end marks the letter inside the bold', async () => {
+			const { editor, el } = await chorded('Some **bold** text', 11, ITALIC);
+			await insertBy(route, el, 'X');
+			expect(host.line(editor.source())).toBe('Some **bold*X*** text');
+		});
+
+		// A space at a closer is written past it, but the chord asked about the letter's side. A cell
+		// writes nothing for a paste of whitespace alone, chord or not.
+		const pastesSpace = route !== 'paste' || host.name !== 'a table cell';
+		it.runIf(pastesSpace)('the bold chord at a bold’s end types a space outside', async () => {
+			const { editor, el } = await chorded('**bold** end', 6, BOLD);
+			await insertBy(route, el, ' ');
+			await insertBy('hardware key', el, 'more');
+			expect(host.line(editor.source())).toBe('**bold** more end');
+		});
+
+		it('after a typed closer, the italic chord marks the letter past the bold', async () => {
+			const { editor, el } = await chorded('Some **bold** text', 11);
+			await insertBy('hardware key', el, '**');
+			await pressKey(el, ITALIC);
+			await insertBy(route, el, 'X');
+			expect(host.line(editor.source())).toBe('Some **bold***X* text');
+		});
+
 		it('one insertion spends the mark, and the next extends what it made', async () => {
 			const { editor, el } = await chorded('plain', 5, BOLD);
 			await insertBy(route, el, 'X');
 			await insertBy('hardware key', el, 'y');
 			expect(host.line(editor.source())).toBe('plain**Xy**');
 		});
+	});
+
+	// A cancelled IME run writes nothing, so the promise is still owed.
+	it('a composition that commits nothing leaves the mark for the next insertion', async () => {
+		const { editor, el } = await chorded('plain', 5, BOLD);
+		await insertBy('composition', el, '');
+		await insertBy('hardware key', el, 'X');
+		expect(host.line(editor.source())).toBe('plain**X**');
 	});
 
 	// A drop lands at the pointer, which is a new caret, so the mark the caret held goes unspent.

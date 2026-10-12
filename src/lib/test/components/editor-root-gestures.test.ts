@@ -16,6 +16,7 @@ import { ACTIVATION_CLICK_CASES } from '#lib/test/support/activation-click-cases
 import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
+import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 // Miss-analysis: the click and margin drag were driven only through Playwright, never a refusal.
 
@@ -212,11 +213,11 @@ describe('editor-root gestures: the margin drag', () => {
 	it('a dead-space press forgets how the caret arrived', () => {
 		const h = harness();
 		h.caretMemory.noteKey({ key: 'ArrowDown' }, null, () => asEditorX(120));
-		h.caretMemory.pendingMarks.toggle('strong');
+		pendMark(h.caretMemory);
 		h.press(h.root);
 		expect(h.caretMemory.column()).toBeNull();
 		expect(h.caretMemory.side()).toBeNull();
-		expect(h.caretMemory.pendingMarks.get()).toBeNull();
+		expect(marksPending(h.caretMemory)).toBe(false);
 	});
 
 	it.each<[string, MouseEventInit]>([

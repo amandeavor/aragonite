@@ -4,15 +4,18 @@
 // placed, where the next letter landed past the closing bracket.
 import { describe, it, expect } from 'vitest';
 import { createCaretMemory } from '#lib/caret/caret-memory.js';
-import type { PlaceInsertion } from '#lib/caret/next-insertion.js';
+import type { InsertionPlacement } from '#lib/caret/next-insertion.js';
 
 // `<ab:c>` with the caret at 5, before the hidden `>`: the block's own rule moves a letter past it.
 const BEFORE = '<ab:c>';
-const pastCloser: PlaceInsertion = (before, edit, at) => ({
-	text: before.slice(0, at + 1) + edit.text.slice(at, at + 1) + before.slice(at + 1),
-	caretAfter: at + 2,
-	crossed: []
-});
+const pastCloser: InsertionPlacement = {
+	place: (before, edit, at) => ({
+		text: before.slice(0, at + 1) + edit.text.slice(at, at + 1) + before.slice(at + 1),
+		caretAfter: at + 2,
+		crossed: []
+	}),
+	mark: () => null
+};
 
 function type(
 	memory: ReturnType<typeof createCaretMemory>,

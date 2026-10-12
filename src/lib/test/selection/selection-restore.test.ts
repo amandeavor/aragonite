@@ -6,6 +6,7 @@ import type { EditorSelection } from '../../selection/primitives';
 import { parse } from '../../core/parser';
 import { asEditorX } from '../../caret/coordinate-spaces';
 import { restoreLandingOver } from '../harness/restore-landing';
+import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 const PROSE = 'Alpha one\n\nBravo two\n';
 const TABLE_2x2 = '| A | B |\n| --- | --- |\n| 1 | 2 |\n';
@@ -75,7 +76,7 @@ describe('resolveSelectionPoint, clamping per coordinate space', () => {
 describe('a restore forgets how the caret arrived', () => {
 	function arrived(h: ReturnType<typeof restoreHarness>) {
 		h.caretMemory.noteKey({ key: 'ArrowDown' }, null, () => asEditorX(240));
-		h.caretMemory.pendingMarks.toggle('strong');
+		pendMark(h.caretMemory);
 	}
 
 	it('a placed caret drops the column, the side and the marks', async () => {
@@ -85,7 +86,7 @@ describe('a restore forgets how the caret arrived', () => {
 		expect(await h.restore({ anchor: caret, focus: caret })).toBe('applied');
 		expect(h.caretMemory.column()).toBeNull();
 		expect(h.caretMemory.side()).toBeNull();
-		expect(h.caretMemory.pendingMarks.get()).toBeNull();
+		expect(marksPending(h.caretMemory)).toBe(false);
 	});
 
 	it('a declined restore leaves the memory alone, as it leaves everything else', async () => {

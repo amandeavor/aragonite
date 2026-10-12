@@ -9,10 +9,12 @@ import { resolvedInlineContent } from '#lib/core/inline/inline-cache.js';
 import type { NodeView } from '#lib/core/node-views.js';
 import {
 	createInsertionRecords,
+	type InsertionPlacement,
 	type InsertionRecord,
-	type PlaceInsertion,
 	type PreviewInsertion
 } from '#lib/caret/next-insertion.js';
+import { createPendingMarks } from '#lib/caret/pending-marks.js';
+import { resolveMarkedInsertion } from '#lib/components/blocks/text/pending-mark-insert.js';
 import { parseInline } from '#lib/core/inline/index.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import {
@@ -52,12 +54,32 @@ const waitingAt = (at: number): InsertionRecord => ({
 	end: () => false
 });
 
+const BLOCK = {};
+
+/** Marks an insertion as a live block does, and moves none. */
+const MARKING: InsertionPlacement = {
+	place: () => null,
+	mark: (before, edit, at, marks) => {
+		const typed = edit.text.slice(at, at + edit.text.length - before.length);
+		const inlines = parseInline(before, 0, before.length);
+		const marked = resolveMarkedInsertion(before, at, typed, marks, inlines, fixtureReading());
+		return marked && { text: marked.raw, caretAfter: marked.caret };
+	}
+};
+
+/** The pending marks a chord for each of `kinds` leaves in `BLOCK`. */
+function pended(...kinds: InlineMarkKind[]): InsertionRecord {
+	const marks = createPendingMarks();
+	for (const kind of kinds) marks.forBlock(BLOCK).toggle(kind);
+	return marks;
+}
+
 /** A dry run of `records` that counts its trial insertions. */
 function countedPreview(records: InsertionRecord[] = []): {
 	preview: PreviewInsertion;
 	trials: () => number;
 } {
-	const preview = createInsertionRecords(records).preview({}, null);
+	const preview = createInsertionRecords(records).preview(BLOCK, null, MARKING);
 	let trials = 0;
 	return {
 		preview: {
@@ -76,20 +98,15 @@ const DEFINES_FOO: LinkReferenceResolver = (label) =>
 function answer(
 	display: string,
 	caret: number,
-	pending: InlineMarkKind[] | null = null,
 	records: InsertionRecord[] = [],
 	resolver?: LinkReferenceResolver
 ) {
-	const reading = fixtureReading({ resolver });
 	const parse = (text: string) => parseInline(text, 0, text.length, resolver);
 	const counted = countedPreview(records);
 	const next = nextByte(caret, {
 		display,
 		inlines: parse(display),
-		reading,
-		pendingMarks: pending ? new Set(pending) : null,
 		preview: counted.preview,
-		seatOf: (at) => at,
 		inlinesOf: parse
 	});
 	return { marks: next.marks, trials: counted.trials() };
@@ -108,7 +125,7 @@ describe('nextByte', () => {
 	});
 
 	it('asks the trial insertion where a record waits, even mid-word', () => {
-		expect(answer('bold text', 2, null, [waitingAt(2)])).toEqual({ marks: [], trials: 1 });
+		expect(answer('bold text', 2, [waitingAt(2)])).toEqual({ marks: [], trials: 1 });
 	});
 
 	// Miss-analysis: the property's lines held no raw HTML and no defined label, the two spans a
@@ -117,7 +134,7 @@ describe('nextByte', () => {
 		['inside a tag a letter makes valid HTML', '*<b 1c="*">', 4, undefined, []],
 		['inside a defined label a letter breaks', '*[foo*]', 3, DEFINES_FOO, ['emphasis']]
 	])('asks the trial insertion %s', (_name, display, caret, resolver, marks) => {
-		expect(answer(display, caret, null, [], resolver)).toEqual({ marks, trials: 1 });
+		expect(answer(display, caret, [], resolver)).toEqual({ marks, trials: 1 });
 	});
 
 	/** A document defining one reference label. */
@@ -133,27 +150,30 @@ describe('nextByte', () => {
 		['an escaped `]` in a defined label', '*[foo\\]bar*]', 8, defining('foo\\]bar*')],
 		['a `]` in a code span in a defined label', '*[a `]` foo*]', 9, defining('a `]` foo*')]
 	])('takes the trial insertion past %s', (_name, display, caret, resolver) => {
-		const tried = answer(display, caret, null, [waitingAt(caret)], resolver);
-		expect(answer(display, caret, null, [], resolver)).toEqual(tried);
+		const tried = answer(display, caret, [waitingAt(caret)], resolver);
+		expect(answer(display, caret, [], resolver)).toEqual(tried);
 	});
 
-	it('reads pending marks through the insertion the chord promised', () => {
-		expect(answer('plain words', 8, ['strong'])).toEqual({ marks: ['strong'], trials: 1 });
-		expect(answer('**bold**', 4, ['strong'])).toEqual({ marks: [], trials: 1 });
+	it('reads pending marks through the insertion the chord promised, even mid-word', () => {
+		expect(answer('plain words', 8, [pended('strong')])).toEqual({ marks: ['strong'], trials: 1 });
+		expect(answer('**bold**', 4, [pended('strong')])).toEqual({ marks: [], trials: 1 });
 	});
 });
 
 describe('the cached answer', () => {
 	/** A letter at 6 in `**ab**` joins the bold, so a space typed there is held; a space alone
 	 *  stays put, since a closer can't follow it. */
-	const INTO_BOLD: PlaceInsertion = (before, edit, at) => {
-		const typed = edit.text.slice(at, at + edit.text.length - before.length);
-		if (at !== 6 || typed.trim() === '') return null;
-		return {
-			text: before.slice(0, 4) + typed + before.slice(4),
-			caretAfter: 4 + typed.length,
-			crossed: ['strong']
-		};
+	const INTO_BOLD: InsertionPlacement = {
+		place: (before, edit, at) => {
+			const typed = edit.text.slice(at, at + edit.text.length - before.length);
+			if (at !== 6 || typed.trim() === '') return null;
+			return {
+				text: before.slice(0, 4) + typed + before.slice(4),
+				caretAfter: 4 + typed.length,
+				crossed: ['strong']
+			};
+		},
+		mark: () => null
 	};
 
 	it('answers again once a write lets go of the records it held', () => {
@@ -171,8 +191,7 @@ describe('the cached answer', () => {
 			getInlines: () => inlines,
 			reading,
 			caretMemory: memory,
-			preview: () => memory.previewInsertion(block, INTO_BOLD),
-			offsetFor: (caret) => caret
+			preview: () => memory.previewInsertion(block, INTO_BOLD)
 		});
 
 		// A composition holds the records while the ring asks.

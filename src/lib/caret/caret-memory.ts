@@ -1,7 +1,7 @@
 /**
  * What the editor remembers about the caret beyond its offset: the sticky column (the x a run of
  * Up/Down arrows keeps), the edge record (what overrides the character-before rule at a hidden edge),
- * the pending marks (the formats a toggle promised the next typed byte), the pending break and the
+ * the pending marks (the formats a toggle promised the next insertion), the pending break and the
  * held space. They share one lifetime: a keydown updates them through `noteKey`, and any other caret
  * move calls `forget`, which drops them all at once.
  */
@@ -9,17 +9,16 @@
 import type { EditorX } from './coordinate-spaces';
 import { classifyStickyKey } from './sticky-column';
 import { classifyCaretKey, type EdgeAffinity } from './edge-affinity';
-import { flipMark, type PendingMarks } from './pending-marks';
+import { createPendingMarks, type BlockPendingMarks } from './pending-marks';
 import { createPendingBreak, type BlockPendingBreak } from './pending-break.svelte';
 import { createHeldSpace, type HeldSpaceView } from './held-space';
 import { createInsideCloser, type InsideCloserView } from './inside-closer';
 import {
 	createInsertionRecords,
 	type HeldInsertion,
-	type PlaceInsertion,
+	type InsertionPlacement,
 	type PreviewInsertion
 } from './next-insertion';
-import type { InlineMarkKind } from '../schema/inline-construct-policy';
 import type { AnyCommandId } from '../schema/command-id';
 import { BLOCK_MOVE_COMMAND_IDS } from '../schema/commands';
 import {
@@ -39,8 +38,9 @@ export interface CaretMemory {
 	/** Whether the caret's last move was a navigation key (an arrow, Page, Home, End), not a click,
 	 *  a write or a command. */
 	arrivedByKey(): boolean;
-	/** The marks a toggle at a collapsed caret promised; `forget` drops them with the rest. */
-	readonly pendingMarks: PendingMarks;
+	/** The marks a toggle at a collapsed caret promised the next insertion in a block; a toggle
+	 *  ends a held space instead when it is that space's own construct's chord. */
+	readonly pendingMarks: { forBlock(block: object): BlockPendingMarks };
 	/** The line Shift+Enter at a block's end opened; `noteKey` leaves it, since the text block's
 	 *  own keys decide which of them end it. */
 	readonly pendingBreak: { forBlock(block: object): BlockPendingBreak };
@@ -50,11 +50,11 @@ export interface CaretMemory {
 	/** The caret Edit link left before a URL's hidden closer, which types inside the URL until the
 	 *  caret moves another way; anything that names a side ends it. */
 	readonly insideCloser: { forBlock(block: object): InsideCloserView };
-	/** Takes what the next insertion in `block` spends, with the caret's side and the block's move of
-	 *  an insertion across a hidden edge (`place`), so a route that forgets the memory can spend them. */
-	holdInsertion(block: object, place?: PlaceInsertion): HeldInsertion;
+	/** Takes what the next insertion in `block` spends, with the caret's side and what the block does
+	 *  to an insertion (`placement`), so a route that forgets the memory can spend them. */
+	holdInsertion(block: object, placement?: InsertionPlacement): HeldInsertion;
 	/** What `holdInsertion` would make of an insertion, read without spending or keeping anything. */
-	previewInsertion(block: object, place?: PlaceInsertion): PreviewInsertion;
+	previewInsertion(block: object, placement?: InsertionPlacement): PreviewInsertion;
 	/** Grows each time what the memory answers changes, a write taking or letting go of a record
 	 *  included (which asks for no paint), for a reader that caches an answer. */
 	changeCount(): number;
@@ -92,12 +92,13 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 	let side: EdgeAffinity | null = null;
 	let arrivedByKey = false;
 	let arriving: { key: CaretKey; offset: number } | null = null;
-	let marks: ReadonlySet<InlineMarkKind> | null = null;
+	const pendingMarks = createPendingMarks();
 	const pendingBreak = createPendingBreak();
 	const heldSpace = createHeldSpace();
 	const insideCloser = createInsideCloser();
-	// Everything the next insertion spends: a new kind of record is one more entry here.
-	const records = createInsertionRecords([pendingBreak, heldSpace, insideCloser]);
+	// Everything the next insertion spends, in the order each applies: the marks wrap the inserted
+	// text before the open line's break goes in ahead of it. A new kind of record is one more entry.
+	const records = createInsertionRecords([pendingMarks, pendingBreak, heldSpace, insideCloser]);
 
 	function dropColumn(): void {
 		// Runs on nearly every keystroke, so the enabled check short-circuits first.
@@ -119,10 +120,13 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 	// Promised marks, a held space and the caret inside a closer belong to one side of the caret;
 	// a key that edits leaves the last to its write, which ends it unless the caret stays inside.
 	function settleSide(next: EdgeAffinity | null, editing = false): void {
-		const moved = !sameSide(side, next) || marks !== null;
+		const moved = !sameSide(side, next);
 		side = next;
-		marks = null;
-		const ended = [records.end(heldSpace), !editing && records.end(insideCloser)].includes(true);
+		const ended = [
+			records.end(pendingMarks),
+			records.end(heldSpace),
+			!editing && records.end(insideCloser)
+		].includes(true);
 		if (ended || moved) changed();
 	}
 
@@ -131,25 +135,18 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 		side: () => side,
 		arrivedByKey: () => arrivedByKey,
 		pendingMarks: {
-			get: () => marks,
-			toggle: (kind) => {
-				// The held construct's own chord is the way out of it; another chord pends its mark
-				// past it, as at any caret.
-				const ownChord = heldSpace.holdsInside(kind);
-				records.end(heldSpace);
-				if (!ownChord) marks = flipMark(marks, kind);
-				changed();
-			},
-			consume: () => {
-				const spent = marks;
-				marks = null;
-				if (spent) changed();
-				return spent;
-			},
-			restore: (unspent) => {
-				if (marks !== null) return;
-				marks = unspent;
-				changed();
+			forBlock: (block) => {
+				const view = pendingMarks.forBlock(block);
+				return {
+					toggle: (kind) => {
+						// The held construct's own chord is the way out of it; another chord pends its
+						// mark past it, as at any caret.
+						const ownChord = heldSpace.holdsInside(kind);
+						records.end(heldSpace);
+						if (!ownChord) view.toggle(kind);
+						changed();
+					}
+				};
 			}
 		},
 		pendingBreak: {
@@ -193,8 +190,8 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 				};
 			}
 		},
-		holdInsertion: (block, place) => records.hold(block, side, place),
-		previewInsertion: (block, place) => records.preview(block, side, place),
+		holdInsertion: (block, placement) => records.hold(block, side, placement),
+		previewInsertion: (block, placement) => records.preview(block, side, placement),
 		changeCount: () => changes + records.holdChanges(),
 		pinOnArrival: (e, offset) => {
 			arriving = offset === null ? null : { key: e, offset };

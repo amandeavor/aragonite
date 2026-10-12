@@ -7,6 +7,7 @@ import type { GapCaretRestoreDeps } from '#lib/selection/selection-restore.js';
 import { createCaretMemory } from '#lib/caret/caret-memory.js';
 import { stubBlockComponent } from '#lib/testing/headless-actions.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 // Restoring an undo entry that holds a gap caret: the boundary is clamped into the tree it
 // lands in, and the block it sits against is mounted and brought into view before the caret.
@@ -53,13 +54,13 @@ describe('restoreGapCaret', () => {
 	it('forgets the pending marks and the side a key recorded', async () => {
 		const memory = createCaretMemory();
 		memory.noteKey({ key: 'End' }, null);
-		memory.pendingMarks.toggle('strong');
+		pendMark(memory);
 		const h = harness({ caretMemory: memory });
 
 		await restoreGapCaret({ parentPath: [], index: 1 }, h.deps);
 
 		expect(memory.side()).toBeNull();
-		expect(memory.pendingMarks.get()).toBeNull();
+		expect(marksPending(memory)).toBe(false);
 	});
 
 	// At the end of the child list there is no block at the index, so the block before it is
