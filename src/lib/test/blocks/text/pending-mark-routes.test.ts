@@ -122,3 +122,17 @@ describe.each(INSERTION_ROUTES)(
 		});
 	}
 );
+
+// A drop drops only the marks: the open line waits at one place, and a drop landing there is its
+// insertion. Miss-analysis: the drop row ran at a plain caret, so no row saw a drop lose the break.
+it('a drop onto the line Shift+Enter opened writes the break, without the chord’s mark', async () => {
+	const editor = mountEditor({ source: 'abc\n', presentationMode: 'live' });
+	const el = surfaceAt(editor, [0]);
+	placeCaret(el, 3);
+	await pressKey(el, { key: 'Enter', shiftKey: true });
+	await pressKey(el, BOLD);
+
+	await dropAtCaret(el, 'X');
+
+	expect(editor.source()).toBe('abc\\\nX\n');
+});

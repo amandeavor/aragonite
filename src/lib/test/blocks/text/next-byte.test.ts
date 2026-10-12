@@ -70,7 +70,7 @@ const MARKING: InsertionPlacement = {
 /** The pending marks a chord for each of `kinds` leaves in `BLOCK`. */
 function pended(...kinds: InlineMarkKind[]): InsertionRecord {
 	const marks = createPendingMarks();
-	for (const kind of kinds) marks.forBlock(BLOCK).toggle(kind);
+	for (const kind of kinds) marks.toggle(BLOCK, kind, false);
 	return marks;
 }
 

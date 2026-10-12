@@ -356,7 +356,7 @@ test('live mode: a paste or a soft keyboard’s text after Mod+B lands wrapped',
 	});
 });
 
-// A key beside a widget meets the pending marks before the widget's own rules, so these rows check
+// A letter beside a widget spends the marks in the block's write like any other, so these rows check
 // that a splice that would change painted text is declined and the widget survives whole.
 test('live mode: a pending mark beside an inline widget', async ({ page }) => {
 	const WIDGET_DOC = 'see &amp; now\n';

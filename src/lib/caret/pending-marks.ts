@@ -9,28 +9,39 @@ import type { InlineMarkKind } from '../schema/inline-construct-policy';
 import { insertionStart, type InsertionRecord } from './next-insertion';
 
 export interface PendingMarks extends InsertionRecord {
-	/** One block's view; `block` is the identity its writes take the marks with. */
-	forBlock(block: object): BlockPendingMarks;
+	/** A toggle chord at a collapsed caret in `block`, the identity its writes take the marks with.
+	 *  While a write holds the set, the chord starts a set of its own, which that write leaves. */
+	toggle(block: object, kind: InlineMarkKind, writeHolds: boolean): void;
 }
 
 export interface BlockPendingMarks {
 	/** A toggle chord at a collapsed caret here. The same chord twice pends nothing again. */
 	toggle(kind: InlineMarkKind): void;
+	/** Drops them unspent, for text that lands somewhere other than the caret they wait at. */
+	end(): void;
+}
+
+interface MarkSet {
+	block: object;
+	marks: ReadonlySet<InlineMarkKind>;
 }
 
 export function createPendingMarks(): PendingMarks {
-	let held: { block: object; marks: ReadonlySet<InlineMarkKind> } | null = null;
+	let held: MarkSet | null = null;
+	// The set a chord started while a write held the one before it, until a write takes it.
+	let fresh: MarkSet | null = null;
 
 	return {
-		forBlock: (block) => ({
-			toggle: (kind) => {
-				const marks = flipMark(held?.block === block ? held.marks : null, kind);
-				held = marks && { block, marks };
-			}
-		}),
+		toggle: (block, kind, writeHolds) => {
+			const own = held?.block === block && (!writeHolds || held === fresh) ? held : null;
+			const marks = flipMark(own?.marks ?? null, kind);
+			held = marks && { block, marks };
+			fresh = writeHolds ? held : null;
+		},
 		take: (block) => {
 			const taken = held?.block === block ? held : null;
 			if (!taken) return null;
+			if (taken === fresh) fresh = null;
 			return {
 				at: null,
 				// Spent by the insertion whether or not the block finds bytes that read back marked: it

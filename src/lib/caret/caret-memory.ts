@@ -135,23 +135,19 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 		side: () => side,
 		arrivedByKey: () => arrivedByKey,
 		pendingMarks: {
-			forBlock: (block) => {
-				const view = pendingMarks.forBlock(block);
-				return {
-					toggle: (kind) => {
-						// The held construct's own chord is the way out of it; another chord pends its
-						// mark past it, as at any caret.
-						const ownChord = heldSpace.holdsInside(kind);
-						records.end(heldSpace);
-						if (!ownChord) {
-							// A set a write holds is that write's to spend, so the chord starts a new one.
-							if (records.holds(pendingMarks)) pendingMarks.end();
-							view.toggle(kind);
-						}
-						changed();
-					}
-				};
-			}
+			forBlock: (block) => ({
+				toggle: (kind) => {
+					// The held construct's own chord is the way out of it; another chord pends its
+					// mark past it, as at any caret.
+					const ownChord = heldSpace.holdsInside(kind);
+					records.end(heldSpace);
+					if (!ownChord) pendingMarks.toggle(block, kind, records.holds(pendingMarks));
+					changed();
+				},
+				end: () => {
+					if (records.end(pendingMarks, block)) changed();
+				}
+			})
 		},
 		pendingBreak: {
 			forBlock: (block) => {

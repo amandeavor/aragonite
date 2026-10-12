@@ -126,7 +126,7 @@ export function makeCaretMemory(x: number | null = null): Mocked<CaretMemory> {
 /** A block's pending marks that list every kind a toggle pends, for a test of what pends them. */
 export function recordingPendingMarks(): BlockPendingMarks & { pended: InlineMarkKind[] } {
 	const pended: InlineMarkKind[] = [];
-	return { pended, toggle: (kind) => void pended.push(kind) };
+	return { pended, toggle: (kind) => void pended.push(kind), end: () => {} };
 }
 
 // ── BlockListState ───────────────────────────────────────────────────────────

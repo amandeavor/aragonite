@@ -47,7 +47,7 @@ export function stubCaretMemory(): CaretMemory {
 		column: () => null,
 		side: () => null,
 		arrivedByKey: () => false,
-		pendingMarks: { forBlock: () => ({ toggle: () => {} }) },
+		pendingMarks: { forBlock: () => ({ toggle: () => {}, end: () => {} }) },
 		pendingBreak: {
 			forBlock: () => ({ lines: () => 0, at: () => null, open: () => {}, end: () => {} })
 		},

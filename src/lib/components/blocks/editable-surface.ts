@@ -494,6 +494,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 
 	// This block's identity in the caret memory, so a record left here is spent only here.
 	const block = {};
+	const pendingMarks = deps.caretMemory.pendingMarks.forBlock(block);
 	const holdInsertion = (): HeldInsertion =>
 		deps.caretMemory.holdInsertion(block, deps.placement?.insertion);
 	const { getInlines } = deps;
@@ -539,8 +540,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	function onBeforeInput(e: InputEvent): void {
 		endsDroppedComposition(e);
 		adoptsComposition(e);
-		// A drop's text lands at the pointer, which moves the caret as a click does.
-		if (e.inputType === 'insertFromDrop') deps.caretMemory.forget();
+		// A drop's text lands at the pointer, not at the caret a chord promised its marks to.
+		if (e.inputType === 'insertFromDrop') pendingMarks.end();
 		if (!e.isComposing) recordPreEditOffset();
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);
@@ -739,7 +740,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		pendingBreak: deps.caretMemory.pendingBreak.forBlock(block),
 		heldSpace: deps.caretMemory.heldSpace.forBlock(block),
 		insideCloser: deps.caretMemory.insideCloser.forBlock(block),
-		pendingMarks: deps.caretMemory.pendingMarks.forBlock(block),
+		pendingMarks,
 		nextByte,
 		command,
 		afterSelectionRemoved,

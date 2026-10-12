@@ -63,6 +63,13 @@ const CHANGES: Record<
 	'pendingMarks.forBlock().toggle': {
 		change: [() => {}, (m) => m.pendingMarks.forBlock(BLOCK).toggle('strong')]
 	},
+	'pendingMarks.forBlock().end': {
+		change: [
+			(m) => m.pendingMarks.forBlock(BLOCK).toggle('strong'),
+			(m) => m.pendingMarks.forBlock(BLOCK).end()
+		],
+		noop: [() => {}, (m) => m.pendingMarks.forBlock(BLOCK).end()]
+	},
 	'pendingBreak.forBlock().open': {
 		change: [() => {}, (m) => m.pendingBreak.forBlock(BLOCK).open(LINE)]
 	},

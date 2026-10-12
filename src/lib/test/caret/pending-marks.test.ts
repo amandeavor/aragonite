@@ -157,6 +157,22 @@ describe('the next insertion in the block spends them', () => {
 		expect(next.spend('ab', typed('ab', 2, 'X')).text).toBe('abeXe');
 	});
 
+	// Miss-analysis: the row above pressed one chord during the hold, so the second press, which
+	// has to cancel the set the first started rather than start another, was never met.
+	it('a second chord while the write holds them cancels the set the first one started', () => {
+		const memory = createCaretMemory();
+		const block = {};
+		memory.pendingMarks.forBlock(block).toggle('strong');
+		const held = memory.holdInsertion(block, PLACEMENT);
+
+		memory.pendingMarks.forBlock(block).toggle('emphasis');
+		memory.pendingMarks.forBlock(block).toggle('emphasis');
+		expect(held.spend('ab', typed('ab', 2, 'X')).text).toBe('absXs');
+		held.finish(true);
+
+		expect(memory.holdInsertion(block, PLACEMENT).waitsAt(0)).toBe(false);
+	});
+
 	it('another block’s insertion types plain and leaves them pending', () => {
 		const memory = createCaretMemory();
 		const block = {};
