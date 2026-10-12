@@ -1,8 +1,8 @@
 /**
  * The command ids, the global command registry, and chord-to-binding resolution. Global commands
- * (undo/redo) are plain functions over a small context; block commands run on the focused block.
- * The chord dispatchers live in `./block-commands`, and the editor's actions satisfy
- * `GlobalCommandContext` by shape, so this file imports neither at runtime.
+ * (undo, redo, activating the mark at the caret) are plain functions over a small context; block
+ * commands run on the focused block. The chord dispatchers live in `./block-commands`, and the
+ * editor's actions satisfy `GlobalCommandContext` by shape, so this file imports neither at runtime.
  */
 import type { AnyBlockKind } from '../core/nodes';
 import type { AnyCommandId } from './command-id';
@@ -20,10 +20,15 @@ import {
 // Type-only imports, so this file has no runtime dependency on plugin-install or block-commands.
 import type { EditorContext } from './plugin-install';
 import type { PluginActivation } from './plugin-activation';
-import type { CommandDispatchContext, CommandErrorSink } from './block-commands';
+import type { CommandDispatchContext, CommandErrorSink, CommandGates } from './block-commands';
+import type { MarkActivation } from '../decorations/mark-activation';
 import { isReadingMode, type PresentationMode } from '../presentation-mode';
 
-export const GLOBAL_COMMAND_IDS = ['history.undo', 'history.redo'] as const;
+export const GLOBAL_COMMAND_IDS = [
+	'history.undo',
+	'history.redo',
+	'decorations.activateAtCaret'
+] as const;
 export const BLOCK_COMMAND_IDS = [
 	'block.split',
 	'block.hardBreak',
@@ -148,11 +153,18 @@ export interface GlobalCommandContext {
 	getPresentationMode: () => PresentationMode;
 	/** Receives a caught handler throw. */
 	onCommandError: CommandErrorSink;
+	markActivation: MarkActivation;
 	/** The argument `runCommand(id, arg)` or the chord's binding carried, injected per dispatch. */
 	arg?: unknown;
 }
 
 export type GlobalCommandRun = (ctx: GlobalCommandContext) => boolean;
+
+/** A global command's handler, and what `canRunCommand` asks it; without `canRun` it can always run. */
+interface RegisteredGlobalCommand {
+	run: GlobalCommandRun;
+	canRun?: (gates: CommandGates) => boolean;
+}
 
 const BUILTIN_COMMAND_IDS = new Set<string>([...GLOBAL_COMMAND_IDS, ...BLOCK_COMMAND_IDS]);
 
@@ -161,15 +173,19 @@ export function isBuiltinCommandId(id: string): boolean {
 	return BUILTIN_COMMAND_IDS.has(id);
 }
 
-const globalCommands = createPluginRegistry<AnyCommandId, GlobalCommandRun>({
+const globalCommands = createPluginRegistry<AnyCommandId, RegisteredGlobalCommand>({
 	label: 'registerCommand',
 	isBuiltin: isBuiltinCommandId
 });
 
-export function registerCommand(id: AnyCommandId, run: GlobalCommandRun): void {
+export function registerCommand(
+	id: AnyCommandId,
+	run: GlobalCommandRun,
+	canRun?: RegisteredGlobalCommand['canRun']
+): void {
 	globalCommands.register(
 		id,
-		run,
+		{ run, canRun },
 		`registerCommand: "${id}" is already registered. Commands are register-once.`
 	);
 }
@@ -179,7 +195,16 @@ export function getCommand(
 	id: AnyCommandId,
 	activation: PluginActivation
 ): GlobalCommandRun | undefined {
-	return globalCommands.get(id, activation);
+	return globalCommands.get(id, activation)?.run;
+}
+
+/** Whether the command `activation` resolves can run now, by its own check. */
+export function canRunGlobalCommand(
+	id: AnyCommandId,
+	activation: PluginActivation,
+	gates: CommandGates
+): boolean {
+	return globalCommands.get(id, activation)?.canRun?.(gates) ?? true;
 }
 
 /** Whether any plugin or built-in registered the id, whatever the activation. */
@@ -255,6 +280,11 @@ registerCommand('history.redo', (ctx) => {
 	void ctx.history.requestRedo();
 	return true;
 });
+registerCommand(
+	'decorations.activateAtCaret',
+	(ctx) => ctx.markActivation.activate(),
+	(gates) => gates.markActivation.canActivate()
+);
 
 export const GLOBAL_KEYMAP: KeyBinding[] = [
 	{ chord: 'Mod+Z', command: 'history.undo' },

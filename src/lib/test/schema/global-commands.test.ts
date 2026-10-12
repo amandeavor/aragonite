@@ -15,7 +15,7 @@ import {
 import { normalizeKeybindingOverrides } from '#lib/schema/keybinding-overrides.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { definePlugin, installPlugins, type EditorContext } from '#lib/schema/plugin-install.js';
-import { commandContext } from '../support/command-context';
+import { commandContext, INERT_MARK_ACTIVATION } from '../support/command-context';
 
 const editor = {
 	editorId: 'e',
@@ -29,6 +29,7 @@ const ctx = (over?: Partial<GlobalCommandContext>): GlobalCommandContext => ({
 	pluginEditor: () => editor,
 	getPresentationMode: () => 'source',
 	onCommandError: () => {},
+	markActivation: INERT_MARK_ACTIVATION,
 	...over
 });
 

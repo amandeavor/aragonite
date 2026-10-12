@@ -4,6 +4,7 @@ import type {
 	CommandDispatchContext,
 	CrossBlockCommandRouter
 } from '#lib/schema/block-commands.js';
+import type { MarkActivation } from '#lib/decorations/mark-activation.js';
 import type { KeybindingOverrideMap } from '#lib/schema/keybinding-overrides.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 
@@ -14,6 +15,12 @@ export const INERT_RANGE_ROUTER: CrossBlockCommandRouter = {
 	isActive: () => false
 };
 
+/** No interactive mark covers the caret. */
+export const INERT_MARK_ACTIVATION: MarkActivation = {
+	canActivate: () => false,
+	activate: () => false
+};
+
 export function commandContext(over: Partial<CommandDispatchContext> = {}): CommandDispatchContext {
 	return {
 		history: { requestUndo: () => {}, requestRedo: () => {} },
@@ -22,6 +29,7 @@ export function commandContext(over: Partial<CommandDispatchContext> = {}): Comm
 		getPresentationMode: () => 'source',
 		isCrossBlockRange: () => false,
 		crossBlockCommands: INERT_RANGE_ROUTER,
+		markActivation: INERT_MARK_ACTIVATION,
 		keybindingOverrides: () => undefined,
 		onCommandError: () => {},
 		reorder: { nudgeReorderUnit: async () => false },

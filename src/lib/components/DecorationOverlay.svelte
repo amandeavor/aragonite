@@ -10,6 +10,7 @@
 	import type { MarkDecoration } from '../decorations/types';
 	import { collapseCellMarks, type IndexedDecoration } from '../decorations/buckets';
 	import {
+		leafMarkRects,
 		lineGapReach,
 		paintOrder,
 		winningMark,
@@ -123,10 +124,7 @@
 			const out: Painted[] = [];
 			for (const { dec } of paintOrder(leafMarks)) {
 				const first = out.length;
-				for (const r of leaf.measurePartialRects(dec.start, dec.end)) {
-					// A collapsed range still emits a degenerate zero-width rect at a line
-					// boundary, which would paint an invisible sliver.
-					if (r.width <= 0) continue;
+				for (const r of leafMarkRects(leaf, dec)) {
 					out.push({ ...toLocal(r, blockRect, dec.class, dec.attrs), ...handlersOf(dec) });
 				}
 				if (dec.interactive?.onHover) {

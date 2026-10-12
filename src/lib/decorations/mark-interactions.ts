@@ -44,6 +44,33 @@ export function paintOrder(
 	return [...plain, ...pointer.sort((a, b) => comparePrecedence(b, a))];
 }
 
+/** The two measurements a block offers for painting marks: a leaf's range rects, a grid's cells. */
+export interface MarkMeasurer {
+	measurePartialRects?(start: number, end: number): DOMRect[];
+	cellRect?(rowIdx: number, colIdx: number): DOMRect | null;
+}
+
+/** The viewport rects a mark paints: one per visual line in a prose block, one whole cell in a
+ *  grid, the way the overlay paints them. */
+export function paintedMarkRects(
+	dec: MarkDecoration,
+	componentAt: (path: number[]) => MarkMeasurer | null
+): DOMRect[] {
+	// A grid's cell marks paint whole cells, though a cell has measurable text of its own.
+	const grid = dec.path.length > 2 ? componentAt(dec.path.slice(0, -2)) : null;
+	if (grid?.cellRect) {
+		const cell = grid.cellRect(dec.path[dec.path.length - 2], dec.path[dec.path.length - 1]);
+		return cell ? [cell] : [];
+	}
+	const leaf = componentAt(dec.path);
+	return leaf ? leafMarkRects(leaf, dec) : [];
+}
+
+/** A collapsed range still yields a zero-width rect at a line boundary, an invisible sliver. */
+export function leafMarkRects(leaf: MarkMeasurer, dec: MarkDecoration): DOMRect[] {
+	return (leaf.measurePartialRects?.(dec.start, dec.end) ?? []).filter((r) => r.width > 0);
+}
+
 /** How far each of one mark's line rects reaches into the space between its lines, so the
  *  pointer crossing from one line of the mark to the next never leaves it. */
 export interface HitReach {

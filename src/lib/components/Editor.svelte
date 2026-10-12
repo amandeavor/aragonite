@@ -71,6 +71,8 @@
 	import { createSearchReplace } from '../editor-actions/search-replace';
 	import { createSearchState, type SearchState } from '../search/search-state.svelte';
 	import { createDecorationEngine } from '../decorations/decoration-state.svelte';
+	import { createMarkActivation } from '../decorations/mark-activation';
+	import { paintedMarkRects } from '../decorations/mark-interactions';
 	import type { DecorationRegistry } from '../decorations/types';
 	import { createEditorRects, type EditorRects } from '../editor-rects';
 	import { createCaretLanding } from '../selection/caret-landing';
@@ -611,6 +613,16 @@
 			events.emit('error', { origin: 'decoration', error, context: { path } })
 	});
 	const decorations: DecorationRegistry = { addSource: decorationEngine.addSource };
+	const markActivation = createMarkActivation({
+		caret: () => {
+			const focus = getSelection()?.focus;
+			return focus && !focus.cellCoordinate ? { path: focus.path, offset: focus.offset } : null;
+		},
+		marksForPath: (path) => decorationEngine.marksForPath(path),
+		paintedRects: (dec) => paintedMarkRects(dec, getBlockComponent),
+		caretRect: () => rects.caretRect(),
+		runMarkHandler: decorationEngine.runMarkHandler
+	});
 
 	const rects = createEditorRects({
 		getBlockElByPath,
@@ -757,6 +769,7 @@
 		getPresentationMode: reading.mode,
 		isCrossBlockRange: () => selectionState.isCrossBlock,
 		crossBlockCommands,
+		markActivation,
 		keybindingOverrides: () => overridesMap,
 		onCommandError: commandErrorSink,
 		reorder
