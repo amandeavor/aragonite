@@ -1904,8 +1904,7 @@ browser's caret behind the drawn caret's back. `lint/drawn-caret-guards.test.ts`
 only inside `createCaretWriter`, whose writes and clears call `drawnCaret.request`;
 `test/caret/caret-writer-request.test.ts` calls every writer method and counts one request each (its
 table typed over the writer's keys). The frame callback in `caret/drawn-caret.svelte.ts` calls
-`paint`, plus `followScroll`, which asks for the next frame while a scroller under the caret is
-still moving and stops once it holds still, keeping G4.4's allowlisted frame paint read-only.
+`paint` and nothing else, keeping G4.4's allowlisted frame paint read-only.
 `lint/drawn-caret-guards.test.ts`.
 
 **G4.144 · The old widget and gap caret painters and the edge ring stay gone.** Nothing under

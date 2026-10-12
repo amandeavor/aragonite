@@ -38,27 +38,33 @@ function recordScrollFrames(page: Page): Promise<void> {
 	return page.evaluate(() => {
 		const probe = window as ScrollTrace;
 		const frames: string[] = (probe.__scrollFrames = []);
-		(window as unknown as { __caretPaints: string[] }).__caretPaints = frames;
 		const scroller = document.querySelector('.code-block')!;
-		const t = () => Math.round(performance.now());
-		scroller.addEventListener('scroll', () => frames.push(`${t()} scroll@${scroller.scrollLeft}`));
-		document.addEventListener('selectionchange', () => frames.push(`${t()} selchange`));
-		const bar0 = document.querySelector<HTMLElement>('.md-drawn-caret');
-		if (bar0)
-			new MutationObserver(() => {
-				const r = window.getSelection()?.getRangeAt(0).getClientRects()[0];
-				frames.push(
-					`${t()} M ${bar0.dataset.caretState} h=${bar0.hidden} tr=${bar0.style.translate} bx=${Math.round(bar0.getBoundingClientRect().left)} fresh=${r ? Math.round(r.left) : 'none'} sl=${scroller.scrollLeft}`
-				);
-			}).observe(bar0, { attributes: true });
+		scroller.addEventListener('scroll', () => frames.push(`scroll@${scroller.scrollLeft}`));
 		const sample = (left: number) => {
 			const bar = document.querySelector<HTMLElement>('.md-drawn-caret');
 			const x = bar && !bar.hidden ? Math.round(bar.getBoundingClientRect().left) : '-';
-			frames.push(`${t()} raf ${scroller.scrollLeft}:${x}`);
+			frames.push(`${scroller.scrollLeft}:${x}`);
 			if (left > 0) requestAnimationFrame(() => sample(left - 1));
 		};
 		requestAnimationFrame(() => sample(60));
 	});
+}
+
+function scrollLeftOf(page: Page, scroller: string): Promise<number> {
+	return page.evaluate((scroller) => document.querySelector(scroller)!.scrollLeft, scroller);
+}
+
+/** Waits out a wheel's scroll, which some engines animate over several frames. */
+async function scrollLanded(page: Page, scroller: string): Promise<void> {
+	let last = -1;
+	await expect
+		.poll(async () => {
+			const at = await scrollLeftOf(page, scroller);
+			const still = at === last;
+			last = at;
+			return still;
+		})
+		.toBe(true);
 }
 
 /** No bar shows, or it shows inside the scroller's box. */
@@ -109,49 +115,22 @@ test.describe('the drawn caret in a code block scrolled sideways', () => {
 		const over = await parkInLongLine(page);
 		await page.mouse.move(over.x, over.y);
 		await page.mouse.wheel(600, 0);
-		await nextFrames(page);
+		await scrollLanded(page, '.code-block');
 		await expect.poll(async () => (await barAgainst(page, '.code-block')).x).toBeNull();
 
 		await recordScrollFrames(page);
 		await page.mouse.wheel(-600, 0);
+		// The browser's caret is read once the scroll stops, so the bar is too.
+		await expect.poll(() => scrollLeftOf(page, '.code-block')).toBe(0);
 
 		try {
 			expect(await oneCaretOnTheBrowsersLine(page)).toBe('drawn');
 		} catch (error) {
-			const trace = await page.evaluate(() => {
-				const bar = document.querySelector<HTMLElement>('.md-drawn-caret')!;
-				const r = window.getSelection()?.getRangeAt(0).getClientRects()[0];
-				const box = document.querySelector('.code-block')!.getBoundingClientRect();
-				return [
-					...((window as ScrollTrace).__scrollFrames ?? []),
-					`END ${bar.dataset.caretState} h=${bar.hidden} tr=${bar.style.translate} fresh=${r ? Math.round(r.left) : 'none'} block=${Math.round(box.left)}..${Math.round(box.right)} drawnAttr=${document.querySelector('[data-caret-drawn]') ? 'y' : 'n'}`
-				];
-			});
+			const trace = await page.evaluate(() => (window as ScrollTrace).__scrollFrames ?? []);
 			throw new Error(`${(error as Error).message}\nper frame: ${trace.join(' ')}`, {
 				cause: error
 			});
 		}
-	});
-
-	// Stands in for a browser that keeps a scroll moving after the last scroll event the editor
-	// hears: no gesture makes Chromium do that, so a smooth scroll lets only its first event through.
-	test('a scroll still moving after its last scroll event moves the bar until it stops', async ({
-		page
-	}) => {
-		await parkInLongLine(page);
-		await page.evaluate(() => {
-			let heard = 0;
-			window.addEventListener(
-				'scroll',
-				(e) => {
-					if (heard++ > 0) e.stopImmediatePropagation();
-				},
-				{ capture: true }
-			);
-			document.querySelector('.code-block')!.scrollTo({ left: 600, behavior: 'smooth' });
-		});
-
-		await expect.poll(async () => (await barAgainst(page, '.code-block')).x).toBeNull();
 	});
 });
 

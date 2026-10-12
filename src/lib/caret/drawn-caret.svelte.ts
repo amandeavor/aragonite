@@ -119,9 +119,6 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 	// The editable a held press sits in, and whether its click will move the caret from where the
 	// press put it; the click, a key or a blur ends it.
 	let press: { el: HTMLElement; moves: boolean } | null = null;
-	// A scroller under the caret, its offset at the last frame paint and how many frames it has held
-	// it: a scroll can keep moving after its last scroll event, so the frame paint follows it.
-	let scrolling: { el: Element; at: string | null; still: number } | null = null;
 
 	function request(): void {
 		if (requested) return;
@@ -182,17 +179,6 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 	function paintAtFrame(): void {
 		frame = 0;
 		paint(true);
-		followScroll();
-	}
-
-	// A browser can leave a frame or two between a scroll's moves, so one still frame isn't the end.
-	function followScroll(): void {
-		if (!scrolling) return;
-		const at = scrollOffset(scrolling.el);
-		scrolling.still = at === scrolling.at ? scrolling.still + 1 : 0;
-		scrolling.at = at;
-		if (scrolling.still < SCROLL_STILL_FRAMES) armFrame();
-		else scrolling = null;
 	}
 
 	function paint(atFrame = false): void {
@@ -202,16 +188,6 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		const read = readCaret(root);
 		const target = drawnCaretTarget(read.reads);
 		draw(target, read, atFrame);
-		// DIAGNOSTIC (#716 CI round), stripped before the final commit.
-		const diag = (window as unknown as { __caretPaints?: string[] }).__caretPaints;
-		if (diag) {
-			const sc = document.querySelector('.code-block');
-			const r = read.reads;
-			const own = read.range?.getClientRects()[0];
-			diag.push(
-				`${Math.round(performance.now())}${atFrame ? 'F' : 'R'} sl=${sc?.scrollLeft} st=${target.state} rx=${'rect' in target ? Math.round(target.rect.x) : '-'} own=${own ? Math.round(own.left) : 'none'} cl=${r.caret ? Math.round(r.caret.left) : 'null'} clip=${r.clipped} hostL=${r.host ? Math.round(r.host.left) : '-'} off=${read.range?.startOffset} foc=${r.focused}/${r.windowFocused} pr=${r.pressed} col=${r.collapsed}`
-			);
-		}
 		assertInvariant('one-caret-showing', () =>
 			checkOneCaretShowing(root, DRAWN_ATTR, target, read.source?.el ?? null)
 		);
@@ -377,15 +353,13 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 	}
 
 	// A scroller between the caret's editable and its host (a wide table, a code block) moves the
-	// caret, a move the browser made; the page's own scroll moves the block and the bar together.
+	// caret, drawn or clipped; the page's own scroll moves the block and the bar together.
 	function onScroll(e: Event): void {
 		const active = document.activeElement;
 		const scroller = e.target;
-		if (!(active instanceof HTMLElement) || !(scroller instanceof Element)) return;
+		if (!(active instanceof HTMLElement) || !(scroller instanceof Node)) return;
 		const between = scroller.contains(active) && caretHost(active)?.contains(scroller);
-		if (!between || !sources.has(active)) return;
-		scrolling = { el: scroller, at: null, still: 0 };
-		armFrame();
+		if (between && sources.has(active)) request();
 	}
 
 	function install(root: HTMLElement): () => void {
@@ -418,7 +392,6 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 			cancelAnimationFrame(frame);
 			frame = 0;
 			press = null;
-			scrolling = null;
 			watched?.stop();
 			watched = null;
 			markDrawnFor(null);
@@ -487,9 +460,6 @@ export function createWidgetEdgeHolder(onChange: () => void) {
 
 // ── Internal ────────────────────────────────────────────────────────────────
 
-/** Frames a scroller under the caret must hold its offset before the frame paint stops following. */
-const SCROLL_STILL_FRAMES = 2;
-
 /** On the editable the bar draws for, hiding the browser's caret there and only there. An
  *  attribute, not a class: Svelte rewrites an editable's whole class list when its kind changes. */
 const DRAWN_ATTR = 'data-caret-drawn';
@@ -518,8 +488,4 @@ function createBar(): HTMLElement {
 
 function sizeOf(el: HTMLElement): string {
 	return `${el.offsetWidth}x${el.offsetHeight}`;
-}
-
-function scrollOffset(el: Element): string {
-	return `${el.scrollLeft},${el.scrollTop}`;
 }
