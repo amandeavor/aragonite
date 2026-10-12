@@ -24,7 +24,7 @@ import type { GrammarView } from '../../../schema/block-openers';
 import type { Reading } from '../../../schema/reading';
 import { insertsExactly } from './screen-diff';
 import type { CaretMemory } from '../../../caret/caret-memory';
-import type { PlacedEdit, PlaceInsertion } from '../../../caret/next-insertion';
+import { insertedText, type PlacedEdit, type PlaceInsertion } from '../../../caret/next-insertion';
 import type { HeldSpaceView } from '../../../caret/held-space';
 import type { InsideCloserView } from '../../../caret/inside-closer';
 import type { NodeView } from '../../../core/node-views';
@@ -130,7 +130,7 @@ export function createTypedPlacement(deps: TypedPlacementDeps): TypedPlacement {
 		insertion: (before, edit, at, side, caret) => {
 			const screen = hidingScreen();
 			if (!screen) return null;
-			const typed = edit.text.slice(at, at + edit.text.length - before.length);
+			const typed = insertedText(before, edit, at);
 			const inlines = inlinesOf(before);
 			return relocateInsertion(before, at, typed, inlines, side, screen, deps.reading, caret);
 		},
