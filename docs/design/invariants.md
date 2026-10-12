@@ -1000,7 +1000,7 @@ unguarded.
 | G4.80  | In `selection/`, only the range coverage and the caret walks ask if a container is closed | L       |
 | G4.81  | The cross-block table row snap runs in the range coverage and the stored pair only        | L       |
 | G4.82  | The task-marker rule runs in one wrapper, and its callers are declared                    | L       |
-| G4.83  | Every plain fragment read in the edit layers says why it needs no slot reader             | L       |
+| G4.83  | Every plain fragment read outside the parser names why its nodes need no backfill         | L       |
 | G4.84  | Where a leaf's bytes are stored is made in one place, from the tree                       | L       |
 | G4.85  | A live rewrite that removes bytes reads its candidate where it will be stored             | L       |
 | G4.86  | A list item's marker is read only where the list is built, drawn or dumped                | L       |
@@ -1047,7 +1047,7 @@ unguarded.
 | G4.149 | A preview of the next insertion runs a write's own spend, and changes no record           | harness |
 | G4.150 | One placer for a hidden edge: no other file reads the caret's side or how it arrived      | L       |
 | G4.151 | One click-side check, called from the click entry both prose blocks share                 | L       |
-| G4.159 | Every container kind keeps bytes that reload as it when its last text is deleted          | harness |
+| G4.159 | An emptied quote, list item or bundled strip container keeps bytes that reload as it      | harness |
 
 ### The entries
 
@@ -1603,9 +1603,13 @@ and G4.82b rows), with G1.42 as the runtime half.
 **G4.83 · Every plain fragment read says why.** Bytes written into a child slot are read the way a
 reload reads them there, through `tree-operations/list/task-paragraph.ts :: fragmentReaderAt` (in a
 list item's first slot, behind its whole marker line), or `slotReaderAt` and `childSlotAt` for a
-caller holding only a path. A plain `readBlocks` left in `tree-operations/`, `selection/` or
-`editor-actions/` is listed in the manifest with its reason (a probe that installs nothing, the
-paste's re-read of a clipboard block). `lint/manifest-rules.test.ts`.
+caller holding only a path. Nodes built from bytes reach the tree the way a reload builds them,
+through `tree-operations/node-primitives.ts :: readAsOpened`, which gives every container its empty
+paragraph. A plain `readBlocks` left in `tree-operations/`, `selection/`, `editor-actions/`,
+`components/` or `schema/` is listed in the manifest under one of a closed list of kinds (a probe
+that installs nothing, a read whose file runs the backfill before it installs, a read handed to a
+route that backfills at the splice, a container's re-read of its own bytes), and a file declared as
+installing must call the backfill itself. `lint/manifest-rules.test.ts`.
 
 **G4.84 · One place says where a leaf's bytes are stored.** A `StoredAs`
 (`src/lib/schema/stored-as.ts`) answers four things about a position: block or plain text (a table
