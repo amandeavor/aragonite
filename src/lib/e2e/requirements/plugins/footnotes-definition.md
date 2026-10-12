@@ -24,6 +24,12 @@ the DOM.
 - the note declines the block below it: Backspace at the start of the paragraph following a definition changes no bytes and puts the caret at the end of the note's last body leaf. From the outside a note behaves like a leaf, so body text never becomes note text
 - one undo restores a body edit: after typing into the body, a single Ctrl+Z returns the source to the seed bytes
 
+- a Ctrl+click on a definition marker with no reference shows one caret (live mode): the marker's
+  click handler stops the click, and the caret still shows afterwards (where it shows is a separate
+  gap: it can stay inside the marker)
+  - Miss-analysis: the press ended on the root's bubbling click, and no row pressed a range whose
+    click handler stops propagation, which the plugin API tells plugin authors to do
+
 ## User interactions
 
 - typing, Backspace and Ctrl+Z are real keystrokes, each asserted against the tree read by path, the serialized bytes, or the rendered marker in the DOM

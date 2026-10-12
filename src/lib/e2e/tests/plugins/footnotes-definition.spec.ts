@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, readContainer, activeBlockPath, capturedErrors } from './helpers';
 import { clickWordSettled, extendTo, stepTo } from '../presentation/helpers';
+import { caretsShowing, type CaretsShowing } from '../../carets-showing';
 
 /**
  * The GFM footnote definition as a container shaped like a list item: the definition side of the
@@ -10,6 +11,8 @@ import { clickWordSettled, extendTo, stepTo } from '../presentation/helpers';
  * marker-bearing container does, while the block below it never merges in.
  */
 const SEED = 'A note reference [^a] in prose.\n\n[^a]: The note body.\n';
+
+const caretCount = ({ native, drawn }: CaretsShowing): number => drawn + (native ? 1 : 0);
 
 test.describe('plugin container: footnote definition', () => {
 	let editor: PluginsPage;
@@ -113,6 +116,30 @@ test.describe('plugin container: footnote definition', () => {
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceContains('[^a]: Some boalic words\n');
 		expect(await editor.bridge.getSource()).not.toContain('**');
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+
+	// The marker's own click handler stops the click, so nothing past it on the way up runs.
+	test('live: a Ctrl+click on a definition marker with no reference leaves one caret', async ({
+		page
+	}) => {
+		await editor.loadContent('Some text here.\n\n[^z]: lonely note body\n');
+		await editor.setPresentationMode('live');
+		await editor.waitForRenderFlush();
+		await editor.focusBlockAtPath([0], 4);
+
+		await page.locator('.footnote-def-marker').click({ modifiers: ['Control'] });
+		// Read once the click has landed and its frame has painted, not the caret before it.
+		await expect
+			.poll(() =>
+				page.evaluate(() => !!getSelection()?.anchorNode?.parentElement?.closest('.footnote-def'))
+			)
+			.toBe(true);
+		await page.evaluate(
+			() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+		);
+
+		expect(caretCount(await caretsShowing(page))).toBe(1);
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 

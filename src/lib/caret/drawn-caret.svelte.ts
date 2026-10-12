@@ -373,8 +373,9 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		root.addEventListener('pointerdown', onPointerDown, on);
 		root.addEventListener('pointerup', armFrame, on);
 		root.addEventListener('pointercancel', endPress, on);
-		// The click's own handlers move the caret, and the frame after them paints where it went.
-		root.addEventListener('click', endPress, on);
+		// Capture, since a click handler may stop the click; the frame paint still runs after every
+		// handler has moved the caret.
+		root.addEventListener('click', endPress, { capture: true, ...on });
 		root.addEventListener(
 			'focusout',
 			(e) => {
