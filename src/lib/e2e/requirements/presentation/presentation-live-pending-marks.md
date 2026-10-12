@@ -4,11 +4,13 @@ Source mode and the preview modes paint the delimiter a `Mod+B` at a collapsed c
 the user can see the empty `**|**` they made and the second keypress that removes it. Live paints
 nothing, so the same pair is invisible garbage the moment the user walks away from it. In live
 the chord therefore writes no bytes: it holds a mark pending, and the first insertion after it,
-keystroke or IME commit, carries that mark into the bytes as one commit. The mark is resolved
+whichever way it arrives (a keystroke, a soft keyboard, an IME commit, a paste), carries that mark
+into the bytes as one commit. The mark is resolved
 against the constructs the caret sits inside, so a kind they lack wraps the insertion and a kind
 they carry escapes it. Driven on `/test/editor` via `?presentationMode=live` with real chords,
-real keystrokes, real clicks and a real CDP composition; each scenario checks the source, plus
-the rendered element where "renders bold" is the claim.
+real keystrokes, real clicks, a real CDP composition, a real paste and text inserted with no key
+behind it; each scenario checks the source, plus the rendered element where "renders bold" is the
+claim.
 
 Miss-analysis (undo granularity): the suite pinned one entry per commit only for structural
 operations, which break the keystroke batch through the commit sequence. A format toggle shares
@@ -47,9 +49,9 @@ sequence.
   the nearer edge is the smaller jump from where the user was typing
 
 - a mark pending beside an atomic inline widget writes the wrapped byte on the side the caret
-  is on and leaves the widget whole: the dispatcher hands a plain key to the marks handler before
-  the widget handler sees it, and the rewrite is checked against the render path, so a splice that
-  would change painted text is declined
+  is on and leaves the widget whole: the byte goes through the block's write like any other, which
+  spends the mark, and the rewrite is checked against the render path, so a splice that would
+  change painted text is declined
   - Miss-analysis: these two rows opened the live URL and never checked the mode took. Source
     mode writes the same bytes here, so they'd have passed with live mode off. Every way a spec
     picks a mode checks it took: the URL `EditorPage.goto` loads, `EditorPage.setPresentationMode`,
@@ -85,16 +87,20 @@ sequence.
   plain, the same bytes plain typing would write, and marking on either side of the URL still
   works
 
-## IME commits
+## Other ways in
 
 - a composition committed after `Mod+B` lands wrapped, exactly as a keystroke would: the composed
   run is the insertion the mark was pending for
+- a paste after `Mod+B` lands wrapped, `plain**abc**`, and so does a letter that arrives with no
+  key behind it, the way a soft keyboard sends one. Miss-analysis: every scenario typed a key or
+  composed, the two routes that read the mark themselves, so nobody saw a paste or a soft keyboard
+  write plain
 
 ## User interactions
 
-- Real chords, keystrokes, clicks and a real CDP composition only: the mark is set where commands
-  run and spent inside the keydown dispatch and the one call every composition goes through, and
-  a programmatic write would bypass both
+- Real chords, keystrokes, clicks, a real CDP composition and a real paste only: the mark is set
+  where commands run and spent by the block's write, which every insertion goes through, and a
+  programmatic write would skip the event that gets there
 - The mark state is editor-internal and never asserted directly; every scenario reads the
   bytes it produced
 

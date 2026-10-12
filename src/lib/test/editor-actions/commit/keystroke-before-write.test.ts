@@ -14,6 +14,7 @@ import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { makeEditorActionsDeps, makeNestedHarness } from '#lib/test/harness/editor-actions.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
+import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 vi.mock('#lib/editor-actions/replacement-focus.js', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('#lib/editor-actions/replacement-focus.js')>();
@@ -64,7 +65,7 @@ const LEVELS: {
 function rememberedCaret(): CaretMemory {
 	const memory = createCaretMemory();
 	memory.captureColumn(asEditorX(40));
-	memory.pendingMarks.toggle('strong');
+	pendMark(memory);
 	return memory;
 }
 
@@ -85,7 +86,7 @@ describe('a keystroke forgets how the caret arrived', () => {
 				await mount(mode, memory).key();
 
 				expect(memory.column()).toBeNull();
-				expect(memory.pendingMarks.get()).toBeNull();
+				expect(marksPending(memory)).toBe(false);
 				expect(refusedKeys()).toBe(mode === 'reading' ? 1 : 0);
 			});
 		}

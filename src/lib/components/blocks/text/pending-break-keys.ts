@@ -16,9 +16,6 @@ export interface PendingBreakKeyDeps {
 	/** The collapsed caret's raw offset, or null for a range. */
 	getCaret(): number | null;
 	getDisplayText(): string;
-	/** Marks a toggle promised the next byte: their own key handler writes it, and that write
-	 *  spends the break too. */
-	hasPendingMarks(): boolean;
 	/** Whether the key is Shift+Enter's command here, which opens one more line. */
 	opensBreak(e: KeyboardEvent): boolean;
 	writeText(write: TextWrite): ContentWrite;
@@ -35,7 +32,6 @@ export function handlePendingBreakKey(e: KeyboardEvent, deps: PendingBreakKeyDep
 			deps.pendingBreak.end();
 			return false;
 		}
-		if (deps.hasPendingMarks()) return false;
 		e.preventDefault();
 		const text = deps.getDisplayText();
 		void deps.writeText({

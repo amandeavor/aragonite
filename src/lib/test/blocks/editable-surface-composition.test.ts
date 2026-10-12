@@ -10,7 +10,6 @@ import { rangeSelectionOf } from '#lib/test/support/undo-entry.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
 import { makeEditorActionsDeps, type EditorActionsHarness } from '../harness/editor-actions';
-import { parseInline } from '#lib/core/inline/index.js';
 import { createCompositionSeat } from '#lib/components/blocks/text/composition-seat.js';
 import { replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
 import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
@@ -189,7 +188,7 @@ describe('composing gate', () => {
 		});
 	});
 
-	// The pending marks and the held insertion are taken first, so forgetting loses neither.
+	// The held insertion is taken first, so forgetting loses none of its records.
 	it('opening a composition forgets the column and the side the caret memory held', () => {
 		const caretMemory = createCaretMemory();
 		const { surface } = makeSurface({ caretMemory });
@@ -272,15 +271,9 @@ describe('composed text placement', () => {
 		let rawSelection: { start: number; end: number } | null = null;
 		const caretMemory = createCaretMemory();
 		if (affinity === 'outside') caretMemory.noteOutside();
-		const getInlines = () => parseInline(source, 0, source.length);
 		// The deps read `surface` lazily, so the const below is initialized before any of them run.
 		const seat = createCompositionSeat({
 			getDisplayText: () => surface.el.textContent ?? '',
-			getInlines,
-			reading: fixtureReading(),
-			offsetFor: (caret) => caret,
-			consumePendingMarks: () => null,
-			restorePendingMarks: () => {},
 			getRawSelection: () => rawSelection,
 			resolveRangeEdit: (range, typed) => {
 				const store = topLevelStore(node, fixtureReading({}, 'live'));

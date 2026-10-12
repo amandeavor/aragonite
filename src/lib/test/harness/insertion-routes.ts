@@ -47,6 +47,12 @@ export async function insertBy(
 	}
 }
 
+/** Text dragged in from outside the editor and dropped at `el`'s caret, which jsdom can't aim by
+ *  pointer: the browser's `insertFromDrop`, then its insert. */
+export async function dropAtCaret(el: HTMLElement, text: string): Promise<void> {
+	await inputEvent(el, 'insertFromDrop', text);
+}
+
 /** A `beforeinput` sent to `el` as the browser sends it, aimed at `target` when one is given.
  *  Returned, so a test can read whether the editor prevented it. */
 export function dispatchBeforeInput(

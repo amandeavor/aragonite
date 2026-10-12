@@ -21,6 +21,7 @@ import {
 } from './widget-offset';
 import {
 	firstUsefulRect,
+	lineAfterEnding,
 	movingEnd,
 	neighbourCaretRect,
 	sameLineTolerance,
@@ -58,7 +59,12 @@ export function caretBoxAt(container: HTMLElement, offset: DomTextOffset): Caret
 		return null;
 	}
 	range.collapse(true);
-	const measured = firstUsefulRect(range);
+	// A caret after a final line ending sits on the empty line below it.
+	const after =
+		pos.node instanceof Text && pos.offset === pos.node.length
+			? lineAfterEnding(pos.node, container)
+			: null;
+	const measured = after ?? firstUsefulRect(range);
 	const rect = measured ?? neighbourCaretRect(range);
 	if (!rect) return null;
 	return {

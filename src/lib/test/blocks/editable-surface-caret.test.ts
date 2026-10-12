@@ -7,6 +7,7 @@ import { createCaretMemory } from '#lib/caret/caret-memory.js';
 import { asEditorX } from '#lib/caret/coordinate-spaces.js';
 import { CURSOR_END, CURSOR_EXACT_START, CURSOR_START } from '../../block-component';
 import { consumePendingRestore } from '../../components/blocks/editable-surface';
+import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 describe('caret memory', () => {
 	// Miss-analysis: only a source lint covered the input commit's reset, never a typed byte.
@@ -22,7 +23,7 @@ describe('caret memory', () => {
 			const caretMemory = createCaretMemory();
 			caretMemory.noteKey({ key: 'ArrowUp' }, null, () => asEditorX(240));
 			caretMemory.noteOutside();
-			caretMemory.pendingMarks.toggle('strong');
+			pendMark(caretMemory);
 			const { surface, el } = makeSurface({ caretMemory });
 
 			el.textContent = 'x';
@@ -30,7 +31,7 @@ describe('caret memory', () => {
 
 			expect(caretMemory.column()).toBeNull();
 			expect(caretMemory.side()).toBeNull();
-			expect(caretMemory.pendingMarks.get()).toBeNull();
+			expect(marksPending(caretMemory)).toBe(false);
 		});
 	});
 });

@@ -35,8 +35,8 @@ export interface TextWrite {
 	/** Leave the caret alone: a widget's own key keeps the widget selected, and a key that leaves
 	 *  the block puts the caret in the next one. */
 	leavesCaret?: true;
-	/** The write already put its bytes on the side of a hidden edge the caret means (the auto-pair,
-	 *  pending marks), so an insertion in it is not moved again. */
+	/** The write already put its bytes on the side of a hidden edge the caret means (the auto-pair),
+	 *  so an insertion in it is not moved again. */
 	inPlace?: true;
 	/** What the caret memory kept for the block, taken by a route before it forgot or reset the
 	 *  caret's side (a composition, the input read back); spent here instead of a new hold. */
@@ -54,8 +54,8 @@ export interface SurfaceWriteDeps {
 	requestCaret(at: number, opts: { source: string }): void;
 	/** A prose block's view of the pair the auto-pair wrote, which every write keeps in step. */
 	ownPairs?: BlockAutoPairs;
-	/** Takes what the caret memory keeps for this block's next insertion (a pending break), with the
-	 *  block's move of an insertion to the side of a hidden edge the caret means. */
+	/** Takes what the caret memory keeps for this block's next insertion (pending marks, a pending
+	 *  break), with what the block does to an insertion. */
 	holdInsertion(): HeldInsertion;
 }
 

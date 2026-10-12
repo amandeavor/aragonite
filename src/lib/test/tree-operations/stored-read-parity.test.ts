@@ -9,7 +9,7 @@ import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { parseInline, getContentRange } from '#lib/core/inline/index.js';
 import { screenVisibility } from '#lib/core/inline/visibility.js';
-import { trimTrailingLineEnding } from '#lib/core/lines.js';
+import { ownTrailingLineEnding, trimTrailingLineEnding } from '#lib/core/lines.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
@@ -145,6 +145,7 @@ async function edgeBackspace(container: Container): Promise<Document | null> {
 	const display = trimTrailingLineEnding(node.raw);
 	const deletion = resolveEdgeDeletion({
 		display,
+		asWritten: (text) => text + ownTrailingLineEnding(node.raw),
 		content: getContentRange(node),
 		caret: 3,
 		direction: 'backward',

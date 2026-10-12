@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { asEditorX } from '#lib/caret/coordinate-spaces.js';
 import { makeKeydownEnv, press } from './keydown-env';
 import type { KeybindingOverride } from '#lib/schema/keybinding-overrides.js';
+import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 // Every key the cross-block dispatcher consumes returns before handleSharedKeydown's sticky
 // decision, and the collapse branches run no commit, so nothing downstream resets the column.
@@ -60,7 +61,7 @@ describe('cross-block keydown: the reorder chord follows a rebinding', () => {
 	function armed() {
 		const env = makeKeydownEnv('alpha beta gamma\n\ndelta\n', { keybindings });
 		env.caretMemory.captureColumn(asEditorX(600));
-		env.caretMemory.pendingMarks.toggle('strong');
+		pendMark(env.caretMemory);
 		return env;
 	}
 
@@ -68,7 +69,7 @@ describe('cross-block keydown: the reorder chord follows a rebinding', () => {
 		const env = armed();
 		await env.keydown.handleKeyDown(press('ArrowUp', { altKey: true }));
 		expect(env.caretMemory.arrivedByKey()).toBe(true);
-		expect(env.caretMemory.pendingMarks.get()).toBeNull();
+		expect(marksPending(env.caretMemory)).toBe(false);
 	});
 
 	it('the rebound chord keeps the column, the record and the marks', async () => {
@@ -76,6 +77,6 @@ describe('cross-block keydown: the reorder chord follows a rebinding', () => {
 		await env.keydown.handleKeyDown(press('ArrowUp', { ctrlKey: true }));
 		expect(env.caretMemory.column()).toBe(600);
 		expect(env.caretMemory.side()).toBeNull();
-		expect([...(env.caretMemory.pendingMarks.get() ?? [])]).toEqual(['strong']);
+		expect(marksPending(env.caretMemory)).toBe(true);
 	});
 });

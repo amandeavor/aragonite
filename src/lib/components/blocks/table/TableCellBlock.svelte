@@ -82,7 +82,6 @@
 	import { createEdgePolicyDispatch } from '../text/edge-policy-dispatch';
 	import { createEdgeStep } from '../text/edge-step';
 	import { applyTypedInput, createTypedPlacement } from '../text/edge-seat';
-	import { createCompositionSeat } from '../text/composition-seat';
 	import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 	import { widgetElByStart } from '../text/widget-adjacency';
 	import { getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
@@ -210,16 +209,6 @@
 		insideCloser: () => editableSurface.insideCloser
 	});
 
-	// The same placement rules the keydown dispatch uses, for the one insertion it cannot reach.
-	const compositionSeat = createCompositionSeat({
-		getDisplayText: () => trimTrailingLineEnding(node.raw),
-		getInlines: () => resolvedInlineContent(node, reading),
-		reading,
-		offsetFor: typedPlacement.offsetFor,
-		consumePendingMarks: caretMemory.pendingMarks.consume,
-		restorePendingMarks: caretMemory.pendingMarks.restore
-	});
-
 	const editableSurface = createEditableSurface({
 		...wiring.deps,
 		getEl: () => el ?? null,
@@ -238,7 +227,6 @@
 		getTextLen: () => (el ? containerDomTextLength(el) : 0),
 		stepEdge: edgeStep.step,
 		readText: () => readCellText(),
-		compositionSeat,
 		placement: typedPlacement,
 		getInlines: () => resolvedInlineContent(node, reading),
 		handleKeydown: onKeyDown,
@@ -344,8 +332,7 @@
 		},
 		isReading: () => readOnly,
 		insideCloser: () => editableSurface.insideCloser,
-		pendingMarks: caretMemory.pendingMarks,
-		offsetFor: typedPlacement.offsetFor,
+		pendingMarks: editableSurface.pendingMarks,
 		caretWriter
 	});
 
@@ -407,7 +394,7 @@
 		// waits for the next insertion instead (live-mode.md § 4.3).
 		if (reading.hidesDelimitersAtCaret() && offsets.start === offsets.end) {
 			controller.flushDebouncedCheckpoint();
-			caretMemory.pendingMarks.toggle(format);
+			editableSurface.pendingMarks.toggle(format);
 			return true;
 		}
 		// A cell has no markers of its own, so the whole read is content, taken from the DOM text

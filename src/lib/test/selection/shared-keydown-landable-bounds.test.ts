@@ -21,6 +21,7 @@ import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { createCaretMemory } from '#lib/caret/caret-memory.js';
 import { commandContext } from '#lib/test/support/command-context.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 const toPrev = vi.mocked(extendFocusToPreviousBlock);
 
@@ -190,7 +191,7 @@ describe('the keydown entry point notes the arrival', () => {
 	it('the reorder chord leaves the record and the pending marks alone', async () => {
 		const { ctx } = makeEnv('Title\n', 2, 'live');
 		ctx.caretMemory.noteOutside();
-		ctx.caretMemory.pendingMarks.toggle('strong');
+		pendMark(ctx.caretMemory);
 		const reorder = new KeyboardEvent('keydown', {
 			key: 'ArrowUp',
 			altKey: true,
@@ -198,6 +199,6 @@ describe('the keydown entry point notes the arrival', () => {
 		});
 		await handleSharedKeydown(reorder, ctx);
 		expect(ctx.caretMemory.side()).toBe('outside');
-		expect([...(ctx.caretMemory.pendingMarks.get() ?? [])]).toEqual(['strong']);
+		expect(marksPending(ctx.caretMemory)).toBe(true);
 	});
 });

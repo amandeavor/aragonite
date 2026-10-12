@@ -81,6 +81,7 @@ describe('the edge delete reads the syntax the editor draws', () => {
 		const node = makeBlockNode({ kind, leadingTrivia: '', raw });
 		return resolveEdgeDeletion({
 			display: raw,
+			asWritten: (text) => text,
 			content: { start: 0, end: raw.length },
 			caret: 9,
 			direction: 'backward',

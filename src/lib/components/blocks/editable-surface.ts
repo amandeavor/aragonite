@@ -46,6 +46,7 @@ import { createNextByte } from './text/next-byte';
 import type { BlockPendingBreak } from '../../caret/pending-break.svelte';
 import type { HeldSpaceView } from '../../caret/held-space';
 import type { InsideCloserView } from '../../caret/inside-closer';
+import type { BlockPendingMarks } from '../../caret/pending-marks';
 import { findOffsetNearestX } from '../../caret/sticky-measure';
 import { measurePartialRectsInContentEditable } from '../../caret/overlay-rects';
 import {
@@ -222,11 +223,11 @@ export interface EditableSurfaceDeps {
 	// ── Input handling (per block) ────────────────────────────────────────────
 	/** Read the current DOM content as the block's displayed text, for the input commit. */
 	readText: () => string;
-	/** What a composition opened over (pending marks, a range), captured at its start and placing
-	 *  the run it commits; omitted where a commit writes the text as read. */
+	/** The selection a composition opened over, captured at its start, which the run it commits
+	 *  replaces; omitted where a commit writes the text as read. */
 	compositionSeat?: CompositionSeat;
-	/** Where text typed at a hidden edge lands; omitted where the block draws every marker. Every
-	 *  insertion route writes through its `insertion` (`next-insertion.ts`). */
+	/** Where an insertion at a hidden edge lands and how a pending mark wraps it, for every route's
+	 *  write (`next-insertion.ts`); omitted where the block draws every marker. */
 	placement?: TypedPlacement;
 	/** The block's inline tree, for a block whose text takes inline formats: the drawn caret shows
 	 *  the ones the next letter would carry. */
@@ -273,6 +274,8 @@ export interface EditableSurface {
 	heldSpace: HeldSpaceView;
 	/** The caret Edit link left before a hidden closer here, which types inside the URL. */
 	insideCloser: InsideCloserView;
+	/** The marks a format chord at a collapsed caret here promised the block's next insertion. */
+	pendingMarks: BlockPendingMarks;
 	/** The formats a letter typed at raw offset `caret` would carry (`text/next-byte.ts`); plain
 	 *  where the block has no `getInlines`. */
 	nextByte(caret: number): NextByte;
@@ -491,6 +494,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 
 	// This block's identity in the caret memory, so a record left here is spent only here.
 	const block = {};
+	const pendingMarks = deps.caretMemory.pendingMarks.forBlock(block);
 	const holdInsertion = (): HeldInsertion =>
 		deps.caretMemory.holdInsertion(block, deps.placement?.insertion);
 	const { getInlines } = deps;
@@ -501,8 +505,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 				getInlines,
 				reading: deps.reading,
 				caretMemory: deps.caretMemory,
-				preview: () => deps.caretMemory.previewInsertion(block, deps.placement?.insertion),
-				offsetFor: (caret, typed) => deps.placement?.offsetFor(caret, typed) ?? caret
+				preview: () => deps.caretMemory.previewInsertion(block, deps.placement?.insertion)
 			})
 		: () => ({ marks: [] });
 
@@ -537,6 +540,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	function onBeforeInput(e: InputEvent): void {
 		endsDroppedComposition(e);
 		adoptsComposition(e);
+		// A drop's text lands at the pointer, not at the caret a chord promised its marks to.
+		if (e.inputType === 'insertFromDrop') pendingMarks.end();
 		if (!e.isComposing) recordPreEditOffset();
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);
@@ -578,7 +583,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		// where a record waits, which is that record's insertion.
 		const rewritten =
 			fromComposition && revealsNoMarkers(el) && !held?.waitsAt(preEditOffset)
-				? (deps.compositionSeat?.relocate(text, preEditOffset) ?? null)
+				? (deps.compositionSeat?.relocate(text) ?? null)
 				: null;
 		void writeText({
 			text: rewritten?.raw ?? text,
@@ -603,7 +608,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		if (!crossBlock.handleCompositionStart()) openComposition();
 	}
 
-	// The pending marks and the held insertion are read from the caret memory before it forgets.
+	// The records the run spends are held before the caret memory forgets.
 	function openComposition(): void {
 		deps.compositionSeat?.noteStart();
 		preEditOffset = deps.backend.getRaw() ?? 0;
@@ -735,6 +740,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		pendingBreak: deps.caretMemory.pendingBreak.forBlock(block),
 		heldSpace: deps.caretMemory.heldSpace.forBlock(block),
 		insideCloser: deps.caretMemory.insideCloser.forBlock(block),
+		pendingMarks,
 		nextByte,
 		command,
 		afterSelectionRemoved,
