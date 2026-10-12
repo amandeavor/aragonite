@@ -67,6 +67,24 @@ test.describe('deleting the last text of other emptied containers', () => {
 		await editor.waitForListItemCount(2);
 	});
 
+	test('joining the item above an emptied one keeps the emptied one typeable', async ({ page }) => {
+		await editor.loadContent('- a\n- b\n- c');
+		await selectLeafText(editor, [0, 2, 0]);
+		await page.keyboard.press('Backspace');
+		await editor.bridge.waitForSourceEquals('- a\n- b\n- ');
+		await editor.focusBlockAtPath([0, 1, 0], 0);
+
+		await page.keyboard.press('Backspace');
+
+		await editor.bridge.waitForSourceEquals('- ab\n- ');
+		await editor.waitForListItemCount(2);
+		await reload(editor);
+		await editor.waitForListItemCount(2);
+		await editor.focusBlockAtPath([0, 1, 0], 0);
+		await page.keyboard.type('y');
+		await editor.bridge.waitForSourceEquals('- ab\n- y');
+	});
+
 	test('a task item keeps its checkbox', async ({ page }) => {
 		await editor.loadContent('- [ ] a');
 		await selectLeafText(editor, [0, 0, 0]);

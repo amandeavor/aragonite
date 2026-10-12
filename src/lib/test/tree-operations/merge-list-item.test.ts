@@ -5,6 +5,9 @@ import { registerDetailsKind } from '#lib/plugins/details/details-kind.js';
 import type { CstNode } from '../../core/nodes';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { initDocument } from '#lib/components/editor-root-document-swap.js';
+import { describeShapeDivergence } from '#lib/core/shape-divergence.js';
+import { defaultGrammarView } from '#lib/schema/block-openers.js';
 
 // Backspace-at-start-of-list-item merge semantics. The worked examples mirror the table
 // in e2e/requirements/blocks/list/backspace/m1-merge.md.
@@ -230,5 +233,20 @@ describe('mergeListItemIntoPrevious: collapsed container as previous leaf', () =
 		expect(result).toBeNull();
 		expect(children.length).toBe(before);
 		expect(list.children?.length).toBe(before);
+	});
+});
+
+describe('mergeListItemIntoPrevious above an emptied item', () => {
+	// Miss-analysis (GH #685): the merge re-read the list without the editor's empty paragraphs.
+	it('keeps the emptied item holding the paragraph a reload gives it', () => {
+		const list = initDocument('- a\n- b\n- ', defaultGrammarView).doc.children[0];
+		const children = list.children!.slice();
+
+		mergeListItemIntoPrevious(list, children, 1, createSharingState(), fixtureReading());
+
+		list.children = children;
+		const reload = initDocument(list.raw, defaultGrammarView).doc;
+		expect(describeShapeDivergence({ children: [list] }, reload)).toBeNull();
+		expect(list.raw).toBe('- ab\n- ');
 	});
 });
