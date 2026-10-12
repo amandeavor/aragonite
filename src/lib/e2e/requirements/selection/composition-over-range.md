@@ -24,7 +24,7 @@ through a real CDP composition.
   - a one-row table's cell down into the rule below it. A range that holds a table's only row
     takes the whole table, so the caret lands on the rule, which has no text of its own. The
     composition runs in the rule's hidden input and the commit puts `漢` in a new paragraph after
-    the rule, the same as typing a key there.
+    the rule, the same as typing a key on a selected rule.
 
 ## Edge cases
 

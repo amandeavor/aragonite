@@ -1962,7 +1962,7 @@ through, and neither `onClick` measures the press against its text itself.
 flag (the editable surface, the caret host) asks `editor-actions/dropped-composition.ts` whether the
 browser dropped its composition (`reportDroppedComposition`) and whether a composed run opens one
 there (`opensComposition`). A range across blocks claims a composition's start, so the block its
-removal leaves the caret in, a rule's hidden host included, only ever sees the runs.
+removal leaves the caret in, a rule's hidden host included, only ever sees the runs. The guard knows a holder by its call to `reportDroppedComposition`, so a new holder asks that one too.
 `lint/composition-holders.test.ts`.
 
 ## Accessibility
