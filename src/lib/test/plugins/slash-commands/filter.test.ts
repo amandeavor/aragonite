@@ -62,3 +62,28 @@ describe('acceptsQuery: the list survives a space only for one argument taker', 
 		expect(acceptsQuery(ROWS, query)).toBe(accepted);
 	});
 });
+
+// Miss-analysis: every accept row had at most one row per prefix, so no test put a plugin row that
+// shares a word (a toc's "Table of contents", a diagram's `chart`) beside an argument taker.
+describe('acceptsQuery: a shared prefix leaves the word with the row its head names exactly', () => {
+	const shared = [
+		...ROWS,
+		row('Table of contents', ['toc']),
+		row('Diagram', ['mermaid', 'chart']),
+		row('Chart', ['plot'], true)
+	];
+
+	it.each([
+		['table 3x4', true],
+		['chart pie', true],
+		// Two rows start with `tab`, and neither is named by it exactly.
+		['tab 3x4', false],
+		['toc x', false]
+	])('%j → %s', (query, accepted) => {
+		expect(acceptsQuery(shared, query)).toBe(accepted);
+	});
+
+	it('gives the word to neither of two argument takers the head names exactly', () => {
+		expect(acceptsQuery([...shared, row('Table data', [], true)], 'table 3x4')).toBe(false);
+	});
+});

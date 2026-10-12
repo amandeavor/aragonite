@@ -88,6 +88,33 @@ describe('a plugin insert entry with an argument', () => {
 	});
 });
 
+// Miss-analysis: the source was only typed into beside the built-ins, where no two rows share a word.
+describe('an argument beside a row sharing its word', () => {
+	const contents: InsertEntry = {
+		id: 'contents',
+		label: 'Table of contents',
+		icon: 'list-tree',
+		keywords: ['toc'],
+		markdown: '[[toc]]\n'
+	};
+
+	it('/table 2x3 lists only the table, and Enter inserts the sized grid', async () => {
+		installPlugins([
+			definePlugin({ name: 'contents', setup: () => registerInsertEntry(contents) })
+		]);
+		const h = slashHarness('');
+		await h.type('/table');
+		expect(h.rows()).toEqual(['Table', 'Table of contents']);
+		await h.type(' 2x3');
+		expect(h.rows()).toEqual(['Table']);
+		expect(h.details()).toEqual(['2×3']);
+		await h.pick();
+		expect(h.inserted).toEqual([
+			{ markdown: '| Column | Column |\n| --- | --- |\n|  |  |\n|  |  |\n', placement: 'caret' }
+		]);
+	});
+});
+
 describe('a pick', () => {
 	it('/h2 on a text line removes its bytes, then runs the heading command with 2', async () => {
 		const h = slashHarness('Title ');
