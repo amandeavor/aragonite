@@ -1492,7 +1492,7 @@ const CORRECTIONS: Record<string, { calls: number; reason: string }> = {
 		calls: 1,
 		reason: 'the one distance the round corrects by, read through the same walk as `resolve`'
 	},
-	'src/lib/components/editor-root-geometry.ts :: <module> :: compensate': {
+	'src/lib/components/editor-root/geometry.ts :: <module> :: compensate': {
 		calls: 1,
 		reason:
 			'the header slot sits above every list, so no list’s pick applies: it keeps the document still unless the page is at its top'
@@ -2466,7 +2466,7 @@ const CODE_EDIT_SPAN: FileRule[] = [
 
 // ── G4.152 a link is followed only where the shared lookup is asked ─────────
 
-const ROOT_CLICK = `${SOURCE_DIR.components}editor-root-gestures.ts`;
+const ROOT_CLICK = `${SOURCE_DIR.components}editor-root/gestures.ts`;
 
 const FOLLOW_ROUTE: FileRule = {
 	id: 'G4.152 a link is followed only by the root click, which asks the shared lookup first',

@@ -6,7 +6,7 @@ import {
 	installTypeScaleProbe,
 	installViewportHeightWatcher,
 	installWidthWatcher
-} from '#lib/components/editor-root-geometry.js';
+} from '#lib/components/editor-root/geometry.js';
 import { ESTIMATE_BASE_FONT_SIZE } from '#lib/windowing/typography-estimates.js';
 import { stubScrollOwner, stubScrollport } from '../harness/stub-scrollport';
 

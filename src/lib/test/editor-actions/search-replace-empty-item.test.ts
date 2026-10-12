@@ -7,7 +7,7 @@ import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { describeShapeDivergence } from '#lib/core/shape-divergence.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
-import { initDocument } from '#lib/components/editor-root-document-swap.js';
+import { initDocument } from '#lib/components/editor-root/document-swap.js';
 
 // A replace that empties an item or a quote leaves bytes that reload as the container still shown:
 // under a paragraph the list takes a blank line above it, or a bare marker reads as a setext

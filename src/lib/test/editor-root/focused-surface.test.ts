@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createFocusedSurface } from '#lib/components/editor-root-focused-surface.js';
+import { createFocusedSurface } from '#lib/components/editor-root/focused-surface.js';
 import { parse } from '#lib/core/parser.js';
 import type { BlockComponent } from '#lib/block-component.js';
 import type { GapCaretPosition } from '#lib/selection/gap-caret.js';

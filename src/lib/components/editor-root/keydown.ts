@@ -1,15 +1,15 @@
 /**
  * Editor-root chord routing for keystrokes no mounted block handled. Search and Escape run
  * first: the global-chord branch returns early on its focus check, which would swallow a Mod+F
- * pressed inside a block (`test/components/editor-root-keydown.test.ts` pins the order).
+ * pressed inside a block (`test/editor-root/keydown.test.ts` pins the order).
  */
 
-import { claimsBodyChord, isForeignTextEntry } from '../active-editor';
-import type { SearchState } from '../search/search-state.svelte';
-import type { CrossBlockHandlers } from '../selection/cross-block/dispatch';
-import type { CommandDispatchContext } from '../schema/block-commands';
-import { isReservedUiChord, runGlobalChord } from '../schema/commands';
-import { eventToChord, isCharacterKey } from '../schema/keybindings';
+import { claimsBodyChord, isForeignTextEntry } from '../../active-editor';
+import type { SearchState } from '../../search/search-state.svelte';
+import type { CrossBlockHandlers } from '../../selection/cross-block/dispatch';
+import type { CommandDispatchContext } from '../../schema/block-commands';
+import { isReservedUiChord, runGlobalChord } from '../../schema/commands';
+import { eventToChord, isCharacterKey } from '../../schema/keybindings';
 
 export interface EditorRootKeydownDeps {
 	/** Getters, never values: capturing them would freeze the flags at construction time. */

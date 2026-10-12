@@ -5,13 +5,13 @@
  * an entry point must apply (the reading-mode check, the paste pipeline) lives in the block.
  */
 
-import type { BlockComponent } from '../block-component';
-import type { DocumentGetter } from '../editor-keys';
-import type { InsertMarkdownOptions } from '../editor-props';
-import type { KindCommandTarget } from '../schema/block-commands';
-import { findSurfacePathForElement } from '../selection/path-lookup';
-import type { SelectionState } from '../selection/selection-state.svelte';
-import { blockNodeAt } from '../tree-operations/node-primitives';
+import type { BlockComponent } from '../../block-component';
+import type { DocumentGetter } from '../../editor-keys';
+import type { InsertMarkdownOptions } from '../../editor-props';
+import type { KindCommandTarget } from '../../schema/block-commands';
+import { findSurfacePathForElement } from '../../selection/path-lookup';
+import type { SelectionState } from '../../selection/selection-state.svelte';
+import { blockNodeAt } from '../../tree-operations/node-primitives';
 
 export interface FocusedSurfaceDeps {
 	/** A getter, never a value: the root binds after construction. */

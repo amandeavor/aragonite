@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
 	createEditorRootKeydown,
 	type EditorRootKeydownDeps
-} from '#lib/components/editor-root-keydown.js';
+} from '#lib/components/editor-root/keydown.js';
 import { registerEditor, __resetActiveEditorForTests } from '#lib/active-editor.js';
 import {
 	normalizeKeybindingOverrides,

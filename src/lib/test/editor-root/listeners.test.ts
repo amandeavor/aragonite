@@ -7,7 +7,7 @@ import {
 	installPressTracker,
 	installRevealAnchorRelease,
 	installSelectionChangeBridge
-} from '#lib/components/editor-root-listeners.js';
+} from '#lib/components/editor-root/listeners.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 import { createPressTracker } from '#lib/activation-click.js';
 

@@ -8,7 +8,7 @@ import {
 	clippingAncestors,
 	userScrollportFor,
 	type UserScrollport
-} from '../windowing/scroll-ancestors';
+} from '../../windowing/scroll-ancestors';
 
 export interface ScrollHostDeps {
 	/** A getter, never a value: the root binds after construction. */

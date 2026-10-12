@@ -3,22 +3,22 @@
  * in one fixed order, so a swap cannot skip a step.
  */
 
-import type { Document } from '../core/nodes';
-import type { GrammarView } from '../schema/block-openers';
+import type { Document } from '../../core/nodes';
+import type { GrammarView } from '../../schema/block-openers';
 import {
 	buildLinkReferenceMap,
 	type LinkReferenceResolver
-} from '../core/inline/link-reference-resolver';
-import type { CaretMemory } from '../caret/caret-memory';
-import type { LayoutState } from '../windowing/layout-state.svelte';
-import type { SelectionState } from '../selection/selection-state.svelte';
-import { emptyParagraph } from '../tree-operations';
-import { readAsOpened } from '../schema/opened-reading';
-import type { UndoManager } from '../undo/types';
-import type { EditorEvents } from '../editor-events';
-import type { MenuPresence } from './menu/menu-presence.svelte';
-import type { DraftRegistry } from './draft-registry';
-import type { DocumentStamps } from '../editor-actions/commit/document-stamp';
+} from '../../core/inline/link-reference-resolver';
+import type { CaretMemory } from '../../caret/caret-memory';
+import type { LayoutState } from '../../windowing/layout-state.svelte';
+import type { SelectionState } from '../../selection/selection-state.svelte';
+import { emptyParagraph } from '../../tree-operations';
+import { readAsOpened } from '../../schema/opened-reading';
+import type { UndoManager } from '../../undo/types';
+import type { EditorEvents } from '../../editor-events';
+import type { MenuPresence } from '../menu/menu-presence.svelte';
+import type { DraftRegistry } from '../draft-registry';
+import type { DocumentStamps } from '../../editor-actions/commit/document-stamp';
 
 export interface ParsedDocument {
 	doc: Document;

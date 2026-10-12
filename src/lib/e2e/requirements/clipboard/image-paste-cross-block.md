@@ -43,7 +43,7 @@ leaves. The cross-block code addresses the survivor by path.
   collapsed while the import was in progress leaves the imported markdown with nowhere
   to land, and the editor reports it on the `error` channel (`origin: 'clipboard'`) so
   the host can release the asset. Pinned by
-  `test/components/editor-root-clipboard.test.ts`.
+  `test/editor-root/clipboard.test.ts`.
 - The hook still decides first: an import that returns `null` for every image destroys
   nothing, since the selection is only replaced once there is markdown to insert. The
   rejection half of that guarantee shares the same code path and is pinned against a

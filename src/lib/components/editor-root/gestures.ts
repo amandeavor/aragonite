@@ -4,32 +4,32 @@
  * non-editable element, multi-click selection, and where a right-click leaves the caret.
  */
 
-import type { BlockComponent } from '../block-component';
-import type { CaretMemory } from '../caret/caret-memory';
-import type { CaretWriter } from '../caret/widget-offset';
-import type { CaretLanding } from '../selection/caret-landing';
-import type { UserScrollport } from '../windowing/scroll-ancestors';
-import type { BlockElLookup, DocumentGetter } from '../editor-keys';
-import { placeContextPress, resetForPointerDown } from '../selection/cross-block/pointer';
-import { createDeadSpaceCaret } from '../selection/dead-space-caret';
-import { installDragListener } from '../selection/drag-pointer';
-import { installMultiClickSelect } from '../selection/multi-click';
-import { findSurfacePathForElement } from '../selection/path-lookup';
-import { claimsPointerGesture } from '../selection/pointer-gesture';
-import type { SelectionState } from '../selection/selection-state.svelte';
-import { isBlockNode, nodeAt } from '../tree-operations/node-primitives';
-import { widgetSourceRange } from '../core/inline/inline-widgets';
+import type { BlockComponent } from '../../block-component';
+import type { CaretMemory } from '../../caret/caret-memory';
+import type { CaretWriter } from '../../caret/widget-offset';
+import type { CaretLanding } from '../../selection/caret-landing';
+import type { UserScrollport } from '../../windowing/scroll-ancestors';
+import type { BlockElLookup, DocumentGetter } from '../../editor-keys';
+import { placeContextPress, resetForPointerDown } from '../../selection/cross-block/pointer';
+import { createDeadSpaceCaret } from '../../selection/dead-space-caret';
+import { installDragListener } from '../../selection/drag-pointer';
+import { installMultiClickSelect } from '../../selection/multi-click';
+import { findSurfacePathForElement } from '../../selection/path-lookup';
+import { claimsPointerGesture } from '../../selection/pointer-gesture';
+import type { SelectionState } from '../../selection/selection-state.svelte';
+import { isBlockNode, nodeAt } from '../../tree-operations/node-primitives';
+import { widgetSourceRange } from '../../core/inline/inline-widgets';
 import {
 	LINK_ELEMENT_SELECTOR,
 	clickFollowsAt,
 	resolveLinkAtPoint,
 	type LinkPointQuery
-} from './blocks/text/link-at-point';
-import { rawOffsetAt } from '../caret/widget-offset';
-import { onRoot, removeAll } from './editor-root-listeners';
-import type { LinkCardState } from './link-card/link-card-state.svelte';
-import type { Reading } from '../schema/reading';
-import { isModifiedClick, type ActivationClick, type PressTracker } from '../activation-click';
+} from '../blocks/text/link-at-point';
+import { rawOffsetAt } from '../../caret/widget-offset';
+import { onRoot, removeAll } from './listeners';
+import type { LinkCardState } from '../link-card/link-card-state.svelte';
+import type { Reading } from '../../schema/reading';
+import { isModifiedClick, type ActivationClick, type PressTracker } from '../../activation-click';
 
 export interface RootGesturesDeps {
 	getDoc: DocumentGetter;

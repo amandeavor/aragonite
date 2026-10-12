@@ -193,7 +193,7 @@ These checks run in three kinds of place:
   quiet. Registry completeness (G1.2) checks built-ins only, since a plugin's component may register
   on its own schedule.
 - **Its own machinery**: the guard fires inside the code it protects. One exception: G1.33 fires in
-  the editor root's focus handler (`components/editor-root-focus.ts`), above every caret entry, so a
+  the editor root's focus handler (`components/editor-root/focus.ts`), above every caret entry, so a
   consumer's own caret component inherits it.
 
 | ID    | What stays true                                                                            | Codes   |
@@ -486,7 +486,7 @@ engine picks (a typed `#` once came back as `a#`). Built-ins hold by constructio
 over no content paints; `docs/design/live-mode.md` § 4.1), so this is for a plugin surface building
 its own marker chrome. It fires from the editor root's `focusin`, once per focus arrival, so a caret
 component a consumer owns inherits it; reading mode is out of scope. Predicate `checkLandableCaret`
-(`landable-caret.ts`) · `components/editor-root-focus.ts` · `landable-caret.test.ts`,
+(`landable-caret.ts`) · `components/editor-root/focus.ts` · `landable-caret.test.ts`,
 `landable-caret-doors.test.ts`.
 
 **G1.34 · Retired.** The rule was: the index a split's caret lands on is the one `splitNode`
@@ -1977,7 +1977,7 @@ through, and neither `onClick` measures the press against its text itself.
 table typed over the kind union) plus the other link shapes, and every `a[href]` in the result must
 resolve to such a construct with an edit target in live mode. `lint/file-rules.test.ts` holds the
 route half: following a link (`window.open`, `activateLink`, a `closest('a[href]')` lookup) happens
-only in the root click, `components/editor-root-gestures.ts`, which asks `clickFollowsAt` first.
+only in the root click, `components/editor-root/gestures.ts`, which asks `clickFollowsAt` first.
 
 **G4.155 · Every composing-flag holder asks both composition questions.** A holder of a composing
 flag (the editable surface, the caret host) asks `editor-actions/dropped-composition.ts` whether the

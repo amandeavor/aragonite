@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root-menus.js';
+import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root/menus.js';
 import { registerDefaultContextActions } from '#lib/components/menu/default-context-actions.js';
 import { BLOCK_ACTIONS_LABEL } from '#lib/a11y-strings.js';
 import { parse } from '#lib/core/parser.js';

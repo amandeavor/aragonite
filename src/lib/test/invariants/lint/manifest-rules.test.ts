@@ -47,7 +47,7 @@ const CLIPBOARD_READ_RE =
 	/[!?]?\.\s*getData\s*\(|[!?]?\.\s*files\b|\bDataTransfer\b|clipboard\s*[!?]?\s*\.\s*read(?:Text)?\s*\(/;
 
 /** Each site reading external text, and the name that carries its text to a declared route.
- *  `editor-root-clipboard.ts` forwards the carrier and reads no payload of its own. */
+ *  `editor-root/clipboard.ts` forwards the carrier and reads no payload of its own. */
 const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
 	'src/lib/components/blocks/editable-surface.ts': {
 		handoff: 'pasteTail',
@@ -449,7 +449,7 @@ const MANIFESTS: ManifestRule[] = [
 		matches: namesToken('checkLandableCaret'),
 		declared: {
 			'src/lib/invariants/landable-caret.ts': 'defines the predicate',
-			'src/lib/components/editor-root-focus.ts':
+			'src/lib/components/editor-root/focus.ts':
 				'the editor root focusin listener: the one place the question is asked'
 		},
 		reason:
@@ -488,7 +488,7 @@ const MANIFESTS: ManifestRule[] = [
 		id: 'G4.11 exactly the declared sites call applyPasteTransforms',
 		matches: TRANSFORMS_CALL,
 		declared: {
-			'src/lib/components/editor-root-menus.ts':
+			'src/lib/components/editor-root/menus.ts':
 				'the block menu hands its actions the editor’s transforms, which "Replace with clipboard" runs before it replaces the block’s bytes',
 			'src/lib/selection/cross-block/range-replace.ts':
 				'a paste over a block a range holds whole parses the pasted text in its place',

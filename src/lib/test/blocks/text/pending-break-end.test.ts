@@ -15,7 +15,7 @@ import {
 import { pressKey } from '#lib/test/harness/settle.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { READING_WRITE_TAG } from '#lib/editor-actions/commit/reading-write-gate.js';
-import type { EditorTestSurface } from '#lib/components/editor-root-test-surface.js';
+import type { EditorTestSurface } from '#lib/components/editor-root/test-surface.js';
 
 beforeAll(installLayoutStubs);
 afterEach(destroyMountedEditors);

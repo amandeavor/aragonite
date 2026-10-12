@@ -6,28 +6,28 @@
  * stays exactly where it is.
  */
 
-import type { BlockEditActions } from '../action-contracts';
-import { BLOCK_ACTIONS_LABEL } from '../a11y-strings';
-import type { NodeView } from '../core/node-views';
-import type { DocumentGetter } from '../editor-keys';
-import type { InsertMarkdownOptions } from '../editor-props';
-import type { PresentationMode } from '../presentation-mode';
+import type { BlockEditActions } from '../../action-contracts';
+import { BLOCK_ACTIONS_LABEL } from '../../a11y-strings';
+import type { NodeView } from '../../core/node-views';
+import type { DocumentGetter } from '../../editor-keys';
+import type { InsertMarkdownOptions } from '../../editor-props';
+import type { PresentationMode } from '../../presentation-mode';
 import {
 	blockContextActionsFor,
 	type BlockActionContext,
 	type BlockContextAction
-} from '../schema/context-actions';
-import type { PluginActivation } from '../schema/plugin-activation';
-import { applyPasteTransforms } from '../tree-operations/paste/paste-transforms';
-import type { InsertEntry } from '../schema/insert-catalogue';
-import type { MenuEntry } from './menu/BlockMenu.svelte';
-import { runClipboardAction, type ClipboardAction } from './menu/clipboard-actions';
-import { blockNoun } from './menu/default-context-actions';
-import { isProseLeaf } from '../schema/page-role';
-import type { Reading } from '../schema/reading';
-import { readBlockPath } from '../selection/path-lookup';
-import { documentLineEnding } from '../core/lines';
-import { stampWrites, type DocumentStamps } from '../editor-actions/commit/document-stamp';
+} from '../../schema/context-actions';
+import type { PluginActivation } from '../../schema/plugin-activation';
+import { applyPasteTransforms } from '../../tree-operations/paste/paste-transforms';
+import type { InsertEntry } from '../../schema/insert-catalogue';
+import type { MenuEntry } from '../menu/BlockMenu.svelte';
+import { runClipboardAction, type ClipboardAction } from '../menu/clipboard-actions';
+import { blockNoun } from '../menu/default-context-actions';
+import { isProseLeaf } from '../../schema/page-role';
+import type { Reading } from '../../schema/reading';
+import { readBlockPath } from '../../selection/path-lookup';
+import { documentLineEnding } from '../../core/lines';
+import { stampWrites, type DocumentStamps } from '../../editor-actions/commit/document-stamp';
 
 export interface BlockMenuModel {
 	x: number;

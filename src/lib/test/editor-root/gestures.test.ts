@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createRootGestures } from '#lib/components/editor-root-gestures.js';
-import { installPressTracker } from '#lib/components/editor-root-listeners.js';
+import { createRootGestures } from '#lib/components/editor-root/gestures.js';
+import { installPressTracker } from '#lib/components/editor-root/listeners.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
 import { parse } from '#lib/core/parser.js';

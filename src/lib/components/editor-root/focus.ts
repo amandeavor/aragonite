@@ -4,11 +4,11 @@
  * style the focused block's markers off `data-focused`, which moves only while no pointer is down.
  */
 
-import { assertInvariant } from '../assert';
-import { checkLandableCaret } from '../invariants/landable-caret';
-import { isPreviewMode, type PresentationMode } from '../presentation-mode';
-import { readBlockPath } from '../selection/path-lookup';
-import { onRoot, removeAll } from './editor-root-listeners';
+import { assertInvariant } from '../../assert';
+import { checkLandableCaret } from '../../invariants/landable-caret';
+import { isPreviewMode, type PresentationMode } from '../../presentation-mode';
+import { readBlockPath } from '../../selection/path-lookup';
+import { onRoot, removeAll } from './listeners';
 
 export interface FocusAttributionDeps {
 	/** A getter, never a value: every attribute write is gated on the mode in force. */

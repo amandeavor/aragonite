@@ -5,15 +5,15 @@
  * live in the handlers each route calls into, not here.
  */
 
-import { claimsBodyChord } from '../active-editor';
-import type { BlockComponent } from '../block-component';
-import type { DocumentGetter, PasteImageHook } from '../editor-keys';
-import type { SelectionState } from '../selection/selection-state.svelte';
-import type { CrossBlockHandlers } from '../selection/cross-block/dispatch';
-import { emitClipboardError, type EditorEvents } from '../editor-events';
-import { createImagePasteArm } from './paste-image-arm';
-import { runClipboardCut, takeCopy } from './blocks/clipboard-step';
-import { crossBlockClipboardArm } from '../selection/cross-block/clipboard';
+import { claimsBodyChord } from '../../active-editor';
+import type { BlockComponent } from '../../block-component';
+import type { DocumentGetter, PasteImageHook } from '../../editor-keys';
+import type { SelectionState } from '../../selection/selection-state.svelte';
+import type { CrossBlockHandlers } from '../../selection/cross-block/dispatch';
+import { emitClipboardError, type EditorEvents } from '../../editor-events';
+import { createImagePasteArm } from '../paste-image-arm';
+import { runClipboardCut, takeCopy } from '../blocks/clipboard-step';
+import { crossBlockClipboardArm } from '../../selection/cross-block/clipboard';
 
 export interface EditorRootClipboardDeps {
 	selection: SelectionState;

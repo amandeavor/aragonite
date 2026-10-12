@@ -4,11 +4,11 @@
  */
 
 import { tick } from 'svelte';
-import { isModifiedClick, type PressTracker } from '../activation-click';
-import { findSurfacePathForElement } from '../selection/path-lookup';
-import type { SelectionState } from '../selection/selection-state.svelte';
-import type { CaretWriter } from '../caret/widget-offset';
-import { BARE_MODIFIER_KEYS } from '../schema/keybindings';
+import { isModifiedClick, type PressTracker } from '../../activation-click';
+import { findSurfacePathForElement } from '../../selection/path-lookup';
+import type { SelectionState } from '../../selection/selection-state.svelte';
+import type { CaretWriter } from '../../caret/widget-offset';
+import { BARE_MODIFIER_KEYS } from '../../schema/keybindings';
 
 // ── Listener plumbing ───────────────────────────────────────────────
 

@@ -34,13 +34,13 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		note: 'Ctrl/Cmd on a click that may follow a link or a widget, read for every such route: no keystroke is consumed.'
 	},
 	{
-		file: 'components/editor-root-gestures.ts',
+		file: 'components/editor-root/gestures.ts',
 		chords: [],
 		keys: [],
 		note: 'A modified press declines the margin drag, and a live-mode Mod-click skips the link card: no keystroke is consumed.'
 	},
 	{
-		file: 'components/editor-root-keydown.ts',
+		file: 'components/editor-root/keydown.ts',
 		chords: [],
 		keys: ['Escape', 'H'],
 		note: 'Escape closes the find bar, and Mod+H picks the replace row as the bar opens (reserved UI chords, enumerated). The modifier read is a refusal: an unchorded character over a live range is written as text, a chorded one goes to the handlers below it.'

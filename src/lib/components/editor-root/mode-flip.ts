@@ -5,18 +5,18 @@
  */
 
 import { tick } from 'svelte';
-import { isTextEntrySurface } from '../active-editor';
-import type { CaretMemory } from '../caret/caret-memory';
-import type { LayoutState } from '../windowing/layout-state.svelte';
-import type { MenuPresence } from './menu/menu-presence.svelte';
-import type { DraftRegistry } from './draft-registry';
-import { rawOffsetAt } from '../caret/widget-offset';
-import type { EditorEvents } from '../editor-events';
-import type { BlockElLookup } from '../editor-keys';
-import type { PresentationMode } from '../presentation-mode';
-import { findSurfacePathForElement } from '../selection/path-lookup';
-import type { EditorSelection } from '../selection/primitives';
-import type { SelectionState } from '../selection/selection-state.svelte';
+import { isTextEntrySurface } from '../../active-editor';
+import type { CaretMemory } from '../../caret/caret-memory';
+import type { LayoutState } from '../../windowing/layout-state.svelte';
+import type { MenuPresence } from '../menu/menu-presence.svelte';
+import type { DraftRegistry } from '../draft-registry';
+import { rawOffsetAt } from '../../caret/widget-offset';
+import type { EditorEvents } from '../../editor-events';
+import type { BlockElLookup } from '../../editor-keys';
+import type { PresentationMode } from '../../presentation-mode';
+import { findSurfacePathForElement } from '../../selection/path-lookup';
+import type { EditorSelection } from '../../selection/primitives';
+import type { SelectionState } from '../../selection/selection-state.svelte';
 
 export interface ModeFlipDeps {
 	/** Getters, never values: the root binds after construction and the mode moves. */

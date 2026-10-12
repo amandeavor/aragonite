@@ -91,8 +91,8 @@ export const SOURCE = {
 
 	// ── Components ──────────────────────────────────────────────────────────
 	editorShell: 'src/lib/components/Editor.svelte',
-	editorRootKeydown: 'src/lib/components/editor-root-keydown.ts',
-	editorRootGestures: 'src/lib/components/editor-root-gestures.ts',
+	editorRootKeydown: 'src/lib/components/editor-root/keydown.ts',
+	editorRootGestures: 'src/lib/components/editor-root/gestures.ts',
 	blockList: 'src/lib/components/BlockList.svelte',
 	blockHost: 'src/lib/components/BlockHost.svelte',
 	searchBar: 'src/lib/components/SearchBar.svelte',

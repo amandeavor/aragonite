@@ -4,18 +4,18 @@
  * change to hundreds of specs. Each member answers what no public method can.
  */
 
-import type { BlockComponent } from '../block-component';
-import type { Document } from '../core/nodes';
-import type { HeightOracle } from '../windowing/height-estimator';
-import type { ListTree } from '../windowing/list-tree';
-import type { OperationsLog } from '../debug/operations-log';
-import type { DecorationEngine } from '../decorations/decoration-state.svelte';
-import type { RefSlots } from '../block-lists/child-refs';
-import type { GapCaretPosition } from '../selection/gap-caret';
-import type { GrammarView } from '../schema/block-openers';
-import type { UndoManager } from '../undo/types';
-import type { DrawnCaret } from '../caret/drawn-caret.svelte';
-import type { CaretWriter } from '../caret/widget-offset';
+import type { BlockComponent } from '../../block-component';
+import type { Document } from '../../core/nodes';
+import type { HeightOracle } from '../../windowing/height-estimator';
+import type { ListTree } from '../../windowing/list-tree';
+import type { OperationsLog } from '../../debug/operations-log';
+import type { DecorationEngine } from '../../decorations/decoration-state.svelte';
+import type { RefSlots } from '../../block-lists/child-refs';
+import type { GapCaretPosition } from '../../selection/gap-caret';
+import type { GrammarView } from '../../schema/block-openers';
+import type { UndoManager } from '../../undo/types';
+import type { DrawnCaret } from '../../caret/drawn-caret.svelte';
+import type { CaretWriter } from '../../caret/widget-offset';
 
 export interface EditorTestSurface {
 	/** The live CST; read-only by contract, since a write bypasses the undo pipeline. */

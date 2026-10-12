@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { createModeFlip } from '#lib/components/editor-root-mode-flip.js';
+import { createModeFlip } from '#lib/components/editor-root/mode-flip.js';
 import { createEditorEvents } from '#lib/editor-events.js';
 import { createDraftRegistry } from '#lib/components/draft-registry.js';
 import { createDocumentStamps } from '#lib/editor-actions/commit/document-stamp.js';
