@@ -27,7 +27,7 @@ const isKeydownFile = (relPath: string) => /keydown/i.test(relPath);
 const KEYDOWN_PATH_NAMED_FILES: Record<string, string> = {
 	'src/lib/selection/shared-keydown.ts': 'dispatcher: classifies through noteKey',
 	'src/lib/selection/cross-block/keydown.ts': 'dispatcher: classifies through noteKey',
-	'src/lib/components/editor-root-keydown.ts':
+	'src/lib/components/editor-root/keydown.ts':
 		'router: chord arms (search, Escape, editor-global) move no caret; the one arm that does delegates to the cross-block dispatcher, which notes the key',
 	'src/lib/components/blocks/text/text-keydown.ts':
 		'pure raw transforms (hard break, heading cycle, literal tab); returns bytes, touches no caret memory',

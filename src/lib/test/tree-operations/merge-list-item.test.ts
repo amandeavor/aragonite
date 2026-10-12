@@ -5,7 +5,7 @@ import { registerDetailsKind } from '#lib/plugins/details/details-kind.js';
 import type { CstNode } from '../../core/nodes';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
-import { initDocument } from '#lib/components/editor-root-document-swap.js';
+import { initDocument } from '#lib/components/editor-root/document-swap.js';
 import { describeShapeDivergence } from '#lib/core/shape-divergence.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 

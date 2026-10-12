@@ -25,7 +25,7 @@ const ANNOUNCERS: Record<string, string> = {
 	'src/lib/editor-actions/leaf-write.ts': 'the keystroke written in place, at every depth',
 	'src/lib/editor-actions/commit/history.ts': 'the undo/redo tree swap',
 	'src/lib/components/Editor.svelte': 'the wiring',
-	'src/lib/components/editor-root-document-swap.ts': 'the `source` prop swap',
+	'src/lib/components/editor-root/document-swap.ts': 'the `source` prop swap',
 	'src/lib/testing/headless-actions.ts': 'the published harness counts what its doors announced'
 };
 

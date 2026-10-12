@@ -9,7 +9,7 @@ import {
 	createEditableLeaf,
 	type EditableLeaf,
 	type EditableLeafDeps
-} from '#lib/components/blocks/editable-leaf.js';
+} from '#lib/components/blocks/editable/editable-leaf.js';
 import { resolveBlockSurface, type EditableLeafBlockApi } from '#lib/block-component.js';
 import type { NodeView } from '#lib/core/node-views.js';
 

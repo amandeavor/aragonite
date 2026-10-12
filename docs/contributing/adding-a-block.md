@@ -494,7 +494,7 @@ The helper is unit-testable without mounting anything, and the dev warning for m
 
 Every editable block, prose or code, participates in the pixel-X sticky column, so a caret walking up a ragged column doesn't drift left. Nobody praises this when it works and everybody notices the moment it doesn't.
 
-The good news: if your block routes its keydown through `handleSharedKeydown` (`selection/shared-keydown.ts`) and builds its surface with `createEditableSurface` (`components/blocks/editable-surface.ts`), you already participate and there's nothing to write. The shared handler feeds every keydown to the caret memory, which holds the sticky column:
+The good news: if your block routes its keydown through `handleSharedKeydown` (`selection/shared-keydown.ts`) and builds its surface with `createEditableSurface` (`components/blocks/editable/editable-surface.ts`), you already participate and there's nothing to write. The shared handler feeds every keydown to the caret memory, which holds the sticky column:
 
 ```ts
 // selection/shared-keydown.ts
@@ -509,7 +509,7 @@ A hand-rolled surface takes on both halves itself:
 2. **Implement `focusAtColumn(x, from)`** with `findOffsetNearestX(el, x, from)` from `caret/sticky-measure.ts`: place the cursor at the nearest offset on the first (`from === 'above'`) or last (`from === 'below'`) visual line that can show a caret. The editable surface's version, which also keeps the scan out of the marker region and reads the surface's `columnWindow` for a block whose first or last line a caret arriving from another block shouldn't land on (a code block's fence lines):
 
 ```ts
-// components/blocks/editable-surface.ts
+// components/blocks/editable/editable-surface.ts
 function focusAtColumn(x: number, from: StickyColumnDirection): void {
 	const el = deps.getEl();
 	if (!el) return;

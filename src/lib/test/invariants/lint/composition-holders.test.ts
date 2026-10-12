@@ -23,7 +23,7 @@ describe('G4.155 every composing-flag holder opens a composition whose start wen
 
 	it('finds the editable surface and the caret host among the holders', () => {
 		const found = holdersIn(sources).map((f) => f.relPath);
-		expect(found).toContain('src/lib/components/blocks/editable-surface.ts');
+		expect(found).toContain('src/lib/components/blocks/editable/editable-surface.ts');
 		expect(found).toContain('src/lib/editor-actions/caret-host-input.ts');
 	});
 

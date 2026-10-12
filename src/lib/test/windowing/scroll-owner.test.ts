@@ -6,7 +6,7 @@
 // The expected values are what each route did before it went through the owner.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushSync, tick } from 'svelte';
-import { installHeaderSlotCompensation } from '../../components/editor-root-geometry';
+import { installHeaderSlotCompensation } from '../../components/editor-root/geometry';
 import { parse } from '../../core/parser';
 import { createCaretMemory } from '../../caret/caret-memory';
 import { docPathFrom } from '../../caret/coordinate-spaces';

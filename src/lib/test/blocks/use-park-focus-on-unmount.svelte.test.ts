@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
-import { useParkFocusOnUnmount } from '../../components/blocks/surface-wiring.svelte';
+import { useParkFocusOnUnmount } from '../../components/blocks/editable/surface-wiring.svelte';
 
 function mountPair() {
 	const root = document.createElement('div');

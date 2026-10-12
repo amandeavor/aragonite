@@ -37,7 +37,7 @@ import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 import { widgetAtCursor, widgetsIn } from './widget-adjacency';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
-import { rangeWrite, withOwnEnding, type TextWrite } from '../surface-write';
+import { rangeWrite, withOwnEnding, type TextWrite } from '../editable/surface-write';
 
 /** The part of the inline-widget editing policy the built-in widget rules reuse, in the same
  *  terms but without widening the public API. */

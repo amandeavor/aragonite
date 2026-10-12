@@ -24,7 +24,7 @@ interface Declaration {
 }
 
 const ALLOWLIST: Record<string, Declaration> = {
-	'src/lib/components/blocks/editable-surface.ts :: recorded': {
+	'src/lib/components/blocks/editable/editable-surface.ts :: recorded': {
 		mode: 'bounded',
 		reason: 'a block command’s own arguments: an id and its value, or one clipboard payload'
 	},

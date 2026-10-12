@@ -17,7 +17,7 @@ import { listInlineMarks, type InlineMarkKind } from '../../../schema/inline-con
 import type { Reading } from '../../../schema/reading';
 import { recordCaretLook } from '../../../perf/instruments';
 import { PROBE_BYTE, constructsCovering } from './edge-seat';
-import { withOwnEnding } from '../surface-write';
+import { withOwnEnding } from '../editable/surface-write';
 import { constructChainAt } from './pending-mark-insert';
 
 /** What the answer reads off one block at one moment. */

@@ -28,7 +28,7 @@ import {
 } from '#lib/caret/widget-offset.js';
 import { asRawOffset, type RawOffset } from '#lib/caret/coordinate-spaces.js';
 import { createEdgePolicyDispatch } from '#lib/components/blocks/text/edge-policy-dispatch.js';
-import { createSurfaceWrite } from '#lib/components/blocks/surface-write.js';
+import { createSurfaceWrite } from '#lib/components/blocks/editable/surface-write.js';
 import { keepsKindAt } from '#lib/core/inline/live-edit/read-back.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
 import { resolveDelimiterAutoPair } from '#lib/components/blocks/text/delimiter-autopair.js';

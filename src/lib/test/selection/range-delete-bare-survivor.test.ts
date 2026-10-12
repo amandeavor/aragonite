@@ -5,7 +5,7 @@ import { describeShapeDivergence } from '#lib/core/shape-divergence.js';
 import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
-import { initDocument } from '#lib/components/editor-root-document-swap.js';
+import { initDocument } from '#lib/components/editor-root/document-swap.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 

@@ -8,7 +8,7 @@ import { describeShapeDivergence } from '#lib/core/shape-divergence.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { rebuildAncestryRaw } from '#lib/schema/container-raw.js';
 import { installPlugins } from '#lib/schema/plugin-install.js';
-import { initDocument } from '#lib/components/editor-root-document-swap.js';
+import { initDocument } from '#lib/components/editor-root/document-swap.js';
 import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
 import { footnotesPlugin } from '#lib/plugins/footnotes/index.js';
 import { makeContainerHarness } from '../harness/editor-actions';

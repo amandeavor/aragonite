@@ -11,7 +11,7 @@ import { fixtureReading, topLevelStore } from '../../harness/fixture-grammar';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import type { Reading } from '#lib/schema/reading.js';
 import type { BlockEditActions } from '#lib/action-contracts.js';
-import { createSurfaceWrite } from '#lib/components/blocks/surface-write.js';
+import { createSurfaceWrite } from '#lib/components/blocks/editable/surface-write.js';
 import { createInsertionRecords } from '#lib/caret/next-insertion.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 

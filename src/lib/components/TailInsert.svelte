@@ -3,7 +3,7 @@
 	 * The row below the last block: a full-width, invisible strip that adds an empty paragraph at
 	 * the end of the document and puts the caret in it, so there is always a way to write below
 	 * whatever the last block is (a table, a fence, an equation). A drag that starts on it is the
-	 * editor's own drag-select, like one from any margin (`editor-root-gestures.ts`).
+	 * editor's own drag-select, like one from any margin (`editor-root/gestures.ts`).
 	 */
 	import type { BlockEditActions } from '../action-contracts';
 	import { TAIL_ADD_ROW } from '../a11y-strings';

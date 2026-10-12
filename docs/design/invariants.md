@@ -193,7 +193,7 @@ These checks run in three kinds of place:
   quiet. Registry completeness (G1.2) checks built-ins only, since a plugin's component may register
   on its own schedule.
 - **Its own machinery**: the guard fires inside the code it protects. One exception: G1.33 fires in
-  the editor root's focus handler (`components/editor-root-focus.ts`), above every caret entry, so a
+  the editor root's focus handler (`components/editor-root/focus.ts`), above every caret entry, so a
   consumer's own caret component inherits it.
 
 | ID    | What stays true                                                                            | Codes   |
@@ -433,8 +433,8 @@ closures in `components/blocks/text/widget-interaction.ts` (the fold halves) and
 opened, at its start or, when a range across blocks was live at the start, at its first composed
 character. An unpaired end means `compositionend` was wired without `compositionstart`, and every
 composed keystroke committed mid-IME. Predicate `checkCompositionEndPaired`
-(`inline-transitions.ts`) · run in `components/blocks/editable-surface.ts :: onCompositionEnd` ·
-`inline-transitions.test.ts`, `test/blocks/editable-surface-composition.test.ts`.
+(`inline-transitions.ts`) · run in `components/blocks/editable/editable-surface.ts :: onCompositionEnd` ·
+`inline-transitions.test.ts`, `test/blocks/editable/editable-surface-composition.test.ts`.
 
 **G1.28 · Rendered text fidelity.** A code block's rendered fragment carries the block's bytes
 exactly (`textContent === trimTrailingLineEnding(raw)`), because the body goes through
@@ -443,7 +443,7 @@ back on the next keystroke. A painted editable-leaf source is held to the same e
 plugin painted it, since the fold commits `textContent` on blur. Predicate
 `checkRenderedTextFidelity` (`render-fidelity.ts`) · run in
 `components/blocks/code/code-renderer.ts :: renderCodeBlock` and
-`components/blocks/editable-leaf.ts :: paintSource` · `render-fidelity.test.ts`,
+`components/blocks/editable/editable-leaf.ts :: paintSource` · `render-fidelity.test.ts`,
 `test/blocks/editable-leaf-painted-fidelity.test.ts`.
 
 **G1.29 · Selection endpoint coordinates.** An endpoint's offset means what its own block's
@@ -486,7 +486,7 @@ engine picks (a typed `#` once came back as `a#`). Built-ins hold by constructio
 over no content paints; `docs/design/live-mode.md` § 4.1), so this is for a plugin surface building
 its own marker chrome. It fires from the editor root's `focusin`, once per focus arrival, so a caret
 component a consumer owns inherits it; reading mode is out of scope. Predicate `checkLandableCaret`
-(`landable-caret.ts`) · `components/editor-root-focus.ts` · `landable-caret.test.ts`,
+(`landable-caret.ts`) · `components/editor-root/focus.ts` · `landable-caret.test.ts`,
 `landable-caret-doors.test.ts`.
 
 **G1.34 · Retired.** The rule was: the index a split's caret lands on is the one `splitNode`
@@ -1073,7 +1073,7 @@ containers).
 **G4.4 · No timing hacks.** No timing primitive is used for sequencing (`await tick()` is the one).
 The allowlist in `lint/file-rules.test.ts` is short and closed, each entry with its reason: the rAF
 throttles in `selection/autoscroll.ts` and `selection/pointer-session.ts`, the rAF fold in
-`components/blocks/editable-leaf.ts`, the rAF placement in `components/drag-handle.ts`, the rAF
+`components/blocks/editable/editable-leaf.ts`, the rAF placement in `components/drag-handle.ts`, the rAF
 start of a size watch in `windowing/observe-resize.ts`, the drawn caret's frame paint in
 `caret/drawn-caret.svelte.ts` (read-only, G4.143), the wall-clock undo debounce in
 `editor-actions/commit/text-batch.ts` and the occurrence plugin's typing pause in
@@ -1734,7 +1734,7 @@ without it; `e2e/tests/plugins/view-swap-end-scroll.spec.ts` drives the swaps (V
 
 **G4.100 · A block's own line ending.** When a block's editable element writes its own text, it
 hands the list the new text plus the ending the block already had, so a document saved without a
-final break keeps none. That lives in `components/blocks/surface-write.ts` (`writeText`, and
+final break keeps none. That lives in `components/blocks/editable/surface-write.ts` (`writeText`, and
 `withOwnEnding` for routes not on it yet). New text takes the block's own ending, else the
 document's, picked today in two places: a typed or completed line break reads the getter
 `editable-surface.ts :: lineEnding`, and the code block's dissolve (`code-context-actions.ts :: run`).
@@ -1745,7 +1745,7 @@ anywhere but a typed line break or a check that writes nothing.
 **G4.101 · A typed write asks for itself.** The kind cue and the on-type completer answer typing,
 never a command, a paste or a repair. Only `surface-write.ts :: writeText` asks them, for a write with
 the `typed` intent. `lint/file-rules.test.ts` fails an `afterTypedWrite` or `completeLineOnType` call
-under `components/` or `selection/` anywhere else, and `blocks/surface-write-intent.test.ts` checks
+under `components/` or `selection/` anywhere else, and `blocks/editable/surface-write-intent.test.ts` checks
 which intents ask.
 
 **G4.106 · Retired upward.** The rule was: a spec reloads the editor's own text through
@@ -1777,7 +1777,7 @@ rebuild respells every line. `lint/fresh-container-bytes.test.ts` fails an objec
 list of builders of genuinely new containers.
 
 **G4.111 · One write for a block's own text.** A block's editable element changes its own text
-through `components/blocks/surface-write.ts :: writeText`, which gives undo the caret from before the
+through `components/blocks/editable/surface-write.ts :: writeText`, which gives undo the caret from before the
 key, keeps the line ending, and puts the caret back. `lint/call-site-rules.test.ts` fails an
 `updateBlockContent` call under `components/`, `selection/` or a plugin's code (`src/lib/plugins/`,
 `src/routes/test/plugins/`) elsewhere, except the few listed by function that are still to move.
@@ -1806,7 +1806,7 @@ cell run outside `src/lib/selection/` (`rootHolding`, `coveredRootHolding`, the 
 **G4.115 · A cut writes its copy's payload.** Each kind of selection a block can copy has one
 `ClipboardArm`, written where that selection lives (each block's clipboard code, and
 `selection/cross-block/clipboard.ts` for a cross-block range); the shared parts are in
-`components/blocks/clipboard-step.ts`. `runClipboardCut` runs the arm's own copy before anything
+`components/blocks/editable/clipboard-step.ts`. `runClipboardCut` runs the arm's own copy before anything
 waits, then its removal, so a cut can't write different bytes from a copy; there's no cut payload
 type, and an `async` copy doesn't type-check. `lint/call-site-rules.test.ts` fails a `.setData(` call
 in production code outside those copy functions, `clipboard-step.ts :: writeShownSelection` (the
@@ -1977,7 +1977,7 @@ through, and neither `onClick` measures the press against its text itself.
 table typed over the kind union) plus the other link shapes, and every `a[href]` in the result must
 resolve to such a construct with an edit target in live mode. `lint/file-rules.test.ts` holds the
 route half: following a link (`window.open`, `activateLink`, a `closest('a[href]')` lookup) happens
-only in the root click, `components/editor-root-gestures.ts`, which asks `clickFollowsAt` first.
+only in the root click, `components/editor-root/gestures.ts`, which asks `clickFollowsAt` first.
 
 **G4.155 · Every composing-flag holder asks both composition questions.** A holder of a composing
 flag (the editable surface, the caret host) asks `editor-actions/dropped-composition.ts` whether the

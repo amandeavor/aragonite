@@ -121,7 +121,7 @@ if (write.admitted && write.keepsCaret) requestCaret(write.caret); // 6, unless 
 await write; // true once the bytes are in
 ```
 
-A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it does the rest:
+A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/editable/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it does the rest:
 
 - undo's caret is the one recorded when the key or input arrived
 - the block keeps the line ending it had, so a last line saved without one stays that way
@@ -138,7 +138,7 @@ Markdown syntax is on screen by default, styled: markers dimmed, content styled 
 
 The presentation modes sit on top of that as view treatments over the same render path. `presentationMode` is `'source'` (the default, and the editing substrate), then `'reading'`, `'preview-block'`, `'preview-inline'` and `'live'`. Marker visibility flips via CSS keyed on focus and caret proximity, so no mode can break the round-trip. A mode that hides the markers at the caret does change editing, though: where a caret may sit (a code block's fence lines included), and how a few rewrites write their bytes (a format toggle, a paste, a split or join, the delimiter auto-pair).
 
-A press is the one wrinkle: the browser focuses the block first and only then works out where the caret goes, so the markers wait for the button (or a tap's late mouse press) to come up, or they'd move the text under the pointer (`src/lib/components/editor-root-focus.ts`). How a plugin reads the mode is in [`plugin-contract.md`](plugin-contract.md) § Presentation-mode reads.
+A press is the one wrinkle: the browser focuses the block first and only then works out where the caret goes, so the markers wait for the button (or a tap's late mouse press) to come up, or they'd move the text under the pointer (`src/lib/components/editor-root/focus.ts`). How a plugin reads the mode is in [`plugin-contract.md`](plugin-contract.md) § Presentation-mode reads.
 
 Live mode hides every marker standing over content and stays editable, which turns the hidden runs into a caret problem rather than a paint one: a hidden run paints nothing, so one screen position names two raw offsets. Two mechanisms answer that:
 

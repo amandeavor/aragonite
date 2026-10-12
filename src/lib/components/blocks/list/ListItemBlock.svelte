@@ -29,7 +29,7 @@
 	import type { ChildList } from '../../../block-lists/child-list';
 	import type { AnyCommandId } from '../../../schema/command-id';
 	import BlockDragHandle from '../../BlockDragHandle.svelte';
-	import SelectionOverlay from '../../SelectionOverlay.svelte';
+	import SelectionOverlay from '../../overlays/SelectionOverlay.svelte';
 	import { showsListItemDragHandle } from '../../drag-handle';
 	import { useBlockDecorations } from '../../../decorations/use-block-decorations.svelte';
 

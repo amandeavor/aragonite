@@ -3,7 +3,7 @@ import { dispatchKeyCommand, registerBlockCommand } from '#lib/schema/block-comm
 import { normalizeChordStrict } from '#lib/schema/keybindings.js';
 import type { KeybindingOverrideMap } from '#lib/schema/keybinding-overrides.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
-import { buildLeafCommandContext } from '#lib/components/blocks/editable-leaf.js';
+import { buildLeafCommandContext } from '#lib/components/blocks/editable/editable-leaf.js';
 import type { AnyBlockKind, CstNode, PluginBlockKind } from '#lib/core/nodes.js';
 import type { AnyCommandId } from '#lib/schema/command-id.js';
 import { commandContextWith } from '#lib/test/support/command-context.js';

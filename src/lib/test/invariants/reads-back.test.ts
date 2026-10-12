@@ -15,7 +15,7 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { checkReadsBack, READ_BACK_LIMIT, takeReadBackBytes } from '#lib/invariants/reads-back.js';
 import { installPlugins } from '#lib/schema/plugin-install.js';
 import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
-import { initDocument } from '#lib/components/editor-root-document-swap.js';
+import { initDocument } from '#lib/components/editor-root/document-swap.js';
 import { makeContainerHarness, makeTopHarness } from '../harness/editor-actions';
 
 function typeAtEnd(source: string, leaf: number[], text: string) {

@@ -9,7 +9,7 @@ import { tick } from 'svelte';
 import type { BlockEditActions, ContentWrite, FocusActions } from '../../../action-contracts';
 import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
 import type { NodeView } from '../../../core/node-views';
-import type { SurfaceBackend } from '../../../caret/surface-backend';
+import type { SurfaceBackend } from '../editable/surface-backend';
 import { selectWidgetWhole } from '../../../selection/place-caret';
 import type { SelectionState } from '../../../selection/selection-state.svelte';
 import {
@@ -31,7 +31,7 @@ import {
 	type RevealFoldReason
 } from '../../../debug/interaction-trace';
 import { assertInvariant } from '../../../assert';
-import type { RevealFold } from '../editable-surface';
+import type { RevealFold } from '../editable/editable-surface';
 import { hasModifier, isPlainTypingKey, surfaceHoldsRange } from './click-snap-guard';
 import { caretIsInTextContent } from '../../../caret/text-seat';
 import {
@@ -46,7 +46,7 @@ import {
 import type { StoredAs } from '../../../schema/stored-as';
 import { replaceRangeInLeaf, type LeafRangeEdit } from '../../../tree-operations/leaf-range';
 import type { Reading } from '../../../schema/reading';
-import { rangeWrite, withOwnEnding, type TextWrite } from '../surface-write';
+import { rangeWrite, withOwnEnding, type TextWrite } from '../editable/surface-write';
 import type { DraftRegistry } from '../../draft-registry';
 import type { Draft } from '../../../schema/drafts';
 import type { ActivationClick, ClickInput } from '../../../activation-click';
