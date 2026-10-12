@@ -29,13 +29,8 @@ import { lacksSublistSeparator } from './list/sublist-separator';
 import { spliceChildren } from './children';
 import { spliceMany } from './splice-many';
 import { applyStructuralChangeToIdsRefs, type StructuralChange } from './structural-change';
-import {
-	asBody,
-	bodyUnder,
-	ensureEditableContainers,
-	type BodyParent,
-	type BodyParentArg
-} from './node-primitives';
+import { asBody, bodyUnder, type BodyParent, type BodyParentArg } from './node-primitives';
+import { ensureEditableContainers } from '../schema/opened-reading';
 
 // ── Writes ──
 

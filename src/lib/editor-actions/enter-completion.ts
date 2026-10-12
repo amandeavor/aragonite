@@ -17,7 +17,7 @@ import type { CommandRun } from '../schema/block-commands';
 import type { CstNode } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import { getBlockKindDescriptor } from '../schema/block-kind-descriptor';
-import { readAsOpened } from '../tree-operations/node-primitives';
+import { readAsOpened } from '../schema/opened-reading';
 import type { GrammarView } from '../schema/block-openers';
 import {
 	completeLineOnType,

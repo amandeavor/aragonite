@@ -9,7 +9,7 @@ import type { NodeView } from '../core/node-views';
 import type { InvariantViolation } from '../assert';
 import type { GrammarView } from '../schema/block-openers';
 import { describeShapeDivergence } from '../core/shape-divergence';
-import { readAsOpened } from '../tree-operations/node-primitives';
+import { readAsOpened } from '../schema/opened-reading';
 
 /** The largest container, in bytes, the check reads. */
 export const READ_BACK_LIMIT = 16_384;

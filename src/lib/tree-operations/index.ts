@@ -3,8 +3,6 @@ export {
 	nodeAt,
 	emptyParagraph,
 	paragraphNode,
-	ensureEditableContainers,
-	readAsOpened,
 	normalizeReplacementTrivia
 } from './node-primitives';
 export {

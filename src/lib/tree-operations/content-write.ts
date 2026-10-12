@@ -22,7 +22,6 @@ import {
 import {
 	displayLines,
 	documentLineEnding,
-	firstLineEnding,
 	joinDisplayLines,
 	ownTrailingLineEnding,
 	type LineEnding
@@ -44,12 +43,12 @@ import { fragmentReaderAt, type FragmentReader } from './list/task-paragraph';
 import {
 	NEXT_PROSE_LINE,
 	asBody,
-	ensureEditableContainers,
 	installOwnRaw,
 	type BodyParent,
 	type BodyParentArg,
 	type NodeParent
 } from './node-primitives';
+import { ensureEditableContainers } from '../schema/opened-reading';
 import {
 	absorbWindowSeams,
 	focusTargetInReplacement,
@@ -435,7 +434,9 @@ export function reclassifyContainer(
 	const node = parent.children[index];
 	if (!node || !tryGetBlockKindDescriptor(node.kind)?.isContainer) return null;
 	if (!isBlockOpenerRegistered(node.kind)) return null;
-	return replaceWithParse(parent, index, parseContainerRaw(node.raw, grammar), grammar);
+	const filled: CstNode[] = [];
+	const blocks = parseContainerRaw(node.raw, grammar, filled);
+	return replaceWithParse(parent, index, blocks, filled, grammar);
 }
 
 /** The container at `index` replaced by what its bytes read as, when its position holds that: the
@@ -452,35 +453,36 @@ export function installReading(
 		// A child the re-read left alone keeps its id, so the block there stays mounted.
 		const children = reading.node.children ?? [];
 		reading.node.childIds = idsAcrossReread(node.children ?? [], node.childIds, children);
-		return installReplacement(parent, index, reading.node, grammar);
+		return installReplacement(parent, index, reading.node, reading.filled, grammar);
 	}
 	if (!isBlockOpenerRegistered(node.kind)) return null;
-	return replaceWithParse(parent, index, reading.blocks, grammar);
+	return replaceWithParse(parent, index, reading.blocks, reading.filled, grammar);
 }
 
 function replaceWithParse(
 	parent: NodeParent,
 	index: number,
 	parsed: CstNode[],
+	filled: readonly CstNode[],
 	grammar: GrammarView
 ): CstNode | null {
 	// A container's raw is one block by construction; a multi-block reparse means bytes this
 	// function has no position for, left to the edit that owns the mutation.
 	if (parsed.length !== 1 || parsed[0].kind === parent.children[index].kind) return null;
-	return installReplacement(parent, index, parsed[0], grammar);
+	return installReplacement(parent, index, parsed[0], filled, grammar);
 }
 
+/** `replacement`, read with the editor's empty paragraphs, takes the position; one the reading
+ *  gave a paragraph has its bytes rebuilt around it, or raw and children disagree (G1.1). */
 function installReplacement(
 	parent: NodeParent,
 	index: number,
 	replacement: CstNode,
+	filled: readonly CstNode[],
 	grammar: GrammarView
 ): CstNode {
 	const node = parent.children[index];
-	const backfilled = isEmptyEditableContainer(replacement);
-	// A container spanning lines holds the document's ending in its bytes; only a one-line
-	// container, the last line of a document, falls back to LF.
-	ensureEditableContainers(replacement, firstLineEnding(node.raw) ?? '\n');
+	const backfilled = filled.includes(replacement);
 	// The position's own `leadingTrivia` is authoritative, so restore the bytes before
 	// overwriting it or anything the parse split off the front vanishes with it.
 	replacement.raw = node.raw;

@@ -12,7 +12,8 @@ import {
 import type { CaretMemory } from '../caret/caret-memory';
 import type { LayoutState } from '../windowing/layout-state.svelte';
 import type { SelectionState } from '../selection/selection-state.svelte';
-import { emptyParagraph, readAsOpened } from '../tree-operations';
+import { emptyParagraph } from '../tree-operations';
+import { readAsOpened } from '../schema/opened-reading';
 import type { UndoManager } from '../undo/types';
 import type { EditorEvents } from '../editor-events';
 import type { MenuPresence } from './menu/menu-presence.svelte';

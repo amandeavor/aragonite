@@ -47,7 +47,8 @@
 		type TextEditResult
 	} from './text-keydown';
 	import { tryGetBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
-	import { blockNodeAt, readAsOpened } from '../../../tree-operations/node-primitives';
+	import { blockNodeAt } from '../../../tree-operations/node-primitives';
+	import { readAsOpened } from '../../../schema/opened-reading';
 	import { createTextClipboard } from './text-clipboard';
 	import { createTextRender } from './text-render';
 	import { createWidgetInteraction } from './widget-interaction';
