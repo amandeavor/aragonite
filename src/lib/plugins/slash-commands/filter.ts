@@ -33,14 +33,35 @@ export function filterEntries<T extends FilterableEntry>(entries: readonly T[], 
 	);
 }
 
-/**
- * The one entry a word typed after `head` goes to, or null: the only entry `head` matches, or else
- * the one argument-taking entry whose label's first word or a keyword is exactly `head`.
- */
-export function argumentTaker<T extends FilterableEntry>(
+/** What a query lists, and the word after the space when the one listed entry takes it. */
+export interface QueryReading<T> {
+	listed: T[];
+	argument: string | null;
+}
+
+/** How a query reads, or null if it ends the session. A label typed in full, spaces and all, lists
+ *  its row; otherwise the one word after the first space goes to one entry, or the space ends it. */
+export function readQuery<T extends FilterableEntry>(
 	entries: readonly T[],
-	head: string
-): T | null {
+	query: string
+): QueryReading<T> | null {
+	if (/[\r\n]/.test(query)) return null;
+	const whole = filterEntries(entries, query);
+	const { head, argument } = splitQuery(query);
+	if (whole.length > 0 || argument === null) return { listed: whole, argument: null };
+	if (/\s/.test(argument)) return null;
+	const entry = argumentTaker(entries, head);
+	return entry ? { listed: [entry], argument } : null;
+}
+
+/** Whether the session outlives this query. */
+export function acceptsQuery(entries: readonly FilterableEntry[], query: string): boolean {
+	return readQuery(entries, query) !== null;
+}
+
+// The only entry `head` matches, or else the one argument-taking entry whose label's first word or
+// a keyword is exactly `head`.
+function argumentTaker<T extends FilterableEntry>(entries: readonly T[], head: string): T | null {
 	const named = filterEntries(entries, head);
 	if (named.length === 1) return named[0].takesArgument ? named[0] : null;
 	const wanted = head.toLowerCase();
@@ -51,16 +72,4 @@ export function argumentTaker<T extends FilterableEntry>(
 				entry.keywords.some((keyword) => keyword.toLowerCase() === wanted))
 	);
 	return exact.length === 1 ? exact[0] : null;
-}
-
-/**
- * Whether the session outlives this query. A space ends it unless an entry takes the word after
- * it (`argumentTaker`), so `and / or` stays text; the argument is one word.
- */
-export function acceptsQuery(entries: readonly FilterableEntry[], query: string): boolean {
-	if (/[\r\n]/.test(query)) return false;
-	const { head, argument } = splitQuery(query);
-	if (argument === null) return true;
-	if (/\s/.test(argument)) return false;
-	return argumentTaker(entries, head) !== null;
 }

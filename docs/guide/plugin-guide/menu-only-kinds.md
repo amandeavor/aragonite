@@ -27,4 +27,4 @@ registerInsertEntry({
 });
 ```
 
-`withArgument` is optional. Give it one when a word typed after the row should shape the block: `/chart pie` inserts a pie chart, and `detail` is the dim text the row shows while you type (`pie` here). The word reaches your row whenever what's typed before the space is your label's first word or one of your keywords, even with other rows starting the same way (a Diagram row with a `chart` keyword, say).
+`withArgument` is optional. Give it one when a word typed after the row should shape the block: `/chart pie` inserts a pie chart, and `detail` is the dim text the row shows while you type (`pie` here). The word reaches your row whenever what's typed before the space is your label's first word or one of your keywords, even with other rows starting the same way (a Diagram row with a `chart` keyword, say). The one exception is a row whose label starts with everything you typed, spaces and all: the list shows that row instead, so a label typed in full always finds its row.
