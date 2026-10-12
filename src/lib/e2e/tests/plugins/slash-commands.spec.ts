@@ -215,7 +215,7 @@ test.describe('slash commands', () => {
 			await expect(menu(editor)).toBeVisible();
 			await expect.poll(() => editor.bridge.getSource()).toContain('Type here\n\n/\n\n- item');
 			await editor.typeText('ta');
-			await expect.poll(() => rows(editor)).toEqual(['To-do list', 'Table']);
+			await expect.poll(() => rows(editor)).toEqual(['To-do list', 'Table', 'Table of contents']);
 		});
 
 		test('runCommand with a query opens the list already narrowed', async () => {
@@ -224,7 +224,7 @@ test.describe('slash commands', () => {
 				() => (window as any).__test.runCommand('slashCommands.open', 'table') as boolean
 			);
 			expect(ran).toBe(true);
-			await expect.poll(() => rows(editor)).toEqual(['Table']);
+			await expect.poll(() => rows(editor)).toEqual(['Table', 'Table of contents']);
 			await expect.poll(() => editor.bridge.getSource()).toContain('Type here\n\n/table\n\n- item');
 		});
 	});

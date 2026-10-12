@@ -20,11 +20,11 @@ Or skip the host's UI and put your kind in the editor's own menus: call `registe
 registerInsertEntry({
 	id: 'chart',
 	label: 'Chart',
-	icon: 'table',
+	icon: 'workflow',
 	keywords: ['graph', 'plot'],
 	markdown: ':::chart\ntype: bar\n:::\n',
 	withArgument: (type) => ({ markdown: `:::chart\ntype: ${type}\n:::\n`, detail: type })
 });
 ```
 
-`withArgument` is optional. Give it one when a word typed after the row should shape the block: `/chart pie` inserts a pie chart, and `detail` is the dim text the row shows while you type (`pie` here). The word only gets through while your row is the only one matching what was typed before the space, so give it a first word no other row's label or keyword starts with (a `Charts and graphs` row next to yours would eat the space).
+`withArgument` is optional. Give it one when a word typed after the row should shape the block: `/chart pie` inserts a pie chart, and `detail` is the dim text the row shows while you type (`pie` here). The word reaches your row whenever what's typed before the space is your label's first word or one of your keywords, even with other rows starting the same way (a Diagram row with a `chart` keyword, say).

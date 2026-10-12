@@ -1959,10 +1959,10 @@ through, and neither `onClick` measures the press against its text itself.
 `lint/edge-rule-guards.test.ts`.
 
 **G4.157 · Every bundled block kind can be inserted.** `test/plugins/insertable-kinds.test.ts`
-installs every plugin under `src/lib/plugins/` and reads the kinds they register: each one is in the
-tree some insert entry's Markdown parses to (a title row comes with its container), or is listed
-with why no entry makes it. A listed kind that's gone or has gained an entry fails too, and so does
-an entry taking a word that another row's label or keyword shadows.
+installs every plugin under `src/lib/plugins/` from its zero-argument factory and reads the kinds
+they register: each one is in the tree some insert entry's Markdown parses to (a title row comes
+with its container), or is listed with why no entry makes it. A listed kind that's gone or has
+gained an entry fails too.
 
 ## Accessibility
 

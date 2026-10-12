@@ -13,7 +13,13 @@ import {
 	type InsertEntry,
 	type MenuIconName
 } from '#lib/plugin.js';
-import { acceptsQuery, filterEntries, splitQuery, type FilterableEntry } from './filter';
+import {
+	acceptsQuery,
+	argumentTaker,
+	filterEntries,
+	splitQuery,
+	type FilterableEntry
+} from './filter';
 
 export const SLASH_COMMANDS_MENU = 'slash-commands';
 
@@ -83,7 +89,10 @@ export function createSlashSource(editor: EditorContext<SlashCommandsOptions>): 
 		accepts: (query) => acceptsQuery(rows(), query),
 		items: ({ query }) => {
 			const { head, argument } = splitQuery(query);
-			return filterEntries(rows(), head).map((row) => ({
+			// The word goes to one row, so picking any other would drop it.
+			const taker = argument === null ? null : argumentTaker(rows(), head);
+			const listed = argument === null ? filterEntries(rows(), head) : taker ? [taker] : [];
+			return listed.map((row) => ({
 				id: row.id,
 				label: row.label,
 				icon: row.icon,

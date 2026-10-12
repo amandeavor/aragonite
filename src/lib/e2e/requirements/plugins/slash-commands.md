@@ -11,7 +11,8 @@ and `runCommand('slashCommands.open', query)` opens the list already narrowed.
 - `/code js` on an empty line: the row reads "Code block" with `js` beside it, and Enter leaves a
   fence whose info string is `js`, with the caret inside it, so the next keystroke lands in its body.
 - `/table 3x4` on an empty line: a table of three columns and four rows (a header and three empty
-  rows) replaces the line.
+  rows) replaces the line. The toc's "Table of contents" row starts with `table` too, and the size
+  still goes to the table, the one row taking a word that `table` names exactly.
 - `/h2` at the end of a text line turns that line into a level-2 heading, its text intact and the
   `/h2` gone.
 - `/h` then Enter on an empty line makes a level-1 heading: the first row is Heading 1, never the
@@ -49,9 +50,10 @@ kept an entry of their own.
 
 - A slash inside a word opens nothing: `and/or` and `9/22` stay text.
 - A row draws its menu glyph beside the label.
-- `Mod+/` on an empty line types the `/` and opens the list there; typing on narrows it.
+- `Mod+/` on an empty line types the `/` and opens the list there; typing `ta` narrows it to
+  To-do list, Table and Table of contents.
 - `runCommand('slashCommands.open', 'table')` types `/table` and opens the list narrowed to the
-  table row.
+  rows `table` starts: Table, then Table of contents.
 
 ## A table cell
 

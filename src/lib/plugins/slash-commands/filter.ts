@@ -1,6 +1,7 @@
 /**
  * How a `/` query picks rows: a prefix match on the label or a keyword, and at most one argument
- * after the first space. Pure, so the list's narrowing is testable without an editor.
+ * after the first space, which goes to one row. Pure, so the list's narrowing is testable without
+ * an editor.
  */
 
 export interface FilterableEntry {
@@ -33,14 +34,33 @@ export function filterEntries<T extends FilterableEntry>(entries: readonly T[], 
 }
 
 /**
- * Whether the session outlives this query. A space ends it unless the words before it name
- * exactly one entry that takes an argument, so `and / or` stays text; the argument is one word.
+ * The one entry a word typed after `head` goes to, or null: the only entry `head` matches, or else
+ * the one argument-taking entry whose label's first word or a keyword is exactly `head`.
+ */
+export function argumentTaker<T extends FilterableEntry>(
+	entries: readonly T[],
+	head: string
+): T | null {
+	const named = filterEntries(entries, head);
+	if (named.length === 1) return named[0].takesArgument ? named[0] : null;
+	const wanted = head.toLowerCase();
+	const exact = named.filter(
+		(entry) =>
+			entry.takesArgument &&
+			(entry.label.split(/\s/)[0].toLowerCase() === wanted ||
+				entry.keywords.some((keyword) => keyword.toLowerCase() === wanted))
+	);
+	return exact.length === 1 ? exact[0] : null;
+}
+
+/**
+ * Whether the session outlives this query. A space ends it unless an entry takes the word after
+ * it (`argumentTaker`), so `and / or` stays text; the argument is one word.
  */
 export function acceptsQuery(entries: readonly FilterableEntry[], query: string): boolean {
 	if (/[\r\n]/.test(query)) return false;
 	const { head, argument } = splitQuery(query);
 	if (argument === null) return true;
 	if (/\s/.test(argument)) return false;
-	const named = filterEntries(entries, head);
-	return named.length === 1 && named[0].takesArgument;
+	return argumentTaker(entries, head) !== null;
 }
