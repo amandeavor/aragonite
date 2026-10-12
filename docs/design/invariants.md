@@ -1046,6 +1046,7 @@ unguarded.
 | G4.149 | A preview of the next insertion runs a write's own spend, and changes no record           | harness |
 | G4.150 | One placer for a hidden edge: no other file reads the caret's side or how it arrived      | L       |
 | G4.151 | One click-side check, called from the click entry both prose blocks share                 | L       |
+| G4.157 | Every block kind a bundled plugin installs has an insert entry, or says why it has none   | harness |
 
 ### The entries
 
@@ -1955,6 +1956,12 @@ start past a line's end, or the side of a code chip's border) is called only fro
 `widget-interaction.ts :: snapClickToWidgetEdge`, the click entry both prose blocks' `onClick` go
 through, and neither `onClick` measures the press against its text itself.
 `lint/edge-rule-guards.test.ts`.
+
+**G4.157 · Every bundled block kind can be inserted.** `test/plugins/insertable-kinds.test.ts`
+installs every plugin under `src/lib/plugins/` and reads the kinds they register: each one is in the
+tree some insert entry's Markdown parses to (a title row comes with its container), or is listed
+with why no entry makes it. A listed kind that's gone or has gained an entry fails too, and so does
+an entry taking a word that another row's label or keyword shadows.
 
 ## Accessibility
 

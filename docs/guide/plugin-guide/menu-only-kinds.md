@@ -13,3 +13,18 @@ editor.insertMarkdown(':::chart\ntype: bar\n:::\n');
 ```
 
 That snippet is the whole integration: a new kind adds no method for the host to adopt. The call answers `true` when the caret took the paste and `false` with no caret (reading mode included). Do document your canonical snippet beside the kind: give the host the exact bytes your `rebuildRaw` would produce, so the first insertion is already canonical.
+
+Or skip the host's UI and put your kind in the editor's own menus: call `registerInsertEntry` from your `setup`, and the kind shows up in the right-click "Insert block" rows, and in the `/` list where the slash commands plugin is on, in every editor that lists your plugin.
+
+```ts
+registerInsertEntry({
+	id: 'chart',
+	label: 'Chart',
+	icon: 'table',
+	keywords: ['graph', 'plot'],
+	markdown: ':::chart\ntype: bar\n:::\n',
+	withArgument: (type) => ({ markdown: `:::chart\ntype: ${type}\n:::\n`, detail: type })
+});
+```
+
+`withArgument` is optional. Give it one when a word typed after the row should shape the block: `/chart pie` inserts a pie chart, and `detail` is the dim text the row shows while you type (`pie` here). The word only gets through while your row is the only one matching what was typed before the space, so give it a first word no other row's label or keyword starts with (a `Charts and graphs` row next to yours would eat the space).
