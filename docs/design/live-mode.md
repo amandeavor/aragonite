@@ -180,7 +180,7 @@ Where nothing the position admits survives the painter, the byte-literal write s
 
 ### 4.3 Format toggles at a collapsed caret: pending marks
 
-A collapsed-caret toggle (Mod+B with nothing selected) in a mode that paints no delimiter can't write an empty pair (§ 4.1), so it pends the mark instead (`caret/pending-marks.ts`): a promise held outside the document and spent by exactly one insertion.
+A collapsed-caret toggle (Mod+B with nothing selected) in a mode that paints no delimiter can't write an empty pair (§ 4.1), so it pends the mark instead (`caret/pending-marks.ts`): a promise held outside the document and spent by exactly one insertion, the next one in that block, however it arrives.
 
 ```ts
 flipMark(null, 'strong'); // Set { 'strong' }: Mod+B, once
@@ -197,11 +197,10 @@ resolveMarkedInsertion(raw, 11, 'X', new Set(['strong']), inlines, reading); // 
 ```
 
 - The mark resolves against the caret's construct chain (`pending-mark-insert.ts`; the chain is every construct enclosing the caret, outermost first). A kind the chain lacks wraps the insertion; a kind it carries escapes it, by close-and-reopen or by stepping outside the construct, as above.
-- The mark resolves where the next letter would land (`TypedPlacement.offsetFor`), so at `**bold**|` the bold chord takes the bold off for the next letter, whichever side of the hidden `**` the browser left the caret on.
-- The marks live in the caret memory beside the edge record. A key that moves the caret clears them, and a caret move that isn't a key (a click, a paste, an undo, a mode switch) forgets them along with it. Only a text write spends them.
+- The mark resolves where a letter would land (the edge resolver, § 4.2), so at `**bold**|` the bold chord takes the bold off for the next letter, whichever side of the hidden `**` the browser left the caret on. A space typed there goes outside for good: with the chord pending no held space opens (§ 4.2), so the word after it types plain too.
+- The marks are one of the caret memory's insertion records, beside the pending break and the held space, so they ride the one write every insertion goes through (`caret/next-insertion.ts`): a hardware key, a soft keyboard, an autocorrect replacement, an IME commit and a paste all carry them, in a cell too. A key that moves the caret clears them, and so does a caret move that isn't a key (a click, an undo, a mode switch). A drop counts as one of those, since its text lands at the pointer and not at the caret the mark was promised to.
 - A chord isn't the only thing that sets them. A destructive press that unwraps a construct (§ 4.4) pends the kinds it took, so a format survives the delete that emptied it the way it survives a caret that never left.
-- A composition takes them at `compositionstart`, before the caret memory's `forget` can drop them mid-composition, and hands them back if it commits nothing: an IME cancel inserts no text, so the promise is still owed.
-- A table cell's typing goes through the same resolver, so all of this holds in a cell.
+- A composition holds them from its start, like every record, and an IME cancel writes nothing, so the promise is still owed afterwards.
 
 Over a selection the same chord writes bytes at once, in every mode. Its question is coverage rather than edge adjacency: is the selected range already covered by a construct of the chord's kind?
 
@@ -260,6 +259,7 @@ Then the destructive presses (`live` as in § 2; `store` says where the block ke
 const press = (display: string, caret: number, direction: 'backward' | 'forward') =>
 	resolveEdgeDeletion({
 		display,
+		asWritten: (text) => text + '\n', // the block's own line ending, which its write adds
 		content: { start: 0, end: display.length },
 		caret,
 		direction,
@@ -278,6 +278,7 @@ press('Some **bold** text', 9, 'backward'); // null: no hidden run beside the cu
 - A construct the press unwraps hands its mark back. The delimiters are gone but the caret hasn't moved, so the kind goes pending (§ 4.3) and the next byte is written inside the construct again. That's what makes the next toggle chord turn the format off here, the job the visible empty pair does in the preview modes. Only a kind a chord can write comes back; a link the cut emptied leaves nothing pending.
 - An autolink's text is its URL, so a key in it takes one character like in any word. In the angle form the brackets are the hidden runs: Backspace before the hidden `>` takes the URL's last letter. A cut that would unmake the autolink (`<ab:>` less its colon is `<ab>`, an HTML tag) takes it whole instead, the way a split does. A cut in the middle of the URL touches no hidden run, so it's the browser's, and if it unmakes the link the brackets show up, which you can see and undo. The two answers differ on purpose: at the edge the most a take-whole can lose is the scheme left over, while in the middle it'd be the whole URL on one keypress, so there the brackets show instead.
 - A press this branch owns but can't rewrite soundly takes nothing, since the browser's version would paint the markers.
+- The candidate is read back with the block's own line ending, and an empty last line stays the block's own line (`core/inline/live-edit/read-back.ts`), even though a reload would read it as a blank line after the block. That's the line Shift+Enter, a letter and a Backspace leave behind: the screen draws `abc def` and an empty line under it, so the check has to see a break there too, not a stray backslash, or it'd refuse every cut. Backspace on that line, or Delete at the end of `abc def`, takes the break.
 - Chrome that paints (§ 4.1) isn't a hidden run, so the branch declines the block outright rather than reading its own bytes as unseen.
 - A block's own hidden structure gets the same first claim: `contentStart: { range, backspace: 'demote-first' }` in a kind's registration makes Backspace at a heading's content start give up its markers (the `## ` and any closing `#` run, or the underline) before any merge. That's the first press a user can aim at markers they can't see.
 
