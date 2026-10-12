@@ -649,7 +649,7 @@ armed). Predicate `invariants/top-level-untouched.ts :: checkTopLevelUntouched` 
 and after every commit, dev parses each top-level container the edit wrote in, on its own, and
 compares the shape (kinds, child counts, metadata) with the tree's; a dropped leading space that
 re-nests a list passes every byte check and fails this one. It reads the bytes the way the editor
-opens a file (`tree-operations/node-primitives.ts :: readAsOpened`), so a bare `- ` reads back with
+opens a file (`schema/opened-reading.ts :: readAsOpened`), so a bare `- ` reads back with
 the empty paragraph you type into, and a container left with no bytes at all fails, since a reload
 wouldn't show it. The edit names those containers itself, so the check never searches the document.
 It skips a container over 16K characters and anything the perf instruments time. Predicate
@@ -1000,7 +1000,7 @@ unguarded.
 | G4.80  | In `selection/`, only the range coverage and the caret walks ask if a container is closed | L       |
 | G4.81  | The cross-block table row snap runs in the range coverage and the stored pair only        | L       |
 | G4.82  | The task-marker rule runs in one wrapper, and its callers are declared                    | L       |
-| G4.83  | Every plain fragment read outside the parser names why its nodes need no backfill         | L       |
+| G4.83  | Every plain read of bytes into blocks outside the parser and test kits names its kind     | L       |
 | G4.84  | Where a leaf's bytes are stored is made in one place, from the tree                       | L       |
 | G4.85  | A live rewrite that removes bytes reads its candidate where it will be stored             | L       |
 | G4.86  | A list item's marker is read only where the list is built, drawn or dumped                | L       |
@@ -1600,16 +1600,18 @@ survivor wrap their write, and the rest say why they need no wrapper (a table ce
 item). A file listed as wrapping must call the wrapper. `lint/leaf-write-doors.test.ts` (the G4.82
 and G4.82b rows), with G1.42 as the runtime half.
 
-**G4.83 · Every plain fragment read says why.** Bytes written into a child slot are read the way a
+**G4.83 · Every plain read says why.** Nodes built from bytes reach the tree the way a reload
+builds them, through `schema/opened-reading.ts :: readAsOpened`, which gives every container that
+must hold a child an empty paragraph; `schema/container-raw.ts :: parseContainerRaw`, a container's
+re-read of its own bytes, goes through it too. Bytes written into a child slot are read the way a
 reload reads them there, through `tree-operations/list/task-paragraph.ts :: fragmentReaderAt` (in a
 list item's first slot, behind its whole marker line), or `slotReaderAt` and `childSlotAt` for a
-caller holding only a path. Nodes built from bytes reach the tree the way a reload builds them,
-through `tree-operations/node-primitives.ts :: readAsOpened`, which gives every container its empty
-paragraph. A plain `readBlocks` left in `tree-operations/`, `selection/`, `editor-actions/`,
-`components/` or `schema/` is listed in the manifest under one of a closed list of kinds (a probe
-that installs nothing, a read whose file runs the backfill before it installs, a read handed to a
-route that backfills at the splice, a container's re-read of its own bytes), and a file declared as
-installing must call the backfill itself. `lint/manifest-rules.test.ts`.
+caller holding only a path. Those read plain, so a caller that installs what they read fills in at
+the splice. Any plain reader (`readBlocks`, `parse`, `parseTaskItemBody` or a slot reader) outside
+`core/` and `testing/` is listed in the manifest under one of four kinds: a probe that installs
+nothing, a read whose file fills in before it installs, the opened reading itself, or a read handed
+to a route that fills in at the splice. A file declared as installing must call the fill-in itself.
+`lint/manifest-rules.test.ts`.
 
 **G4.84 · One place says where a leaf's bytes are stored.** A `StoredAs`
 (`src/lib/schema/stored-as.ts`) answers four things about a position: block or plain text (a table
