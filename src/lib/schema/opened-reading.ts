@@ -1,7 +1,8 @@
 /**
  * Bytes read the way the editor opens a file: parsed, then every container that must hold a child
- * given an empty paragraph to type in. Whatever turns bytes into nodes the editor holds, or
- * compares the editor's tree with a reload, reads through here.
+ * given an empty paragraph to type in. Whatever turns a block's bytes into nodes the editor holds,
+ * or compares the tree's shape with a reload, reads through here; a slot read stays plain and its
+ * installer fills in.
  */
 
 import { makeBlockNode, type CstNode, type Document } from '../core/nodes';
@@ -27,8 +28,8 @@ export function readAsOpened(
 	return doc;
 }
 
-/** Gives every container under `node` that must hold a child an empty paragraph, so the caret
- *  always has a target, and lists each one in `filled`, since a write must rebuild its bytes. */
+/** Gives every container under `node` that must hold a child an empty paragraph to type in, listed
+ *  in `filled` so its installer can rebuild bytes that don't spell that paragraph. */
 export function ensureEditableContainers(
 	node: CstNode,
 	ending: LineEnding,
