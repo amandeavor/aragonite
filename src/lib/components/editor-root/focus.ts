@@ -8,13 +8,14 @@ import { assertInvariant } from '../../assert';
 import { checkLandableCaret } from '../../invariants/landable-caret';
 import { isPreviewMode, type PresentationMode } from '../../presentation-mode';
 import { readBlockPath } from '../../selection/path-lookup';
+import { CONTENT_EMPTY_ATTR } from '../../caret/widget-offset';
 import { onRoot, removeAll } from './listeners';
 import type { TextMoves } from '../overlays/text-moves';
 
 export interface FocusAttributionDeps {
 	/** A getter, never a value: every attribute write is gated on the mode in force. */
 	get mode(): PresentationMode;
-	/** Told whenever the attribute moves, since showing a block's markers moves its text. */
+	/** Told whenever focus shows or hides a block's markers, since that moves its text. */
 	textMoves: Pick<TextMoves, 'movedWithin'>;
 }
 
@@ -53,6 +54,10 @@ export function createFocusAttribution(deps: FocusAttributionDeps): FocusAttribu
 
 	function setFocusedHost(host: HTMLElement | null): void {
 		if (focusedHostEl === host) return;
+		// A block of bare markers shows them while focused, in every mode that hides them.
+		for (const el of [focusedHostEl, host]) {
+			if (el?.querySelector(`[${CONTENT_EMPTY_ATTR}]`)) deps.textMoves.movedWithin(el);
+		}
 		focusedHostEl = host;
 		applyFocusedAttr();
 	}

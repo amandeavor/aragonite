@@ -4,6 +4,7 @@ import { EditorPage } from '../../editor-page';
 import type { PresentationMode } from '../../../presentation-mode';
 import { textRunEnd, textRunStart } from '../../text-runs';
 import { findInput, openFind, typeQuery } from '../search/helpers';
+import { PluginsPage, clickWidgetCenter } from '../plugins/helpers';
 
 /**
  * A mark's overlay moves with its text when hiding or showing markers moves the text without
@@ -190,4 +191,107 @@ test.describe('mark overlay follows its text', () => {
 			)
 			.toBeLessThanOrEqual(1);
 	});
+
+	test('in live mode, a mark over a block of bare markers paints while the block holds the caret', async ({
+		page
+	}) => {
+		await editor.setPresentationMode('live');
+		await editor.loadContent('[]()\n\nother line\n');
+		await page.evaluate(() => {
+			(window as any).__test.decorations.addSource({
+				name: 'e2e-follow',
+				provide: () => [{ type: 'mark', path: [0], start: 0, end: 4, class: 'e2e-follow' }]
+			});
+		});
+		const overlay = page.locator(OVERLAY['plain mark']);
+		// Hidden markers have no width, so the mark paints nothing until they show.
+		await expect(overlay).toHaveCount(0);
+		await editor.waitForRenderFlush();
+		await editor.waitForRenderFlush();
+
+		await editor.clickBlock(0);
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					// One rect per marker run on each side, so both sides compare their outer edges.
+					const span = (sel: string) => {
+						const rects = [...document.querySelectorAll(sel)].map((el) =>
+							el.getBoundingClientRect()
+						);
+						if (rects.length === 0) return null;
+						return {
+							left: Math.min(...rects.map((r) => r.left)),
+							right: Math.max(...rects.map((r) => r.right))
+						};
+					};
+					const painted = span('.decoration-overlay.e2e-follow');
+					const markers = span('[data-block-path="[0]"] .md-marker');
+					if (!painted || !markers) return null;
+					return Math.max(
+						Math.abs(painted.left - markers.left),
+						Math.abs(painted.right - markers.right)
+					);
+				})
+			)
+			.toBeLessThanOrEqual(1);
+
+		const other = await textRunEnd(page, 'line');
+		await page.mouse.click(other.x, other.y);
+		await expect(overlay).toHaveCount(0);
+	});
+});
+
+test.describe('mark overlay follows its text across a widget showing its source', () => {
+	// Raw 19..24 is `hello`, after a formula that renders narrower than its source.
+	const MATH_DOC = 'Before $x^2$ after hello\n\nNext\n';
+	let editor: PluginsPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new PluginsPage(page);
+		await editor.gotoPlugins('math');
+		await editor.loadContent(MATH_DOC);
+		await page.evaluate(() => {
+			(window as any).__test.decorations.addSource({
+				name: 'e2e-follow',
+				provide: () => [{ type: 'mark', path: [0], start: 19, end: 24, class: 'e2e-follow' }]
+			});
+		});
+		await expect(page.locator(OVERLAY['plain mark'])).toHaveCount(1);
+		await editor.waitForRenderFlush();
+		await editor.waitForRenderFlush();
+	});
+
+	test('clicking a formula shows its source, and the overlay moves with the text after it', async ({
+		page
+	}) => {
+		const rendered = await helloLeft(page);
+
+		await clickWidgetCenter(page.locator('.math-inline-widget'));
+		await expect(page.locator('.math-inline-widget')).toHaveCount(0);
+		await editor.waitForRenderFlush();
+		expect(await helloLeft(page), 'the source is wider than the formula').toBeGreaterThan(rendered);
+		await expectOverlayOnText(page, 'plain mark');
+	});
+
+	// Leaving for another block folds through the blur; a click later in the line folds in place.
+	for (const [how, word] of [
+		['clicking another block', 'Next'],
+		['clicking later in the line', 'after']
+	]) {
+		test(`${how} renders the formula again, and the overlay moves back with the text`, async ({
+			page
+		}) => {
+			const rendered = await helloLeft(page);
+			await clickWidgetCenter(page.locator('.math-inline-widget'));
+			await expect(page.locator('.math-inline-widget')).toHaveCount(0);
+			await expectOverlayOnText(page, 'plain mark');
+
+			const away = await textRunEnd(page, word);
+			await page.mouse.click(away.x, away.y);
+			await expect(page.locator('.math-inline-widget')).toHaveCount(1);
+			await editor.waitForRenderFlush();
+			expect(await helloLeft(page), 'the formula is back').toBeCloseTo(rendered, 0);
+			await expectOverlayOnText(page, 'plain mark');
+		});
+	}
 });

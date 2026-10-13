@@ -115,6 +115,7 @@ export function widgetInteractionDeps(
 			return fixtureReading();
 		},
 		caretMemory: { noteOutside: () => {} },
+		textMoves: { movedWithin: () => {} },
 		...overrides
 	} as unknown as WidgetInteractionDeps;
 }

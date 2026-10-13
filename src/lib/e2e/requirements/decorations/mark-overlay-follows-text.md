@@ -3,12 +3,14 @@
 A mark's overlay is measured against the text under it, so anything that moves that text has to
 measure it again, even when the block's box stays the same size. Hiding or showing Markdown
 markers is the common way that happens: the text slides sideways inside a box that doesn't
-change. Every row loads `**bold** hello world` and marks `hello`, then checks that the overlay's
-left and right edges sit within 1px of the painted word after the step. A flip between two
-modes that both hide markers (live and reading, say) moves no text, so it gets no row.
+change. An inline widget swapping to its source is another. Most rows load `**bold** hello world`
+and mark `hello`, then check that the overlay's left and right edges sit within 1px of the
+painted word after the step. A flip between live and reading moves no text, so it gets no row.
 
 Miss-analysis: every overlay test measured once after painting, and the only mode-flip row
-(reading mode) checked that the overlay still painted, never where it painted.
+(reading mode) checked that the overlay still painted, never where it painted. The widget and
+bare-marker rows came later: the first census listed the marker attributes and classes, and
+missed a widget swapping its DOM and a `:focus-within` rule, which no attribute write announces.
 
 ## Happy paths
 
@@ -32,3 +34,10 @@ Miss-analysis: every overlay test measured once after painting, and the only mod
   line's height: the overlay follows
 - A click at the start of `hello` and Shift+Down twice selects across into the next block; after
   a flip from source to live, the start block's selection paint still begins at `hello`
+- In live mode, a block of bare markers (`[]()`) with a mark over them paints nothing while the
+  markers hide. Clicking into it shows them, and the mark paints over exactly them; clicking
+  into another block hides them again and the mark paints nothing
+- With the latex plugin, `Before $x^2$ after hello` with `hello` marked: clicking the formula
+  shows its source, which is wider, and the overlay moves right with `hello`
+- Leaving the shown source by clicking another block, or by clicking later in the same line,
+  renders the formula again, and the overlay moves back with `hello`

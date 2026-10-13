@@ -2511,7 +2511,7 @@ const TEXT_MOVES: FileRule = {
 		/\b(?:set|remove|toggle)Attribute\(\s*['"`]data-(?:focused|presentation|editor-theme)['"`]|\bdataset\.(?:focused|presentation|editorTheme)\s*=(?!=)|(?<![[\w-])data-(?:focused|presentation|editor-theme)=\{|\bclassList\.(?:add|remove|toggle|replace)\([^)]*(?:CONSTRUCT_REVEAL_CLASS\b|['"`]md-construct-reveal['"`])|\bclass(?:Name)?\s*=(?!=)[^;\n]*(?:md-construct-reveal|CONSTRUCT_REVEAL_CLASS)|\bclass:md-construct-reveal\b/,
 	allowed: {
 		[FOCUS_ATTRIBUTION]:
-			'moves `data-focused` between hosts and reports both through `textMoves.movedWithin`',
+			'moves `data-focused` between hosts and reports both through `textMoves.movedWithin`, as it does a block of bare markers focus enters or leaves',
 		[CONSTRUCT_REVEAL]:
 			'toggles the reveal class on marker spans and reports the block through `textMoves.movedWithin`',
 		[`${SOURCE_DIR.components}Editor.svelte`]:

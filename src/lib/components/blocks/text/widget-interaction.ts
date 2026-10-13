@@ -50,6 +50,7 @@ import { rangeWrite, withOwnEnding, type TextWrite } from '../editable/surface-w
 import type { DraftRegistry } from '../../draft-registry';
 import type { Draft } from '../../../schema/drafts';
 import type { ActivationClick, ClickInput } from '../../../activation-click';
+import type { TextMoves } from '../../overlays/text-moves';
 
 const PLAIN_CLICK: ClickInput = { ctrlKey: false, metaKey: false };
 
@@ -91,6 +92,8 @@ export interface WidgetInteractionDeps {
 	caretMemory: Pick<CaretMemory, 'noteOutside'>;
 	/** Puts the caret on the side of a code chip's border a click hit. */
 	pinChipSide: (side: 'inside' | 'outside') => void;
+	/** Told when a widget swaps to its source or back, since that moves the text after it. */
+	textMoves: Pick<TextMoves, 'movedWithin'>;
 }
 
 /** The click a widget gesture reads off: the same event the widget's own handler sees. */
@@ -271,6 +274,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		if (activeSourceNode === null || revealedWidget === null) return;
 		unwashRevealedSource(activeSourceNode);
 		activeSourceNode.replaceWith(revealedWidget);
+		deps.textMoves.movedWithin(revealedWidget);
 		activeSourceNode = null;
 		revealedWidget = null;
 	}
@@ -330,6 +334,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 				activeSourceNode = document.createTextNode(source);
 				widget.replaceWith(activeSourceNode);
 				washRevealedSource(activeSourceNode);
+				deps.textMoves.movedWithin(container);
 			},
 			// Re-inserts the exact element the swap detached, still current because the edit
 			// was discarded. The persist path re-renders reactively instead.
@@ -387,6 +392,8 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		activeSourceNode = null;
 		revealedWidget = null;
 		resetReveal();
+		// The re-render that brings the widget back moves the text after it, write or not.
+		if (el) deps.textMoves.movedWithin(el);
 		// No edit, so no write: a write that changes nothing still pushes an undo entry, and the
 		// next Ctrl+Z would spend itself on nothing. A dropped draft writes nothing either.
 		if (editedDisplay === originalDisplay || !writable) {

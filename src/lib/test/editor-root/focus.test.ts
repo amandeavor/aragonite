@@ -125,6 +125,17 @@ describe('editor-root focus attribution: data-focused', () => {
 		expect(e.moved).toHaveLength(4);
 	});
 
+	// Miss-analysis: only the preview modes' attribute was reported, never a block of bare markers.
+	it('reports a block holding only markers each time focus enters or leaves it, in any mode', () => {
+		const e = editor('live');
+		e.first.leaf.setAttribute('data-content-empty', '');
+		e.focusIn(e.second.leaf);
+		expect(e.moved).toEqual([]);
+		e.focusIn(e.first.leaf);
+		e.focusIn(e.second.leaf);
+		expect(e.moved).toEqual([e.first.el, e.first.el]);
+	});
+
 	it('moving focus between hosts moves the mark; leaving the root drops it', () => {
 		const e = editor('preview-inline');
 		e.focusIn(e.first.leaf);

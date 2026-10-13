@@ -1,8 +1,7 @@
 /**
- * Tells the overlays when text inside a block may have moved while the block's box stayed the same
- * size, which no resize observer sees: markers hidden or shown by a mode, a focus or the caret, a
- * theme, a font or an image finishing loading. Whatever makes such a change reports it here, and
- * each affected overlay measures once, a tick later, against the rendered result.
+ * Tells the overlays when text inside a block may have moved while the block's box kept its size,
+ * which no resize observer sees. Whatever makes such a change reports it here, and each overlay
+ * over that text measures once, a tick later, against the rendered result.
  */
 
 import { tick } from 'svelte';

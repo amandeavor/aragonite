@@ -334,6 +334,7 @@
 		drafts,
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
+		textMoves,
 		activationClick,
 		get reading() {
 			return reading;
