@@ -77,7 +77,8 @@ describe('a cross-block gesture is one undo entry holding the state before it', 
 	describe('a composition that writes nothing leaves the next typing its own entry', () => {
 		const FOUR = 'alpha\n\nbeta\n\ngamma\n\ndelta\n';
 
-		/** The block the IME composes in, its element gone by compositionend, so nothing is written. */
+		/** The block the IME composes in once the range is gone, its element gone by compositionend,
+		 *  so nothing is written. */
 		async function composeNothing(env: Env): Promise<void> {
 			let el: HTMLElement | null = document.createElement('div');
 			const { surface } = makeSurface({
@@ -97,6 +98,9 @@ describe('a cross-block gesture is one undo entry holding the state before it', 
 			});
 			surface.onCompositionStart();
 			await settleEditor();
+			surface.onBeforeInput(
+				new InputEvent('beforeinput', { inputType: 'insertCompositionText', isComposing: true })
+			);
 			el = null;
 			surface.onCompositionEnd();
 		}

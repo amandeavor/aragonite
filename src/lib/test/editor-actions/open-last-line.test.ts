@@ -8,7 +8,7 @@ import type { CstNode, Document } from '#lib/core/nodes.js';
 import { documentLineEnding } from '#lib/core/lines.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { ensureEditableContainers } from '#lib/tree-operations/node-primitives.js';
+import { ensureEditableContainers } from '#lib/schema/opened-reading.js';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
 import { DIRECTIVE_CONTAINER } from '#lib/core/directive/kinds.js';
 import { createFocusActions } from '#lib/editor-actions/focus/focus.js';

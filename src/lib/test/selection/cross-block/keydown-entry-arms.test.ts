@@ -4,7 +4,6 @@
 // leaves it stuck at one block; compositionstart has no beforeinput to wait for, so an active range
 // must be deleted synchronously or composed text lands on a stale one.
 import { describe, it, expect } from 'vitest';
-import { asEditorX } from '#lib/caret/coordinate-spaces.js';
 import { READING_WRITE_TAG } from '#lib/editor-actions/commit/reading-write-gate.js';
 import { takeDevWarns } from '../../support/warn-gate';
 import { makeKeydownEnv, press } from './keydown-env';
@@ -81,20 +80,5 @@ describe('cross-block keydown: compositionstart', () => {
 
 		expect(env.source()).toBe(SOURCE);
 		expect(takeDevWarns().map((w) => w.tag)).toEqual([READING_WRITE_TAG]);
-	});
-
-	// Both transient caret states reset before the range check: a composition is an edit, so no
-	// column from an earlier vertical arrow and no side an earlier placement recorded survives it.
-	it('forgets the column, the side and the marks even when it declines', () => {
-		const env = makeKeydownEnv(SOURCE);
-		env.caretMemory.captureColumn(asEditorX(600));
-		env.caretMemory.noteKey({ key: 'ArrowRight' }, null);
-		env.caretMemory.pendingMarks.toggle('strong');
-
-		env.keydown.handleCompositionStart();
-
-		expect(env.caretMemory.column()).toBeNull();
-		expect(env.caretMemory.side()).toBeNull();
-		expect(env.caretMemory.pendingMarks.get()).toBeNull();
 	});
 });

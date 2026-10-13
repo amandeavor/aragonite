@@ -8,7 +8,8 @@ import { tick } from 'svelte';
 import type { Document } from '../../core/nodes';
 import type { InlineNode } from '../../core/nodes';
 import type { DocumentView, NodeView } from '../../core/node-views';
-import { wireOverlayRemeasure } from '../../caret/overlay-remeasure';
+import { wireOverlayRemeasure } from '../overlays/remeasure';
+import type { TextMoves } from '../overlays/text-moves';
 import type { InlineRangeCommit } from '../../editor-actions/inline-range-commit';
 import type { EditorEvents } from '../../editor-events';
 import { isBlockNode, nodeAt } from '../../tree-operations/node-primitives';
@@ -38,6 +39,8 @@ export interface LinkCardCommitterDeps {
 	/** Measures the rectangles of a raw range in a mounted block, which is what positions it. */
 	measureRange: (path: number[], start: number, end: number) => DOMRect[];
 	reading: Reading;
+	/** Where text moved by a theme or font change is reported, so the card follows its link. */
+	textMoves: TextMoves;
 }
 
 export interface ResolvedLinkTarget {
@@ -165,7 +168,8 @@ export function createLinkCardCommitter(deps: LinkCardCommitterDeps): LinkCardCo
 			editorRoot: editorEl,
 			blockRef: undefined,
 			measure,
-			untrackSetupMeasure: true
+			untrackSetupMeasure: true,
+			textMoves: deps.textMoves
 		});
 		// An edit anywhere above the link shifts its y without touching the link itself; an undo
 		// announces itself before its tree renders, so every edit is measured a tick later.

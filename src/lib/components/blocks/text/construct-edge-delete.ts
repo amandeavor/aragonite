@@ -27,6 +27,9 @@ export type DeleteDirection = 'backward' | 'forward';
 export interface EdgeDeletionQuery {
 	/** The block's displayed text: its raw without the trailing line ending. */
 	display: string;
+	/** A displayed text as the block's write stores it, its own line ending added: without that
+	 *  ending, an empty last line after a hard break reads back as no line at all. */
+	asWritten: (display: string) => string;
 	/** The bytes the block's own kind calls content; a cut never reaches past them. */
 	content: ContentRange;
 	caret: number;
@@ -80,15 +83,13 @@ export function resolveEdgeDeletion(query: EdgeDeletionQuery): EdgeDeletion | nu
 
 	const before = visibleText(display, query);
 	if (before === null) return null;
-	const removed = target.atomic
-		? renderedText([target.atomic], display, CONTENT_VISIBILITY, {
-				grammar: query.store.reading.grammar
-			})
-		: display.slice(target.start, target.end);
-	for (const cut of [plain, widenThroughRuns(constructs, plain)]) {
+	const shown = (node: InlineNode) =>
+		renderedText([node], display, CONTENT_VISIBILITY, { grammar: query.store.reading.grammar });
+	const removed = target.atomic ? shown(target.atomic) : display.slice(target.start, target.end);
+	const write = (cut: Span, removing: string): EdgeDeletionWrite | null => {
 		const raw = display.slice(0, cut.start) + display.slice(cut.end);
 		const after = visibleText(raw, query);
-		if (after === null || !removesExactly(before, after, removed)) continue;
+		if (after === null || !removesExactly(before, after, removing)) return null;
 		// Backward lands where the cut opened; forward keeps the caret where it was, which the cut
 		// only moves when it swallowed delimiters ahead of it.
 		return {
@@ -96,8 +97,15 @@ export function resolveEdgeDeletion(query: EdgeDeletionQuery): EdgeDeletion | nu
 			caret: direction === 'backward' ? cut.start : Math.min(caret, cut.start),
 			unwrappedMarks: plain.unwrappedMarks
 		};
+	};
+	for (const cut of [plain, widenThroughRuns(constructs, plain)]) {
+		const written = write(cut, removed);
+		if (written) return written;
 	}
-	return { swallow: true };
+	// Half a URL is no URL: where every cut unmakes the construct, it goes whole, as a split
+	// takes it.
+	const whole = constructs.find((c) => c.splitsWhole && c.content && within(target, c.content));
+	return (whole && write(whole.node, shown(whole.node))) || { swallow: true };
 }
 
 // ── The cut ──────────────────────────────────────────────────────────────────
@@ -193,6 +201,8 @@ interface PolicyConstruct {
 	/** Whether a format chord writes this kind's delimiters, so unwrapping it takes a mark off
 	 *  the caret rather than only bytes. */
 	markable: boolean;
+	/** Whether a split takes the construct whole, since part of it is not that construct. */
+	splitsWhole: boolean;
 }
 
 /** Only kinds the policy table names take part: a construct with no policy has its bytes read as
@@ -206,10 +216,15 @@ function policyConstructs(inlines: readonly InlineNode[]): PolicyConstruct[] {
 			node,
 			content: constructContentRange(node),
 			autoUnwrapOnEmpty: policy.autoUnwrapOnEmpty,
-			markable: policy.mark !== undefined
+			markable: policy.mark !== undefined,
+			splitsWhole: policy.splitBehavior === 'whole'
 		});
 	}
 	return found;
+}
+
+function within(span: Span, range: Span): boolean {
+	return span.start >= range.start && span.end <= range.end;
 }
 
 function covers(node: InlineNode, at: number): boolean {
@@ -228,9 +243,9 @@ function isDelimiterByte(constructs: readonly PolicyConstruct[], at: number): bo
 
 /** What the user sees of the bytes read back where they are stored, or null where they do not
  *  read back as one prose block: a cut can push two runs together into a fence opener. */
-function visibleText(raw: string, { store }: EdgeDeletionQuery): string | null {
+function visibleText(raw: string, { store, asWritten }: EdgeDeletionQuery): string | null {
 	// A cut that empties the block leaves no block to read, and empty shows nothing wherever it is.
 	if (raw === '') return '';
-	const read = readBack(raw, store);
+	const read = readBack(asWritten(raw), store);
 	return read && shownOf(read, store);
 }

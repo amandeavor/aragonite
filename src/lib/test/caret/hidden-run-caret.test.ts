@@ -12,9 +12,9 @@ import {
 } from '../../caret/widget-offset';
 import { findFirstTextNode, findLastTextNode } from '../../caret/visual-lines';
 import { buildAmbientSpan } from '../../ambient/ambient-dom';
-import { createSurfaceBackend } from '../../caret/surface-backend';
+import { createSurfaceBackend } from '../../components/blocks/editable/surface-backend';
 import { applyCollapsedCaret } from '../../selection/native-bridge';
-import { caretIsInTextContent } from '../../components/blocks/text/click-snap-guard';
+import { caretIsInTextContent } from '../../caret/text-seat';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 
 interface Fixture {

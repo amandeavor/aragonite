@@ -62,6 +62,7 @@ export type {
 	BlockKindRegistration,
 	BlockKindAugmentation,
 	ContainerDescriptorGroup,
+	ContentStart,
 	MergeRole,
 	ContainerUnwrapRole,
 	WriteContext,
@@ -241,8 +242,7 @@ export { headingLevel } from './core/nodes';
 // traversal so a code block's bytes are never inline-scanned.
 export { isProseKind } from './core/inline';
 // Pre-order over a document or subtree, with 'skip' and 'stop', so a plugin writes no recursion.
-export { walkBlocks } from './core/paths';
-// The block at a path, or null for the root or a path that leads nowhere.
+export { walkBlocks, type WalkControl } from './core/paths';
 export { blockNodeAt } from './tree-operations/node-primitives';
 
 /**
@@ -294,14 +294,14 @@ export { isCollapsedContainer } from './schema/reserved-chrome';
 // ── Editable-leaf authoring API (pre-freeze) ─────────────────────────────────
 // A text-editing leaf with a built-in block's caret, IME, undo and selection: plain (a commit per
 // keystroke) or render-first (source while the caret is inside, one commit on blur).
-export { createEditableLeaf } from './components/blocks/editable-leaf';
+export { createEditableLeaf } from './components/blocks/editable/editable-leaf';
 export type {
 	EditableLeaf,
 	EditableLeafDeps,
 	EditableLeafMode,
 	EditableLeafSurfaceProps,
 	EditableLeafRenderProps
-} from './components/blocks/editable-leaf';
+} from './components/blocks/editable/editable-leaf';
 export type { EditableLeafBlockApi, StickyColumnDirection } from './block-component';
 
 // ── Directive authoring (pre-freeze) ─────────────────────────────────────────

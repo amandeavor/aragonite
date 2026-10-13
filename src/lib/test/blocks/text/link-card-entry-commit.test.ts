@@ -7,6 +7,7 @@ import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createInlineRangeCommit } from '#lib/editor-actions/inline-range-commit.js';
 import { createLinkCardCommitter } from '#lib/components/link-card/link-card-commit.js';
+import { createTextMoves } from '#lib/components/overlays/text-moves.js';
 import { type LinkTarget } from '#lib/components/blocks/text/link-at-point.js';
 import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
@@ -37,7 +38,8 @@ describe('commit', () => {
 			inlineRange: createInlineRangeCommit({ deps: harness.deps, controller }),
 			events: harness.events,
 			measureRange: () => [],
-			reading: fixtureReading({ resolver: map.resolve, resolverSignature: map.signature })
+			reading: fixtureReading({ resolver: map.resolve, resolverSignature: map.signature }),
+			textMoves: createTextMoves()
 		});
 		const raw = () => harness.doc.children[0].raw;
 		return {
@@ -183,6 +185,7 @@ describe('create entry', () => {
 				path: [0],
 				card,
 				enterWidget: () => {},
+				placeCaretInText: () => {},
 				selection,
 				crossBlockRange,
 				reading: fixtureReading({}, mode)
@@ -276,6 +279,7 @@ describe('range entry', () => {
 			reading: fixtureReading(reading, 'live'),
 			card,
 			enterWidget: () => {},
+			placeCaretInText: () => {},
 			selection: start === end ? null : { start, end },
 			crossBlockRange
 		});

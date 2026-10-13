@@ -1,6 +1,6 @@
 {
 	"name": "@voithos-labs/aragonite",
-	"version": "0.10.9",
+	"version": "0.10.10",
 	"description": "cute svelte-based markdown editor lib",
 	"keywords": [
 		"editor",
@@ -17,7 +17,7 @@
 	},
 	"author": "voithos-labs",
 	"type": "module",
-	"license": "AGPL-3.0-or-later",
+	"license": "MPL-2.0",
 	"engines": {
 		"node": "^20.19.0 || >=22.12.0"
 	},
@@ -234,7 +234,7 @@
 		"typescript-eslint": "^8.67.0",
 		"vite": "^8.2.2",
 		"vitest": "^5.0.0",
-		"wrangler": "4.147.0"
+		"wrangler": "4.149.0"
 	},
 	"overrides": {
 		"lodash-es": "^4.18.0"

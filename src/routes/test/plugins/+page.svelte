@@ -221,10 +221,10 @@
 		// A tag mid-prose, one opening a line (the case a bare `#` heading opener contests),
 		// one inside a heading's own content, and a plain typing target.
 		tags: 'Filed under #project and #work/admin today\n\n#inbox leads this line\n\n# Heading with #tag inside\n\nType here\n',
-		// A link mid-prose with text either side to put the caret in, a typing target, a Markdown
-		// link to follow on the same click, and a link in a table cell.
+		// A link mid-prose, a typing target, a Markdown link, a link and a bare URL in a table cell,
+		// a bare URL and an angle autolink (requirements/plugins/wikilinks.md has what each is for).
 		wikilinks:
-			'See [[Meeting notes]] for today\n\nType here\n\nRead [the docs](https://example.com/) first\n\n| Note |\n| - |\n| [[Cell note]] here |\n',
+			'See [[Meeting notes]] for today\n\nType here\n\nRead [the docs](https://example.com/) first\n\n| Note |\n| - |\n| [[Cell note]] here https://example.org/cell |\n\nhttps://example.org/bare\n\nSee <https://example.org/angle> here\n',
 		'tags-marks':
 			'Filed under #project and #work/admin today\n\n#inbox leads this line\n\n# Heading with #tag inside\n\nType here\n',
 		// `project` appears twice so it ranks first; the code span and the link destination are

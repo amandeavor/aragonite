@@ -1,5 +1,6 @@
-// What you'd go to at an offset: the link the card edits (live mode only) or a widget the offset
-// touches whose kind claims the activation click. Mod+K and the "Edit link" menu row read this.
+// What you'd go to at an offset: the link the card edits or the autolink edited as its text (live
+// mode only), or a widget the offset touches whose kind claims the activation click. Mod+K and the
+// "Edit link" menu row read this.
 // Miss-analysis: Mod+K only knew links, so a widget that followed on a click had no editing path
 // but the arrow keys, and no test asked what Mod+K does beside one.
 import { describe, it, expect } from 'vitest';
@@ -29,11 +30,13 @@ function registerWidget(claimsActivationClick: boolean): void {
 	});
 }
 
-function targetAt(offset: number, mode: PresentationMode) {
-	const node = parse(SOURCE).children[0];
+function targetAt(offset: number, mode: PresentationMode, source = SOURCE) {
+	const node = parse(source).children[0];
 	const hit = followTargetAt(node, offset, fixtureReading({}, mode));
 	if (hit === null) return null;
-	return hit.edit === 'card' ? `link@${hit.link.start}` : `widget@${hit.widget.start}`;
+	if (hit.edit === 'card') return `link@${hit.link.start}`;
+	if (hit.edit === 'text') return `caret@${hit.caretAt}`;
+	return `widget@${hit.widget.start}`;
 }
 
 describe('followTargetAt', () => {
@@ -42,6 +45,14 @@ describe('followTargetAt', () => {
 		expect(targetAt(3, 'live')).toBe('link@2');
 		expect(targetAt(3, 'source')).toBeNull();
 		expect(targetAt(3, 'preview-inline')).toBeNull();
+	});
+
+	it("finds an autolink in live mode only, with the caret at its text's end", () => {
+		registerWidget(true);
+		// `https://e.com` spans 2..15; `<https://e.com>` spans 2..17, its text 3..16.
+		expect(targetAt(5, 'live', 'x https://e.com y\n')).toBe('caret@15');
+		expect(targetAt(5, 'live', 'x <https://e.com> y\n')).toBe('caret@16');
+		expect(targetAt(5, 'source', 'x https://e.com y\n')).toBeNull();
 	});
 
 	it('finds a claiming widget the offset touches, from either edge, in every editable mode', () => {

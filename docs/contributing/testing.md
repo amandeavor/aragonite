@@ -68,8 +68,8 @@ first.
 
 `src/lib/test/` mirrors the source tree one-for-one, with the leading `components/` segment
 dropped for its subfolders, so `components/blocks/list/X.ts` maps to `test/blocks/list/X.test.ts`.
-The files sitting directly in `components/` (`BlockHost.svelte`, the `editor-root-*` modules)
-test under `test/components/`. When the module under test moves into a subdirectory, its test
+The files sitting directly in `components/` (`BlockHost.svelte`, `Editor.svelte`) test under
+`test/components/`; `components/editor-root/` tests under `test/editor-root/`. When the module under test moves into a subdirectory, its test
 follows.
 
 Mirror **import depth**, not just the module's directory: a test importing

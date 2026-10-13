@@ -8,7 +8,7 @@ import {
 	getInlineConstructPolicy,
 	getInlineMarkPolicy,
 	inlineMarkForCommand,
-	isCardEditableInlineKind,
+	followEditOf,
 	isRevealableInlineKind,
 	listInlineMarks,
 	registerLiveSplitRebalancer,
@@ -89,11 +89,17 @@ describe('built-in rows', () => {
 		expect(getInlineMarkPolicy('link')).toBeUndefined();
 	});
 
-	// The card belongs to one construct. An image's destination has its own editor and an
-	// autolink's is the text on screen, so neither uses the card.
-	it('the bracketed link alone is card-editable', () => {
+	// An image's destination has its own editor, and an autolink's is the text on screen.
+	it('a click follows a link, edited in its card, and an autolink, edited as its text', () => {
 		const kinds = Object.keys(INLINE_KIND_TABLE) as AnyInlineKind[];
-		expect(kinds.filter(isCardEditableInlineKind)).toEqual(['link']);
+		const followed = kinds.flatMap((kind) => {
+			const edit = followEditOf(kind);
+			return edit ? [[kind, edit]] : [];
+		});
+		expect(followed).toEqual([
+			['link', 'card'],
+			['autolink', 'text']
+		]);
 	});
 
 	it('link neither edge extends, but a split still rebalances it', () => {
@@ -102,7 +108,7 @@ describe('built-in rows', () => {
 			autoUnwrapOnEmpty: true,
 			splitBehavior: 'close-and-reopen',
 			revealable: true,
-			cardEditable: true,
+			followEdit: 'card',
 			prose: 'content'
 		});
 	});
@@ -117,12 +123,14 @@ describe('built-in rows', () => {
 		});
 	});
 
-	it.each(['escape', 'hardLineBreak'] as const)(
-		'%s is an atomic marker run that never reveals',
-		(kind) => {
-			expect(getInlineConstructPolicy(kind)).toEqual(atomic);
-		}
-	);
+	// Half an escape is a literal backslash, so a split takes it whole; a hard break's moved cut
+	// doesn't parse back, so its literal cut stands.
+	it.each([
+		['escape', 'whole'],
+		['hardLineBreak', 'plain']
+	] as const)('%s is an atomic marker run that never reveals, split %s', (kind, splitBehavior) => {
+		expect(getInlineConstructPolicy(kind)).toEqual({ ...atomic, splitBehavior });
+	});
 });
 
 describe('revealable membership', () => {

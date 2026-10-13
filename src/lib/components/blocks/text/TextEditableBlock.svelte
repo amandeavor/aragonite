@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { getContext, onDestroy, tick, untrack } from 'svelte';
 	import { CURSOR_START, type AmbientPrefix, type BlockComponent } from '../../../block-component';
-	import { readBlocks } from '../../../core/parser';
 	import { ambientHoldsTaskBox } from '../list/task-checkbox';
 	import type { DocumentView, NodeView } from '../../../core/node-views';
 	import type { EditorRects } from '../../../editor-rects';
@@ -26,8 +25,6 @@
 	import { devWarn } from '../../../dev-warn';
 	import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 	import { trimTrailingLineEnding } from '../../../core/lines';
-	import { caretIsInTextContent, seatIsInTextContent } from './click-snap-guard';
-	import { caretSeatInElement } from '../../../caret/point-offset';
 	import { widgetEdgeBox } from '../../../caret/drawn-caret-measure';
 	import type { WidgetEdgeBox } from '../../../caret/drawn-caret-target';
 	import { FALLBACK_CONTENT_WIDTH } from '../../../windowing/typography-estimates';
@@ -49,6 +46,7 @@
 	} from './text-keydown';
 	import { tryGetBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
 	import { blockNodeAt } from '../../../tree-operations/node-primitives';
+	import { readAsOpened } from '../../../schema/opened-reading';
 	import { createTextClipboard } from './text-clipboard';
 	import { createTextRender } from './text-render';
 	import { createWidgetInteraction } from './widget-interaction';
@@ -67,10 +65,10 @@
 	import { assertInvariant } from '../../../assert';
 	import { widgetElByStart, widgetsIn } from './widget-adjacency';
 	import { caretLandableBounds, handleSharedKeydown } from '../../../selection/shared-keydown';
-	import { createEditableSurface, consumePendingRestore } from '../editable-surface';
-	import { rangeWrite, withOwnEnding } from '../surface-write';
+	import { createEditableSurface, consumePendingRestore } from '../editable/editable-surface';
+	import { rangeWrite, withOwnEnding } from '../editable/surface-write';
 	import type { ContentWrite } from '../../../action-contracts';
-	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../surface-wiring.svelte';
+	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import {
 		rawOffsetAt,
 		rawTextOfContent,
@@ -79,7 +77,7 @@
 		caretOnPendingBreakLine
 	} from '../../../caret/widget-offset';
 	import { asRawOffset } from '../../../caret/coordinate-spaces';
-	import { createSurfaceBackend } from '../../../caret/surface-backend';
+	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { type CommandId } from '../../../schema/commands';
 	import type { CommandRun } from '../../../schema/block-commands';
 	import { planTypedCompletion } from '../../../editor-actions/enter-completion';
@@ -151,7 +149,8 @@
 		decorations: decorationEngine,
 		drafts,
 		drawnCaret,
-		presses
+		presses,
+		textMoves
 	} = getContext<EditorServices>(EDITOR_SERVICES_KEY);
 	const ownPairs = autoPairs.forBlock();
 
@@ -183,7 +182,11 @@
 			enterLinkCardAtCaret({
 				...linkCardQuery(el, cursor.getRawSelection()),
 				card: linkCard,
-				enterWidget: widgetInteraction.enterWidget
+				enterWidget: widgetInteraction.enterWidget,
+				placeCaretInText: (offset) => {
+					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
+					editableSurface.insideCloser.open(offset);
+				}
 			});
 		}
 	};
@@ -201,16 +204,6 @@
 	const widgetEdgeOwner = {};
 	const holdWidgetEdge = (offset: number | null) =>
 		drawnCaret.armWidgetEdge(widgetEdgeOwner, offset);
-	// Beside a non-editable widget Chromium paints a taller caret while the button is down, so the
-	// drawn caret hides it from the pointer-down rather than from the click.
-	let downBesideWidget = false;
-	let pressPending = false;
-
-	function markDownBesideWidget(down: boolean): void {
-		if (down === downBesideWidget) return;
-		downBesideWidget = down;
-		drawnCaret.request();
-	}
 
 	// The one place a pending cursor is written, tagged so the interaction trace names
 	// which gesture set the restore; the render effect reads and clears it.
@@ -241,19 +234,14 @@
 		getNode: () => node,
 		reading,
 		caretMemory,
-		heldSpace: () => editableSurface.heldSpace
+		heldSpace: () => editableSurface.heldSpace,
+		insideCloser: () => editableSurface.insideCloser
 	});
 	// Set on the block's first focus: until then a render has no shown marker to re-apply.
 	let caretHasEntered = false;
 
-	// The same placement rules the keydown dispatch uses, for the one insertion it cannot reach.
 	const compositionSeat = createCompositionSeat({
 		getDisplayText: () => getDisplayText(),
-		getInlines: () => resolvedInlineContent(node, reading),
-		reading,
-		offsetFor: typedPlacement.offsetFor,
-		consumePendingMarks: caretMemory.pendingMarks.consume,
-		restorePendingMarks: caretMemory.pendingMarks.restore,
 		getRawSelection: () => cursor.getRawSelection(),
 		// The in-leaf range replace `handleLiveSelectionEdit` uses, as the displayed text the
 		// composition commit writes.
@@ -292,8 +280,7 @@
 		},
 		widgetEdge: {
 			owner: widgetEdgeOwner,
-			box: (offset) => widgetEdgeBoxAt(offset),
-			pressed: () => downBesideWidget
+			box: (offset) => widgetEdgeBoxAt(offset)
 		},
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
@@ -347,6 +334,7 @@
 		drafts,
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
+		textMoves,
 		activationClick,
 		get reading() {
 			return reading;
@@ -397,7 +385,8 @@
 			return reading;
 		},
 		getEl: () => el ?? null,
-		isCrossBlock: () => selection.isCrossBlock
+		isCrossBlock: () => selection.isCrossBlock,
+		textMoves
 	});
 
 	// Every caret-edge key goes through this one dispatch (G4.12); entering a widget stays in
@@ -427,8 +416,8 @@
 		enterWidget: (widget, fromTrailingEdge) =>
 			widgetInteraction.enterWidget(widget, fromTrailingEdge),
 		isReading: () => readOnly,
-		pendingMarks: caretMemory.pendingMarks,
-		offsetFor: typedPlacement.offsetFor,
+		insideCloser: () => editableSurface.insideCloser,
+		pendingMarks: editableSurface.pendingMarks,
 		caretWriter
 	});
 
@@ -612,7 +601,7 @@
 						// Text after a task box is the to-do's own text, so a written `# ` would stay
 						// text there; replacing the block makes the heading and gives the box up.
 						if (ambientHoldsTaskBox(ambientPrefix)) {
-							const heading = readBlocks(cycled.newRaw, { grammar, scope: 'fragment' }).children;
+							const heading = readAsOpened(cycled.newRaw, { grammar, scope: 'fragment' }).children;
 							const focus = { replacementIndex: 0, offset: cycled.caretOffset };
 							void blockEdit.replaceBlock(index, heading, focus, { snapshotOffset: offset });
 							return;
@@ -781,25 +770,6 @@
 		return null;
 	}
 
-	/** Whether the press left the browser's caret at an element-level offset in this block, the
-	 *  position Chromium paints at the line box's height rather than at the text's. */
-	function notePressSeat(root: HTMLElement): void {
-		if (!pressPending) return;
-		const sel = window.getSelection();
-		markDownBesideWidget(
-			!!sel &&
-				sel.isCollapsed &&
-				sel.rangeCount > 0 &&
-				root.contains(sel.getRangeAt(0).startContainer) &&
-				!caretIsInTextContent(root, sel)
-		);
-	}
-
-	function endPress(): void {
-		pressPending = false;
-		markDownBesideWidget(false);
-	}
-
 	// The widget edge is cleared even during composition, since an IME caret move invalidates it;
 	// the source and marker updates skip composition as `onInput` does.
 	$effect(() => {
@@ -807,7 +777,6 @@
 		if (!root) return;
 		const handler = () => {
 			clearSnapTargetIfMoved(root);
-			notePressSeat(root);
 			if (composing) return;
 			// The line goes once the caret leaves it, whatever moved the caret.
 			if (pendingBreak.at() !== null && !caretOnPendingBreakLine(root)) pendingBreak.end();
@@ -831,7 +800,6 @@
 		pendingBreak,
 		getCaret: () => (cursor.getRawSelection() ? null : cursor.getRaw()),
 		getDisplayText,
-		hasPendingMarks: () => caretMemory.pendingMarks.get() !== null,
 		opensBreak: (ev) => wiring.resolveChord(ev, node.kind) === 'block.hardBreak',
 		writeText,
 		requestCaret: (at) => setPendingCursorOffset(at, 'pending-break')
@@ -968,14 +936,6 @@
 		lastClickClientX = e.clientX;
 		lastClickClientY = e.clientY;
 		holdWidgetEdge(null);
-		// Only a primary press ends in a click; a context-menu press would keep the caret hidden.
-		pressPending = e.button === 0;
-		// Read now, not at the `selectionchange` that follows: that event can arrive after a frame
-		// has already painted the native caret. Level with a line, where a padding press lands.
-		const seat = pressPending && el ? caretSeatInElement(el, e.clientX, e.clientY) : null;
-		markDownBesideWidget(
-			!!seat && !!el && el.contains(seat.node) && !seatIsInTextContent(el, seat.node)
-		);
 		// A click on a widget that can show its source is this editor's gesture: cancelling the
 		// browser's caret default leaves that code as the only writer of the selection.
 		if (widgetInteraction.isPointOnRevealWidget(e.clientX, e.clientY)) e.preventDefault();
@@ -987,7 +947,6 @@
 		widgetInteraction.commitRevealOnBlur();
 		pendingBreak.end();
 		holdWidgetEdge(null);
-		endPress();
 		demoteEmptyHeadingOnBlur();
 		syncCaretChrome();
 	}
@@ -1032,8 +991,6 @@
 			// would unmount the widget the drag just painted a range across.
 			moved: presses.travelled(e)
 		});
-		// The click has decided: from here the widget edge hides the browser's caret, or nothing does.
-		endPress();
 	}
 
 	// ── Formatting shortcuts ────────────────────────────────────────────
@@ -1049,7 +1006,7 @@
 			// The insertion that spends the mark starts its own undo entry, so it is never
 			// merged into the burst the chord interrupted.
 			controller.flushDebouncedCheckpoint();
-			caretMemory.pendingMarks.toggle(format);
+			editableSurface.pendingMarks.toggle(format);
 			return;
 		}
 

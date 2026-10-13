@@ -24,12 +24,18 @@ import type { GrammarView } from '../../../schema/block-openers';
 import type { Reading } from '../../../schema/reading';
 import { insertsExactly } from './screen-diff';
 import type { CaretMemory } from '../../../caret/caret-memory';
-import type { PlacedEdit, PlaceInsertion } from '../../../caret/next-insertion';
+import {
+	insertedText,
+	type InsertionPlacement,
+	type PlacedEdit
+} from '../../../caret/next-insertion';
 import type { HeldSpaceView } from '../../../caret/held-space';
+import type { InsideCloserView } from '../../../caret/inside-closer';
 import type { NodeView } from '../../../core/node-views';
 import { resolvedInlineContent } from '../../../core/inline/inline-cache';
-import { withOwnEnding } from '../surface-write';
+import { withOwnEnding } from '../editable/surface-write';
 import { revealsNoMarkers, screenVisibilityOf } from '../../../caret/widget-offset';
+import { resolveMarkedInsertion } from './pending-mark-insert';
 
 export interface EdgeSeat {
 	/** Raw offset the byte must be written at. */
@@ -97,15 +103,17 @@ export interface TypedPlacementDeps {
 	caretMemory: Pick<CaretMemory, 'side' | 'noteOutside'>;
 	/** The block's held space (`caret/held-space.ts`), read lazily: the block makes it later. */
 	heldSpace: () => HeldSpaceView;
+	/** The caret Edit link left before a hidden closer (`caret/inside-closer.ts`), read lazily too. */
+	insideCloser: () => InsideCloserView;
 }
 
-/** Where text typed into a block lands while its screen hides markers: the step every insertion's
- *  write passes, and the read for the places that decide before the write. */
+/** Where text typed into a block lands while its screen hides markers, and how a pending mark wraps
+ *  it: the step every insertion's write passes, and the read for the places that decide earlier. */
 export interface TypedPlacement {
 	/** The block's step in every insertion's write (`next-insertion.ts`). */
-	insertion: PlaceInsertion;
-	/** The offset a byte typed at `caret` now lands at: the one read the auto-pair, the chord's
-	 *  pending marks, the composition and the caret's look share. */
+	insertion: InsertionPlacement;
+	/** The offset a byte typed at `caret` now lands at, for the auto-pair, which decides at
+	 *  `beforeinput`. */
 	offsetFor(caret: number, typed: string): number;
 	/** A byte of a hidden closer was typed over at `from`, leaving `to`: the next letter types
 	 *  outside the construct, unless a held space waits for the rest of that closer. */
@@ -124,16 +132,34 @@ export function createTypedPlacement(deps: TypedPlacementDeps): TypedPlacement {
 		return resolvedInlineContent(raw === node.raw ? node : { ...node, raw }, deps.reading);
 	};
 	return {
-		insertion: (before, edit, at, side, caret) => {
-			const screen = hidingScreen();
-			if (!screen) return null;
-			const typed = edit.text.slice(at, at + edit.text.length - before.length);
-			const inlines = inlinesOf(before);
-			return relocateInsertion(before, at, typed, inlines, side, screen, deps.reading, caret);
+		insertion: {
+			place: (before, edit, at, side, caret) => {
+				const screen = hidingScreen();
+				if (!screen) return null;
+				const typed = insertedText(before, edit, at);
+				const inlines = inlinesOf(before);
+				return relocateInsertion(before, at, typed, inlines, side, screen, deps.reading, caret);
+			},
+			mark: (before, edit, at, marks, side) => {
+				const screen = hidingScreen();
+				if (!screen) return null;
+				const inlines = inlinesOf(before);
+				// The marks apply where a letter would land, which Edit link's caret keeps inside the URL.
+				const letter =
+					deps.insideCloser().at() === at
+						? null
+						: resolveEdgeSeat(at, inlines, side, before, screen, PROBE_BYTE, deps.reading);
+				const typed = insertedText(before, edit, at);
+				const seat = letter?.offset ?? at;
+				const marked = resolveMarkedInsertion(before, seat, typed, marks, inlines, deps.reading);
+				return marked && { text: marked.raw, caretAfter: marked.caret };
+			}
 		},
 		offsetFor: (caret, typed) => {
 			const screen = hidingScreen();
 			if (!screen) return caret;
+			// Edit link's caret types inside the URL, which no edge rule would choose.
+			if (deps.insideCloser().at() === caret) return caret;
 			const node = deps.getNode();
 			// The closer a held space was written past is still the caret's to type over.
 			const inside = deps.heldSpace().at() === caret ? deps.heldSpace().inside() : null;

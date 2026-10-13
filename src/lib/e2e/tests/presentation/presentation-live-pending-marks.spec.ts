@@ -337,8 +337,27 @@ test('live mode: an IME commit after Mod+B lands wrapped, like a keystroke', asy
 	await ep.bridge.waitForSourceContains('plain**かん**');
 });
 
-// The dispatcher runs `handlePendingMarks` before `handleCstWidget`, so these rows check that a
-// splice that would change painted text is declined and the widget survives whole.
+test('live mode: a paste or a soft keyboard’s text after Mod+B lands wrapped', async ({ page }) => {
+	const ep = await enterLive(page);
+
+	await test.step('a paste', async () => {
+		await atEndOfPlain(ep, page);
+		await bold(page);
+		await ep.seedClipboard('abc');
+		await ep.paste();
+		await ep.bridge.waitForSourceContains('plain**abc**');
+	});
+
+	await test.step('text with no key behind it', async () => {
+		await atEndOfPlain(ep, page);
+		await bold(page);
+		await page.keyboard.insertText('X');
+		await ep.bridge.waitForSourceContains('plain**X**');
+	});
+});
+
+// A letter beside a widget spends the marks in the block's write like any other, so these rows check
+// that a splice that would change painted text is declined and the widget survives whole.
 test('live mode: a pending mark beside an inline widget', async ({ page }) => {
 	const WIDGET_DOC = 'see &amp; now\n';
 	const ep = await enterPresentationMode(page, 'live', WIDGET_DOC);

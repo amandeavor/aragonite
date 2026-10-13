@@ -20,14 +20,6 @@ const KEYDOWN_ENTRY_FILES: string[] = [
 	SOURCE.pluginContainer
 ];
 
-/** Direct `forget()` calls a keydown file may keep, with why and how many. */
-const KEYDOWN_FORGET_EXCEPTIONS: Record<string, { count: number; why: string }> = {
-	'src/lib/selection/cross-block/keydown.ts': {
-		count: 1,
-		why: 'handleCompositionStart: an IME lifecycle event, with no key to classify'
-	}
-};
-
 const isKeydownFile = (relPath: string) => /keydown/i.test(relPath);
 
 /** Every file the file-name scan picks up, pinned exactly so a new keydown-named file forces a
@@ -35,7 +27,7 @@ const isKeydownFile = (relPath: string) => /keydown/i.test(relPath);
 const KEYDOWN_PATH_NAMED_FILES: Record<string, string> = {
 	'src/lib/selection/shared-keydown.ts': 'dispatcher: classifies through noteKey',
 	'src/lib/selection/cross-block/keydown.ts': 'dispatcher: classifies through noteKey',
-	'src/lib/components/editor-root-keydown.ts':
+	'src/lib/components/editor-root/keydown.ts':
 		'router: chord arms (search, Escape, editor-global) move no caret; the one arm that does delegates to the cross-block dispatcher, which notes the key',
 	'src/lib/components/blocks/text/text-keydown.ts':
 		'pure raw transforms (hard break, heading cycle, literal tab); returns bytes, touches no caret memory',
@@ -57,18 +49,9 @@ describe('G2.10 keydown entry-point guard', () => {
 				relPath: f.relPath,
 				count: f.code.match(FORGET_RE_ALL)?.length ?? 0
 			}))
-			.filter(({ relPath, count }) => count !== (KEYDOWN_FORGET_EXCEPTIONS[relPath]?.count ?? 0))
+			.filter(({ count }) => count > 0)
 			.map(({ relPath, count }) => `${relPath}: ${count} direct forget(s)`);
 		expect(offenders).toEqual([]);
-	});
-
-	it('each keydown-forget exception still holds its documented call (no dead entry)', () => {
-		const byPath = new Map(sources.map((f) => [f.relPath, f]));
-		for (const [relPath, { count, why }] of Object.entries(KEYDOWN_FORGET_EXCEPTIONS)) {
-			const file = byPath.get(relPath);
-			expect(file, `exception file not found: ${relPath}`).toBeDefined();
-			expect(file!.code.match(FORGET_RE_ALL)?.length ?? 0, `stale exception (${why})`).toBe(count);
-		}
 	});
 
 	it('every keydown entry path notes the key', () => {

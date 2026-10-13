@@ -7,6 +7,7 @@
 
 import {
 	constructContentRange,
+	constructHoldsOffset,
 	constructKinds,
 	inlineDescendants,
 	readInline
@@ -293,17 +294,7 @@ function holderAt(
 	const candidates = last.start === offset && lo > 0 ? [nodes[lo - 1], last] : [last];
 	for (const node of candidates) {
 		onVisit?.();
-		if (holdsOffset(node, offset)) return node;
+		if (constructHoldsOffset(node, offset)) return node;
 	}
 	return null;
-}
-
-/** Whether `offset` sits inside this construct, on the reading `constructChainAt` describes. Text
- *  is content, and nothing under it is a construct either. */
-function holdsOffset(node: InlineNode, offset: number): boolean {
-	if (node.kind === 'text') return false;
-	const content = constructContentRange(node);
-	return content
-		? offset >= content.start && offset <= content.end
-		: offset > node.start && offset < node.end;
 }

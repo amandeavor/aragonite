@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ensureEditableContainers } from '../../tree-operations/node-primitives';
+import { ensureEditableContainers } from '#lib/schema/opened-reading.js';
 import type { CstNode } from '../../core/nodes';
 import { testChromeContainer } from '#lib/test/harness/test-kinds.js';
 import { testContainer } from '#lib/test/harness/test-kinds.js';

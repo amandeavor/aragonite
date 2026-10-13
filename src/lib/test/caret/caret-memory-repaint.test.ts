@@ -3,7 +3,7 @@
 // methods are read off the object, so a new one has to join a table here before the row passes.
 import { describe, expect, it } from 'vitest';
 import { createCaretMemory, type CaretMemory } from '#lib/caret/caret-memory.js';
-import type { PlaceInsertion } from '#lib/caret/next-insertion.js';
+import type { InsertionPlacement } from '#lib/caret/next-insertion.js';
 
 const BLOCK = {};
 const LINE = { textEnd: 3, lineEnd: 3, ending: '\n' as const };
@@ -12,11 +12,14 @@ type Step = (memory: CaretMemory) => void;
 
 /** A space typed at `a **x**`'s hidden closer, written past it while a letter would go inside. */
 const HOLD: Step = (memory) => {
-	const place: PlaceInsertion = (before, edit, at) =>
-		at === 7 && edit.text[at] === 'a'
-			? { text: `${before.slice(0, 5)}a${before.slice(5)}`, caretAfter: 6, crossed: ['strong'] }
-			: null;
-	const held = memory.holdInsertion(BLOCK, place);
+	const placement: InsertionPlacement = {
+		place: (before, edit, at) =>
+			at === 7 && edit.text[at] === 'a'
+				? { text: `${before.slice(0, 5)}a${before.slice(5)}`, caretAfter: 6, crossed: ['strong'] }
+				: null,
+		mark: () => null
+	};
+	const held = memory.holdInsertion(BLOCK, placement);
 	held.spend('a **x**', { text: 'a **x** ', caretAfter: 8 });
 	held.finish(true);
 };
@@ -46,6 +49,9 @@ const CHANGES: Record<
 		change: [HOLD, (m) => m.heldSpace.forBlock(BLOCK).passCloser(6)],
 		noop: [() => {}, (m) => m.heldSpace.forBlock(BLOCK).passCloser(6)]
 	},
+	'insideCloser.forBlock().open': {
+		change: [() => {}, (m) => m.insideCloser.forBlock(BLOCK).open(5)]
+	},
 	pin: {
 		change: [() => {}, (m) => m.pin(3)],
 		noop: [(m) => m.pin(3), (m) => m.pin(3)]
@@ -54,19 +60,15 @@ const CHANGES: Record<
 		change: [(m) => m.noteOutside(), (m) => m.forget()],
 		noop: [() => {}, (m) => m.forget()]
 	},
-	'pendingMarks.toggle': {
-		change: [() => {}, (m) => m.pendingMarks.toggle('strong')]
+	'pendingMarks.forBlock().toggle': {
+		change: [() => {}, (m) => m.pendingMarks.forBlock(BLOCK).toggle('strong')]
 	},
-	'pendingMarks.consume': {
-		change: [(m) => m.pendingMarks.toggle('strong'), (m) => m.pendingMarks.consume()],
-		noop: [() => {}, (m) => m.pendingMarks.consume()]
-	},
-	'pendingMarks.restore': {
-		change: [() => {}, (m) => m.pendingMarks.restore(new Set(['strong']))],
-		noop: [
-			(m) => m.pendingMarks.toggle('emphasis'),
-			(m) => m.pendingMarks.restore(new Set(['strong']))
-		]
+	'pendingMarks.forBlock().end': {
+		change: [
+			(m) => m.pendingMarks.forBlock(BLOCK).toggle('strong'),
+			(m) => m.pendingMarks.forBlock(BLOCK).end()
+		],
+		noop: [() => {}, (m) => m.pendingMarks.forBlock(BLOCK).end()]
 	},
 	'pendingBreak.forBlock().open': {
 		change: [() => {}, (m) => m.pendingBreak.forBlock(BLOCK).open(LINE)]
@@ -85,11 +87,11 @@ const EXEMPT: Record<string, string> = {
 	column: 'a read',
 	side: 'a read',
 	arrivedByKey: 'a read, and nothing the drawn caret shows',
-	'pendingMarks.get': 'a read',
 	'pendingBreak.forBlock().lines': 'a read',
 	'pendingBreak.forBlock().at': 'a read',
 	'heldSpace.forBlock().at': 'a read',
 	'heldSpace.forBlock().inside': 'a read',
+	'insideCloser.forBlock().at': 'a read',
 	previewInsertion: 'a read: it spends nothing',
 	changeCount: 'a read',
 	holdInsertion:

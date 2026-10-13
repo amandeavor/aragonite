@@ -69,8 +69,8 @@ export type CrossBlockMutationContext = Pick<
 >;
 
 /**
- * Removes what the live range covers and puts `insertion` where that leaves the caret. Nothing
- * awaits before the removal's commit, so a composition's start deletes before the IME writes.
+ * Removes what the live range covers and puts `insertion` where that leaves the caret. Every await
+ * is a tick, so a composition's removal and its caret both land before the IME writes.
  */
 export async function replaceRange(
 	ctx: CrossBlockMutationContext,
@@ -144,8 +144,6 @@ async function replaceInStep(
 		removeRange(ctx, coverage, removal, insertion)
 	);
 	if (!removed.wrote) return 'nothing';
-	// The IME owns a composition's caret.
-	if (family === 'composition') return 'written';
 
 	const at = removed.caret;
 	if (insertion.kind === 'command') {
@@ -191,7 +189,7 @@ function refusalName(insertion: RangeInsertion): string | null {
 // ── The removal, picked by insertion family and coverage ───────────────────
 
 /** Structural gestures remove what Backspace removes, content ones put text where the range was,
- *  and a composition never changes block structure: the IME composes in the element it started in. */
+ *  and a composition only clears, since its text arrives from the IME after the caret lands. */
 type Family = 'structural' | 'content' | 'composition';
 
 /** What the range holds: one block whole (a table, a rule), whole rows or columns of one table,

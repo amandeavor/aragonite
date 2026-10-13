@@ -121,7 +121,7 @@ if (write.admitted && write.keepsCaret) requestCaret(write.caret); // 6, unless 
 await write; // true once the bytes are in
 ```
 
-A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it does the rest:
+A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/editable/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it does the rest:
 
 - undo's caret is the one recorded when the key or input arrived
 - the block keeps the line ending it had, so a last line saved without one stays that way
@@ -138,14 +138,14 @@ Markdown syntax is on screen by default, styled: markers dimmed, content styled 
 
 The presentation modes sit on top of that as view treatments over the same render path. `presentationMode` is `'source'` (the default, and the editing substrate), then `'reading'`, `'preview-block'`, `'preview-inline'` and `'live'`. Marker visibility flips via CSS keyed on focus and caret proximity, so no mode can break the round-trip. A mode that hides the markers at the caret does change editing, though: where a caret may sit (a code block's fence lines included), and how a few rewrites write their bytes (a format toggle, a paste, a split or join, the delimiter auto-pair).
 
-A press is the one wrinkle: the browser focuses the block first and only then works out where the caret goes, so the markers wait for the button (or a tap's late mouse press) to come up, or they'd move the text under the pointer (`src/lib/components/editor-root-focus.ts`). How a plugin reads the mode is in [`plugin-contract.md`](plugin-contract.md) § Presentation-mode reads.
+A press is the one wrinkle: the browser focuses the block first and only then works out where the caret goes, so the markers wait for the button (or a tap's late mouse press) to come up, or they'd move the text under the pointer (`src/lib/components/editor-root/focus.ts`). How a plugin reads the mode is in [`plugin-contract.md`](plugin-contract.md) § Presentation-mode reads.
 
 Live mode hides every marker standing over content and stays editable, which turns the hidden runs into a caret problem rather than a paint one: a hidden run paints nothing, so one screen position names two raw offsets. Two mechanisms answer that:
 
-- **The edge rule** says which side such a boundary means: the letter takes the format of the visible character before it, the way a word processor does, unless a record says otherwise (a fresh start after Enter or a click past a line's end, a typed closer, a held space, a code chip's stop). Every insertion reads it in the same write, so a key, a soft keyboard, an IME commit and a paste all land on the same side ([`caret-placement.md`](caret-placement.md) § 6 walks it, `live-mode.md` § 4.2 has the rules).
+- **The edge rule** says which side such a boundary means: the letter takes the format of the visible character before it, the way a word processor does, unless a record says otherwise (a fresh start after Enter or a click past a line's end, a typed closer, a held space, Edit link's caret in a URL, a code chip's stop). Every insertion reads it in the same write, so a key, a soft keyboard, an IME commit and a paste all land on the same side ([`caret-placement.md`](caret-placement.md) § 6 walks it, `live-mode.md` § 4.2 has the rules).
 - **The inline-construct policy table** is where each construct declares what its own delimiters do: which side a typed byte lands on, whether emptying it unwraps, how a split treats it, whether it reveals its source to an entering caret (§ 6). Every reader takes one row instead of testing a kind (`schema/inline-construct-policy.ts`).
 
-The records live in the **caret memory** (`caret/caret-memory.ts`), the one place that keeps what the caret means beyond its offset. It also keeps the sticky column (§ 8), the pending marks, the pending break (next subsection) and the held space, and a caret move that isn't a key forgets them all together.
+The records live in the **caret memory** (`caret/caret-memory.ts`), the one place that keeps what the caret means beyond its offset. It also keeps the sticky column (§ 8), the pending marks, the pending break (next subsection), the held space and Edit link's caret in a URL, and a caret move that isn't a key forgets them all together.
 
 The full editing-rule catalog is [`live-mode.md`](live-mode.md).
 
@@ -155,7 +155,9 @@ A hard break in Markdown is a backslash at the end of a line, and a backslash wi
 
 The next insertion writes the break in front of itself, whichever way it arrives (a typed key, text the browser put in, an IME commit, a paste), as one write and one undo entry. The line goes, with no byte left, as soon as the caret leaves it, and Delete, a click, blur, an undo, a mode switch and a document swap end it too.
 
-Every route spends the pending break in one place. While `writeText` (§ 3) writes, it holds whatever the caret memory keeps for its block (`src/lib/caret/next-insertion.ts` :: `createInsertionRecords`). A composition and a paste have to clear the caret memory before they write, so they take the hold earlier, for the whole gesture. The pending break and the held space (`live-mode.md` § 4.2) are the two kinds of record in that list, so a third kind would be one more entry every route picks up.
+Every route spends the pending break in one place. While `writeText` (§ 3) writes, it holds whatever the caret memory keeps for its block (`src/lib/caret/next-insertion.ts` :: `createInsertionRecords`). A composition and a paste have to clear the caret memory before they write, so they take the hold earlier, for the whole gesture. The pending marks (`live-mode.md` § 4.3), the pending break, the held space and Edit link's caret in a URL (§ 4.2) are the kinds of record in that list, so another kind is one more entry every route picks up.
+
+Once the break is written it's ordinary bytes. Delete the text after it and the empty line stays, a line like any other: Backspace on it, or Delete at the end of the line above, takes the break with it (live mode reads the block back with that line still in it, `live-mode.md` § 4.4), and the arrows land on it from above and below.
 
 Shift+Enter anywhere inside the text still writes its `\` and line ending right away. Both routes get their bytes from one writer, `src/lib/core/inline/index.ts` :: `withHardBreak`.
 
@@ -751,7 +753,7 @@ The landing is a value, not a callback that places anything: a position (a docum
 - When an enclosing container collapsed during the commit, the collapse's position replaces the caller's, because the collapse rebuilt the blocks the caller's position names.
 - In a dev build, reading the landing must leave focus and the selection alone, so a landing that sneaks in a caret of its own gets caught the first time a test runs it.
 - A commit can say how far its landing moves the viewport (`reveal`). An ordinary edit scrolls only when the caret isn't fully on screen, just far enough to show it, and holds nothing after; a navigation holds its block where it landed.
-- A gesture over a range that spans blocks gets one caret from the range replace, which holds each commit's landing instead of placing it (`CommitController`'s `holdLandings`) and then places the last one that wrote. An IME composition lands none, since the IME owns the caret.
+- A gesture over a range that spans blocks gets one caret from the range replace, which holds each commit's landing instead of placing it (`CommitController`'s `holdLandings`) and then places the last one that wrote. An IME composition gets one too, before the IME writes anything, so the composition carries on in the block the removal kept.
 
 Callers pick a scope; they never assemble the steps, and **this is the canonical entry for any new structural mutation** (the op-log isn't a commit step; it subscribes to `edit` downstream). The top-level and container action factories share one core through a `CommitScope` adapter, so the structural-edit sequence is single-sourced and the factories differ only in scope wiring and container-only concerns.
 

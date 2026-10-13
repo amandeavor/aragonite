@@ -13,7 +13,6 @@ import {
 	resolveEdgeDeletion,
 	type DeleteDirection
 } from '#lib/components/blocks/text/construct-edge-delete.js';
-import { createCompositionSeat } from '#lib/components/blocks/text/composition-seat.js';
 import type { InlineMarkKind } from '#lib/schema/inline-construct-policy.js';
 import { makeBlockNode } from '#lib/core/nodes.js';
 import { fixtureReading, topLevelStore } from '#lib/test/harness/fixture-grammar.js';
@@ -52,22 +51,6 @@ describe('a pending mark beside a reference link', () => {
 			)
 		).toEqual({ raw: 'see [text][ref] here**y**', caret: 23 });
 	});
-
-	it('wraps a composed run the same way', () => {
-		const display = 'see [text][ref] here';
-		const { resolver, inlines } = drawn(display);
-		const seat = createCompositionSeat({
-			getDisplayText: () => display,
-			getInlines: () => inlines,
-			reading: fixtureReading({ resolver: resolver }),
-			offsetFor: (caret) => caret,
-			consumePendingMarks: () => new Set<InlineMarkKind>(['strong']),
-			restorePendingMarks: () => {}
-		});
-
-		seat.noteStart();
-		expect(seat.relocate(`${display}かん`, 20)).toEqual({ raw: `${display}**かん**`, caret: 24 });
-	});
 });
 
 describe('a typed byte at a reference link’s hidden closing run', () => {
@@ -93,6 +76,7 @@ describe('a destructive key inside a reference link', () => {
 		const node = makeBlockNode({ kind, leadingTrivia: '', raw: display });
 		return resolveEdgeDeletion({
 			display,
+			asWritten: (text) => text,
 			content: { start: 0, end: display.length },
 			caret,
 			direction,

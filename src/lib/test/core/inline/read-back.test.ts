@@ -32,6 +32,14 @@ describe('reading a candidate back where it is stored', () => {
 		expect(shown('a\n', [0], ' b\n')).toBe(' b');
 	});
 
+	// Miss-analysis: #690, every candidate ended on a line with text, so none met the empty last
+	// line a write keeps in its block and the reload reads as a blank line after it.
+	it('an empty last line after a hard break is the block’s own line, as the screen draws it', () => {
+		expect(shown('a\n', [0], 'abc def\\\n\n')).toBe('abc def\n');
+		expect(shown('- a\n- b\n', [0, 0, 0], 'abc def\\\n\n')).toBe('abc def\n');
+		expect(shown('> a\n', [0, 0], 'abc def\\\n\n')).toBe('abc def\n');
+	});
+
 	it('refuses bytes the slot reads as anything but one prose block', () => {
 		expect(shown('a\n', [0], 'a\n\nb\n')).toBeNull();
 		expect(shown('a\n', [0], '```\n')).toBeNull();

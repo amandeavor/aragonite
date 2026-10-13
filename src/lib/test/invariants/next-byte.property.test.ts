@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// The caret's promise is what typing delivers: over random formatted lines, carets, modes, hosts
-// and caret memories, the marks the drawn caret paints are the marks the next typed letter gets.
+// The caret's promise is what typing delivers: over random formatted lines, carets, modes, hosts,
+// caret memories and insertion routes, the marks the drawn caret paints are the marks the letter gets.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import type { InlineNode } from '#lib/core/nodes.js';
@@ -123,10 +123,6 @@ const memory = fc.oneof(
 	fc.constantFrom(...CHORDS).map((init): Memory => ({ kind: 'chord', init }))
 );
 
-/** Pending marks are spent only by a hardware key and a composition; the other routes are a
- *  separate gap, so a chord types by one of these two. */
-const SPENDING_ROUTES: readonly InsertionRoute[] = ['hardware key', 'composition'];
-
 async function arrive(el: HTMLElement, state: Memory): Promise<void> {
 	if (state.kind === 'arrow') await pressKey(el, { key: state.key });
 	else if (state.kind === 'space') await insertBy('hardware key', el, ' ');
@@ -188,11 +184,7 @@ async function promiseAndDelivery(
 		await paintCaret(editor);
 		const promised = caretMarks(editor);
 		if (promised === null) return null;
-		await insertBy(
-			c.memory.kind === 'chord' ? spendingRoute(c.route) : c.route,
-			typingIn as HTMLElement,
-			LETTER
-		);
+		await insertBy(c.route, typingIn as HTMLElement, LETTER);
 		const lines = c.host.line(editor.source().replace(DEFINITION, '')).split('\n');
 		const result = lines.find((text) => text.includes(LETTER)) ?? lines.join('\n');
 		const at = result.indexOf(LETTER);
@@ -201,10 +193,6 @@ async function promiseAndDelivery(
 	} finally {
 		await editor.destroy();
 	}
-}
-
-function spendingRoute(route: InsertionRoute): InsertionRoute {
-	return SPENDING_ROUTES.includes(route) ? route : 'hardware key';
 }
 
 /** False where the bar drew no text caret in the case's block, so there was no promise to check. */
@@ -285,6 +273,26 @@ const PINNED: [name: string, c: Omit<Case, 'host'>][] = [
 			mode: 'live',
 			memory: { kind: 'closer', delimiter: '*' },
 			route: 'hardware key'
+		}
+	],
+	[
+		'the bold chord at a plain caret, then a paste',
+		{
+			line: 'b c',
+			caret: 1,
+			mode: 'live',
+			memory: { kind: 'chord', init: CHORDS[0] },
+			route: 'paste'
+		}
+	],
+	[
+		'the italic chord inside a bold, then an autocorrect replacement',
+		{
+			line: 'b **cd** e',
+			caret: 5,
+			mode: 'live',
+			memory: { kind: 'chord', init: CHORDS[1] },
+			route: 'replacement'
 		}
 	],
 	[

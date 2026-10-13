@@ -22,8 +22,8 @@ import {
 	type DomTextOffset,
 	type RawOffset
 } from '../../caret/coordinate-spaces';
-import type { EditableSurfaceDeps } from '../../components/blocks/editable-surface';
-import type { CursorBackend } from '../../caret/surface-backend';
+import type { EditableSurfaceDeps } from '../../components/blocks/editable/editable-surface';
+import type { CursorBackend } from '../../components/blocks/editable/surface-backend';
 
 describe('coordinate-space conversions', () => {
 	it('raw ↔ dom-text adds/subtracts the ambient length', () => {

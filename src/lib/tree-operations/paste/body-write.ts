@@ -11,12 +11,12 @@ import type { GrammarView } from '../../schema/block-openers';
 import { readBlocks } from '../../core/parser';
 import { tryGetBlockKindDescriptor } from '../../schema/block-kind-descriptor';
 import {
-	ensureEditableContainers,
 	isBlockNode,
 	nodeAt,
 	normalizeBodyWrite,
 	normalizeReplacementTrivia
 } from '../node-primitives';
+import { ensureEditableContainers } from '../../schema/opened-reading';
 
 /** Clipboard text made legal inside every `bodyWrite`-declaring ancestor of the paste target. */
 export function normalizeClipboardForBody(

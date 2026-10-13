@@ -71,7 +71,7 @@ Edits' carets come through here too. The commit hands its position to `src/lib/s
 
 Below the verbs:
 
-- The placement itself is `src/lib/components/blocks/editable-surface.ts` :: `parkCaret`. It focuses the element without scrolling the page, runs the block's own landing rule if it has one (a code block keeps a caret arriving from outside off its fence lines), and resolves the `CURSOR_START` and `CURSOR_END` codes.
+- The placement itself is `src/lib/components/blocks/editable/editable-surface.ts` :: `parkCaret`. It focuses the element without scrolling the page, runs the block's own landing rule if it has one (a code block keeps a caret arriving from outside off its fence lines), and resolves the `CURSOR_START` and `CURSOR_END` codes.
 - Then `src/lib/caret/widget-offset.ts` :: `placeCaretAtRaw` turns the raw offset into a DOM position: past the container's marker prefix, never behind a hidden marker run, and only where a caret can actually sit. In an empty block that's before its placeholder `<br>` (the line break an empty editable holds so it has a line at all, alone or after a list item's marker), since Chromium drops an IME composition started after it.
 - A browser range put down inside one block without a pointer (a first Mod+A, a block's `setSelection`) goes through `selectInBlock` in `place-caret.ts`, which ends what the editor had selected the way `focus` does.
 - The two selections the editor keeps without a DOM caret have their own entries in the same file: `placeGapCaret` for the gap between blocks, and `selectWidgetWhole` for an inline widget selected whole (an image, say). Each ends the others the way `focus` does, and a lint fails any other file that writes either.
@@ -122,7 +122,7 @@ A key nobody claims falls through to the keymap, and a byte it types is placed i
 The answer is the word processor's: the byte takes the format of the visible character before the position (at a line start, the one after), whichever of the two raw offsets the browser left the caret at. Three things can change that, in order:
 
 1. **The construct's own row** in `src/lib/schema/inline-construct-policy.ts`. A link never extends, whichever side you type on, and a code chip (`boxed`) has two stops either side of its border, which an arrow key, a click or `End` picks between (`src/lib/components/blocks/text/edge-step.ts`).
-2. **A record on the caret memory** (`src/lib/caret/caret-memory.ts`): a fresh start (Enter's new block, a click past a line's end) or a typed closer means outside, a held space means inside, a chip stop means its side. Any key that moves the caret ends the record, and so does any caret move that isn't a key. So Backspace on an empty list item under `- **a**` lands on text and types bold, same as at the top level.
+2. **A record on the caret memory** (`src/lib/caret/caret-memory.ts`): a fresh start (Enter's new block, a click past a line's end) or a typed closer means outside, a held space means inside, Edit link's caret before a URL's hidden `>` means inside the URL, a chip stop means its side. Any key that moves the caret ends the record, and so does any caret move that isn't a key. So Backspace on an empty list item under `- **a**` lands on text and types bold, same as at the top level.
 3. **The renderer.** A candidate offset is accepted only if what shows on screen afterwards is exactly what showed before, plus the typed byte.
 
 If no candidate passes, it declines and the browser's own placement stands. That's the honest fallback, since it's where the byte was going anyway.

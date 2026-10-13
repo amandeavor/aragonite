@@ -1,26 +1,68 @@
 /**
- * Pending marks: the inline formats a toggle at a collapsed caret promises the next insertion,
- * relative to the constructs around the caret (a kind already active is a removal, one absent is
- * an application). Live mode paints no delimiter, so writing an empty pair into the bytes would
- * leave an invisible `****` behind on an abandoned toggle. The toggle command sets them, the typing
- * and composition paths consume them, and the caret memory drops them (live-mode.md § 4.3).
+ * Pending marks: the inline formats a toggle at a collapsed caret promises the next insertion in its
+ * block, whatever route writes it (live-mode.md § 4.3). Live mode paints no delimiter, so an empty
+ * pair in the bytes would be invisible residue on an abandoned toggle; the block marks the insertion
+ * instead, wrapping a kind the caret lacks and escaping one it carries.
  */
 
 import type { InlineMarkKind } from '../schema/inline-construct-policy';
+import { insertionStart, type InsertionRecord } from './next-insertion';
 
-export interface PendingMarks {
-	/** Null when nothing is pending; never an empty set, so a read is the whole question. */
-	get(): ReadonlySet<InlineMarkKind> | null;
+export interface PendingMarks extends InsertionRecord {
+	/** A toggle chord at a collapsed caret in `block`, the identity its writes take the marks with.
+	 *  While a write holds the set, the chord starts a set of its own, which that write leaves. */
+	toggle(block: object, kind: InlineMarkKind, writeHolds: boolean): void;
+}
 
-	/** A toggle chord at a collapsed caret. The same chord twice pends nothing again. */
+export interface BlockPendingMarks {
+	/** A toggle chord at a collapsed caret here. The same chord twice pends nothing again. */
 	toggle(kind: InlineMarkKind): void;
+	/** Drops them unspent, for text that lands somewhere other than the caret they wait at. */
+	end(): void;
+}
 
-	/** Read and clear: exactly one insertion spends the set. */
-	consume(): ReadonlySet<InlineMarkKind> | null;
+interface MarkSet {
+	block: object;
+	marks: ReadonlySet<InlineMarkKind>;
+}
 
-	/** Hand back a set taken for an insertion that never happened (an IME cancel). Declines once
-	 *  anything else is pending: that is a newer instruction about the same caret. */
-	restore(marks: ReadonlySet<InlineMarkKind>): void;
+export function createPendingMarks(): PendingMarks {
+	let held: MarkSet | null = null;
+	// The set a chord started while a write held the one before it, until a write takes it.
+	let fresh: MarkSet | null = null;
+
+	return {
+		toggle: (block, kind, writeHolds) => {
+			const own = held?.block === block && (!writeHolds || held === fresh) ? held : null;
+			const marks = flipMark(own?.marks ?? null, kind);
+			held = marks && { block, marks };
+			fresh = writeHolds ? held : null;
+		},
+		take: (block) => {
+			const taken = held?.block === block ? held : null;
+			if (!taken) return null;
+			if (taken === fresh) fresh = null;
+			return {
+				at: null,
+				// Spent by the insertion whether or not the block finds bytes that read back marked: it
+				// was the one insertion the marks were promised to.
+				apply: (before, edit, placement) => {
+					const at = insertionStart(before, edit);
+					if (at === null || !placement) return null;
+					const marked = placement.mark(before, edit, at, taken.marks, placement.side);
+					return marked && { ...marked, inPlace: true };
+				},
+				release: (waiting) => {
+					if (!waiting && held === taken) held = null;
+				}
+			};
+		},
+		end: (block) => {
+			if (held === null || (block !== undefined && held.block !== block)) return false;
+			held = null;
+			return true;
+		}
+	};
 }
 
 /** The set one toggle chord produces, or null once it empties. Pure, so the toggle matrix is

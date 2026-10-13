@@ -3,11 +3,11 @@
 import {
 	createEditableSurface,
 	type EditableSurfaceDeps
-} from '#lib/components/blocks/editable-surface.js';
+} from '#lib/components/blocks/editable/editable-surface.js';
 import type { BlockEditActions } from '#lib/action-contracts.js';
 import type { NodeView } from '#lib/core/node-views.js';
 import { asRawOffset, type RawOffset } from '#lib/caret/coordinate-spaces.js';
-import { createSurfaceBackend } from '#lib/caret/surface-backend.js';
+import { createSurfaceBackend } from '#lib/components/blocks/editable/surface-backend.js';
 import { rawOffsetAt, type CaretClamp } from '#lib/caret/widget-offset.js';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
 import { fixtureReading } from './fixture-grammar';

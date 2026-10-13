@@ -19,6 +19,7 @@ import {
 	type BlockKindDescriptor
 } from './block-kind-descriptor';
 import { isBlockOpenerRegistered, type GrammarView } from './block-openers';
+import { readAsOpened } from './opened-reading';
 import type { ChildRawChange, StripRebuild } from './child-spans';
 
 /**
@@ -83,13 +84,14 @@ export function rebuildContainerRawIfContainer(
 
 // ── Metadata that follows the bytes ──────────────────────────────────────────
 
-/** What a container's position holds once its rewritten bytes are read as a reload reads them. */
+/** What a container's position holds once its rewritten bytes are read as a reload reads them.
+ *  `filled` holds the containers the reading gave an empty paragraph their bytes don't spell. */
 export type BytesReading =
 	| { outcome: 'kept' }
 	/** The bytes read as one node of the kind over other children: that node takes the position. */
-	| { outcome: 'reread'; node: CstNode }
+	| { outcome: 'reread'; node: CstNode; filled: readonly CstNode[] }
 	/** The bytes read as something other than one node of the kind: `blocks` is that reading. */
-	| { outcome: 'diverged'; blocks: CstNode[] };
+	| { outcome: 'diverged'; blocks: CstNode[]; filled: readonly CstNode[] };
 
 export interface FollowOptions {
 	/** Only the title row changed, which no metadata comes from (`ReservedChrome`). */
@@ -158,12 +160,13 @@ function rereadWhole(
 	contract: BlockKindDescriptor['containerContract'],
 	grammar: GrammarView
 ): BytesReading {
-	const blocks = parseContainerRaw(node.raw, grammar);
+	const filled: CstNode[] = [];
+	const blocks = parseContainerRaw(node.raw, grammar, filled);
 	const reread = soleNodeOfKind(blocks, node.kind);
-	if (!reread) return { outcome: 'diverged', blocks };
+	if (!reread) return { outcome: 'diverged', blocks, filled };
 	// A strip container's metadata is its line prefix, which decides how every child line reads.
 	if (contract === 'strip' && !sameChildren(node, reread))
-		return { outcome: 'reread', node: reread };
+		return { outcome: 'reread', node: reread, filled };
 	takeMetadata(node, reread);
 	return KEPT;
 }
@@ -214,10 +217,15 @@ function takeReread(node: CstNode, reread: CstNode): void {
 	assignChildIdsDeep(node);
 }
 
-/** One parse of a container's own bytes, the cost the kind and metadata re-derive pay. */
-export function parseContainerRaw(raw: string, grammar: GrammarView): CstNode[] {
+/** One parse of a container's own bytes, as the editor opens them: the cost the kind and metadata
+ *  re-derive pay, and what a re-read installs. `filled` collects the containers given a paragraph. */
+export function parseContainerRaw(
+	raw: string,
+	grammar: GrammarView,
+	filled?: CstNode[]
+): CstNode[] {
 	if (perfEnabled()) recordContainerKindReparse(raw.length);
-	return readBlocks(raw, { grammar, scope: 'fragment' }).children;
+	return readAsOpened(raw, { grammar, scope: 'fragment' }, filled).children;
 }
 
 /** The index of the child holding a container's last line, or -1 when the container's own bytes

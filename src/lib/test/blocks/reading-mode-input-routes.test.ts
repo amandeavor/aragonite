@@ -14,6 +14,7 @@ import {
 	type MountedEditor
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { pressKey } from '#lib/test/harness/settle.js';
+import { insertBy } from '#lib/test/harness/insertion-routes.js';
 import { takeDevWarns } from '../support/warn-gate';
 
 beforeAll(installLayoutStubs);
@@ -36,7 +37,9 @@ async function typeAfterBoldChord(mounted: MountedEditor, switchToReading: boole
 	}
 	const el = surfaceAt(mounted, [0]);
 	placeCaret(el, 2);
-	await pressKey(el, { key: 'x' });
+	// A browser inserts nothing into an element that isn't editable, so only the key arrives there.
+	if (el.getAttribute('contenteditable') === 'true') await insertBy('hardware key', el, 'x');
+	else await pressKey(el, { key: 'x' });
 	await mounted.settle();
 }
 

@@ -21,6 +21,7 @@ function del(
 ) {
 	return resolveEdgeDeletion({
 		display,
+		asWritten: (text) => text,
 		content,
 		caret,
 		direction,
@@ -34,6 +35,7 @@ function del(
 function delInCell(display: string, caret: number, direction: DeleteDirection = 'backward') {
 	return resolveEdgeDeletion({
 		display,
+		asWritten: (text) => text,
 		content: { start: 0, end: display.length },
 		caret,
 		direction,
@@ -196,6 +198,34 @@ describe('an atomic hidden run deletes as one unit', () => {
 
 	it('takes a trailing-space hard break as one unit', () => {
 		expect(del('a  \nb', 4)).toEqual({ raw: 'ab', caret: 1, unwrappedMarks: [] });
+	});
+});
+
+// An autolink's text is its URL, so a key in it takes one character, as in any word; in the angle
+// form the brackets are the hidden runs. `See <https://x.y> here`: brackets at 4 and 16.
+describe("an autolink's text deletes a character at a time", () => {
+	const ANGLE = 'See <https://x.y> here';
+
+	it('takes the last letter from the caret before the hidden closer, in prose and a cell', () => {
+		const one = { raw: 'See <https://x.> here', caret: 15, unwrappedMarks: [] };
+		expect(del(ANGLE, 16)).toEqual(one);
+		expect(delInCell(ANGLE, 16)).toEqual(one);
+	});
+
+	it('leaves a key with no hidden run beside it to the browser', () => {
+		expect(del(ANGLE, 10, 'forward')).toBeNull();
+		expect(del(ANGLE, 10)).toBeNull();
+		expect(del('See https://x.y here', 15)).toBeNull();
+	});
+
+	// `<ab:>` less its colon is `<ab>`, an HTML tag, and no cut reads back as one letter fewer.
+	it('takes the autolink whole where every cut would unmake it', () => {
+		expect(del('a <ab:> b', 6)).toEqual({ raw: 'a  b', caret: 2, unwrappedMarks: [] });
+	});
+
+	// Only the construct the cut aimed into goes whole; a failed cut elsewhere writes nothing.
+	it('leaves an autolink alone when a cut beside another construct fails', () => {
+		expect(del('**a *b*** z <https://x.y>', 6)).toEqual({ swallow: true });
 	});
 });
 

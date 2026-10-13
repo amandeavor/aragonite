@@ -36,7 +36,7 @@ type ContractOptional<G> = G extends { contract: infer C }
 export function testContainer(
 	name: string,
 	container: ContractOptional<ContainerDescriptorGroup>,
-	over: Partial<CaretBlockRegistration> = {}
+	over: Partial<Extract<CaretBlockRegistration, { container: object }>> = {}
 ): PluginBlockKind {
 	return testLeaf(name, {
 		mergeRole: 'container',

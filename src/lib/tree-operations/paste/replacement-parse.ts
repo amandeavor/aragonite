@@ -13,7 +13,8 @@ import {
 	withLineEnding,
 	type LineEnding
 } from '../../core/lines';
-import { ensureEditableContainers, normalizeReplacementTrivia } from '../node-primitives';
+import { normalizeReplacementTrivia } from '../node-primitives';
+import { ensureEditableContainers } from '../../schema/opened-reading';
 
 export interface ParsedReplacement {
 	replacement: CstNode[];

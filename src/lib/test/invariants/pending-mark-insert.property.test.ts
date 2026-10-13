@@ -34,15 +34,15 @@ const MARK_SUBSETS: InlineMarkKind[][] = [
  *  kills shows up the same way. */
 const DELIMITERS = '*_~`<>';
 
-/** The chain a toggle resolves against: a construct with children includes its own edges, where
- *  typing extends it, and a childless one does not, so its edges are ordinary insertion points. */
+/** The chain a toggle resolves against: a construct with delimiters includes its content's edges,
+ *  where typing extends it, and one without (an escape, a bare URL) only its interior. */
 function chainAt(raw: string, offset: number): Set<string> {
 	const kinds = new Set<string>();
 	const visit = (nodes: readonly InlineNode[]): void => {
 		for (const node of nodes) {
 			if (node.kind === 'text') continue;
 			const content = constructContentRange(node);
-			if (content) {
+			if (content && (content.start > node.start || content.end < node.end)) {
 				if (offset < content.start || offset > content.end) continue;
 			} else if (offset <= node.start || offset >= node.end) continue;
 			kinds.add(node.kind);

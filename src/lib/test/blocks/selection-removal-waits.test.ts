@@ -9,7 +9,7 @@ import CodeBlock from '#lib/components/blocks/code/CodeBlock.svelte';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import TableCellBlock from '#lib/components/blocks/table/TableCellBlock.svelte';
 import { TABLE_CONTEXT_KEY } from '#lib/editor-keys.js';
-import type { SelectionRemoval } from '#lib/components/blocks/editable-surface.js';
+import type { SelectionRemoval } from '#lib/components/blocks/editable/editable-surface.js';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
 import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';

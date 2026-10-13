@@ -405,11 +405,21 @@ export interface WholeBlockRegistration extends RegistrationBase {
 }
 
 /** A block the caret enters: a text leaf, or a container whose children take the caret. */
-export interface CaretBlockRegistration extends RegistrationBase {
+export type CaretBlockRegistration = CaretLeafRegistration | CaretContainerRegistration;
+
+interface CaretLeafRegistration extends RegistrationBase {
 	blockFocus?: never;
 	supportsInline: boolean;
 	contentStart?: ContentStart;
-	container?: ContainerDescriptorGroup;
+	container?: undefined;
+}
+
+/** A container's text lives in its children, so its own bytes carry no inline content. */
+interface CaretContainerRegistration extends RegistrationBase {
+	blockFocus?: never;
+	supportsInline: false;
+	contentStart?: ContentStart;
+	container: ContainerDescriptorGroup;
 }
 
 /**

@@ -24,7 +24,6 @@ import {
 	type MergeResult,
 	mergeIntoPrevDeepLeaf,
 	deleteNode as performDelete,
-	ensureEditableContainers,
 	normalizeReplacementTrivia,
 	rebuildUnsharedChain,
 	restoreSeparatorOnFill,
@@ -34,6 +33,7 @@ import {
 	landAtTaskStart,
 	writeKeepingTaskMarker
 } from '../tree-operations';
+import { ensureEditableContainers } from '../schema/opened-reading';
 import {
 	replacePreservingFirst,
 	stampStructuralChange,

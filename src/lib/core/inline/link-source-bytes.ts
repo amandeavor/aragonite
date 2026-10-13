@@ -4,7 +4,7 @@
  * destination that breaks its own construct shows up as literal source.
  */
 
-import { inlineDescendants, readInline } from './index';
+import { constructContentRange, inlineDescendants, readInline } from './index';
 import { encodeDestination, escapeTitle } from './destination-bytes';
 import type { Reading } from '../../schema/reading';
 import { CONTENT_VISIBILITY, renderedText } from './visibility';
@@ -44,7 +44,7 @@ export function buildLinkUnwrapBytes(
 	reading: Reading
 ): string | null {
 	if (declineClaimed(link, 'remove')) return null;
-	const [textStart, textEnd] = textRange(link, display);
+	const [textStart, textEnd] = linkTextRange(link, display);
 	const plain = display.slice(textStart, textEnd);
 	return verified(
 		escapeRelinkingText(plain, link, display, reading),
@@ -90,7 +90,7 @@ export function canWrapRangeAsLink(
 /** The fields the link editor edits: `url` and `title` decoded off the node, the text and the
  *  reference tail as the author wrote them. */
 export function linkFieldsFromInline(link: InlineNode, display: string): LinkFields {
-	const [textStart, textEnd] = textRange(link, display);
+	const [textStart, textEnd] = linkTextRange(link, display);
 	return {
 		text: display.slice(textStart, textEnd),
 		url: link.url ?? '',
@@ -155,10 +155,10 @@ function spliced(candidate: string, start: number, end: number, display: string)
 
 /** The bytes between a construct's opener and its hidden tail: `[…]` for a link, the angle
  *  brackets for an autolink, the whole node for the bare forms. */
-function textRange(link: InlineNode, display: string): [number, number] {
+export function linkTextRange(link: InlineNode, display: string): [number, number] {
 	if (link.kind === 'autolink') {
-		const angle = display[link.start] === '<' && display[link.end - 1] === '>';
-		return angle ? [link.start + 1, link.end - 1] : [link.start, link.end];
+		const text = constructContentRange(link)!;
+		return [text.start, text.end];
 	}
 	const children = link.children ?? [];
 	if (children.length === 0) {

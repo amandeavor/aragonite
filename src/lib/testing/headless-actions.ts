@@ -47,15 +47,17 @@ export function stubCaretMemory(): CaretMemory {
 		column: () => null,
 		side: () => null,
 		arrivedByKey: () => false,
-		pendingMarks: { get: () => null, toggle: () => {}, consume: () => null, restore: () => {} },
+		pendingMarks: { forBlock: () => ({ toggle: () => {}, end: () => {} }) },
 		pendingBreak: {
 			forBlock: () => ({ lines: () => 0, at: () => null, open: () => {}, end: () => {} })
 		},
 		heldSpace: {
 			forBlock: () => ({ at: () => null, inside: () => null, passCloser: () => false })
 		},
-		holdInsertion: (block, place) => createInsertionRecords([]).hold(block, null, place),
-		previewInsertion: (block, place) => createInsertionRecords([]).preview(block, null, place),
+		insideCloser: { forBlock: () => ({ at: () => null, open: () => {} }) },
+		holdInsertion: (block, placement) => createInsertionRecords([]).hold(block, null, placement),
+		previewInsertion: (block, placement) =>
+			createInsertionRecords([]).preview(block, null, placement),
 		changeCount: () => 0,
 		noteKey: () => {},
 		noteTyping: () => {},

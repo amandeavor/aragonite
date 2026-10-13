@@ -33,7 +33,7 @@
 	import { docPathFrom } from '../caret/coordinate-spaces';
 	import { createAutoPairRecord } from './blocks/text/auto-pair-record';
 	import { createScrollOwner } from '../windowing/scroll-owner';
-	import { createScrollHostResolution } from './editor-root-scroll-host';
+	import { createScrollHostResolution } from './editor-root/scroll-host';
 	import { installSelectionDrop, type DropCaretRect } from '../selection/selection-drop';
 	import { createContentVersion } from '../editor-actions/commit/content-version.svelte';
 	import { createCurrentSource } from '../editor-actions/commit/current-source';
@@ -54,7 +54,7 @@
 	import type { EditorSelection } from '../selection/primitives';
 	import { widgetSpanAt } from './blocks/text/widget-adjacency';
 	import { assignIds } from '../block-id';
-	import { createDocumentSwap, initDocument } from './editor-root-document-swap';
+	import { createDocumentSwap, initDocument } from './editor-root/document-swap';
 	import { blockNodeAt } from '../tree-operations/node-primitives';
 	import { defaultLinkActivation } from '../core/url-policy';
 	import { bindActivationClick, createPressTracker } from '../activation-click';
@@ -84,22 +84,23 @@
 	import { createCrossBlockHandlers } from '../selection/cross-block/dispatch';
 	import { createCrossBlockCommands } from '../selection/cross-block/format-toggle';
 	import { normalizeKeybindingOverrides } from '../schema/keybinding-overrides';
-	import { createEditorRootKeydown } from './editor-root-keydown';
-	import { createEditorRootClipboard } from './editor-root-clipboard';
-	import { createModeFlip } from './editor-root-mode-flip';
-	import { createFocusAttribution } from './editor-root-focus';
-	import { createRootGestures } from './editor-root-gestures';
-	import { createRootMenus, type BlockMenuModel } from './editor-root-menus';
-	import { createFocusedSurface } from './editor-root-focused-surface';
-	import type { EditorTestSurface } from './editor-root-test-surface';
+	import { createEditorRootKeydown } from './editor-root/keydown';
+	import { createEditorRootClipboard } from './editor-root/clipboard';
+	import { createModeFlip } from './editor-root/mode-flip';
+	import { createFocusAttribution } from './editor-root/focus';
+	import { createRootGestures } from './editor-root/gestures';
+	import { createRootMenus, type BlockMenuModel } from './editor-root/menus';
+	import { createFocusedSurface } from './editor-root/focused-surface';
+	import type { EditorTestSurface } from './editor-root/test-surface';
 	import {
 		installHeaderSlotCompensation,
 		installTypeScaleProbe,
 		installViewportHeightWatcher,
 		installWidthWatcher
-	} from './editor-root-geometry';
+	} from './editor-root/geometry';
 	import { createSelectionAnnouncer } from '../selection/selection-announcer';
 	import { createKindCue } from './kind-cue.svelte';
+	import { createTextMoves } from './overlays/text-moves';
 	import {
 		installEditorBlurAnnouncer,
 		installModActiveTracker,
@@ -109,7 +110,7 @@
 		installUndoStepEnd,
 		onRoot,
 		removeAll
-	} from './editor-root-listeners';
+	} from './editor-root/listeners';
 	import { collectReservedChords, chordIsClaimed } from '../schema/reserved-chords';
 	import { portalInto } from './portal';
 	import {
@@ -137,7 +138,7 @@
 	import SearchBar from './SearchBar.svelte';
 	import SelectionToolbar from './menu/SelectionToolbar.svelte';
 	import ImageOverlayHost from './image/ImageOverlayHost.svelte';
-	import SelectionGapFill from './SelectionGapFill.svelte';
+	import SelectionGapFill from './overlays/SelectionGapFill.svelte';
 	import LinkCardHost from './link-card/LinkCardHost.svelte';
 	import InlineMenuHost from './menu/InlineMenuHost.svelte';
 	import { createInlineMenuState } from '../inline-menu/inline-menu-state.svelte';
@@ -734,6 +735,8 @@
 		}
 	});
 
+	const textMoves = createTextMoves();
+
 	// ── Context provision ───────────────────────────────────────────────
 
 	const crossBlockCommands = createCrossBlockCommands({
@@ -790,7 +793,8 @@
 		menuPresence,
 		drafts,
 		stamps,
-		kindCue
+		kindCue,
+		textMoves
 	} satisfies EditorServices);
 
 	setContext(EDITOR_POLICIES_KEY, {
@@ -845,7 +849,8 @@
 		restoreCaret: (path, offset) => roundTripRestore(caretAt(path, offset), { reveal: 'mount' }),
 		holdOutgoingMode: (mode) => {
 			outgoingMode = mode;
-		}
+		},
+		textMoves
 	});
 	$effect.pre(() => {
 		const mode = effectiveMode;
@@ -925,6 +930,8 @@
 		if (next === lastTheme) return;
 		lastTheme = next;
 		events.emit('themeChange', next);
+		// A host's styles can key on the theme attribute and change the text's metrics.
+		textMoves.movedEverywhere();
 	});
 
 	// Hides the native caret and highlight while the overlay paints; keyed on the overlay's own
@@ -1107,7 +1114,8 @@
 	const focusAttribution = createFocusAttribution({
 		get mode() {
 			return reading.mode();
-		}
+		},
+		textMoves
 	});
 	$effect(() => {
 		void effectiveMode;
@@ -1116,6 +1124,10 @@
 	$effect(() => {
 		if (!editorEl) return;
 		return focusAttribution.install(editorEl);
+	});
+	$effect(() => {
+		if (!editorEl) return;
+		return textMoves.install(editorEl);
 	});
 
 	// ── Top-level windowing ─────────────────────────────────────────────
@@ -1424,6 +1436,7 @@
 		{reading}
 		{menuPresence}
 		{commands}
+		{textMoves}
 	/>
 	<InlineMenuHost
 		menu={inlineMenu}

@@ -13,7 +13,7 @@ import {
 	type InsertEntry,
 	type MenuIconName
 } from '#lib/plugin.js';
-import { acceptsQuery, filterEntries, splitQuery, type FilterableEntry } from './filter';
+import { acceptsQuery, readQuery, type FilterableEntry } from './filter';
 
 export const SLASH_COMMANDS_MENU = 'slash-commands';
 
@@ -82,12 +82,12 @@ export function createSlashSource(editor: EditorContext<SlashCommandsOptions>): 
 		opensAt: (raw, pos) => pos === 0 || /\s/.test(raw[pos - 1]),
 		accepts: (query) => acceptsQuery(rows(), query),
 		items: ({ query }) => {
-			const { head, argument } = splitQuery(query);
-			return filterEntries(rows(), head).map((row) => ({
+			const reading = readQuery(rows(), query);
+			return (reading?.listed ?? []).map((row) => ({
 				id: row.id,
 				label: row.label,
 				icon: row.icon,
-				detail: argument === null ? undefined : argumentDetail(row, argument),
+				detail: reading?.argument ? argumentDetail(row, reading.argument) : undefined,
 				insert: ''
 			}));
 		},
@@ -96,7 +96,8 @@ export function createSlashSource(editor: EditorContext<SlashCommandsOptions>): 
 		onCommit: async (item, range, pick) => {
 			const row = rows().find((candidate) => candidate.id === item.id);
 			if (!row) return;
-			const { argument } = splitQuery(range.query);
+			// With a word typed, its taker is the only row listed, so it's the one picked.
+			const argument = readQuery(rows(), range.query)?.argument ?? null;
 			const action = row.action;
 			if (action.kind === 'heading') {
 				pick.runCommand('heading.cycle', action.level);
@@ -105,8 +106,7 @@ export function createSlashSource(editor: EditorContext<SlashCommandsOptions>): 
 				await action.run(pick, argument ?? undefined);
 			} else {
 				// An empty line becomes the block; a line with text keeps it and gets the block below.
-				// Copied because `blockNodeAt` takes a mutable path and the range's is readonly.
-				const empty = isBlankText(blockNodeAt(pick.document, [...range.path])?.raw ?? '');
+				const empty = isBlankText(blockNodeAt(pick.document, range.path)?.raw ?? '');
 				// Awaited, so the block lands inside the pick's undo entry.
 				await pick.insertMarkdown(action.build(argument).markdown, {
 					placement: empty ? 'caret' : 'below'

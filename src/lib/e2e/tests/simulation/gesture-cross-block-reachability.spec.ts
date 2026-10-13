@@ -94,15 +94,14 @@ test('sim gesture reachability: every cross-block build and destroy engages, and
 
 	await test.step('a composition over the range replaces the covered content in one undo entry', async () => {
 		await editor.loadContent('alpha\n\nbeta\n');
-		await editor.focusBlockAtPath([0], 2);
+		await editor.focusBlockAtPath([1], 2);
 		const ctx = await makeSimContext(page, editor, 'reach', { ime: await attachIme(page) });
-		// By keyboard, so the caret stays in the first block, the one the removal keeps.
-		await extendSelectionAcross(ctx, 'down');
+		// Drawn upward, so the caret starts in the second block, which the removal takes.
+		await extendSelectionAcross(ctx, 'up');
 		await composeOverSelection(ctx, 'かん');
-		await editor.bridge.waitForSourceContains('かん');
-		const source = await editor.bridge.getSource();
-		expect(source).not.toContain('pha');
-		expect(source).toContain('かん');
+		// The arrow lands by pixel column, so the first block's cut point is not pinned.
+		await editor.bridge.waitForSourceContains('かんta\n');
+		expect(await editor.bridge.getSource()).not.toContain('beta');
 		await editor.undo();
 		await editor.bridge.waitForSourceEquals('alpha\n\nbeta\n');
 	});

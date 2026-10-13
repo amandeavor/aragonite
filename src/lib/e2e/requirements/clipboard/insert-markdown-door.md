@@ -34,7 +34,7 @@ route and checks that.
 ## Pinned below the browser
 
 `insertMarkdown` and a paste share one route, so that route's own tests check these without a page
-(`test/blocks/editable-surface-clipboard.test.ts` checks the order of its steps and the payload it
+(`test/blocks/editable/editable-surface-clipboard.test.ts` checks the order of its steps and the payload it
 hands the cross-block branch):
 
 - List items inserted inside a same-type list absorb as siblings of the target item

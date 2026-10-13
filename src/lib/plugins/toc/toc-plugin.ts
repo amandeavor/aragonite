@@ -12,6 +12,7 @@ import {
 	registerBlockOpener,
 	registerBlockComponent,
 	defineBlockComponent,
+	registerInsertEntry,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
 	type EditorPlugin
@@ -96,6 +97,13 @@ export function tocPlugin(options?: TocOptions): EditorPlugin {
 		setup() {
 			registerTocBlock();
 			registerBlockComponent(declaredPluginKind(TOC_BLOCK), defineBlockComponent(TocBlock));
+			registerInsertEntry({
+				id: 'toc',
+				label: 'Table of contents',
+				icon: 'list-tree',
+				keywords: ['toc', 'contents', 'outline', 'index'],
+				markdown: `${TOC_LINE}\n`
+			});
 		}
 	});
 }

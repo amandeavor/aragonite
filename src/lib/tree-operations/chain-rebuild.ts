@@ -8,12 +8,8 @@ import type { CstNode, Document } from '../core/nodes';
 import { firstLineEnding } from '../core/lines';
 import { assignChildIdsDeep, idsAcrossReread } from '../block-id';
 import type { SharingState } from './sharing';
-import {
-	documentBody,
-	ensureEditableContainers,
-	type BodyParent,
-	type NodeParent
-} from './node-primitives';
+import { documentBody, type BodyParent, type NodeParent } from './node-primitives';
+import { ensureEditableContainers } from '../schema/opened-reading';
 import { replacePreservingFirst, type StructuralChange } from './structural-change';
 import { spliceMany } from './splice-many';
 import { dropChildSpans, type ChildRawChange } from '../schema/child-spans';

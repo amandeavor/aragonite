@@ -12,7 +12,7 @@ import { holdsBlankLastLine } from '#lib/tree-operations/open-tail.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { createFocusActions } from '#lib/editor-actions/focus/focus.js';
-import { ensureEditableContainers } from '#lib/tree-operations/node-primitives.js';
+import { ensureEditableContainers } from '#lib/schema/opened-reading.js';
 import {
 	makeContainerHarness,
 	makeListContextAt,

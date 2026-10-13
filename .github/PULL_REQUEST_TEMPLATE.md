@@ -17,4 +17,3 @@ Skip `npm run perf:check`. Its baselines come from one desktop, so anywhere else
 - Target `dev`. `main` only takes release merges.
 - Commit messages follow [the commit conventions](https://github.com/voithos-labs/aragonite/blob/main/docs/contributing/commit-conventions.md): a symbol prefix, lowercase, 72 characters at most. CI reads every commit in the pull request, and the hook `npm install` sets up catches a bad one before it exists.
 - Leave `docs/changelog/` alone. We write the entry when it merges, from what you said up top.
-- First pull request? The CLA check asks you to sign [`CLA.md`](https://github.com/voithos-labs/aragonite/blob/main/CLA.md) with one comment, and it covers every pull request after.

@@ -42,17 +42,17 @@
 		type RawRange
 	} from '../../../caret/widget-offset';
 	import { asRawOffset, rowMajorCellIndex, type RawOffset } from '../../../caret/coordinate-spaces';
-	import { createSurfaceBackend } from '../../../caret/surface-backend';
+	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { getCurrentCursorEditorRelativeX } from '../../../caret/sticky-measure';
 	import { handleEdgeStep, handleSharedKeydown } from '../../../selection/shared-keydown';
 	import {
 		createEditableSurface,
 		createClipboardHandlers,
 		consumePendingRestore
-	} from '../editable-surface';
-	import type { ClipboardCopy } from '../clipboard-step';
-	import { rangeWrite } from '../surface-write';
-	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../surface-wiring.svelte';
+	} from '../editable/editable-surface';
+	import type { ClipboardCopy } from '../editable/clipboard-step';
+	import { rangeWrite } from '../editable/surface-write';
+	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import { resetForPointerDown } from '../../../selection/cross-block/pointer';
 	import type { PointerPressOptions } from '../../../selection/cross-block/dispatch';
 	import { publishRefSlot, type RefSlots } from '../../../block-lists/child-refs';
@@ -82,7 +82,6 @@
 	import { createEdgePolicyDispatch } from '../text/edge-policy-dispatch';
 	import { createEdgeStep } from '../text/edge-step';
 	import { applyTypedInput, createTypedPlacement } from '../text/edge-seat';
-	import { createCompositionSeat } from '../text/composition-seat';
 	import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 	import { widgetElByStart } from '../text/widget-adjacency';
 	import { getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
@@ -142,7 +141,8 @@
 		decorations: decorationEngine,
 		rangeCoverage,
 		drafts,
-		presses
+		presses,
+		textMoves
 	} = getContext<EditorServices>(EDITOR_SERVICES_KEY);
 	const ownPairs = autoPairs.forBlock();
 	const {
@@ -206,17 +206,8 @@
 		getNode: () => node,
 		reading,
 		caretMemory,
-		heldSpace: () => editableSurface.heldSpace
-	});
-
-	// The same placement rules the keydown dispatch uses, for the one insertion it cannot reach.
-	const compositionSeat = createCompositionSeat({
-		getDisplayText: () => trimTrailingLineEnding(node.raw),
-		getInlines: () => resolvedInlineContent(node, reading),
-		reading,
-		offsetFor: typedPlacement.offsetFor,
-		consumePendingMarks: caretMemory.pendingMarks.consume,
-		restorePendingMarks: caretMemory.pendingMarks.restore
+		heldSpace: () => editableSurface.heldSpace,
+		insideCloser: () => editableSurface.insideCloser
 	});
 
 	const editableSurface = createEditableSurface({
@@ -237,7 +228,6 @@
 		getTextLen: () => (el ? containerDomTextLength(el) : 0),
 		stepEdge: edgeStep.step,
 		readText: () => readCellText(),
-		compositionSeat,
 		placement: typedPlacement,
 		getInlines: () => resolvedInlineContent(node, reading),
 		handleKeydown: onKeyDown,
@@ -287,6 +277,7 @@
 		drafts,
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
+		textMoves,
 		get reading() {
 			return reading;
 		}
@@ -342,8 +333,8 @@
 				: undefined;
 		},
 		isReading: () => readOnly,
-		pendingMarks: caretMemory.pendingMarks,
-		offsetFor: typedPlacement.offsetFor,
+		insideCloser: () => editableSurface.insideCloser,
+		pendingMarks: editableSurface.pendingMarks,
 		caretWriter
 	});
 
@@ -405,7 +396,7 @@
 		// waits for the next insertion instead (live-mode.md § 4.3).
 		if (reading.hidesDelimitersAtCaret() && offsets.start === offsets.end) {
 			controller.flushDebouncedCheckpoint();
-			caretMemory.pendingMarks.toggle(format);
+			editableSurface.pendingMarks.toggle(format);
 			return true;
 		}
 		// A cell has no markers of its own, so the whole read is content, taken from the DOM text
@@ -465,7 +456,11 @@
 				enterLinkCardAtCaret({
 					...linkCardQuery(contentEl, null),
 					card: linkCard,
-					enterWidget: widgetInteraction.enterWidget
+					enterWidget: widgetInteraction.enterWidget,
+					placeCaretInText: (offset) => {
+						cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
+						editableSurface.insideCloser.open(offset);
+					}
 				});
 		}
 		const axisCommand = tableAxisCommand(id);

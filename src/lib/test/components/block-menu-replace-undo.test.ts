@@ -3,7 +3,7 @@
 // bytes are no keystroke's.
 // Miss-analysis: every menu test picked a row on an untouched document, never inside a burst.
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root-menus.js';
+import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root/menus.js';
 import { serialize } from '#lib/core/serializer.js';
 import { replaceBlockRaw } from '#lib/editor-actions/block-edit-core.js';
 import { createHistoryActions } from '#lib/editor-actions/commit/history.js';

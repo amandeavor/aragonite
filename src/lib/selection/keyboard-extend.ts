@@ -45,7 +45,7 @@ function enterCrossBlockFromKeyboard(
 		offset: anchorPoint.offset
 	});
 	// A collapsed caret stays in the focus block, or Chromium sends clipboard events to <body>;
-	// an endpoint with no text position gets none, and `editor-root-clipboard.ts` covers it.
+	// an endpoint with no text position gets none, and `editor-root/clipboard.ts` covers it.
 	applyCollapsedCaret(writer, currentBlockEl, anchorPoint);
 	return true;
 }

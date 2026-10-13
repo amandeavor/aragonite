@@ -53,7 +53,7 @@ The library is `src/lib/`; `src/routes/test/editor` is the dev harness. Inside `
 
 | Directory                                                                  | What's in it                                                                                                                                                                                                                                                                                      |
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `components/`                                                              | the Svelte components (Editor, BlockList, BlockHost, and one per block kind), plus the `editor-root-*.ts` modules Editor's wiring is split into (keys, clipboard, focus, scrolling) and a few plain helpers they share                                                                            |
+| `components/`                                                              | the Svelte components (Editor, BlockList, BlockHost, and one per block kind), plus the `editor-root/` modules Editor's wiring is split into (keys, clipboard, focus, scrolling) and a few plain helpers                                                                                           |
 | `components/menu/`                                                         | the menu surface every block shares: the block menu, the icons, the flyout placement, and the default context actions                                                                                                                                                                             |
 | `editor-actions/`                                                          | what a block asks the editor to do for it (split, merge, paste), and the versions of those a container substitutes for its children, plus the document version every write bumps                                                                                                                  |
 | `tree-operations/`                                                         | functions that change the tree (paste, list, blockquote, the primitives), plus the copy-on-write sharing (`sharing.ts`) that lets undo snapshots share nodes with the live tree. Most are pure; the paste routes and the list item moves (`list/item-moves.ts`) run their own commit              |
@@ -180,14 +180,6 @@ Note,
 
 1. Fill the form in honestly: what you saw, how to make it happen, and which version, browser and mode.
 2. Yes, I see the open count. The issues, in this repo, partly acts as a to-watch ledger; `severity: watch` tracks observed signals with no confirmed defect, those and `severity: minor` stay open - i believe knowing of their existence is relatively more improtant than recklessly tidying them away.
-
-## The paperwork
-
-Before your first pull request, sign the contributor license agreement, [`CLA.md`](CLA.md). It's a comment on the pull request, the bot tells you the exact sentence, and it covers every pr after.
-
-Basically, the implications of the cla is that you keep your copyright, your code stays open source forever, and voithos-labs gets to license the project as a whole under other terms too. That last bit is for [limestone](https://github.com/voithos-labs/limestone), the app this editor came out of; it's under FSL-1.1-Apache-2.0, and the AGPL won't let it carry your code without your say-so.
-
-I do recommend you to read the whole thing anyway; it's a page.
 
 ## Two ton slab of stone
 

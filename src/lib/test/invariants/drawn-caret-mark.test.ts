@@ -20,7 +20,7 @@ function page(marked: boolean) {
 const MARKS: Array<[string, DrawnCaretTarget]> = [
 	['a text caret', { state: 'text', rect: RECT }],
 	['a widget edge', { state: 'widget', rect: { ...RECT, width: 1.5 } }],
-	['a pointer-down beside a widget, which draws no bar', { state: 'widget', rect: null }],
+	['a press the click will move the caret from, which draws no bar', { state: 'pressed' }],
 	['a gap caret', { state: 'gap' }]
 ];
 

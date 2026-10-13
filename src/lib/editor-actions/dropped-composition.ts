@@ -1,7 +1,8 @@
 /**
- * How a holder of a composing flag hears that the browser dropped a composition without a
- * `compositionend`. Every holder asks on every signal it reads the flag at (a key, a beforeinput,
- * an input, a new compositionstart), or a dropped composition leaves it refusing every later edit.
+ * How a holder of a composing flag keeps it in step with the browser: a composition the browser
+ * dropped without a `compositionend`, and one it runs here though the start went elsewhere. Every
+ * holder asks about a drop on every signal it reads the flag at (a key, a beforeinput, an input, a
+ * new compositionstart) and about an opening at each beforeinput, or the two drift apart.
  */
 
 import { devWarn } from '../dev-warn';
@@ -19,6 +20,12 @@ export function reportDroppedComposition(signal: CompositionSignal, open: boolea
 		`a ${name} arrived outside the open composition with no compositionend, so the browser dropped it; the editor ended it here`
 	);
 	return true;
+}
+
+/** Whether `event` is a composed run with no composition open here: a range across blocks claimed
+ *  the start, and this holder has the caret its removal left, so it opens the composition first. */
+export function opensComposition(event: InputEvent, open: boolean): boolean {
+	return !open && event.isComposing && event.inputType === 'insertCompositionText';
 }
 
 function sentOutsideComposition(signal: CompositionSignal): boolean {

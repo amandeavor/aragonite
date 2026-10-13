@@ -24,8 +24,9 @@ is driven directly against a controlled fixture.
   two halves join around the pasted text (`alCLIPta`). Miss-analysis: the fixture's
   third block is the clipboard text itself, so checking that the source holds `CLIP`
   passed even when the gesture pressed Delete and pasted nothing.
-- an IME composition over the range replaces the covered text with the composed text,
-  and one Ctrl+Z brings the source back
+- an IME composition over a range drawn upward, so the caret starts in the block the removal
+  takes, replaces the covered text with the composed text (`かんta`), and one Ctrl+Z brings the
+  source back
 
 ## Error cases
 

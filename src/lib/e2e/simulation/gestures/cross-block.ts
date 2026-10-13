@@ -104,8 +104,8 @@ export function pasteOverSelection(ctx: SimContext): Promise<void> {
 	return destroyThenSweep(ctx, () => ctx.page.keyboard.press('ControlOrMeta+v'), 'paste-over');
 }
 
-/** The range goes as the composition starts, and the IME writes into the block holding the
- *  caret. Draw the range downward: one drawn upward holds its caret in a block the removal takes. */
+/** The range goes as the composition starts, and the IME composes in the block the removal kept,
+ *  wherever the range's caret sat. */
 export function composeOverSelection(ctx: SimContext, text: string): Promise<void> {
 	const ime = ctx.ime;
 	if (!ime) throw new Error(`[${ctx.label}] IME gesture ran without a threaded CDP driver`);

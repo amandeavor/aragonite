@@ -3,7 +3,7 @@
  * unguarded and re-registers cleanly after a schema reset.
  */
 
-import { definePluginBlock, type EditorPlugin } from '#lib/plugin.js';
+import { definePluginBlock, registerInsertEntry, type EditorPlugin } from '#lib/plugin.js';
 import { registerDetailsKind, DETAILS } from './details-kind';
 import DetailsBlock from './DetailsBlock.svelte';
 
@@ -12,6 +12,15 @@ export function detailsPlugin(): EditorPlugin {
 		name: 'details',
 		kind: DETAILS,
 		component: DetailsBlock,
-		register: registerDetailsKind
+		register() {
+			registerDetailsKind();
+			registerInsertEntry({
+				id: 'details',
+				label: 'Details',
+				icon: 'chevron-right',
+				keywords: ['toggle', 'collapsible', 'disclosure', 'summary', 'expand'],
+				markdown: '<details>\n<summary></summary>\n\n</details>\n'
+			});
+		}
 	});
 }

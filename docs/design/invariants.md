@@ -193,7 +193,7 @@ These checks run in three kinds of place:
   quiet. Registry completeness (G1.2) checks built-ins only, since a plugin's component may register
   on its own schedule.
 - **Its own machinery**: the guard fires inside the code it protects. One exception: G1.33 fires in
-  the editor root's focus handler (`components/editor-root-focus.ts`), above every caret entry, so a
+  the editor root's focus handler (`components/editor-root/focus.ts`), above every caret entry, so a
   consumer's own caret component inherits it.
 
 | ID    | What stays true                                                                            | Codes   |
@@ -224,7 +224,7 @@ These checks run in three kinds of place:
 | G1.24 | A kind's closure block agrees with the rest of its descriptor                              | A·N     |
 | G1.25 | Widget-pool acquires happen only inside an open render pass                                | A·N     |
 | G1.26 | A fold implies an active reveal, and an open reveal blocks command mutation                | A·N     |
-| G1.27 | `compositionend` lands only inside a composition the surface saw start                     | A·N     |
+| G1.27 | `compositionend` lands only inside a composition the surface opened                        | A·N     |
 | G1.28 | A code block's render and a painted leaf source carry the block's bytes exactly            | A·N     |
 | G1.29 | A selection endpoint's offset means what its own block's coordinate space says             | A·N     |
 | G1.30 | Every registered kind declares a `mergeRole` from the known set                            | A·N     |
@@ -429,11 +429,12 @@ closures in `components/blocks/text/widget-interaction.ts` (the fold halves) and
 `checkRevealSourceLength` (`inline-transitions.ts`) at `caret/reveal-source.ts` ·
 `test/blocks/text/widget-reveal-transitions.test.ts`.
 
-**G1.27 · Composition window.** `compositionend` lands only inside a composition the surface saw
-start. An unpaired end means `compositionend` was wired without `compositionstart`, and every
+**G1.27 · Composition window.** `compositionend` lands only inside a composition the surface
+opened, at its start or, when a range across blocks was live at the start, at its first composed
+character. An unpaired end means `compositionend` was wired without `compositionstart`, and every
 composed keystroke committed mid-IME. Predicate `checkCompositionEndPaired`
-(`inline-transitions.ts`) · run in `components/blocks/editable-surface.ts :: onCompositionEnd` ·
-`inline-transitions.test.ts`, `test/blocks/editable-surface-composition.test.ts`.
+(`inline-transitions.ts`) · run in `components/blocks/editable/editable-surface.ts :: onCompositionEnd` ·
+`inline-transitions.test.ts`, `test/blocks/editable/editable-surface-composition.test.ts`.
 
 **G1.28 · Rendered text fidelity.** A code block's rendered fragment carries the block's bytes
 exactly (`textContent === trimTrailingLineEnding(raw)`), because the body goes through
@@ -442,7 +443,7 @@ back on the next keystroke. A painted editable-leaf source is held to the same e
 plugin painted it, since the fold commits `textContent` on blur. Predicate
 `checkRenderedTextFidelity` (`render-fidelity.ts`) · run in
 `components/blocks/code/code-renderer.ts :: renderCodeBlock` and
-`components/blocks/editable-leaf.ts :: paintSource` · `render-fidelity.test.ts`,
+`components/blocks/editable/editable-leaf.ts :: paintSource` · `render-fidelity.test.ts`,
 `test/blocks/editable-leaf-painted-fidelity.test.ts`.
 
 **G1.29 · Selection endpoint coordinates.** An endpoint's offset means what its own block's
@@ -485,7 +486,7 @@ engine picks (a typed `#` once came back as `a#`). Built-ins hold by constructio
 over no content paints; `docs/design/live-mode.md` § 4.1), so this is for a plugin surface building
 its own marker chrome. It fires from the editor root's `focusin`, once per focus arrival, so a caret
 component a consumer owns inherits it; reading mode is out of scope. Predicate `checkLandableCaret`
-(`landable-caret.ts`) · `components/editor-root-focus.ts` · `landable-caret.test.ts`,
+(`landable-caret.ts`) · `components/editor-root/focus.ts` · `landable-caret.test.ts`,
 `landable-caret-doors.test.ts`.
 
 **G1.34 · Retired.** The rule was: the index a split's caret lands on is the one `splitNode`
@@ -648,12 +649,13 @@ armed). Predicate `invariants/top-level-untouched.ts :: checkTopLevelUntouched` 
 **G1.55 · A rebuilt container reads back as itself** (`reads-back`). After a keystroke's rebuild
 and after every commit, dev parses each top-level container the edit wrote in, on its own, and
 compares the shape (kinds, child counts, metadata) with the tree's; a dropped leading space that
-re-nests a list passes every byte check and fails this one. The edit names those containers itself,
-so the check never searches the document. It skips a container over 16K characters, an empty one,
-and anything the perf instruments time; the empty-container skip hides a bullet a range delete
-emptied, an open defect. Predicate `invariants/reads-back.ts :: checkReadsBack` · run by
-`editor-actions/leaf-write.ts` and `editor-actions/commit/undo-controller.ts` ·
-`test/invariants/reads-back.test.ts`.
+re-nests a list passes every byte check and fails this one. It reads the bytes the way the editor
+opens a file (`schema/opened-reading.ts :: readAsOpened`), so a bare `- ` reads back with
+the empty paragraph you type into, and a container left with no bytes at all fails, since a reload
+wouldn't show it. The edit names those containers itself, so the check never searches the document.
+It skips a container over 16K characters and anything the perf instruments time. Predicate
+`invariants/reads-back.ts :: checkReadsBack` · run by `editor-actions/leaf-write.ts` and
+`editor-actions/commit/undo-controller.ts` · `test/invariants/reads-back.test.ts`.
 
 **G1.58 · An indent key over a range keeps every word, in order** (`range-indent-keeps-text`). Tab,
 Shift+Tab or a rebound indent key over a range moves list items, shifts code lines, or does what a
@@ -703,8 +705,8 @@ e2e run through the invariant watcher, and `e2e/tests/caret/drawn-caret.spec.ts`
 **G1.77 · One caret showing** (`one-caret-showing`). After every paint, the `data-caret-drawn`
 attribute (which hides the browser's caret) sits on exactly the editable the bar draws for, and on
 none while the bar draws nothing, so the page never shows two carets or none. The one exception is
-a pointer-down beside a widget, where the attribute goes on before the click draws the bar, since
-the browser's caret flashes taller there. An attribute, since Svelte rewrites an editable's whole
+a press whose click will move the caret (beside a widget, inside a marker prefix), where the
+attribute goes on before the click draws the bar, so the browser's caret doesn't paint the spot. An attribute, since Svelte rewrites an editable's whole
 class list when its kind changes. Predicate
 `invariants/drawn-caret.ts :: checkOneCaretShowing` · run after each paint in
 `caret/drawn-caret.svelte.ts` · `e2e/tests/caret/drawn-caret.spec.ts` (`caretsShowing`, one caret in
@@ -885,11 +887,12 @@ calls `forget`, which drops all three. There's no method that forgets one alone,
 column and leaving the side behind doesn't compile. Retired: G4.31's reset half and G2.10's
 capture-without-reset pairing.
 
-**G3.10 · Coherent registration pairs.** `BlockKindRegistration` is one of two shapes: a block
-focused as one unit (`blockFocus: 'whole-block'`, so `supportsInline: false`, no `contentStart` and
-no title row), or a block the caret enters. A content range and its Backspace behavior register
-together as `contentStart`, and a container with a title row declares only its middle-child unwrap
-strategy. `augmentBlockKind` takes none of these fields.
+**G3.10 · Coherent registration pairs.** `BlockKindRegistration` is a block focused as one unit
+(`blockFocus: 'whole-block'`, so `supportsInline: false`, no `contentStart` and no title row), or a
+block the caret enters: a leaf, or a container, which never declares inline content since its
+children hold its text. A content range and its Backspace behavior register together as
+`contentStart`, and a container with a title row declares only its middle-child unwrap strategy.
+`augmentBlockKind` takes none of these fields.
 
 A cast or a plain JavaScript plugin never meets the types, so both calls throw at runtime too:
 `registerBlockKind` checks each pair against
@@ -947,7 +950,7 @@ unguarded.
 | G4.28  | A leaf raw write outside the content write names the kind's rule                          | L       |
 | G4.29  | Every file claiming a hardcoded chord is manifested with its chords and keys              | L       |
 | G4.30  | Hidden-marker classification has one rule, applied in both spaces                         | L       |
-| G4.31  | The pending marks are spent only where typed or composed text is written                  | L       |
+| G4.31  | _Retired upward_: pending marks are a record only the block's write spends                | T       |
 | G4.32  | Every non-render inline read goes through `resolvedInlineContent`                         | L       |
 | G4.33  | Live-mode byte candidates verify against what actually paints                             | L       |
 | G4.34  | Link bytes are written only through the one link byte module                              | L       |
@@ -999,7 +1002,7 @@ unguarded.
 | G4.80  | In `selection/`, only the range coverage and the caret walks ask if a container is closed | L       |
 | G4.81  | The cross-block table row snap runs in the range coverage and the stored pair only        | L       |
 | G4.82  | The task-marker rule runs in one wrapper, and its callers are declared                    | L       |
-| G4.83  | Every plain fragment read in the edit layers says why it needs no slot reader             | L       |
+| G4.83  | Every plain read of bytes into blocks outside the parser and test kits names its kind     | L       |
 | G4.84  | Where a leaf's bytes are stored is made in one place, from the tree                       | L       |
 | G4.85  | A live rewrite that removes bytes reads its candidate where it will be stored             | L       |
 | G4.86  | A list item's marker is read only where the list is built, drawn or dumped                | L       |
@@ -1046,6 +1049,11 @@ unguarded.
 | G4.149 | A preview of the next insertion runs a write's own spend, and changes no record           | harness |
 | G4.150 | One placer for a hidden edge: no other file reads the caret's side or how it arrived      | L       |
 | G4.151 | One click-side check, called from the click entry both prose blocks share                 | L       |
+| G4.152 | Every rendered link has an Edit link target, and only the root click follows one          | T·L     |
+| G4.155 | Every composing-flag holder asks both composition questions: a drop, and an opening       | L       |
+| G4.157 | Every block kind a bundled plugin installs has an insert entry, or says why it has none   | harness |
+| G4.159 | An emptied quote, list item or bundled strip container keeps bytes that reload as it      | harness |
+| G4.165 | A write that moves text without resizing its block reports it, so its overlays measure    | L       |
 
 ### The entries
 
@@ -1066,7 +1074,7 @@ containers).
 **G4.4 · No timing hacks.** No timing primitive is used for sequencing (`await tick()` is the one).
 The allowlist in `lint/file-rules.test.ts` is short and closed, each entry with its reason: the rAF
 throttles in `selection/autoscroll.ts` and `selection/pointer-session.ts`, the rAF fold in
-`components/blocks/editable-leaf.ts`, the rAF placement in `components/drag-handle.ts`, the rAF
+`components/blocks/editable/editable-leaf.ts`, the rAF placement in `components/drag-handle.ts`, the rAF
 start of a size watch in `windowing/observe-resize.ts`, the drawn caret's frame paint in
 `caret/drawn-caret.svelte.ts` (read-only, G4.143), the wall-clock undo debounce in
 `editor-actions/commit/text-batch.ts` and the occurrence plugin's typing pause in
@@ -1242,10 +1250,11 @@ different question, and every file naming a marker class in code is manifested w
 runtime backstop is the dev probe in `invariants/marker-css-parity.ts`, which compares
 `getComputedStyle` with the predicate once per mode change. `lint/manifest-rules.test.ts`.
 
-**G4.31 · Pending marks are spent by a write.** The pending marks (a format toggled at a collapsed
-caret, waiting to wrap the next typed character) are spent only where typed or composed text is
-written: the edge-policy dispatch's typed-byte handler and the two prose surfaces' composition
-writes. A spend anywhere else drops the format with nothing written. `lint/file-rules.test.ts`.
+**G4.31 · Retired upward.** The rule was: the pending marks (a format toggled at a collapsed caret,
+waiting for the next insertion) are spent only where typed or composed text is written. They're one
+of the caret memory's insertion records now (`caret/pending-marks.ts`), so the block's write, which
+every insertion route goes through, is the only thing that spends them, and there's no method left
+that reads and clears them. A spend anywhere else doesn't compile.
 
 **G4.32 · Inline-cache one spelling.** Every non-render consumer reads the inline tree through
 `resolvedInlineContent`, so the resolver and the signature travel together; dropping the signature
@@ -1598,12 +1607,18 @@ survivor wrap their write, and the rest say why they need no wrapper (a table ce
 item). A file listed as wrapping must call the wrapper. `lint/leaf-write-doors.test.ts` (the G4.82
 and G4.82b rows), with G1.42 as the runtime half.
 
-**G4.83 · Every plain fragment read says why.** Bytes written into a child slot are read the way a
+**G4.83 · Every plain read says why.** Nodes built from bytes reach the tree the way a reload
+builds them, through `schema/opened-reading.ts :: readAsOpened`, which gives every container that
+must hold a child an empty paragraph; `schema/container-raw.ts :: parseContainerRaw`, a container's
+re-read of its own bytes, goes through it too. Bytes written into a child slot are read the way a
 reload reads them there, through `tree-operations/list/task-paragraph.ts :: fragmentReaderAt` (in a
 list item's first slot, behind its whole marker line), or `slotReaderAt` and `childSlotAt` for a
-caller holding only a path. A plain `readBlocks` left in `tree-operations/`, `selection/` or
-`editor-actions/` is listed in the manifest with its reason (a probe that installs nothing, the
-paste's re-read of a clipboard block). `lint/manifest-rules.test.ts`.
+caller holding only a path. Those read plain, so a caller that installs what they read fills in at
+the splice. Any plain reader (`readBlocks`, `parse`, `parseTaskItemBody` or a slot reader) outside
+`core/` and `testing/` is listed in the manifest under one of four kinds: a probe that installs
+nothing, a read whose file fills in before it installs, the opened reading itself, or a read handed
+to a route that fills in at the splice. A file declared as installing must call the fill-in itself.
+`lint/manifest-rules.test.ts`.
 
 **G4.84 · One place says where a leaf's bytes are stored.** A `StoredAs`
 (`src/lib/schema/stored-as.ts`) answers four things about a position: block or plain text (a table
@@ -1720,7 +1735,7 @@ without it; `e2e/tests/plugins/view-swap-end-scroll.spec.ts` drives the swaps (V
 
 **G4.100 · A block's own line ending.** When a block's editable element writes its own text, it
 hands the list the new text plus the ending the block already had, so a document saved without a
-final break keeps none. That lives in `components/blocks/surface-write.ts` (`writeText`, and
+final break keeps none. That lives in `components/blocks/editable/surface-write.ts` (`writeText`, and
 `withOwnEnding` for routes not on it yet). New text takes the block's own ending, else the
 document's, picked today in two places: a typed or completed line break reads the getter
 `editable-surface.ts :: lineEnding`, and the code block's dissolve (`code-context-actions.ts :: run`).
@@ -1731,7 +1746,7 @@ anywhere but a typed line break or a check that writes nothing.
 **G4.101 · A typed write asks for itself.** The kind cue and the on-type completer answer typing,
 never a command, a paste or a repair. Only `surface-write.ts :: writeText` asks them, for a write with
 the `typed` intent. `lint/file-rules.test.ts` fails an `afterTypedWrite` or `completeLineOnType` call
-under `components/` or `selection/` anywhere else, and `blocks/surface-write-intent.test.ts` checks
+under `components/` or `selection/` anywhere else, and `blocks/editable/surface-write-intent.test.ts` checks
 which intents ask.
 
 **G4.106 · Retired upward.** The rule was: a spec reloads the editor's own text through
@@ -1763,7 +1778,7 @@ rebuild respells every line. `lint/fresh-container-bytes.test.ts` fails an objec
 list of builders of genuinely new containers.
 
 **G4.111 · One write for a block's own text.** A block's editable element changes its own text
-through `components/blocks/surface-write.ts :: writeText`, which gives undo the caret from before the
+through `components/blocks/editable/surface-write.ts :: writeText`, which gives undo the caret from before the
 key, keeps the line ending, and puts the caret back. `lint/call-site-rules.test.ts` fails an
 `updateBlockContent` call under `components/`, `selection/` or a plugin's code (`src/lib/plugins/`,
 `src/routes/test/plugins/`) elsewhere, except the few listed by function that are still to move.
@@ -1792,7 +1807,7 @@ cell run outside `src/lib/selection/` (`rootHolding`, `coveredRootHolding`, the 
 **G4.115 · A cut writes its copy's payload.** Each kind of selection a block can copy has one
 `ClipboardArm`, written where that selection lives (each block's clipboard code, and
 `selection/cross-block/clipboard.ts` for a cross-block range); the shared parts are in
-`components/blocks/clipboard-step.ts`. `runClipboardCut` runs the arm's own copy before anything
+`components/blocks/editable/clipboard-step.ts`. `runClipboardCut` runs the arm's own copy before anything
 waits, then its removal, so a cut can't write different bytes from a copy; there's no cut payload
 type, and an `async` copy doesn't type-check. `lint/call-site-rules.test.ts` fails a `.setData(` call
 in production code outside those copy functions, `clipboard-step.ts :: writeShownSelection` (the
@@ -1955,6 +1970,46 @@ start past a line's end, or the side of a code chip's border) is called only fro
 `widget-interaction.ts :: snapClickToWidgetEdge`, the click entry both prose blocks' `onClick` go
 through, and neither `onClick` measures the press against its text itself.
 `lint/edge-rule-guards.test.ts`.
+
+**G4.152 · Everything a click follows can be edited.** Following and Edit link read one answer,
+`components/blocks/text/link-at-point.ts :: clickFollowsAt`: a construct whose policy row declares
+`followEdit` (`followedConstructAt`), or a widget whose kind claims the activation click.
+`test/blocks/text/follow-edit-parity.test.ts` renders a sample of every built-in inline kind (its
+table typed over the kind union) plus the other link shapes, and every `a[href]` in the result must
+resolve to such a construct with an edit target in live mode. `lint/file-rules.test.ts` holds the
+route half: following a link (`window.open`, `activateLink`, a `closest('a[href]')` lookup) happens
+only in the root click, `components/editor-root/gestures.ts`, which asks `clickFollowsAt` first.
+
+**G4.155 · Every composing-flag holder asks both composition questions.** A holder of a composing
+flag (the editable surface, the caret host) asks `editor-actions/dropped-composition.ts` whether the
+browser dropped its composition (`reportDroppedComposition`) and whether a composed run opens one
+there (`opensComposition`). A range across blocks claims a composition's start, so the block its
+removal leaves the caret in, a rule's hidden host included, only ever sees the runs. The guard knows a holder by its call to `reportDroppedComposition`, so a new holder asks that one too.
+`lint/composition-holders.test.ts`.
+
+**G4.157 · Every bundled block kind can be inserted.** `test/plugins/insertable-kinds.test.ts`
+installs every plugin under `src/lib/plugins/` from its zero-argument factory and reads the kinds
+they register: each one is in the tree some insert entry's Markdown parses to (a title row comes
+with its container), or is listed with why no entry makes it. A listed kind that's gone or has
+gained an entry fails too.
+
+**G4.159 · An emptied container keeps its opening line.** Each container kind (bullet, ordered and
+task item, quote, nested pairs of them, footnote definition, alert, admonition) has its last text
+deleted at the very end of the document, through the text write and through the ancestry rebuild,
+and the bytes must reload as the empty container the editor still shows: `- `, `>`, `[^1]: `.
+`test/schema/emptied-body-bytes.test.ts`.
+
+**G4.165 · Text that moves inside an unresized block is reported.** A mark or selection overlay is
+measured against the text under it, and a resize observer can't see that text slide sideways
+inside a box that keeps its size. Showing or hiding markers is the usual cause. Every write of the
+marker hooks (`data-focused` on a host, the reveal class on a marker span, the mode and theme
+attributes on the root) reports it to `components/overlays/text-moves.ts :: createTextMoves`, and
+so does an inline widget swapping to its source and back, and focus entering or leaving a block
+that holds only markers (a `:focus-within` rule shows them). The overlays over that text then
+measure again a tick later. Image and font loads report there too. `lint/file-rules.test.ts`
+fails a file that writes one of those hooks without being on its list, each entry saying how it
+reports. The scan reads DOM writes, so the widget swap and the bare-marker focus are held by their
+rows in `e2e/tests/decorations/mark-overlay-follows-text.spec.ts` instead.
 
 ## Accessibility
 

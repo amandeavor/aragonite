@@ -71,6 +71,12 @@ export function markerPrefixLength(container: ParentNode): number {
 	return markerPrefixOf(container)?.textContent?.length ?? 0;
 }
 
+/** Whether a live `(node, offset)` position in `container` lies inside its marker prefix, where a
+ *  caret never stays. */
+export function isInMarkerPrefix(container: HTMLElement, node: Node, offset: number): boolean {
+	return domTextOffsetAtNode(container, node, offset) < markerPrefixLength(container);
+}
+
 /** The raw offset of a live `(node, offset)` DOM position in `el`; a position inside the marker
  *  prefix reads as raw 0. */
 export function rawOffsetAt(el: HTMLElement, node: Node, offset: number): RawOffset {
@@ -660,7 +666,7 @@ export function landableDomTextBounds(container: ParentNode): {
 	}
 	// The browser puts no caret after the last text's final `\n`, so an end check reading that
 	// position would never fire; a caret anchor paints the line and keeps the position.
-	if (lastText?.textContent?.endsWith('\n') && !followedByCaretAnchor(lastText, container)) {
+	if (lastText?.textContent?.endsWith('\n') && !caretAnchorAfter(lastText, container)) {
 		end -= 1;
 	}
 	return { start: asDomTextOffset(start), end: asDomTextOffset(Math.max(start, end)) };
@@ -674,17 +680,18 @@ export function createCaretAnchor(role: '' | 'closer' | 'break' = ''): HTMLBREle
 	return anchor;
 }
 
-/** Whether the next painted node after `text`, at any depth above it, is a caret anchor. */
-function followedByCaretAnchor(text: Node, root: ParentNode): boolean {
+/** The next painted node after `text`, at any depth above it, when it is a caret anchor. */
+export function caretAnchorAfter(text: Node, root: ParentNode): HTMLElement | null {
 	for (let node: Node | null = text; node && node !== root; node = node.parentNode) {
 		let next = node.nextSibling;
 		while (next?.nodeType === Node.TEXT_NODE && (next.textContent?.length ?? 0) === 0) {
 			next = next.nextSibling;
 		}
-		if (next)
-			return next instanceof HTMLElement && next.tagName === 'BR' && 'caretAnchor' in next.dataset;
+		if (!next) continue;
+		if (!(next instanceof HTMLElement)) return null;
+		return next.tagName === 'BR' && 'caretAnchor' in next.dataset ? next : null;
 	}
-	return false;
+	return null;
 }
 
 /** The container's bytes outside its markers, whatever the mode paints. An empty fence body answers

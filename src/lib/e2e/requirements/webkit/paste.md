@@ -10,7 +10,7 @@ event whichever browser fired it, and its copy handlers write bytes the same pat
 What they do not prove, both pinned in the Chromium clipboard suite: the chord, since a dispatched
 paste event skips WebKit's own Ctrl/Cmd+V key handling; and the editor root's fallback handler,
 since the dispatch targets `document.activeElement`, which makes `landedNowhere` false and leaves
-that handler (`components/editor-root-clipboard.ts`) out of reach here.
+that handler (`components/editor-root/clipboard.ts`) out of reach here.
 
 ## Happy paths
 

@@ -28,7 +28,7 @@ import {
 } from '#lib/caret/widget-offset.js';
 import { asRawOffset, type RawOffset } from '#lib/caret/coordinate-spaces.js';
 import { createEdgePolicyDispatch } from '#lib/components/blocks/text/edge-policy-dispatch.js';
-import { createSurfaceWrite } from '#lib/components/blocks/surface-write.js';
+import { createSurfaceWrite } from '#lib/components/blocks/editable/surface-write.js';
 import { keepsKindAt } from '#lib/core/inline/live-edit/read-back.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
 import { resolveDelimiterAutoPair } from '#lib/components/blocks/text/delimiter-autopair.js';
@@ -52,7 +52,7 @@ import {
 	containerBundleOver,
 	makeEditorActionsDeps,
 	makeNestedHarness,
-	makePendingMarks
+	recordingPendingMarks
 } from '#lib/test/harness/editor-actions.js';
 import { proseLeaves, type ProseLeaf } from './live-screen-reading';
 import { fixtureReading, renderOptions } from '../harness/fixture-grammar';
@@ -380,7 +380,8 @@ async function pressEdgeKey(
 		getNode: node,
 		reading: fixtureReading(),
 		caretMemory: { side: () => gesture.affinity, noteOutside: () => {} },
-		heldSpace: () => ({ at: () => null, inside: () => null, passCloser: () => false })
+		heldSpace: () => ({ at: () => null, inside: () => null, passCloser: () => false }),
+		insideCloser: () => ({ at: () => null, open: () => {} })
 	});
 	// The block anchors a key's write at the caret it recorded when the key arrived.
 	const writeText = createSurfaceWrite({
@@ -395,6 +396,7 @@ async function pressEdgeKey(
 	});
 	const dispatch = createEdgePolicyDispatch({
 		caretWriter: testCaretWriter,
+		insideCloser: () => ({ at: () => null, open: () => {} }),
 		get node() {
 			return nodeAt(h.doc, leaf.path) as CstNode;
 		},
@@ -417,8 +419,7 @@ async function pressEdgeKey(
 		isRevealing: () => false,
 		enterWidget: () => {},
 		isReading: () => false,
-		pendingMarks: makePendingMarks(),
-		offsetFor: placement.offsetFor
+		pendingMarks: recordingPendingMarks()
 	});
 	const event = new KeyboardEvent('keydown', { key, cancelable: true });
 	if (dispatch.handleKeydown(event, asRawOffset(offset) as RawOffset)) return true;

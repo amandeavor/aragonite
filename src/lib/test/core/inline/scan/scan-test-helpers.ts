@@ -142,6 +142,11 @@ export function autolinkNode(start: number, end: number, url: string): InlineNod
 	return { kind: 'autolink', start, end, url };
 }
 
+/** An autolink written inside `<` and `>`. */
+export function angleAutolinkNode(start: number, end: number, url: string): InlineNode {
+	return { ...autolinkNode(start, end, url), angle: true };
+}
+
 export function rawHtmlNode(start: number, end: number): InlineNode {
 	return { kind: 'rawHtml', start, end };
 }
