@@ -2500,6 +2500,44 @@ const FOLLOW_ROUTE: FileRule = {
 	]
 };
 
+// ── G4.165 a write that moves text without resizing its block reports it ────
+
+const FOCUS_ATTRIBUTION = `${SOURCE_DIR.components}editor-root/focus.ts`;
+const CONSTRUCT_REVEAL = `${SOURCE_DIR.textBlock}construct-reveal.ts`;
+
+const TEXT_MOVES: FileRule = {
+	id: 'G4.165 every write of a marker-visibility hook reports the moved text',
+	matches:
+		/\b(?:set|remove|toggle)Attribute\(\s*['"`]data-(?:focused|presentation|editor-theme)['"`]|\bclassList\.(?:add|remove|toggle)\(\s*(?:CONSTRUCT_REVEAL_CLASS\b|['"`]md-construct-reveal['"`])|\bdata-(?:presentation|editor-theme)=\{/,
+	allowed: {
+		[FOCUS_ATTRIBUTION]:
+			'moves `data-focused` between hosts and reports both through `textMoves.movedWithin`',
+		[CONSTRUCT_REVEAL]:
+			'toggles the reveal class on marker spans and reports the block through `textMoves.movedWithin`',
+		[`${SOURCE_DIR.components}Editor.svelte`]:
+			'renders the mode and theme attributes; `afterFlip` (`editor-root/mode-flip.ts`) and the theme effect report every block through `textMoves.movedEverywhere`',
+		[`${SOURCE_DIR.library}invariants/marker-css-parity.ts`]:
+			'marks a probe host it mounts offscreen and removes, which no overlay watches'
+	},
+	reaches: [FOCUS_ATTRIBUTION, CONSTRUCT_REVEAL],
+	reason:
+		'showing or hiding markers moves the text inside a block whose box keeps its size, which no resize observer sees: report the change through `textMoves` (`components/overlays/text-moves.ts`) so the overlays over that text measure again, then allow the file here',
+	hits: [
+		at(`${SOURCE_DIR.blocks}x.ts`, "host.setAttribute('data-focused', '');"),
+		at(`${SOURCE_DIR.textBlock}x.ts`, 'span.classList.toggle(CONSTRUCT_REVEAL_CLASS, on);'),
+		at(`${SOURCE_DIR.plugins}x/x.ts`, "el.classList.add('md-construct-reveal');"),
+		at(`${SOURCE_DIR.components}X.svelte`, '<div data-presentation={mode}>')
+	],
+	misses: [
+		at(
+			`${SOURCE_DIR.caret}x.ts`,
+			'const revealed = el.classList.contains(CONSTRUCT_REVEAL_CLASS);'
+		),
+		at(`${SOURCE_DIR.components}x.ts`, "root.closest('[data-presentation]');"),
+		at(`${SOURCE_DIR.components}x.ts`, "const mode = root.getAttribute('data-presentation');")
+	]
+};
+
 const SOURCES = collectEditorSources();
 describeFileRules(
 	[
@@ -2510,6 +2548,7 @@ describeFileRules(
 		PIECES_UNDER_ORDER_CHECK,
 		WIDGET_LIST,
 		FOLLOW_ROUTE,
+		TEXT_MOVES,
 		...CODE_EDIT_SPAN,
 		...SYNTAX_MODULES
 	],

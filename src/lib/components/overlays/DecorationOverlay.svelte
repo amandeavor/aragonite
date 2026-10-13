@@ -69,7 +69,8 @@
 				? eng.marksForDescendants(path)
 				: eng.marksForPath(path)
 			: [];
-		if (!eng || eng.sourceCount === 0 || !el) {
+		// An unmarked block wires nothing, so a scroll or a moved marker measures marked blocks only.
+		if (!eng || eng.sourceCount === 0 || !el || marks.length === 0) {
 			rects = [];
 			return;
 		}
@@ -139,7 +140,13 @@
 		}
 
 		const editorRoot = getEditorRoot?.() ?? null;
-		return wireOverlayRemeasure({ el, editorRoot, blockRef: ref, measure });
+		return wireOverlayRemeasure({
+			el,
+			editorRoot,
+			blockRef: ref,
+			measure,
+			textMoves: services?.textMoves
+		});
 	});
 </script>
 

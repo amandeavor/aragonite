@@ -15,7 +15,9 @@ Miss-analysis: every overlay test measured once after painting, and the only mod
 - Flipping from source to live hides the bold's `**`: a plain mark's overlay and a search
   highlight both move left with `hello`
 - Flipping from live back to source shows the `**` again: both move right with `hello`
-- Flipping from source to reading, and from reading back to source: both follow `hello`
+- Flipping from source to reading, and from reading back to source: both follow `hello`. A mark
+  still paints in reading mode, since decorations are view-only and an inert block with no caret
+  doesn't suppress them
 - Flipping from source to preview-block, and from source to preview-inline: both follow
   `hello`
 
@@ -28,3 +30,5 @@ Miss-analysis: every overlay test measured once after painting, and the only mod
   `hello` right. Clicking into another block hides them and the overlay follows it back
 - A theme toggle whose host styles widen the bold pushes `hello` right without changing the
   line's height: the overlay follows
+- A click at the start of `hello` and Shift+Down twice selects across into the next block; after
+  a flip from source to live, the start block's selection paint still begins at `hello`

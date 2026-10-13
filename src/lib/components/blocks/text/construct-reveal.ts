@@ -19,6 +19,7 @@ import {
 	traceRevealFold
 } from '../../../debug/interaction-trace';
 import type { Reading } from '../../../schema/reading';
+import type { TextMoves } from '../../overlays/text-moves';
 
 // ── Chain math (pure) ────────────────────────────────────────────────────────
 
@@ -51,6 +52,8 @@ export interface ConstructRevealDeps {
 	/** A cross-block selection freezes what is shown, so a drag anchored in visible marker
 	 *  text keeps its layout. */
 	isCrossBlock: () => boolean;
+	/** Told whenever a marker shows or hides, since that moves the text after it. */
+	textMoves: Pick<TextMoves, 'movedWithin'>;
 }
 
 export interface ConstructReveal {
@@ -114,20 +117,25 @@ export function createConstructReveal(deps: ConstructRevealDeps): ConstructRevea
 	function apply(chain: ChainEntry[], key: string): void {
 		const el = deps.getEl();
 		const next: Element[] = [];
+		let changed = false;
 		if (el) {
 			for (const node of chain) {
 				const spans = el.querySelectorAll(
 					`[data-construct-start="${node.start}"][data-construct-end="${node.end}"]`
 				);
 				for (const span of spans) {
+					changed ||= !span.classList.contains(CONSTRUCT_REVEAL_CLASS);
 					span.classList.add(CONSTRUCT_REVEAL_CLASS);
 					next.push(span);
 				}
 			}
 		}
 		for (const span of appliedSpans) {
-			if (!next.includes(span)) span.classList.remove(CONSTRUCT_REVEAL_CLASS);
+			if (next.includes(span) || !span.classList.contains(CONSTRUCT_REVEAL_CLASS)) continue;
+			span.classList.remove(CONSTRUCT_REVEAL_CLASS);
+			changed = true;
 		}
+		if (changed && el) deps.textMoves.movedWithin(el);
 		traceTransitions(appliedChain, chain);
 		appliedChain = chain;
 		appliedSpans = next;

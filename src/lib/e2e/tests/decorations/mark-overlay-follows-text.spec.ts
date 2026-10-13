@@ -2,7 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import type { PresentationMode } from '../../../presentation-mode';
-import { textRunEnd } from '../../text-runs';
+import { textRunEnd, textRunStart } from '../../text-runs';
 import { findInput, openFind, typeQuery } from '../search/helpers';
 
 /**
@@ -154,5 +154,39 @@ test.describe('mark overlay follows its text', () => {
 		await editor.waitForRenderFlush();
 		expect(await helloLeft(page), 'the wider bold pushes the text right').toBeGreaterThan(before);
 		await expectOverlayOnText(page, 'plain mark');
+	});
+
+	test('a cross-block selection starting at the mark’s word stays on it after a flip from source to live', async ({
+		page
+	}) => {
+		await editor.loadContent(DOC);
+		const start = await textRunStart(page, 'hello');
+		await page.mouse.click(start.x, start.y);
+		// The first press reaches the line's end, the second crosses into the next block.
+		await page.keyboard.press('Shift+ArrowDown');
+		await page.keyboard.press('Shift+ArrowDown');
+		await expect
+			.poll(() => editor.bridge.getSelectionPaths())
+			.toMatchObject({ focus: { path: [1] } });
+		const endpoint = page.locator('[data-block-path="[0]"] .selection-overlay-endpoint');
+		await expect(endpoint).toHaveCount(1);
+		await editor.waitForRenderFlush();
+		await editor.waitForRenderFlush();
+
+		await editor.setPresentationMode('live');
+		await editor.waitForRenderFlush();
+		await expect(endpoint).toHaveCount(1);
+		await expect
+			.poll(
+				() =>
+					page.evaluate(() => {
+						const box = document
+							.querySelector('[data-block-path="[0]"] .selection-overlay-endpoint')!
+							.getBoundingClientRect();
+						return Math.abs(box.left - (window as any).__test.textRunRect('hello', [0]).left);
+					}),
+				{ timeout: 2000 }
+			)
+			.toBeLessThanOrEqual(1);
 	});
 });

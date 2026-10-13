@@ -9,10 +9,13 @@ import { checkLandableCaret } from '../../invariants/landable-caret';
 import { isPreviewMode, type PresentationMode } from '../../presentation-mode';
 import { readBlockPath } from '../../selection/path-lookup';
 import { onRoot, removeAll } from './listeners';
+import type { TextMoves } from '../overlays/text-moves';
 
 export interface FocusAttributionDeps {
 	/** A getter, never a value: every attribute write is gated on the mode in force. */
 	get mode(): PresentationMode;
+	/** Told whenever the attribute moves, since showing a block's markers moves its text. */
+	textMoves: Pick<TextMoves, 'movedWithin'>;
 }
 
 export interface FocusAttribution {
@@ -39,7 +42,11 @@ export function createFocusAttribution(deps: FocusAttributionDeps): FocusAttribu
 	function applyFocusedAttr(): void {
 		if (pressHeld) return;
 		const next = isPreviewMode(deps.mode) ? focusedHostEl : null;
-		if (paintedHostEl !== next) paintedHostEl?.removeAttribute('data-focused');
+		if (paintedHostEl !== next) {
+			paintedHostEl?.removeAttribute('data-focused');
+			if (paintedHostEl) deps.textMoves.movedWithin(paintedHostEl);
+			if (next) deps.textMoves.movedWithin(next);
+		}
 		next?.setAttribute('data-focused', '');
 		paintedHostEl = next;
 	}

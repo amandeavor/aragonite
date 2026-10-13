@@ -47,6 +47,7 @@ import { fixtureReading } from './fixture-grammar';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 import { createWidgetEdgeHolder, type DrawnCaret } from '#lib/caret/drawn-caret.svelte.js';
 import { bindActivationClick, createPressTracker } from '#lib/activation-click.js';
+import { createTextMoves } from '#lib/components/overlays/text-moves.js';
 
 interface HistoryStub {
 	requestUndo: () => void;
@@ -126,7 +127,8 @@ function stubbedServices(getDoc: () => DocumentView): EditorServices {
 		commands: {} as EditorServices['commands'],
 		// A bare mount has no announcer and no host to show a label on.
 		kindCue: { afterTypedWrite: async () => {}, labelAt: () => undefined, dismiss: () => {} },
-		presses: createPressTracker()
+		presses: createPressTracker(),
+		textMoves: createTextMoves()
 	};
 }
 

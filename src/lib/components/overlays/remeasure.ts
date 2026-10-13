@@ -1,8 +1,7 @@
 /**
- * Shared scroll-listener wiring for DecorationOverlay and SelectionOverlay: measure on mount, on
- * scroll, and when the table's row-window `$derived` moves. Windowed tables need that third
- * trigger: a raw 'scroll' fires before the windowed `{#each}` mounts the new rows, so only the
- * dependency-driven re-run measures after the commit.
+ * When DecorationOverlay and SelectionOverlay measure again: on mount, on scroll, when the block's
+ * box resizes, when text inside it moves without a resize (`text-moves.ts`), and when a windowed
+ * table's mounted rows change, since a raw scroll fires before those rows mount.
  */
 
 import { untrack } from 'svelte';
@@ -12,6 +11,7 @@ import {
 	nearestScrollContainer
 } from '../../windowing/scroll-ancestors';
 import { observeResize } from '../../windowing/observe-resize';
+import type { TextMoves } from './text-moves';
 
 export function wireOverlayRemeasure(opts: {
 	el: HTMLElement;
@@ -21,8 +21,10 @@ export function wireOverlayRemeasure(opts: {
 	/** Run the setup measure untracked, so a `measure` that reads the document doesn't re-wire these
 	 *  listeners on every keystroke. Only that call: the row-window read below must stay tracked. */
 	untrackSetupMeasure?: boolean;
+	/** Absent for a measure that tracks no block's text, like the link card's. */
+	textMoves?: TextMoves;
 }): () => void {
-	const { el, editorRoot, blockRef, measure } = opts;
+	const { el, editorRoot, blockRef, measure, textMoves } = opts;
 
 	// Plain synchronous read so the enclosing $effect depends on the table's row-window
 	// $derived; it must not be inside untrack().
@@ -48,9 +50,10 @@ export function wireOverlayRemeasure(opts: {
 		disposers.push(() => editorRoot.removeEventListener('scroll', measure));
 	}
 
-	// The block's own box changing under a live range (a paragraph set to a heading, a font
-	// load) moves the text the rects were measured against.
+	// The block's own box changing under a live range (a paragraph set to a heading) moves the
+	// text the rects were measured against.
 	disposers.push(observeResize(el, () => measure()));
+	if (textMoves) disposers.push(textMoves.watch(el, measure));
 
 	return () => disposers.forEach((dispose) => dispose());
 }
