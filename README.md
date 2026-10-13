@@ -1,8 +1,8 @@
 # <img alt="header" src="docs/assets/header.png" />
 
-[![npm](https://img.shields.io/npm/v/@voithos-labs/aragonite)](https://www.npmjs.com/package/@voithos-labs/aragonite)
+[![npm](https://img.shields.io/npm/v/@voithos-labs/aragonite?color=c56836)](https://www.npmjs.com/package/@voithos-labs/aragonite)
+[![license](https://img.shields.io/npm/l/@voithos-labs/aragonite?color=c56836)](LICENSE)
 [![CI](https://github.com/voithos-labs/aragonite/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/voithos-labs/aragonite/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/@voithos-labs/aragonite)](LICENSE)
 
 > Made for [Limestone Notes](https://limestone.app/) ([source](https://github.com/voithos-labs/limestone)), by [Voithos Labs](https://voithoslabs.com/).
 
