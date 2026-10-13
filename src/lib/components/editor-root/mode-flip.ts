@@ -1,7 +1,7 @@
 /**
  * Keeps the caret across a presentation-mode switch. `beforeFlip` captures the caret and blurs
  * the block while the outgoing mode still owns the DOM; `afterFlip` drops the outgoing markers'
- * geometry, overlay rects included, and restores the caret through the shared restore path.
+ * geometry, has the overlays measure again, and restores the caret through the shared restore path.
  */
 
 import { tick } from 'svelte';

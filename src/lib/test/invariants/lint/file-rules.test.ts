@@ -2508,7 +2508,7 @@ const CONSTRUCT_REVEAL = `${SOURCE_DIR.textBlock}construct-reveal.ts`;
 const TEXT_MOVES: FileRule = {
 	id: 'G4.165 every write of a marker-visibility hook reports the moved text',
 	matches:
-		/\b(?:set|remove|toggle)Attribute\(\s*['"`]data-(?:focused|presentation|editor-theme)['"`]|\bclassList\.(?:add|remove|toggle)\(\s*(?:CONSTRUCT_REVEAL_CLASS\b|['"`]md-construct-reveal['"`])|\bdata-(?:presentation|editor-theme)=\{/,
+		/\b(?:set|remove|toggle)Attribute\(\s*['"`]data-(?:focused|presentation|editor-theme)['"`]|\bdataset\.(?:focused|presentation|editorTheme)\s*=(?!=)|(?<![[\w-])data-(?:focused|presentation|editor-theme)=\{|\bclassList\.(?:add|remove|toggle|replace)\([^)]*(?:CONSTRUCT_REVEAL_CLASS\b|['"`]md-construct-reveal['"`])|\bclass(?:Name)?\s*=(?!=)[^;\n]*(?:md-construct-reveal|CONSTRUCT_REVEAL_CLASS)|\bclass:md-construct-reveal\b/,
 	allowed: {
 		[FOCUS_ATTRIBUTION]:
 			'moves `data-focused` between hosts and reports both through `textMoves.movedWithin`',
@@ -2526,7 +2526,11 @@ const TEXT_MOVES: FileRule = {
 		at(`${SOURCE_DIR.blocks}x.ts`, "host.setAttribute('data-focused', '');"),
 		at(`${SOURCE_DIR.textBlock}x.ts`, 'span.classList.toggle(CONSTRUCT_REVEAL_CLASS, on);'),
 		at(`${SOURCE_DIR.plugins}x/x.ts`, "el.classList.add('md-construct-reveal');"),
-		at(`${SOURCE_DIR.components}X.svelte`, '<div data-presentation={mode}>')
+		at(`${SOURCE_DIR.components}X.svelte`, '<div data-presentation={mode}>'),
+		at(`${SOURCE_DIR.blocks}X.svelte`, '<div data-focused={focused ? "" : undefined}>'),
+		at(`${SOURCE_DIR.textBlock}X.svelte`, '<span class:md-construct-reveal={shown}>'),
+		at(`${SOURCE_DIR.textBlock}x.ts`, 'span.className = `md-marker ${CONSTRUCT_REVEAL_CLASS}`;'),
+		at(`${SOURCE_DIR.blocks}x.ts`, "host.dataset.focused = '';")
 	],
 	misses: [
 		at(
@@ -2534,7 +2538,10 @@ const TEXT_MOVES: FileRule = {
 			'const revealed = el.classList.contains(CONSTRUCT_REVEAL_CLASS);'
 		),
 		at(`${SOURCE_DIR.components}x.ts`, "root.closest('[data-presentation]');"),
-		at(`${SOURCE_DIR.components}x.ts`, "const mode = root.getAttribute('data-presentation');")
+		at(`${SOURCE_DIR.components}x.ts`, "const mode = root.getAttribute('data-presentation');"),
+		at(`${SOURCE_DIR.components}X.svelte`, ":global([data-presentation='reading']) .toolbar {}"),
+		at(`${SOURCE_DIR.components}X.svelte`, '<div class="host" data-editor-theme="light">'),
+		at(`${SOURCE_DIR.caret}x.ts`, "const shown = span.className === 'md-construct-reveal';")
 	]
 };
 

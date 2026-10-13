@@ -58,7 +58,8 @@ async function helloLeft(page: Page): Promise<number> {
 	return page.evaluate(() => (window as any).__test.textRunRect('hello', [0]).left);
 }
 
-// Every mode but source hides the markers, so a flip between two of them moves no text.
+// Live and reading hide the same markers, so a flip between them moves no text; a flip away from a
+// focused preview block blurs it first, which the preview-block focus row covers.
 const FLIPS: [PresentationMode, PresentationMode][] = [
 	['source', 'live'],
 	['live', 'source'],

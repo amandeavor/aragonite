@@ -1436,6 +1436,7 @@
 		{reading}
 		{menuPresence}
 		{commands}
+		{textMoves}
 	/>
 	<InlineMenuHost
 		menu={inlineMenu}

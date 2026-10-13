@@ -21,7 +21,7 @@ export function wireOverlayRemeasure(opts: {
 	/** Run the setup measure untracked, so a `measure` that reads the document doesn't re-wire these
 	 *  listeners on every keystroke. Only that call: the row-window read below must stay tracked. */
 	untrackSetupMeasure?: boolean;
-	/** Absent for a measure that tracks no block's text, like the link card's. */
+	/** Absent only for an overlay mounted without the editor, which has no services to read. */
 	textMoves?: TextMoves;
 }): () => void {
 	const { el, editorRoot, blockRef, measure, textMoves } = opts;
