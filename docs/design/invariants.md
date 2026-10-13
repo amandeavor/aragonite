@@ -2001,12 +2001,15 @@ and the bytes must reload as the empty container the editor still shows: `- `, `
 
 **G4.165 · Text that moves inside an unresized block is reported.** A mark or selection overlay is
 measured against the text under it, and a resize observer can't see that text slide sideways
-inside a box that keeps its size. Showing or hiding markers is the usual cause. So every write of
-an attribute or class that restyles block text (`data-focused` on a host, the reveal class on a
-marker span, the mode and theme attributes on the root) reports it to
-`components/overlays/text-moves.ts :: createTextMoves`, and the overlays over that text measure
-again a tick later. Image and font loads report there too. `lint/file-rules.test.ts` fails a file
-that writes one of those hooks without being on its list, each entry saying how it reports.
+inside a box that keeps its size. Showing or hiding markers is the usual cause. Every write of the
+marker hooks (`data-focused` on a host, the reveal class on a marker span, the mode and theme
+attributes on the root) reports it to `components/overlays/text-moves.ts :: createTextMoves`, and
+so does an inline widget swapping to its source and back, and focus entering or leaving a block
+that holds only markers (a `:focus-within` rule shows them). The overlays over that text then
+measure again a tick later. Image and font loads report there too. `lint/file-rules.test.ts`
+fails a file that writes one of those hooks without being on its list, each entry saying how it
+reports. The scan reads DOM writes, so the widget swap and the bare-marker focus are held by their
+rows in `e2e/tests/decorations/mark-overlay-follows-text.spec.ts` instead.
 
 ## Accessibility
 
