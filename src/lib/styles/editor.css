@@ -220,7 +220,7 @@
 /* The find bar outranks a per-block control, so a control in the same top-right corner moves
    down while the bar is open, where the bar would otherwise cover it. */
 .editor:has(> .search-anchor .search-bar) .code-lang-chip {
-	top: 52px;
+	top: 62px;
 }
 
 :where(.editor) .md-image-widget {
