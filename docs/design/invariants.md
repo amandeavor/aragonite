@@ -1053,6 +1053,7 @@ unguarded.
 | G4.155 | Every composing-flag holder asks both composition questions: a drop, and an opening       | L       |
 | G4.157 | Every block kind a bundled plugin installs has an insert entry, or says why it has none   | harness |
 | G4.159 | An emptied quote, list item or bundled strip container keeps bytes that reload as it      | harness |
+| G4.165 | A write that moves text without resizing its block reports it, so its overlays measure    | L       |
 
 ### The entries
 
@@ -1997,6 +1998,15 @@ task item, quote, nested pairs of them, footnote definition, alert, admonition) 
 deleted at the very end of the document, through the text write and through the ancestry rebuild,
 and the bytes must reload as the empty container the editor still shows: `- `, `>`, `[^1]: `.
 `test/schema/emptied-body-bytes.test.ts`.
+
+**G4.165 · Text that moves inside an unresized block is reported.** A mark or selection overlay is
+measured against the text under it, and a resize observer can't see that text slide sideways
+inside a box that keeps its size. Showing or hiding markers is the usual cause. So every write of
+an attribute or class that restyles block text (`data-focused` on a host, the reveal class on a
+marker span, the mode and theme attributes on the root) reports it to
+`components/overlays/text-moves.ts :: createTextMoves`, and the overlays over that text measure
+again a tick later. Image and font loads report there too. `lint/file-rules.test.ts` fails a file
+that writes one of those hooks without being on its list, each entry saying how it reports.
 
 ## Accessibility
 
