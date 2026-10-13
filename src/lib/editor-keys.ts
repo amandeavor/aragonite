@@ -40,6 +40,7 @@ import type { ListTree } from './windowing/list-tree';
 import type { InlineMenuCombobox } from './inline-menu/inline-menu-state.svelte';
 import type { LinkCardState } from './components/link-card/link-card-state.svelte';
 import type { KindCue } from './components/kind-cue.svelte';
+import type { TextMoves } from './components/overlays/text-moves';
 import type { PlaceholderPolicy } from './components/blocks/placeholder-hint.svelte';
 
 // ── Shared value-shape types ─────────────────────────────────────────────────
@@ -191,6 +192,9 @@ export interface EditorServices {
 	stamps: DocumentStamps;
 	/** The label a typed kind change leaves on its block for a moment (`kind-cue.svelte.ts`). */
 	kindCue: KindCue;
+	/** Where a change that moves text without resizing its block is reported, so the overlays
+	 *  over that text measure again. */
+	textMoves: TextMoves;
 }
 
 /** Host-supplied render/behavior policies. The getter members read live editor state

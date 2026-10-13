@@ -26,10 +26,12 @@ function editor(mode: PresentationMode = 'source') {
 	const outside = document.createElement('button');
 	document.body.append(root, outside);
 	let current = mode;
+	const moved: Element[] = [];
 	const attribution = createFocusAttribution({
 		get mode() {
 			return current;
-		}
+		},
+		textMoves: { movedWithin: (el) => moved.push(el) }
 	});
 	const teardown = attribution.install(root);
 	teardowns.push(teardown);
@@ -48,6 +50,7 @@ function editor(mode: PresentationMode = 'source') {
 		focusIn,
 		focusOut,
 		marked,
+		moved,
 		setMode: (next: PresentationMode) => (current = next)
 	};
 }
@@ -105,6 +108,32 @@ describe('editor-root focus attribution: data-focused', () => {
 		e.setMode('reading');
 		e.attribution.applyForMode();
 		expect(e.marked()).toEqual([]);
+	});
+
+	// Miss-analysis: every mark test read the attribute, never that the text it moves was reported.
+	it('reports the text moving in both hosts whenever the mark moves, and only then', () => {
+		const e = editor('preview-block');
+		e.focusIn(e.first.leaf);
+		expect(e.moved).toEqual([e.first.el]);
+		e.focusIn(e.first.leaf);
+		e.focusIn(e.second.leaf);
+		expect(e.moved).toEqual([e.first.el, e.first.el, e.second.el]);
+		e.setMode('source');
+		e.attribution.applyForMode();
+		expect(e.moved.slice(3)).toEqual([e.second.el]);
+		e.focusIn(e.first.leaf);
+		expect(e.moved).toHaveLength(4);
+	});
+
+	// Miss-analysis: only the preview modes' attribute was reported, never a block of bare markers.
+	it('reports a block holding only markers each time focus enters or leaves it, in any mode', () => {
+		const e = editor('live');
+		e.first.leaf.setAttribute('data-content-empty', '');
+		e.focusIn(e.second.leaf);
+		expect(e.moved).toEqual([]);
+		e.focusIn(e.first.leaf);
+		e.focusIn(e.second.leaf);
+		expect(e.moved).toEqual([e.first.el, e.first.el]);
 	});
 
 	it('moving focus between hosts moves the mark; leaving the root drops it', () => {

@@ -141,7 +141,8 @@
 		decorations: decorationEngine,
 		rangeCoverage,
 		drafts,
-		presses
+		presses,
+		textMoves
 	} = getContext<EditorServices>(EDITOR_SERVICES_KEY);
 	const ownPairs = autoPairs.forBlock();
 	const {
@@ -276,6 +277,7 @@
 		drafts,
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
+		textMoves,
 		get reading() {
 			return reading;
 		}

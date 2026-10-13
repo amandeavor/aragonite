@@ -2500,6 +2500,51 @@ const FOLLOW_ROUTE: FileRule = {
 	]
 };
 
+// ── G4.165 a write that moves text without resizing its block reports it ────
+
+const FOCUS_ATTRIBUTION = `${SOURCE_DIR.components}editor-root/focus.ts`;
+const CONSTRUCT_REVEAL = `${SOURCE_DIR.textBlock}construct-reveal.ts`;
+
+const TEXT_MOVES: FileRule = {
+	id: 'G4.165 every write of a marker-visibility hook reports the moved text',
+	matches:
+		/\b(?:set|remove|toggle)Attribute\(\s*['"`]data-(?:focused|presentation|editor-theme)['"`]|\bdataset\.(?:focused|presentation|editorTheme)\s*=(?!=)|(?<![[\w-])data-(?:focused|presentation|editor-theme)=\{|\bclassList\.(?:add|remove|toggle|replace)\([^)]*(?:CONSTRUCT_REVEAL_CLASS\b|['"`]md-construct-reveal['"`])|\bclass(?:Name)?\s*=(?!=)[^;\n]*(?:md-construct-reveal|CONSTRUCT_REVEAL_CLASS)|\bclass:md-construct-reveal\b/,
+	allowed: {
+		[FOCUS_ATTRIBUTION]:
+			'moves `data-focused` between hosts and reports both through `textMoves.movedWithin`, as it does a block of bare markers focus enters or leaves',
+		[CONSTRUCT_REVEAL]:
+			'toggles the reveal class on marker spans and reports the block through `textMoves.movedWithin`',
+		[`${SOURCE_DIR.components}Editor.svelte`]:
+			'renders the mode and theme attributes; `afterFlip` (`editor-root/mode-flip.ts`) and the theme effect report every block through `textMoves.movedEverywhere`',
+		[`${SOURCE_DIR.library}invariants/marker-css-parity.ts`]:
+			'marks a probe host it mounts offscreen and removes, which no overlay watches'
+	},
+	reaches: [FOCUS_ATTRIBUTION, CONSTRUCT_REVEAL],
+	reason:
+		'showing or hiding markers moves the text inside a block whose box keeps its size, which no resize observer sees: report the change through `textMoves` (`components/overlays/text-moves.ts`) so the overlays over that text measure again, then allow the file here',
+	hits: [
+		at(`${SOURCE_DIR.blocks}x.ts`, "host.setAttribute('data-focused', '');"),
+		at(`${SOURCE_DIR.textBlock}x.ts`, 'span.classList.toggle(CONSTRUCT_REVEAL_CLASS, on);'),
+		at(`${SOURCE_DIR.plugins}x/x.ts`, "el.classList.add('md-construct-reveal');"),
+		at(`${SOURCE_DIR.components}X.svelte`, '<div data-presentation={mode}>'),
+		at(`${SOURCE_DIR.blocks}X.svelte`, '<div data-focused={focused ? "" : undefined}>'),
+		at(`${SOURCE_DIR.textBlock}X.svelte`, '<span class:md-construct-reveal={shown}>'),
+		at(`${SOURCE_DIR.textBlock}x.ts`, 'span.className = `md-marker ${CONSTRUCT_REVEAL_CLASS}`;'),
+		at(`${SOURCE_DIR.blocks}x.ts`, "host.dataset.focused = '';")
+	],
+	misses: [
+		at(
+			`${SOURCE_DIR.caret}x.ts`,
+			'const revealed = el.classList.contains(CONSTRUCT_REVEAL_CLASS);'
+		),
+		at(`${SOURCE_DIR.components}x.ts`, "root.closest('[data-presentation]');"),
+		at(`${SOURCE_DIR.components}x.ts`, "const mode = root.getAttribute('data-presentation');"),
+		at(`${SOURCE_DIR.components}X.svelte`, ":global([data-presentation='reading']) .toolbar {}"),
+		at(`${SOURCE_DIR.components}X.svelte`, '<div class="host" data-editor-theme="light">'),
+		at(`${SOURCE_DIR.caret}x.ts`, "const shown = span.className === 'md-construct-reveal';")
+	]
+};
+
 const SOURCES = collectEditorSources();
 describeFileRules(
 	[
@@ -2510,6 +2555,7 @@ describeFileRules(
 		PIECES_UNDER_ORDER_CHECK,
 		WIDGET_LIST,
 		FOLLOW_ROUTE,
+		TEXT_MOVES,
 		...CODE_EDIT_SPAN,
 		...SYNTAX_MODULES
 	],

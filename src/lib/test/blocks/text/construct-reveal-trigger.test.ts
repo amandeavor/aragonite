@@ -31,12 +31,14 @@ describe('createConstructReveal: trigger', () => {
 	let harness: RenderHarness;
 	let crossBlock: boolean;
 	let reveal: ConstructReveal;
+	let moved: Element[];
 
 	beforeEach(() => {
 		// jsdom's window never has focus, and a window without it shows nobody's markers.
 		vi.spyOn(document, 'hasFocus').mockReturnValue(true);
 		node = parse(RAW).children[0];
 		crossBlock = false;
+		moved = [];
 		harness = makeRenderHarness(node, { mode: 'preview-inline' });
 		el = harness.el;
 		createTextRender(harness.deps).render();
@@ -48,7 +50,8 @@ describe('createConstructReveal: trigger', () => {
 				return harness.deps.reading;
 			},
 			getEl: () => el,
-			isCrossBlock: () => crossBlock
+			isCrossBlock: () => crossBlock,
+			textMoves: { movedWithin: (block) => moved.push(block) }
 		});
 	});
 
@@ -89,6 +92,25 @@ describe('createConstructReveal: trigger', () => {
 			expect(span.getAttribute('data-construct-start')).toBe('6');
 			expect(span.getAttribute('data-construct-end')).toBe('14');
 		}
+	});
+
+	// Miss-analysis: every reveal test read the classes, never that the text they move was reported.
+	it('reports the block’s text moving each time a marker shows or hides, and never otherwise', async () => {
+		setCaret('alpha ', 2);
+		reveal.update();
+		expect(moved).toEqual([]);
+
+		setCaret('bold', 2);
+		reveal.update();
+		reveal.update(true);
+		expect(moved).toEqual([el]);
+
+		setCaret('alpha ', 1);
+		reveal.update();
+		await tick();
+		await tick();
+		expect(revealedSpans().length).toBe(0);
+		expect(moved).toEqual([el, el]);
 	});
 
 	it('leaving the construct folds only after the recheck tick survives', async () => {
