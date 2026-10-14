@@ -23,7 +23,8 @@ plugin leaf behaves like a built-in text block. The seed is `Before` / `%% memo 
 - A character typed over a selection that runs from the block above into the memo replaces the
   whole selection, the way it does in a text block, rather than landing in the memo alone.
   Miss-analysis: GH #529, each built-in block ran the shared typing step itself, and the memo
-  never did, so a range ending in it was only ever swept, never typed over.
+  never did, so a range ending in it was only ever swept, never typed over. The range ends at the
+  memo's first byte, so the memo stays a memo and only the text before it is replaced.
 
 ## Clipboard
 
