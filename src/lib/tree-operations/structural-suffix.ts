@@ -37,6 +37,11 @@ export function cutKeepingStructure(
 	};
 }
 
+/** Where an ATX heading's text starts past its marker; 0 for any other block. */
+function headingTextStart(node: NodeView): number {
+	return headingLevel(node) === null ? 0 : getContentRange(node).start;
+}
+
 function headingHeadCut(node: NodeView, cut: number): number {
 	if (headingLevel(node) === null) return cut;
 	const content = getContentRange(node);
@@ -64,7 +69,9 @@ export function joinKeepingSuffix(
 	const dropped = structuralSuffix(absorbed);
 	const start = cutBeforeSuffix(survivor, cut);
 	const textEnd = displayLength(absorbed.raw) - dropped.length;
-	const end = dropped ? Math.min(from, textEnd) : from;
+	// A heading joined whole leaves its `#` behind, unless the join puts it at a line's start.
+	const textFrom = start > 0 && from === 0 ? headingTextStart(absorbed) : from;
+	const end = dropped ? Math.min(textFrom, textEnd) : textFrom;
 	const tail = writeTail(
 		dropped
 			? absorbed.raw.slice(end, textEnd) + ownTrailingLineEnding(absorbed.raw)

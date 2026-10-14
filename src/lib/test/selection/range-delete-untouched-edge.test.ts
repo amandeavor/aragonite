@@ -1,5 +1,6 @@
 // A range that ends at a block's first byte, or starts past a block's last, cuts nothing of that
-// block: it joins the other edge only where Backspace would merge the two, and otherwise stays whole.
+// block. A block with text joins the other edge by its text alone, its marker going with the
+// boundary; a block with none (a rule, a fence) stays whole rather than join as text.
 // Miss-analysis: every range delete row cut into both edge blocks, so none asked what a join does
 // with a block the range only touches, and a rule's bytes joined a paragraph as text.
 import { describe, it, expect } from 'vitest';
@@ -55,7 +56,6 @@ const ROWS: Array<[string, string, SelectionPoint, SelectionPoint, string]> = [
 		at([1], 0),
 		'al\n\n<div>\nx\n</div>\n\nomega\n'
 	],
-	['a heading', 'alpha\n\n# Head\n\nomega\n', at([0], 2), at([1], 0), 'al\n\n# Head\n\nomega\n'],
 	[
 		'a rule the range starts past',
 		'alpha\n\n---\n\nomega\n',
@@ -70,7 +70,24 @@ const ROWS: Array<[string, string, SelectionPoint, SelectionPoint, string]> = [
 		at([2], 2),
 		`alpha\n\n${FENCE}\n\nega\n`
 	],
-	// Where Backspace would merge, the touched block's text joins as it always has.
+	// A block with text joins by its text.
+	['a heading', 'alpha\n\n# Head\n\nomega\n', at([0], 2), at([1], 0), 'alHead\n\nomega\n'],
+	// Simulation seed 12's shape: a range that cuts into the marker takes the bytes it covers.
+	[
+		'a heading cut inside its marker',
+		'alpha\n\n## Head\n\nomega\n',
+		at([0], 2),
+		at([1], 2),
+		'al Head\n\nomega\n'
+	],
+	// Simulation seed 5: End on a heading, Shift+Down to the next heading's start, Delete.
+	[
+		'a heading after a heading, across nothing but the boundary',
+		'# Sprint Sync\n\n## Attendees\n\n- Dana\n',
+		at([0], '# Sprint Sync'.length),
+		at([1], 0),
+		'# Sprint SyncAttendees\n\n- Dana\n'
+	],
 	['a paragraph', 'alpha\n\nbeta\n\nomega\n', at([0], 2), at([1], 0), 'albeta\n\nomega\n'],
 	[
 		'a quoted paragraph',
