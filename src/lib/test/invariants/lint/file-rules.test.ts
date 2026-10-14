@@ -331,7 +331,9 @@ const PLUGIN_VIEW_FALLBACK: FileRule = {
 	matches: (file) =>
 		MOUNTS_PLUGIN_VIEW.test(file.code) && !/\bwarnIfForeignRuntime\(/.test(file.code),
 	allowed: {
-		'src/lib/create-editor.ts': 'mounts the editor itself, which no plugin supplies'
+		'src/lib/create-editor.ts': 'mounts the editor itself, which no plugin supplies',
+		'src/lib/svelte-views.svelte.ts':
+			'its views mount only through `plugin-view.ts :: mountPluginView`, which contains their throws'
 	},
 	reason:
 		'a plugin view that throws must fall back, report on the `error` event and name a foreign Svelte runtime in dev: catch it and call `warnIfForeignRuntime` with the reporter, as `decorations/widget-dom.ts` does',

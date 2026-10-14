@@ -54,6 +54,12 @@ export type {
 	InlineWidgetEditingContext
 } from './core/inline/inline-widgets';
 
+// ── Plugin views ─────────────────────────────────────────────────────────────
+// The one shape an inline widget, a decoration widget and a menu row take: fill the element the
+// editor hands over, take new props through `update`. The helpers make one from a Svelte component.
+export type { PluginView, PluginViewHandle } from './plugin-view';
+export { svelteInlineWidget, svelteDecorationWidget, svelteMenuRow } from './svelte-views.svelte';
+
 // ── Block-kind descriptor registry ───────────────────────────────────────────
 // `BlockKindRegistration` is the shape you register; fields that only mean something together
 // are declared together, so an incoherent pair fails to compile.
