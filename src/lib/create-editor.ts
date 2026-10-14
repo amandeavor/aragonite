@@ -8,6 +8,7 @@ import { createRawSnippet, mount, unmount, type Snippet } from 'svelte';
 import Editor from './components/Editor.svelte';
 import { EDITOR_PROP_TIMING, type EditorInstance, type EditorProps } from './editor-props';
 import { createReactiveProps } from './reactive-props';
+import { devWarn } from './dev-warn';
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -34,6 +35,10 @@ export function createEditor(target: HTMLElement, options: CreateEditorOptions =
 	const initial: Record<string, unknown> = {};
 	for (const key of propKeys(options)) initial[key] = propValue(key, options[key]);
 	const props = createReactiveProps(initial as EditorProps);
+	if (occupiedTargets.has(target)) {
+		devWarn('target-occupied', 'createEditor: the target still holds an editor; destroy it first');
+	}
+	occupiedTargets.add(target);
 	const instance = mount(Editor, { target, props });
 	let mounted = true;
 	return {
@@ -47,12 +52,16 @@ export function createEditor(target: HTMLElement, options: CreateEditorOptions =
 		destroy() {
 			if (!mounted) return;
 			mounted = false;
+			occupiedTargets.delete(target);
 			void unmount(instance);
 		}
 	};
 }
 
 // ── Internal ────────────────────────────────────────────────────────────────
+
+// Targets whose editor isn't destroyed yet; a second mount there stacks two editors (G1.94).
+const occupiedTargets = new WeakSet<HTMLElement>();
 
 // Presence is an own key, so `{ placeholder: undefined }` clears the prop.
 function propKeys(options: Partial<CreateEditorOptions>): (keyof EditorProps)[] {

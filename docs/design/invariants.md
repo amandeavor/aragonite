@@ -257,6 +257,7 @@ These checks run in three kinds of place:
 | G1.77 | The mark hiding the browser's caret is on exactly the editable the drawn caret draws for   | A       |
 | G1.87 | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
 | G1.90 | A plugin component compiled against another Svelte runtime is named as such in dev         | N       |
+| G1.94 | One editor per mount target: a second `createEditor` there before `destroy` warns in dev   | A       |
 
 ### The entries
 
@@ -735,6 +736,12 @@ inline menu's row boundary) asks `foreign-runtime.ts :: isForeignRuntimeError` a
 The match is by message: `effect_orphan`, or the two crashes of a runtime that never mounted
 anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches too.
 `components/foreign-runtime.test.ts` loads its fixtures on a second runtime through a module reset.
+
+**G1.94 · One editor per target.** A framework wrapper creates the editor when its component mounts
+and destroys it when it unmounts. A wrapper that skips the destroy stacks a second editor in the
+same element, and React's StrictMode (which mounts every component twice in dev) shows it at once.
+`createEditor` remembers which targets hold an editor it hasn't destroyed and warns
+`target-occupied` in dev on a second mount there. `editor-root/create-editor.test.ts`.
 
 ## Group 2: property and regression tested
 

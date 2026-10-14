@@ -66,6 +66,7 @@ export const RUNTIME_EDGES: readonly string[] = [
 	'core -> presentation-mode.ts',
 	'core -> schema',
 	'create-editor.ts -> components',
+	'create-editor.ts -> dev-warn.ts',
 	'create-editor.ts -> editor-props.ts',
 	'create-editor.ts -> reactive-props.ts',
 	'debug -> core',
