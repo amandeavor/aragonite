@@ -13,6 +13,7 @@ import {
 	readInline
 } from '../../../core/inline';
 import { CONTENT_VISIBILITY, renderedText } from '../../../core/inline/visibility';
+import { closeBefore, reopenAfter } from '../../../core/inline/live-edit/close-reopen';
 import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
 import {
 	getInlineConstructPolicy,
@@ -143,8 +144,7 @@ function spliceWrapped(
 	};
 }
 
-/** Close every escaped construct before the insertion and reopen it after. A side left empty
- *  steps outside the run instead, since live mode never writes a pair around nothing. */
+/** Close every escaped construct before the insertion and reopen it after. */
 function splitOpen(
 	display: string,
 	caretOffset: number,
@@ -152,20 +152,17 @@ function splitOpen(
 	escaped: readonly ChainNode[],
 	payload: readonly InlineMark[]
 ): Candidate {
-	let leftEnd = caretOffset;
-	let rightStart = caretOffset;
-	let closers = '';
-	let openers = '';
-	for (const node of [...escaped].reverse()) {
-		if (leftEnd === node.contentStart) leftEnd = node.start;
-		else closers += display.slice(node.contentEnd, node.end);
-		if (rightStart === node.contentEnd) rightStart = node.end;
-		else openers = display.slice(node.start, node.contentStart) + openers;
-	}
+	const left = closeBefore(display, escaped, caretOffset);
+	const right = reopenAfter(display, escaped, caretOffset);
 	const inner = spliceWrapped('', 0, text, payload);
 	return {
-		raw: display.slice(0, leftEnd) + closers + inner.raw + openers + display.slice(rightStart),
-		textAt: leftEnd + closers.length + inner.textAt
+		raw:
+			display.slice(0, left.end) +
+			left.closers +
+			inner.raw +
+			right.openers +
+			display.slice(right.start),
+		textAt: left.end + left.closers.length + inner.textAt
 	};
 }
 

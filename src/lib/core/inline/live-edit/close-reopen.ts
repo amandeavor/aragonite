@@ -1,8 +1,8 @@
 /**
  * How a live cut through a format run keeps the run on both halves (`docs/design/live-mode.md`
  * § 4.4, § 4.5): the half before the cut closes it, the half after reopens it, and a half that
- * keeps none of the run's content takes none of its delimiters. Enter and every live removal
- * share this.
+ * keeps none of the run's content takes none of its delimiters. Enter, a pending mark's escape
+ * and every live removal share this.
  */
 
 import type { AnyInlineKind, InlineNode } from '../../nodes';
