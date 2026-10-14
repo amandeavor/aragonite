@@ -129,8 +129,8 @@ test('live mode, extending across a construct-ending block', async ({ page }) =>
 		await page.keyboard.type('X');
 		await ep.bridge.waitForSourceContains('boldX');
 
-		// The runs the cut stranded went with it: no `*` survives into the visible text, and
-		// the construct the range did not reach still renders as one.
+		// No `*` shows in the visible text, and the construct the range did not reach still
+		// renders as one.
 		expect(await textOutsideMarkers(ep.getBlock(ENDS_BOLD))).not.toContain('*');
 		expect(await ep.bridge.getSource()).not.toContain('****');
 	});
