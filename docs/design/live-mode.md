@@ -332,7 +332,7 @@ How the join reads its bytes:
 
 What arrives here:
 
-- Backspace merges, a Delete merge (a Delete at a hidden run inside one block is § 4.4's press instead), range deletes, typing over a selection, cut, a drag's cut and the bytes the drag carries off, a paste or an IME composition over a selection, the removal a line break over a selection makes first, a widget or a decoration taken out whole, and anything a popover or an inline menu writes over a range (an image's Remove button, a link card's edit, a menu pick).
+- Backspace merges, a Delete merge (a Delete at a hidden run inside one block is § 4.4's press instead), range deletes, typing over a selection, cut, a drag's cut and the bytes the drag carries off, what a copy or a cut puts on the clipboard, a paste or an IME composition over a selection, the removal a line break over a selection makes first, a widget or a decoration taken out whole, and anything a popover or an inline menu writes over a range (an image's Remove button, a link card's edit, a menu pick).
 - Inside one block they're all one function, `tree-operations/leaf-range.ts` :: `replaceRangeInLeaf(node, range, text, store)`, which re-expresses the edit as a join of what survives on either side with `text` between them. The range delete is the exception for now: it still builds its own join and calls `cleanJoinedRaw` itself, until it moves onto the same function. A merge's join of two blocks is `replaceRangeInLeaf`'s sibling in the same file, `joinLeaves`.
 - The range it rewrites comes off the event, since a word or line delete reports one at a collapsed caret where the selection is empty, and every editable prose surface takes that branch rather than keeping its own list of input types.
 
@@ -385,7 +385,7 @@ Scenarios: `src/lib/e2e/requirements/presentation/presentation-live-hard-break.m
 
 ## 5. What does not change
 
-- Copy yields the source bytes. Reading mode is the exception: there a copy writes what the browser's selection shows, hidden markers left out.
+- Copy yields the source bytes, with one live tweak: a format run the selection cuts through comes along closed at its edges, the bytes a cut there would take (`tree-operations/leaf-range.ts` :: `bytesLeavingLeaf`). So `ld an` out of `**bold** and` copies as `**ld** an`, and pasting it back gives you the bold back. Reading mode is the real exception: there a copy writes what the browser's selection shows, hidden markers left out.
 - Search matches the source bytes, so a query crossing a construct boundary misses what the screen appears to show.
 - The caret lands only where the DOM walk can land it: hidden runs are unreachable, so a block's extremes are the offsets a caret can reach, not its raw ends, and the position after a body's final newline, on a hidden closer's line, is outside them too unless a caret anchor paints that line (`caret/widget-offset.ts`).
 - Bytes change only where a rule above says so. A gesture that strands nothing writes exactly what source mode writes, except at § 4.1's painted content-empty chrome, where a block's own structural gate follows the mode and the two modes diverge.
