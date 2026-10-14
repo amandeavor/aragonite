@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { PluginsPage } from '../plugins/helpers';
 import { nextRow } from '../presentation/helpers';
+import { pointAtRaw } from '../../text-runs';
 
 /**
  * A drag inside a block with no character position selects it whole, and every destructive
@@ -165,5 +166,36 @@ test.describe('a whole-unit range: block math', () => {
 		await editor.page.keyboard.press('ControlOrMeta+x');
 		await editor.bridge.waitForSourceEquals('above\n\nbelow\n');
 		expect(await editor.readClipboard()).toBe('$$x^2$$');
+	});
+});
+
+// A range that ends where a rule starts takes nothing of the rule, so the rule stays a rule.
+test.describe('a range that ends where a rule starts', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.loadContent('alpha\n\n---\n\nomega\n');
+		const at = await pointAtRaw(page, [0], 2);
+		await page.mouse.click(at.x, at.y);
+		await page.keyboard.press('Shift+ArrowDown');
+		await page.keyboard.press('Shift+ArrowDown');
+		expect(await editor.bridge.getSelection()).toEqual({
+			anchor: { path: [0], offset: 2 },
+			focus: { path: [1], offset: 0 }
+		});
+	});
+
+	test('Backspace leaves the rule standing', async ({ page }) => {
+		await page.keyboard.press('Backspace');
+		await editor.bridge.waitForSourceEquals('al\n\n---\n\nomega\n');
+		expect(await editor.bridge.getBlockKind(1)).toBe('thematicBreak');
+	});
+
+	test('a key typed over it lands before the rule', async () => {
+		await editor.typeSlowly('x');
+		await editor.bridge.waitForSourceEquals('alx\n\n---\n\nomega\n');
+		expect(await editor.bridge.getBlockKind(1)).toBe('thematicBreak');
 	});
 });

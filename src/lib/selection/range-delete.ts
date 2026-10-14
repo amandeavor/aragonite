@@ -21,7 +21,8 @@ import {
 	normalizeOwnRaw
 } from '../tree-operations/node-primitives';
 import { settleSeparatorOnBlank } from '../tree-operations/settle';
-import { documentLineEnding } from '../core/lines';
+import { displayLength, documentLineEnding } from '../core/lines';
+import { isMergeEligible } from '../schema/merge-rules';
 import { cleanJoinedRaw } from '../tree-operations/leaf-range';
 import { storedAsAt } from '../tree-operations/stored-as';
 import { joinKeepingSuffix } from '../tree-operations/structural-suffix';
@@ -75,7 +76,12 @@ export function rangeDelete(
 	}
 	// Nothing merges across a title-line container's edge, and a range that holds an edge's block
 	// whole has nothing there to merge.
-	if (!coverage.startEdge || !coverage.endEdge || involvesReservedChrome(doc, start, end)) {
+	if (
+		!coverage.startEdge ||
+		!coverage.endEdge ||
+		involvesReservedChrome(doc, start, end) ||
+		!joinsAcross(doc, start, end)
+	) {
 		return unjoinedRangeDelete(doc, coverage, sharing, reading, gesture, landing);
 	}
 	return joinedRangeDelete(doc, coverage, sharing, reading);
@@ -95,6 +101,16 @@ export function removeHeldWhole(
 }
 
 // ── Internal ────────────────────────────────────────────────────────────────
+
+/** An edge that cuts nothing of its block (an end at its first byte, a start past its last) joins
+ *  the other only where Backspace would merge the two blocks; otherwise that block stays whole. */
+function joinsAcross(doc: Document, start: SelectionPoint, end: SelectionPoint): boolean {
+	const startBlock = blockNodeAt(doc, start.path);
+	const endBlock = blockNodeAt(doc, end.path);
+	if (!startBlock || !endBlock) return true;
+	const touchesOnly = end.offset === 0 || start.offset >= displayLength(startBlock.raw);
+	return !touchesOnly || isMergeEligible(startBlock.kind, endBlock.kind);
+}
 
 /** Both edges kept and plain: the end's tail joins the start's head in the start's block. */
 function joinedRangeDelete(
