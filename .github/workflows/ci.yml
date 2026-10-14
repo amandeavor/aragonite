@@ -24,8 +24,8 @@ concurrency:
 # Parallel jobs: the fast static+unit gate, the sharded Playwright e2e battery,
 # the prod-build perf gate, the external-consumer realism gate (packs the
 # library, installs the tarball into examples/consumer, and runs its
-# SSR-no-crash + hydration smoke), the framework realism gate (the same for the React wrapper,
-# through the shared adapter suite), and the emoji-table provenance gate.
+# SSR-no-crash + hydration smoke), the framework realism gate (the same for the React and Vue
+# wrappers, through the shared adapter suite), and the emoji-table provenance gate.
 # e2e shards run every Playwright project via the dev webServer the playwright
 # config starts (the e2e-perf specs self-skip there unless PERF_GATE/PERF is
 # set; the dedicated perf job is what runs them, against the prod build).
@@ -122,8 +122,8 @@ jobs:
       - run: npm ci
       - run: node scripts/consumer-smoke.mjs
 
-  # The framework gate on each PR: the React wrapper's tarball in a Vite app, built and in dev.
-  # Next and React 18 run per release, in adapter-suite.yml.
+  # The framework gate on each PR: the React and Vue wrappers' tarballs in Vite apps, built and in
+  # dev. Next, Nuxt and the oldest supported React and Vue run per release, in adapter-suite.yml.
   adapter-smoke:
     runs-on: ubuntu-latest
     steps:

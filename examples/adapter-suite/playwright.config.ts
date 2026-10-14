@@ -1,9 +1,10 @@
 import { defineConfig } from '@playwright/test';
-import { APPS, type AppName } from './apps';
+import { APPS } from './apps.mjs';
 
 // One project per framework app, every app serving the same page contract
 // (`requirements/page-contract.md`). `scripts/adapter-smoke.mjs` builds the apps first and names
 // the projects in ADAPTER_PROJECTS, since a server starts only for a project that runs.
+type AppName = keyof typeof APPS;
 const chosen = (process.env.ADAPTER_PROJECTS ?? Object.keys(APPS).join(','))
 	.split(',')
 	.filter((name): name is AppName => name in APPS);
@@ -19,7 +20,7 @@ export default defineConfig({
 	})),
 	projects: chosen.map((name) => ({
 		name,
-		testIgnore: name === 'next' ? undefined : /next\.spec/,
+		testMatch: APPS[name].specs.map((spec) => `${spec}.spec.ts`),
 		use: { baseURL: `http://localhost:${APPS[name].port}` }
 	}))
 });

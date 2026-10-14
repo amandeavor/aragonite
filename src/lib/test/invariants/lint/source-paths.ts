@@ -338,6 +338,8 @@ export const SOURCE_DIR = {
 	routes: 'src/routes/',
 	referencePlugins: 'src/routes/test/plugins/',
 	consumerExample: 'examples/consumer/src/',
+	examples: 'examples/',
+	adapterSuiteTests: 'examples/adapter-suite/tests/',
 	pluginGuidePages: 'docs/guide/plugin-guide/'
 } as const;
 
@@ -382,5 +384,7 @@ export const SOURCE_DIR_ANCHORS: Record<keyof typeof SOURCE_DIR, string> = {
 	routes: '+layout.svelte',
 	referencePlugins: 'callout',
 	consumerExample: 'plugin-probe.ts',
+	examples: 'consumer',
+	adapterSuiteTests: 'page-contract.spec.ts',
 	pluginGuidePages: 'parrot-frames.md'
 };

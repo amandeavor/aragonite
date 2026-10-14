@@ -1,4 +1,4 @@
-import { APPS, type AppName } from '../apps';
+import { APPS } from '../apps.mjs';
 import { test, expect, caretAtEnd, FIRST, SECOND } from './fixtures';
 import type { Page } from '@playwright/test';
 
@@ -141,7 +141,16 @@ test('uncontrolled, the editor starts on its default and keeps typing across a r
 	await expect(page.locator('.editor')).toContainText(PARAGRAPH + ' Mine.');
 });
 
-test('the page runs on the React major its project names', async ({ page }, testInfo) => {
-	const app = APPS[testInfo.project.name as AppName];
-	await expect(page.getByTestId('react-version')).toHaveText(new RegExp(`^${app.reactMajor}\\.`));
+test('the handle reads the document the editor holds', async ({ page }) => {
+	await caretAtEnd(page, PARAGRAPH);
+	await page.keyboard.type(' Read.');
+	await page.getByTestId('read').click();
+
+	await expect(page.getByTestId('read-out')).toHaveText(typedFirst(' Read.'));
+});
+
+test('the page runs on the framework version its project names', async ({ page }, testInfo) => {
+	const app = APPS[testInfo.project.name as keyof typeof APPS];
+	const version = await page.getByTestId('framework-version').textContent();
+	expect(version?.startsWith(app.version), `${version} against ${app.version}`).toBe(true);
 });

@@ -1,6 +1,6 @@
 // The adapter suite's page contract (`examples/adapter-suite/requirements/page-contract.md`).
-import { useState, version } from 'react';
-import { Aragonite } from '@voithos-labs/aragonite-react';
+import { useRef, useState, version } from 'react';
+import { Aragonite, type EditorHandle } from '@voithos-labs/aragonite-react';
 
 const FIRST = '# First note\n\nHello from the first note.\n';
 const SECOND = '# Second note\n\nA different document.\n';
@@ -11,6 +11,8 @@ export function App({ uncontrolled }: { uncontrolled: boolean }) {
 	const [theme, setTheme] = useState('light');
 	const [themed, setThemed] = useState(true);
 	const [shown, setShown] = useState(true);
+	const [readOut, setReadOut] = useState('');
+	const editor = useRef<EditorHandle>(null);
 
 	function load() {
 		setLoaded(SECOND);
@@ -19,7 +21,7 @@ export function App({ uncontrolled }: { uncontrolled: boolean }) {
 
 	return (
 		<main>
-			<p data-testid="react-version">{version}</p>
+			<p data-testid="framework-version">{version}</p>
 			<button data-testid="load" onClick={load}>
 				Load another doc
 			</button>
@@ -35,8 +37,12 @@ export function App({ uncontrolled }: { uncontrolled: boolean }) {
 			<button data-testid="unmount" onClick={() => setShown(!shown)}>
 				{shown ? 'Unmount' : 'Mount'}
 			</button>
+			<button data-testid="read" onClick={() => setReadOut(editor.current?.getSource() ?? '')}>
+				Read
+			</button>
 			{shown && (
 				<Aragonite
+					ref={editor}
 					{...(uncontrolled ? { defaultValue: FIRST } : { value })}
 					onChange={setValue}
 					{...(themed ? { theme } : {})}
@@ -45,6 +51,7 @@ export function App({ uncontrolled }: { uncontrolled: boolean }) {
 				/>
 			)}
 			<pre data-testid="mirror">{value}</pre>
+			<pre data-testid="read-out">{readOut}</pre>
 		</main>
 	);
 }
