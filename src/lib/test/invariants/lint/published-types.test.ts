@@ -53,6 +53,14 @@ describe('G4.185 published types reach no svelte import and no stylesheet', () =
 		]);
 	});
 
+	it('catches a triple-slash types reference, and follows a path one', () => {
+		write({
+			'index.d.ts': '/// <reference path="./a.d.ts" />\nexport {};',
+			'a.d.ts': '/// <reference types="svelte" />\nexport {};'
+		});
+		expect(leaksFrom('index.d.ts')).toEqual(['svelte @ index.d.ts > a.d.ts']);
+	});
+
 	it('follows a component declaration and a directory index', () => {
 		write({
 			'index.d.ts': "export { default as W } from './W.svelte';\nexport * from './dir';",

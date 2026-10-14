@@ -84,10 +84,17 @@ const isSvelte = (/** @type {string} */ specifier) => /^svelte(\/|$)/.test(speci
 const IMPORT_SPECIFIER =
 	/\bfrom\s*['"]([^'"]+)['"]|(?:^|[\s;])import\s*['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
 
+// A `/// <reference types="…" />` or `path="…"` directive, which the comment strip below removes.
+const REFERENCE_DIRECTIVE = /^\s*\/\/\/\s*<reference\s+(?:types|path)\s*=\s*['"]([^'"]+)['"]/gm;
+
 /** @param {string} code */
 function importSpecifiers(code) {
+	const references = [...code.matchAll(REFERENCE_DIRECTIVE)].map((match) => match[1]);
 	const bare = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-	return [...bare.matchAll(IMPORT_SPECIFIER)].map((match) => match[1] ?? match[2] ?? match[3]);
+	const imports = [...bare.matchAll(IMPORT_SPECIFIER)].map(
+		(match) => match[1] ?? match[2] ?? match[3]
+	);
+	return [...references, ...imports];
 }
 
 /**
