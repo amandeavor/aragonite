@@ -1332,8 +1332,6 @@ const LEAF_RANGE_RULES: FileRule[] = [
 			'src/lib/core/inline/link-source-bytes.ts':
 				'the link writer rewrites one whole link and checks its candidate against the screen',
 			'src/lib/inline-menu/inline-menu-session.ts': 'compares two texts and writes nothing',
-			'src/lib/selection/selection-drop.ts':
-				'a drop inserts at the drop point; its cut goes through the range replace',
 			'src/lib/selection/range-delete.ts':
 				'the range delete’s own join, a known gap until it calls `joinLeaves` (T18 slice 5)',
 			'src/lib/selection/cross-block/range-replace.ts':

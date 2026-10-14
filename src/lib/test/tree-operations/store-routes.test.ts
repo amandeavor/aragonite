@@ -383,6 +383,26 @@ async function dragXAway(place: Place, inCell: boolean): Promise<string> {
 	return serialize(deps.getDoc());
 }
 
+/** Drops a copy of `text` at `offset` of the leaf at `place`, as a drag with the copy key held. */
+async function dropCopy(place: Place, offset: number, text: string): Promise<string> {
+	const harness = makeEditorActionsDeps(`${place.source}\nsrc\n`, { reading: LIVE });
+	const controller = createUndoController(harness.deps);
+	const deps = {
+		editorRoot: document.createElement('div'),
+		getDoc: () => harness.deps.doc,
+		controller,
+		coordinator: createPasteCoordinator(harness.deps, controller),
+		reading: LIVE,
+		activePlugins: everyInstalledPlugin,
+		events: harness.events,
+		setDropCaret: () => {},
+		isReadOnly: () => false
+	};
+	const from = { path: [1], start: 0, end: 3, inCell: false, text };
+	await runDrop(deps, from, { path: place.leaf, offset }, true);
+	return serialize(deps.getDoc());
+}
+
 /** The bytes a drag of `range` carries out of the leaf at `place`. */
 function dragText(place: Place, range: typeof X): string | null {
 	const { deps } = makeEditorActionsDeps(place.source, { reading: LIVE });
@@ -703,6 +723,19 @@ const FAMILIES: Family[] = [
 						{ start: 3, end: 8 }
 					),
 				want: '# y'
+			}
+		]
+	},
+	{
+		// A to-do's `# ` is text, so the dropped bold joins the bold it lands in; at the top level the
+		// joined text would read as a heading, so the plain splice stands.
+		name: 'the text a drop lands',
+		stores: { 'selection/selection-drop.ts': 1 },
+		rows: [
+			{
+				shape: 'a to-do',
+				run: () => dropCopy({ source: '- [ ] # **bo**d z\n', leaf: [0, 0, 0] }, 6, '**ld** an'),
+				want: '- [ ] # **bold** and z\n\nsrc\n'
 			}
 		]
 	},

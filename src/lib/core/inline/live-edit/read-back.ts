@@ -7,6 +7,9 @@
 
 import { getContentRange, isProseKind, openLinesAtEnd, readInline } from '../index';
 import { CONTENT_VISIBILITY, visibleRuns, type VisibleRun } from '../visibility';
+import { landsKeepingMarks, shownSpan, type ShownSpan } from './close-reopen';
+import type { ContentRange } from '../index';
+import type { Reading } from '../../../schema/reading';
 import { isBlankText, ownTrailingLineEnding, trimTrailingLineEnding } from '../../lines';
 import type { CstNode, InlineNode } from '../../nodes';
 import type { NodeView } from '../../node-views';
@@ -84,4 +87,32 @@ export function shownRunsOf(
 export function keepsKindAt(node: NodeView, line: string, store: StoredAs): boolean {
 	if (store.surface === 'inline') return true;
 	return readBack(line + ownTrailingLineEnding(node.raw), store)?.block?.kind === node.kind;
+}
+
+/** What `[from, to)` of `raw` shows, its content being `range`: text and each character's marks. */
+export function shownOfSpan(
+	raw: string,
+	range: ContentRange,
+	from: number,
+	to: number,
+	reading: Reading
+): ShownSpan {
+	const { resolver, grammar } = reading;
+	const inlines = readInline(raw, range.start, range.end, resolver, grammar);
+	const runs = visibleRuns(inlines, raw, CONTENT_VISIBILITY, { grammar });
+	return shownSpan(runs, inlines, raw, from, to);
+}
+
+/** Whether `bytes`, read back where `store` keeps them, show the parts in order, each character in
+ *  its own marks (the landed part may take the marks around it too). */
+export function readsInParts(
+	bytes: string,
+	parts: { before: ShownSpan; landed: ShownSpan; after: ShownSpan },
+	store: StoredAs
+): boolean {
+	const read = readBack(bytes, store);
+	if (read === null) return false;
+	const source = readSource(read);
+	const { runs } = shownRunsOf(read, store);
+	return landsKeepingMarks(shownSpan(runs, read.inlines, source, 0, source.length), parts);
 }

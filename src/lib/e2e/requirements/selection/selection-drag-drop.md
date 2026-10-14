@@ -56,6 +56,10 @@ edits, and one undo then leaves the source's bytes gone.
     delimiter run whose partner stayed behind
   - Miss-analysis: the row then read only the screen, so the bold the cut dropped from both
     halves showed nowhere it checked
+- in live mode, drag `ld an` out of `Some **bold** and words **tail**` and drop it after `ta`:
+  the carried bold joins the bold it lands in, which closes before ` an` and reopens after
+  (`**tald** an**il**`), and nothing paints a marker
+  - Miss-analysis: the drop spliced its text in raw, and no row dropped carried runs inside a run
 
 ## Error cases
 

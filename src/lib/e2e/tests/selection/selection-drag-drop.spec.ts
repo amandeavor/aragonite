@@ -263,6 +263,26 @@ test.describe('dragging a selection', () => {
 		expect(await converged(page)).toBe(true);
 	});
 
+	test('a bold range dropped inside another bold run in live mode joins it, no marker on screen', async ({
+		page
+	}) => {
+		await editor.setPresentationMode('live');
+		await editor.loadContent('- [ ] Some **bold** and words **tail**\n');
+		const after = await pointAtRaw(page, [0, 0, 0], 'Some **bo'.length);
+		await page.mouse.click(after.x, after.y);
+		for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight');
+		const grab = await pointAtRaw(page, [0, 0, 0], 'Some **bol'.length);
+		const into = await pointAtRaw(page, [0, 0, 0], 'Some **bold** and words **ta'.length);
+		await dragSelection(page, grab, into);
+		// The carried `**ld**` joins the bold it lands in, which closes before ` an` and reopens after.
+		await expect
+			.poll(() => page.evaluate(() => (window as any).__test.getSource()))
+			.toBe('- [ ] Some **bo**d words **tald** an**il**\n');
+		const text = page.locator("[data-block-path='[0,0,0]'] [contenteditable='true']");
+		expect(await textOutsideMarkers(text)).toBe('Some bod words tald anil');
+		expect(await converged(page)).toBe(true);
+	});
+
 	const RULE_DOC = 'alpha beta gamma\n\n---\n\nsecond para here\n';
 
 	test('a drop on a block that holds no character position cancels', async ({ page }) => {

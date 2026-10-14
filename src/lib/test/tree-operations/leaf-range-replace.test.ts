@@ -102,3 +102,39 @@ describe('the plain splice', () => {
 		expect(replaceRangeInLeaf(node, { start: 1, end: 4 }, '', store).raw).toBe('ho');
 	});
 });
+
+// Miss-analysis: every typed or pasted payload here was plain text, so none brought runs of its
+// own into a run the caret sat in, which a drag or a live copy now does.
+describe('text carrying its own runs lands inside a run', () => {
+	const CLOSED = 'Some **bo**d words tail\n';
+
+	it('closes the run around it and keeps the runs that meet as one', () => {
+		expect(edit(CLOSED, 9, 9, '**ld** an')).toEqual({
+			raw: 'Some **bold** and words tail\n',
+			caret: 16
+		});
+	});
+
+	it('lands the same from past the hidden closer', () => {
+		expect(edit(CLOSED, 11, 11, '**ld** an')).toEqual({
+			raw: 'Some **bold** and words tail\n',
+			caret: 16
+		});
+	});
+
+	it('pasted over a selection, takes its place inside the run', () => {
+		expect(edit('Some **bold** and words tail\n', 9, 16, '**X**')).toEqual({
+			raw: 'Some **boX**d words tail\n',
+			caret: 12
+		});
+	});
+
+	// A link nested in the bold reads right as written, so the browser's own splice stands.
+	it('leaves a landing that already reads right to the browser', () => {
+		expect(edit('**see y**\n', 6, 6, '[x](u)')).toBeNull();
+	});
+
+	it('lands byte-literally in source mode', () => {
+		expect(editIn('source', CLOSED, 9, 9, '**ld** an')).toBeNull();
+	});
+});

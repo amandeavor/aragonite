@@ -72,28 +72,15 @@ const SHAPES: Array<[string, string, number[], string, string, string]> = [
 ];
 
 describe('the bytes a range takes out of a leaf', () => {
-	// Put back through the write a paste takes. Into the closed half of a run, that write splices
-	// the carried runs inside the kept ones, so only a range a run wraps whole reads back today.
-	const putBack = (source: string, path: number[], from: string, to: string) => {
-		const { node, store, cut, moved } = leaving(source, path, from, to);
-		const cutLeaf = { ...node, raw: cut.raw };
-		const restored = replaceRangeInLeaf(
-			cutLeaf,
-			{ start: cut.caret, end: cut.caret },
-			moved,
-			store
-		);
-		expect(shown(restored.raw, store)).toBe(shown(node.raw, store));
-	};
-	const wraps = (label: string) => label === 'a run wrapping the whole range';
-	it.each(SHAPES.filter(([label]) => wraps(label)))(
-		'put back where they were, show what the leaf showed: %s',
-		(_label, source, path, from, to) => putBack(source, path, from, to)
-	);
-	it.fails.each(SHAPES.filter(([label]) => !wraps(label)))(
+	// Put back through the write a paste takes, which lands carried runs inside the kept ones.
+	it.each(SHAPES)(
 		'put back where they were, show what the leaf showed: %s',
 		(_label, source, path, from, to) => {
-			putBack(source, path, from, to);
+			const { node, store, cut, moved } = leaving(source, path, from, to);
+			const cutLeaf = { ...node, raw: cut.raw };
+			const at = { start: cut.caret, end: cut.caret };
+			const restored = replaceRangeInLeaf(cutLeaf, at, moved, store);
+			expect(shown(restored.raw, store)).toBe(shown(node.raw, store));
 		}
 	);
 
