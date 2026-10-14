@@ -528,13 +528,13 @@ const editor = ref<AragoniteInstance | null>(null);
 
 The props are the editor's [props](#props), in kebab-case if you like (`presentation-mode="reading"`), plus:
 
-- `v-model` keeps the document in your state, and works like React's `value` and `onChange`: you get the whole Markdown after every edit, handing back what you got does nothing, and anything else loads as a new document (clearing undo and taking the caret out of the editor). So reshape the text when you save, not in a setter on the way through.
+- `v-model` keeps the document in your state, and you get the whole Markdown after every edit (undo and redo included). The editor holds the document while you type, so the bound value only does something when it changes. Hand back what you got and nothing happens. Set it to anything else and it loads as a new document, which clears undo and takes the caret out of the editor, so don't reshape the text on its way back through `v-model` (do it when you save).
 - `default-value` is the document to start with if you'd rather not bind one. `@update:model-value` still reports every edit.
 - The `header` slot renders above the first block.
 - `class` and `style` land on the element the editor mounts into.
 - A boolean option you leave out keeps the editor's default, and a bare attribute (`search-bar`) means `true`.
 
-A template ref on it holds `handle`, the same handle `createEditor` returns (`editor.value?.handle?.getSource()`), and it's `null` until the editor mounts. Plugins go in `plugins`, with the same Svelte catch as in React. In Nuxt, use it as is, no `<ClientOnly>` needed: the server renders an empty container and the editor mounts in the browser.
+A template ref on it holds `handle`, the same handle `createEditor` returns (`editor.value?.handle?.getSource()`), and it's `null` until the editor mounts. Plugins go in `plugins`, from reactive state or not. Every bundled plugin works, and one that ships Svelte components of its own needs a bundler that compiles Svelte, same as in React. In Nuxt, use it as is, no `<ClientOnly>` needed: the server renders an empty container and the editor mounts in the browser.
 
 ## Events
 
