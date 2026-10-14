@@ -27,6 +27,9 @@
 			"version": ">=22.17.0"
 		}
 	},
+	"workspaces": [
+		"packages/*"
+	],
 	"svelte": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"imports": {
@@ -187,6 +190,7 @@
 		"docs:capture:modes": "node scripts/run-with-env.mjs DOCS_CAPTURE=1 -- playwright test --project=e2e-capture",
 		"package": "svelte-kit sync && svelte-package && node scripts/prune-dist.mjs && vite build --config vite.prebuilt.config.js",
 		"prepack": "npm run package && node scripts/verify-pack.mjs",
+		"release:publish": "node scripts/check-lockstep.mjs && npm publish --workspaces --include-workspace-root",
 		"prepare": "git config core.hooksPath .githooks || exit 0"
 	},
 	"dependencies": {
