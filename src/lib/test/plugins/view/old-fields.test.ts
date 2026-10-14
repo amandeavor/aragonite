@@ -21,7 +21,7 @@ export const inlineBuilder: InlineWidgetDescriptor = {
 	isWidget: () => true,
 	view: () => ({}),
 	// @ts-expect-error an inline widget draws through `view`, not a builder
-	view: () => ({})
+	buildWidget: () => document.body
 };
 
 export const inlineComponent: InlineWidgetDescriptor = {

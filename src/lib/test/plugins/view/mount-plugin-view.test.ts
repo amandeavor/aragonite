@@ -3,7 +3,8 @@
 // that threw is never called again, and a Svelte view's teardown throw is reported too.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushSync, type Component } from 'svelte';
-import { mountPluginView, type PluginView } from '#lib/plugin-view.js';
+import { mountPluginView, UPGRADE_HINT, type PluginView } from '#lib/plugin-view.js';
+import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { svelteDecorationWidget, svelteInlineWidget } from '#lib/svelte-views.svelte.js';
 import { domProbe, stages, svelteLog, viewExploded, type LogEntry } from './fixtures/probe-view';
 import SvelteProbe from './fixtures/SvelteProbe.svelte';
@@ -115,5 +116,21 @@ describe('the Svelte helpers', () => {
 		mounted!.update({ ...(props(2) as object), source: '$y$' } as never);
 		flushSync();
 		expect(svelteLog.map((entry) => entry.props)).toEqual(['$x$', '$y$']);
+	});
+});
+
+describe('a plugin still written for the replaced builder fields', () => {
+	it('reports one upgrade hint and draws the fallback when the view is missing', () => {
+		const { mounted, report } = mountProbe(undefined as never);
+		expect(mounted).toBeNull();
+		expect(report).toHaveBeenCalledTimes(1);
+		expect(String(report.mock.calls[0][0])).toContain(UPGRADE_HINT);
+	});
+
+	it('is refused at registration when an inline widget kind has no view', () => {
+		const legacy = { isWidget: () => true, buildWidget: () => document.body };
+		expect(() => registerInlineWidgetKind('legacy-builder' as never, legacy as never)).toThrow(
+			UPGRADE_HINT
+		);
 	});
 });

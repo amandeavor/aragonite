@@ -34,6 +34,11 @@ export interface PluginViewMountOptions {
 	subject: string;
 }
 
+/** The message a plugin gets when it passes a drawing field where a `view` belongs. */
+export const UPGRADE_HINT =
+	'buildWidget, buildDom and component became `view`; svelteInlineWidget, ' +
+	'svelteDecorationWidget and svelteMenuRow wrap a Svelte component';
+
 /** Null when the mount threw, which is reported; the slot draws its fallback instead. */
 export function mountPluginView<P>(
 	view: PluginView<P>,
@@ -45,6 +50,11 @@ export function mountPluginView<P>(
 		warnIfForeignRuntime(error, opts.subject);
 		opts.report(error);
 	};
+	// A view that isn't a function is reported with the field to use, never called.
+	if (typeof view !== 'function') {
+		fail(new TypeError(`${opts.subject}: \`view\` must be a function (${UPGRADE_HINT})`));
+		return null;
+	}
 	let handle: PluginViewHandle<P> | undefined;
 	try {
 		handle = view(target, props);

@@ -14,7 +14,7 @@ import { entityRendersGlyph, buildEntityWidget } from './entity-widget';
 import { createInlineKindRegistry } from '../../schema/plugin-registry';
 import type { GrammarView } from '../../schema/block-openers';
 import { inlineDescendants } from './walk';
-import type { PluginView } from '../../plugin-view';
+import { UPGRADE_HINT, type PluginView } from '../../plugin-view';
 
 /**
  * The shell every inline widget is drawn in. Its `data-*` attributes are the only handle the
@@ -160,6 +160,9 @@ export function registerInlineWidgetKind(
 	kind: AnyInlineKind,
 	descriptor: InlineWidgetDescriptor
 ): void {
+	if (typeof descriptor.view !== 'function') {
+		throw new TypeError(`registerInlineWidgetKind: "${kind}" needs a \`view\` (${UPGRADE_HINT})`);
+	}
 	// Only the published fields, so a stray `draw` on the object can't skip the view's wrapper.
 	registerWidgetEntry(kind, {
 		isWidget: (node, raw) => descriptor.isWidget(node, raw),
