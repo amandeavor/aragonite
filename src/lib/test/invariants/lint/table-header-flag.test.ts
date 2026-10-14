@@ -13,7 +13,7 @@ describeManifests(
 			id: 'G4.170 only the parser and the table rebuild write a row’s header flag',
 			// The type declares the field.
 			population: except(SOURCE.cstNodes),
-			matches: /\bisHeader\s*:(?!:)|[{,]\s*isHeader\s*[,}]/,
+			matches: /\bisHeader\s*:(?!:)|[{,]\s*isHeader\s*[,}]|\.isHeader\s*=(?!=)/,
 			declared: {
 				[SOURCE.tableParser]: 'reads each row at its line',
 				[SOURCE.containerRebuilders]: 'makes row 0 the header after every structural edit'
@@ -22,9 +22,14 @@ describeManifests(
 				'the header is whichever row is first, so a route that sets the flag itself goes stale the moment a row moves; build the row with `tableRowOf` and let the table rebuild decide',
 			hits: [
 				"const row = { kind: 'tableRow', metadata: { isHeader: i === 0 } };",
-				'const metadata = { isHeader, surplusCells };'
+				'const metadata = { isHeader, surplusCells };',
+				"metadataOf(rows[0], 'tableRow').isHeader = true;"
 			],
-			misses: ['if (meta?.isHeader === true) return;', 'const isHeader = rowIdx === 0;']
+			misses: [
+				'if (meta?.isHeader === true) return;',
+				'if (row.isHeader == null) return;',
+				'const isHeader = rowIdx === 0;'
+			]
 		}
 	],
 	collectEditorSources()
