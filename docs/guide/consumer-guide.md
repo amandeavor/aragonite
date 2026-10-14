@@ -18,7 +18,7 @@ This is gonna be a long one, so here are the sections:
 | [The public surface](#the-public-surface)                     | What the package exports, and what the version number promises about it                                        |
 | [Props](#props)                                               | Every prop, and which ones you can change after mount                                                          |
 | [The instance surface](#the-instance-surface)                 | The methods on a mounted editor: read the document, move the caret, run commands                               |
-| [Mounting without Svelte](#mounting-without-svelte)           | `createEditor` and the React component, for an app that doesn't render Svelte components                       |
+| [Mounting without Svelte](#mounting-without-svelte)           | `createEditor` and the React and Vue components, for an app that doesn't render Svelte components              |
 | [Events](#events)                                             | The eight channels an editor reports on, and what each one carries                                             |
 | [Presentation modes](#presentation-modes)                     | One document shown five ways, from raw Markdown to fully rendered                                              |
 | [Images and links](#images-and-links)                         | Rewriting URLs, importing pasted images, and which URLs the editor refuses to load                             |
@@ -458,6 +458,8 @@ import '@voithos-labs/aragonite/style.css';
 import '@voithos-labs/aragonite/styles/editor-theme.css';
 ```
 
+One TypeScript catch: the core's types mention Svelte's, and an app without Svelte has none installed, so keep `"skipLibCheck": true` in `tsconfig.json`. Vite's, Next's and Nuxt's templates already set it.
+
 ### React
 
 There's a React component on top of `createEditor`, in its own package. It peers the core at the exact same version (they release together), so install both:
@@ -498,7 +500,41 @@ The props are the editor's [props](#props), plus a few React ones:
 
 The ref is the same handle `createEditor` returns, and it's `null` until the editor mounts. Plugins go in `plugins` as usual. Every bundled plugin works here, and so does any plugin that doesn't ship Svelte components of its own; one that does (a custom block, say) needs a bundler that compiles Svelte. The component is marked `'use client'`, so in Next you can render it from a server component too (the editor itself only shows up once the page reaches the browser).
 
-One TypeScript catch: the core's types mention Svelte's, and a React app has no Svelte installed, so keep `"skipLibCheck": true` in `tsconfig.json`. Vite's and Next's templates already set it.
+### Vue
+
+Same deal in Vue 3.3 or newer: a component on top of `createEditor`, in its own package, pinned to the core's exact version.
+
+```powershell
+npm install @voithos-labs/aragonite @voithos-labs/aragonite-vue
+```
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { Aragonite, type AragoniteInstance } from '@voithos-labs/aragonite-vue';
+import '@voithos-labs/aragonite/style.css';
+import '@voithos-labs/aragonite/styles/editor-theme.css';
+
+const text = ref('# Grocery list\n\n- eggs\n- more eggs\n');
+const editor = ref<AragoniteInstance | null>(null);
+</script>
+
+<template>
+	<Aragonite ref="editor" v-model="text" theme="light" style="height: 70vh">
+		<template #header><input placeholder="Title" /></template>
+	</Aragonite>
+</template>
+```
+
+The props are the editor's [props](#props), in kebab-case if you like (`presentation-mode="reading"`), plus:
+
+- `v-model` keeps the document in your state, and works like React's `value` and `onChange`: you get the whole Markdown after every edit, handing back what you got does nothing, and anything else loads as a new document (clearing undo and taking the caret out of the editor). So reshape the text when you save, not in a setter on the way through.
+- `default-value` is the document to start with if you'd rather not bind one. `@update:model-value` still reports every edit.
+- The `header` slot renders above the first block.
+- `class` and `style` land on the element the editor mounts into.
+- A boolean option you leave out keeps the editor's default, and a bare attribute (`search-bar`) means `true`.
+
+A template ref on it holds `handle`, the same handle `createEditor` returns (`editor.value?.handle?.getSource()`), and it's `null` until the editor mounts. Plugins go in `plugins`, with the same Svelte catch as in React. In Nuxt, use it as is, no `<ClientOnly>` needed: the server renders an empty container and the editor mounts in the browser.
 
 ## Events
 
