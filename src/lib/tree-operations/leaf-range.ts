@@ -153,8 +153,9 @@ const same = (bytes: string): string => bytes;
 const withTyped = (join: CleanedJoin, typed: string): CleanedJoin => ({
 	raw: join.raw.slice(0, join.seam) + typed + join.raw.slice(join.seam),
 	seam: join.seam,
+	// The point where the two sides meet maps to where the typed text starts.
 	map: (offset) => {
 		const to = join.map(offset);
-		return to >= join.seam && offset >= join.seam ? to + typed.length : to;
+		return to > join.seam ? to + typed.length : to;
 	}
 });

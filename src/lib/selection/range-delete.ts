@@ -107,7 +107,8 @@ export function removeHeldWhole(
 function joinsAcross(doc: Document, start: SelectionPoint, end: SelectionPoint): boolean {
 	const startBlock = blockNodeAt(doc, start.path);
 	const endBlock = blockNodeAt(doc, end.path);
-	if (!startBlock || !endBlock) return true;
+	// Inside one block a range always cuts what it covers.
+	if (!startBlock || !endBlock || comparePaths(start.path, end.path) === 0) return true;
 	const touchesOnly = end.offset === 0 || start.offset >= displayLength(startBlock.raw);
 	return !touchesOnly || isMergeEligible(startBlock.kind, endBlock.kind);
 }
