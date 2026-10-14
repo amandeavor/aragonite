@@ -38,13 +38,13 @@ test('search Previous to a far match past undecoded images keeps the active high
 
 	await openFind(editor);
 	await typeQuery(editor, 'list');
-	await expect(count(page)).toHaveText(/1\s*\/\s*11/);
+	await expect(count(page)).toHaveText(/1\s+of\s+11/);
 	await editor.waitForRenderFlush();
 
 	// "Previous" wraps to the last match: the deep allowlist paragraph, far below the
 	// tables and undecoded images.
 	await prevButton(page).click();
-	await expect(count(page)).toHaveText(/11\s*\/\s*11/);
+	await expect(count(page)).toHaveText(/11\s+of\s+11/);
 	await editor.waitForRenderFlush();
 
 	// Poll the paint and scroll outcome directly: the active match's block must mount,

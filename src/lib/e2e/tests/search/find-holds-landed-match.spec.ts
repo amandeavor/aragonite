@@ -75,7 +75,7 @@ test('find next onto a match already on screen keeps it there while an image abo
 	await page.keyboard.press('ControlOrMeta+f');
 	await findInput(page).waitFor({ state: 'visible' });
 	await page.keyboard.type('zebra');
-	await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+	await expect(count(page)).toHaveText(/1\s+of\s+1/);
 	await page.keyboard.press('Enter');
 	await editor.waitForRenderFlush();
 	await editor.waitForResizeObserverFlush();

@@ -43,7 +43,7 @@ test.describe('plugin container: <details> reveal-into-collapsed', () => {
 
 		// The scan reaches the unmounted body, so the count proves the mount was attempted, not
 		// finished: the rescan is synchronous and the mount is not awaited.
-		await expect(page.locator('.search-count')).toHaveText(/1\s*\/\s*1/);
+		await expect(page.locator('.search-count')).toHaveText(/1\s+of\s+1/);
 
 		// The container expanded and committed: the body child mounts and `open` is in the
 		// serialized bytes.

@@ -94,7 +94,7 @@ test('a deep off-window table-row match repaints its highlight after a single sc
 
 	await openFind(editor);
 	await typeQuery(editor, 'ZZNEEDLE');
-	await expect(count(page)).toHaveText(/1\s*\/\s*11/);
+	await expect(count(page)).toHaveText(/1\s+of\s+11/);
 	await editor.waitForRenderFlush();
 
 	// The active (first) match is scrolled to at the top; the deep match (row 180)
