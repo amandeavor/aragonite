@@ -282,11 +282,11 @@ export type { ChildList } from './block-lists/child-list';
 // The one place allowed to import from `components/`, so `editor-actions` keeps no upward
 // value dependency on the component tree.
 export function registerChromeLeaf(kind: AnyBlockKind, opts?: ChromeLeafOptions): void {
-	const blockClass = opts?.blockClass;
+	const { blockClass, ...rest } = opts ?? {};
 	bindChromeLeaf(
 		kind,
 		svelteBlockView(TextEditableBlock, () => ({ blockClass })),
-		opts
+		rest
 	);
 }
 export type { ChromeLeafOptions };

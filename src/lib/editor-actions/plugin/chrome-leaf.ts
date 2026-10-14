@@ -48,11 +48,11 @@ function mergeChromeKeymap(overrides: KeyBinding[] | undefined): KeyBinding[] {
 	];
 }
 
-/** `view` draws the row; it should apply `opts.blockClass` to the row's editable element. */
+/** `view` draws the row, so the caller applies `blockClass` when it builds the view. */
 export function registerChromeLeaf(
 	kind: AnyBlockKind,
 	view: BlockView,
-	opts: ChromeLeafOptions = {}
+	opts: Omit<ChromeLeafOptions, 'blockClass'> = {}
 ): void {
 	registerBlockKind(kind, {
 		...(opts.label !== undefined ? { label: opts.label } : {}),
