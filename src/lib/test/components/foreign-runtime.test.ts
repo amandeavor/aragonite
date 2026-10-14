@@ -128,7 +128,8 @@ describe('isForeignRuntimeError', () => {
 		['JavaScriptCore', "undefined is not an object (evaluating 'first_child_getter.call')"],
 		['V8, a later mount', "Cannot read properties of null (reading 'nodes')"],
 		['SpiderMonkey, a later mount', `can't access property "nodes", effect is null`],
-		['JavaScriptCore, a later mount', "null is not an object (evaluating 'effect.nodes')"]
+		['JavaScriptCore, a later mount', "null is not an object (evaluating 'effect.nodes')"],
+		['SpiderMonkey, a bundler-renamed variable', `can't access property "nodes", effect$1 is null`]
 	])('reads the %s message', (_, message) => {
 		expect(isForeignRuntimeError(new TypeError(message))).toBe(true);
 	});
@@ -141,6 +142,18 @@ describe('isForeignRuntimeError', () => {
 		[
 			'another undefined read',
 			new TypeError("Cannot read properties of undefined (reading 'raw')")
+		],
+		[
+			"a plugin's own read of nodes off undefined",
+			new TypeError("Cannot read properties of undefined (reading 'nodes')")
+		],
+		[
+			"a plugin's own call through an undefined handler, in SpiderMonkey",
+			new TypeError(`can't access property "call", handler is undefined`)
+		],
+		[
+			"a plugin's own read of nodes off null, in JavaScriptCore",
+			new TypeError("null is not an object (evaluating 'graph.nodes')")
 		],
 		['a plain error mentioning call', new Error('could not call the renderer')],
 		['a thrown string', 'effect_orphan']

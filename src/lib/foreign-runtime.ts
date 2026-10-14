@@ -6,10 +6,20 @@
 import { devWarn } from './dev-warn';
 import { isDevChecks } from './env';
 
-// The second runtime never set up its DOM helpers, so a first mount calls `.call` on undefined and
-// a later one reads `nodes` off no effect; worded as V8, SpiderMonkey and JavaScriptCore word it.
-const NO_RUNTIME_STATE =
-	/\(reading '(?:call|nodes|nodes_start)'\)|property "(?:call|nodes|nodes_start)"|\.(?:call|nodes|nodes_start)'\)/;
+// A second runtime's first mount calls `.call` on its unset `*_getter`, a later one reads `nodes`
+// off a null effect; V8 names no variable, so there a plugin's own `undefined.call` matches too.
+const GETTER = String.raw`[\w$]*_getter[\w$]*`; // a bundler may suffix a renamed variable
+const EFFECT = String.raw`effect[\w$]*`;
+const NO_RUNTIME_STATE = new RegExp(
+	[
+		String.raw`of undefined \(reading 'call'\)`,
+		String.raw`of null \(reading 'nodes(?:_start)?'\)`,
+		String.raw`property "call", ${GETTER} is undefined`,
+		String.raw`property "nodes(?:_start)?", ${EFFECT} is null`,
+		String.raw`evaluating '${GETTER}\.call'`,
+		String.raw`null is not an object \(evaluating '${EFFECT}\.nodes(?:_start)?'\)`
+	].join('|')
+);
 
 export function isForeignRuntimeError(error: unknown): boolean {
 	if (!(error instanceof Error)) return false;
