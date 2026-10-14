@@ -84,8 +84,7 @@
 				aria-expanded={replaceExpanded}
 				onclick={() => onToggleReplace?.()}><MenuIcon name="chevron-right" /></button
 			>
-			<!-- One pill, as limestone's view search: the glyph, the field, the readout and the
-			     options that shape what the field means. -->
+			<!-- A label, so a click anywhere on the pill outside its buttons lands in the field. -->
 			<label class="search-field" class:invalid={!!search.error}>
 				<span class="search-glyph"><MenuIcon name="search" /></span>
 				<input
@@ -191,8 +190,7 @@
 {/if}
 
 <style>
-	/* limestone's soft chrome: a raised card like its menus, holding a filled pill like its view
-	   search, with icon buttons that stay quiet until hovered and nothing outlined. */
+	/* A raised card holding one filled pill, with buttons that stay quiet until hovered. */
 	.search-bar {
 		position: absolute;
 		/* The only placement knobs: the editor sets them at `.editor`, an anchor may set its own. */
@@ -250,7 +248,6 @@
 		background: var(--menu-chip-bg-hover, rgba(255, 255, 255, 0.085));
 		color: var(--color-text-secondary, #cfcfca);
 	}
-	/* A pattern the engine refused: the field says so in its own tint, not a red box. */
 	.search-field.invalid {
 		background: color-mix(in srgb, var(--color-error, #e06c75) 12%, transparent);
 	}
@@ -371,7 +368,6 @@
 		opacity: 0.4;
 		cursor: default;
 	}
-	/* On reads as pressed in: a firmer fill and the text colour, no accent. */
 	.search-tog.on,
 	.search-tog.on:hover {
 		background: color-mix(in srgb, var(--color-text-primary, #e8e8e5) 16%, transparent);

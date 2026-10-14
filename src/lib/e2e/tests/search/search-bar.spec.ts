@@ -213,9 +213,9 @@ test.describe('search: toggles', () => {
 });
 
 test.describe('search: the bar beside a code block', () => {
-	// The code block's control rail sits in the block's top-right corner, where the open bar
-	// would cover it in a code block at the top of the document.
-	test('the open bar leaves the rail of a top code block uncovered', async ({ page }) => {
+	// A code block's controls (its language picker and copy button) sit in its top-right corner,
+	// where the open bar would cover them in a code block at the top of the document.
+	test('the open bar leaves the controls of a top code block uncovered', async ({ page }) => {
 		const editor = new EditorPage(page);
 		await editor.goto('?presentationMode=live');
 		await editor.loadContent('```js\nconst a = 1;\nconst b = 2;\n```\n\nafter\n');
@@ -228,7 +228,7 @@ test.describe('search: the bar beside a code block', () => {
 			const down = Math.min(bar.bottom, rail.bottom) - Math.max(bar.top, rail.top);
 			return Math.max(0, across) * Math.max(0, down);
 		});
-		expect(overlap, 'square pixels of the rail under the bar').toBe(0);
+		expect(overlap, 'square pixels of the controls under the bar').toBe(0);
 	});
 });
 
