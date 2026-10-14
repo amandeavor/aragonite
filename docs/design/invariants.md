@@ -1092,6 +1092,7 @@ unguarded.
 | G4.174 | Every published entry point has a source build and a prebuilt one                         | L       |
 | G4.175 | Every library component compiles in runes mode                                            | L       |
 | G4.178 | Every route that mounts a plugin view falls back and reports when it throws               | L       |
+| G4.180 | Every top-right hover control on a block moves below the open find bar                    | L       |
 
 ### The entries
 
@@ -2088,6 +2089,11 @@ view a plugin handed it (a Svelte `mount`, a component picked at render time, a 
 paints its fallback and reports on `error` (G1.90). The editor's own mount in `create-editor.ts`
 is the one exception. `lint/file-rules.test.ts`. The scan can't see teardown, so a plugin view
 that throws while it unmounts is held to the same report by `components/plugin-view-teardown.test.ts`.
+
+**G4.180 · Corner controls clear the find bar.** A hover control pinned to a block's top-right
+corner (absolute, placed by `top` and `right` or by `inset`, hidden at rest by opacity or visibility)
+carries `data-corner-control`, so the open find bar moves it below itself when it covers it.
+`lint/corner-control-marker.test.ts`.
 
 ## Accessibility
 

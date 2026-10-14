@@ -150,6 +150,9 @@
 	/* Device pixels per CSS pixel, which the paint sets on the bar so its lengths round in them;
 	   not a setting. */
 	--md-device-pixel-ratio: 1;
+	/* How far the open find bar moves a corner control it covers, which the bar sets on that
+	   control; not a setting. */
+	--md-find-bar-clearance: 0px;
 
 	/* Menu elevation, per mode, since a shadow tuned for a near-black surface vanishes over a white
 	   one; editor-owned because a host palette names colors, not elevation. */

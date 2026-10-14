@@ -354,7 +354,7 @@
 			onfocusout={() => commitEdit(false)}
 			onpointerdown={(e) => e.stopPropagation()}></textarea>
 	{:else}
-		<div class="mermaid-toolbar" onpointerdown={(e) => e.stopPropagation()}>
+		<div class="mermaid-toolbar" data-corner-control onpointerdown={(e) => e.stopPropagation()}>
 			<button type="button" data-testid="mermaid-edit" onclick={openEdit}>Edit</button>
 			<button type="button" data-testid="mermaid-focus" onclick={openFocusView}>Focus</button>
 			<button type="button" data-testid="mermaid-reset" onclick={() => view.reset()}>

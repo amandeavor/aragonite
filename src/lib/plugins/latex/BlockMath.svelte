@@ -155,6 +155,7 @@
 	<button
 		type="button"
 		class="math-preview-toggle"
+		data-corner-control
 		aria-label={LAYOUT_TITLE[next]}
 		title={LAYOUT_TITLE[next]}
 		onmousedown={(e) => e.preventDefault()}

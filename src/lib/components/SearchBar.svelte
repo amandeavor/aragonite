@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { EDITOR_SERVICES_KEY, type EditorServices } from '../editor-keys';
+	import { keepCornerControlsClear } from './corner-controls';
 	import MenuIcon from './menu/MenuIcon.svelte';
 	import {
 		SEARCH_CLOSE_LABEL,
@@ -21,10 +22,13 @@
 	// chevron share one source of truth; the chevron reports toggles back up.
 	let {
 		replaceExpanded = false,
-		onToggleReplace
+		onToggleReplace,
+		editorRoot
 	}: {
 		replaceExpanded?: boolean;
 		onToggleReplace?: () => void;
+		/** Where the blocks whose corner controls the open bar may cover are rendered. */
+		editorRoot: () => HTMLElement | undefined;
 	} = $props();
 
 	const { search } = getContext<EditorServices>(EDITOR_SERVICES_KEY);
@@ -73,7 +77,12 @@
 </script>
 
 {#if search.isOpen}
-	<div class="search-bar" role="search" bind:this={barEl}>
+	<div
+		class="search-bar"
+		role="search"
+		bind:this={barEl}
+		{@attach keepCornerControlsClear(editorRoot)}
+	>
 		<div class="search-row">
 			<button
 				type="button"
