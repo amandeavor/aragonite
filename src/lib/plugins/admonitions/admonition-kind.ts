@@ -8,9 +8,9 @@ import {
 	containerClosure,
 	createDirectiveRebuild,
 	declarePluginKind,
-	defineBlockComponent,
+	svelteBlockView,
 	DIRECTIVE_BODY_WRAP,
-	registerBlockComponent,
+	registerBlockView,
 	registerBlockKind,
 	registerBlockCommand,
 	registerChromeLeaf,
@@ -135,7 +135,7 @@ export function registerAdmonitions(options?: AdmonitionsOptions): void {
 	});
 
 	registerChromeLeaf(title, { label: 'Title', blockClass: 'admonition-title' });
-	registerBlockComponent(admonition, defineBlockComponent(AdmonitionBlock));
+	registerBlockView(admonition, svelteBlockView(AdmonitionBlock));
 
 	if (options?.convertAlertsOnPaste) {
 		registerPasteTransform(githubAlertsPasteTransform);

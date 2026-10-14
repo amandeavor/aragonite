@@ -7,11 +7,8 @@
 import type { NodeView } from '../core/node-views';
 import { metadataOf } from '../core/nodes';
 import { shownKind } from '../core/parsers/heading';
-import {
-	defineBlockComponent,
-	registerBlockComponent,
-	type BlockComponentEntry
-} from '../schema/block-component-registry';
+import { registerBlockView, type BlockView } from '../schema/block-view-registry';
+import { svelteBlockView } from '../components/svelte-block-view';
 import { augmentBuiltin } from '../schema/block-kind-descriptor';
 import { registerBuiltInDescriptors } from '../schema/built-in-descriptors';
 import { augmentInlineWidgetKind } from '../core/inline/inline-widgets';
@@ -42,7 +39,7 @@ function headingExtraProps(node: NodeView): Record<string, unknown> {
 	return { blockClass: `heading-${level}` };
 }
 
-const textAsRawBlock: BlockComponentEntry = defineBlockComponent(TextEditableBlock, () => ({
+const textAsRawBlock: BlockView = svelteBlockView(TextEditableBlock, () => ({
 	blockClass: 'raw-block'
 }));
 
@@ -57,29 +54,26 @@ export function registerBuiltInBlocks(): void {
 	// Descriptors first: augmentBuiltin('table') below needs `table` registered.
 	registerBuiltInDescriptors();
 
-	registerBlockComponent(
+	registerBlockView(
 		'paragraph',
-		defineBlockComponent(TextEditableBlock, () => ({ blockClass: 'paragraph-block' }))
+		svelteBlockView(TextEditableBlock, () => ({ blockClass: 'paragraph-block' }))
 	);
-	registerBlockComponent('heading', defineBlockComponent(TextEditableBlock, headingExtraProps));
-	registerBlockComponent(
-		'setextHeading',
-		defineBlockComponent(TextEditableBlock, headingExtraProps)
-	);
-	registerBlockComponent('thematicBreak', defineBlockComponent(ThematicBreakBlock));
-	registerBlockComponent('fencedCode', defineBlockComponent(CodeBlock));
-	registerBlockComponent('blockquote', defineBlockComponent(BlockquoteBlock));
-	registerBlockComponent('list', defineBlockComponent(ListBlock));
-	registerBlockComponent('table', defineBlockComponent(TableBlock));
+	registerBlockView('heading', svelteBlockView(TextEditableBlock, headingExtraProps));
+	registerBlockView('setextHeading', svelteBlockView(TextEditableBlock, headingExtraProps));
+	registerBlockView('thematicBreak', svelteBlockView(ThematicBreakBlock));
+	registerBlockView('fencedCode', svelteBlockView(CodeBlock));
+	registerBlockView('blockquote', svelteBlockView(BlockquoteBlock));
+	registerBlockView('list', svelteBlockView(ListBlock));
+	registerBlockView('table', svelteBlockView(TableBlock));
 
 	// Plain editable fallback for kinds with no rendered component. tableRow and tableCell
 	// render inside TableBlock; these catch only strays that reach BlockHost directly.
-	registerBlockComponent('indentedCode', textAsRawBlock);
-	registerBlockComponent('htmlBlock', textAsRawBlock);
-	registerBlockComponent('linkReferenceDefinition', textAsRawBlock);
-	registerBlockComponent('tableRow', textAsRawBlock);
-	registerBlockComponent('tableCell', textAsRawBlock);
-	registerBlockComponent('unrecognized', textAsRawBlock);
+	registerBlockView('indentedCode', textAsRawBlock);
+	registerBlockView('htmlBlock', textAsRawBlock);
+	registerBlockView('linkReferenceDefinition', textAsRawBlock);
+	registerBlockView('tableRow', textAsRawBlock);
+	registerBlockView('tableCell', textAsRawBlock);
+	registerBlockView('unrecognized', textAsRawBlock);
 
 	// The default loop in `paste/hooks.ts` skips `tableCell`, so registration order cannot
 	// revert cell paste to the plain inline default.

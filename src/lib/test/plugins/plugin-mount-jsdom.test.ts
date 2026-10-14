@@ -8,6 +8,7 @@ import { Editor, type EditorInstance } from '#lib';
 import {
 	declarePluginKind,
 	definePluginBlock,
+	svelteBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
@@ -39,7 +40,7 @@ function markerLeafPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'jsdommountplugin',
 		kind: KIND,
-		component: PlainLeafBlock,
+		view: svelteBlockView(PlainLeafBlock),
 		register: () => {
 			const kind = declarePluginKind(KIND);
 			registerBlockKind(kind, {

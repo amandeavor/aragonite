@@ -5,7 +5,7 @@
  * and `syntax` a switched-off syntax. The descriptor is never filtered: a disabled kind needs it.
  */
 import { isBuiltinBlockKind, type AnyBlockKind } from '../core/nodes';
-import { getBlockComponent, type BlockComponentEntry } from './block-component-registry';
+import { getBlockView, type BlockView } from './block-view-registry';
 import {
 	getBlockKindDescriptor,
 	tryGetBlockKindDescriptor,
@@ -27,8 +27,8 @@ export interface SyntaxOptions {
 }
 
 export interface RegistryView {
-	/** The kind's component, or `undefined` when it is unregistered or disabled for this editor. */
-	component(kind: AnyBlockKind): BlockComponentEntry | undefined;
+	/** The kind's view, or `undefined` when it is unregistered or disabled for this editor. */
+	blockView(kind: AnyBlockKind): BlockView | undefined;
 	/** The kind's descriptor, never filtered because every kind needs one; throws when absent. */
 	descriptor(kind: AnyBlockKind): BlockKindDescriptor;
 	tryDescriptor(kind: AnyBlockKind): BlockKindDescriptor | undefined;
@@ -64,7 +64,7 @@ export function createRegistryView(opts?: {
 	const opens: KindEnablement = (kind) =>
 		enabled(kind) && (indentedCode || kind !== 'indentedCode');
 	return {
-		component: (kind) => (enabled(kind) ? getBlockComponent(kind, activation) : undefined),
+		blockView: (kind) => (enabled(kind) ? getBlockView(kind, activation) : undefined),
 		descriptor: (kind) => getBlockKindDescriptor(kind),
 		tryDescriptor: (kind) => tryGetBlockKindDescriptor(kind),
 		grammar: createGrammarView(opens, { setextHeading, activation })
@@ -74,8 +74,8 @@ export function createRegistryView(opts?: {
 const everyInstalledKind = kindEnablementFor(everyInstalledPlugin);
 
 export const defaultRegistryView: RegistryView = {
-	component: (kind) =>
-		everyInstalledKind(kind) ? getBlockComponent(kind, everyInstalledPlugin) : undefined,
+	blockView: (kind) =>
+		everyInstalledKind(kind) ? getBlockView(kind, everyInstalledPlugin) : undefined,
 	descriptor: (kind) => getBlockKindDescriptor(kind),
 	tryDescriptor: (kind) => tryGetBlockKindDescriptor(kind),
 	grammar: defaultGrammarView

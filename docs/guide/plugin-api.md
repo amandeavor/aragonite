@@ -97,9 +97,9 @@ The **descriptor** is a kind's written behavior: how it merges, whether it's edi
 
 | Export                                    | Role                                                                                                                                                                                                                                                            |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `registerBlockComponent`                  | Bind a kind to the Svelte component that renders it; without one the kind renders as a visible raw-text fallback (you'll notice)                                                                                                                                |
-| `defineBlockComponent`                    | Wrap your component into the registry's entry shape; a component that forgot to publish its surface fails the typecheck here                                                                                                                                    |
-| `BlockComponentEntry`                     | The registry entry: the component, plus an optional per-node extra-props hook                                                                                                                                                                                   |
+| `registerBlockView`                       | Bind a kind to the Svelte component that renders it; without one the kind renders as a visible raw-text fallback (you'll notice)                                                                                                                                |
+| `svelteBlockView`                         | Wrap your component into the registry's entry shape; a component that forgot to publish its surface fails the typecheck here                                                                                                                                    |
+| `BlockView`                               | The registry entry: the component, plus an optional per-node extra-props hook                                                                                                                                                                                   |
 | `BlockComponent`, `BlockComponentExports` | The surface a block component publishes: a factory leaf's single `blockApi` export, a container's single `containerApi` export, or a hand-built leaf's own members                                                                                              |
 | `BlockComponentProps`                     | The props every block component receives: its node, its index and path, the marker prefix a container hands its first child (a list item's `- `; a leaf that drops it loses its markers on screen), the read-only whole document, the editor's geometry surface |
 
@@ -129,12 +129,12 @@ _(pre-freeze / unstable)_ The recipe: [Typing a multi-line construct into existe
 
 Every registry on this surface is register-once: a duplicate throws in production and under test (a dev server replaces the entry and warns instead, so an edited module takes effect on re-run). These are the matching is-it-there checks, for a module that may run twice (a re-import, say) to ask before registering. Guard on these rather than on a module-level flag of your own, since your flag survives the test kit's [platform reset](plugin-testing.md#a-blank-slate-per-test) and the registries don't. The directive and inline tiers keep their own probes, `isDirectiveRegistered` and `isInlineKindDeclared`, in their groups below.
 
-| Export                                                                                                         | Role                                                  |
-| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `isBlockKindDeclared`                                                                                          | Is this kind name already declared?                   |
-| `isBlockKindRegistered`, `isBlockComponentRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered` | One guard per register-once call on the block side    |
-| `isPasteTransformRegistered`                                                                                   | The same guard, keyed by a paste transform's name     |
-| `isLanguageRegistered`                                                                                         | The same guard, keyed by a code-block language's name |
+| Export                                                                                                    | Role                                                  |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `isBlockKindDeclared`                                                                                     | Is this kind name already declared?                   |
+| `isBlockKindRegistered`, `isBlockViewRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered` | One guard per register-once call on the block side    |
+| `isPasteTransformRegistered`                                                                              | The same guard, keyed by a paste transform's name     |
+| `isLanguageRegistered`                                                                                    | The same guard, keyed by a code-block language's name |
 
 ### Directive authoring
 

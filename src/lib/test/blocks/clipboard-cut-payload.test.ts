@@ -15,7 +15,7 @@ import {
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { dispatchKey } from '#lib/test/harness/settle.js';
 import { newestEntryCaret } from '../support/undo-entry';
-import { definePluginBlock, registerBlockOpener } from '#lib/plugin.js';
+import { definePluginBlock, svelteBlockView, registerBlockOpener } from '#lib/plugin.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 import PlainLeafBlock from '../plugins/fixtures/PlainLeafBlock.svelte';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
@@ -245,7 +245,7 @@ describe('a cut writes the copy’s payload during its event, then deletes it', 
 const plainLeaf = definePluginBlock({
 	name: 'cut-plain-leaf',
 	kind: 'cut-plain-leaf',
-	component: PlainLeafBlock,
+	view: svelteBlockView(PlainLeafBlock),
 	register: () => {
 		const kind = testLeaf('cut-plain-leaf');
 		registerBlockOpener(kind, {

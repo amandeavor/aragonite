@@ -13,7 +13,7 @@ import {
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { dispatchImagePaste } from '#lib/test/harness/insertion-routes.js';
 import { CODE_MENU_LABEL, CODE_RUN_LABEL } from '#lib/a11y-strings.js';
-import type { CodeMenuItem, PasteImageHook } from '#lib/editor-keys.js';
+import type { CodeMenuItem, PasteImageHook } from '#lib/host-hooks.js';
 
 installLayoutStubs();
 afterEach(destroyMountedEditors);

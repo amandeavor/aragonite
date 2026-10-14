@@ -5,7 +5,8 @@
 
 import type { BlockEditActions } from '../../../action-contracts';
 import type { NodeView } from '../../../core/node-views';
-import type { DocumentGetter, PasteImageHook } from '../../../editor-keys';
+import type { DocumentGetter } from '../../../editor-keys';
+import type { PasteImageHook } from '../../../host-hooks';
 import type { EditorEvents } from '../../../editor-events';
 import type { SurfaceBackend } from '../editable/surface-backend';
 import type { CrossBlockHandlers } from '../../../selection/cross-block/dispatch';

@@ -6,7 +6,8 @@
 import { mount, unmount, flushSync } from 'svelte';
 import Editor from '#lib/components/Editor.svelte';
 import { createReactiveProps } from '#lib/reactive-props.js';
-import type { EditorInstance, EditorProps } from '#lib/editor-props.js';
+import type { EditorInstance } from '#lib/editor-props.js';
+import type { EditorProps } from '#lib/components/editor-component-props.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 
 import { settleEditor, pressKey } from '#lib/test/harness/settle.js';

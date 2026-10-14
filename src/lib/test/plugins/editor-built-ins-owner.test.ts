@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { resetPluginPlatformForTests } from '#lib/testing.js';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { activationFor } from '#lib/schema/plugin-activation.js';
-import { getBlockComponent } from '#lib/schema/block-component-registry.js';
+import { getBlockView } from '#lib/schema/block-view-registry.js';
 import { getPasteSurface } from '#lib/tree-operations/paste-surfaces.js';
 import { listLanguages } from '#lib/components/blocks/code/code-languages.js';
 import { registerEditorBuiltIns } from '#lib/components/editor-built-ins.js';
 
 const noPlugins = activationFor([]);
 const builtInsResolve = () => {
-	expect(getBlockComponent('paragraph', noPlugins)).toBeDefined();
+	expect(getBlockView('paragraph', noPlugins)).toBeDefined();
 	expect(getPasteSurface('fencedCode', noPlugins)).toBeDefined();
 	expect(getPasteSurface('tableCell', noPlugins)).toBeDefined();
 	expect(listLanguages(noPlugins)).toContain('python');

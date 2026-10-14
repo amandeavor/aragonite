@@ -10,7 +10,7 @@ import type { DocumentView } from '../core/node-views';
 import type { CaretMemory } from '../caret/caret-memory';
 import { docPathFrom } from '../caret/coordinate-spaces';
 import type { ScrollOwner } from '../windowing/scroll-owner';
-import type { BlockElLookup } from '../editor-keys';
+import type { BlockElLookup } from '../caret/block-el-lookup';
 import { isDevChecks } from '../env';
 import { checkLandingFocusScrollsNothing } from '../invariants/landing-focus-scroll';
 import { descendTo, type ChildList } from '../block-lists/child-list';

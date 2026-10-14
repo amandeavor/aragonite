@@ -3,6 +3,7 @@ import {
 	caretOffsetAtPoint,
 	declarePluginKind,
 	definePluginBlock,
+	svelteBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
@@ -60,7 +61,7 @@ export function parrotPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'parrot',
 		kind: PARROT,
-		component: ParrotBlock,
+		view: svelteBlockView(ParrotBlock),
 		register: registerParrotBlock
 	});
 }

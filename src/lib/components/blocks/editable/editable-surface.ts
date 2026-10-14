@@ -21,7 +21,9 @@ import {
 } from '../../../block-component';
 import type { UserScrollport } from '../../../windowing/scroll-ancestors';
 import type { ScrollOwner } from '../../../windowing/scroll-owner';
-import type { BlockElLookup, DocumentGetter, PasteImageHook } from '../../../editor-keys';
+import type { DocumentGetter } from '../../../editor-keys';
+import type { BlockElLookup } from '../../../caret/block-el-lookup';
+import type { PasteImageHook } from '../../../host-hooks';
 import { emitClipboardError, emitCommandError, type EditorEvents } from '../../../editor-events';
 import type { InlineMenuCombobox } from '../../../inline-menu/inline-menu-state.svelte';
 import type { NodeView } from '../../../core/node-views';

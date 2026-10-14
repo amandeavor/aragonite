@@ -7,7 +7,8 @@
 
 import { claimsBodyChord } from '../../active-editor';
 import type { BlockComponent } from '../../block-component';
-import type { DocumentGetter, PasteImageHook } from '../../editor-keys';
+import type { DocumentGetter } from '../../editor-keys';
+import type { PasteImageHook } from '../../host-hooks';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import type { CrossBlockHandlers } from '../../selection/cross-block/dispatch';
 import { emitClipboardError, type EditorEvents } from '../../editor-events';

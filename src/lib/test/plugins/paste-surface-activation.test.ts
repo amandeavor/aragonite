@@ -7,14 +7,12 @@ import { activationFor, type PluginActivation } from '#lib/schema/plugin-activat
 import { registerPasteTransform } from '#lib/tree-operations/paste/paste-transforms.js';
 import { getPasteSurface, registerPasteSurface } from '#lib/tree-operations/paste-surfaces.js';
 import { defaultInlineHook } from '#lib/tree-operations/paste/hooks.js';
-import { registerChromeLeaf } from '#lib/editor-actions/plugin/chrome-leaf.js';
+import { registerChromeLeaf } from '#lib/plugin.js';
 import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import { makeEditorActionsDeps, makeStubBlockEdit } from '#lib/test/harness/editor-actions.js';
 import type { CstNode } from '#lib/core/nodes.js';
-import type { BlockComponent } from '#lib/block-component.js';
-import type { Component } from 'svelte';
 import { fixtureReading, topLevelStore } from '../harness/fixture-grammar';
 
 const KIND = 'stamp-note';
@@ -39,7 +37,7 @@ const stampPlugin = definePlugin({
 				return defaultInlineHook(node, offset, text, undefined, topLevelStore(node), '\n');
 			}
 		});
-		registerChromeLeaf(declarePluginKind(LEAF), {} as Component<object, BlockComponent>);
+		registerChromeLeaf(declarePluginKind(LEAF));
 	}
 });
 

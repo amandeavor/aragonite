@@ -30,7 +30,7 @@ import {
 	type EditorServices
 } from '../../editor-keys';
 import type { EditorContext } from '../../schema/plugin-install';
-import { componentPluginEditor } from '../../schema/block-component-registry';
+import { componentPluginEditor } from '../../schema/block-view-registry';
 import type { WindowResult } from '../../windowing/block-window.svelte';
 import type { RefSlots } from '../../block-lists/child-refs';
 import type { ChildList } from '../../block-lists/child-list';

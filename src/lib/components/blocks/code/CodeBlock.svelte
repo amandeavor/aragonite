@@ -5,10 +5,10 @@
 	import {
 		EDITOR_POLICIES_KEY,
 		EDITOR_SERVICES_KEY,
-		type CodeRunRequest,
 		type EditorPolicies,
 		type EditorServices
 	} from '../../../editor-keys';
+	import type { CodeRunRequest } from '../../../host-hooks';
 	import { asRawOffset } from '../../../caret/coordinate-spaces';
 	import {
 		CONTENT_EMPTY_ATTR,

@@ -5,6 +5,7 @@ import { expect } from 'vitest';
 import RevealLeafBlock from './RevealLeafBlock.svelte';
 import {
 	definePluginBlock,
+	svelteBlockView,
 	registerBlockOpener,
 	simpleLeafClosure,
 	type EditorPlugin
@@ -36,7 +37,7 @@ export function revealLeafPlugin(name: string): EditorPlugin {
 	return definePluginBlock({
 		name,
 		kind: name,
-		component: RevealLeafBlock,
+		view: svelteBlockView(RevealLeafBlock),
 		register: () => {
 			const kind = registerRevealLeafKind(name);
 			registerBlockOpener(kind, {

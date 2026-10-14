@@ -5,10 +5,8 @@ import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import type { Component } from 'svelte';
 import { parse } from '#lib/core/parser.js';
 import { createEditorEvents } from '#lib/editor-events.js';
-import {
-	registerBlockComponent,
-	defineBlockComponent
-} from '#lib/schema/block-component-registry.js';
+import { registerBlockView } from '#lib/schema/block-view-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import { mountPluginView } from '#lib/plugin-view.js';
 import { svelteInlineWidget } from '#lib/svelte-views.svelte.js';
 import { isForeignRuntimeError } from '#lib/foreign-runtime.js';
@@ -44,7 +42,7 @@ afterEach(async () => {
 function mountBlock(component: Component<never>, raw = 'hello\n'): HTMLElement {
 	const doc = parse(raw);
 	const kind = testLeaf('foreign-runtime');
-	registerBlockComponent(kind, defineBlockComponent(component as never));
+	registerBlockView(kind, svelteBlockView(component as never));
 	doc.children[0].kind = kind;
 	mounted = mountBlockHost(
 		doc,

@@ -6,11 +6,8 @@
  */
 
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
-import {
-	registerBlockComponent,
-	defineBlockComponent,
-	isBlockComponentRegistered
-} from '#lib/schema/block-component-registry.js';
+import { registerBlockView, isBlockViewRegistered } from '#lib/schema/block-view-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import { declaredPluginKind } from '#lib/schema/plugin-kind.js';
 import { registerAsCore } from '#lib/schema/plugin-install.js';
 import { DIRECTIVE_CONTAINER, DIRECTIVE_LEAF } from '#lib/core/directive/kinds.js';
@@ -23,19 +20,19 @@ export function activateDirectives(): void {
 	registerAsCore(() => {
 		activateDirectiveGrammar();
 
-		if (!isBlockComponentRegistered(DIRECTIVE_CONTAINER)) {
-			registerBlockComponent(
+		if (!isBlockViewRegistered(DIRECTIVE_CONTAINER)) {
+			registerBlockView(
 				declaredPluginKind(DIRECTIVE_CONTAINER),
-				defineBlockComponent(DirectiveContainerBlock)
+				svelteBlockView(DirectiveContainerBlock)
 			);
 		}
 
 		// The leaf's kind descriptor already drives its dimmed marker and split behavior, so it
 		// reuses the built-in text block component as is.
-		if (!isBlockComponentRegistered(DIRECTIVE_LEAF)) {
-			registerBlockComponent(
+		if (!isBlockViewRegistered(DIRECTIVE_LEAF)) {
+			registerBlockView(
 				declaredPluginKind(DIRECTIVE_LEAF),
-				defineBlockComponent(TextEditableBlock, () => ({ blockClass: 'directive-leaf' }))
+				svelteBlockView(TextEditableBlock, () => ({ blockClass: 'directive-leaf' }))
 			);
 		}
 	});

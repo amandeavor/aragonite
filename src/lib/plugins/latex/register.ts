@@ -5,8 +5,8 @@
 
 import {
 	definePlugin,
-	registerBlockComponent,
-	defineBlockComponent,
+	registerBlockView,
+	svelteBlockView,
 	declaredPluginKind,
 	registerInsertEntry,
 	type EditorPlugin
@@ -48,9 +48,9 @@ export function latexPlugin(options: LatexPluginOptions = {}): EditorPlugin {
 			registerMathInline();
 			// registerMathBlock also registers the ```math fence kind; both render through BlockMath.
 			registerMathBlock();
-			const blockMath = defineBlockComponent(BlockMath);
-			registerBlockComponent(declaredPluginKind(MATH_BLOCK), blockMath);
-			registerBlockComponent(declaredPluginKind(MATH_FENCE), blockMath);
+			const blockMath = svelteBlockView(BlockMath);
+			registerBlockView(declaredPluginKind(MATH_BLOCK), blockMath);
+			registerBlockView(declaredPluginKind(MATH_FENCE), blockMath);
 			registerInsertEntry({
 				id: 'math',
 				label: 'Math block',

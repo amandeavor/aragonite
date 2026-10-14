@@ -37,7 +37,7 @@ import {
 	isKnownMergeRole,
 	type BlockKindDescriptor
 } from './block-kind-descriptor';
-import { isBlockComponentRegistered } from './block-component-registry';
+import { isBlockViewRegistered } from './block-view-registry';
 import { listRegisteredOpeners } from './block-openers';
 import { isBuiltinCommandId } from './commands';
 import { isPluginCommandId } from './command-id';
@@ -51,7 +51,7 @@ export type RegistrationCheckReport = (tag: string, check: () => InvariantViolat
 const hasDescriptor = (kind: AnyBlockKind): boolean =>
 	tryGetBlockKindDescriptor(kind) !== undefined;
 
-const hasComponent = (kind: AnyBlockKind): boolean => isBlockComponentRegistered(kind);
+const hasComponent = (kind: AnyBlockKind): boolean => isBlockViewRegistered(kind);
 
 const keymapEntries = (kinds: readonly AnyBlockKind[]) =>
 	kinds.map((kind) => ({ kind, keymap: tryGetBlockKindDescriptor(kind)?.keymap }));

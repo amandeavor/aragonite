@@ -178,12 +178,12 @@ Optional, each earning its place:
 
 ### 2. The component
 
-Call `registerBlockComponent(kind, defineBlockComponent(YourBlock, extraProps?))` in `components/built-in-blocks.ts`:
+Call `registerBlockView(kind, svelteBlockView(YourBlock, extraProps?))` in `components/built-in-blocks.ts`:
 
 ```ts
 // components/built-in-blocks.ts
-registerBlockComponent('thematicBreak', defineBlockComponent(ThematicBreakBlock));
-registerBlockComponent('heading', defineBlockComponent(TextEditableBlock, headingExtraProps));
+registerBlockView('thematicBreak', svelteBlockView(ThematicBreakBlock));
+registerBlockView('heading', svelteBlockView(TextEditableBlock, headingExtraProps));
 
 function headingExtraProps(node: NodeView): Record<string, unknown> {
 	// ...
@@ -192,7 +192,7 @@ function headingExtraProps(node: NodeView): Record<string, unknown> {
 }
 ```
 
-Go through `defineBlockComponent` rather than building the entry object by hand. It type-checks your component's exports and props against what BlockHost expects, so a wrong shape is something `npm run check` tells you about rather than a user. A hand-built leaf exports its methods one by one and ends with `satisfies BlockComponent`; a container exports a single `containerApi`. The thematic break's tail, as a leaf:
+Go through `svelteBlockView` rather than building the entry object by hand. It type-checks your component's exports and props against what BlockHost expects, so a wrong shape is something `npm run check` tells you about rather than a user. A hand-built leaf exports its methods one by one and ends with `satisfies BlockComponent`; a container exports a single `containerApi`. The thematic break's tail, as a leaf:
 
 ```ts
 // components/blocks/ThematicBreakBlock.svelte

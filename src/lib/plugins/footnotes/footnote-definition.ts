@@ -10,14 +10,14 @@ import {
 	containerClosure,
 	declarePluginKind,
 	declaredPluginKind,
-	defineBlockComponent,
+	svelteBlockView,
 	getPluginMetadata,
 	isBlankLine,
 	isBlankText,
 	isWhitespaceChar,
 	lineStartsOuterBlock,
 	parseContainerBody,
-	registerBlockComponent,
+	registerBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	setPluginMetadata,
@@ -198,5 +198,5 @@ export function registerFootnoteDefinition(): void {
 		})
 	});
 
-	registerBlockComponent(kind, defineBlockComponent(FootnoteDefinition));
+	registerBlockView(kind, svelteBlockView(FootnoteDefinition));
 }

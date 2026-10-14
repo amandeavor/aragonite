@@ -5,6 +5,7 @@
 
 import TextEditableBlock from './components/blocks/text/TextEditableBlock.svelte';
 import { registerChromeLeaf as bindChromeLeaf } from './editor-actions/plugin/chrome-leaf';
+import { svelteBlockView } from './components/svelte-block-view';
 import { computeInlineContent as parseLeafInline } from './core/inline';
 import { defaultGrammarView } from './schema/block-openers';
 import { everyInstalledPlugin } from './schema/plugin-activation';
@@ -90,9 +91,11 @@ export type {
 } from './schema/closure';
 export { simpleLeafClosure, containerClosure } from './schema/closure';
 
-// ── Component registry ───────────────────────────────────────────────────────
-export { registerBlockComponent, defineBlockComponent } from './schema/block-component-registry';
-export type { BlockComponentEntry } from './schema/block-component-registry';
+// ── Block views ──────────────────────────────────────────────────────────────
+// What draws a kind. `BlockView` is opaque: make one with `svelteBlockView`.
+export { registerBlockView } from './schema/block-view-registry';
+export type { BlockView } from './schema/block-view-registry';
+export { svelteBlockView } from './components/svelte-block-view';
 export type { BlockComponent, BlockComponentExports, BlockComponentProps } from './block-component';
 
 // ── Parser-opener registry ───────────────────────────────────────────────────
@@ -266,7 +269,7 @@ export function computeInlineContent(node: NodeView): InlineNode[] {
 // (HMR / re-import) by guarding on these.
 export { isBlockKindDeclared } from './schema/plugin-kind';
 export { isBlockKindRegistered } from './schema/block-kind-descriptor';
-export { isBlockComponentRegistered } from './schema/block-component-registry';
+export { isBlockViewRegistered } from './schema/block-view-registry';
 export { isBlockOpenerRegistered } from './schema/block-openers';
 export { isBlockCompleterRegistered } from './schema/block-completions';
 export { isPasteTransformRegistered } from './tree-operations/paste/paste-transforms';
@@ -289,7 +292,12 @@ export type { ChildList } from './block-lists/child-list';
 // The one place allowed to import from `components/`, so `editor-actions` keeps no upward
 // value dependency on the component tree.
 export function registerChromeLeaf(kind: AnyBlockKind, opts?: ChromeLeafOptions): void {
-	bindChromeLeaf(kind, TextEditableBlock, opts);
+	const blockClass = opts?.blockClass;
+	bindChromeLeaf(
+		kind,
+		svelteBlockView(TextEditableBlock, () => ({ blockClass })),
+		opts
+	);
 }
 export type { ChromeLeafOptions };
 // Create the reserved child-0 node for a container's title leaf: the text plus its newline.

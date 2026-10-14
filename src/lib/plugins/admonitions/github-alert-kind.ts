@@ -11,14 +11,14 @@ import {
 	containerClosure,
 	declarePluginKind,
 	declaredPluginKind,
-	defineBlockComponent,
+	svelteBlockView,
 	displayLines,
 	firstLineEnding,
 	getPluginMetadata,
 	joinDisplayLines,
 	ownTrailingLineEnding,
 	parseContainerBody,
-	registerBlockComponent,
+	registerBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	serializeChildren,
@@ -149,5 +149,5 @@ export function registerGithubAlert(): void {
 		})
 	});
 
-	registerBlockComponent(kind, defineBlockComponent(AdmonitionBlock));
+	registerBlockView(kind, svelteBlockView(AdmonitionBlock));
 }

@@ -9,9 +9,9 @@ import {
 	definePlugin,
 	declarePluginKind,
 	declaredPluginKind,
-	defineBlockComponent,
+	svelteBlockView,
 	registerBlockKind,
-	registerBlockComponent,
+	registerBlockView,
 	registerDirective,
 	isDirectiveRegistered,
 	setPluginMetadata,
@@ -111,7 +111,7 @@ export function devProbePlugin(): EditorPlugin {
 				});
 			}
 
-			registerBlockComponent(devprobe, defineBlockComponent(DevProbeBlock));
+			registerBlockView(devprobe, svelteBlockView(DevProbeBlock));
 		}
 	});
 }

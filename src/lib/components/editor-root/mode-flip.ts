@@ -12,7 +12,7 @@ import type { MenuPresence } from '../menu/menu-presence.svelte';
 import type { DraftRegistry } from '../draft-registry';
 import { rawOffsetAt } from '../../caret/widget-offset';
 import type { EditorEvents } from '../../editor-events';
-import type { BlockElLookup } from '../../editor-keys';
+import type { BlockElLookup } from '../../caret/block-el-lookup';
 import type { PresentationMode } from '../../presentation-mode';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
 import type { EditorSelection } from '../../selection/primitives';

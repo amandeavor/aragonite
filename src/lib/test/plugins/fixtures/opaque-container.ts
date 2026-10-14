@@ -5,8 +5,8 @@ import {
 	declarePluginKind,
 	declaredPluginKind,
 	registerBlockKind,
-	registerBlockComponent,
-	defineBlockComponent,
+	registerBlockView,
+	svelteBlockView,
 	containerClosure
 } from '#lib/plugin.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
@@ -35,10 +35,7 @@ export function registerOpaqueKind(): void {
 			simOracle: { mode: 'not-supported', reason: 'test fixture, never in a shipped document' }
 		})
 	});
-	registerBlockComponent(
-		declaredPluginKind(OPAQUE_KIND),
-		defineBlockComponent(OpaqueContainerBlock)
-	);
+	registerBlockView(declaredPluginKind(OPAQUE_KIND), svelteBlockView(OpaqueContainerBlock));
 }
 
 export interface MountedOpaque {

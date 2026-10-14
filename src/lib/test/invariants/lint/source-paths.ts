@@ -157,7 +157,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	publicBarrel: 'export { default as Editor }',
 	pluginBarrel: 'export function highlightCode',
 	testingBarrel: 'export function applyPasteTransforms',
-	editorProps: 'export interface EditorProps',
+	editorProps: 'export interface EditorOptions',
 	blockComponentApi: 'export interface BlockComponent ',
 	actionContracts: 'export type CommitSnapshotArg',
 	envFlags: 'export const editorEnv',

@@ -16,8 +16,7 @@ import {
 	getOrderedOpeners,
 	type BlockOpener
 } from '#lib/schema/block-openers.js';
-import { registerChromeLeaf } from '#lib/editor-actions/plugin/chrome-leaf.js';
-import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
+import { registerChromeLeaf } from '#lib/plugin.js';
 import { __resetSchemaRegistriesForTests } from '#lib/schema/registry-reset.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import { allowDevWarns, takeDevWarns } from '#lib/test/support/warn-gate.js';
@@ -107,7 +106,7 @@ describe('flushPendingRegistrationChecks', () => {
 		// fires mid-batch reports a gap that never existed.
 		registerBlockOpener(calloutKind, opener(9102));
 		registerBlockKind(calloutKind, withChrome(title));
-		registerChromeLeaf(title, TextEditableBlock);
+		registerChromeLeaf(title);
 
 		const { violations, report } = collector();
 		flushPendingRegistrationChecks(report);
@@ -195,7 +194,7 @@ describe('registry-derived first-flush sweep', () => {
 
 	it('accepts a coherent pre-mount callout-shaped batch', () => {
 		const title = declarePluginKind('boot-title');
-		registerChromeLeaf(title, TextEditableBlock);
+		registerChromeLeaf(title);
 		const calloutKind = declarePluginKind('boot-container');
 		registerBlockKind(calloutKind, withChrome(title));
 		registerBlockOpener(calloutKind, opener(9107));

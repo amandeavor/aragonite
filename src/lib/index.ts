@@ -6,8 +6,9 @@
 export { default as Editor } from './components/Editor.svelte';
 export { createEditor, type CreateEditorOptions, type EditorHandle } from './create-editor';
 
+export type { EditorProps } from './components/editor-component-props';
 export type {
-	EditorProps,
+	EditorOptions,
 	EditorInstance,
 	InsertMarkdownOptions,
 	PlaceholderBlock,
@@ -26,7 +27,7 @@ export type {
 	RunCodeHook,
 	CodeMenuItem,
 	CodeMenuItemsHook
-} from './editor-keys';
+} from './host-hooks';
 export type { ImageLoadPolicy } from './core/inline-render';
 export type { PresentationMode } from './presentation-mode';
 export type { LinkClick } from './activation-click';

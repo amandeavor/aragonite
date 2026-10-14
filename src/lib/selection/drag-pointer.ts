@@ -7,7 +7,7 @@
 import type { UserScrollport } from '../windowing/scroll-ancestors';
 import type { SelectionState } from './selection-state.svelte';
 import type { SelectionEndpoint } from './primitives';
-import type { BlockElLookup } from '../editor-keys';
+import type { BlockElLookup } from '../caret/block-el-lookup';
 import { caretOffsetAtPoint } from '../caret/point-offset';
 import { applyCollapsedCaret, applySingleBlockRange } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';

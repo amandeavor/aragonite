@@ -10,8 +10,8 @@ import {
 	declaredPluginKind,
 	registerBlockKind,
 	registerBlockOpener,
-	registerBlockComponent,
-	defineBlockComponent,
+	registerBlockView,
+	svelteBlockView,
 	registerInsertEntry,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
@@ -96,7 +96,7 @@ export function tocPlugin(options?: TocOptions): EditorPlugin {
 		},
 		setup() {
 			registerTocBlock();
-			registerBlockComponent(declaredPluginKind(TOC_BLOCK), defineBlockComponent(TocBlock));
+			registerBlockView(declaredPluginKind(TOC_BLOCK), svelteBlockView(TocBlock));
 			registerInsertEntry({
 				id: 'toc',
 				label: 'Table of contents',

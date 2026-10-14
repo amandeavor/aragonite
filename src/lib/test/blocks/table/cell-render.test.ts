@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { createCellRender } from '../../../components/blocks/table/cell-render';
 import { INLINE_PRIORITIES, registerInlineSyntax } from '../../../core/inline/scan/plugin-syntax';
 import type { CstNode } from '../../../core/nodes';
-import type { ResolveLinkUrl } from '../../../editor-keys';
+import type { ResolveLinkUrl } from '../../../host-hooks';
 import type { IndexedDecoration } from '../../../decorations/buckets';
 import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 import { fixtureReading } from '../../harness/fixture-grammar';

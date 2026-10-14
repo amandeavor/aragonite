@@ -6,6 +6,7 @@ import type { Component } from 'svelte';
 import type { BlockComponent, BlockComponentExports, BlockComponentProps } from '#lib/plugin.js';
 import {
 	definePluginBlock,
+	svelteBlockView,
 	registerBlockOpener,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
@@ -34,7 +35,7 @@ function markerLinePlugin<P extends Partial<BlockComponentProps> & Record<string
 	return definePluginBlock({
 		name: kind,
 		kind,
-		component,
+		view: svelteBlockView(component),
 		register: () => {
 			const declared = testLeaf(kind, {
 				closure: simpleLeafClosure({

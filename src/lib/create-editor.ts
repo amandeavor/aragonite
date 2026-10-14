@@ -6,14 +6,15 @@
 
 import { createRawSnippet, mount, unmount, type Snippet } from 'svelte';
 import Editor from './components/Editor.svelte';
-import { EDITOR_PROP_TIMING, type EditorInstance, type EditorProps } from './editor-props';
+import { EDITOR_PROP_TIMING, type EditorInstance, type EditorOptions } from './editor-props';
+import type { EditorProps } from './components/editor-component-props';
 import { createReactiveProps } from './reactive-props';
 import { devWarn } from './dev-warn';
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
-/** `EditorProps`, with the header as an element of your own instead of a Svelte snippet. */
-export type CreateEditorOptions = Omit<EditorProps, 'header'> & {
+/** The editor's options, with the header as an element of your own. */
+export type CreateEditorOptions = EditorOptions & {
 	/** Shown above the first block, inside the editor's scroll container; `null` removes it. */
 	header?: HTMLElement | null;
 };
@@ -27,10 +28,7 @@ export interface EditorHandle extends EditorInstance {
 	destroy(): void;
 }
 
-/**
- * Mounts an editor into `target` and returns its handle. The options are `EditorProps`, with
- * `header` as an element. Call `destroy` before dropping `target`.
- */
+/** Mounts an editor into `target` and returns its handle. Call `destroy` before dropping `target`. */
 export function createEditor(target: HTMLElement, options: CreateEditorOptions = {}): EditorHandle {
 	const initial: Record<string, unknown> = {};
 	for (const key of propKeys(options)) initial[key] = propValue(key, options[key]);

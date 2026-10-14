@@ -4,10 +4,10 @@ import { takeDevWarns } from '../support/warn-gate';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { registerBlockKind, getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
 import {
-	registerBlockComponent,
-	getBlockComponent,
-	type BlockComponentEntry
-} from '#lib/schema/block-component-registry.js';
+	registerBlockView,
+	getBlockView,
+	type BlockView
+} from '#lib/schema/block-view-registry.js';
 import {
 	registerBlockOpener,
 	getOrderedOpeners,
@@ -32,7 +32,7 @@ const registration = (editable: boolean) =>
 		closure: testClosure
 	}) as const;
 
-const stubComponent = (tag: string) => ({ tag }) as unknown as BlockComponentEntry;
+const stubComponent = (tag: string) => ({ tag }) as unknown as BlockView;
 const stubOpener = (priority: number): BlockOpener => ({
 	priority,
 	tryOpen: () => null,
@@ -81,14 +81,14 @@ describe('dev re-registration replaces instead of throwing', () => {
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);
 	});
 
-	it('registerBlockComponent replaces the entry', () => {
+	it('registerBlockView replaces the entry', () => {
 		const kind = declarePluginKind('dev-component');
 		const first = stubComponent('first');
 		const second = stubComponent('second');
-		registerBlockComponent(kind, first);
+		registerBlockView(kind, first);
 		asDevNotTest();
-		expect(() => registerBlockComponent(kind, second)).not.toThrow();
-		expect(getBlockComponent(kind, everyInstalledPlugin)).toBe(second);
+		expect(() => registerBlockView(kind, second)).not.toThrow();
+		expect(getBlockView(kind, everyInstalledPlugin)).toBe(second);
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);
 	});
 

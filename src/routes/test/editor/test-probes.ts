@@ -18,7 +18,8 @@ import {
 	registerBlockKind,
 	tryGetBlockKindDescriptor
 } from '#lib/schema/block-kind-descriptor.js';
-import { registerBlockComponent } from '#lib/schema/block-component-registry.js';
+import { registerBlockView } from '#lib/schema/block-view-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import type { HarnessSource } from './harness-source.svelte';
 import {
 	isPasteTransformRegistered,
@@ -482,11 +483,7 @@ export function installTestProbes({
 				});
 				// A throwing stub isn't a full BlockComponent, but it throws before any
 				// method is read.
-				registerBlockComponent(kind, {
-					component: ThrowOnRenderBlock as unknown as Parameters<
-						typeof registerBlockComponent
-					>[1]['component']
-				});
+				registerBlockView(kind, svelteBlockView(ThrowOnRenderBlock as never));
 			}
 			const doc = editor.__test.getDocument();
 			const node = doc.children[index] as CstNode | undefined;

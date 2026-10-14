@@ -62,6 +62,7 @@ import {
 	caretOffsetAtPoint,
 	declarePluginKind,
 	definePluginBlock,
+	svelteBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
@@ -119,7 +120,7 @@ export function parrotPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'parrot',
 		kind: PARROT,
-		component: ParrotBlock,
+		view: svelteBlockView(ParrotBlock),
 		register: registerParrotBlock
 	});
 }
@@ -394,7 +395,7 @@ A kind is a definition every editor on the page shares, and it's defined exactly
 Who guarantees a registration runs only once depends on where it runs:
 
 - **Inside a plugin unit** (the installable package the next section defines), `setup` runs at most once per process. Write each `register*` call straight; the unit owns the guarantee.
-- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockComponentRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
+- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockViewRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
 
 ```ts
 isBlockKindDeclared('parrot'); // false on a fresh page
@@ -422,7 +423,7 @@ export function myPlugin(options?: { renderer?: Renderer }): EditorPlugin {
 		name: 'my-plugin',
 		setup() {
 			registerMyKind(options?.renderer ?? defaultRenderer);
-			registerBlockComponent(declaredPluginKind('my-kind'), defineBlockComponent(MyBlock));
+			registerBlockView(declaredPluginKind('my-kind'), svelteBlockView(MyBlock));
 		}
 	});
 }

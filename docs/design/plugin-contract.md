@@ -169,7 +169,7 @@ One packaging fact first: the tarball carries every internal module's `.d.ts`, o
 
 ### The plugin unit and the `plugins` prop
 
-`definePlugin({ name, setup, defaults?, parseOptions? })` packages a plugin's global registrations into one installable unit, along with the defaults its per-editor options start from; the editor's set-once `plugins` prop installs each once per process, before the instance's first parse. `installPlugins` on the main barrel is the editor-less entry for `parse()` pipelines, `isPluginInstalled` probes an install, and `definePluginBlock` is the single-block shorthand (one kind, one component, one register step) for the common case that needn't touch `definePlugin` and `registerBlockComponent` directly.
+`definePlugin({ name, setup, defaults?, parseOptions? })` packages a plugin's global registrations into one installable unit, along with the defaults its per-editor options start from; the editor's set-once `plugins` prop installs each once per process, before the instance's first parse. `installPlugins` on the main barrel is the editor-less entry for `parse()` pipelines, `isPluginInstalled` probes an install, and `definePluginBlock` is the single-block shorthand (one kind, one component, one register step) for the common case that needn't touch `definePlugin` and `registerBlockView` directly.
 
 ```ts
 import { definePlugin } from '@voithos-labs/aragonite/plugin';
@@ -224,7 +224,7 @@ _Freeze litmus._ The unit's frozen shape must leave additive room for (a) the pe
 
 ### Registration base (frozen)
 
-The frozen layer's exports, in one breath: kind declaration plus `declaredPluginKind` (the checked accessor that recovers a declared brand in another module without a cast); descriptor, component, and opener registration; `defineBlockComponent`, which types a Svelte component as a `BlockComponent` without an `as unknown as` cast; idempotent-registration probes for the registries that publish one, which a module-scope registrar guards on so a re-import doesn't throw; and typed per-node plugin metadata (`setPluginMetadata` / `getPluginMetadata`), which stores a plugin kind's own shape without casting through the built-in metadata union.
+The frozen layer's exports, in one breath: kind declaration plus `declaredPluginKind` (the checked accessor that recovers a declared brand in another module without a cast); descriptor, component, and opener registration; `svelteBlockView`, which types a Svelte component as a `BlockComponent` without an `as unknown as` cast; idempotent-registration probes for the registries that publish one, which a module-scope registrar guards on so a re-import doesn't throw; and typed per-node plugin metadata (`setPluginMetadata` / `getPluginMetadata`), which stores a plugin kind's own shape without casting through the built-in metadata union.
 
 Frozen here means the model: which calls exist, that they register once and conflict on a duplicate, and what a kind is. The shapes those calls take still follow the pre-freeze rule, and freeze with the authoring surface at the release cut.
 

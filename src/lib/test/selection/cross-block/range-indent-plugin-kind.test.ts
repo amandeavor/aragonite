@@ -14,6 +14,7 @@ import { pressKey } from '#lib/test/harness/settle.js';
 import {
 	augmentBlockKind,
 	definePluginBlock,
+	svelteBlockView,
 	registerBlockCommand,
 	registerBlockOpener,
 	registerRangeIndent,
@@ -38,7 +39,7 @@ function quoteLeafPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: KIND,
 		kind: KIND,
-		component: RevealLeafBlock,
+		view: svelteBlockView(RevealLeafBlock),
 		register: () => {
 			const kind = registerRevealLeafKind(KIND);
 			const indent = registerBlockCommand(kind, 'quoteLeaf.indent', () => true);

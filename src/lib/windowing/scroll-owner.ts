@@ -6,7 +6,7 @@
  */
 import { tick } from 'svelte';
 import { devWarn } from '../dev-warn';
-import type { BlockElLookup } from '../editor-keys';
+import type { BlockElLookup } from '../caret/block-el-lookup';
 import type { UserScrollport } from './scroll-ancestors';
 import { createScrollport, type Scrollport, type ScrollportReader } from './scrollport';
 import { createSharedResizeWatch } from './observe-resize';

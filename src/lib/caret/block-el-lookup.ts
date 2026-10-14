@@ -6,6 +6,9 @@
 
 import { BLOCK_CONTENT_SELECTOR, TABLE_CELL_SELECTOR } from './block-content-selector';
 
+/** A block's content element by its path, or null when that block isn't mounted. */
+export type BlockElLookup = (path: number[]) => HTMLElement | null;
+
 export function blockContentElAt(root: HTMLElement, path: number[]): HTMLElement | null {
 	const wrapper = root.querySelector(`[data-block-path='${JSON.stringify(path)}']`);
 	if (wrapper) return wrapper.querySelector(BLOCK_CONTENT_SELECTOR) as HTMLElement | null;

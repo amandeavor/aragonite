@@ -16,7 +16,7 @@ import {
 	declarePluginInlineKind,
 	isInlineKindDeclared,
 	registerBlockKind,
-	registerBlockComponent,
+	registerBlockView,
 	registerBlockOpener,
 	registerBlockCompleter,
 	registerBlockCommand,
@@ -32,7 +32,7 @@ import {
 	registerDirective,
 	isBlockKindDeclared,
 	isBlockKindRegistered,
-	isBlockComponentRegistered,
+	isBlockViewRegistered,
 	isBlockOpenerRegistered,
 	isBlockCompleterRegistered,
 	isPasteTransformRegistered,
@@ -40,7 +40,7 @@ import {
 	listLanguages,
 	definePlugin,
 	isPluginInstalled,
-	type BlockComponentEntry,
+	type BlockView,
 	type NodeView,
 	type PluginBlockKind,
 	type PluginInlineKind
@@ -95,9 +95,9 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 		registered: () => isBlockKindRegistered('probe-block')
 	},
 	{
-		entry: 'registerBlockComponent',
-		register: () => registerBlockComponent(block, {} as BlockComponentEntry),
-		registered: () => isBlockComponentRegistered('probe-block')
+		entry: 'registerBlockView',
+		register: () => registerBlockView(block, {} as BlockView),
+		registered: () => isBlockViewRegistered('probe-block')
 	},
 	{
 		entry: 'registerBlockOpener',

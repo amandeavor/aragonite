@@ -4,6 +4,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import {
 	definePluginBlock,
+	svelteBlockView,
 	registerBlockOpener,
 	simpleLeafClosure,
 	OPENER_PRIORITIES
@@ -29,7 +30,7 @@ const MARKER = '@@';
 const hintRevealPlugin = definePluginBlock({
 	name: 'hint-reveal',
 	kind: 'hint-reveal',
-	component: HintRevealBlock,
+	view: svelteBlockView(HintRevealBlock),
 	register: () => {
 		const kind = testLeaf('hint-reveal', {
 			closure: simpleLeafClosure({

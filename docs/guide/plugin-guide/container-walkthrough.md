@@ -171,7 +171,7 @@ function registerConspiracy(): void {
 
 // definePluginBlock wraps definePlugin around the register step and the component
 // binding, so you write neither the setup-then-register order nor the
-// registerBlockComponent(declaredPluginKind(...), defineBlockComponent(...)) double-wrap.
+// registerBlockView(declaredPluginKind(...), svelteBlockView(...)) double-wrap.
 export function conspiracyPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'conspiracy',

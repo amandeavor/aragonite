@@ -900,7 +900,7 @@ what the type retired.
 **G3.1 · Typed per-kind metadata.** `BlockMetadataByKind` plus `metadataOf<K>`. Retired: `as`
 metadata casts.
 
-**G3.2 · Allowed component exports.** `defineBlockComponent`, whose exports parameter is the
+**G3.2 · Allowed component exports.** `svelteBlockView`, whose exports parameter is the
 three allowed publication shapes (`BlockComponentExports`): a hand-built leaf's own members, a
 factory-built leaf's single `blockApi`, or a container's single `containerApi`. Retired: `as unknown
 as` casts, and a component that publishes nothing at all. A factory-built leaf that copies its
