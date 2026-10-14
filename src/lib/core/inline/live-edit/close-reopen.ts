@@ -19,29 +19,33 @@ export interface CutConstruct {
 	contentEnd: number;
 }
 
-export interface ClosedHalf {
+export interface ClosedHalf<T extends CutConstruct> {
 	/** Where the kept bytes end: the cut, or earlier where a construct kept nothing and its
 	 *  opener went with it. */
 	end: number;
 	/** The closers to write at `end`, innermost first. */
 	closers: string;
-	closed: CutConstruct[];
+	closed: T[];
 }
 
-export interface ReopenedHalf {
+export interface ReopenedHalf<T extends CutConstruct> {
 	/** Where the kept bytes start: the cut, or later where a construct kept nothing and its
 	 *  closer went with it. */
 	start: number;
 	/** The openers to write at `start`, outermost first. */
 	openers: string;
-	reopened: CutConstruct[];
+	reopened: T[];
 }
 
 /** The half of `raw` before `cut`, with `chain` (outermost first) closed there. */
-export function closeBefore(raw: string, chain: readonly CutConstruct[], cut: number): ClosedHalf {
+export function closeBefore<T extends CutConstruct>(
+	raw: string,
+	chain: readonly T[],
+	cut: number
+): ClosedHalf<T> {
 	let end = cut;
 	let closers = '';
-	const closed: CutConstruct[] = [];
+	const closed: T[] = [];
 	for (const link of [...chain].reverse()) {
 		if (end === link.contentStart) end = link.start;
 		else {
@@ -53,14 +57,14 @@ export function closeBefore(raw: string, chain: readonly CutConstruct[], cut: nu
 }
 
 /** The half of `raw` from `cut`, with `chain` (outermost first) reopened there. */
-export function reopenAfter(
+export function reopenAfter<T extends CutConstruct>(
 	raw: string,
-	chain: readonly CutConstruct[],
+	chain: readonly T[],
 	cut: number
-): ReopenedHalf {
+): ReopenedHalf<T> {
 	let start = cut;
 	let openers = '';
-	const reopened: CutConstruct[] = [];
+	const reopened: T[] = [];
 	for (const link of [...chain].reverse()) {
 		if (start === link.contentEnd) start = link.end;
 		else {

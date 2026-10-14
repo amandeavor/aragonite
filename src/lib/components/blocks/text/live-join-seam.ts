@@ -109,13 +109,6 @@ interface Span {
 	end: number;
 }
 
-/** A construct the cut interacts with, in its own block's raw coordinates. */
-interface SideConstruct {
-	kind: AnyInlineKind;
-	node: Span;
-	content: Span;
-}
-
 interface Side {
 	raw: string;
 	/** The editor's grammar, which the render reading of this side draws in. */
@@ -125,10 +118,10 @@ interface Side {
 	inlines: readonly InlineNode[];
 	/** Constructs the cut left open: an opener kept without its closer, or the reverse. Outermost
 	 *  first, so the two sides' lists compare position by position. */
-	dangling: SideConstruct[];
+	dangling: CutConstruct[];
 	/** Constructs whose delimiter run touches the cut from inside the surviving bytes: the
 	 *  trailing closers of the block above, the leading openers of the block below. */
-	touching: SideConstruct[];
+	touching: CutConstruct[];
 }
 
 /** One endpoint's surviving bytes and the constructs its cut leaves at the join. Null for a
@@ -158,8 +151,8 @@ function readSide(endpoint: JoinEndpoint, keep: 'before' | 'after', reading: Rea
 	// content range: a cut at a construct's content start leaves its opener behind too.
 	const dangling = ranged.filter((c) =>
 		keep === 'before'
-			? c.content.start <= offset && offset < c.node.end
-			: c.node.start < offset && offset <= c.content.end
+			? c.contentStart <= offset && offset < c.end
+			: c.start < offset && offset <= c.contentEnd
 	);
 	if (dangling.some((c) => !isRejoinable(c.kind))) return null;
 
@@ -181,10 +174,10 @@ const isConstruct = (node: InlineNode): boolean => node.kind !== 'text';
 /** Constructs with a content range (outermost first), kept apart from those without one, whose
  *  bytes the join can only step around. */
 function classifyConstructs(inlines: readonly InlineNode[]): {
-	ranged: SideConstruct[];
+	ranged: CutConstruct[];
 	atomic: Span[];
 } {
-	const ranged: SideConstruct[] = [];
+	const ranged: CutConstruct[] = [];
 	const atomic: Span[] = [];
 	for (const node of inlineDescendants(inlines, isConstruct)) {
 		if (node.kind === 'text') continue;
@@ -193,13 +186,19 @@ function classifyConstructs(inlines: readonly InlineNode[]): {
 			atomic.push({ start: node.start, end: node.end });
 			continue;
 		}
-		ranged.push({ kind: node.kind, node: { start: node.start, end: node.end }, content });
+		ranged.push({
+			kind: node.kind,
+			start: node.start,
+			end: node.end,
+			contentStart: content.start,
+			contentEnd: content.end
+		});
 	}
 	return { ranged, atomic };
 }
 
-const splitsARun = (c: SideConstruct, at: number): boolean =>
-	(at > c.node.start && at < c.content.start) || (at > c.content.end && at < c.node.end);
+const splitsARun = (c: CutConstruct, at: number): boolean =>
+	(at > c.start && at < c.contentStart) || (at > c.contentEnd && at < c.end);
 
 /** Whether the family can be cut and rejoined (`docs/design/live-mode.md` § 4.4). */
 function isRejoinable(kind: AnyInlineKind): boolean {
@@ -209,19 +208,17 @@ function isRejoinable(kind: AnyInlineKind): boolean {
 /** The nested chain of closers ending at `cut` (or openers starting there), outermost first:
  *  `**a *b***` cut at its end gives the strong emphasis, then the emphasis. */
 function touchingChain(
-	constructs: readonly SideConstruct[],
+	constructs: readonly CutConstruct[],
 	cut: number,
 	keep: 'before' | 'after'
-): SideConstruct[] {
-	const chain: SideConstruct[] = [];
+): CutConstruct[] {
+	const chain: CutConstruct[] = [];
 	let at = cut;
 	for (;;) {
-		const link = constructs.find((c) =>
-			keep === 'before' ? c.node.end === at : c.node.start === at
-		);
+		const link = constructs.find((c) => (keep === 'before' ? c.end === at : c.start === at));
 		if (!link || !isRejoinable(link.kind)) return chain;
 		chain.push(link);
-		at = keep === 'before' ? link.content.end : link.content.start;
+		at = keep === 'before' ? link.contentEnd : link.contentStart;
 	}
 }
 
@@ -246,15 +243,13 @@ const rightSpan = (join: { seam: number }, right: Side, span: Span): Span => ({
 	end: join.seam + span.end - right.cut
 });
 
-const openerRun = (c: SideConstruct): Span => ({ start: c.node.start, end: c.content.start });
-const closerRun = (c: SideConstruct): Span => ({ start: c.content.end, end: c.node.end });
+const openerRun = (c: CutConstruct): Span => ({ start: c.start, end: c.contentStart });
+const closerRun = (c: CutConstruct): Span => ({ start: c.contentEnd, end: c.end });
 
 /** Whether two constructs are written with the same delimiters: the byte-level test for "these
  *  are one construct's two halves", which matching kinds alone cannot make (`__a__` vs `**a**`). */
-const sameDelimiters = (left: Side, lc: SideConstruct, right: Side, rc: SideConstruct): boolean =>
-	left.raw.slice(lc.node.start, lc.content.start) ===
-		right.raw.slice(rc.node.start, rc.content.start) &&
-	left.raw.slice(lc.content.end, lc.node.end) === right.raw.slice(rc.content.end, rc.node.end);
+const sameDelimiters = (left: Side, lc: CutConstruct, right: Side, rc: CutConstruct): boolean =>
+	sameSpelling(asCut(left, lc), asCut(right, rc));
 
 /** The runs a truncation stranded that the join does not rejoin: the left's openers and the right's
  *  closers, minus the leading pairs whose kinds line up and so make one construct again. */
@@ -292,10 +287,10 @@ function abuttingPairSpans(join: { seam: number }, left: Side, right: Side): Spa
 		if (!sameDelimiters(left, closing[i], right, opening[i])) return [];
 	}
 	return [
-		{ start: closing[closing.length - 1].content.end, end: left.cut },
+		{ start: closing[closing.length - 1].contentEnd, end: left.cut },
 		rightSpan(join, right, {
 			start: right.cut,
-			end: opening[opening.length - 1].content.start
+			end: opening[opening.length - 1].contentStart
 		})
 	];
 }
@@ -345,11 +340,11 @@ interface JoinReading {
 }
 
 /** A construct's delimiters as one reading writes them. */
-type Spelling = (side: Side, c: SideConstruct) => { opener: string; closer: string };
+type Spelling = (side: Side, c: CutConstruct) => { opener: string; closer: string };
 
 const asCut: Spelling = (side, c) => ({
-	opener: side.raw.slice(c.node.start, c.content.start),
-	closer: side.raw.slice(c.content.end, c.node.end)
+	opener: side.raw.slice(c.start, c.contentStart),
+	closer: side.raw.slice(c.contentEnd, c.end)
 });
 
 const asRow: Spelling = (side, c) => {
@@ -374,18 +369,6 @@ function keepingReadings(join: JoinSeam, left: Side, right: Side): JoinReading[]
 	return readings.filter((reading): reading is JoinReading => reading !== null);
 }
 
-const toCut = (c: SideConstruct): CutConstruct => ({
-	kind: c.kind,
-	start: c.node.start,
-	end: c.node.end,
-	contentStart: c.content.start,
-	contentEnd: c.content.end
-});
-
-/** The construct of `side` a cut-chain link was made from. */
-const fromCut = (side: Side, link: CutConstruct): SideConstruct =>
-	side.dangling.find((c) => c.node.start === link.start && c.kind === link.kind)!;
-
 /** The left half's open runs closed at the cut and the right half's reopened; the outermost runs
  *  meeting there with the same delimiters stay one. Null for `spaced` with no boundary space. */
 function keepingReading(
@@ -400,10 +383,10 @@ function keepingReading(
 	// its edge and everything inside that run (`docs/design/live-mode.md` § 4.2).
 	const grows = typed === '' ? 0 : outsideNeverExtend(join, left, right);
 	const outer = left.dangling.slice(0, grows);
-	const inner = closeBefore(left.raw, left.dangling.slice(grows).map(toCut), left.cut);
-	const innerClosed = [...inner.closed].reverse().map((link) => fromCut(left, link));
-	const opened = reopenAfter(right.raw, right.dangling.map(toCut), right.cut);
-	const reopened = [...opened.reopened].reverse().map((link) => fromCut(right, link));
+	const inner = closeBefore(left.raw, left.dangling.slice(grows), left.cut);
+	const innerClosed = [...inner.closed].reverse();
+	const opened = reopenAfter(right.raw, right.dangling, right.cut);
+	const reopened = [...opened.reopened].reverse();
 	const closed = [...outer, ...innerClosed];
 
 	// Read where the kept bytes now end and start, since an emptied run's delimiters go with it.
@@ -412,7 +395,7 @@ function keepingReading(
 	// Outermost first on both sides, so the runs that can stay one are a common prefix.
 	const closing = [...closed, ...leftTouching];
 	const opening = [...reopened, ...rightTouching];
-	const spelled = (side: Side, c: SideConstruct, writes: readonly SideConstruct[]) =>
+	const spelled = (side: Side, c: CutConstruct, writes: readonly CutConstruct[]) =>
 		writes.includes(c) ? spell(side, c) : asCut(side, c);
 	let merged = 0;
 	while (
@@ -423,11 +406,11 @@ function keepingReading(
 	) {
 		merged++;
 	}
-	const stays = (c: SideConstruct, list: readonly SideConstruct[]) =>
+	const stays = (c: CutConstruct, list: readonly CutConstruct[]) =>
 		list.includes(c) &&
 		!closing.slice(0, merged).includes(c) &&
 		!opening.slice(0, merged).includes(c);
-	const closersOf = (list: readonly SideConstruct[]) =>
+	const closersOf = (list: readonly CutConstruct[]) =>
 		list
 			.filter((c) => stays(c, list))
 			.reverse()
@@ -464,11 +447,11 @@ function keepingReading(
 	const rightMerged = opening.slice(0, merged).filter((c) => rightTouching.includes(c));
 	if (leftMerged.length > 0) {
 		const deepest = leftMerged[leftMerged.length - 1];
-		edits.push(dropped({ start: deepest.content.end, end: inner.end }));
+		edits.push(dropped({ start: deepest.contentEnd, end: inner.end }));
 	}
 	if (rightMerged.length > 0) {
 		const deepest = rightMerged[rightMerged.length - 1];
-		const span = { start: opened.start, end: deepest.content.start };
+		const span = { start: opened.start, end: deepest.contentStart };
 		edits.push(dropped(rightSpan(join, right, span)));
 	}
 	// A run written in its row's markers is rewritten at its other end too.
@@ -488,7 +471,7 @@ function keepingReading(
 }
 
 /** The chain of runs touching `at` from inside `side`'s kept bytes, outermost first. */
-const touchingAt = (side: Side, at: number, keep: 'before' | 'after'): SideConstruct[] =>
+const touchingAt = (side: Side, at: number, keep: 'before' | 'after'): CutConstruct[] =>
 	at === side.cut
 		? side.touching
 		: touchingChain(classifyConstructs(side.inlines).ranged, at, keep);
@@ -501,9 +484,9 @@ const sameSpelling = (
 /** How many of the left side's open runs (outermost first) typed text fills: those outside its
  *  outermost never-extend run, unless the cut lies inside that one run, whose text it then replaces. */
 function outsideNeverExtend(join: JoinSeam, left: Side, right: Side): number {
-	const inside = (c: SideConstruct) =>
+	const inside = (c: CutConstruct) =>
 		join.start.node === join.end.node &&
-		right.dangling.some((r) => r.node.start === c.node.start && r.kind === c.kind);
+		right.dangling.some((r) => r.start === c.start && r.kind === c.kind);
 	const at = left.dangling.findIndex(
 		(c) => getInlineConstructPolicy(c.kind)?.edgeAffinity === 'never-extend' && !inside(c)
 	);
