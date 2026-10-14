@@ -2083,8 +2083,9 @@ mode itself, so this guards Svelte hosts. Every `.svelte` file under `src/lib` u
 `lint/file-rules.test.ts`.
 
 **G4.180 · Corner controls clear the find bar.** A hover control pinned to a block's top-right
-corner (absolute, placed by `top` and `right`, `opacity: 0` at rest) carries `data-corner-control`,
-so the open find bar moves it below itself when it covers it. `lint/corner-control-marker.test.ts`.
+corner (absolute, placed by `top` and `right` or by `inset`, hidden at rest by opacity or visibility)
+carries `data-corner-control`, so the open find bar moves it below itself when it covers it.
+`lint/corner-control-marker.test.ts`.
 
 ## Accessibility
 
