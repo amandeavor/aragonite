@@ -36,8 +36,11 @@ test.describe('the find bar beside a code block', () => {
 			return box.top - el.getBoundingClientRect().top;
 		});
 
+	// The rail is already moved for the find row, and the click leaves the pointer on the bar, in
+	// no block: only the bar's own resize can move the rail clear of the taller bar.
 	const expandReplace = async (editor: EditorPage) => {
 		await openFind(editor);
+		await hover(editor.page, TOP);
 		await editor.page.getByRole('button', { name: 'Toggle replace' }).click();
 		await replaceInput(editor.page).waitFor({ state: 'visible' });
 	};
@@ -57,8 +60,8 @@ test.describe('the find bar beside a code block', () => {
 		test(`the open bar leaves the controls of a top code block uncovered (${rows})`, async ({
 			page
 		}) => {
+			// No hover after the bar opens: the pointer rests on the block it clicked, rail showing.
 			await open(editor);
-			await hover(page, TOP);
 			await expect
 				.poll(() => areaUnderBar(rail(page, TOP)), {
 					message: 'square pixels of the controls under the bar'
