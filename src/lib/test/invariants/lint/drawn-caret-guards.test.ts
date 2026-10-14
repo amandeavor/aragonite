@@ -270,7 +270,7 @@ describe('G4.166 every length the drawn caret’s rules set is rounded to whole 
 	it('each has a twin in the device-rounding block that rounds through the device pixel', () => {
 		expect(
 			unroundedBarLengths(readSource(SOURCE.editorCss).code),
-			'a bar length off the device grid blurs over two pixel columns at a fractional display scale; round it in the device-rounding block'
+			'a bar length off the device grid blurs over two pixel columns at a fractional display scale; round it in the device-rounding block, which the scan finds by its exact `@supports` condition'
 		).toEqual([]);
 	});
 

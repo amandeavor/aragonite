@@ -218,10 +218,13 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 				? chipStopBox(measured.chipEdge, chipLook.boxed ? 'inside' : 'outside')
 				: null;
 		const { selection } = deps;
+		// Read with the rest of the layout, before the paint writes anything that would dirty style.
+		const holder = owned && !gapHost ? caretHolder(range, owned.el) : null;
 		return {
 			source: owned,
 			range,
 			host,
+			color: holder ? getComputedStyle(holder).color : '',
 			reads: {
 				draws,
 				forcedColors: media?.forcedColors.current ?? false,
@@ -305,7 +308,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 			drawnPosition = position;
 			drawnIn = el.parentElement;
 		}
-		paintPixels(el, read, target.state === 'gap');
+		paintPixels(el, read);
 		markState(el, target.state);
 		el.hidden = false;
 		painted =
@@ -323,12 +326,10 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 
 	// The browser's caret takes the color of the element holding it, and the stylesheet rounds the
 	// bar's widths to the device pixel it is given.
-	function paintPixels(el: HTMLElement, read: CaretRead, gap: boolean): void {
-		const holder = gap ? null : caretHolder(read);
-		const color = holder ? getComputedStyle(holder).color : '';
-		if (color !== drawnColor) {
-			el.style.color = color;
-			drawnColor = color;
+	function paintPixels(el: HTMLElement, read: CaretRead): void {
+		if (read.color !== drawnColor) {
+			el.style.color = read.color;
+			drawnColor = read.color;
 		}
 		const dpr = read.reads.devicePixelRatio;
 		if (dpr !== drawnDpr) {
@@ -494,6 +495,8 @@ interface CaretRead {
 	source: CaretSource | null;
 	range: Range | null;
 	host: HTMLElement | null;
+	/** The computed color of the element holding the caret, or empty across a gap. */
+	color: string;
 	reads: DrawnCaretReads;
 }
 
@@ -514,10 +517,9 @@ function createBar(): HTMLElement {
 
 // The element the browser's caret would take its color from: the one holding the caret, or the
 // editable itself where the caret sits beside a widget with no range of its own.
-function caretHolder(read: CaretRead): Element | null {
-	const node = read.range?.startContainer;
-	const surface = read.source?.el ?? null;
-	if (!node || !surface?.contains(node)) return surface;
+function caretHolder(range: Range | null, surface: HTMLElement): Element | null {
+	const node = range?.startContainer;
+	if (!node || !surface.contains(node)) return surface;
 	return node instanceof Element ? node : node.parentElement;
 }
 
