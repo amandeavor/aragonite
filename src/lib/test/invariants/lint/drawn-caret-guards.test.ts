@@ -256,20 +256,20 @@ function barLengths(css: string): { plain: string[]; rounded: Map<string, string
 	return { plain, rounded };
 }
 
-/** The lengths a rule sets with no device-rounded twin that rounds through the device pixel; a
- *  width or height rounds to the nearest one, as the browser's own caret width does. */
+/** The lengths a rule sets with no device-rounded twin that rounds in device pixels; a width or
+ *  height rounds to the nearest one, as the browser's own caret width does. */
 function unroundedBarLengths(css: string): string[] {
 	const { plain, rounded } = barLengths(css);
 	const viaDevicePixel = (key: string, value = '') =>
 		(/ :: (?:width|height)$/.test(key) ? /round\(nearest,/ : /round\(/).test(value) &&
-		value.includes('--md-device-pixel');
+		value.includes('--md-device-pixel-ratio');
 	return [...new Set([...plain, ...rounded.keys()])].filter(
 		(key) => !viaDevicePixel(key, rounded.get(key))
 	);
 }
 
 describe('G4.166 every length the drawn caret’s rules set is rounded to whole device pixels', () => {
-	it('each has a twin in the device-rounding block that rounds through the device pixel', () => {
+	it('each has a twin in the device-rounding block that rounds in device pixels', () => {
 		expect(
 			unroundedBarLengths(readSource(SOURCE.editorCss).code),
 			'a bar length off the device grid blurs over two pixel columns at a fractional display scale; round it in the device-rounding block, which the scan finds by its exact `@supports` condition'
@@ -278,7 +278,7 @@ describe('G4.166 every length the drawn caret’s rules set is rounded to whole 
 
 	it('flags a shape added without its rounded twin, or a width rounded down, and passes zero and auto', () => {
 		const rounding = `${DEVICE_ROUNDING} {
-	.md-drawn-caret { width: round(nearest, 1px, var(--md-device-pixel)); }
+	.md-drawn-caret { width: calc(round(nearest, 1px * var(--md-device-pixel-ratio), 1px) / var(--md-device-pixel-ratio)); }
 }`;
 		const css = `.md-drawn-caret { top: 0; width: 1px; }
 .md-drawn-caret[x] { width: 4px; right: 0; }

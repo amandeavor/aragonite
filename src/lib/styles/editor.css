@@ -981,39 +981,49 @@
 	background-color: var(--color-text-secondary, #d6d9e0);
 }
 
-/* Widths round to the nearest whole device pixel, at least one, like the browser's caret (the
-   sliver sends a half up in any engine); offsets round down. Without `round()`, the lengths above. */
+/* Lengths round in device pixels, where a half is exact and rounds up: widths to the nearest, at
+   least one, like the browser's caret; offsets down. Without `round()`, the lengths above. */
 @supports (width: round(down, 1px, 1px)) {
 	:where(.editor) .md-drawn-caret {
-		width: max(
-			var(--md-device-pixel),
-			round(nearest, var(--md-caret-width) + 0.001px, var(--md-device-pixel))
+		width: calc(
+			max(1px, round(nearest, var(--md-caret-width) * var(--md-device-pixel-ratio), 1px)) /
+				var(--md-device-pixel-ratio)
 		);
 	}
 
 	:where(.editor) .md-drawn-caret[data-caret-marks~='strong'] {
-		width: max(
-			var(--md-device-pixel),
-			round(nearest, var(--md-caret-strong-width) + 0.001px, var(--md-device-pixel))
+		width: calc(
+			max(1px, round(nearest, var(--md-caret-strong-width) * var(--md-device-pixel-ratio), 1px)) /
+				var(--md-device-pixel-ratio)
 		);
 	}
 
 	:where(.editor) .md-drawn-caret[data-caret-marks~='strikethrough']::after {
-		top: round(down, 55%, var(--md-device-pixel));
-		left: round(
-			down,
-			50% - round(nearest, var(--md-caret-strike-width) + 0.001px, var(--md-device-pixel)) / 2,
-			var(--md-device-pixel)
+		top: calc(round(down, 55% * var(--md-device-pixel-ratio), 1px) / var(--md-device-pixel-ratio));
+		left: calc(
+			round(
+					down,
+					50% * var(--md-device-pixel-ratio) -
+						round(nearest, var(--md-caret-strike-width) * var(--md-device-pixel-ratio), 1px) / 2,
+					1px
+				) /
+				var(--md-device-pixel-ratio)
 		);
-		width: max(
-			var(--md-device-pixel),
-			round(nearest, var(--md-caret-strike-width) + 0.001px, var(--md-device-pixel))
+		width: calc(
+			max(1px, round(nearest, var(--md-caret-strike-width) * var(--md-device-pixel-ratio), 1px)) /
+				var(--md-device-pixel-ratio)
 		);
-		height: max(var(--md-device-pixel), round(nearest, 2px + 0.001px, var(--md-device-pixel)));
+		height: calc(
+			max(1px, round(nearest, 2px * var(--md-device-pixel-ratio), 1px)) /
+				var(--md-device-pixel-ratio)
+		);
 	}
 
 	:where(.editor) .md-drawn-caret[data-caret-state='gap'] {
-		height: max(var(--md-device-pixel), round(nearest, 2px + 0.001px, var(--md-device-pixel)));
+		height: calc(
+			max(1px, round(nearest, 2px * var(--md-device-pixel-ratio), 1px)) /
+				var(--md-device-pixel-ratio)
+		);
 	}
 }
 

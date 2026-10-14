@@ -189,7 +189,12 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		countCaretPaint();
 		const read = readCaret(root);
 		const target = drawnCaretTarget(read.reads);
-		draw(target, read, atFrame);
+		// Read before the paint writes anything that would dirty style, and only for a bar that shows.
+		const color =
+			'rect' in target && read.source
+				? getComputedStyle(caretHolder(read.range, read.source.el)).color
+				: '';
+		draw(target, read, color, atFrame);
 		assertInvariant('one-caret-showing', () =>
 			checkOneCaretShowing(root, DRAWN_ATTR, target, read.source?.el ?? null)
 		);
@@ -218,13 +223,10 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 				? chipStopBox(measured.chipEdge, chipLook.boxed ? 'inside' : 'outside')
 				: null;
 		const { selection } = deps;
-		// Read with the rest of the layout, before the paint writes anything that would dirty style.
-		const holder = owned && !gapHost ? caretHolder(range, owned.el) : null;
 		return {
 			source: owned,
 			range,
 			host,
-			color: holder ? getComputedStyle(holder).color : '',
 			reads: {
 				draws,
 				forcedColors: media?.forcedColors.current ?? false,
@@ -261,7 +263,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		return offset === null ? null : edges.box(offset);
 	}
 
-	function draw(target: DrawnCaretTarget, read: CaretRead, atFrame: boolean): void {
+	function draw(target: DrawnCaretTarget, read: CaretRead, color: string, atFrame: boolean): void {
 		markDrawnFor(hidesBrowserCaret(target) ? (read.source?.el ?? null) : null);
 		const rect = 'rect' in target ? target.rect : null;
 		if ((!rect && target.state !== 'gap') || !read.host) {
@@ -308,7 +310,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 			drawnPosition = position;
 			drawnIn = el.parentElement;
 		}
-		paintPixels(el, read);
+		paintPixels(el, color, read.reads.devicePixelRatio);
 		markState(el, target.state);
 		el.hidden = false;
 		painted =
@@ -325,15 +327,14 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 	}
 
 	// The browser's caret takes the color of the element holding it, and the stylesheet rounds the
-	// bar's widths to the device pixel it is given.
-	function paintPixels(el: HTMLElement, read: CaretRead): void {
-		if (read.color !== drawnColor) {
-			el.style.color = read.color;
-			drawnColor = read.color;
+	// bar's lengths in the device pixels the ratio gives.
+	function paintPixels(el: HTMLElement, color: string, dpr: number): void {
+		if (color !== drawnColor) {
+			el.style.color = color;
+			drawnColor = color;
 		}
-		const dpr = read.reads.devicePixelRatio;
 		if (dpr !== drawnDpr) {
-			el.style.setProperty('--md-device-pixel', `${1 / dpr}px`);
+			el.style.setProperty('--md-device-pixel-ratio', String(dpr));
 			drawnDpr = dpr;
 		}
 	}
@@ -495,8 +496,6 @@ interface CaretRead {
 	source: CaretSource | null;
 	range: Range | null;
 	host: HTMLElement | null;
-	/** The computed color of the element holding the caret, or empty across a gap. */
-	color: string;
 	reads: DrawnCaretReads;
 }
 
@@ -517,10 +516,10 @@ function createBar(): HTMLElement {
 
 // The element the browser's caret would take its color from: the one holding the caret, or the
 // editable itself where the caret sits beside a widget with no range of its own.
-function caretHolder(range: Range | null, surface: HTMLElement): Element | null {
+function caretHolder(range: Range | null, surface: HTMLElement): Element {
 	const node = range?.startContainer;
 	if (!node || !surface.contains(node)) return surface;
-	return node instanceof Element ? node : node.parentElement;
+	return node instanceof Element ? node : (node.parentElement ?? surface);
 }
 
 function sizeOf(el: HTMLElement): string {

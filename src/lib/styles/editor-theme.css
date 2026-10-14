@@ -148,8 +148,9 @@
 	--md-caret-strong-width: 3px;
 	--md-caret-slant: -12deg;
 	--md-caret-strike-width: 13px;
-	/* One device pixel, which the paint sets on the bar so its lengths round to it; not a setting. */
-	--md-device-pixel: 1px;
+	/* Device pixels per CSS pixel, which the paint sets on the bar so its lengths round in them;
+	   not a setting. */
+	--md-device-pixel-ratio: 1;
 
 	/* Menu elevation, per mode, since a shadow tuned for a near-black surface vanishes over a white
 	   one; editor-owned because a host palette names colors, not elevation. */
