@@ -64,3 +64,20 @@ describe('a write made for a swapped-out document', () => {
 		expect(takeDevWarns()).toEqual([]);
 	});
 });
+
+describe('a write made after the editor unmounted', () => {
+	it('is refused, stamped or not, with no warning', async () => {
+		const h = stampedTop('a\n');
+		h.stamps.end();
+
+		const stamped = h.stamped.updateBlockContent(0, 'ab\n', 'authored', 1);
+		await stamped;
+		expect(await h.actions.splitBlock(0, 1)).toBe(false);
+
+		expect(stamped.admitted).toBe(false);
+		expect(serialize(h.deps.doc)).toBe('a\n');
+		expect(h.edits).toEqual([]);
+		expect(h.deps.undoManager.canUndo).toBe(false);
+		expect(takeDevWarns()).toEqual([]);
+	});
+});
