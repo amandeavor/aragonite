@@ -158,6 +158,7 @@ function buildIsland(sourceStart: number, sourceEnd: number): HTMLSpanElement {
 	island.className = 'decoration-island';
 	island.dataset.inlineWidget = '';
 	island.dataset.decorationIsland = '';
+	island.dataset.hostContent = '';
 	island.dataset.sourceStart = String(sourceStart);
 	island.dataset.sourceEnd = String(sourceEnd);
 	island.setAttribute('contenteditable', 'false');

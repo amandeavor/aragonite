@@ -41,7 +41,7 @@ export function namesReadOnDecorated(
 	let text = selector;
 	for (let prev = ''; prev !== text;) {
 		prev = text;
-		text = text.replace(/:(?:global|where|is)\(([^()]*)\)/g, '$1');
+		text = text.replace(/:(?:global|where|is|not)\(([^()]*)\)/g, '$1');
 	}
 	const names: string[] = [];
 	for (const one of splitTopLevel(text, ',').filter(Boolean)) {
@@ -146,6 +146,11 @@ describe('G4.70 a block decoration keeps off the attributes the editor uses on i
 		[
 			'an ancestor rule',
 			"<style>\n:global([data-new-thing='on']) .md-link { color: red; }\n</style>",
+			'data-new-thing'
+		],
+		[
+			'a negated ancestor rule',
+			'<style>\n:where(.editor) :not(:where([data-new-thing] *)) { margin: 0; }\n</style>',
 			'data-new-thing'
 		],
 		[

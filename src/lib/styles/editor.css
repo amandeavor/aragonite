@@ -1,9 +1,28 @@
 /**
  * Structural editor styles: the painting rules for DOM the renderers build in JavaScript, which
- * cannot live in a component's <style> block. Every rule is wrapped in :where(.editor), which adds
- * no specificity and keeps the names to the editor. The token values live in editor-theme.css;
+ * cannot live in a component's <style> block. Every rule is wrapped in :where(), which adds no
+ * specificity and keeps the names to the editor. The token values live in editor-theme.css;
  * a host's --color-* tokens are read here with fallbacks, never declared.
  */
+
+/* The reset every editor style is written against, so a page without one lays the editor out the
+   same. A `data-host-content` element holds DOM the host built, which keeps the page's styles. */
+:where(.editor),
+:where(.editor) :not(:where([data-host-content] *)),
+:where(.aragonite-editor-portal),
+:where(.aragonite-editor-portal) :not(:where([data-host-content] *)),
+:where(.editor)::before,
+:where(.editor) :not(:where([data-host-content] *))::before,
+:where(.aragonite-editor-portal)::before,
+:where(.aragonite-editor-portal) :not(:where([data-host-content] *))::before,
+:where(.editor)::after,
+:where(.editor) :not(:where([data-host-content] *))::after,
+:where(.aragonite-editor-portal)::after,
+:where(.aragonite-editor-portal) :not(:where([data-host-content] *))::after {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
 
 /* Classes applied by code-renderer.ts; an unknown one falls through to --code-tok-unknown
  * (inherit), so highlighting never changes the text and never forces a color. */

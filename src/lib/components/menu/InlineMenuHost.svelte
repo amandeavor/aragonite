@@ -195,10 +195,13 @@
 					<svelte:boundary onerror={(error) => onRowError(error, sourceName)}>
 						{#if typeof row === 'function'}
 							{@const Row = row}
-							<Row {item} {active} {query} />
+							<span class="inline-menu-host-row" data-host-content>
+								<Row {item} {active} {query} />
+							</span>
 						{:else}
 							<span
-								class="inline-menu-dom-row"
+								class="inline-menu-host-row"
+								data-host-content
 								{@attach paintDomRow(row, { item, active, query }, sourceName)}
 							></span>
 						{/if}
@@ -220,8 +223,8 @@
 		overflow-y: auto;
 	}
 
-	/* The built element lays out as a direct child of the row, as a component's markup does. */
-	.inline-menu-dom-row {
+	/* The host's row lays out as a direct child of the menu row. */
+	.inline-menu-host-row {
 		display: contents;
 	}
 
