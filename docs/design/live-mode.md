@@ -33,7 +33,7 @@ Take `Some **bold** text` in live mode. Each `**` (a marker run, from here on: t
 
 ## 2. The discipline: candidates, verified by the painter
 
-A live rewrite never trusts its own reading of the bytes. It builds a candidate byte string and asks the render path what that candidate would show, through `renderedText` (`core/inline/visibility.ts`). I'll call that check the painter. The rule it enforces: the screen after the write shows exactly what the gesture claimed, and live drops only bytes the user never saw.
+A live rewrite never trusts its own reading of the bytes. It builds a candidate byte string and asks the render path what that candidate would show, through `renderedText` (`core/inline/visibility.ts`). I'll call that check the painter. The rule it enforces: the screen after the write shows exactly what the gesture claimed, and live only drops or writes bytes the user never sees.
 
 The painter's idea of the screen comes from one rule, `familyHidesText` in the same file, which says which spans a mode leaves on screen. The caret walk (the traversal in `caret/widget-offset.ts` that maps DOM positions to raw offsets) reads the same rule, and a lint fails any third place that works out what's hidden on its own.
 
@@ -286,11 +286,11 @@ The fallback these rules share is § 2's. A split, a join or a typed byte whose 
 
 ### 4.5 Joins clean up where they meet
 
-Every destructive join crosses one call, `cleanJoinedRaw` in `tree-operations/leaf-range.ts`, the sole reader of the registered cleaner (`live-join-seam.ts`). The cleanup drops three things:
+Every destructive join crosses one call, `cleanJoinedRaw` in `tree-operations/leaf-range.ts`, the sole reader of the registered cleaner (`live-join-seam.ts`). It does what a word processor does with a cut through bold: the half you kept stays bold. So the cleanup:
 
-- delimiter runs the truncation left unpaired, their partner having gone with the cut;
-- the closer/opener chain a join brings back to back around nothing, which is the split's inverse;
-- a survivor that's only whitespace, which would reparse as a blank line.
+- closes a format run the cut went through on the half before the cut, and reopens it on the half after, the same close-and-reopen Enter does (`core/inline/live-edit/close-reopen.ts`). A half that keeps none of the run's text takes none of its delimiters, since live never writes a pair around nothing;
+- drops the closer/opener chain a join brings back to back around nothing, which is the split's inverse. Matching runs from the outside in stay one run, so cutting the middle out of one bold word leaves one bold word;
+- drops a survivor that's only whitespace, which would reparse as a blank line.
 
 ```ts
 // Backspace between the two halves § 4.4 made, both at the top of `doc`
@@ -318,7 +318,7 @@ const gone = (from: number, to: number, mergedRaw: string) => ({
 	typed: '',
 	store: storedAsAt(one, [0], liveReading)
 });
-cleanJoinedRaw(gone(9, 18, 'Some **bo\n')); // { raw: 'Some bo\n', seam: 7 }: the opener lost its partner, so it goes
+cleanJoinedRaw(gone(9, 18, 'Some **bo\n')); // { raw: 'Some **bo**\n', seam: 9, seamEnd: 11 }: the bold closes where the cut began
 cleanJoinedRaw(gone(7, 11, 'Some **** text\n')); // { raw: 'Some  text\n', seam: 5 }: 'bold' selected, and the emptied pair goes with it
 ```
 
@@ -326,11 +326,13 @@ How the join reads its bytes:
 
 - The join carries a store (`src/lib/tree-operations/stored-as.ts`: `storedAsAt` from the document and the path of the block the bytes land in, or `storedAsIn` from a parent and child index the caller already has, which is what the merge does). It holds the editor's `Reading` (`liveReading` and `sourceReading` above stand for one in each mode), and the cleanup runs only where that reading says the caret's block hides its delimiters.
 - The store is also how the check reads a candidate: where it'll actually be stored, through `src/lib/core/inline/live-edit/read-back.ts` :: `readBack`. A list item's first line reads behind its marker (and its checkbox, for a to-do), and a table cell's text reads as text, never as a heading or a list. A leading space the list marker takes on reload still counts as shown, since it draws as the marker's width, so the cut stands and the tree takes the wider marker, same as a reload would.
-- The cleanup verifies like every live rewrite (§ 2), and where the verification fails the literal join stands. § 4.1's residue rule is the second question it asks. The readings of the stranded runs are ordered least destructive first, and the leaner one can leave a construct the cut emptied: a pair over nothing paints nothing, so the screen check alone would accept it. So among the readings that leave the least residue, the one dropping the fewest runs wins.
+- The cleanup verifies like every live rewrite (§ 2), and where the verification fails the literal join stands. A reading that keeps the runs has one more question to pass: every character it keeps shows in the marks it had (G1.91 in `invariants.md`). § 4.1's residue rule is the last question.
+- The readings go least destructive first. The run's own bytes, then the same with a boundary space moved outside the run (a run can't close against a space), then the run in the bytes a format chord writes for it, since `__bo__d` can't close mid-word and `**bo**d` can. If none of those reads back right (prob a closer that would touch a run of its own character: cut ` c` out of `~~a ~b~ c~~` and the strikethrough would have to close as `~b~~~`), the runs the cut stranded go instead, the format with them, and the text stays clean. Among the readings that pass, the one leaving the least residue wins, and then the earliest.
+- `seam` is where the caret lands and typed text goes: before a closer the cleanup wrote, so the next letter is still bold, but past a space it moved outside the run, since that's where your cut began. `seamEnd` is where the other side's bytes now start, past the closer, so the bytes a drag carries off end with the closer they keep.
 
 What arrives here:
 
-- Backspace merges, a Delete merge (a Delete at a hidden run inside one block is § 4.4's press instead), range deletes, typing over a selection, cut, a drag's cut and the bytes the drag carries off, a paste or an IME composition over a selection, the removal a line break over a selection makes first, a widget or a decoration taken out whole, and anything a popover or an inline menu writes over a range (an image's Remove button, a link card's edit, a menu pick).
+- Backspace merges, a Delete merge (a Delete at a hidden run inside one block is § 4.4's press instead), range deletes, typing over a selection, cut, a drag's cut and the bytes the drag carries off, what a copy or a cut puts on the clipboard, a paste or an IME composition over a selection, the removal a line break over a selection makes first, a widget or a decoration taken out whole, and anything a popover or an inline menu writes over a range (an image's Remove button, a link card's edit, a menu pick).
 - Inside one block they're all one function, `tree-operations/leaf-range.ts` :: `replaceRangeInLeaf(node, range, text, store)`, which re-expresses the edit as a join of what survives on either side with `text` between them. The range delete is the exception for now: it still builds its own join and calls `cleanJoinedRaw` itself, until it moves onto the same function. A merge's join of two blocks is `replaceRangeInLeaf`'s sibling in the same file, `joinLeaves`.
 - The range it rewrites comes off the event, since a word or line delete reports one at a collapsed caret where the selection is empty, and every editable prose surface takes that branch rather than keeping its own list of input types.
 
@@ -338,7 +340,8 @@ The rest of what a join does:
 
 - Before `replaceRangeInLeaf` joins anything, it moves an end of a range you drew that sits past the block's text back to where the text ends (the last bullet here says why), and an end inside a surrogate pair back off it. A caret with nothing selected stays put, though: after you type a heading's closing `#` run, the next key lands past it, where your caret is.
 - It also tells you whether the result is still just the range you asked for, spliced (`matchesBrowserEdit`): no end moved and nothing cleaned. For a `beforeinput` edit or a composition that's the browser's own edit, so the browser keeps it, grapheme and IME handling included. Anything else gets written by the editor instead.
-- Text the gesture writes at the join (a selection typed over, pasted over or composed over, a spellcheck replacement, all inside one block) rides into that verification rather than being spliced in past it. A run the text re-pairs against isn't stranded, so there the literal replace stands: select `bold` in the last example, type or paste `x`, and both runs stay, since the `x` lands between them and pairs them up again. A selection typed over across blocks doesn't do this yet: it deletes with no text and splices the character in after.
+- Text the gesture writes at the join (a selection typed over, pasted over or composed over, a spellcheck replacement, all inside one block) rides into that verification rather than being spliced in past it. It takes the format of the character before it, like any typed letter (§ 4.2): inside a bold the cut closed, outside a link, which never grows at its edge (unless the whole selection sits inside that one link, where the text is the link's new text). Select `bold` in the last example and type or paste `x`, and you get `**x**`, since the `x` fills the run back in. A selection typed over across blocks doesn't do this yet: it deletes with no text and splices the character in after.
+- Text that brings runs of its own (a drag's moved text, a paste of something copied in live mode) lands the same way at a caret: as written where that reads right (a link nested in a bold reads fine), else the run it lands in closes before it and reopens after, and runs that meet stay one. `Some **bo|**d` takes `**ld** an` as `Some **bold** and`.
 - A paste that brings whole blocks cuts with no text of its own (the blocks go in after the cut, like a split), so its cut writes what Delete over that range writes.
 - A pasted line's own line ending is dropped where nothing you can see follows it on its line, a hidden closer included, so pasting `x⏎` over `b` in `**ab**` gives `**ax**`.
 - A join keeps hidden bytes from surfacing too: a block holding structure past its content (a setext heading's underline, an ATX heading's closing `#` run) takes the joined text at its content end, so the structure stays under it instead of being joined into view, and the block joined into it brings none of its own (`tree-operations/structural-suffix.ts` :: `joinKeepingSuffix`). That holds in every mode. Live draws the structure as a hidden marker, so a range you drew to the block's end stops at the content end as well (`tree-operations/leaf-range.ts` :: `replaceRangeInLeaf`).
@@ -382,7 +385,7 @@ Scenarios: `src/lib/e2e/requirements/presentation/presentation-live-hard-break.m
 
 ## 5. What does not change
 
-- Copy yields the source bytes. Reading mode is the exception: there a copy writes what the browser's selection shows, hidden markers left out.
+- Copy yields the source bytes, with one live tweak: a format run the selection cuts through comes along closed at its edges, the bytes a cut there would take (`tree-operations/leaf-range.ts` :: `bytesLeavingLeaf`). So `ld an` out of `**bold** and` copies as `**ld** an`, and pasting it back gives you the bold back. Reading mode is the real exception: there a copy writes what the browser's selection shows, hidden markers left out.
 - Search matches the source bytes, so a query crossing a construct boundary misses what the screen appears to show.
 - The caret lands only where the DOM walk can land it: hidden runs are unreachable, so a block's extremes are the offsets a caret can reach, not its raw ends, and the position after a body's final newline, on a hidden closer's line, is outside them too unless a caret anchor paints that line (`caret/widget-offset.ts`).
 - Bytes change only where a rule above says so. A gesture that strands nothing writes exactly what source mode writes, except at § 4.1's painted content-empty chrome, where a block's own structural gate follows the mode and the two modes diverge.

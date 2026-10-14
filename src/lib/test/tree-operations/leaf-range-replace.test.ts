@@ -40,19 +40,19 @@ const edit = (source: string, start: number, end: number, typed: string) =>
 const MIXED = 'Some **bold** and *italic* words\n';
 
 describe('a selection edit the join has something to clean', () => {
-	it('deletes the range and takes the stranded runs with it', () => {
-		expect(edit(MIXED, 9, 21, '')).toEqual({ raw: 'Some boalic words\n', caret: 7 });
+	it('deletes the range and closes and reopens the runs it cut through', () => {
+		expect(edit(MIXED, 9, 21, '')).toEqual({ raw: 'Some **bo***alic* words\n', caret: 9 });
 	});
 
-	// The caret is the cleaned join plus what was typed, not the start before the edit: two marker
-	// bytes went from ahead of it, and a caret read before the cleanup would sit two late.
-	it('lands the typed text at the cleaned join', () => {
-		expect(edit(MIXED, 9, 21, 'X')).toEqual({ raw: 'Some boXalic words\n', caret: 8 });
+	// The typed text goes inside the closer the cleanup wrote, since it takes the format of the
+	// character before it, and the caret follows it there.
+	it('lands the typed text inside the closed run', () => {
+		expect(edit(MIXED, 9, 21, 'X')).toEqual({ raw: 'Some **boX***alic* words\n', caret: 10 });
 	});
 
 	it('returns the block whole, trailing line ending included', () => {
 		expect(edit('Some **bold** and *italic* words\r\n', 9, 21, '')?.raw).toBe(
-			'Some boalic words\r\n'
+			'Some **bo***alic* words\r\n'
 		);
 	});
 });
@@ -100,5 +100,49 @@ describe('the plain splice', () => {
 		const node = blockOf('hello');
 		const store = topLevelStore(node, fixtureReading({}, 'source'));
 		expect(replaceRangeInLeaf(node, { start: 1, end: 4 }, '', store).raw).toBe('ho');
+	});
+});
+
+// Miss-analysis: every typed or pasted payload here was plain text, so none brought runs of its
+// own into a run the caret sat in, which a drag or a live copy now does.
+describe('text carrying its own runs lands inside a run', () => {
+	const CLOSED = 'Some **bo**d words tail\n';
+
+	it('closes the run around it and keeps the runs that meet as one', () => {
+		expect(edit(CLOSED, 9, 9, '**ld** an')).toEqual({
+			raw: 'Some **bold** and words tail\n',
+			caret: 16
+		});
+	});
+
+	it('lands the same from past the hidden closer', () => {
+		expect(edit(CLOSED, 11, 11, '**ld** an')).toEqual({
+			raw: 'Some **bold** and words tail\n',
+			caret: 16
+		});
+	});
+
+	// What a live cut of `ld** and *it` put on the clipboard, pasted back at the caret it left.
+	it('puts back what a cut through two runs took', () => {
+		expect(edit('Some **bo***alic* words\n', 9, 9, '**ld** and *it*')).toEqual({
+			raw: 'Some **bold** and *italic* words\n',
+			caret: 21
+		});
+	});
+
+	it('pasted over a selection, takes its place inside the run', () => {
+		expect(edit('Some **bold** and words tail\n', 9, 16, '**X**')).toEqual({
+			raw: 'Some **boX**d words tail\n',
+			caret: 12
+		});
+	});
+
+	// A link nested in the bold reads right as written, so the browser's own splice stands.
+	it('leaves a landing that already reads right to the browser', () => {
+		expect(edit('**see y**\n', 6, 6, '[x](u)')).toBeNull();
+	});
+
+	it('lands byte-literally in source mode', () => {
+		expect(editIn('source', CLOSED, 9, 9, '**ld** an')).toBeNull();
 	});
 });

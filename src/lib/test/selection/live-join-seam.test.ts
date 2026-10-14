@@ -39,10 +39,12 @@ function deleteRange(
 const at = (block: number, offset: number) => ({ path: [block], offset });
 
 describe('a selection running out of one construct and into another', () => {
-	// The live-mode.md § 4.5 case: the user never saw either run, so the joined text is what
-	// survives.
-	it('bold to italic leaves no delimiter on screen', () => {
-		expect(deleteRange('**bold** and *italic*\n', at(0, 4), at(0, 16), 'live')).toBe('boalic\n');
+	// The live-mode.md § 4.5 case: each half keeps its format, the bold closed and the italic
+	// reopened where the cut meets them.
+	it('bold to italic keeps both formats and leaves no delimiter on screen', () => {
+		expect(deleteRange('**bold** and *italic*\n', at(0, 4), at(0, 16), 'live')).toBe(
+			'**bo***alic*\n'
+		);
 	});
 
 	it('the same selection in source mode stays byte-literal', () => {
@@ -57,9 +59,9 @@ describe('a selection running out of one construct and into another', () => {
 		);
 	});
 
-	it('cross-block, the joined bytes carry neither stranded run', () => {
+	it('cross-block, the joined bytes close one run and reopen the other', () => {
 		expect(deleteRange('a **bold** b\n\nc *ital* d\n', at(0, 5), at(1, 5), 'live')).toBe(
-			'a bal d\n'
+			'a **b***al* d\n'
 		);
 	});
 

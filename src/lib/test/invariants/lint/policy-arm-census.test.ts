@@ -81,13 +81,15 @@ const POLICY_ARMS: Record<string, string> = {
 	'src/lib/components/blocks/text/next-byte.ts':
 		'the caret look: the mark column, for which constructs a typed letter would carry',
 	'src/lib/components/blocks/text/live-join-seam.ts':
-		'the join cleaner: splitBehavior, and autoUnwrapOnEmpty for a construct the cut emptied',
+		'the join cleaner: splitBehavior, autoUnwrapOnEmpty for a construct the cut emptied, and edgeAffinity for where typed text lands',
 	'src/lib/components/blocks/text/live-split-rebalance.ts': 'the split rebalancer: splitBehavior',
 	'src/lib/components/blocks/text/pending-mark-insert.ts':
 		'the pending-mark resolver: edgeAffinity and the mark nesting order',
 	'src/lib/components/blocks/table/TableCellBlock.svelte':
 		'the cell surface: which mark a format command toggles',
 	'src/lib/core/inline/format-toggle.ts': 'the toggle seam: the mark vocabulary',
+	'src/lib/core/inline/live-edit/close-reopen.ts':
+		'the marker a closed or reopened run is written with: the mark vocabulary',
 	'src/lib/components/blocks/text/TextEditableBlock.svelte':
 		'the prose surface: the same command lookup',
 	'src/lib/schema/registration-checks.ts': 'the registration-time coherence check over every row',

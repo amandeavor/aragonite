@@ -26,7 +26,7 @@
 	import { normalizeLineEndings, trimTrailingLineEnding } from '../../../core/lines';
 	import { pasteDispatch, type PasteDispatchInput } from '../../../tree-operations/paste/dispatch';
 	import { blockNodeAt } from '../../../tree-operations/node-primitives';
-	import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
+	import { bytesLeavingLeaf, replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 	import { storedAsAt } from '../../../tree-operations/stored-as';
 	import { keepsKindAt } from '../../../core/inline/live-edit/read-back';
 	import { applyLiveRangeEdit } from '../text/live-selection-edit';
@@ -956,7 +956,9 @@
 		const display = widgetInteraction.isRevealing()
 			? readCellText()
 			: trimTrailingLineEnding(node.raw);
-		e.clipboardData?.setData('text/plain', display.slice(range.start, range.end));
+		// What a cut there takes, so a paste gives back what was cut.
+		const carried = bytesLeavingLeaf({ ...node, raw: display }, range, storedAs());
+		e.clipboardData?.setData('text/plain', carried);
 		return { held: range };
 	}
 

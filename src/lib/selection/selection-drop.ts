@@ -292,7 +292,7 @@ async function moveOrCopy(
 ): Promise<void> {
 	const text = from.text;
 	if (copy) {
-		await writeBlockRaw(deps, to.path, insert(to.offset, text), to.offset + text.length);
+		await landAndWrite(deps, to.path, null, to.offset, text);
 		return;
 	}
 	const cut = cutFrom(deps, from);
@@ -300,8 +300,7 @@ async function moveOrCopy(
 	if (pathsEqual(cut.path, to.path)) {
 		const offset = dropOffsetAfterCut(to.offset, from.start, from.end, cut.shrunkBy);
 		if (offset === null) return;
-		const merged = spliceAt(cut.raw, offset, text);
-		await writeBlockRaw(deps, cut.path, () => merged, offset + text.length);
+		await landAndWrite(deps, cut.path, cut.raw, offset, text);
 		return;
 	}
 	// A table's `focus` takes a cell, never a character offset, so the temporary caret the second
@@ -312,11 +311,27 @@ async function moveOrCopy(
 	if (spliced === null) return;
 	const at = cut.path[cut.path.length - 1];
 	const target = shiftPathAfterSplice(to.path, cut.path.slice(0, -1), at, spliced);
-	await writeBlockRaw(deps, target, insert(to.offset, text), to.offset + text.length);
+	await landAndWrite(deps, target, null, to.offset, text);
 }
 
-function insert(offset: number, text: string): (raw: string) => string {
-	return (raw) => spliceAt(raw, offset, text);
+/** Writes `text` at `offset` of the leaf at `path` (`display` its bytes, or the tree's when null)
+ *  the way a paste lands it, so a run it lands in closes around the runs it brings. */
+async function landAndWrite(
+	deps: SelectionDropDeps,
+	path: number[],
+	display: string | null,
+	offset: number,
+	text: string
+): Promise<void> {
+	const doc = deps.getDoc();
+	const node = blockNodeAt(doc, path);
+	if (!node) return;
+	const bytes = display ?? trimTrailingLineEnding(node.raw);
+	const leaf = { ...node, raw: bytes + trailingLineEnding(node.raw, documentLineEnding(doc)) };
+	const at = Math.max(0, Math.min(offset, bytes.length));
+	const store = storedAsAt(doc, path, deps.reading);
+	const edit = replaceRangeInLeaf(leaf, { start: at, end: at }, text, store);
+	await writeBlockRaw(deps, path, () => trimTrailingLineEnding(edit.raw), edit.caret);
 }
 
 /** The source element's display bytes with the dragged range gone, cut as any in-leaf edit is so
@@ -390,11 +405,6 @@ async function writeBlockRaw(
 }
 
 // ── Small helpers ──────────────────────────────────────────────────────────
-
-function spliceAt(raw: string, offset: number, text: string): string {
-	const at = Math.max(0, Math.min(offset, raw.length));
-	return raw.slice(0, at) + text + raw.slice(at);
-}
 
 /** Strictly between `start` and `end`: a position the dragged range itself covers. */
 function insideRange(offset: number, start: number, end: number): boolean {

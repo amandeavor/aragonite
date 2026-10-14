@@ -20,12 +20,19 @@ import {
 import { copyRectangleAsSubTable } from '../tree-operations/sub-table-copy';
 import { isReservedChromeChild } from '../schema/reserved-chrome';
 import { getBlockKindDescriptor, tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
+import type { Reading } from '../schema/reading';
+import { bytesLeavingLeaf } from '../tree-operations/leaf-range';
+import { storedAsAt } from '../tree-operations/stored-as';
 
 // ── Public API ─────────────────────────────────────────────────────────────
 
-/** The plain text of a covered range: whatever the coverage says is covered end to end is copied
- *  whole, markers included, and a selection inside one table copies its rectangle. */
-export function collectCrossBlockText(doc: DocumentView, coverage: RangeCoverage): string {
+/** The plain text of a covered range: what it covers whole is copied whole, an edge block cut
+ *  part-way gives what a cut there takes, and a selection inside one table copies its rectangle. */
+export function collectCrossBlockText(
+	doc: DocumentView,
+	coverage: RangeCoverage,
+	reading: Reading
+): string {
 	const { start, end } = coverage.range;
 	if (coverage.grid) return gridClipboard(doc, coverage.grid)?.text ?? '';
 	const startNode = nodeAt(doc, start.path);
@@ -62,7 +69,11 @@ export function collectCrossBlockText(doc: DocumentView, coverage: RangeCoverage
 		if (!chromeStart) {
 			const marker =
 				start.path.length > 1 ? soleChildContainerPrefix(doc, start.path, startRaw) : null;
-			startTail = (marker ?? '') + startRaw.slice(startOffset);
+			const ending = startRaw.slice(displayLength(startRaw));
+			startTail =
+				(marker ?? '') +
+				carried(doc, start.path, startOffset, displayLength(startRaw), reading) +
+				ending;
 		}
 	}
 
@@ -80,7 +91,7 @@ export function collectCrossBlockText(doc: DocumentView, coverage: RangeCoverage
 		const chromeBytes = endOffset > 0 ? endChromeContainerBytes(doc, end, endRaw, endOffset) : null;
 		const partial = endOffset > 0 && endOffset < displayLength(endRaw) && end.path.length > 1;
 		const marker = partial ? soleChildContainerPrefix(doc, end.path, endRaw) : null;
-		endHead = chromeBytes ?? (marker ?? '') + endRaw.slice(0, endOffset);
+		endHead = chromeBytes ?? (marker ?? '') + carried(doc, end.path, 0, endOffset, reading);
 	}
 
 	let middle = '';
@@ -118,6 +129,19 @@ export function collectCrossBlockText(doc: DocumentView, coverage: RangeCoverage
 }
 
 // ── Internal ───────────────────────────────────────────────────────────────
+
+/** The bytes `[start, end)` of the leaf at `path` carry, as a cut there would take them. */
+function carried(
+	doc: DocumentView,
+	path: number[],
+	start: number,
+	end: number,
+	reading: Reading
+): string {
+	const node = nodeAt(doc, path);
+	if (!node || !isBlockNode(node)) return '';
+	return bytesLeavingLeaf(node, { start, end }, storedAsAt(doc, path, reading));
+}
 
 /** The table rows a kept table edge's cells touch, every column included, as a sub-table. */
 function emitTablePortion(

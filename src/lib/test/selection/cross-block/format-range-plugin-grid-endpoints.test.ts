@@ -7,6 +7,10 @@ import type { SelectionPoint } from '#lib/selection/primitives.js';
 import { collectCrossBlockText } from '#lib/selection/clipboard-text.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { docAround, gridOf, planStored, registerPluginGrid } from './plugin-grid-kind';
+import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
+
+// Source mode, where a copied range carries its bytes as they stand.
+const SOURCE_READING = fixtureReading({}, 'source');
 
 const at = (path: number[], offset: number): SelectionPoint => ({ path, offset });
 
@@ -62,7 +66,11 @@ describe('a range starting partway into a plugin grid cell', () => {
 		const marked = plan!.writes
 			.flatMap((write) => [...write.newDisplay.matchAll(/\*\*(.+?)\*\*/g)].map((m) => m[1]))
 			.join('');
-		const copied = collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, start, end)));
+		const copied = collectCrossBlockText(
+			doc,
+			rangeCoverage(doc, coverRange(doc, start, end)),
+			SOURCE_READING
+		);
 		expect(marked).toBe(copied.replace(/\s/g, ''));
 	});
 });

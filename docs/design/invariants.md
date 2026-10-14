@@ -257,6 +257,7 @@ These checks run in three kinds of place:
 | G1.77 | The mark hiding the browser's caret is on exactly the editable the drawn caret draws for   | A       |
 | G1.87 | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
 | G1.90 | A plugin component compiled against another Svelte runtime is named as such in dev         | N       |
+| G1.91 | A live removal keeps the marks on the visible characters it keeps                          | P·N     |
 
 ### The entries
 
@@ -735,6 +736,16 @@ inline menu's row boundary) asks `foreign-runtime.ts :: isForeignRuntimeError` a
 The match is by message: `effect_orphan`, or the two crashes of a runtime that never mounted
 anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches too.
 `components/foreign-runtime.test.ts` loads its fixtures on a second runtime through a module reset.
+
+**G1.91 · A live removal keeps the marks it keeps.** A live-mode delete, cut or typed-over range
+that cuts through a format run closes the run on the half before the cut and reopens it on the half
+after, so every character it keeps shows in the marks it had. The join rewrite only writes a
+reading that keeps them, checked against each side's own render. Where no spelling of the run can
+close (a closer that would touch a run of its own character), it drops the run instead, and the text
+stays with no marker on screen. `components/blocks/text/live-join-seam.ts :: cleanLiveJoinSeam` ·
+`test/invariants/live-seam.property.test.ts` and `test/simulation/live-gesture-fuzz.property.test.ts`
+(each kept character's marks, read by `test/harness/live-oracles.ts :: markedChars`, with the drop
+fallback held to a small share), `test/blocks/text/live-join-seam.test.ts`.
 
 ## Group 2: property and regression tested
 

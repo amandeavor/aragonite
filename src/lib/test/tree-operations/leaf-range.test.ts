@@ -55,7 +55,8 @@ const ROWS: Row[] = [
 		mode: 'live',
 		range: [0, 2],
 		typed: '😀',
-		display: '😀a\n===',
+		// `__` can't open after a letter, so the reopened run takes the mark's own `**`.
+		display: '😀**a**\n===',
 		caret: 2,
 		matchesBrowserEdit: false
 	},
@@ -65,7 +66,7 @@ const ROWS: Row[] = [
 		mode: 'live',
 		range: [0, 3],
 		typed: ' ',
-		display: ' ab',
+		display: ' ***a**b*',
 		caret: 1,
 		matchesBrowserEdit: false
 	},
@@ -85,7 +86,7 @@ const ROWS: Row[] = [
 		mode: 'live',
 		range: [2, 3],
 		typed: '😀',
-		display: '42😀a',
+		display: '42😀`a`',
 		caret: 4,
 		matchesBrowserEdit: false
 	},
@@ -175,8 +176,9 @@ const ROWS: Row[] = [
 		mode: 'live',
 		range: [1, 3],
 		typed: '~',
-		display: '~)',
-		caret: 1,
+		// The typed text fills the italic it replaced, inside the closer the join wrote.
+		display: '*~*)',
+		caret: 2,
 		matchesBrowserEdit: false
 	},
 	// The typed text refills the pair the range emptied, so nothing is stranded.

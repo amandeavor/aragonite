@@ -49,6 +49,7 @@ import {
 import { installOwnRaw } from '../tree-operations/node-primitives';
 import { defaultGrammarView } from '../schema/block-openers';
 import { createHeadlessActions } from './headless-actions';
+import { kitReading } from './kit-reading';
 import { assertParseConverged } from './parse-convergence';
 
 // ── Report + profile ─────────────────────────────────────────────────────────
@@ -472,7 +473,7 @@ function copyThroughFunnel(doc: Document, anchor: SelectionPoint, focus: Selecti
 	selection.enterCrossBlock(anchor, focus);
 	const { start, end } = selection;
 	if (!start || !end) fail('the selection funnel refused the cross-block endpoint pair');
-	return collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, start, end)));
+	return collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, start, end)), kitReading());
 }
 
 /** An offset strictly inside the block, so a kind that snaps its endpoints is seen doing it. */

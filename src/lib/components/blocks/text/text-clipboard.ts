@@ -21,7 +21,7 @@ import {
 } from '../editable/editable-surface';
 import type { ClipboardCopy } from '../editable/clipboard-step';
 import { pasteDispatch } from '../../../tree-operations/paste/dispatch';
-import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
+import { bytesLeavingLeaf, replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 import { replaceSelectedWidget } from './widget-interaction';
 import { widgetSpanIn, type WidgetRange } from './widget-adjacency';
 import type { RawRange } from '../../../caret/widget-offset';
@@ -113,13 +113,14 @@ export function createTextClipboard(deps: TextClipboardDeps): TextClipboard {
 		});
 	}
 
-	// A selection over a construct whose source is showing covers uncommitted DOM, so slice the
-	// live text rather than the stale `node.raw`; the copy must not hide it, because that writes.
+	// A source showing covers uncommitted DOM, so the copy reads the live text and never hides it
+	// (that writes); it carries what a cut takes, so a paste gives back what was cut.
 	function copyRange(e: ClipboardEvent): ClipboardCopy<RawRange> {
 		const range = deps.cursor.getRawSelection();
 		if (!range || range.start === range.end) return null;
 		const text = deps.isRevealing() ? deps.readRevealedText() : deps.node.raw;
-		e.clipboardData?.setData('text/plain', text.slice(range.start, range.end));
+		const carried = bytesLeavingLeaf({ ...deps.node, raw: text }, range, deps.storedAs());
+		e.clipboardData?.setData('text/plain', carried);
 		return { held: range };
 	}
 

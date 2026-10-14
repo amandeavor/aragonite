@@ -147,10 +147,10 @@ describe('tableCellInlinePaste', () => {
 			return { cell, store: topLevelStore(cell, readingIn(presentationMode)) };
 		};
 
-		it('live: the run the cut stranded goes with it', () => {
+		it('live: the pasted text lands inside the bold the cut closed', () => {
 			const { cell, store } = cellIn('live');
 			const result = tableCellInlinePaste(cell, 8, 'X', CUT, store);
-			expect(result.newRaw).toBe('Some bX');
+			expect(result.newRaw).toBe('Some **bX**');
 		});
 
 		it('the escaping stage still runs over what the join wrote', () => {
@@ -161,8 +161,8 @@ describe('tableCellInlinePaste', () => {
 				{ start: 7, end: 10 },
 				readingIn('live')
 			);
-			// The stranded `**` went with the cut and the cell's own `\|` survived the round.
-			expect(cells).toEqual(['a\\|b X c', 'keep']);
+			// The pasted text fills the bold it replaced, and the cell's own `\|` survived the round.
+			expect(cells).toEqual(['a\\|b **X** c', 'keep']);
 		});
 
 		// Reading mode hides delimiters too, but it writes nothing, so a paste never gets here.

@@ -158,22 +158,22 @@ async function edgeBackspace(container: Container): Promise<Document | null> {
 }
 
 describe.each(CONTAINERS)('a live cut in $name', (container) => {
-	// From inside `ab` past its hidden closer: `b** c` goes, and so does the stranded opener.
-	it('a deleted selection drops the runs it strands', async () => {
+	// From inside `ab` past its hidden closer: `b** c` goes, and the bold closes on what stays.
+	it('a deleted selection closes the run it cut through', async () => {
 		expectParity(
 			await rangeEdit(container, '**ab** cd', { start: 3, end: 8 }, ''),
 			container,
-			'ad'
+			'**a**d'
 		);
 	});
 
-	it('a typed-over selection drops them too', async () => {
+	it('a typed-over selection closes it after the typed text', async () => {
 		const doc = await rangeEdit(container, '**ab** cd', { start: 3, end: 8 }, 'x');
-		expectParity(doc, container, 'axd');
+		expectParity(doc, container, '**ax**d');
 	});
 
 	it('a cross-block delete joins without a run on screen', () => {
-		expectParity(crossBlockDelete(container), container, 'a b g');
+		expectParity(crossBlockDelete(container), container, 'a **b** g');
 	});
 
 	// Both runs go with the construct the cut emptied; the space left against a list marker widens

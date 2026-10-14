@@ -4,10 +4,14 @@ import { collectCrossBlockText } from '#lib/selection/clipboard-text.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
 import { footnotesPlugin } from '#lib/plugins/footnotes/index.js';
+import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 
 // A partial slice from the sole child of a strip container (a list item, a blockquote) must keep
 // the container's marker prefix, or it reparses as bare text. Eligibility is the descriptor's
 // `strip` contract, not a hard-coded kind list.
+
+// Source mode, where a copied range carries its bytes as they stand.
+const SOURCE_READING = fixtureReading({}, 'source');
 
 beforeEach(() => {
 	installPlugins([admonitionsPlugin(), footnotesPlugin()]);
@@ -38,7 +42,8 @@ describe('collectCrossBlockText: sole-child strip-container prefix recovery', ()
 			const doc = parse(c.src);
 			const text = collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, { path: c.leaf, offset: 2 }, { path: [1], offset: 3 }))
+				rangeCoverage(doc, coverRange(doc, { path: c.leaf, offset: 2 }, { path: [1], offset: 3 })),
+				SOURCE_READING
 			);
 			// The prefix is the half that matters: a null marker recovery leaves the slice
 			// starting at "pha…" with nothing in front of it.

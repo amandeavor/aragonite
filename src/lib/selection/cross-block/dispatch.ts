@@ -90,6 +90,8 @@ export interface CrossBlockHandlers {
 	handleCompositionEnd(): void;
 	/** The delete half of a cut, run once the handler wrote the clipboard synchronously. */
 	performCrossBlockCut(): Promise<void>;
+	/** How the editor reads its bytes, which decides what a copied range carries. */
+	readonly reading: Reading;
 }
 
 export function createCrossBlockHandlers(ctx: CrossBlockDispatchContext): CrossBlockHandlers {
@@ -109,6 +111,9 @@ export function createCrossBlockHandlers(ctx: CrossBlockDispatchContext): CrossB
 	};
 
 	return {
+		get reading() {
+			return ctx.reading;
+		},
 		handleKeyDown: keydown.handleKeyDown,
 		handleCompositionStart: keydown.handleCompositionStart,
 		handleCompositionEnd: keydown.handleCompositionEnd,

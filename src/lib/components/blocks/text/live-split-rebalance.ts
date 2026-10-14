@@ -24,6 +24,11 @@ import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
 import type { NodeView } from '../../../core/node-views';
 import { isBlankText } from '../../../core/lines';
 import {
+	closeBefore,
+	reopenAfter,
+	type CutConstruct
+} from '../../../core/inline/live-edit/close-reopen';
+import {
 	getInlineConstructPolicy,
 	type LiveSplitRebalancer,
 	type SplitStores
@@ -120,14 +125,6 @@ function readSplitBytes(
 
 // ── The chain ────────────────────────────────────────────────────────────────
 
-export interface ChainLink {
-	kind: AnyInlineKind;
-	start: number;
-	end: number;
-	contentStart: number;
-	contentEnd: number;
-}
-
 /** Where a cut inside a construct split whole (a URL, an escape) moves to: the edge the caret was
  *  nearer, so the construct goes whole to one half (`docs/design/live-mode.md` § 4.4). */
 function wholeConstructEdge(inlines: readonly InlineNode[], offset: number): number | null {
@@ -146,8 +143,8 @@ function wholeConstructEdge(inlines: readonly InlineNode[], offset: number): num
 export function splittableChainAt(
 	inlines: readonly InlineNode[],
 	offset: number
-): ChainLink[] | null {
-	const chain: ChainLink[] = [];
+): CutConstruct[] | null {
+	const chain: CutConstruct[] = [];
 	const holds = (node: InlineNode): boolean => constructHoldsOffset(node, offset);
 	for (const node of inlineDescendants(inlines, holds)) {
 		if (!holds(node)) continue;
@@ -185,34 +182,18 @@ interface RebalancedHalves {
 	droppedTail?: string;
 }
 
-/** Innermost first, so the halves nest as the original did. A side with no content takes the whole
- *  construct, since live mode never writes a pair enclosing nothing. */
-function seamParts(bytes: SplitBytes, chain: readonly ChainLink[], offset: number): SeamParts {
-	let leftEnd = offset;
-	let rightStart = bytes.cut;
-	let closers = '';
-	let openers = '';
-	const closed: AnyInlineKind[] = [];
-	const reopened: AnyInlineKind[] = [];
-	for (const link of [...chain].reverse()) {
-		if (leftEnd === link.contentStart) leftEnd = link.start;
-		else {
-			closers += bytes.raw.slice(link.contentEnd, link.end);
-			closed.push(link.kind);
-		}
-		if (rightStart === link.contentEnd) rightStart = link.end;
-		else {
-			openers = bytes.raw.slice(link.start, link.contentStart) + openers;
-			reopened.push(link.kind);
-		}
-	}
+/** A side with no content takes the whole construct, since live mode never writes a pair
+ *  enclosing nothing. */
+function seamParts(bytes: SplitBytes, chain: readonly CutConstruct[], offset: number): SeamParts {
+	const left = closeBefore(bytes.raw, chain, offset);
+	const right = reopenAfter(bytes.raw, chain, bytes.cut);
 	return {
-		head: bytes.raw.slice(0, leftEnd),
-		closers,
-		openers,
-		tail: bytes.raw.slice(rightStart, bytes.contentEnd),
-		closed,
-		reopened
+		head: bytes.raw.slice(0, left.end),
+		closers: left.closers,
+		openers: right.openers,
+		tail: bytes.raw.slice(right.start, bytes.contentEnd),
+		closed: left.closed.map((link) => link.kind),
+		reopened: right.reopened.map((link) => link.kind)
 	};
 }
 

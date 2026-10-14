@@ -2,9 +2,10 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickWordSettled, enterPresentationMode, extendTo, landAt, stepTo } from './helpers';
+import { textOutsideMarkers } from '../../text-runs';
 
-// A live cut in a list item's first line cleans up the way it does at the top level, and the
-// tree it leaves is the one a reload reads. The source is the reference, since a hidden delimiter
+// A live cut in a list item's first line keeps each half's format the way it does at the top
+// level, and the tree it leaves is the one a reload reads. The source is the reference, since a hidden delimiter
 // and an absent one look the same on screen.
 // Requirements: e2e/requirements/presentation/presentation-live-join-containers.md.
 
@@ -20,28 +21,27 @@ async function selectBoldIntoItalic(ep: EditorPage, page: Page): Promise<void> {
 
 async function expectCleanAndConverged(ep: EditorPage, source: string): Promise<void> {
 	await ep.bridge.waitForSourceContains(source);
-	expect(await ep.bridge.getSource()).not.toContain('**');
-	await expect(ep.getBlock(0)).not.toContainText('*');
+	expect(await textOutsideMarkers(ep.getBlock(0))).not.toContain('*');
 	expect(await ep.parseConverged()).toBe(true);
 }
 
 test.describe('live mode: a selection out of one construct and into another, in a list item', () => {
 	const DOC = '- Some **bold** and *italic* words\n';
 
-	test('Backspace joins the text and takes both stranded runs with it', async ({ page }) => {
+	test('Backspace joins the text and each half keeps its format', async ({ page }) => {
 		const ep = await enterPresentationMode(page, 'live', DOC);
 		await selectBoldIntoItalic(ep, page);
 
 		await page.keyboard.press('Backspace');
-		await expectCleanAndConverged(ep, '- Some boalic words\n');
+		await expectCleanAndConverged(ep, '- Some **bo***alic* words\n');
 	});
 
-	test('typing over the selection lands the character at the cleaned join', async ({ page }) => {
+	test('typing over the selection lands the character inside the bold', async ({ page }) => {
 		const ep = await enterPresentationMode(page, 'live', DOC);
 		await selectBoldIntoItalic(ep, page);
 
 		await page.keyboard.type('X');
-		await expectCleanAndConverged(ep, '- Some boXalic words\n');
+		await expectCleanAndConverged(ep, '- Some **boX***alic* words\n');
 	});
 
 	test('Mod+X leaves the same bytes', async ({ page }) => {
@@ -49,10 +49,10 @@ test.describe('live mode: a selection out of one construct and into another, in 
 		await selectBoldIntoItalic(ep, page);
 
 		await page.keyboard.press('ControlOrMeta+x');
-		await expectCleanAndConverged(ep, '- Some boalic words\n');
+		await expectCleanAndConverged(ep, '- Some **bo***alic* words\n');
 	});
 
-	test('a to-do item cleans up the same way and keeps its checkbox', async ({ page }) => {
+	test('a to-do item keeps the format the same way and keeps its checkbox', async ({ page }) => {
 		const ep = await enterPresentationMode(
 			page,
 			'live',
@@ -61,14 +61,14 @@ test.describe('live mode: a selection out of one construct and into another, in 
 		await selectBoldIntoItalic(ep, page);
 
 		await page.keyboard.press('Backspace');
-		await expectCleanAndConverged(ep, '- [ ] Some boalic words\n');
+		await expectCleanAndConverged(ep, '- [ ] Some **bo***alic* words\n');
 	});
 });
 
 test.describe('live mode: the join across two list items', () => {
 	// Once the selection crosses into the next item it extends whole blocks, so the far endpoint is
-	// that item's start and only the run behind the first endpoint is stranded.
-	test('the stranded run goes with the second item', async ({ page }) => {
+	// that item's start and only the run behind the first endpoint is cut through.
+	test('the bold closes on the first item and the second joins it', async ({ page }) => {
 		const ep = await enterPresentationMode(
 			page,
 			'live',
@@ -79,8 +79,7 @@ test.describe('live mode: the join across two list items', () => {
 		await extendTo(ep, page, 'ArrowRight', [0, 1, 0], 0);
 
 		await page.keyboard.press('Backspace');
-		await ep.bridge.waitForSourceContains('- Alpha bedelta *epsilon* zeta\n');
-		expect(await ep.bridge.getSource()).not.toContain('**be');
+		await ep.bridge.waitForSourceContains('- Alpha **be**delta *epsilon* zeta\n');
 		expect(await ep.parseConverged()).toBe(true);
 	});
 });

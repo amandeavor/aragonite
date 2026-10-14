@@ -1,11 +1,21 @@
 /**
  * Replacing a range of one leaf, and joining two leaves, the way in-leaf edits and merges
- * write them: cut back to the painted text, off any surrogate pair, and in live mode with the
- * delimiter runs the join strands dropped, typed text included (`docs/design/live-mode.md` § 4.5).
+ * write them: cut back to the painted text, off any surrogate pair, and in live mode with each
+ * format run the join cuts through closed on the half that keeps it, typed text included
+ * (`docs/design/live-mode.md` § 4.5).
  */
 
 import type { NodeView } from '../core/node-views';
-import { getContentRange } from '../core/inline';
+import { makeBlockNode } from '../core/nodes';
+import {
+	constructContentRange,
+	getContentRange,
+	inlineDescendants,
+	readInline,
+	type ContentRange
+} from '../core/inline';
+import { readsInParts, shownOfSpan } from '../core/inline/live-edit/read-back';
+import type { ShownSpan } from '../core/inline/live-edit/shown-marks';
 import {
 	ownTrailingLineEnding,
 	snapToScalarBoundary,
@@ -13,6 +23,7 @@ import {
 	type LineEnding
 } from '../core/lines';
 import {
+	getInlineConstructPolicy,
 	getLiveJoinSeamCleaner,
 	type CleanedJoin,
 	type JoinEndpoint,
@@ -33,13 +44,33 @@ export interface LeafRangeEdit {
 	/** Whether `raw` is the range asked for spliced with nothing moved or cleaned, the edit the
 	 *  browser makes itself, grapheme and IME handling included. */
 	matchesBrowserEdit: boolean;
+	/** Where the leaf's bytes past the range start in `raw`: after the typed text, and after any
+	 *  closer or opener the join wrote there. */
+	afterRange: number;
 	/** Where an offset of the leaf's bytes before the edit lands in `raw`: one inside the range
-	 *  lands at its start, one at or past its end after the typed text. */
+	 *  lands at its start, the range's end at `afterRange`, one past it after the typed text. */
 	mapOffset(offset: number): number;
 }
 
 /** `[start, end)` of `node` replaced by `typed`, the join cleaned against where `store` keeps it. */
 export function replaceRangeInLeaf(
+	node: NodeView,
+	range: { start: number; end: number },
+	typed: string,
+	store: StoredAs
+): LeafRangeEdit {
+	const edit = spliceInLeaf(node, range, typed, store);
+	if (!store.reading.hidesDelimitersAtCaret() || !carriesRuns(typed, store)) return edit;
+	const content = getContentRange(node);
+	const from = Math.max(content.start, Math.min(edit.range.start, content.end));
+	const to = Math.max(from, Math.min(edit.range.end, content.end));
+	const parts = partsAround(node.raw, content, from, to, typed, store);
+	if (readsInParts(edit.raw, parts, store)) return edit;
+	return landRuns(node, range, typed, store) ?? edit;
+}
+
+/** {@link replaceRangeInLeaf} with `typed` written at the join as plain text. */
+function spliceInLeaf(
 	node: NodeView,
 	range: { start: number; end: number },
 	typed: string,
@@ -61,12 +92,15 @@ export function replaceRangeInLeaf(
 		const join = cleanJoin({ node, offset: start }, { node, offset: end }, typed, store, same);
 		if (join.cleaned) {
 			const { raw, seam } = withTyped(join.joined, typed);
+			const afterRange = join.joined.seamEnd + typed.length;
 			return {
 				raw,
 				caret: seam + typed.length,
 				range: { start, end },
 				matchesBrowserEdit: false,
-				mapOffset: (offset) => afterTyped(offset, join.joined.map(merged(offset)))
+				afterRange,
+				mapOffset: (offset) =>
+					offset === end ? afterRange : afterTyped(offset, join.joined.map(merged(offset)))
 			};
 		}
 	}
@@ -76,12 +110,13 @@ export function replaceRangeInLeaf(
 		caret: start + typed.length,
 		range: { start, end },
 		matchesBrowserEdit: start === range.start && end === range.end,
+		afterRange: start + typed.length,
 		mapOffset: (offset) => afterTyped(offset, merged(offset))
 	};
 }
 
 /** The bytes `[start, end)` of `node` carry out of it: the leaf cut down to the range by two in-leaf
- *  cuts, so what leaves follows the rule that what stays follows. */
+ *  cuts, so a format run the range cuts through leaves closed at its edges, as the kept half does. */
 export function bytesLeavingLeaf(
 	node: NodeView,
 	range: { start: number; end: number },
@@ -101,7 +136,7 @@ export function bytesLeavingLeaf(
 		'',
 		store
 	);
-	return head.raw.slice(head.caret, head.mapOffset(tail.caret));
+	return head.raw.slice(head.caret, head.mapOffset(tail.afterRange));
 }
 
 /** The bytes `head` up to its offset and `tail` from its offset make with `typed` between them,
@@ -117,12 +152,112 @@ export function joinLeaves(
 	return withTyped(cleanJoin(head, tail, typed, store, writeTail).joined, typed);
 }
 
-/** `join.mergedRaw` minus the delimiter runs the join left unpaired, where the reading hides
- *  delimiters. */
+/** `join.mergedRaw` with each format run the join cut through closed or reopened on the half that
+ *  keeps it, where the reading hides delimiters. */
 export function cleanJoinedRaw(join: JoinSeam): CleanedJoin {
-	const literal = { raw: join.mergedRaw, seam: join.seam, map: (offset: number) => offset };
+	const literal = {
+		raw: join.mergedRaw,
+		seam: join.seam,
+		seamEnd: join.seam,
+		map: (offset: number) => offset
+	};
 	if (!join.store.reading.hidesDelimitersAtCaret()) return literal;
 	return getLiveJoinSeamCleaner()?.(join) ?? literal;
+}
+
+// ── Text that brings its own runs ────────────────────────────────────────────
+
+/** Whether `text` holds a format run of its own, which a run it lands in must close around. */
+function carriesRuns(text: string, store: StoredAs): boolean {
+	// A run needs a delimiter on each side of its text, so a typed key never holds one.
+	if (text.length < 3) return false;
+	const { resolver, grammar } = store.reading;
+	for (const node of inlineDescendants(readInline(text, 0, text.length, resolver, grammar))) {
+		if (node.kind === 'text' || constructContentRange(node) === null) continue;
+		if (getInlineConstructPolicy(node.kind)?.splitBehavior === 'close-and-reopen') return true;
+	}
+	return false;
+}
+
+/** `text` landed where `range` was: spliced in as written where that reads right, else joined in
+ *  on both sides, so a run it lands in closes around it. Null where neither keeps every mark. */
+function landRuns(
+	node: NodeView,
+	range: { start: number; end: number },
+	text: string,
+	store: StoredAs
+): LeafRangeEdit | null {
+	const cut = spliceInLeaf(node, range, '', store);
+	const leaf = { ...node, raw: cut.raw };
+	const at = cut.caret;
+	const content = getContentRange(leaf);
+	if (at < content.start || at > content.end) return null;
+	const parts = partsAround(leaf.raw, content, at, at, text, store);
+	const display = trimTrailingLineEnding(leaf.raw);
+	const ending = ownTrailingLineEnding(leaf.raw);
+	// Where the cut put an offset of `node`, before any text landed.
+	const inCut = (offset: number) => cut.mapOffset(offset);
+	const pastRange = (offset: number) => offset >= cut.range.end;
+
+	const asWritten = display.slice(0, at) + text + display.slice(at) + ending;
+	if (readsInParts(asWritten, parts, store)) {
+		const shifted = (offset: number) => (offset >= at ? offset + text.length : offset);
+		return {
+			raw: asWritten,
+			caret: at + text.length,
+			range: cut.range,
+			matchesBrowserEdit: cut.matchesBrowserEdit,
+			afterRange: shifted(cut.afterRange),
+			mapOffset: (offset) => (pastRange(offset) ? shifted(inCut(offset)) : inCut(offset))
+		};
+	}
+
+	const textLeaf = makeBlockNode({ kind: 'paragraph', leadingTrivia: '', raw: text + ending });
+	const first = cleanJoinedRaw({
+		mergedRaw: display.slice(0, at) + textLeaf.raw,
+		seam: at,
+		start: { node: leaf, offset: at },
+		end: { node: textLeaf, offset: 0 },
+		typed: '',
+		store
+	});
+	const textEnd = first.map(at + text.length);
+	const second = cleanJoinedRaw({
+		mergedRaw: first.raw.slice(0, textEnd) + leaf.raw.slice(at),
+		seam: textEnd,
+		start: { node: { ...leaf, raw: first.raw }, offset: textEnd },
+		end: { node: leaf, offset: at },
+		typed: '',
+		store
+	});
+	if (!readsInParts(second.raw, parts, store)) return null;
+	const before = (offset: number) => second.map(first.map(Math.min(offset, at)));
+	const after = (offset: number) =>
+		offset === at ? second.seamEnd : second.map(textEnd + offset - at);
+	return {
+		raw: second.raw,
+		caret: second.seam,
+		range: cut.range,
+		matchesBrowserEdit: false,
+		afterRange: after(cut.afterRange),
+		mapOffset: (offset) => (pastRange(offset) ? after(inCut(offset)) : before(inCut(offset)))
+	};
+}
+
+/** What `raw` shows before `from` and from `to`, and what `text` shows on its own. */
+function partsAround(
+	raw: string,
+	content: ContentRange,
+	from: number,
+	to: number,
+	text: string,
+	{ reading }: StoredAs
+): { before: ShownSpan; landed: ShownSpan; after: ShownSpan } {
+	return {
+		before: shownOfSpan(raw, content, content.start, from, reading),
+		landed: shownOfSpan(text, { start: 0, end: text.length }, 0, text.length, reading),
+		after: shownOfSpan(raw, content, to, content.end, reading)
+	};
 }
 
 // ── The join ─────────────────────────────────────────────────────────────────
