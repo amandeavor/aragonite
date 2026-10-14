@@ -52,6 +52,21 @@ describe('the content write drops the open lines', () => {
 		expect(legal.storedOffset(9)).toBe(7);
 	});
 
+	it('in the last block of a file with no line ending after it', () => {
+		const doc = parse('next\n\nabc def');
+
+		const legal = legalizeWrite(doc, 1, 'abc def\\\n', 'literal');
+
+		expect(legal.text).toBe('abc def');
+		expect(legal.storedOffset(9)).toBe(7);
+	});
+
+	it('keeps a backslash that ends the text, which a reload reads as one', () => {
+		const doc = parse('abc\\\n\nnext\n');
+
+		expect(legalizeWrite(doc, 0, 'abc\\\n', 'literal').text).toBe('abc\\\n');
+	});
+
 	it('leaves a code block’s backslash alone', () => {
 		const doc = parse('```\nx\n```\n');
 		const code = '```\nx\\\n\n```\n';

@@ -1786,7 +1786,8 @@ list of builders of genuinely new containers.
 through `components/blocks/editable/surface-write.ts :: writeText`, which gives undo the caret from before the
 key, keeps the line ending, and puts the caret back. `lint/call-site-rules.test.ts` fails an
 `updateBlockContent` call under `components/`, `selection/` or a plugin's code (`src/lib/plugins/`,
-`src/routes/test/plugins/`) elsewhere, except the few listed by function that are still to move.
+`src/routes/test/plugins/`) elsewhere, except the few listed by function that are still to move,
+and the block's own edit actions in `editable-surface.ts`, which `writeText` writes through.
 
 **G4.112 · An indent key over a range has one route.** Over a range, Tab, Shift+Tab and any key bound
 to an indent command nest or lift every list item the range reaches once, through

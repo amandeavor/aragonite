@@ -36,8 +36,7 @@ function keyWrite(
 		kindCue: NO_CUE,
 		getPreEditOffset: () => -1,
 		requestCaret,
-		holdInsertion: () => createInsertionRecords([]).hold({}, null),
-		openBreakAtEnd: () => {}
+		holdInsertion: () => createInsertionRecords([]).hold({}, null)
 	});
 	return (edit: LeafRangeEdit) =>
 		writeText({

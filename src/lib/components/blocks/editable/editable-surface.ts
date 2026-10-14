@@ -57,6 +57,7 @@ import {
 	type LineEnding
 } from '../../../core/lines';
 import { getContentRange, sameLineSuffix } from '../../../core/inline';
+import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
 import type { BlockAutoPairs } from '../text/auto-pair-record';
 import { createSurfaceWrite, type TextWrite } from './surface-write';
@@ -267,6 +268,8 @@ export interface EditableSurface {
 	/** Every edit the block makes to its own text: the input commit, and each key the block
 	 *  writes for itself (`surface-write.ts`). */
 	writeText(write: TextWrite): ContentWrite;
+	/** The block's edit actions, its content writes keeping the open line a write leaves the caret on. */
+	blockEdit: BlockEditActions;
 	/** The ending a line typed into the block takes: its own, else the document's. */
 	lineEnding(): LineEnding;
 	/** The line Shift+Enter at the block's end opened, which this block's next insertion spends. */
@@ -508,6 +511,19 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		for (let i = 0; i < lines; i++) pendingBreak.open(line);
 		return line.lineEnd;
 	}
+	// A write that drops the empty lines after a final hard break, leaving the caret on them, keeps
+	// them open the way Shift+Enter opened them, whichever route in the block wrote it.
+	const blockEdit: BlockEditActions = {
+		...deps.blockEdit,
+		updateBlockContent(index, text, mode, preEditOffset, caret) {
+			const open = droppedOpenLines(deps.getNode(), text);
+			const written = deps.blockEdit.updateBlockContent(index, text, mode, preEditOffset, caret);
+			if (open && caret === open.end && written.admitted) {
+				void written.then((wrote) => wrote && openBreakAtEnd(open.lines));
+			}
+			return written;
+		}
+	};
 	const holdInsertion = (): HeldInsertion =>
 		deps.caretMemory.holdInsertion(block, deps.placement?.insertion);
 	const { getInlines } = deps;
@@ -526,13 +542,12 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		getNode: deps.getNode,
 		getIndex: deps.getIndex,
 		getPath: deps.getMyPath,
-		blockEdit: deps.blockEdit,
+		blockEdit,
 		kindCue: deps.kindCue,
 		getPreEditOffset: () => preEditOffset,
 		requestCaret: deps.requestCaret,
 		ownPairs: deps.ownPairs,
-		holdInsertion,
-		openBreakAtEnd
+		holdInsertion
 	});
 
 	function command<A extends unknown[], R>(run: (...args: A) => R): (...args: A) => R {
@@ -750,6 +765,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		caret,
 		isDetached,
 		writeText,
+		blockEdit,
 		lineEnding,
 		pendingBreak,
 		openBreakAtEnd,

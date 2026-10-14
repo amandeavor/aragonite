@@ -35,12 +35,19 @@ further down, still drive a real composition.
 - live, `abc def`, Shift+Enter at the end, `x`, Backspace: the line under the text stays open with
   the caret on it, and the break's bytes go with the `x`, so the source is `abc def` again. The
   next letter writes the break in front of itself, same as after a fresh Shift+Enter, and another
-  Backspace takes the line. Same in a list item followed by another item, and in a quote.
+  Backspace takes the line. Same in a list item followed by another item, in a quote, and in the
+  last block of a file that has no line ending after it.
   Miss-analysis: #733, the emptied line was kept as `abc def\` plus an empty line, which a reload
   reads as a literal backslash, and every row checked the bytes against the screen, never against
   a reload.
 - The same in a list item followed by another, then a blur: nothing's left behind,
   `- abc def` / `- next`.
+- `abc\` / `xy`, the `xy` selected with Shift+Home and cut: the source is `abc`, the line stays
+  open with the caret on it, and `q` writes `abc\` / `q`. Source and live mode. Miss-analysis: the
+  line was reopened only by the key route's write, and every row emptied it with Backspace, so a
+  cut, which writes the block's text another way, dropped the line and sent the `q` up a line.
+  The no-line-ending row above was missed the same way: every row's block had a line ending to
+  take off, so a file without one kept the `\`.
 
 ## User interactions
 

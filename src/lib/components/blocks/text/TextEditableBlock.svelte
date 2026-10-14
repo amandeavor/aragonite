@@ -124,7 +124,6 @@
 
 	const wiring = wireSurfaceContexts();
 	const {
-		blockEdit,
 		focusActions,
 		controller,
 		pasteCoordinator,
@@ -299,7 +298,7 @@
 				)
 			)
 	});
-	const { writeText, pendingBreak } = editableSurface;
+	const { writeText, blockEdit, pendingBreak } = editableSurface;
 	export const afterSelectionRemoved = editableSurface.afterSelectionRemoved;
 
 	const crossBlock = editableSurface.crossBlock;

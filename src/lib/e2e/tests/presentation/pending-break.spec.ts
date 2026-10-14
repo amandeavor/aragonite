@@ -109,7 +109,8 @@ async function emptiedBreak(ep: EditorPage, page: Page): Promise<void> {
 const EMPTIED = [
 	['a paragraph', 'abc def\n', 'abc def\\\ny\n'],
 	['a list item followed by another', '- abc def\n- next\n', '- abc def\\\n  y\n- next\n'],
-	['a quote', '> abc def\n', '> abc def\\\n> y\n']
+	['a quote', '> abc def\n', '> abc def\\\n> y\n'],
+	['the last block, with no line ending after it', 'next\n\nabc def', 'next\n\nabc def\\\ny']
 ] as const;
 
 test.describe('live mode: a hard break at a block end, emptied again', () => {
@@ -163,6 +164,23 @@ for (const mode of MODES) {
 
 			expect(await focusPath(ep)).toEqual([0, 1, 0]);
 			expect(await ep.bridge.getSource()).toBe('- abc def\n- next\n');
+		});
+	});
+}
+
+for (const mode of MODES) {
+	test.describe(`${mode} mode: the line after a hard break, emptied by a cut`, () => {
+		test('stays open, and the next letter writes the break again', async ({ page }) => {
+			const ep = await enterPresentationMode(page, mode, 'abc\\\nxy\n\nnext\n');
+			await clickWordSettled(ep, page, 'xy');
+			await page.keyboard.press('End');
+			await page.keyboard.press('Shift+Home');
+			await page.keyboard.press('ControlOrMeta+x');
+			await expect.poll(() => ep.bridge.getSource()).toBe('abc\n\nnext\n');
+
+			await ep.typeSlowly('q');
+
+			await expect.poll(() => ep.bridge.getSource()).toBe('abc\\\nq\n\nnext\n');
 		});
 	});
 }

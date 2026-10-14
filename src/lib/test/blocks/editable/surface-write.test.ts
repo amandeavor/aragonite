@@ -37,8 +37,7 @@ function writerOver(raw: string, keepsCaret: boolean) {
 		kindCue: { afterTypedWrite: async () => {}, labelAt: () => undefined, dismiss: () => {} },
 		getPreEditOffset: () => 0,
 		requestCaret,
-		holdInsertion: () => createInsertionRecords([]).hold({}, null),
-		openBreakAtEnd: () => {}
+		holdInsertion: () => createInsertionRecords([]).hold({}, null)
 	});
 	return { writeText, requestCaret };
 }

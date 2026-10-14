@@ -69,8 +69,7 @@ export function harness(
 			kindCue: { afterTypedWrite: async () => {}, labelAt: () => undefined, dismiss: () => {} },
 			getPreEditOffset: trap,
 			requestCaret: (at) => void carets.push(at),
-			holdInsertion: () => createInsertionRecords([]).hold({}, null),
-			openBreakAtEnd: () => {}
+			holdInsertion: () => createInsertionRecords([]).hold({}, null)
 		}),
 		focusActions: new Proxy({}, { get: trap }),
 		setSnapTarget: trap,

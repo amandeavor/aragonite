@@ -100,8 +100,7 @@ export function makeEdgeDispatch(
 			kindCue: { afterTypedWrite: async () => {}, labelAt: () => undefined, dismiss: () => {} },
 			getPreEditOffset: () => keyCaret,
 			requestCaret,
-			holdInsertion: () => createInsertionRecords([]).hold({}, side, placement.insertion),
-			openBreakAtEnd: () => {}
+			holdInsertion: () => createInsertionRecords([]).hold({}, side, placement.insertion)
 		}),
 		completeMarker: () => markerWrites.push(readNode()),
 		setSnapTarget: () => {},

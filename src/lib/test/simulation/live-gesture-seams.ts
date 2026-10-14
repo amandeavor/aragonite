@@ -392,8 +392,7 @@ async function pressEdgeKey(
 		kindCue: { afterTypedWrite: async () => {}, labelAt: () => undefined, dismiss: () => {} },
 		getPreEditOffset: () => offset,
 		requestCaret: () => {},
-		holdInsertion: () => createInsertionRecords([]).hold({}, gesture.affinity, placement.insertion),
-		openBreakAtEnd: () => {}
+		holdInsertion: () => createInsertionRecords([]).hold({}, gesture.affinity, placement.insertion)
 	});
 	const dispatch = createEdgePolicyDispatch({
 		caretWriter: testCaretWriter,

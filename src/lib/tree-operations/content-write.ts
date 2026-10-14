@@ -24,7 +24,6 @@ import {
 	documentLineEnding,
 	joinDisplayLines,
 	ownTrailingLineEnding,
-	trimTrailingLineEnding,
 	type LineEnding
 } from '../core/lines';
 import { openLinesAtEnd } from '../core/inline';
@@ -97,7 +96,8 @@ export function legalizeWrite(
 	const node = parent.children[index];
 	const owner = 'owner' in parent ? parent.owner : undefined;
 	const lineEnding = 'lineEnding' in parent ? parent.lineEnding : documentLineEnding(parent);
-	const prose = withoutOpenLines(node, text);
+	const dropped = droppedOpenLines(node, text);
+	const prose = dropped ? dropped.text + text.slice(dropped.end) : text;
 	const ownRule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;
 	const ownCtx: WriteContext = { node, mode, lineEnding };
 	const own = ownRule ? ownRule.normalize(prose, ownCtx) : prose;
@@ -109,8 +109,7 @@ export function legalizeWrite(
 	const markerShift = index === 0 && owner ? taskMarkerCaretShift(owner, stored) : 0;
 	const storedOffset = (offset: number): number => {
 		// A caret on the dropped lines lands at the end of the text above them.
-		const inProse =
-			prose === text ? offset : Math.min(offset, trimTrailingLineEnding(prose).length);
+		const inProse = dropped ? Math.min(offset, dropped.text.length) : offset;
 		const inOwn = ownRule ? ownRule.mapOffset(prose, inProse, ownCtx) : inProse;
 		const inBody = bodyRule && bodyCtx ? bodyRule.mapOffset(own, inOwn, bodyCtx) : inOwn;
 		return Math.max(inBody + markerShift, 0);
@@ -118,13 +117,18 @@ export function legalizeWrite(
 	return { text: stored, storedOffset } as LegalWrite;
 }
 
-/** A reload ends a prose block's inline text at its last line, so a hard break with only empty
- *  lines after it reads as a backslash; the pending break is what draws those lines. */
-function withoutOpenLines(node: NodeView, text: string): string {
-	if (!tryGetBlockKindDescriptor(node.kind)?.supportsInline) return text;
-	const display = trimTrailingLineEnding(text);
-	const open = openLinesAtEnd(display);
-	return open ? open.text + text.slice(display.length) : text;
+/** The empty lines after a final hard break that a write of `text` over prose block `node` drops,
+ *  since a reload reads that break as a backslash; `end` is where they end in `text`. */
+export function droppedOpenLines(
+	node: NodeView,
+	text: string
+): { text: string; lines: number; end: number } | null {
+	if (!tryGetBlockKindDescriptor(node.kind)?.supportsInline) return null;
+	const own = ownTrailingLineEnding(node.raw);
+	// A block saved without a final line ending has none to take off, so a last line break is open.
+	const end = own && text.endsWith(own) ? text.length - own.length : text.length;
+	const open = openLinesAtEnd(text.slice(0, end));
+	return open && { text: open.text, lines: open.lines, end };
 }
 
 // ── Update Content ──

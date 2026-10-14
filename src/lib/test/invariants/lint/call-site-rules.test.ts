@@ -110,6 +110,8 @@ const RULES: CallSiteRule[] = [
 		calls: ['.updateBlockContent'],
 		holds: () => false,
 		allowed: {
+			'src/lib/components/blocks/editable/editable-surface.ts :: updateBlockContent':
+				'the block’s own edit actions, which the surface write and every route below write through',
 			'src/lib/components/blocks/text/TextEditableBlock.svelte :: toggleFormat':
 				'a command, which moves once commands take their own undo entry through the surface write',
 			'src/lib/components/blocks/text/TextEditableBlock.svelte :: perform':

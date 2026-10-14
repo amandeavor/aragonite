@@ -32,8 +32,7 @@ function writerFor() {
 		kindCue: { afterTypedWrite, labelAt: () => undefined, dismiss: () => {} },
 		getPreEditOffset: () => 0,
 		requestCaret: () => {},
-		holdInsertion: () => createInsertionRecords([]).hold({}, null),
-		openBreakAtEnd: () => {}
+		holdInsertion: () => createInsertionRecords([]).hold({}, null)
 	});
 	return { writeText, afterTypedWrite, completeLineOnType };
 }
