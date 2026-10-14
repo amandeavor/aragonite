@@ -1006,7 +1006,16 @@ By default the bar pins to the editor root's top edge. In self-scroll mode that 
 ```
 
 - **The prop reads live.** `null` or `undefined` puts the bar back in the editor root, so an anchor that mounts with a panel and unmounts with it is fine. It has no effect while `searchBar` is `false`; that switch turns the whole feature off, chords included.
-- **Placement inside the anchor is yours.** The editor treats the element as the box and exports no positioning knobs. The bar positions itself absolutely, so give the anchor `position: relative` (or another positioned ancestor) and a size; otherwise the bar resolves against whatever the page's layout offers next.
+- **Placement inside the anchor is yours.** The editor treats the element as the box. The bar positions itself absolutely, so give the anchor `position: relative` (or another positioned ancestor) and a size; otherwise the bar resolves against whatever the page's layout offers next.
+- **Two offsets move it.** The bar sits `--search-bar-top` below and `--search-bar-right` in from its box's top-right corner, `10px` each by default. Set them at `.editor` for the bar in the root, or on the anchor for a moved bar, which sits outside the root and so reads the anchor's values:
+
+```css
+.pane-chrome {
+	--search-bar-top: 6px;
+	--search-bar-right: 12px;
+}
+```
+
 - **The bar keeps the editor's look.** When the editor sits under `aragonite-editor-theme`, the moved bar carries that class and the current `data-editor-theme` with it, so it keeps the built-in palette. In a themed host with no class, it carries only the attribute and picks up your own tokens from wherever the anchor sits.
 
 ## Embedding in a webview shell

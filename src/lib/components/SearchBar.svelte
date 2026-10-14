@@ -180,11 +180,12 @@
 	   search, with icon buttons that stay quiet until hovered and nothing outlined. */
 	.search-bar {
 		position: absolute;
-		top: 10px;
-		right: 10px;
+		/* The only placement knobs: the editor sets them at `.editor`, an anchor may set its own. */
+		top: var(--search-bar-top, 10px);
+		right: var(--search-bar-right, 10px);
 		/* Content-sized off the right edge, so without the cap a narrow host puts the bar's
 		   left half (the find field) off screen instead of shrinking it. */
-		max-width: calc(100% - 20px);
+		max-width: calc(100% - 2 * var(--search-bar-right, 10px));
 		box-sizing: border-box;
 		z-index: 5;
 		display: flex;
@@ -222,7 +223,7 @@
 		padding: 0 4px 0 11px;
 		box-sizing: border-box;
 		border-radius: 999px;
-		background: var(--chip-bg, rgba(255, 255, 255, 0.055));
+		background: var(--menu-chip-bg, rgba(255, 255, 255, 0.055));
 		color: var(--color-ui-muted, #93938d);
 		cursor: text;
 		transition:
@@ -231,7 +232,7 @@
 	}
 	.search-field:hover,
 	.search-field:focus-within {
-		background: var(--chip-bg-hover, rgba(255, 255, 255, 0.085));
+		background: var(--menu-chip-bg-hover, rgba(255, 255, 255, 0.085));
 		color: var(--color-text-secondary, #cfcfca);
 	}
 	/* A pattern the engine refused: the field says so in its own tint, not a red box. */
@@ -332,7 +333,7 @@
 		height: 28px;
 		padding: 0 12px;
 		border-radius: 999px;
-		background: var(--chip-bg, rgba(255, 255, 255, 0.055));
+		background: var(--menu-chip-bg, rgba(255, 255, 255, 0.055));
 		color: var(--color-text-secondary, #cfcfca);
 		font-size: 12px;
 		font-weight: 500;
@@ -340,7 +341,7 @@
 	.search-icon-btn:hover:not(:disabled),
 	.search-tog:hover,
 	.search-btn:hover:not(:disabled) {
-		background: var(--chip-bg-hover, rgba(255, 255, 255, 0.085));
+		background: var(--menu-chip-bg-hover, rgba(255, 255, 255, 0.085));
 		color: var(--color-text-primary, #e8e8e5);
 	}
 	.search-icon-btn:focus-visible,

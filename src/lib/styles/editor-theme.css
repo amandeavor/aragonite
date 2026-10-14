@@ -158,8 +158,8 @@
 	--menu-scrollbar-thumb: rgba(255, 255, 255, 0.18);
 	--menu-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
 	/* The host's soft fill for a pill or a quiet button, resting and hovered (the find bar). */
-	--chip-bg: rgba(255, 255, 255, 0.055);
-	--chip-bg-hover: rgba(255, 255, 255, 0.085);
+	--menu-chip-bg: rgba(255, 255, 255, 0.055);
+	--menu-chip-bg-hover: rgba(255, 255, 255, 0.085);
 
 	/* Tint behind the blocks windowing has not mounted, so a spacer that outruns the recompute
 	   reads as "loading" rather than a white tear (VR-8). */
@@ -189,8 +189,8 @@
 	--menu-search-divider: rgba(0, 0, 0, 0.07);
 	--menu-scrollbar-thumb: rgba(0, 0, 0, 0.2);
 	--menu-scrollbar-thumb-hover: rgba(0, 0, 0, 0.32);
-	--chip-bg: rgba(0, 0, 0, 0.045);
-	--chip-bg-hover: rgba(0, 0, 0, 0.06);
+	--menu-chip-bg: rgba(0, 0, 0, 0.045);
+	--menu-chip-bg-hover: rgba(0, 0, 0, 0.06);
 
 	/* At the dark theme's 0.65 marker dim, light prose falls under AA on the light surface. */
 	--syntax-marker-dim: 0.68;
@@ -220,4 +220,11 @@
 
 	/* Dark tint for a light background (VR-8). */
 	--vr-spacer-bg: rgba(0, 0, 0, 0.03);
+}
+
+/* The find bar's offset from its box's top-right corner. On `.editor` only: a bar moved into
+   `searchBarAnchor` sits outside the root and reads the anchor's own value, or the fallback. */
+:where(.editor) {
+	--search-bar-top: 10px;
+	--search-bar-right: 10px;
 }
