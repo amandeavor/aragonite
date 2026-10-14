@@ -82,7 +82,7 @@ describe('createEditor', () => {
 		expect(hinted()).toBeUndefined();
 	});
 
-	it('mounts with no source the document an empty source gives', () => {
+	it('with no source, mounts what an empty source mounts', () => {
 		const empty = create({ source: '' }).editor.getSource();
 
 		expect(create().editor.getSource()).toBe(empty);
