@@ -24,8 +24,10 @@ import {
 	documentLineEnding,
 	joinDisplayLines,
 	ownTrailingLineEnding,
+	trimTrailingLineEnding,
 	type LineEnding
 } from '../core/lines';
+import { openLinesAtEnd } from '../core/inline';
 import { assignChildIdsDeep, idsAcrossReread } from '../block-id';
 import {
 	getBlockKindDescriptor,
@@ -84,10 +86,8 @@ export type WriteTarget =
 	  }
 	| DocumentView;
 
-/**
- * `text` made legal as the bytes of the block at `index`: its kind's `rawWrite`, then the
- * container's `bodyWrite`, both reading the tree as it stands before the write.
- */
+/** `text` made legal as the bytes of the block at `index`: the prose rule, the kind's `rawWrite`,
+ *  then the container's `bodyWrite`, all reading the tree as it stands before the write. */
 export function legalizeWrite(
 	parent: WriteTarget,
 	index: number,
@@ -97,9 +97,10 @@ export function legalizeWrite(
 	const node = parent.children[index];
 	const owner = 'owner' in parent ? parent.owner : undefined;
 	const lineEnding = 'lineEnding' in parent ? parent.lineEnding : documentLineEnding(parent);
+	const prose = withoutOpenLines(node, text);
 	const ownRule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;
 	const ownCtx: WriteContext = { node, mode, lineEnding };
-	const own = ownRule ? ownRule.normalize(text, ownCtx) : text;
+	const own = ownRule ? ownRule.normalize(prose, ownCtx) : prose;
 	const bodyRule = owner ? tryGetBlockKindDescriptor(owner.kind)?.bodyWrite : undefined;
 	// A child's bytes are never the container's own syntax, so the body rule reads them as content.
 	const bodyCtx: WriteContext | undefined = owner && { node: owner, mode: 'literal', lineEnding };
@@ -107,11 +108,23 @@ export function legalizeWrite(
 	// A list item takes a typed task marker out of its first paragraph, or gives one back.
 	const markerShift = index === 0 && owner ? taskMarkerCaretShift(owner, stored) : 0;
 	const storedOffset = (offset: number): number => {
-		const inOwn = ownRule ? ownRule.mapOffset(text, offset, ownCtx) : offset;
+		// A caret on the dropped lines lands at the end of the text above them.
+		const inProse =
+			prose === text ? offset : Math.min(offset, trimTrailingLineEnding(prose).length);
+		const inOwn = ownRule ? ownRule.mapOffset(prose, inProse, ownCtx) : inProse;
 		const inBody = bodyRule && bodyCtx ? bodyRule.mapOffset(own, inOwn, bodyCtx) : inOwn;
 		return Math.max(inBody + markerShift, 0);
 	};
 	return { text: stored, storedOffset } as LegalWrite;
+}
+
+/** A reload ends a prose block's inline text at its last line, so a hard break with only empty
+ *  lines after it reads as a backslash; the pending break is what draws those lines. */
+function withoutOpenLines(node: NodeView, text: string): string {
+	if (!tryGetBlockKindDescriptor(node.kind)?.supportsInline) return text;
+	const display = trimTrailingLineEnding(text);
+	const open = openLinesAtEnd(display);
+	return open ? open.text + text.slice(display.length) : text;
 }
 
 // ── Update Content ──

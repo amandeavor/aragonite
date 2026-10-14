@@ -210,7 +210,8 @@ describe('writeText and a record the write extends', () => {
 			kindCue: { afterTypedWrite: async () => {}, labelAt: () => undefined, dismiss: () => {} },
 			getPreEditOffset: () => 0,
 			requestCaret: () => {},
-			holdInsertion: () => records.hold(BLOCK, null)
+			holdInsertion: () => records.hold(BLOCK, null),
+			openBreakAtEnd: () => {}
 		});
 		const typed = { intent: 'typed', mode: 'authored', source: 'test' } as const;
 

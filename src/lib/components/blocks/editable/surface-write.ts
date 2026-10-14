@@ -12,6 +12,7 @@ import type { KindCue } from '../../kind-cue.svelte';
 import type { BlockAutoPairs } from '../text/auto-pair-record';
 import type { HeldInsertion, TextEdit } from '../../../caret/next-insertion';
 import { shownKind } from '../../../core/parsers/heading';
+import { isProseKind, openLinesAtEnd } from '../../../core/inline';
 import { ownTrailingLineEnding, trimTrailingLineEnding } from '../../../core/lines';
 import { withStoredCaret } from '../../../editor-actions/stored-caret';
 
@@ -57,6 +58,8 @@ export interface SurfaceWriteDeps {
 	/** Takes what the caret memory keeps for this block's next insertion (pending marks, a pending
 	 *  break), with what the block does to an insertion. */
 	holdInsertion(): HeldInsertion;
+	/** Opens `lines` lines past the end of the block's text, as Shift+Enter there does. */
+	openBreakAtEnd(lines: number): void;
 }
 
 export function createSurfaceWrite(deps: SurfaceWriteDeps): (write: TextWrite) => ContentWrite {
@@ -86,6 +89,10 @@ export function createSurfaceWrite(deps: SurfaceWriteDeps): (write: TextWrite) =
 		);
 		held.finish(changed);
 		if (!written.admitted) return written;
+		// The write drops a hard break with only empty lines after it, so a caret on those lines
+		// keeps them open the way Shift+Enter opened them.
+		const open = proseCaretOnOpenLines(node, edit);
+		if (open) void written.then((wrote) => wrote && deps.openBreakAtEnd(open.lines));
 		// Ends the auto-pair's record when the pair it wrote isn't standing in the new bytes.
 		deps.ownPairs?.consult(edit.text, edit.caretAfter);
 		// A new kind, a merge or a changed container lands the caret itself, so the block puts
@@ -100,6 +107,11 @@ export function createSurfaceWrite(deps: SurfaceWriteDeps): (write: TextWrite) =
 		void deps.kindCue.afterTypedWrite(landed, deps.getPath(), before);
 		return withStoredCaret(landed, written.caret, written.storedOffset, written.keepsCaret);
 	};
+}
+
+function proseCaretOnOpenLines(node: NodeView, edit: TextEdit): { lines: number } | null {
+	if (edit.caretAfter !== edit.text.length || !isProseKind(node.kind)) return null;
+	return openLinesAtEnd(edit.text);
 }
 
 /** `text` as the block's bytes: the rule `writeText` follows, for a write to the block's own

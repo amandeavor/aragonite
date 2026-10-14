@@ -73,6 +73,29 @@ export function withHardBreak(
 	};
 }
 
+/** {@link withHardBreak} taken back off a text that ends on an empty line: the text before the
+ *  break and how many lines it opened, or null when no backslash break leads into that line. */
+export function openLinesAtEnd(text: string): { text: string; lines: number } | null {
+	let at = text.length - endingLengthBefore(text, text.length);
+	if (at === text.length) return null;
+	let lines = 1;
+	// Each line above the empty one holding a lone backslash is one more open line.
+	while (text[at - 1] === '\\' && endingLengthBefore(text, at - 1) > 0) {
+		at -= 1 + endingLengthBefore(text, at - 1);
+		lines++;
+	}
+	let run = 0;
+	while (text[at - 1 - run] === '\\') run++;
+	// An even run is escaped backslashes, which break nothing.
+	if (run % 2 === 0) return null;
+	return { text: text.slice(0, at - 1), lines };
+}
+
+function endingLengthBefore(text: string, at: number): number {
+	if (text[at - 1] !== '\n') return 0;
+	return text[at - 2] === '\r' ? 2 : 1;
+}
+
 /** The one place a {@link ContentLength} is created. */
 export function contentLengthOf(node: NodeView): ContentLength {
 	return getContentRange(node).end as ContentLength;

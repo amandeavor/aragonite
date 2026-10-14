@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-// In live mode, the empty last line a hard break at a block's end leaves after its text is deleted
-// is a line like any other: Backspace on it, or Delete at the end of the line above, takes it.
-// Miss-analysis: #690, every edge-delete row cut a line holding text, so the check that reads the
-// block back never met the empty last line the screen draws and a reload splits off.
+// Shift+Enter at a block's end, a letter and a Backspace leave the line open as Shift+Enter left
+// it: the break's bytes go with the letter, since a reload reads them as a backslash.
+// Miss-analysis: #733, every row read the bytes back the way the screen draws them, never as a
+// reload reads them, and the emptied line was kept as bytes no reload can draw.
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
 	destroyMountedEditors,
@@ -13,6 +13,7 @@ import {
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { pressKey, settleEditor } from '#lib/test/harness/settle.js';
 import { dispatchBeforeInput, insertBy } from '#lib/test/harness/insertion-routes.js';
+import type { PresentationMode } from '#lib/presentation-mode.js';
 
 beforeAll(installLayoutStubs);
 afterEach(destroyMountedEditors);
@@ -31,46 +32,78 @@ async function nativeBackspace(el: HTMLElement): Promise<void> {
 	await settleEditor();
 }
 
+/** `typed(n)` is the bytes once `y` lands on the last of `n` open lines; `prefix` starts each
+ *  line under the text. */
 const SHAPES = [
-	{ name: 'a paragraph', source: 'abc def\n', path: [0], deleted: 'abc def\n' },
+	{ name: 'a paragraph', source: 'abc def\n', path: [0], prefix: '', rest: '' },
 	{
 		name: 'a list item followed by another',
 		source: '- abc def\n- next\n',
 		path: [0, 0, 0],
-		deleted: '- abc def\n- next\n'
+		prefix: '  ',
+		rest: '- next\n'
 	},
-	{ name: 'a quote', source: '> abc def\n', path: [0, 0], deleted: '> abc def\n' }
-];
+	{ name: 'a quote', source: '> abc def\n', path: [0, 0], prefix: '> ', rest: '' }
+].map((shape) => {
+	const head = shape.source.slice(0, shape.source.indexOf('\n'));
+	const typed = (open: number) =>
+		`${head}\\\n${`${shape.prefix}\\\n`.repeat(open - 1)}${shape.prefix}y\n${shape.rest}`;
+	return { ...shape, typed };
+});
+const MODES: PresentationMode[] = ['source', 'live'];
 
-describe.each(SHAPES)(
-	'the emptied line after a hard break, in $name',
-	({ source, path, deleted }) => {
-		async function emptied() {
-			const editor = mountEditor({ source, presentationMode: 'live' });
+describe.each(MODES)('%s mode', (mode) => {
+	describe.each(SHAPES)('the line a Backspace empties under $name', ({ source, path, typed }) => {
+		async function emptied(lines = 1) {
+			const editor = mountEditor({ source, presentationMode: mode });
 			const el = surfaceAt(editor, path);
 			placeCaret(el, 7);
-			await pressKey(el, { key: 'Enter', shiftKey: true });
+			for (let i = 0; i < lines; i++) await pressKey(el, { key: 'Enter', shiftKey: true });
 			await insertBy('hardware key', el, 'x');
 			await nativeBackspace(el);
-			expect(editor.source()).not.toBe(source);
 			return { editor, el };
 		}
 
-		it('Backspace on it takes the line and the break', async () => {
+		it('takes the break with the letter, and the next letter writes it again', async () => {
+			const { editor, el } = await emptied();
+			expect(editor.source()).toBe(source);
+
+			await insertBy('hardware key', el, 'y');
+
+			expect(editor.source()).toBe(typed(1));
+		});
+
+		it('keeps every line two Shift+Enters opened', async () => {
+			const { editor, el } = await emptied(2);
+			expect(editor.source()).toBe(source);
+
+			await insertBy('hardware key', el, 'y');
+
+			expect(editor.source()).toBe(typed(2));
+		});
+
+		it('goes with a Backspace, like the line Shift+Enter opened', async () => {
 			const { editor, el } = await emptied();
 
 			await pressKey(el, { key: 'Backspace' });
+			await insertBy('hardware key', el, 'y');
 
-			expect(editor.source()).toBe(deleted);
+			expect(editor.source()).toBe(source.replace('abc def', 'abc defy'));
 		});
+	});
+});
 
-		it('Delete at the end of the line above takes them', async () => {
-			const { editor, el } = await emptied();
-			placeCaret(el, 7);
+describe('live mode, a marked letter alone on the line under a break', () => {
+	it('goes with its hidden markers and the break, leaving the line open', async () => {
+		const editor = mountEditor({ source: 'abc def\\\n*x*\n', presentationMode: 'live' });
+		const el = surfaceAt(editor, [0]);
+		placeCaret(el, 11);
 
-			await pressKey(el, { key: 'Delete' });
+		await pressKey(el, { key: 'Backspace' });
 
-			expect(editor.source()).toBe(deleted);
-		});
-	}
-);
+		expect(editor.source()).toBe('abc def\n');
+		// The unwrapped mark is pending too, so the next letter takes it back.
+		await insertBy('hardware key', el, 'y');
+		expect(editor.source()).toBe('abc def\\\n*y*\n');
+	});
+});

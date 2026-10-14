@@ -2,13 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import type { EditorPage } from '../../editor-page';
 import { attachIme } from '../../simulation/ime';
-import {
-	clickBlockSettled,
-	clickWordSettled,
-	enterPresentationMode,
-	focusOffset,
-	focusPath
-} from './helpers';
+import { clickBlockSettled, clickWordSettled, enterPresentationMode, focusPath } from './helpers';
 
 // Shift+Enter at a block's end opens a line and writes nothing; whatever is inserted next writes
 // the break in front of itself, and anything else drops the line without leaving a byte.
@@ -101,8 +95,8 @@ test.describe('live mode: a composed run after a hidden closer', () => {
 	}
 });
 
-/** `doc`'s first block, `def`'s line ended by Shift+Enter, `x` and a Backspace: the break's bytes
- *  stay, and the line after them is empty, with the caret on it. */
+/** `doc`'s first block, `def`'s line ended by Shift+Enter, `x` and a Backspace: the line under the
+ *  text is open again, with the caret on it, and the break's bytes went with the `x`. */
 async function emptiedBreak(ep: EditorPage, page: Page): Promise<void> {
 	await clickWordSettled(ep, page, 'def');
 	await page.keyboard.press('End');
@@ -112,46 +106,41 @@ async function emptiedBreak(ep: EditorPage, page: Page): Promise<void> {
 	await ep.waitForRenderFlush();
 }
 
+const EMPTIED = [
+	['a paragraph', 'abc def\n', 'abc def\\\ny\n'],
+	['a list item followed by another', '- abc def\n- next\n', '- abc def\\\n  y\n- next\n'],
+	['a quote', '> abc def\n', '> abc def\\\n> y\n']
+] as const;
+
 test.describe('live mode: a hard break at a block end, emptied again', () => {
-	for (const [name, doc, emptied, deleted] of [
-		['a paragraph', 'abc def\n', 'abc def\\\n\n', 'abc def\n'],
-		[
-			'a list item followed by another',
-			'- abc def\n- next\n',
-			'- abc def\\\n  \n- next\n',
-			'- abc def\n- next\n'
-		],
-		['a quote', '> abc def\n', '> abc def\\\n>\n', '> abc def\n']
-	]) {
-		test(`in ${name}, Backspace takes the emptied line and its break`, async ({ page }) => {
+	for (const [name, doc, typed] of EMPTIED) {
+		test(`in ${name}, the line stays open and the next letter writes the break`, async ({
+			page
+		}) => {
 			const ep = await enterPresentationMode(page, 'live', doc);
 			await emptiedBreak(ep, page);
-			expect(await ep.bridge.getSource()).toBe(emptied);
+			expect(await ep.bridge.getSource()).toBe(doc);
 
-			await page.keyboard.press('Backspace');
+			await ep.typeSlowly('y');
 
-			await expect.poll(() => ep.bridge.getSource()).toBe(deleted);
-			expect(await focusOffset(ep)).toBe(7);
+			await expect.poll(() => ep.bridge.getSource()).toBe(typed);
 		});
 
-		test(`in ${name}, Delete at the end of the line above takes them`, async ({ page }) => {
+		test(`in ${name}, Backspace takes the line`, async ({ page }) => {
 			const ep = await enterPresentationMode(page, 'live', doc);
 			await emptiedBreak(ep, page);
-			await page.keyboard.press('ArrowLeft');
+
+			await page.keyboard.press('Backspace');
 			await ep.waitForRenderFlush();
-			expect(await focusOffset(ep)).toBe(7);
+			await ep.typeSlowly('y');
 
-			await page.keyboard.press('Delete');
-
-			await expect.poll(() => ep.bridge.getSource()).toBe(deleted);
+			await expect.poll(() => ep.bridge.getSource()).toBe(doc.replace('def', 'defy'));
 		});
 	}
 
 	test('in a list item followed by another, the line is gone after a blur', async ({ page }) => {
 		const ep = await enterPresentationMode(page, 'live', '- abc def\n- next\n');
 		await emptiedBreak(ep, page);
-		await page.keyboard.press('Backspace');
-		await ep.waitForRenderFlush();
 
 		await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 		await ep.waitForRenderFlush();
@@ -162,10 +151,9 @@ test.describe('live mode: a hard break at a block end, emptied again', () => {
 
 for (const mode of MODES) {
 	test.describe(`${mode} mode: the emptied line after a hard break at a block end`, () => {
-		test('ArrowDown from the line above lands on it, not on the next item', async ({ page }) => {
+		test('ArrowUp leaves it for good, so ArrowDown goes on to the next item', async ({ page }) => {
 			const ep = await enterPresentationMode(page, mode, '- abc def\n- next\n');
 			await emptiedBreak(ep, page);
-			const onEmptied = await focusOffset(ep);
 			await page.keyboard.press('ArrowUp');
 			await ep.waitForRenderFlush();
 			expect(await focusPath(ep)).toEqual([0, 0, 0]);
@@ -173,24 +161,8 @@ for (const mode of MODES) {
 			await page.keyboard.press('ArrowDown');
 			await ep.waitForRenderFlush();
 
-			expect(await focusPath(ep)).toEqual([0, 0, 0]);
-			expect(await focusOffset(ep)).toBe(onEmptied);
-		});
-
-		test('ArrowUp from the start of the next item lands on it', async ({ page }) => {
-			const ep = await enterPresentationMode(page, mode, '- abc def\n- next\n');
-			await emptiedBreak(ep, page);
-			const onEmptied = await focusOffset(ep);
-			await page.keyboard.press('ArrowDown');
-			await page.keyboard.press('Home');
-			await ep.waitForRenderFlush();
 			expect(await focusPath(ep)).toEqual([0, 1, 0]);
-
-			await page.keyboard.press('ArrowUp');
-			await ep.waitForRenderFlush();
-
-			expect(await focusPath(ep)).toEqual([0, 0, 0]);
-			expect(await focusOffset(ep)).toBe(onEmptied);
+			expect(await ep.bridge.getSource()).toBe('- abc def\n- next\n');
 		});
 	});
 }

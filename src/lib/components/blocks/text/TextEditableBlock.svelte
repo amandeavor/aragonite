@@ -513,7 +513,6 @@
 	function writeHardBreak(offset: number): void {
 		const content = getContentRange(node);
 		const lineEnd = content.end + sameLineSuffix(node).length;
-		const ending = editableSurface.lineEnding();
 		// A caret in front of a hidden closer at the end is at the end too: nothing paints past it.
 		const textEnd = Math.min(content.end, caretBounds().end);
 		if (offset >= textEnd && offset <= lineEnd) {
@@ -521,10 +520,10 @@
 			if (!controller.admitsGesture('hardBreak')) return;
 			// The insertion that writes the break starts its own undo entry.
 			controller.flushDebouncedCheckpoint();
-			pendingBreak.open({ textEnd: content.end, lineEnd, ending });
-			setPendingCursorOffset(lineEnd, 'hard-break');
+			setPendingCursorOffset(editableSurface.openBreakAtEnd(1), 'hard-break');
 			return;
 		}
+		const ending = editableSurface.lineEnding();
 		const { newRaw, caretOffset } = insertHardBreak(node.raw, offset, ending, content);
 		const write = blockEdit.updateBlockContent(index, newRaw, 'authored', offset, caretOffset);
 		if (write.admitted) setPendingCursorOffset(write.caret, 'hard-break');

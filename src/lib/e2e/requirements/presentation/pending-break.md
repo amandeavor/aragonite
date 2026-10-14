@@ -32,21 +32,20 @@ further down, still drive a real composition.
   outside the construct. Miss-analysis: every composed row ran on a plain paragraph, where the
   composition lands on the right side of the text whether the line is drawn or not.
 - Caret keys on the open line have their own file, `pending-break-keys.md`.
-- live, `abc def`, Shift+Enter at the end, `x`, Backspace: the break's bytes stay, and the line
-  under the text is empty with the caret on it. Another Backspace takes that line and the break,
-  leaving `abc def`, and so does Delete at the end of `abc def`. Same in a list item followed by
-  another item, and in a quote. Miss-analysis: #690, every edge-delete row cut a line holding text,
-  so the check that reads the block back never met an empty last line, which a reload reads as a
-  blank line after the block while the screen draws it inside.
-- The same in a list item followed by another, then a blur once the Backspace took the line:
-  nothing's left behind, `- abc def` / `- next`.
+- live, `abc def`, Shift+Enter at the end, `x`, Backspace: the line under the text stays open with
+  the caret on it, and the break's bytes go with the `x`, so the source is `abc def` again. The
+  next letter writes the break in front of itself, same as after a fresh Shift+Enter, and another
+  Backspace takes the line. Same in a list item followed by another item, and in a quote.
+  Miss-analysis: #733, the emptied line was kept as `abc def\` plus an empty line, which a reload
+  reads as a literal backslash, and every row checked the bytes against the screen, never against
+  a reload.
+- The same in a list item followed by another, then a blur: nothing's left behind,
+  `- abc def` / `- next`.
 
 ## User interactions
 
 - Shift+Enter at the end, then a click in another block: the source is unchanged and the first
   block draws no extra line. Source and live mode.
-- A list item followed by another, with that emptied line still under `abc def`: ArrowDown from
-  the line above lands on it rather than in the next item, and ArrowUp from the start of the next
-  item lands on it too. Source and live mode. Miss-analysis: no vertical-move row had a block
-  ending in an empty line, and the line ending before it measures on the line it ends, so both
-  arrows read the block's last line as the one above.
+- A list item followed by another, with that emptied line still under `abc def`: ArrowUp leaves
+  it and drops it, like any open line, so ArrowDown from `abc def` then goes on to the next item.
+  Source and live mode.
