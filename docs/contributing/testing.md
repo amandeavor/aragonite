@@ -844,14 +844,18 @@ from the packed tarball, importing only published entry points. It's a test, not
 (if something is only learnable from that folder, that's a docs bug; file it). CI's
 `consumer-smoke` job runs `scripts/consumer-smoke.mjs`, which:
 
-1. builds and packs `dist/`, and checks the tarball holds every published path and no test file
+1. builds and packs `dist/`, and checks the tarball holds every published path and no test file.
+   It checks the prebuilt build too (`dist/prebuilt/`, what a bundler with no Svelte plugin gets):
+   no Svelte import of its own, every entry loads in Node, one plugin registry across entries, and
+   a size budget (`scripts/verify-prebuilt.mjs`)
 2. installs the tarball into the example with `--no-save`
 3. typechecks and builds the example, where an import cycle through a published entry point is
    a build error
 4. runs the example's own Playwright specs: the page server-renders without a 5xx, hydrates with
    no console errors and takes a keystroke, the editor's text has readable contrast against the
    page on every route, the plugins page mounts the bundled plugins through their subpaths plus a
-   copy of the callout fixture, and the editor's dev-only warnings still fire under a consumer's
+   copy of the callout fixture (compiled by the example, so it breaks if a Svelte app ever gets
+   the prebuilt build), and the editor's dev-only warnings still fire under a consumer's
    `vite dev`
 
 To run the example yourself, from a fresh clone (same commands in bash and PowerShell):

@@ -74,7 +74,7 @@ aragonite never imports SvelteKit, so it doesn't care which SvelteKit you're on.
 
 Three things. Though, prob already true in sveltekit apps (if thats you, skip ahead).
 
-1. **Node `^20.19.0 || >=22.12.0`.** That floor is Vite's, not ours: the package ships uncompiled Svelte, so your bundler's requirement is the real one.
+1. **Node `^20.19.0 || >=22.12.0`.** That floor is Vite's, not ours: a Svelte app compiles the package's Svelte itself, so your bundler's requirement is the real one.
 2. **TypeScript resolves the package through its `exports` map**, which needs one of these in `tsconfig.json`:
 
    ```json
@@ -450,7 +450,12 @@ editor.destroy();
 
 `update` takes any subset of the options and works like handing a component new props: an unchanged value does nothing, so passing every option again on each render is fine, and a key set to `undefined` clears it. The three set-once props (`plugins`, `syntax`, `scrollMode`) are ignored after mount. Call `destroy` before you throw the element away; anything the editor still had in flight then lands nowhere and fires no event.
 
-For now the package still ships uncompiled Svelte, so your bundler needs the Svelte plugin from [What your build needs](#what-your-build-needs) either way.
+Your bundler doesn't need a Svelte plugin for this. Without one it gets the package's prebuilt build, which has Svelte compiled in, so there's one more stylesheet to import (see [Theming](#theming)):
+
+```ts
+import '@voithos-labs/aragonite/style.css';
+import '@voithos-labs/aragonite/styles/editor-theme.css';
+```
 
 ## Events
 
@@ -756,7 +761,7 @@ Both renderers are optional; without one, each formula or diagram shows its sour
 
 The module owns its CSS. Two stylesheets ship under `styles/`:
 
-- **`editor.css`**: the structural rules. The component imports it itself; nothing to do.
+- **`editor.css`**: the structural rules. In a Svelte app the component imports it itself, so there's nothing to do. A bundler with no Svelte plugin gets the prebuilt build instead, and that needs `@voithos-labs/aragonite/style.css` imported once: it's `editor.css` plus every component's own styles, bundled plugins included.
 - **`editor-theme.css`**: the default token palette, light and dark. Import it for the default look, or replace it wholesale to retheme. It's the authoritative manifest, so read it for the exact token set and values rather than trusting a copy in a doc. This one included.
 
 No font ships, so the `--font-*` tokens resolve to whatever your page provides, or to their fallback stacks. (The showcase at aragonite.dev loads Inter and JetBrains Mono itself, in case you're wondering why it looks nicer than your first mount.)
