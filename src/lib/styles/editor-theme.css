@@ -140,14 +140,16 @@
 	--reorder-scope-bg: rgba(100, 150, 255, 0.14);
 	/* The light theme sets its own dim. */
 	--syntax-marker-dim: 0.65;
-	/* The drawn caret: the text color, and the browser's own blink period. Its shape shows the
-	   format the next letter types in: heavier for bold, slanted for italic, a tick for strikethrough. */
-	--md-caret-color: var(--color-text-primary, currentColor);
+	/* The drawn caret: the color of the text it stands in and the blink of the browser's own. Its
+	   shape shows the next letter's format: heavier for bold, slanted for italic, a tick for strike. */
+	--md-caret-color: currentColor;
 	--md-caret-blink: 1.06s;
 	--md-caret-width: 1px;
 	--md-caret-strong-width: 3px;
 	--md-caret-slant: -12deg;
 	--md-caret-strike-width: 13px;
+	/* One device pixel, which the paint sets on the bar so its lengths round to it; not a setting. */
+	--md-device-pixel: 1px;
 
 	/* Menu elevation, per mode, since a shadow tuned for a near-black surface vanishes over a white
 	   one; editor-owned because a host palette names colors, not elevation. */

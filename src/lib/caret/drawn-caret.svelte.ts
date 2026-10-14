@@ -111,6 +111,8 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 	let drawnIn: Element | null = null;
 	let drawnState = '';
 	let drawnMarks = '';
+	let drawnColor = '';
+	let drawnDpr = 0;
 	let blink: 'a' | 'b' = 'a';
 	const widgetEdge = createWidgetEdgeHolder(request);
 	let requested = false;
@@ -243,7 +245,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 				atCodeChipEdge: !!measured?.chipEdge,
 				chip,
 				caret: measured?.caret ?? null,
-				host: measured?.hostBox ?? (edge && host ? hostBox(host) : null),
+				host: measured?.hostBox ?? (host ? hostBox(host) : null),
 				devicePixelRatio: window.devicePixelRatio || 1
 			}
 		};
@@ -272,8 +274,12 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		const inText = target.state === 'text' || target.state === 'chip';
 		const look = inText && read.range ? read.source?.look?.(read.range) : null;
 		const marks = look?.marks.join(' ') ?? '';
-		// The gap bar's box is all CSS, across its whole element. The stylesheet owns `transform`.
-		const translate = rect ? `${rect.x}px ${rect.y}px` : '';
+		// The gap bar's ends are CSS, across its whole element. The stylesheet owns `transform`.
+		const translate = rect
+			? `${rect.x}px ${rect.y}px`
+			: target.state === 'gap'
+				? `0px ${target.y}px`
+				: '';
 		const height = rect ? `${rect.height}px` : '';
 		const width = rect && 'width' in rect ? `${rect.width}px` : '';
 		const position = `${target.state} ${translate} ${height} ${width}`;
@@ -299,6 +305,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 			drawnPosition = position;
 			drawnIn = el.parentElement;
 		}
+		paintPixels(el, read, target.state === 'gap');
 		markState(el, target.state);
 		el.hidden = false;
 		painted =
@@ -312,6 +319,22 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 					}
 				: null;
 		if (read.source) watchSurface(read.source.el);
+	}
+
+	// The browser's caret takes the color of the element holding it, and the stylesheet rounds the
+	// bar's widths to the device pixel it is given.
+	function paintPixels(el: HTMLElement, read: CaretRead, gap: boolean): void {
+		const holder = gap ? null : caretHolder(read);
+		const color = holder ? getComputedStyle(holder).color : '';
+		if (color !== drawnColor) {
+			el.style.color = color;
+			drawnColor = color;
+		}
+		const dpr = read.reads.devicePixelRatio;
+		if (dpr !== drawnDpr) {
+			el.style.setProperty('--md-device-pixel', `${1 / dpr}px`);
+			drawnDpr = dpr;
+		}
 	}
 
 	function markState(el: HTMLElement, state: string): void {
@@ -404,6 +427,8 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 			drawnIn = null;
 			drawnState = '';
 			drawnMarks = '';
+			drawnColor = '';
+			drawnDpr = 0;
 		};
 	}
 
@@ -485,6 +510,15 @@ function createBar(): HTMLElement {
 	el.className = 'md-drawn-caret';
 	el.setAttribute('aria-hidden', 'true');
 	return el;
+}
+
+// The element the browser's caret would take its color from: the one holding the caret, or the
+// editable itself where the caret sits beside a widget with no range of its own.
+function caretHolder(read: CaretRead): Element | null {
+	const node = read.range?.startContainer;
+	const surface = read.source?.el ?? null;
+	if (!node || !surface?.contains(node)) return surface;
+	return node instanceof Element ? node : node.parentElement;
 }
 
 function sizeOf(el: HTMLElement): string {

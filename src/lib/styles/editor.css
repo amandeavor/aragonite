@@ -938,7 +938,7 @@
 }
 
 /* The caret the editor draws (`caret/drawn-caret.svelte.ts`), one per editor: the paint sets its
-   box inline, and hides it while it draws nothing. */
+   box, its text's color and the device pixel inline, and hides it while it draws nothing. */
 :where(.editor) .md-drawn-caret {
 	position: absolute;
 	top: 0;
@@ -972,14 +972,46 @@
 }
 
 /* Across a gap between blocks the bar lies flat over the boundary, centred so neither neighbour
-   appears to own it. */
+   appears to own it; the paint lifts it a pixel. */
 :where(.editor) .md-drawn-caret[data-caret-state='gap'] {
-	top: -1px;
 	right: 0;
 	width: auto;
 	height: 2px;
 	border-radius: 1px;
 	background-color: var(--color-text-secondary, #d6d9e0);
+}
+
+/* Every length rounded down to whole device pixels, at least one, so the bar stays sharp at any
+   display scale. A browser without `round()` keeps the plain lengths above. */
+@supports (width: round(down, 1px, 1px)) {
+	:where(.editor) .md-drawn-caret {
+		width: max(var(--md-device-pixel), round(down, var(--md-caret-width), var(--md-device-pixel)));
+	}
+
+	:where(.editor) .md-drawn-caret[data-caret-marks~='strong'] {
+		width: max(
+			var(--md-device-pixel),
+			round(down, var(--md-caret-strong-width), var(--md-device-pixel))
+		);
+	}
+
+	:where(.editor) .md-drawn-caret[data-caret-marks~='strikethrough']::after {
+		top: round(down, 55%, var(--md-device-pixel));
+		left: round(
+			down,
+			50% - round(down, var(--md-caret-strike-width), var(--md-device-pixel)) / 2,
+			var(--md-device-pixel)
+		);
+		width: max(
+			var(--md-device-pixel),
+			round(down, var(--md-caret-strike-width), var(--md-device-pixel))
+		);
+		height: max(var(--md-device-pixel), round(down, 2px, var(--md-device-pixel)));
+	}
+
+	:where(.editor) .md-drawn-caret[data-caret-state='gap'] {
+		height: max(var(--md-device-pixel), round(down, 2px, var(--md-device-pixel)));
+	}
 }
 
 /* Two identical keyframes: the paint switches between them to restart the blink on a move. */

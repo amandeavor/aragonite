@@ -1,14 +1,19 @@
 /**
- * The drawn caret's source guards. One module writes its element and the attribute that hides the
- * browser's caret (G4.141); `caret-color` is declared only for the surfaces that hide it on purpose
- * (G4.142); and every native selection write sits inside the per-editor caret writer, whose writes
- * ask for a repaint, while the paint at an animation frame only paints (G4.143). The class names
- * and blink of the widget and gap carets' own painters appear nowhere in `src/lib` (G4.144).
+ * The drawn caret's source guards: one module writes its element and the mark hiding the browser's
+ * caret (G4.141); `caret-color` is set only where hidden on purpose (G4.142); every native selection
+ * write asks for a repaint, and the frame paint only paints (G4.143); no second caret painter
+ * appears (G4.144); every length the bar's rules set rounds to device pixels (G4.166).
  */
 
 import { describe, expect, it } from 'vitest';
 import { describeFileRules, describeManifests, type ManifestRule } from './file-rule';
-import { balancedBlock, balancedCall, collectEditorSources, readSource } from './scan-source';
+import {
+	balancedBlock,
+	balancedCall,
+	collectEditorSources,
+	readSource,
+	stripComments
+} from './scan-source';
 import { SOURCE } from './source-paths';
 import { NATIVE_SELECTION_WRITE } from './native-selection-write';
 
@@ -217,5 +222,68 @@ describe('G4.143 every caret write asks the drawn caret to repaint', () => {
 		const sequencing = `function atFrame() { paint(); selection.clear(); }\n${request}(atFrame);`;
 		expect(frameCallbacks(sequencing)[0].calls).toEqual(['paint', 'clear']);
 		expect(frameCallbacks(`${request}(() => paint());`)[0].calls).toBeNull();
+	});
+});
+
+// ── G4.166 the bar's lengths land on whole device pixels ────────────────────
+
+const DEVICE_ROUNDING = '@supports (width: round(down, 1px, 1px))';
+const BAR_LENGTH = /^(?:width|height|top|left|right|bottom)$/;
+const UNSIZED = /^(?:0|0px|auto)$/;
+
+/** Each length a `.md-drawn-caret` rule sets, keyed `selector :: property`: those outside the
+ *  device-rounding block, and those inside it with their values. */
+function barLengths(css: string): { plain: string[]; rounded: Map<string, string> } {
+	const code = stripComments(css, 'stylesheet');
+	const at = code.indexOf(DEVICE_ROUNDING);
+	const open = at < 0 ? -1 : code.indexOf('{', at);
+	const span = open < 0 ? [0, 0] : [open, open + (balancedBlock(code, open + 1) ?? '').length + 1];
+	const plain: string[] = [];
+	const rounded = new Map<string, string>();
+	for (const rule of code.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+		const selector = rule[1].replace(/\s+/g, ' ').trim();
+		if (!selector.includes('.md-drawn-caret')) continue;
+		const inside = rule.index > span[0] && rule.index < span[1];
+		for (const decl of rule[2].split(';')) {
+			const [prop, ...rest] = decl.split(':');
+			const value = rest.join(':').replace(/\s+/g, ' ').trim();
+			if (!BAR_LENGTH.test(prop?.trim() ?? '') || UNSIZED.test(value)) continue;
+			const key = `${selector} :: ${prop.trim()}`;
+			if (inside) rounded.set(key, value);
+			else plain.push(key);
+		}
+	}
+	return { plain, rounded };
+}
+
+/** The lengths a rule sets with no device-rounded twin that rounds through the device pixel. */
+function unroundedBarLengths(css: string): string[] {
+	const { plain, rounded } = barLengths(css);
+	const viaDevicePixel = (value = '') =>
+		/round\(/.test(value) && value.includes('--md-device-pixel');
+	return [...new Set([...plain, ...rounded.keys()])].filter(
+		(key) => !viaDevicePixel(rounded.get(key))
+	);
+}
+
+describe('G4.166 every length the drawn caret’s rules set is rounded to whole device pixels', () => {
+	it('each has a twin in the device-rounding block that rounds through the device pixel', () => {
+		expect(
+			unroundedBarLengths(readSource(SOURCE.editorCss).code),
+			'a bar length off the device grid blurs over two pixel columns at a fractional display scale; round it in the device-rounding block'
+		).toEqual([]);
+	});
+
+	it('flags a shape added without its rounded twin, and passes zero and auto', () => {
+		const rounding = `${DEVICE_ROUNDING} {
+	.md-drawn-caret { width: round(down, 1px, var(--md-device-pixel)); }
+}`;
+		const css = `.md-drawn-caret { top: 0; width: 1px; }
+.md-drawn-caret[x] { width: 4px; right: 0; }
+${rounding}`;
+		expect(unroundedBarLengths(css)).toEqual(['.md-drawn-caret[x] :: width']);
+		expect(unroundedBarLengths(`.md-drawn-caret { height: 2px; }`)).toEqual([
+			'.md-drawn-caret :: height'
+		]);
 	});
 });

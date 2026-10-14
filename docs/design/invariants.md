@@ -1054,6 +1054,7 @@ unguarded.
 | G4.157 | Every block kind a bundled plugin installs has an insert entry, or says why it has none   | harness |
 | G4.159 | An emptied quote, list item or bundled strip container keeps bytes that reload as it      | harness |
 | G4.165 | A write that moves text without resizing its block reports it, so its overlays measure    | L       |
+| G4.166 | Every length the drawn caret's rules set is rounded to whole device pixels                | L       |
 
 ### The entries
 
@@ -2010,6 +2011,12 @@ measure again a tick later. Image and font loads report there too. `lint/file-ru
 fails a file that writes one of those hooks without being on its list, each entry saying how it
 reports. The scan reads DOM writes, so the widget swap and the bare-marker focus are held by their
 rows in `e2e/tests/decorations/mark-overlay-follows-text.spec.ts` instead.
+
+**G4.166 · The drawn caret stays on the device grid.** The paint puts the bar's edges on whole
+device pixels (`caret/drawn-caret-target.ts`) and hands the stylesheet the size of one device
+pixel, so each width and the tick round down to it. A shape whose length skips that rounding blurs
+across two pixel columns at a fractional display scale. `lint/drawn-caret-guards.test.ts` fails a
+length set in a `.md-drawn-caret` rule with no twin in `editor.css`'s device-rounding block.
 
 ## Accessibility
 

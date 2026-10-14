@@ -74,9 +74,10 @@ function barPixels(page: Page): Promise<BarPixels> {
 	});
 }
 
-/** In device pixels, within what the layout's own rounding leaves. */
+/** A length in device pixels, to the whole pixel the layout's 1/64px units leave it within. */
 function devicePixels(css: number, dpr: number): number {
-	return Math.round(css * dpr * 100) / 100;
+	const device = css * dpr;
+	return Math.abs(device - Math.round(device)) < 0.05 ? Math.round(device) : device;
 }
 
 function expectOnGrid(edges: Edges, dpr: number, what: string): void {
@@ -107,7 +108,8 @@ for (const scale of [1, 1.25, 1.5]) {
 		test.use({ deviceScaleFactor: scale });
 
 		test('a plain bar sits on whole device pixels, one wide, in the letter boundary’s column', async ({
-			page
+			page,
+			browserName
 		}) => {
 			const editor = new EditorPage(page);
 			await editor.goto();
@@ -131,7 +133,10 @@ for (const scale of [1, 1.25, 1.5]) {
 				).toBe(Math.floor(caretX + 0.001));
 			}
 			const lineTop = (await barPixels(page)).caretTop * scale;
-			expect(offGridCarets, 'some boundaries fall between device pixels').toBeGreaterThan(0);
+			// WebKit measures the range in whole pixels, so at 1x every boundary lands on one.
+			if (browserName !== 'webkit' || scale !== 1) {
+				expect(offGridCarets, 'some boundaries fall between device pixels').toBeGreaterThan(0);
+			}
 			expect(Math.abs(lineTop - Math.round(lineTop)), 'the line sits off the grid').toBeGreaterThan(
 				0.05
 			);
@@ -187,15 +192,16 @@ test.describe('the drawn caret’s color', () => {
 		await editor.loadContent(`# heading here\n\n${LINE}\n`);
 		await page.addStyleTag({
 			content: `
-				[data-block-path='0'] .text-editable-block { color: rgb(40, 90, 200); }
-				[data-block-path='1'] .text-editable-block { color: rgb(200, 40, 40); }
-				.editor .md-link-content { color: rgb(30, 160, 60); }
+				.editor { --syntax-heading: rgb(40, 90, 200); }
+				.editor .paragraph-block { color: rgb(200, 40, 40); }
+				.editor a.md-link-content { color: rgb(30, 160, 60); }
 				.editor strong { color: rgb(170, 60, 190); }`
 		});
 		await editor.clickBlock(0);
 		await page.keyboard.press('End');
 		await nextFrames(page);
 		const heading = await barPixels(page);
+		expect(heading.textColor, 'the heading’s text').toBe('rgb(40, 90, 200)');
 		expect(heading.color, 'in the heading').toBe('rgb(40, 90, 200)');
 
 		for (const [word, color] of [
@@ -216,7 +222,7 @@ test.describe('the drawn caret’s color', () => {
 		await editor.loadContent(`first\n\n${LINE}\n`);
 		await page.addStyleTag({
 			content: `.editor { --md-caret-color: rgb(1, 2, 3); }
-				.editor .md-link-content { color: rgb(30, 160, 60); }`
+				.editor a.md-link-content { color: rgb(30, 160, 60); }`
 		});
 		for (const word of ['plain', 'link']) {
 			await caretInWord(editor, LINE, word);
