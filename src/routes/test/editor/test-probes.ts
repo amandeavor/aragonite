@@ -576,6 +576,7 @@ export function installTestProbes({
 		// The command call, made the way a toolbar's button makes it: an id and its argument,
 		// no key combination, no keydown.
 		runCommand: (commandId: string, arg?: unknown): boolean => editor.runCommand(commandId, arg),
+		canRunCommand: (commandId: string): boolean => editor.canRunCommand(commandId),
 		// A plugin-shaped paste transform without a plugin. Transforms are register-once and
 		// process-global, so the probe asks before registering rather than catching the throw.
 		registerPasteTransform: (name: string, find: string, replace: string): void => {

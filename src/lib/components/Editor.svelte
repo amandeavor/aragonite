@@ -71,6 +71,8 @@
 	import { createSearchReplace } from '../editor-actions/search-replace';
 	import { createSearchState, type SearchState } from '../search/search-state.svelte';
 	import { createDecorationEngine } from '../decorations/decoration-state.svelte';
+	import { createMarkActivation } from '../decorations/mark-activation';
+	import { paintedMarkRects } from '../decorations/mark-interactions';
 	import type { DecorationRegistry } from '../decorations/types';
 	import { createEditorRects, type EditorRects } from '../editor-rects';
 	import { createCaretLanding } from '../selection/caret-landing';
@@ -412,6 +414,8 @@
 		menus: menuPresence,
 		stamps,
 		drafts,
+		// Built below; a swap runs post-init.
+		markHover: { end: () => decorationEngine.markHover.end() },
 		selection: selectionState,
 		// The counter bumps only when the link-reference signature differs; the resolver
 		// refreshes regardless.
@@ -605,9 +609,21 @@
 	const decorationEngine = createDecorationEngine({
 		getDoc,
 		onSourceError: (source, error) =>
-			events.emit('error', { origin: 'decoration', error, context: { source } })
+			events.emit('error', { origin: 'decoration', error, context: { source } }),
+		onMarkError: (path, error) =>
+			events.emit('error', { origin: 'decoration', error, context: { path } })
 	});
 	const decorations: DecorationRegistry = { addSource: decorationEngine.addSource };
+	const markActivation = createMarkActivation({
+		caret: () => {
+			const focus = getSelection()?.focus;
+			return focus && !focus.cellCoordinate ? { path: focus.path, offset: focus.offset } : null;
+		},
+		marksForPath: (path) => decorationEngine.marksForPath(path),
+		paintedRects: (dec) => paintedMarkRects(dec, getBlockComponent),
+		caretRect: () => rects.caretRect(),
+		runMarkHandler: decorationEngine.runMarkHandler
+	});
 
 	const rects = createEditorRects({
 		getBlockElByPath,
@@ -681,6 +697,8 @@
 	$effect(() => () => {
 		// Cancels the typing batch's pause timer, which would outlive the editor.
 		controller.flushDebouncedCheckpoint();
+		// Drops the hover's page scroll listener, which a pointer resting here would keep.
+		decorationEngine.markHover.leave();
 		lifetimeController.abort();
 	});
 
@@ -756,6 +774,7 @@
 		getPresentationMode: reading.mode,
 		isCrossBlockRange: () => selectionState.isCrossBlock,
 		crossBlockCommands,
+		markActivation,
 		keybindingOverrides: () => overridesMap,
 		onCommandError: commandErrorSink,
 		reorder
@@ -1353,6 +1372,8 @@
 	role="group"
 	aria-label={EDITOR_LABEL}
 	oncontextmenu={rootMenus.onRootContextMenu}
+	onpointermove={decorationEngine.markHover.move}
+	onpointerleave={decorationEngine.markHover.leave}
 >
 	{#if searchBar}
 		<!-- A zero-height sticky anchor; portaled out, it takes the theme class instead, since

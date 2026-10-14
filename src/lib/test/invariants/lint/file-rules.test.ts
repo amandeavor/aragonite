@@ -1629,6 +1629,34 @@ const MEASURE_CHANNEL: ManifestRule = {
 	]
 };
 
+/** A mark's handlers are plugin code: called from one place per gesture, each through the
+ *  engine's guarded runner, so a new route cannot skip the hover lifecycle or the error event. */
+const MARK_HANDLER_CALLERS: ManifestRule = {
+	id: 'G4.163 a mark’s interactive handlers are called only by the hover lifecycle, the activate command and the overlay’s click',
+	matches: /\binteractive\s*\??\.\s*on(?:Click|Hover|Activate)\s*(?:\?\.)?\s*\(/,
+	declared: {
+		'src/lib/decorations/mark-hover.ts':
+			'`onHover`, started and ended by the one lifecycle keyed on the decoration',
+		'src/lib/decorations/mark-activation.ts':
+			'`onActivate`, run by `decorations.activateAtCaret` on the mark the precedence rule picks',
+		'src/lib/components/overlays/DecorationOverlay.svelte':
+			'`onClick`, on the rect the click landed on'
+	},
+	reason:
+		'a mark handler called from anywhere else skips the hover lifecycle’s one-end rule or the `error` event: route the gesture through `DecorationEngine.markHover` or `runMarkHandler`',
+	reaches: [SOURCE.markHover],
+	hits: [
+		'dec.interactive?.onHover?.(dec, null);',
+		'mark.interactive.onClick(mark, ev);',
+		'd.interactive?.onActivate(d, { anchor });'
+	],
+	misses: [
+		'if (dec.interactive?.onHover) start();',
+		'const onActivate = range.onActivate;\nonActivate();',
+		'// `interactive.onClick(dec, ev)` runs on a click.\nconst a = 1;'
+	]
+};
+
 function describeMeasureWrites(sources: SourceFile[]): void {
 	describe('G4.97 a child’s height reaches its list’s table through one write', () => {
 		it('the writes and registrations are exactly the declared ones', () => {
@@ -2572,6 +2600,7 @@ describeCorrections(SOURCES);
 describeOwnerWrites(SOURCES);
 describeMeasureWrites(SOURCES);
 describeManifests([MEASURE_CHANNEL], SOURCES);
+describeManifests([MARK_HANDLER_CALLERS], SOURCES);
 describeManifests(HEIGHT_LIFETIME, SOURCES);
 describeManifests(SELECTION_WRITERS, SOURCES);
 describeDomPresence(SOURCES);

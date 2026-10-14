@@ -1053,6 +1053,7 @@ unguarded.
 | G4.155 | Every composing-flag holder asks both composition questions: a drop, and an opening       | L       |
 | G4.157 | Every block kind a bundled plugin installs has an insert entry, or says why it has none   | harness |
 | G4.159 | An emptied quote, list item or bundled strip container keeps bytes that reload as it      | harness |
+| G4.163 | A mark's own handlers are called only by the hover lifecycle, activation and the click    | L       |
 | G4.165 | A write that moves text without resizing its block reports it, so its overlays measure    | L       |
 
 ### The entries
@@ -1998,6 +1999,12 @@ task item, quote, nested pairs of them, footnote definition, alert, admonition) 
 deleted at the very end of the document, through the text write and through the ancestry rebuild,
 and the bytes must reload as the empty container the editor still shows: `- `, `>`, `[^1]: `.
 `test/schema/emptied-body-bytes.test.ts`.
+
+**G4.163 · One caller per mark gesture.** A call into a mark's `interactive.onClick`, `onHover` or
+`onActivate` sits only in `decorations/mark-hover.ts` (the hover lifecycle, keyed by the decoration),
+`decorations/mark-activation.ts` (the activate command) and `components/overlays/DecorationOverlay.svelte`
+(the click), each inside the engine's `runMarkHandler`. A new route that called a handler itself
+would skip the one-end rule or the `error` event. `test/invariants/lint/file-rules.test.ts`.
 
 **G4.165 · Text that moves inside an unresized block is reported.** A mark or selection overlay is
 measured against the text under it, and a resize observer can't see that text slide sideways
