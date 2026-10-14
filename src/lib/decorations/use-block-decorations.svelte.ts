@@ -26,7 +26,8 @@ type BlockWithBadge = BlockDecoration & { badge: DecorationWidgetSpec };
 
 interface MountedBadge {
 	dec: BlockDecoration;
-	view: MountedDecorationWidget;
+	/** Null once the view threw: its badge stays out, and it isn't mounted again for this block. */
+	view: MountedDecorationWidget | null;
 	wrapper: HTMLElement;
 }
 
@@ -61,7 +62,7 @@ export function useBlockDecorations(deps: BlockDecorationDeps): { readonly class
 
 	function clearBadges(): void {
 		for (const badge of badges) {
-			badge.view.destroy();
+			badge.view?.destroy();
 			badge.wrapper.remove();
 		}
 		badges = [];
@@ -87,21 +88,20 @@ export function useBlockDecorations(deps: BlockDecorationDeps): { readonly class
 			const view = mountDecorationWidget(dec.badge, dec, wrapper, (error) =>
 				deps.onRenderError({ origin: 'render', error, context: { path: deps.getPath() } })
 			);
-			if (!view) continue;
-			fragment.appendChild(wrapper);
+			if (view) fragment.appendChild(wrapper);
 			badges.push({ dec, view, wrapper });
 		}
 		el.insertBefore(fragment, el.firstChild);
 	}
 
 	function updateBadges(decs: BlockWithBadge[]): void {
-		badges = badges.filter((badge, i) => {
+		badges.forEach((badge, i) => {
 			const dec = decs[i];
-			if (badge.dec === dec) return true;
+			if (badge.dec === dec) return;
 			badge.dec = dec;
-			if (badge.view.update({ decoration: dec })) return true;
+			if (!badge.view || badge.view.update({ decoration: dec })) return;
+			badge.view = null;
 			badge.wrapper.remove();
-			return false;
 		});
 	}
 

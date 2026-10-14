@@ -354,24 +354,33 @@ const PLUGIN_VIEW_FALLBACK: FileRule = {
 
 // ── G4.186 one wrapper draws every plugin view ───────────────────────────────
 
-/** A call on a plugin's view field: a route drawing an inline widget, decoration widget or menu
- *  row itself. */
-const CALLS_PLUGIN_VIEW = /\.(?:view|row)\s*\(/;
+/** A call on a plugin's view, by its field or a local of the same name: a route drawing an inline
+ *  widget, decoration widget or menu row itself. A local under another name is past its reach. */
+const CALLS_PLUGIN_VIEW =
+	/(?<![\w$.]|\bas\s+|\bfunction\s+)(?:view|row)\s*(?:\?\.\s*)?\(|\.(?:view|row)\s*(?:\?\.\s*)?(?:\(|\.(?:call|apply)\b)/;
 
 const ONE_VIEW_WRAPPER: FileRule = {
 	id: 'G4.186 a plugin view is drawn only through mountPluginView',
 	population: under(SOURCE_DIR.library),
 	matches: CALLS_PLUGIN_VIEW,
+	allowed: {
+		'src/lib/plugin-view.ts': 'the wrapper itself, the one place a view is called'
+	},
 	reason:
 		'an inline widget, decoration widget or menu row view mounts through `plugin-view.ts :: mountPluginView`, which contains a throw at mount, update or destroy, reports it once and destroys the view once: hand the view to it instead of calling it',
 	reaches: [SOURCE.pluginView],
 	hits: [
 		at('src/lib/x.ts', 'const handle = spec.view(target, { decoration });'),
-		at('src/lib/x.svelte', '{@attach (el) => source.row (el, props)}')
+		at('src/lib/x.svelte', '{@attach (el) => source.row (el, props)}'),
+		at('src/lib/x.ts', 'const view = getInlineWidgetView(kind, grammar);\nview(shell, props);'),
+		at('src/lib/x.ts', 'spec.view?.(target, props);'),
+		at('src/lib/x.ts', 'spec.view.call(null, target, props);')
 	],
 	misses: [
 		at('src/lib/x.ts', 'mountPluginView(spec.view, target, props, opts);'),
-		at('src/lib/x.ts', 'const view = getInlineWidgetView(kind, grammar);')
+		at('src/lib/x.ts', 'const view = getInlineWidgetView(kind, grammar);'),
+		at('src/lib/x.svelte', '{#each rows as row (row.command)}'),
+		at('src/lib/x.ts', 'records.preview(block, side);')
 	]
 };
 

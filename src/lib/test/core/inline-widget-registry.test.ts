@@ -2,7 +2,11 @@
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { describe, it, expect } from 'vitest';
 import type { InlineNode } from '../../core/nodes';
-import { registerInlineWidgetKind, isInlineWidget } from '../../core/inline/inline-widgets';
+import {
+	buildCoreInlineWidget,
+	isInlineWidget,
+	registerInlineWidgetKind
+} from '../../core/inline/inline-widgets';
 import { __resetSchemaRegistriesForTests } from '#lib/schema/registry-reset.js';
 
 // A kind the registry has never seen, cast through the closed inline-kind union
@@ -39,5 +43,23 @@ describe('__resetSchemaRegistriesForTests', () => {
 
 		expect(isInlineWidget(pluginNode, 'xxx', defaultGrammarView)).toBe(false);
 		expect(isInlineWidget(imageNode, '![](x)', defaultGrammarView)).toBe(true);
+	});
+});
+
+describe('registerInlineWidgetKind: a plugin kind draws through its view', () => {
+	it("ignores a `draw` field, which only the editor's own kinds use", () => {
+		let drawn = 0;
+		const descriptor = {
+			isWidget: () => true,
+			view,
+			draw: () => {
+				drawn++;
+				return document.createElement('span');
+			}
+		};
+		registerInlineWidgetKind(PLUGIN_KIND, descriptor);
+		const opts = { grammar: defaultGrammarView, acquireViewWidget: () => null };
+		expect(buildCoreInlineWidget(pluginNode, 'xxx', opts)).toBeNull();
+		expect(drawn).toBe(0);
 	});
 });

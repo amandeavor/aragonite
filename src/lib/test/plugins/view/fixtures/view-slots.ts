@@ -64,6 +64,7 @@ export const inlineWidgetSlot: Slot<InlineWidgetComponentProps> = {
 		registerInlineWidgetKind(kind, { isWidget: () => true, view });
 		const { m, errors } = await editorWith('a %%w%% b\n');
 		const surface = () => surfaceAt(m, [0]);
+		let typed = '';
 		return {
 			errors,
 			drawn: () => probeIn(surface()),
@@ -72,7 +73,8 @@ export const inlineWidgetSlot: Slot<InlineWidgetComponentProps> = {
 				surface().textContent!.includes('%%w%%'),
 			// Typing before the widget moves it, which is the one prop a pooled widget sees change.
 			async update() {
-				typeInto(surface(), 'xa %%w%% b');
+				typed += 'x';
+				typeInto(surface(), `${typed}a %%w%% b`);
 				await m.settle();
 			},
 			async remove() {

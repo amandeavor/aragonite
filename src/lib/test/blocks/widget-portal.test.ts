@@ -198,7 +198,7 @@ describe('createWidgetPool: adoption re-marks offsets', () => {
 		expect(moves).toEqual([3]);
 	});
 
-	it('drops an instance that cannot follow its move, which falls back for the pass', () => {
+	it('drops an instance that cannot follow its move, and builds none while its key stays', () => {
 		const { adapter, created, destroyed } = fakeAdapter(false, true);
 		const pool = createWidgetPool(adapter);
 		pool.beginPass();
@@ -211,7 +211,15 @@ describe('createWidgetPool: adoption re-marks offsets', () => {
 		expect(destroyed).toEqual(created);
 
 		pool.beginPass();
-		expect(pool.acquire(KIND, at(3, 8), '$x$')).not.toBeNull();
+		expect(pool.acquire(KIND, at(6, 11), '$x$')).toBeNull();
+		pool.sweep();
+		expect(created).toHaveLength(1);
+
+		// A pass without the key forgets the failure, so the source typed back builds afresh.
+		pool.beginPass();
+		pool.sweep();
+		pool.beginPass();
+		expect(pool.acquire(KIND, at(0, 5), '$x$')).not.toBeNull();
 		pool.sweep();
 		expect(created).toHaveLength(2);
 	});

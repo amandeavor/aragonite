@@ -7,7 +7,7 @@ import {
 	destroyMountedEditors,
 	installLayoutStubs
 } from '#lib/test/harness/mount-editor.svelte.js';
-import { domProbe, viewExploded, type LogEntry } from './fixtures/probe-view';
+import { domProbe, stages, viewExploded, type LogEntry } from './fixtures/probe-view';
 import { SLOTS } from './fixtures/view-slots';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 
@@ -24,6 +24,19 @@ describe.each(SLOTS.map((slot) => [slot.name, slot] as const))('%s', (_name, slo
 		expect(takeDevWarns().map((warn) => warn.tag)).toEqual(slot.mountFailureWarns);
 	});
 
+	it('that throws on every mount is not mounted again as the slot redraws', async () => {
+		let mounts = 0;
+		const run = await slot.run(() => {
+			mounts++;
+			throw viewExploded;
+		});
+		const settled = { mounts, reports: run.errors.length };
+		await run.update();
+		await run.update();
+		takeDevWarns();
+		expect({ mounts, reports: run.errors.length }).toEqual(settled);
+	});
+
 	it('that throws while updating draws the fallback and reports once', async () => {
 		const log: LogEntry[] = [];
 		const run = await slot.run(domProbe(log, 'update'));
@@ -31,7 +44,12 @@ describe.each(SLOTS.map((slot) => [slot.name, slot] as const))('%s', (_name, slo
 		await run.update();
 		expect(run.fellBack()).toBe(true);
 		expect(reported(run.errors)).toEqual([viewExploded]);
-		// The broken view is torn down with the failure, and never called again.
+		// The broken view is torn down with the failure, and its slot mounts no fresh one.
+		const mounts = () => stages(log).filter((stage) => stage === 'mount').length;
+		const mounted = mounts();
+		await run.update();
+		expect(mounts()).toBe(mounted);
+		expect(reported(run.errors)).toEqual([viewExploded]);
 		const after = log.length;
 		await run.remove();
 		expect(log.slice(after).filter((entry) => entry.stage !== 'destroy')).toEqual([]);
@@ -41,5 +59,16 @@ describe.each(SLOTS.map((slot) => [slot.name, slot] as const))('%s', (_name, slo
 		const run = await slot.run(domProbe([], 'destroy'));
 		await run.remove();
 		expect(reported(run.errors)).toEqual([viewExploded]);
+	});
+
+	it('whose destroy rejects is reported once per instance', async () => {
+		let instances = 0;
+		const run = await slot.run(() => {
+			instances++;
+			return { destroy: () => Promise.reject(viewExploded) };
+		});
+		await run.remove();
+		await Promise.resolve();
+		expect(reported(run.errors)).toEqual(Array(instances).fill(viewExploded));
 	});
 });

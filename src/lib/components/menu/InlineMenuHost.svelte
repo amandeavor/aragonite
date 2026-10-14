@@ -115,6 +115,11 @@
 		return () => root.removeEventListener('focusout', onFocusOut);
 	});
 
+	// Takes the name now: a row's `destroy` can reject after the menu, and its derived name, are gone.
+	function rowReporter(source: string): (error: unknown) => void {
+		return (error) => menu.reportSourceError(error, source);
+	}
+
 	function onRowError(error: unknown, source: string): void {
 		warnIfForeignRuntime(error, `inline menu row ${source}`);
 		menu.reportSourceError(error, source);
@@ -175,7 +180,7 @@
 							{item}
 							{active}
 							{query}
-							report={(error) => menu.reportSourceError(error, sourceName)}
+							report={rowReporter(sourceName)}
 							subject="inline menu row {sourceName}"
 						>
 							{#snippet fallback()}{@render defaultRow(item)}{/snippet}

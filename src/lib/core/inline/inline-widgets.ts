@@ -160,7 +160,12 @@ export function registerInlineWidgetKind(
 	kind: AnyInlineKind,
 	descriptor: InlineWidgetDescriptor
 ): void {
-	registerWidgetEntry(kind, descriptor);
+	// Only the published fields, so a stray `draw` on the object can't skip the view's wrapper.
+	registerWidgetEntry(kind, {
+		isWidget: (node, raw) => descriptor.isWidget(node, raw),
+		view: descriptor.view,
+		editing: descriptor.editing
+	});
 }
 
 /** For a kind the editor draws itself (`core/directive/kinds.ts`), never a plugin's. */

@@ -221,7 +221,7 @@ _(pre-freeze / unstable)_ What an inline widget, a decoration's widget or badge,
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `PluginView`                                                    | `(target, props) => handle`: draw into `target`, an element the editor made for you and removes once you're destroyed                                                                                                                                    |
 | `PluginViewHandle`                                              | What a view hands back, both optional: `update(props)` takes the slot's next props (leave it out and what you first drew stays), `destroy()` releases what you hold, a framework root or a listener, and a promise it returns has its rejection reported |
-| `svelteInlineWidget`, `svelteDecorationWidget`, `svelteMenuRow` | A Svelte component as a view for each slot: it's mounted into the target with the props live, so `update` re-renders it in place                                                                                                                         |
+| `svelteInlineWidget`, `svelteDecorationWidget`, `svelteMenuRow` | A Svelte component as a view for each slot: it's mounted into the target with the props live, so `update` re-renders only what reads a prop that changed                                                                                                 |
 
 ### Inline authoring
 

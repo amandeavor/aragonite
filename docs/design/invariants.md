@@ -760,9 +760,10 @@ and an inline menu row are each a `PluginView` the editor mounts into an element
 `plugin-view.ts :: mountPluginView`. The view mounts once, takes new props through `update` (a
 pooled widget typing moved, a decoration at the same place, a row turning active), and is
 destroyed once. A throw at any of the three is reported once, the view is never called again, and
-the slot draws its fallback. `plugins/view/lifecycle.test.ts` and `plugins/view/failure.test.ts`
-run every slot, the second against a DOM view and a Svelte one; G4.186 holds new routes to the
-wrapper.
+the slot draws its fallback; a pooled widget or a badge mounts no fresh view in its place while it
+stays put (a decoration widget is drawn afresh with its block, so it gets one per rebuild).
+`plugins/view/lifecycle.test.ts` and `plugins/view/failure.test.ts` run every slot, the first
+against a DOM view and a Svelte one; G4.186 holds new routes to the wrapper.
 
 ## Group 2: property and regression tested
 
@@ -2156,7 +2157,8 @@ under a `data-host-content` element and keeps the page's styles. `lint/editor-re
 **G4.186 · One wrapper draws every plugin view.** No file calls a plugin's `view` or `row` field
 itself: it hands the view to `plugin-view.ts :: mountPluginView`, the one place that contains a
 throw, reports it once and destroys the view once (G1.96). `lint/file-rules.test.ts` fails a
-property call on either field anywhere under `src/lib`.
+call on either field, or on a local named `view` or `row`, anywhere under `src/lib`; a local under
+another name is past a regex's reach.
 
 ## Accessibility
 

@@ -15,7 +15,7 @@ import {
 	widgetActivates,
 	type InlineWidgetComponentProps
 } from '../../core/inline/inline-widgets';
-import type { ActivationClick } from '../../activation-click';
+import type { ActivationClick, ClickInput } from '../../activation-click';
 import type { Reading } from '../../schema/reading';
 import { tracePoolPass } from '../../debug/interaction-trace';
 import { assertInvariant } from '../../assert';
@@ -25,7 +25,8 @@ import { mountPluginView, type MountedPluginView } from '../../plugin-view';
 // ── Pure pool ─────────────────────────────────────────────────────────────────
 
 export interface WidgetPoolAdapter<H> {
-	/** Build one instance, or null when it cannot be built (a caught mount throw). */
+	/** Build one instance, or null when it cannot be built (a caught mount throw), which the pool
+	 *  remembers so the key isn't built again while it stays in the block. */
 	create(kind: AnyInlineKind, inline: InlineNode, source: string): H | null;
 	/** Tell a reused instance typing moved it; false when it can't follow (its view threw). */
 	move(handle: H, inline: InlineNode): boolean;
@@ -46,7 +47,9 @@ export interface WidgetPool {
 }
 
 interface PoolEntry<H> {
-	handle: H;
+	/** Null once its view threw: the source shows in its place, and nothing mounts again while the
+	 *  key stays in the block. */
+	handle: H | null;
 	adopted: boolean;
 }
 
@@ -77,6 +80,9 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 		const bucket = buckets.get(key);
 		const reused = bucket?.find((entry) => !entry.adopted);
 		if (reused) {
+			reused.adopted = true;
+			if (reused.handle === null) return null;
+			passAdopt++;
 			// Source and rendered body are identical by key; only the widget's position may have
 			// shifted, and the offsets the cursor and selection read follow it.
 			const el = adapter.element(reused.handle);
@@ -86,28 +92,20 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 				el.dataset.sourceStart = start;
 				el.dataset.sourceEnd = end;
 				if (!adapter.move(reused.handle, inline)) {
-					drop(key, reused);
+					adapter.destroy(reused.handle);
+					reused.handle = null;
 					return null;
 				}
 			}
-			reused.adopted = true;
-			passAdopt++;
 			return el;
 		}
 		const handle = adapter.create(kind, inline, source);
-		if (handle === null) return null;
-		passBuild++;
 		const entry: PoolEntry<H> = { handle, adopted: true };
 		if (bucket) bucket.push(entry);
 		else buckets.set(key, [entry]);
+		if (handle === null) return null;
+		passBuild++;
 		return adapter.element(handle);
-	}
-
-	function drop(key: string, entry: PoolEntry<H>): void {
-		adapter.destroy(entry.handle);
-		const bucket = buckets.get(key)!.filter((other) => other !== entry);
-		if (bucket.length) buckets.set(key, bucket);
-		else buckets.delete(key);
 	}
 
 	function sweep(): void {
@@ -120,7 +118,7 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 				if (entry.adopted) {
 					entry.adopted = false;
 					survivors.push(entry);
-				} else {
+				} else if (entry.handle !== null) {
 					adapter.destroy(entry.handle);
 					destroyed++;
 				}
@@ -134,7 +132,7 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 	function dispose(): void {
 		passOpen = false;
 		for (const bucket of buckets.values()) {
-			for (const entry of bucket) adapter.destroy(entry.handle);
+			for (const entry of bucket) if (entry.handle !== null) adapter.destroy(entry.handle);
 		}
 		buckets.clear();
 	}
@@ -177,6 +175,11 @@ export function createViewWidgetPool(deps: ViewWidgetPoolDeps): WidgetPool {
 		create(kind, inline, source) {
 			const view = getInlineWidgetView(kind, grammar);
 			if (!view) return null;
+			// Read per click: a pooled widget outlives a mode switch and a policy augment.
+			const isActivationClick = (click: ClickInput) =>
+				widgetActivates(getInlineWidgetEditing(kind, grammar), click, activationClick);
+			// Every prop but `inline` keeps its identity across a move, so a view re-renders only
+			// what reads the offsets.
 			const props = (at: InlineNode): InlineWidgetComponentProps => ({
 				inline: at,
 				source,
@@ -189,9 +192,7 @@ export function createViewWidgetPool(deps: ViewWidgetPoolDeps): WidgetPool {
 				get computeInlineContent() {
 					return inlineReaderFor(reading);
 				},
-				// Read per click: a pooled widget outlives a mode switch and a policy augment.
-				isActivationClick: (click) =>
-					widgetActivates(getInlineWidgetEditing(kind, grammar), click, activationClick)
+				isActivationClick
 			});
 			const shell = mintWidgetShell(inline);
 			// What the view draws there is the plugin's, so the editor's own reset leaves it alone.

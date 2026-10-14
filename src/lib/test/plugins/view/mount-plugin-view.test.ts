@@ -7,6 +7,7 @@ import { mountPluginView, type PluginView } from '#lib/plugin-view.js';
 import { svelteDecorationWidget, svelteInlineWidget } from '#lib/svelte-views.svelte.js';
 import { domProbe, stages, svelteLog, viewExploded, type LogEntry } from './fixtures/probe-view';
 import SvelteProbe from './fixtures/SvelteProbe.svelte';
+import SourceReader from './fixtures/SourceReader.svelte';
 import ThrowingTeardown from '../../components/fixtures/ThrowingTeardown.svelte';
 
 beforeEach(() => void (svelteLog.length = 0));
@@ -98,5 +99,21 @@ describe('the Svelte helpers', () => {
 		reader = 'second';
 		const seen = svelteLog.find((entry) => entry.stage === 'mount')?.props as typeof props;
 		expect(seen.computeInlineContent).toBe('second');
+	});
+
+	it('re-render only what reads a prop the update changed', () => {
+		const getTheme = () => 'light';
+		const props = (start: number) => ({ inline: { start }, source: '$x$', getTheme }) as never;
+		const view = svelteInlineWidget(SourceReader as never);
+		const mounted = mountPluginView(view, document.createElement('span'), props(0), {
+			report: vi.fn(),
+			subject: 'probe'
+		});
+		flushSync();
+		mounted!.update(props(1));
+		flushSync();
+		mounted!.update({ ...(props(2) as object), source: '$y$' } as never);
+		flushSync();
+		expect(svelteLog.map((entry) => entry.props)).toEqual(['$x$', '$y$']);
 	});
 });
