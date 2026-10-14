@@ -1121,6 +1121,7 @@ unguarded.
 | G4.180 | Every top-right hover control on a block moves below the open find bar                    | L       |
 | G4.181 | Every wrapper package carries the core's version and peers the core at exactly that       | L       |
 | G4.183 | An app that doesn't compile Svelte installs no Svelte                                     | harness |
+| G4.184 | The editor's own reset sets everything the demo app's global reset does                   | L       |
 
 ### The entries
 
@@ -2132,6 +2133,13 @@ only ever install one core next to them. `scripts/check-lockstep.mjs` holds the 
 **G4.183 · No Svelte in a non-Svelte app.** The prebuilt build carries its own Svelte, so the core
 declares `svelte` an optional peer. `scripts/adapter-smoke.mjs` installs the packed tarballs into
 each framework example and fails if `node_modules/svelte` shows up there.
+
+**G4.184 · The editor brings its reset.** `editor.css` opens with a margin, padding and box-sizing
+reset scoped to what the editor renders, so a host page with no reset lays it out the same. Every e2e
+route but `/test/no-reset` loads `src/app.css`, whose global reset would hide a declaration only it
+carries, so the scan holds the editor's reset to every declaration of that one. DOM a host builds sits
+under a `data-host-content` element and keeps the page's styles. `lint/editor-reset-parity.test.ts`;
+`e2e/tests/host-reset.spec.ts` checks both halves on `/test/no-reset`.
 
 ## Accessibility
 

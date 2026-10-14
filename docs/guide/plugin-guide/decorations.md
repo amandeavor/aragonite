@@ -43,7 +43,7 @@ provide: (doc) => [
 ];
 ```
 
-Offsets are **raw offsets** into the target block, dimmed markers included, which is the same coordinate space `getContentRange` describes. A `widget`, `replace` widget, or `badge` takes a `DecorationWidgetSpec`: a Svelte `component` (receives the decoration as its prop) or a hand-built `buildDom`. A mark's handlers live in its `interactive` field, covered at the end of this page; interactive DOM inside a widget is native, so wire your own listeners in `buildDom`.
+Offsets are **raw offsets** into the target block, dimmed markers included, which is the same coordinate space `getContentRange` describes. A `widget`, `replace` widget, or `badge` takes a `DecorationWidgetSpec`: a Svelte `component` (receives the decoration as its prop) or a hand-built `buildDom`. Whatever a widget or badge renders keeps the page's own styles (the editor's reset stops at its edge), so set `box-sizing` yourself if your CSS assumes `border-box`. A mark's handlers live in its `interactive` field, covered at the end of this page; interactive DOM inside a widget is native, so wire your own listeners in `buildDom`.
 
 All four work in table cells as well as prose blocks. Arrows step over a `widget` or a `replace`; Backspace and Delete treat a `widget` as if it weren't there, and select a `replace` whole before a second press deletes it.
 

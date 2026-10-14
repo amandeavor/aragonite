@@ -68,6 +68,7 @@ export function useBlockDecorations(deps: BlockDecorationDeps): { readonly class
 			if (!handle) continue;
 			const wrapper = document.createElement('div');
 			wrapper.className = 'decoration-badge';
+			wrapper.dataset.hostContent = '';
 			wrapper.setAttribute('contenteditable', 'false');
 			wrapper.appendChild(handle.el);
 			badges.appendChild(wrapper);

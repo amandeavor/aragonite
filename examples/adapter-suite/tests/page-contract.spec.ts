@@ -103,6 +103,26 @@ test('unmount leaves no editor behind, and mounting again shows the held value',
 	await expect(page.locator('.editor')).toContainText(PARAGRAPH + ' Kept.');
 });
 
+test('the editor fits the page, and typing scrolls nothing sideways', async ({ page }) => {
+	await caretAtEnd(page, PARAGRAPH);
+	await page.keyboard.type(' More.');
+	await expectMirror(page, typedFirst(' More.'));
+
+	const fit = await page.evaluate(() => {
+		const editor = document.querySelector('.editor')!;
+		return {
+			pageWidth: document.documentElement.scrollWidth,
+			viewport: document.documentElement.clientWidth,
+			scrollX: window.scrollX,
+			overhang:
+				editor.getBoundingClientRect().right - editor.parentElement!.getBoundingClientRect().right
+		};
+	});
+	expect(fit.pageWidth).toBeLessThanOrEqual(fit.viewport);
+	expect(fit.scrollX).toBe(0);
+	expect(fit.overhang).toBeLessThanOrEqual(0.5);
+});
+
 test('one editor and one header on the page', async ({ page }) => {
 	await expect(page.locator('.editor')).toHaveCount(1);
 	await expect(page.getByTestId('header-input')).toHaveCount(1);

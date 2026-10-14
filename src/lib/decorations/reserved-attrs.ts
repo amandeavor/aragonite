@@ -13,6 +13,7 @@ export const RESERVED_BLOCK_ATTRS: ReadonlySet<string> = new Set([
 	'data-content-empty',
 	'data-decoration-island',
 	'data-focused',
+	'data-host-content',
 	'data-image-overlay',
 	'data-image-widget',
 	'data-inline-widget',
