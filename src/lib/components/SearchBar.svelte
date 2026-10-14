@@ -385,6 +385,22 @@
 		transform: rotate(90deg);
 	}
 
+	/* Forced colors drop every fill, and fills are all the field and a pressed toggle are drawn with. */
+	@media (forced-colors: active) {
+		.search-field {
+			border: 1px solid CanvasText;
+		}
+		.search-field:focus-within {
+			border-color: Highlight;
+		}
+		.search-tog.on,
+		.search-tog.on:hover {
+			forced-color-adjust: none;
+			background: Highlight;
+			color: HighlightText;
+		}
+	}
+
 	/* A pointer with no hover is a thumb: every control clears the WCAG 2.5.8 24px minimum, and
 	   the row wraps rather than crowding once they grow. */
 	@media (pointer: coarse) {
