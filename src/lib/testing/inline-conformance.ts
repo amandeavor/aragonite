@@ -458,7 +458,7 @@ function assertSelfDelimiting(fixture: string, node: InlineNode, kind: AnyInline
 }
 
 function assertIslandContract(fixture: string, node: InlineNode, kind: AnyInlineKind): void {
-	const island = buildCoreInlineWidget(node, fixture, undefined, defaultGrammarView);
+	const island = buildCoreInlineWidget(node, fixture, { grammar: defaultGrammarView });
 	assert(island !== null, `the "${kind}" widget builds an island from ${JSON.stringify(fixture)}`);
 	assert(
 		island.hasAttribute('data-inline-widget'),

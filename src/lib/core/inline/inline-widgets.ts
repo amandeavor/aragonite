@@ -15,6 +15,7 @@ import { entityRendersGlyph, buildEntityWidget } from './entity-widget';
 import { createInlineKindRegistry } from '../../schema/plugin-registry';
 import type { GrammarView } from '../../schema/block-openers';
 import { inlineDescendants } from './walk';
+import { warnIfForeignRuntime } from '../../foreign-runtime';
 
 /**
  * The widget shell every core builder shares. Its `data-*` attributes are the only handle the
@@ -235,18 +236,34 @@ export function flattenInlineWidgets(
 	return out;
 }
 
-/** A `component` kind mounts through the injected `buildPortalWidget`, keeping `core/` free of
- *  Svelte. Null for a non-widget, an image (built per render), or a missing or failed portal. */
+export interface WidgetBuildOptions {
+	/** Mounts a `component` kind in the widget shell; injected so `core/` holds no Svelte. Absent
+	 *  or null falls the widget back to its raw source. */
+	buildPortalWidget?: (node: InlineNode, raw: string) => HTMLElement | null;
+	/** Where a `buildWidget` throw goes; absent for a render nobody sees, which only measures. */
+	reportWidgetError?: (error: unknown) => void;
+	/** The editor's grammar: a widget kind whose plugin it leaves out renders as its source. */
+	grammar: GrammarView;
+}
+
+/** A `component` kind mounts through `buildPortalWidget`, keeping `core/` free of Svelte. Null for
+ *  a non-widget, an image (built per render), a missing portal, or a mount or build that threw. */
 export function buildCoreInlineWidget(
 	node: InlineNode,
 	raw: string,
-	buildPortalWidget: ((node: InlineNode, raw: string) => HTMLElement | null) | undefined,
-	grammar: GrammarView
+	opts: WidgetBuildOptions
 ): HTMLElement | null {
-	const descriptor = widgetOf(node.kind, grammar);
+	const descriptor = widgetOf(node.kind, opts.grammar);
 	if (!descriptor || !descriptor.isWidget(node, raw)) return null;
-	if (descriptor.component) return buildPortalWidget?.(node, raw) ?? null;
-	return descriptor.buildWidget ? descriptor.buildWidget(node, raw) : null;
+	if (descriptor.component) return opts.buildPortalWidget?.(node, raw) ?? null;
+	if (!descriptor.buildWidget) return null;
+	try {
+		return descriptor.buildWidget(node, raw);
+	} catch (error) {
+		warnIfForeignRuntime(error, `inline widget ${node.kind}`);
+		opts.reportWidgetError?.(error);
+		return null;
+	}
 }
 
 registerInlineWidgetKind('image', {

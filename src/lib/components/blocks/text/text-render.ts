@@ -183,6 +183,7 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 				buildImageWidget: (imgNode, imgRaw, imgOpts) =>
 					buildImageWidget(imgNode, imgRaw, { ...imgOpts, brokenUrlCache: deps.brokenUrlCache }),
 				buildPortalWidget,
+				reportWidgetError: deps.reportRenderError,
 				grammar: deps.reading.grammar,
 				tagConstructMarkers: tagsConstructMarkers(deps.reading.mode()),
 				pendingBreaks

@@ -2,6 +2,8 @@
 	import { tick } from 'svelte';
 	import { INLINE_MENU_LABEL } from '../../a11y-strings';
 	import type { EditorEvents } from '../../editor-events';
+	import { warnIfForeignRuntime } from '../../foreign-runtime';
+	import type { InlineMenuItem } from '../../inline-menu/types';
 	import type { InlineMenuState } from '../../inline-menu/inline-menu-state.svelte';
 	import MenuIcon from './MenuIcon.svelte';
 	import type { MenuPresence } from './menu-presence.svelte';
@@ -112,11 +114,22 @@
 		return () => root.removeEventListener('focusout', onFocusOut);
 	});
 
+	function onRowError(error: unknown, source: string): void {
+		warnIfForeignRuntime(error, `inline menu row ${source}`);
+		menu.reportSourceError(error, source);
+	}
+
 	$effect(() => {
 		void view?.activeIndex;
 		menuEl?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
 	});
 </script>
+
+{#snippet defaultRow(item: InlineMenuItem)}
+	{#if item.icon}<span class="md-menu-icon"><MenuIcon name={item.icon} /></span>{/if}
+	<span class="inline-menu-label">{item.label}</span>
+	{#if item.detail}<span class="inline-menu-detail">{item.detail}</span>{/if}
+{/snippet}
 
 {#if showing && view}
 	{@const Row = view.source.row}
@@ -149,11 +162,12 @@
 				onclick={() => menu.commit(i)}
 			>
 				{#if Row}
-					<Row {item} active={i === view.activeIndex} query={view.query} />
+					<svelte:boundary onerror={(error) => onRowError(error, view.source.name)}>
+						<Row {item} active={i === view.activeIndex} query={view.query} />
+						{#snippet failed()}{@render defaultRow(item)}{/snippet}
+					</svelte:boundary>
 				{:else}
-					{#if item.icon}<span class="md-menu-icon"><MenuIcon name={item.icon} /></span>{/if}
-					<span class="inline-menu-label">{item.label}</span>
-					{#if item.detail}<span class="inline-menu-detail">{item.detail}</span>{/if}
+					{@render defaultRow(item)}
 				{/if}
 			</div>
 		{/each}

@@ -729,9 +729,9 @@ descendTo` · `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/do
 **G1.90 · A foreign Svelte runtime is named.** A plugin component compiled against a second copy of
 Svelte (a precompiled plugin on the prebuilt build, say) fails as soon as the editor mounts it,
 since its runtime has no component or effect in progress. Each route that mounts a plugin's
-component (the block's error boundary, the inline widget pool, the decoration widget mount) asks
-`foreign-runtime.ts :: isForeignRuntimeError` and warns `foreign-runtime` in dev; the block's notice
-says the cause too. The match is by message: `effect_orphan`, or the two crashes of a runtime that
+component (the block's error boundary, the inline widget pool, the decoration widget mount, the
+inline menu's row boundary) asks `foreign-runtime.ts :: isForeignRuntimeError` and warns
+`foreign-runtime` in dev; the block's notice says the cause too. G4.178 holds new routes to it. The match is by message: `effect_orphan`, or the two crashes of a runtime that
 never mounted anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches
 too. `components/foreign-runtime.test.ts` loads its fixtures on a second runtime
 through a module reset.
@@ -1091,6 +1091,7 @@ unguarded.
 | G4.170 | Only the parser and the table rebuild write a row's header flag                           | L       |
 | G4.174 | Every published entry point has a source build and a prebuilt one                         | L       |
 | G4.175 | Every library component compiles in runes mode                                            | L       |
+| G4.178 | Every route that mounts a plugin view falls back and reports when it throws               | L       |
 
 ### The entries
 
@@ -2080,6 +2081,12 @@ a kind registered through its `/plugin` parses through its root, and it stays wi
 the legacy flag in the Svelte runtime of the app that compiles it. The prebuilt build forces runes
 mode itself, so this guards Svelte hosts. Every `.svelte` file under `src/lib` uses a rune or says `<svelte:options runes />`.
 `lint/file-rules.test.ts`.
+
+**G4.178 · A plugin view that throws costs only itself.** A file under `src/lib` that mounts a
+view a plugin handed it (a Svelte `mount`, a component picked at render time, a `buildDom` or
+`buildWidget` call) also calls `warnIfForeignRuntime`, which is the sign it catches the throw,
+paints its fallback and reports on `error` (G1.90). The editor's own mount in `create-editor.ts`
+is the one exception. `lint/file-rules.test.ts`.
 
 ## Accessibility
 

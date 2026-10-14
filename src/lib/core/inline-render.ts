@@ -7,9 +7,8 @@
  */
 
 import type { InlineNode } from './nodes';
-import { buildCoreInlineWidget } from './inline/inline-widgets';
+import { buildCoreInlineWidget, type WidgetBuildOptions } from './inline/inline-widgets';
 import { codeSpanFence } from './inline/scan/code-spans';
-import type { GrammarView } from '../schema/block-openers';
 import { isAllowedHrefScheme } from './url-policy';
 import { firstDisplayLine } from './lines';
 
@@ -17,7 +16,7 @@ import { firstDisplayLine } from './lines';
 
 export type ImageLoadPolicy = 'auto' | 'placeholder';
 
-export interface RenderInlineOptions {
+export interface RenderInlineOptions extends WidgetBuildOptions {
 	renderImagesAsWidgets?: boolean;
 	resolveImageUrl?: (rawUrl: string) => string;
 	/** Render-time href rewrite for links/autolinks (default identity). */
@@ -33,13 +32,6 @@ export interface RenderInlineOptions {
 			imageLoadPolicy: ImageLoadPolicy;
 		}
 	) => Node;
-	/**
-	 * Mounts a `component`-kind widget in the widget shell wrapper. Injected for the same reason
-	 * as `buildImageWidget`; absent or null falls the widget back to its raw source.
-	 */
-	buildPortalWidget?: (node: InlineNode, raw: string) => HTMLElement | null;
-	/** The editor's grammar: a widget kind whose plugin it leaves out renders as its source. */
-	grammar: GrammarView;
 	/** The lines a pending hard break opened past the text (Shift+Enter at a block's end, which
 	 *  writes no byte until the next insertion); 0 or absent for none. */
 	pendingBreaks?: number;
@@ -377,7 +369,7 @@ function renderNode(
 			// An invisible entity renders no widget and keeps its literal-source span, as does any
 			// kind the registry does not own, so every byte round-trips.
 			container.appendChild(
-				buildCoreInlineWidget(node, raw, opts.buildPortalWidget, opts.grammar) ??
+				buildCoreInlineWidget(node, raw, opts) ??
 					sourceSpan(
 						raw,
 						node,

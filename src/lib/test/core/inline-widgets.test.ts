@@ -61,7 +61,7 @@ describe('buildCoreInlineWidget: core-layer builder dispatch', () => {
 	it('builds the <br> widget shell for an allowlisted rawHtml node', () => {
 		const raw = '<br>';
 		const node: InlineNode = { kind: 'rawHtml', start: 0, end: raw.length };
-		const el = buildCoreInlineWidget(node, raw, undefined, defaultGrammarView);
+		const el = buildCoreInlineWidget(node, raw, { grammar: defaultGrammarView });
 		expect(el).not.toBeNull();
 		expect(el!.hasAttribute('data-inline-widget')).toBe(true);
 		expect(el!.querySelector('br')).not.toBeNull();
@@ -69,19 +69,19 @@ describe('buildCoreInlineWidget: core-layer builder dispatch', () => {
 
 	it('returns null for image (built via injected per-render builder, not core)', () => {
 		const node: InlineNode = { kind: 'image', start: 0, end: 6, url: 'x', alt: '' };
-		expect(buildCoreInlineWidget(node, '![](x)', undefined, defaultGrammarView)).toBeNull();
+		expect(buildCoreInlineWidget(node, '![](x)', { grammar: defaultGrammarView })).toBeNull();
 	});
 
 	it('returns null for a non-widget rawHtml tag', () => {
 		const raw = '<span>';
 		const node: InlineNode = { kind: 'rawHtml', start: 0, end: raw.length };
-		expect(buildCoreInlineWidget(node, raw, undefined, defaultGrammarView)).toBeNull();
+		expect(buildCoreInlineWidget(node, raw, { grammar: defaultGrammarView })).toBeNull();
 	});
 
 	it('builds the decoded-glyph widget for a visible entity, carrying its source span', () => {
 		const raw = '&copy;';
 		const node: InlineNode = { kind: 'entityReference', start: 0, end: raw.length, decoded: '©' };
-		const el = buildCoreInlineWidget(node, raw, undefined, defaultGrammarView);
+		const el = buildCoreInlineWidget(node, raw, { grammar: defaultGrammarView });
 		expect(el?.hasAttribute('data-inline-widget')).toBe(true);
 		expect(el?.textContent).toBe('©');
 		expect(el?.dataset.sourceStart).toBe('0');
@@ -91,7 +91,7 @@ describe('buildCoreInlineWidget: core-layer builder dispatch', () => {
 	it('returns null for a whitespace-decoding entity (keeps its literal span)', () => {
 		const raw = '&nbsp;';
 		const node: InlineNode = { kind: 'entityReference', start: 0, end: raw.length, decoded: ' ' };
-		expect(buildCoreInlineWidget(node, raw, undefined, defaultGrammarView)).toBeNull();
+		expect(buildCoreInlineWidget(node, raw, { grammar: defaultGrammarView })).toBeNull();
 	});
 });
 

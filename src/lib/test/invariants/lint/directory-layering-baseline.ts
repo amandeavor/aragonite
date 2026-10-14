@@ -61,6 +61,7 @@ export const RUNTIME_EDGES: readonly string[] = [
 	'core -> bounded-memo.ts',
 	'core -> dev-warn.ts',
 	'core -> env.ts',
+	'core -> foreign-runtime.ts',
 	'core -> perf',
 	'core -> presentation-mode.ts',
 	'core -> schema',
