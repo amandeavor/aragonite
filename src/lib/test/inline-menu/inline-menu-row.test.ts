@@ -146,3 +146,41 @@ describe('an inline menu row that fails to mount', () => {
 		]);
 	});
 });
+
+describe('a DOM row whose destroy throws', () => {
+	const failingDestroy = (): InlineMenuDomRow => ({
+		buildDom: ({ item }) => {
+			const el = document.createElement('b');
+			el.className = 'dom-row';
+			el.textContent = item.label;
+			return el;
+		},
+		destroy() {
+			throw new Error('destroy exploded');
+		}
+	});
+	const destroyError = {
+		origin: 'subscriber',
+		error: new Error('destroy exploded'),
+		context: { source: 'tags' }
+	};
+
+	it('keeps the rebuilt row and reports, when the active row moves', async () => {
+		const { mounted, errors } = await openMenu(failingDestroy(), ['a', 'b']);
+
+		await pressKey(surfaceAt(mounted, [0]), { key: 'ArrowDown' });
+
+		expect(domRowOf(mounted, 'a')).not.toBeNull();
+		expect(domRowOf(mounted, 'b')).not.toBeNull();
+		expect(errors).toEqual([destroyError, destroyError]);
+	});
+
+	it('still closes the menu and reports each row, when the menu closes', async () => {
+		const { mounted, errors } = await openMenu(failingDestroy(), ['a', 'b']);
+
+		await pressKey(surfaceAt(mounted, [0]), { key: 'Escape' });
+
+		expect(mounted.target.ownerDocument.querySelector('[role="option"]')).toBeNull();
+		expect(errors).toEqual([destroyError, destroyError]);
+	});
+});

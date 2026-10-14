@@ -125,13 +125,22 @@
 	}
 
 	// Svelte reruns an attachment when the props it read change, so each change builds a fresh row.
-	function paintDomRow(row: InlineMenuDomRow, props: InlineMenuRowProps): Attachment {
+	function paintDomRow(
+		row: InlineMenuDomRow,
+		props: InlineMenuRowProps,
+		source: string
+	): Attachment {
 		return (slot) => {
 			const el = row.buildDom(props);
 			slot.append(el);
 			return () => {
 				el.remove();
-				row.destroy?.(el);
+				// Caught here: on close the row's boundary is torn down with it and catches nothing.
+				try {
+					row.destroy?.(el);
+				} catch (error) {
+					menu.reportSourceError(error, source);
+				}
 			};
 		};
 	}
@@ -150,6 +159,7 @@
 
 {#if showing && view}
 	{@const row = view.source.row}
+	{@const sourceName = view.source.name}
 	<!-- A press on the list must not blur the document: the block under the caret commits on blur,
 	     and the pick needs that caret. -->
 	<div
@@ -182,12 +192,14 @@
 				onclick={() => menu.commit(i)}
 			>
 				{#if row}
-					<svelte:boundary onerror={(error) => onRowError(error, view.source.name)}>
+					<svelte:boundary onerror={(error) => onRowError(error, sourceName)}>
 						{#if typeof row === 'function'}
 							{@const Row = row}
 							<Row {item} {active} {query} />
 						{:else}
-							<span class="inline-menu-dom-row" {@attach paintDomRow(row, { item, active, query })}
+							<span
+								class="inline-menu-dom-row"
+								{@attach paintDomRow(row, { item, active, query }, sourceName)}
 							></span>
 						{/if}
 						{#snippet failed()}{@render defaultRow(item)}{/snippet}

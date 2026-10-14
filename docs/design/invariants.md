@@ -731,10 +731,10 @@ Svelte (a precompiled plugin on the prebuilt build, say) fails as soon as the ed
 since its runtime has no component or effect in progress. Each route that mounts a plugin's
 component (the block's error boundary, the inline widget pool, the decoration widget mount, the
 inline menu's row boundary) asks `foreign-runtime.ts :: isForeignRuntimeError` and warns
-`foreign-runtime` in dev; the block's notice says the cause too. G4.178 holds new routes to it. The match is by message: `effect_orphan`, or the two crashes of a runtime that
-never mounted anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches
-too. `components/foreign-runtime.test.ts` loads its fixtures on a second runtime
-through a module reset.
+`foreign-runtime` in dev; the block's notice says the cause too. G4.178 holds new routes to it.
+The match is by message: `effect_orphan`, or the two crashes of a runtime that never mounted
+anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches too.
+`components/foreign-runtime.test.ts` loads its fixtures on a second runtime through a module reset.
 
 ## Group 2: property and regression tested
 
@@ -2086,7 +2086,8 @@ mode itself, so this guards Svelte hosts. Every `.svelte` file under `src/lib` u
 view a plugin handed it (a Svelte `mount`, a component picked at render time, a `buildDom` or
 `buildWidget` call) also calls `warnIfForeignRuntime`, which is the sign it catches the throw,
 paints its fallback and reports on `error` (G1.90). The editor's own mount in `create-editor.ts`
-is the one exception. `lint/file-rules.test.ts`.
+is the one exception. `lint/file-rules.test.ts`. The scan can't see teardown, so a plugin view
+that throws while it unmounts is held to the same report by `components/plugin-view-teardown.test.ts`.
 
 ## Accessibility
 

@@ -192,7 +192,8 @@ export function createSvelteWidgetPool(deps: SvelteWidgetPoolDeps): WidgetPool {
 			}
 		},
 		destroy(handle) {
-			void unmount(handle.instance);
+			// A throw from the component's own teardown arrives as the promise's rejection.
+			unmount(handle.instance).catch(reportError);
 		},
 		element(handle) {
 			return handle.wrapper;

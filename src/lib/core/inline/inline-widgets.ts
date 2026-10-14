@@ -198,7 +198,23 @@ export function isInlineWidgetKind(kind: AnyInlineKind, grammar: GrammarView): b
 /** Kind-level recognition, independent of per-block render policy (renderImagesAsWidgets). */
 export function isInlineWidget(node: InlineNode, raw: string, grammar: GrammarView): boolean {
 	const descriptor = widgetOf(node.kind, grammar);
-	return descriptor ? descriptor.isWidget(node, raw) : false;
+	return descriptor ? matchesWidget(descriptor, node, raw) : false;
+}
+
+/** A plugin's `isWidget` that throws reads as false, so the render shows the construct as its
+ *  source and the caret walks it as text; only the render has a reporter to hand it. */
+function matchesWidget(
+	descriptor: InlineWidgetDescriptor,
+	node: InlineNode,
+	raw: string,
+	reportWidgetError?: (error: unknown) => void
+): boolean {
+	try {
+		return descriptor.isWidget(node, raw);
+	} catch (error) {
+		reportWidgetError?.(error);
+		return false;
+	}
 }
 
 export function getInlineWidgetEditing(
@@ -254,7 +270,7 @@ export function buildCoreInlineWidget(
 	opts: WidgetBuildOptions
 ): HTMLElement | null {
 	const descriptor = widgetOf(node.kind, opts.grammar);
-	if (!descriptor || !descriptor.isWidget(node, raw)) return null;
+	if (!descriptor || !matchesWidget(descriptor, node, raw, opts.reportWidgetError)) return null;
 	if (descriptor.component) return opts.buildPortalWidget?.(node, raw) ?? null;
 	if (!descriptor.buildWidget) return null;
 	try {
