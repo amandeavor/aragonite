@@ -25,8 +25,9 @@ import type { GrammarView } from '../../schema/block-openers';
 import { tryGetBlockKindDescriptor } from '../../schema/block-kind-descriptor';
 import { blockNodeAt, type BodyParent } from '../../tree-operations/node-primitives';
 import type { SharingState } from '../../tree-operations/sharing';
-import { rewriteLeafInPlace } from '../../tree-operations/content-write';
+import { updateNodeContent } from '../../tree-operations/content-write';
 import { ensureUnsharedPath } from '../../tree-operations/unshare';
+import { recordChildIdsChange } from '../../tree-operations/structural-change';
 import { rebuildUnsharedChain, sharedChainLevels } from '../../tree-operations/chain-rebuild';
 import { pathsEqual } from '../path-math';
 import { charOffsetOf, type SelectionPoint } from '../primitives';
@@ -118,8 +119,8 @@ export function crossBlockActiveFormats(
 	return active;
 }
 
-/** Writes a plan into the document body, copying each chain before writing. The caller owns the
- *  commit. */
+/** Writes a plan into the document body, each block taking whatever its new bytes read as there.
+ *  The caller owns the commit. */
 export function applyCrossBlockFormat(
 	body: BodyParent,
 	plan: CrossBlockFormatPlan,
@@ -127,7 +128,9 @@ export function applyCrossBlockFormat(
 	grammar: GrammarView
 ): void {
 	const chains: CstNode[][] = [];
-	for (const write of plan.writes) {
+	// Last first, so a write that reads as several blocks moves no path still to be written.
+	for (let w = plan.writes.length - 1; w >= 0; w--) {
+		const write = plan.writes[w];
 		const chain = ensureUnsharedPath(body, write.path, sharing);
 		const owned = chain[chain.length - 1];
 		if (!owned) continue;
@@ -135,8 +138,9 @@ export function applyCrossBlockFormat(
 		const holder = owner ? { children: owner.children!, owner, lineEnding: body.lineEnding } : body;
 		// A line ending reaching a cell's raw would be turned into a space by the cell's write rule.
 		const raw = write.newDisplay + ownTrailingLineEnding(owned.raw);
-		rewriteLeafInPlace(holder, write.path[write.path.length - 1], raw, grammar, sharing);
-		chains.push(chain);
+		const { change } = updateNodeContent(holder, write.path.at(-1)!, raw, grammar, sharing);
+		recordChildIdsChange(owner ?? body, change);
+		chains.unshift(chain);
 	}
 	// Every write lands before any rebuild, and an ancestor the chains share is rebuilt once, by the
 	// last chain holding it, after every chain below it.

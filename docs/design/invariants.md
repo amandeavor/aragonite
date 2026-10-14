@@ -1543,10 +1543,10 @@ copy. `lint/file-rules.test.ts`.
 `src/lib/editor-actions/leaf-write.ts` :: `writeLeafInPlace`. Each step of the write has a short list
 of files allowed to name it (an aliased import counts):
 
-- the content write itself (`updateNodeContent`): those two, the keystroke's trial reparse and the
-  container-matching paste
-- a write in place that skips the reparse (`writeOwnRaw`, `installOwnRaw`): table cells,
-  `rewriteLeafInPlace` and find and replace's private copy
+- the content write itself (`updateNodeContent`): those two, the keystroke's trial reparse, the
+  container-matching paste and the format toggle over several blocks
+- a write in place that skips the reparse (`writeOwnRaw`, `installOwnRaw`): table cells and find
+  and replace's private copy
 - the document as an owner-less body (`documentBody`), plus the trial reparse's throwaway copy
 - the task-marker reconcile: the content write, the join and `replaceBlock`
 - a replacement's escape for its container: `replaceBlock` alone
