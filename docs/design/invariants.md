@@ -729,7 +729,9 @@ Svelte (a precompiled plugin on the prebuilt build, say) fails as soon as the ed
 since its runtime has no component or effect in progress. Each route that mounts a plugin's
 component (the block's error boundary, the inline widget pool, the decoration widget mount) asks
 `foreign-runtime.ts :: isForeignRuntimeError` and warns `foreign-runtime` in dev; the block's notice
-says the cause too. `components/foreign-runtime.test.ts` loads its fixtures on a second runtime
+says the cause too. The match is by message: `effect_orphan`, or the two crashes of a runtime that
+never mounted anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches
+too. `components/foreign-runtime.test.ts` loads its fixtures on a second runtime
 through a module reset.
 
 ## Group 2: property and regression tested
@@ -2066,8 +2068,8 @@ then checks the built output: it imports nothing but its listed externals, every
 a kind registered through its `/plugin` parses through its root, and it stays within its size budget.
 
 **G4.175 · Runes mode only.** A component with no rune compiles in legacy mode, which switches on
-the legacy flag in whatever Svelte runtime it runs on, the one the prebuilt build carries included.
-Every `.svelte` file under `src/lib` uses a rune or says `<svelte:options runes />`.
+the legacy flag in the Svelte runtime of the app that compiles it. The prebuilt build forces runes
+mode itself, so this guards Svelte hosts. Every `.svelte` file under `src/lib` uses a rune or says `<svelte:options runes />`.
 `lint/file-rules.test.ts`.
 
 ## Accessibility

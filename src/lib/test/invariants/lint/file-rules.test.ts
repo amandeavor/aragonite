@@ -455,7 +455,7 @@ const RULES: FileRule[] = [
 		population: (file) => svelteOnly(file) && file.relPath.startsWith(SOURCE_DIR.library),
 		matches: (file) => !RUNES_MODE_RE.test(file.code),
 		reason:
-			'a component with no rune compiles in legacy mode, which turns on the legacy flag in the Svelte runtime the prebuilt build carries: add `<svelte:options runes />`',
+			'a component with no rune compiles in legacy mode in a Svelte host, which turns on the legacy flag in the Svelte runtime of that app: add `<svelte:options runes />`',
 		reaches: [SOURCE.blockHost],
 		hits: [
 			at('src/lib/x.svelte', '<span class="grip"></span>'),
