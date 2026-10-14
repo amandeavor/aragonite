@@ -166,7 +166,8 @@ and its tests, and keep the number. The row stays, marked retired, saying what s
 ## Reading the catalog
 
 Enforcement codes, used in every index table: `A` runtime DEV assertion · `P` property test
-(fast-check) · `N` negative fixture · `T` compile-time type guard · `L` lint/source-scan · `D` doc.
+(fast-check) · `N` negative fixture · `T` compile-time type guard · `L` lint/source-scan · `D` doc
+· `harness` a test harness or gate script that runs the code (a conformance kit, the adapter smoke).
 
 Predicates live in `src/lib/invariants/`; property tests and their arbitraries (the random-CST
 generators fast-check draws from) in `src/lib/test/invariants/`, run by
@@ -1151,6 +1152,7 @@ unguarded.
 | G4.184 | The editor's own reset sets everything the demo app's global reset does                   | L       |
 | G4.186 | A plugin's widget, decoration or row view is drawn only through `mountPluginView`         | L       |
 | G4.187 | Every framework app under `examples/` runs in the adapter suite                           | L       |
+| G4.188 | Every wrapper entry imports in Node with no DOM, as a server render does                  | harness |
 
 ### The entries
 
@@ -2181,6 +2183,13 @@ another name is past a regex's reach.
 projects, and `scripts/adapter-smoke.mjs` builds and installs whatever it lists. So an app under
 `examples/` with no entry there would never be installed from the tarballs or tested, and a spec
 no project names would never run. `lint/adapter-apps.test.ts` fails on either.
+
+**G4.188 · Wrappers import on a server.** A server render imports a wrapper before any browser
+exists, so each JS entry a wrapper's `exports` names must load in plain Node without touching the
+DOM or reading a value declared further down the file. `scripts/node-import.mjs ::
+nodeImportFailures` imports each one in a child Node process, and `scripts/verify-pack.mjs` runs it
+on every wrapper after the build. `lint/wrapper-node-import.test.ts` feeds it a clean entry and two
+broken ones.
 
 ## Accessibility
 
