@@ -902,3 +902,5 @@ ADAPTER_PROJECTS=react npx playwright test -c examples/adapter-suite/playwright.
 ```powershell
 $env:ADAPTER_PROJECTS = 'react'; npx playwright test -c examples/adapter-suite/playwright.config.ts
 ```
+
+Heads up if you're mutating a wrapper to see what reds: outside CI the config reuses any server already on an app's port, so one left over from an earlier run keeps serving the old build. Stop it first, or set `CI=1` for the run.
