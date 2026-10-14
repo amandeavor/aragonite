@@ -18,4 +18,5 @@ The pixel rows run at device pixel ratios of 1, 1.25 and 1.5, on a line height t
 - The italic bar's foot keeps the device grid, as wide as the plain bar
 - The strikethrough tick keeps the device grid: 13px and 2px, each rounded to the nearest whole device pixel
 - The gap bar's top and thickness keep the device grid, 2px rounded to the nearest whole device pixel
+- A length exactly halfway between two device pixels (1px at 1.5x, 2px at 1.25x) rounds up, as the browser's caret does at 1.5x
 - A theme that sets `--md-caret-color` colors the bar, in plain text and in a link alike

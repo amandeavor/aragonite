@@ -801,7 +801,7 @@ The caret the editor draws (the `caret` prop) takes the color of the text it's s
 - `--md-caret-slant` (`-12deg`): italic, the bar leaning right like italic type, its foot staying put
 - `--md-caret-strike-width` (`13px`): strikethrough, a 2px tick across the bar, just below its middle
 
-Set any of these at `.editor`. Each width rounds down to whole screen pixels (never under one), so the bar stays sharp on a 125% display, where `1px` would otherwise smear across two. The bar the editor lays across a gap between blocks (the caret that sits between, say, a table and a code block, where there's nothing to type into) takes `--color-text-secondary` instead. A reader with reduced motion gets a caret that doesn't blink.
+Set any of these at `.editor`. Each width rounds to the nearest whole screen pixel (never under one), the way the browser's own caret does, so the bar stays sharp on a 125% display, where `1px` would otherwise smear across two. The bar the editor lays across a gap between blocks (the caret that sits between, say, a table and a code block, where there's nothing to type into) takes `--color-text-secondary` instead. A reader with reduced motion gets a caret that doesn't blink.
 
 **A host-chrome token you leave undeclared falls back.** If your host skips the `aragonite-editor-theme` class, declare the whole host-chrome table: anything you leave out resolves to the inline fallback its reads carry (`var(--color-ui-muted, #93938d)`), which is a dark-mode value whatever mode your page is in. The exception is `--color-text-primary` where the text sits on your page: it falls back to `currentColor`, so it inherits your page's own color instead of painting white on it. A menu paints its own dark surface, so its text keeps the dark-mode value.
 

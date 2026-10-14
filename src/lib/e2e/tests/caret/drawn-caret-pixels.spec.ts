@@ -90,10 +90,10 @@ function expectOnGrid(edges: Edges, dpr: number, what: string): void {
 	}
 }
 
-/** A length token rounded to the nearest whole device pixel, at least one, as the browser's own
- *  caret width is. */
-function deviceWidth(css: number, dpr: number): number {
-	return Math.max(1, Math.round(css * dpr));
+/** Expects `actual` (in CSS pixels) to be the token `css` rounded to the nearest whole device pixel,
+ *  halves up and at least one, as the browser's caret width is. */
+function expectDeviceWidth(actual: number, css: number, dpr: number, what: string): void {
+	expect(devicePixels(actual, dpr), what).toBe(Math.max(1, Math.round(css * dpr)));
 }
 
 /** Puts the caret after the first letter of `word` in the second block, one key at a time. */
@@ -127,9 +127,7 @@ for (const scale of [1, 1.25, 1.5]) {
 				const caretX = px.caretLeft * scale;
 				if (Math.abs(caretX - Math.round(caretX)) > 0.05) offGridCarets++;
 				expectOnGrid(px.bar, scale, `step ${i}`);
-				expect(devicePixels(px.bar.right - px.bar.left, scale), 'the browser’s caret width').toBe(
-					deviceWidth(1, scale)
-				);
+				expectDeviceWidth(px.bar.right - px.bar.left, 1, scale, 'the plain bar');
 				expect(
 					Math.round(px.bar.left * scale),
 					`the column the boundary at ${caretX} falls in`
@@ -161,11 +159,11 @@ for (const scale of [1, 1.25, 1.5]) {
 					await expect.poll(() => drawnCaretMarks(page)).toEqual([mark]);
 					const px = await barPixels(page);
 					expectOnGrid(px.bar, scale, `the ${mark} bar`);
-					expect(devicePixels(px.bar.right - px.bar.left, scale)).toBe(deviceWidth(width, scale));
+					expectDeviceWidth(px.bar.right - px.bar.left, width, scale, `the ${mark} bar`);
 					if (mark !== 'strikethrough') return;
 					expectOnGrid(px.tick!, scale, 'the tick');
-					expect(devicePixels(px.tick!.right - px.tick!.left, scale)).toBe(deviceWidth(13, scale));
-					expect(devicePixels(px.tick!.bottom - px.tick!.top, scale)).toBe(deviceWidth(2, scale));
+					expectDeviceWidth(px.tick!.right - px.tick!.left, 13, scale, 'the tick’s width');
+					expectDeviceWidth(px.tick!.bottom - px.tick!.top, 2, scale, 'the tick’s height');
 				});
 			}
 		});
@@ -179,7 +177,7 @@ for (const scale of [1, 1.25, 1.5]) {
 			await expect.poll(async () => (await barPixels(page)).state).toBe('gap');
 			const { bar } = await barPixels(page);
 			expectOnGrid({ ...bar, left: 0, right: 0 }, scale, 'the gap bar');
-			expect(devicePixels(bar.bottom - bar.top, scale)).toBe(deviceWidth(2, scale));
+			expectDeviceWidth(bar.bottom - bar.top, 2, scale, 'the gap bar’s thickness');
 		});
 	});
 }
