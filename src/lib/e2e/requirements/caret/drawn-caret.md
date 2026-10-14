@@ -10,7 +10,7 @@ drawn bar or the browser's own.
 
 - A click in a paragraph: one drawn caret shows, on the browser's caret position, and the browser's own is hidden
 - Typing letter by letter: after every key one drawn caret shows, on the browser's caret position
-- The drawn caret sits on the browser's caret position (within a pixel) at each of these places:
+- The drawn caret sits on the browser's caret position at each of these places:
   - the start of a line
   - the end of a line
   - an empty block

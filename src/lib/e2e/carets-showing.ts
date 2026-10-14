@@ -208,8 +208,8 @@ export async function browserCaret(page: Page): Promise<PaintedCaret> {
 	return found!;
 }
 
-/** Exactly one caret shows; a drawn one sits on the line, and at the x, the browser paints its
- *  own caret at for the same selection. */
+/** Exactly one caret shows; a drawn one sits on the line, and in the column, the browser paints
+ *  its own caret at for the same selection. */
 export async function oneCaretOnTheBrowsersLine(page: Page): Promise<'drawn' | 'native'> {
 	// A key the browser handles moves the caret in a later task; its paint lands by the frame.
 	await page.evaluate(
@@ -231,10 +231,12 @@ export async function oneCaretOnTheBrowsersLine(page: Page): Promise<'drawn' | '
 		painted.top
 	);
 	expect(middle).toBeLessThan(painted.bottom);
+	// WebKit measures the range in whole pixels, losing the fraction its own caret rounds.
+	const slack = page.context().browser()?.browserType().name() === 'webkit' ? 1 : 0;
 	expect(
-		Math.abs(drawn.left - painted.left),
+		Math.abs(Math.round(drawn.left) - painted.left),
 		`x ${drawn.left} vs ${painted.left}`
-	).toBeLessThanOrEqual(1);
+	).toBeLessThanOrEqual(slack);
 	return 'drawn';
 }
 
