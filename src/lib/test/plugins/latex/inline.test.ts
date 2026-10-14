@@ -144,11 +144,16 @@ describe('math widget dispatch', () => {
 	it('a component kind builds nothing without a portal builder, and delegates to it verbatim', () => {
 		const node = { kind: MATH_INLINE, start: 0, end: 3 } as InlineNode;
 		// No portal builder → null (the render layer falls back to the raw span).
-		expect(buildCoreInlineWidget(node, '$x$', undefined, defaultGrammarView)).toBeNull();
+		expect(buildCoreInlineWidget(node, '$x$', { grammar: defaultGrammarView })).toBeNull();
 		// With one, the dispatch returns its element untouched; the render layer adds the
 		// attributes.
 		const portal = document.createElement('span');
-		expect(buildCoreInlineWidget(node, '$x$', () => portal, defaultGrammarView)).toBe(portal);
+		expect(
+			buildCoreInlineWidget(node, '$x$', {
+				buildPortalWidget: () => portal,
+				grammar: defaultGrammarView
+			})
+		).toBe(portal);
 	});
 
 	// `revealSource` is what the widget-interaction code reads to swap the rendered math

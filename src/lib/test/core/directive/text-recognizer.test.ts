@@ -72,7 +72,7 @@ describe('directiveText atomic widget', () => {
 		const raw = 'see :abbr[HTML]{title="x"} here';
 		const node = { kind, start: 4, end: 26 } as InlineNode;
 
-		const el = buildCoreInlineWidget(node, raw, undefined, defaultGrammarView);
+		const el = buildCoreInlineWidget(node, raw, { grammar: defaultGrammarView });
 
 		expect(el).not.toBeNull();
 		const shell = el as HTMLElement;

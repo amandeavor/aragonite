@@ -743,6 +743,15 @@
 		reveal: (p) => rects.scrollTo(p),
 		onClose: () => void searchCaret.restore()
 	});
+	// One fire per flush that changed what the find bar shows; a regex scan or a replace fires once
+	// it lands.
+	let lastSearchKey = searchState.viewKey();
+	$effect(() => {
+		const key = searchState.viewKey();
+		if (key === null || key === lastSearchKey) return;
+		lastSearchKey = key;
+		events.emit('searchChange', undefined);
+	});
 	// Lives here, not in SearchBar, so the root Ctrl+H and the bar's chevron share it.
 	let replaceExpanded = $state(false);
 

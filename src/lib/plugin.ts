@@ -389,7 +389,8 @@ export type {
 	InlineMenuItem,
 	InlineMenuQuery,
 	InlineMenuCommit,
-	InlineMenuRowProps
+	InlineMenuRowProps,
+	InlineMenuDomRow
 } from './inline-menu/types';
 
 // ── Insert catalogue (pre-freeze) ────────────────────────────────────────────

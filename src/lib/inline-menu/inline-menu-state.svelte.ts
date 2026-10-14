@@ -80,6 +80,8 @@ export interface InlineMenuState {
 	/** Commit the active row, or the row at `index`. False with no row to commit. */
 	commit(index?: number): boolean;
 	close(): void;
+	/** Report a failure of the source named `source` on the `error` event, as its other failures are. */
+	reportSourceError(error: unknown, source: string): void;
 	dispose(): void;
 }
 
@@ -491,6 +493,7 @@ export function createInlineMenuState(deps: InlineMenuStateDeps): InlineMenuStat
 			return true;
 		},
 		close,
+		reportSourceError: report,
 		primeBaseline,
 		dispose() {
 			disposed = true;

@@ -318,6 +318,39 @@ const PRIVATE_WRITER_HOMES: Record<string, string> = {
 const RUNES_MODE_RE =
 	/\$(?:props|state|derived|effect|bindable|host|inspect)\b|<svelte:options[^>]*\brunes\b/;
 
+// ── G4.178 plugin views mount behind a fallback ──────────────────────────────
+
+/** Where the editor paints a view a plugin supplied: a Svelte `mount`, a component chosen at
+ *  render time, or a plugin's DOM builder. */
+const MOUNTS_PLUGIN_VIEW =
+	/import\s*\{[^}]*\bmount\b[^}]*\}\s*from\s*'svelte'|\{@const\s+[A-Z]\w*\s*=|<svelte:component\b|\.build(?:Dom|Widget)\s*\(/;
+
+const PLUGIN_VIEW_FALLBACK: FileRule = {
+	id: 'G4.178 every route that mounts a plugin view contains its failure',
+	population: under(SOURCE_DIR.library),
+	matches: (file) =>
+		MOUNTS_PLUGIN_VIEW.test(file.code) && !/\bwarnIfForeignRuntime\(/.test(file.code),
+	allowed: {
+		'src/lib/create-editor.ts': 'mounts the editor itself, which no plugin supplies'
+	},
+	reason:
+		'a plugin view that throws must fall back, report on the `error` event and name a foreign Svelte runtime in dev: catch it and call `warnIfForeignRuntime` with the reporter, as `decorations/widget-dom.ts` does',
+	reaches: [SOURCE.blockHost, SOURCE.inlineWidgets],
+	hits: [
+		at('src/lib/x.ts', "import { mount, unmount } from 'svelte';\nmount(C, { target });"),
+		at('src/lib/x.svelte', '{@const Row = view.source.row}\n<Row {item} />'),
+		at('src/lib/x.ts', 'return descriptor.buildWidget(node, raw);')
+	],
+	misses: [
+		at('src/lib/x.ts', "import { tick } from 'svelte';\nawait landing.mount(path);"),
+		at('src/lib/x.svelte', '{@const cause = foreignRuntimeCause(error)}'),
+		at(
+			'src/lib/x.ts',
+			"import { mount } from 'svelte';\ntry {\n\tmount(C, { target });\n} catch (e) {\n\twarnIfForeignRuntime(e, 'x');\n}"
+		)
+	]
+};
+
 // ── The rules ────────────────────────────────────────────────────────────────
 
 /** A file the G4.80 population holds, for its probes. */
@@ -2605,7 +2638,8 @@ describeFileRules(
 		FOLLOW_ROUTE,
 		TEXT_MOVES,
 		...CODE_EDIT_SPAN,
-		...SYNTAX_MODULES
+		...SYNTAX_MODULES,
+		PLUGIN_VIEW_FALLBACK
 	],
 	SOURCES
 );

@@ -2,6 +2,13 @@
 	import { tick } from 'svelte';
 	import { INLINE_MENU_LABEL } from '../../a11y-strings';
 	import type { EditorEvents } from '../../editor-events';
+	import { warnIfForeignRuntime } from '../../foreign-runtime';
+	import type {
+		InlineMenuDomRow,
+		InlineMenuItem,
+		InlineMenuRowProps
+	} from '../../inline-menu/types';
+	import type { Attachment } from 'svelte/attachments';
 	import type { InlineMenuState } from '../../inline-menu/inline-menu-state.svelte';
 	import MenuIcon from './MenuIcon.svelte';
 	import type { MenuPresence } from './menu-presence.svelte';
@@ -112,14 +119,47 @@
 		return () => root.removeEventListener('focusout', onFocusOut);
 	});
 
+	function onRowError(error: unknown, source: string): void {
+		warnIfForeignRuntime(error, `inline menu row ${source}`);
+		menu.reportSourceError(error, source);
+	}
+
+	// Svelte reruns an attachment when the props it read change, so each change builds a fresh row.
+	function paintDomRow(
+		row: InlineMenuDomRow,
+		props: InlineMenuRowProps,
+		source: string
+	): Attachment {
+		return (slot) => {
+			const el = row.buildDom(props);
+			slot.append(el);
+			return () => {
+				el.remove();
+				// Caught here: on close the row's boundary is torn down with it and catches nothing.
+				try {
+					row.destroy?.(el);
+				} catch (error) {
+					menu.reportSourceError(error, source);
+				}
+			};
+		};
+	}
+
 	$effect(() => {
 		void view?.activeIndex;
 		menuEl?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
 	});
 </script>
 
+{#snippet defaultRow(item: InlineMenuItem)}
+	{#if item.icon}<span class="md-menu-icon"><MenuIcon name={item.icon} /></span>{/if}
+	<span class="inline-menu-label">{item.label}</span>
+	{#if item.detail}<span class="inline-menu-detail">{item.detail}</span>{/if}
+{/snippet}
+
 {#if showing && view}
-	{@const Row = view.source.row}
+	{@const row = view.source.row}
+	{@const sourceName = view.source.name}
 	<!-- A press on the list must not blur the document: the block under the caret commits on blur,
 	     and the pick needs that caret. -->
 	<div
@@ -130,30 +170,42 @@
 		{@attach menuPresence.track(() => menu.close(), { edits: true })}
 		tabindex="-1"
 		aria-label={INLINE_MENU_LABEL}
-		data-inline-menu={view.source.name}
+		data-inline-menu={sourceName}
 		style:left="{position?.left ?? 0}px"
 		style:top="{position?.top ?? 0}px"
 		style:visibility={position ? 'visible' : 'hidden'}
 		onpointerdown={(e) => e.preventDefault()}
 	>
 		{#each view.items as item, i (item.id)}
+			<!-- Derived per row, so a moved active row repaints only the two rows it changed. -->
+			{@const active = i === view.activeIndex}
+			{@const query = view.query}
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div
 				id={menu.optionId(item.id)}
 				class="md-menu-item inline-menu-item"
 				role="option"
 				tabindex="-1"
-				aria-selected={i === view.activeIndex}
-				data-active={i === view.activeIndex}
+				aria-selected={active}
+				data-active={active}
 				onpointermove={() => menu.setActive(i)}
 				onclick={() => menu.commit(i)}
 			>
-				{#if Row}
-					<Row {item} active={i === view.activeIndex} query={view.query} />
+				{#if row}
+					<svelte:boundary onerror={(error) => onRowError(error, sourceName)}>
+						{#if typeof row === 'function'}
+							{@const Row = row}
+							<Row {item} {active} {query} />
+						{:else}
+							<span
+								class="inline-menu-dom-row"
+								{@attach paintDomRow(row, { item, active, query }, sourceName)}
+							></span>
+						{/if}
+						{#snippet failed()}{@render defaultRow(item)}{/snippet}
+					</svelte:boundary>
 				{:else}
-					{#if item.icon}<span class="md-menu-icon"><MenuIcon name={item.icon} /></span>{/if}
-					<span class="inline-menu-label">{item.label}</span>
-					{#if item.detail}<span class="inline-menu-detail">{item.detail}</span>{/if}
+					{@render defaultRow(item)}
 				{/if}
 			</div>
 		{/each}
@@ -166,6 +218,11 @@
 		max-width: 360px;
 		max-height: 264px;
 		overflow-y: auto;
+	}
+
+	/* The built element lays out as a direct child of the row, as a component's markup does. */
+	.inline-menu-dom-row {
+		display: contents;
 	}
 
 	.inline-menu-label {

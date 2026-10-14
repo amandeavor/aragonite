@@ -789,7 +789,7 @@ That cached text is also what a `source` prop write gets compared with. The writ
 
 ### The event channel
 
-The editor exposes an observer surface via `getEvents()`: seven channels, where `on(name, cb)` returns a disposer. Events fire synchronously from their emission sites, and handlers must not mutate the document (reentrant edits aren't supported).
+The editor exposes an observer surface via `getEvents()`: eight channels, where `on(name, cb)` returns a disposer. Events fire synchronously from their emission sites, and handlers must not mutate the document (reentrant edits aren't supported).
 
 ```ts
 const off = editor.getEvents().on('edit', (e) => e);
@@ -813,6 +813,7 @@ off();
   A swap also drops every draft first. Some edits wait outside the document until they commit (a formula's shown source, a code fence's language field, a diagram's edit box), each a draft of the bytes it opened on, kept in `src/lib/components/draft-registry.ts`. The torn-down block still blurs a render later, so a draft's commit asks `canWrite()` first and writes nothing for a document that's gone. A mode change closes the drafts too, after the switch's own blur has saved the focused one.
 
 - **`menuChange`.** `true` when an editor-owned menu opens while none was and `false` when the last one closes, so a host's own controls over the selection can step aside rather than stack. Every menu and popover counts (the right-click menu, an inline menu's list, the code block's language picker, the link card, ...): each attaches itself, with its own close, to one open-menu registry (`components/menu/menu-presence.svelte.ts`), so it reads open exactly while it's mounted. A document swap and a mode change close every one of them with one call. The selection toolbar isn't counted, since it steps aside on this event itself, and neither is a view a plugin draws.
+- **`searchChange`.** No payload: what the find bar shows changed (open or closed, the query, the options, the current match, the match count, the error or a replace's count), and the handler reads `getSearch()`. One `$effect` in `Editor.svelte` compares `search-state.svelte.ts :: viewKey` with the last one it fired on, so every route that changes the search fires it, once per flush. A regex scan or a replace in flight reads as no change until it lands, so a replace-all that commits block by block fires once.
 - **`error`.** A failure the editor _contained_ rather than propagated, `{ origin, error, context? }`, discriminated by `origin`; one channel for surfacing or logging every contained failure.
 
 | `origin`     | What happened, and what the containment did                                                                                                                                                                                           |

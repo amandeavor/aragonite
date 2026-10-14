@@ -32,7 +32,8 @@ export function mountDecorationWidget(
 			return {
 				el,
 				destroy: () => {
-					if (!unmounted) void unmount(instance);
+					// A throw from the component's own teardown arrives as the promise's rejection.
+					if (!unmounted) unmount(instance).catch((error) => reportError?.(error));
 					unmounted = true;
 					el.remove();
 				}

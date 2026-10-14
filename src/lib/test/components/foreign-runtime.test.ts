@@ -20,6 +20,13 @@ import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
+import {
+	destroyMountedEditors,
+	installLayoutStubs,
+	mountEditor,
+	placeCaret,
+	surfaceAt
+} from '#lib/test/harness/mount-editor.svelte.js';
 import ThrowingBlock from './fixtures/ThrowingBlock.svelte';
 import { mountBlockHost, type MountedHost } from './mount-host';
 
@@ -37,11 +44,13 @@ async function loadForeign(name: keyof typeof FIXTURES): Promise<Component> {
 }
 
 beforeAll(installEditorDomStubsForTests);
+beforeAll(installLayoutStubs);
 
 let mounted: MountedHost | null = null;
 afterEach(async () => {
 	if (mounted) await mounted.dispose();
 	mounted = null;
+	await destroyMountedEditors();
 });
 
 function mountBlock(component: Component<never>, raw = 'hello\n'): HTMLElement {
@@ -77,6 +86,18 @@ function acquireInlineWidget(component: Component): HTMLElement | null {
 	return wrapper;
 }
 
+async function openInlineMenu(row: Component): Promise<HTMLElement | null> {
+	const editor = mountEditor({ source: 'see\n', presentationMode: 'live' });
+	await editor.settle();
+	const menus = editor.instance.getInlineMenus();
+	const items = () => [{ id: 'a', label: 'a', insert: '#a' }];
+	menus.addSource({ name: 'tags', trigger: '#', items, row: row as never });
+	placeCaret(surfaceAt(editor, [0]), 3);
+	menus.open('tags');
+	await editor.settle();
+	return document.querySelector('[role="option"]');
+}
+
 const warnTags = () => takeDevWarns().map((record) => record.tag);
 
 describe.each(Object.keys(FIXTURES) as (keyof typeof FIXTURES)[])(
@@ -99,6 +120,12 @@ describe.each(Object.keys(FIXTURES) as (keyof typeof FIXTURES)[])(
 			expect(
 				mountDecorationWidget({ component: (await loadForeign(name)) as never }, dec)
 			).toBeNull();
+			expect(warnTags()).toEqual(['foreign-runtime']);
+		});
+
+		it('as an inline menu row, falls back to the default row and warns with the cause', async () => {
+			const option = await openInlineMenu(await loadForeign(name));
+			expect(option?.querySelector('.inline-menu-label')?.textContent).toBe('a');
 			expect(warnTags()).toEqual(['foreign-runtime']);
 		});
 	}
