@@ -52,8 +52,8 @@ test.describe('search: replace', () => {
 		expect(replaced).toContain('bar two');
 		expect(replaced).toContain('bar three');
 
-		// One undo restores the whole document. "All" left focus on the button, and Ctrl+Z routes only
-		// through a focused block or the editor root, so a block is focused first.
+		// One undo restores the whole document. Ctrl+Z routes only through a focused block or the
+		// editor root, so a block is focused first.
 		await editor.clickBlock(0);
 		await editor.undo();
 		await editor.bridge.waitForSourceContains('foo three');
@@ -79,6 +79,29 @@ test.describe('search: replace', () => {
 		expect(source).toContain('21/06/2026');
 		expect(source).toContain('31/12/1999');
 	});
+
+	// Both replace buttons disable once no match is left, and a disabled button can't hold focus.
+	for (const [button, tabs] of [
+		['Replace', 1],
+		['All', 2]
+	] as const) {
+		test(`${button} from the keyboard that leaves no match hands focus to the replace field`, async ({
+			page
+		}) => {
+			await editor.loadContent('foo one\n');
+			await openReplace(editor);
+			await findInput(page).click();
+			await typeQuery(editor, 'foo');
+			await replaceInput(page).click();
+			await page.keyboard.type('bar');
+			for (let i = 0; i < tabs; i++) await page.keyboard.press('Tab');
+			await expect(page.getByRole('button', { name: button, exact: true })).toBeFocused();
+
+			await page.keyboard.press('Enter');
+			await editor.bridge.waitForSourceContains('bar one');
+			await expect(replaceInput(page)).toBeFocused();
+		});
+	}
 });
 
 test.describe('search: tables', () => {

@@ -40,6 +40,17 @@
 		if (search.isOpen) findInput?.focus();
 	});
 
+	// The steps and the replace buttons disable once no match is left, and a disabled button
+	// can't keep focus, so focus moves to the field in the same row.
+	let barEl = $state<HTMLElement>();
+	$effect(() => {
+		if (search.matches.length || !barEl) return;
+		const focused = barEl.ownerDocument.activeElement;
+		if (focused instanceof HTMLButtonElement && focused.disabled && barEl.contains(focused)) {
+			focused.closest('.search-row')?.querySelector('input')?.focus();
+		}
+	});
+
 	function onFindKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
 			e.preventDefault();
@@ -62,7 +73,7 @@
 </script>
 
 {#if search.isOpen}
-	<div class="search-bar" role="search">
+	<div class="search-bar" role="search" bind:this={barEl}>
 		<div class="search-row">
 			<button
 				type="button"
@@ -86,7 +97,11 @@
 					onkeydown={onFindKeydown}
 					aria-label={SEARCH_FIND}
 				/>
-				<span class="search-count" class:error={!!search.error} title={search.error ?? undefined}
+				<span
+					class="search-count"
+					class:error={!!search.error}
+					role="status"
+					title={search.error ?? undefined}
 					>{#if search.error}
 						{search.error}
 					{:else if !search.query}
@@ -272,8 +287,9 @@
 		font-variant-numeric: tabular-nums;
 		color: var(--color-ui-muted, #93938d);
 	}
+	/* Out of the flow rather than hidden, so the live region is there before its first count. */
 	.search-count:empty {
-		display: none;
+		position: absolute;
 	}
 	.search-count.error {
 		color: var(--color-error, #e06c75);

@@ -24,6 +24,18 @@ test.describe('search: open and close', () => {
 		await expect(findInput(page)).toBeFocused();
 	});
 
+	// A live region that mounts already holding text is often never read out, so the readout's
+	// status has to sit in the accessibility tree, empty, before the first count arrives.
+	test('the readout is a status a screen reader hears from the first count', async ({ page }) => {
+		await openFind(editor);
+		const status = page.locator('.search-bar').getByRole('status');
+		await expect(status).toHaveCount(1);
+		await expect(status).toHaveText('');
+
+		await typeQuery(editor, 'alpha');
+		await expect(status).toHaveText(/1\s*\/\s*2/);
+	});
+
 	test('Ctrl+H opens the bar with the replace row expanded', async ({ page }) => {
 		await openReplace(editor);
 		await expect(replaceInput(page)).toBeVisible();

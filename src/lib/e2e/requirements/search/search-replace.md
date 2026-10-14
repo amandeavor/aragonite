@@ -19,6 +19,9 @@ replacement inside table cells.
 - Find counts matches inside table cells; the matching cells highlight.
 - Replace All fixes the text inside every matching table cell.
 - Single Replace on a table-cell match rewrites only that cell.
+- Replace or All pressed from the keyboard that leaves no match moves focus to the replace field,
+  since both buttons disable with no match left. Miss-analysis: the replace tests click with the
+  mouse and never check focus afterwards, so a button that disabled under focus stranded it.
 
 ## Pinned below the browser
 
