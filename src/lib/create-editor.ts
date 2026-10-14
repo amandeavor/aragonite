@@ -19,8 +19,8 @@ export type CreateEditorOptions = Omit<EditorProps, 'header'> & {
 
 /** The mounted editor's methods, plus the two a Svelte host gets from the component itself. */
 export interface EditorHandle extends EditorInstance {
-	/** New values for any options. An unchanged value does nothing, a key passed as `undefined`
-	 *  clears it, and `plugins`, `syntax` and `scrollMode`, read at mount only, are ignored. */
+	/** New values for any options: an unchanged one does nothing, `undefined` clears one (`source`
+	 *  keeps the document), and the mount-only `plugins`, `syntax` and `scrollMode` are ignored. */
 	update(options: Partial<CreateEditorOptions>): void;
 	/** Unmounts the editor, taking out of `target` what it added; a second call does nothing. */
 	destroy(): void;

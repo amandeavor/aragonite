@@ -448,7 +448,7 @@ editor.update({ theme: 'dark' });
 editor.destroy();
 ```
 
-`update` takes any subset of the options and works like handing a component new props: an unchanged value does nothing, so passing every option again on each render is fine, and a key set to `undefined` clears it. The three set-once props (`plugins`, `syntax`, `scrollMode`) are ignored after mount. Call `destroy` before you throw the element away; anything the editor still had in flight then lands nowhere and fires no event.
+`update` takes any subset of the options and works like handing a component new props: an unchanged value does nothing, so passing every option again on each render is fine, and a key set to `undefined` clears it. Except `source`: the editor keeps the document it has (empty it with `''`). The three set-once props (`plugins`, `syntax`, `scrollMode`) are ignored after mount. Call `destroy` before you throw the element away; anything the editor still had in flight then lands nowhere and fires no event.
 
 Your bundler doesn't need a Svelte plugin for this. Without one it gets the package's prebuilt build, which has Svelte compiled in, so there's one more stylesheet to import (see [Theming](#theming)):
 

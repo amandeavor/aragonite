@@ -81,6 +81,14 @@ describe('createEditor', () => {
 		expect(hinted()).toBeUndefined();
 	});
 
+	it('keeps the document for a source passed as undefined', async () => {
+		const { editor } = create({ source: '# Kept\n' });
+
+		await update(editor, { source: undefined });
+
+		expect(editor.getSource()).toBe('# Kept\n');
+	});
+
 	it('ignores plugins passed after mount', async () => {
 		const { editor } = create({ source: '$$\nx\n$$\n' });
 		const catalogue = editor.getInsertCatalogue().length;
