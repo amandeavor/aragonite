@@ -18,7 +18,7 @@ This is gonna be a long one, so here are the sections:
 | [The public surface](#the-public-surface)                     | What the package exports, and what the version number promises about it                                        |
 | [Props](#props)                                               | Every prop, and which ones you can change after mount                                                          |
 | [The instance surface](#the-instance-surface)                 | The methods on a mounted editor: read the document, move the caret, run commands                               |
-| [Mounting without Svelte](#mounting-without-svelte)           | `createEditor`, for an app that doesn't render Svelte components                                               |
+| [Mounting without Svelte](#mounting-without-svelte)           | `createEditor` and the React component, for an app that doesn't render Svelte components                       |
 | [Events](#events)                                             | The eight channels an editor reports on, and what each one carries                                             |
 | [Presentation modes](#presentation-modes)                     | One document shown five ways, from raw Markdown to fully rendered                                              |
 | [Images and links](#images-and-links)                         | Rewriting URLs, importing pasted images, and which URLs the editor refuses to load                             |
@@ -456,6 +456,46 @@ Your bundler doesn't need a Svelte plugin for this. Without one it gets the pack
 import '@voithos-labs/aragonite/style.css';
 import '@voithos-labs/aragonite/styles/editor-theme.css';
 ```
+
+### React
+
+There's a React component on top of `createEditor`, in its own package. It peers the core at the exact same version (they release together), so install both:
+
+```powershell
+npm install @voithos-labs/aragonite @voithos-labs/aragonite-react
+```
+
+```tsx
+import { useRef, useState } from 'react';
+import { Aragonite, type EditorHandle } from '@voithos-labs/aragonite-react';
+import '@voithos-labs/aragonite/style.css';
+import '@voithos-labs/aragonite/styles/editor-theme.css';
+
+function Note() {
+	const [text, setText] = useState('# Grocery list\n\n- eggs\n- more eggs\n');
+	const editor = useRef<EditorHandle>(null);
+
+	return (
+		<Aragonite
+			ref={editor}
+			value={text}
+			onChange={setText}
+			theme="light"
+			header={<input placeholder="Title" />}
+			style={{ height: '70vh' }}
+		/>
+	);
+}
+```
+
+The props are the editor's [props](#props), plus a few React ones:
+
+- `value` and `onChange` keep the document in your state. `onChange` gets the whole Markdown after every edit (undo and redo included). Hand back what it gave you and nothing happens; hand back anything else and it loads as a new document, which clears undo.
+- `defaultValue` is the document to start with if you'd rather not hold it in state. `onChange` still reports every edit, or read it through the ref when you need it.
+- `header` is a React node, rendered above the first block.
+- `className` and `style` go on the element the editor mounts into. Give it a height and the editor scrolls inside it (or let your page scroll it, see [Host scroll mode](#host-scroll-mode)).
+
+The ref is the same handle `createEditor` returns, and it's `null` until the editor mounts. Plugins go in `plugins` as usual. Every bundled plugin works here, and so does any plugin that doesn't ship Svelte components of its own; one that does (a custom block, say) needs a bundler that compiles Svelte. The component is marked `'use client'`, so in Next you can render it from a server component too. It mounts in the browser.
 
 ## Events
 
