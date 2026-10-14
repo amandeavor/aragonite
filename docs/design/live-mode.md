@@ -330,7 +330,7 @@ How the join reads its bytes:
 
 What arrives here:
 
-- Backspace merges, a Delete merge (a Delete at a hidden run inside one block is § 4.4's press instead), range deletes, typing over a selection, cut, a drag's cut, a paste or an IME composition over a selection, the removal a line break over a selection makes first, and a widget or a decoration taken out whole.
+- Backspace merges, a Delete merge (a Delete at a hidden run inside one block is § 4.4's press instead), range deletes, typing over a selection, cut, a drag's cut, a paste or an IME composition over a selection, the removal a line break over a selection makes first, a widget or a decoration taken out whole, and anything a popover or an inline menu writes over a range (an image's Remove button, a link card's edit, a menu pick).
 - Inside one block they're all one function, `tree-operations/leaf-range.ts` :: `replaceRangeInLeaf(node, range, text, store)`, which re-expresses the edit as a join of what survives on either side with `text` between them. The range delete is the exception for now: it still builds its own join and calls `cleanJoinedRaw` itself, until it moves onto the same function. A merge's join of two blocks is `replaceRangeInLeaf`'s sibling in the same file, `joinLeaves`.
 - The range it rewrites comes off the event, since a word or line delete reports one at a collapsed caret where the selection is empty, and every editable prose surface takes that branch rather than keeping its own list of input types.
 
