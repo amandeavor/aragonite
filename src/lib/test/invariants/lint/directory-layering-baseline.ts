@@ -278,6 +278,7 @@ export const TYPE_EDGES: readonly string[] = [
 	'inline-menu -> components',
 	'inline-menu -> editor-events.ts',
 	'inline-menu -> menu-icons.ts',
+	'inline-menu -> plugin-view.ts',
 	'inline-menu -> presentation-mode.ts',
 	'inline-menu -> selection',
 	'invariants -> selection',

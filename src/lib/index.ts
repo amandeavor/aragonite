@@ -142,8 +142,7 @@ export type {
 	InlineMenuSourceHandle,
 	InlineMenuItem,
 	InlineMenuQuery,
-	InlineMenuRowProps,
-	InlineMenuDomRow
+	InlineMenuRowProps
 } from './inline-menu/types';
 
 // ── Insert catalogue ───────────────────────────────────────────────────────────
