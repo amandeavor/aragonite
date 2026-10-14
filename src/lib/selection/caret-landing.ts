@@ -146,7 +146,7 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 		const target = caretTargetFor(deps.getDoc(), pos, open);
 		if (!target) return 'unresolvable';
 		const component = await descendTo(deps.root, target.leafPath, { ...open, current: at(stamp) });
-		// The descent stops early once the tree is gone; this says so instead of 'unresolvable'.
+		// A descent cut short by a swap reports 'stale', not 'unresolvable'.
 		if (generation !== stamp) return 'stale';
 		if (!component) return 'unresolvable';
 		deps.caretMemory.forget();
@@ -171,7 +171,8 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 					caretWriter: deps.caretWriter,
 					caretMemory: deps.caretMemory,
 					mount: (path) => descendTo(deps.root, path, { current: at(stamp) }),
-					reveal: (path) => bringIntoView(path, reveal)
+					reveal: (path) => bringIntoView(path, reveal),
+					current: at(stamp)
 				});
 			}
 			const doc = deps.getDoc();

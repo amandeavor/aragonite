@@ -721,7 +721,7 @@ moment, and a caret landing stops at its next await rather than read the torn-do
 asserted, since a host unmounting mid-write is ordinary. `editor-actions/commit/reading-write-gate.ts
 :: admitsWrite`, `editor-actions/commit/document-stamp.ts :: end`, `block-lists/child-list.ts ::
 descendTo` · `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/document-stamp.test.ts`,
-`block-lists/child-list.test.ts`.
+`block-lists/child-list.test.ts`, `selection/caret-landing.test.ts`.
 
 ## Group 2: property and regression tested
 
