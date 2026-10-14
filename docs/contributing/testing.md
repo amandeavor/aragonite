@@ -854,8 +854,7 @@ from the packed tarball, importing only published entry points. It's a test, not
 4. runs the example's own Playwright specs: the page server-renders without a 5xx, hydrates with
    no console errors and takes a keystroke, the editor's text has readable contrast against the
    page on every route, the plugins page mounts the bundled plugins through their subpaths plus a
-   copy of the callout fixture (compiled by the example, so it breaks if a Svelte app ever gets
-   the prebuilt build), and the editor's dev-only warnings still fire under a consumer's
+   copy of the callout fixture, and the editor's dev-only warnings still fire under a consumer's
    `vite dev`
 
 To run the example yourself, from a fresh clone (same commands in bash and PowerShell):

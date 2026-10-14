@@ -761,7 +761,7 @@ Both renderers are optional; without one, each formula or diagram shows its sour
 
 The module owns its CSS. Two stylesheets ship under `styles/`:
 
-- **`editor.css`**: the structural rules. In a Svelte app the component imports it itself, so there's nothing to do. A bundler with no Svelte plugin gets the prebuilt build instead, and that needs `@voithos-labs/aragonite/style.css` imported once: it's `editor.css` plus every component's own styles, bundled plugins included.
+- **`editor.css`**: the structural rules. In a Svelte app the component imports it itself, so there's nothing to do. A bundler with no Svelte plugin gets the prebuilt build instead, and that needs `@voithos-labs/aragonite/style.css` imported once. It's `editor.css` plus every component's own styles, bundled plugins included.
 - **`editor-theme.css`**: the default token palette, light and dark. Import it for the default look, or replace it wholesale to retheme. It's the authoritative manifest, so read it for the exact token set and values rather than trusting a copy in a doc. This one included.
 
 No font ships, so the `--font-*` tokens resolve to whatever your page provides, or to their fallback stacks. (The showcase at aragonite.dev loads Inter and JetBrains Mono itself, in case you're wondering why it looks nicer than your first mount.)
