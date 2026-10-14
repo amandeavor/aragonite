@@ -794,14 +794,14 @@ One corner of it you'll prob want anyway is inline code, which reads three token
 
 The hint in an empty block (the `placeholder` prop) reads `--md-placeholder-color`. It follows `--color-ui-muted` until you set it at `.editor`.
 
-The caret the editor draws (the `caret` prop) is `--md-caret-color`, which follows `--color-text-primary`, and it blinks every `--md-caret-blink` (`1.06s`, about the browser's own). Its shape shows the format the next letter you type will get, and the shapes stack, so bold italic is a slanted heavy bar:
+The caret the editor draws (the `caret` prop) takes the color of the text it's standing in, like the browser's own caret does, so it's green inside a green link. Set `--md-caret-color` if you'd rather it be one color everywhere. It blinks every `--md-caret-blink` (`1.06s`, about the browser's own). Its shape shows the format the next letter you type will get, and the shapes stack, so bold italic is a slanted heavy bar:
 
 - `--md-caret-width` (`1px`): the plain bar
 - `--md-caret-strong-width` (`3px`): bold, a heavier bar growing right from where the plain one is
 - `--md-caret-slant` (`-12deg`): italic, the bar leaning right like italic type, its foot staying put
 - `--md-caret-strike-width` (`13px`): strikethrough, a 2px tick across the bar, just below its middle
 
-Set any of these at `.editor`. The bar the editor lays across a gap between blocks (the caret that sits between, say, a table and a code block, where there's nothing to type into) takes `--color-text-secondary` instead. A reader with reduced motion gets a caret that doesn't blink.
+Set any of these at `.editor`. Each width rounds down to whole screen pixels (never under one), so the bar stays sharp on a 125% display, where `1px` would otherwise smear across two. The bar the editor lays across a gap between blocks (the caret that sits between, say, a table and a code block, where there's nothing to type into) takes `--color-text-secondary` instead. A reader with reduced motion gets a caret that doesn't blink.
 
 **A host-chrome token you leave undeclared falls back.** If your host skips the `aragonite-editor-theme` class, declare the whole host-chrome table: anything you leave out resolves to the inline fallback its reads carry (`var(--color-ui-muted, #93938d)`), which is a dark-mode value whatever mode your page is in. The exception is `--color-text-primary` where the text sits on your page: it falls back to `currentColor`, so it inherits your page's own color instead of painting white on it. A menu paints its own dark surface, so its text keeps the dark-mode value.
 
