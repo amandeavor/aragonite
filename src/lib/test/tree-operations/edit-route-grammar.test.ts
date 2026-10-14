@@ -71,14 +71,16 @@ describe('an edit route reparses in the editor grammar', () => {
 	// A context with no join cleanup, as the insertMarkdown route builds one: the split halves
 	// still read the dispatch's own grammar.
 	it('a structural paste that splits an indented paragraph leaves both halves prose', async () => {
-		const { deps } = makeEditorActionsDeps(read('    lead tail\n'));
+		// One reading for the editor and the paste, as an editor hands both the same one.
+		const reading = fixtureReading({ grammar: noIndentedCode });
+		const { deps } = makeEditorActionsDeps(read('    lead tail\n'), { reading });
 		await pasteDispatch(
 			{ pastedText: 'a\n\nb\n', targetPath: [0], offset: '    lead'.length },
 			pasteContext({
 				doc: deps.doc,
 				blockEdit: makeStubBlockEdit(),
 				controller: createPasteCoordinator(deps, createUndoController(deps)),
-				reading: fixtureReading({ grammar: noIndentedCode })
+				reading
 			})
 		);
 		expect(kindsOf(deps.doc.children)).not.toContain('indentedCode');

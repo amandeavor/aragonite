@@ -248,7 +248,7 @@ These checks run in three kinds of place:
 | G1.52 | The text `getSource()` serves for an unchanged content version is the document             | A·N     |
 | G1.53 | _Retired_: a stale write is refused quietly at the write gate, with nothing left to assert | none    |
 | G1.54 | A commit's mutation leaves the tree's own top-level array as it found it                   | A·N     |
-| G1.55 | A top-level container an edit rebuilt reads back, on its own, as the tree it holds         | A·N     |
+| G1.55 | A top-level block an edit wrote reads back, on its own, as the tree it holds               | A·N     |
 | G1.58 | An indent key over a range keeps every word it holds, in order                             | A·N     |
 | G1.61 | A list move keeps the order its text reads in                                              | A·P·N   |
 | G1.71 | A command key over a range runs in the kind of block whose keymap claimed it               | A·N     |
@@ -646,14 +646,16 @@ armed). Predicate `invariants/top-level-untouched.ts :: checkTopLevelUntouched` 
 `editor-actions/commit/undo-controller.ts` · `test/invariants/top-level-untouched.test.ts`,
 `test/perf/top-level-splice-writes.test.ts`.
 
-**G1.55 · A rebuilt container reads back as itself** (`reads-back`). After a keystroke's rebuild
-and after every commit, dev parses each top-level container the edit wrote in, on its own, and
-compares the shape (kinds, child counts, metadata) with the tree's; a dropped leading space that
-re-nests a list passes every byte check and fails this one. It reads the bytes the way the editor
-opens a file (`schema/opened-reading.ts :: readAsOpened`), so a bare `- ` reads back with
-the empty paragraph you type into, and a container left with no bytes at all fails, since a reload
-wouldn't show it. The edit names those containers itself, so the check never searches the document.
-It skips a container over 16K characters and anything the perf instruments time. Predicate
+**G1.55 · A written block reads back as itself** (`reads-back`). After a keystroke's rebuild and
+after every commit, dev parses each top-level block the edit wrote in, on its own, and compares the
+shape (kinds, child counts, metadata) with the tree's; a dropped leading space that re-nests a list
+passes every byte check and fails this one, and so does a paragraph whose bytes reload as a
+heading. A keystroke at the top level isn't checked, since its write already takes the kind a
+reparse gives. It reads the bytes the way the editor opens a file
+(`schema/opened-reading.ts :: readAsOpened`), so a bare `- ` reads back with the empty paragraph
+you type into, and a container left with no bytes at all fails, since a reload wouldn't show it.
+The edit names those blocks itself, so the check never searches the document. It skips a block over
+16K characters and anything the perf instruments time. Predicate
 `invariants/reads-back.ts :: checkReadsBack` · run by `editor-actions/leaf-write.ts` and
 `editor-actions/commit/undo-controller.ts` · `test/invariants/reads-back.test.ts`.
 
