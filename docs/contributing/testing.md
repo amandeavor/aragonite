@@ -25,7 +25,7 @@ Where to jump:
 - [The consumer smoke](#the-consumer-smoke): the example app that installs the packed tarball,
   what CI checks with it, and how to run it yourself.
 - [The adapter suite](#the-adapter-suite): the same idea for the framework wrappers, one suite
-  over a React app and a Next app.
+  over React, Next, Vue and Nuxt apps.
 - The performance harness (fixtures, instruments, threshold policy) lives in
   `docs/design/performance.md` § The numbers and the gate.
 - The debug panel, its console helpers, and dumping editor state inside a test are in
@@ -883,11 +883,13 @@ The framework wrappers (`packages/*`) get the consumer smoke's treatment, with o
 app renders the same page (the editor, a mirror of the value, load and revert buttons, a theme
 toggle, an unmount toggle, a header input), so one spec directory in `examples/adapter-suite/`
 drives all of them. The page is spelled out in `examples/adapter-suite/requirements/page-contract.md`.
-The apps today are `examples/react` (Vite, built and in dev, plus a React 18 build of it) and
-`examples/next` (server rendered).
+The apps today are `examples/react` and `examples/vue` (Vite, each built and in dev, plus a build
+on the oldest React or Vue the wrapper supports), and `examples/next` and `examples/nuxt` (server
+rendered). `examples/adapter-suite/apps.mjs` lists every project: its app, port, the specs it
+runs, and whether it gates each PR. A new app goes in there, or a lint test fails (G4.187).
 
 `scripts/adapter-smoke.mjs` packs the core and every wrapper, installs the tarballs into each app,
-checks no Svelte came along, builds the apps and runs the suite. CI runs the React projects on
+checks no Svelte came along, builds the apps and runs the suite. CI runs the `perPr` projects on
 every PR (`--per-pr`) and everything on the release PR into `main`. To iterate on one project
 once its app is built (`npm run package` at the root, then `npm install` and `npm run build` in
 the app), name it in `ADAPTER_PROJECTS`, since the config starts a server for every app it's
@@ -900,3 +902,5 @@ ADAPTER_PROJECTS=react npx playwright test -c examples/adapter-suite/playwright.
 ```powershell
 $env:ADAPTER_PROJECTS = 'react'; npx playwright test -c examples/adapter-suite/playwright.config.ts
 ```
+
+Heads up if you're mutating a wrapper to see what reds: outside CI the config reuses any server already on an app's port, so one left over from an earlier run keeps serving the old build. Stop it first, or set `CI=1` for the run.

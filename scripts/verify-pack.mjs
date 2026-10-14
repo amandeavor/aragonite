@@ -1,26 +1,26 @@
 // Packs the library and gates the tarball: every published path must be present, and no
-// test/e2e/spec file may ship. Run after `npm run package`. REQUIRED is derived from
-// package.json `exports` (pack-manifest.mjs), not hand-maintained, so a new plugin subpath
-// can't be published-but-unbuilt without this failing.
+// test/e2e/spec file may ship. Run after `npm run package`. REQUIRED comes from package.json
+// `exports` (pack-manifest.mjs), so a new plugin subpath can't ship unbuilt.
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { nodeImportFailures } from './node-import.mjs';
 import { collectLeafStrings, requiredPackPaths } from './pack-manifest.mjs';
 import { verifyPrebuilt } from './verify-prebuilt.mjs';
 
-// `npm pack --json` reports files[].path relative to the package root (e.g.
-// `dist/index.js`) — NOT prefixed with `package/`.
+// `npm pack --json` reports files[].path relative to the package root (`dist/index.js`), with no
+// `package/` prefix.
 const REQUIRED = requiredPackPaths();
 
-// Non-vacuity: a broken derivation must fail loud here, never silently green-light an
-// unchecked tarball. The anchors are the two entry points every build ships.
+// A broken derivation fails here rather than passing an unchecked tarball. The anchors are the two
+// entry points every build ships.
 if (
 	REQUIRED.length === 0 ||
 	!REQUIRED.includes('dist/index.js') ||
 	!REQUIRED.includes('dist/plugin.js')
 ) {
 	console.error(
-		'verify-pack: derived REQUIRED is empty or missing anchor paths — check package.json exports'
+		'verify-pack: derived REQUIRED is empty or missing anchor paths; check package.json exports'
 	);
 	process.exit(1);
 }
@@ -38,15 +38,14 @@ function packedPaths(json) {
 	return Array.isArray(files) ? files.map((f) => f.path) : [];
 }
 
-// --ignore-scripts: without it the `prepack` script re-fires and its stdout corrupts the
-// --json output. execSync (shell) so the win32 `npm` → `npm.cmd` resolution works.
+// --ignore-scripts, or the `prepack` script runs again and its output corrupts the JSON. A shell, so
+// Windows resolves `npm` to `npm.cmd`.
 const out = execSync('npm pack --dry-run --json --ignore-scripts', { encoding: 'utf8' });
 const files = packedPaths(out);
 
-// Non-vacuity: an unreadable pack report would make every check below pass over an empty
-// list. A real tarball always ships files.
+// An unreadable pack report would pass every check below over an empty list.
 if (files.length === 0) {
-	console.error('verify-pack: `npm pack --json` reported no files — unrecognized output shape?');
+	console.error('verify-pack: `npm pack --json` reported no files; unrecognized output shape?');
 	process.exit(1);
 }
 
@@ -86,8 +85,9 @@ console.log(
 );
 
 /**
- * A wrapper's tarball holds every path its `exports` names, and a React wrapper's entries open
- * with `'use client'`, so a Next server component can render them. Run after the wrapper builds.
+ * A wrapper's tarball holds every path its `exports` names, each entry imports in Node with no DOM
+ * as a server render does, and a React wrapper's entries open with `'use client'`, so a Next server
+ * component can render them. Run after the wrapper builds.
  * @param {string} dir
  * @returns {string[]}
  */
@@ -103,6 +103,7 @@ function verifyWrapper(dir) {
 		.map((target) => target.replace(/^\.\//, ''))
 		.filter((target) => !packed.includes(target))
 		.map((target) => `${pkg.name} ships no ${target}`);
+	failures.push(...nodeImportFailures(dir));
 	if (pkg.peerDependencies?.react) {
 		for (const entry of named.filter((target) => target.endsWith('.js'))) {
 			const file = path.join(dir, entry);

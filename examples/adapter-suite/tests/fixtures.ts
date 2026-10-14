@@ -1,5 +1,8 @@
-// Fails a test on any console error, page error or aragonite dev warning the page produced.
+// Fails a test on any console error, page error, aragonite dev warning or Vue warning the page
+// produced.
 import { test as base, expect, type Page } from '@playwright/test';
+
+const WARNINGS = /\[aragonite:|\[Vue warn\]/;
 
 export const test = base.extend<{ problems: string[] }>({
 	problems: [
@@ -7,8 +10,8 @@ export const test = base.extend<{ problems: string[] }>({
 			const problems: string[] = [];
 			page.on('pageerror', (error) => problems.push(String(error)));
 			page.on('console', (message) => {
-				const ours = message.type() === 'warning' && message.text().includes('[aragonite:');
-				if (message.type() === 'error' || ours) problems.push(message.text());
+				const warned = message.type() === 'warning' && WARNINGS.test(message.text());
+				if (message.type() === 'error' || warned) problems.push(message.text());
 			});
 			await use(problems);
 			expect(problems, `console or page errors:\n${problems.join('\n')}`).toEqual([]);
@@ -30,3 +33,18 @@ export async function caretAtEnd(page: Page, text: string): Promise<void> {
 }
 
 export const mirror = (page: Page) => page.getByTestId('mirror');
+
+/** Every listener on `window` and `document`, as `target:type`, sorted. Chromium only. */
+export async function pageListeners(page: Page): Promise<string[]> {
+	const cdp = await page.context().newCDPSession(page);
+	const found: string[] = [];
+	for (const target of ['window', 'document']) {
+		const { result } = await cdp.send('Runtime.evaluate', { expression: target });
+		const { listeners } = await cdp.send('DOMDebugger.getEventListeners', {
+			objectId: result.objectId!
+		});
+		found.push(...listeners.map((listener) => `${target}:${listener.type}`));
+	}
+	await cdp.detach();
+	return found.sort();
+}

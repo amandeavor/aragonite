@@ -166,7 +166,8 @@ and its tests, and keep the number. The row stays, marked retired, saying what s
 ## Reading the catalog
 
 Enforcement codes, used in every index table: `A` runtime DEV assertion · `P` property test
-(fast-check) · `N` negative fixture · `T` compile-time type guard · `L` lint/source-scan · `D` doc.
+(fast-check) · `N` negative fixture · `T` compile-time type guard · `L` lint/source-scan · `D` doc
+· `harness` a test harness or gate script that runs the code (a conformance kit, the adapter smoke).
 
 Predicates live in `src/lib/invariants/`; property tests and their arbitraries (the random-CST
 generators fast-check draws from) in `src/lib/test/invariants/`, run by
@@ -260,6 +261,7 @@ These checks run in three kinds of place:
 | G1.91 | A live removal keeps the marks on the visible characters it keeps                          | P·N     |
 | G1.94 | One editor per mount target: a second `createEditor` there before `destroy` warns in dev   | A       |
 | G1.96 | A plugin's widget, decoration or row view mounts once, updates in place, is destroyed once | N       |
+| G1.97 | A value a Vue app holds in reactive state reaches the editor unwrapped                     | harness |
 
 ### The entries
 
@@ -765,6 +767,14 @@ stays put (a decoration widget is drawn afresh with its block, so a throwing one
 rebuild). `plugins/view/lifecycle.test.ts` and `plugins/view/failure.test.ts` run every slot, the
 first against a DOM view and a Svelte one; G4.186 holds new routes to the wrapper.
 
+**G1.97 · Vue hands over the real object.** A value a Vue app keeps in `ref` or `reactive` reaches
+a component as a Vue proxy. The editor keeps a plugin by identity, so a proxied plugin and the
+imported one would count as two plugins of one name. The Vue wrapper passes every option through
+`toRaw` in its one options builder, and each `plugins` entry and the plugin inside it too, since a
+plain list built from reactive state still holds proxies. The adapter suite's `vue.spec.ts` mounts
+editors sharing a plugin, three of them taking it out of reactive state in those shapes, and fails
+on the `plugin-install` warning a proxy would raise.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -880,20 +890,21 @@ holding a table. `shape-fixed-point.property.test.ts`.
 The strongest level: the violation doesn't compile. Enforced by `npm run check`. Each entry says
 what the type retired.
 
-| ID    | What no longer compiles                                                           | Codes |
-| ----- | --------------------------------------------------------------------------------- | ----- |
-| G3.1  | An untyped metadata access (`as` cast) on a block node                            | T     |
-| G3.2  | A component publishing anything but the three allowed export shapes               | T     |
-| G3.3  | A cell selection point where a character point belongs, or the reverse            | T     |
-| G3.4  | A magic number standing in for "end of block"                                     | T     |
-| G3.5  | A container without a declared contract                                           | T     |
-| G3.6  | A container registration missing its rebuild, or a leaf claiming container fields | T     |
-| G3.7  | Arithmetic across two different coordinate spaces                                 | T     |
-| G3.8  | A reader writing a node's serialized bytes                                        | T     |
-| G3.9  | Forgetting one part of what the caret means without the others                    | T     |
-| G3.10 | A registration pairing fields that can't mean anything together                   | T     |
-| G3.11 | An editor prop with no word on whether it can change after mount                  | T     |
-| G3.12 | A React wrapper prop that isn't an editor option, or hides one                    | T     |
+| ID    | What no longer compiles                                                              | Codes |
+| ----- | ------------------------------------------------------------------------------------ | ----- |
+| G3.1  | An untyped metadata access (`as` cast) on a block node                               | T     |
+| G3.2  | A component publishing anything but the three allowed export shapes                  | T     |
+| G3.3  | A cell selection point where a character point belongs, or the reverse               | T     |
+| G3.4  | A magic number standing in for "end of block"                                        | T     |
+| G3.5  | A container without a declared contract                                              | T     |
+| G3.6  | A container registration missing its rebuild, or a leaf claiming container fields    | T     |
+| G3.7  | Arithmetic across two different coordinate spaces                                    | T     |
+| G3.8  | A reader writing a node's serialized bytes                                           | T     |
+| G3.9  | Forgetting one part of what the caret means without the others                       | T     |
+| G3.10 | A registration pairing fields that can't mean anything together                      | T     |
+| G3.11 | An editor prop with no word on whether it can change after mount                     | T     |
+| G3.12 | A React wrapper prop that isn't an editor option, or hides one                       | T     |
+| G3.13 | A Vue wrapper prop that isn't an editor option, or a boolean Vue would read as false | T     |
 
 ### The entries
 
@@ -971,6 +982,14 @@ compileTimePins` holds the `@ts-expect-error`.
 `packages/react/src/aragonite.tsx` fails to compile when any other prop appears, or when an editor
 option takes one of those React names, and the wrapper forwards every prop outside that list to
 `update`. The wrapper compiles in `npm run package`, so that's the gate here, not `npm run check`.
+
+**G3.13 · The Vue props are the editor's options.** Vue needs every prop named at runtime, so
+`packages/vue/src/aragonite.ts` declares them in one object typed against `AragoniteProps`
+(`CreateEditorOptions` with `source` swapped for `modelValue` and `defaultValue`, and the header a
+slot). A missing or extra key fails to compile, and so does a boolean option declared without
+`default: undefined` (Vue would read it as `false` when absent, overriding the editor's default).
+A second pin fails when an editor option takes a Vue-only name or `class`, `style`, `key` or `ref`.
+`npm run package` compiles it.
 
 ## Group 4: source scans
 
@@ -1134,6 +1153,8 @@ unguarded.
 | G4.183 | An app that doesn't compile Svelte installs no Svelte                                     | harness |
 | G4.184 | The editor's own reset sets everything the demo app's global reset does                   | L       |
 | G4.186 | A plugin's widget, decoration or row view is drawn only through `mountPluginView`         | L       |
+| G4.187 | Every framework app under `examples/` runs in the adapter suite                           | L       |
+| G4.188 | Every wrapper entry imports in Node with no DOM, as a server render does                  | harness |
 
 ### The entries
 
@@ -2159,6 +2180,18 @@ itself: it hands the view to `plugin-view.ts :: mountPluginView`, the one place 
 throw, reports it once and destroys the view once (G1.96). `lint/file-rules.test.ts` fails a
 call on either field, or on a local named `view` or `row`, anywhere under `src/lib`; a local under
 another name is past a regex's reach.
+
+**G4.187 · Every framework app is tested.** `examples/adapter-suite/apps.mjs` lists the suite's
+projects, and `scripts/adapter-smoke.mjs` builds and installs whatever it lists. So an app under
+`examples/` with no entry there would never be installed from the tarballs or tested, and a spec
+no project names would never run. `lint/adapter-apps.test.ts` fails on either.
+
+**G4.188 · Wrappers import on a server.** A server render imports a wrapper before any browser
+exists, so each JS entry a wrapper's `exports` names must load in plain Node without touching the
+DOM or reading a value declared further down the file. `scripts/node-import.mjs ::
+nodeImportFailures` imports each one in a child Node process, and `scripts/verify-pack.mjs` runs it
+on every wrapper after the build. `lint/wrapper-node-import.test.ts` feeds it a clean entry and two
+broken ones.
 
 ## Accessibility
 
