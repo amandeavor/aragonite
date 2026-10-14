@@ -26,7 +26,7 @@
 </script>
 
 <script lang="ts">
-	import { Editor } from '#lib';
+	import { Editor } from '#lib/svelte.js';
 	import { trackParityDocument } from '../../../parity-documents.svelte';
 
 	let editorOne = $state<ReturnType<typeof Editor>>();

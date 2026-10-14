@@ -216,12 +216,8 @@ Your component supplies only its own chrome: the border, the title styling, an i
 ```svelte
 <!-- ConspiracyBlock.svelte -->
 <script lang="ts">
-	import {
-		BlockList,
-		createContainerBlock,
-		getPluginMetadata,
-		type NodeView
-	} from '@voithos-labs/aragonite/plugin';
+	import { getPluginMetadata, type NodeView } from '@voithos-labs/aragonite/plugin';
+	import { BlockList, createContainerBlock } from '@voithos-labs/aragonite/svelte';
 	import type { ConspiracyMetadata } from './conspiracy-kind';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
@@ -330,7 +326,7 @@ Pass the plugin to the editor's `plugins` prop. It installs before the seed pars
 </script>
 
 <script lang="ts">
-	import { Editor } from '@voithos-labs/aragonite';
+	import { Editor } from '@voithos-labs/aragonite/svelte';
 	import '@voithos-labs/aragonite/styles/editor-theme.css';
 
 	const SEED =

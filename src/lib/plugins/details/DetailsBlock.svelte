@@ -1,12 +1,8 @@
 <script lang="ts">
 	// The document's collapsed state comes from `reservedChrome.isCollapsed`; reading mode's
 	// temporary open state is passed to the factory on top of it, so windowing and focus agree.
-	import {
-		BlockList,
-		createContainerBlock,
-		isCollapsedContainer,
-		type NodeView
-	} from '#lib/plugin.js';
+	import { isCollapsedContainer, type NodeView } from '#lib/plugin.js';
+	import { BlockList, createContainerBlock } from '#lib/svelte.js';
 	import { createReaderDisclosure } from './details-disclosure.svelte';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();

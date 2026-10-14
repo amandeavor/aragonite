@@ -3,10 +3,10 @@
 import {
 	definePlugin,
 	registerBlockView,
-	svelteBlockView,
 	declaredPluginKind,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { registerMemoBlock, MEMO_BLOCK } from './memo-kind';
 import MemoBlock from './MemoBlock.svelte';
 

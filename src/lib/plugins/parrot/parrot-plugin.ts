@@ -3,13 +3,13 @@ import {
 	caretOffsetAtPoint,
 	declarePluginKind,
 	definePluginBlock,
-	svelteBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
 	type CaretTarget,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import ParrotBlock from './ParrotBlock.svelte';
 
 export const PARROT = 'parrot';

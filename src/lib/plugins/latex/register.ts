@@ -6,11 +6,11 @@
 import {
 	definePlugin,
 	registerBlockView,
-	svelteBlockView,
 	declaredPluginKind,
 	registerInsertEntry,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { registerMathInline, registerMathBlock, MATH_BLOCK, MATH_FENCE } from './latex-kind';
 import { mathSlot, type MathRenderer } from './math-renderer';
 import { isMathBlockLayout, type MathBlockLayout } from './math-layout';

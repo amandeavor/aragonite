@@ -4,12 +4,8 @@
  * runs unguarded.
  */
 
-import {
-	definePluginBlock,
-	svelteBlockView,
-	registerInsertEntry,
-	type EditorPlugin
-} from '#lib/plugin.js';
+import { definePluginBlock, registerInsertEntry, type EditorPlugin } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { registerMermaidKind, MERMAID } from './mermaid-kind';
 import { adaptMermaidRenderer, mermaidSlot, type MermaidRenderer } from './mermaid-renderer';
 import MermaidBlock from './MermaidBlock.svelte';

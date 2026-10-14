@@ -30,7 +30,8 @@
 </script>
 
 <script lang="ts">
-	import { Editor, type EditorInstance } from '@voithos-labs/aragonite';
+	import { type EditorInstance } from '@voithos-labs/aragonite';
+	import { Editor } from '@voithos-labs/aragonite/svelte';
 	import '@voithos-labs/aragonite/styles/editor-theme.css';
 	import { PLUGINS_SEED } from './seed';
 

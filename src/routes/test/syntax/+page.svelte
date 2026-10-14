@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Editor } from '#lib';
+	import { Editor } from '#lib/svelte.js';
 	import { describeConvergence } from '#lib/testing/parse-convergence.js';
 	import { trackParityDocument } from '../../parity-documents.svelte';
 

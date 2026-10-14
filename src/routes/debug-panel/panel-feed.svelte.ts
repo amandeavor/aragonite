@@ -4,7 +4,7 @@
  * replaces it, so a captured value goes stale.
  */
 
-import type { Editor } from '#lib';
+import type { Editor } from '#lib/svelte.js';
 import { parse, readBlocks } from '#lib/core/parser.js';
 import {
 	dumpTree,

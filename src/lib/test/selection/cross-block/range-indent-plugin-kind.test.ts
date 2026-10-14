@@ -14,12 +14,12 @@ import { pressKey } from '#lib/test/harness/settle.js';
 import {
 	augmentBlockKind,
 	definePluginBlock,
-	svelteBlockView,
 	registerBlockCommand,
 	registerBlockOpener,
 	registerRangeIndent,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import RevealLeafBlock from '../../blocks/fixtures/RevealLeafBlock.svelte';
 import { registerRevealLeafKind } from '../../blocks/fixtures/reveal-leaf';

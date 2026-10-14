@@ -1,7 +1,8 @@
 <script lang="ts">
 	// A render-primary editable leaf whose `singleLine` and painter are props, so one fixture
 	// drives both Enter contracts and the painted source, and the cases differ in nothing else.
-	import { createEditableLeaf, type NodeView } from '#lib/plugin.js';
+	import { type NodeView } from '#lib/plugin.js';
+	import { createEditableLeaf } from '#lib/svelte.js';
 
 	let {
 		node,

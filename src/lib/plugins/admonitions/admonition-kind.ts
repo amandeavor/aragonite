@@ -8,7 +8,6 @@ import {
 	containerClosure,
 	createDirectiveRebuild,
 	declarePluginKind,
-	svelteBlockView,
 	DIRECTIVE_BODY_WRAP,
 	registerBlockView,
 	registerBlockKind,
@@ -24,6 +23,7 @@ import {
 	type ParsedDirective,
 	type PluginBlockKind
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import {
 	ADMONITION,
 	ADMONITION_KINDS,

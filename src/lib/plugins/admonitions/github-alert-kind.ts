@@ -11,7 +11,6 @@ import {
 	containerClosure,
 	declarePluginKind,
 	declaredPluginKind,
-	svelteBlockView,
 	displayLines,
 	firstLineEnding,
 	getPluginMetadata,
@@ -29,6 +28,7 @@ import {
 	type OpenContext,
 	type ParsedLine
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { matchAlertMarker, stripQuoteMarker } from './gh-alert';
 import { GITHUB_ALERT, type GithubAlertMetadata } from './kinds';
 import AdmonitionBlock from './AdmonitionBlock.svelte';

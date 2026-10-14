@@ -10,7 +10,6 @@ import {
 	containerClosure,
 	declarePluginKind,
 	declaredPluginKind,
-	svelteBlockView,
 	getPluginMetadata,
 	isBlankLine,
 	isBlankText,
@@ -26,6 +25,7 @@ import {
 	type CstNode,
 	type OpenContext
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import FootnoteDefinition from './FootnoteDefinition.svelte';
 import { FOOTNOTE_DEF_KIND } from './constants';
 

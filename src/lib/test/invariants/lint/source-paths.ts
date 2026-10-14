@@ -10,6 +10,7 @@ export const SOURCE = {
 	// ── Published entry points and root modules ─────────────────────────────
 	publicBarrel: 'src/lib/index.ts',
 	pluginBarrel: 'src/lib/plugin.ts',
+	svelteBarrel: 'src/lib/svelte.ts',
 	testingBarrel: 'src/lib/testing.ts',
 	editorProps: 'src/lib/editor-props.ts',
 	blockComponentApi: 'src/lib/block-component.ts',
@@ -154,8 +155,9 @@ export const SOURCE = {
 /** Text each file must hold, so an entry pointed at the wrong real file fails too. */
 export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	// ── Published entry points and root modules ─────────────────────────────
-	publicBarrel: 'export { default as Editor }',
+	publicBarrel: 'export { createEditor',
 	pluginBarrel: 'export function highlightCode',
+	svelteBarrel: 'export { default as Editor }',
 	testingBarrel: 'export function applyPasteTransforms',
 	editorProps: 'export interface EditorOptions',
 	blockComponentApi: 'export interface BlockComponent ',

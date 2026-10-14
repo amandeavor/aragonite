@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import {
-		Editor,
-		svelteMenuRow,
 		type Decoration,
 		type DecorationSource,
 		type InlineMenuSource,
 		type PluginView
 	} from '#lib';
+	import { Editor, svelteMenuRow } from '#lib/svelte.js';
 	import type { KeybindingOverride } from '#lib/schema/keybinding-overrides.js';
 	import { installTestProbes } from '../editor/test-probes';
 	import { HarnessSource } from '../editor/harness-source.svelte';

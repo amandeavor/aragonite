@@ -1,7 +1,7 @@
-// The plugin-authoring API, published at the `@voithos-labs/aragonite/plugin` subpath. Only the
-// authoring API belongs here: not the `<Editor>` embedding barrel (index.ts), no test
-// helpers, no internal dispatch. Nothing is frozen before 1.0: a (pre-freeze) section may change
-// shape, and an untagged one keeps its model while its call shapes can still change.
+// The plugin-authoring API, published at the `@voithos-labs/aragonite/plugin` subpath: no embedding
+// API (index.ts), no test helpers, and no type that names Svelte's (those are on `/svelte`).
+// Nothing is frozen before 1.0: a (pre-freeze) section may change shape, and an untagged one keeps
+// its model while its call shapes can still change.
 
 import TextEditableBlock from './components/blocks/text/TextEditableBlock.svelte';
 import { registerChromeLeaf as bindChromeLeaf } from './editor-actions/plugin/chrome-leaf';
@@ -57,9 +57,8 @@ export type {
 
 // ── Plugin views ─────────────────────────────────────────────────────────────
 // The one shape an inline widget, a decoration widget and a menu row take: fill the element the
-// editor hands over, take new props through `update`. The helpers make one from a Svelte component.
+// editor hands over, take new props through `update`. `/svelte` makes one from a Svelte component.
 export type { PluginView, PluginViewHandle } from './plugin-view';
-export { svelteInlineWidget, svelteDecorationWidget, svelteMenuRow } from './svelte-views.svelte';
 
 // ── Block-kind descriptor registry ───────────────────────────────────────────
 // `BlockKindRegistration` is the shape you register; fields that only mean something together
@@ -92,10 +91,9 @@ export type {
 export { simpleLeafClosure, containerClosure } from './schema/closure';
 
 // ── Block views ──────────────────────────────────────────────────────────────
-// What draws a kind. `BlockView` is opaque: make one with `svelteBlockView`.
+// What draws a kind. `BlockView` is opaque: `svelteBlockView` on `/svelte` makes one.
 export { registerBlockView } from './schema/block-view-registry';
 export type { BlockView } from './schema/block-view-registry';
-export { svelteBlockView } from './components/svelte-block-view';
 export type { BlockComponent, BlockComponentExports, BlockComponentProps } from './block-component';
 
 // ── Parser-opener registry ───────────────────────────────────────────────────
@@ -276,16 +274,8 @@ export { isPasteTransformRegistered } from './tree-operations/paste/paste-transf
 export { isLanguageRegistered } from './components/blocks/code/code-languages';
 
 // ── Container-authoring API (pre-freeze) ─────────────────────────────────────
-// Lets a plugin build an editable nested container as thinly as the built-in
-// blockquote, without touching any editor context key.
-export { default as BlockList } from './components/BlockList.svelte';
-export { createContainerBlock } from './editor-actions/plugin/container';
-export type {
-	ContainerBlock,
-	ContainerBlockComponent,
-	ContainerBlockDeps,
-	ContainerBlockListProps
-} from './editor-actions/plugin/container';
+// The pieces a container plugin shares with the editor; `createContainerBlock` and `BlockList` are
+// on `/svelte`. `registerChromeLeaf` gives a container an editable title row.
 export type { Draft, DraftCloseCause, DraftSpec } from './schema/drafts';
 export type { RefSlots } from './block-lists/child-refs';
 export type { ChildList } from './block-lists/child-list';
@@ -305,17 +295,8 @@ export { chromeChild } from './editor-actions/plugin/chrome-leaf';
 // One definition of collapsed, shared by a component's getter and the traversals over the CST.
 export { isCollapsedContainer } from './schema/reserved-chrome';
 
-// ── Editable-leaf authoring API (pre-freeze) ─────────────────────────────────
-// A text-editing leaf with a built-in block's caret, IME, undo and selection: plain (a commit per
-// keystroke) or render-first (source while the caret is inside, one commit on blur).
-export { createEditableLeaf } from './components/blocks/editable/editable-leaf';
-export type {
-	EditableLeaf,
-	EditableLeafDeps,
-	EditableLeafMode,
-	EditableLeafSurfaceProps,
-	EditableLeafRenderProps
-} from './components/blocks/editable/editable-leaf';
+// ── Editable-leaf surface (pre-freeze) ───────────────────────────────────────
+// What a block built on `createEditableLeaf` (from `/svelte`) publishes.
 export type { EditableLeafBlockApi, StickyColumnDirection } from './block-component';
 
 // ── Directive authoring (pre-freeze) ─────────────────────────────────────────

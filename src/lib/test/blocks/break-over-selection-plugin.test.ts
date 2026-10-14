@@ -15,12 +15,12 @@ import { pressKey, settleEditor } from '#lib/test/harness/settle.js';
 import {
 	augmentBlockKind,
 	definePluginBlock,
-	svelteBlockView,
 	registerBlockCommand,
 	registerBlockOpener,
 	type BlockCommandContext,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import PlainOneLineLeafBlock from './fixtures/PlainOneLineLeafBlock.svelte';
 import { registerRevealLeafKind } from './fixtures/reveal-leaf';
 

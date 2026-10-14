@@ -5,11 +5,11 @@ import { expect } from 'vitest';
 import RevealLeafBlock from './RevealLeafBlock.svelte';
 import {
 	definePluginBlock,
-	svelteBlockView,
 	registerBlockOpener,
 	simpleLeafClosure,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import type { BlockKindRegistration } from '#lib/schema/block-kind-descriptor.js';
 import type { CstNode, Document, PluginBlockKind } from '#lib/core/nodes.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';

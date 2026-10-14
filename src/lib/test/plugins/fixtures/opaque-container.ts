@@ -6,9 +6,9 @@ import {
 	declaredPluginKind,
 	registerBlockKind,
 	registerBlockView,
-	svelteBlockView,
 	containerClosure
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import type { ContainerBlockComponent } from '#lib/block-component.js';
 import { makeStubBlockEdit } from '../../harness/editor-actions';

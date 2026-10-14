@@ -15,7 +15,8 @@ import {
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { dispatchKey } from '#lib/test/harness/settle.js';
 import { newestEntryCaret } from '../support/undo-entry';
-import { definePluginBlock, svelteBlockView, registerBlockOpener } from '#lib/plugin.js';
+import { definePluginBlock, registerBlockOpener } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 import PlainLeafBlock from '../plugins/fixtures/PlainLeafBlock.svelte';
 import { latexPlugin } from '#lib/plugins/latex/index.js';

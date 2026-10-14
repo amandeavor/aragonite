@@ -166,7 +166,7 @@ A component is only really verified mounted, and a jsdom mount is a supported wa
 ```ts
 // @vitest-environment jsdom
 import { mount, flushSync } from 'svelte';
-import { Editor } from '@voithos-labs/aragonite';
+import { Editor } from '@voithos-labs/aragonite/svelte';
 import { installEditorDomStubsForTests } from '@voithos-labs/aragonite/testing';
 
 installEditorDomStubsForTests();

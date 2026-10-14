@@ -5,7 +5,6 @@
 	// metadata update as one undo entry.
 	import { tick } from 'svelte';
 	import {
-		createContainerBlock,
 		getPluginMetadata,
 		trimTrailingLineEnding,
 		normalizeLineEndings,
@@ -13,6 +12,7 @@
 		type Draft,
 		type NodeView
 	} from '#lib/plugin.js';
+	import { createContainerBlock } from '#lib/svelte.js';
 	import { joinMermaidBody, type MermaidMetadata } from './mermaid-kind';
 	import { mermaidSlot, type MermaidRenderResult } from './mermaid-renderer';
 

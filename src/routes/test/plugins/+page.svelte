@@ -85,7 +85,8 @@
 </script>
 
 <script lang="ts">
-	import { Editor, type LinkClick, type PresentationMode } from '#lib';
+	import { type LinkClick, type PresentationMode } from '#lib';
+	import { Editor } from '#lib/svelte.js';
 	import type { KeybindingOverride } from '#lib/schema/keybinding-overrides.js';
 	import type { PageData } from './$types';
 	import { installTestProbes } from '../editor/test-probes';

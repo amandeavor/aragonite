@@ -62,13 +62,13 @@ import {
 	caretOffsetAtPoint,
 	declarePluginKind,
 	definePluginBlock,
-	svelteBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
 	type CaretTarget,
 	type EditorPlugin
 } from '@voithos-labs/aragonite/plugin';
+import { svelteBlockView } from '@voithos-labs/aragonite/svelte';
 import ParrotBlock from './ParrotBlock.svelte';
 
 export const PARROT = 'parrot';
@@ -143,7 +143,8 @@ On the opener, `priority` decides where you sit in the built-in openers' dispatc
 ```svelte
 <!-- ParrotBlock.svelte -->
 <script lang="ts">
-	import { createEditableLeaf, trimWhitespace, type NodeView } from '@voithos-labs/aragonite/plugin';
+	import { trimWhitespace, type NodeView } from '@voithos-labs/aragonite/plugin';
+	import { createEditableLeaf } from '@voithos-labs/aragonite/svelte';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
 	let sourceEl: HTMLDivElement | undefined = $state();

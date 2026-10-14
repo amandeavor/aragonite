@@ -4,11 +4,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import {
 	definePluginBlock,
-	svelteBlockView,
 	registerBlockOpener,
 	simpleLeafClosure,
 	OPENER_PRIORITIES
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { displayLength } from '#lib/core/lines.js';
 import {
 	destroyMountedEditors,

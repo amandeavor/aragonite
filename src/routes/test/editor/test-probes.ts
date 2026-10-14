@@ -1,5 +1,6 @@
 import { tick } from 'svelte';
-import type { Editor, EditorProps, PastedImage, PresentationMode } from '#lib';
+import type { PastedImage, PresentationMode } from '#lib';
+import type { Editor, EditorProps } from '#lib/svelte.js';
 import { readBlocks } from '#lib/core/parser.js';
 import type { GrammarView } from '#lib/schema/block-openers.js';
 import { serialize } from '#lib/core/serializer.js';

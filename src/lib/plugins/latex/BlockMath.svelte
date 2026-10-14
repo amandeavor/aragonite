@@ -7,7 +7,8 @@
 <script lang="ts">
 	// A render-primary editable block: all editing behavior lives in `createEditableLeaf`, so
 	// this component owns only how the render and the source are laid out.
-	import { createEditableLeaf, type NodeView } from '#lib/plugin.js';
+	import { type NodeView } from '#lib/plugin.js';
+	import { createEditableLeaf } from '#lib/svelte.js';
 	// The layout toggle cycles through these, and its label names the layout it switches to.
 	type MathLayout = MathBlockLayout;
 	const LAYOUT_NEXT: Record<MathLayout, MathLayout> = {

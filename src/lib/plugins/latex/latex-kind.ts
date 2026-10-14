@@ -12,7 +12,6 @@ import {
 	declarePluginKind,
 	registerInlineSyntax,
 	registerInlineWidgetKind,
-	svelteInlineWidget,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
@@ -31,6 +30,7 @@ import {
 	type WriteContext,
 	type WriteRule
 } from '#lib/plugin.js';
+import { svelteInlineWidget } from '#lib/svelte.js';
 import MathInline from './MathInline.svelte';
 import { isFlankingSpace } from './flanking';
 import { registerMathBlockCompleter } from './math-completion';

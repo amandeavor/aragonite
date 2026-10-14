@@ -1,12 +1,8 @@
 <script lang="ts">
 	// A render-primary editable block: all editing behavior lives in `createEditableLeaf`, so
 	// this component owns only the swap between the list and the source, and navigation.
-	import {
-		createEditableLeaf,
-		type DocumentView,
-		type EditorRects,
-		type NodeView
-	} from '#lib/plugin.js';
+	import { type DocumentView, type EditorRects, type NodeView } from '#lib/plugin.js';
+	import { createEditableLeaf } from '#lib/svelte.js';
 	import { collectHeadings } from './heading-outline';
 	import { createNavigationQueue } from './navigation-queue';
 	import type { TocOptions } from './toc-plugin';

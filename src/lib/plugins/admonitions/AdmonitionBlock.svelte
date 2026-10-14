@@ -3,13 +3,8 @@
   and the GitHub alert (no title, a static badge instead).
 -->
 <script lang="ts">
-	import {
-		BlockList,
-		createContainerBlock,
-		getPluginMetadata,
-		isBlankText,
-		type NodeView
-	} from '#lib/plugin.js';
+	import { getPluginMetadata, isBlankText, type NodeView } from '#lib/plugin.js';
+	import { BlockList, createContainerBlock } from '#lib/svelte.js';
 	import {
 		capitalize,
 		coerceAdmonitionName,

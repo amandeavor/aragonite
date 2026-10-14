@@ -47,7 +47,7 @@ When you want the document on disk, call `getSource()` and write it.
 
 ```svelte
 <script>
-	import { Editor } from '@voithos-labs/aragonite';
+	import { Editor } from '@voithos-labs/aragonite/svelte';
 	import '@voithos-labs/aragonite/styles/editor-theme.css';
 
 	let editor;
@@ -708,7 +708,7 @@ Plugins teach the editor new block and inline kinds. Writing one is the [plugin 
 
 ```svelte
 <script>
-	import { Editor } from '@voithos-labs/aragonite';
+	import { Editor } from '@voithos-labs/aragonite/svelte';
 	import { plugins } from './plugins'; // one array, declared once, shared by every editor
 </script>
 

@@ -11,12 +11,12 @@ import {
 	registerBlockKind,
 	registerBlockOpener,
 	registerBlockView,
-	svelteBlockView,
 	registerInsertEntry,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import TocBlock from './TocBlock.svelte';
 import { MAX_HEADING_DEPTH } from './heading-outline';
 
