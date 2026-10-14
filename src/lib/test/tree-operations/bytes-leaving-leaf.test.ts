@@ -7,11 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { blockNodeAt } from '#lib/tree-operations/node-primitives.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
-import {
-	bytesLeavingLeaf,
-	joinLeaves,
-	replaceRangeInLeaf
-} from '#lib/tree-operations/leaf-range.js';
+import { bytesLeavingLeaf, replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
 import { readBack, shownOf } from '#lib/core/inline/live-edit/read-back.js';
 import { getContentRange } from '#lib/core/inline/index.js';
 import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
@@ -126,20 +122,5 @@ describe('where a range replace puts the old bytes', () => {
 		// `Some **bo` + `d words`: the opener goes, so `bo` moves back two bytes.
 		const at = map('Some **bold** and words tail\n', 9, 16, '');
 		expect([4, 5, 6, 7, 9, 16, 17].map(at)).toEqual([4, 5, 5, 5, 7, 7, 8]);
-	});
-
-	it('keeps a join’s seam before the text typed into it', () => {
-		const doc = parse('ab\n\ncd\n');
-		const [first, second] = doc.children;
-		const store = storedAsAt(doc, [0], fixtureReading({}, 'live'));
-		const join = joinLeaves(
-			{ node: first, offset: 2 },
-			{ node: second, offset: 0 },
-			'X',
-			store,
-			'\n'
-		);
-
-		expect([1, 2, 3].map((offset) => join.map(offset))).toEqual([1, 2, 4]);
 	});
 });

@@ -66,3 +66,5 @@ not only Backspace.
   where a composition over the same range lands (`composition-over-range.md`).
   - Miss-analysis: only the composition row ran over this range, and the typed key took a
     different write that spliced the character into the rule's own bytes (`x---`).
+- The same range from `| c |` into a diagram below it (a `mermaid` block): a key typed over it
+  lands in a new paragraph after the diagram, which stays a diagram.

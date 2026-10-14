@@ -112,7 +112,7 @@ export function joinLeaves(
 	typed: string,
 	store: StoredAs,
 	lineEnding: LineEnding
-): CleanedJoin {
+): Pick<CleanedJoin, 'raw' | 'seam'> {
 	const writeTail = (bytes: string) => normalizeOwnRaw(tail.node, bytes, lineEnding);
 	return withTyped(cleanJoin(head, tail, typed, store, writeTail).joined, typed);
 }
@@ -150,12 +150,7 @@ function cleanJoin(
  *  installed. */
 const same = (bytes: string): string => bytes;
 
-const withTyped = (join: CleanedJoin, typed: string): CleanedJoin => ({
+const withTyped = (join: CleanedJoin, typed: string): Pick<CleanedJoin, 'raw' | 'seam'> => ({
 	raw: join.raw.slice(0, join.seam) + typed + join.raw.slice(join.seam),
-	seam: join.seam,
-	// The point where the two sides meet maps to where the typed text starts.
-	map: (offset) => {
-		const to = join.map(offset);
-		return to > join.seam ? to + typed.length : to;
-	}
+	seam: join.seam
 });
