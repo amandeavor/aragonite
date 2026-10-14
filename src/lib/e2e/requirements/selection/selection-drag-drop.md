@@ -6,7 +6,8 @@ this itself as two unrelated native edits, a `deleteByDrag` on the source and an
 document that has lost bytes in between, and inside one block the source commit rebuilds the
 editable element under the drop so the text lands at offset 0 instead of where it was dropped.
 The editor owns the gesture instead (`selection/selection-drop.ts`): one commit, one undo entry,
-and the moved text taken from the source block's own bytes so live-mode markers travel with it.
+and the moved text taken from the source block's own bytes, cut by the rule the cut itself follows,
+so the bytes that leave and the bytes that stay agree on every live-mode marker.
 
 The gesture is the same whichever way the selection was made, by multi-click or by Shift+Arrow,
 because the drag is the browser's and reads only the native range.
@@ -47,6 +48,11 @@ edits, and one undo then leaves the source's bytes gone.
 - undo after a drop: one press restores the whole document byte for byte, and redo re-lands it
 - after a drop the live tree still serializes to what it parses back from, and each touched
   block's rendered text still equals its raw, so no native edit leaked past the handler
+- in live mode, drag a range that starts inside a bold run and ends past it (`ld an` out of
+  `Some **bold** and words tail`, in a to-do) past the end of its line: the moved text shows
+  no `**`, and the item reads `Some bod words tailld an` with no marker on screen
+  - Miss-analysis: every drag moved plain words, so the raw slice the drop carried never held a
+    delimiter run whose partner stayed behind
 
 ## Error cases
 
