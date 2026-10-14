@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// An inline widget whose `isWidget` or `buildWidget` throws shows as its source, keeps its block
-// and the caret working, and is reported.
+// An inline widget whose `isWidget` or view throws shows as its source, in a paragraph and in a
+// table cell, keeps its block and the caret working, and is reported.
 // Miss-analysis: the component form had a mount catch and a test; the builder form's two callbacks
 // were never handed a throw, so it escaped and failed the whole block.
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
@@ -29,8 +29,8 @@ const explode = (): never => {
 };
 
 describe.each<[string, InlineWidgetDescriptor]>([
-	['buildWidget', { isWidget: () => true, buildWidget: explode }],
-	['isWidget', { isWidget: explode, buildWidget: () => document.createElement('b') }]
+	['view', { isWidget: () => true, view: explode }],
+	['isWidget', { isWidget: explode, view: () => ({}) }]
 ])('a widget whose %s throws', (_callback, descriptor) => {
 	beforeEach(() => {
 		const kind = declarePluginInlineKind('throwingBuilderWidget');

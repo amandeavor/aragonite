@@ -23,7 +23,7 @@ setup(ctx) {
 **Two contracts to build against:**
 
 - **`invalidate()` is synchronous.** Your new decorations are applied before the call returns, so an event handler can invalidate and immediately trust the view. The exception is an `edit` handler, which the editor calls mid-commit: an invalidate from there waits for the commit to finish, so your source reads a finished document rather than a half-applied one. Several of them in one commit are one re-run.
-- **Widget identity is untracked.** The renderer compares decorations by position and class, not by widget object, so swapping in a new `component` or `buildDom` at the same position with the same class re-renders nothing. Vary `class` when the widget's content changes.
+- **A widget that stays put keeps its view.** The renderer matches a `widget` or `replace` by where it sits (and a `replace` by its class too), so a re-run that returns one in the same place hands the view already there the new decoration through `update`, even if the new one names a different `view`. A badge keeps its view while the block's badges keep the same views in the same order. Move it or vary `class` when you want a fresh mount.
 
 ## The four decoration types
 
@@ -37,13 +37,18 @@ setup(ctx) {
 One `provide` answer using two of them, shapes side by side:
 
 ```ts
+const pinBadge: PluginView<{ decoration: Decoration }> = (target) => {
+	target.textContent = '📌';
+	return {};
+};
+
 provide: (doc) => [
 	{ type: 'mark', path: [2], start: 4, end: 9, class: 'stale-link' }, // bytes 4..9 of block [2]
-	{ type: 'block', path: [0], class: 'pinned', badge: { buildDom: () => pinIcon() } }
+	{ type: 'block', path: [0], class: 'pinned', badge: { view: pinBadge } }
 ];
 ```
 
-Offsets are **raw offsets** into the target block, dimmed markers included, which is the same coordinate space `getContentRange` describes. A `widget`, `replace` widget, or `badge` takes a `DecorationWidgetSpec`: a Svelte `component` (receives the decoration as its prop) or a hand-built `buildDom`. Whatever a widget or badge renders keeps the page's own styles (the editor's reset stops at its edge), so set `box-sizing` yourself if your CSS assumes `border-box`. A mark's handlers live in its `interactive` field, covered at the end of this page; interactive DOM inside a widget is native, so wire your own listeners in `buildDom`.
+Offsets are **raw offsets** into the target block, dimmed markers included, which is the same coordinate space `getContentRange` describes. A `widget`, `replace` widget, or `badge` takes a `DecorationWidgetSpec`, which is `{ view }`: a `PluginView` that draws into an element the editor makes for it and gets `{ decoration }` as its props (the [inline widget](inline-kinds.md#rendering-it-as-a-widget) shape, explained there). Already in Svelte? `svelteDecorationWidget(Component)` makes one from a component. Whatever a widget or badge renders keeps the page's own styles (the editor's reset stops at its edge), so set `box-sizing` yourself if your CSS assumes `border-box`. A mark's handlers live in its `interactive` field, covered at the end of this page; interactive DOM inside a widget is native, so wire your own listeners in your view and drop them in its `destroy`.
 
 All four work in table cells as well as prose blocks. Arrows step over a `widget` or a `replace`; Backspace and Delete treat a `widget` as if it weren't there, and select a `replace` whole before a second press deletes it.
 

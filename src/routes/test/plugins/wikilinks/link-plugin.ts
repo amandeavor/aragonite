@@ -11,7 +11,8 @@ import {
 	registerInlineWidgetKind,
 	INLINE_PRIORITIES,
 	type EditorPlugin,
-	type InlineNode
+	type InlineNode,
+	svelteInlineWidget
 } from '#lib/plugin.js';
 import WikiLink from './WikiLink.svelte';
 
@@ -32,7 +33,7 @@ export function wikiLinksPlugin(): EditorPlugin {
 			);
 			registerInlineWidgetKind(link, {
 				isWidget: () => true,
-				component: WikiLink,
+				view: svelteInlineWidget(WikiLink),
 				editing: { revealSource: true, claimsActivationClick: true }
 			});
 		}

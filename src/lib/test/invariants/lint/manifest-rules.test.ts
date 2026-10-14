@@ -114,9 +114,7 @@ const NON_EDITING_RENDERERS: Record<string, string> = {
 	'src/lib/core/inline/visibility.ts':
 		'renders into a detached fragment to read what paints, and mounts nothing',
 	'src/lib/components/blocks/code/code-renderer.ts':
-		'defines renderCodeBlock and hands the fragment back; the caller mounts it',
-	'src/lib/testing/inline-conformance.ts':
-		'measures the offset walk over a synthetic container the editor never mounts'
+		'defines renderCodeBlock and hands the fragment back; the caller mounts it'
 };
 
 const SYNTHETIC_STAMPERS: Record<string, string> = {

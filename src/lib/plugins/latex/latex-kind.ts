@@ -12,6 +12,7 @@ import {
 	declarePluginKind,
 	registerInlineSyntax,
 	registerInlineWidgetKind,
+	svelteInlineWidget,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
@@ -100,7 +101,7 @@ export function registerMathInline(): void {
 	});
 	registerInlineWidgetKind(kind, {
 		isWidget: () => true,
-		component: MathInline,
+		view: svelteInlineWidget(MathInline),
 		editing: {
 			revealSource: true,
 			revealContentSpan: mathContentSpan,

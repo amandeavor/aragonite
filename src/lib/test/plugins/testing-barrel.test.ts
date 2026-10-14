@@ -148,7 +148,7 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 	},
 	{
 		entry: 'registerInlineWidgetKind',
-		register: () => registerInlineWidgetKind(inline, { isWidget: () => true }),
+		register: () => registerInlineWidgetKind(inline, { isWidget: () => true, view: () => ({}) }),
 		registered: () =>
 			isInlineWidget({ kind: inline, start: 0, end: 1 } as never, 'x', defaultGrammarView)
 	},

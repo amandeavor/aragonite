@@ -9,24 +9,13 @@ import {
 	registerBlockComponent,
 	defineBlockComponent
 } from '#lib/schema/block-component-registry.js';
-import { mountDecorationWidget } from '#lib/decorations/widget-dom.js';
-import type { BlockDecoration } from '#lib/decorations/types.js';
-import { createSvelteWidgetPool } from '#lib/components/blocks/widget-portal.js';
-import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
-import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
-import { bindActivationClick, createPressTracker } from '#lib/activation-click.js';
+import { mountPluginView } from '#lib/plugin-view.js';
+import { svelteInlineWidget } from '#lib/svelte-views.svelte.js';
 import { isForeignRuntimeError } from '#lib/foreign-runtime.js';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
-import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
-import {
-	destroyMountedEditors,
-	installLayoutStubs,
-	mountEditor,
-	placeCaret,
-	surfaceAt
-} from '#lib/test/harness/mount-editor.svelte.js';
+import { installLayoutStubs } from '#lib/test/harness/mount-editor.svelte.js';
 import ThrowingBlock from './fixtures/ThrowingBlock.svelte';
 import { mountBlockHost, type MountedHost } from './mount-host';
 
@@ -50,7 +39,6 @@ let mounted: MountedHost | null = null;
 afterEach(async () => {
 	if (mounted) await mounted.dispose();
 	mounted = null;
-	await destroyMountedEditors();
 });
 
 function mountBlock(component: Component<never>, raw = 'hello\n'): HTMLElement {
@@ -66,36 +54,13 @@ function mountBlock(component: Component<never>, raw = 'hello\n'): HTMLElement {
 	return mounted.el;
 }
 
-function acquireInlineWidget(component: Component): HTMLElement | null {
-	const kind = declarePluginInlineKind('foreignRuntimeWidget');
-	registerInlineWidgetKind(kind, { isWidget: () => true, component: component as never });
-	const reading = fixtureReading();
-	const pool = createSvelteWidgetPool({
-		reportError: () => {},
-		getTheme: () => 'light',
-		getDocument: () => undefined,
-		getContentVersion: () => 0,
-		navigateTo: async () => false,
-		reading,
-		activationClick: bindActivationClick(reading.mode, () => 'plain', createPressTracker())
-	});
-	pool.beginPass();
-	const wrapper = pool.acquire(kind as never, { kind, start: 0, end: 2 } as never, '%%');
-	pool.sweep();
-	pool.dispose();
-	return wrapper;
-}
-
-async function openInlineMenu(row: Component): Promise<HTMLElement | null> {
-	const editor = mountEditor({ source: 'see\n', presentationMode: 'live' });
-	await editor.settle();
-	const menus = editor.instance.getInlineMenus();
-	const items = () => [{ id: 'a', label: 'a', insert: '#a' }];
-	menus.addSource({ name: 'tags', trigger: '#', items, row: row as never });
-	placeCaret(surfaceAt(editor, [0]), 3);
-	menus.open('tags');
-	await editor.settle();
-	return document.querySelector('[role="option"]');
+/** A plugin view from a Svelte component, mounted the way every widget and row slot mounts one. */
+function mountAsView(component: Component): boolean {
+	const view = svelteInlineWidget(component as never);
+	const target = document.createElement('span');
+	return (
+		mountPluginView(view, target, {} as never, { report: () => {}, subject: 'probe' }) !== null
+	);
 }
 
 const warnTags = () => takeDevWarns().map((record) => record.tag);
@@ -110,22 +75,8 @@ describe.each(Object.keys(FIXTURES) as (keyof typeof FIXTURES)[])(
 			expect(warnTags()).toEqual(['foreign-runtime']);
 		});
 
-		it('as an inline widget, falls back to its source and warns with the cause', async () => {
-			expect(acquireInlineWidget(await loadForeign(name))).toBeNull();
-			expect(warnTags()).toEqual(['foreign-runtime']);
-		});
-
-		it('as a decoration widget, is left out and warns with the cause', async () => {
-			const dec: BlockDecoration = { type: 'block', path: [0] };
-			expect(
-				mountDecorationWidget({ component: (await loadForeign(name)) as never }, dec)
-			).toBeNull();
-			expect(warnTags()).toEqual(['foreign-runtime']);
-		});
-
-		it('as an inline menu row, falls back to the default row and warns with the cause', async () => {
-			const option = await openInlineMenu(await loadForeign(name));
-			expect(option?.querySelector('.inline-menu-label')?.textContent).toBe('a');
+		it('as a widget or row view, fails its mount and warns with the cause', async () => {
+			expect(mountAsView(await loadForeign(name))).toBe(false);
 			expect(warnTags()).toEqual(['foreign-runtime']);
 		});
 	}
@@ -133,7 +84,7 @@ describe.each(Object.keys(FIXTURES) as (keyof typeof FIXTURES)[])(
 
 it('a template-only component fails a later mount differently, and that names the cause too', async () => {
 	const component = await loadForeign('template only');
-	expect(acquireInlineWidget(component)).toBeNull();
+	expect(mountAsView(component)).toBe(false);
 	takeDevWarns();
 	const el = mountBlock(component);
 	expect(el.querySelector('.failed-block-notice')?.textContent).toContain(CAUSE);

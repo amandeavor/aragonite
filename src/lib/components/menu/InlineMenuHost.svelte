@@ -3,14 +3,10 @@
 	import { INLINE_MENU_LABEL } from '../../a11y-strings';
 	import type { EditorEvents } from '../../editor-events';
 	import { warnIfForeignRuntime } from '../../foreign-runtime';
-	import type {
-		InlineMenuDomRow,
-		InlineMenuItem,
-		InlineMenuRowProps
-	} from '../../inline-menu/types';
-	import type { Attachment } from 'svelte/attachments';
+	import type { InlineMenuItem } from '../../inline-menu/types';
 	import type { InlineMenuState } from '../../inline-menu/inline-menu-state.svelte';
 	import MenuIcon from './MenuIcon.svelte';
+	import InlineMenuRowView from './InlineMenuRowView.svelte';
 	import type { MenuPresence } from './menu-presence.svelte';
 	import { eventToChord } from '../../schema/keybindings';
 
@@ -119,30 +115,14 @@
 		return () => root.removeEventListener('focusout', onFocusOut);
 	});
 
+	// Takes the name now: a row's `destroy` can reject after the menu, and its derived name, are gone.
+	function rowReporter(source: string): (error: unknown) => void {
+		return (error) => menu.reportSourceError(error, source);
+	}
+
 	function onRowError(error: unknown, source: string): void {
 		warnIfForeignRuntime(error, `inline menu row ${source}`);
 		menu.reportSourceError(error, source);
-	}
-
-	// Svelte reruns an attachment when the props it read change, so each change builds a fresh row.
-	function paintDomRow(
-		row: InlineMenuDomRow,
-		props: InlineMenuRowProps,
-		source: string
-	): Attachment {
-		return (slot) => {
-			const el = row.buildDom(props);
-			slot.append(el);
-			return () => {
-				el.remove();
-				// Caught here: on close the row's boundary is torn down with it and catches nothing.
-				try {
-					row.destroy?.(el);
-				} catch (error) {
-					menu.reportSourceError(error, source);
-				}
-			};
-		};
 	}
 
 	$effect(() => {
@@ -192,19 +172,19 @@
 				onclick={() => menu.commit(i)}
 			>
 				{#if row}
+					<!-- The boundary catches a Svelte row's throw on a later re-render, which runs
+					     outside the view's own update. -->
 					<svelte:boundary onerror={(error) => onRowError(error, sourceName)}>
-						{#if typeof row === 'function'}
-							{@const Row = row}
-							<span class="inline-menu-host-row" data-host-content>
-								<Row {item} {active} {query} />
-							</span>
-						{:else}
-							<span
-								class="inline-menu-host-row"
-								data-host-content
-								{@attach paintDomRow(row, { item, active, query }, sourceName)}
-							></span>
-						{/if}
+						<InlineMenuRowView
+							view={row}
+							{item}
+							{active}
+							{query}
+							report={rowReporter(sourceName)}
+							subject="inline menu row {sourceName}"
+						>
+							{#snippet fallback()}{@render defaultRow(item)}{/snippet}
+						</InlineMenuRowView>
 						{#snippet failed()}{@render defaultRow(item)}{/snippet}
 					</svelte:boundary>
 				{:else}
@@ -221,11 +201,6 @@
 		max-width: 360px;
 		max-height: 264px;
 		overflow-y: auto;
-	}
-
-	/* The host's row lays out as a direct child of the menu row. */
-	.inline-menu-host-row {
-		display: contents;
 	}
 
 	.inline-menu-label {

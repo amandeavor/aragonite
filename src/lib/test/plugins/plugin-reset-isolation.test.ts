@@ -106,7 +106,7 @@ describe('a plugin’s entry for a built-in kind', () => {
 			register: () =>
 				registerInlineWidgetKind('emphasis', {
 					isWidget: () => true,
-					buildWidget: () => document.createElement('span')
+					view: () => ({})
 				}),
 			isRegistered: () => isInlineWidgetKind('emphasis', defaultGrammarView)
 		}

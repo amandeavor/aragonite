@@ -117,6 +117,13 @@ export type {
 	DecorationRegistry
 } from './decorations/types';
 
+// ── Plugin views ─────────────────────────────────────────────────────────────
+
+// What a decoration widget or a menu row draws with: a function that fills the element the editor
+// hands it. The helpers make one from a Svelte component.
+export type { PluginView, PluginViewHandle } from './plugin-view';
+export { svelteDecorationWidget, svelteMenuRow } from './svelte-views.svelte';
+
 // ── Rects ──────────────────────────────────────────────────────────────────────
 
 // Viewport-space geometry over the rendered document, via `editor.getRects()`.
@@ -135,8 +142,7 @@ export type {
 	InlineMenuSourceHandle,
 	InlineMenuItem,
 	InlineMenuQuery,
-	InlineMenuRowProps,
-	InlineMenuDomRow
+	InlineMenuRowProps
 } from './inline-menu/types';
 
 // ── Insert catalogue ───────────────────────────────────────────────────────────

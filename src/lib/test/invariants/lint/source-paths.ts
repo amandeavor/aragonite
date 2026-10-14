@@ -16,6 +16,7 @@ export const SOURCE = {
 	actionContracts: 'src/lib/action-contracts.ts',
 	envFlags: 'src/lib/env.ts',
 	devChecks: 'src/lib/assert.ts',
+	pluginView: 'src/lib/plugin-view.ts',
 
 	// ── Parsing and the inline pipeline ─────────────────────────────────────
 	cstNodes: 'src/lib/core/nodes.ts',
@@ -161,6 +162,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	actionContracts: 'export type CommitSnapshotArg',
 	envFlags: 'export const editorEnv',
 	devChecks: 'export function documentForCheck',
+	pluginView: 'export function mountPluginView',
 
 	// ── Parsing and the inline pipeline ─────────────────────────────────────
 	cstNodes: 'export type LeafBlockKind',

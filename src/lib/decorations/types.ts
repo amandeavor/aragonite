@@ -5,6 +5,7 @@
  */
 
 import type { DocumentView } from '../core/node-views';
+import type { PluginView } from '../plugin-view';
 
 export interface MarkDecoration {
 	type: 'mark';
@@ -67,11 +68,11 @@ export interface BlockDecoration {
 }
 export type Decoration = MarkDecoration | WidgetDecoration | ReplaceDecoration | BlockDecoration;
 
-/** Render keys don't track widget identity: same position + class ⇒ equal. Vary `class`
- *  to force a re-render. */
-export type DecorationWidgetSpec =
-	| { component: import('svelte').Component<{ decoration: Decoration }> }
-	| { buildDom: (dec: Decoration) => HTMLElement };
+/** A widget at the same position (and class, for a `replace`) keeps its view, which gets `update`
+ *  with the new decoration; vary `class` to mount a new one. */
+export interface DecorationWidgetSpec {
+	view: PluginView<{ decoration: Decoration }>;
+}
 
 export interface ProvideContext {
 	/** Bumped once per document change, never by `invalidate()`. The memo key for a source that

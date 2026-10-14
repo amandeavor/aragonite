@@ -11,6 +11,7 @@ import {
 	declarePluginInlineKind,
 	registerInlineSyntax,
 	registerInlineWidgetKind,
+	svelteInlineWidget,
 	isWhitespaceChar,
 	type InlineNode,
 	type PluginInlineKind
@@ -58,7 +59,7 @@ export function registerFootnoteReference(): void {
 	});
 	registerInlineWidgetKind(kind, {
 		isWidget: () => true,
-		component: FootnoteReference,
+		view: svelteInlineWidget(FootnoteReference),
 		editing: { revealSource: true, claimsActivationClick: true }
 	});
 }

@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { Editor, type DecorationSource, type InlineMenuSource } from '#lib';
+	import {
+		Editor,
+		svelteMenuRow,
+		type Decoration,
+		type DecorationSource,
+		type InlineMenuSource,
+		type PluginView
+	} from '#lib';
 	import type { KeybindingOverride } from '#lib/schema/keybinding-overrides.js';
 	import { installTestProbes } from '../editor/test-probes';
 	import { HarnessSource } from '../editor/harness-source.svelte';
@@ -28,6 +35,12 @@
 		button.textContent = label;
 		return button;
 	};
+	const hostView =
+		(label: string): PluginView<{ decoration: Decoration }> =>
+		(target) => {
+			target.append(hostButton(label)());
+			return {};
+		};
 
 	const hostDecorations: DecorationSource = {
 		name: 'host-widgets',
@@ -35,8 +48,8 @@
 			doc.children.length === 0
 				? []
 				: [
-						{ type: 'widget', path: [0], offset: 0, widget: { buildDom: hostButton('widget') } },
-						{ type: 'block', path: [0], badge: { buildDom: hostButton('badge') } }
+						{ type: 'widget', path: [0], offset: 0, widget: { view: hostView('widget') } },
+						{ type: 'block', path: [0], badge: { view: hostView('badge') } }
 					]
 	};
 
@@ -63,10 +76,13 @@
 		// Untracked: adding a source reads the state it then writes.
 		const handles = untrack(() => [
 			instance.getDecorations().addSource(hostDecorations),
-			instance.getInlineMenus().addSource(hostMenu('component-row', '@@', HostRow)),
-			instance
-				.getInlineMenus()
-				.addSource(hostMenu('dom-row', '%%', { buildDom: ({ item }) => hostButton(item.label)() }))
+			instance.getInlineMenus().addSource(hostMenu('component-row', '@@', svelteMenuRow(HostRow))),
+			instance.getInlineMenus().addSource(
+				hostMenu('dom-row', '%%', (target, { item }) => {
+					target.append(hostButton(item.label)());
+					return {};
+				})
+			)
 		]);
 		return () => handles.forEach((handle) => handle.dispose());
 	});

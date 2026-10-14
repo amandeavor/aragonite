@@ -46,13 +46,19 @@ export {
 export type { PluginInlineKind, InlineNode, ImageFields, ImageSyntaxRewriter } from './core/nodes';
 export { registerInlineSyntax, INLINE_PRIORITIES } from './core/inline/scan/plugin-syntax';
 export type { InlineSyntaxRecognizer, InlineSyntaxOptions } from './core/inline/scan/plugin-syntax';
-export { registerInlineWidgetKind, mintWidgetShell } from './core/inline/inline-widgets';
+export { registerInlineWidgetKind } from './core/inline/inline-widgets';
 export type {
 	InlineWidgetDescriptor,
 	InlineWidgetComponentProps,
 	InlineWidgetEditingPolicy,
 	InlineWidgetEditingContext
 } from './core/inline/inline-widgets';
+
+// ── Plugin views ─────────────────────────────────────────────────────────────
+// The one shape an inline widget, a decoration widget and a menu row take: fill the element the
+// editor hands over, take new props through `update`. The helpers make one from a Svelte component.
+export type { PluginView, PluginViewHandle } from './plugin-view';
+export { svelteInlineWidget, svelteDecorationWidget, svelteMenuRow } from './svelte-views.svelte';
 
 // ── Block-kind descriptor registry ───────────────────────────────────────────
 // `BlockKindRegistration` is the shape you register; fields that only mean something together
@@ -389,8 +395,7 @@ export type {
 	InlineMenuItem,
 	InlineMenuQuery,
 	InlineMenuCommit,
-	InlineMenuRowProps,
-	InlineMenuDomRow
+	InlineMenuRowProps
 } from './inline-menu/types';
 
 // ── Insert catalogue (pre-freeze) ────────────────────────────────────────────

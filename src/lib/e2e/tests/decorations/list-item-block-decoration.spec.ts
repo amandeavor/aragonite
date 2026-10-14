@@ -27,10 +27,11 @@ test.describe('block decorations on a list item', () => {
 						class: 'e2e-item-dec',
 						attrs: { 'data-e2e-item': 'on' },
 						badge: {
-							buildDom: () => {
+							view: (target: HTMLElement) => {
 								const el = document.createElement('span');
 								el.className = 'e2e-item-badge';
-								return el;
+								target.append(el);
+								return {};
 							}
 						}
 					}
@@ -76,10 +77,11 @@ test.describe('block decorations on a list item', () => {
 						type: 'block',
 						path: [0, 1],
 						badge: {
-							buildDom: () => {
+							view: (target: HTMLElement) => {
 								const el = document.createElement('span');
 								el.textContent = 'BADGE';
-								return el;
+								target.append(el);
+								return {};
 							}
 						}
 					}

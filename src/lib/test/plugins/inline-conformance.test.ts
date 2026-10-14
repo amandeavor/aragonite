@@ -114,8 +114,8 @@ describe('every bundled inline syntax handler passes the conformance kit', () =>
 	});
 });
 
-// A cell recorded rather than executed proves nothing: a fixture that stopped matching, or a
-// run without jsdom, would otherwise pass as a quiet `boundary`.
+// A cell recorded rather than executed proves nothing: a fixture that stopped matching would
+// otherwise pass as a quiet `boundary`.
 describe('the enrolled inline syntax handlers execute the cells their shape owns', () => {
 	beforeEach(() => {
 		installPlugins([emojiPlugin(), footnotesPlugin(), latexPlugin()]);
@@ -125,18 +125,15 @@ describe('the enrolled inline syntax handlers execute the cells their shape owns
 	const cellOf = async (profile: InlineConformanceProfile, cell: string) =>
 		(await runInlineKindConformance(profile)).cells.find((c) => c.cell === cell)!;
 
-	it('drives the offset walk for an inline syntax handler that builds its own widget', async () => {
-		const cell = await cellOf(emojiRung, 'widget');
+	// The shell is the editor's, so the cell asserts every widget kind the same way, a plain DOM
+	// view (emoji) and a Svelte one (footnotes) alike.
+	it.each([
+		['a DOM view', emojiRung],
+		['a Svelte view', footnoteRung]
+	])('asserts the widget cell for %s', async (_view, rung) => {
+		const cell = await cellOf(rung, 'widget');
 		expect(cell.status).toBe('asserted');
-		expect(cell.detail).toContain('offset-walk length');
-	});
-
-	// The wrapper span for a `component` kind belongs to the editor, so that half does not
-	// run and the cell has to say so: reporting `asserted` over skipped work hides it.
-	it('reports the widget half of a `component` widget as a boundary', async () => {
-		const cell = await cellOf(footnoteRung, 'widget');
-		expect(cell.status).toBe('boundary');
-		expect(cell.detail).toContain('render layer');
+		expect(cell.detail).toContain('self-delimiting');
 	});
 
 	it('checks the whole-delete bytes for an atomic-delete inline syntax handler', async () => {

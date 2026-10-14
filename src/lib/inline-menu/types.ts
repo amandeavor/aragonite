@@ -5,7 +5,7 @@
  * up, and replacing the typed range with the pick as one undo entry. A source supplies the rest.
  */
 
-import type { Component } from 'svelte';
+import type { PluginView } from '../plugin-view';
 import type { MenuIconName } from '../menu-icons';
 import type { EditorContext } from '../schema/plugin-install';
 
@@ -73,16 +73,9 @@ export interface InlineMenuSource {
 		query: Omit<InlineMenuQuery, 'signal'>,
 		editor: InlineMenuCommit
 	): void | Promise<void>;
-	/** Paints a row in place of the default label and detail: a Svelte component, or plain DOM. One
-	 *  that fails to build shows the default; any throw (`destroy` too) is reported on `error`. */
-	row?: Component<InlineMenuRowProps> | InlineMenuDomRow;
-}
-
-/** A row painted without Svelte. `buildDom` runs per row and again when that row's props change;
- *  `destroy` gets each element once the row drops it, so a host can unmount what it rendered there. */
-export interface InlineMenuDomRow {
-	buildDom(props: InlineMenuRowProps): HTMLElement;
-	destroy?(el: HTMLElement): void;
+	/** Paints a row in place of the default label and detail, updated as it turns active or the
+	 *  query changes. A row whose view throws shows the default, and the throw goes to `error`. */
+	row?: PluginView<InlineMenuRowProps>;
 }
 
 export interface InlineMenuSourceHandle {

@@ -185,6 +185,7 @@ describe('getInlineWidgetEditing: per-kind editing policy', () => {
 		const onSelectedKey = () => true;
 		registerInlineWidgetKind(mathKind, {
 			isWidget: () => true,
+			view: () => ({}),
 			editing: {
 				revealSource: true,
 				onSelectedKey
@@ -196,7 +197,7 @@ describe('getInlineWidgetEditing: per-kind editing policy', () => {
 	});
 
 	it('returns undefined for a widget kind registered without an editing policy', () => {
-		registerInlineWidgetKind(spoilerKind, { isWidget: () => true });
+		registerInlineWidgetKind(spoilerKind, { isWidget: () => true, view: () => ({}) });
 		expect(getInlineWidgetEditing(spoilerKind, defaultGrammarView)).toBeUndefined();
 	});
 
@@ -222,6 +223,7 @@ describe('augmentInlineWidgetKind, attaching editor behavior to a registration',
 	it('layers onSelectedKey onto a registered kind without dropping its existing fields', () => {
 		registerInlineWidgetKind(captionKind, {
 			isWidget: () => true,
+			view: () => ({}),
 			editing: { revealSource: true }
 		});
 		const onSelectedKey = () => true;
@@ -233,7 +235,7 @@ describe('augmentInlineWidgetKind, attaching editor behavior to a registration',
 	});
 
 	it('initializes an editing policy when augmenting a kind that had none', () => {
-		registerInlineWidgetKind(captionKind, { isWidget: () => true });
+		registerInlineWidgetKind(captionKind, { isWidget: () => true, view: () => ({}) });
 		const onSelectedKey = () => true;
 		augmentInlineWidgetKind(captionKind, { onSelectedKey });
 		expect(getInlineWidgetEditing(captionKind, defaultGrammarView)).toEqual({ onSelectedKey });

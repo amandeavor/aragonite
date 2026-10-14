@@ -3,8 +3,9 @@
 // and never neither, for every host gesture, mode and Ctrl state, with or without a claim.
 // Miss-analysis: the editor's click check read the policy and the widget's check didn't, and no
 // test mounted a widget through the editor's own pool to ask it under a plain-click host.
+import { svelteInlineWidget } from '#lib/svelte-views.svelte.js';
 import { describe, it, expect } from 'vitest';
-import { createSvelteWidgetPool } from '#lib/components/blocks/widget-portal.js';
+import { createViewWidgetPool } from '#lib/components/blocks/widget-portal.js';
 import { createWidgetInteraction } from '#lib/components/blocks/text/widget-interaction.js';
 import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
@@ -36,7 +37,7 @@ function registerClickWidget(claimsActivationClick: boolean): string {
 	});
 	registerInlineWidgetKind(kind, {
 		isWidget: () => true,
-		component: ActivationClickWidget,
+		view: svelteInlineWidget(ActivationClickWidget),
 		editing: { revealSource: true, claimsActivationClick }
 	});
 	return kind;
@@ -54,7 +55,7 @@ function widgetActs(
 ): boolean {
 	let current = mountMode;
 	const reading = fixtureReading({ mode: () => current });
-	const pool = createSvelteWidgetPool({
+	const pool = createViewWidgetPool({
 		reportError: (error) => {
 			throw error;
 		},

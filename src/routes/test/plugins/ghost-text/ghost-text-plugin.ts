@@ -3,6 +3,7 @@
 // is the proof that no bytes leak: typing next to the widget never picks up the ghost text.
 import {
 	definePlugin,
+	svelteDecorationWidget,
 	trimTrailingLineEnding,
 	type DocumentView,
 	type NodeView
@@ -19,6 +20,8 @@ function nodeAt(doc: DocumentView, path: number[]): NodeView | null {
 	}
 	return node;
 }
+
+const ghostText = svelteDecorationWidget(GhostText);
 
 export const ghostTextPlugin = definePlugin({
 	name: 'ghost-text',
@@ -38,7 +41,7 @@ export const ghostTextPlugin = definePlugin({
 							// A widget's offset is measured in the block's raw content, which
 							// leaves out the trailing line ending.
 							offset: trimTrailingLineEnding(node.raw).length,
-							widget: { component: GhostText }
+							widget: { view: ghostText }
 						}
 					];
 				}

@@ -1,7 +1,16 @@
 // A fixture for BlockDecoration through the public API only: every heading block gets a class
 // and a badge widget, at any depth, which is what `blockDecorationsForPath` serves.
-import { definePlugin, type Decoration, type DocumentView } from '#lib/plugin.js';
+import { definePlugin, type Decoration, type DocumentView, type PluginView } from '#lib/plugin.js';
 import { forEachLeaf } from '../../../walk-views';
+
+// One view for every badge, so a badge whose heading is still there keeps its element.
+const headingBadge: PluginView<{ decoration: Decoration }> = (target) => {
+	const el = document.createElement('span');
+	el.className = 'badge-h';
+	el.textContent = 'H';
+	target.append(el);
+	return {};
+};
 
 export const blockBadgePlugin = definePlugin({
 	name: 'block-badge',
@@ -25,14 +34,7 @@ function headingBadges(doc: DocumentView): Decoration[] {
 			type: 'block',
 			path,
 			class: 'badge-heading',
-			badge: {
-				buildDom: () => {
-					const el = document.createElement('span');
-					el.className = 'badge-h';
-					el.textContent = 'H';
-					return el;
-				}
-			}
+			badge: { view: headingBadge }
 		});
 	});
 	return badges;

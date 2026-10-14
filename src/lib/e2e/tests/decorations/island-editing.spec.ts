@@ -46,7 +46,12 @@ async function addWidgetIsland(page: Page, path: number[], offset: number) {
 							type: 'widget',
 							path,
 							offset,
-							widget: { buildDom: () => document.createElement('span') }
+							widget: {
+								view: (target: HTMLElement) => {
+									target.append(document.createElement('span'));
+									return {};
+								}
+							}
 						}
 					];
 				}

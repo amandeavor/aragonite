@@ -36,7 +36,11 @@ import {
 } from '../../../caret/widget-offset';
 import { captureFocusedCaret } from '../../../caret/focused-caret';
 import type { IndexedDecoration } from '../../../decorations/buckets';
-import { applyIslandDecorations, islandRenderKeyPart } from '../../../decorations/island-dom';
+import {
+	applyIslandDecorations,
+	islandRenderKeyPart,
+	NO_ISLAND_VIEWS
+} from '../../../decorations/island-dom';
 import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 import { mountDecorationWidget } from '../../../decorations/widget-dom';
 import { devWarn } from '../../../dev-warn';
@@ -51,7 +55,7 @@ import {
 import { buildImageWidget } from '../../image/widget-dom';
 import type { InlineNode } from '../../../core/nodes';
 import { getBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
-import { createSvelteWidgetPool } from '../widget-portal';
+import { createViewWidgetPool } from '../widget-portal';
 
 export interface TextRenderDeps {
 	get el(): HTMLElement | null;
@@ -125,7 +129,7 @@ export function renderKeySegmentDiff(prev: string, next: string): string {
 
 export function createTextRender(deps: TextRenderDeps): TextRender {
 	let lastRenderedKey = '';
-	const widgetPool = createSvelteWidgetPool({
+	const widgetPool = createViewWidgetPool({
 		reportError: deps.reportRenderError,
 		getTheme: deps.getTheme,
 		getDocument: deps.getDocument,
@@ -134,14 +138,14 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		reading: deps.reading,
 		activationClick: deps.activationClick
 	});
-	let islandDestroys: Array<() => void> = [];
+	let islandViews = NO_ISLAND_VIEWS;
 
 	function destroyIslands(): void {
-		for (const destroy of islandDestroys) destroy();
-		islandDestroys = [];
+		islandViews.destroy();
+		islandViews = NO_ISLAND_VIEWS;
 	}
 
-	function buildPortalWidget(node: InlineNode, raw: string): HTMLElement | null {
+	function acquireViewWidget(node: InlineNode, raw: string): HTMLElement | null {
 		return widgetPool.acquire(node.kind, node, raw.slice(node.start, node.end));
 	}
 
@@ -182,7 +186,7 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 				imageLoadPolicy: deps.imageLoadPolicy,
 				buildImageWidget: (imgNode, imgRaw, imgOpts) =>
 					buildImageWidget(imgNode, imgRaw, { ...imgOpts, brokenUrlCache: deps.brokenUrlCache }),
-				buildPortalWidget,
+				acquireViewWidget,
 				reportWidgetError: deps.reportRenderError,
 				grammar: deps.reading.grammar,
 				tagConstructMarkers: tagsConstructMarkers(deps.reading.mode()),
@@ -269,7 +273,10 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		let carriedCaret: RawOffset | null = null;
 
 		if (isProseKind(node.kind)) {
-			if (renderKey === lastRenderedKey && !forceRebuild) return;
+			if (renderKey === lastRenderedKey && !forceRebuild) {
+				islandViews.update(islands);
+				return;
+			}
 			// Working out which parts differ allocates, so it stays behind the trace check.
 			if (isInteractionTraceEnabled())
 				traceRebuild(renderKeySegmentDiff(lastRenderedKey, renderKey), forceRebuild);
@@ -281,14 +288,15 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 			// Rebuilds from the edit path skip the capture-and-restore pair: the component's
 			// pending restore overwrites the selection right after, so it would be wasted.
 			const carried = carryCaret ? captureCaretIfFocused(el) : null;
-			// Bracketing the rebuild pools portal widgets: the sweep destroys only those the
+			// Bracketing the rebuild pools plugin widgets: the sweep destroys only those the
 			// previous DOM held and this build did not reuse. Decoration widgets are not pooled.
 			widgetPool.beginPass();
 			destroyIslands();
 			el.replaceChildren(buildInlineDOM(content, pendingBreaks));
-			islandDestroys = applyIslandDecorations(el, node.raw, islands, {
+			islandViews = applyIslandDecorations(el, node.raw, islands, {
 				contentLength: contentLengthOf(node),
-				mountWidget: (spec, dec) => mountDecorationWidget(spec, dec, deps.reportRenderError),
+				mountWidget: (spec, dec, target) =>
+					mountDecorationWidget(spec, dec, target, deps.reportRenderError),
 				onSkipped: (dec, reason) => devWarn('decorations', `decoration skipped: ${reason}`, dec)
 			});
 			if (islands.length > 0) {

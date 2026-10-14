@@ -1,49 +1,27 @@
 /**
- * The one place a decoration widget is mounted, so error handling and teardown cannot drift
- * between block badges and inline widgets.
+ * Mounts a decoration's widget or badge view into the element the editor made for it, so block
+ * badges and inline widgets report a failing view the same way.
  */
 
-import { mount, unmount } from 'svelte';
-import { warnIfForeignRuntime } from '../foreign-runtime';
+import { mountPluginView, type MountedPluginView } from '../plugin-view';
 import type { Decoration, DecorationWidgetSpec } from './types';
 
-export interface DecorationWidgetHandle {
-	el: HTMLElement;
-	/** Unmounts the component (if any) and detaches `el`. Idempotent. */
-	destroy(): void;
-}
+export type MountedDecorationWidget = MountedPluginView<{ decoration: Decoration }>;
 
-/**
- * Build a widget spec's DOM. A synchronous throw is caught and reported as null, so the
- * caller renders without the widget instead of tearing down the block.
- */
+/** Null when the view threw while mounting, which `report` was told; the caller leaves it out. */
 export function mountDecorationWidget(
 	spec: DecorationWidgetSpec,
 	dec: Decoration,
-	reportError?: (error: unknown) => void
-): DecorationWidgetHandle | null {
-	try {
-		if ('component' in spec) {
-			const el = document.createElement('span');
-			const instance = mount(spec.component, { target: el, props: { decoration: dec } });
-			// The flag is what makes `destroy` safe to call twice: a second `unmount` of the same
-			// instance is not harmless the way a second `remove()` is.
-			let unmounted = false;
-			return {
-				el,
-				destroy: () => {
-					// A throw from the component's own teardown arrives as the promise's rejection.
-					if (!unmounted) unmount(instance).catch((error) => reportError?.(error));
-					unmounted = true;
-					el.remove();
-				}
-			};
+	target: HTMLElement,
+	report: (error: unknown) => void
+): MountedDecorationWidget | null {
+	return mountPluginView(
+		spec.view,
+		target,
+		{ decoration: dec },
+		{
+			report,
+			subject: 'decoration widget'
 		}
-		const el = spec.buildDom(dec);
-		return { el, destroy: () => el.remove() };
-	} catch (error) {
-		warnIfForeignRuntime(error, 'decoration widget');
-		reportError?.(error);
-		return null;
-	}
+	);
 }

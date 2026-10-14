@@ -20,7 +20,7 @@ export function entityRendersGlyph(decoded: string | undefined): boolean {
 /** The source bytes live on the shell's `data-source-*`, so the DOM-to-offset traversal reads
  *  `&copy;` rather than the glyph. */
 export function buildEntityWidget(node: InlineNode): HTMLSpanElement {
-	const shell = mintWidgetShell('md-entity-widget', node);
+	const shell = mintWidgetShell(node, 'md-entity-widget');
 	shell.textContent = node.decoded ?? '';
 	return shell;
 }

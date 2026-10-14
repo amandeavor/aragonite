@@ -18,7 +18,7 @@ import type { ContainerBodyWrap } from '../parser';
 import type { NodeView } from '../node-views';
 import { displayLength, ownTrailingLineEnding, trimTrailingLineEnding } from '../lines';
 import { concatChildren as serializeChildren } from '../serializer';
-import { registerInlineWidgetKind, mintWidgetShell } from '../inline/inline-widgets';
+import { registerCoreInlineWidget, mintWidgetShell } from '../inline/inline-widgets';
 import { matchDirectiveOpener, serializeDirective } from './grammar';
 
 export const DIRECTIVE_CONTAINER = 'directiveContainer';
@@ -110,16 +110,16 @@ export function registerDirectiveKinds(): void {
 export function registerDirectiveTextKind(): void {
 	if (isInlineKindDeclared(DIRECTIVE_TEXT)) return;
 	const kind = declarePluginInlineKind(DIRECTIVE_TEXT);
-	registerInlineWidgetKind(kind, {
+	registerCoreInlineWidget(kind, {
 		isWidget: () => true,
-		buildWidget: buildDirectiveTextWidget,
+		draw: buildDirectiveTextWidget,
 		editing: { revealSource: true }
 	});
 }
 
 /** Renders the verbatim `:name[...]` source dimmed inside the shared widget shell. */
 function buildDirectiveTextWidget(node: InlineNode, raw: string): HTMLElement {
-	const shell = mintWidgetShell('directive-text-widget', node);
+	const shell = mintWidgetShell(node, 'directive-text-widget');
 	shell.textContent = raw.slice(node.start, node.end);
 	return shell;
 }

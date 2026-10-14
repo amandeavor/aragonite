@@ -3,7 +3,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	declarePluginInlineKind,
-	mintWidgetShell,
 	registerBlockOpener,
 	registerInlineSyntax,
 	registerInlineWidgetKind,
@@ -85,7 +84,7 @@ describe('inline kit: a cell about the kind checks nodes of that kind', () => {
 		});
 		registerInlineWidgetKind(marker, {
 			isWidget: () => true,
-			buildWidget: (node) => mintWidgetShell('subject-marker', node),
+			view: () => ({}),
 			editing: { deleteGranularity: 'atomic', onEdge: 'step-over' }
 		});
 	});

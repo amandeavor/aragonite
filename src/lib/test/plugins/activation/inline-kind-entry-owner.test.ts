@@ -31,7 +31,7 @@ describe('an inline widget registered by another plugin answers to the kind’s 
 			setup() {
 				registerInlineWidgetKind(declaredPluginInlineKind(MARK), {
 					isWidget: () => true,
-					buildWidget: () => document.createElement('span')
+					view: () => ({})
 				});
 			}
 		});

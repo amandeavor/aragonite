@@ -8,7 +8,6 @@ import { describe, expect, it } from 'vitest';
 import {
 	INLINE_PRIORITIES,
 	declarePluginInlineKind,
-	mintWidgetShell,
 	registerInlineSyntax,
 	registerInlineWidgetKind,
 	type InlineNode,
@@ -133,7 +132,6 @@ describe('registration reds an inline syntax handler that is not where the profi
 const MARKER = 'marker';
 
 function registerMarkerRung(
-	build: (node: InlineNode) => HTMLElement,
 	editing: InlineWidgetEditingPolicy = { deleteGranularity: 'atomic', onEdge: 'step-over' }
 ): PluginInlineKind {
 	const kind = declarePluginInlineKind(MARKER);
@@ -142,7 +140,7 @@ function registerMarkerRung(
 		if (close < 0 || close + 1 > end || close === pos + 1) return null;
 		return { kind, start: pos, end: close + 1 };
 	});
-	registerInlineWidgetKind(kind, { isWidget: () => true, buildWidget: build, editing });
+	registerInlineWidgetKind(kind, { isWidget: () => true, view: () => ({}), editing });
 	return kind;
 }
 
@@ -160,14 +158,14 @@ const markerProfile = (kind: PluginInlineKind): InlineConformanceProfile => ({
 // a check that stopped refusing an excuse stayed green.
 describe('an excuse the kit can disprove fails', () => {
 	it('fails an excused overlapDecline whose profile supplies overlapFixtures', async () => {
-		const kind = registerMarkerRung((node) => mintWidgetShell(MARKER, node));
+		const kind = registerMarkerRung();
 		await expect(run({ ...markerProfile(kind), overlapFixtures: ['a @ b'] })).rejects.toThrow(
 			/overlapDecline: .*supplies overlapFixtures/s
 		);
 	});
 
 	it('fails an excused widget over a registered live widget', async () => {
-		const kind = registerMarkerRung((node) => mintWidgetShell(MARKER, node));
+		const kind = registerMarkerRung();
 		await expect(
 			run({ ...markerProfile(kind), widget: { mode: 'exempt', reason: A_REASON } })
 		).rejects.toThrow(/widget: .*is a registered live widget/s);
@@ -178,32 +176,16 @@ describe('editingPolicy reds a declaration that decides nothing', () => {
 	// The caret-edge dispatch reads an all-absent object exactly as an unregistered one, so
 	// without this a kind clears the cell with a policy that moves no byte.
 	it('fails an editing policy whose every field is absent', async () => {
-		const kind = registerMarkerRung((node) => mintWidgetShell(MARKER, node), {});
+		const kind = registerMarkerRung({});
 		await expect(run(markerProfile(kind))).rejects.toThrow(/editingPolicy: .*every field absent/s);
 	});
 });
 
-describe('widget reds a widget the offset walk cannot measure', () => {
-	it('passes for a widget created through the shared shell', async () => {
-		const kind = registerMarkerRung((node) => mintWidgetShell('marker', node));
+describe('widget asserts over a kind the editor draws a shell for', () => {
+	it('passes for a registered live widget whose claims stand on their own bytes', async () => {
+		const kind = registerMarkerRung();
 		const report = await runInlineKindConformance(markerProfile(kind));
 		expect(report.cells.find((c) => c.cell === 'widget')?.status).toBe('asserted');
-	});
-
-	// Every caret offset in the block comes from the DOM-to-offset traversal, and no byte
-	// moves when the span is wrong: the block simply stops agreeing with its own bytes.
-	it('fails a widget whose source span is short by one', async () => {
-		const kind = registerMarkerRung((node) => {
-			const shell = mintWidgetShell('marker', node);
-			shell.dataset.sourceEnd = String(node.end - 1);
-			return shell;
-		});
-		await expect(run(markerProfile(kind))).rejects.toThrow(/widget: .*data-source-end/s);
-	});
-
-	it('fails a widget that is not marked atomic at all', async () => {
-		const kind = registerMarkerRung(() => document.createElement('span'));
-		await expect(run(markerProfile(kind))).rejects.toThrow(/widget: .*data-inline-widget/s);
 	});
 });
 
@@ -218,7 +200,7 @@ describe('widget reds a claim that cannot stand on its own bytes', () => {
 		});
 		registerInlineWidgetKind(kind, {
 			isWidget: () => true,
-			buildWidget: (node) => mintWidgetShell('marker', node),
+			view: () => ({}),
 			editing: { deleteGranularity: 'atomic' }
 		});
 		await expect(run({ ...markerProfile(kind), fixtures: ['@x!'] })).rejects.toThrow(
@@ -243,7 +225,7 @@ describe('roundTrip reds a claim that reads past the range the block offered', (
 		});
 		registerInlineWidgetKind(kind, {
 			isWidget: () => true,
-			buildWidget: (node) => mintWidgetShell('marker', node),
+			view: () => ({}),
 			editing: { deleteGranularity: 'atomic' }
 		});
 		return kind;
@@ -287,7 +269,7 @@ describe('roundTrip reds a claim that reads past the range the block offered', (
 
 describe('editingPolicy reds a declaration the caret-edge dispatch cannot read', () => {
 	it('fails a deleteGranularity outside the dispatch vocabulary', async () => {
-		const kind = registerMarkerRung((node) => mintWidgetShell('marker', node), {
+		const kind = registerMarkerRung({
 			// Read as absent by the dispatch, so the kind silently takes the image default.
 			deleteGranularity: 'whole' as 'atomic'
 		});
@@ -297,7 +279,7 @@ describe('editingPolicy reds a declaration the caret-edge dispatch cannot read',
 	});
 
 	it('fails an exemption a live policy contradicts', async () => {
-		const kind = registerMarkerRung((node) => mintWidgetShell('marker', node));
+		const kind = registerMarkerRung();
 		await expect(
 			run({ ...markerProfile(kind), editingPolicy: { mode: 'exempt', reason: A_REASON } })
 		).rejects.toThrow(/editingPolicy: .*cannot be excused/s);

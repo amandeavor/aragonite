@@ -75,6 +75,28 @@ test.describe('plugin inline emoji shortcodes', () => {
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
+	test('live: typing before the glyph keeps it, an arrow crosses it, Backspace takes it whole', async ({
+		page
+	}) => {
+		await editor.setPresentationMode('live');
+		await editor.focusBlockStart(0);
+		await editor.typeText('Z');
+		await editor.bridge.waitForSourceContains('ZMood :smile:');
+		await expect(emojiIn(editor, 0)).toHaveText('😄');
+
+		// The caret sits after Z: five ArrowRights reach the glyph's leading edge, the sixth crosses it.
+		for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
+		await editor.typeText('X');
+		await editor.bridge.waitForSourceContains(':smile:X');
+
+		await page.keyboard.press('Backspace');
+		await page.keyboard.press('Backspace');
+		await editor.bridge.waitForSource((s) => !s.includes(':smile:'));
+		expect(await editor.bridge.getSource()).toBe('ZMood  today\n\nType here\n');
+		await expect(emojiIn(editor, 0)).toHaveCount(0);
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+
 	test('a click past a run of flush glyphs puts the caret after the last one', async ({ page }) => {
 		await editor.loadContent('Mood :smile: today\n\nend :dizzy::dizzy::dizzy::sparkles:\n');
 		await editor.setPresentationMode('live');
