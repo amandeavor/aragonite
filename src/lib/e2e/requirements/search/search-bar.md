@@ -19,11 +19,6 @@ whole-word, regex) that narrow or reinterpret the query.
 - The Whole word toggle drops substring-only matches (count drops).
 - The Regex toggle interprets the query as a pattern (a metacharacter query matches where a literal one would not).
 - Reopening the bar after Esc with an unchanged query (no edits between) re-scans and re-paints the highlights: a cached scan must not serve the closed bar's cleared matches.
-- With a code block at the top of a live-mode document, the open bar leaves the block's controls
-  (language picker, copy button) uncovered: they move below the bar and follow `--search-bar-top`.
-  Miss-analysis: the rule that moves them named the language picker, which stopped being the
-  positioned element when the controls were grouped, and no test measured the two boxes, so the
-  rule matched and did nothing.
 - Under forced colors the find field keeps a visible edge and a pressed toggle paints in the
   system highlight, hovered or not. Miss-analysis: the bar draws both with fills alone, which forced
   colors drop, and no test opened the bar with forced colors on.

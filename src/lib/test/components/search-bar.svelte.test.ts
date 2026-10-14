@@ -52,7 +52,7 @@ function render(
 	document.body.appendChild(target);
 	const instance = mount(SearchBar, {
 		target,
-		props,
+		props: { ...props, editorRoot: () => target },
 		context: new Map([[EDITOR_SERVICES_KEY, { search }]])
 	});
 	flushSync();

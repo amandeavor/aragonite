@@ -366,6 +366,7 @@
 	bind:this={railEl}
 	class="code-rail"
 	class:code-rail-open={editing || menuOpen}
+	data-corner-control
 	role="group"
 	aria-label={CODE_RAIL_LABEL}
 	onfocusout={onRailFocusOut}

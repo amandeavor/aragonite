@@ -1091,6 +1091,7 @@ unguarded.
 | G4.170 | Only the parser and the table rebuild write a row's header flag                           | L       |
 | G4.174 | Every published entry point has a source build and a prebuilt one                         | L       |
 | G4.175 | Every library component compiles in runes mode                                            | L       |
+| G4.180 | Every top-right hover control on a block moves below the open find bar                    | L       |
 
 ### The entries
 
@@ -2080,6 +2081,10 @@ a kind registered through its `/plugin` parses through its root, and it stays wi
 the legacy flag in the Svelte runtime of the app that compiles it. The prebuilt build forces runes
 mode itself, so this guards Svelte hosts. Every `.svelte` file under `src/lib` uses a rune or says `<svelte:options runes />`.
 `lint/file-rules.test.ts`.
+
+**G4.180 · Corner controls clear the find bar.** A hover control pinned to a block's top-right
+corner (absolute, placed by `top` and `right`, `opacity: 0` at rest) carries `data-corner-control`,
+so the open find bar moves it below itself when it covers it. `lint/corner-control-marker.test.ts`.
 
 ## Accessibility
 

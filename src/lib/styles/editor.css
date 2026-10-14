@@ -217,10 +217,10 @@
 	user-select: none;
 }
 
-/* The find bar outranks a per-block control, so a control in the same top-right corner moves
-   down while the bar is open, where the bar would otherwise cover it. */
-.editor:has(> .search-anchor .search-bar) .code-rail {
-	top: calc(var(--search-bar-top, 10px) + 52px);
+/* A block's top-right control the open find bar covers moves below it, by the distance
+   `components/corner-controls.ts` measures; a shift, so each control keeps its own `top`. */
+.editor [data-corner-control][data-under-find-bar] {
+	translate: 0 var(--md-find-bar-clearance);
 }
 
 :where(.editor) .md-image-widget {

@@ -1385,6 +1385,7 @@
 			<SearchBar
 				replaceExpanded={replaceExpanded && canReplace}
 				onToggleReplace={() => (replaceExpanded = canReplace && !replaceExpanded)}
+				editorRoot={() => editorEl}
 			/>
 		</div>
 	{/if}

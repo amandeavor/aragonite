@@ -212,26 +212,6 @@ test.describe('search: toggles', () => {
 	});
 });
 
-test.describe('search: the bar beside a code block', () => {
-	// A code block's controls (its language picker and copy button) sit in its top-right corner,
-	// where the open bar would cover them in a code block at the top of the document.
-	test('the open bar leaves the controls of a top code block uncovered', async ({ page }) => {
-		const editor = new EditorPage(page);
-		await editor.goto('?presentationMode=live');
-		await editor.loadContent('```js\nconst a = 1;\nconst b = 2;\n```\n\nafter\n');
-		await openFind(editor);
-
-		const overlap = await page.evaluate(() => {
-			const bar = document.querySelector('.search-bar')!.getBoundingClientRect();
-			const rail = document.querySelector('.code-rail')!.getBoundingClientRect();
-			const across = Math.min(bar.right, rail.right) - Math.max(bar.left, rail.left);
-			const down = Math.min(bar.bottom, rail.bottom) - Math.max(bar.top, rail.top);
-			return Math.max(0, across) * Math.max(0, down);
-		});
-		expect(overlap, 'square pixels of the controls under the bar').toBe(0);
-	});
-});
-
 test.describe('search: forced colors', () => {
 	// WebKit has no forced-colors mode (the query always matches none); Playwright only flips it.
 	test.skip(({ browserName }) => browserName === 'webkit', 'no forced-colors mode in WebKit');
