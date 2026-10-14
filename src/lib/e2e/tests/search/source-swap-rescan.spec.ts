@@ -45,7 +45,7 @@ test.describe('search: an open find bar across a source swap', () => {
 		await findInput(page).press('Enter');
 		await expect(count(page)).toHaveText(/3\s+of\s+3/);
 
-		// Five matches, so nothing clamps the kept position down: the bug reads 3 / 5 on a
+		// Five matches, so nothing clamps the kept position down: the bug reads 3 of 5 on a
 		// document the user has never navigated.
 		await editor.loadContent('alpha alpha\n\nalpha alpha\n\nalpha\n');
 		await expect(count(page)).toHaveText(/1\s+of\s+5/);

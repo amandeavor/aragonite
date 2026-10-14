@@ -18,8 +18,8 @@
 		SEARCH_WHOLE_WORD
 	} from '../a11y-strings';
 
-	// `replaceExpanded` is owned by Editor so the root Ctrl+H shortcut and the
-	// chevron share one source of truth; the chevron reports toggles back up.
+	// Editor owns `replaceExpanded`, so Ctrl+H and the replace toggle button share it; the button
+	// reports each press back up.
 	let {
 		replaceExpanded = false,
 		onToggleReplace,
@@ -77,8 +77,6 @@
 </script>
 
 {#if search.isOpen}
-	<!-- The card is the field, as in Notion's find: text, a quiet count, then the controls,
-	     with no box drawn inside the box. -->
 	<div
 		class="search-bar"
 		class:invalid={!!search.error}
@@ -193,15 +191,15 @@
 {/if}
 
 <style>
-	/* A raised card in limestone's menu palette that is itself the find field: no inner box, a
-	   soft ring while it holds focus, and quiet icon buttons that fill only on hover. */
+	/* A raised card that is itself the find field: no inner box, a soft ring while it holds focus,
+	   and quiet icon buttons that fill only on hover. */
 	.search-bar {
 		position: absolute;
 		/* The only placement knobs: the editor sets them at `.editor`, an anchor may set its own. */
 		top: var(--search-bar-top, 10px);
 		right: var(--search-bar-right, 10px);
-		/* Content-sized off the right edge, so without the cap a narrow host puts the bar's
-		   left half (the find field) off screen instead of shrinking it. */
+		/* Pinned to the right edge, so without the cap a narrow host puts the bar's left half (the
+		   find field) off screen instead of shrinking it. */
 		max-width: calc(100% - 2 * var(--search-bar-right, 10px));
 		/* A set width, not content-sized: the count appearing and changing length as you type
 		   takes room from the field, rather than resizing the card under the pointer. */
@@ -349,8 +347,8 @@
 		}
 	}
 
-	/* A pointer with no hover is a thumb: every control clears the WCAG 2.5.8 24px minimum
-	   already; the row wraps rather than crowding. */
+	/* A pointer with no hover is a thumb, so the controls grow past their 28px; the row wraps
+	   rather than crowding. */
 	@media (pointer: coarse) {
 		.search-icon-btn,
 		.search-btn {

@@ -753,7 +753,7 @@
 		lastSearchKey = key;
 		events.emit('searchChange', undefined);
 	});
-	// Lives here, not in SearchBar, so the root Ctrl+H and the bar's chevron share it.
+	// Lives here, not in SearchBar, so the root Ctrl+H and the bar's replace toggle share it.
 	let replaceExpanded = $state(false);
 
 	const reorder = createReorderAction(editorActionsDeps, controller);

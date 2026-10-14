@@ -98,7 +98,7 @@ test.describe('search: childless opaque container', () => {
 
 		expect(await editor.bridge.getSource()).toContain('```mermaid');
 		await expect(mermaidHost(page)).toHaveCount(1);
-		// The declined match survives the rescan (1 / 1), so the bar shows the tally rather
+		// The declined match survives the rescan (1 of 1), so the bar shows the tally rather
 		// than the replaced count; the test hook below carries the count.
 		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		expect(await page.evaluate(() => (window as any).__test.getSearchReplacedCount())).toBe(1);

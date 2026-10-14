@@ -11,7 +11,7 @@ plugin kinds ship render-primary leaves.
 ## Happy paths
 
 - A token that exists only inside a math block's hidden `$$…$$` source is found (count reads
-  1 / 1) and paints a sized `.match-overlay` cover rect inside that block's host.
+  1 of 1) and paints a sized `.match-overlay` cover rect inside that block's host.
 - A token that exists only inside a `[[toc]]` leaf's hidden source is found and paints a sized
   `.match-overlay` inside the toc host: the same fallback in the factory, a second kind, no extra
   production code.

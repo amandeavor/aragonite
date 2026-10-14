@@ -13,7 +13,7 @@ the plugins harness, since only plugin kinds produce childless opaque containers
 ## Happy paths
 
 - Querying a string that exists only inside an off-screen mermaid block's source finds the
-  match (count reads 1 / 1), paints a `.match-overlay` inside that block's host, and
+  match (count reads 1 of 1), paints a `.match-overlay` inside that block's host, and
   navigating (Enter) scrolls the block into the editor viewport with the active overlay on it.
 - Replace All over one prose match + one mermaid match rewrites both: the mermaid's own raw
   carries the replacement, the block is still the mermaid kind afterwards, and the bar reads
@@ -23,7 +23,7 @@ the plugins harness, since only plugin kinds produce childless opaque containers
 
 - A query matching the fence's info string (`mermaid` → `js`) is declined for the container and
   applied to the prose: the fence keeps its opener and its kind, the declined match survives the
-  rescan (count re-reads 1 / 1), and `replacedCount` reports 1.
+  rescan (count re-reads 1 of 1), and `replacedCount` reports 1.
 - A regex replace whose match runs from the last diagram line through the closing fence
   (`B`, the line break and the three backticks, replaced with `C`) rewrites the diagram source
   and the closing fence comes back: the block below (`Tail`) stays a paragraph of its own instead
