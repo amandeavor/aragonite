@@ -22,54 +22,94 @@ import type {
 	ReplaceDecoration,
 	WidgetDecoration
 } from './types';
+import type { MountedDecorationWidget } from './widget-dom';
+
+type Island = IndexedDecoration<WidgetDecoration | ReplaceDecoration>;
 
 export interface ApplyIslandsOpts {
+	/** Mounts the view into `target`, the widget's span; null when it threw, and the span stays empty. */
 	mountWidget: (
 		spec: DecorationWidgetSpec,
-		dec: Decoration
-	) => { el: HTMLElement; destroy(): void } | null;
+		dec: Decoration,
+		target: HTMLElement
+	) => MountedDecorationWidget | null;
 	onSkipped?: (dec: Decoration, reason: string) => void; // where a dev warning is reported
 	/** Raw-space length of the block's rendered content (see {@link ContentLength}). */
 	contentLength: ContentLength;
 }
 
-/** Mutates `root`, the freshly built inline fragment. Returns one destroy function per
- *  mounted widget; the caller runs them on the next rebuild. */
+/** The widget views one rebuild mounted. */
+export interface IslandViews {
+	/** Hands each mounted view its decoration from `islands`, which share the rebuild's render key
+	 *  (the same places, in the same order), so only a widget's own decoration can differ. */
+	update(islands: Island[]): void;
+	/** Destroys every view, before the next rebuild or as the block unmounts. */
+	destroy(): void;
+}
+
+interface MountedIsland {
+	dec: Decoration;
+	view: MountedDecorationWidget;
+	island: HTMLElement;
+}
+
+export const NO_ISLAND_VIEWS: IslandViews = { update() {}, destroy() {} };
+
+/** Mutates `root`, the freshly built inline fragment. */
 export function applyIslandDecorations(
 	root: ParentNode,
 	raw: string,
-	islands: IndexedDecoration<WidgetDecoration | ReplaceDecoration>[],
+	islands: Island[],
 	opts: ApplyIslandsOpts
-): Array<() => void> {
-	if (islands.length === 0) return [];
+): IslandViews {
+	if (islands.length === 0) return NO_ISLAND_VIEWS;
 	const contentLength = opts.contentLength;
-	const destroys: Array<() => void> = [];
+	// By index into `islands`, so an update finds each view's place without re-reading the DOM.
+	const mounted: (MountedIsland | undefined)[] = [];
 
-	for (const { dec } of orderForApplication(islands)) {
-		if (dec.type === 'widget') applyWidget(dec);
-		else applyReplace(dec);
+	for (const i of orderForApplication(islands)) {
+		const dec = islands[i].dec;
+		if (dec.type === 'widget') applyWidget(dec, i);
+		else applyReplace(dec, i);
 	}
-	return destroys;
+	return {
+		update(next) {
+			next.forEach(({ dec }, i) => {
+				const at = mounted[i];
+				if (!at || at.dec === dec) return;
+				at.dec = dec;
+				if (at.view.update({ decoration: dec })) return;
+				at.island.replaceChildren();
+				mounted[i] = undefined;
+			});
+		},
+		destroy() {
+			for (const at of mounted) at?.view.destroy();
+		}
+	};
 
-	function applyWidget(dec: WidgetDecoration): void {
+	function mountInto(island: HTMLElement, spec: DecorationWidgetSpec, dec: Decoration, i: number) {
+		const view = opts.mountWidget(spec, dec, island);
+		if (view) mounted[i] = { dec, view, island };
+		return view;
+	}
+
+	function applyWidget(dec: WidgetDecoration, i: number): void {
 		if (dec.offset < 0 || dec.offset > contentLength) return;
 		const range = rawRangeToDomRange(root, dec.offset, dec.offset);
 		if (!range) {
 			opts.onSkipped?.(dec, 'no DOM position at offset');
 			return;
 		}
-		const mounted = opts.mountWidget(dec.widget, dec);
-		if (!mounted) {
+		const island = buildIsland(dec.offset, dec.offset);
+		if (!mountInto(island, dec.widget, dec, i)) {
 			opts.onSkipped?.(dec, 'widget mount failed');
 			return;
 		}
-		destroys.push(mounted.destroy);
-		const island = buildIsland(dec.offset, dec.offset);
-		island.appendChild(mounted.el);
 		range.insertNode(island);
 	}
 
-	function applyReplace(dec: ReplaceDecoration): void {
+	function applyReplace(dec: ReplaceDecoration, i: number): void {
 		if (dec.start < 0 || dec.end > contentLength || dec.start >= dec.end) return;
 		// A boundary strictly inside a widget snaps outward to cover the whole element, so the
 		// span still equals the bytes it displaces.
@@ -102,22 +142,14 @@ export function applyIslandDecorations(
 		}
 		const island = buildIsland(start, end);
 		if (dec.class) island.classList.add(...dec.class.split(/\s+/).filter(Boolean));
-		if (dec.widget) {
-			const mounted = opts.mountWidget(dec.widget, dec);
-			if (mounted) {
-				destroys.push(mounted.destroy);
-				island.appendChild(mounted.el);
-			}
-		}
+		if (dec.widget) mountInto(island, dec.widget, dec, i);
 		range.insertNode(island);
 	}
 }
 
 /** What these widgets add to a render key: `''` for none, so an undecorated block's key is
  *  unchanged. Widget identity is ignored (see `DecorationWidgetSpec`). */
-export function islandRenderKeyPart(
-	islands: IndexedDecoration<WidgetDecoration | ReplaceDecoration>[]
-): string {
+export function islandRenderKeyPart(islands: Island[]): string {
 	if (islands.length === 0) return '';
 	return `\0${islands.map((i) => islandSig(i.dec)).join(';')}`;
 }
@@ -135,17 +167,20 @@ export function islandPosition(dec: WidgetDecoration | ReplaceDecoration): numbe
 
 // ── Internal ────────────────────────────────────────────────────────────────
 
-/** Descending position order, so a `replace` extraction never spans a widget inserted earlier.
- *  On a tie `replace` goes first, since a widget at the same start would be swallowed by it. */
-function orderForApplication(
-	islands: IndexedDecoration<WidgetDecoration | ReplaceDecoration>[]
-): IndexedDecoration<WidgetDecoration | ReplaceDecoration>[] {
-	return [...islands].sort(
-		(a, b) =>
-			islandPosition(b.dec) - islandPosition(a.dec) ||
-			tieRank(a.dec) - tieRank(b.dec) ||
-			b.index - a.index
-	);
+/** Indices in descending position order, so a `replace` extraction never spans a widget inserted
+ *  earlier. On a tie `replace` goes first: a widget at the same start would be swallowed by it. */
+function orderForApplication(islands: Island[]): number[] {
+	return islands
+		.map((_, i) => i)
+		.sort((i, j) => {
+			const a = islands[i];
+			const b = islands[j];
+			return (
+				islandPosition(b.dec) - islandPosition(a.dec) ||
+				tieRank(a.dec) - tieRank(b.dec) ||
+				b.index - a.index
+			);
+		});
 }
 
 function tieRank(dec: WidgetDecoration | ReplaceDecoration): number {

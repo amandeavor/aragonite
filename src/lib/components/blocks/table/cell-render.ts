@@ -19,7 +19,11 @@ import {
 	type CaretWriter
 } from '../../../caret/widget-offset';
 import type { IndexedDecoration } from '../../../decorations/buckets';
-import { applyIslandDecorations, islandRenderKeyPart } from '../../../decorations/island-dom';
+import {
+	applyIslandDecorations,
+	islandRenderKeyPart,
+	NO_ISLAND_VIEWS
+} from '../../../decorations/island-dom';
 import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 import { mountDecorationWidget } from '../../../decorations/widget-dom';
 import { devWarn } from '../../../dev-warn';
@@ -75,11 +79,11 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		reading: deps.reading,
 		activationClick: deps.activationClick
 	});
-	let islandDestroys: Array<() => void> = [];
+	let islandViews = NO_ISLAND_VIEWS;
 
 	function destroyIslands(): void {
-		for (const destroy of islandDestroys) destroy();
-		islandDestroys = [];
+		islandViews.destroy();
+		islandViews = NO_ISLAND_VIEWS;
 	}
 
 	function acquireViewWidget(node: InlineNode, raw: string): HTMLElement | null {
@@ -103,7 +107,10 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		const islands = deps.islands;
 		const renderKey = `${node.raw}\0${sig}\0${modeKeyPart}${islandRenderKeyPart(islands)}`;
 		const forceRebuild = opts?.forceRebuild ?? false;
-		if (renderKey === lastRenderedKey && !forceRebuild) return;
+		if (renderKey === lastRenderedKey && !forceRebuild) {
+			islandViews.update(islands);
+			return;
+		}
 
 		const content = computeInlineContent(
 			node,
@@ -129,9 +136,10 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 				tagConstructMarkers: deps.reading.mode() === 'live'
 			})
 		);
-		islandDestroys = applyIslandDecorations(el, node.raw, islands, {
+		islandViews = applyIslandDecorations(el, node.raw, islands, {
 			contentLength: contentLengthOf(node),
-			mountWidget: (spec, dec) => mountDecorationWidget(spec, dec, deps.reportRenderError),
+			mountWidget: (spec, dec, target) =>
+				mountDecorationWidget(spec, dec, target, deps.reportRenderError),
 			onSkipped: (dec, reason) => devWarn('decorations', `decoration skipped: ${reason}`, dec)
 		});
 		widgetPool.sweep();

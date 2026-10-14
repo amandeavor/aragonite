@@ -5,10 +5,10 @@
  */
 import type { EditorError } from '../editor-events';
 import type { DecorationEngine } from './decoration-state.svelte';
-import type { BlockDecoration } from './types';
+import type { BlockDecoration, DecorationWidgetSpec } from './types';
 import { devWarn } from '../dev-warn';
 import { acceptedBlockAttrs } from './reserved-attrs';
-import { mountDecorationWidget } from './widget-dom';
+import { mountDecorationWidget, type MountedDecorationWidget } from './widget-dom';
 
 export interface BlockDecorationDeps {
 	getPath: () => number[];
@@ -21,6 +21,14 @@ export interface BlockDecorationDeps {
 }
 
 const NO_BLOCK_DECORATIONS: BlockDecoration[] = [];
+
+type BlockWithBadge = BlockDecoration & { badge: DecorationWidgetSpec };
+
+interface MountedBadge {
+	dec: BlockDecoration;
+	view: MountedDecorationWidget;
+	wrapper: HTMLElement;
+}
 
 export function useBlockDecorations(deps: BlockDecorationDeps): { readonly classes: string[] } {
 	const decorations = $derived(
@@ -48,40 +56,71 @@ export function useBlockDecorations(deps: BlockDecorationDeps): { readonly class
 
 	// Badges go in ahead of the block's content, so BLOCK_CONTENT_SELECTOR
 	// (block-content-selector.ts) excludes `.decoration-badge`; keep the two in step.
-	$effect(() => {
-		const decs = decorations;
-		const el = deps.getEl();
-		if (!el || decs.length === 0) return;
-		const destroys: Array<() => void> = [];
-		const badges = document.createDocumentFragment();
+	let badges: MountedBadge[] = [];
+	let badgeHost: HTMLElement | null = null;
+
+	function clearBadges(): void {
+		for (const badge of badges) {
+			badge.view.destroy();
+			badge.wrapper.remove();
+		}
+		badges = [];
+	}
+
+	function badgeDecorations(decs: BlockDecoration[]): BlockWithBadge[] {
+		const withBadge = decs.filter((dec): dec is BlockWithBadge => dec.badge !== undefined);
+		if (withBadge.length === 0 || deps.badgeRefusal === undefined) return withBadge;
+		const path = deps.getPath();
+		withBadge.forEach(() =>
+			devWarn('decorations', `block decoration badge dropped: ${deps.badgeRefusal}`, { path })
+		);
+		return [];
+	}
+
+	function mountBadges(el: HTMLElement, decs: BlockWithBadge[]): void {
+		const fragment = document.createDocumentFragment();
 		for (const dec of decs) {
-			if (!dec.badge) continue;
-			if (deps.badgeRefusal !== undefined) {
-				devWarn('decorations', `block decoration badge dropped: ${deps.badgeRefusal}`, {
-					path: deps.getPath()
-				});
-				continue;
-			}
-			const handle = mountDecorationWidget(dec.badge, dec, (error) =>
-				deps.onRenderError({ origin: 'render', error, context: { path: deps.getPath() } })
-			);
-			if (!handle) continue;
 			const wrapper = document.createElement('div');
 			wrapper.className = 'decoration-badge';
 			wrapper.setAttribute('contenteditable', 'false');
-			wrapper.appendChild(handle.el);
-			badges.appendChild(wrapper);
-			destroys.push(() => {
-				handle.destroy();
-				wrapper.remove();
-			});
+			const view = mountDecorationWidget(dec.badge, dec, wrapper, (error) =>
+				deps.onRenderError({ origin: 'render', error, context: { path: deps.getPath() } })
+			);
+			if (!view) continue;
+			fragment.appendChild(wrapper);
+			badges.push({ dec, view, wrapper });
 		}
-		if (destroys.length === 0) return;
-		el.insertBefore(badges, el.firstChild);
-		return () => {
-			for (const destroy of destroys) destroy();
-		};
+		el.insertBefore(fragment, el.firstChild);
+	}
+
+	function updateBadges(decs: BlockWithBadge[]): void {
+		badges = badges.filter((badge, i) => {
+			const dec = decs[i];
+			if (badge.dec === dec) return true;
+			badge.dec = dec;
+			if (badge.view.update({ decoration: dec })) return true;
+			badge.wrapper.remove();
+			return false;
+		});
+	}
+
+	$effect(() => {
+		const el = deps.getEl();
+		const decs = el ? badgeDecorations(decorations) : [];
+		// A badge whose view is unchanged takes `update` rather than a remount.
+		const sameViews =
+			el === badgeHost &&
+			decs.length === badges.length &&
+			decs.every((dec, i) => dec.badge.view === badges[i].dec.badge?.view);
+		if (sameViews) {
+			updateBadges(decs);
+			return;
+		}
+		clearBadges();
+		badgeHost = el;
+		if (el && decs.length > 0) mountBadges(el, decs);
 	});
+	$effect(() => clearBadges);
 
 	return {
 		get classes() {

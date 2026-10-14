@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { appendView } from '#lib/test/harness/views.js';
 import { describe, it, expect } from 'vitest';
 import { createCellRender } from '../../../components/blocks/table/cell-render';
 import { INLINE_PRIORITIES, registerInlineSyntax } from '../../../core/inline/scan/plugin-syntax';
@@ -24,7 +25,7 @@ const replaceIsland = (start: number, end: number, buildDom?: () => HTMLElement)
 		start,
 		end,
 		class: 'fold-island',
-		widget: buildDom ? { buildDom } : undefined
+		widget: buildDom ? { view: appendView(buildDom) } : undefined
 	}
 });
 

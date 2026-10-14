@@ -1,9 +1,9 @@
-/** Decoration objects for these suites. `stubWidget`'s DOM is never built: only the render
- *  path mounts a widget, and the code here routes them by type and path alone. */
+/** Decoration objects for these suites. `stubWidget` never draws: only the render path mounts a
+ *  widget, and the code here routes them by type and path alone. */
 
 import type { Decoration, DecorationWidgetSpec } from '#lib/decorations/types.js';
 
-export const stubWidget: DecorationWidgetSpec = { buildDom: () => ({}) as HTMLElement };
+export const stubWidget: DecorationWidgetSpec = { view: () => ({}) };
 
 export const mark = (path: number[]): Decoration => ({
 	type: 'mark',

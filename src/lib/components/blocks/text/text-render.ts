@@ -36,7 +36,11 @@ import {
 } from '../../../caret/widget-offset';
 import { captureFocusedCaret } from '../../../caret/focused-caret';
 import type { IndexedDecoration } from '../../../decorations/buckets';
-import { applyIslandDecorations, islandRenderKeyPart } from '../../../decorations/island-dom';
+import {
+	applyIslandDecorations,
+	islandRenderKeyPart,
+	NO_ISLAND_VIEWS
+} from '../../../decorations/island-dom';
 import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 import { mountDecorationWidget } from '../../../decorations/widget-dom';
 import { devWarn } from '../../../dev-warn';
@@ -134,11 +138,11 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		reading: deps.reading,
 		activationClick: deps.activationClick
 	});
-	let islandDestroys: Array<() => void> = [];
+	let islandViews = NO_ISLAND_VIEWS;
 
 	function destroyIslands(): void {
-		for (const destroy of islandDestroys) destroy();
-		islandDestroys = [];
+		islandViews.destroy();
+		islandViews = NO_ISLAND_VIEWS;
 	}
 
 	function acquireViewWidget(node: InlineNode, raw: string): HTMLElement | null {
@@ -269,7 +273,10 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		let carriedCaret: RawOffset | null = null;
 
 		if (isProseKind(node.kind)) {
-			if (renderKey === lastRenderedKey && !forceRebuild) return;
+			if (renderKey === lastRenderedKey && !forceRebuild) {
+				islandViews.update(islands);
+				return;
+			}
 			// Working out which parts differ allocates, so it stays behind the trace check.
 			if (isInteractionTraceEnabled())
 				traceRebuild(renderKeySegmentDiff(lastRenderedKey, renderKey), forceRebuild);
@@ -286,9 +293,10 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 			widgetPool.beginPass();
 			destroyIslands();
 			el.replaceChildren(buildInlineDOM(content, pendingBreaks));
-			islandDestroys = applyIslandDecorations(el, node.raw, islands, {
+			islandViews = applyIslandDecorations(el, node.raw, islands, {
 				contentLength: contentLengthOf(node),
-				mountWidget: (spec, dec) => mountDecorationWidget(spec, dec, deps.reportRenderError),
+				mountWidget: (spec, dec, target) =>
+					mountDecorationWidget(spec, dec, target, deps.reportRenderError),
 				onSkipped: (dec, reason) => devWarn('decorations', `decoration skipped: ${reason}`, dec)
 			});
 			if (islands.length > 0) {

@@ -33,7 +33,7 @@ test.describe('block decorations', () => {
 		await expect(host).toHaveAttribute('data-e2e-flag', 'on');
 	});
 
-	test('a buildDom badge mounts as the host first child, non-editable', async ({ page }) => {
+	test('a DOM badge view mounts as the host first child, non-editable', async ({ page }) => {
 		await editor.loadContent('badged block\n');
 		await page.evaluate(() => {
 			(window as any).__test.decorations.addSource({
@@ -43,11 +43,12 @@ test.describe('block decorations', () => {
 						type: 'block',
 						path: [0],
 						badge: {
-							buildDom: () => {
+							view: (target: HTMLElement) => {
 								const el = document.createElement('span');
 								el.className = 'e2e-badge-content';
 								el.textContent = '⚑';
-								return el;
+								target.append(el);
+								return {};
 							}
 						}
 					}
@@ -100,7 +101,12 @@ test.describe('block decorations', () => {
 						path: [0],
 						class: 'e2e-gone',
 						attrs: { 'data-e2e-gone': '1' },
-						badge: { buildDom: () => document.createElement('span') }
+						badge: {
+							view: (target: HTMLElement) => {
+								target.append(document.createElement('span'));
+								return {};
+							}
+						}
 					}
 				]
 			});
@@ -165,7 +171,12 @@ test.describe('block decorations', () => {
 						type: 'block',
 						path: [0],
 						class: 'e2e-edit',
-						badge: { buildDom: () => document.createElement('span') }
+						badge: {
+							view: (target: HTMLElement) => {
+								target.append(document.createElement('span'));
+								return {};
+							}
+						}
 					}
 				]
 			});

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { appendView } from '#lib/test/harness/views.js';
 import { renderKeySegmentDiff } from '#lib/components/blocks/text/text-render.js';
 import { islandRenderKeyPart } from '#lib/decorations/island-dom.js';
 import type { IndexedDecoration } from '#lib/decorations/buckets.js';
@@ -25,7 +26,7 @@ const island = (offset: number): IndexedDecoration<WidgetDecoration | ReplaceDec
 		type: 'widget',
 		path: [0],
 		offset,
-		widget: { buildDom: () => document.createElement('span') }
+		widget: { view: appendView() }
 	}
 });
 

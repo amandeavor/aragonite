@@ -9,7 +9,7 @@ never content.
 ## Happy paths
 
 - A block decoration with a class and attributes puts both on the block's host div
-- A `buildDom` badge renders inside a `.decoration-badge[contenteditable="false"]` wrapper
+- A DOM badge view draws inside a `.decoration-badge[contenteditable="false"]` wrapper
   that is the host's first child, before the block component
 
 ## Edge cases
