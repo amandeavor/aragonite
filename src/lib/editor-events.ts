@@ -66,8 +66,8 @@ export interface EditorEventMap {
 	/** A `source` prop write replaced the whole document. Fires once the new tree, its selection
 	 *  and its link references are in place; an `edit` never fires for it. */
 	sourceSwap: SourceSwapEvent;
-	/** What the find bar shows changed: open or closed, the query, the options, the current match,
-	 *  the match count or the error. Once per change, after a regex scan lands; read `getSearch()`. */
+	/** What the find bar shows changed: open or closed, its query, options, current match, error, or
+	 *  either count. Once per change, after a regex scan or a replace lands; read `getSearch()`. */
 	searchChange: void;
 }
 

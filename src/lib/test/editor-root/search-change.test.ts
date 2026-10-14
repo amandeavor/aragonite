@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // `searchChange` tells a host outside Svelte that what a find bar shows has changed: open or
-// closed, the query, the options, the current match, the match count or the error.
+// closed, the query, the options, the current match, the match count, the error or a replace's count.
 import { describe, it, expect, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { createEditor, type EditorHandle } from '#lib/index.js';
@@ -86,6 +86,47 @@ describe('searchChange', () => {
 		typeInFirstBlock(target, 'cat');
 		await settleEditor();
 		expect(search.matches).toHaveLength(3);
+		expect(take()).toBe(1);
+	});
+
+	it('fires once for a replace-all that commits block by block, after the last block', async () => {
+		const { search, take } = create('cat cat\n\ncat\n');
+		search.open();
+		search.setQuery('cat');
+		take();
+
+		search.setReplacement('dog');
+		await search.replaceAll();
+		await settleEditor();
+		expect(search.matches).toHaveLength(0);
+		expect(take()).toBe(1);
+	});
+
+	it('fires for a replace whose count the bar reads out, even when the matches stay', async () => {
+		const { search, take } = create('cat cat\n');
+		search.open();
+		search.setQuery('cat');
+		take();
+
+		search.setReplacement('cats');
+		await search.replaceCurrent();
+		await settleEditor();
+		expect(search.matches).toHaveLength(2);
+		expect(search.replacedCount).toBe(1);
+		expect(take()).toBe(1);
+	});
+
+	it('fires once when a source swap under the open bar moves the match count', async () => {
+		const { editor, search, take } = create('cat cat\n');
+		search.open();
+		search.setQuery('cat');
+		search.next();
+		take();
+
+		editor.update({ source: 'cat\n\ncat cat\n' });
+		await settleEditor();
+		expect(search.matches).toHaveLength(3);
+		expect(search.activeIndex).toBe(0);
 		expect(take()).toBe(1);
 	});
 

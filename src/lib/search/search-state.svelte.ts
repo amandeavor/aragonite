@@ -52,7 +52,7 @@ interface SearchDeps {
 	onClose: () => void;
 }
 
-export function createSearchState(deps: SearchDeps): SearchState {
+export function createSearchState(deps: SearchDeps): EditorSearchState {
 	let isOpen = $state(false);
 	let query = $state('');
 	let replacement = $state('');
@@ -65,6 +65,8 @@ export function createSearchState(deps: SearchDeps): SearchState {
 	// Cleared on the next search action, not in rescan: the decoration registry's re-run
 	// after a commit would otherwise wipe it instantly.
 	let replacedCount = $state<number | null>(null);
+	// A replace commits block by block, each in its own flush; the matches between are not final.
+	let replacing = $state(false);
 
 	// A regex scan lands asynchronously, so `matches` can trail its query: every rescan and close
 	// bumps `scanEpoch`, and an outcome tagged with an older epoch is dropped.
@@ -175,6 +177,20 @@ export function createSearchState(deps: SearchDeps): SearchState {
 		void revealActive();
 	}
 
+	async function commitReplace(write: () => Promise<number>): Promise<void> {
+		replacing = true;
+		try {
+			const n = await write();
+			// The edit-epoch bump is deferred, so an invalidate-only refresh would hit the
+			// memo and republish the pre-replace matches.
+			rescan();
+			refresh();
+			replacedCount = n;
+		} finally {
+			replacing = false;
+		}
+	}
+
 	async function revealActive(): Promise<void> {
 		await pendingScan; // a regex scan lands async; reveal the match we will actually show
 		const m = matches[activeIndex];
@@ -254,31 +270,20 @@ export function createSearchState(deps: SearchDeps): SearchState {
 			await pendingScan; // regex matches land async; replacing needs the settled set
 			const m = matches[activeIndex];
 			if (!m) return;
-			const n = await deps.replace.replaceOne(m, replacement);
-			// The edit-epoch bump is deferred, so an invalidate-only refresh would hit the
-			// memo and republish the pre-replace matches.
-			rescan();
-			refresh();
-			replacedCount = n;
+			await commitReplace(() => deps.replace.replaceOne(m, replacement));
 		},
 		async replaceAll() {
 			await pendingScan;
 			if (!matches.length) return;
-			const n = await deps.replace.replaceAll(matches, replacement);
-			rescan();
-			refresh();
-			replacedCount = n;
+			await commitReplace(() => deps.replace.replaceAll(matches, replacement));
+		},
+		viewKey() {
+			if (scanning || replacing) return null;
+			const { caseSensitive, wholeWord, regex } = options;
+			const flags = `${+isOpen}${+caseSensitive}${+wholeWord}${+regex}`;
+			return [flags, activeIndex, matches.length, error, replacedCount, query].join('\0');
 		}
 	};
-}
-
-/** What a find bar shows, as one value to compare; null while a regex scan runs, since the matches it
- *  will show are not in yet. */
-export function searchViewKey(search: SearchState): string | null {
-	if (search.isScanning) return null;
-	const { caseSensitive, wholeWord, regex } = search.options;
-	const flags = `${+search.isOpen}${+caseSensitive}${+wholeWord}${+regex}`;
-	return `${flags}\0${search.activeIndex}\0${search.matches.length}\0${search.error}\0${search.query}`;
 }
 
 /** The public search controller, what `editor.getSearch()` exposes. Deliberately minimal:
@@ -305,4 +310,11 @@ export interface SearchState {
 	prev(): void;
 	replaceCurrent(): Promise<void>;
 	replaceAll(): Promise<void>;
+}
+
+/** The search state the editor holds: the public controller, plus the key `searchChange` compares. */
+export interface EditorSearchState extends SearchState {
+	/** What a find bar shows, as one value; null while a regex scan or a replace is in flight, since
+	 *  the matches it will show are not in yet. */
+	viewKey(): string | null;
 }

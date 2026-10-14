@@ -69,11 +69,7 @@
 	import { createEditorActions, type EditorActionsDeps } from '../editor-actions';
 	import { createReorderAction } from '../editor-actions/reorder-action';
 	import { createSearchReplace } from '../editor-actions/search-replace';
-	import {
-		createSearchState,
-		searchViewKey,
-		type SearchState
-	} from '../search/search-state.svelte';
+	import { createSearchState, type SearchState } from '../search/search-state.svelte';
 	import { createDecorationEngine } from '../decorations/decoration-state.svelte';
 	import { createMarkActivation } from '../decorations/mark-activation';
 	import { paintedMarkRects } from '../decorations/mark-interactions';
@@ -747,10 +743,11 @@
 		reveal: (p) => rects.scrollTo(p),
 		onClose: () => void searchCaret.restore()
 	});
-	// One fire per flush that changed what the find bar shows; a regex scan fires once it lands.
-	let lastSearchKey = searchViewKey(searchState);
+	// One fire per flush that changed what the find bar shows; a regex scan or a replace fires once
+	// it lands.
+	let lastSearchKey = searchState.viewKey();
 	$effect(() => {
-		const key = searchViewKey(searchState);
+		const key = searchState.viewKey();
 		if (key === null || key === lastSearchKey) return;
 		lastSearchKey = key;
 		events.emit('searchChange', undefined);
