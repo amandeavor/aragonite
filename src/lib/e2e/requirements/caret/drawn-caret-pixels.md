@@ -20,3 +20,5 @@ The pixel rows run at device pixel ratios of 1, 1.25 and 1.5, on a line height t
 - The gap bar's top and thickness keep the device grid, 2px rounded to the nearest whole device pixel
 - A length exactly halfway between two device pixels (1px at 1.5x, 2px at 1.25x) rounds up, as the browser's caret does at 1.5x
 - A theme that sets `--md-caret-color` colors the bar, in plain text and in a link alike
+- On an editable that starts between pixels, the bar stands in the browser's caret column or the one beside it, since the browser floors in the editable's own pixels first
+  - Miss-analysis: every caret row's editable sat on a whole pixel, so the fraction the browser-caret finder's screenshot crop dropped never showed

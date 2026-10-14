@@ -1,7 +1,12 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { browserCaret, drawnCaretMarks, setCaretProp } from '../../carets-showing';
+import {
+	browserCaret,
+	drawnCaretMarks,
+	oneCaretOnTheBrowsersLine,
+	setCaretProp
+} from '../../carets-showing';
 import { TABLE_THEN_FENCE, arriveAtBoundary } from '../selection/gap-caret-fixtures';
 
 // The drawn caret on the device pixel grid, and in the color of the text it stands in
@@ -260,4 +265,38 @@ test('at 1x the bar stands in the browser’s own caret column at every letter b
 		painted.push((await browserCaret(page)).left);
 	}
 	expect(drawn).toEqual(painted);
+});
+
+test('on an editable that starts between pixels, the bar stands in the browser’s column or the next', async ({
+	page,
+	browserName
+}) => {
+	test.skip(
+		browserName === 'webkit',
+		'WebKit reports the range in whole pixels, losing the fraction its caret rounds'
+	);
+	const editor = new EditorPage(page);
+	await editor.goto();
+	await editor.loadContent('first\n\nWide mill thrift right hill\n');
+	await page.addStyleTag({ content: '.editor [contenteditable] { margin-left: 0.5px; }' });
+	const STEPS = 8;
+	const drawn: number[] = [];
+	await editor.clickBlock(1);
+	await page.keyboard.press('Home');
+	for (let i = 0; i < STEPS; i++) {
+		await page.keyboard.press('ArrowRight');
+		await nextFrames(page);
+		drawn.push(Math.round((await barPixels(page)).bar.left));
+	}
+	expect(await oneCaretOnTheBrowsersLine(page)).toBe('drawn');
+	const painted: number[] = [];
+	await page.keyboard.press('Home');
+	for (let i = 0; i < STEPS; i++) {
+		await page.keyboard.press('ArrowRight');
+		painted.push((await browserCaret(page)).left);
+	}
+	expect(
+		painted.map((x, i) => Math.abs(x - drawn[i])).filter((off) => off !== 0 && off !== 1),
+		`drawn ${drawn}, painted ${painted}`
+	).toEqual([]);
 });
