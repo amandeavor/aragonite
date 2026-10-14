@@ -68,19 +68,17 @@ const CROSSINGS: { name: string; head: Cut; headPath: number[]; tail: Cut }[] = 
 ];
 
 describe.each(CROSSINGS)('a delete across $name', ({ head, headPath, tail }) => {
-	it('in live, drops the opener it stranded from the kept head, and the caret follows', () => {
+	it('in live, closes the run on the kept head, the caret before the closer', () => {
 		const { source, caret } = run(head.source, head.start, head.end, 'live');
 
-		expect(source).not.toContain('**');
-		expect(source).toContain('Some bo\n');
-		expect(caret).toEqual({ path: headPath, offset: 7 });
+		expect(source).toContain('Some **bo**\n');
+		expect(caret).toEqual({ path: headPath, offset: 9 });
 	});
 
-	it('in live, drops the closer it stranded from the kept tail', () => {
+	it('in live, reopens the run on the kept tail', () => {
 		const { source } = run(tail.source, tail.start, tail.end, 'live');
 
-		expect(source).not.toContain('**');
-		expect(source).toContain('ld text\n');
+		expect(source).toContain('\n**ld** text\n');
 	});
 
 	it('in source mode, keeps the truncation byte-literal, delimiters included', () => {

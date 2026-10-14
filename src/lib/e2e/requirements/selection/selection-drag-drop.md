@@ -49,10 +49,13 @@ edits, and one undo then leaves the source's bytes gone.
 - after a drop the live tree still serializes to what it parses back from, and each touched
   block's rendered text still equals its raw, so no native edit leaked past the handler
 - in live mode, drag a range that starts inside a bold run and ends past it (`ld an` out of
-  `Some **bold** and words tail`, in a to-do) past the end of its line: the moved text shows
-  no `**`, and the item reads `Some bod words tailld an` with no marker on screen
+  `Some **bold** and words tail`, in a to-do) past the end of its line: both halves keep the
+  bold (`Some **bo**d words tail**ld** an`), and the item reads `Some bod words tailld an`
+  with no marker on screen
   - Miss-analysis: every drag moved plain words, so the raw slice the drop carried never held a
     delimiter run whose partner stayed behind
+  - Miss-analysis: the row then read only the screen, so the bold the cut dropped from both
+    halves showed nowhere it checked
 
 ## Error cases
 

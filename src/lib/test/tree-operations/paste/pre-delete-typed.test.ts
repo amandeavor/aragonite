@@ -149,8 +149,8 @@ describe.each(PLACES)('typing and pasting over one selection, in $name', (place)
 	});
 });
 
-// The pasted text lands where the cleanup left the join, so the caret moves with the runs it dropped.
-it('a paste over a range whose cleanup drops a run puts the caret after the pasted text', async () => {
+// The pasted text lands inside the run the cleanup closed, and the caret right after it.
+it('a paste over a range whose cleanup closes a run puts the caret after the pasted text', async () => {
 	const { deps } = makeEditorActionsDeps('**ab** c\n', { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
 	await pasteDispatch(
@@ -163,5 +163,5 @@ it('a paste over a range whose cleanup drops a run puts the caret after the past
 		})
 	);
 	const [call] = vi.mocked(blockEdit.updateBlockContent).mock.calls;
-	expect([call[1], call[4]]).toEqual(['ax\n', 2]);
+	expect([call[1], call[4]]).toEqual(['**ax**\n', 4]);
 });

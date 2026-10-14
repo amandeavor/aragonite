@@ -6,7 +6,7 @@
  */
 
 import { getContentRange, isProseKind, openLinesAtEnd, readInline } from '../index';
-import { CONTENT_VISIBILITY, renderedText } from '../visibility';
+import { CONTENT_VISIBILITY, visibleRuns, type VisibleRun } from '../visibility';
 import { isBlankText, ownTrailingLineEnding, trimTrailingLineEnding } from '../../lines';
 import type { CstNode, InlineNode } from '../../nodes';
 import type { NodeView } from '../../node-views';
@@ -64,10 +64,19 @@ export function readBack(bytes: string, store: StoredAs): ReadBack | null {
 export const readSource = (read: ReadBack): string => read.block?.raw ?? read.raw;
 
 /** What the reader sees of a read, in the content reading (live-mode.md § 2). */
-export function shownOf(read: ReadBack, store: StoredAs): string {
+export const shownOf = (read: ReadBack, store: StoredAs): string => shownRunsOf(read, store).shown;
+
+/** {@link shownOf}, with the runs it was drawn from, so a check on what each character carries
+ *  costs no second render. */
+export function shownRunsOf(
+	read: ReadBack,
+	store: StoredAs
+): { shown: string; runs: VisibleRun[] } {
 	const render = { grammar: store.reading.grammar };
-	const shown = renderedText(read.inlines, readSource(read), CONTENT_VISIBILITY, render);
-	return read.lead + shown + '\n'.repeat(read.openLines);
+	const runs = visibleRuns(read.inlines, readSource(read), CONTENT_VISIBILITY, render);
+	let text = '';
+	for (const run of runs) if (run.visible) text += run.text;
+	return { shown: read.lead + text + '\n'.repeat(read.openLines), runs };
 }
 
 /** Whether `line` still reads as `node`'s kind where `store` keeps it: always, on an inline

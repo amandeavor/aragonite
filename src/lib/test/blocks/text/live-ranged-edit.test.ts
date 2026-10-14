@@ -100,14 +100,14 @@ describe('a destructive chord at a collapsed caret reaches the join', () => {
 	});
 
 	// A spellcheck replacement is the same range question with a payload. The range crosses the
-	// closer, so the opener is stranded whatever the payload does and the cleanup takes it.
-	it('insertReplacementText writes its text at the cleaned join', async () => {
+	// closer, so the cleanup closes the bold again after the payload that fills it.
+	it('insertReplacementText writes its text inside the bold it replaced', async () => {
 		mounted = mountText(BOLD);
 		seat(mounted.el, 6, 6);
 		const e = await press(mounted.el, 'insertReplacementText', { start: 2, end: 10 }, 'X');
 
 		expect(e.defaultPrevented).toBe(true);
-		expect(committed(mounted.blockEdit)).toEqual(['Xail\n']);
+		expect(committed(mounted.blockEdit)).toEqual(['**X**ail\n']);
 	});
 
 	// The payload is part of what the cleanup checks: `**brave**` strands nothing, so it

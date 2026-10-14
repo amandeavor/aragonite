@@ -40,19 +40,19 @@ const edit = (source: string, start: number, end: number, typed: string) =>
 const MIXED = 'Some **bold** and *italic* words\n';
 
 describe('a selection edit the join has something to clean', () => {
-	it('deletes the range and takes the stranded runs with it', () => {
-		expect(edit(MIXED, 9, 21, '')).toEqual({ raw: 'Some boalic words\n', caret: 7 });
+	it('deletes the range and closes and reopens the runs it cut through', () => {
+		expect(edit(MIXED, 9, 21, '')).toEqual({ raw: 'Some **bo***alic* words\n', caret: 9 });
 	});
 
-	// The caret is the cleaned join plus what was typed, not the start before the edit: two marker
-	// bytes went from ahead of it, and a caret read before the cleanup would sit two late.
-	it('lands the typed text at the cleaned join', () => {
-		expect(edit(MIXED, 9, 21, 'X')).toEqual({ raw: 'Some boXalic words\n', caret: 8 });
+	// The typed text goes inside the closer the cleanup wrote, since it takes the format of the
+	// character before it, and the caret follows it there.
+	it('lands the typed text inside the closed run', () => {
+		expect(edit(MIXED, 9, 21, 'X')).toEqual({ raw: 'Some **boX***alic* words\n', caret: 10 });
 	});
 
 	it('returns the block whole, trailing line ending included', () => {
 		expect(edit('Some **bold** and *italic* words\r\n', 9, 21, '')?.raw).toBe(
-			'Some boalic words\r\n'
+			'Some **bo***alic* words\r\n'
 		);
 	});
 });

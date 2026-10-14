@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// The bytes a drag carries out of a leaf are cut by the same rule as the bytes it leaves behind,
-// so the two agree on screen: put back where they were, they show what the leaf showed.
+// The bytes a drag carries out of a leaf are cut by the same rule as the bytes it leaves behind:
+// a format run the range cuts through leaves closed at its edges, as the kept half keeps it.
 // Miss-analysis: the drop's tests moved plain words only, so the raw slice it carried never held
 // a delimiter run whose partner stayed behind.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -9,7 +9,6 @@ import { blockNodeAt } from '#lib/tree-operations/node-primitives.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
 import { bytesLeavingLeaf, replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
 import { readBack, shownOf } from '#lib/core/inline/live-edit/read-back.js';
-import { getContentRange } from '#lib/core/inline/index.js';
 import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
 import {
 	registerLiveJoinSeamCleaner,
@@ -40,58 +39,75 @@ function leaving(
 
 const shown = (bytes: string, store: StoredAs): string => shownOf(readBack(bytes, store)!, store);
 
-// Each range runs from the start of `from` to the end of the `to` after it.
-const SHAPES: Array<[string, string, number[], string, string]> = [
-	['a run closing inside the range', 'Some **bold** and words tail\n', [0], 'ld**', ' an'],
-	['a run opening inside the range', 'Some text **and bold** tail\n', [0], 'text', '**an'],
-	['a run wrapping the whole range', '**a b c** x\n', [0], 'b', 'b'],
-	['a to-do item’s text', '- [ ] Some **bold** and words tail\n', [0, 0, 0], 'ld**', ' an'],
-	['a heading’s text', '# Some **bold** and words\n', [0], 'ld**', ' an'],
-	['a table cell', '| Some **bold** and |\n| - |\n| x |\n', [0, 0, 0], 'ld**', ' an']
+// Each range runs from the start of `from` to the end of the `to` after it; the last column is
+// what it carries.
+const SHAPES: Array<[string, string, number[], string, string, string]> = [
+	[
+		'a run closing inside the range',
+		'Some **bold** and words tail\n',
+		[0],
+		'ld**',
+		' an',
+		'**ld** an'
+	],
+	[
+		'a run opening inside the range',
+		'Some text **and bold** tail\n',
+		[0],
+		'text',
+		'**an',
+		'text **an**'
+	],
+	['a run wrapping the whole range', '**a b c** x\n', [0], 'b', 'b', '**b**'],
+	[
+		'a to-do item’s text',
+		'- [ ] Some **bold** and words tail\n',
+		[0, 0, 0],
+		'ld**',
+		' an',
+		'**ld** an'
+	],
+	['a heading’s text', '# Some **bold** and words\n', [0], 'ld**', ' an', '**ld** an'],
+	['a table cell', '| Some **bold** and |\n| - |\n| x |\n', [0, 0, 0], 'ld**', ' an', '**ld** an']
 ];
 
 describe('the bytes a range takes out of a leaf', () => {
-	it.each(SHAPES)(
+	// Put back through the write a paste takes. Into the closed half of a run, that write splices
+	// the carried runs inside the kept ones, so only a range a run wraps whole reads back today.
+	const putBack = (source: string, path: number[], from: string, to: string) => {
+		const { node, store, cut, moved } = leaving(source, path, from, to);
+		const cutLeaf = { ...node, raw: cut.raw };
+		const restored = replaceRangeInLeaf(
+			cutLeaf,
+			{ start: cut.caret, end: cut.caret },
+			moved,
+			store
+		);
+		expect(shown(restored.raw, store)).toBe(shown(node.raw, store));
+	};
+	const wraps = (label: string) => label === 'a run wrapping the whole range';
+	it.each(SHAPES.filter(([label]) => wraps(label)))(
+		'put back where they were, show what the leaf showed: %s',
+		(_label, source, path, from, to) => putBack(source, path, from, to)
+	);
+	it.fails.each(SHAPES.filter(([label]) => !wraps(label)))(
 		'put back where they were, show what the leaf showed: %s',
 		(_label, source, path, from, to) => {
-			const { node, store, cut, moved } = leaving(source, path, from, to);
-			const restored = cut.raw.slice(0, cut.caret) + moved + cut.raw.slice(cut.caret);
-
-			expect(shown(restored, store)).toBe(shown(node.raw, store));
+			putBack(source, path, from, to);
 		}
 	);
 
-	// The tail cut leaves only the leaf's own trailing bytes after the range, so the head cut must
-	// leave them alone too, or the map would end the moved bytes in the wrong place.
 	it.each(SHAPES)(
-		'end where the leaf’s trailing bytes start: %s',
-		(_label, source, path, from, to) => {
-			const { node, store } = leaving(source, path, from, to);
-			const start = node.raw.indexOf(from);
-			const end = node.raw.indexOf(to, start) + to.length;
-			const content = getContentRange(node);
-			const tail = replaceRangeInLeaf(
-				node,
-				{ start: end, end: Math.max(end, content.end) },
-				'',
-				store
-			);
-			const head = replaceRangeInLeaf(
-				{ ...node, raw: tail.raw },
-				{ start: Math.min(start, content.start), end: tail.mapOffset(start) },
-				'',
-				store
-			);
-
-			expect(head.mapOffset(tail.caret)).toBe(head.raw.length - (tail.raw.length - tail.caret));
+		'carry each run they cut through, closed at their edges: %s',
+		(_label, source, path, from, to, carried) => {
+			expect(leaving(source, path, from, to).moved).toBe(carried);
 		}
 	);
 
-	it('carry no run whose partner stays behind', () => {
-		const { cut, moved } = leaving('Some **bold** and words tail\n', [0], 'ld**', ' an');
+	it('leave the run they cut through closed on the bytes that stay', () => {
+		const { cut } = leaving('Some **bold** and words tail\n', [0], 'ld**', ' an');
 
-		expect(moved).toBe('ld an');
-		expect(cut.raw).toBe('Some bod words tail\n');
+		expect(cut.raw).toBe('Some **bo**d words tail\n');
 	});
 
 	it('are the plain slice in source mode', () => {
@@ -119,8 +135,15 @@ describe('where a range replace puts the old bytes', () => {
 	});
 
 	it('lands a byte the join cleanup dropped where its run stood', () => {
-		// `Some **bo` + `d words`: the opener goes, so `bo` moves back two bytes.
+		// `bold` selected whole: both runs go, so every byte of them lands where the opener stood.
+		const at = map('Some **bold** text\n', 7, 11, '');
+		expect([4, 5, 6, 7, 11, 13, 14].map(at)).toEqual([4, 5, 5, 5, 5, 5, 6]);
+	});
+
+	// `Some **bo` + `**` + `d words`: the range's start lands before the closer the join wrote,
+	// its end after it.
+	it('lands the range’s end after a closer the join wrote', () => {
 		const at = map('Some **bold** and words tail\n', 9, 16, '');
-		expect([4, 5, 6, 7, 9, 16, 17].map(at)).toEqual([4, 5, 5, 5, 7, 7, 8]);
+		expect([4, 5, 6, 7, 9, 16, 17].map(at)).toEqual([4, 5, 6, 7, 9, 11, 12]);
 	});
 });

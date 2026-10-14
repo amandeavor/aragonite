@@ -15,7 +15,11 @@ import {
 	visibleRuns
 } from '#lib/core/inline/visibility.js';
 import { displayLength } from '#lib/core/lines.js';
-import { emptyConstructSpans } from '#lib/test/harness/live-oracles.js';
+import {
+	emptyConstructSpans,
+	markedChars,
+	type MarkedChar
+} from '#lib/test/harness/live-oracles.js';
 import { renderOptions } from '../harness/fixture-grammar';
 
 /** A prose leaf and the path that addresses it. */
@@ -57,6 +61,12 @@ export function documentContentText(holder: Document | CstNode): string {
 			return renderedText(nodes, child.raw, CONTENT_VISIBILITY, renderOptions());
 		})
 		.join('\n');
+}
+
+/** Every character the document's prose shows, in order, with the constructs it is drawn in. */
+export function documentMarkedChars(holder: Document | CstNode): MarkedChar[] {
+	const leaves = proseLeaves(holder).filter(({ node }) => readable(node));
+	return markedChars(leaves.map(({ node }) => ({ raw: node.raw, content: getContentRange(node) })));
 }
 
 /** Delimiter pairs enclosing nothing whose every byte goes unpainted (live-mode.md § 4.1); the

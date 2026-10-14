@@ -13,12 +13,13 @@ import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { getContentRange } from '#lib/core/inline/index.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
-import { isSubsequence, keepsEveryByte } from '#lib/test/harness/live-oracles.js';
+import { isSubsequence, keepsEveryByte, type MarkedChar } from '#lib/test/harness/live-oracles.js';
 import { listInlineMarks } from '#lib/schema/inline-construct-policy.js';
 import { arbLiveDoc } from '#lib/test/invariants/arbitraries/index.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import {
 	documentContentText,
+	documentMarkedChars,
 	hiddenEdgeOffsets,
 	normalizeScreen,
 	unpaintedResidue
@@ -64,6 +65,9 @@ export interface FuzzStats {
 	rewrote: Record<GestureKind, number>;
 	/** Join rewrites that started in a list item's first block, where the marker stands in front. */
 	rewroteUnderListMarker: number;
+	/** Join rewrites that showed a kept character in fewer marks than it had: the fallback that drops
+	 *  a run no spelling can close (G1.91). */
+	marksDropped: number;
 	/** Gestures whose drawn offset landed inside a surrogate pair, per kind. */
 	midScalar: Record<GestureKind, number>;
 	violations: Violation[];
@@ -206,8 +210,44 @@ function bytesConserved(gesture: Gesture, before: string, live: string, literal:
 		const scrub = (bytes: string) => [...inked(bytes)].filter((ch) => !alphabet.has(ch)).join('');
 		return scrub(live) === scrub(before);
 	}
-	// A branch that owns a keypress but has no sound rewrite writes nothing (live-mode.md § 4.4).
-	return live === before || isSubsequence(inked(live), inked(literal));
+	// A join closes, reopens or drops delimiter runs and nothing else, and a branch that owns a
+	// keypress but has no sound rewrite writes nothing (live-mode.md § 4.4, § 4.5).
+	return live === before || unformatted(live) === unformatted(literal);
+}
+
+/** Bytes with what a join may write or drop taken out: delimiter runs and a link's destination,
+ *  which closing a link writes again on the half that keeps its text. */
+const unformatted = (bytes: string): string =>
+	inked(bytes)
+		.replace(/\]\([^)]*\)/g, '')
+		.replace(/[*_~`[\]]/g, '');
+
+/** Whether every character `after` shows was shown `before`, in order and in the same marks, the
+ *  typed run aside: `fewer` where some show in fewer marks only. */
+function keptMarks(
+	before: readonly MarkedChar[],
+	after: readonly MarkedChar[],
+	typed: string
+): 'same' | 'fewer' | 'other' {
+	const words = (marks: string): string[] => (marks === '' ? [] : marks.split(' '));
+	const within = (inner: string, outer: string): boolean => {
+		const want = words(inner);
+		let at = 0;
+		for (const word of words(outer)) if (at < want.length && want[at] === word) at++;
+		return at === want.length;
+	};
+	const matches = (fits: (a: MarkedChar, b: MarkedChar) => boolean): boolean => {
+		let at = 0;
+		let spare = [...typed.replace(/\s/g, '')].length;
+		for (const char of after) {
+			const found = before.findIndex((was, i) => i >= at && fits(char, was));
+			if (found >= 0) at = found + 1;
+			else if (spare-- <= 0) return false;
+		}
+		return true;
+	};
+	if (matches((a, b) => a.char === b.char && a.marks === b.marks)) return 'same';
+	return matches((a, b) => a.char === b.char && within(a.marks, b.marks)) ? 'fewer' : 'other';
 }
 
 /** Whitespace out, since structural edits add, drop and reorder line endings by design. The cost:
@@ -232,6 +272,7 @@ export async function fuzzLiveGestures(options: FuzzOptions): Promise<FuzzStats>
 		claimed: 0,
 		rewrote: perKind(),
 		rewroteUnderListMarker: 0,
+		marksDropped: 0,
 		midScalar: perKind(),
 		violations: []
 	};
@@ -260,6 +301,7 @@ export async function fuzzLiveGestures(options: FuzzOptions): Promise<FuzzStats>
 				}
 			}
 			const found = judgeGesture(gesture, { bytes: current, doc: before }, live, literal);
+			if (found.some((v) => v.oracle === 'marks-dropped')) stats.marksDropped++;
 			// A dev-mode warning is a finding. An `invariant:` one should fire in neither run,
 			// so the run with live mode off excuses only the other warnings.
 			if (liveWarns.length > 0) {
@@ -344,6 +386,16 @@ export function judgeGesture(
 
 	if (!bytesConserved(gesture, before, live.bytes, literal.bytes)) {
 		say('bytes', 'seam', 'live wrote bytes its gesture family may not write');
+	}
+	// G1.91: a join that rewrote shows each character it kept in the marks it had.
+	if (JOINS.has(gesture.kind) && live.bytes !== literal.bytes) {
+		const kept = keptMarks(
+			documentMarkedChars(start),
+			documentMarkedChars(live.doc),
+			typedRun(gesture)
+		);
+		if (kept === 'fewer') say('marks-dropped', 'ambiguous', 'a kept character lost a mark');
+		if (kept === 'other') say('marks', 'seam', 'a kept character gained or changed a mark');
 	}
 	// Live may never write a delimiter pair enclosing nothing (live-mode.md § 4.1). Compared with
 	// the start, so a literal run that destroyed an existing pair doesn't make live look guilty.

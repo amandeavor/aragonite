@@ -336,13 +336,13 @@ describe('composed text placement', () => {
 		// marker runs unpaired on screen.
 		const MIXED = 'Some **bold** and *italic* words';
 
-		it('live mode cleans the stranded runs and lands the run at the cleaned join', () => {
+		it('live mode closes and reopens the runs and lands the composed run inside the bold', () => {
 			const { surface, compose, selectRange } = makeSeatHarness(MIXED, null);
 			surface.el.setAttribute('data-presentation', 'live');
 			selectRange(9, 21);
 			compose('Some **boかんalic* words', 9);
 			expect(surface.commits.map((c) => trimTrailingLineEnding(c.text))).toEqual([
-				'Some boかんalic words'
+				'Some **boかん***alic* words'
 			]);
 		});
 

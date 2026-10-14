@@ -6,22 +6,24 @@ construct, and the delimiter runs the cut strands are bytes you never saw. Paste
 literally, an unmatched `**` isn't a construct anymore, so it shows up as plain text.
 So the paste goes through the same replace typing uses (`replaceRangeInLeaf`), with
 the pasted text already in the join (where the two sides the cut leaves meet): it
-keeps a run the text fills back in, and drops one it doesn't. Driven on `/test/editor`; what's checked is what the block shows (its
-text minus the spans a marker-hiding mode drops), not only the source, since the
-source is allowed to differ per mode.
+keeps a run the text fills back in, and closes a run the cut went through on the half
+that stays, so that half keeps its format. Driven on `/test/editor`; what's checked
+is what the block shows (its text minus the spans a marker-hiding mode drops), not
+only the source, since the source is allowed to differ per mode.
 
 ## Happy paths
 
 - live: pasting over a range that starts inside `**bold**` and ends past its
-  closer leaves no `*` in the block's visible text, and the stranded opener is
-  gone from the source rather than pasted into view
+  closer leaves no `*` in the block's visible text, and the bold closes around the
+  pasted text (`Some **bX**`), since pasted text takes the format of the character
+  before it
 - source: the same paste is byte-literal, since every marker is painted there, so
   the cut is the user's own bytes and nothing may be dropped
 - a table cell pastes the same way: the cell splices its own bytes and escapes
-  them where they are written, and the join runs before that step, so the run its
-  cut strands goes with the cut instead of onto the screen and the cell's own
-  `\|` still comes back escaped (the escaping runs after the join, over whatever
-  bytes it wrote)
+  them where they are written, and the join runs before that step, so the bold its
+  cut went through closes around the pasted text (`| Some **bX**xt |`) instead of
+  a stray run showing, and the cell's own `\|` still comes back escaped (the
+  escaping runs after the join, over whatever bytes it wrote)
 - source: the same cell paste is byte-literal too, since the walk crosses the
   painted delimiters one character at a time and the halves it leaves stand as cut
 - live, at the top level and in a list item: pasting `X` over the whole word in
@@ -47,3 +49,6 @@ source is allowed to differ per mode.
 The paste rows only ever cut a range that left a run unpaired, never one the pasted
 text fills back in, so nobody noticed the cut got cleaned up before the text arrived
 (and dropped the bold that typing keeps).
+
+The live rows then pinned the stranded opener going, so a cut that dropped the format
+of the half it kept read as the rule rather than as a loss.

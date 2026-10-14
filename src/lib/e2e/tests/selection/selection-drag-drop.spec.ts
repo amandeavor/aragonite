@@ -242,7 +242,7 @@ test.describe('dragging a selection', () => {
 		await undoLeavesDocument(editor, LIVE_CODE_DOC);
 	});
 
-	test('a range cut out of a bold run in live mode carries no marker to the drop', async ({
+	test('a range cut out of a bold run in live mode keeps its bold, with no marker on screen', async ({
 		page
 	}) => {
 		await editor.setPresentationMode('live');
@@ -256,6 +256,10 @@ test.describe('dragging a selection', () => {
 		await dragSelection(page, grab, await pastLineEnd(page, 'tail'));
 		const text = page.locator("[data-block-path='[0,0,0]'] [contenteditable='true']");
 		await expect.poll(() => textOutsideMarkers(text)).toBe('Some bod words tailld an');
+		// Both halves keep the bold: the kept `bo` closes, the moved `ld` reopens.
+		expect(await page.evaluate(() => (window as any).__test.getSource())).toBe(
+			'- [ ] Some **bo**d words tail**ld** an\n'
+		);
 		expect(await converged(page)).toBe(true);
 	});
 

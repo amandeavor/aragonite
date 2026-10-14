@@ -51,6 +51,20 @@ function deleteBetween(
 const sameBlock = (source: string, from: number, to: number) =>
 	deleteBetween(source, from, source, to);
 
+/** A selection inside one block typed over: the cleaned bytes with `typed` written where it lands. */
+function typeOver(source: string, from: number, to: number, typed: string): string | null {
+	const node = blockOf(source);
+	const join = cleanLiveJoinSeam({
+		mergedRaw: node.raw.slice(0, from) + node.raw.slice(to),
+		seam: from,
+		start: { node, offset: from },
+		end: { node, offset: to },
+		typed,
+		store: topLevelStore(node)
+	});
+	return join && join.raw.slice(0, join.seam) + typed + join.raw.slice(join.seam);
+}
+
 describe('the split inverse: a closer and an opener meeting at the join', () => {
 	it('two bold halves come back as one construct', () => {
 		expect(merge('Some **bo**\n', '**ld** text\n')).toBe('Some **bold** text\n');
@@ -98,10 +112,9 @@ describe('the split inverse: a closer and an opener meeting at the join', () => 
 });
 
 describe('a truncation that strands a delimiter run', () => {
-	// The user saw bold, then italic; what survives is the joined text, and the runs whose
-	// partners the cut took are dropped rather than printed.
-	it('bold to italic drops both stranded runs', () => {
-		expect(sameBlock('**bold** and *italic*\n', 4, 16)).toBe('boalic\n');
+	// The user saw bold, then italic; each kept half keeps its format, closed or reopened at the cut.
+	it('bold to italic closes the bold and reopens the italic', () => {
+		expect(sameBlock('**bold** and *italic*\n', 4, 16)).toBe('**bo***alic*\n');
 	});
 
 	// Same kind on both sides: the surviving opener and closer make one construct across the join,
@@ -112,14 +125,13 @@ describe('a truncation that strands a delimiter run', () => {
 		expect(deleteBetween('**a *bc* d**\n', 6, '**e *fg* h**\n', 6)).toBeNull();
 	});
 
-	it('a nested cut keeps the pair it can and drops the run it cannot', () => {
-		expect(deleteBetween('**a *bc* d**\n', 6, '**e f**\n', 4)).toBe('**a bf**\n');
+	it('a nested cut keeps the pair it can and closes the run it cannot', () => {
+		expect(deleteBetween('**a *bc* d**\n', 6, '**e f**\n', 4)).toBe('**a *b*f**\n');
 	});
 
-	// Same kind, different bytes: markdown will not close `__` with `**`, so keeping the pair
-	// prints both runs and the fallback reading drops everything the cut stranded.
-	it('drops both runs where the two spellings cannot close each other', () => {
-		expect(deleteBetween('__bold__ x\n', 3, 'y **more**\n', 7)).toBe('be\n');
+	// Same kind, different bytes: markdown will not close `__` with `**`, so each half keeps its own.
+	it('keeps both runs apart where the two spellings cannot close each other', () => {
+		expect(deleteBetween('__bold__ x\n', 3, 'y **more**\n', 7)).toBe('__b__**e**\n');
 	});
 
 	// A URL or an escape cannot be cut into halves, so the cleanup does nothing and the caller
@@ -128,6 +140,95 @@ describe('a truncation that strands a delimiter run', () => {
 		expect(sameBlock('a <https://example.com> b\n', 10, 24)).toBeNull();
 		expect(sameBlock('a https://example.com b\n', 8, 23)).toBeNull();
 		expect(sameBlock('a \\* b\n', 3, 5)).toBeNull();
+	});
+});
+
+// G1.91: a live removal keeps the marks on the visible characters it keeps.
+// Miss-analysis: every truncation row pinned the stranded run going, so the lost format read as the rule.
+describe('a truncation keeps the format on the half that stays', () => {
+	it.each([
+		[
+			'a bold run closes where the cut begins',
+			'Some **bold** and words tail\n',
+			9,
+			16,
+			'Some **bo**d words tail\n'
+		],
+		[
+			'a bold run reopens where the cut ends',
+			'Some text **and bold** tail\n',
+			5,
+			14,
+			'Some **d bold** tail\n'
+		],
+		[
+			'a link closes on its destination',
+			'see [here](https://x.example) now\n',
+			7,
+			31,
+			'see [he](https://x.example)ow\n'
+		],
+		['a code span closes on its fence', 'a `code` b\n', 5, 10, 'a `co`\n'],
+		['strikethrough closes', '~~gone~~ x\n', 4, 9, '~~go~~x\n'],
+		['a nested run closes innermost first', '***bold*** x\n', 5, 11, '***bo***x\n'],
+		['two nested runs close innermost first', '~~a *bc* d~~ x\n', 6, 12, '~~a *b*~~ x\n'],
+		[
+			'an underscore run closes in the mark’s own bytes mid-word',
+			'__bold__ and\n',
+			4,
+			10,
+			'**bo**nd\n'
+		]
+	])('%s', (_label, source, from, to, expected) => {
+		expect(sameBlock(source, from, to)).toBe(expected);
+	});
+
+	it('closes and reopens across two blocks', () => {
+		expect(deleteBetween('Some **bold** x\n', 9, 'y *it* z\n', 4)).toBe('Some **bo***t* z\n');
+	});
+
+	// Two links to different places are two links, so the halves keep their own destinations.
+	it('keeps two links apart that point at different places', () => {
+		expect(deleteBetween('[ab](https://one.example)\n', 2, '[cd](https://two.example)\n', 2)).toBe(
+			'[a](https://one.example)[d](https://two.example)\n'
+		);
+	});
+
+	// The outermost runs that match merge, and the rest stay balanced inside them.
+	it('merges the matching outer runs of two chains of different depth', () => {
+		expect(merge('**a *b***\n', '**c**\n')).toBe('**a *b*c**\n');
+	});
+
+	it('puts the caret before the closer it wrote and reports where the far side starts', () => {
+		const node = blockOf('Some **bold** and words tail\n');
+		expect(
+			cleanLiveJoinSeam({
+				mergedRaw: node.raw.slice(0, 9) + node.raw.slice(16),
+				seam: 9,
+				start: { node, offset: 9 },
+				end: { node, offset: 16 },
+				typed: '',
+				store: topLevelStore(node)
+			})
+		).toMatchObject({ raw: 'Some **bo**d words tail\n', seam: 9, seamEnd: 11 });
+	});
+});
+
+describe('text typed over a cut through a run', () => {
+	it('takes the format of the character before it', () => {
+		expect(typeOver('Some **bold** and words tail\n', 9, 16, 'X')).toBe(
+			'Some **boX**d words tail\n'
+		);
+	});
+
+	// A link never grows at its edge (live-mode.md § 4.2).
+	it('lands after a link', () => {
+		expect(typeOver('see [here](u) now\n', 7, 15, 'X')).toBe('see [he](u)Xow\n');
+	});
+
+	// The typed text fills the run back in, so the literal replace already says it.
+	it('fills a run it replaces whole', () => {
+		expect(typeOver('Some **bold** text\n', 7, 11, 'X')).toBeNull();
 	});
 });
 

@@ -68,3 +68,50 @@ export function keepsEveryByte(before: string, after: string): boolean {
 	}
 	return true;
 }
+
+/** One character a reader sees, where it sits in its block, and the constructs it is drawn in. */
+export interface MarkedChar {
+	block: number;
+	at: number;
+	char: string;
+	marks: string;
+}
+
+/** Every non-whitespace character `blocks` show, with the constructs that enclose it; walked
+ *  here rather than read off the editor's own marks helper, so the check stands apart from it. */
+export function markedChars(
+	blocks: readonly { raw: string; content: { start: number; end: number } }[]
+): MarkedChar[] {
+	const out: MarkedChar[] = [];
+	blocks.forEach(({ raw, content }, block) => {
+		const push = (at: number, marks: readonly string[]) => {
+			if (!/\s/.test(raw[at])) out.push({ block, at, char: raw[at], marks: marks.join(' ') });
+		};
+		const visit = (nodes: readonly InlineNode[], marks: readonly string[]): void => {
+			for (const node of nodes) {
+				if (node.kind === 'text') {
+					for (let at = node.start; at < node.end; at++) push(at, marks);
+					continue;
+				}
+				const range = constructContentRange(node);
+				// A URL or an escape is text the reader sees, not a format on it.
+				if (node.kind === 'autolink' && range) {
+					for (let at = range.start; at < range.end; at++) push(at, marks);
+					continue;
+				}
+				if (node.kind === 'escape') {
+					push(node.end - 1, marks);
+					continue;
+				}
+				const label =
+					node.kind === 'link' && range ? `link${raw.slice(range.end, node.end)}` : node.kind;
+				if (node.children && node.children.length > 0) visit(node.children, [...marks, label]);
+				else if (node.kind === 'inlineCode' && range) {
+					for (let at = range.start; at < range.end; at++) push(at, [...marks, label]);
+				}
+			}
+		};
+		visit(parseInline(raw, content.start, content.end), []);
+	});
+	return out;
+}

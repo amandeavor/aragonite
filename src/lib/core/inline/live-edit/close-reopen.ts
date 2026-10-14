@@ -5,7 +5,10 @@
  * share this.
  */
 
-import type { AnyInlineKind } from '../../nodes';
+import type { AnyInlineKind, InlineNode } from '../../nodes';
+import { constructContentRange, inlineDescendants } from '../index';
+import type { VisibleRun } from '../visibility';
+import { getInlineMarkPolicy } from '../../../schema/inline-construct-policy';
 
 /** A construct a cut passes through, in its block's raw coordinates. */
 export interface CutConstruct {
@@ -66,4 +69,43 @@ export function reopenAfter(
 		}
 	}
 	return { start, openers, reopened };
+}
+
+/** The marker a format chord writes for `kind`, which closes mid-word where `__` can't. Null where
+ *  a run's own bytes are its only spelling (a link's destination, a code span's sized fence). */
+export function markSpelling(kind: AnyInlineKind): string | null {
+	const mark = getInlineMarkPolicy(kind);
+	return mark && !mark.wrapBytes ? mark.markerBytes : null;
+}
+
+/** The marks on each visible character of `[from, to)`, whitespace left out: its enclosing
+ *  constructs, outermost first, a link with its destination. */
+export function marksShown(
+	runs: readonly VisibleRun[],
+	inlines: readonly InlineNode[],
+	raw: string,
+	from: number,
+	to: number
+): string[] {
+	const enclosing: { content: { start: number; end: number }; mark: string }[] = [];
+	for (const node of inlineDescendants(inlines)) {
+		const content = node.kind === 'text' ? null : constructContentRange(node);
+		if (!content) continue;
+		const mark = markSpelling(node.kind) ?? raw.slice(content.end, node.end);
+		enclosing.push({ content, mark: `${node.kind}${mark}` });
+	}
+	const out: string[] = [];
+	for (const run of runs) {
+		if (!run.visible || run.end <= from || run.start >= to) continue;
+		// A widget's text is not its bytes, so all of it stands at its source range.
+		const isBytes = run.text.length === run.end - run.start;
+		for (let i = 0; i < run.text.length; i++) {
+			const at = isBytes ? run.start + i : run.start;
+			const end = isBytes ? at + 1 : run.end;
+			if (at < from || end > to || /\s/.test(run.text[i])) continue;
+			const marks = enclosing.filter(({ content }) => content.start <= at && end <= content.end);
+			out.push(marks.map(({ mark }) => mark).join(' '));
+		}
+	}
+	return out;
 }

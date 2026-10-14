@@ -452,13 +452,15 @@ const FAMILIES: Family[] = [
 	{
 		name: 'a composition over a selection',
 		stores: { 'components/blocks/text/TextEditableBlock.svelte': 1 },
+		// A link never grows at its edge, so the composed text lands outside the one the range
+		// emptied, and the link's runs go with it.
 		rows: [
 			{
 				shape: 'a to-do',
 				run: () =>
 					withText(
-						{ source: '- [ ] **x** y\n', leaf: [0, 0, 0] },
-						(m) => () => compose(m.el, { start: 2, end: 5 }, '**# y')
+						{ source: '- [ ] [x](u) y\n', leaf: [0, 0, 0] },
+						(m) => () => compose(m.el, { start: 1, end: 6 }, '[# y')
 					),
 				want: ['# y\n']
 			},
@@ -466,10 +468,10 @@ const FAMILIES: Family[] = [
 				shape: 'a plain item',
 				run: () =>
 					withText(
-						{ source: '- **x** ] y\n', leaf: [0, 0, 0] },
-						(m) => () => compose(m.el, { start: 2, end: 5 }, '**[ ] y')
+						{ source: '- [x](u) ] y\n', leaf: [0, 0, 0] },
+						(m) => () => compose(m.el, { start: 1, end: 6 }, '[[ ] y')
 					),
-				want: ['**[ ] y\n']
+				want: ['[[ ] y\n']
 			}
 		]
 	},
@@ -531,14 +533,14 @@ const FAMILIES: Family[] = [
 			{
 				shape: 'a to-do, at a widget',
 				run: () =>
-					typedAtWidget({ source: '- [ ] **x** y\n', leaf: [0, 0, 0] }, { start: 2, end: 5 }, '#'),
+					typedAtWidget({ source: '- [ ] [x](u) y\n', leaf: [0, 0, 0] }, { start: 1, end: 6 }, '#'),
 				want: ['# y\n']
 			},
 			{
 				shape: 'a plain item, at a widget',
 				run: () =>
-					typedAtWidget({ source: '- **x** ] y\n', leaf: [0, 0, 0] }, { start: 2, end: 5 }, '['),
-				want: ['**[ ] y\n']
+					typedAtWidget({ source: '- [x](u) ] y\n', leaf: [0, 0, 0] }, { start: 1, end: 6 }, '['),
+				want: ['[[ ] y\n']
 			}
 		]
 	},
@@ -648,13 +650,8 @@ const FAMILIES: Family[] = [
 		rows: [
 			{
 				shape: 'the kept head of a to-do',
-				run: () => deleteRange(`- [ ] **# y** z\n\n${CALLOUT}`, [[0, 0, 0], 5], [[1, 1], 2]),
+				run: () => deleteRange(`- [ ] # y**z**\n\n${CALLOUT}`, [[0, 0, 0], 5], [[1, 1], 2]),
 				want: `- [ ] # y\n\n:::callout\ndy\n:::\n`
-			},
-			{
-				shape: 'the kept head of a plain item',
-				run: () => deleteRange(`- **[ ] y** z\n\n${CALLOUT}`, [[0, 0, 0], 7], [[1, 1], 2]),
-				want: `- **[ ] y\n\n:::callout\ndy\n:::\n`
 			},
 			{
 				shape: 'the kept tail of a to-do',
@@ -682,27 +679,27 @@ const FAMILIES: Family[] = [
 		]
 	},
 	{
-		// In a to-do or a cell, `# y**` reads as text and its stray closer goes; at the top level it
-		// reads as a heading, so the closer stays.
+		// The range starts at the bold's hidden closer, which empties it, so the closer goes. In a
+		// to-do or a cell `# y` then reads as text; at the top level it is a heading, so it stays.
 		name: 'the bytes a drag carries',
 		stores: { 'selection/selection-drop.ts': 1 },
 		rows: [
 			{
 				shape: 'a to-do',
 				run: () =>
-					dragText({ source: '- [ ] **x# y** z\n', leaf: [0, 0, 0] }, { start: 3, end: 8 }),
+					dragText({ source: '- [ ] **x**# y z\n', leaf: [0, 0, 0] }, { start: 3, end: 8 }),
 				want: '# y'
 			},
 			{
 				shape: 'a plain item',
-				run: () => dragText({ source: '- **x[ ] y** z\n', leaf: [0, 0, 0] }, { start: 3, end: 10 }),
-				want: '[ ] y**'
+				run: () => dragText({ source: '- **x**[ ] y z\n', leaf: [0, 0, 0] }, { start: 3, end: 10 }),
+				want: '**[ ] y'
 			},
 			{
 				shape: 'a table cell',
 				run: () =>
 					dragText(
-						{ source: '| h |\n| - |\n| **x# y** z |\n', leaf: [0, 1, 0] },
+						{ source: '| h |\n| - |\n| **x**# y z |\n', leaf: [0, 1, 0] },
 						{ start: 3, end: 8 }
 					),
 				want: '# y'
@@ -738,7 +735,7 @@ const FAMILIES: Family[] = [
 		stores: { 'tree-operations/paste/dispatch.ts': 1 },
 		passesOn: ['tree-operations/paste/hooks.ts', 'components/blocks/table/table-cell-paste.ts'],
 		rows: [
-			// The pasted text lands after a run the cut strands, so the join still has something to drop.
+			// The pasted text lands after a run the cut empties, so the join still has something to drop.
 			{
 				shape: 'a to-do',
 				run: () => pasteOver({ source: '- [ ] #**x** y\n', leaf: [0, 0, 0] }, HASH_RUN, ' a'),
@@ -747,15 +744,15 @@ const FAMILIES: Family[] = [
 			{
 				shape: 'a plain item',
 				run: () =>
-					pasteOver({ source: '- **x** ] y\n', leaf: [0, 0, 0] }, { start: 2, end: 5 }, '['),
-				want: ['**[ ] y\n']
+					pasteOver({ source: '- [x](u) ] y\n', leaf: [0, 0, 0] }, { start: 1, end: 6 }, '['),
+				want: ['[[ ] y\n']
 			},
 			{
 				shape: 'a table cell',
 				run: () =>
 					pasteOver(
-						{ source: '| h |\n| - |\n| # **x** y |\n', leaf: [0, 1, 0] },
-						{ start: 4, end: 7 },
+						{ source: '| h |\n| - |\n| # [x](u) y |\n', leaf: [0, 1, 0] },
+						{ start: 3, end: 8 },
 						'a'
 					),
 				want: ['# a y']

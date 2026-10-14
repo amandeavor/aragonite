@@ -212,13 +212,16 @@ export interface JoinSeam {
 	store: StoredAs;
 }
 
-/** The bytes a cleanup wrote and where the two sides now meet in them: dropping characters from
- *  the first side moves the point the caret lands on. */
+/** The bytes a cleanup wrote and where the two sides now meet in them: the runs it dropped and the
+ *  closers and openers it wrote at the join move the point the caret lands on. */
 export interface CleanedJoin {
 	raw: string;
+	/** Where typed text and the caret go: inside a closed run that grows at its edge. */
 	seam: number;
+	/** Where the second side's bytes start, past every closer and opener written at the join. */
+	seamEnd: number;
 	/** Where an offset of the merged bytes lands in `raw`; a byte the cleanup dropped lands where
-	 *  its run stood. `map(mergedSeam)` is `seam`. */
+	 *  its run stood, and the join's own offset lands before the runs written there. */
 	map(offset: number): number;
 }
 

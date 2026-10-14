@@ -33,8 +33,11 @@ export interface LeafRangeEdit {
 	/** Whether `raw` is the range asked for spliced with nothing moved or cleaned, the edit the
 	 *  browser makes itself, grapheme and IME handling included. */
 	matchesBrowserEdit: boolean;
+	/** Where the leaf's bytes past the range start in `raw`: after the typed text, and after any
+	 *  closer or opener the join wrote there. */
+	afterRange: number;
 	/** Where an offset of the leaf's bytes before the edit lands in `raw`: one inside the range
-	 *  lands at its start, one at or past its end after the typed text. */
+	 *  lands at its start, the range's end at `afterRange`, one past it after the typed text. */
 	mapOffset(offset: number): number;
 }
 
@@ -61,12 +64,15 @@ export function replaceRangeInLeaf(
 		const join = cleanJoin({ node, offset: start }, { node, offset: end }, typed, store, same);
 		if (join.cleaned) {
 			const { raw, seam } = withTyped(join.joined, typed);
+			const afterRange = join.joined.seamEnd + typed.length;
 			return {
 				raw,
 				caret: seam + typed.length,
 				range: { start, end },
 				matchesBrowserEdit: false,
-				mapOffset: (offset) => afterTyped(offset, join.joined.map(merged(offset)))
+				afterRange,
+				mapOffset: (offset) =>
+					offset === end ? afterRange : afterTyped(offset, join.joined.map(merged(offset)))
 			};
 		}
 	}
@@ -76,12 +82,13 @@ export function replaceRangeInLeaf(
 		caret: start + typed.length,
 		range: { start, end },
 		matchesBrowserEdit: start === range.start && end === range.end,
+		afterRange: start + typed.length,
 		mapOffset: (offset) => afterTyped(offset, merged(offset))
 	};
 }
 
 /** The bytes `[start, end)` of `node` carry out of it: the leaf cut down to the range by two in-leaf
- *  cuts, so what leaves follows the rule that what stays follows. */
+ *  cuts, so a format run the range cuts through leaves closed at its edges, as the kept half does. */
 export function bytesLeavingLeaf(
 	node: NodeView,
 	range: { start: number; end: number },
@@ -101,7 +108,7 @@ export function bytesLeavingLeaf(
 		'',
 		store
 	);
-	return head.raw.slice(head.caret, head.mapOffset(tail.caret));
+	return head.raw.slice(head.caret, head.mapOffset(tail.afterRange));
 }
 
 /** The bytes `head` up to its offset and `tail` from its offset make with `typed` between them,
@@ -117,10 +124,15 @@ export function joinLeaves(
 	return withTyped(cleanJoin(head, tail, typed, store, writeTail).joined, typed);
 }
 
-/** `join.mergedRaw` minus the delimiter runs the join left unpaired, where the reading hides
- *  delimiters. */
+/** `join.mergedRaw` with each format run the join cut through closed or reopened on the half that
+ *  keeps it, where the reading hides delimiters. */
 export function cleanJoinedRaw(join: JoinSeam): CleanedJoin {
-	const literal = { raw: join.mergedRaw, seam: join.seam, map: (offset: number) => offset };
+	const literal = {
+		raw: join.mergedRaw,
+		seam: join.seam,
+		seamEnd: join.seam,
+		map: (offset: number) => offset
+	};
 	if (!join.store.reading.hidesDelimitersAtCaret()) return literal;
 	return getLiveJoinSeamCleaner()?.(join) ?? literal;
 }

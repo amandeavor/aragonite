@@ -1,8 +1,8 @@
 /**
- * The live-mode join rewrite (live-mode.md § 4.5): joining two blocks literally would show the
- * delimiter runs a truncation left unpaired, and the closer/opener pair a split's inverse pushes
- * together around nothing. Both are dropped here and nowhere else, and only once the joined bytes,
- * read back where they will be stored, show what the two sides showed.
+ * The live-mode join rewrite (live-mode.md § 4.5): a format run the cut went through is closed on
+ * the half before it and reopened on the half after, and a closer meeting its own opener around
+ * nothing is dropped. Written only once the joined bytes, read back where they will be stored,
+ * show what the two sides showed with every kept character's marks.
  */
 
 import {
@@ -15,9 +15,17 @@ import {
 import {
 	CONTENT_VISIBILITY,
 	paintsOnlyChrome,
-	renderedText
+	renderedText,
+	visibleRuns
 } from '../../../core/inline/visibility';
-import { readBack, readSource, shownOf } from '../../../core/inline/live-edit/read-back';
+import { readBack, readSource, shownRunsOf } from '../../../core/inline/live-edit/read-back';
+import {
+	closeBefore,
+	markSpelling,
+	marksShown,
+	reopenAfter,
+	type CutConstruct
+} from '../../../core/inline/live-edit/close-reopen';
 import { isBlankText, trimTrailingLineEnding } from '../../../core/lines';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
@@ -27,6 +35,7 @@ import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
 import {
 	getInlineConstructPolicy,
 	type JoinEndpoint,
+	type JoinSeam,
 	type LiveJoinSeamCleaner
 } from '../../../schema/inline-construct-policy';
 
@@ -45,28 +54,39 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 	// The caller splices `typed` at the join once this returns, so the bytes checked below are the
 	// bytes written: a typed run changes the flanking a kept delimiter pairs against.
 	const shown = shownAfterJoin(left, right, typed);
+	// Keeping each half's format comes first; dropping the runs the cut stranded is the fallback,
+	// least destructive first, where no reading that keeps them shows what the screen showed.
 	const pairs = abuttingPairSpans(join, left, right);
-	// Two readings, least destructive first: keep the runs the two sides can still pair across the
-	// join, else drop every stranded one.
-	const readings = [unpairedSpans(join, left, right), everyDanglingSpan(join, left, right)];
-	const spanSets = readings.map((dangling) => [...dangling, ...pairs]);
-	const candidates = (sameSpans(spanSets[0], spanSets[1]) ? [spanSets[0]] : spanSets).map(
-		(spans) => {
-			const { raw, map } = withoutSpans(join.mergedRaw, spans);
-			const seam = map(join.seam);
-			return {
-				raw,
-				seam,
-				map,
-				read: readCandidate(raw.slice(0, seam) + typed + raw.slice(seam), store)
-			};
-		}
+	const drops = [unpairedSpans(join, left, right), everyDanglingSpan(join, left, right)].map(
+		(dangling): JoinReading => ({
+			edits: [...dangling, ...pairs].map(dropped),
+			typedAt: 0,
+			keeps: false
+		})
 	);
+	const written = distinct(
+		[...keepingReadings(join, left, right), ...drops].map(({ edits, typedAt, keeps }) => {
+			const { raw, map } = withEdits(join.mergedRaw, edits);
+			const at = map(join.seam);
+			const atJoin = edits.find((edit) => edit.start === join.seam && edit.end === join.seam);
+			return { raw, seam: at + typedAt, seamEnd: at + (atJoin?.insert.length ?? 0), map, keeps };
+		})
+	);
+	const candidates = written.map((candidate) => ({
+		...candidate,
+		read: readCandidate(
+			candidate.raw.slice(0, candidate.seam) + typed + candidate.raw.slice(candidate.seam),
+			store
+		)
+	}));
 	// A pair left over nothing also passes the screen check, so among the readings that pass, the
 	// one leaving the fewest such pairs wins (`docs/design/live-mode.md` § 4.1).
 	const floor = Math.min(...candidates.map(({ read }) => read?.residue ?? Infinity));
-	for (const { raw: candidate, seam, map, read } of candidates) {
+	let kept: { before: string[]; after: string[] } | null = null;
+	for (const { raw: candidate, seam, seamEnd, map, keeps, read } of candidates) {
 		if (read === null || read.visible !== shown || read.residue > floor) continue;
+		// G1.91: a reading that keeps the runs must keep every kept character's marks.
+		if (keeps && !keepsMarks(read.marks, (kept ??= keptMarks(left, right)))) continue;
 		// A candidate that changed nothing is the plain concatenation: refusing says so, and keeps
 		// the caller off a rewrite path it does not need.
 		if (candidate === join.mergedRaw) return null;
@@ -74,17 +94,14 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 		// whitespace draws nothing and reparses as a blank line, not the block that was written.
 		const display = trimTrailingLineEnding(candidate);
 		if (display !== '' && isBlankText(display)) {
-			return { raw: candidate.slice(display.length), seam: 0, map: () => 0 };
+			return { raw: candidate.slice(display.length), seam: 0, seamEnd: 0, map: () => 0 };
 		}
-		return { raw: candidate, seam, map };
+		return { raw: candidate, seam, seamEnd, map };
 	}
 	return null;
 };
 
 const standsOnSeam = (side: Side): boolean => side.dangling.length > 0 || side.touching.length > 0;
-
-const sameSpans = (a: readonly Span[], b: readonly Span[]): boolean =>
-	a.length === b.length && a.every((span, i) => span.start === b[i].start && span.end === b[i].end);
 
 // ── The two sides ────────────────────────────────────────────────────────────
 
@@ -284,23 +301,237 @@ function abuttingPairSpans(join: { seam: number }, left: Side, right: Side): Spa
 	];
 }
 
-/** `raw` without `spans`, and where each of its offsets lands in what is left. */
-function withoutSpans(
+const dropped = (span: Span): Edit => ({ ...span, insert: '' });
+
+/** `raw` with `edits` applied, and where each of its offsets lands in the result. */
+function withEdits(
 	raw: string,
-	spans: readonly Span[]
+	edits: readonly Edit[]
 ): { raw: string; map: (offset: number) => number } {
-	const dropped: Span[] = [];
+	const applied: Edit[] = [];
 	let out = '';
 	let at = 0;
-	for (const span of [...spans].sort((a, b) => a.start - b.start)) {
-		if (span.start < at) continue;
-		dropped.push(span);
-		out += raw.slice(at, span.start);
-		at = span.end;
+	// At one offset, bytes written there go before bytes dropped from there.
+	const order = (a: Edit, b: Edit) => a.start - b.start || a.end - a.start - (b.end - b.start);
+	for (const edit of [...edits].sort(order)) {
+		if (edit.start < at) continue;
+		applied.push(edit);
+		out += raw.slice(at, edit.start) + edit.insert;
+		at = edit.end;
 	}
-	const map = (offset: number): number =>
-		dropped.reduce((to, span) => to - Math.max(0, Math.min(offset, span.end) - span.start), offset);
+	const map = (offset: number): number => {
+		let shift = 0;
+		for (const edit of applied) {
+			if (offset <= edit.start) break;
+			if (offset < edit.end) return edit.start + shift;
+			shift += edit.insert.length - (edit.end - edit.start);
+		}
+		return offset + shift;
+	};
 	return { raw: out + raw.slice(at), map };
+}
+
+// ── The readings that keep each half's format ────────────────────────────────
+
+interface Edit extends Span {
+	insert: string;
+}
+
+/** One way to write the join: the edits to the merged bytes, where in the bytes written at the
+ *  join the typed text goes, and whether the reading claims to keep every kept character's marks. */
+interface JoinReading {
+	edits: Edit[];
+	typedAt: number;
+	keeps: boolean;
+}
+
+/** A construct's delimiters as one reading writes them. */
+type Spelling = (side: Side, c: SideConstruct) => { opener: string; closer: string };
+
+const asCut: Spelling = (side, c) => ({
+	opener: side.raw.slice(c.node.start, c.content.start),
+	closer: side.raw.slice(c.content.end, c.node.end)
+});
+
+const asRow: Spelling = (side, c) => {
+	const marker = markSpelling(c.kind);
+	return marker === null ? asCut(side, c) : { opener: marker, closer: marker };
+};
+
+/** The cut's own bytes first, the boundary space moved outside the runs next, then the runs in
+ *  their rows' own markers, for a spelling that cannot close mid-word. */
+function keepingReadings(join: JoinSeam, left: Side, right: Side): JoinReading[] {
+	const readings = [
+		keepingReading(join, left, right, asCut, false),
+		keepingReading(join, left, right, asCut, true)
+	];
+	const open = [
+		...left.dangling.map((c) => [left, c] as const),
+		...right.dangling.map((c) => [right, c] as const)
+	];
+	if (open.some(([side, c]) => asRow(side, c).opener !== asCut(side, c).opener)) {
+		readings.push(keepingReading(join, left, right, asRow, false));
+	}
+	return readings.filter((reading): reading is JoinReading => reading !== null);
+}
+
+const toCut = (c: SideConstruct): CutConstruct => ({
+	kind: c.kind,
+	start: c.node.start,
+	end: c.node.end,
+	contentStart: c.content.start,
+	contentEnd: c.content.end
+});
+
+/** The construct of `side` a cut-chain link was made from. */
+const fromCut = (side: Side, link: CutConstruct): SideConstruct =>
+	side.dangling.find((c) => c.node.start === link.start && c.kind === link.kind)!;
+
+/** The left half's open runs closed at the cut and the right half's reopened; the outermost runs
+ *  meeting there with the same delimiters stay one. Null for `spaced` with no boundary space. */
+function keepingReading(
+	join: JoinSeam,
+	left: Side,
+	right: Side,
+	spell: Spelling,
+	spaced: boolean
+): JoinReading | null {
+	const { typed } = join;
+	// Typed text takes the format of the character before it, outside a run that never grows at
+	// its edge and everything inside that run (`docs/design/live-mode.md` § 4.2).
+	const grows = typed === '' ? 0 : outsideNeverExtend(left.dangling);
+	const outer = left.dangling.slice(0, grows);
+	const inner = closeBefore(left.raw, left.dangling.slice(grows).map(toCut), left.cut);
+	const innerClosed = [...inner.closed].reverse().map((link) => fromCut(left, link));
+	const opened = reopenAfter(right.raw, right.dangling.map(toCut), right.cut);
+	const reopened = [...opened.reopened].reverse().map((link) => fromCut(right, link));
+	const closed = [...outer, ...innerClosed];
+
+	// Outermost first on both sides, so the runs that can stay one are a common prefix.
+	const closing = [...closed, ...left.touching];
+	const opening = [...reopened, ...right.touching];
+	const spelled = (side: Side, c: SideConstruct, writes: readonly SideConstruct[]) =>
+		writes.includes(c) ? spell(side, c) : asCut(side, c);
+	let merged = 0;
+	while (
+		merged < closing.length &&
+		merged < opening.length &&
+		closing[merged].kind === opening[merged].kind &&
+		sameSpelling(spelled(left, closing[merged], closed), spelled(right, opening[merged], reopened))
+	) {
+		merged++;
+	}
+	const stays = (c: SideConstruct, list: readonly SideConstruct[]) =>
+		list.includes(c) &&
+		!closing.slice(0, merged).includes(c) &&
+		!opening.slice(0, merged).includes(c);
+	const closersOf = (list: readonly SideConstruct[]) =>
+		list
+			.filter((c) => stays(c, list))
+			.reverse()
+			.map((c) => spell(left, c).closer)
+			.join('');
+	const innerClosers = closersOf(innerClosed);
+	const outerClosers = closersOf(outer);
+	const openers = reopened
+		.filter((c) => stays(c, reopened))
+		.map((c) => spell(right, c).opener)
+		.join('');
+
+	let leftEnd = inner.end;
+	let rightStart = opened.start;
+	let space = '';
+	if (spaced) {
+		// A run can't close after whitespace or open before it, so a boundary space steps outside.
+		const before =
+			typed === '' && innerClosers + outerClosers !== '' && left.raw[leftEnd - 1] === ' ';
+		const after = openers !== '' && right.raw[rightStart] === ' ';
+		if (!before && !after) return null;
+		if (before) leftEnd--;
+		if (after) rightStart++;
+		space = (before ? ' ' : '') + (after ? ' ' : '');
+	}
+
+	const edits: Edit[] = [
+		{ start: join.seam, end: join.seam, insert: innerClosers + outerClosers + space + openers }
+	];
+	if (leftEnd < left.cut) edits.push(dropped({ start: leftEnd, end: left.cut }));
+	if (rightStart > right.cut) {
+		edits.push(dropped(rightSpan(join, right, { start: right.cut, end: rightStart })));
+	}
+	const leftMerged = closing.slice(0, merged).filter((c) => left.touching.includes(c));
+	const rightMerged = opening.slice(0, merged).filter((c) => right.touching.includes(c));
+	if (leftMerged.length > 0) {
+		edits.push(dropped({ start: leftMerged[leftMerged.length - 1].content.end, end: left.cut }));
+	}
+	if (rightMerged.length > 0) {
+		const deepest = rightMerged[rightMerged.length - 1];
+		edits.push(dropped(rightSpan(join, right, { start: right.cut, end: deepest.content.start })));
+	}
+	// A run written in its row's markers is rewritten at its other end too.
+	for (const c of closed) {
+		const { opener } = spell(left, c);
+		if (opener !== asCut(left, c).opener) edits.push({ ...openerRun(c), insert: opener });
+	}
+	for (const c of reopened) {
+		const { closer } = spell(right, c);
+		if (closer !== asCut(right, c).closer) {
+			edits.push({ ...rightSpan(join, right, closerRun(c)), insert: closer });
+		}
+	}
+	return { edits, typedAt: typed === '' ? 0 : innerClosers.length, keeps: true };
+}
+
+const sameSpelling = (
+	a: { opener: string; closer: string },
+	b: { opener: string; closer: string }
+): boolean => a.opener === b.opener && a.closer === b.closer;
+
+/** How many of a side's open runs (outermost first) sit outside its outermost never-extend one. */
+function outsideNeverExtend(dangling: readonly SideConstruct[]): number {
+	const at = dangling.findIndex(
+		(c) => getInlineConstructPolicy(c.kind)?.edgeAffinity === 'never-extend'
+	);
+	return at < 0 ? dangling.length : at;
+}
+
+/** Readings that write the same bytes are read once; a dropping one among them lifts the claim to
+ *  keep every mark, since a drop may lose one. */
+function distinct<T extends { raw: string; seam: number; keeps: boolean }>(candidates: T[]): T[] {
+	const out: T[] = [];
+	for (const candidate of candidates) {
+		const same = out.find((seen) => seen.raw === candidate.raw && seen.seam === candidate.seam);
+		if (!same) out.push(candidate);
+		else if (!candidate.keeps) same.keeps = false;
+	}
+	return out;
+}
+
+/** The marks the two sides' kept characters carry, read off each side's own render. */
+function keptMarks(left: Side, right: Side): { before: string[]; after: string[] } {
+	const marksOf = (side: Side, from: number, to: number) =>
+		marksShown(
+			visibleRuns(side.inlines, side.raw, CONTENT_VISIBILITY, { grammar: side.grammar }),
+			side.inlines,
+			side.raw,
+			from,
+			to
+		);
+	return {
+		before: marksOf(left, left.content.start, left.cut),
+		after: marksOf(right, right.cut, right.content.end)
+	};
+}
+
+/** Whether the candidate's characters open with the left side's marks and end with the right's. */
+function keepsMarks(
+	marks: readonly string[],
+	kept: { before: string[]; after: string[] }
+): boolean {
+	const { before, after } = kept;
+	if (marks.length < before.length + after.length) return false;
+	const tail = marks.slice(marks.length - after.length);
+	return before.every((mark, i) => marks[i] === mark) && after.every((mark, i) => tail[i] === mark);
 }
 
 // ── Verification ─────────────────────────────────────────────────────────────
@@ -353,16 +584,21 @@ export function clipNodes(
 	return out;
 }
 
-/** The candidate read back where it will be stored: what it shows, and how many unwrapping
- *  constructs stand over nothing. Null where that position would not keep it as one prose block. */
-function readCandidate(raw: string, store: StoredAs): { visible: string; residue: number } | null {
+/** The candidate read back where it will be stored: what it shows, in which marks, and how many
+ *  unwrapping constructs stand over nothing. Null where it would not stay one prose block. */
+function readCandidate(
+	raw: string,
+	store: StoredAs
+): { visible: string; marks: string[]; residue: number } | null {
 	const read = readBack(raw, store);
 	if (read === null) return null;
 	const { inlines } = read;
 	const source = readSource(read);
 	const render = { grammar: store.reading.grammar };
+	const { shown, runs } = shownRunsOf(read, store);
 	return {
-		visible: shownOf(read, store),
+		visible: shown,
+		marks: marksShown(runs, inlines, source, 0, source.length),
 		// Markers over nothing are all on screen (§ 4.1), so a block that shows them hides no pair.
 		residue: paintsOnlyChrome(inlines, source, render) ? 0 : countResidue(inlines, source, render)
 	};
