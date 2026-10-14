@@ -1,9 +1,8 @@
 /**
  * The editor's default theme, in two tiers (consumer-guide.md § Theming). Host-chrome tokens
  * default only behind the opt-in `.aragonite-editor-theme` class, so a themed host's own cascade
- * reaches the editor with nothing in between (G4.6d); editor-owned tokens, and the host-family
- * ones a host theme rarely names, default on `.editor` too. `:where()` holds specificity at 0 so
- * `.editor { --x: … }` wins, and the light theme keys on `data-editor-theme='light'`.
+ * reaches the editor untouched; editor-owned tokens default on `.editor` and on a find bar moved
+ * out of it (`.aragonite-editor-portal`). `:where()` keeps specificity at 0 so `.editor { … }` wins.
  */
 
 /* ── Host-chrome tokens: the consumer's names, defaults behind the class ── */
@@ -24,7 +23,7 @@
 	--radius-ui: 4px;
 	--radius-surface: 8px;
 
-	/* The page background the menus and the image toolbar paint on. */
+	/* The page background the menus, the find bar and the image toolbar paint on. */
 	--color-bg: #2c2c2a;
 	--color-surface: #1a1a19;
 	--color-text-secondary: #cfcfca;
@@ -54,7 +53,7 @@
 
 /* ── Editor-owned tokens: defaults on `.editor`, so they hold with or without the class ── */
 
-:where(.editor, .aragonite-editor-theme) {
+:where(.editor, .aragonite-editor-portal, .aragonite-editor-theme) {
 	/* Host-family backgrounds a host theme rarely names, so the editor supplies both modes
 	   rather than falling back to one fixed tint over the host's palette. */
 	--color-bg-secondary: rgba(128, 128, 128, 0.12);
@@ -172,14 +171,14 @@
 /* The tints follow a host's `--color-selection` where the browser has `color-mix`; the fixed
    values above are the default base's tints for a browser without it. */
 @supports (color: color-mix(in srgb, red, blue)) {
-	:where(.editor, .aragonite-editor-theme) {
+	:where(.editor, .aragonite-editor-portal, .aragonite-editor-theme) {
 		--selection-overlay-bg: color-mix(in srgb, var(--color-selection, #6496ff) 30%, transparent);
 		--search-match-bg: color-mix(in srgb, var(--color-selection, #6496ff) 22%, transparent);
 		--reorder-scope-bg: color-mix(in srgb, var(--color-selection, #6496ff) 14%, transparent);
 	}
 }
 
-:where(.editor, .aragonite-editor-theme)[data-editor-theme='light'] {
+:where(.editor, .aragonite-editor-portal, .aragonite-editor-theme)[data-editor-theme='light'] {
 	--color-bg-secondary: rgba(0, 0, 0, 0.035);
 	--md-inline-code-bg: rgba(0, 0, 0, 0.045);
 	--md-inline-code-border: transparent;

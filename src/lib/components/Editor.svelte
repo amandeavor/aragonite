@@ -1373,10 +1373,11 @@
 	onpointerleave={decorationEngine.markHover.leave}
 >
 	{#if searchBar}
-		<!-- A zero-height sticky anchor; portaled out, it takes the theme class instead, since
-		     custom properties resolve by DOM ancestry. -->
+		<!-- A zero-height sticky anchor; portaled out, it brings the editor's token scope instead,
+		     since custom properties resolve by DOM ancestry. -->
 		<div
 			class:search-anchor={!searchBarAnchor}
+			class:aragonite-editor-portal={!!searchBarAnchor}
 			class:aragonite-editor-theme={!!searchBarAnchor && inThemedScope}
 			data-editor-theme={searchBarAnchor ? theme : undefined}
 			{@attach portalInto(searchBarAnchor)}

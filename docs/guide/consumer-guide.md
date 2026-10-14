@@ -795,7 +795,7 @@ The role table below is the stable **host-chrome contract** (the first tier unde
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Font**      | `--font-editor` _(the surface)_, `--font-code` _(what stays monospace whatever the surface is: code blocks, code spans, revealed source)_, `--font-ui` _(menus and popovers)_, `--editor-font-size` _(mode-independent; one value each)_ |
 | **Radius**    | `--radius-ui` _(controls)_, `--radius-surface` _(overlays, popovers)_                                                                                                                                                                    |
-| **Surface**   | `--color-bg` _(the page ground; menus and the image toolbar paint on it)_, `--color-surface`                                                                                                                                             |
+| **Surface**   | `--color-bg` _(the page ground; menus, the find bar and the image toolbar paint on it)_, `--color-surface`                                                                                                                               |
 | **Text**      | `--color-text-secondary` _(body)_, `--color-text-primary`                                                                                                                                                                                |
 | **Muted**     | `--color-ui-muted`, `--color-ui-dulled`                                                                                                                                                                                                  |
 | **Accent**    | `--color-accent`                                                                                                                                                                                                                         |
@@ -1045,7 +1045,7 @@ By default the bar pins to the editor root's top edge. In self-scroll mode that 
 
 - **The prop reads live.** `null` or `undefined` puts the bar back in the editor root, so an anchor that mounts with a panel and unmounts with it is fine. It has no effect while `searchBar` is `false`; that switch turns the whole feature off, chords included.
 - **Placement inside the anchor is yours.** The editor treats the element as the box. The bar positions itself absolutely, so give the anchor `position: relative` (or another positioned ancestor) and a size; otherwise the bar resolves against whatever the page's layout offers next.
-- **Two offsets move it.** The bar sits `--search-bar-top` below and `--search-bar-right` in from its box's top-right corner, `10px` each by default. Set them at `.editor` for the bar in the root, or on the anchor for a moved bar, which sits outside the root and so reads the anchor's values:
+- **Two offsets move it.** The bar sits `--search-bar-top` below and `--search-bar-right` in from its box's top-right corner, `10px` each by default. Set them at `.editor` for the bar in the root, or on the anchor if you've moved it:
 
 ```css
 .pane-chrome {
@@ -1054,7 +1054,7 @@ By default the bar pins to the editor root's top edge. In self-scroll mode that 
 }
 ```
 
-- **The bar keeps the editor's look.** When the editor sits under `aragonite-editor-theme`, the moved bar carries that class and the current `data-editor-theme` with it, so it keeps the built-in palette. In a themed host with no class, it carries only the attribute and picks up your own tokens from wherever the anchor sits.
+- **The bar keeps the editor's look.** The moved bar takes the current `data-editor-theme` and the editor's own tokens with it. When the editor sits under `aragonite-editor-theme` it carries that class too, so it keeps the built-in palette. In a themed host with no class, it picks up your host-chrome tokens from wherever the anchor sits.
 
 ## Embedding in a webview shell
 

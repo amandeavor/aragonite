@@ -97,6 +97,13 @@
 		{ value: 'reading', label: 'Reading' }
 	];
 
+	// `?searchAnchor=on` moves the find bar into a slot in the shell bar, out of the editor root and
+	// out of every element the editor's own token defaults sit on.
+	const searchAnchorOn =
+		typeof window !== 'undefined' &&
+		new URLSearchParams(window.location.search).get('searchAnchor') === 'on';
+	let searchAnchorEl = $state<HTMLElement>();
+
 	let themeKey = $state('slate-dark');
 	let accentKey = $state('default');
 	let mode = $state<PresentationMode>('preview-inline');
@@ -164,6 +171,9 @@ An admonition picks its own palette; only the chrome around it is the host's.
 <div class="host-page" style={hostStyle}>
 	<header class="shell-bar">
 		<span class="shell-name">themed host embed</span>
+		{#if searchAnchorOn}
+			<div class="find-slot" data-testid="search-anchor" bind:this={searchAnchorEl}></div>
+		{/if}
 		<div class="pickers">
 			<select bind:value={themeKey} aria-label="Theme">
 				{#each Object.entries(THEMES) as [key, t] (key)}
@@ -188,6 +198,7 @@ An admonition picks its own palette; only the chrome around it is the host's.
 				presentationMode={mode}
 				blockDragHandles={false}
 				plugins={DEMO_PLUGINS}
+				searchBarAnchor={searchAnchorEl}
 			>
 				{#snippet header()}
 					<div class="hero">
@@ -227,6 +238,13 @@ An admonition picks its own palette; only the chrome around it is the host's.
 		padding: 8px 14px;
 		color: var(--color-ui-muted);
 		font-size: 12px;
+	}
+
+	/* Positioned and sized, since the moved bar places itself against its anchor. */
+	.find-slot {
+		position: relative;
+		width: 440px;
+		height: 48px;
 	}
 
 	.pickers {

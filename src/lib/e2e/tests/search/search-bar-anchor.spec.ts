@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { gotoReady } from '../../goto-ready';
 import { findInput, openFind, overlays, replaceInput, typeQuery } from './helpers';
 
 const anchor = (page: Page) => page.getByTestId('search-anchor');
@@ -83,6 +84,28 @@ test.describe('search bar: consumer anchor', () => {
 		await expect(findInput(page)).toHaveCount(0);
 		await page.keyboard.type('!');
 		await editor.bridge.waitForSourceContains('alpha beta!');
+	});
+});
+
+test.describe('search bar: anchored in a host with no theme class', () => {
+	// `/test/host-theme` has no `.aragonite-editor-theme` anywhere, so the moved bar sits under
+	// nothing that declares the editor's own tokens unless it brings them itself.
+	test('the moved bar brings the editor-owned tokens, in the current mode', async ({ page }) => {
+		await gotoReady(page, '/test/host-theme?searchAnchor=on');
+		await page.getByRole('combobox', { name: 'Theme' }).selectOption('warm-light');
+		await page.locator('.editor [contenteditable="true"]').first().click();
+		await page.keyboard.press('ControlOrMeta+f');
+		await expect(anchoredBar(page)).toBeVisible();
+
+		const chipFill = () =>
+			anchoredBar(page).evaluate((el) =>
+				getComputedStyle(el).getPropertyValue('--menu-chip-bg').trim()
+			);
+		// The light declaration; an empty read drops the bar to its dark inline fallback.
+		expect(await chipFill()).toBe('rgba(0, 0, 0, 0.045)');
+
+		await page.getByRole('combobox', { name: 'Theme' }).selectOption('warm-dark');
+		await expect.poll(chipFill).toBe('rgba(255, 255, 255, 0.055)');
 	});
 });
 
