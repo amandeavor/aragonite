@@ -73,8 +73,16 @@ export interface InlineMenuSource {
 		query: Omit<InlineMenuQuery, 'signal'>,
 		editor: InlineMenuCommit
 	): void | Promise<void>;
-	/** Paints one row's content in place of the default label and detail. */
-	row?: Component<InlineMenuRowProps>;
+	/** Paints one row's content in place of the default label and detail: a Svelte component, or
+	 *  plain DOM. A row that throws shows the default instead and is reported on the `error` event. */
+	row?: Component<InlineMenuRowProps> | InlineMenuDomRow;
+}
+
+/** A row painted without Svelte. `buildDom` runs per row and again when that row's props change;
+ *  `destroy` gets each element once the row drops it, so a host can unmount what it rendered there. */
+export interface InlineMenuDomRow {
+	buildDom(props: InlineMenuRowProps): HTMLElement;
+	destroy?(el: HTMLElement): void;
 }
 
 export interface InlineMenuSourceHandle {
