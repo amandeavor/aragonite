@@ -82,6 +82,12 @@ describe('createEditor', () => {
 		expect(hinted()).toBeUndefined();
 	});
 
+	it('mounts with no source the document an empty source gives', () => {
+		const empty = create({ source: '' }).editor.getSource();
+
+		expect(create().editor.getSource()).toBe(empty);
+	});
+
 	it('keeps the document for a source passed as undefined', async () => {
 		const { editor } = create({ source: '# Kept\n' });
 

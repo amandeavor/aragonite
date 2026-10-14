@@ -69,6 +69,16 @@ test('the theme flips live, and undo still takes back earlier typing', async ({ 
 	await expectMirror(page, FIRST);
 });
 
+test('a prop the app stops passing goes back to its default', async ({ page }) => {
+	const root = page.locator('.editor');
+	await expect(root).toHaveAttribute('data-editor-theme', 'light');
+	await page.getByTestId('drop-theme').click();
+
+	await expect(root).toHaveAttribute('data-editor-theme', 'dark');
+	await page.getByTestId('drop-theme').click();
+	await expect(root).toHaveAttribute('data-editor-theme', 'light');
+});
+
 test('the header input keeps its keys, and the document stays put', async ({ page }) => {
 	const input = page.getByTestId('header-input');
 	await input.click();

@@ -3,7 +3,7 @@
 Every app in `examples/` that wraps the editor for a framework renders one page, found by test id:
 the editor (holding a two-line note), a `mirror` of the value the app holds, a `load` button that
 swaps in a second note, a `revert` button that goes back to the last loaded note, a `theme` toggle,
-an `unmount` toggle, and a `header-input` inside the editor's header. `?uncontrolled` renders the
+a `drop-theme` toggle that stops passing the theme at all, an `unmount` toggle, and a `header-input` inside the editor's header. `?uncontrolled` renders the
 editor from `defaultValue` instead of `value`. Every scenario fails on any console error, page error
 or aragonite dev warning.
 
@@ -16,6 +16,8 @@ or aragonite dev warning.
 - Theme toggle: the editor's theme flips at once, and undo still takes back typing from before it.
 
 ## Edge cases
+
+- Drop theme: the editor goes back to its default theme (dark), and passing it again brings the light theme back.
 
 - Typing in the header input: the input keeps every key, Backspace included, and the document doesn't change.
 - Unmount: no editor and no header input are left on the page; mounting again shows the value the app holds.
