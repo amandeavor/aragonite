@@ -19,13 +19,15 @@ function barAt(rect: DOMRect): HTMLElement {
 	return bar;
 }
 
-/** A control whose measured box follows the shift editor.css would apply, as the browser's would. */
-function controlAt(x: number, y: number): HTMLElement {
+/** A control whose measured box follows the shift editor.css would apply, as the browser's would.
+ *  A `y` read on each measure stands for a document that scrolls. */
+function controlAt(x: number, y: number | (() => number)): HTMLElement {
+	const top = typeof y === 'number' ? () => y : y;
 	const control = document.createElement('div');
 	control.setAttribute('data-corner-control', '');
 	control.getBoundingClientRect = () => {
 		const shift = parseFloat(control.style.getPropertyValue(CLEARANCE_VAR)) || 0;
-		return new DOMRect(x, y + shift, 60, 24);
+		return new DOMRect(x, top() + shift, 60, 24);
 	};
 	return control;
 }
@@ -101,6 +103,28 @@ describe('the open find bar', () => {
 		const control = host.appendChild(controlAt(720, 22));
 		text.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
 		expect(control.hasAttribute(UNDER_FIND_BAR_ATTR)).toBe(true);
+	});
+
+	it('checks the block under the pointer again as the document scrolls', () => {
+		const { host, text } = editorWithBlock();
+		let y = 200;
+		const control = host.appendChild(controlAt(720, () => y));
+		text.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+		y = 22;
+		host.parentElement!.dispatchEvent(new Event('scroll'));
+		expect(control.hasAttribute(UNDER_FIND_BAR_ATTR)).toBe(true);
+	});
+
+	it('puts a moved control back once a scroll carries its block clear of the bar', () => {
+		const { root, host, text } = editorWithBlock();
+		let y = 22;
+		const control = host.appendChild(controlAt(720, () => y));
+		text.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+		// The pointer leaves for the space between blocks.
+		root.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
+		y = 200;
+		document.dispatchEvent(new Event('scroll'));
+		expect(control.hasAttribute(UNDER_FIND_BAR_ATTR)).toBe(false);
 	});
 
 	it('puts every moved control back when it closes', () => {

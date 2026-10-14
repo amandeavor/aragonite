@@ -104,6 +104,47 @@ test.describe('the find bar beside a code block', () => {
 	});
 });
 
+test.describe('the find bar over a code block scrolling under it', () => {
+	test('a showing rail moves below the bar as its block scrolls up under it', async ({ page }) => {
+		const editor = new EditorPage(page);
+		await editor.goto('?presentationMode=live');
+		await editor.loadContent(
+			'before\n\n```\n' + 'line\n'.repeat(30) + '```\n\n' + 'after\n\n'.repeat(40)
+		);
+		await openFind(editor);
+		const block = host(page, 1);
+		// Inside the block's text, one element, so the scroll brings no new element under the pointer.
+		await block.hover({ position: { x: 40, y: 200 } });
+		const rail = block.locator(':scope > .code-rail');
+		await expect.poll(() => areaUnderBar(rail)).toBe(0);
+
+		const barTop = () =>
+			page.locator('.search-bar').evaluate((el) => el.getBoundingClientRect().top);
+		const blockTop = () => block.evaluate((el) => el.getBoundingClientRect().top);
+		await page.mouse.wheel(0, (await blockTop()) - (await barTop()));
+		await expect.poll(async () => Math.abs((await blockTop()) - (await barTop()))).toBeLessThan(8);
+		await expect.poll(() => areaUnderBar(rail)).toBe(0);
+	});
+});
+
+test.describe('the find bar in a consumer anchor', () => {
+	test('the bar covers no rail from the anchor, nor once it returns home', async ({ page }) => {
+		const editor = new EditorPage(page);
+		await editor.goto('?presentationMode=live&searchAnchor=on');
+		await editor.loadContent('```js\nconst a = 1;\n```\n\nafter\n');
+		const rail = host(page, 0).locator(':scope > .code-rail');
+		await openFind(editor);
+		await expect(page.getByTestId('search-anchor').locator('.search-bar')).toBeVisible();
+		await hover(page, 0);
+		await expect.poll(() => areaUnderBar(rail)).toBe(0);
+
+		await page.getByTestId('anchor-toggle').click();
+		await expect(page.locator('.editor .search-bar')).toBeVisible();
+		await hover(page, 0);
+		await expect.poll(() => areaUnderBar(rail)).toBe(0);
+	});
+});
+
 test.describe('the find bar beside a diagram', () => {
 	test('the open bar leaves the toolbar of a top diagram uncovered', async ({ page }) => {
 		const editor = new MermaidPage(page);

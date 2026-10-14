@@ -46,31 +46,42 @@ function unmark(control: HTMLElement): void {
 	control.style.removeProperty(CLEARANCE_VAR);
 }
 
-/** For the open find bar: checks every corner control as the bar opens or resizes, and a block's
- *  own as the pointer moves onto it or focus enters it; never on a keystroke or a scroll. */
+/** For the open find bar: checks corner controls as the bar opens or resizes, as the pointer or
+ *  focus enters a block, and on a scroll; never on a keystroke, and not at all once closed. */
 export function keepCornerControlsClear(
 	editorRoot: () => HTMLElement | undefined
 ): Attachment<HTMLElement> {
 	return (bar) => {
 		const root = editorRoot();
 		if (!root) return;
-		const controlsIn = (scope: ParentNode) =>
-			scope.querySelectorAll<HTMLElement>(`[${CORNER_CONTROL_ATTR}]`);
-		const placeAll = () => controlsIn(root).forEach((control) => placeCornerControl(control, bar));
+		const place = (control: HTMLElement) => placeCornerControl(control, bar);
+		const placeIn = (scope: ParentNode | null) =>
+			scope?.querySelectorAll<HTMLElement>(`[${CORNER_CONTROL_ATTR}]`).forEach(place);
+		// The blocks whose controls may be showing, which a scroll can carry under the bar.
+		let pointed: Element | null = null;
+		let focused: Element | null = null;
+		const blockOf = (e: Event) =>
+			e.target instanceof Element ? e.target.closest('.block-host') : null;
 		// Not only on entering a block: a control can mount after the pointer is already inside.
-		const placeInBlockOf = (e: Event) => {
-			const host = e.target instanceof Element ? e.target.closest('.block-host') : null;
-			if (host) controlsIn(host).forEach((control) => placeCornerControl(control, bar));
+		const onPointerOver = (e: Event) => placeIn((pointed = blockOf(e)));
+		const onFocusIn = (e: Event) => placeIn((focused = blockOf(e)));
+		const onScroll = () => {
+			placeIn(pointed);
+			placeIn(focused);
+			root.querySelectorAll<HTMLElement>(`[${UNDER_FIND_BAR_ATTR}]`).forEach(place);
 		};
 
-		placeAll();
-		const stopResize = observeResize(bar, placeAll);
-		root.addEventListener('pointerover', placeInBlockOf);
-		root.addEventListener('focusin', placeInBlockOf);
+		placeIn(root);
+		const stopResize = observeResize(bar, () => placeIn(root));
+		root.addEventListener('pointerover', onPointerOver);
+		root.addEventListener('focusin', onFocusIn);
+		// Captured, since a scroll doesn't bubble and the scroller may be the editor or the page.
+		document.addEventListener('scroll', onScroll, { capture: true, passive: true });
 		return () => {
 			stopResize();
-			root.removeEventListener('pointerover', placeInBlockOf);
-			root.removeEventListener('focusin', placeInBlockOf);
+			root.removeEventListener('pointerover', onPointerOver);
+			root.removeEventListener('focusin', onFocusIn);
+			document.removeEventListener('scroll', onScroll, { capture: true });
 			root.querySelectorAll<HTMLElement>(`[${UNDER_FIND_BAR_ATTR}]`).forEach(unmark);
 		};
 	};

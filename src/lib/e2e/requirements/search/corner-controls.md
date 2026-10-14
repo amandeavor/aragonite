@@ -23,6 +23,12 @@ the ones it covers below itself and leaves every other one where it was.
 - A code block scrolled up under the open bar, then hovered, shows its controls below the bar.
   Miss-analysis: no test scrolled a block under the bar, where a move measured from the block's
   own top falls short of the bar's bottom edge.
+- A code block whose controls are showing, scrolled up under the open bar with the pointer resting
+  in its text, shows its controls below the bar. Miss-analysis: the check ran only when the pointer
+  or focus moved onto a new element, and every scrolled test hovered after the scroll.
+- With the bar opened in a consumer's anchor, a top code block's controls stay uncovered, and stay
+  so once the anchor is dropped and the bar returns to the editor. Miss-analysis: no test opened
+  the bar anywhere but its home.
 - A diagram at the top of the document, hovered with the bar open, shows its toolbar below the
   bar. Miss-analysis: the rule named the code block's controls alone, and no test put another
   block's corner control under the bar.
