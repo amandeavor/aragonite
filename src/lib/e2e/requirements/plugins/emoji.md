@@ -21,6 +21,9 @@ The widget edits the way a decoded entity does: `deleteGranularity: 'atomic'`,
 - Backspace deletes it whole: with the caret at the reference's trailing edge, one Backspace
   removes the entire `:smile:` reference rather than one byte, and a single undo restores it, so
   the delete is one commit and one undo entry.
+- Live editing around it: in live mode, a character typed before the reference leaves the glyph
+  drawn, six ArrowRights from after it cross the glyph whole, and after typing past it two
+  Backspaces take the typed character and then the whole reference.
 - Copy: copying a range that contains the reference puts the `:smile:` source bytes on the
   clipboard, never the 😄 glyph.
 - Click past a run: with four shortcodes flush against each other at the end of a line, a click
