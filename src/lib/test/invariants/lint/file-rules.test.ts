@@ -320,10 +320,10 @@ const RUNES_MODE_RE =
 
 // ── G4.178 plugin views mount behind a fallback ──────────────────────────────
 
-/** Where the editor paints a view a plugin supplied: a Svelte `mount`, a component chosen at
- *  render time, or a plugin's DOM builder. */
+/** Where the editor paints a Svelte component a plugin supplied: a `mount`, or a component chosen
+ *  at render time. */
 const MOUNTS_PLUGIN_VIEW =
-	/import\s*\{[^}]*\bmount\b[^}]*\}\s*from\s*'svelte'|\{@const\s+[A-Z]\w*\s*=|<svelte:component\b|\.build(?:Dom|Widget)\s*\(/;
+	/import\s*\{[^}]*\bmount\b[^}]*\}\s*from\s*'svelte'|\{@const\s+[A-Z]\w*\s*=|<svelte:component\b/;
 
 const PLUGIN_VIEW_FALLBACK: FileRule = {
 	id: 'G4.178 every route that mounts a plugin view contains its failure',
@@ -336,12 +336,11 @@ const PLUGIN_VIEW_FALLBACK: FileRule = {
 			'its views mount only through `plugin-view.ts :: mountPluginView`, which contains their throws'
 	},
 	reason:
-		'a plugin view that throws must fall back, report on the `error` event and name a foreign Svelte runtime in dev: catch it and call `warnIfForeignRuntime` with the reporter, as `decorations/widget-dom.ts` does',
+		'a plugin view that throws must fall back, report on the `error` event and name a foreign Svelte runtime in dev: catch it and call `warnIfForeignRuntime` with the reporter, as `plugin-view.ts` does',
 	reaches: [SOURCE.blockHost, SOURCE.inlineWidgets],
 	hits: [
 		at('src/lib/x.ts', "import { mount, unmount } from 'svelte';\nmount(C, { target });"),
-		at('src/lib/x.svelte', '{@const Row = view.source.row}\n<Row {item} />'),
-		at('src/lib/x.ts', 'return descriptor.buildWidget(node, raw);')
+		at('src/lib/x.svelte', '{@const Row = view.source.row}\n<Row {item} />')
 	],
 	misses: [
 		at('src/lib/x.ts', "import { tick } from 'svelte';\nawait landing.mount(path);"),
@@ -350,6 +349,29 @@ const PLUGIN_VIEW_FALLBACK: FileRule = {
 			'src/lib/x.ts',
 			"import { mount } from 'svelte';\ntry {\n\tmount(C, { target });\n} catch (e) {\n\twarnIfForeignRuntime(e, 'x');\n}"
 		)
+	]
+};
+
+// ── G4.186 one wrapper draws every plugin view ───────────────────────────────
+
+/** A call on a plugin's view field: a route drawing an inline widget, decoration widget or menu
+ *  row itself. */
+const CALLS_PLUGIN_VIEW = /\.(?:view|row)\s*\(/;
+
+const ONE_VIEW_WRAPPER: FileRule = {
+	id: 'G4.186 a plugin view is drawn only through mountPluginView',
+	population: under(SOURCE_DIR.library),
+	matches: CALLS_PLUGIN_VIEW,
+	reason:
+		'an inline widget, decoration widget or menu row view mounts through `plugin-view.ts :: mountPluginView`, which contains a throw at mount, update or destroy, reports it once and destroys the view once: hand the view to it instead of calling it',
+	reaches: [SOURCE.pluginView],
+	hits: [
+		at('src/lib/x.ts', 'const handle = spec.view(target, { decoration });'),
+		at('src/lib/x.svelte', '{@attach (el) => source.row (el, props)}')
+	],
+	misses: [
+		at('src/lib/x.ts', 'mountPluginView(spec.view, target, props, opts);'),
+		at('src/lib/x.ts', 'const view = getInlineWidgetView(kind, grammar);')
 	]
 };
 
@@ -2639,7 +2661,8 @@ describeFileRules(
 		TEXT_MOVES,
 		...CODE_EDIT_SPAN,
 		...SYNTAX_MODULES,
-		PLUGIN_VIEW_FALLBACK
+		PLUGIN_VIEW_FALLBACK,
+		ONE_VIEW_WRAPPER
 	],
 	SOURCES
 );

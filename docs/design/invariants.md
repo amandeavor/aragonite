@@ -259,6 +259,7 @@ These checks run in three kinds of place:
 | G1.90 | A plugin component compiled against another Svelte runtime is named as such in dev         | N       |
 | G1.91 | A live removal keeps the marks on the visible characters it keeps                          | P·N     |
 | G1.94 | One editor per mount target: a second `createEditor` there before `destroy` warns in dev   | A       |
+| G1.96 | A plugin's widget, decoration or row view mounts once, updates in place, is destroyed once | N       |
 
 ### The entries
 
@@ -731,8 +732,8 @@ descendTo` · `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/do
 **G1.90 · A foreign Svelte runtime is named.** A plugin component compiled against a second copy of
 Svelte (a precompiled plugin on the prebuilt build, say) fails as soon as the editor mounts it,
 since its runtime has no component or effect in progress. Each route that mounts a plugin's
-component (the block's error boundary, the inline widget pool, the decoration widget mount, the
-inline menu's row boundary) asks `foreign-runtime.ts :: isForeignRuntimeError` and warns
+component (the block's error boundary, `plugin-view.ts :: mountPluginView` for every widget and row
+view, the inline menu's row boundary) asks `foreign-runtime.ts :: isForeignRuntimeError` and warns
 `foreign-runtime` in dev; the block's notice says the cause too. G4.178 holds new routes to it.
 The match is by message: `effect_orphan`, or the two crashes of a runtime that never mounted
 anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches too.
@@ -753,6 +754,15 @@ and destroys it when it unmounts. A wrapper that skips the destroy stacks a seco
 same element, and React's StrictMode (which mounts every component twice in dev) shows it at once.
 `createEditor` remembers which targets hold an editor it hasn't destroyed and warns
 `target-occupied` in dev on a second mount there. `editor-root/create-editor.test.ts`.
+
+**G1.96 · One lifecycle for every plugin view.** An inline widget, a decoration's widget or badge,
+and an inline menu row are each a `PluginView` the editor mounts into an element it made, through
+`plugin-view.ts :: mountPluginView`. The view mounts once, takes new props through `update` (a
+pooled widget typing moved, a decoration at the same place, a row turning active), and is
+destroyed once. A throw at any of the three is reported once, the view is never called again, and
+the slot draws its fallback. `plugins/view/lifecycle.test.ts` and `plugins/view/failure.test.ts`
+run every slot, the second against a DOM view and a Svelte one; G4.186 holds new routes to the
+wrapper.
 
 ## Group 2: property and regression tested
 
@@ -1121,6 +1131,7 @@ unguarded.
 | G4.180 | Every top-right hover control on a block moves below the open find bar                    | L       |
 | G4.181 | Every wrapper package carries the core's version and peers the core at exactly that       | L       |
 | G4.183 | An app that doesn't compile Svelte installs no Svelte                                     | harness |
+| G4.186 | A plugin's widget, decoration or row view is drawn only through `mountPluginView`         | L       |
 
 ### The entries
 
@@ -2112,11 +2123,12 @@ mode itself, so this guards Svelte hosts. Every `.svelte` file under `src/lib` u
 `lint/file-rules.test.ts`.
 
 **G4.178 · A plugin view that throws costs only itself.** A file under `src/lib` that mounts a
-view a plugin handed it (a Svelte `mount`, a component picked at render time, a `buildDom` or
-`buildWidget` call) also calls `warnIfForeignRuntime`, which is the sign it catches the throw,
-paints its fallback and reports on `error` (G1.90). The editor's own mount in `create-editor.ts`
-is the one exception. `lint/file-rules.test.ts`. The scan can't see teardown, so a plugin view
-that throws while it unmounts is held to the same report by `components/plugin-view-teardown.test.ts`.
+Svelte component a plugin handed it (a `mount`, or a component picked at render time) also calls
+`warnIfForeignRuntime`, which is the sign it catches the throw, paints its fallback and reports on
+`error` (G1.90). The editor's own mount in `create-editor.ts` is one exception, and the Svelte view
+helpers in `svelte-views.svelte.ts` the other, since only `mountPluginView` calls them.
+`lint/file-rules.test.ts`. A Svelte view that throws while it unmounts is held to the same report
+by `plugins/view/mount-plugin-view.test.ts`.
 
 **G4.180 · Corner controls clear the find bar.** A hover control pinned to a block's top-right
 corner (absolute, placed by `top` and `right` or by `inset`, hidden at rest by opacity or visibility)
@@ -2132,6 +2144,11 @@ only ever install one core next to them. `scripts/check-lockstep.mjs` holds the 
 **G4.183 · No Svelte in a non-Svelte app.** The prebuilt build carries its own Svelte, so the core
 declares `svelte` an optional peer. `scripts/adapter-smoke.mjs` installs the packed tarballs into
 each framework example and fails if `node_modules/svelte` shows up there.
+
+**G4.186 · One wrapper draws every plugin view.** No file calls a plugin's `view` or `row` field
+itself: it hands the view to `plugin-view.ts :: mountPluginView`, the one place that contains a
+throw, reports it once and destroys the view once (G1.96). `lint/file-rules.test.ts` fails a
+property call on either field anywhere under `src/lib`.
 
 ## Accessibility
 
