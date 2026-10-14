@@ -4,8 +4,8 @@ import type { Page } from '@playwright/test';
 import { clickWordSettled, enterPresentationMode, extendTo, landAt, stepTo } from './helpers';
 import { textOutsideMarkers } from '../../text-runs';
 
-// A cell's destructive edits cross the same join as prose does: in live mode the runs a cut
-// strands are bytes the user never saw, and the cell's escaping runs after the join.
+// A cell's destructive edits cross the same join as prose does: in live mode a run the cut went
+// through closes on the half that stays, and the cell's escaping runs after the join.
 // Requirements: e2e/requirements/presentation/presentation-live-cell-join.md.
 
 const DOC = '| Some **bold** *it* x | y |\n| --- | --- |\n| a | b |\n';
@@ -22,23 +22,23 @@ async function selectAcrossConstructs(ep: EditorPage, page: Page): Promise<void>
 }
 
 test.describe('live mode: destructive edits inside a table cell', () => {
-	test('Mod+X drops the stranded runs and copies the raw slice', async ({ page }) => {
+	test('Mod+X closes and reopens the runs and copies the raw slice', async ({ page }) => {
 		const ep = await enterMode(page, 'live');
 		await selectAcrossConstructs(ep, page);
 
 		await page.keyboard.press('ControlOrMeta+x');
-		await ep.bridge.waitForSourceContains('| Some bot x | y |');
+		await ep.bridge.waitForSourceContains('| Some **bo***t* x | y |');
 
 		expect(await textOutsideMarkers(page.locator('.table-cell').first())).not.toContain('*');
 		expect(await ep.readClipboard()).toBe('ld** *i');
 	});
 
-	test('typing over the selection lands the character at the cleaned join', async ({ page }) => {
+	test('typing over the selection lands the character inside the bold', async ({ page }) => {
 		const ep = await enterMode(page, 'live');
 		await selectAcrossConstructs(ep, page);
 
 		await page.keyboard.press('Z');
-		await ep.bridge.waitForSourceContains('| Some boZt x | y |');
+		await ep.bridge.waitForSourceContains('| Some **boZ***t* x | y |');
 
 		expect(await textOutsideMarkers(page.locator('.table-cell').first())).not.toContain('*');
 	});
@@ -48,7 +48,7 @@ test.describe('live mode: destructive edits inside a table cell', () => {
 		await selectAcrossConstructs(ep, page);
 
 		await page.keyboard.press('ControlOrMeta+x');
-		await ep.bridge.waitForSourceContains('| Some bot x | y |');
+		await ep.bridge.waitForSourceContains('| Some **bo***t* x | y |');
 
 		await page.keyboard.press('ControlOrMeta+z');
 		await ep.bridge.waitForSourceContains('| Some **bold** *it* x | y |');
@@ -56,7 +56,7 @@ test.describe('live mode: destructive edits inside a table cell', () => {
 
 	// A cell stores text, so `# ` and `- ` open nothing here, whatever they'd open in a paragraph.
 	for (const lead of ['# ', '- ']) {
-		test(`Backspace over a selection in a cell opening with "${lead}" cleans the join`, async ({
+		test(`Backspace over a selection in a cell opening with "${lead}" closes the bold`, async ({
 			page
 		}) => {
 			const ep = await enterPresentationMode(
@@ -69,7 +69,7 @@ test.describe('live mode: destructive edits inside a table cell', () => {
 			await extendTo(ep, page, 'ArrowRight', CELL_PATH, 10);
 
 			await page.keyboard.press('Backspace');
-			await ep.bridge.waitForSourceContains(`| ${lead}ad | y |`);
+			await ep.bridge.waitForSourceContains(`| ${lead}**a**d | y |`);
 			expect(await textOutsideMarkers(page.locator('.table-cell').first())).not.toContain('*');
 		});
 	}

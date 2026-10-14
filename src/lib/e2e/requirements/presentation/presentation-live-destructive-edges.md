@@ -23,9 +23,10 @@ bytes that are gone.
   not a delete plus an unwrap
 - `Backspace` beside an escape takes the whole `\*` pair: the backslash the user never saw does
   not survive its escaped character
-- a chorded word delete after a bold word takes the delimiter pair with the word: the range it
-  rewrites is reported on the event while the caret is still collapsed, so it never reaches the
-  caret-edge handler at all. Miss-analysis: every scenario here and in the unit suites pressed an
+- a chorded word delete of the last word inside a bold keeps the bold on the word left
+  (`Some **big**  text`): the range it rewrites is reported on the event while the caret is
+  still collapsed, so it never reaches the caret-edge handler at all, and the join closes the
+  bold before the space it kept. Miss-analysis: every scenario here and in the unit suites pressed an
   unmodified key, so no case exercised the block's `beforeinput` handler, whose two checks both
   failed open, one on the empty selection and one on a three-element list of input types
 
