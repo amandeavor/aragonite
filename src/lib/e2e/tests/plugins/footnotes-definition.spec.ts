@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { PluginsPage, readContainer, activeBlockPath, capturedErrors } from './helpers';
 import { clickWordSettled, extendTo, stepTo } from '../presentation/helpers';
 import { caretsShowing, type CaretsShowing } from '../../carets-showing';
+import { textOutsideMarkers } from '../../text-runs';
 
 /**
  * The GFM footnote definition as a container shaped like a list item: the definition side of the
@@ -101,9 +102,9 @@ test.describe('plugin container: footnote definition', () => {
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
-	// The body's first line reads as a fragment behind the marker, so the live join cleans up there
-	// the way it does in a paragraph.
-	test('live: a selection across two constructs in the body deletes without a run', async ({
+	// The body's first line reads as a fragment behind the marker, so the live join keeps each
+	// half's format there the way it does in a paragraph.
+	test('live: a selection across two constructs in the body keeps each half’s format', async ({
 		page
 	}) => {
 		await editor.loadContent('A ref [^a] here.\n\n[^a]: Some **bold** and *italic* words\n');
@@ -114,8 +115,11 @@ test.describe('plugin container: footnote definition', () => {
 		await extendTo(editor, page, 'ArrowRight', [1, 0], 21);
 
 		await page.keyboard.press('Backspace');
-		await editor.bridge.waitForSourceContains('[^a]: Some boalic words\n');
-		expect(await editor.bridge.getSource()).not.toContain('**');
+		await editor.bridge.waitForSourceContains('[^a]: Some **bo***alic* words\n');
+		const body = page.locator("[data-block-path='[1,0]'] [contenteditable='true']");
+		expect(await textOutsideMarkers(body)).toBe('Some boalic words');
+		await expect(body.locator('strong')).toHaveText('bo', { useInnerText: true });
+		await expect(body.locator('em')).toHaveText('alic', { useInnerText: true });
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
