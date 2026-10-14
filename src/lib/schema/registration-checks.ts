@@ -51,7 +51,7 @@ export type RegistrationCheckReport = (tag: string, check: () => InvariantViolat
 const hasDescriptor = (kind: AnyBlockKind): boolean =>
 	tryGetBlockKindDescriptor(kind) !== undefined;
 
-const hasComponent = (kind: AnyBlockKind): boolean => isBlockViewRegistered(kind);
+const hasView = (kind: AnyBlockKind): boolean => isBlockViewRegistered(kind);
 
 const keymapEntries = (kinds: readonly AnyBlockKind[]) =>
 	kinds.map((kind) => ({ kind, keymap: tryGetBlockKindDescriptor(kind)?.keymap }));
@@ -138,7 +138,7 @@ export function flushPendingRegistrationChecks(
 	if (!work) return;
 	if (work.firstFlush) {
 		report('registry-completeness', () =>
-			checkRegistryCompleteness(ALL_BLOCK_KINDS, hasDescriptor, hasComponent)
+			checkRegistryCompleteness(ALL_BLOCK_KINDS, hasDescriptor, hasView)
 		);
 	}
 	// The first run covers every registered kind, plugin kinds included; the completeness check
@@ -147,7 +147,7 @@ export function flushPendingRegistrationChecks(
 	report('opener-registry', () => checkOpenerRegistry(listRegisteredOpeners(), hasDescriptor));
 	report('keymap-coherence', () => checkKeymapCoherence(keymapEntries(kinds), isKnownCommandId));
 	report('reserved-chrome-coherence', () =>
-		checkReservedChromeCoherence(reservedChromeEntries(kinds), hasDescriptor, hasComponent)
+		checkReservedChromeCoherence(reservedChromeEntries(kinds), hasDescriptor, hasView)
 	);
 	report('closure-coherence', () => checkClosureCoherence(closureEntries(kinds)));
 	report('descriptor-field-coherence', () =>
