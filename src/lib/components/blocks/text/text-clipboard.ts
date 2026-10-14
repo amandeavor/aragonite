@@ -38,7 +38,7 @@ export interface TextClipboardDeps {
 	caret: ClipboardCaretIO;
 	crossBlock: CrossBlockHandlers;
 	events: EditorEvents;
-	onPasteImage: PasteImageHook | undefined;
+	onPasteImage: () => PasteImageHook | undefined;
 	selection: SelectionState;
 	caretMemory: CaretMemory;
 	blockEdit: BlockEditActions;

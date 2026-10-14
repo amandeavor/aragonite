@@ -77,6 +77,8 @@ export interface RevealChildOptions<T> {
 	/** True when `index` is in the list's mounted range after `revealChild`, which lets the wait
 	 *  give up instead of hanging (VR-5). */
 	readonly isInWindow: (index: number) => boolean;
+	/** False once the tree this list belongs to is gone, so the wait reads nothing more of it. */
+	readonly current: () => boolean;
 }
 
 /** Brings child `index` into the mounted range before a caller reads its ref: drops a ref that
@@ -89,6 +91,7 @@ export async function revealChildOrWait<T>(
 	if (index >= opts.childCount || (!detached && opts.slots.get(index))) return;
 	if (detached) opts.slots.set(index, undefined);
 	await opts.revealChild(index);
+	if (!opts.current()) return;
 	// Outside the recomputed range the mount cannot fire, so give up now.
 	if (opts.slots.get(index) || !opts.isInWindow(index)) return;
 	// Inside it the mount flush is at most one tick away; an entry still empty after it means a

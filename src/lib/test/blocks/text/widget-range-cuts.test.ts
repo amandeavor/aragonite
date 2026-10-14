@@ -125,12 +125,14 @@ function clipboardOver(source: string, start = IMAGE_RANGE.start) {
 		myPath: [0],
 		cursor: { getRaw: () => null, getRawSelection: () => null },
 		caret: {
+			getEl: () => document.body,
 			recordPreEditOffset: () => {},
 			getPreEditOffset: () => 0,
 			getSelection: () => null,
 			holdInsertion: () => createInsertionRecords([]).hold({}, null)
 		},
 		pasteOffset: (caret: number) => caret,
+		onPasteImage: () => undefined,
 		selection,
 		crossBlock: { handlePaste: async () => false, handleCut: async () => false },
 		caretMemory: stubCaretMemory(),

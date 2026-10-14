@@ -82,13 +82,19 @@ export interface EditorEvents {
 	emit<K extends keyof EditorEventMap>(event: K, payload: EditorEventMap[K]): void;
 }
 
+/** The editor's own side of the channel: `end` at unmount, after which nothing is emitted. */
+export interface EditorEventChannel extends EditorEvents {
+	end(): void;
+}
+
 // ── Factory ──────────────────────────────────────────────────────────────
 
-export function createEditorEvents(): EditorEvents {
+export function createEditorEvents(): EditorEventChannel {
 	// One value type for every entry avoids the unsound indexed write on a mapped type with
 	// a generic key; per-event safety still holds at the public `on` and `emit`.
 	type AnyHandler = (payload: unknown) => void;
 	const handlers: Partial<Record<keyof EditorEventMap, Set<AnyHandler>>> = {};
+	let ended = false;
 
 	function on<K extends keyof EditorEventMap>(
 		event: K,
@@ -104,7 +110,7 @@ export function createEditorEvents(): EditorEvents {
 
 	function emit<K extends keyof EditorEventMap>(event: K, payload: EditorEventMap[K]): void {
 		const set = handlers[event];
-		if (!set) return;
+		if (!set || ended) return;
 		// Copy so self-disposing handlers don't mutate the set mid-iteration.
 		// try/catch per handler so one throwing subscriber doesn't starve others.
 		for (const handler of [...set]) {
@@ -126,7 +132,13 @@ export function createEditorEvents(): EditorEvents {
 		}
 	}
 
-	return { on, emit };
+	return {
+		on,
+		emit,
+		end: () => {
+			ended = true;
+		}
+	};
 }
 
 // ── Contained-failure routing ──────────────────────────────────────────────

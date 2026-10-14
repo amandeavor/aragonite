@@ -255,6 +255,7 @@ These checks run in three kinds of place:
 | G1.75 | No selection endpoint the editor writes sits after an empty block's placeholder `<br>`     | A·N     |
 | G1.76 | The drawn caret sits on its caret until the caret moves                                    | A       |
 | G1.77 | The mark hiding the browser's caret is on exactly the editable the drawn caret draws for   | A       |
+| G1.87 | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
 
 ### The entries
 
@@ -711,6 +712,16 @@ class list when its kind changes. Predicate
 `invariants/drawn-caret.ts :: checkOneCaretShowing` · run after each paint in
 `caret/drawn-caret.svelte.ts` · `e2e/tests/caret/drawn-caret.spec.ts` (`caretsShowing`, one caret in
 every row).
+
+**G1.87 · Nothing outlives the unmount.** A write still in flight when the editor unmounts (an
+`insertMarkdown` waiting on a tick, a paste waiting on its clipboard) is refused quietly at the write
+gate, the way one made for a document a swap replaced is: the unmount ends the document in place, and
+a write that names no document is made for that one. The events channel goes quiet at the same
+moment, and a caret landing stops at its next await rather than read the torn-down lists. Nothing is
+asserted, since a host unmounting mid-write is ordinary. `editor-actions/commit/reading-write-gate.ts
+:: admitsWrite`, `editor-actions/commit/document-stamp.ts :: end`, `block-lists/child-list.ts ::
+descendTo` · `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/document-stamp.test.ts`,
+`block-lists/child-list.test.ts`.
 
 ## Group 2: property and regression tested
 

@@ -11,6 +11,7 @@ import {
 	surfaceAt,
 	type MountedEditor
 } from '#lib/test/harness/mount-editor.svelte.js';
+import { dispatchImagePaste } from '#lib/test/harness/insertion-routes.js';
 import { CODE_MENU_LABEL, CODE_RUN_LABEL } from '#lib/a11y-strings.js';
 import type { CodeMenuItem, PasteImageHook } from '#lib/editor-keys.js';
 
@@ -21,15 +22,6 @@ const FENCE = '```js\nx\n```\n';
 
 function railButton(editor: MountedEditor, label: string): HTMLButtonElement | null {
 	return editor.target.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
-}
-
-/** A paste carrying one image file, sent to `el`; jsdom has no DataTransfer. */
-function pasteImage(el: HTMLElement): void {
-	const e = new Event('paste', { bubbles: true, cancelable: true });
-	const files = [new File([new Uint8Array([137, 80])], 'shot.png', { type: 'image/png' })];
-	const clipboardData = { types: ['Files'], files, items: [], getData: () => '' };
-	Object.defineProperty(e, 'clipboardData', { value: clipboardData });
-	el.dispatchEvent(e);
 }
 
 async function swap(editor: MountedEditor, write: () => void): Promise<void> {
@@ -79,7 +71,7 @@ describe('a host hook swapped after mount', () => {
 		await swap(editor, () => (editor.props.onPasteImage = newest));
 		const el = surfaceAt(editor, path);
 		placeCaret(el, 0);
-		pasteImage(el);
+		dispatchImagePaste(el);
 		await editor.settle();
 
 		expect([first.mock.calls.length, newest.mock.calls.length]).toEqual([0, 1]);
@@ -96,7 +88,7 @@ describe('a host hook swapped after mount', () => {
 			anchor: { path: [0], offset: 1 },
 			focus: { path: [1], offset: 2 }
 		});
-		pasteImage(editor.target.querySelector<HTMLElement>('.editor')!);
+		dispatchImagePaste(editor.target.querySelector<HTMLElement>('.editor')!);
 		await editor.settle();
 
 		expect([first.mock.calls.length, newest.mock.calls.length]).toEqual([0, 1]);

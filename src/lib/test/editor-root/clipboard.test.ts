@@ -60,7 +60,7 @@ function harness(options: HarnessOptions = {}) {
 		selection,
 		getDoc: () => doc,
 		crossBlock,
-		onPasteImage: options.onPasteImage,
+		onPasteImage: () => options.onPasteImage,
 		events,
 		getBlockComponent: (path) => (path[0] === 0 ? (options.widgetBlock ?? null) : null)
 	});

@@ -794,9 +794,9 @@
 		autoOpen={autoOpenLanguage}
 		onCommit={commitLanguage}
 		onCancel={(returnCaret) => returnCaret && returnCaretToBody()}
-		onRun={onRunCode ? () => onRunCode(runRequest()) : undefined}
+		onRun={onRunCode() ? () => onRunCode()?.(runRequest()) : undefined}
 		onCopy={copyBody}
-		menuItems={codeMenuItems ? () => codeMenuItems(runRequest()) : undefined}
+		menuItems={codeMenuItems() ? () => codeMenuItems()?.(runRequest()) ?? [] : undefined}
 		{menuPresence}
 		{drafts}
 	/>

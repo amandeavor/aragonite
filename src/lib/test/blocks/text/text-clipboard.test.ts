@@ -80,12 +80,14 @@ function harness(source: string, sourceStart: number, options: HarnessOptions = 
 		},
 		cursor: { getRaw: () => null, getRawSelection: () => null },
 		caret: {
+			getEl: () => document.body,
 			recordPreEditOffset: () => {},
 			getPreEditOffset: () => 0,
 			getSelection: () => null,
 			holdInsertion: () => createInsertionRecords([]).hold({}, null)
 		},
 		pasteOffset: (caret: number) => caret,
+		onPasteImage: () => undefined,
 		selection,
 		crossBlock: options.crossBlockDeclines ? { handlePaste: async () => false } : trap,
 		caretMemory: stubCaretMemory(),
@@ -265,12 +267,14 @@ function foldSettleHarness() {
 		},
 		cursor: { getRaw: () => null, getRawSelection: () => null },
 		caret: {
+			getEl: () => document.body,
 			recordPreEditOffset: () => {},
 			getPreEditOffset: () => 0,
 			getSelection: () => null,
 			holdInsertion: () => createInsertionRecords([]).hold({}, null)
 		},
 		pasteOffset: (caret: number) => caret,
+		onPasteImage: () => undefined,
 		selection,
 		crossBlock: { handlePaste: async () => false, handleCut: async () => false },
 		caretMemory: stubCaretMemory(),
