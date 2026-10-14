@@ -248,7 +248,7 @@ These checks run in three kinds of place:
 | G1.52 | The text `getSource()` serves for an unchanged content version is the document             | A·N     |
 | G1.53 | _Retired_: a stale write is refused quietly at the write gate, with nothing left to assert | none    |
 | G1.54 | A commit's mutation leaves the tree's own top-level array as it found it                   | A·N     |
-| G1.55 | A top-level container an edit rebuilt reads back, on its own, as the tree it holds         | A·N     |
+| G1.55 | A top-level block an edit wrote reads back, on its own, as the tree it holds               | A·N     |
 | G1.58 | An indent key over a range keeps every word it holds, in order                             | A·N     |
 | G1.61 | A list move keeps the order its text reads in                                              | A·P·N   |
 | G1.71 | A command key over a range runs in the kind of block whose keymap claimed it               | A·N     |
@@ -648,14 +648,16 @@ armed). Predicate `invariants/top-level-untouched.ts :: checkTopLevelUntouched` 
 `editor-actions/commit/undo-controller.ts` · `test/invariants/top-level-untouched.test.ts`,
 `test/perf/top-level-splice-writes.test.ts`.
 
-**G1.55 · A rebuilt container reads back as itself** (`reads-back`). After a keystroke's rebuild
-and after every commit, dev parses each top-level container the edit wrote in, on its own, and
-compares the shape (kinds, child counts, metadata) with the tree's; a dropped leading space that
-re-nests a list passes every byte check and fails this one. It reads the bytes the way the editor
-opens a file (`schema/opened-reading.ts :: readAsOpened`), so a bare `- ` reads back with
-the empty paragraph you type into, and a container left with no bytes at all fails, since a reload
-wouldn't show it. The edit names those containers itself, so the check never searches the document.
-It skips a container over 16K characters and anything the perf instruments time. Predicate
+**G1.55 · A written block reads back as itself** (`reads-back`). After a keystroke's rebuild and
+after every commit, dev parses each top-level block the edit wrote in, on its own, and compares the
+shape (kinds, child counts, metadata) with the tree's; a dropped leading space that re-nests a list
+passes every byte check and fails this one, and so does a paragraph whose bytes reload as a
+heading. A keystroke at the top level isn't checked, since its write already takes the kind a
+reparse gives. It reads the bytes the way the editor opens a file
+(`schema/opened-reading.ts :: readAsOpened`), so a bare `- ` reads back with the empty paragraph
+you type into, and a container left with no bytes at all fails, since a reload wouldn't show it.
+The edit names those blocks itself, so the check never searches the document. It skips a block over
+16K characters and anything the perf instruments time. Predicate
 `invariants/reads-back.ts :: checkReadsBack` · run by `editor-actions/leaf-write.ts` and
 `editor-actions/commit/undo-controller.ts` · `test/invariants/reads-back.test.ts`.
 
@@ -1086,6 +1088,7 @@ unguarded.
 | G4.163 | A mark's own handlers are called only by the hover lifecycle, activation and the click    | L       |
 | G4.165 | A write that moves text without resizing its block reports it, so its overlays measure    | L       |
 | G4.166 | Every length the drawn caret's rules set is rounded to whole device pixels                | L       |
+| G4.170 | Only the parser and the table rebuild write a row's header flag                           | L       |
 | G4.174 | Every published entry point has a source build and a prebuilt one                         | L       |
 | G4.175 | Every library component compiles in runes mode                                            | L       |
 
@@ -1574,10 +1577,10 @@ copy. `lint/file-rules.test.ts`.
 `src/lib/editor-actions/leaf-write.ts` :: `writeLeafInPlace`. Each step of the write has a short list
 of files allowed to name it (an aliased import counts):
 
-- the content write itself (`updateNodeContent`): those two, the keystroke's trial reparse and the
-  container-matching paste
-- a write in place that skips the reparse (`writeOwnRaw`, `installOwnRaw`): table cells,
-  `rewriteLeafInPlace` and find and replace's private copy
+- the content write itself (`updateNodeContent`): those two, the keystroke's trial reparse, the
+  container-matching paste and the format toggle over several blocks
+- a write in place that skips the reparse (`writeOwnRaw`, `installOwnRaw`): table cells and find
+  and replace's private copy
 - the document as an owner-less body (`documentBody`), plus the trial reparse's throwaway copy
 - the task-marker reconcile: the content write, the join and `replaceBlock`
 - a replacement's escape for its container: `replaceBlock` alone
@@ -1815,7 +1818,8 @@ list of builders of genuinely new containers.
 through `components/blocks/editable/surface-write.ts :: writeText`, which gives undo the caret from before the
 key, keeps the line ending, and puts the caret back. `lint/call-site-rules.test.ts` fails an
 `updateBlockContent` call under `components/`, `selection/` or a plugin's code (`src/lib/plugins/`,
-`src/routes/test/plugins/`) elsewhere, except the few listed by function that are still to move.
+`src/routes/test/plugins/`) elsewhere, except the few listed by function that are still to move,
+and the block's own edit actions in `editable-surface.ts`, which `writeText` writes through.
 
 **G4.112 · An indent key over a range has one route.** Over a range, Tab, Shift+Tab and any key bound
 to an indent command nest or lift every list item the range reaches once, through
@@ -2057,6 +2061,11 @@ each width rounds to the nearest whole device pixel, like the browser's caret, a
 to one. A shape whose length skips that rounding blurs across two pixel columns at a fractional
 display scale. `lint/drawn-caret-guards.test.ts` fails a length set in a `.md-drawn-caret` rule
 with no twin in `editor.css`'s device-rounding block, and a width there not rounded to the nearest.
+
+**G4.170 · The header is the first row.** A table's rebuild makes row 0 its header and every other
+row a body row, so an insert, move, delete or split never leaves the flag on the row that used to
+be first. `lint/table-header-flag.test.ts` fails a file other than the table parser and
+`schema/container-rebuilders.ts` that writes the flag.
 
 **G4.174 · Both builds for every entry point.** Each JavaScript entry in package.json `exports`
 names its source build under `svelte` and the prebuilt one under `default`, at the same path below

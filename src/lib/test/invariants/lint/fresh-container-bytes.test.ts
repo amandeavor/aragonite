@@ -41,9 +41,6 @@ const RULES: FileRule[] = [
 				'a list shell, whose bytes are its items’ own, and a list item built from metadata alone',
 			'src/lib/tree-operations/list/task-paragraph.ts':
 				'a trial item, written in the container’s own spelling and dropped',
-			'src/lib/tree-operations/sub-table-copy.ts':
-				'the rows of a table a rectangular copy builds from cell text',
-			'src/lib/tree-operations/table-mutations.ts': 'a new empty row',
 			'src/lib/selection/clipboard-text.ts':
 				'a container written around a copied body, a node the document never held'
 		},

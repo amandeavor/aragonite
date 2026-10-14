@@ -50,8 +50,8 @@ import {
 } from '../tree-operations/table-mutations';
 
 /**
- * The header (row 0) stays where it is. Null skips the commit, so a keypress at the edge
- * pushes no undo entry.
+ * The header row never moves by a product rule; the table's rebuild already keeps whichever row is
+ * first the header. Null skips the commit, so a keypress at the edge pushes no undo entry.
  */
 export function tableRowReorderTarget(
 	rowIdx: number,

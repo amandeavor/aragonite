@@ -2,10 +2,10 @@
 // touch neither reactivity, undo, nor raw. Column mutators emit exactly one
 // StructuralChange per row, in row order, for multi-scope callers to pair with row scopes.
 
-import type { CstNode, TableRowMetadata, TableAlignment } from '../core/nodes';
+import type { CstNode, TableAlignment } from '../core/nodes';
 import { metadataOf } from '../core/nodes';
 import { reorderChildren } from './reorder';
-import { generateBlockId } from '../block-id';
+import { tableRowOf } from '../schema/container-rebuilders';
 import type { StructuralChange } from './structural-change';
 
 const ALIGN_CYCLE: TableAlignment[] = ['left', 'center', 'right'];
@@ -14,17 +14,13 @@ const ALIGN_CYCLE: TableAlignment[] = ['left', 'center', 'right'];
 
 export function insertEmptyRow(table: CstNode, rowIdx: number, side: 'above' | 'below'): void {
 	const meta = metadataOf(table, 'table');
-	const newRow: CstNode = {
-		kind: 'tableRow',
-		leadingTrivia: '',
-		raw: '',
-		metadata: { isHeader: false } satisfies TableRowMetadata,
-		children: Array.from({ length: meta.columnCount }, () => ({
+	const newRow = tableRowOf(
+		Array.from({ length: meta.columnCount }, () => ({
 			kind: 'tableCell',
 			leadingTrivia: '',
 			raw: ''
 		}))
-	};
+	);
 	const insertAt = side === 'above' ? rowIdx : rowIdx + 1;
 	table.children!.splice(insertAt, 0, newRow);
 }
@@ -48,47 +44,7 @@ export function insertEmptyColumn(
 
 // Unconditional: refusal (>=1 header + >=1 body row, >=1 column) is the wrapper's job.
 export function deleteRow(table: CstNode, rowIdx: number): void {
-	const rows = table.children ?? [];
-	const willRemoveHeader = rowIdx === 0;
-	rows.splice(rowIdx, 1);
-	if (willRemoveHeader && rows.length > 0) promoteFirstRowToHeader(table);
-}
-
-/**
- * Make the table's first row its header. A header wider than the delimiter row reads as no table,
- * so its surplus cells become new columns, each row filling them from its own surplus first.
- */
-export function promoteFirstRowToHeader(table: CstNode): void {
-	const rows = table.children ?? [];
-	if (rows.length === 0) return;
-	const meta = metadataOf(table, 'table');
-	const extra = metadataOf(rows[0], 'tableRow').surplusCells?.length ?? 0;
-	if (extra > 0) {
-		meta.columnCount += extra;
-		meta.alignments = [...meta.alignments, ...Array<TableAlignment>(extra).fill('none')];
-	}
-	// Written as copies: only the table is this edit's own, and a row can still be in an undo entry.
-	for (let i = 0; i < rows.length; i++) {
-		if (i === 0 || extra > 0) rows[i] = widenedRow(rows[i], meta.columnCount, i === 0);
-	}
-}
-
-/** A copy of the row holding `columnCount` cells, the missing ones taken from its surplus first. */
-function widenedRow(row: CstNode, columnCount: number, isHeader: boolean): CstNode {
-	const surplus = metadataOf(row, 'tableRow').surplusCells ?? [];
-	const missing = Math.max(0, columnCount - row.children!.length);
-	const added = Array.from({ length: missing }, (_, k): CstNode => ({
-		kind: 'tableCell',
-		leadingTrivia: '',
-		raw: surplus[k] ?? ''
-	}));
-	const rest = surplus.slice(missing);
-	const metadata: TableRowMetadata =
-		rest.length > 0 ? { isHeader, surplusCells: rest } : { isHeader };
-	const copy = { ...row, metadata, children: [...row.children!, ...added] } as CstNode;
-	if (row.childIds) copy.childIds = [...row.childIds, ...added.map(() => generateBlockId())];
-	delete copy.childSpans;
-	return copy;
+	table.children!.splice(rowIdx, 1);
 }
 
 export function deleteColumn(table: CstNode, colIdx: number): StructuralChange[] {

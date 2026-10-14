@@ -56,6 +56,8 @@ import {
 	trimTrailingLineEnding,
 	type LineEnding
 } from '../../../core/lines';
+import { getContentRange, sameLineSuffix } from '../../../core/inline';
+import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
 import type { BlockAutoPairs } from '../text/auto-pair-record';
 import { createSurfaceWrite, type TextWrite } from './surface-write';
@@ -266,10 +268,15 @@ export interface EditableSurface {
 	/** Every edit the block makes to its own text: the input commit, and each key the block
 	 *  writes for itself (`surface-write.ts`). */
 	writeText(write: TextWrite): ContentWrite;
+	/** The block's edit actions, its content writes keeping the open line a write leaves the caret on. */
+	blockEdit: BlockEditActions;
 	/** The ending a line typed into the block takes: its own, else the document's. */
 	lineEnding(): LineEnding;
 	/** The line Shift+Enter at the block's end opened, which this block's next insertion spends. */
 	pendingBreak: BlockPendingBreak;
+	/** Opens `lines` lines past the end of the block's text, as Shift+Enter there does; the offset
+	 *  the open line's caret sits at. */
+	openBreakAtEnd(lines: number): number;
 	/** A space typed at a hidden closer here, which the next letter takes back inside. */
 	heldSpace: HeldSpaceView;
 	/** The caret Edit link left before a hidden closer here, which types inside the URL. */
@@ -495,6 +502,28 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// This block's identity in the caret memory, so a record left here is spent only here.
 	const block = {};
 	const pendingMarks = deps.caretMemory.pendingMarks.forBlock(block);
+	const pendingBreak = deps.caretMemory.pendingBreak.forBlock(block);
+
+	function openBreakAtEnd(lines: number): number {
+		const node = deps.getNode();
+		const textEnd = getContentRange(node).end;
+		const line = { textEnd, lineEnd: textEnd + sameLineSuffix(node).length, ending: lineEnding() };
+		for (let i = 0; i < lines; i++) pendingBreak.open(line);
+		return line.lineEnd;
+	}
+	// A write that drops the empty lines after a final hard break, leaving the caret on them, keeps
+	// them open the way Shift+Enter opened them, whichever route in the block wrote it.
+	const blockEdit: BlockEditActions = {
+		...deps.blockEdit,
+		updateBlockContent(index, text, mode, preEditOffset, caret) {
+			const open = droppedOpenLines(deps.getNode(), text);
+			const written = deps.blockEdit.updateBlockContent(index, text, mode, preEditOffset, caret);
+			if (open && caret === open.end && written.admitted) {
+				void written.then((wrote) => wrote && openBreakAtEnd(open.lines));
+			}
+			return written;
+		}
+	};
 	const holdInsertion = (): HeldInsertion =>
 		deps.caretMemory.holdInsertion(block, deps.placement?.insertion);
 	const { getInlines } = deps;
@@ -513,7 +542,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		getNode: deps.getNode,
 		getIndex: deps.getIndex,
 		getPath: deps.getMyPath,
-		blockEdit: deps.blockEdit,
+		blockEdit,
 		kindCue: deps.kindCue,
 		getPreEditOffset: () => preEditOffset,
 		requestCaret: deps.requestCaret,
@@ -736,8 +765,10 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		caret,
 		isDetached,
 		writeText,
+		blockEdit,
 		lineEnding,
-		pendingBreak: deps.caretMemory.pendingBreak.forBlock(block),
+		pendingBreak,
+		openBreakAtEnd,
 		heldSpace: deps.caretMemory.heldSpace.forBlock(block),
 		insideCloser: deps.caretMemory.insideCloser.forBlock(block),
 		pendingMarks,

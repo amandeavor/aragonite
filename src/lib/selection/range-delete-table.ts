@@ -29,7 +29,6 @@ import {
 import { ensureUnsharedPath, ensureUnsharedSubtree } from '../tree-operations/unshare';
 import { attachedChainPrefix, rebuildUnsharedChain } from '../tree-operations/chain-rebuild';
 import { rebuildTableRowRaw } from '../schema/container-rebuilders';
-import { promoteFirstRowToHeader } from '../tree-operations/table-mutations';
 import { caretWhereRangeResumes } from './range-delete-chrome';
 import type { RemovalLanding } from './removal-landing';
 import { assertInvariant } from '../assert';
@@ -201,7 +200,6 @@ function deleteCellsAndCollapse(
 	if (firstFull > lastFull) return null;
 
 	table.children!.splice(firstFull, lastFull - firstFull + 1);
-	if (firstFull === 0) promoteFirstRowToHeader(table);
 	return { at: firstFull, count: lastFull - firstFull + 1 };
 }
 

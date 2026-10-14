@@ -18,7 +18,7 @@ const BARREL_REASON = 'the tree-operations barrel re-exports it';
 
 /** The writers into a child slot that run their write inside `writeKeepingTaskMarker`. */
 const MARKER_WRAPPED: Record<string, string> = {
-	[CONTENT_WRITE]: 'the content write, and `rewriteLeafInPlace` for a write that moves no block',
+	[CONTENT_WRITE]: 'the content write',
 	'src/lib/tree-operations/node-ops.ts': '`joinIntoLeaf`, the one join into a leaf',
 	[BLOCK_EDIT_CORE]: '`replaceBlock`, the one replace write',
 	'src/lib/selection/range-delete-ceremony.ts':
@@ -49,7 +49,9 @@ const RULES: FileRule[] = [
 			'src/lib/editor-actions/replacement-focus.ts':
 				'the keystroke’s trial reparse, on a copy that is never installed',
 			'src/lib/tree-operations/paste/container-match.ts':
-				'the container-matching paste’s merged leaf and its residue, written inside the paste’s own commit'
+				'the container-matching paste’s merged leaf and its residue, written inside the paste’s own commit',
+			'src/lib/selection/cross-block/format-range.ts':
+				'a format toggle’s writes over several blocks, inside the toggle’s own commit'
 		},
 		reason:
 			'a leaf’s new text is written by `commitLeafText` or the in-place keystroke write; call one of them rather than the content write',
@@ -65,8 +67,7 @@ const RULES: FileRule[] = [
 		matches: /\b(?:writeOwnRaw|installOwnRaw)\b/,
 		allowed: {
 			[NODE_PRIMITIVES]: 'defines both; `writeOwnRaw` runs the kind’s rule, then installs',
-			[CONTENT_WRITE]:
-				'the content write for a kind with no parse of its own, and `rewriteLeafInPlace`, which moves no block',
+			[CONTENT_WRITE]: 'the content write for a kind with no parse of its own',
 			'src/lib/editor-actions/search-replace.ts':
 				'find and replace writes bytes `legalizeWrite` returned into a private copy it reparses whole',
 			'src/lib/editor-actions/table-context.ts':

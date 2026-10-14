@@ -26,6 +26,7 @@ import {
 	ownTrailingLineEnding,
 	type LineEnding
 } from '../core/lines';
+import { openLinesAtEnd } from '../core/inline';
 import { assignChildIdsDeep, idsAcrossReread } from '../block-id';
 import {
 	getBlockKindDescriptor,
@@ -84,10 +85,8 @@ export type WriteTarget =
 	  }
 	| DocumentView;
 
-/**
- * `text` made legal as the bytes of the block at `index`: its kind's `rawWrite`, then the
- * container's `bodyWrite`, both reading the tree as it stands before the write.
- */
+/** `text` made legal as the bytes of the block at `index`: the prose rule, the kind's `rawWrite`,
+ *  then the container's `bodyWrite`, all reading the tree as it stands before the write. */
 export function legalizeWrite(
 	parent: WriteTarget,
 	index: number,
@@ -97,9 +96,11 @@ export function legalizeWrite(
 	const node = parent.children[index];
 	const owner = 'owner' in parent ? parent.owner : undefined;
 	const lineEnding = 'lineEnding' in parent ? parent.lineEnding : documentLineEnding(parent);
+	const dropped = droppedOpenLines(node, text);
+	const prose = dropped ? dropped.text + text.slice(dropped.end) : text;
 	const ownRule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;
 	const ownCtx: WriteContext = { node, mode, lineEnding };
-	const own = ownRule ? ownRule.normalize(text, ownCtx) : text;
+	const own = ownRule ? ownRule.normalize(prose, ownCtx) : prose;
 	const bodyRule = owner ? tryGetBlockKindDescriptor(owner.kind)?.bodyWrite : undefined;
 	// A child's bytes are never the container's own syntax, so the body rule reads them as content.
 	const bodyCtx: WriteContext | undefined = owner && { node: owner, mode: 'literal', lineEnding };
@@ -107,26 +108,27 @@ export function legalizeWrite(
 	// A list item takes a typed task marker out of its first paragraph, or gives one back.
 	const markerShift = index === 0 && owner ? taskMarkerCaretShift(owner, stored) : 0;
 	const storedOffset = (offset: number): number => {
-		const inOwn = ownRule ? ownRule.mapOffset(text, offset, ownCtx) : offset;
+		// A caret on the dropped lines lands at the end of the text above them.
+		const inProse = dropped ? Math.min(offset, dropped.text.length) : offset;
+		const inOwn = ownRule ? ownRule.mapOffset(prose, inProse, ownCtx) : inProse;
 		const inBody = bodyRule && bodyCtx ? bodyRule.mapOffset(own, inOwn, bodyCtx) : inOwn;
 		return Math.max(inBody + markerShift, 0);
 	};
 	return { text: stored, storedOffset } as LegalWrite;
 }
 
-/** Writes `text` over the leaf at `index` in place, made legal for its position, for a write that
- *  moves no block (a format toggle's marks); the caller copies the chain first and rebuilds it. */
-export function rewriteLeafInPlace(
-	parent: BodyParent,
-	index: number,
-	text: string,
-	grammar: GrammarView,
-	sharing: SharingState
-): void {
-	const legal = legalizeWrite(parent, index, text, 'literal');
-	writeKeepingTaskMarker(parent.owner, parent.children, index, sharing, () =>
-		installOwnRaw(parent.children[index], legal.text, grammar)
-	);
+/** The empty lines after a final hard break that a write of `text` over prose block `node` drops,
+ *  since a reload reads that break as a backslash; `end` is where they end in `text`. */
+export function droppedOpenLines(
+	node: NodeView,
+	text: string
+): { text: string; lines: number; end: number } | null {
+	if (!tryGetBlockKindDescriptor(node.kind)?.supportsInline) return null;
+	const own = ownTrailingLineEnding(node.raw);
+	// A block saved without a final line ending has none to take off, so a last line break is open.
+	const end = own && text.endsWith(own) ? text.length - own.length : text.length;
+	const open = openLinesAtEnd(text.slice(0, end));
+	return open && { text: open.text, lines: open.lines, end };
 }
 
 // ── Update Content ──

@@ -1,6 +1,6 @@
-// G1.55: a rebuilt container whose bytes read back as another tree fails the check, the keystroke
-// and the commit both run it on the containers they name, looking inside no other, and a container
-// past its size bound costs it nothing.
+// G1.55: a written block whose bytes read back as another tree fails the check, the keystroke and
+// the commit both run it on the blocks they name, looking inside no other, and a block past its
+// size bound costs it nothing.
 // Miss-analysis: the in-place keystroke ran no read-back check at all, and the commit compares
 // bytes, which a list whose second item a reload nests under the first still passes.
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -88,6 +88,15 @@ describe('G1.55 checkReadsBack', () => {
 		);
 	});
 
+	it('fails a top-level paragraph whose bytes read as a heading', () => {
+		const paragraph = parse('a\n').children[0];
+		paragraph.raw = '# a\n';
+
+		expect(checkReadsBack(paragraph, defaultGrammarView)?.message).toMatch(
+			/live kind "paragraph" != reparsed "heading"/
+		);
+	});
+
 	it.each(['- ', '- [ ] ', '>', '> - '])(
 		'passes %j, which the editor reads with an empty paragraph to type in',
 		(source) => {
@@ -117,6 +126,15 @@ describe('G1.55 runs on the keystroke and the commit, bounded by size', () => {
 		await h.bundle.blockEdit.splitBlock(0, 1);
 
 		expect(takeReadBackBytes()).toBe(h.deps.doc.children[1].raw.length);
+	});
+
+	it('reads the top-level leaf a commit wrote', async () => {
+		const h = makeTopHarness('intro\n\nnext\n');
+
+		await h.actions.updateBlockContent(0, '# intro\n\n', 'authored', 0, 2);
+
+		expect(h.deps.doc.children[0].kind).toBe('heading');
+		expect(takeReadBackBytes()).toBe(h.deps.doc.children[0].raw.length);
 	});
 
 	it('reads the new container when a commit changes the kind of the one it wrote in', async () => {
