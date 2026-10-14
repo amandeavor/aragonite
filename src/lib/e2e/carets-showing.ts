@@ -196,11 +196,13 @@ export async function browserCaret(page: Page): Promise<PaintedCaret> {
 	await page.addStyleTag({
 		content: '.editor [contenteditable] { caret-color: rgb(255, 0, 0) !important; }'
 	});
-	const block = await page.evaluate(() => {
+	// On whole pixels, where the screenshot crops, so a found column offsets from the clip exactly.
+	const clip = await page.evaluate(() => {
 		const r = (document.activeElement as HTMLElement).getBoundingClientRect();
-		return { x: r.x, y: r.y, width: r.width, height: r.height };
+		const x = Math.floor(r.left) - 4;
+		const y = Math.floor(r.top) - 4;
+		return { x, y, width: Math.ceil(r.right) + 4 - x, height: Math.ceil(r.bottom) + 4 - y };
 	});
-	const clip = { x: block.x - 4, y: block.y - 4, width: block.width + 8, height: block.height + 8 };
 	let found: PaintedCaret | null = null;
 	await expect
 		.poll(async () => (found = await paintedRedCaret(page, clip)), { timeout: 5000 })
@@ -231,8 +233,13 @@ export async function oneCaretOnTheBrowsersLine(page: Page): Promise<'drawn' | '
 		painted.top
 	);
 	expect(middle).toBeLessThan(painted.bottom);
-	// WebKit measures the range in whole pixels, losing the fraction its own caret rounds.
-	const slack = page.context().browser()?.browserType().name() === 'webkit' ? 1 : 0;
+	// WebKit measures the range in whole pixels, losing the fraction its own caret rounds; Chromium
+	// floors its caret in the editable's own pixels, which are the screen's only on a whole-pixel x.
+	const wholeX = await page.evaluate(() =>
+		Number.isInteger((document.activeElement as HTMLElement).getBoundingClientRect().left)
+	);
+	const webkit = page.context().browser()?.browserType().name() === 'webkit';
+	const slack = webkit || !wholeX ? 1 : 0;
 	expect(
 		Math.abs(Math.round(drawn.left) - painted.left),
 		`x ${drawn.left} vs ${painted.left}`
