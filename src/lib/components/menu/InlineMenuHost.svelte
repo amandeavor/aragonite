@@ -170,7 +170,7 @@
 		{@attach menuPresence.track(() => menu.close(), { edits: true })}
 		tabindex="-1"
 		aria-label={INLINE_MENU_LABEL}
-		data-inline-menu={view.source.name}
+		data-inline-menu={sourceName}
 		style:left="{position?.left ?? 0}px"
 		style:top="{position?.top ?? 0}px"
 		style:visibility={position ? 'visible' : 'hidden'}

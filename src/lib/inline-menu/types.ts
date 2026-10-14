@@ -73,8 +73,8 @@ export interface InlineMenuSource {
 		query: Omit<InlineMenuQuery, 'signal'>,
 		editor: InlineMenuCommit
 	): void | Promise<void>;
-	/** Paints one row's content in place of the default label and detail: a Svelte component, or
-	 *  plain DOM. A row that throws shows the default instead and is reported on the `error` event. */
+	/** Paints a row in place of the default label and detail: a Svelte component, or plain DOM. One
+	 *  that fails to build shows the default; any throw (`destroy` too) is reported on `error`. */
 	row?: Component<InlineMenuRowProps> | InlineMenuDomRow;
 }
 
