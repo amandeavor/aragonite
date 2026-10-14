@@ -2,6 +2,7 @@
 	import { getContext } from 'svelte';
 	import { EDITOR_SERVICES_KEY, type EditorServices } from '../editor-keys';
 	import { keepCornerControlsClear } from './corner-controls';
+	import { POINTER_GESTURE_ATTR } from '../selection/pointer-gesture';
 	import MenuIcon from './menu/MenuIcon.svelte';
 	import {
 		SEARCH_CLOSE_LABEL,
@@ -44,6 +45,9 @@
 		if (search.isOpen) findInput?.focus();
 	});
 
+	const fieldInRow = (el: Element) =>
+		el.closest('.search-row')?.querySelector('input') ?? findInput;
+
 	// The steps and the replace buttons disable once no match is left, and a disabled button
 	// can't keep focus, so focus moves to the field in the same row.
 	let barEl = $state<HTMLElement>();
@@ -51,9 +55,22 @@
 		if (search.matches.length || !barEl) return;
 		const focused = barEl.ownerDocument.activeElement;
 		if (focused instanceof HTMLButtonElement && focused.disabled && barEl.contains(focused)) {
-			focused.closest('.search-row')?.querySelector('input')?.focus();
+			fieldInRow(focused)?.focus();
 		}
 	});
+
+	// The card is the field, so a press on it that lands on no control types into its row's field.
+	// The bar claims its presses, or the editor would read one as a click in the document under it.
+	const ownPresses = { [POINTER_GESTURE_ATTR]: '' };
+	function focusFieldOnBarePress(bar: HTMLElement) {
+		const onMouseDown = (e: MouseEvent) => {
+			if (!(e.target instanceof Element) || e.target.closest('button, input')) return;
+			e.preventDefault();
+			fieldInRow(e.target)?.focus();
+		};
+		bar.addEventListener('mousedown', onMouseDown);
+		return () => bar.removeEventListener('mousedown', onMouseDown);
+	}
 
 	function onFindKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
@@ -82,7 +99,9 @@
 		class:invalid={!!search.error}
 		role="search"
 		bind:this={barEl}
+		{...ownPresses}
 		{@attach keepCornerControlsClear(editorRoot)}
+		{@attach focusFieldOnBarePress}
 	>
 		<div class="search-row">
 			<input
@@ -220,14 +239,22 @@
 			border-color 120ms ease,
 			box-shadow 120ms ease;
 	}
+	/* The edge and a hairline outside it make a 2px ring in the muted text colour, which holds 3:1
+	   against the card and the page in both themes. */
 	.search-bar:focus-within {
+		border-color: var(--color-ui-muted, #93938d);
 		box-shadow:
-			0 0 0 3px var(--menu-chip-bg, rgba(255, 255, 255, 0.055)),
+			0 0 0 1px var(--color-ui-muted, #93938d),
 			var(--menu-shadow, 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35));
 	}
 	/* A pattern the engine refused: the card's edge says so, the count says why. */
 	.search-bar.invalid {
 		border-color: var(--color-error, #e06c75);
+	}
+	.search-bar.invalid:focus-within {
+		box-shadow:
+			0 0 0 1px var(--color-error, #e06c75),
+			var(--menu-shadow, 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35));
 	}
 
 	.search-row {
@@ -259,7 +286,9 @@
 	}
 	.search-count {
 		flex-shrink: 0;
-		max-width: 8em;
+		/* Short enough that the longest readout, a regex error, leaves the controls on the field's
+		   line at the card's width; the whole message is in its title. */
+		max-width: 7em;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
