@@ -19,9 +19,8 @@ export interface EditorRootClipboardDeps {
 	selection: SelectionState;
 	getDoc: DocumentGetter;
 	crossBlock: CrossBlockHandlers;
-	/** Required but nullable, so this route cannot silently skip the image handling the
-	 *  blocks do; `undefined` means no hook. */
-	onPasteImage: PasteImageHook | undefined;
+	/** Required, so this route cannot silently skip the image handling the blocks do. */
+	onPasteImage: () => PasteImageHook | undefined;
 	events: EditorEvents;
 	/** The mounted block at `path`, which takes a selected widget's clipboard events. */
 	getBlockComponent(path: number[]): BlockComponent | null;

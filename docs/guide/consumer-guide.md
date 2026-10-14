@@ -18,6 +18,7 @@ This is gonna be a long one, so here are the sections:
 | [The public surface](#the-public-surface)                     | What the package exports, and what the version number promises about it                                        |
 | [Props](#props)                                               | Every prop, and which ones you can change after mount                                                          |
 | [The instance surface](#the-instance-surface)                 | The methods on a mounted editor: read the document, move the caret, run commands                               |
+| [Mounting without Svelte](#mounting-without-svelte)           | `createEditor`, for an app that doesn't render Svelte components                                               |
 | [Events](#events)                                             | The seven channels an editor reports on, and what each one carries                                             |
 | [Presentation modes](#presentation-modes)                     | One document shown five ways, from raw Markdown to fully rendered                                              |
 | [Images and links](#images-and-links)                         | Rewriting URLs, importing pasted images, and which URLs the editor refuses to load                             |
@@ -32,7 +33,7 @@ This is gonna be a long one, so here are the sections:
 
 ## What you are embedding
 
-aragonite is a Markdown editor you mount as a Svelte component. You hand it Markdown and read Markdown back, unchanged (there's no in-between document format). On screen the document is a stack of blocks (a paragraph, a heading, a list, a table), each its own editing surface, with the Markdown markers visible but dimmed.
+aragonite is a Markdown editor you mount as a Svelte component (or, from an app that isn't Svelte, with [`createEditor`](#mounting-without-svelte)). You hand it Markdown and read Markdown back, unchanged (there's no in-between document format). On screen the document is a stack of blocks (a paragraph, a heading, a list, a table), each its own editing surface, with the Markdown markers visible but dimmed.
 
 ```mermaid
 flowchart LR
@@ -73,7 +74,7 @@ aragonite never imports SvelteKit, so it doesn't care which SvelteKit you're on.
 
 Three things. Though, prob already true in sveltekit apps (if thats you, skip ahead).
 
-1. **Node `^20.19.0 || >=22.12.0`.** That floor is Vite's, not ours: the package ships uncompiled Svelte, so your bundler's requirement is the real one.
+1. **Node `^20.19.0 || >=22.12.0`.** That floor is Vite's, not ours: a Svelte app compiles the package's Svelte itself, so your bundler's requirement is the real one.
 2. **TypeScript resolves the package through its `exports` map**, which needs one of these in `tsconfig.json`:
 
    ```json
@@ -96,22 +97,22 @@ Three things. Though, prob already true in sveltekit apps (if thats you, skip ah
 
 Everything supported is exported from `@voithos-labs/aragonite`. Before 1.0 the public surface is still unstable, and the changelog records any change to it. Note, the list below will be (or at least attempted to be) kept up to date; for the actual list of exports see `src/lib/index.ts` (`dist/index.d.ts` in your `node_modules`).
 
-| Group                  | What you get                                                                                                                                                                                                                                                                                                                     |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Component**          | `Editor`, plus `EditorProps` and `EditorInstance` (the prop shape and the `bind:this` surface), `SyntaxOptions` (the `syntax` prop's shape), `InsertMarkdownOptions` (`insertMarkdown`'s second argument), `PresentationMode` (the `presentationMode` values), and `BlockComponent` (what a mounted block exposes to the editor) |
-| **Policy types**       | `ResolveImageUrl`, `ResolveLinkUrl`, `ImageLoadPolicy` for the URL and image props; `PastedImage` and `PasteImageHook` for the image-import hook; `CodeRunRequest`, `RunCodeHook`, `CodeMenuItem` and `CodeMenuItemsHook` for the code-block hooks                                                                               |
-| **Plugins**            | `installPlugins` for a parse-only pipeline with no editor mounted; `EditorPlugin` (the unit a plugin exports) and `EditorPluginEntry` (a `plugins` array entry: a bare unit, or `{ plugin, options }`)                                                                                                                           |
-| **Selection + keymap** | `EditorSelection` (what `getSelection()` returns) and `SelectionPoint` (one of its two endpoints), `normalizeSelection`, which puts a selection's two endpoints in document order; `KeybindingOverride` and `CommandId` (what the `keybindings` prop takes)                                                                      |
-| **Commands**           | `TOOLBAR_COMMANDS`, the command ids a formatting toolbar calls through `runCommand`                                                                                                                                                                                                                                              |
-| **Search**             | `SearchState`, `SearchOptions`, `Match`: the find/replace controller, its options, and one hit                                                                                                                                                                                                                                   |
-| **Decorations**        | `DecorationRegistry` and the decoration types: what `getDecorations()` returns                                                                                                                                                                                                                                                   |
-| **Rects**              | `EditorRects` (what `getRects()` returns: on-screen geometry over the document) and `SELECTION_END` (with its type `SelectionEnd`), the value its range calls accept as "through the end of the block"                                                                                                                           |
-| **Inline menus**       | `InlineMenuRegistry` (what `getInlineMenus()` returns) and the shapes it takes and hands back: `InlineMenuSource`, `InlineMenuSourceHandle`, `InlineMenuItem`, `InlineMenuQuery`, `InlineMenuOpenOptions`, `InlineMenuRowProps`                                                                                                  |
-| **Insert catalogue**   | `InsertEntry` (one row of `getInsertCatalogue()`), `MenuIconName` (the glyph names its `icon` takes), and `registerInsertEntry` for adding a row                                                                                                                                                                                 |
-| **CST utilities**      | `parse` / `serialize` for round-tripping Markdown outside the component (CST: the concrete syntax tree, the parsed form of a document), with `ParseScope` for `parse`'s scope option; `parseInline`, `getContentRange` (and its `ContentRange`), `isProseKind` for inspecting a block's inline content and editable range        |
-| **Node types**         | `CstNode`, `Document`, the block-kind and inline-node unions, and the per-kind metadata shapes: the vocabulary for reading a parsed document. `NodeView` / `DocumentView` are their read-only forms; every node the editor hands you to read is typed as a view, so writing to one won't compile                                 |
-| **Events**             | `EditorEvents` and the payload types the subscription surface emits                                                                                                                                                                                                                                                              |
-| **Diagnostics**        | `EditorDiagnostics` (what `getDiagnostics()` returns) and `InteractionTraceEntry`                                                                                                                                                                                                                                                |
+| Group                  | What you get                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Component**          | `Editor` (or `createEditor`, with `CreateEditorOptions` and `EditorHandle`, to mount it without Svelte), plus `EditorProps` and `EditorInstance` (the prop shape and the `bind:this` surface), `SyntaxOptions` (the `syntax` prop's shape), `InsertMarkdownOptions` (`insertMarkdown`'s second argument), `PresentationMode` (the `presentationMode` values), and `BlockComponent` (what a mounted block exposes to the editor) |
+| **Policy types**       | `ResolveImageUrl`, `ResolveLinkUrl`, `ImageLoadPolicy` for the URL and image props; `PastedImage` and `PasteImageHook` for the image-import hook; `CodeRunRequest`, `RunCodeHook`, `CodeMenuItem` and `CodeMenuItemsHook` for the code-block hooks                                                                                                                                                                              |
+| **Plugins**            | `installPlugins` for a parse-only pipeline with no editor mounted; `EditorPlugin` (the unit a plugin exports) and `EditorPluginEntry` (a `plugins` array entry: a bare unit, or `{ plugin, options }`)                                                                                                                                                                                                                          |
+| **Selection + keymap** | `EditorSelection` (what `getSelection()` returns) and `SelectionPoint` (one of its two endpoints), `normalizeSelection`, which puts a selection's two endpoints in document order; `KeybindingOverride` and `CommandId` (what the `keybindings` prop takes)                                                                                                                                                                     |
+| **Commands**           | `TOOLBAR_COMMANDS`, the command ids a formatting toolbar calls through `runCommand`                                                                                                                                                                                                                                                                                                                                             |
+| **Search**             | `SearchState`, `SearchOptions`, `Match`: the find/replace controller, its options, and one hit                                                                                                                                                                                                                                                                                                                                  |
+| **Decorations**        | `DecorationRegistry` and the decoration types: what `getDecorations()` returns                                                                                                                                                                                                                                                                                                                                                  |
+| **Rects**              | `EditorRects` (what `getRects()` returns: on-screen geometry over the document) and `SELECTION_END` (with its type `SelectionEnd`), the value its range calls accept as "through the end of the block"                                                                                                                                                                                                                          |
+| **Inline menus**       | `InlineMenuRegistry` (what `getInlineMenus()` returns) and the shapes it takes and hands back: `InlineMenuSource`, `InlineMenuSourceHandle`, `InlineMenuItem`, `InlineMenuQuery`, `InlineMenuOpenOptions`, `InlineMenuRowProps`                                                                                                                                                                                                 |
+| **Insert catalogue**   | `InsertEntry` (one row of `getInsertCatalogue()`), `MenuIconName` (the glyph names its `icon` takes), and `registerInsertEntry` for adding a row                                                                                                                                                                                                                                                                                |
+| **CST utilities**      | `parse` / `serialize` for round-tripping Markdown outside the component (CST: the concrete syntax tree, the parsed form of a document), with `ParseScope` for `parse`'s scope option; `parseInline`, `getContentRange` (and its `ContentRange`), `isProseKind` for inspecting a block's inline content and editable range                                                                                                       |
+| **Node types**         | `CstNode`, `Document`, the block-kind and inline-node unions, and the per-kind metadata shapes: the vocabulary for reading a parsed document. `NodeView` / `DocumentView` are their read-only forms; every node the editor hands you to read is typed as a view, so writing to one won't compile                                                                                                                                |
+| **Events**             | `EditorEvents` and the payload types the subscription surface emits                                                                                                                                                                                                                                                                                                                                                             |
+| **Diagnostics**        | `EditorDiagnostics` (what `getDiagnostics()` returns) and `InteractionTraceEntry`                                                                                                                                                                                                                                                                                                                                               |
 
 ## Props
 
@@ -140,9 +141,11 @@ Everything supported is exported from `@voithos-labs/aragonite`. Before 1.0 the 
 | `selectionToolbar` | The built-in formatting popover over a selection: the marks, the link, a heading picker, inline code and copy (default on; reading mode never shows it; see [Recipe: a selection toolbar](#recipe-a-selection-toolbar))                                                                                                                                                                                                                     |
 | `placeholder`      | Faint text an empty block shows until something's typed: a string for an empty document, or a function asked about each empty block (see [A hint in an empty block](#a-hint-in-an-empty-block))                                                                                                                                                                                                                                             |
 
-**Set once at mount:** `resolveImageUrl`, `resolveLinkUrl`, `imageLoadPolicy`, `onLinkActivate`, `onPasteImage`, `onRunCode`, `codeMenuItems`, `scrollMode`, `plugins`, and `syntax`. Set them at mount and leave them; a swap later isn't guaranteed to reach blocks that are already built.
+**Set once at mount:** `scrollMode`, `plugins`, and `syntax`. A later value is ignored, so set them at mount and leave them.
 
-**Read live:** `theme`, `caret`, `searchBar`, `searchBarAnchor`, `selectionToolbar`, `blockDragHandles`, `placeholder`, `presentationMode`, `linkClick`, and `keybindings` may change after mount, and `header` re-renders like any other Svelte snippet.
+**Hooks:** `onPasteImage`, `onRunCode`, `codeMenuItems`, and `onLinkActivate` can be swapped, added or dropped after mount, and the editor always calls the one you passed last. Same for `resolveImageUrl` and `resolveLinkUrl`, with one catch: they run when a block renders, so an image or link already on screen keeps its URL until its block renders again.
+
+**Read live:** `theme`, `caret`, `searchBar`, `searchBarAnchor`, `selectionToolbar`, `blockDragHandles`, `placeholder`, `presentationMode`, `linkClick`, `keybindings`, and `imageLoadPolicy` may change after mount, and `header` re-renders like any other Svelte snippet.
 
 ### Loading another document
 
@@ -419,6 +422,41 @@ Two details:
 
 Ask both questions on the same `selectionChange` (it's cheap). [The selection toolbar recipe](#recipe-a-selection-toolbar) puts all three together.
 
+## Mounting without Svelte
+
+`createEditor` mounts the editor into an element you own, for an app that doesn't render Svelte components itself (React, Vue, plain DOM, whatever you've got). You get back the same handle `bind:this` gives a Svelte app, plus `update` and `destroy`.
+
+```ts
+createEditor(target: HTMLElement, options?: CreateEditorOptions): EditorHandle
+```
+
+- `target` is the element to mount into. The editor appends itself there, and `destroy` takes it back out.
+- `options` are the [props](#props), with one change: `header` is an element of yours instead of a Svelte snippet.
+
+```ts
+import { createEditor } from '@voithos-labs/aragonite';
+
+const title = document.createElement('input');
+const editor = createEditor(document.querySelector<HTMLElement>('#note')!, {
+	source: '# Hello\n',
+	theme: 'light',
+	header: title
+});
+
+editor.getEvents().on('edit', () => save(editor.getSource()));
+editor.update({ theme: 'dark' });
+editor.destroy();
+```
+
+`update` takes any subset of the options and works like handing a component new props: an unchanged value does nothing, so passing every option again on each render is fine, and a key set to `undefined` clears it. The three set-once props (`plugins`, `syntax`, `scrollMode`) are ignored after mount. Call `destroy` before you throw the element away; anything the editor still had in flight then lands nowhere and fires no event.
+
+Your bundler doesn't need a Svelte plugin for this. Without one it gets the package's prebuilt build, which has Svelte compiled in, so there's one more stylesheet to import (see [Theming](#theming)):
+
+```ts
+import '@voithos-labs/aragonite/style.css';
+import '@voithos-labs/aragonite/styles/editor-theme.css';
+```
+
 ## Events
 
 Subscribe through `editor.getEvents()`. `on(name, handler)` returns the function that unsubscribes.
@@ -481,15 +519,15 @@ events.on('error', (err) => err);
 
 `origin` is one of `subscriber`, `render`, `commit`, `command`, `decoration`, `clipboard`, or `link`, and `context` carries what's known for it:
 
-| Origin       | `context`                                                                                                                       |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `render`     | `path` of the block                                                                                                             |
-| `commit`     | `op` and `path`                                                                                                                 |
-| `command`    | `kind`, `command`, and `plugin` when a plugin owns the command                                                                  |
-| `decoration` | `source`, the decoration source's name; `path` instead when a mark's `interactive.onClick` threw                                |
-| `clipboard`  | `path` the paste was aimed at, when it was aimed at a range                                                                     |
-| `link`       | `url` the editor refused                                                                                                        |
-| `subscriber` | nothing when one of your own handlers threw; `plugin` when a plugin's callback threw; `source` when an inline menu source threw |
+| Origin       | `context`                                                                                                                           |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `render`     | `path` of the block                                                                                                                 |
+| `commit`     | `op` and `path`                                                                                                                     |
+| `command`    | `kind`, `command`, and `plugin` when a plugin owns the command                                                                      |
+| `decoration` | `source`, the decoration source's name; `path` instead when one of a mark's own handlers (`onClick`, `onHover`, `onActivate`) threw |
+| `clipboard`  | `path` the paste was aimed at, when it was aimed at a range                                                                         |
+| `link`       | `url` the editor refused                                                                                                            |
+| `subscriber` | nothing when one of your own handlers threw; `plugin` when a plugin's callback threw; `source` when an inline menu source threw     |
 
 **`presentationModeChange`** and **`themeChange`** carry bare values (`'reading'`, `'light'`), not envelopes, and never fire at mount. Only plugin content that paints its own colors needs `themeChange`; anything styled through the tokens rethemes itself through the CSS cascade.
 
@@ -723,7 +761,7 @@ Both renderers are optional; without one, each formula or diagram shows its sour
 
 The module owns its CSS. Two stylesheets ship under `styles/`:
 
-- **`editor.css`**: the structural rules. The component imports it itself; nothing to do.
+- **`editor.css`**: the structural rules. In a Svelte app the component imports it itself, so there's nothing to do. A bundler with no Svelte plugin gets the prebuilt build instead, and that needs `@voithos-labs/aragonite/style.css` imported once. It's `editor.css` plus every component's own styles, bundled plugins included.
 - **`editor-theme.css`**: the default token palette, light and dark. Import it for the default look, or replace it wholesale to retheme. It's the authoritative manifest, so read it for the exact token set and values rather than trusting a copy in a doc. This one included.
 
 No font ships, so the `--font-*` tokens resolve to whatever your page provides, or to their fallback stacks. (The showcase at aragonite.dev loads Inter and JetBrains Mono itself, in case you're wondering why it looks nicer than your first mount.)
@@ -794,14 +832,14 @@ One corner of it you'll prob want anyway is inline code, which reads three token
 
 The hint in an empty block (the `placeholder` prop) reads `--md-placeholder-color`. It follows `--color-ui-muted` until you set it at `.editor`.
 
-The caret the editor draws (the `caret` prop) is `--md-caret-color`, which follows `--color-text-primary`, and it blinks every `--md-caret-blink` (`1.06s`, about the browser's own). Its shape shows the format the next letter you type will get, and the shapes stack, so bold italic is a slanted heavy bar:
+The caret the editor draws (the `caret` prop) takes the color of the text it's standing in, like the browser's own caret does, so it's green inside a green link. Set `--md-caret-color` if you'd rather it be one color everywhere. It blinks every `--md-caret-blink` (`1.06s`, about the browser's own). Its shape shows the format the next letter you type will get, and the shapes stack, so bold italic is a slanted heavy bar:
 
 - `--md-caret-width` (`1px`): the plain bar
 - `--md-caret-strong-width` (`3px`): bold, a heavier bar growing right from where the plain one is
 - `--md-caret-slant` (`-12deg`): italic, the bar leaning right like italic type, its foot staying put
 - `--md-caret-strike-width` (`13px`): strikethrough, a 2px tick across the bar, just below its middle
 
-Set any of these at `.editor`. The bar the editor lays across a gap between blocks (the caret that sits between, say, a table and a code block, where there's nothing to type into) takes `--color-text-secondary` instead. A reader with reduced motion gets a caret that doesn't blink.
+Set any of these at `.editor`. Each width rounds to the nearest whole screen pixel (never under one), the way the browser's own caret does, so the bar stays sharp on a 125% display, where `1px` would otherwise smear across two. The bar the editor lays across a gap between blocks (the caret that sits between, say, a table and a code block, where there's nothing to type into) takes `--color-text-secondary` instead. A reader with reduced motion gets a caret that doesn't blink.
 
 **A host-chrome token you leave undeclared falls back.** If your host skips the `aragonite-editor-theme` class, declare the whole host-chrome table: anything you leave out resolves to the inline fallback its reads carry (`var(--color-ui-muted, #93938d)`), which is a dark-mode value whatever mode your page is in. The exception is `--color-text-primary` where the text sits on your page: it falls back to `currentColor`, so it inherits your page's own color instead of painting white on it. A menu paints its own dark surface, so its text keeps the dark-mode value.
 
@@ -1127,6 +1165,8 @@ handle.dispose(); // gone
 ```
 
 Authoring semantics, the four decoration types, and the memoization recipe are in the [plugin guide](plugin-guide/decorations.md#decorations); everything there applies verbatim to a consumer-registered source.
+
+A mark's `onActivate` (the keyboard's way into a hover definition, say) has no key until you give it one. Bind the built-in command in `keybindings`, `{ chord: 'Alt+Enter', command: 'decorations.activateAtCaret' }`, or call `runCommand('decorations.activateAtCaret')` from your own UI; [Interactive marks](plugin-guide/decorations.md#interactive-marks-click-hover-and-the-keyboard) has the rest.
 
 ### Screen geometry
 

@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { PluginsPage } from '../plugins/helpers';
 import { nextRow } from '../presentation/helpers';
+import { pointAtRaw } from '../../text-runs';
 
 /**
  * A drag inside a block with no character position selects it whole, and every destructive
@@ -166,4 +167,67 @@ test.describe('a whole-unit range: block math', () => {
 		await editor.bridge.waitForSourceEquals('above\n\nbelow\n');
 		expect(await editor.readClipboard()).toBe('$$x^2$$');
 	});
+});
+
+// A range that ends where a rule starts takes nothing of the rule, so the rule stays a rule.
+test.describe('a range that ends where a rule starts', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.loadContent('alpha\n\n---\n\nomega\n');
+		const at = await pointAtRaw(page, [0], 2);
+		await page.mouse.click(at.x, at.y);
+		await page.keyboard.press('Shift+ArrowDown');
+		await page.keyboard.press('Shift+ArrowDown');
+		expect(await editor.bridge.getSelection()).toEqual({
+			anchor: { path: [0], offset: 2 },
+			focus: { path: [1], offset: 0 }
+		});
+	});
+
+	test('Backspace leaves the rule standing', async ({ page }) => {
+		await page.keyboard.press('Backspace');
+		await editor.bridge.waitForSourceEquals('al\n\n---\n\nomega\n');
+		expect(await editor.bridge.getBlockKind(1)).toBe('thematicBreak');
+	});
+
+	test('a key typed over it lands before the rule', async () => {
+		await editor.typeSlowly('x');
+		await editor.bridge.waitForSourceEquals('alx\n\n---\n\nomega\n');
+		expect(await editor.bridge.getBlockKind(1)).toBe('thematicBreak');
+	});
+});
+
+// A range that takes a table whole and reaches a rule leaves the caret on the rule, which has no
+// text: a key goes in a new paragraph after it, as a composition there does.
+test('a key typed over a table and into the rule below it lands after the rule', async ({
+	page
+}) => {
+	const editor = new EditorPage(page);
+	await editor.goto();
+	await editor.loadContent('| c |\n| - |\n\n---\n');
+	await page.locator('.table-cell').first().click();
+	await page.keyboard.press('Shift+ArrowDown');
+	await editor.waitForCrossBlock(true);
+
+	await editor.typeSlowly('x');
+	await editor.bridge.waitForSourceEquals('---\n\nx\n');
+	expect(await editor.bridge.getBlockKind(0)).toBe('thematicBreak');
+});
+
+test('a key typed over a table and into a diagram below it lands after the diagram', async ({
+	page
+}) => {
+	const editor = new PluginsPage(page);
+	await editor.gotoPlugins('mermaid');
+	await editor.loadContent('| c |\n| - |\n\n```mermaid\ngraph TD\n```\n');
+	await page.locator('.table-cell').first().click();
+	await page.keyboard.press('Shift+ArrowDown');
+	await editor.waitForCrossBlock(true);
+
+	await editor.typeSlowly('x');
+	await editor.bridge.waitForSourceEquals('```mermaid\ngraph TD\n```\n\nx\n');
+	expect(await editor.bridge.getBlockKind(0)).toBe('mermaid');
 });

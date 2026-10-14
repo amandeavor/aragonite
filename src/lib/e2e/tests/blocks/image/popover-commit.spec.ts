@@ -158,6 +158,24 @@ test.describe('image popover commit', () => {
 		await expect(page.locator('[data-image-widget]')).toHaveCount(0);
 	});
 
+	for (const [where, source, left] of [
+		['a link', 'x [![b](/test-fixtures/sample.png)](https://example.com) y\n', 'x  y\n'],
+		['a bold run', 'a **![b](/test-fixtures/sample.png)** c\n', 'a  c\n']
+	]) {
+		test(`in live mode, removing the only content of ${where} takes its markers too`, async ({
+			page
+		}) => {
+			await editor.loadContent(source);
+			await editor.setPresentationMode('live');
+			await page.locator('[data-image-widget]').first().click();
+			await page
+				.locator('.md-image-properties')
+				.getByRole('button', { name: 'Remove image' })
+				.click();
+			await editor.bridge.waitForSourceEquals(left);
+		});
+	}
+
 	// A replace from the find bar rewrites the image's bytes while the toolbar stays up, and an edit
 	// in the alt field builds on the alt the document holds now.
 	test('a replace from the find bar reseeds the open toolbar', async ({ page }) => {

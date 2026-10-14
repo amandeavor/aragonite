@@ -92,8 +92,9 @@ export interface WholeBlockInputProxyDeps {
 	isReading: () => boolean;
 	/** The block's accessible name: the host is the block's tab stop, so it names the block. */
 	getLabel: () => string;
-	/** Commit the bytes the host produced: the same paragraph the keydown path creates. */
-	mint: (text: string) => void;
+	/** Commit the bytes the host produced: the same paragraph the keydown path creates. Resolves
+	 *  whether it landed. */
+	mint: (text: string) => Promise<boolean>;
 }
 
 export interface WholeBlockInputProxy {
@@ -102,11 +103,16 @@ export interface WholeBlockInputProxy {
 	/** Put DOM focus for a whole-block entry, falling back to `declared` when the plugin owns
 	 *  the caret or the host has not mounted. */
 	focus(declared: HTMLElement): void;
+	/** The block's `typeText`: text typed at the block goes where the host's input goes. */
+	typeText(text: string): Promise<boolean>;
 }
 
 export function createWholeBlockInputProxy(deps: WholeBlockInputProxyDeps): WholeBlockInputProxy {
 	let proxy: HTMLElement | null = null;
-	const hostInput = createCaretHostInput(() => proxy, deps.mint);
+	const hostInput = createCaretHostInput(
+		() => proxy,
+		(text) => void deps.mint(text)
+	);
 
 	/** Every read of the declared element inside the proxy goes through the demotion, so a kind
 	 *  supplying its own `getFocusEl` (without the composed fallback) is held to the rule too. */
@@ -169,6 +175,7 @@ export function createWholeBlockInputProxy(deps: WholeBlockInputProxyDeps): Whol
 
 	return {
 		el: () => proxy,
+		typeText: deps.mint,
 		focus(declared: HTMLElement) {
 			if (!proxy || isEditableEventTarget(declared)) {
 				focusWholeBlockEl(declared);

@@ -67,8 +67,14 @@ export function makeHandlers(
 	});
 }
 
-export function selectAcross(selection: SelectionState, anchor: number[], focus: number[]): void {
-	selection.enterCrossBlock({ path: anchor, offset: 0 }, { path: focus, offset: 0 });
+/** A range from the start of `anchor` to `focusOffset` in `focus`. */
+export function selectAcross(
+	selection: SelectionState,
+	anchor: number[],
+	focus: number[],
+	focusOffset = 0
+): void {
+	selection.enterCrossBlock({ path: anchor, offset: 0 }, { path: focus, offset: focusOffset });
 }
 
 export function makeBeforeInputEvent(typed: string): InputEvent {

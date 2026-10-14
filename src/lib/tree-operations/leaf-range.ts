@@ -5,6 +5,7 @@
  */
 
 import type { NodeView } from '../core/node-views';
+import { getContentRange } from '../core/inline';
 import {
 	ownTrailingLineEnding,
 	snapToScalarBoundary,
@@ -32,6 +33,9 @@ export interface LeafRangeEdit {
 	/** Whether `raw` is the range asked for spliced with nothing moved or cleaned, the edit the
 	 *  browser makes itself, grapheme and IME handling included. */
 	matchesBrowserEdit: boolean;
+	/** Where an offset of the leaf's bytes before the edit lands in `raw`: one inside the range
+	 *  lands at its start, one at or past its end after the typed text. */
+	mapOffset(offset: number): number;
 }
 
 /** `[start, end)` of `node` replaced by `typed`, the join cleaned against where `store` keeps it. */
@@ -49,11 +53,21 @@ export function replaceRangeInLeaf(
 	const start = snapToScalarBoundary(node.raw, painted.start);
 	// An inverted range replaces nothing: the text goes in at its start.
 	const end = Math.max(start, snapToScalarBoundary(node.raw, painted.end));
+	// An offset of the leaf as the join reads it, the range taken out; the typed text goes in after.
+	const merged = (offset: number) =>
+		offset <= start ? offset : Math.max(start, offset - end + start);
+	const afterTyped = (offset: number, to: number) => (offset >= end ? to + typed.length : to);
 	if (start < end) {
 		const join = cleanJoin({ node, offset: start }, { node, offset: end }, typed, store, same);
 		if (join.cleaned) {
 			const { raw, seam } = withTyped(join.joined, typed);
-			return { raw, caret: seam + typed.length, range: { start, end }, matchesBrowserEdit: false };
+			return {
+				raw,
+				caret: seam + typed.length,
+				range: { start, end },
+				matchesBrowserEdit: false,
+				mapOffset: (offset) => afterTyped(offset, join.joined.map(merged(offset)))
+			};
 		}
 	}
 	const display = trimTrailingLineEnding(node.raw);
@@ -61,8 +75,33 @@ export function replaceRangeInLeaf(
 		raw: display.slice(0, start) + typed + display.slice(end) + ownTrailingLineEnding(node.raw),
 		caret: start + typed.length,
 		range: { start, end },
-		matchesBrowserEdit: start === range.start && end === range.end
+		matchesBrowserEdit: start === range.start && end === range.end,
+		mapOffset: (offset) => afterTyped(offset, merged(offset))
 	};
+}
+
+/** The bytes `[start, end)` of `node` carry out of it: the leaf cut down to the range by two in-leaf
+ *  cuts, so what leaves follows the rule that what stays follows. */
+export function bytesLeavingLeaf(
+	node: NodeView,
+	range: { start: number; end: number },
+	store: StoredAs
+): string {
+	// Cut inside the text: the cleanup reads no side that starts in a heading's marker.
+	const content = getContentRange(node);
+	const tail = replaceRangeInLeaf(
+		node,
+		{ start: range.end, end: Math.max(range.end, content.end) },
+		'',
+		store
+	);
+	const head = replaceRangeInLeaf(
+		{ ...node, raw: tail.raw },
+		{ start: Math.min(range.start, content.start), end: tail.mapOffset(range.start) },
+		'',
+		store
+	);
+	return head.raw.slice(head.caret, head.mapOffset(tail.caret));
 }
 
 /** The bytes `head` up to its offset and `tail` from its offset make with `typed` between them,
@@ -73,7 +112,7 @@ export function joinLeaves(
 	typed: string,
 	store: StoredAs,
 	lineEnding: LineEnding
-): CleanedJoin {
+): Pick<CleanedJoin, 'raw' | 'seam'> {
 	const writeTail = (bytes: string) => normalizeOwnRaw(tail.node, bytes, lineEnding);
 	return withTyped(cleanJoin(head, tail, typed, store, writeTail).joined, typed);
 }
@@ -81,7 +120,7 @@ export function joinLeaves(
 /** `join.mergedRaw` minus the delimiter runs the join left unpaired, where the reading hides
  *  delimiters. */
 export function cleanJoinedRaw(join: JoinSeam): CleanedJoin {
-	const literal = { raw: join.mergedRaw, seam: join.seam };
+	const literal = { raw: join.mergedRaw, seam: join.seam, map: (offset: number) => offset };
 	if (!join.store.reading.hidesDelimitersAtCaret()) return literal;
 	return getLiveJoinSeamCleaner()?.(join) ?? literal;
 }
@@ -111,7 +150,7 @@ function cleanJoin(
  *  installed. */
 const same = (bytes: string): string => bytes;
 
-const withTyped = (join: CleanedJoin, typed: string): CleanedJoin => ({
+const withTyped = (join: CleanedJoin, typed: string): Pick<CleanedJoin, 'raw' | 'seam'> => ({
 	raw: join.raw.slice(0, join.seam) + typed + join.raw.slice(join.seam),
 	seam: join.seam
 });

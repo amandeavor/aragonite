@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createFocusedSurface } from '#lib/components/editor-root/focused-surface.js';
 import { parse } from '#lib/core/parser.js';
+import { createDocumentStamps } from '#lib/editor-actions/commit/document-stamp.js';
 import type { BlockComponent } from '#lib/block-component.js';
 import type { GapCaretPosition } from '#lib/selection/gap-caret.js';
 
@@ -68,7 +69,8 @@ function harness(component: Partial<BlockComponent> = {}, opts: { writes?: boole
 			await run();
 			calls.push('join closes');
 		},
-		contentVersion: () => version
+		contentVersion: () => version,
+		stamps: createDocumentStamps()
 	});
 	return {
 		surface,

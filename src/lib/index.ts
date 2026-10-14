@@ -4,6 +4,7 @@
 // ── Component ────────────────────────────────────────────────────────────────
 
 export { default as Editor } from './components/Editor.svelte';
+export { createEditor, type CreateEditorOptions, type EditorHandle } from './create-editor';
 
 export type {
 	EditorProps,
@@ -104,6 +105,8 @@ export type {
 export type {
 	Decoration,
 	MarkDecoration,
+	MarkInteractions,
+	MarkHover,
 	WidgetDecoration,
 	ReplaceDecoration,
 	BlockDecoration,

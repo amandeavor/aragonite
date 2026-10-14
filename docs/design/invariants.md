@@ -255,6 +255,8 @@ These checks run in three kinds of place:
 | G1.75 | No selection endpoint the editor writes sits after an empty block's placeholder `<br>`     | A·N     |
 | G1.76 | The drawn caret sits on its caret until the caret moves                                    | A       |
 | G1.77 | The mark hiding the browser's caret is on exactly the editable the drawn caret draws for   | A       |
+| G1.87 | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
+| G1.90 | A plugin component compiled against another Svelte runtime is named as such in dev         | N       |
 
 ### The entries
 
@@ -712,6 +714,26 @@ class list when its kind changes. Predicate
 `caret/drawn-caret.svelte.ts` · `e2e/tests/caret/drawn-caret.spec.ts` (`caretsShowing`, one caret in
 every row).
 
+**G1.87 · Nothing outlives the unmount.** A write still in flight when the editor unmounts (an
+`insertMarkdown` waiting on a tick, a paste waiting on its clipboard) is refused quietly at the write
+gate, the way one made for a document a swap replaced is: the unmount ends the document in place, and
+a write that names no document is made for that one. The events channel goes quiet at the same
+moment, and a caret landing stops at its next await rather than read the torn-down lists. Nothing is
+asserted, since a host unmounting mid-write is ordinary. `editor-actions/commit/reading-write-gate.ts
+:: admitsWrite`, `editor-actions/commit/document-stamp.ts :: end`, `block-lists/child-list.ts ::
+descendTo` · `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/document-stamp.test.ts`,
+`block-lists/child-list.test.ts`, `selection/caret-landing.test.ts`.
+
+**G1.90 · A foreign Svelte runtime is named.** A plugin component compiled against a second copy of
+Svelte (a precompiled plugin on the prebuilt build, say) fails as soon as the editor mounts it,
+since its runtime has no component or effect in progress. Each route that mounts a plugin's
+component (the block's error boundary, the inline widget pool, the decoration widget mount) asks
+`foreign-runtime.ts :: isForeignRuntimeError` and warns `foreign-runtime` in dev; the block's notice
+says the cause too. The match is by message: `effect_orphan`, or the two crashes of a runtime that
+never mounted anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches
+too. `components/foreign-runtime.test.ts` loads its fixtures on a second runtime
+through a module reset.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -839,6 +861,7 @@ what the type retired.
 | G3.8  | A reader writing a node's serialized bytes                                        | T     |
 | G3.9  | Forgetting one part of what the caret means without the others                    | T     |
 | G3.10 | A registration pairing fields that can't mean anything together                   | T     |
+| G3.11 | An editor prop with no word on whether it can change after mount                  | T     |
 
 ### The entries
 
@@ -902,6 +925,13 @@ refuses every field on `src/lib/schema/block-kind-descriptor.ts :: FIXED_AT_REGI
 `src/lib/test/schema/registration-pairs.test.ts` fails when a table row and its pin don't match.
 Retired: G1.32 and four of G1.37's five pairs as dev-time checks, and G1.18's not-a-container
 branch.
+
+**G3.11 · Every prop has a timing.** `editor-props.ts :: EDITOR_PROP_TIMING` names each
+`EditorProps` key `live` (a new value takes effect) or `once` (read at mount, later values
+ignored), typed `satisfies PropTimings<EditorProps>`, so a prop added without one doesn't compile.
+`create-editor.ts :: createEditor` reads it to skip the `once` keys on `update`, and the consumer
+guide's Props section lists the same split. `src/lib/test/editor-root/create-editor.test.ts ::
+compileTimePins` holds the `@ts-expect-error`.
 
 ## Group 4: source scans
 
@@ -1053,7 +1083,11 @@ unguarded.
 | G4.155 | Every composing-flag holder asks both composition questions: a drop, and an opening       | L       |
 | G4.157 | Every block kind a bundled plugin installs has an insert entry, or says why it has none   | harness |
 | G4.159 | An emptied quote, list item or bundled strip container keeps bytes that reload as it      | harness |
+| G4.163 | A mark's own handlers are called only by the hover lifecycle, activation and the click    | L       |
 | G4.165 | A write that moves text without resizing its block reports it, so its overlays measure    | L       |
+| G4.166 | Every length the drawn caret's rules set is rounded to whole device pixels                | L       |
+| G4.174 | Every published entry point has a source build and a prebuilt one                         | L       |
+| G4.175 | Every library component compiles in runes mode                                            | L       |
 
 ### The entries
 
@@ -1999,6 +2033,12 @@ deleted at the very end of the document, through the text write and through the 
 and the bytes must reload as the empty container the editor still shows: `- `, `>`, `[^1]: `.
 `test/schema/emptied-body-bytes.test.ts`.
 
+**G4.163 · One caller per mark gesture.** A call into a mark's `interactive.onClick`, `onHover` or
+`onActivate` sits only in `decorations/mark-hover.ts` (the hover lifecycle, keyed by the decoration),
+`decorations/mark-activation.ts` (the activate command) and `components/overlays/DecorationOverlay.svelte`
+(the click), each inside the engine's `runMarkHandler`. A new route that called a handler itself
+would skip the one-end rule or the `error` event. `test/invariants/lint/file-rules.test.ts`.
+
 **G4.165 · Text that moves inside an unresized block is reported.** A mark or selection overlay is
 measured against the text under it, and a resize observer can't see that text slide sideways
 inside a box that keeps its size. Showing or hiding markers is the usual cause. Every write of the
@@ -2010,6 +2050,27 @@ measure again a tick later. Image and font loads report there too. `lint/file-ru
 fails a file that writes one of those hooks without being on its list, each entry saying how it
 reports. The scan reads DOM writes, so the widget swap and the bare-marker focus are held by their
 rows in `e2e/tests/decorations/mark-overlay-follows-text.spec.ts` instead.
+
+**G4.166 · The drawn caret stays on the device grid.** The paint puts the bar's edges on whole
+device pixels (`caret/drawn-caret-target.ts`) and hands the stylesheet the device pixel ratio, so
+each width rounds to the nearest whole device pixel, like the browser's caret, and each offset down
+to one. A shape whose length skips that rounding blurs across two pixel columns at a fractional
+display scale. `lint/drawn-caret-guards.test.ts` fails a length set in a `.md-drawn-caret` rule
+with no twin in `editor.css`'s device-rounding block, and a width there not rounded to the nearest.
+
+**G4.174 · Both builds for every entry point.** Each JavaScript entry in package.json `exports`
+names its source build under `svelte` and the prebuilt one under `default`, at the same path below
+`dist/prebuilt/`; `scripts/lib-alias.mjs :: publishedEntryPoints` throws on any entry that breaks the
+pairing, so the prebuilt build's own entry list, the source scans and verify-pack all stop together.
+`sideEffects` covers the whole prebuilt, since a host bundler that drops a chunk it thinks is pure
+loses the registrations inside it. `lint/plugin-pack-parity.test.ts`; `scripts/verify-prebuilt.mjs`
+then checks the built output: it imports nothing but its listed externals, every entry loads in Node,
+a kind registered through its `/plugin` parses through its root, and it stays within its size budget.
+
+**G4.175 · Runes mode only.** A component with no rune compiles in legacy mode, which switches on
+the legacy flag in the Svelte runtime of the app that compiles it. The prebuilt build forces runes
+mode itself, so this guards Svelte hosts. Every `.svelte` file under `src/lib` uses a rune or says `<svelte:options runes />`.
+`lint/file-rules.test.ts`.
 
 ## Accessibility
 

@@ -16,7 +16,10 @@ export function createNestedFocus(state: BlockListState, deps: NestedActionsDeps
 	const scope: MoveFocusScope = {
 		// The tree's count, not the refs': those lag a structural edit by a render.
 		count: () => deps.node.children?.length ?? 0,
-		mount: (index) => descendTo(children(), [index]),
+		mount: (index) => {
+			const madeFor = deps.stamps.current();
+			return descendTo(children(), [index], { current: () => madeFor.live });
+		},
 		leave: async (step, position, options) => {
 			await delegateMoveFocus(parent.focus, deps.index + step, position, options);
 		},

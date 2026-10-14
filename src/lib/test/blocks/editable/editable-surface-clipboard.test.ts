@@ -7,7 +7,10 @@ import {
 } from '../../../components/blocks/editable/editable-surface';
 import { type ClipboardArm } from '../../../components/blocks/editable/clipboard-step';
 import { createInsertionRecords } from '#lib/caret/next-insertion.js';
-import { type PastedImage } from '../../../editor-keys';
+import { type PastedImage, type PasteImageHook } from '../../../editor-keys';
+
+// The block's element; a paste whose block has gone lands nothing.
+const mountedEl = document.createElement('div');
 
 describe('step order', () => {
 	// The order of steps `createClipboardHandlers` runs: reading check, each arm, a cut's payload before the hide, paste's `preventDefault` before any await.
@@ -68,7 +71,7 @@ describe('step order', () => {
 			} as never,
 			isReadOnly: () => false,
 			caret: {
-				getEl: () => null,
+				getEl: () => mountedEl,
 				getCursorOffset: () => null,
 				focus: () => {},
 				recordPreEditOffset: () => void log.push('record'),
@@ -77,7 +80,7 @@ describe('step order', () => {
 				holdInsertion: () => createInsertionRecords([]).hold({}, null)
 			},
 			events: { on: () => () => {}, emit: () => {} },
-			onPasteImage: undefined,
+			onPasteImage: () => undefined,
 			rangeArm: arm(log, 'range'),
 			pasteTail: (text) => void log.push(`pasteTail:${text}`),
 			...over
@@ -335,7 +338,14 @@ describe('image paste', () => {
 			}
 		}) as never;
 
-	function harness(over: Partial<ClipboardSurfaceDeps> = {}, state = liveSurface()) {
+	/** `onPasteImage` is the hook itself, as a host installs it. */
+	function harness(
+		{
+			onPasteImage,
+			...over
+		}: Partial<Omit<ClipboardSurfaceDeps, 'onPasteImage'>> & { onPasteImage?: PasteImageHook } = {},
+		state = liveSurface()
+	) {
 		const log: string[] = [];
 		const inserted: string[] = [];
 		const targets: (number | null)[] = [];
@@ -365,7 +375,7 @@ describe('image paste', () => {
 			events: {
 				emit: (name: string, payload: unknown) => void (name === 'error' && errors.push(payload))
 			} as never,
-			onPasteImage: undefined,
+			onPasteImage: () => onPasteImage,
 			rangeArm: { copy: () => null, remove: () => {} },
 			pasteTail: (text, target) => {
 				inserted.push(text);

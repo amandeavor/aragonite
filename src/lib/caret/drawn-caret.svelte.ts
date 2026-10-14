@@ -111,6 +111,8 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 	let drawnIn: Element | null = null;
 	let drawnState = '';
 	let drawnMarks = '';
+	let drawnColor = '';
+	let drawnDpr = 0;
 	let blink: 'a' | 'b' = 'a';
 	const widgetEdge = createWidgetEdgeHolder(request);
 	let requested = false;
@@ -187,7 +189,12 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		countCaretPaint();
 		const read = readCaret(root);
 		const target = drawnCaretTarget(read.reads);
-		draw(target, read, atFrame);
+		// Read before the paint writes anything that would dirty style, and only for a bar that shows.
+		const color =
+			'rect' in target && read.source
+				? getComputedStyle(caretHolder(read.range, read.source.el)).color
+				: '';
+		draw(target, read, color, atFrame);
 		assertInvariant('one-caret-showing', () =>
 			checkOneCaretShowing(root, DRAWN_ATTR, target, read.source?.el ?? null)
 		);
@@ -243,7 +250,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 				atCodeChipEdge: !!measured?.chipEdge,
 				chip,
 				caret: measured?.caret ?? null,
-				host: measured?.hostBox ?? (edge && host ? hostBox(host) : null),
+				host: measured?.hostBox ?? (host ? hostBox(host) : null),
 				devicePixelRatio: window.devicePixelRatio || 1
 			}
 		};
@@ -256,7 +263,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		return offset === null ? null : edges.box(offset);
 	}
 
-	function draw(target: DrawnCaretTarget, read: CaretRead, atFrame: boolean): void {
+	function draw(target: DrawnCaretTarget, read: CaretRead, color: string, atFrame: boolean): void {
 		markDrawnFor(hidesBrowserCaret(target) ? (read.source?.el ?? null) : null);
 		const rect = 'rect' in target ? target.rect : null;
 		if ((!rect && target.state !== 'gap') || !read.host) {
@@ -272,8 +279,12 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 		const inText = target.state === 'text' || target.state === 'chip';
 		const look = inText && read.range ? read.source?.look?.(read.range) : null;
 		const marks = look?.marks.join(' ') ?? '';
-		// The gap bar's box is all CSS, across its whole element. The stylesheet owns `transform`.
-		const translate = rect ? `${rect.x}px ${rect.y}px` : '';
+		// The gap bar's ends are CSS, across its whole element. The stylesheet owns `transform`.
+		const translate = rect
+			? `${rect.x}px ${rect.y}px`
+			: target.state === 'gap'
+				? `0px ${target.y}px`
+				: '';
 		const height = rect ? `${rect.height}px` : '';
 		const width = rect && 'width' in rect ? `${rect.width}px` : '';
 		const position = `${target.state} ${translate} ${height} ${width}`;
@@ -299,6 +310,7 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 			drawnPosition = position;
 			drawnIn = el.parentElement;
 		}
+		paintPixels(el, color, read.reads.devicePixelRatio);
 		markState(el, target.state);
 		el.hidden = false;
 		painted =
@@ -312,6 +324,19 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 					}
 				: null;
 		if (read.source) watchSurface(read.source.el);
+	}
+
+	// The browser's caret takes the color of the element holding it, and the stylesheet rounds the
+	// bar's lengths in the device pixels the ratio gives.
+	function paintPixels(el: HTMLElement, color: string, dpr: number): void {
+		if (color !== drawnColor) {
+			el.style.color = color;
+			drawnColor = color;
+		}
+		if (dpr !== drawnDpr) {
+			el.style.setProperty('--md-device-pixel-ratio', String(dpr));
+			drawnDpr = dpr;
+		}
 	}
 
 	function markState(el: HTMLElement, state: string): void {
@@ -404,6 +429,8 @@ export function createDrawnCaret(deps: DrawnCaretDeps): DrawnCaret {
 			drawnIn = null;
 			drawnState = '';
 			drawnMarks = '';
+			drawnColor = '';
+			drawnDpr = 0;
 		};
 	}
 
@@ -485,6 +512,14 @@ function createBar(): HTMLElement {
 	el.className = 'md-drawn-caret';
 	el.setAttribute('aria-hidden', 'true');
 	return el;
+}
+
+// The element the browser's caret would take its color from: the one holding the caret, or the
+// editable itself where the caret sits beside a widget with no range of its own.
+function caretHolder(range: Range | null, surface: HTMLElement): Element {
+	const node = range?.startContainer;
+	if (!node || !surface.contains(node)) return surface;
+	return node instanceof Element ? node : (node.parentElement ?? surface);
 }
 
 function sizeOf(el: HTMLElement): string {

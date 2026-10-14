@@ -19,7 +19,7 @@ import {
 	writeOwnRaw
 } from '../tree-operations/node-primitives';
 import { cloneNode } from '../tree-operations/clone';
-import { replaceRangeInLeaf } from '../tree-operations/leaf-range';
+import { bytesLeavingLeaf, replaceRangeInLeaf } from '../tree-operations/leaf-range';
 import { rebuildAncestryRaw } from '../schema/container-raw';
 import { applyPasteTransforms } from '../tree-operations/paste/paste-transforms';
 import { parseReplacement } from '../tree-operations/paste/replacement-parse';
@@ -256,12 +256,16 @@ function isInside(el: HTMLElement, clientX: number, clientY: number): boolean {
 	return clientX >= box.left && clientX <= box.right && clientY >= box.top && clientY <= box.bottom;
 }
 
-/** The source element's bytes for the range, after the paste transforms. Null for text this
- *  module does not handle: a line break needs the structural paste path. */
-function movedText(deps: SelectionDropDeps, from: Omit<DragSource, 'text'>): string | null {
+/** The bytes the range takes out of the source element, cut as its cut is, after the paste
+ *  transforms. Null for text this module does not handle: a line break needs the structural paste. */
+export function movedText(
+	deps: Pick<SelectionDropDeps, 'getDoc' | 'reading' | 'activePlugins'>,
+	from: Omit<DragSource, 'text'>
+): string | null {
 	const node = blockNodeAt(deps.getDoc(), from.path);
 	if (!node) return null;
-	const raw = trimTrailingLineEnding(node.raw).slice(from.start, from.end);
+	const store = storedAsAt(deps.getDoc(), from.path, deps.reading);
+	const raw = bytesLeavingLeaf(node, { start: from.start, end: from.end }, store);
 	const text = applyPasteTransforms(raw, deps.activePlugins);
 	return text && !/[\r\n]/.test(text) ? text : null;
 }

@@ -4,6 +4,7 @@
  */
 
 import { mount, unmount } from 'svelte';
+import { warnIfForeignRuntime } from '../foreign-runtime';
 import type { Decoration, DecorationWidgetSpec } from './types';
 
 export interface DecorationWidgetHandle {
@@ -40,6 +41,7 @@ export function mountDecorationWidget(
 		const el = spec.buildDom(dec);
 		return { el, destroy: () => el.remove() };
 	} catch (error) {
+		warnIfForeignRuntime(error, 'decoration widget');
 		reportError?.(error);
 		return null;
 	}

@@ -30,7 +30,13 @@ describe('revealChildOrWait', () => {
 	it('reveals and waits when the slot is empty (in-window mount pending)', async () => {
 		const { refs, slots, revealChild } = makeScope();
 
-		await revealChildOrWait(0, { slots, childCount: 1, revealChild, isInWindow: () => true });
+		await revealChildOrWait(0, {
+			slots,
+			childCount: 1,
+			revealChild,
+			isInWindow: () => true,
+			current: () => true
+		});
 
 		expect(revealChild).toHaveBeenCalledWith(0);
 		expect(refs[0]).toBeTruthy();
@@ -40,7 +46,13 @@ describe('revealChildOrWait', () => {
 		const { refs, slots, revealChild } = makeScope();
 		refs[0] = {};
 
-		await revealChildOrWait(0, { slots, childCount: 1, revealChild, isInWindow: () => true });
+		await revealChildOrWait(0, {
+			slots,
+			childCount: 1,
+			revealChild,
+			isInWindow: () => true,
+			current: () => true
+		});
 
 		expect(revealChild).not.toHaveBeenCalled();
 	});
@@ -53,7 +65,13 @@ describe('revealChildOrWait', () => {
 		publishRefSlot(slots, 0, detached, document.createElement('div'));
 		refs[0] = detached;
 
-		await revealChildOrWait(0, { slots, childCount: 1, revealChild, isInWindow: () => true });
+		await revealChildOrWait(0, {
+			slots,
+			childCount: 1,
+			revealChild,
+			isInWindow: () => true,
+			current: () => true
+		});
 
 		expect(revealChild).toHaveBeenCalledWith(0);
 		expect(refs[0]).toBeTruthy();
@@ -69,7 +87,13 @@ describe('revealChildOrWait', () => {
 
 		// A scripted scroll moves the range a flush before the DOM follows. Clearing here strands
 		// the ref, since nothing writes it again for a mount that never changed.
-		await revealChildOrWait(0, { slots, childCount: 1, revealChild, isInWindow: () => false });
+		await revealChildOrWait(0, {
+			slots,
+			childCount: 1,
+			revealChild,
+			isInWindow: () => false,
+			current: () => true
+		});
 
 		expect(revealChild).not.toHaveBeenCalled();
 		expect(refs[0]).toBe(mounted);
@@ -81,7 +105,13 @@ describe('revealChildOrWait', () => {
 		const unrecorded = {};
 		refs[0] = unrecorded;
 
-		await revealChildOrWait(0, { slots, childCount: 1, revealChild, isInWindow: () => true });
+		await revealChildOrWait(0, {
+			slots,
+			childCount: 1,
+			revealChild,
+			isInWindow: () => true,
+			current: () => true
+		});
 
 		expect(revealChild).not.toHaveBeenCalled();
 		expect(refs[0]).toBe(unrecorded);
@@ -91,7 +121,13 @@ describe('revealChildOrWait', () => {
 		const { refs, slots, revealChild } = makeScope();
 
 		// index === count is past the end of the document
-		await revealChildOrWait(0, { slots, childCount: 0, revealChild, isInWindow: () => true });
+		await revealChildOrWait(0, {
+			slots,
+			childCount: 0,
+			revealChild,
+			isInWindow: () => true,
+			current: () => true
+		});
 
 		expect(revealChild).not.toHaveBeenCalled();
 		expect(refs[0]).toBeUndefined();
@@ -111,7 +147,8 @@ describe('revealChildOrWait', () => {
 				slots: neverMountsScope(),
 				childCount: 1,
 				revealChild,
-				isInWindow: () => false
+				isInWindow: () => false,
+				current: () => true
 			});
 
 			expect(await settlesWithin(call)).toBe(true);
@@ -129,7 +166,8 @@ describe('revealChildOrWait', () => {
 				slots: neverMountsScope(),
 				childCount: 1,
 				revealChild,
-				isInWindow: () => true
+				isInWindow: () => true,
+				current: () => true
 			});
 
 			expect(await settlesWithin(call)).toBe(true);

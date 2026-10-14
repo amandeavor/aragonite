@@ -217,6 +217,9 @@ export interface JoinSeam {
 export interface CleanedJoin {
 	raw: string;
 	seam: number;
+	/** Where an offset of the merged bytes lands in `raw`; a byte the cleanup dropped lands where
+	 *  its run stood. `map(mergedSeam)` is `seam`. */
+	map(offset: number): number;
 }
 
 /**

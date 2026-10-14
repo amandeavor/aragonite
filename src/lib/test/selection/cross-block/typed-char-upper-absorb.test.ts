@@ -8,11 +8,11 @@ import { makeEnv, makeHandlers, selectAcross, makeBeforeInputEvent } from './typ
 
 describe('cross-block typed character: a fold above the survivor', () => {
 	it('lands the caret in the block the fold left standing', async () => {
-		const env = makeEnv('a\n# h\n\n# kkk\n');
+		const env = makeEnv('a\n# h\n\n## kkk\n');
 
-		// Whole of the first heading, up to the second's start: the delete leaves `# kkk` behind
-		// with the paragraph still tight above it.
-		selectAcross(env.selectionState, [1], [2]);
+		// The first heading and the second's first `#`: the delete leaves `# kkk` behind with the
+		// paragraph still tight above it.
+		selectAcross(env.selectionState, [1], [2], 1);
 		await makeHandlers(env, [1]).handleBeforeInput(makeBeforeInputEvent('x'));
 
 		expect(serialize(env.doc)).toBe('a\nx# kkk\n');

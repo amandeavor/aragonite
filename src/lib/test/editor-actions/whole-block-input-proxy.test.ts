@@ -113,7 +113,11 @@ describe('container shim routing through the host', () => {
 		const boxEl = box();
 		const landed: HTMLElement[] = [];
 		const host = proxyIn(boxEl);
-		const proxy: WholeBlockInputProxy = { el: () => host, focus: (d) => landed.push(d) };
+		const proxy: WholeBlockInputProxy = {
+			el: () => host,
+			focus: (d) => landed.push(d),
+			typeText: async () => true
+		};
 
 		shim(boxEl, proxy).focus(0);
 		shim(boxEl, proxy).focusAtColumn?.(120, 'above');
@@ -127,7 +131,11 @@ describe('container shim routing through the host', () => {
 	it('reports offset 0 while the host holds focus, and null once focus leaves the block', () => {
 		const boxEl = box();
 		const host = proxyIn(boxEl);
-		const shimApi = shim(boxEl, { el: () => host, focus: () => host.focus() });
+		const shimApi = shim(boxEl, {
+			el: () => host,
+			focus: () => host.focus(),
+			typeText: async () => true
+		});
 
 		host.focus();
 		expect(shimApi.getCursorOffset()).toBe(0);
@@ -150,7 +158,7 @@ describe('the editing host names its block', () => {
 			getFocusEl: () => declared,
 			isReading: () => false,
 			getLabel: () => label,
-			mint: () => {}
+			mint: async () => true
 		});
 		mountCallbacks.forEach((run) => run());
 		expect(proxy.el()?.getAttribute('aria-label')).toBe('Chart');
@@ -173,7 +181,7 @@ describe('the editing host in reading mode', () => {
 			getFocusEl: () => null,
 			isReading: () => true,
 			getLabel: () => 'Divider',
-			mint: (text) => void editor.actions.insertParagraph(1, text)
+			mint: (text) => editor.actions.insertParagraph(1, text)
 		});
 		mountCallbacks.forEach((run) => run());
 		expect(proxy.el()?.getAttribute('contenteditable')).toBe('false');
@@ -200,7 +208,7 @@ describe('a paste that reaches the editing host', () => {
 			getFocusEl: () => null,
 			isReading: () => false,
 			getLabel: () => 'Divider',
-			mint: (text) => void minted.push(text)
+			mint: async (text) => minted.push(text) > 0
 		});
 		mountCallbacks.forEach((run) => run());
 

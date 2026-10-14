@@ -39,7 +39,9 @@ describe('the code rail’s host hooks', () => {
 	// Miss-analysis: each host split the info string for the language, and no test checked it.
 	it('hands onRunCode the fence body, the info string, its language and the block path', () => {
 		const onRunCode = vi.fn<(request: CodeRunRequest) => void>();
-		mounted = mountCode(FENCE, { policies: { presentationMode: () => 'live', onRunCode } });
+		mounted = mountCode(FENCE, {
+			policies: { presentationMode: () => 'live', onRunCode: () => onRunCode }
+		});
 
 		railButton(CODE_RUN_LABEL)!.click();
 		flushSync();
@@ -55,7 +57,7 @@ describe('the code rail’s host hooks', () => {
 	it('consults codeMenuItems on every open, so its items read live state', () => {
 		const codeMenuItems = vi.fn(() => [{ id: 'a', label: 'Attach', run: () => {} }]);
 		mounted = mountCode(FENCE, {
-			policies: { presentationMode: () => 'live', codeMenuItems }
+			policies: { presentationMode: () => 'live', codeMenuItems: () => codeMenuItems }
 		});
 
 		const menu = openMenu();
@@ -75,7 +77,7 @@ describe('the code rail’s host hooks', () => {
 		const run = vi.fn();
 		const items: CodeMenuItem[] = [{ id: 'export', label: 'Export', run, disabled: true }];
 		mounted = mountCode(FENCE, {
-			policies: { presentationMode: () => 'live', codeMenuItems: () => items }
+			policies: { presentationMode: () => 'live', codeMenuItems: () => () => items }
 		});
 		openMenu();
 

@@ -147,9 +147,9 @@ function stubbedPolicies(): EditorPolicies {
 			createPressTracker()
 		),
 		keybindingOverrides: () => ({ global: new Map(), byKind: new Map() }),
-		onPasteImage: undefined,
-		onRunCode: undefined,
-		codeMenuItems: undefined,
+		onPasteImage: () => undefined,
+		onRunCode: () => undefined,
+		codeMenuItems: () => undefined,
 		brokenImageUrls: new Set<string>()
 	};
 }
@@ -238,6 +238,8 @@ export function editorMountContext(overrides: MountContextOverrides = {}): Map<s
 		isCrossBlockRange: () => services.selection.isCrossBlock,
 		// Inert: a bare mount has no cross-block range, so every member answers no.
 		crossBlockCommands: { canRun: () => false, run: () => false, isActive: () => false },
+		// Inert too: a bare mount activates no decoration.
+		markActivation: { canActivate: () => false, activate: () => false },
 		keybindingOverrides: () => policies.keybindingOverrides(),
 		onCommandError: (report) => emitCommandError(services.events, report),
 		reorder: services.reorder

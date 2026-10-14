@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { setContext, tick, onMount, untrack } from 'svelte';
+	import { setContext, tick, onMount, onDestroy, untrack } from 'svelte';
 	import '../styles/editor.css';
 	import type { BlockComponent } from '../block-component';
 	import type { AnyBlockKind, Document } from '../core/nodes';
@@ -71,6 +71,8 @@
 	import { createSearchReplace } from '../editor-actions/search-replace';
 	import { createSearchState, type SearchState } from '../search/search-state.svelte';
 	import { createDecorationEngine } from '../decorations/decoration-state.svelte';
+	import { createMarkActivation } from '../decorations/mark-activation';
+	import { paintedMarkRects } from '../decorations/mark-interactions';
 	import type { DecorationRegistry } from '../decorations/types';
 	import { createEditorRects, type EditorRects } from '../editor-rects';
 	import { createCaretLanding } from '../selection/caret-landing';
@@ -379,6 +381,13 @@
 
 	const menuPresence = createMenuPresence({ isReading: () => effectiveMode === 'reading' });
 	const stamps = createDocumentStamps();
+	// Work still in flight at the unmount stops there: its write is refused at the write gate, its
+	// report reaches no handler, and its caret landing reads no more of the tree.
+	onDestroy(() => {
+		stamps.end();
+		events.end();
+		caretLanding.noteTreeSwap();
+	});
 	// Apart from the menus, so a shown source fires no `menuChange`.
 	const drafts = createDraftRegistry(stamps);
 	// Emits on open/close transitions only, so a subscriber's first event is a real menu.
@@ -412,6 +421,8 @@
 		menus: menuPresence,
 		stamps,
 		drafts,
+		// Built below; a swap runs post-init.
+		markHover: { end: () => decorationEngine.markHover.end() },
 		selection: selectionState,
 		// The counter bumps only when the link-reference signature differs; the resolver
 		// refreshes regardless.
@@ -605,9 +616,21 @@
 	const decorationEngine = createDecorationEngine({
 		getDoc,
 		onSourceError: (source, error) =>
-			events.emit('error', { origin: 'decoration', error, context: { source } })
+			events.emit('error', { origin: 'decoration', error, context: { source } }),
+		onMarkError: (path, error) =>
+			events.emit('error', { origin: 'decoration', error, context: { path } })
 	});
 	const decorations: DecorationRegistry = { addSource: decorationEngine.addSource };
+	const markActivation = createMarkActivation({
+		caret: () => {
+			const focus = getSelection()?.focus;
+			return focus && !focus.cellCoordinate ? { path: focus.path, offset: focus.offset } : null;
+		},
+		marksForPath: (path) => decorationEngine.marksForPath(path),
+		paintedRects: (dec) => paintedMarkRects(dec, getBlockComponent),
+		caretRect: () => rects.caretRect(),
+		runMarkHandler: decorationEngine.runMarkHandler
+	});
 
 	const rects = createEditorRects({
 		getBlockElByPath,
@@ -681,6 +704,8 @@
 	$effect(() => () => {
 		// Cancels the typing batch's pause timer, which would outlive the editor.
 		controller.flushDebouncedCheckpoint();
+		// Drops the hover's page scroll listener, which a pointer resting here would keep.
+		decorationEngine.markHover.leave();
 		lifetimeController.abort();
 	});
 
@@ -756,6 +781,7 @@
 		getPresentationMode: reading.mode,
 		isCrossBlockRange: () => selectionState.isCrossBlock,
 		crossBlockCommands,
+		markActivation,
 		keybindingOverrides: () => overridesMap,
 		onCommandError: commandErrorSink,
 		reorder
@@ -808,17 +834,9 @@
 		theme: () => theme,
 		activationClick,
 		keybindingOverrides: () => overridesMap,
-		// An accessor, not the `onPasteImage,` shorthand, which would capture the prop's value.
-		get onPasteImage() {
-			return onPasteImage;
-		},
-		// Accessors, as above.
-		get onRunCode() {
-			return onRunCode;
-		},
-		get codeMenuItems() {
-			return codeMenuItems;
-		},
+		onPasteImage: () => onPasteImage,
+		onRunCode: () => onRunCode,
+		codeMenuItems: () => codeMenuItems,
 		brokenImageUrls
 	} satisfies EditorPolicies);
 
@@ -1045,10 +1063,7 @@
 		selection: selectionState,
 		getDoc,
 		crossBlock: editorCrossBlock,
-		// An accessor, so the handler reads the live prop.
-		get onPasteImage() {
-			return onPasteImage;
-		},
+		onPasteImage: () => onPasteImage,
 		events,
 		getBlockComponent
 	});
@@ -1230,7 +1245,8 @@
 		isReading: () => effectiveMode === 'reading',
 		insertParagraph: (boundary, text) => blockEdit.insertParagraph(boundary, text),
 		undoStep: (path, offset, run) => controller.undoStep({ path: docPathFrom(path), offset }, run),
-		contentVersion: contentVersion.read
+		contentVersion: contentVersion.read,
+		stamps
 	});
 
 	export function insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean> {
@@ -1353,6 +1369,8 @@
 	role="group"
 	aria-label={EDITOR_LABEL}
 	oncontextmenu={rootMenus.onRootContextMenu}
+	onpointermove={decorationEngine.markHover.move}
+	onpointerleave={decorationEngine.markHover.leave}
 >
 	{#if searchBar}
 		<!-- A zero-height sticky anchor; portaled out, it takes the theme class instead, since

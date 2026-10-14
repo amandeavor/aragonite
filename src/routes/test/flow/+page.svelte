@@ -68,7 +68,16 @@
 			blockRect: (id: string, path: number[]) => {
 				const r = editors[id]?.getRects().blockRect(path);
 				return r ? { top: r.top, bottom: r.bottom } : null;
-			}
+			},
+			// A spec registers decoration sources on one entry, the way a host does.
+			decorations: (id: string) => editors[id]?.getDecorations(),
+			rangeRects: (id: string, path: number[], start: number, end: number) =>
+				(editors[id]?.getRects().rangeRects(path, start, end) ?? []).map((r) => ({
+					left: r.left,
+					top: r.top,
+					right: r.right,
+					bottom: r.bottom
+				}))
 		};
 	});
 </script>

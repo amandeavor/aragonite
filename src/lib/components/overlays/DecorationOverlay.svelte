@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getContext, untrack } from 'svelte';
 	import type { BlockComponent } from '../../block-component';
 	import {
 		EDITOR_DOC_KEY,
@@ -9,6 +9,13 @@
 	} from '../../editor-keys';
 	import type { MarkDecoration } from '../../decorations/types';
 	import { collapseCellMarks, type IndexedDecoration } from '../../decorations/buckets';
+	import {
+		leafMarkRects,
+		paintOrder,
+		takesPointer,
+		winningMark
+	} from '../../decorations/mark-interactions';
+	import type { HoverTarget } from '../../decorations/mark-hover';
 	import { wireOverlayRemeasure } from './remeasure';
 
 	let {
@@ -33,16 +40,6 @@
 	// Optional for the same reason `services` is: a mount without the editor shell has none.
 	const getEditorRoot = getContext<EditorDoc | undefined>(EDITOR_DOC_KEY)?.editorRoot;
 
-	/** A mark's `interactive.onClick` is plugin code, so its errors go to the `error` event like
-	 *  every other decoration entry point's. */
-	function runInteraction(run: () => void): void {
-		try {
-			run();
-		} catch (error) {
-			services?.events.emit('error', { origin: 'decoration', error, context: { path } });
-		}
-	}
-
 	// A grid supplies cellRect, so marks on its cells, which have no BlockHost overlay
 	// of their own, paint as whole cells here.
 	const containerPaintsCells = $derived(isContainer && !!blockRef?.cellRect);
@@ -54,9 +51,23 @@
 		height: number;
 		cls: string;
 		attrs?: Record<string, string>;
-		onClick?: (ev: MouseEvent) => void;
+		clickMark?: MarkDecoration;
 	}
-	let rects = $state<Painted[]>([]);
+	let rects = $state.raw<Painted[]>([]);
+
+	// The hover tracker's key for what this overlay painted, dropped when it unmounts.
+	const owner = {};
+	$effect(() => () => engine?.markHover.unpaint(owner));
+
+	function click(r: Painted, ev: MouseEvent): void {
+		const mark = r.clickMark;
+		if (mark) engine?.runMarkHandler(mark, () => mark.interactive?.onClick?.(mark, ev));
+	}
+
+	// Untracked: the hit-test runs plugin code, whose reads must not subscribe this effect.
+	function paintHover(el: HTMLElement | null, targets: HoverTarget[]): void {
+		untrack(() => engine?.markHover.paint(owner, el, targets));
+	}
 
 	$effect(() => {
 		const eng = engine,
@@ -70,51 +81,68 @@
 				: eng.marksForPath(path)
 			: [];
 		// An unmarked block wires nothing, so a scroll or a moved marker measures marked blocks only.
-		if (!eng || eng.sourceCount === 0 || !el || marks.length === 0) {
+		if (
+			!eng ||
+			eng.sourceCount === 0 ||
+			!el ||
+			marks.length === 0 ||
+			(isContainer && !containerPaintsCells && !containerPaintsRects)
+		) {
 			rects = [];
-			return;
-		}
-		if (isContainer && !containerPaintsCells && !containerPaintsRects) {
-			rects = [];
+			paintHover(null, []);
 			return;
 		}
 
 		function measure(): void {
 			if (!el) return;
 			const blockRect = el.getBoundingClientRect();
+			const hover: HoverTarget[] = [];
 			rects = containerPaintsCells
-				? measureCells(marks, blockRect)
-				: measureLeaf(marks, ref, blockRect);
+				? measureCells(marks, blockRect, hover)
+				: measureLeaf(marks, ref, blockRect, hover);
+			paintHover(el, hover);
 		}
 
 		function measureLeaf(
 			leafMarks: IndexedDecoration<MarkDecoration>[],
 			leaf: BlockComponent | undefined,
-			blockRect: DOMRect
+			blockRect: DOMRect,
+			hover: HoverTarget[]
 		): Painted[] {
 			if (!leaf?.measurePartialRects) return [];
 			const out: Painted[] = [];
-			for (const { dec } of leafMarks) {
-				for (const r of leaf.measurePartialRects(dec.start, dec.end)) {
-					// A collapsed range still emits a degenerate zero-width rect at a line
-					// boundary, which would paint an invisible sliver.
-					if (r.width <= 0) continue;
-					out.push(toLocal(r, blockRect, dec));
-				}
+			for (const mark of paintOrder(leafMarks)) {
+				const { dec } = mark;
+				const own = leafMarkRects(leaf, dec).map((r) => ({
+					...toLocal(r, blockRect, dec.class, dec.attrs),
+					clickMark: takesPointer(dec) ? dec : undefined
+				}));
+				for (const painted of own) out.push(painted);
+				if (dec.interactive?.onHover && own.length > 0) hover.push({ mark, rects: own });
 			}
 			return out;
 		}
 
-		// Several marks in one cell collapse to a single rect whose class is their union.
+		// Several marks in one cell collapse to a single rect whose class is their union; the
+		// precedence rule names which of them answers a click, and the hit-test which a hover.
 		function measureCells(
 			descMarks: IndexedDecoration<MarkDecoration>[],
-			blockRect: DOMRect
+			blockRect: DOMRect,
+			hover: HoverTarget[]
 		): Painted[] {
 			if (!ref?.cellRect) return [];
 			const out: Painted[] = [];
-			for (const { rowIdx, colIdx, class: cls, dec } of collapseCellMarks(descMarks, path.length)) {
-				const r = ref.cellRect(rowIdx, colIdx);
-				if (r) out.push(toLocal(r, blockRect, dec, cls));
+			for (const cell of collapseCellMarks(descMarks, path.length)) {
+				const r = ref.cellRect(cell.rowIdx, cell.colIdx);
+				if (!r) continue;
+				const painted = {
+					...toLocal(r, blockRect, cell.class, cell.dec.attrs),
+					clickMark: winningMark(cell.marks, takesPointer)?.dec
+				};
+				out.push(painted);
+				for (const mark of cell.marks) {
+					if (mark.dec.interactive?.onHover) hover.push({ mark, rects: [painted] });
+				}
 			}
 			return out;
 		}
@@ -122,20 +150,16 @@
 		function toLocal(
 			r: DOMRect,
 			blockRect: DOMRect,
-			dec: MarkDecoration,
-			cls = dec.class
+			cls: string,
+			attrs: Record<string, string> | undefined
 		): Painted {
-			const interactive = dec.interactive;
 			return {
 				left: r.left - blockRect.left,
 				top: r.top - blockRect.top,
 				width: r.width,
 				height: r.height,
 				cls,
-				attrs: dec.attrs,
-				onClick: interactive
-					? (ev: MouseEvent) => runInteraction(() => interactive.onClick(dec, ev))
-					: undefined
+				attrs
 			};
 		}
 
@@ -154,9 +178,9 @@
 	<div
 		{...r.attrs}
 		class="decoration-overlay {r.cls}"
-		class:decoration-overlay-interactive={!!r.onClick}
+		class:decoration-overlay-interactive={!!r.clickMark}
 		contenteditable="false"
 		style="left:{r.left}px;top:{r.top}px;width:{r.width}px;height:{r.height}px;"
-		onclick={r.onClick}
+		onclick={r.clickMark ? (ev) => click(r, ev) : undefined}
 	></div>
 {/each}

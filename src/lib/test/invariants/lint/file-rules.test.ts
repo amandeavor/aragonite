@@ -312,6 +312,12 @@ const PRIVATE_WRITER_HOMES: Record<string, string> = {
 	releaseLastLine: SOURCE.openTail
 };
 
+// ── G4.175 runes mode ────────────────────────────────────────────────────────
+
+/** What puts a component in runes mode: a rune, or the explicit option. */
+const RUNES_MODE_RE =
+	/\$(?:props|state|derived|effect|bindable|host|inspect)\b|<svelte:options[^>]*\brunes\b/;
+
 // ── The rules ────────────────────────────────────────────────────────────────
 
 /** A file the G4.80 population holds, for its probes. */
@@ -442,6 +448,22 @@ const RULES: FileRule[] = [
 				'let { node, index }: { node: NodeView; index: number } = $props();\ndocument?: DocumentView;'
 			),
 			'let { node }: { node: CstNode } = $props();'
+		]
+	},
+	{
+		id: 'G4.175 every library component compiles in runes mode',
+		population: (file) => svelteOnly(file) && file.relPath.startsWith(SOURCE_DIR.library),
+		matches: (file) => !RUNES_MODE_RE.test(file.code),
+		reason:
+			'a component with no rune compiles in legacy mode in a Svelte host, which turns on the legacy flag in the Svelte runtime of that app: add `<svelte:options runes />`',
+		reaches: [SOURCE.blockHost],
+		hits: [
+			at('src/lib/x.svelte', '<span class="grip"></span>'),
+			at('src/lib/x.svelte', '<script>\n\texport let name;\n</script>\n<p>{name}</p>')
+		],
+		misses: [
+			at('src/lib/x.svelte', '<svelte:options runes />\n<span class="grip"></span>'),
+			at('src/lib/x.svelte', '<script>\n\tlet { node } = $props();\n</script>')
 		]
 	},
 	{
@@ -1309,8 +1331,6 @@ const LEAF_RANGE_RULES: FileRule[] = [
 				'the format toggle writes delimiters and checks its candidate against the screen',
 			'src/lib/core/inline/link-source-bytes.ts':
 				'the link writer rewrites one whole link and checks its candidate against the screen',
-			'src/lib/editor-actions/inline-range-commit.ts':
-				'a popover or menu insert over the range it replaces, nothing cut from under a delimiter it keeps',
 			'src/lib/inline-menu/inline-menu-session.ts': 'compares two texts and writes nothing',
 			'src/lib/selection/selection-drop.ts':
 				'a drop inserts at the drop point; its cut goes through the range replace',
@@ -1626,6 +1646,34 @@ const MEASURE_CHANNEL: ManifestRule = {
 	misses: [
 		'const channel = getContext(CHILD_MEASURE_KEYS);',
 		'// `CHILD_MEASURE_KEY` is the channel.\nconst a = 1;'
+	]
+};
+
+/** A mark's handlers are plugin code: called from one place per gesture, each through the
+ *  engine's guarded runner, so a new route cannot skip the hover lifecycle or the error event. */
+const MARK_HANDLER_CALLERS: ManifestRule = {
+	id: 'G4.163 a mark’s interactive handlers are called only by the hover lifecycle, the activate command and the overlay’s click',
+	matches: /\binteractive\s*\??\.\s*on(?:Click|Hover|Activate)\s*(?:\?\.)?\s*\(/,
+	declared: {
+		'src/lib/decorations/mark-hover.ts':
+			'`onHover`, started and ended by the one lifecycle keyed on the decoration',
+		'src/lib/decorations/mark-activation.ts':
+			'`onActivate`, run by `decorations.activateAtCaret` on the mark the precedence rule picks',
+		'src/lib/components/overlays/DecorationOverlay.svelte':
+			'`onClick`, on the rect the click landed on'
+	},
+	reason:
+		'a mark handler called from anywhere else skips the hover lifecycle’s one-end rule or the `error` event: route the gesture through `DecorationEngine.markHover` or `runMarkHandler`',
+	reaches: [SOURCE.markHover],
+	hits: [
+		'dec.interactive?.onHover?.(dec, null);',
+		'mark.interactive.onClick(mark, ev);',
+		'd.interactive?.onActivate(d, { anchor });'
+	],
+	misses: [
+		'if (dec.interactive?.onHover) start();',
+		'const onActivate = range.onActivate;\nonActivate();',
+		'// `interactive.onClick(dec, ev)` runs on a click.\nconst a = 1;'
 	]
 };
 
@@ -2572,6 +2620,7 @@ describeCorrections(SOURCES);
 describeOwnerWrites(SOURCES);
 describeMeasureWrites(SOURCES);
 describeManifests([MEASURE_CHANNEL], SOURCES);
+describeManifests([MARK_HANDLER_CALLERS], SOURCES);
 describeManifests(HEIGHT_LIFETIME, SOURCES);
 describeManifests(SELECTION_WRITERS, SOURCES);
 describeDomPresence(SOURCES);

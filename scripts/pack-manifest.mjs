@@ -32,3 +32,14 @@ export function requiredPackPaths() {
 	const normalized = fromExports.map((target) => target.replace(/^\.\//, ''));
 	return [...new Set([...normalized, ...EXTRA_PATHS])].sort();
 }
+
+/**
+ * The packages the prebuilt build leaves to the host: every dependency and peer but Svelte, which
+ * it compiles in so a host without a Svelte toolchain needs no Svelte at all.
+ * @returns {string[]}
+ */
+export function prebuiltExternals() {
+	const pkg = JSON.parse(readFileSync(path.resolve('package.json'), 'utf8'));
+	const names = Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies });
+	return names.filter((name) => name !== 'svelte').sort();
+}

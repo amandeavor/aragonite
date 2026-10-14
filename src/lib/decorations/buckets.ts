@@ -67,13 +67,14 @@ function push(
 
 // ── Grid cell collapse ─────────────────────────────────────────────────────
 
-/** One whole-cell rect: the union of every mark's class tokens, plus a representative
- *  decoration for the rect's attrs/interactive. */
+/** One whole-cell rect: the union of every mark's class tokens, the last mark (whose attrs the
+ *  rect carries), and every mark in the cell, for picking which one answers the pointer. */
 export interface CollapsedCellMark {
 	rowIdx: number;
 	colIdx: number;
 	class: string;
 	dec: MarkDecoration;
+	marks: IndexedDecoration<MarkDecoration>[];
 }
 
 /** Collapse a grid's cell marks to one entry per `(row, col)`, unioning class tokens so two
@@ -84,30 +85,36 @@ export function collapseCellMarks(
 ): CollapsedCellMark[] {
 	const byCell = new Map<
 		string,
-		{ rowIdx: number; colIdx: number; classes: Set<string>; dec: MarkDecoration }
+		{
+			rowIdx: number;
+			colIdx: number;
+			classes: Set<string>;
+			marks: IndexedDecoration<MarkDecoration>[];
+		}
 	>();
-	for (const { dec } of descMarks) {
-		const rowIdx = dec.path[containerDepth];
-		const colIdx = dec.path[containerDepth + 1];
+	for (const mark of descMarks) {
+		const rowIdx = mark.dec.path[containerDepth];
+		const colIdx = mark.dec.path[containerDepth + 1];
 		if (rowIdx == null || colIdx == null) continue;
 		const cell = byCell.get(`${rowIdx},${colIdx}`);
 		if (cell) {
-			addClassTokens(cell.classes, dec.class);
-			cell.dec = dec;
+			addClassTokens(cell.classes, mark.dec.class);
+			cell.marks.push(mark);
 		} else {
 			byCell.set(`${rowIdx},${colIdx}`, {
 				rowIdx,
 				colIdx,
-				classes: addClassTokens(new Set(), dec.class),
-				dec
+				classes: addClassTokens(new Set(), mark.dec.class),
+				marks: [mark]
 			});
 		}
 	}
-	return [...byCell.values()].map(({ rowIdx, colIdx, classes, dec }) => ({
+	return [...byCell.values()].map(({ rowIdx, colIdx, classes, marks }) => ({
 		rowIdx,
 		colIdx,
 		class: [...classes].join(' '),
-		dec
+		dec: marks[marks.length - 1].dec,
+		marks
 	}));
 }
 

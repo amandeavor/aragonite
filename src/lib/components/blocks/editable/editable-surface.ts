@@ -795,9 +795,8 @@ export interface ClipboardSurfaceDeps {
 	/** This editor's events: the image branch's only way to report a host hook that
 	 *  rejects. Required so a block cannot silently swallow a failed import. */
 	events: EditorEvents;
-	/** Host image-import hook from the policies context. Undefined leaves an
-	 *  image-bearing paste on the text/plain path. */
-	onPasteImage: PasteImageHook | undefined;
+	/** Host image-import hook from the policies context, read at each paste. */
+	onPasteImage: () => PasteImageHook | undefined;
 	/** Hides a shown inline source before a cut or paste mutates, so the mutation runs against a
 	 *  CST that matches the DOM. Omit on a block that never shows source. */
 	foldReveal?: () => RevealFold | null;
@@ -902,7 +901,8 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 		if (text && deps.pastePreHook && (await deps.pastePreHook(text))) return;
 		if (await deps.crossBlock.handlePaste(e, text)) return;
 		deps.caretMemory.forget();
-		if (!text) return;
+		// A paste that outlived its block (an unmount mid-insert) has nothing left to land in.
+		if (!text || !deps.caret.getEl()) return;
 		await deps.pasteTail(text, target);
 	}
 

@@ -218,13 +218,11 @@ export interface EditorPolicies {
 	 *  answer every such route reads, with the mode and the `linkClick` prop read at the click. */
 	activationClick: ActivationClick;
 	keybindingOverrides: KeybindingOverridesGetter;
-	/** Set-once host import hook for image-bearing pastes. Required-nullable: a mount must
-	 *  answer, and `undefined` deliberately leaves the paste on the plain-text path. */
-	onPasteImage: PasteImageHook | undefined;
-	/** Set-once host execution hook; its presence is what renders the run button. */
-	onRunCode: RunCodeHook | undefined;
-	/** Set-once host menu hook; its presence is what renders the overflow button. */
-	codeMenuItems: CodeMenuItemsHook | undefined;
+	/** The host's hooks, read at each use so a swapped or added one reaches built blocks.
+	 *  Undefined leaves an image paste on the plain-text path and renders no run or menu button. */
+	onPasteImage: () => PasteImageHook | undefined;
+	onRunCode: () => RunCodeHook | undefined;
+	codeMenuItems: () => CodeMenuItemsHook | undefined;
 	/** Resolved image URLs that failed to load this session, one Set per instance so a failure never
 	 *  suppresses another editor's broken-state recompute. */
 	brokenImageUrls: Set<string>;

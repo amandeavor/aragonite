@@ -33,6 +33,7 @@ function harness(overrides: Partial<GapCaretRestoreDeps> = {}) {
 			expect(selectionState.gapCaret).toBeNull();
 			inView.push(path);
 		},
+		current: () => true,
 		...overrides
 	};
 	return { doc, deps, revealed, inView, selectionState };

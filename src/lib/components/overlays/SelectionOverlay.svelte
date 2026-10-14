@@ -13,7 +13,8 @@
 		endpointMeasureSpan
 	} from '../../selection/primitives';
 	import { wireOverlayRemeasure } from './remeasure';
-	import { mergeRectsPerLine, reachLineEdges, type LocalRect } from './rects';
+	import type { LocalRect } from '../../caret/coordinate-spaces';
+	import { mergeRectsPerLine, reachLineEdges } from './rects';
 	import { WHOLE_BLOCK_INPUT_ATTR } from '../../editor-actions/whole-block-focus-surface';
 
 	let {

@@ -135,9 +135,9 @@ describe('cross-block typed character: link-reference resolver freshness', () =>
 		env.events.on('edit', (e) => editEvents.push(e));
 		expect(resolver()('ref')).toEqual({ url: '/b' });
 
-		// The delete drops `[label]` and leaves `[ref]: /b` at [0], which the typed `x` reparses into
-		// prose — the document then defines neither label.
-		selectAcross(env.selectionState, [0], [1]);
+		// The delete drops `[label]` and the second definition's `[`, and the typed `x` makes what is
+		// left prose: the document then defines neither label.
+		selectAcross(env.selectionState, [0], [1], 1);
 		const handlers = makeHandlers(env, [0]);
 		await handlers.handleBeforeInput(makeBeforeInputEvent('x'));
 
