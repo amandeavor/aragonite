@@ -28,7 +28,7 @@
 		getFocusEl: () => el,
 		isReading,
 		getLabel: () => blockAccessibleName(node),
-		mint: (text) => void blockEdit.insertParagraph(index + 1, text)
+		mint: (text) => blockEdit.insertParagraph(index + 1, text)
 	});
 
 	// ── BlockComponent interface ────────────────────────────────────────
@@ -39,6 +39,8 @@
 	// The block is its own focus target, so the offset means nothing here, but the live
 	// range still has to be ended: nothing below places a DOM caret that would collapse it.
 	export const focus = placeCaret(selection, caretWriter, parkCaret);
+
+	export const typeText = (text: string): Promise<boolean> => inputProxy.typeText(text);
 
 	export function parkCaret(_offset: number): void {
 		if (el) inputProxy.focus(el);
@@ -61,6 +63,7 @@
 		focusable,
 		focus,
 		parkCaret,
+		typeText,
 		getCursorOffset,
 		measurePartialRects
 	} satisfies BlockComponent);

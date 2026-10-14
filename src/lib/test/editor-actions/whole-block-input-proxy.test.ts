@@ -150,7 +150,7 @@ describe('the editing host names its block', () => {
 			getFocusEl: () => declared,
 			isReading: () => false,
 			getLabel: () => label,
-			mint: () => {}
+			mint: async () => true
 		});
 		mountCallbacks.forEach((run) => run());
 		expect(proxy.el()?.getAttribute('aria-label')).toBe('Chart');
@@ -173,7 +173,7 @@ describe('the editing host in reading mode', () => {
 			getFocusEl: () => null,
 			isReading: () => true,
 			getLabel: () => 'Divider',
-			mint: (text) => void editor.actions.insertParagraph(1, text)
+			mint: (text) => editor.actions.insertParagraph(1, text)
 		});
 		mountCallbacks.forEach((run) => run());
 		expect(proxy.el()?.getAttribute('contenteditable')).toBe('false');
@@ -200,7 +200,7 @@ describe('a paste that reaches the editing host', () => {
 			getFocusEl: () => null,
 			isReading: () => false,
 			getLabel: () => 'Divider',
-			mint: (text) => void minted.push(text)
+			mint: async (text) => minted.push(text) > 0
 		});
 		mountCallbacks.forEach((run) => run());
 

@@ -61,3 +61,8 @@ not only Backspace.
   - Miss-analysis: every rule row selected the rule itself, and the unit rows for range deletes
     all cut into both edge blocks, so a range that merely reached a rule joined its bytes into the
     paragraph as text.
+- In `| c |`, `---`, click the cell and press Shift+Down: the range takes the one-row table whole
+  and reaches the rule. A key typed over it lands in a new paragraph after the rule (`---`, `x`),
+  where a composition over the same range lands (`composition-over-range.md`).
+  - Miss-analysis: only the composition row ran over this range, and the typed key took a
+    different write that spliced the character into the rule's own bytes (`x---`).
