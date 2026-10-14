@@ -16,7 +16,12 @@ import {
 	type SlotsType,
 	type VNode
 } from 'vue';
-import { createEditor, type CreateEditorOptions, type EditorHandle } from '@voithos-labs/aragonite';
+import {
+	createEditor,
+	type CreateEditorOptions,
+	type EditorHandle,
+	type EditorPluginEntry
+} from '@voithos-labs/aragonite';
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -136,10 +141,22 @@ const OPTION_KEYS = (Object.keys(declarations()) as (keyof AragoniteProps)[]).fi
 function editorOptions(props: AragoniteProps, header: HTMLElement | null): CreateEditorOptions {
 	const options: Record<string, unknown> = {};
 	for (const key of OPTION_KEYS) options[key] = toRaw(props[key]);
+	options.plugins = rawPlugins(props.plugins);
 	// An unbound `modelValue` is `undefined`, which the editor reads as no new document.
 	options.source = props.modelValue;
 	options.header = header;
 	return options;
+}
+
+// The editor keeps a plugin by identity, and a list built from reactive state (`held.filter(...)`,
+// `[{ plugin: store.plugin }]`) holds a proxy in each entry even when the list itself is plain.
+function rawPlugins(entries: readonly EditorPluginEntry[] | undefined) {
+	return toRaw(entries)?.map((entry): EditorPluginEntry => {
+		const raw = toRaw(entry);
+		if (!('plugin' in raw)) return raw;
+		const plugin = toRaw(raw.plugin);
+		return 'options' in raw ? { plugin, options: toRaw(raw.options) } : { plugin };
+	});
 }
 
 // No editor option hides behind a Vue-only name or an attribute Vue keeps for itself (G3.13).

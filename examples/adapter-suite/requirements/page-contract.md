@@ -32,7 +32,7 @@ aragonite dev warning or Vue warning.
 ## Vue
 
 - No boolean option passed: Mod+F in the editor opens the find bar, so an absent boolean keeps the editor's default instead of Vue's `false`.
-- `?two-editors`: two editors share one plugin, the first given it from reactive state and the second as imported. Both mount with no "already installed" warning, since the wrapper hands the editor the object behind Vue's proxy.
+- `?shared-plugin`: four editors share one plugin. The first three get it out of reactive state (the reactive list itself, a list filtered from it, and `{ plugin }` entries mapped from it), the last as imported. All four mount with no "already installed" warning, since the wrapper hands the editor the object behind each Vue proxy, the list's entries included. Miss: the old page only passed the reactive list itself, so a top-level `toRaw` passed it while a filtered list still handed over proxies.
 
 ## Server rendering (Next, Nuxt)
 

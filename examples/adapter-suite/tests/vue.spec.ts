@@ -10,11 +10,11 @@ test('a boolean option the app never passes keeps the editor default', async ({ 
 	await expect(page.getByRole('search')).toBeVisible();
 });
 
-// Without unwrapping, the first editor installs the plugin's Vue proxy and the second, handed the
-// plugin itself, warns that a different plugin of that name is already installed.
-test('a plugin held in reactive state is the plugin the app imported', async ({ page }) => {
-	await page.goto('/?two-editors');
+// A Vue proxy that reaches the editor counts as a second plugin of the same name, so a later editor
+// warns that a different plugin by that name is already installed.
+test('a plugin taken from reactive state is the plugin the app imported', async ({ page }) => {
+	await page.goto('/?shared-plugin');
 
-	await expect(page.locator('.editor')).toHaveCount(2);
-	await expect(page.locator('.editor').nth(1)).toContainText('Passed as imported.');
+	await expect(page.locator('.editor')).toHaveCount(4);
+	await expect(page.locator('.editor').nth(3)).toContainText('Passed as imported.');
 });

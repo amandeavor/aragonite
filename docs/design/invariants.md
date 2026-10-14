@@ -770,8 +770,10 @@ first against a DOM view and a Svelte one; G4.186 holds new routes to the wrappe
 **G1.97 · Vue hands over the real object.** A value a Vue app keeps in `ref` or `reactive` reaches
 a component as a Vue proxy. The editor keeps a plugin by identity, so a proxied plugin and the
 imported one would count as two plugins of one name. The Vue wrapper passes every option through
-`toRaw` in its one options builder. The adapter suite's `vue.spec.ts` mounts two editors sharing a
-plugin, one from reactive state, and fails on the `plugin-install` warning a proxy would raise.
+`toRaw` in its one options builder, and each `plugins` entry and the plugin inside it too, since a
+plain list built from reactive state still holds proxies. The adapter suite's `vue.spec.ts` mounts
+editors sharing a plugin, three of them taking it out of reactive state in those shapes, and fails
+on the `plugin-install` warning a proxy would raise.
 
 ## Group 2: property and regression tested
 
