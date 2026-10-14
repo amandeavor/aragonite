@@ -198,6 +198,25 @@ describe('createWidgetPool: adoption re-marks offsets', () => {
 		expect(moves).toEqual([3]);
 	});
 
+	it('adopts a live twin before a failed one, so one source deleted keeps the other drawn', () => {
+		const { adapter, created, destroyed } = fakeAdapter(false, true);
+		const pool = createWidgetPool(adapter);
+		pool.beginPass();
+		pool.acquire(KIND, at(0, 5), '$x$');
+		pool.acquire(KIND, at(10, 15), '$x$');
+		pool.sweep();
+		// Typing moves the first, whose view can't follow; the second stays put.
+		pool.beginPass();
+		pool.acquire(KIND, at(3, 8), '$x$');
+		pool.acquire(KIND, at(10, 15), '$x$');
+		pool.sweep();
+
+		pool.beginPass();
+		expect(pool.acquire(KIND, at(10, 15), '$x$')).toBe(created[1].el);
+		pool.sweep();
+		expect(destroyed).toEqual([created[0]]);
+	});
+
 	it('drops an instance that cannot follow its move, and builds none while its key stays', () => {
 		const { adapter, created, destroyed } = fakeAdapter(false, true);
 		const pool = createWidgetPool(adapter);

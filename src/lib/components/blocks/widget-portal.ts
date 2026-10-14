@@ -78,7 +78,10 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 		assertInvariant('pool-bracket', () => checkPoolBracket(passOpen, 'acquire'));
 		const key = `${kind} ${source}`;
 		const bucket = buckets.get(key);
-		const reused = bucket?.find((entry) => !entry.adopted);
+		// A live instance first, so a failed twin never takes the adoption from a healthy one.
+		const reused =
+			bucket?.find((entry) => !entry.adopted && entry.handle !== null) ??
+			bucket?.find((entry) => !entry.adopted);
 		if (reused) {
 			reused.adopted = true;
 			if (reused.handle === null) return null;

@@ -761,9 +761,9 @@ and an inline menu row are each a `PluginView` the editor mounts into an element
 pooled widget typing moved, a decoration at the same place, a row turning active), and is
 destroyed once. A throw at any of the three is reported once, the view is never called again, and
 the slot draws its fallback; a pooled widget or a badge mounts no fresh view in its place while it
-stays put (a decoration widget is drawn afresh with its block, so it gets one per rebuild).
-`plugins/view/lifecycle.test.ts` and `plugins/view/failure.test.ts` run every slot, the first
-against a DOM view and a Svelte one; G4.186 holds new routes to the wrapper.
+stays put (a decoration widget is drawn afresh with its block, so a throwing one reports once per
+rebuild). `plugins/view/lifecycle.test.ts` and `plugins/view/failure.test.ts` run every slot, the
+first against a DOM view and a Svelte one; G4.186 holds new routes to the wrapper.
 
 ## Group 2: property and regression tested
 
