@@ -76,12 +76,12 @@ export function keepCornerControlsClear(
 		root.addEventListener('pointerover', onPointerOver);
 		root.addEventListener('focusin', onFocusIn);
 		// Captured, since a scroll doesn't bubble and the scroller may be the editor or the page.
-		document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+		window.addEventListener('scroll', onScroll, { capture: true, passive: true });
 		return () => {
 			stopResize();
 			root.removeEventListener('pointerover', onPointerOver);
 			root.removeEventListener('focusin', onFocusIn);
-			document.removeEventListener('scroll', onScroll, { capture: true });
+			window.removeEventListener('scroll', onScroll, { capture: true });
 			root.querySelectorAll<HTMLElement>(`[${UNDER_FIND_BAR_ATTR}]`).forEach(unmark);
 		};
 	};
