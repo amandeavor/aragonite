@@ -39,17 +39,17 @@ export interface EditorProps {
 	resolveLinkUrl?: ResolveLinkUrl;
 	imageLoadPolicy?: ImageLoadPolicy;
 	onLinkActivate?: (url: string, event: MouseEvent) => void;
-	/** Import hook for image-bearing pastes, set once at mount. Each image file is offered
-	 *  in order and the markdown returned is inserted at the caret; `null` skips it.
-	 *  Installing it takes the whole paste: the clipboard's `text/plain` is not pasted. */
+	/** Import hook for image-bearing pastes. Each image file is offered in order and the
+	 *  markdown returned is inserted at the caret; `null` skips it. Installing it takes the
+	 *  whole paste: the clipboard's `text/plain` is not pasted. */
 	onPasteImage?: PasteImageHook;
-	/** Execution hook for code blocks, set once at mount. The editor runs nothing itself:
-	 *  installing this is what puts the run button in a code block's side gutter, and the host
-	 *  owns the runtime, the result, and where output goes. Absent, no run button renders. */
+	/** Execution hook for code blocks. The editor runs nothing itself: installing this is what
+	 *  puts the run button in a code block's side gutter, and the host owns the runtime, the
+	 *  result, and where output goes. Absent, no run button renders. */
 	onRunCode?: RunCodeHook;
-	/** Overflow-menu hook for code blocks, set once at mount and consulted each time a menu
-	 *  opens so items can read live state. Absent, or returning nothing, renders no overflow
-	 *  button: the editor has no app-level actions of its own to offer there. */
+	/** Overflow-menu hook for code blocks, consulted each time a menu opens so items can read
+	 *  live state. Absent, or returning nothing, renders no overflow button: the editor has no
+	 *  app-level actions of its own to offer there. */
 	codeMenuItems?: CodeMenuItemsHook;
 	/** The host's own content, rendered inside the editor's scroll container above the first
 	 *  block (a title, properties panel, tag row). It scrolls away with the document rather than
@@ -113,6 +113,40 @@ export interface EditorProps {
 	 *  reading changes: a loaded file keeps every byte, and saves as it came. */
 	syntax?: SyntaxOptions;
 }
+
+/** When a prop's new value takes effect: `live` at once (a hook is called as it stands at each
+ *  use), `once` never, since it is read at mount. */
+export type PropTiming = 'live' | 'once';
+
+/** One timing for every key of `P`, optional keys included. */
+export type PropTimings<P> = { readonly [K in keyof Required<P>]: PropTiming };
+
+/** Each prop's timing, matching how `Editor.svelte` reads it; a prop added without one fails
+ *  `npm run check`. `createEditor` updates by it. */
+export const EDITOR_PROP_TIMING = {
+	source: 'live',
+	theme: 'live',
+	presentationMode: 'live',
+	linkClick: 'live',
+	caret: 'live',
+	keybindings: 'live',
+	placeholder: 'live',
+	searchBar: 'live',
+	searchBarAnchor: 'live',
+	selectionToolbar: 'live',
+	blockDragHandles: 'live',
+	imageLoadPolicy: 'live',
+	header: 'live',
+	resolveImageUrl: 'live',
+	resolveLinkUrl: 'live',
+	onLinkActivate: 'live',
+	onPasteImage: 'live',
+	onRunCode: 'live',
+	codeMenuItems: 'live',
+	plugins: 'once',
+	syntax: 'once',
+	scrollMode: 'once'
+} as const satisfies PropTimings<EditorProps>;
 
 /** The empty block a function `placeholder` is asked about. */
 export interface PlaceholderBlock {

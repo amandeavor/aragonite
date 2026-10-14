@@ -246,6 +246,28 @@ describe('the other entry points', () => {
 		expect(caretMemory.side()).toBe('outside');
 	});
 
+	// Miss-analysis: the stale-restore row held a text caret only, so the gap branch, which places
+	// its caret after the mount with no generation check, never met a tree that went away.
+	it('a gap caret restore places nothing once the tree went away while it mounted', async () => {
+		const doc = parse('a\n\nb\n');
+		const selectionState = createSelectionState({ getDoc: () => doc });
+		const box: { landing?: CaretLanding } = {};
+		box.landing = createCaretLanding({
+			// No native selection to clear in this suite's environment.
+			caretWriter: { ...testCaretWriter, clear: () => {} },
+			getDoc: () => doc,
+			root: mountingList(doc, [], [], () => box.landing!.noteTreeSwap()),
+			selectionState,
+			caretMemory: createCaretMemory(),
+			getBlockElByPath: () => null,
+			getEditorRoot: () => null,
+			scroll: null
+		});
+
+		expect(await box.landing.restore({ gapCaret: { parentPath: [], index: 1 } })).toBe('unplaced');
+		expect(selectionState.gapCaret).toBeNull();
+	});
+
 	it('mount hands back the component without placing a caret', async () => {
 		const { landing, placements } = landingOver('- a\n');
 		expect(await landing.mount([0, 0])).not.toBeNull();

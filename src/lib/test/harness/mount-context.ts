@@ -147,9 +147,9 @@ function stubbedPolicies(): EditorPolicies {
 			createPressTracker()
 		),
 		keybindingOverrides: () => ({ global: new Map(), byKind: new Map() }),
-		onPasteImage: undefined,
-		onRunCode: undefined,
-		codeMenuItems: undefined,
+		onPasteImage: () => undefined,
+		onRunCode: () => undefined,
+		codeMenuItems: () => undefined,
 		brokenImageUrls: new Set<string>()
 	};
 }

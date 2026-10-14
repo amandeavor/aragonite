@@ -1,12 +1,12 @@
 /**
  * Which document a write was made for. A block's write handles are stamped with the document it
  * mounted on, a menu's with the one it opened over, and the write gate refuses a write whose
- * document a `source` swap has replaced: a paste waiting on a slow clipboard read, or any other
- * write that outlives its document, lands nowhere.
+ * document a `source` swap replaced or the editor's unmount ended: a paste waiting on a slow
+ * clipboard read, or any other write that outlives its document, lands nowhere.
  */
 
 export interface DocumentStamp {
-	/** False once a swap has replaced the document. */
+	/** False once a swap has replaced the document, or the editor has unmounted. */
 	readonly live: boolean;
 }
 
@@ -15,9 +15,11 @@ export interface DocumentStamps {
 	current(): DocumentStamp;
 	/** A swap: the outgoing document's stamp dies, and the incoming one gets its own. */
 	retire(): void;
+	/** The editor unmounted: the document in place dies, and nothing replaces it. */
+	end(): void;
 	/** Run `write` as a write made for `stamp`; the gate reads it while `write` runs synchronously. */
 	during<T>(stamp: DocumentStamp, write: () => T): T;
-	/** The stamp of the write being made; null for one made for whatever document is in place. */
+	/** The stamp of the write being made; null for one made for the document in place. */
 	active(): DocumentStamp | null;
 }
 
@@ -29,6 +31,9 @@ export function createDocumentStamps(): DocumentStamps {
 		retire() {
 			current.live = false;
 			current = { live: true };
+		},
+		end() {
+			current.live = false;
 		},
 		during(stamp, write) {
 			const outer = active;

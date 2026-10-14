@@ -25,6 +25,13 @@ export interface ChildList {
 	openCollapsed?(): Promise<boolean>;
 }
 
+export interface DescentOptions {
+	openCollapsed?: boolean;
+	/** False once the tree the descent set out in is gone (a swap, an undo, the editor's unmount);
+	 *  the descent stops at its next await. Required, so a new descent has to say. */
+	current: () => boolean;
+}
+
 /**
  * Mounts each level of `path` below `root` and returns the component at its end, or null when
  * a level can't mount. A path into a collapsed body stops there unless `openCollapsed` is set.
@@ -32,7 +39,7 @@ export interface ChildList {
 export async function descendTo(
 	root: ChildList,
 	path: readonly number[],
-	opts: { openCollapsed?: boolean } = {}
+	opts: DescentOptions
 ): Promise<BlockComponent | null> {
 	let list = root;
 	for (let depth = 0; depth < path.length; depth++) {
@@ -41,14 +48,17 @@ export async function descendTo(
 		if (index >= 1 && list.isCollapsed?.()) {
 			if (!opts.openCollapsed || !list.openCollapsed) return null;
 			await list.openCollapsed();
+			if (!opts.current()) return null;
 		}
 		const { windowing } = list;
 		await revealChildOrWait(index, {
 			slots: list.refs,
 			childCount: list.count(),
 			revealChild: (i) => windowing.revealChild(i),
-			isInWindow: (i) => windowing.isInWindow(i)
+			isInWindow: (i) => windowing.isInWindow(i),
+			current: opts.current
 		});
+		if (!opts.current()) return null;
 		const ref = list.refs.get(index);
 		if (!ref) return null;
 		list.bringChildIntoView?.(index);

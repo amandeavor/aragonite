@@ -66,9 +66,10 @@ export interface CaretLanding {
 	/** An arrow move put focus in the block at `path`: the page scrolls the least distance that
 	 *  shows the caret's line, or the whole cell in a table. */
 	followArrival(path: readonly number[]): void;
-	/** Bumped by every undo, redo and document swap: a landing that waited across one is stale. */
+	/** Bumped by every undo, redo, document swap and the unmount: a landing that waited across one
+	 *  is stale. */
 	generation(): number;
-	/** Called by the history restore and the document swap only, before the tree changes. */
+	/** Called by the history restore, the document swap and the unmount, before the tree goes. */
 	noteTreeSwap(): void;
 }
 
@@ -102,6 +103,8 @@ function caretBox(el: HTMLElement): DOMRectReadOnly {
 
 export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 	let generation = 0;
+	/** True while the tree generation `stamp` names is still the one in place. */
+	const at = (stamp: number) => () => generation === stamp;
 
 	/** Runs the landing's focus and DOM placement, which scroll nothing (G1.45). */
 	function placeWithoutScrolling<T>(place: () => T): T {
@@ -142,8 +145,8 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 	): Promise<LandingOutcome> {
 		const target = caretTargetFor(deps.getDoc(), pos, open);
 		if (!target) return 'unresolvable';
-		const component = await descendTo(deps.root, target.leafPath, open);
-		// The one check, after every await that mounts: the tree may have been swapped meanwhile.
+		const component = await descendTo(deps.root, target.leafPath, { ...open, current: at(stamp) });
+		// A descent cut short by a swap reports 'stale', not 'unresolvable'.
 		if (generation !== stamp) return 'stale';
 		if (!component) return 'unresolvable';
 		deps.caretMemory.forget();
@@ -160,17 +163,18 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 
 		async restore(selection, opts = {}) {
 			const reveal = opts.reveal ?? 'into-view';
+			const stamp = opts.stamp ?? generation;
 			if (isGapSelection(selection)) {
 				return restoreGapCaret(selection.gapCaret, {
 					getDoc: deps.getDoc,
 					selectionState: deps.selectionState,
 					caretWriter: deps.caretWriter,
 					caretMemory: deps.caretMemory,
-					mount: (path) => descendTo(deps.root, path),
-					reveal: (path) => bringIntoView(path, reveal)
+					mount: (path) => descendTo(deps.root, path, { current: at(stamp) }),
+					reveal: (path) => bringIntoView(path, reveal),
+					current: at(stamp)
 				});
 			}
-			const stamp = opts.stamp ?? generation;
 			const doc = deps.getDoc();
 			const anchor = resolveSelectionPoint(doc, selection.anchor);
 			const focus = resolveSelectionPoint(doc, selection.focus);
@@ -185,7 +189,7 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 			const route = deps.selectionState.restoreRoute(anchor, focus);
 			const holdsCaret = route === 'collapsed' || route === 'custom';
 			const mountPath = holdsCaret ? caretAt(focus).path : focus.path;
-			const mounted = await descendTo(deps.root, mountPath);
+			const mounted = await descendTo(deps.root, mountPath, { current: at(stamp) });
 			if (generation !== stamp) return 'unplaced';
 			deps.caretMemory.forget();
 			const placed = placeWithoutScrolling(() =>
@@ -208,13 +212,13 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 			const stamp = generation;
 			const target = caretTargetFor(deps.getDoc(), pos);
 			if (!target) return false;
-			const component = await descendTo(deps.root, target.leafPath);
+			const component = await descendTo(deps.root, target.leafPath, { current: at(stamp) });
 			if (generation !== stamp || !component?.parkCaret) return false;
 			component.parkCaret(target.offset);
 			return true;
 		},
 
-		mount: (path, opts) => descendTo(deps.root, path, opts),
+		mount: (path, opts) => descendTo(deps.root, path, { ...opts, current: at(generation) }),
 		followArrival(path) {
 			const el = deps.scroll && deps.getBlockElByPath([...path]);
 			const active = el ? document.activeElement : null;

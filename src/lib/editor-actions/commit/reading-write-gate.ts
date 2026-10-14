@@ -1,7 +1,8 @@
 /**
  * Every entry point that writes the document asks here first. A write in reading mode is declined,
- * and a dev build names it; one made for a document a `source` swap replaced is declined quietly.
- * Ask synchronously, before the first await, or the report loses the caller and the write's stamp.
+ * and a dev build names it; one made for a document a `source` swap replaced, or after the editor
+ * unmounted, is declined quietly. Ask synchronously, before the first await, or the report loses
+ * the caller and the write's stamp.
  */
 
 import { splitLines } from '../../core/lines';
@@ -21,14 +22,14 @@ export interface WriteGate {
 	readonly stamps: DocumentStamps;
 }
 
-/** Whether a write naming `op` may land: quietly false for a document a swap replaced, and false
- *  in reading mode, with a dev warning naming the block kind `kindOf` answers. */
+/** Whether a write naming `op` may land: quietly false when its document was swapped out or
+ *  ended, and false in reading mode, with a dev warning naming the block kind `kindOf` answers. */
 export function admitsWrite(
 	gate: WriteGate,
 	op: string,
 	kindOf?: () => string | undefined
 ): boolean {
-	if (gate.stamps.active()?.live === false) return false;
+	if (!madeForLiveDocument(gate)) return false;
 	if (!isReadOnly(gate.reading)) return true;
 	if (editorEnv.isDev) {
 		const kind = kindOf?.();
@@ -46,10 +47,15 @@ export function admitsWrite(
  * entry is left on the stack, and silent, because the write that follows reports itself.
  */
 export function admitsSnapshot(gate: WriteGate): boolean {
-	return gate.stamps.active()?.live !== false && !isReadOnly(gate.reading);
+	return madeForLiveDocument(gate) && !isReadOnly(gate.reading);
 }
 
 // ── Internal ────────────────────────────────────────────────────────────────
+
+// An unstamped write is made for the document in place, which an unmount ends.
+function madeForLiveDocument(gate: WriteGate): boolean {
+	return (gate.stamps.active() ?? gate.stamps.current()).live;
+}
 
 function isReadOnly(reading: Reading): boolean {
 	return isReadingMode(() => reading.mode());

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { setContext, tick, onMount, untrack } from 'svelte';
+	import { setContext, tick, onMount, onDestroy, untrack } from 'svelte';
 	import '../styles/editor.css';
 	import type { BlockComponent } from '../block-component';
 	import type { AnyBlockKind, Document } from '../core/nodes';
@@ -381,6 +381,13 @@
 
 	const menuPresence = createMenuPresence({ isReading: () => effectiveMode === 'reading' });
 	const stamps = createDocumentStamps();
+	// Work still in flight at the unmount stops there: its write is refused at the write gate, its
+	// report reaches no handler, and its caret landing reads no more of the tree.
+	onDestroy(() => {
+		stamps.end();
+		events.end();
+		caretLanding.noteTreeSwap();
+	});
 	// Apart from the menus, so a shown source fires no `menuChange`.
 	const drafts = createDraftRegistry(stamps);
 	// Emits on open/close transitions only, so a subscriber's first event is a real menu.
@@ -827,17 +834,9 @@
 		theme: () => theme,
 		activationClick,
 		keybindingOverrides: () => overridesMap,
-		// An accessor, not the `onPasteImage,` shorthand, which would capture the prop's value.
-		get onPasteImage() {
-			return onPasteImage;
-		},
-		// Accessors, as above.
-		get onRunCode() {
-			return onRunCode;
-		},
-		get codeMenuItems() {
-			return codeMenuItems;
-		},
+		onPasteImage: () => onPasteImage,
+		onRunCode: () => onRunCode,
+		codeMenuItems: () => codeMenuItems,
 		brokenImageUrls
 	} satisfies EditorPolicies);
 
@@ -1064,10 +1063,7 @@
 		selection: selectionState,
 		getDoc,
 		crossBlock: editorCrossBlock,
-		// An accessor, so the handler reads the live prop.
-		get onPasteImage() {
-			return onPasteImage;
-		},
+		onPasteImage: () => onPasteImage,
 		events,
 		getBlockComponent
 	});
@@ -1249,7 +1245,8 @@
 		isReading: () => effectiveMode === 'reading',
 		insertParagraph: (boundary, text) => blockEdit.insertParagraph(boundary, text),
 		undoStep: (path, offset, run) => controller.undoStep({ path: docPathFrom(path), offset }, run),
-		contentVersion: contentVersion.read
+		contentVersion: contentVersion.read,
+		stamps
 	});
 
 	export function insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean> {

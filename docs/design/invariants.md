@@ -255,6 +255,7 @@ These checks run in three kinds of place:
 | G1.75 | No selection endpoint the editor writes sits after an empty block's placeholder `<br>`     | A·N     |
 | G1.76 | The drawn caret sits on its caret until the caret moves                                    | A       |
 | G1.77 | The mark hiding the browser's caret is on exactly the editable the drawn caret draws for   | A       |
+| G1.87 | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
 
 ### The entries
 
@@ -712,6 +713,16 @@ class list when its kind changes. Predicate
 `caret/drawn-caret.svelte.ts` · `e2e/tests/caret/drawn-caret.spec.ts` (`caretsShowing`, one caret in
 every row).
 
+**G1.87 · Nothing outlives the unmount.** A write still in flight when the editor unmounts (an
+`insertMarkdown` waiting on a tick, a paste waiting on its clipboard) is refused quietly at the write
+gate, the way one made for a document a swap replaced is: the unmount ends the document in place, and
+a write that names no document is made for that one. The events channel goes quiet at the same
+moment, and a caret landing stops at its next await rather than read the torn-down lists. Nothing is
+asserted, since a host unmounting mid-write is ordinary. `editor-actions/commit/reading-write-gate.ts
+:: admitsWrite`, `editor-actions/commit/document-stamp.ts :: end`, `block-lists/child-list.ts ::
+descendTo` · `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/document-stamp.test.ts`,
+`block-lists/child-list.test.ts`, `selection/caret-landing.test.ts`.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -839,6 +850,7 @@ what the type retired.
 | G3.8  | A reader writing a node's serialized bytes                                        | T     |
 | G3.9  | Forgetting one part of what the caret means without the others                    | T     |
 | G3.10 | A registration pairing fields that can't mean anything together                   | T     |
+| G3.11 | An editor prop with no word on whether it can change after mount                  | T     |
 
 ### The entries
 
@@ -902,6 +914,13 @@ refuses every field on `src/lib/schema/block-kind-descriptor.ts :: FIXED_AT_REGI
 `src/lib/test/schema/registration-pairs.test.ts` fails when a table row and its pin don't match.
 Retired: G1.32 and four of G1.37's five pairs as dev-time checks, and G1.18's not-a-container
 branch.
+
+**G3.11 · Every prop has a timing.** `editor-props.ts :: EDITOR_PROP_TIMING` names each
+`EditorProps` key `live` (a new value takes effect) or `once` (read at mount, later values
+ignored), typed `satisfies PropTimings<EditorProps>`, so a prop added without one doesn't compile.
+`create-editor.ts :: createEditor` reads it to skip the `once` keys on `update`, and the consumer
+guide's Props section lists the same split. `src/lib/test/editor-root/create-editor.test.ts ::
+compileTimePins` holds the `@ts-expect-error`.
 
 ## Group 4: source scans
 
