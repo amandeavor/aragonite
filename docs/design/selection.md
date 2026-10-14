@@ -45,6 +45,8 @@ Two things move the caret, and each gets painted its own way:
 
 The bar's shape shows the format the next typed letter will get: heavier for bold, slanted for italic, a tick for strikethrough. The shape comes from `components/blocks/text/next-byte.ts :: nextByte`, which asks the typing path itself where a letter would land and what it'd sit inside, so a change to how typing places bytes changes the shape with it. Any change to what the caret memory answers asks for a paint itself, which is how an arrow that only switches sides, or a format chord, reshapes a caret that didn't move. A new memory method that changes an answer calls `onChange`.
 
+The bar is meant to look like the browser's caret. The paint puts its edges on whole device pixels, in the pixel column the letter boundary falls in (where Chromium puts its own caret, give or take a column: it floors in the editable's own pixels first), and colors it with the computed `color` of the element holding the caret (`caret/drawn-caret-target.ts`, `caret/drawn-caret.svelte.ts`). The stylesheet rounds every width to the nearest device pixel, as the browser does its caret's, so a new shape's lengths go in `editor.css`'s device-rounding block too (G4.166 fails one that doesn't).
+
 ## Cross-block selection
 
 Two endpoints, anchor and focus, each a path plus an offset in that block. `selection/primitives.ts` :: `SelectionPoint` is the type, a union of two shapes told apart by `cellCoordinate`: a character offset into `raw`, or a row-major cell index inside a table. Code that reads an offset checks the flag, not the block's kind. `SelectionState` flags every endpoint on a table's path as it stores it, and a restore does the same to a snapshot's or a host's plain offset there.

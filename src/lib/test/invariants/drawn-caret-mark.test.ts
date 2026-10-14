@@ -21,7 +21,7 @@ const MARKS: Array<[string, DrawnCaretTarget]> = [
 	['a text caret', { state: 'text', rect: RECT }],
 	['a widget edge', { state: 'widget', rect: { ...RECT, width: 1.5 } }],
 	['a press the click will move the caret from, which draws no bar', { state: 'pressed' }],
-	['a gap caret', { state: 'gap' }]
+	['a gap caret', { state: 'gap', y: -1 }]
 ];
 
 const UNMARKED: Array<[string, DrawnCaretTarget]> = [
