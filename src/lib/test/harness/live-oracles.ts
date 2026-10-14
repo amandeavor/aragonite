@@ -115,3 +115,13 @@ export function markedChars(
 	});
 	return out;
 }
+
+/** Whether `outer`'s marks hold each of `inner`'s, in order: `inner` lost marks and gained none. */
+export function marksWithin(inner: string, outer: string): boolean {
+	const want = inner === '' ? [] : inner.split(' ');
+	let at = 0;
+	for (const mark of outer === '' ? [] : outer.split(' ')) {
+		if (at < want.length && want[at] === mark) at++;
+	}
+	return at === want.length;
+}

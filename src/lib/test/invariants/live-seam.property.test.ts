@@ -11,7 +11,7 @@ import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
-import { markedChars, type MarkedChar } from '#lib/test/harness/live-oracles.js';
+import { markedChars, marksWithin, type MarkedChar } from '#lib/test/harness/live-oracles.js';
 import { unpaintedResidue } from '#lib/test/simulation/live-screen-reading.js';
 import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
 import {
@@ -126,15 +126,7 @@ function compareMarks(
 ): 'same' | 'fewer' | 'other' {
 	if (shown.length !== kept.length || shown.some((c, i) => c.char !== kept[i].char)) return 'other';
 	if (shown.every((c, i) => c.marks === kept[i].marks)) return 'same';
-	return shown.every((c, i) => isSubList(words(c.marks), words(kept[i].marks))) ? 'fewer' : 'other';
-}
-
-const words = (marks: string): string[] => (marks === '' ? [] : marks.split(' '));
-
-function isSubList(inner: readonly string[], outer: readonly string[]): boolean {
-	let at = 0;
-	for (const word of outer) if (at < inner.length && inner[at] === word) at++;
-	return at === inner.length;
+	return shown.every((c, i) => marksWithin(c.marks, kept[i].marks)) ? 'fewer' : 'other';
 }
 
 const describeMarks = (chars: readonly MarkedChar[]): string =>

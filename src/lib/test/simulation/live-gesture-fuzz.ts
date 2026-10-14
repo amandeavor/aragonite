@@ -13,7 +13,12 @@ import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { getContentRange } from '#lib/core/inline/index.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
-import { isSubsequence, keepsEveryByte, type MarkedChar } from '#lib/test/harness/live-oracles.js';
+import {
+	isSubsequence,
+	keepsEveryByte,
+	marksWithin,
+	type MarkedChar
+} from '#lib/test/harness/live-oracles.js';
 import { listInlineMarks } from '#lib/schema/inline-construct-policy.js';
 import { arbLiveDoc } from '#lib/test/invariants/arbitraries/index.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
@@ -229,13 +234,6 @@ function keptMarks(
 	after: readonly MarkedChar[],
 	typed: string
 ): 'same' | 'fewer' | 'other' {
-	const words = (marks: string): string[] => (marks === '' ? [] : marks.split(' '));
-	const within = (inner: string, outer: string): boolean => {
-		const want = words(inner);
-		let at = 0;
-		for (const word of words(outer)) if (at < want.length && want[at] === word) at++;
-		return at === want.length;
-	};
 	const matches = (fits: (a: MarkedChar, b: MarkedChar) => boolean): boolean => {
 		let at = 0;
 		let spare = [...typed.replace(/\s/g, '')].length;
@@ -247,7 +245,7 @@ function keptMarks(
 		return true;
 	};
 	if (matches((a, b) => a.char === b.char && a.marks === b.marks)) return 'same';
-	return matches((a, b) => a.char === b.char && within(a.marks, b.marks)) ? 'fewer' : 'other';
+	return matches((a, b) => a.char === b.char && marksWithin(a.marks, b.marks)) ? 'fewer' : 'other';
 }
 
 /** Whitespace out, since structural edits add, drop and reorder line endings by design. The cost:
