@@ -450,7 +450,7 @@ editor.destroy();
 
 `update` takes any subset of the options and works like handing a component new props: an unchanged value does nothing, so passing every option again on each render is fine, and a key set to `undefined` clears it. The three set-once props (`plugins`, `syntax`, `scrollMode`) are ignored after mount. Call `destroy` before you throw the element away; anything the editor still had in flight then lands nowhere and fires no event.
 
-One catch for now: the package still ships uncompiled Svelte, so your bundler needs the Svelte plugin from [What your build needs](#what-your-build-needs) either way.
+For now the package still ships uncompiled Svelte, so your bundler needs the Svelte plugin from [What your build needs](#what-your-build-needs) either way.
 
 ## Events
 

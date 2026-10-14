@@ -22,7 +22,7 @@ export interface EditorHandle extends EditorInstance {
 	/** New values for any options. An unchanged value does nothing, a key passed as `undefined`
 	 *  clears it, and `plugins`, `syntax` and `scrollMode`, read at mount only, are ignored. */
 	update(options: Partial<CreateEditorOptions>): void;
-	/** Unmounts the editor and empties `target`; a second call does nothing. */
+	/** Unmounts the editor, taking out of `target` what it added; a second call does nothing. */
 	destroy(): void;
 }
 
@@ -54,9 +54,11 @@ export function createEditor(target: HTMLElement, options: CreateEditorOptions =
 
 // ── Internal ────────────────────────────────────────────────────────────────
 
-// Presence is tested with `in`, so `{ placeholder: undefined }` clears the prop.
+// Presence is an own key, so `{ placeholder: undefined }` clears the prop.
 function propKeys(options: Partial<CreateEditorOptions>): (keyof EditorProps)[] {
-	return Object.keys(options).filter((key): key is keyof EditorProps => key in EDITOR_PROP_TIMING);
+	return Object.keys(options).filter((key): key is keyof EditorProps =>
+		Object.hasOwn(EDITOR_PROP_TIMING, key)
+	);
 }
 
 function propValue(key: keyof EditorProps, value: unknown): unknown {
