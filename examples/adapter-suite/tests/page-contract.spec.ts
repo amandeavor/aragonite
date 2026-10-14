@@ -1,5 +1,5 @@
 import { APPS } from '../apps.mjs';
-import { test, expect, caretAtEnd, FIRST, SECOND } from './fixtures';
+import { test, expect, caretAtEnd, pageListeners, FIRST, SECOND } from './fixtures';
 import type { Page } from '@playwright/test';
 
 const PARAGRAPH = 'Hello from the first note.';
@@ -101,6 +101,22 @@ test('unmount leaves no editor behind, and mounting again shows the held value',
 	await expect(page.getByTestId('header-input')).toHaveCount(0);
 	await page.getByTestId('unmount').click();
 	await expect(page.locator('.editor')).toContainText(PARAGRAPH + ' Kept.');
+});
+
+// A wrapper that drops the editor's element without destroying the editor leaves nothing on the
+// page to see, but the editor's window and document listeners stay behind.
+test('unmount takes the window and document listeners the editor added', async ({ page }) => {
+	const toggle = page.getByTestId('unmount');
+	await toggle.click();
+	await expect(page.locator('.editor')).toHaveCount(0);
+	const unmounted = await pageListeners(page);
+
+	await toggle.click();
+	await expect(page.locator('.editor')).toBeVisible();
+	await toggle.click();
+	await expect(page.locator('.editor')).toHaveCount(0);
+
+	expect(await pageListeners(page)).toEqual(unmounted);
 });
 
 test('the editor fits the page, and typing scrolls nothing sideways', async ({ page }) => {

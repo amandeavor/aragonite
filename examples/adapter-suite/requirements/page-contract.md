@@ -24,6 +24,7 @@ aragonite dev warning or Vue warning.
 - The page has no CSS reset of its own, as a new app starts: after typing, the editor still ends inside its container and the page is no wider than the viewport, not scrolled sideways.
 - Typing in the header input: the input keeps every key, Backspace included, and the document doesn't change.
 - Unmount: no editor and no header input are left on the page; mounting again shows the value the app holds.
+- Unmount, mount and unmount again: the window and document hold the same listeners as after the first unmount, so the wrapper destroyed the editor and didn't just drop its element.
 - One editor on the page, in a dev build too (React's StrictMode mounts the component twice there).
 - Uncontrolled: the editor starts on its default note, typing still reaches the mirror, and a re-render (the theme toggle) keeps the typed text.
 - The page runs on the framework version its project names, so the React 18 and Vue 3.3 projects really test those versions.
