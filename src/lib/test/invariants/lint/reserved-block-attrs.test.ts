@@ -150,7 +150,7 @@ describe('G4.70 a block decoration keeps off the attributes the editor uses on i
 		],
 		[
 			'a negated ancestor rule',
-			'<style>\n:where(.editor) :not(:where([data-new-thing] *)) { margin: 0; }\n</style>',
+			'<style>\n:where(.editor, .editor :not([data-new-thing] *)) { margin: 0; }\n</style>',
 			'data-new-thing'
 		],
 		[
