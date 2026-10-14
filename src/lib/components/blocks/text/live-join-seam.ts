@@ -398,7 +398,7 @@ function keepingReading(
 	const { typed } = join;
 	// Typed text takes the format of the character before it, outside a run that never grows at
 	// its edge and everything inside that run (`docs/design/live-mode.md` § 4.2).
-	const grows = typed === '' ? 0 : outsideNeverExtend(left.dangling);
+	const grows = typed === '' ? 0 : outsideNeverExtend(join, left, right);
 	const outer = left.dangling.slice(0, grows);
 	const inner = closeBefore(left.raw, left.dangling.slice(grows).map(toCut), left.cut);
 	const innerClosed = [...inner.closed].reverse().map((link) => fromCut(left, link));
@@ -486,12 +486,16 @@ const sameSpelling = (
 	b: { opener: string; closer: string }
 ): boolean => a.opener === b.opener && a.closer === b.closer;
 
-/** How many of a side's open runs (outermost first) sit outside its outermost never-extend one. */
-function outsideNeverExtend(dangling: readonly SideConstruct[]): number {
-	const at = dangling.findIndex(
-		(c) => getInlineConstructPolicy(c.kind)?.edgeAffinity === 'never-extend'
+/** How many of the left side's open runs (outermost first) typed text fills: those outside its
+ *  outermost never-extend run, unless the cut lies inside that one run, whose text it then replaces. */
+function outsideNeverExtend(join: JoinSeam, left: Side, right: Side): number {
+	const inside = (c: SideConstruct) =>
+		join.start.node === join.end.node &&
+		right.dangling.some((r) => r.node.start === c.node.start && r.kind === c.kind);
+	const at = left.dangling.findIndex(
+		(c) => getInlineConstructPolicy(c.kind)?.edgeAffinity === 'never-extend' && !inside(c)
 	);
-	return at < 0 ? dangling.length : at;
+	return at < 0 ? left.dangling.length : at;
 }
 
 /** Readings that write the same bytes are read once; a dropping one among them lifts the claim to

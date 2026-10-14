@@ -230,6 +230,12 @@ describe('text typed over a cut through a run', () => {
 	it('fills a run it replaces whole', () => {
 		expect(typeOver('Some **bold** text\n', 7, 11, 'X')).toBeNull();
 	});
+
+	// Inside one link the text typed over its whole content is the link's new text.
+	// Miss-analysis: the typed-text rows only cut a link's text in part, never all of it.
+	it('replaces a link’s text it covers whole', () => {
+		expect(typeOver('see [here](u) now\n', 5, 9, 'X')).toBeNull();
+	});
 });
 
 describe('a join whose survivors are only terminal hard-break blank lines', () => {
