@@ -184,7 +184,7 @@ test.describe('an editor on a page with no CSS reset', () => {
 		};
 		const inRoot = await barStyles('hostContent=on');
 		const inHeader = await barStyles('hostContent=on&findBar=header');
-		expect(page.locator('.editor-header .search-bar')).toHaveCount(1);
+		await expect(page.locator('.editor-header .search-bar')).toHaveCount(1);
 		expect(inHeader).toEqual(inRoot);
 	});
 });
