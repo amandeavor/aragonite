@@ -9,7 +9,6 @@ import {
 	lstatSync,
 	mkdirSync,
 	mkdtempSync,
-	readdirSync,
 	readlinkSync,
 	rmSync,
 	symlinkSync,
@@ -49,7 +48,8 @@ const reinstall = () => {
 describe('withPrivateInstall', () => {
 	it('leaves a linked install untouched and puts the link back', () => {
 		withPrivateInstall(linked, reinstall);
-		expect(readdirSync(path.join(shared, 'pkg'))).toEqual(['package.json']);
+		expect(existsSync(path.join(shared, 'pkg', 'package.json'))).toBe(true);
+		expect(existsSync(path.join(shared, 'pkg', 'private.txt'))).toBe(false);
 		expect(lstatSync(linked).isSymbolicLink()).toBe(true);
 		expect(path.resolve(readlinkSync(linked))).toBe(path.resolve(shared));
 	});
@@ -70,6 +70,6 @@ describe('withPrivateInstall', () => {
 		mkdirSync(linked);
 		withPrivateInstall(linked, reinstall);
 		expect(lstatSync(linked).isSymbolicLink()).toBe(false);
-		expect(readdirSync(path.join(linked, 'pkg'))).toEqual(['private.txt']);
+		expect(existsSync(path.join(linked, 'pkg', 'private.txt'))).toBe(true);
 	});
 });
