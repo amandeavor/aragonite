@@ -1109,7 +1109,7 @@ unguarded.
 | G4.178 | Every route that mounts a plugin view falls back and reports when it throws               | L       |
 | G4.180 | Every top-right hover control on a block moves below the open find bar                    | L       |
 | G4.181 | Every wrapper package carries the core's version and peers the core at exactly that       | L       |
-| G4.183 | An app that doesn't compile Svelte installs no Svelte                                     | L       |
+| G4.183 | An app that doesn't compile Svelte installs no Svelte                                     | harness |
 
 ### The entries
 

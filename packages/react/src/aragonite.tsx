@@ -21,8 +21,8 @@ import { createEditor, type CreateEditorOptions, type EditorHandle } from '@voit
 
 /** The editor's options, with the document as `value` or `defaultValue` and the header as a node. */
 export type AragoniteProps = Omit<CreateEditorOptions, 'source' | 'header'> & {
-	/** The document. A value other than the editor's current text loads as a new document, clearing
-	 *  undo; the text `onChange` just reported is the current text. */
+	/** The document. A changed value loads as a new document, clearing undo, unless it's the text
+	 *  `onChange` just reported; an unchanged one leaves the editor's text alone. */
 	value?: string;
 	/** The document to start with when `value` isn't passed. */
 	defaultValue?: string;

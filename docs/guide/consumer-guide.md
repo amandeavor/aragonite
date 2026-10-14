@@ -490,12 +490,14 @@ function Note() {
 
 The props are the editor's [props](#props), plus a few React ones:
 
-- `value` and `onChange` keep the document in your state. `onChange` gets the whole Markdown after every edit (undo and redo included). Hand back what it gave you and nothing happens; hand back anything else and it loads as a new document, which clears undo.
+- `value` and `onChange` keep the document in your state. `onChange` gets the whole Markdown after every edit (undo and redo included). The editor holds the document while you type, so `value` only does something when it changes. Hand back what `onChange` gave you and nothing happens. Set it to anything else and it loads as a new document, which clears undo and takes the caret out of the editor, so don't reshape the text inside `onChange` (do it when you save).
 - `defaultValue` is the document to start with if you'd rather not hold it in state. `onChange` still reports every edit, or read it through the ref when you need it.
 - `header` is a React node, rendered above the first block.
 - `className` and `style` go on the element the editor mounts into. Give it a height and the editor scrolls inside it (or let your page scroll it, see [Host scroll mode](#host-scroll-mode)).
 
-The ref is the same handle `createEditor` returns, and it's `null` until the editor mounts. Plugins go in `plugins` as usual. Every bundled plugin works here, and so does any plugin that doesn't ship Svelte components of its own; one that does (a custom block, say) needs a bundler that compiles Svelte. The component is marked `'use client'`, so in Next you can render it from a server component too. It mounts in the browser.
+The ref is the same handle `createEditor` returns, and it's `null` until the editor mounts. Plugins go in `plugins` as usual. Every bundled plugin works here, and so does any plugin that doesn't ship Svelte components of its own; one that does (a custom block, say) needs a bundler that compiles Svelte. The component is marked `'use client'`, so in Next you can render it from a server component too (the editor itself only shows up once the page reaches the browser).
+
+One TypeScript catch: the core's types mention Svelte's, and a React app has no Svelte installed, so keep `"skipLibCheck": true` in `tsconfig.json`. Vite's and Next's templates already set it.
 
 ## Events
 
