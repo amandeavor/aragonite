@@ -406,9 +406,12 @@ function keepingReading(
 	const reopened = [...opened.reopened].reverse().map((link) => fromCut(right, link));
 	const closed = [...outer, ...innerClosed];
 
+	// Read where the kept bytes now end and start, since an emptied run's delimiters go with it.
+	const leftTouching = touchingAt(left, inner.end, 'before');
+	const rightTouching = touchingAt(right, opened.start, 'after');
 	// Outermost first on both sides, so the runs that can stay one are a common prefix.
-	const closing = [...closed, ...left.touching];
-	const opening = [...reopened, ...right.touching];
+	const closing = [...closed, ...leftTouching];
+	const opening = [...reopened, ...rightTouching];
 	const spelled = (side: Side, c: SideConstruct, writes: readonly SideConstruct[]) =>
 		writes.includes(c) ? spell(side, c) : asCut(side, c);
 	let merged = 0;
@@ -458,14 +461,16 @@ function keepingReading(
 	if (rightStart > right.cut) {
 		edits.push(dropped(rightSpan(join, right, { start: right.cut, end: rightStart })));
 	}
-	const leftMerged = closing.slice(0, merged).filter((c) => left.touching.includes(c));
-	const rightMerged = opening.slice(0, merged).filter((c) => right.touching.includes(c));
+	const leftMerged = closing.slice(0, merged).filter((c) => leftTouching.includes(c));
+	const rightMerged = opening.slice(0, merged).filter((c) => rightTouching.includes(c));
 	if (leftMerged.length > 0) {
-		edits.push(dropped({ start: leftMerged[leftMerged.length - 1].content.end, end: left.cut }));
+		const deepest = leftMerged[leftMerged.length - 1];
+		edits.push(dropped({ start: deepest.content.end, end: inner.end }));
 	}
 	if (rightMerged.length > 0) {
 		const deepest = rightMerged[rightMerged.length - 1];
-		edits.push(dropped(rightSpan(join, right, { start: right.cut, end: deepest.content.start })));
+		const span = { start: opened.start, end: deepest.content.start };
+		edits.push(dropped(rightSpan(join, right, span)));
 	}
 	// A run written in its row's markers is rewritten at its other end too.
 	for (const c of closed) {
@@ -480,6 +485,12 @@ function keepingReading(
 	}
 	return { edits, typedAt: typed === '' ? 0 : innerClosers.length, keeps: true };
 }
+
+/** The chain of runs touching `at` from inside `side`'s kept bytes, outermost first. */
+const touchingAt = (side: Side, at: number, keep: 'before' | 'after'): SideConstruct[] =>
+	at === side.cut
+		? side.touching
+		: touchingChain(classifyConstructs(side.inlines).ranged, at, keep);
 
 const sameSpelling = (
 	a: { opener: string; closer: string },

@@ -27,7 +27,8 @@ vi.mock('#lib/selection/clipboard-text.js', async (importOriginal) => {
 		collectCrossBlockText: (doc: Args[0], { range }: Args[1]) =>
 			actual.collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, cut(doc, range.start), cut(doc, range.end)))
+				rangeCoverage(doc, coverRange(doc, cut(doc, range.start), cut(doc, range.end))),
+				SOURCE_READING
 			)
 	};
 });
@@ -36,6 +37,10 @@ import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
 import { checkCopyIsRawByteSlice } from '#lib/testing.js';
 import { registerMermaidKind, MERMAID } from '#lib/plugins/mermaid/mermaid-kind.js';
 import { declaredPluginKind } from '#lib/plugin.js';
+import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
+
+// Source mode, where a copied range carries its bytes as they stand.
+const SOURCE_READING = fixtureReading({}, 'source');
 
 function mermaidFixture() {
 	registerMermaidKind();

@@ -44,7 +44,7 @@ test.describe('live mode: a selection out of one construct and into another', ()
 		await expect(ep.getBlock(MIXED).locator('em')).toHaveText('alic', { useInnerText: true });
 	});
 
-	test('Mod+X leaves the same bytes and copies the source slice the selection covered', async ({
+	test('Mod+X leaves the same bytes and copies what the cut took, its runs closed', async ({
 		page
 	}) => {
 		const ep = await enterMode(page, 'live');
@@ -52,8 +52,21 @@ test.describe('live mode: a selection out of one construct and into another', ()
 
 		await page.keyboard.press('ControlOrMeta+x');
 		await ep.bridge.waitForSourceContains('Some **bo***alic* words');
-		// A live copy writes source bytes (raw 9-21), not the visible text, as the guide states.
-		expect(await ep.readClipboard()).toBe('ld** and *it');
+		expect(await ep.readClipboard()).toBe('**ld** and *it*');
+	});
+
+	// The clipboard carries what the cut took, and the paste lands it inside the runs it meets.
+	test('Mod+X then Mod+V at the same caret gives the block back', async ({ page }) => {
+		const ep = await enterMode(page, 'live');
+		await selectBoldIntoItalic(ep, page);
+
+		await page.keyboard.press('ControlOrMeta+x');
+		await ep.bridge.waitForSourceContains('Some **bo***alic* words');
+		await page.keyboard.press('ControlOrMeta+v');
+		await ep.bridge.waitForSourceContains('Some **bold** and *italic* words');
+		await expect(ep.getBlock(MIXED)).toHaveText('Some bold and italic words', {
+			useInnerText: true
+		});
 	});
 
 	test('typing over the selection lands the character inside the bold', async ({ page }) => {

@@ -13,6 +13,9 @@ import { reservedChromeKindOf } from '../../schema/reserved-chrome';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { registerChromePluginsForTests } from './chrome-plugins';
 
+// Source mode, where a copied range carries its bytes as they stand.
+const SOURCE_READING = fixtureReading({}, 'source');
+
 // Every block's text is one capital letter repeated, and no markup holds a capital, so a letter
 // missing from the result means that block went whole and a block's raw still in it means it stayed.
 const CLOSED = '<details>\n<summary>SSSS</summary>\n\nHHHH\n\n</details>\n';
@@ -50,7 +53,7 @@ const bare = (raw: string) => raw.replace(/\n+$/, '');
 function cutThenDelete(source: string, start: SelectionPoint, end: SelectionPoint) {
 	const doc: Document = parse(source);
 	const range = coverRange(doc, start, end);
-	const copied = collectCrossBlockText(doc, rangeCoverage(doc, range));
+	const copied = collectCrossBlockText(doc, rangeCoverage(doc, range), SOURCE_READING);
 	const left = serialize(
 		rangeDelete(doc, rangeCoverage(doc, range), createSharingState(), fixtureReading(), 'keyless')
 			.newDoc

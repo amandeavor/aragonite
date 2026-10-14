@@ -16,8 +16,12 @@ screen.
 
 - a selection from inside bold to inside italic, deleted with Backspace, leaves
   `Some **bo***alic* words`: `bo` still bold, `alic` still italic, no delimiter on screen
-- the same selection cut with `Mod+X` leaves the same bytes, and the clipboard carries the source
-  slice the selection covered: a copy in live mode yields source bytes, not the visible text
+- the same selection cut with `Mod+X` leaves the same bytes, and the clipboard carries what the
+  cut took with its runs closed (`**ld** and *it*`), source bytes rather than the visible text
+- `Mod+V` right after that cut, at the caret it left, gives the block back byte for byte: the
+  pasted runs join the bold and the italic they land between
+  - Miss-analysis: the clipboard rows pinned a raw slice with stray runs, so no row pasted a cut
+    back and none saw it come back as plain text with `**` on screen
 - the same selection typed over puts the character inside the bold, since typed text takes the
   format of the character before it (`Some **boX***alic* words`)
 - a selection from inside a construct in one paragraph into the next joins the two on the same

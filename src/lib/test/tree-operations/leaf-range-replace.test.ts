@@ -122,6 +122,14 @@ describe('text carrying its own runs lands inside a run', () => {
 		});
 	});
 
+	// What a live cut of `ld** and *it` put on the clipboard, pasted back at the caret it left.
+	it('puts back what a cut through two runs took', () => {
+		expect(edit('Some **bo***alic* words\n', 9, 9, '**ld** and *it*')).toEqual({
+			raw: 'Some **bold** and *italic* words\n',
+			caret: 21
+		});
+	});
+
 	it('pasted over a selection, takes its place inside the run', () => {
 		expect(edit('Some **bold** and words tail\n', 9, 16, '**X**')).toEqual({
 			raw: 'Some **boX**d words tail\n',

@@ -1,16 +1,49 @@
-import { beforeEach, describe, it, expect } from 'vitest';
+// @vitest-environment jsdom
+import { afterAll, beforeAll, beforeEach, describe, it, expect } from 'vitest';
+import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
+import {
+	registerLiveJoinSeamCleaner,
+	__resetLiveJoinSeamCleanerForTests
+} from '#lib/schema/inline-construct-policy.js';
 import { collectCrossBlockText } from '../../selection/clipboard-text';
 import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import type { SelectionPoint } from '../../selection/primitives';
 import { parse } from '../../core/parser';
 import { registerChromePluginsForTests } from './chrome-plugins';
+import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
+
+// Source mode, where a copied range carries its bytes as they stand.
+const SOURCE_READING = fixtureReading({}, 'source');
+
+// Miss-analysis: every copy row read source mode, so an edge cut through a format run in live
+// mode put a stray closer or opener on the clipboard and none saw it.
+describe('a live copy across blocks carries what a cut there takes', () => {
+	beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
+	afterAll(() => __resetLiveJoinSeamCleanerForTests());
+	const LIVE_READING = fixtureReading({}, 'live');
+	const doc = parse('Some **bold** x\n\ny *it* z\n');
+	const range = coverRange(doc, { path: [0], offset: 9 }, { path: [1], offset: 4 });
+
+	it('closes the run the start block opens and reopens the one the end block closes', () => {
+		expect(collectCrossBlockText(doc, rangeCoverage(doc, range), LIVE_READING)).toBe(
+			'**ld** x\n\ny *i*'
+		);
+	});
+
+	it('copies the bytes as they stand in source mode', () => {
+		expect(collectCrossBlockText(doc, rangeCoverage(doc, range), SOURCE_READING)).toBe(
+			'ld** x\n\ny *i'
+		);
+	});
+});
 
 describe('collectCrossBlockText', () => {
 	it('preserves blank line between two top-level paragraphs', () => {
 		const doc = parse('first\n\nsecond\n');
 		const text = collectCrossBlockText(
 			doc,
-			rangeCoverage(doc, coverRange(doc, { path: [0], offset: 0 }, { path: [1], offset: 6 }))
+			rangeCoverage(doc, coverRange(doc, { path: [0], offset: 0 }, { path: [1], offset: 6 })),
+			SOURCE_READING
 		);
 		expect(text).toBe('first\n\nsecond');
 	});
@@ -19,7 +52,8 @@ describe('collectCrossBlockText', () => {
 		const doc = parse('abc\n\ndef\n\nghi\n');
 		const text = collectCrossBlockText(
 			doc,
-			rangeCoverage(doc, coverRange(doc, { path: [0], offset: 1 }, { path: [2], offset: 2 }))
+			rangeCoverage(doc, coverRange(doc, { path: [0], offset: 1 }, { path: [2], offset: 2 })),
+			SOURCE_READING
 		);
 		expect(text).toBe('bc\n\ndef\n\ngh');
 	});
@@ -28,7 +62,8 @@ describe('collectCrossBlockText', () => {
 		const doc = parse('aa\n\nbb\n');
 		const text = collectCrossBlockText(
 			doc,
-			rangeCoverage(doc, coverRange(doc, { path: [0], offset: 1 }, { path: [1], offset: 1 }))
+			rangeCoverage(doc, coverRange(doc, { path: [0], offset: 1 }, { path: [1], offset: 1 })),
+			SOURCE_READING
 		);
 		expect(text).toBe('a\n\nb');
 	});
@@ -40,7 +75,8 @@ describe('collectCrossBlockText', () => {
 			rangeCoverage(
 				doc,
 				coverRange(doc, { path: [0, 0, 0], offset: 1 }, { path: [0, 1, 0], offset: 3 })
-			)
+			),
+			SOURCE_READING
 		);
 		expect(text).toContain('irst');
 		expect(text).toContain('sec');
@@ -50,7 +86,8 @@ describe('collectCrossBlockText', () => {
 		const doc = parse('> inside\n\nafter\n');
 		const text = collectCrossBlockText(
 			doc,
-			rangeCoverage(doc, coverRange(doc, { path: [0, 0], offset: 0 }, { path: [1], offset: 5 }))
+			rangeCoverage(doc, coverRange(doc, { path: [0, 0], offset: 0 }, { path: [1], offset: 5 })),
+			SOURCE_READING
 		);
 		expect(text).toContain('inside');
 		expect(text).toContain('after');
@@ -70,7 +107,8 @@ describe('collectCrossBlockText', () => {
 			const doc = parse(fixture);
 			const text = collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, { path: [0], offset: 0 }, { path: [2], offset: 6 }))
+				rangeCoverage(doc, coverRange(doc, { path: [0], offset: 0 }, { path: [2], offset: 6 })),
+				SOURCE_READING
 			);
 			expect(text).toBe(`Before.\n\n${tableRaw}\nAfter.`);
 		});
@@ -81,7 +119,8 @@ describe('collectCrossBlockText', () => {
 			const doc = parse(fixture);
 			const text = collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, cell(4), { path: [2], offset: 6 }))
+				rangeCoverage(doc, coverRange(doc, cell(4), { path: [2], offset: 6 })),
+				SOURCE_READING
 			);
 			expect(text).toBe('| 1 | 2 | 3 |\n| --- | --- | --- |\n| 4 | 5 | 6 |\n\nAfter.');
 		});
@@ -92,7 +131,8 @@ describe('collectCrossBlockText', () => {
 			const doc = parse(fixture);
 			const text = collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, { path: [0], offset: 0 }, cell(4)))
+				rangeCoverage(doc, coverRange(doc, { path: [0], offset: 0 }, cell(4))),
+				SOURCE_READING
 			);
 			expect(text).toBe('Before.\n\n| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n');
 		});
@@ -103,7 +143,8 @@ describe('collectCrossBlockText', () => {
 			const doc = parse(fixture);
 			const text = collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, cell(1), cell(4)))
+				rangeCoverage(doc, coverRange(doc, cell(1), cell(4))),
+				SOURCE_READING
 			);
 			expect(text).toBe('| B |\n| --- |\n| 2 |\n');
 		});
@@ -112,7 +153,8 @@ describe('collectCrossBlockText', () => {
 			const doc = parse(fixture);
 			const text = collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, cell(4), cell(4)))
+				rangeCoverage(doc, coverRange(doc, cell(4), cell(4))),
+				SOURCE_READING
 			);
 			expect(text).toBe('');
 		});
@@ -122,7 +164,8 @@ describe('collectCrossBlockText', () => {
 			const doc = parse(fixture);
 			const text = collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, cell(0), cell(3)))
+				rangeCoverage(doc, coverRange(doc, cell(0), cell(3))),
+				SOURCE_READING
 			);
 			expect(text).toBe('| A |\n| --- |\n| 1 |\n');
 		});
@@ -133,7 +176,8 @@ describe('collectCrossBlockText', () => {
 			);
 			const text = collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, { path: [0], offset: 0 }, { path: [4], offset: 1 }))
+				rangeCoverage(doc, coverRange(doc, { path: [0], offset: 0 }, { path: [4], offset: 1 })),
+				SOURCE_READING
 			);
 			expect(text).toBe(
 				'a\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\nb\n\n| C | D |\n| --- | --- |\n| 3 | 4 |\n\nc'
@@ -148,7 +192,7 @@ describe('collectCrossBlockText', () => {
 
 		const copied = (source: string, a: SelectionPoint, b: SelectionPoint): string => {
 			const doc = parse(source);
-			return collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, a, b)));
+			return collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, a, b)), SOURCE_READING);
 		};
 
 		it('select-all over a document that is one quote', () => {

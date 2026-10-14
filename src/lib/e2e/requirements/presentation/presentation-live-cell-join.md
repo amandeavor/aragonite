@@ -12,7 +12,7 @@ reports where each gesture put the caret, and the source is what each scenario c
 
 - a selection from inside `**bold**` to inside `*it*` cut with `Mod+X` leaves
   `| Some **bo***t* x |`, each half keeping its format with no delimiter on screen, and the
-  clipboard carries the raw slice
+  clipboard carries what the cut took with its runs closed (`**ld** *i*`)
 - the same selection typed over lands the character inside the bold
 - one `Mod+Z` after the cut restores the original cell bytes
 

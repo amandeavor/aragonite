@@ -13,6 +13,9 @@ import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import type { Document } from '#lib/core/nodes.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 
+// Source mode, where a copied range carries its bytes as they stand.
+const SOURCE_READING = fixtureReading({}, 'source');
+
 const DIAGRAM = '```mermaid\ngraph TD\n```\n';
 const DIAGRAM_END = 23;
 const MERMAID_DOC = `Above text\n\n${DIAGRAM}\ntail text\n`;
@@ -28,7 +31,11 @@ function mermaidDoc(): Document {
 }
 
 function copySelected(doc: Document, s: ReturnType<typeof stateOver>): string {
-	return collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, s.start!, s.end!)));
+	return collectCrossBlockText(
+		doc,
+		rangeCoverage(doc, coverRange(doc, s.start!, s.end!)),
+		SOURCE_READING
+	);
 }
 
 function deleteSelected(doc: Document, s: ReturnType<typeof stateOver>): string {

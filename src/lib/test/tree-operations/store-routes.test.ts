@@ -20,6 +20,8 @@ import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
+import { collectCrossBlockText } from '#lib/selection/clipboard-text.js';
+import type { SelectionPoint } from '#lib/selection/primitives.js';
 import { movedText, runDrop } from '#lib/selection/selection-drop.js';
 import { createInlineRangeCommit } from '#lib/editor-actions/inline-range-commit.js';
 import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
@@ -190,6 +192,26 @@ function cut(el: HTMLElement): void {
 	const e = new Event('cut', { bubbles: true, cancelable: true });
 	Object.defineProperty(e, 'clipboardData', { value: { setData: () => {}, getData: () => '' } });
 	el.dispatchEvent(e);
+}
+
+/** What a copy of `range` in the mounted block puts on the clipboard. */
+function copied(mounted: Mounted, range: typeof X): string {
+	select(mounted.el, range.start, range.end);
+	let text = '';
+	const e = new Event('copy', { bubbles: true, cancelable: true });
+	const clipboardData = {
+		setData: (_type: string, value: string) => (text = value),
+		getData: () => ''
+	};
+	Object.defineProperty(e, 'clipboardData', { value: clipboardData });
+	mounted.el.dispatchEvent(e);
+	return text;
+}
+
+/** What a copy from `start` in the first leaf to `end` in the next block puts on the clipboard. */
+function copiedAcross(source: string, start: SelectionPoint, end: SelectionPoint): string {
+	const doc = parse(source);
+	return collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, start, end)), LIVE);
 }
 
 /** An IME run typed over `range`, the DOM left holding `composed` when it ends. */
@@ -596,6 +618,34 @@ const FAMILIES: Family[] = [
 		]
 	},
 	{
+		// The copy starts at the bold's hidden closer, which empties it, so the closer goes and `# y`
+		// reads as text in a to-do or a cell; at the top level it is a heading, so the closer stays.
+		name: 'the bytes a copy carries',
+		stores: {
+			'components/blocks/text/text-clipboard.ts': 1,
+			'components/blocks/table/TableCellBlock.svelte': 1,
+			'selection/clipboard-text.ts': 1
+		},
+		rows: [
+			{ shape: 'a to-do', run: () => copied(mountText(TODO), { start: 3, end: 8 }), want: '# y' },
+			{
+				shape: 'a table cell',
+				run: () => copied(mountLiveCell('**x**# y'), { start: 3, end: 8 }),
+				want: '# y'
+			},
+			{
+				shape: 'a to-do, across blocks',
+				run: () =>
+					copiedAcross(
+						'- [ ] **x**# y\n\nnext\n',
+						{ path: [0, 0, 0], offset: 3 },
+						{ path: [1], offset: 2 }
+					),
+				want: '- [ ] # y\n\nne'
+			}
+		]
+	},
+	{
 		name: 'a key on a selected widget',
 		stores: { 'components/blocks/text/widget-interaction.ts': 1 },
 		rows: [
@@ -836,6 +886,7 @@ const STORE_TAKERS = [
 	'cleanJoinedRaw',
 	'joinLeaves',
 	'replaceRangeInLeaf',
+	'bytesLeavingLeaf',
 	'applyLiveRangeEdit',
 	'resolveEdgeDeletion',
 	'keepsKindAt',

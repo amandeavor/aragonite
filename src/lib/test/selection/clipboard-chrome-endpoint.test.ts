@@ -8,10 +8,14 @@ import { augmentBlockKind, getBlockKindDescriptor } from '../../schema/block-kin
 import { DETAILS } from '#lib/plugins/details/details-kind.js';
 import { registerChromePluginsForTests } from './chrome-plugins';
 import type { SelectionPoint } from '../../selection/primitives';
+import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 
 // A cross-block copy whose end lands inside a container's title line (a details summary, a
 // callout title) must keep the container's opener: bytes without it reparse to a bare paragraph
 // and lose the kind on paste.
+
+// Source mode, where a copied range carries its bytes as they stand.
+const SOURCE_READING = fixtureReading({}, 'source');
 
 function point(path: number[], offset: number): SelectionPoint {
 	return { path, offset };
@@ -24,7 +28,8 @@ describe('cross-block copy ending in reserved chrome', () => {
 		const doc = parse('Above\n\n:::callout Title\nBody\n:::\n\nBelow\n');
 		const text = collectCrossBlockText(
 			doc,
-			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 3)))
+			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 3))),
+			SOURCE_READING
 		);
 		const note = parse(text).children.find((c) => c.kind === 'callout');
 		expect(note).toBeDefined();
@@ -36,7 +41,8 @@ describe('cross-block copy ending in reserved chrome', () => {
 		const doc = parse('Above\n\n:::callout Title\nBody\n:::\n\nBelow\n');
 		const text = collectCrossBlockText(
 			doc,
-			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 5)))
+			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 5))),
+			SOURCE_READING
 		);
 		const note = parse(text).children.find((c) => c.kind === 'callout');
 		expect(note!.children?.map((c) => c.kind)).toEqual(['callout-title']);
@@ -65,7 +71,8 @@ describe('cross-block copy ending in reserved chrome', () => {
 			const doc = parse(src);
 			const text = collectCrossBlockText(
 				doc,
-				rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 3)))
+				rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 3))),
+				SOURCE_READING
 			);
 			const details = parse(text).children.find((c) => c.kind === 'details');
 			expect(details).toBeDefined();
@@ -93,7 +100,8 @@ describe('cross-block copy ending in reserved chrome', () => {
 		);
 		const text = collectCrossBlockText(
 			doc,
-			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 3)))
+			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 3))),
+			SOURCE_READING
 		);
 
 		expect(text).toContain('<details open>'); // the rogue wrapper still rebuilt
@@ -106,7 +114,8 @@ describe('cross-block copy ending in reserved chrome', () => {
 		const doc = parse('Above\n\n1. hello\n');
 		const text = collectCrossBlockText(
 			doc,
-			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0, 0], 3)))
+			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0, 0], 3))),
+			SOURCE_READING
 		);
 		expect(text).toBe('ove\n1. hel');
 	});
@@ -115,7 +124,8 @@ describe('cross-block copy ending in reserved chrome', () => {
 		const doc = parse('Above\n\n> quoted\n');
 		const text = collectCrossBlockText(
 			doc,
-			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 3)))
+			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 0], 3))),
+			SOURCE_READING
 		);
 		expect(text).toBe('ove\n> quo');
 	});

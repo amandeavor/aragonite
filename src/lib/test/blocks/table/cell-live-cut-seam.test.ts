@@ -64,7 +64,8 @@ describe('live mode: every cell cut crosses the join', () => {
 		const clipboard = dispatchCut(mounted.el);
 		await settleCommit(mounted);
 
-		expect(clipboard.get('text/plain')).toBe('ld** *i');
+		// The clipboard carries what the cut took, so a paste gives it back.
+		expect(clipboard.get('text/plain')).toBe('**ld** *i*');
 		expect(committedCalls(mounted)).toEqual([[0, '**bo***t*', 'literal', 4, 4]]);
 	});
 

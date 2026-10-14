@@ -22,7 +22,7 @@ async function selectAcrossConstructs(ep: EditorPage, page: Page): Promise<void>
 }
 
 test.describe('live mode: destructive edits inside a table cell', () => {
-	test('Mod+X closes and reopens the runs and copies the raw slice', async ({ page }) => {
+	test('Mod+X closes and reopens the runs and copies what the cut took', async ({ page }) => {
 		const ep = await enterMode(page, 'live');
 		await selectAcrossConstructs(ep, page);
 
@@ -30,7 +30,7 @@ test.describe('live mode: destructive edits inside a table cell', () => {
 		await ep.bridge.waitForSourceContains('| Some **bo***t* x | y |');
 
 		expect(await textOutsideMarkers(page.locator('.table-cell').first())).not.toContain('*');
-		expect(await ep.readClipboard()).toBe('ld** *i');
+		expect(await ep.readClipboard()).toBe('**ld** *i*');
 	});
 
 	test('typing over the selection lands the character inside the bold', async ({ page }) => {
