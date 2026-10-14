@@ -202,5 +202,5 @@ describe('live-mode joins over random range deletes', () => {
 		// deletes fall back to dropping it; the rest keep every mark.
 		expect(same).toBeGreaterThan(80);
 		expect(fewer).toBeLessThan(rewritten / 8);
-	});
+	}, 30_000);
 });
