@@ -59,6 +59,7 @@ const SHAPES: Array<[string, string, number[], string, string, string]> = [
 		'text **an**'
 	],
 	['a run wrapping the whole range', '**a b c** x\n', [0], 'b', 'b', '**b**'],
+	['a kept half ending in a space', '**a *b* c**\n', [0], 'b', 'c', '***b* c**'],
 	[
 		'a to-do item’s text',
 		'- [ ] Some **bold** and words tail\n',

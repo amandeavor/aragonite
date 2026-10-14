@@ -212,6 +212,21 @@ describe('a truncation keeps the format on the half that stays', () => {
 			})
 		).toMatchObject({ raw: 'Some **bo**d words tail\n', seam: 9, seamEnd: 11 });
 	});
+
+	// Miss-analysis: the caret rows cut mid-word, never where a space had to step outside the run.
+	it('puts the caret after a boundary space it moved outside the run', () => {
+		const node = blockOf('**a b**\n');
+		expect(
+			cleanLiveJoinSeam({
+				mergedRaw: node.raw.slice(0, 4) + node.raw.slice(5),
+				seam: 4,
+				start: { node, offset: 4 },
+				end: { node, offset: 5 },
+				typed: '',
+				store: topLevelStore(node)
+			})
+		).toMatchObject({ raw: '**a** \n', seam: 6, seamEnd: 6 });
+	});
 });
 
 describe('text typed over a cut through a run', () => {

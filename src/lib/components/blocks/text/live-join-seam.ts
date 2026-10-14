@@ -337,7 +337,7 @@ interface Edit extends Span {
 }
 
 /** One way to write the join: the edits to the merged bytes, where in the bytes written at the
- *  join the typed text goes, and whether the reading claims to keep every kept character's marks. */
+ *  join the typed text and the caret go, and whether it claims to keep every kept character's marks. */
 interface JoinReading {
 	edits: Edit[];
 	typedAt: number;
@@ -440,13 +440,14 @@ function keepingReading(
 		.map((c) => spell(right, c).opener)
 		.join('');
 
+	const closers = innerClosers + outerClosers;
 	let leftEnd = inner.end;
 	let rightStart = opened.start;
+	let before = false;
 	let space = '';
 	if (spaced) {
 		// A run can't close after whitespace or open before it, so a boundary space steps outside.
-		const before =
-			typed === '' && innerClosers + outerClosers !== '' && left.raw[leftEnd - 1] === ' ';
+		before = typed === '' && closers !== '' && left.raw[leftEnd - 1] === ' ';
 		const after = openers !== '' && right.raw[rightStart] === ' ';
 		if (!before && !after) return null;
 		if (before) leftEnd--;
@@ -454,9 +455,7 @@ function keepingReading(
 		space = (before ? ' ' : '') + (after ? ' ' : '');
 	}
 
-	const edits: Edit[] = [
-		{ start: join.seam, end: join.seam, insert: innerClosers + outerClosers + space + openers }
-	];
+	const edits: Edit[] = [{ start: join.seam, end: join.seam, insert: closers + space + openers }];
 	if (leftEnd < left.cut) edits.push(dropped({ start: leftEnd, end: left.cut }));
 	if (rightStart > right.cut) {
 		edits.push(dropped(rightSpan(join, right, { start: right.cut, end: rightStart })));
@@ -483,7 +482,9 @@ function keepingReading(
 			edits.push({ ...rightSpan(join, right, closerRun(c)), insert: closer });
 		}
 	}
-	return { edits, typedAt: typed === '' ? 0 : innerClosers.length, keeps: true };
+	// The caret stays where the cut began, so it goes past a space that stepped outside the run.
+	const typedAt = before ? closers.length + 1 : typed === '' ? 0 : innerClosers.length;
+	return { edits, typedAt, keeps: true };
 }
 
 /** The chain of runs touching `at` from inside `side`'s kept bytes, outermost first. */
