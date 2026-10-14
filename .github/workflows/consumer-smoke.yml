@@ -24,6 +24,7 @@ on:
       - 'scripts/consumer-smoke.mjs'
       - 'scripts/lib-alias.mjs'
       - 'scripts/pack-manifest.mjs'
+      - 'scripts/private-install.mjs'
       - 'scripts/prune-dist.mjs'
       - 'scripts/sync-consumer-plugins.mjs'
       - 'scripts/verify-pack.mjs'
