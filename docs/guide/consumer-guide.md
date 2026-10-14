@@ -1054,7 +1054,7 @@ By default the bar pins to the editor root's top edge. In self-scroll mode that 
 }
 ```
 
-- **The bar keeps the editor's look.** The moved bar takes the current `data-editor-theme` and the editor's own tokens with it. When the editor sits under `aragonite-editor-theme` it carries that class too, so it keeps the built-in palette. In a themed host with no class, it picks up your host-chrome tokens from wherever the anchor sits.
+- **The bar keeps the editor's look.** The moved bar takes the current `data-editor-theme` and the editor's own tokens with it. When the editor sits under `aragonite-editor-theme` it carries that class too, so it keeps the built-in palette. In a themed host with no class, it picks up your host-chrome tokens from wherever the anchor sits. Your own overrides of the editor's tokens at `.editor` don't follow it, so if you've moved the bar, declare them on `.editor, .aragonite-editor-portal` instead.
 
 ## Embedding in a webview shell
 
