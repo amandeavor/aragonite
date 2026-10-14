@@ -72,19 +72,18 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 			return { raw, seam: at + typedAt, seamEnd: at + (atJoin?.insert.length ?? 0), map, keeps };
 		})
 	);
-	const candidates = written.map((candidate) => ({
-		...candidate,
-		read: readCandidate(
-			candidate.raw.slice(0, candidate.seam) + typed + candidate.raw.slice(candidate.seam),
-			store
-		)
-	}));
+	const reads = written.map(({ raw, seam }) =>
+		lazy(() => readCandidate(raw.slice(0, seam) + typed + raw.slice(seam), store))
+	);
 	// A pair left over nothing also passes the screen check, so among the readings that pass, the
 	// one leaving the fewest such pairs wins (`docs/design/live-mode.md` § 4.1).
-	const floor = Math.min(...candidates.map(({ read }) => read?.residue ?? Infinity));
+	const floor = lazy(() => Math.min(...reads.map((read) => read()?.residue ?? Infinity)));
 	let kept: { before: string[]; after: string[] } | null = null;
-	for (const { raw: candidate, seam, seamEnd, map, keeps, read } of candidates) {
-		if (read === null || read.visible !== shown || read.residue > floor) continue;
+	for (const [at, { raw: candidate, seam, seamEnd, map, keeps }] of written.entries()) {
+		const read = reads[at]();
+		if (read === null || read.visible !== shown) continue;
+		// One leaving no such pair can't lose, so the readings after it go unread.
+		if (read.residue > 0 && read.residue > floor()) continue;
 		// G1.91: a reading that keeps the runs must keep every kept character's marks.
 		if (keeps && !keepsMarks(read.marks, (kept ??= keptMarks(left, right)))) continue;
 		// A candidate that changed nothing is the plain concatenation: refusing says so, and keeps
@@ -623,4 +622,17 @@ function countResidue(
 		}
 	}
 	return found;
+}
+
+/** `compute`'s value, computed on the first call. */
+function lazy<T>(compute: () => T): () => T {
+	let done = false;
+	let value: T;
+	return () => {
+		if (!done) {
+			value = compute();
+			done = true;
+		}
+		return value;
+	};
 }
