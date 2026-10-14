@@ -14,7 +14,7 @@ import { entityRendersGlyph, buildEntityWidget } from './entity-widget';
 import { createInlineKindRegistry } from '../../schema/plugin-registry';
 import type { GrammarView } from '../../schema/block-openers';
 import { inlineDescendants } from './walk';
-import { UPGRADE_HINT, type PluginView } from '../../plugin-view';
+import type { PluginView } from '../../plugin-view';
 
 /**
  * The shell every inline widget is drawn in. Its `data-*` attributes are the only handle the
@@ -155,6 +155,11 @@ const registry = createInlineKindRegistry<WidgetEntry>({
 function widgetOf(kind: AnyInlineKind, grammar: GrammarView): WidgetEntry | undefined {
 	return registry.get(kind, grammar.activation);
 }
+
+/** The message a plugin gets when it passes a drawing field where a `view` belongs. */
+export const UPGRADE_HINT =
+	'buildWidget, buildDom and component became `view`; svelteInlineWidget, ' +
+	'svelteDecorationWidget and svelteMenuRow wrap a Svelte component';
 
 export function registerInlineWidgetKind(
 	kind: AnyInlineKind,

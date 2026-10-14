@@ -3,8 +3,8 @@
 // that threw is never called again, and a Svelte view's teardown throw is reported too.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushSync, type Component } from 'svelte';
-import { mountPluginView, UPGRADE_HINT, type PluginView } from '#lib/plugin-view.js';
-import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
+import { mountPluginView, type PluginView } from '#lib/plugin-view.js';
+import { registerInlineWidgetKind, UPGRADE_HINT } from '#lib/core/inline/inline-widgets.js';
 import { svelteDecorationWidget, svelteInlineWidget } from '#lib/svelte-views.svelte.js';
 import { domProbe, stages, svelteLog, viewExploded, type LogEntry } from './fixtures/probe-view';
 import SvelteProbe from './fixtures/SvelteProbe.svelte';

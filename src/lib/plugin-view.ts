@@ -5,6 +5,7 @@
  */
 
 import { warnIfForeignRuntime } from './foreign-runtime';
+import { UPGRADE_HINT } from './core/inline/inline-widgets';
 
 /**
  * Draws into `target`, an element the editor made for this view and removes once it's destroyed.
@@ -33,11 +34,6 @@ export interface PluginViewMountOptions {
 	/** What the view is, for the dev warning that names a foreign Svelte runtime. */
 	subject: string;
 }
-
-/** The message a plugin gets when it passes a drawing field where a `view` belongs. */
-export const UPGRADE_HINT =
-	'buildWidget, buildDom and component became `view`; svelteInlineWidget, ' +
-	'svelteDecorationWidget and svelteMenuRow wrap a Svelte component';
 
 /** Null when the mount threw, which is reported; the slot draws its fallback instead. */
 export function mountPluginView<P>(
