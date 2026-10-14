@@ -52,3 +52,19 @@ not only Backspace.
   replace, typing and cut included; `blocks/table/clipboard-in.spec.ts` and
   `blocks/table/cross-block-delete.spec.ts` own it and must stay green beside these.
 - The range is gone after the gesture: no stale overlay stays painted over the landed caret.
+
+## A range that only touches the rule
+
+- In `alpha`, `---`, `omega`, put the caret after `al` and press Shift+Down twice: the range ends
+  where the rule starts. Backspace leaves `al` and the rule standing as a rule, and a key typed
+  over the same range gives `alx` with the rule still below it.
+  - Miss-analysis: every rule row selected the rule itself, and the unit rows for range deletes
+    all cut into both edge blocks, so a range that merely reached a rule joined its bytes into the
+    paragraph as text.
+- In `| c |`, `---`, click the cell and press Shift+Down: the range takes the one-row table whole
+  and reaches the rule. A key typed over it lands in a new paragraph after the rule (`---`, `x`),
+  where a composition over the same range lands (`composition-over-range.md`).
+  - Miss-analysis: only the composition row ran over this range, and the typed key took a
+    different write that spliced the character into the rule's own bytes (`x---`).
+- The same range from `| c |` into a diagram below it (a `mermaid` block): a key typed over it
+  lands in a new paragraph after the diagram, which stays a diagram.

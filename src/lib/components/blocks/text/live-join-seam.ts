@@ -52,12 +52,12 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 	const spanSets = readings.map((dangling) => [...dangling, ...pairs]);
 	const candidates = (sameSpans(spanSets[0], spanSets[1]) ? [spanSets[0]] : spanSets).map(
 		(spans) => {
-			const raw = withoutSpans(join.mergedRaw, spans);
-			const seam = join.seam - droppedBefore(spans, join.seam);
+			const { raw, map } = withoutSpans(join.mergedRaw, spans);
+			const seam = map(join.seam);
 			return {
-				spans,
 				raw,
 				seam,
+				map,
 				read: readCandidate(raw.slice(0, seam) + typed + raw.slice(seam), store)
 			};
 		}
@@ -65,7 +65,7 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 	// A pair left over nothing also passes the screen check, so among the readings that pass, the
 	// one leaving the fewest such pairs wins (`docs/design/live-mode.md` § 4.1).
 	const floor = Math.min(...candidates.map(({ read }) => read?.residue ?? Infinity));
-	for (const { raw: candidate, seam, read } of candidates) {
+	for (const { raw: candidate, seam, map, read } of candidates) {
 		if (read === null || read.visible !== shown || read.residue > floor) continue;
 		// A candidate that changed nothing is the plain concatenation: refusing says so, and keeps
 		// the caller off a rewrite path it does not need.
@@ -74,18 +74,12 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 		// whitespace draws nothing and reparses as a blank line, not the block that was written.
 		const display = trimTrailingLineEnding(candidate);
 		if (display !== '' && isBlankText(display)) {
-			return { raw: candidate.slice(display.length), seam: 0 };
+			return { raw: candidate.slice(display.length), seam: 0, map: () => 0 };
 		}
-		return { raw: candidate, seam };
+		return { raw: candidate, seam, map };
 	}
 	return null;
 };
-
-/** Every byte a reading drops before the join moves the caret with it. */
-const droppedBefore = (spans: readonly Span[], seam: number): number =>
-	spans
-		.filter((span) => span.end <= seam)
-		.reduce((total, span) => total + span.end - span.start, 0);
 
 const standsOnSeam = (side: Side): boolean => side.dangling.length > 0 || side.touching.length > 0;
 
@@ -290,15 +284,23 @@ function abuttingPairSpans(join: { seam: number }, left: Side, right: Side): Spa
 	];
 }
 
-function withoutSpans(raw: string, spans: readonly Span[]): string {
+/** `raw` without `spans`, and where each of its offsets lands in what is left. */
+function withoutSpans(
+	raw: string,
+	spans: readonly Span[]
+): { raw: string; map: (offset: number) => number } {
+	const dropped: Span[] = [];
 	let out = '';
 	let at = 0;
 	for (const span of [...spans].sort((a, b) => a.start - b.start)) {
 		if (span.start < at) continue;
+		dropped.push(span);
 		out += raw.slice(at, span.start);
 		at = span.end;
 	}
-	return out + raw.slice(at);
+	const map = (offset: number): number =>
+		dropped.reduce((to, span) => to - Math.max(0, Math.min(offset, span.end) - span.start), offset);
+	return { raw: out + raw.slice(at), map };
 }
 
 // ── Verification ─────────────────────────────────────────────────────────────

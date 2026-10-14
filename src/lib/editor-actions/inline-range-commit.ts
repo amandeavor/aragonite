@@ -1,11 +1,14 @@
 /**
  * Rewrite a byte range inside one leaf's raw as a single undo entry. The inline popovers and the
  * inline menus all write their bytes this way, through the content write every keystroke takes, so
- * a splice that fills or empties a blank line keeps the separators a reload reads.
+ * a splice that fills or empties a blank line keeps the separators a reload reads, and a live-mode
+ * removal cleans its join as a cut does (`docs/design/live-mode.md` § 4.5).
  */
 
 import { docPathFrom } from '../caret/coordinate-spaces';
 import { legalizeWrite, type LegalWrite } from '../tree-operations/content-write';
+import { replaceRangeInLeaf } from '../tree-operations/leaf-range';
+import { storedAsIn } from '../tree-operations/stored-as';
 import { createPathScope, type CommitScope } from './block-edit-scope';
 import { commitLeafText } from './block-edit-core';
 import type { EditorRoot } from './deps';
@@ -29,30 +32,32 @@ export interface InlineRangeCommit {
 }
 
 export interface InlineRangeOptions {
-	/** Put the caret at `caretAfter` too, counted in the bytes the leaf stores (a table cell's
-	 *  escaped pipe included), and bring it into view: the next key goes to the document. */
+	/** Put the caret at `caretAfter` too, moved with `bytes` by a cleaned join and by a stored escape
+	 *  (a cell's `\|`), and bring it into view: the next key goes to the document. */
 	landCaret?: boolean;
 }
 
 export function createInlineRangeCommit(root: EditorRoot): InlineRangeCommit {
-	/** The leaf's list and the write the splice makes, or null when there is no leaf or the write
-	 *  would store the bytes the leaf already has. */
+	/** The leaf's list, the write the splice makes and where `caretAfter` lands in it, or null when
+	 *  there is no leaf. `write` is null where it would store the bytes the leaf already has. */
 	function planSplice(
 		path: number[],
 		start: number,
 		end: number,
 		bytes: string
-	): { scope: CommitScope; index: number; write: LegalWrite | null } | null {
+	): { scope: CommitScope; index: number; write: LegalWrite | null; moved: Moved } | null {
 		if (path.length === 0) return null;
 		const scope = createPathScope(root, docPathFrom(path.slice(0, -1)));
 		const index = path[path.length - 1];
 		const leaf = scope?.children()[index];
 		if (!scope || !leaf) return null;
-		const newRaw = leaf.raw.slice(0, start) + bytes + leaf.raw.slice(end);
+		const store = storedAsIn(scope.target(), index, root.deps.reading);
+		const edit = replaceRangeInLeaf(leaf, { start, end }, bytes, store);
+		const moved = movedBy(start, edit.caret - bytes.length, bytes.length);
 		// Compared against the bytes the write would store (G4.28), so a splice a table cell's pipe
 		// escaping cancels out adds no undo entry (dismissing an image after a resize).
-		const write = legalizeWrite(scope.target(), index, newRaw, 'literal');
-		return { scope, index, write: write.text === leaf.raw ? null : write };
+		const write = legalizeWrite(scope.target(), index, edit.raw, 'literal');
+		return { scope, index, write: write.text === leaf.raw ? null : write, moved };
 	}
 
 	function writtenDelta(path: number[], start: number, end: number, bytes: string): number {
@@ -81,7 +86,7 @@ export function createInlineRangeCommit(root: EditorRoot): InlineRangeCommit {
 		}
 		const landed = await commitLeafText(plan.scope, plan.index, plan.write, {
 			snapshotOffset: caretAfter,
-			caret: plan.write.storedOffset(caretAfter),
+			caret: plan.write.storedOffset(plan.moved(caretAfter)),
 			landing: opts.landCaret ? (written) => written.caret : undefined,
 			reveal
 		});
@@ -90,3 +95,12 @@ export function createInlineRangeCommit(root: EditorRoot): InlineRangeCommit {
 
 	return { writtenDelta, commitInlineRange };
 }
+
+/** An offset among the `length` bytes written at `start`, or at either end of them, moved to where
+ *  the cleaned join put them; any other offset stays. */
+type Moved = (offset: number) => number;
+
+const movedBy =
+	(start: number, seam: number, length: number): Moved =>
+	(offset) =>
+		offset >= start && offset <= start + length ? seam + offset - start : offset;

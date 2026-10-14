@@ -154,7 +154,7 @@ describe('a join whose survivors are only terminal hard-break blank lines', () =
 				typed: '',
 				store: topLevelStore(node)
 			})
-		).toEqual({ raw: '\n', seam: 0 });
+		).toMatchObject({ raw: '\n', seam: 0 });
 	});
 
 	it('keeps trailing spaces while any content still stands', () => {
@@ -179,7 +179,7 @@ describe('a join that would leave a construct enclosing nothing unwraps it', () 
 				typed: '',
 				store: topLevelStore(node)
 			})
-		).toEqual({ raw: ' more\n', seam: 0 });
+		).toMatchObject({ raw: ' more\n', seam: 0 });
 	});
 
 	// Across two blocks, and through a nesting chain: emptying the inner link leaves the strong

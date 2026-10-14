@@ -20,7 +20,8 @@ import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { runDrop } from '#lib/selection/selection-drop.js';
+import { movedText, runDrop } from '#lib/selection/selection-drop.js';
+import { createInlineRangeCommit } from '#lib/editor-actions/inline-range-commit.js';
 import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
@@ -382,6 +383,24 @@ async function dragXAway(place: Place, inCell: boolean): Promise<string> {
 	return serialize(deps.getDoc());
 }
 
+/** The bytes a drag of `range` carries out of the leaf at `place`. */
+function dragText(place: Place, range: typeof X): string | null {
+	const { deps } = makeEditorActionsDeps(place.source, { reading: LIVE });
+	const drop = { getDoc: () => deps.doc, reading: LIVE, activePlugins: everyInstalledPlugin };
+	return movedText(drop, { path: place.leaf, ...range, inCell: false });
+}
+
+/** Takes `range` out of the leaf at `place` through the write the popovers and menus share. */
+async function removeInline(place: Place, range: typeof X): Promise<string> {
+	const harness = makeEditorActionsDeps(place.source, { reading: LIVE });
+	const write = createInlineRangeCommit({
+		deps: harness.deps,
+		controller: createUndoController(harness.deps)
+	});
+	await write.commitInlineRange(place.leaf, range.start, range.end, '', range.start);
+	return serialize(harness.deps.doc);
+}
+
 /** Pastes `text` over `range`: the bytes the leaf's commit writes. */
 async function pasteOver(place: Place, range: typeof X, text: string): Promise<string[]> {
 	const { deps } = makeEditorActionsDeps(place.source, { reading: LIVE });
@@ -659,6 +678,58 @@ const FAMILIES: Family[] = [
 				shape: 'a table cell',
 				run: () => dragXAway(CELL, true),
 				want: '| h |\n| - |\n| # y |\n\nxz\n'
+			}
+		]
+	},
+	{
+		// In a to-do or a cell, `# y**` reads as text and its stray closer goes; at the top level it
+		// reads as a heading, so the closer stays.
+		name: 'the bytes a drag carries',
+		stores: { 'selection/selection-drop.ts': 1 },
+		rows: [
+			{
+				shape: 'a to-do',
+				run: () =>
+					dragText({ source: '- [ ] **x# y** z\n', leaf: [0, 0, 0] }, { start: 3, end: 8 }),
+				want: '# y'
+			},
+			{
+				shape: 'a plain item',
+				run: () => dragText({ source: '- **x[ ] y** z\n', leaf: [0, 0, 0] }, { start: 3, end: 10 }),
+				want: '[ ] y**'
+			},
+			{
+				shape: 'a table cell',
+				run: () =>
+					dragText(
+						{ source: '| h |\n| - |\n| **x# y** z |\n', leaf: [0, 1, 0] },
+						{ start: 3, end: 8 }
+					),
+				want: '# y'
+			}
+		]
+	},
+	{
+		name: 'a popover or menu write over a range',
+		stores: { 'editor-actions/inline-range-commit.ts': 1 },
+		rows: [
+			{
+				shape: 'a to-do',
+				run: () =>
+					removeInline(
+						{ source: '- [ ] **![a](b.png)**# y\n', leaf: [0, 0, 0] },
+						{ start: 2, end: 13 }
+					),
+				want: '- [ ] # y\n'
+			},
+			{
+				shape: 'a plain item',
+				run: () =>
+					removeInline(
+						{ source: '- **![a](b.png)**[ ] y\n', leaf: [0, 0, 0] },
+						{ start: 2, end: 13 }
+					),
+				want: '- ****[ ] y\n'
 			}
 		]
 	},

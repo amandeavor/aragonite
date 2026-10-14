@@ -1309,8 +1309,6 @@ const LEAF_RANGE_RULES: FileRule[] = [
 				'the format toggle writes delimiters and checks its candidate against the screen',
 			'src/lib/core/inline/link-source-bytes.ts':
 				'the link writer rewrites one whole link and checks its candidate against the screen',
-			'src/lib/editor-actions/inline-range-commit.ts':
-				'a popover or menu insert over the range it replaces, nothing cut from under a delimiter it keeps',
 			'src/lib/inline-menu/inline-menu-session.ts': 'compares two texts and writes nothing',
 			'src/lib/selection/selection-drop.ts':
 				'a drop inserts at the drop point; its cut goes through the range replace',

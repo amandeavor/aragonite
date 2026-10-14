@@ -481,6 +481,6 @@ describe('joinLeaves runs the absorbed kind’s write rule', () => {
 			store,
 			'\n'
 		);
-		expect(joined).toEqual({ raw: 'xABC\n', seam: 1 });
+		expect(joined).toMatchObject({ raw: 'xABC\n', seam: 1 });
 	});
 });
