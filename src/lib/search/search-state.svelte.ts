@@ -272,6 +272,15 @@ export function createSearchState(deps: SearchDeps): SearchState {
 	};
 }
 
+/** What a find bar shows, as one value to compare; null while a regex scan runs, since the matches it
+ *  will show are not in yet. */
+export function searchViewKey(search: SearchState): string | null {
+	if (search.isScanning) return null;
+	const { caseSensitive, wholeWord, regex } = search.options;
+	const flags = `${+search.isOpen}${+caseSensitive}${+wholeWord}${+regex}`;
+	return `${flags}\0${search.activeIndex}\0${search.matches.length}\0${search.error}\0${search.query}`;
+}
+
 /** The public search controller, what `editor.getSearch()` exposes. Deliberately minimal:
  *  adding a member later is non-breaking, removing one is not. */
 export interface SearchState {

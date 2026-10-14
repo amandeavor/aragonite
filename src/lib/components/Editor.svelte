@@ -69,7 +69,11 @@
 	import { createEditorActions, type EditorActionsDeps } from '../editor-actions';
 	import { createReorderAction } from '../editor-actions/reorder-action';
 	import { createSearchReplace } from '../editor-actions/search-replace';
-	import { createSearchState, type SearchState } from '../search/search-state.svelte';
+	import {
+		createSearchState,
+		searchViewKey,
+		type SearchState
+	} from '../search/search-state.svelte';
 	import { createDecorationEngine } from '../decorations/decoration-state.svelte';
 	import { createMarkActivation } from '../decorations/mark-activation';
 	import { paintedMarkRects } from '../decorations/mark-interactions';
@@ -742,6 +746,14 @@
 		// The public scroll call holds the match in place, so a late image decode cannot move it.
 		reveal: (p) => rects.scrollTo(p),
 		onClose: () => void searchCaret.restore()
+	});
+	// One fire per flush that changed what the find bar shows; a regex scan fires once it lands.
+	let lastSearchKey = searchViewKey(searchState);
+	$effect(() => {
+		const key = searchViewKey(searchState);
+		if (key === null || key === lastSearchKey) return;
+		lastSearchKey = key;
+		events.emit('searchChange', undefined);
 	});
 	// Lives here, not in SearchBar, so the root Ctrl+H and the bar's chevron share it.
 	let replaceExpanded = $state(false);

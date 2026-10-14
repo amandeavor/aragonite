@@ -19,7 +19,7 @@ This is gonna be a long one, so here are the sections:
 | [Props](#props)                                               | Every prop, and which ones you can change after mount                                                          |
 | [The instance surface](#the-instance-surface)                 | The methods on a mounted editor: read the document, move the caret, run commands                               |
 | [Mounting without Svelte](#mounting-without-svelte)           | `createEditor`, for an app that doesn't render Svelte components                                               |
-| [Events](#events)                                             | The seven channels an editor reports on, and what each one carries                                             |
+| [Events](#events)                                             | The eight channels an editor reports on, and what each one carries                                             |
 | [Presentation modes](#presentation-modes)                     | One document shown five ways, from raw Markdown to fully rendered                                              |
 | [Images and links](#images-and-links)                         | Rewriting URLs, importing pasted images, and which URLs the editor refuses to load                             |
 | [Plugins](#plugins)                                           | Installing plugins, why the whole app should share one set, and the ten that ship in the box                   |
@@ -468,7 +468,7 @@ const off = events.on('edit', (e) => console.log(e.op, e.path));
 off();
 ```
 
-Seven channels:
+Eight channels:
 
 | Channel                  | Fires                                                                                                                                                                                                                                          |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -479,6 +479,7 @@ Seven channels:
 | `themeChange`            | After a `theme` prop change; the payload is the theme name (never at mount)                                                                                                                                                                    |
 | `sourceSwap`             | After a `source` prop write replaces the whole document (a write of the text the editor already holds replaces nothing); the payload is `{ generation }` (never at mount, and never on `edit`)                                                 |
 | `menuChange`             | `true` when an editor-owned menu or popover opens and `false` when the last one closes (not the selection toolbar's own flyout, nor a view a plugin draws); hide selection chrome meanwhile. A mode change or a `source` swap closes them all. |
+| `searchChange`           | When what the find bar shows changes: open or closed, the query, the options, the current match, the match count or the error. No payload; read `getSearch()`. Once per change, and a regex search fires when its matches land                 |
 
 Events fire synchronously from wherever they happen, and **a handler must not edit the document**: reentrant edits aren't supported.
 
@@ -1202,6 +1203,8 @@ await search.replaceCurrent();
 await search.replaceAll();
 search.close();
 ```
+
+The getters are live, so Svelte chrome just reads them. Anywhere else, repaint your bar on the `searchChange` event ([Events](#events)).
 
 ### Recipe: navigating to a block
 
