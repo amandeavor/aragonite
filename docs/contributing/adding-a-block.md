@@ -1,6 +1,6 @@
 # Adding a Block Type
 
-So you want the editor to understand a new kind of Markdown block: a callout, a spoiler, a footnote. This doc walks you through it, **for built-in blocks only**, meaning kinds that ship inside aragonite. If you're writing a plugin against the published library, stop here and read [`docs/guide/plugin-guide.md`](../guide/plugin-guide.md) instead; plugins get most of what's below through `createContainerBlock` and `createEditableLeaf` from `@voithos-labs/aragonite/plugin`. Everything here is internal machinery, and honestly, a block that belongs in the core is rarer than it feels at the moment you want one.
+So you want the editor to understand a new kind of Markdown block: a callout, a spoiler, a footnote. This doc walks you through it, **for built-in blocks only**, meaning kinds that ship inside aragonite. If you're writing a plugin against the published library, stop here and read [`docs/guide/plugin-guide.md`](../guide/plugin-guide.md) instead; plugins get most of what's below through `createContainerBlock` and `createEditableLeaf` from `@voithos-labs/aragonite/svelte`. Everything here is internal machinery, and honestly, a block that belongs in the core is rarer than it feels at the moment you want one.
 
 The plugin guide is also where the concepts live: what a kind is, what a descriptor declares, how an opener claims lines, what the closure block promises. This doc glosses each and covers only what a built-in author touches that a plugin author never sees. Orient from `docs/design/editor.md` first if you haven't; it'll save you at least one wrong turn.
 
@@ -192,7 +192,7 @@ function headingExtraProps(node: NodeView): Record<string, unknown> {
 }
 ```
 
-Go through `svelteBlockView` rather than building the entry object by hand. It type-checks your component's exports and props against what BlockHost expects, so a wrong shape is something `npm run check` tells you about rather than a user. A hand-built leaf exports its methods one by one and ends with `satisfies BlockComponent`; a container exports a single `containerApi`. The thematic break's tail, as a leaf:
+Go through `svelteBlockView` rather than casting an object to `BlockView` yourself. It type-checks your component's exports and props against what BlockHost expects, so a wrong shape is something `npm run check` tells you about rather than a user. A hand-built leaf exports its methods one by one and ends with `satisfies BlockComponent`; a container exports a single `containerApi`. The thematic break's tail, as a leaf:
 
 ```ts
 // components/blocks/ThematicBreakBlock.svelte

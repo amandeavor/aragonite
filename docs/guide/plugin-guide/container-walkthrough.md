@@ -31,6 +31,7 @@ import {
 	type EditorPlugin,
 	type ParsedDirective
 } from '@voithos-labs/aragonite/plugin';
+import { svelteBlockView } from '@voithos-labs/aragonite/svelte';
 import ConspiracyBlock from './ConspiracyBlock.svelte'; // the component built in the next section
 
 const CONSPIRACY = 'conspiracy';
@@ -169,14 +170,14 @@ function registerConspiracy(): void {
 	registerChromeLeaf(conspiracyTitle, { label: 'Theory', blockClass: 'conspiracy-title' });
 }
 
-// definePluginBlock wraps definePlugin around the register step and the component
+// definePluginBlock wraps definePlugin around the register step and the view
 // binding, so you write neither the setup-then-register order nor the
 // registerBlockView(declaredPluginKind(...), svelteBlockView(...)) double-wrap.
 export function conspiracyPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'conspiracy',
 		kind: CONSPIRACY,
-		component: ConspiracyBlock,
+		view: svelteBlockView(ConspiracyBlock),
 		register: registerConspiracy
 	});
 }

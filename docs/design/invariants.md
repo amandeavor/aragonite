@@ -959,8 +959,8 @@ Retired: G1.32 and four of G1.37's five pairs as dev-time checks, and G1.18's no
 branch.
 
 **G3.11 · Every prop has a timing.** `editor-props.ts :: EDITOR_PROP_TIMING` names each
-`EditorProps` key `live` (a new value takes effect) or `once` (read at mount, later values
-ignored), typed `satisfies PropTimings<EditorProps>`, so a prop added without one doesn't compile.
+prop key `live` (a new value takes effect) or `once` (read at mount, later values ignored), typed
+against `EditorOptions` plus `header`, so a prop added without one doesn't compile.
 `create-editor.ts :: createEditor` reads it to skip the `once` keys on `update`, and the consumer
 guide's Props section lists the same split. `src/lib/test/editor-root/create-editor.test.ts ::
 compileTimePins` holds the `@ts-expect-error`.
