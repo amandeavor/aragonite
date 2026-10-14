@@ -256,6 +256,7 @@ These checks run in three kinds of place:
 | G1.76 | The drawn caret sits on its caret until the caret moves                                    | A       |
 | G1.77 | The mark hiding the browser's caret is on exactly the editable the drawn caret draws for   | A       |
 | G1.87 | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
+| G1.90 | A plugin component compiled against another Svelte runtime is named as such in dev         | N       |
 
 ### The entries
 
@@ -722,6 +723,14 @@ asserted, since a host unmounting mid-write is ordinary. `editor-actions/commit/
 :: admitsWrite`, `editor-actions/commit/document-stamp.ts :: end`, `block-lists/child-list.ts ::
 descendTo` · `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/document-stamp.test.ts`,
 `block-lists/child-list.test.ts`, `selection/caret-landing.test.ts`.
+
+**G1.90 · A foreign Svelte runtime is named.** A plugin component compiled against a second copy of
+Svelte (a precompiled plugin on the prebuilt build, say) fails as soon as the editor mounts it,
+since its runtime has no component or effect in progress. Each route that mounts a plugin's
+component (the block's error boundary, the inline widget pool, the decoration widget mount) asks
+`foreign-runtime.ts :: isForeignRuntimeError` and warns `foreign-runtime` in dev; the block's notice
+says the cause too. `components/foreign-runtime.test.ts` loads its fixtures on a second runtime
+through a module reset.
 
 ## Group 2: property and regression tested
 

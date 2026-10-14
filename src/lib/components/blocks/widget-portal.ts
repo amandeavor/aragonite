@@ -19,6 +19,7 @@ import type { Reading } from '../../schema/reading';
 import { tracePoolPass } from '../../debug/interaction-trace';
 import { assertInvariant } from '../../assert';
 import { checkPoolBracket } from '../../invariants/inline-transitions';
+import { warnIfForeignRuntime } from '../../foreign-runtime';
 
 // ── Pure pool ─────────────────────────────────────────────────────────────────
 
@@ -185,6 +186,7 @@ export function createSvelteWidgetPool(deps: SvelteWidgetPoolDeps): WidgetPool {
 				});
 				return { wrapper, instance };
 			} catch (error) {
+				warnIfForeignRuntime(error, `inline widget ${kind}`);
 				reportError(error);
 				return null;
 			}

@@ -28,6 +28,7 @@
 	import { useMeasuredChild } from '../windowing/use-measured-child.svelte';
 	import { publishRefSlot, type RefSlots } from '../block-lists/child-refs';
 	import { devWarn } from '../dev-warn';
+	import { foreignRuntimeCause, warnIfForeignRuntime } from '../foreign-runtime';
 	import { stampBlockContexts } from './stamp-block-contexts';
 
 	let {
@@ -113,6 +114,7 @@
 	function onRenderError(error: unknown, reset: () => void): void {
 		failedRaw = node.raw;
 		retryFailedRender = reset;
+		warnIfForeignRuntime(error, `block ${node.kind}`);
 		editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } });
 	}
 
@@ -199,9 +201,10 @@
 			/>
 		{/if}
 
-		{#snippet failed()}
+		{#snippet failed(error)}
+			{@const cause = foreignRuntimeCause(error)}
 			<div class="failed-block" data-failed-block role="group" aria-label={FAILED_BLOCK_LABEL}>
-				<span class="failed-block-notice">⚠ block failed to render</span>
+				<span class="failed-block-notice">⚠ block failed to render{cause ? `: ${cause}` : ''}</span>
 				<pre class="failed-block-raw">{node.raw}</pre>
 			</div>
 		{/snippet}
