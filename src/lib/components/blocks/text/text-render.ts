@@ -9,7 +9,7 @@ import type { ActivationClick } from '../../../activation-click';
 import type { AmbientPrefix } from '../../../block-component';
 import type { DocumentView, NodeView } from '../../../core/node-views';
 import { tagsConstructMarkers } from '../../../presentation-mode';
-import type { ResolveImageUrl, ResolveLinkUrl } from '../../../editor-keys';
+import type { ResolveImageUrl, ResolveLinkUrl } from '../../../host-hooks';
 import { buildAmbientSpan } from '../../../ambient/ambient-dom';
 import {
 	computeInlineContent,

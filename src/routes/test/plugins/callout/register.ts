@@ -4,6 +4,7 @@
  */
 
 import { definePluginBlock, type EditorPlugin } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { registerCalloutKind, CALLOUT } from './callout-kind';
 import CalloutBlock from './CalloutBlock.svelte';
 
@@ -11,7 +12,7 @@ export function calloutPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'callout',
 		kind: CALLOUT,
-		component: CalloutBlock,
+		view: svelteBlockView(CalloutBlock),
 		register: registerCalloutKind
 	});
 }

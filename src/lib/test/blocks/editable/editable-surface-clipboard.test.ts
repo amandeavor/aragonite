@@ -7,7 +7,7 @@ import {
 } from '../../../components/blocks/editable/editable-surface';
 import { type ClipboardArm } from '../../../components/blocks/editable/clipboard-step';
 import { createInsertionRecords } from '#lib/caret/next-insertion.js';
-import { type PastedImage, type PasteImageHook } from '../../../editor-keys';
+import type { PastedImage, PasteImageHook } from '../../../host-hooks';
 
 // The block's element; a paste whose block has gone lands nothing.
 const mountedEl = document.createElement('div');

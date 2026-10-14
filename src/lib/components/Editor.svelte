@@ -3,12 +3,8 @@
 	import '../styles/editor.css';
 	import type { BlockComponent } from '../block-component';
 	import type { AnyBlockKind, Document } from '../core/nodes';
-	import type {
-		EditorProps,
-		EditorInstance,
-		EditorDiagnostics,
-		InsertMarkdownOptions
-	} from '../editor-props';
+	import type { EditorProps } from './editor-component-props';
+	import type { EditorInstance, EditorDiagnostics, InsertMarkdownOptions } from '../editor-props';
 	import type { EditorEvents } from '../editor-events';
 	import {
 		BLOCK_EDIT_KEY,
@@ -18,15 +14,13 @@
 		EDITOR_SERVICES_KEY,
 		FOCUS_KEY,
 		HISTORY_KEY,
-		type BlockElLookup,
 		type DocumentGetter,
 		type EditorDoc,
 		type EditorPolicies,
 		type EditorServices,
-		type PluginEditorLookup,
-		type ResolveImageUrl,
-		type ResolveLinkUrl
+		type PluginEditorLookup
 	} from '../editor-keys';
+	import type { ResolveImageUrl, ResolveLinkUrl } from '../host-hooks';
 	import { createCaretMemory } from '../caret/caret-memory';
 	import { createCaretWriter } from '../caret/widget-offset';
 	import { createDrawnCaret } from '../caret/drawn-caret.svelte';
@@ -152,7 +146,7 @@
 	import { assertInvariant } from '../assert';
 	import { checkMarkerCssParity } from '../invariants/marker-css-parity';
 	import { registerEditorBuiltIns } from './editor-built-ins';
-	import { blockContentElAt } from '../caret/block-el-lookup';
+	import { blockContentElAt, type BlockElLookup } from '../caret/block-el-lookup';
 
 	registerEditorBuiltIns();
 	runStartupInvariantChecks();

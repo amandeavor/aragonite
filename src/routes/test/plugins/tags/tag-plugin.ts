@@ -10,9 +10,9 @@ import {
 	registerInlineSyntax,
 	registerInlineWidgetKind,
 	type EditorPlugin,
-	type InlineNode,
-	svelteInlineWidget
+	type InlineNode
 } from '#lib/plugin.js';
+import { svelteInlineWidget } from '#lib/svelte.js';
 import BodyTag from './BodyTag.svelte';
 import { recognizeTag } from '../../../demo-tags/tag-scan';
 

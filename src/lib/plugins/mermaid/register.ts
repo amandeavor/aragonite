@@ -5,6 +5,7 @@
  */
 
 import { definePluginBlock, registerInsertEntry, type EditorPlugin } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { registerMermaidKind, MERMAID } from './mermaid-kind';
 import { adaptMermaidRenderer, mermaidSlot, type MermaidRenderer } from './mermaid-renderer';
 import MermaidBlock from './MermaidBlock.svelte';
@@ -13,7 +14,7 @@ export function mermaidPlugin(options?: { renderer?: MermaidRenderer }): EditorP
 	return definePluginBlock({
 		name: 'mermaid',
 		kind: MERMAID,
-		component: MermaidBlock,
+		view: svelteBlockView(MermaidBlock),
 		register() {
 			mermaidSlot.set(options?.renderer ? adaptMermaidRenderer(options.renderer) : null);
 			registerMermaidKind();

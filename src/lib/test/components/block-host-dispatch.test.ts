@@ -5,10 +5,8 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { registerBuiltInBlocks } from '#lib/components/built-in-blocks.js';
-import {
-	registerBlockComponent,
-	defineBlockComponent
-} from '#lib/schema/block-component-registry.js';
+import { registerBlockView } from '#lib/schema/block-view-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import { createRegistryView } from '#lib/schema/registry-view.js';
 import RecordingBlock from './fixtures/RecordingBlock.svelte';
 import { mountBlockHost } from './mount-host';
@@ -74,7 +72,7 @@ describe('BlockHost dispatches each kind class to its registered component', () 
 		// Positive control for the fallback pair below: "no component rendered" only
 		// means something once a plugin kind is shown to render one.
 		const kind = testLeaf('host-plugin');
-		registerBlockComponent(kind, defineBlockComponent(RecordingBlock));
+		registerBlockView(kind, svelteBlockView(RecordingBlock));
 		const doc = parse('plugin text\n');
 		doc.children[0].kind = kind;
 
@@ -108,7 +106,7 @@ describe('BlockHost falls back to a raw-editable surface when no component resol
 		// Turning a kind off reaches BlockHost through this editor's own registry
 		// view: a host reading the global registry instead would still render it.
 		const kind = testLeaf('host-disabled');
-		registerBlockComponent(kind, defineBlockComponent(RecordingBlock));
+		registerBlockView(kind, svelteBlockView(RecordingBlock));
 		const doc = parse('disabled text\n');
 		doc.children[0].kind = kind;
 

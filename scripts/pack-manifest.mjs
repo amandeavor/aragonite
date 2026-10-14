@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-// Shipped, but named by no `exports` entry: the barrel re-exports `Editor.svelte`, which
+// Shipped, but named by no `exports` entry: the `/svelte` entry re-exports `Editor.svelte`, which
 // imports `editor.css`. Package-root-relative to match `npm pack --json` file paths.
 const EXTRA_PATHS = ['dist/components/Editor.svelte', 'dist/styles/editor.css'];
 

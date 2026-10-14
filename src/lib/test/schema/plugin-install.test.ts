@@ -6,11 +6,8 @@ import {
 	type EditorContext
 } from '#lib/schema/plugin-install.js';
 import { declarePluginKind, declaredPluginKind } from '#lib/schema/plugin-kind.js';
-import {
-	componentPluginEditor,
-	defineBlockComponent,
-	registerBlockComponent
-} from '#lib/schema/block-component-registry.js';
+import { componentPluginEditor, registerBlockView } from '#lib/schema/block-view-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import { declareOwnedKind } from '#lib/test/support/owned-kind.js';
 import { registerBlockKind } from '#lib/schema/block-kind-descriptor.js';
 import { __resetSchemaRegistriesForTests } from '#lib/schema/registry-reset.js';
@@ -177,14 +174,14 @@ describe('installPlugins', () => {
 // the declarer or the registrant, and every test declared and registered in one plugin.
 describe('componentPluginEditor', () => {
 	const lookup = vi.fn((name: string) => ({ editorId: name }) as unknown as EditorContext);
-	const entry = defineBlockComponent((() => {}) as never);
+	const entry = svelteBlockView((() => {}) as never);
 
 	it("resolves the context of the plugin the component answers to, or the base context ''", () => {
 		const owned = declareOwnedKind('plug-a', 'owned-kind');
-		registerBlockComponent(owned, entry);
+		registerBlockView(owned, entry);
 		const loose = declarePluginKind('loose-kind');
 		installPlugins([
-			definePlugin({ name: 'plug-b', setup: () => registerBlockComponent(loose, entry) })
+			definePlugin({ name: 'plug-b', setup: () => registerBlockView(loose, entry) })
 		]);
 		const unregistered = declarePluginKind('unregistered-kind');
 

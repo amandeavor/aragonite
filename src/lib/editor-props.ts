@@ -1,8 +1,8 @@
 /**
- * Public prop and instance-handle types for <Editor>. Editor.svelte annotates its
- * $props() and its instance methods against these, so neither can drift from the component.
+ * The editor's options and instance handle, free of Svelte types: `<Editor>`'s props add a
+ * snippet `header` to these, and `createEditor`'s add an element one. Editor.svelte annotates its
+ * props and methods against these, so neither can drift from the component.
  */
-import type { Snippet } from 'svelte';
 import type { AnyBlockKind } from './core/nodes';
 import type {
 	CodeMenuItemsHook,
@@ -10,7 +10,7 @@ import type {
 	ResolveImageUrl,
 	ResolveLinkUrl,
 	RunCodeHook
-} from './editor-keys';
+} from './host-hooks';
 import type { ImageLoadPolicy } from './core/inline-render';
 import type { PresentationMode } from './presentation-mode';
 import type { LinkClick } from './activation-click';
@@ -30,7 +30,8 @@ export type { EditorPluginEntry } from './schema/plugin-install';
 export type { SyntaxOptions } from './schema/registry-view';
 export type { InteractionTraceEntry } from './debug/interaction-trace';
 
-export interface EditorProps {
+/** Every editor prop but `header`, whose type depends on how the editor is mounted. */
+export interface EditorOptions {
 	/** The Markdown the editor mounts with. A later write replaces the document, clearing undo,
 	 *  when it differs from `getSource()`, and does nothing when it doesn't or is `undefined`. The
 	 *  editor never writes back into it. */
@@ -51,10 +52,6 @@ export interface EditorProps {
 	 *  live state. Absent, or returning nothing, renders no overflow button: the editor has no
 	 *  app-level actions of its own to offer there. */
 	codeMenuItems?: CodeMenuItemsHook;
-	/** The host's own content, rendered inside the editor's scroll container above the first
-	 *  block (a title, properties panel, tag row). It scrolls away with the document rather than
-	 *  staying fixed, which is what lets the editor keep its own scroll container and windowing. */
-	header?: Snippet;
 	/** The block drag handle (default on; never in reading mode), shown on hover, or outright on
 	 *  touch. Only blocks a user picks up whole have one (code, tables, equations, diagrams,
 	 *  pictures, list items, dividers, cards), never prose. `false` removes them, except on a
@@ -146,7 +143,7 @@ export const EDITOR_PROP_TIMING = {
 	plugins: 'once',
 	syntax: 'once',
 	scrollMode: 'once'
-} as const satisfies PropTimings<EditorProps>;
+} as const satisfies PropTimings<EditorOptions & { header?: unknown }>;
 
 /** The empty block a function `placeholder` is asked about. */
 export interface PlaceholderBlock {

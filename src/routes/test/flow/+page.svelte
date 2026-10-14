@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Editor, type EditorSelection } from '#lib';
+	import { type EditorSelection } from '#lib';
+	import { Editor } from '#lib/svelte.js';
 	import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 	import { trackParityDocument } from '../../parity-documents.svelte';
 

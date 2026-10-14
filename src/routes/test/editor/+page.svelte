@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Editor, type EditorProps, type PresentationMode } from '#lib';
+	import { type PresentationMode } from '#lib';
+	import { Editor, type EditorProps } from '#lib/svelte.js';
 	// `?extraLanguage=on` registers a grammar the editor does not bundle, through the public API a
 	// host uses (`@voithos-labs/aragonite/plugin`): one import, one call, before any editor mounts.
 	// Off by default, because the picker specs measure the language list.

@@ -19,6 +19,7 @@ import {
 	registerRangeIndent,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import RevealLeafBlock from '../../blocks/fixtures/RevealLeafBlock.svelte';
 import { registerRevealLeafKind } from '../../blocks/fixtures/reveal-leaf';
@@ -38,7 +39,7 @@ function quoteLeafPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: KIND,
 		kind: KIND,
-		component: RevealLeafBlock,
+		view: svelteBlockView(RevealLeafBlock),
 		register: () => {
 			const kind = registerRevealLeafKind(KIND);
 			const indent = registerBlockCommand(kind, 'quoteLeaf.indent', () => true);

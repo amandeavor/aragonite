@@ -5,11 +5,7 @@ import {
 	getBlockKindDescriptor,
 	tryGetBlockKindDescriptor
 } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerBlockComponent,
-	getBlockComponent,
-	type BlockComponentEntry
-} from '#lib/schema/block-component-registry.js';
+import { registerBlockView, getBlockView, asBlockView } from '#lib/schema/block-view-registry.js';
 import {
 	registerBlockOpener,
 	listRegisteredOpeners,
@@ -29,7 +25,7 @@ const minimal = {
 } as const;
 
 // Guard fires on registry.has before the entry is read, so a stub entry is enough.
-const stubComponent = {} as BlockComponentEntry;
+const stubComponent = asBlockView({});
 const stubOpener: BlockOpener = { priority: 999, tryOpen: () => null, interruptsParagraph: false };
 
 describe('schema registries are register-once', () => {
@@ -43,10 +39,10 @@ describe('schema registries are register-once', () => {
 		expect(() => registerBlockKind(kind, minimal)).toThrow(/already registered/i);
 	});
 
-	it('registerBlockComponent throws on a duplicate registration', () => {
+	it('registerBlockView throws on a duplicate registration', () => {
 		const kind = declarePluginKind('conflict-component');
-		registerBlockComponent(kind, stubComponent);
-		expect(() => registerBlockComponent(kind, stubComponent)).toThrow(/already registered/i);
+		registerBlockView(kind, stubComponent);
+		expect(() => registerBlockView(kind, stubComponent)).toThrow(/already registered/i);
 	});
 
 	it('registerBlockOpener throws on a duplicate registration', () => {
@@ -64,13 +60,13 @@ describe('__resetSchemaRegistriesForTests', () => {
 	it('removes plugin registrations across every registry but keeps built-ins', () => {
 		const kind = declarePluginKind('ephemeral-kind');
 		registerBlockKind(kind, minimal);
-		registerBlockComponent(kind, stubComponent);
+		registerBlockView(kind, stubComponent);
 		registerBlockOpener(kind, stubOpener);
 
 		__resetSchemaRegistriesForTests();
 
 		expect(tryGetBlockKindDescriptor(kind)).toBeUndefined();
-		expect(getBlockComponent(kind, everyInstalledPlugin)).toBeUndefined();
+		expect(getBlockView(kind, everyInstalledPlugin)).toBeUndefined();
 		expect(listRegisteredOpeners().some((o) => o.kind === kind)).toBe(false);
 
 		expect(getBlockKindDescriptor('paragraph')).toBeDefined();

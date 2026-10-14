@@ -2,11 +2,11 @@
 
 import {
 	definePlugin,
-	registerBlockComponent,
-	defineBlockComponent,
+	registerBlockView,
 	declaredPluginKind,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { registerMemoBlock, MEMO_BLOCK } from './memo-kind';
 import MemoBlock from './MemoBlock.svelte';
 
@@ -15,7 +15,7 @@ export function memoPlugin(): EditorPlugin {
 		name: 'memo',
 		setup() {
 			registerMemoBlock();
-			registerBlockComponent(declaredPluginKind(MEMO_BLOCK), defineBlockComponent(MemoBlock));
+			registerBlockView(declaredPluginKind(MEMO_BLOCK), svelteBlockView(MemoBlock));
 		}
 	});
 }

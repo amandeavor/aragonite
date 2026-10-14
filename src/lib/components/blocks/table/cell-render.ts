@@ -8,7 +8,7 @@
 import type { ActivationClick } from '../../../activation-click';
 import type { InlineNode } from '../../../core/nodes';
 import type { DocumentView, NodeView } from '../../../core/node-views';
-import type { ResolveLinkUrl } from '../../../editor-keys';
+import type { ResolveLinkUrl } from '../../../host-hooks';
 import { computeInlineContent, contentLengthOf } from '../../../core/inline';
 import { renderInlineNodes } from '../../../core/inline-render';
 import { trimTrailingLineEnding } from '../../../core/lines';

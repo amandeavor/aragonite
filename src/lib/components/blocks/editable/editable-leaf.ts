@@ -48,10 +48,7 @@ import type { PresentationMode } from '../../../presentation-mode';
 import { tryGetBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
 import { type BlockCommandTarget, type CommandRun } from '../../../schema/block-commands';
 import type { EditorContext } from '../../../schema/plugin-install';
-import {
-	componentPluginEditor,
-	componentPluginOptions
-} from '../../../schema/block-component-registry';
+import { componentPluginEditor, componentPluginOptions } from '../../../schema/block-view-registry';
 import { createTextBatch } from '../../../editor-actions/commit/text-batch';
 import type { Draft } from '../../../schema/drafts';
 

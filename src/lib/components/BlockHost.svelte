@@ -14,6 +14,7 @@
 	import { showsDragHandle } from './drag-handle';
 	import TextEditableBlock from './blocks/text/TextEditableBlock.svelte';
 	import { defaultRegistryView } from '../schema/registry-view';
+	import { svelteBlockEntry } from './svelte-block-view';
 	import { isGridDescriptor } from '../schema/block-kind-descriptor';
 	import { FAILED_BLOCK_LABEL } from '../a11y-strings';
 	import {
@@ -98,12 +99,12 @@
 		isContainer && !delegatesPainting && !!ref?.measurePartialRects
 	);
 
-	let entry = $derived(registryView.component(node.kind));
+	let entry = $derived(svelteBlockEntry(registryView.blockView(node.kind)));
 
-	// A kind with no registered component falls back to the plain editable block below
-	// rather than silently rendering nothing.
+	// A kind with no registered view falls back to the plain editable block below rather than
+	// silently rendering nothing.
 	$effect(() => {
-		if (!entry) devWarn('block-host', 'no component for kind, rendering raw', node.kind);
+		if (!entry) devWarn('block-host', 'no view for kind, rendering raw', node.kind);
 	});
 
 	// The error boundary retries only when the bytes change, so a failing render cannot loop.
@@ -133,7 +134,7 @@
 		return publishRefSlot(slots, index, ref, hostEl);
 	});
 
-	// `defineBlockComponent` types this; the check catches a registration cast past it.
+	// `svelteBlockView` types this; the check catches a registration cast past it.
 	$effect(() => {
 		if (ref && typeof ref.focus !== 'function')
 			devWarn('block-host', 'component published no BlockComponent surface', node.kind);

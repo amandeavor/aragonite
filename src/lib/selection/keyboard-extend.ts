@@ -13,7 +13,7 @@ import {
 } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';
 import { offsetFromViewportPoint } from '../caret/point-offset';
-import type { BlockElLookup } from '../editor-keys';
+import type { BlockElLookup } from '../caret/block-el-lookup';
 import type { ScrollOwner } from '../windowing/scroll-owner';
 import {
 	firstPath,

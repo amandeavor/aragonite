@@ -9,6 +9,7 @@ import {
 	simpleLeafClosure,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import type { BlockKindRegistration } from '#lib/schema/block-kind-descriptor.js';
 import type { CstNode, Document, PluginBlockKind } from '#lib/core/nodes.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
@@ -36,7 +37,7 @@ export function revealLeafPlugin(name: string): EditorPlugin {
 	return definePluginBlock({
 		name,
 		kind: name,
-		component: RevealLeafBlock,
+		view: svelteBlockView(RevealLeafBlock),
 		register: () => {
 			const kind = registerRevealLeafKind(name);
 			registerBlockOpener(kind, {

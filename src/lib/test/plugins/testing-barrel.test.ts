@@ -16,7 +16,7 @@ import {
 	declarePluginInlineKind,
 	isInlineKindDeclared,
 	registerBlockKind,
-	registerBlockComponent,
+	registerBlockView,
 	registerBlockOpener,
 	registerBlockCompleter,
 	registerBlockCommand,
@@ -32,7 +32,7 @@ import {
 	registerDirective,
 	isBlockKindDeclared,
 	isBlockKindRegistered,
-	isBlockComponentRegistered,
+	isBlockViewRegistered,
 	isBlockOpenerRegistered,
 	isBlockCompleterRegistered,
 	isPasteTransformRegistered,
@@ -40,11 +40,11 @@ import {
 	listLanguages,
 	definePlugin,
 	isPluginInstalled,
-	type BlockComponentEntry,
 	type NodeView,
 	type PluginBlockKind,
 	type PluginInlineKind
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { devWarn } from '#lib/dev-warn.js';
 import { installPlugins, onEditorCallbacks } from '#lib/schema/plugin-install.js';
 import { pluginGlobalBinding } from '#lib/schema/commands.js';
@@ -95,9 +95,9 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 		registered: () => isBlockKindRegistered('probe-block')
 	},
 	{
-		entry: 'registerBlockComponent',
-		register: () => registerBlockComponent(block, {} as BlockComponentEntry),
-		registered: () => isBlockComponentRegistered('probe-block')
+		entry: 'registerBlockView',
+		register: () => registerBlockView(block, svelteBlockView((() => {}) as never)),
+		registered: () => isBlockViewRegistered('probe-block')
 	},
 	{
 		entry: 'registerBlockOpener',

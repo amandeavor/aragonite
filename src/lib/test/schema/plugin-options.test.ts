@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { createEditorPluginContexts } from '#lib/schema/plugin-editor-context.js';
 import type { Component } from 'svelte';
 import { definePluginBlock } from '#lib/schema/define-plugin-block.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import { definePlugin, installPlugins, resolvePluginOptions } from '#lib/schema/plugin-install.js';
 import type { BlockComponentExports } from '#lib/block-component.js';
 import { pluginContextDeps } from '../support/plugin-context-deps';
@@ -129,7 +130,7 @@ describe('the one-block shortcut', () => {
 		const unit = definePluginBlock({
 			name: 'badge',
 			kind: 'badge',
-			component: stubComponent,
+			view: svelteBlockView(stubComponent),
 			register() {},
 			defaults: DEFAULTS,
 			parseOptions: parseBadgeOptions

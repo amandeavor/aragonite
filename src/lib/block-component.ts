@@ -379,7 +379,7 @@ export type EditableLeafBlockApi = BlockComponent &
  * themselves, a component built on the editable leaf its `blockApi`, a container its
  * `containerApi`. Svelte 5 instance exports have no spread, so the factories hand over one object
  * rather than a dozen members to copy by hand. A component publishing none of the three, or a
- * container publishing only a leaf's members, fails where `defineBlockComponent` registers it.
+ * container publishing only a leaf's members, fails where `svelteBlockView` wraps it.
  */
 export type BlockComponentExports =
 	| BlockComponent

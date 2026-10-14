@@ -20,7 +20,7 @@ import { leafDocument, registerRevealLeafKind } from './fixtures/reveal-leaf';
 import PlainOneLineLeafBlock from './fixtures/PlainOneLineLeafBlock.svelte';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
 import type { MathRenderer } from '#lib/plugins/latex/math-renderer.js';
-import type { EditorProps } from '#lib/editor-props.js';
+import type { EditorProps } from '#lib/components/editor-component-props.js';
 
 const stubRenderer: MathRenderer = () => ({ dom: document.createElement('span') });
 

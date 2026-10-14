@@ -7,6 +7,7 @@ import path from 'node:path';
 import { nodeImportFailures } from './node-import.mjs';
 import { collectLeafStrings, requiredPackPaths } from './pack-manifest.mjs';
 import { verifyPrebuilt } from './verify-prebuilt.mjs';
+import { verifyTypes } from './verify-types.mjs';
 
 // `npm pack --json` reports files[].path relative to the package root (`dist/index.js`), with no
 // `package/` prefix.
@@ -68,6 +69,14 @@ if (FORBIDDEN.length) {
 const prebuiltFailures = await verifyPrebuilt();
 if (prebuiltFailures.length) {
 	console.error('verify-pack: the prebuilt build fails:\n  ' + prebuiltFailures.join('\n  '));
+	process.exit(1);
+}
+
+const typeFailures = verifyTypes();
+if (typeFailures.length) {
+	console.error(
+		'verify-pack: published types reach Svelte or a stylesheet:\n  ' + typeFailures.join('\n  ')
+	);
 	process.exit(1);
 }
 

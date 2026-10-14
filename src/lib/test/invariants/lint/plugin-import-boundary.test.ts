@@ -1,6 +1,6 @@
 /**
- * A file under `src/lib/plugins/**` imports only the public authoring barrel, relative paths
- * inside its own plugin, and `svelte`, which proves the barrel is complete: a deep `#lib` import
+ * A file under `src/lib/plugins/**` imports only the public authoring barrels (`/plugin` and
+ * `/svelte`), relative paths inside its own plugin, and `svelte`, which proves the barrels are complete: a deep `#lib` import
  * means the barrel is missing something, so fix the barrel, not the import. A `renderer.ts` may
  * also import its declared rendering engine, keeping the heavy dependency off the plugin's core.
  */
@@ -31,7 +31,8 @@ function pluginOf(relPath: string): { name: string; dir: string } | null {
 
 function isAllowedSpecifier(relPath: string, specifier: string): boolean {
 	if (isAliasSpelling(specifier)) {
-		return resolveSpecifier(relPath, specifier) === SOURCE.pluginBarrel;
+		const resolved = resolveSpecifier(relPath, specifier);
+		return resolved === SOURCE.pluginBarrel || resolved === SOURCE.svelteBarrel;
 	}
 	if (specifier === 'svelte' || specifier.startsWith('svelte/')) return true;
 
@@ -60,7 +61,7 @@ describe('plugin import boundary: bundled plugins import only the public barrel'
 		expect(sources.length).toBeGreaterThan(0);
 	});
 
-	it('no file imports outside #lib/plugin.js, its own dir, svelte, or its declared engine', () => {
+	it('no file imports outside the two author barrels, its own dir, svelte, or its declared engine', () => {
 		const offenders: string[] = [];
 		for (const file of sources) {
 			for (const { specifier } of importSpecifiers(file.code)) {
@@ -81,8 +82,9 @@ describe('plugin import boundary: bundled plugins import only the public barrel'
 describe('plugin import boundary: classifier non-vacuity', () => {
 	const file = `${PLUGIN_ROOT}details/register.ts`;
 
-	it('allows the public authoring barrel and svelte', () => {
+	it('allows the public authoring barrels and svelte', () => {
 		expect(isAllowedSpecifier(file, '#lib/plugin.js')).toBe(true);
+		expect(isAllowedSpecifier(file, '#lib/svelte.js')).toBe(true);
 		expect(isAllowedSpecifier(file, 'svelte')).toBe(true);
 		expect(isAllowedSpecifier(file, 'svelte/store')).toBe(true);
 	});

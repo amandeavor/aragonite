@@ -43,7 +43,7 @@ A block's **raw** is its exact source bytes, markers included. The editor saves 
 - **`declarePluginKind(name)`** creates a new kind and returns it (a name that's already taken throws). Every other call here takes that return value, and the type system won't accept the bare string in its place. A module that didn't create the kind recovers it with `declaredPluginKind(name)`, which throws for an undeclared name (a typo, say) rather than registering against a kind that doesn't exist.
 - **`registerBlockKind(kind, descriptor)`** describes how the kind behaves: does it merge, is it editable, does it host inline content, where can a caret sit beside it, and how it answers every cross-cutting editor system (the `closure` field). A leaf needs only what the sample below fills.
 - **`registerBlockOpener(kind, opener)`** teaches the parser to recognize the syntax. An **opener** is the part of the parser that spots the line a block starts with: you give it a `priority` (its place in the dispatch order), an `interruptsParagraph` predicate (or `false`, for never), and a `tryOpen` that claims lines or declines. [Teaching the parser](plugin-guide/parser.md#teaching-the-parser) is its full story.
-- **`definePluginBlock({ name, kind, component, register })`** packages the lot as one installable unit: it runs your `register` step, then binds the component to the kind. It's the one-kind shortcut over the general `definePlugin` ([The plugin unit](#the-plugin-unit)), and takes the same optional `defaults` and `parseOptions`. Its `register` gets no setup context, though, so a plugin that needs per-editor work (`onEditor`) uses `definePlugin`.
+- **`definePluginBlock({ name, kind, view, register })`** packages the lot as one installable unit: it runs your `register` step, then binds the view to the kind. A view is what draws the block; `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component. It's the one-kind shortcut over the general `definePlugin` ([The plugin unit](#the-plugin-unit)), and takes the same optional `defaults` and `parseOptions`. Its `register` gets no setup context, though, so a plugin that needs per-editor work (`onEditor`) uses `definePlugin`.
 
 The first one in action (a kind is a plain string underneath, with a type brand on top):
 
@@ -68,6 +68,7 @@ import {
 	type CaretTarget,
 	type EditorPlugin
 } from '@voithos-labs/aragonite/plugin';
+import { svelteBlockView } from '@voithos-labs/aragonite/svelte';
 import ParrotBlock from './ParrotBlock.svelte';
 
 export const PARROT = 'parrot';
@@ -119,7 +120,7 @@ export function parrotPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'parrot',
 		kind: PARROT,
-		component: ParrotBlock,
+		view: svelteBlockView(ParrotBlock),
 		register: registerParrotBlock
 	});
 }
@@ -142,7 +143,8 @@ On the opener, `priority` decides where you sit in the built-in openers' dispatc
 ```svelte
 <!-- ParrotBlock.svelte -->
 <script lang="ts">
-	import { createEditableLeaf, trimWhitespace, type NodeView } from '@voithos-labs/aragonite/plugin';
+	import { trimWhitespace, type NodeView } from '@voithos-labs/aragonite/plugin';
+	import { createEditableLeaf } from '@voithos-labs/aragonite/svelte';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
 	let sourceEl: HTMLDivElement | undefined = $state();
@@ -394,7 +396,7 @@ A kind is a definition every editor on the page shares, and it's defined exactly
 Who guarantees a registration runs only once depends on where it runs:
 
 - **Inside a plugin unit** (the installable package the next section defines), `setup` runs at most once per process. Write each `register*` call straight; the unit owns the guarantee.
-- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockComponentRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
+- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockViewRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
 
 ```ts
 isBlockKindDeclared('parrot'); // false on a fresh page
@@ -422,7 +424,7 @@ export function myPlugin(options?: { renderer?: Renderer }): EditorPlugin {
 		name: 'my-plugin',
 		setup() {
 			registerMyKind(options?.renderer ?? defaultRenderer);
-			registerBlockComponent(declaredPluginKind('my-kind'), defineBlockComponent(MyBlock));
+			registerBlockView(declaredPluginKind('my-kind'), svelteBlockView(MyBlock));
 		}
 	});
 }

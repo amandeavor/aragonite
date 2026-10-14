@@ -7,13 +7,13 @@
 import { untrack } from 'svelte';
 import { getContentRange } from '../../core/inline';
 import type { NodeView } from '../../core/node-views';
-import type { EditorProps, PlaceholderBlock } from '../../editor-props';
+import type { EditorOptions, PlaceholderBlock } from '../../editor-props';
 import type { Reading } from '../../schema/reading';
 import { getBlockKindDescriptor } from '../../schema/block-kind-descriptor';
 
 /** The prop as the editor hands it down, and whether the document holds one top-level block. */
 export interface PlaceholderPolicy {
-	hint: NonNullable<EditorProps['placeholder']>;
+	hint: NonNullable<EditorOptions['placeholder']>;
 	singleBlock: boolean;
 }
 

@@ -9,6 +9,7 @@ import {
 	type CaretTarget,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import ParrotBlock from './ParrotBlock.svelte';
 
 export const PARROT = 'parrot';
@@ -60,7 +61,7 @@ export function parrotPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'parrot',
 		kind: PARROT,
-		component: ParrotBlock,
+		view: svelteBlockView(ParrotBlock),
 		register: registerParrotBlock
 	});
 }

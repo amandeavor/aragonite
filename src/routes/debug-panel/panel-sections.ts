@@ -4,7 +4,7 @@
  * and the probes never describe a selection two ways.
  */
 
-import type { Editor } from '#lib';
+import type { Editor } from '#lib/svelte.js';
 import { readBlocks } from '#lib/core/parser.js';
 import { readInline, getContentRange, isProseKind } from '#lib/core/inline/index.js';
 import { dumpInlineTree } from '#lib/debug/inspect.js';

@@ -4,7 +4,8 @@
 // Miss-analysis: every mounted-block suite used the internal harness, never the published API.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import { Editor, type EditorInstance } from '#lib';
+import { type EditorInstance } from '#lib';
+import { Editor } from '#lib/svelte.js';
 import {
 	declarePluginKind,
 	definePluginBlock,
@@ -15,6 +16,7 @@ import {
 	type EditorPlugin,
 	type ParsedLine
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { READING_WRITE_TAG } from '#lib/editor-actions/commit/reading-write-gate.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
@@ -39,7 +41,7 @@ function markerLeafPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'jsdommountplugin',
 		kind: KIND,
-		component: PlainLeafBlock,
+		view: svelteBlockView(PlainLeafBlock),
 		register: () => {
 			const kind = declarePluginKind(KIND);
 			registerBlockKind(kind, {

@@ -8,7 +8,7 @@
 		"strict": true,
 		"declaration": true,
 		"verbatimModuleSyntax": true,
-		"skipLibCheck": true,
+		"skipLibCheck": false,
 		"rootDir": "src",
 		"outDir": "dist",
 		// This checkout's own core build, wherever npm linked the package from.

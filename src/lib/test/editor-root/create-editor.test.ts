@@ -4,7 +4,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import { createEditor, type CreateEditorOptions, type EditorHandle } from '#lib/index.js';
-import { EDITOR_PROP_TIMING, type EditorProps, type PropTimings } from '#lib/editor-props.js';
+import { EDITOR_PROP_TIMING, type EditorOptions, type PropTimings } from '#lib/editor-props.js';
 import { installLayoutStubs } from '#lib/test/harness/mount-editor.svelte.js';
 import { settleEditor, pressKey } from '#lib/test/harness/settle.js';
 import { CODE_RUN_LABEL } from '#lib/a11y-strings.js';
@@ -46,8 +46,9 @@ function headerWithInput(): { header: HTMLElement; input: HTMLInputElement } {
 
 // Never called: the `@ts-expect-error` is the assertion, and `npm run check` fails once it's unused.
 export function compileTimePins(): void {
-	// @ts-expect-error a prop added to EditorProps without a timing
-	const added: PropTimings<EditorProps & { added?: string }> = EDITOR_PROP_TIMING;
+	// @ts-expect-error a prop added to EditorOptions without a timing
+	const added: PropTimings<EditorOptions & { header?: unknown; added?: string }> =
+		EDITOR_PROP_TIMING;
 	void added;
 }
 

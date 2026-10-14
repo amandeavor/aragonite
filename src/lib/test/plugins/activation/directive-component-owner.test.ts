@@ -12,7 +12,7 @@ describe('directives turned on from inside a plugin’s setup', () => {
 	it('draw their generic blocks in an editor that leaves that plugin out', () => {
 		installPlugins([definePlugin({ name: 'turns-on-directives', setup: activateDirectives })]);
 		const view = createRegistryView({ plugins: activationFor([]) });
-		expect(view.component(declaredPluginKind(DIRECTIVE_CONTAINER))).toBeDefined();
-		expect(view.component(declaredPluginKind(DIRECTIVE_LEAF))).toBeDefined();
+		expect(view.blockView(declaredPluginKind(DIRECTIVE_CONTAINER))).toBeDefined();
+		expect(view.blockView(declaredPluginKind(DIRECTIVE_LEAF))).toBeDefined();
 	});
 });

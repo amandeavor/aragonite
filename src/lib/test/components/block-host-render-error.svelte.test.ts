@@ -6,10 +6,8 @@ import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
 import { parse } from '#lib/core/parser.js';
 import { createEditorEvents, type EditorEvents } from '#lib/editor-events.js';
-import {
-	registerBlockComponent,
-	defineBlockComponent
-} from '#lib/schema/block-component-registry.js';
+import { registerBlockView } from '#lib/schema/block-view-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import ThrowingBlock from './fixtures/ThrowingBlock.svelte';
 import { mountBlockHost } from './mount-host';
@@ -34,7 +32,7 @@ interface ErrorReport {
 function mountThrowing(raw: string, parentPath: number[] = []) {
 	const doc = parse(raw);
 	const kind = testLeaf('host-throwing');
-	registerBlockComponent(kind, defineBlockComponent(ThrowingBlock));
+	registerBlockView(kind, svelteBlockView(ThrowingBlock));
 	doc.children[0].kind = kind;
 	// $state so a later byte write reaches the boundary-retry effect.
 	const node: CstNode = $state(doc.children[0]);

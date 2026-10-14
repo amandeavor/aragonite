@@ -7,7 +7,8 @@
 
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Editor, type PresentationMode } from '#lib';
+	import { type PresentationMode } from '#lib';
+	import { Editor } from '#lib/svelte.js';
 	import SHOWCASE_DOCUMENT from './showcase-content.md?raw';
 	import './demo-tags/tag-marks.css';
 	import { trackParityDocument } from './parity-documents.svelte';

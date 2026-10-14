@@ -5,11 +5,7 @@ import { createRegistryView, kindEnablementFor } from '#lib/schema/registry-view
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { registerBlockKind } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerBlockComponent,
-	getBlockComponent,
-	type BlockComponentEntry
-} from '#lib/schema/block-component-registry.js';
+import { registerBlockView, getBlockView, asBlockView } from '#lib/schema/block-view-registry.js';
 import { registerBlockOpener, type BlockOpener } from '#lib/schema/block-openers.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import {
@@ -20,7 +16,7 @@ import type { NodeView } from '#lib/core/node-views.js';
 import type { PluginBlockKind } from '#lib/core/nodes.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
-const stubComponent = {} as BlockComponentEntry;
+const stubView = asBlockView({});
 
 const markerOpener = (kind: PluginBlockKind, marker: string): BlockOpener => ({
 	priority: 5,
@@ -39,7 +35,7 @@ function installKindPlugin(name: string, marker: string): PluginBlockKind {
 			name,
 			setup() {
 				kind = testLeaf(`${name}-block`);
-				registerBlockComponent(kind, stubComponent);
+				registerBlockView(kind, stubView);
 				registerBlockOpener(kind, markerOpener(kind, marker));
 			}
 		})
@@ -53,8 +49,8 @@ describe('kind enablement derived from an instance activation set', () => {
 		const unlisted = installKindPlugin('unlisted', '@b');
 
 		const view = createRegistryView({ isEnabled: kindEnablementFor(activationFor(['listed'])) });
-		expect(view.component(listed)).toBe(stubComponent);
-		expect(view.component(unlisted)).toBeUndefined();
+		expect(view.blockView(listed)).toBe(stubView);
+		expect(view.blockView(unlisted)).toBeUndefined();
 		// Never filtered: the degraded block still needs its descriptor to fall back.
 		expect(view.descriptor(unlisted).mergeRole).toBe('not-mergeable');
 	});
@@ -73,7 +69,7 @@ describe('kind enablement derived from an instance activation set', () => {
 	it('never gates a kind no plugin owns, built-ins included', () => {
 		// Declared outside any install, so the registry records no owner for it.
 		const ownerless = testLeaf('ownerless-block');
-		registerBlockComponent(ownerless, stubComponent);
+		registerBlockView(ownerless, stubView);
 
 		const isEnabled = kindEnablementFor(activationFor([]));
 		expect(isEnabled(ownerless)).toBe(true);
@@ -113,7 +109,7 @@ describe('one activation rule for every plugin registration', () => {
 					supportsInline: false,
 					closure: testClosure
 				});
-				registerBlockComponent(kind, stubComponent);
+				registerBlockView(kind, stubView);
 				registerBlockOpener(kind, markerOpener(kind, '@h'));
 				throw new Error('setup failed halfway');
 			}
@@ -121,7 +117,7 @@ describe('one activation rule for every plugin registration', () => {
 		expect(() => installPlugins([setupThrows])).toThrow(/setup failed halfway/);
 
 		const view = createRegistryView();
-		expect(view.component(kind!)).toBeUndefined();
+		expect(view.blockView(kind!)).toBeUndefined();
 		expect(parse('@h hi\n', { grammar: view.grammar }).children[0].kind).toBe('paragraph');
 		expect(parse('@h hi\n').children[0].kind).toBe('paragraph');
 	});
@@ -133,10 +129,10 @@ describe("a kind's component answers to the plugin that owns the kind", () => {
 		let kind: PluginBlockKind | undefined;
 		installPlugins([
 			definePlugin({ name: 'owner', setup: () => void (kind = declarePluginKind('owned-block')) }),
-			definePlugin({ name: 'skinner', setup: () => registerBlockComponent(kind!, stubComponent) })
+			definePlugin({ name: 'skinner', setup: () => registerBlockView(kind!, stubView) })
 		]);
 
-		expect(getBlockComponent(kind!, activationFor(['skinner']))).toBeUndefined();
-		expect(getBlockComponent(kind!, activationFor(['owner']))).toBe(stubComponent);
+		expect(getBlockView(kind!, activationFor(['skinner']))).toBeUndefined();
+		expect(getBlockView(kind!, activationFor(['owner']))).toBe(stubView);
 	});
 });

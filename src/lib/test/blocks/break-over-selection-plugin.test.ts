@@ -20,6 +20,7 @@ import {
 	type BlockCommandContext,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import PlainOneLineLeafBlock from './fixtures/PlainOneLineLeafBlock.svelte';
 import { registerRevealLeafKind } from './fixtures/reveal-leaf';
 
@@ -38,7 +39,7 @@ function verseLeafPlugin(ran: [string, boolean][]): EditorPlugin {
 	return definePluginBlock({
 		name: KIND,
 		kind: KIND,
-		component: PlainOneLineLeafBlock,
+		view: svelteBlockView(PlainOneLineLeafBlock),
 		register: () => {
 			const kind = registerRevealLeafKind(KIND);
 			const removing = registerBlockCommand(kind, 'verseLeaf.break', handler, {

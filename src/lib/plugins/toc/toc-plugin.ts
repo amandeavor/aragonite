@@ -10,13 +10,13 @@ import {
 	declaredPluginKind,
 	registerBlockKind,
 	registerBlockOpener,
-	registerBlockComponent,
-	defineBlockComponent,
+	registerBlockView,
 	registerInsertEntry,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import TocBlock from './TocBlock.svelte';
 import { MAX_HEADING_DEPTH } from './heading-outline';
 
@@ -96,7 +96,7 @@ export function tocPlugin(options?: TocOptions): EditorPlugin {
 		},
 		setup() {
 			registerTocBlock();
-			registerBlockComponent(declaredPluginKind(TOC_BLOCK), defineBlockComponent(TocBlock));
+			registerBlockView(declaredPluginKind(TOC_BLOCK), svelteBlockView(TocBlock));
 			registerInsertEntry({
 				id: 'toc',
 				label: 'Table of contents',

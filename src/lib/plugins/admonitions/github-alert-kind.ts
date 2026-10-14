@@ -11,14 +11,13 @@ import {
 	containerClosure,
 	declarePluginKind,
 	declaredPluginKind,
-	defineBlockComponent,
 	displayLines,
 	firstLineEnding,
 	getPluginMetadata,
 	joinDisplayLines,
 	ownTrailingLineEnding,
 	parseContainerBody,
-	registerBlockComponent,
+	registerBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	serializeChildren,
@@ -29,6 +28,7 @@ import {
 	type OpenContext,
 	type ParsedLine
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { matchAlertMarker, stripQuoteMarker } from './gh-alert';
 import { GITHUB_ALERT, type GithubAlertMetadata } from './kinds';
 import AdmonitionBlock from './AdmonitionBlock.svelte';
@@ -149,5 +149,5 @@ export function registerGithubAlert(): void {
 		})
 	});
 
-	registerBlockComponent(kind, defineBlockComponent(AdmonitionBlock));
+	registerBlockView(kind, svelteBlockView(AdmonitionBlock));
 }

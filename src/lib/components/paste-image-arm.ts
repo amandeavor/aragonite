@@ -4,7 +4,7 @@
  * not stay live, and a multi-block selection is deleted only after the hook answers.
  */
 
-import type { PasteImageHook } from '../editor-keys';
+import type { PasteImageHook } from '../host-hooks';
 import { emitClipboardError, type EditorEvents } from '../editor-events';
 import type { CrossBlockHandlers } from '../selection/cross-block/dispatch';
 

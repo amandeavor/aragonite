@@ -4,7 +4,8 @@
  */
 
 import type { BlockEditActions } from '../../action-contracts';
-import type { BlockElLookup, DocumentGetter } from '../../editor-keys';
+import type { DocumentGetter } from '../../editor-keys';
+import type { BlockElLookup } from '../../caret/block-el-lookup';
 import type { UserScrollport } from '../../windowing/scroll-ancestors';
 import type { ScrollOwner } from '../../windowing/scroll-owner';
 import type { SelectionState } from '../selection-state.svelte';

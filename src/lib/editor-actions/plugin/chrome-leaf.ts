@@ -5,17 +5,12 @@
  * own parser: the child is one line of plain text (`docs/design/plugin-contract.md`).
  */
 
-import type { Component } from 'svelte';
 import { registerBlockKind, type MergeRole } from '../../schema/block-kind-descriptor';
-import {
-	registerBlockComponent,
-	defineBlockComponent
-} from '../../schema/block-component-registry';
+import { registerBlockView, type BlockView } from '../../schema/block-view-registry';
 import { normalizeChord, type KeyBinding } from '../../schema/keybindings';
 import { registerPasteSurface } from '../../tree-operations/paste-surfaces';
 import { defaultInlineHook } from '../../tree-operations/paste/hooks';
 import { makeBlockNode, type AnyBlockKind, type CstNode } from '../../core/nodes';
-import type { BlockComponent, BlockComponentProps } from '../../block-component';
 
 /**
  * Create the reserved child-0 node for a title-row leaf. An empty title becomes a bare
@@ -53,9 +48,12 @@ function mergeChromeKeymap(overrides: KeyBinding[] | undefined): KeyBinding[] {
 	];
 }
 
-export function registerChromeLeaf<
-	P extends Partial<BlockComponentProps> & Record<string, unknown>
->(kind: AnyBlockKind, component: Component<P, BlockComponent>, opts: ChromeLeafOptions = {}): void {
+/** `view` draws the row, so the caller applies `blockClass` when it builds the view. */
+export function registerChromeLeaf(
+	kind: AnyBlockKind,
+	view: BlockView,
+	opts: Omit<ChromeLeafOptions, 'blockClass'> = {}
+): void {
 	registerBlockKind(kind, {
 		...(opts.label !== undefined ? { label: opts.label } : {}),
 		gapEdges: 'none',
@@ -96,10 +94,7 @@ export function registerChromeLeaf<
 			}
 		}
 	});
-	registerBlockComponent(
-		kind,
-		defineBlockComponent(component, () => ({ blockClass: opts.blockClass }))
-	);
+	registerBlockView(kind, view);
 	// Inline-only, so `surfaceForcesInline` holds if a paste ever reaches the paste-target lookup:
 	// a second line of defense behind the check that already flattens title-row pastes.
 	registerPasteSurface({ kind, onInlinePaste: defaultInlineHook });

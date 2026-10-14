@@ -18,6 +18,7 @@ import {
 	type BlockCommandContext,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import RevealLeafBlock from '../../blocks/fixtures/RevealLeafBlock.svelte';
 import { registerRevealLeafKind } from '../../blocks/fixtures/reveal-leaf';
 
@@ -37,7 +38,7 @@ function pinLeafPlugin(ran: (text: string) => void): EditorPlugin {
 	return definePluginBlock({
 		name: KIND,
 		kind: KIND,
-		component: RevealLeafBlock,
+		view: svelteBlockView(RevealLeafBlock),
 		register: () => {
 			const kind = registerRevealLeafKind(KIND);
 			const options = { overRange: 'afterRemoval' } as const;

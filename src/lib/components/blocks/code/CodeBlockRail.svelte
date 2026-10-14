@@ -9,7 +9,7 @@
 		CODE_RUN_LABEL,
 		codeLanguageLabel
 	} from '../../../a11y-strings';
-	import type { CodeMenuItem } from '../../../editor-keys';
+	import type { CodeMenuItem } from '../../../host-hooks';
 	import type { MenuPresence } from '../../menu/menu-presence.svelte';
 	import type { DraftRegistry } from '../../draft-registry';
 	import type { Draft } from '../../../schema/drafts';

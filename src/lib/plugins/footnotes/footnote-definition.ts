@@ -10,14 +10,13 @@ import {
 	containerClosure,
 	declarePluginKind,
 	declaredPluginKind,
-	defineBlockComponent,
 	getPluginMetadata,
 	isBlankLine,
 	isBlankText,
 	isWhitespaceChar,
 	lineStartsOuterBlock,
 	parseContainerBody,
-	registerBlockComponent,
+	registerBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	setPluginMetadata,
@@ -26,6 +25,7 @@ import {
 	type CstNode,
 	type OpenContext
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import FootnoteDefinition from './FootnoteDefinition.svelte';
 import { FOOTNOTE_DEF_KIND } from './constants';
 
@@ -198,5 +198,5 @@ export function registerFootnoteDefinition(): void {
 		})
 	});
 
-	registerBlockComponent(kind, defineBlockComponent(FootnoteDefinition));
+	registerBlockView(kind, svelteBlockView(FootnoteDefinition));
 }

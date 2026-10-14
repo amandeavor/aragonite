@@ -22,6 +22,7 @@ const HEADER_BUDGET = 5;
 const PUBLISHED_ENTRY_POINTS: string[] = [
 	SOURCE.publicBarrel,
 	SOURCE.pluginBarrel,
+	SOURCE.svelteBarrel,
 	SOURCE.testingBarrel,
 	SOURCE.editorProps,
 	SOURCE.blockComponentApi

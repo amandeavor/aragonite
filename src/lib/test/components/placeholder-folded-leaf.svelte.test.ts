@@ -8,6 +8,7 @@ import {
 	simpleLeafClosure,
 	OPENER_PRIORITIES
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { displayLength } from '#lib/core/lines.js';
 import {
 	destroyMountedEditors,
@@ -29,7 +30,7 @@ const MARKER = '@@';
 const hintRevealPlugin = definePluginBlock({
 	name: 'hint-reveal',
 	kind: 'hint-reveal',
-	component: HintRevealBlock,
+	view: svelteBlockView(HintRevealBlock),
 	register: () => {
 		const kind = testLeaf('hint-reveal', {
 			closure: simpleLeafClosure({

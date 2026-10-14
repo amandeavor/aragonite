@@ -11,11 +11,11 @@ import {
 	declarePluginInlineKind,
 	registerInlineSyntax,
 	registerInlineWidgetKind,
-	svelteInlineWidget,
 	isWhitespaceChar,
 	type InlineNode,
 	type PluginInlineKind
 } from '#lib/plugin.js';
+import { svelteInlineWidget } from '#lib/svelte.js';
 import FootnoteReference from './FootnoteReference.svelte';
 import { FOOTNOTE_REF_KIND } from './constants';
 

@@ -3,11 +3,11 @@
 // is the proof that no bytes leak: typing next to the widget never picks up the ghost text.
 import {
 	definePlugin,
-	svelteDecorationWidget,
 	trimTrailingLineEnding,
 	type DocumentView,
 	type NodeView
 } from '#lib/plugin.js';
+import { svelteDecorationWidget } from '#lib/svelte.js';
 import GhostText from './GhostText.svelte';
 
 function nodeAt(doc: DocumentView, path: number[]): NodeView | null {

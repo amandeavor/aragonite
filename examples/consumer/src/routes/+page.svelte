@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Editor } from '@voithos-labs/aragonite';
+	import { Editor } from '@voithos-labs/aragonite/svelte';
 	import type { EditorInstance } from '@voithos-labs/aragonite';
 	import '@voithos-labs/aragonite/styles/editor-theme.css';
 	import '../plugin-probe';

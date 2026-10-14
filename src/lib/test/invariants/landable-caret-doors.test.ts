@@ -11,6 +11,7 @@ import {
 	OPENER_PRIORITIES,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { mountEditor, type MountedEditor } from '#lib/test/harness/mount-editor.svelte.js';
 import { takeDevWarns } from '../support/warn-gate';
@@ -34,7 +35,7 @@ function markerLinePlugin<P extends Partial<BlockComponentProps> & Record<string
 	return definePluginBlock({
 		name: kind,
 		kind,
-		component,
+		view: svelteBlockView(component),
 		register: () => {
 			const declared = testLeaf(kind, {
 				closure: simpleLeafClosure({

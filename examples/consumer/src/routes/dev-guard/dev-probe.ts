@@ -9,9 +9,8 @@ import {
 	definePlugin,
 	declarePluginKind,
 	declaredPluginKind,
-	defineBlockComponent,
 	registerBlockKind,
-	registerBlockComponent,
+	registerBlockView,
 	registerDirective,
 	isDirectiveRegistered,
 	setPluginMetadata,
@@ -22,6 +21,7 @@ import {
 	type EditorPlugin,
 	type ParsedDirective
 } from '@voithos-labs/aragonite/plugin';
+import { svelteBlockView } from '@voithos-labs/aragonite/svelte';
 import DevProbeBlock from './DevProbeBlock.svelte';
 
 export const DEVPROBE = 'devprobe';
@@ -111,7 +111,7 @@ export function devProbePlugin(): EditorPlugin {
 				});
 			}
 
-			registerBlockComponent(devprobe, defineBlockComponent(DevProbeBlock));
+			registerBlockView(devprobe, svelteBlockView(DevProbeBlock));
 		}
 	});
 }

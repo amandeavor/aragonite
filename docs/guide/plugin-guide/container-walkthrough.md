@@ -31,6 +31,7 @@ import {
 	type EditorPlugin,
 	type ParsedDirective
 } from '@voithos-labs/aragonite/plugin';
+import { svelteBlockView } from '@voithos-labs/aragonite/svelte';
 import ConspiracyBlock from './ConspiracyBlock.svelte'; // the component built in the next section
 
 const CONSPIRACY = 'conspiracy';
@@ -169,14 +170,14 @@ function registerConspiracy(): void {
 	registerChromeLeaf(conspiracyTitle, { label: 'Theory', blockClass: 'conspiracy-title' });
 }
 
-// definePluginBlock wraps definePlugin around the register step and the component
+// definePluginBlock wraps definePlugin around the register step and the view
 // binding, so you write neither the setup-then-register order nor the
-// registerBlockComponent(declaredPluginKind(...), defineBlockComponent(...)) double-wrap.
+// registerBlockView(declaredPluginKind(...), svelteBlockView(...)) double-wrap.
 export function conspiracyPlugin(): EditorPlugin {
 	return definePluginBlock({
 		name: 'conspiracy',
 		kind: CONSPIRACY,
-		component: ConspiracyBlock,
+		view: svelteBlockView(ConspiracyBlock),
 		register: registerConspiracy
 	});
 }
@@ -216,12 +217,8 @@ Your component supplies only its own chrome: the border, the title styling, an i
 ```svelte
 <!-- ConspiracyBlock.svelte -->
 <script lang="ts">
-	import {
-		BlockList,
-		createContainerBlock,
-		getPluginMetadata,
-		type NodeView
-	} from '@voithos-labs/aragonite/plugin';
+	import { getPluginMetadata, type NodeView } from '@voithos-labs/aragonite/plugin';
+	import { BlockList, createContainerBlock } from '@voithos-labs/aragonite/svelte';
 	import type { ConspiracyMetadata } from './conspiracy-kind';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
@@ -330,7 +327,7 @@ Pass the plugin to the editor's `plugins` prop. It installs before the seed pars
 </script>
 
 <script lang="ts">
-	import { Editor } from '@voithos-labs/aragonite';
+	import { Editor } from '@voithos-labs/aragonite/svelte';
 	import '@voithos-labs/aragonite/styles/editor-theme.css';
 
 	const SEED =
