@@ -19,6 +19,7 @@ or aragonite dev warning.
 
 - Drop theme: the editor goes back to its default theme (dark), and passing it again brings the light theme back.
 
+- The page has no CSS reset of its own, as a new app starts: after typing, the editor still ends inside its container and the page is no wider than the viewport, not scrolled sideways.
 - Typing in the header input: the input keeps every key, Backspace included, and the document doesn't change.
 - Unmount: no editor and no header input are left on the page; mounting again shows the value the app holds.
 - One editor on the page, in a dev build too (React's StrictMode mounts the component twice there).

@@ -82,6 +82,7 @@ export function useBlockDecorations(deps: BlockDecorationDeps): { readonly class
 		for (const dec of decs) {
 			const wrapper = document.createElement('div');
 			wrapper.className = 'decoration-badge';
+			wrapper.dataset.hostContent = '';
 			wrapper.setAttribute('contenteditable', 'false');
 			const view = mountDecorationWidget(dec.badge, dec, wrapper, (error) =>
 				deps.onRenderError({ origin: 'render', error, context: { path: deps.getPath() } })

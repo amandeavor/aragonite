@@ -47,6 +47,8 @@ describe.each(AUTHORED.map(([slot, helper]) => [slot.name, slot, helper] as cons
 			const run = await slot.run(domProbe(log));
 			const drawn = run.drawn();
 			expect(drawn).not.toBeNull();
+			// The target is the editor's, and its reset stops there: what the view draws is the plugin's.
+			expect(drawn!.parentElement!.hasAttribute('data-host-content')).toBe(true);
 			const mounts = count(log, 'mount');
 
 			await run.update();

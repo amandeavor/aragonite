@@ -194,6 +194,8 @@ export function createViewWidgetPool(deps: ViewWidgetPoolDeps): WidgetPool {
 					widgetActivates(getInlineWidgetEditing(kind, grammar), click, activationClick)
 			});
 			const shell = mintWidgetShell(inline);
+			// What the view draws there is the plugin's, so the editor's own reset leaves it alone.
+			shell.dataset.hostContent = '';
 			const mounted = mountPluginView(view, shell, props(inline), {
 				report: reportError,
 				subject: `inline widget ${kind}`

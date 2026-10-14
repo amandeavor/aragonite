@@ -1405,7 +1405,7 @@
 	<div class="width-probe" bind:this={widthProbeEl} aria-hidden="true"></div>
 	{#if header}
 		<!-- A sibling of the block list: windowing needs the list as a direct child of the root. -->
-		<div class="editor-header" bind:this={headerEl}>{@render header()}</div>
+		<div class="editor-header" data-host-content bind:this={headerEl}>{@render header()}</div>
 	{/if}
 	<BlockList
 		children={doc.children}
