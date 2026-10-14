@@ -17,6 +17,7 @@
 	const source = new HarnessSource('A paragraph.\n');
 	let keybindings = $state<KeybindingOverride[] | undefined>(undefined);
 	let editor = $state<ReturnType<typeof Editor>>();
+	let findBarSlot = $state<HTMLElement>();
 
 	trackParityDocument(() => editor);
 
@@ -74,6 +75,7 @@
 {#snippet hostHeader()}
 	<p class="host-paragraph">A host paragraph</p>
 	<button type="button" class="host-button">A host button</button>
+	{#if data.findBarInHeader}<div class="find-bar-slot" bind:this={findBarSlot}></div>{/if}
 {/snippet}
 
 <div class="no-reset aragonite-editor-theme" data-editor-theme="dark">
@@ -91,6 +93,7 @@
 			{keybindings}
 			blockDragHandles
 			header={data.hostContent ? hostHeader : undefined}
+			searchBarAnchor={findBarSlot}
 		/>
 	</div>
 </div>
@@ -103,6 +106,10 @@
 		background: var(--color-bg);
 		color: var(--color-text-primary);
 		font-family: var(--font-ui);
+	}
+	.find-bar-slot {
+		position: relative;
+		height: 60px;
 	}
 	.editor-box {
 		display: flex;

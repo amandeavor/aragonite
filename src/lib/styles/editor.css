@@ -5,20 +5,26 @@
  * a host's --color-* tokens are read here with fallbacks, never declared.
  */
 
-/* The reset every editor style is written against, so a page without one lays the editor out the
-   same. A `data-host-content` element holds DOM the host built, which keeps the page's styles. */
-:where(.editor),
-:where(.editor) :not(:where([data-host-content] *)),
-:where(.aragonite-editor-portal),
-:where(.aragonite-editor-portal) :not(:where([data-host-content] *)),
-:where(.editor)::before,
-:where(.editor) :not(:where([data-host-content] *))::before,
-:where(.aragonite-editor-portal)::before,
-:where(.aragonite-editor-portal) :not(:where([data-host-content] *))::before,
-:where(.editor)::after,
-:where(.editor) :not(:where([data-host-content] *))::after,
-:where(.aragonite-editor-portal)::after,
-:where(.aragonite-editor-portal) :not(:where([data-host-content] *))::after {
+/* The reset every editor style assumes, so a page without one lays the editor out the same. DOM a
+   host built sits under `data-host-content` and is skipped; the portaled find bar never holds any. */
+:where(
+	.editor,
+	.editor :not([data-host-content] *),
+	.aragonite-editor-portal,
+	.aragonite-editor-portal *
+),
+:where(
+	.editor,
+	.editor :not([data-host-content] *),
+	.aragonite-editor-portal,
+	.aragonite-editor-portal *
+)::before,
+:where(
+	.editor,
+	.editor :not([data-host-content] *),
+	.aragonite-editor-portal,
+	.aragonite-editor-portal *
+)::after {
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;

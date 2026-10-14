@@ -166,4 +166,25 @@ test.describe('an editor on a page with no CSS reset', () => {
 			});
 		}
 	});
+
+	test('the find bar keeps the editor’s reset when its anchor sits inside the header', async ({
+		page
+	}) => {
+		const barStyles = async (query: string) => {
+			await loadOnNoReset(page, 'A paragraph.\n', query);
+			await page.locator('.editor [contenteditable="true"]').first().click();
+			await page.keyboard.press('ControlOrMeta+f');
+			await expect(page.locator('.search-bar')).toBeVisible();
+			return page.locator('.search-bar').evaluate((bar) =>
+				[bar, ...bar.querySelectorAll('*')].map((el) => {
+					const s = getComputedStyle(el);
+					return `${el.tagName} ${s.margin} | ${s.padding} | ${s.boxSizing}`;
+				})
+			);
+		};
+		const inRoot = await barStyles('hostContent=on');
+		const inHeader = await barStyles('hostContent=on&findBar=header');
+		expect(page.locator('.editor-header .search-bar')).toHaveCount(1);
+		expect(inHeader).toEqual(inRoot);
+	});
 });

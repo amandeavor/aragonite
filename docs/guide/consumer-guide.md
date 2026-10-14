@@ -809,7 +809,7 @@ The module owns its CSS. Two stylesheets ship under `styles/`:
 
 No font ships, so the `--font-*` tokens resolve to whatever your page provides, or to their fallback stacks. (The showcase at aragonite.dev loads Inter and JetBrains Mono itself, in case you're wondering why it looks nicer than your first mount.)
 
-You don't need a CSS reset for the editor either. `editor.css` brings its own margin, padding and box-sizing reset, scoped to the elements the editor renders, so a page without one lays it out the same.
+You don't need a CSS reset for the editor, either. `editor.css` brings its own (margin, padding and box sizing, on the elements the editor renders), so it lays out the same on a page with no reset, Tailwind's, or Bootstrap's. A rule your page puts on a bare element, like `button { margin: 4px }`, still reaches the editor's own buttons, same as it would in any component.
 
 ### Scope
 
