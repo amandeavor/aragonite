@@ -122,7 +122,7 @@ async function runQuery(
 		await page.waitForFunction(
 			(min) => {
 				const text = document.querySelector('.search-count')?.textContent ?? '';
-				const m = text.match(/\d+\s*\/\s*(\d+)/);
+				const m = text.match(/\d+\s+of\s+(\d+)/);
 				return m ? Number(m[1]) >= min : false;
 			},
 			expectMatches,

@@ -131,7 +131,7 @@ describe('the find field', () => {
 });
 
 describe('the buttons', () => {
-	it('step, close and the chevron each ask for their own action', () => {
+	it('step, close and the replace toggle each ask for their own action', () => {
 		const search = fakeSearch({ query: 'alpha', matches: [1, 2] });
 		const onToggleReplace = vi.fn();
 		const bar = render(search, { onToggleReplace });
@@ -161,7 +161,7 @@ describe('the buttons', () => {
 });
 
 describe('the replace row', () => {
-	it('shows only while expanded, and the chevron reports it', () => {
+	it('shows only while expanded, and the replace toggle reports it', () => {
 		const collapsed = render(fakeSearch(), { replaceExpanded: false });
 		expect(input(collapsed, SEARCH_REPLACE)).toBeNull();
 		expect(button(collapsed, SEARCH_TOGGLE_REPLACE).getAttribute('aria-expanded')).toBe('false');
@@ -204,7 +204,7 @@ describe('the readout', () => {
 		[
 			'the position among the matches',
 			{ query: 'a', matches: [1, 2, 3], activeIndex: 1 },
-			'2 / 3',
+			'2 of 3',
 			false
 		],
 		['no results', { query: 'zeta' }, 'No results', false],

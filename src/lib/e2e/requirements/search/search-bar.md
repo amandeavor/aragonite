@@ -19,9 +19,9 @@ whole-word, regex) that narrow or reinterpret the query.
 - The Whole word toggle drops substring-only matches (count drops).
 - The Regex toggle interprets the query as a pattern (a metacharacter query matches where a literal one would not).
 - Reopening the bar after Esc with an unchanged query (no edits between) re-scans and re-paints the highlights: a cached scan must not serve the closed bar's cleared matches.
-- Under forced colors the find field keeps a visible edge and a pressed toggle paints in the
-  system highlight, hovered or not. Miss-analysis: the bar draws both with fills alone, which forced
-  colors drop, and no test opened the bar with forced colors on.
+- Under forced colors the focused bar's edge and a pressed toggle paint in the system highlight,
+  hovered or not. Miss-analysis: the bar draws its focus ring with a shadow and a pressed toggle
+  with a fill, which forced colors drop, and no test opened the bar with forced colors on.
 
 ## Closing returns to the caret
 

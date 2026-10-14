@@ -17,7 +17,7 @@ test.describe('search: an open find bar across a source swap', () => {
 		await editor.loadContent('alpha one\n\nalpha two\n\nalpha three\n');
 		await openFind(editor);
 		await typeQuery(editor, 'alpha');
-		await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/1\s+of\s+3/);
 		await expect(overlays(page)).toHaveCount(3);
 	});
 
@@ -34,7 +34,7 @@ test.describe('search: an open find bar across a source swap', () => {
 		page
 	}) => {
 		await editor.loadContent('beta one\n\nalpha two\n');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		await expect(overlays(page)).toHaveCount(1);
 	});
 
@@ -43,11 +43,11 @@ test.describe('search: an open find bar across a source swap', () => {
 		// counting the replacement; a harness that bumps its own counter cannot.
 		await findInput(page).press('Enter');
 		await findInput(page).press('Enter');
-		await expect(count(page)).toHaveText(/3\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/3\s+of\s+3/);
 
-		// Five matches, so nothing clamps the kept position down: the bug reads 3 / 5 on a
+		// Five matches, so nothing clamps the kept position down: the bug reads 3 of 5 on a
 		// document the user has never navigated.
 		await editor.loadContent('alpha alpha\n\nalpha alpha\n\nalpha\n');
-		await expect(count(page)).toHaveText(/1\s*\/\s*5/);
+		await expect(count(page)).toHaveText(/1\s+of\s+5/);
 	});
 });

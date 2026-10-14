@@ -33,7 +33,7 @@ test.describe('search: open and close', () => {
 		await expect(status).toHaveText('');
 
 		await typeQuery(editor, 'alpha');
-		await expect(status).toHaveText(/1\s*\/\s*2/);
+		await expect(status).toHaveText(/1\s+of\s+2/);
 	});
 
 	test('Ctrl+H opens the bar with the replace row expanded', async ({ page }) => {
@@ -83,7 +83,7 @@ test.describe('search: open and close', () => {
 		// not serve the closed bar's cleared match set through a stale scan memo.
 		await openFind(editor);
 		await expect(overlays(page)).toHaveCount(2);
-		await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/1\s+of\s+2/);
 	});
 });
 
@@ -105,7 +105,7 @@ test.describe('search: closing returns to the caret', () => {
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		await page.keyboard.press('Enter');
 		await expect(home).not.toBeInViewport();
 
@@ -133,7 +133,7 @@ test.describe('search: closing returns to the caret', () => {
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		await page.keyboard.press('Enter');
 		await expect(home).toHaveCount(0);
 
@@ -165,10 +165,10 @@ test.describe('search: toggles', () => {
 			await openFind(editor);
 			await findInput(page).fill('');
 			await typeQuery(editor, 'alpha');
-			await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+			await expect(count(page)).toHaveText(/1\s+of\s+3/);
 
 			await page.getByRole('button', { name: 'Match case' }).click();
-			await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+			await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		});
 
 		await test.step('whole-word toggle drops substring-only matches', async () => {
@@ -176,10 +176,10 @@ test.describe('search: toggles', () => {
 			await openFind(editor);
 			await findInput(page).fill('');
 			await typeQuery(editor, 'cat');
-			await expect(count(page)).toHaveText(/1\s*\/\s*4/);
+			await expect(count(page)).toHaveText(/1\s+of\s+4/);
 
 			await page.getByRole('button', { name: 'Whole word' }).click();
-			await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+			await expect(count(page)).toHaveText(/1\s+of\s+2/);
 		});
 
 		await test.step('regex toggle interprets the query as a pattern', async () => {
@@ -191,7 +191,7 @@ test.describe('search: toggles', () => {
 			await expect(count(page)).toHaveText(/No results/);
 
 			await page.getByRole('button', { name: 'Regex' }).click();
-			await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+			await expect(count(page)).toHaveText(/1\s+of\s+3/);
 		});
 
 		await test.step('invalid regex shows an error state with no count and no highlights', async () => {
@@ -203,7 +203,7 @@ test.describe('search: toggles', () => {
 			// Positively assert the error state (the readout carries the `error` class and
 			// the compiler's message), not merely the absence of a count.
 			await expect(count(page)).toHaveClass(/error/);
-			await expect(count(page)).not.toHaveText(/\d+\s*\/\s*\d+/);
+			await expect(count(page)).not.toHaveText(/\d+\s+of\s+\d+/);
 			await expect(count(page)).not.toHaveText(/No results/);
 			await expect(overlays(page)).toHaveCount(0);
 		});
@@ -216,8 +216,9 @@ test.describe('search: forced colors', () => {
 	// WebKit has no forced-colors mode (the query always matches none); Playwright only flips it.
 	test.skip(({ browserName }) => browserName === 'webkit', 'no forced-colors mode in WebKit');
 
-	// Forced colors drop every fill, and fills are all the field and a pressed toggle are drawn with.
-	test('the find field keeps an edge and a pressed toggle still reads as pressed', async ({
+	// Forced colors drop every fill and shadow, which is all the focus ring and a pressed toggle are
+	// drawn with.
+	test('the focused bar shows a highlight edge and a pressed toggle still reads as pressed', async ({
 		page
 	}) => {
 		const editor = new EditorPage(page);
@@ -227,7 +228,8 @@ test.describe('search: forced colors', () => {
 		await openFind(editor);
 		await page.getByRole('button', { name: 'Match case' }).click();
 
-		// The pointer stays on the toggle it pressed, so this reads the hovered pressed state.
+		// The pointer stays on the toggle it pressed, so this reads the hovered pressed state, and
+		// the toggle holds focus inside the bar.
 		await expect
 			.poll(() =>
 				page.evaluate(() => {
@@ -237,12 +239,12 @@ test.describe('search: forced colors', () => {
 					const highlight = getComputedStyle(swatch).backgroundColor;
 					swatch.remove();
 					return {
-						fieldEdge: style('.search-field').borderTopStyle,
+						focusEdgeIsHighlight: style('.search-bar').borderTopColor === highlight,
 						pressedIsHighlight:
 							style('.search-tog[aria-pressed="true"]').backgroundColor === highlight
 					};
 				})
 			)
-			.toEqual({ fieldEdge: 'solid', pressedIsHighlight: true });
+			.toEqual({ focusEdgeIsHighlight: true, pressedIsHighlight: true });
 	});
 });

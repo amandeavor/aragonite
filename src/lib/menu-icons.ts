@@ -97,8 +97,6 @@ export const MENU_GLYPHS = {
 	],
 	'chevron-right': ['m9 18 6-6-6-6'],
 	'chevron-down': ['m6 9 6 6 6-6'],
-	'chevron-up': ['m18 15-6-6-6 6'],
-	search: ['m21 21-4.34-4.34', 'M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0'],
 	'case-sensitive': [
 		'm2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16',
 		'M22 9v7',

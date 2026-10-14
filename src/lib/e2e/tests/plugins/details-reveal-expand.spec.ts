@@ -108,7 +108,7 @@ test.describe('plugin container: reveal expands a collapsed <details>', () => {
 
 		// The scan reaches the unmounted body, because search reads the CST, so mounting the body
 		// paragraph is really attempted rather than never asked for.
-		await expect(page.locator('.search-count')).toHaveText(/1\s*\/\s*1/);
+		await expect(page.locator('.search-count')).toHaveText(/1\s+of\s+1/);
 
 		await editor.bridge.waitForSourceContains('<details open>');
 		await expect

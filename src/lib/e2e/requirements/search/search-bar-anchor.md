@@ -19,7 +19,7 @@ restore.
   the theme.
 - Switching the `theme` prop while the bar is anchored re-resolves those tokens live.
 - In a themed host with no `.aragonite-editor-theme` anywhere, the moved bar still resolves the
-  editor's own tokens (its pill fill) to the current mode's value, light and dark. Miss-analysis:
+  editor's own tokens (its focus ring and hover fills) to the current mode's value, light and dark. Miss-analysis:
   the only anchor test ran under the theme class, which declares those tokens for the bar, so
   nothing saw a light host's bar fall back to dark fills once the bar began reading them.
 - Dropping the anchor mid-session returns the bar to the editor root with the bar still open

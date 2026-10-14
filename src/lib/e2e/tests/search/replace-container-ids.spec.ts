@@ -20,7 +20,7 @@ test.describe('search: replace preserves container ids', () => {
 		await page.keyboard.type('list');
 		await replaceInput.fill('love');
 		// Wait for the scan to count matches before triggering the batch replace.
-		await expect(page.locator('.search-count')).toHaveText(/1\s*\/\s*\d+/);
+		await expect(page.locator('.search-count')).toHaveText(/1\s+of\s+\d+/);
 
 		await page.getByRole('button', { name: 'All', exact: true }).click();
 		await editor.bridge.waitForSourceContains('love');

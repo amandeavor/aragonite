@@ -18,10 +18,10 @@ async function search(editor: PluginsPage, token: string): Promise<void> {
 	await typeQuery(editor, token);
 }
 
-// The token lives only inside the leaf's source, so finding it (1 / 1) is the scan half; a sized
+// The token lives only inside the leaf's source, so finding it (1 of 1) is the scan half; a sized
 // cover rect inside the host of the hidden-source block is the paint half.
 async function expectFoundAndPainted(page: Page, kind: string): Promise<void> {
-	await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+	await expect(count(page)).toHaveText(/1\s+of\s+1/);
 	const overlay = hostFor(page, kind).locator('.match-overlay');
 	await expect(overlay).toHaveCount(1);
 	const box = await overlay.boundingBox();

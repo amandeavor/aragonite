@@ -15,7 +15,7 @@ test.describe('search: find and highlight', () => {
 		await openFind(editor);
 		await typeQuery(editor, 'alpha');
 		await expect(overlays(page)).toHaveCount(3);
-		await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/1\s+of\s+3/);
 		await expect(activeOverlays(page)).toHaveCount(1);
 	});
 
@@ -50,28 +50,28 @@ test.describe('search: navigation', () => {
 		await editor.loadContent('alpha one\n\nalpha two\n\nalpha three\n');
 		await openFind(editor);
 		await typeQuery(editor, 'alpha');
-		await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/1\s+of\s+3/);
 	});
 
 	test('Enter advances to the next match and wraps at the end', async ({ page }) => {
 		await page.keyboard.press('Enter');
-		await expect(count(page)).toHaveText(/2\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/2\s+of\s+3/);
 		await page.keyboard.press('Enter');
-		await expect(count(page)).toHaveText(/3\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/3\s+of\s+3/);
 		await page.keyboard.press('Enter');
-		await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/1\s+of\s+3/);
 	});
 
 	test('Shift+Enter steps to the previous match and wraps at the start', async ({ page }) => {
 		await page.keyboard.press('Shift+Enter');
-		await expect(count(page)).toHaveText(/3\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/3\s+of\s+3/);
 		await page.keyboard.press('Shift+Enter');
-		await expect(count(page)).toHaveText(/2\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/2\s+of\s+3/);
 	});
 
 	test('exactly one overlay is active after navigating', async ({ page }) => {
 		await page.keyboard.press('Enter');
-		await expect(count(page)).toHaveText(/2\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/2\s+of\s+3/);
 		await expect(activeOverlays(page)).toHaveCount(1);
 	});
 });
@@ -87,13 +87,13 @@ test.describe('search: edit while open', () => {
 		await editor.loadContent('alpha beta\n');
 		await openFind(editor);
 		await typeQuery(editor, 'alpha');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 
 		// Real edit: focus the block and type another occurrence. The bar's
 		// open-state rescan should pick it up.
 		await editor.focusBlockEnd(0);
 		await editor.typeText(' alpha');
-		await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/1\s+of\s+2/);
 	});
 });
 
@@ -112,7 +112,7 @@ test.describe('search: bar stays pinned', () => {
 
 		await openFind(editor);
 		await typeQuery(editor, 'needle');
-		await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/1\s+of\s+2/);
 
 		const barPlacement = () =>
 			page.evaluate(() => {
@@ -133,7 +133,7 @@ test.describe('search: bar stays pinned', () => {
 
 		// Navigate to the off-screen match; the editor scrolls down to bring it into view.
 		await page.getByRole('button', { name: 'Next match' }).click();
-		await expect(count(page)).toHaveText(/2\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/2\s+of\s+2/);
 		// If the document stopped overflowing, Next would scroll nothing and "the bar stayed at top"
 		// would hold trivially, so the jump must really have scrolled the editor.
 		await expect
@@ -176,7 +176,7 @@ test.describe('search: off-window reveal', () => {
 
 		await openFind(editor);
 		await page.keyboard.type('ZZUNIQUEMARKER');
-		await expect(page.locator('.search-count')).toHaveText(/1\s*\/\s*1/);
+		await expect(page.locator('.search-count')).toHaveText(/1\s+of\s+1/);
 
 		// Enter navigates to the only match and scrolls it into view.
 		await page.keyboard.press('Enter');
