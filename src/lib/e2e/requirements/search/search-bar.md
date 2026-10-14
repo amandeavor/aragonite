@@ -7,14 +7,26 @@ whole-word, regex) that narrow or reinterpret the query.
 
 - Ctrl+F opens the bar and focuses the find input.
 - Ctrl+H opens the bar with the replace row already expanded.
+- The readout is a polite status that sits, empty, in the accessibility tree from the moment the
+  bar opens, so a screen reader hears the first count as well as the ones after it.
+  Miss-analysis: no test asked what a screen reader hears from the bar, and the readout had no
+  live role at all.
 
 ## Edge cases
 
 - Ctrl+F / Ctrl+H still open the bar when CapsLock uppercases the key (no Shift modifier).
-- The case toggle (`Aa`) narrows a case-insensitive match set to the case-sensitive subset (count drops).
-- The whole-word toggle (`W`) drops substring-only matches (count drops).
-- The regex toggle (`.*`) interprets the query as a pattern (a metacharacter query matches where a literal one would not).
+- The Match case toggle narrows a case-insensitive match set to the case-sensitive subset (count drops).
+- The Whole word toggle drops substring-only matches (count drops).
+- The Regex toggle interprets the query as a pattern (a metacharacter query matches where a literal one would not).
 - Reopening the bar after Esc with an unchanged query (no edits between) re-scans and re-paints the highlights: a cached scan must not serve the closed bar's cleared matches.
+- With a code block at the top of a live-mode document, the open bar leaves the block's controls
+  (language picker, copy button) uncovered: they move below the bar and follow `--search-bar-top`.
+  Miss-analysis: the rule that moves them named the language picker, which stopped being the
+  positioned element when the controls were grouped, and no test measured the two boxes, so the
+  rule matched and did nothing.
+- Under forced colors the find field keeps a visible edge and a pressed toggle paints in the
+  system highlight, hovered or not. Miss-analysis: the bar draws both with fills alone, which forced
+  colors drop, and no test opened the bar with forced colors on.
 
 ## Closing returns to the caret
 

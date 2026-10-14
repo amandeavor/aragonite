@@ -132,7 +132,7 @@ describe('the find field', () => {
 
 describe('the buttons', () => {
 	it('step, close and the chevron each ask for their own action', () => {
-		const search = fakeSearch();
+		const search = fakeSearch({ query: 'alpha', matches: [1, 2] });
 		const onToggleReplace = vi.fn();
 		const bar = render(search, { onToggleReplace });
 
@@ -145,6 +145,14 @@ describe('the buttons', () => {
 		expect(search.prev).toHaveBeenCalledTimes(1);
 		expect(search.close).toHaveBeenCalledTimes(1);
 		expect(onToggleReplace).toHaveBeenCalledTimes(1);
+	});
+
+	it('the steps wait for a match', () => {
+		const bar = render(fakeSearch({ query: 'zeta' }));
+
+		expect(button(bar, SEARCH_NEXT_LABEL).disabled).toBe(true);
+		expect(button(bar, SEARCH_PREVIOUS_LABEL).disabled).toBe(true);
+		expect(button(bar, SEARCH_CLOSE_LABEL).disabled).toBe(false);
 	});
 
 	it('draws nothing while the search is closed', () => {
@@ -164,7 +172,7 @@ describe('the replace row', () => {
 	});
 
 	it('Enter replaces the current match, Escape closes, and the buttons replace one or all', () => {
-		const search = fakeSearch();
+		const search = fakeSearch({ query: 'alpha', matches: [1, 2] });
 		const bar = render(search, { replaceExpanded: true });
 		const field = input(bar, SEARCH_REPLACE);
 
@@ -192,10 +200,16 @@ describe('the replace row', () => {
 
 describe('the readout', () => {
 	const STATES: [name: string, over: Record<string, unknown>, text: string, error: boolean][] = [
-		['the position among the matches', { matches: [1, 2, 3], activeIndex: 1 }, '2 / 3', false],
-		['no results', {}, 'No results', false],
-		['a scan in progress', { isScanning: true }, 'Searching…', false],
-		['a replaced count', { replacedCount: 4 }, '4 replaced', false],
+		['nothing before a query', {}, '', false],
+		[
+			'the position among the matches',
+			{ query: 'a', matches: [1, 2, 3], activeIndex: 1 },
+			'2 / 3',
+			false
+		],
+		['no results', { query: 'zeta' }, 'No results', false],
+		['a scan in progress', { query: 'a', isScanning: true }, 'Searching…', false],
+		['a replaced count', { query: 'a', replacedCount: 4 }, '4 replaced', false],
 		['an error in place of any count', { error: 'Unterminated group', matches: [1] }, '', true]
 	];
 
