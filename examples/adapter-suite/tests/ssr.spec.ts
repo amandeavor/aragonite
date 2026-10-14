@@ -8,6 +8,7 @@ test('the page renders on the server without the editor, and hydrates with no wa
 }) => {
 	const html = await (await request.get('/')).text();
 	expect(html).toContain('data-testid="mirror"');
+	expect(html).not.toMatch(/class="editor[\s"]/);
 	expect(html).not.toContain('contenteditable');
 
 	await page.goto('/');
