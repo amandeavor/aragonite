@@ -208,6 +208,9 @@
 		},
 		"mermaid": {
 			"optional": true
+		},
+		"svelte": {
+			"optional": true
 		}
 	},
 	"devDependencies": {
