@@ -6,6 +6,10 @@ A word on the numbers. Everything before 0.10.1 was a working number: the label 
 
 **Style:** one tight entry per version, newest first; the entries live in a per-family file under `changelog/`, and this page is the index. **Product changes only:** behavior, API, plugins; never repo meta-work (conventions, comment or docs hygiene, tooling, process).
 
+## [0.11](changelog/0.11.md)
+
+- [0.11.0](changelog/0.11.md#0110-marks-you-can-hover-and-reach-from-the-keyboard): mark decorations that report a hover and answer a keyboard command, with clicks on hover-only marks passing through to the text
+
 ## [0.10](changelog/0.10.md)
 
 - [0.10.10](changelog/0.10.md#01010-an-ime-over-a-selection-and-a-menu-that-can-insert-every-block): an IME over a selection that takes its own block, Edit link on a bare URL, no caret flash on a checkbox click, emptied items that survive a reload, formats that apply however text arrives, a deletable break at a block's end, highlights that stay on their text, `/` and Insert for every plugin block, a slash list that hands your word to the right row, and the move to MPL-2.0
