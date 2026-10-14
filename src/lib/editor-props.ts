@@ -114,6 +114,40 @@ export interface EditorProps {
 	syntax?: SyntaxOptions;
 }
 
+/** When a prop's new value takes effect: `live` at once (a hook is called as it stands at each
+ *  use), `once` never, since it is read at mount. */
+export type PropTiming = 'live' | 'once';
+
+/** One timing for every key of `P`, optional keys included. */
+export type PropTimings<P> = { readonly [K in keyof Required<P>]: PropTiming };
+
+/** Each prop's timing, matching how `Editor.svelte` reads it; a prop added without one fails
+ *  `npm run check`. `createEditor` updates by it. */
+export const EDITOR_PROP_TIMING = {
+	source: 'live',
+	theme: 'live',
+	presentationMode: 'live',
+	linkClick: 'live',
+	caret: 'live',
+	keybindings: 'live',
+	placeholder: 'live',
+	searchBar: 'live',
+	searchBarAnchor: 'live',
+	selectionToolbar: 'live',
+	blockDragHandles: 'live',
+	imageLoadPolicy: 'live',
+	header: 'live',
+	resolveImageUrl: 'live',
+	resolveLinkUrl: 'live',
+	onLinkActivate: 'live',
+	onPasteImage: 'live',
+	onRunCode: 'live',
+	codeMenuItems: 'live',
+	plugins: 'once',
+	syntax: 'once',
+	scrollMode: 'once'
+} as const satisfies PropTimings<EditorProps>;
+
 /** The empty block a function `placeholder` is asked about. */
 export interface PlaceholderBlock {
 	kind: string;

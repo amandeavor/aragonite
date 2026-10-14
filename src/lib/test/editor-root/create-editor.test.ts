@@ -70,6 +70,17 @@ describe('createEditor', () => {
 		expect(themes).toEqual(['light']);
 	});
 
+	it('clears an option passed as undefined', async () => {
+		const { editor, target } = create({ source: '', placeholder: 'Write something' });
+		const hinted = () =>
+			target.querySelector('[data-placeholder]')?.getAttribute('data-placeholder');
+		expect(hinted()).toBe('Write something');
+
+		await update(editor, { placeholder: undefined });
+
+		expect(hinted()).toBeUndefined();
+	});
+
 	it('ignores plugins passed after mount', async () => {
 		const { editor } = create({ source: '$$\nx\n$$\n' });
 		const catalogue = editor.getInsertCatalogue().length;
@@ -137,6 +148,16 @@ describe('the header element', () => {
 
 		await update(editor, { header: null });
 		expect(next.isConnected).toBe(false);
+	});
+
+	it('keeps its input focused when the same element is passed again', async () => {
+		const { header, input } = headerWithInput();
+		const { editor } = create({ source: 'a\n', header });
+		input.focus();
+
+		await update(editor, { header });
+
+		expect(document.activeElement).toBe(input);
 	});
 });
 
