@@ -844,7 +844,10 @@ from the packed tarball, importing only published entry points. It's a test, not
 (if something is only learnable from that folder, that's a docs bug; file it). CI's
 `consumer-smoke` job runs `scripts/consumer-smoke.mjs`, which:
 
-1. builds and packs `dist/`, and checks the tarball holds every published path and no test file
+1. builds and packs `dist/`, and checks the tarball holds every published path and no test file.
+   It checks the prebuilt build too (`dist/prebuilt/`, what a bundler with no Svelte plugin gets):
+   no Svelte import of its own, every entry loads in Node, one plugin registry across entries, and
+   a size budget (`scripts/verify-prebuilt.mjs`)
 2. installs the tarball into the example with `--no-save`
 3. typechecks and builds the example, where an import cycle through a published entry point is
    a build error

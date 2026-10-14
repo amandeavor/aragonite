@@ -1,3 +1,5 @@
+<svelte:options runes />
+
 <script lang="ts">
 	import { DRAG_HANDLE_TITLE } from '../a11y-strings';
 	import MenuIcon from './menu/MenuIcon.svelte';

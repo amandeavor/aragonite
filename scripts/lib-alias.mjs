@@ -77,16 +77,47 @@ export function aliasSpecifier(relPath) {
 }
 
 /**
- * Each published entry point, from package.json `exports`: the library path it is built from, as an
- * import names it, mapped to the package specifier a consumer imports it by
- * (`src/lib/plugin.js` to `@voithos-labs/aragonite/plugin`).
+ * @typedef {object} EntryPoint
+ * @property {string} subpath The `exports` key, e.g. `./plugin`.
+ * @property {string} source The library file it is built from, e.g. `src/lib/plugin.ts`.
+ * @property {string} svelte The `svelte` condition's build, e.g. `dist/plugin.js`.
+ * @property {string} prebuilt The `default` condition's build, e.g. `dist/prebuilt/plugin.js`.
+ */
+
+/**
+ * Each published JavaScript entry point in package.json `exports`, with both of its builds. Throws on
+ * an entry whose `default` is not its `svelte` path moved under `dist/prebuilt/` (G4.174).
+ * @returns {EntryPoint[]}
+ */
+export function publishedEntryPoints() {
+	/** @type {EntryPoint[]} */
+	const out = [];
+	for (const [subpath, target] of Object.entries(PACKAGE.exports ?? {})) {
+		if (typeof target !== 'object') continue;
+		const svelte = repoPath(target.svelte ?? '');
+		const prebuilt = repoPath(target.default ?? '');
+		const built = /^dist\/(.+)\.js$/.exec(svelte);
+		if (built === null || prebuilt !== `dist/prebuilt/${built[1]}.js`) {
+			throw new Error(
+				`package.json exports["${subpath}"] needs "svelte": "./dist/<path>.js" and "default": ` +
+					`"./dist/prebuilt/<path>.js", but has "${svelte}" and "${prebuilt}"`
+			);
+		}
+		out.push({ subpath, source: `src/lib/${built[1]}.ts`, svelte, prebuilt });
+	}
+	return out;
+}
+
+/**
+ * Each published entry point's library path, as an import names it, mapped to the package
+ * specifier a consumer imports it by (`src/lib/plugin.js` to `@voithos-labs/aragonite/plugin`).
  * @returns {Map<string, string>}
  */
 export function publishedEntries() {
-	const out = new Map();
-	for (const [subpath, target] of Object.entries(PACKAGE.exports ?? {})) {
-		const built = typeof target === 'object' ? /^\.\/dist\/(.+\.js)$/.exec(target.default) : null;
-		if (built !== null) out.set(`src/lib/${built[1]}`, `${PACKAGE.name}${subpath.slice(1)}`);
-	}
-	return out;
+	return new Map(
+		publishedEntryPoints().map(({ subpath, source }) => [
+			source.replace(/\.ts$/, '.js'),
+			`${PACKAGE.name}${subpath.slice(1)}`
+		])
+	);
 }

@@ -4,6 +4,7 @@
 // can't be published-but-unbuilt without this failing.
 import { execSync } from 'node:child_process';
 import { requiredPackPaths } from './pack-manifest.mjs';
+import { verifyPrebuilt } from './verify-prebuilt.mjs';
 
 // `npm pack --json` reports files[].path relative to the package root (e.g.
 // `dist/index.js`) — NOT prefixed with `package/`.
@@ -60,6 +61,12 @@ if (FORBIDDEN.length) {
 		`verify-pack: tarball ships ${FORBIDDEN.length} test/e2e file(s), e.g.:\n  ` +
 			FORBIDDEN.slice(0, 5).join('\n  ')
 	);
+	process.exit(1);
+}
+
+const prebuiltFailures = await verifyPrebuilt();
+if (prebuiltFailures.length) {
+	console.error('verify-pack: the prebuilt build fails:\n  ' + prebuiltFailures.join('\n  '));
 	process.exit(1);
 }
 

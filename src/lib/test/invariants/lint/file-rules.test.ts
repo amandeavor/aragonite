@@ -312,6 +312,12 @@ const PRIVATE_WRITER_HOMES: Record<string, string> = {
 	releaseLastLine: SOURCE.openTail
 };
 
+// ── G4.175 runes mode ────────────────────────────────────────────────────────
+
+/** What puts a component in runes mode: a rune, or the explicit option. */
+const RUNES_MODE_RE =
+	/\$(?:props|state|derived|effect|bindable|host|inspect)\b|<svelte:options[^>]*\brunes\b/;
+
 // ── The rules ────────────────────────────────────────────────────────────────
 
 /** A file the G4.80 population holds, for its probes. */
@@ -442,6 +448,22 @@ const RULES: FileRule[] = [
 				'let { node, index }: { node: NodeView; index: number } = $props();\ndocument?: DocumentView;'
 			),
 			'let { node }: { node: CstNode } = $props();'
+		]
+	},
+	{
+		id: 'G4.175 every library component compiles in runes mode',
+		population: (file) => svelteOnly(file) && file.relPath.startsWith(SOURCE_DIR.library),
+		matches: (file) => !RUNES_MODE_RE.test(file.code),
+		reason:
+			'a component with no rune compiles in legacy mode in a Svelte host, which turns on the legacy flag in the Svelte runtime of that app: add `<svelte:options runes />`',
+		reaches: [SOURCE.blockHost],
+		hits: [
+			at('src/lib/x.svelte', '<span class="grip"></span>'),
+			at('src/lib/x.svelte', '<script>\n\texport let name;\n</script>\n<p>{name}</p>')
+		],
+		misses: [
+			at('src/lib/x.svelte', '<svelte:options runes />\n<span class="grip"></span>'),
+			at('src/lib/x.svelte', '<script>\n\tlet { node } = $props();\n</script>')
 		]
 	},
 	{

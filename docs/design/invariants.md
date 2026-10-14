@@ -256,6 +256,7 @@ These checks run in three kinds of place:
 | G1.76 | The drawn caret sits on its caret until the caret moves                                    | A       |
 | G1.77 | The mark hiding the browser's caret is on exactly the editable the drawn caret draws for   | A       |
 | G1.87 | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
+| G1.90 | A plugin component compiled against another Svelte runtime is named as such in dev         | N       |
 
 ### The entries
 
@@ -723,6 +724,16 @@ asserted, since a host unmounting mid-write is ordinary. `editor-actions/commit/
 descendTo` · `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/document-stamp.test.ts`,
 `block-lists/child-list.test.ts`, `selection/caret-landing.test.ts`.
 
+**G1.90 · A foreign Svelte runtime is named.** A plugin component compiled against a second copy of
+Svelte (a precompiled plugin on the prebuilt build, say) fails as soon as the editor mounts it,
+since its runtime has no component or effect in progress. Each route that mounts a plugin's
+component (the block's error boundary, the inline widget pool, the decoration widget mount) asks
+`foreign-runtime.ts :: isForeignRuntimeError` and warns `foreign-runtime` in dev; the block's notice
+says the cause too. The match is by message: `effect_orphan`, or the two crashes of a runtime that
+never mounted anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches
+too. `components/foreign-runtime.test.ts` loads its fixtures on a second runtime
+through a module reset.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -1075,6 +1086,8 @@ unguarded.
 | G4.163 | A mark's own handlers are called only by the hover lifecycle, activation and the click    | L       |
 | G4.165 | A write that moves text without resizing its block reports it, so its overlays measure    | L       |
 | G4.166 | Every length the drawn caret's rules set is rounded to whole device pixels                | L       |
+| G4.174 | Every published entry point has a source build and a prebuilt one                         | L       |
+| G4.175 | Every library component compiles in runes mode                                            | L       |
 
 ### The entries
 
@@ -2044,6 +2057,20 @@ each width rounds to the nearest whole device pixel, like the browser's caret, a
 to one. A shape whose length skips that rounding blurs across two pixel columns at a fractional
 display scale. `lint/drawn-caret-guards.test.ts` fails a length set in a `.md-drawn-caret` rule
 with no twin in `editor.css`'s device-rounding block, and a width there not rounded to the nearest.
+
+**G4.174 · Both builds for every entry point.** Each JavaScript entry in package.json `exports`
+names its source build under `svelte` and the prebuilt one under `default`, at the same path below
+`dist/prebuilt/`; `scripts/lib-alias.mjs :: publishedEntryPoints` throws on any entry that breaks the
+pairing, so the prebuilt build's own entry list, the source scans and verify-pack all stop together.
+`sideEffects` covers the whole prebuilt, since a host bundler that drops a chunk it thinks is pure
+loses the registrations inside it. `lint/plugin-pack-parity.test.ts`; `scripts/verify-prebuilt.mjs`
+then checks the built output: it imports nothing but its listed externals, every entry loads in Node,
+a kind registered through its `/plugin` parses through its root, and it stays within its size budget.
+
+**G4.175 · Runes mode only.** A component with no rune compiles in legacy mode, which switches on
+the legacy flag in the Svelte runtime of the app that compiles it. The prebuilt build forces runes
+mode itself, so this guards Svelte hosts. Every `.svelte` file under `src/lib` uses a rune or says `<svelte:options runes />`.
+`lint/file-rules.test.ts`.
 
 ## Accessibility
 
