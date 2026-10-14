@@ -18,6 +18,7 @@ const INLINE = { kind: KIND, start: 0, end: 5 } as InlineNode;
 function makePool(): WidgetPool {
 	const adapter: WidgetPoolAdapter<HTMLSpanElement> = {
 		create: () => document.createElement('span'),
+		move: () => true,
 		destroy: () => {},
 		element: (el) => el
 	};

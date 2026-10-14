@@ -4,11 +4,7 @@ import { beforeEach, describe, it, expect } from 'vitest';
 import { installPlugins, parse, serialize, parseInline, type CstNode, type InlineNode } from '#lib';
 import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
 import { computeInlineContent } from '#lib/plugin.js';
-import {
-	buildCoreInlineWidget,
-	getInlineWidgetComponent,
-	getInlineWidgetEditing
-} from '#lib/core/inline/inline-widgets.js';
+import { buildCoreInlineWidget, getInlineWidgetEditing } from '#lib/core/inline/inline-widgets.js';
 import { registerMathInline, MATH_INLINE } from '#lib/plugins/latex/latex-kind.js';
 
 const isMath = (n: InlineNode) => n.kind === MATH_INLINE;
@@ -130,27 +126,19 @@ describe('a directive container reaches the same recognizer', () => {
 	});
 });
 
-// Math renders through a `component`, so the render layer builds the wrapper span (asserted in
-// the e2e); a unit test can still pin the reveal-source policy and the dispatch.
+// Math renders through a view, so the render layer builds the shell (asserted in the e2e); a
+// unit test can still pin the reveal-source policy and the dispatch.
 describe('math widget dispatch', () => {
 	beforeEach(() => registerMathInline());
 
-	it('registers a component rather than a synchronous builder', () => {
-		expect(
-			getInlineWidgetComponent(MATH_INLINE as InlineNode['kind'], defaultGrammarView)
-		).toBeDefined();
-	});
-
-	it('a component kind builds nothing without a portal builder, and delegates to it verbatim', () => {
+	it('a view kind builds nothing without the widget pool, and takes its shell verbatim', () => {
 		const node = { kind: MATH_INLINE, start: 0, end: 3 } as InlineNode;
-		// No portal builder → null (the render layer falls back to the raw span).
+		// No pool → null (the render layer falls back to the raw span).
 		expect(buildCoreInlineWidget(node, '$x$', { grammar: defaultGrammarView })).toBeNull();
-		// With one, the dispatch returns its element untouched; the render layer adds the
-		// attributes.
 		const portal = document.createElement('span');
 		expect(
 			buildCoreInlineWidget(node, '$x$', {
-				buildPortalWidget: () => portal,
+				acquireViewWidget: () => portal,
 				grammar: defaultGrammarView
 			})
 		).toBe(portal);

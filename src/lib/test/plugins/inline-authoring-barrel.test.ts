@@ -43,7 +43,8 @@ describe('@voithos-labs/aragonite/plugin inline authoring surface', () => {
 		for (const seam of [
 			'augmentInlineWidgetKind',
 			'getInlineWidgetEditing',
-			'getInlineWidgetComponent',
+			'getInlineWidgetView',
+			'mintWidgetShell',
 			'hasInlineSyntax',
 			'hasPrefixRungs',
 			'hasScanProbeRungs',
@@ -60,7 +61,7 @@ describe('@voithos-labs/aragonite/plugin inline authoring surface', () => {
 	it('exposes the widget-authoring types (compile-time contract)', () => {
 		const recognizer: InlineSyntaxRecognizer = () => null;
 		const editing: InlineWidgetEditingPolicy = { revealSource: true };
-		const descriptor: InlineWidgetDescriptor = { isWidget: () => false, editing };
+		const descriptor: InlineWidgetDescriptor = { isWidget: () => false, view: () => ({}), editing };
 		const widgetStartOf = (ctx: InlineWidgetEditingContext) => ctx.widgetStart;
 		const kind: PluginInlineKind | null = null;
 		const node: InlineNode = { kind: 'math' as PluginInlineKind, start: 0, end: 0 };

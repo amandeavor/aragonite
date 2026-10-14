@@ -23,15 +23,20 @@ interface FakeHandle {
 }
 
 /** Real spans so rewritten offsets are observable, and an id per instance so reuse is told
- *  apart from a remount. `failCreate` makes every mount throw. */
-function fakeAdapter(failCreate = false): {
+ *  apart from a remount. `failCreate` makes every mount throw, `failMove` every move. */
+function fakeAdapter(
+	failCreate = false,
+	failMove = false
+): {
 	adapter: WidgetPoolAdapter<FakeHandle>;
 	created: FakeHandle[];
 	destroyed: FakeHandle[];
+	moves: number[];
 } {
 	let nextId = 0;
 	const created: FakeHandle[] = [];
 	const destroyed: FakeHandle[] = [];
+	const moves: number[] = [];
 	const adapter: WidgetPoolAdapter<FakeHandle> = {
 		create(_kind, inline, source) {
 			if (failCreate) return null;
@@ -42,6 +47,10 @@ function fakeAdapter(failCreate = false): {
 			created.push(handle);
 			return handle;
 		},
+		move(_handle, inline) {
+			moves.push(inline.start);
+			return !failMove;
+		},
 		destroy(handle) {
 			handle.destroyed = true;
 			destroyed.push(handle);
@@ -50,7 +59,7 @@ function fakeAdapter(failCreate = false): {
 			return handle.el;
 		}
 	};
-	return { adapter, created, destroyed };
+	return { adapter, created, destroyed, moves };
 }
 
 describe('createWidgetPool: adoption by key', () => {
@@ -176,6 +185,35 @@ describe('createWidgetPool: adoption re-marks offsets', () => {
 		expect(created).toHaveLength(1);
 		expect(reused!.dataset.sourceStart).toBe('3');
 		expect(reused!.dataset.sourceEnd).toBe('8');
+	});
+
+	it('tells a reused instance it moved, and only when it moved', () => {
+		const { adapter, moves } = fakeAdapter();
+		const pool = createWidgetPool(adapter);
+		for (const start of [0, 0, 3]) {
+			pool.beginPass();
+			pool.acquire(KIND, at(start, start + 5), '$x$');
+			pool.sweep();
+		}
+		expect(moves).toEqual([3]);
+	});
+
+	it('drops an instance that cannot follow its move, which falls back for the pass', () => {
+		const { adapter, created, destroyed } = fakeAdapter(false, true);
+		const pool = createWidgetPool(adapter);
+		pool.beginPass();
+		pool.acquire(KIND, at(0, 5), '$x$');
+		pool.sweep();
+
+		pool.beginPass();
+		expect(pool.acquire(KIND, at(3, 8), '$x$')).toBeNull();
+		pool.sweep();
+		expect(destroyed).toEqual(created);
+
+		pool.beginPass();
+		expect(pool.acquire(KIND, at(3, 8), '$x$')).not.toBeNull();
+		pool.sweep();
+		expect(created).toHaveLength(2);
 	});
 });
 

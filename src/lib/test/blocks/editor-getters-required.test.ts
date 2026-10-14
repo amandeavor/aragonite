@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { InlineWidgetComponentProps } from '#lib/plugin.js';
-import type { SvelteWidgetPoolDeps } from '#lib/components/blocks/widget-portal.js';
+import type { ViewWidgetPoolDeps } from '#lib/components/blocks/widget-portal.js';
 import type { TextRenderDeps } from '#lib/components/blocks/text/text-render.js';
 import type { CellRenderDeps } from '#lib/components/blocks/table/cell-render.js';
 import type { GlobalCommandContext } from '#lib/schema/commands.js';
@@ -19,7 +19,7 @@ type NoneOptional<T> = [OptionalKeys<T>] extends [never] ? true : false;
 type IsRequired<T, K extends keyof T> = object extends Pick<T, K> ? false : true;
 
 export const widgetPropsAllRequired: NoneOptional<InlineWidgetComponentProps> = true;
-export const widgetPoolAllRequired: NoneOptional<SvelteWidgetPoolDeps> = true;
+export const widgetPoolAllRequired: NoneOptional<ViewWidgetPoolDeps> = true;
 export const textRenderAllRequired: NoneOptional<TextRenderDeps> = true;
 export const cellRenderAllRequired: NoneOptional<CellRenderDeps> = true;
 export const commandModeRequired: IsRequired<GlobalCommandContext, 'getPresentationMode'> = true;

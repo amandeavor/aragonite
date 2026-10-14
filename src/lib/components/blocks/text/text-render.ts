@@ -51,7 +51,7 @@ import {
 import { buildImageWidget } from '../../image/widget-dom';
 import type { InlineNode } from '../../../core/nodes';
 import { getBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
-import { createSvelteWidgetPool } from '../widget-portal';
+import { createViewWidgetPool } from '../widget-portal';
 
 export interface TextRenderDeps {
 	get el(): HTMLElement | null;
@@ -125,7 +125,7 @@ export function renderKeySegmentDiff(prev: string, next: string): string {
 
 export function createTextRender(deps: TextRenderDeps): TextRender {
 	let lastRenderedKey = '';
-	const widgetPool = createSvelteWidgetPool({
+	const widgetPool = createViewWidgetPool({
 		reportError: deps.reportRenderError,
 		getTheme: deps.getTheme,
 		getDocument: deps.getDocument,
@@ -141,7 +141,7 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		islandDestroys = [];
 	}
 
-	function buildPortalWidget(node: InlineNode, raw: string): HTMLElement | null {
+	function acquireViewWidget(node: InlineNode, raw: string): HTMLElement | null {
 		return widgetPool.acquire(node.kind, node, raw.slice(node.start, node.end));
 	}
 
@@ -182,7 +182,7 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 				imageLoadPolicy: deps.imageLoadPolicy,
 				buildImageWidget: (imgNode, imgRaw, imgOpts) =>
 					buildImageWidget(imgNode, imgRaw, { ...imgOpts, brokenUrlCache: deps.brokenUrlCache }),
-				buildPortalWidget,
+				acquireViewWidget,
 				reportWidgetError: deps.reportRenderError,
 				grammar: deps.reading.grammar,
 				tagConstructMarkers: tagsConstructMarkers(deps.reading.mode()),
@@ -281,7 +281,7 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 			// Rebuilds from the edit path skip the capture-and-restore pair: the component's
 			// pending restore overwrites the selection right after, so it would be wasted.
 			const carried = carryCaret ? captureCaretIfFocused(el) : null;
-			// Bracketing the rebuild pools portal widgets: the sweep destroys only those the
+			// Bracketing the rebuild pools plugin widgets: the sweep destroys only those the
 			// previous DOM held and this build did not reuse. Decoration widgets are not pooled.
 			widgetPool.beginPass();
 			destroyIslands();

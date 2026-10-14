@@ -2,29 +2,30 @@
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { InlineNode } from '#lib';
-import { getInlineWidgetEditing } from '#lib/core/inline/inline-widgets.js';
 import {
-	registerEmoji,
-	buildEmojiWidget,
-	EMOJI_KIND
-} from '#lib/plugins/emoji/emoji-recognizer.js';
+	getInlineWidgetEditing,
+	mintWidgetShell,
+	type InlineWidgetComponentProps
+} from '#lib/core/inline/inline-widgets.js';
+import { registerEmoji, drawEmoji, EMOJI_KIND } from '#lib/plugins/emoji/emoji-recognizer.js';
 
-// Shaped like a decoded entity: the glyph as text and the source bytes on `data-source-*`, so
-// the DOM-to-offset traversal reads `:smile:` back while the DOM shows 😄.
-describe('buildEmojiWidget: atomic widget shell', () => {
-	it('marks the widget marker, source span, and the glyph', () => {
+// The glyph is what the widget shows; the shell the editor hands it keeps the source bytes on
+// `data-source-*`, so the DOM-to-offset traversal reads `:smile:` back while the DOM shows 😄.
+describe('drawEmoji: the glyph in its shell', () => {
+	it('draws the glyph, unselectable, without touching the source range', () => {
 		const node: InlineNode = {
 			kind: EMOJI_KIND as InlineNode['kind'],
 			start: 2,
 			end: 9,
 			decoded: '😄'
 		};
-		const el = buildEmojiWidget(node);
-		expect(el.hasAttribute('data-inline-widget')).toBe(true);
-		expect(el.getAttribute('contenteditable')).toBe('false');
-		expect(el.dataset.sourceStart).toBe('2');
-		expect(el.dataset.sourceEnd).toBe('9');
-		expect(el.textContent).toBe('😄');
+		const shell = mintWidgetShell(node);
+		drawEmoji(shell, { inline: node } as InlineWidgetComponentProps);
+		expect(shell.textContent).toBe('😄');
+		expect(shell.classList.contains('md-emoji-widget')).toBe(true);
+		expect(shell.style.userSelect).toBe('none');
+		expect(shell.dataset.sourceStart).toBe('2');
+		expect(shell.dataset.sourceEnd).toBe('9');
 	});
 });
 

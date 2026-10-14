@@ -1,31 +1,34 @@
 /**
- * The reuse pool that makes `component` inline widgets churn-safe. The editor rebuilds a block's
- * whole inline-DOM on every keystroke; without a pool each rebuild remounts every widget's Svelte
- * component, losing state and paying KaTeX-scale cost per character. Instances key by
- * `${kind} ${source}`, and `mount`/`unmount` from 'svelte' stay contained here.
+ * The reuse pool that keeps a plugin's inline widgets mounted across rebuilds. The editor rebuilds
+ * a block's whole inline DOM on every keystroke; without a pool each rebuild remounts every
+ * widget's view, losing its state and paying KaTeX-scale cost per character. Instances key by
+ * `${kind} ${source}`.
  */
 
-import { mount, unmount } from 'svelte';
 import type { AnyInlineKind, InlineNode } from '../../core/nodes';
 import type { DocumentView } from '../../core/node-views';
 import { inlineReaderFor } from '../../core/inline';
 import {
-	getInlineWidgetComponent,
 	getInlineWidgetEditing,
-	widgetActivates
+	getInlineWidgetView,
+	mintWidgetShell,
+	widgetActivates,
+	type InlineWidgetComponentProps
 } from '../../core/inline/inline-widgets';
 import type { ActivationClick } from '../../activation-click';
 import type { Reading } from '../../schema/reading';
 import { tracePoolPass } from '../../debug/interaction-trace';
 import { assertInvariant } from '../../assert';
 import { checkPoolBracket } from '../../invariants/inline-transitions';
-import { warnIfForeignRuntime } from '../../foreign-runtime';
+import { mountPluginView, type MountedPluginView } from '../../plugin-view';
 
 // ── Pure pool ─────────────────────────────────────────────────────────────────
 
 export interface WidgetPoolAdapter<H> {
 	/** Build one instance, or null when it cannot be built (a caught mount throw). */
 	create(kind: AnyInlineKind, inline: InlineNode, source: string): H | null;
+	/** Tell a reused instance typing moved it; false when it can't follow (its view threw). */
+	move(handle: H, inline: InlineNode): boolean;
 	destroy(handle: H): void;
 	element(handle: H): HTMLElement;
 }
@@ -74,13 +77,21 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 		const bucket = buckets.get(key);
 		const reused = bucket?.find((entry) => !entry.adopted);
 		if (reused) {
+			// Source and rendered body are identical by key; only the widget's position may have
+			// shifted, and the offsets the cursor and selection read follow it.
+			const el = adapter.element(reused.handle);
+			const start = String(inline.start);
+			const end = String(inline.end);
+			if (el.dataset.sourceStart !== start || el.dataset.sourceEnd !== end) {
+				el.dataset.sourceStart = start;
+				el.dataset.sourceEnd = end;
+				if (!adapter.move(reused.handle, inline)) {
+					drop(key, reused);
+					return null;
+				}
+			}
 			reused.adopted = true;
 			passAdopt++;
-			// Source and rendered body are identical by key; only the widget's position
-			// may have shifted, so write the offsets the cursor and selection read again.
-			const el = adapter.element(reused.handle);
-			el.dataset.sourceStart = String(inline.start);
-			el.dataset.sourceEnd = String(inline.end);
 			return el;
 		}
 		const handle = adapter.create(kind, inline, source);
@@ -90,6 +101,13 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 		if (bucket) bucket.push(entry);
 		else buckets.set(key, [entry]);
 		return adapter.element(handle);
+	}
+
+	function drop(key: string, entry: PoolEntry<H>): void {
+		adapter.destroy(entry.handle);
+		const bucket = buckets.get(key)!.filter((other) => other !== entry);
+		if (bucket.length) buckets.set(key, bucket);
+		else buckets.delete(key);
 	}
 
 	function sweep(): void {
@@ -124,17 +142,18 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 	return { acquire, beginPass, sweep, dispose };
 }
 
-// ── Svelte adapter ──────────────────────────────────────────────────────────────
+// ── View adapter ────────────────────────────────────────────────────────────────
 
-interface PortalHandle {
-	wrapper: HTMLSpanElement;
-	instance: Record<string, unknown>;
+interface ViewHandle {
+	shell: HTMLSpanElement;
+	view: MountedPluginView<InlineWidgetComponentProps>;
+	props: (inline: InlineNode) => InlineWidgetComponentProps;
 }
 
-/** The live channels a mounted widget reads beside its frozen `{ inline, source }` snapshot. All
- *  required, so no widget falls back to a value the editor does not hold. */
-export interface SvelteWidgetPoolDeps {
-	/** A widget component's synchronous mount throw goes here (the editor's `error` channel). */
+/** The live channels a mounted widget reads beside its `{ inline, source }`. All required, so no
+ *  widget falls back to a value the editor does not hold. */
+export interface ViewWidgetPoolDeps {
+	/** A widget view's throw goes here (the editor's `error` channel). */
 	reportError: (error: unknown) => void;
 	/** The editor's theme name, for a widget that draws its own colors where CSS cannot reach. */
 	getTheme: () => string;
@@ -149,54 +168,46 @@ export interface SvelteWidgetPoolDeps {
 	activationClick: ActivationClick;
 }
 
-/** A mount throw is reported and returns null, so the caller falls back to the raw span. The
- *  getters are live props beside the frozen snapshot, since a pooled instance outlives a mode switch. */
-export function createSvelteWidgetPool(deps: SvelteWidgetPoolDeps): WidgetPool {
+/** A view that throws is reported and its widget falls back to the raw span. */
+export function createViewWidgetPool(deps: ViewWidgetPoolDeps): WidgetPool {
 	const { reportError, getTheme, getDocument, getContentVersion, navigateTo, reading } = deps;
 	const { activationClick } = deps;
 	const { grammar } = reading;
-	return createWidgetPool<PortalHandle>({
+	return createWidgetPool<ViewHandle>({
 		create(kind, inline, source) {
-			const component = getInlineWidgetComponent(kind, grammar);
-			if (!component) return null;
-			const wrapper = document.createElement('span');
-			wrapper.dataset.inlineWidget = '';
-			wrapper.dataset.sourceStart = String(inline.start);
-			wrapper.dataset.sourceEnd = String(inline.end);
-			wrapper.setAttribute('contenteditable', 'false');
-			try {
-				const instance = mount(component, {
-					target: wrapper,
-					props: {
-						inline,
-						source,
-						getPresentationMode: reading.mode,
-						getTheme,
-						getDocument,
-						getContentVersion,
-						navigateTo,
-						// A getter, so a pooled widget's reader changes with the document's definitions.
-						get computeInlineContent() {
-							return inlineReaderFor(reading);
-						},
-						// Read per click: a pooled widget outlives a mode switch and a policy augment.
-						isActivationClick: (click) =>
-							widgetActivates(getInlineWidgetEditing(kind, grammar), click, activationClick)
-					}
-				});
-				return { wrapper, instance };
-			} catch (error) {
-				warnIfForeignRuntime(error, `inline widget ${kind}`);
-				reportError(error);
-				return null;
-			}
+			const view = getInlineWidgetView(kind, grammar);
+			if (!view) return null;
+			const props = (at: InlineNode): InlineWidgetComponentProps => ({
+				inline: at,
+				source,
+				getPresentationMode: reading.mode,
+				getTheme,
+				getDocument,
+				getContentVersion,
+				navigateTo,
+				// A getter, so a pooled widget's reader changes with the document's definitions.
+				get computeInlineContent() {
+					return inlineReaderFor(reading);
+				},
+				// Read per click: a pooled widget outlives a mode switch and a policy augment.
+				isActivationClick: (click) =>
+					widgetActivates(getInlineWidgetEditing(kind, grammar), click, activationClick)
+			});
+			const shell = mintWidgetShell(inline);
+			const mounted = mountPluginView(view, shell, props(inline), {
+				report: reportError,
+				subject: `inline widget ${kind}`
+			});
+			return mounted ? { shell, view: mounted, props } : null;
+		},
+		move(handle, inline) {
+			return handle.view.update(handle.props(inline));
 		},
 		destroy(handle) {
-			// A throw from the component's own teardown arrives as the promise's rejection.
-			unmount(handle.instance).catch(reportError);
+			handle.view.destroy();
 		},
 		element(handle) {
-			return handle.wrapper;
+			return handle.shell;
 		}
 	});
 }

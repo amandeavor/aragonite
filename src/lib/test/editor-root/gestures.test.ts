@@ -39,7 +39,7 @@ function registerAnchorWidget(): void {
 	});
 	registerInlineWidgetKind(kind, {
 		isWidget: () => true,
-		buildWidget: () => document.createElement('span'),
+		view: () => ({}),
 		editing: { revealSource: true, claimsActivationClick: true }
 	});
 }

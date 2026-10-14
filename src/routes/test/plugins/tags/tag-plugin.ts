@@ -10,7 +10,8 @@ import {
 	registerInlineSyntax,
 	registerInlineWidgetKind,
 	type EditorPlugin,
-	type InlineNode
+	type InlineNode,
+	svelteInlineWidget
 } from '#lib/plugin.js';
 import BodyTag from './BodyTag.svelte';
 import { recognizeTag } from '../../../demo-tags/tag-scan';
@@ -30,7 +31,7 @@ export function tagsPlugin(): EditorPlugin {
 			});
 			registerInlineWidgetKind(tag, {
 				isWidget: () => true,
-				component: BodyTag,
+				view: svelteInlineWidget(BodyTag),
 				editing: { revealSource: true, claimsActivationClick: true }
 			});
 		}

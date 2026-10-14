@@ -24,7 +24,7 @@ import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/t
 import { mountDecorationWidget } from '../../../decorations/widget-dom';
 import { devWarn } from '../../../dev-warn';
 import { getBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
-import { createSvelteWidgetPool } from '../widget-portal';
+import { createViewWidgetPool } from '../widget-portal';
 import type { Reading } from '../../../schema/reading';
 
 export interface CellRenderDeps {
@@ -66,7 +66,7 @@ export interface CellRender {
 
 export function createCellRender(deps: CellRenderDeps): CellRender {
 	let lastRenderedKey = '';
-	const widgetPool = createSvelteWidgetPool({
+	const widgetPool = createViewWidgetPool({
 		reportError: deps.reportRenderError,
 		getTheme: deps.getTheme,
 		getDocument: deps.getDocument,
@@ -82,7 +82,7 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		islandDestroys = [];
 	}
 
-	function buildPortalWidget(node: InlineNode, raw: string): HTMLElement | null {
+	function acquireViewWidget(node: InlineNode, raw: string): HTMLElement | null {
 		return widgetPool.acquire(node.kind, node, raw.slice(node.start, node.end));
 	}
 
@@ -113,7 +113,7 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		// A decoration change rebuilds a focused cell with no restore pending, so the caret is
 		// carried across; an edit opts out because its own restore runs after.
 		const caret = (opts?.carryCaret ?? true) ? captureFocusedCaret(el) : null;
-		// Bracketing the rebuild pools portal widgets, so an unchanged `$…$` keeps its
+		// Bracketing the rebuild pools plugin widgets, so an unchanged `$…$` keeps its
 		// instance across per-keystroke rebuilds. Decoration widgets are not pooled.
 		widgetPool.beginPass();
 		destroyIslands();
@@ -121,7 +121,7 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 			renderInlineNodes(content, node.raw, {
 				renderImagesAsWidgets: getBlockKindDescriptor(node.kind).renderImagesAsWidgets ?? true,
 				resolveLinkUrl: deps.resolveLinkUrl,
-				buildPortalWidget,
+				acquireViewWidget,
 				reportWidgetError: deps.reportRenderError,
 				grammar: deps.reading.grammar,
 				// Live mode only: a cell has no per-construct reveal, so in preview-inline its markers

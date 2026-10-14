@@ -21,7 +21,7 @@ export function isLiveHtmlTag(slice: string): boolean {
 
 /** The outer span is the shell the cursor machinery recognizes; the inner `<br>` breaks. */
 export function buildLiveHtmlWidget(node: InlineNode): HTMLSpanElement {
-	const shell = mintWidgetShell('md-br-widget', node);
+	const shell = mintWidgetShell(node, 'md-br-widget');
 	shell.appendChild(document.createElement('br'));
 	return shell;
 }
