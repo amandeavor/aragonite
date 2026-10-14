@@ -1084,6 +1084,7 @@ unguarded.
 | G4.163 | A mark's own handlers are called only by the hover lifecycle, activation and the click    | L       |
 | G4.165 | A write that moves text without resizing its block reports it, so its overlays measure    | L       |
 | G4.166 | Every length the drawn caret's rules set is rounded to whole device pixels                | L       |
+| G4.174 | Every published entry point has a source build and a prebuilt one                         | L       |
 | G4.175 | Every library component compiles in runes mode                                            | L       |
 
 ### The entries
@@ -2054,6 +2055,15 @@ each width rounds to the nearest whole device pixel, like the browser's caret, a
 to one. A shape whose length skips that rounding blurs across two pixel columns at a fractional
 display scale. `lint/drawn-caret-guards.test.ts` fails a length set in a `.md-drawn-caret` rule
 with no twin in `editor.css`'s device-rounding block, and a width there not rounded to the nearest.
+
+**G4.174 · Both builds for every entry point.** Each JavaScript entry in package.json `exports`
+names its source build under `svelte` and the prebuilt one under `default`, at the same path below
+`dist/prebuilt/`; `scripts/lib-alias.mjs :: publishedEntryPoints` throws on any entry that breaks the
+pairing, so the prebuilt build's own entry list, the source scans and verify-pack all stop together.
+`sideEffects` covers the whole prebuilt, since a host bundler that drops a chunk it thinks is pure
+loses the registrations inside it. `lint/plugin-pack-parity.test.ts`; `scripts/verify-prebuilt.mjs`
+then checks the built output: it imports nothing but its listed externals, every entry loads in Node,
+a kind registered through its `/plugin` parses through its root, and it stays within its size budget.
 
 **G4.175 · Runes mode only.** A component with no rune compiles in legacy mode, which switches on
 the legacy flag in whatever Svelte runtime it runs on, the one the prebuilt build carries included.

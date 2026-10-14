@@ -10,6 +10,7 @@ import path from 'node:path';
 import { bundledPluginDirs, collectEditorSources } from './scan-source';
 import { SOURCE_DIR } from './source-paths';
 import { requiredPackPaths } from '../../../../../scripts/pack-manifest.mjs';
+import { publishedEntryPoints } from '../../../../../scripts/lib-alias.mjs';
 
 const PLUGIN_SRC = path.resolve(SOURCE_DIR.plugins);
 
@@ -99,6 +100,19 @@ describe('G4.10 plugin package/pack parity', () => {
 			missing,
 			`side-effectful plugin modules (top-level CSS import) absent from sideEffects: ${missing.join(', ')}`
 		).toEqual([]);
+	});
+});
+
+// ── G4.174 every entry point has both builds ─────────────────────────────────
+
+describe('G4.174 every published entry point has a source build and a prebuilt one', () => {
+	it('pairs each JavaScript export with the same path under dist/prebuilt', () => {
+		const scripts = Object.values(readPackage().exports).filter((t) => typeof t === 'object');
+		expect(publishedEntryPoints()).toHaveLength(scripts.length);
+	});
+
+	it('declares the prebuilt build side-effectful, so a host bundler keeps its registrations', () => {
+		expect(readPackage().sideEffects).toContain('./dist/prebuilt/**/*.js');
 	});
 });
 

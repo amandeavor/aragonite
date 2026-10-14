@@ -7,21 +7,16 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 const require = createRequire(import.meta.url);
-const library = '@voithos-labs/aragonite';
-/** @type {Record<string, string | { default: string }>} */
-const libraryExports = JSON.parse(
-	readFileSync(require.resolve(`${library}/package.json`), 'utf8')
-).exports;
-// Resolved the way the bundler resolves them, so a linked install's real path matches too. Lazy,
-// because `svelte-kit sync` loads this config on a checkout whose library has no built dist yet.
-/** @type {Set<string> | undefined} */
-let libraryEntries;
-const entries = () =>
-	(libraryEntries ??= new Set(
-		Object.entries(libraryExports)
-			.filter(([, target]) => typeof target === 'object')
-			.map(([subpath]) => require.resolve(`${library}${subpath.slice(1)}`))
-	));
+const libraryManifest = require.resolve('@voithos-labs/aragonite/package.json');
+/** @type {Record<string, string | { svelte: string }>} */
+const libraryExports = JSON.parse(readFileSync(libraryManifest, 'utf8')).exports;
+// The files this app's bundler loads, through the `svelte` condition; resolving the package from
+// Node here would pick `default`, the prebuilt build a Svelte app never loads.
+const libraryEntries = new Set(
+	Object.values(libraryExports)
+		.filter((target) => typeof target === 'object')
+		.map((target) => path.resolve(path.dirname(libraryManifest), target.svelte))
+);
 
 export default defineConfig({
 	plugins: [sveltekit({ preprocess: vitePreprocess(), adapter: adapter() })],
@@ -32,7 +27,8 @@ export default defineConfig({
 			// bundle splits it across chunks, so that cycle fails the build; other cycles are noise.
 			onLog(level, log, handler) {
 				if (log.code !== 'CIRCULAR_DEPENDENCY') return handler(level, log);
-				if (log.ids?.some((id) => entries().has(path.resolve(id)))) throw new Error(log.message);
+				if (log.ids?.some((id) => libraryEntries.has(path.resolve(id))))
+					throw new Error(log.message);
 			}
 		}
 	}

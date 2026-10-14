@@ -19,12 +19,15 @@ on:
       # Synced into the consumer by `sync-consumer-plugins.mjs` as the external-author probe.
       - 'src/routes/test/plugins/**'
       - 'vite.config.js'
+      - 'vite.prebuilt.config.js'
+      - 'THIRD-PARTY-NOTICES.md'
       - 'scripts/consumer-smoke.mjs'
       - 'scripts/lib-alias.mjs'
       - 'scripts/pack-manifest.mjs'
       - 'scripts/prune-dist.mjs'
       - 'scripts/sync-consumer-plugins.mjs'
       - 'scripts/verify-pack.mjs'
+      - 'scripts/verify-prebuilt.mjs'
       - '.github/workflows/consumer-smoke.yml'
   workflow_dispatch:
 
