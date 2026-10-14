@@ -13,7 +13,8 @@ input only.
 
 - A registered command bound on the memo leaf fires on the leaf's own path: pressing its chord
   over the focused memo runs the handler, which commits one metadata edit through the supported
-  update path. Before this existed, a leaf ignored such commands
+  update path. A leaf has no `rebuildRaw`, so the metadata stays out of the bytes and the dev
+  read-back warning is expected. Before this existed, a leaf ignored such commands
 
 ## Error cases
 

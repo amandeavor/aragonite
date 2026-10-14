@@ -19,20 +19,26 @@ test.describe('plugin block commands on the editable-leaf level: the %% memo kin
 		await editor.gotoSeed();
 	});
 
-	test('a bound plugin command fires on the leaf and commits through the metadata route', async ({
-		page
-	}) => {
-		await editor.memo.click();
-		await page.keyboard.press('ControlOrMeta+Shift+K');
+	// A leaf has no `rebuildRaw`, so the tag it commits never reaches the bytes and the dev read-back
+	// check reports it; the fixture requires that warning here.
+	test.describe('a command committing metadata', () => {
+		test.use({ expectInvariants: ['reads-back'] });
 
-		// The handler's `updateMetadata` lands on the focused memo node (index 1).
-		await page.waitForFunction(
-			() => (window as any).__test.getDocument().children[1]?.metadata?.memoTagged === true,
-			null,
-			{ timeout: 5000 }
-		);
-		// Memo metadata is not raw-bearing, so the source round-trips unchanged.
-		expect(await roundTripStable(page)).toBe(true);
+		test('a bound plugin command fires on the leaf and commits through the metadata route', async ({
+			page
+		}) => {
+			await editor.memo.click();
+			await page.keyboard.press('ControlOrMeta+Shift+K');
+
+			// The handler's `updateMetadata` lands on the focused memo node (index 1).
+			await page.waitForFunction(
+				() => (window as any).__test.getDocument().children[1]?.metadata?.memoTagged === true,
+				null,
+				{ timeout: 5000 }
+			);
+			// The metadata is not in the bytes, so the source is unchanged.
+			expect(await roundTripStable(page)).toBe(true);
+		});
 	});
 
 	test('a throwing handler is contained: one origin:command error, no uncaught pageerror', async ({

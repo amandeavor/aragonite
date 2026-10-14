@@ -17,6 +17,8 @@ setVerdict; // 'conspiracy.setVerdict', branded as a command id
 registerBlockCommand(conspiracy, 'conspiracy.setVerdict', handler); // throws: already registered
 ```
 
+Metadata survives a reload only when it is in the bytes. A container kind's `rebuildRaw` writes it there; a leaf kind has no `rebuildRaw`, so a top-level leaf's `updateMetadata` is lost on reload and dev builds warn. Keep what must last in the leaf's own text.
+
 A block command's chord fires in two places, the ones that hand it a `BlockCommandContext` (the focused node plus a way to commit its metadata):
 
 - a `createEditableLeaf` block, from the focused leaf's keymap;
