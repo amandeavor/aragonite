@@ -5,6 +5,7 @@
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { collectLeafStrings, requiredPackPaths } from './pack-manifest.mjs';
 import { verifyPrebuilt } from './verify-prebuilt.mjs';
 
@@ -72,10 +73,12 @@ if (prebuiltFailures.length) {
 	process.exit(1);
 }
 
-const wrapperFailures = readdirSync('packages')
-	.map((name) => path.join('packages', name))
-	.filter((dir) => existsSync(path.join(dir, 'package.json')))
-	.flatMap(verifyWrapper);
+const wrapperFailures = [];
+for (const name of readdirSync('packages')) {
+	const dir = path.join('packages', name);
+	if (existsSync(path.join(dir, 'package.json')))
+		wrapperFailures.push(...(await verifyWrapper(dir)));
+}
 if (wrapperFailures.length) {
 	console.error('verify-pack: a wrapper package fails:\n  ' + wrapperFailures.join('\n  '));
 	process.exit(1);
@@ -86,12 +89,13 @@ console.log(
 );
 
 /**
- * A wrapper's tarball holds every path its `exports` names, and a React wrapper's entries open
- * with `'use client'`, so a Next server component can render them. Run after the wrapper builds.
+ * A wrapper's tarball holds every path its `exports` names, each entry imports in Node with no DOM
+ * as a server render does, and a React wrapper's entries open with `'use client'`, so a Next server
+ * component can render them. Run after the wrapper builds.
  * @param {string} dir
- * @returns {string[]}
+ * @returns {Promise<string[]>}
  */
-function verifyWrapper(dir) {
+async function verifyWrapper(dir) {
 	const pkg = JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf8'));
 	const packed = packedPaths(
 		execSync('npm pack --dry-run --json --ignore-scripts', { cwd: dir, encoding: 'utf8' })
@@ -103,6 +107,13 @@ function verifyWrapper(dir) {
 		.map((target) => target.replace(/^\.\//, ''))
 		.filter((target) => !packed.includes(target))
 		.map((target) => `${pkg.name} ships no ${target}`);
+	for (const entry of named.filter((target) => target.endsWith('.js'))) {
+		try {
+			await import(pathToFileURL(path.resolve(dir, entry)).href);
+		} catch (error) {
+			failures.push(`${pkg.name}'s ${entry} fails to import in Node: ${error}`);
+		}
+	}
 	if (pkg.peerDependencies?.react) {
 		for (const entry of named.filter((target) => target.endsWith('.js'))) {
 			const file = path.join(dir, entry);
