@@ -22,10 +22,10 @@ import { readBack, readSource, shownRunsOf } from '../../../core/inline/live-edi
 import {
 	closeBefore,
 	markSpelling,
-	marksShown,
 	reopenAfter,
 	type CutConstruct
 } from '../../../core/inline/live-edit/close-reopen';
+import { marksShown } from '../../../core/inline/live-edit/shown-marks';
 import { isBlankText, trimTrailingLineEnding } from '../../../core/lines';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';

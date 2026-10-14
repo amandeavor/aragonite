@@ -15,7 +15,7 @@ import {
 	type ContentRange
 } from '../core/inline';
 import { readsInParts, shownOfSpan } from '../core/inline/live-edit/read-back';
-import type { ShownSpan } from '../core/inline/live-edit/close-reopen';
+import type { ShownSpan } from '../core/inline/live-edit/shown-marks';
 import {
 	ownTrailingLineEnding,
 	snapToScalarBoundary,

@@ -7,7 +7,7 @@
 
 import { getContentRange, isProseKind, openLinesAtEnd, readInline } from '../index';
 import { CONTENT_VISIBILITY, visibleRuns, type VisibleRun } from '../visibility';
-import { landsKeepingMarks, shownSpan, type ShownSpan } from './close-reopen';
+import { landsKeepingMarks, shownSpan, type ShownSpan } from './shown-marks';
 import type { ContentRange } from '../index';
 import type { Reading } from '../../../schema/reading';
 import { isBlankText, ownTrailingLineEnding, trimTrailingLineEnding } from '../../lines';
