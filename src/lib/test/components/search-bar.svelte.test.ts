@@ -204,7 +204,7 @@ describe('the readout', () => {
 		[
 			'the position among the matches',
 			{ query: 'a', matches: [1, 2, 3], activeIndex: 1 },
-			'2 / 3',
+			'2 of 3',
 			false
 		],
 		['no results', { query: 'zeta' }, 'No results', false],

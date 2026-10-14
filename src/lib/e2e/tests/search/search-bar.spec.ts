@@ -71,7 +71,7 @@ test.describe('search: open and close', () => {
 		// not serve the closed bar's cleared match set through a stale scan memo.
 		await openFind(editor);
 		await expect(overlays(page)).toHaveCount(2);
-		await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/1\s+of\s+2/);
 	});
 });
 
@@ -93,7 +93,7 @@ test.describe('search: closing returns to the caret', () => {
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		await page.keyboard.press('Enter');
 		await expect(home).not.toBeInViewport();
 
@@ -121,7 +121,7 @@ test.describe('search: closing returns to the caret', () => {
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		await page.keyboard.press('Enter');
 		await expect(home).toHaveCount(0);
 
@@ -153,10 +153,10 @@ test.describe('search: toggles', () => {
 			await openFind(editor);
 			await findInput(page).fill('');
 			await typeQuery(editor, 'alpha');
-			await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+			await expect(count(page)).toHaveText(/1\s+of\s+3/);
 
 			await page.getByRole('button', { name: 'Match case' }).click();
-			await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+			await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		});
 
 		await test.step('whole-word toggle drops substring-only matches', async () => {
@@ -164,10 +164,10 @@ test.describe('search: toggles', () => {
 			await openFind(editor);
 			await findInput(page).fill('');
 			await typeQuery(editor, 'cat');
-			await expect(count(page)).toHaveText(/1\s*\/\s*4/);
+			await expect(count(page)).toHaveText(/1\s+of\s+4/);
 
 			await page.getByRole('button', { name: 'Whole word' }).click();
-			await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+			await expect(count(page)).toHaveText(/1\s+of\s+2/);
 		});
 
 		await test.step('regex toggle interprets the query as a pattern', async () => {
@@ -179,7 +179,7 @@ test.describe('search: toggles', () => {
 			await expect(count(page)).toHaveText(/No results/);
 
 			await page.getByRole('button', { name: 'Regex' }).click();
-			await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+			await expect(count(page)).toHaveText(/1\s+of\s+3/);
 		});
 
 		await test.step('invalid regex shows an error state with no count and no highlights', async () => {
@@ -191,7 +191,7 @@ test.describe('search: toggles', () => {
 			// Positively assert the error state (the readout carries the `error` class and
 			// the compiler's message), not merely the absence of a count.
 			await expect(count(page)).toHaveClass(/error/);
-			await expect(count(page)).not.toHaveText(/\d+\s*\/\s*\d+/);
+			await expect(count(page)).not.toHaveText(/\d+\s+of\s+\d+/);
 			await expect(count(page)).not.toHaveText(/No results/);
 			await expect(overlays(page)).toHaveCount(0);
 		});

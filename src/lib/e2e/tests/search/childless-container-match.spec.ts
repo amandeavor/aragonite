@@ -43,7 +43,7 @@ test.describe('search: childless opaque container', () => {
 
 		// The query exists only inside the mermaid source: finding it at all is the scan half,
 		// painting it inside the host is the overlay half.
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		const overlay = mermaidHost(page).locator('.match-overlay');
 		await expect(overlay).toHaveCount(1);
 		const box = await overlay.boundingBox();
@@ -68,7 +68,7 @@ test.describe('search: childless opaque container', () => {
 		await editor.loadContent(`prose ZZNEEDLE here\n\n${MERMAID_FENCE}`);
 		await expect(mermaidHost(page)).toHaveCount(1);
 
-		await openReplaceOn(page, 'ZZNEEDLE', /1\s*\/\s*2/);
+		await openReplaceOn(page, 'ZZNEEDLE', /1\s+of\s+2/);
 		await replaceInput(page).fill('FOUND');
 
 		await page.getByRole('button', { name: 'All', exact: true }).click();
@@ -90,7 +90,7 @@ test.describe('search: childless opaque container', () => {
 		await editor.loadContent(`prose mermaid here\n\n${MERMAID_FENCE}`);
 		await expect(mermaidHost(page)).toHaveCount(1);
 
-		await openReplaceOn(page, 'mermaid', /1\s*\/\s*2/);
+		await openReplaceOn(page, 'mermaid', /1\s+of\s+2/);
 		await replaceInput(page).fill('js');
 
 		await page.getByRole('button', { name: 'All', exact: true }).click();
@@ -100,7 +100,7 @@ test.describe('search: childless opaque container', () => {
 		await expect(mermaidHost(page)).toHaveCount(1);
 		// The declined match survives the rescan (1 / 1), so the bar shows the tally rather
 		// than the replaced count; the test hook below carries the count.
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		expect(await page.evaluate(() => (window as any).__test.getSearchReplacedCount())).toBe(1);
 	});
 
@@ -114,7 +114,7 @@ test.describe('search: childless opaque container', () => {
 		await page.getByRole('button', { name: 'Regex' }).click();
 		await findInput(page).click();
 		await typeQuery(editor, 'B\\n```');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		await replaceInput(page).fill('C');
 
 		await page.getByRole('button', { name: 'All', exact: true }).click();

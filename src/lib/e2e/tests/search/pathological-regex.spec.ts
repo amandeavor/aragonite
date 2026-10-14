@@ -58,7 +58,7 @@ test.describe('search: a pathological regex query', () => {
 
 		await test.step('a cheap query after an overrun searches again', async () => {
 			await findInput(page).fill('read.');
-			await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+			await expect(count(page)).toHaveText(/1\s+of\s+1/);
 			await expect(overlays(page)).toHaveCount(1);
 		});
 

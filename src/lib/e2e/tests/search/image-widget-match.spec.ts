@@ -17,7 +17,7 @@ test.describe('search: image-widget matches', () => {
 		await openFind(editor);
 		await page.keyboard.type('needle');
 
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		// The explicit width holds whether or not the image loads, while an unloaded image's height
 		// stays 0, so width is the network-independent sign the highlight covers it.
 		await expect(overlays(page)).toHaveCount(1);
@@ -45,7 +45,7 @@ test.describe('search: image-widget matches', () => {
 		await openFind(editor);
 		await page.keyboard.type('needleseed');
 
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		await expect(overlays(page)).toHaveCount(1);
 		const width = await overlays(page)
 			.first()
@@ -61,14 +61,14 @@ test.describe('search: image-widget matches', () => {
 
 		await openFind(editor);
 		await page.keyboard.type('list');
-		await expect(count(page)).toHaveText(/1\s*\/\s*11/);
+		await expect(count(page)).toHaveText(/1\s+of\s+11/);
 
 		// Matches #9 and #10 live inside the image in `- ![In a list|300](.../seed/aragonite-list/...)`.
 		// Step to #9 and assert an overlay paints with width > 0.
 		for (let i = 1; i < 9; i++) {
 			await page.keyboard.press('Enter');
 		}
-		await expect(count(page)).toHaveText(/9\s*\/\s*11/);
+		await expect(count(page)).toHaveText(/9\s+of\s+11/);
 		await editor.waitForRenderFlush();
 		const widths = await overlays(page).evaluateAll((els) =>
 			els.map((el) => el.getBoundingClientRect().width)
