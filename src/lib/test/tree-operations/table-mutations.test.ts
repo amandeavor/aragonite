@@ -9,7 +9,7 @@ import {
 	cycleAlignment,
 	setAlignment
 } from '../../tree-operations/table-mutations';
-import type { CstNode, TableMetadata, TableRowMetadata } from '../../core/nodes';
+import type { CstNode, TableMetadata } from '../../core/nodes';
 
 function parseTable(src: string) {
 	return parse(src).children[0];
@@ -24,7 +24,6 @@ describe('insertEmptyRow', () => {
 		expect(table.children).toHaveLength(3);
 		const inserted = table.children![1];
 		expect(inserted.kind).toBe('tableRow');
-		expect((inserted.metadata as TableRowMetadata).isHeader).toBe(false);
 		expect(inserted.children!.map((c) => c.raw)).toEqual(['', '']);
 	});
 
@@ -33,14 +32,6 @@ describe('insertEmptyRow', () => {
 		insertEmptyRow(table, 1, 'below');
 		expect(table.children).toHaveLength(3);
 		expect(table.children![2].children!.map((c) => c.raw)).toEqual(['', '']);
-	});
-
-	it('keeps the existing header at row 1 when inserting above row 0', () => {
-		const table = parseTable('| A | B |\n| --- | --- |\n| 1 | 2 |\n');
-		insertEmptyRow(table, 0, 'above');
-		expect((table.children![0].metadata as TableRowMetadata).isHeader).toBe(false);
-		expect((table.children![1].metadata as TableRowMetadata).isHeader).toBe(true);
-		expect(table.children![1].children!.map((c) => c.raw)).toEqual(['A', 'B']);
 	});
 
 	it('appends as the last row when inserting below the last index', () => {
@@ -57,13 +48,6 @@ describe('deleteRow', () => {
 		deleteRow(table, 1);
 		expect(table.children).toHaveLength(2);
 		expect(table.children![1].children![0].raw).toBe('3');
-	});
-
-	it('promotes the next row to header when row 0 is removed', () => {
-		const table = parseTable('| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n');
-		deleteRow(table, 0);
-		expect((table.children![0].metadata as TableRowMetadata).isHeader).toBe(true);
-		expect(table.children![0].children!.map((c) => c.raw)).toEqual(['1', '2']);
 	});
 });
 

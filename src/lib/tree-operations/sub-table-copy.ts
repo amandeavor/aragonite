@@ -6,7 +6,7 @@
 import type { CstNode, TableAlignment } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import { metadataOf } from '../core/nodes';
-import { rebuildTableRaw, tableLineEnding } from '../schema/container-rebuilders';
+import { rebuildTableRaw, tableLineEnding, tableRowOf } from '../schema/container-rebuilders';
 
 export interface CellPos {
 	rowIdx: number;
@@ -45,13 +45,9 @@ function subTable(cellRaws: string[][], alignments: TableAlignment[], lineEnding
 		// The rebuild reads the line ending off the raw it replaces.
 		raw: lineEnding,
 		metadata: { columnCount: alignments.length, alignments },
-		children: cellRaws.map((cells, i) => ({
-			kind: 'tableRow',
-			leadingTrivia: '',
-			raw: '',
-			metadata: { isHeader: i === 0 },
-			children: cells.map((raw) => ({ kind: 'tableCell', leadingTrivia: '', raw }))
-		}))
+		children: cellRaws.map((cells) =>
+			tableRowOf(cells.map((raw) => ({ kind: 'tableCell', leadingTrivia: '', raw })))
+		)
 	};
 	rebuildTableRaw(table);
 	return table;

@@ -5,8 +5,9 @@
  * shapes live in `child-spans.ts`; each kind here adds only its own per-line syntax.
  */
 
-import type { CstNode, TableAlignment } from '../core/nodes';
-import { metadataOf } from '../core/nodes';
+import type { CstNode, TableAlignment, TableRowMetadata } from '../core/nodes';
+import { makeBlockNode, metadataOf } from '../core/nodes';
+import { generateBlockId } from '../block-id';
 import type { NodeView } from '../core/node-views';
 import { assertInvariant } from '../assert';
 import { quoteLines } from '../core/parsers/blockquote';
@@ -128,6 +129,7 @@ export function rebuildTableRaw(node: CstNode, changed?: ChildRawChange): void {
 		if (row?.children) writeTableRow(row, lineEnding, undefined, followed(changed.index));
 		if (spliceVerbatimChild(node, changed, rebuildTableRaw)) return;
 	}
+	headFirstRow(node);
 	const meta = metadataOf(node, 'table');
 	const delimiterBefore = secondLine(node.raw);
 	const columnsBefore =
@@ -154,6 +156,55 @@ export function rebuildTableRaw(node: CstNode, changed?: ChildRawChange): void {
 	if (children.length < 2) raw += delimiter;
 	node.raw = raw;
 	node.childSpans = spans;
+}
+
+/** A body row holding `cells`; whether it is the header is its table's rebuild to say. */
+export function tableRowOf(cells: CstNode[]): CstNode {
+	return {
+		kind: 'tableRow',
+		leadingTrivia: '',
+		raw: '',
+		metadata: { isHeader: false },
+		children: cells
+	};
+}
+
+// Row 0 is the header whichever route put it there; its surplus cells become new columns, since a
+// header wider than the delimiter row reads as no table.
+function headFirstRow(table: CstNode): void {
+	const rows = table.children!;
+	if (rows.length === 0) return;
+	const meta = metadataOf(table, 'table');
+	const extra = metadataOf(rows[0], 'tableRow').surplusCells?.length ?? 0;
+	if (extra > 0) {
+		meta.columnCount += extra;
+		meta.alignments = [...meta.alignments, ...Array<TableAlignment>(extra).fill('none')];
+	}
+	for (let i = 0; i < rows.length; i++) {
+		const row = rows[i];
+		if (extra > 0 || metadataOf(row, 'tableRow').isHeader !== (i === 0)) {
+			// A copy: only the table is the edit's own, and the row can still be in an undo entry.
+			rows[i] = widenedRow(row, meta.columnCount, i === 0);
+		}
+	}
+}
+
+/** A copy of the row holding `columnCount` cells, the missing ones taken from its surplus first. */
+function widenedRow(row: CstNode, columnCount: number, isHeader: boolean): CstNode {
+	const surplus = metadataOf(row, 'tableRow').surplusCells ?? [];
+	const missing = Math.max(0, columnCount - row.children!.length);
+	const added = Array.from({ length: missing }, (_, k): CstNode => ({
+		kind: 'tableCell',
+		leadingTrivia: '',
+		raw: surplus[k] ?? ''
+	}));
+	const rest = surplus.slice(missing);
+	const metadata: TableRowMetadata =
+		rest.length > 0 ? { isHeader, surplusCells: rest } : { isHeader };
+	const copy = makeBlockNode({ ...row, metadata, children: [...row.children!, ...added] });
+	if (row.childIds) copy.childIds = [...row.childIds, ...added.map(() => generateBlockId())];
+	delete copy.childSpans;
+	return copy;
 }
 
 function tableRowBytes(

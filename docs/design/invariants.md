@@ -1056,6 +1056,7 @@ unguarded.
 | G4.163 | A mark's own handlers are called only by the hover lifecycle, activation and the click    | L       |
 | G4.165 | A write that moves text without resizing its block reports it, so its overlays measure    | L       |
 | G4.166 | Every length the drawn caret's rules set is rounded to whole device pixels                | L       |
+| G4.170 | Only the parser and the table rebuild write a row's header flag                           | L       |
 
 ### The entries
 
@@ -2025,6 +2026,11 @@ each width rounds to the nearest whole device pixel, like the browser's caret, a
 to one. A shape whose length skips that rounding blurs across two pixel columns at a fractional
 display scale. `lint/drawn-caret-guards.test.ts` fails a length set in a `.md-drawn-caret` rule
 with no twin in `editor.css`'s device-rounding block, and a width there not rounded to the nearest.
+
+**G4.170 · The header is the first row.** A table's rebuild makes row 0 its header and every other
+row a body row, so an insert, move, delete or split never leaves the flag on the row that used to
+be first. `lint/table-header-flag.test.ts` fails a file other than the table parser and
+`schema/container-rebuilders.ts` that writes the flag.
 
 ## Accessibility
 

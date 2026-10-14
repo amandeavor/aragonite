@@ -3,10 +3,9 @@
  * preserves caret continuity for the break-and-splice paste path.
  */
 
-import type { CstNode, TableRowMetadata } from '../../core/nodes';
+import type { CstNode } from '../../core/nodes';
 import { metadataOf } from '../../core/nodes';
 import { rebuildTableRaw } from '../../schema/container-rebuilders';
-import { promoteFirstRowToHeader } from '../table-mutations';
 
 export type RowGoes = 'first' | 'second';
 
@@ -33,7 +32,7 @@ function buildHalf(rows: CstNode[], table: CstNode): CstNode | null {
 		(row) =>
 			({
 				...row,
-				metadata: { ...metadataOf(row, 'tableRow'), isHeader: false } as TableRowMetadata,
+				metadata: { ...metadataOf(row, 'tableRow') },
 				children: row.children!.map((cell) => ({ ...cell }) as CstNode)
 			}) as CstNode
 	);
@@ -48,6 +47,5 @@ function buildHalf(rows: CstNode[], table: CstNode): CstNode | null {
 		},
 		children: cloned
 	};
-	promoteFirstRowToHeader(half);
 	return half;
 }

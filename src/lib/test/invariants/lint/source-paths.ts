@@ -46,6 +46,7 @@ export const SOURCE = {
 	keybindings: 'src/lib/schema/keybindings.ts',
 	fenceRule: 'src/lib/schema/fenced-code-raw.ts',
 	tableCellEscape: 'src/lib/schema/table-cell-raw.ts',
+	containerRebuilders: 'src/lib/schema/container-rebuilders.ts',
 
 	// ── Tree operations ─────────────────────────────────────────────────────
 	treeOperationsBarrel: 'src/lib/tree-operations/index.ts',
@@ -190,6 +191,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	keybindings: 'export interface KeyBinding',
 	fenceRule: 'export type FenceWriteMode',
 	tableCellEscape: 'export function escapeUnescapedPipes',
+	containerRebuilders: 'export function rebuildTableRaw(',
 
 	// ── Tree operations ─────────────────────────────────────────────────────
 	treeOperationsBarrel: 'export { updateNodeContent, reclassifyContainer }',
