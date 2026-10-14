@@ -90,9 +90,10 @@ function expectOnGrid(edges: Edges, dpr: number, what: string): void {
 	}
 }
 
-/** A length token rounded down to whole device pixels, at least one. */
+/** A length token rounded to the nearest whole device pixel, at least one, as the browser's own
+ *  caret width is. */
 function deviceWidth(css: number, dpr: number): number {
-	return Math.max(1, Math.floor(css * dpr + 0.001));
+	return Math.max(1, Math.round(css * dpr));
 }
 
 /** Puts the caret after the first letter of `word` in the second block, one key at a time. */
@@ -107,7 +108,7 @@ for (const scale of [1, 1.25, 1.5]) {
 	test.describe(`the drawn caret at a device pixel ratio of ${scale}`, () => {
 		test.use({ deviceScaleFactor: scale });
 
-		test('a plain bar sits on whole device pixels, one wide, in the letter boundary’s column', async ({
+		test('a plain bar sits on whole device pixels, as wide as the browser’s, in the letter boundary’s column', async ({
 			page,
 			browserName
 		}) => {
@@ -126,7 +127,9 @@ for (const scale of [1, 1.25, 1.5]) {
 				const caretX = px.caretLeft * scale;
 				if (Math.abs(caretX - Math.round(caretX)) > 0.05) offGridCarets++;
 				expectOnGrid(px.bar, scale, `step ${i}`);
-				expect(devicePixels(px.bar.right - px.bar.left, scale), 'one device pixel wide').toBe(1);
+				expect(devicePixels(px.bar.right - px.bar.left, scale), 'the browser’s caret width').toBe(
+					deviceWidth(1, scale)
+				);
 				expect(
 					Math.round(px.bar.left * scale),
 					`the column the boundary at ${caretX} falls in`

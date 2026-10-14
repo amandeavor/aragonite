@@ -6,7 +6,7 @@ The pixel rows run at device pixel ratios of 1, 1.25 and 1.5, on a line height t
 
 ## Happy paths
 
-- Walking a line one letter at a time: every edge of the plain bar lands on a whole device pixel, it is one device pixel wide, and it stands in the device column the letter boundary falls in
+- Walking a line one letter at a time: every edge of the plain bar lands on a whole device pixel, it is 1px rounded to the nearest whole device pixel (one at 1.25x, two at 1.5x, as wide as the browser's own caret), and it stands in the device column the letter boundary falls in
   - Miss-analysis: every caret row compared the bar with the browser's caret within a pixel, which is the size of the error, and none ran above 1x, where a 1px bar is wider than a device pixel
 - At 1x the bar stands in the browser's own caret column at every letter boundary, found red in a screenshot (not on WebKit, which measures the range in whole pixels and loses the fraction its own caret rounds)
 - The bar is the color of the text it stands in: in a paragraph, a heading, a link and bold, each styled its own color
@@ -14,8 +14,8 @@ The pixel rows run at device pixel ratios of 1, 1.25 and 1.5, on a line height t
 
 ## Edge cases
 
-- The bold bar keeps the device grid, its width the bold token rounded down to whole device pixels
-- The italic bar's foot keeps the device grid, one device pixel wide
-- The strikethrough tick keeps the device grid: 13px and 2px, each rounded down to whole device pixels
-- The gap bar's top and thickness keep the device grid, 2px rounded down to whole device pixels
+- The bold bar keeps the device grid, its width the bold token rounded to the nearest whole device pixel
+- The italic bar's foot keeps the device grid, as wide as the plain bar
+- The strikethrough tick keeps the device grid: 13px and 2px, each rounded to the nearest whole device pixel
+- The gap bar's top and thickness keep the device grid, 2px rounded to the nearest whole device pixel
 - A theme that sets `--md-caret-color` colors the bar, in plain text and in a link alike

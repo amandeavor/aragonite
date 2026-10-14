@@ -256,13 +256,15 @@ function barLengths(css: string): { plain: string[]; rounded: Map<string, string
 	return { plain, rounded };
 }
 
-/** The lengths a rule sets with no device-rounded twin that rounds through the device pixel. */
+/** The lengths a rule sets with no device-rounded twin that rounds through the device pixel; a
+ *  width or height rounds to the nearest one, as the browser's own caret width does. */
 function unroundedBarLengths(css: string): string[] {
 	const { plain, rounded } = barLengths(css);
-	const viaDevicePixel = (value = '') =>
-		/round\(/.test(value) && value.includes('--md-device-pixel');
+	const viaDevicePixel = (key: string, value = '') =>
+		(/ :: (?:width|height)$/.test(key) ? /round\(nearest,/ : /round\(/).test(value) &&
+		value.includes('--md-device-pixel');
 	return [...new Set([...plain, ...rounded.keys()])].filter(
-		(key) => !viaDevicePixel(rounded.get(key))
+		(key) => !viaDevicePixel(key, rounded.get(key))
 	);
 }
 
@@ -274,9 +276,9 @@ describe('G4.166 every length the drawn caret’s rules set is rounded to whole 
 		).toEqual([]);
 	});
 
-	it('flags a shape added without its rounded twin, and passes zero and auto', () => {
+	it('flags a shape added without its rounded twin, or a width rounded down, and passes zero and auto', () => {
 		const rounding = `${DEVICE_ROUNDING} {
-	.md-drawn-caret { width: round(down, 1px, var(--md-device-pixel)); }
+	.md-drawn-caret { width: round(nearest, 1px, var(--md-device-pixel)); }
 }`;
 		const css = `.md-drawn-caret { top: 0; width: 1px; }
 .md-drawn-caret[x] { width: 4px; right: 0; }
@@ -285,5 +287,10 @@ ${rounding}`;
 		expect(unroundedBarLengths(`.md-drawn-caret { height: 2px; }`)).toEqual([
 			'.md-drawn-caret :: height'
 		]);
+		const down = rounding.replace('nearest', 'down');
+		expect(
+			unroundedBarLengths(`.md-drawn-caret { width: 1px; }
+${down}`)
+		).toEqual(['.md-drawn-caret :: width']);
 	});
 });
