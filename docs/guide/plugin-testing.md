@@ -431,7 +431,7 @@ it('the embed recognizer conforms', async () => {
 
 (The guide's own embed, the one that builds real built-in images, asserts `imageClaim` instead, and excuses `widget` and `editingPolicy`, since a built-in kind renders through the built-in widget.)
 
-Its `detail` strings say how much each cell actually chewed through. For that profile, with the embed rendered by a Svelte `component`, under jsdom:
+Its `detail` strings say how much each cell actually chewed through. For that profile:
 
 ```ts
 const report = await runInlineKindConformance(profile);
@@ -440,7 +440,7 @@ report.cells.map((c) => `${c.cell}: ${c.status} (${c.detail})`);
 //   'claims: asserted (2 claim(s) across 2 fixture(s))',
 //   'roundTrip: asserted (20 source(s) round-trip byte-for-byte and tile their scan range)',
 //   'overlapDecline: asserted (1 prefix position(s) declined across 1 overlap fixture(s))',
-//   'widget: boundary (recognition + self-delimiting claim executed; the widget wrapper of a `component` kind is created by the render layer ...)',
+//   'widget: asserted (recognition and a self-delimiting claim)',
 //   'editingPolicy: asserted (policy vocabulary)', // plus a whole-delete check if your policy says atomic
 //   'imageClaim: exempt (this recognizer builds only its own kind, never a built-in one)',
 //   'registration: asserted (prefix rung at priority 40, below the built-in boundary)'
@@ -459,7 +459,7 @@ Error: overlapDecline asserts but the profile supplies no overlapFixtures
 
 The other three declared cells are yours to excuse, since only you know whether they have anything to bite on. But an excuse the kit can falsify, it falsifies: declaring `imageClaim` exempt while a fixture produces a stamped built-in (a built-in node the scan marked as your recognizer's) fails, as does excusing `widget` for a kind that **is** a registered live widget, or `editingPolicy` for a kind that declares one.
 
-Two things worth knowing about `widget`. It asserts your claimed slice is **self-delimiting**: re-scanning the slice alone must re-form the same kind over its whole length, because that slice is exactly what the widget's `data-source-*` attributes (the ones saying which bytes it stands for) hand the clipboard and a source reveal. And where your kind builds its own widget DOM (`buildWidget`), the kit renders your fixture and measures the caret walk across it, which must equal the source length: a widget counts as its source span, never as what it draws, so an emoji showing one glyph for seven bytes still walks seven. A `component` kind's wrapper is built by the editor, not by you, so that half doesn't run and the cell reports `boundary` rather than claiming a pass (that's the report above). Run the suite under a DOM (`// @vitest-environment jsdom` for Vitest); without one the rendering half can't run either, and the cell again reports `boundary` naming what you lost, while the recognition and self-delimiting checks still execute. That run also prints an `[aragonite:needs-dom]` warning, so you hear about it even if you never read the report: add the jsdom docblock to the top of that test file and the rendering half runs.
+One thing worth knowing about `widget`: it asserts your claimed slice is **self-delimiting**. Re-scanning the slice alone must re-form the same kind over its whole length, because that slice is exactly what the widget's `data-source-*` attributes (the ones saying which bytes it stands for) hand the clipboard and a source reveal. Those attributes sit on the span the editor makes for your view, not on anything you build, so there's nothing about the span left for you to get wrong and the cell needs no DOM.
 
 `registration` is the thinnest cell. It checks three things:
 
