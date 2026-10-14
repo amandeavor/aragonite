@@ -5,11 +5,7 @@ import {
 	getBlockKindDescriptor,
 	tryGetBlockKindDescriptor
 } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerBlockView,
-	getBlockView,
-	type BlockView
-} from '#lib/schema/block-view-registry.js';
+import { registerBlockView, getBlockView, asBlockView } from '#lib/schema/block-view-registry.js';
 import {
 	registerBlockOpener,
 	listRegisteredOpeners,
@@ -29,7 +25,7 @@ const minimal = {
 } as const;
 
 // Guard fires on registry.has before the entry is read, so a stub entry is enough.
-const stubComponent = {} as BlockView;
+const stubComponent = asBlockView({});
 const stubOpener: BlockOpener = { priority: 999, tryOpen: () => null, interruptsParagraph: false };
 
 describe('schema registries are register-once', () => {

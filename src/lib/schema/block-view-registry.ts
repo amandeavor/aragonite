@@ -13,11 +13,16 @@ import {
 } from './plugin-install';
 import { createBlockKindRegistry } from './plugin-registry';
 
-declare const blockViewBrand: unique symbol;
+const blockViewBrand: unique symbol = Symbol('BlockView');
 
 /** What draws a block kind: `svelteBlockView` (from `@voithos-labs/aragonite/svelte`) makes one. */
 export interface BlockView {
 	readonly [blockViewBrand]: true;
+}
+
+/** Marks `body` as a block view; only the functions that build a view call it. */
+export function asBlockView<T extends object>(body: T): T & BlockView {
+	return Object.assign(body, { [blockViewBrand]: true as const });
 }
 
 const registry = createBlockKindRegistry<BlockView>({
@@ -26,6 +31,12 @@ const registry = createBlockKindRegistry<BlockView>({
 });
 
 export function registerBlockView(kind: AnyBlockKind, view: BlockView): void {
+	if ((view as Partial<BlockView> | undefined)?.[blockViewBrand] !== true) {
+		throw new TypeError(
+			`registerBlockView: "${kind}" needs a view, such as \`svelteBlockView(Component)\` from ` +
+				'`@voithos-labs/aragonite/svelte` (`definePluginBlock` takes it as `view`)'
+		);
+	}
 	registry.register(
 		kind,
 		view,

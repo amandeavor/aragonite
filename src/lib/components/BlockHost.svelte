@@ -101,10 +101,10 @@
 
 	let entry = $derived(svelteBlockEntry(registryView.blockView(node.kind)));
 
-	// A kind with no registered component falls back to the plain editable block below
-	// rather than silently rendering nothing.
+	// A kind with no registered view falls back to the plain editable block below rather than
+	// silently rendering nothing.
 	$effect(() => {
-		if (!entry) devWarn('block-host', 'no component for kind, rendering raw', node.kind);
+		if (!entry) devWarn('block-host', 'no view for kind, rendering raw', node.kind);
 	});
 
 	// The error boundary retries only when the bytes change, so a failing render cannot loop.

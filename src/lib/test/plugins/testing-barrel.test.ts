@@ -40,11 +40,11 @@ import {
 	listLanguages,
 	definePlugin,
 	isPluginInstalled,
-	type BlockView,
 	type NodeView,
 	type PluginBlockKind,
 	type PluginInlineKind
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { devWarn } from '#lib/dev-warn.js';
 import { installPlugins, onEditorCallbacks } from '#lib/schema/plugin-install.js';
 import { pluginGlobalBinding } from '#lib/schema/commands.js';
@@ -96,7 +96,7 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 	},
 	{
 		entry: 'registerBlockView',
-		register: () => registerBlockView(block, {} as BlockView),
+		register: () => registerBlockView(block, svelteBlockView((() => {}) as never)),
 		registered: () => isBlockViewRegistered('probe-block')
 	},
 	{

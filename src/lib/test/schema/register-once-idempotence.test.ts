@@ -3,11 +3,7 @@ import { configureEditorEnv } from '#lib/env.js';
 import { takeDevWarns } from '../support/warn-gate';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { registerBlockKind, getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerBlockView,
-	getBlockView,
-	type BlockView
-} from '#lib/schema/block-view-registry.js';
+import { registerBlockView, getBlockView, asBlockView } from '#lib/schema/block-view-registry.js';
 import {
 	registerBlockOpener,
 	getOrderedOpeners,
@@ -32,7 +28,7 @@ const registration = (editable: boolean) =>
 		closure: testClosure
 	}) as const;
 
-const stubComponent = (tag: string) => ({ tag }) as unknown as BlockView;
+const stubComponent = (tag: string) => asBlockView({ tag });
 const stubOpener = (priority: number): BlockOpener => ({
 	priority,
 	tryOpen: () => null,

@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerBlockView,
-	getBlockView,
-	type BlockView
-} from '#lib/schema/block-view-registry.js';
+import { registerBlockView, getBlockView, asBlockView } from '#lib/schema/block-view-registry.js';
 import { registerBlockOpener, type BlockOpener } from '#lib/schema/block-openers.js';
 import { createRegistryView, defaultRegistryView } from '#lib/schema/registry-view.js';
 import type { AnyBlockKind, PluginBlockKind } from '#lib/core/nodes.js';
@@ -13,7 +9,7 @@ import { testLeaf } from '#lib/test/harness/test-kinds.js';
 import { activationFor, everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 
-const stubComponent = {} as BlockView;
+const stubComponent = asBlockView({});
 
 // An opener that takes a single `@x`-prefixed line as this kind, with byte-exact raw so the
 // parser's dev-mode opener check passes.

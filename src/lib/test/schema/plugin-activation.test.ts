@@ -5,11 +5,7 @@ import { createRegistryView, kindEnablementFor } from '#lib/schema/registry-view
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { registerBlockKind } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerBlockView,
-	getBlockView,
-	type BlockView
-} from '#lib/schema/block-view-registry.js';
+import { registerBlockView, getBlockView, asBlockView } from '#lib/schema/block-view-registry.js';
 import { registerBlockOpener, type BlockOpener } from '#lib/schema/block-openers.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import {
@@ -20,7 +16,7 @@ import type { NodeView } from '#lib/core/node-views.js';
 import type { PluginBlockKind } from '#lib/core/nodes.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
-const stubView = {} as BlockView;
+const stubView = asBlockView({});
 
 const markerOpener = (kind: PluginBlockKind, marker: string): BlockOpener => ({
 	priority: 5,

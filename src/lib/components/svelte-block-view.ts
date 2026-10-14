@@ -3,7 +3,7 @@
 import type { Component } from 'svelte';
 import type { NodeView } from '../core/node-views';
 import type { BlockComponentExports, BlockComponentProps } from '../block-component';
-import type { BlockView } from '../schema/block-view-registry';
+import { asBlockView, type BlockView } from '../schema/block-view-registry';
 
 export interface SvelteBlockEntry {
 	/** Typed with `BlockComponentExports` so BlockHost's `bind:this` type-checks a component picked
@@ -22,7 +22,7 @@ export function svelteBlockView<P extends Partial<BlockComponentProps> & Record<
 		component: component as SvelteBlockEntry['component'],
 		extraProps
 	};
-	return entry as unknown as BlockView;
+	return asBlockView(entry);
 }
 
 /** The component and props behind a registered view; every view is a Svelte entry today. */
