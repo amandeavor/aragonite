@@ -1,7 +1,7 @@
 /**
  * Keeps the caret across a presentation-mode switch. `beforeFlip` captures the caret and blurs
  * the block while the outgoing mode still owns the DOM; `afterFlip` drops the outgoing markers'
- * geometry and restores the caret through the shared restore path.
+ * geometry, has the overlays measure again, and restores the caret through the shared restore path.
  */
 
 import { tick } from 'svelte';
@@ -17,6 +17,7 @@ import type { PresentationMode } from '../../presentation-mode';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
 import type { EditorSelection } from '../../selection/primitives';
 import type { SelectionState } from '../../selection/selection-state.svelte';
+import type { TextMoves } from '../overlays/text-moves';
 
 export interface ModeFlipDeps {
 	/** Getters, never values: the root binds after construction and the mode moves. */
@@ -42,6 +43,7 @@ export interface ModeFlipDeps {
 	/** Make the editor's reading answer `mode` (null: the requested mode again), so an edit the
 	 *  blur commits lands in the mode it was typed in. */
 	holdOutgoingMode(mode: PresentationMode | null): void;
+	textMoves: Pick<TextMoves, 'movedEverywhere'>;
 }
 
 export interface ModeFlip {
@@ -121,9 +123,10 @@ export function createModeFlip(deps: ModeFlipDeps): ModeFlip {
 			// the caret restore below must read the tree it leaves.
 			deps.menus.closeAll('mode-change');
 			deps.drafts.closeAll('mode-change');
-			// The caret memory and measured heights belong to the outgoing mode's markers.
+			// The caret memory, measured heights and overlay rects belong to the outgoing markers.
 			deps.caretMemory.forget();
 			deps.layout.forgetMeasuredHeights();
+			deps.textMoves.movedEverywhere();
 			if (to === 'reading') {
 				// The gap caret is the editor's own, not the browser's, so no blur reaches it:
 				// the mode change clears it rather than each entry path.

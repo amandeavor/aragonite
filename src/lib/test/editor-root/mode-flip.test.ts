@@ -29,6 +29,7 @@ function harness(opts: { mode?: PresentationMode; selection?: EditorSelection | 
 	const calls = {
 		caretForgets: 0,
 		measuredDrops: 0,
+		textMoves: 0,
 		menuCloses: 0,
 		gapClears: 0,
 		selectionEmits: 0,
@@ -87,6 +88,12 @@ function harness(opts: { mode?: PresentationMode; selection?: EditorSelection | 
 		},
 		holdOutgoingMode: (next) => {
 			held = next;
+		},
+		textMoves: {
+			movedEverywhere: () => {
+				calls.textMoves++;
+				calls.order.push('text');
+			}
 		}
 	});
 	/** Both halves in effect order, the mode already moved as the derived would have. */
@@ -134,6 +141,7 @@ describe('editor-root mode flip: the two halves', () => {
 		expect(h.calls).toMatchObject({
 			caretForgets: 0,
 			measuredDrops: 0,
+			textMoves: 0,
 			menuCloses: 0,
 			modeEmits: []
 		});
@@ -155,12 +163,14 @@ describe('editor-root mode flip: the two halves', () => {
 		expect(h.calls.selectionEmits).toBe(0);
 	});
 
+	// Miss-analysis: the overlays’ rects were never counted among the mode’s geometry.
 	it('the post half closes the menus, forgets the mode’s geometry and announces the mode', () => {
 		const h = harness();
 		h.flipTo('live');
 		expect(h.calls).toMatchObject({
 			caretForgets: 1,
 			measuredDrops: 1,
+			textMoves: 1,
 			menuCloses: 1,
 			modeEmits: ['live']
 		});
@@ -220,6 +230,7 @@ describe('editor-root mode flip: the caret carry', () => {
 			'drafts:mode-change',
 			'caret',
 			'heights',
+			'text',
 			'mode',
 			'restore'
 		]);

@@ -149,7 +149,8 @@
 		decorations: decorationEngine,
 		drafts,
 		drawnCaret,
-		presses
+		presses,
+		textMoves
 	} = getContext<EditorServices>(EDITOR_SERVICES_KEY);
 	const ownPairs = autoPairs.forBlock();
 
@@ -333,6 +334,7 @@
 		drafts,
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
+		textMoves,
 		activationClick,
 		get reading() {
 			return reading;
@@ -383,7 +385,8 @@
 			return reading;
 		},
 		getEl: () => el ?? null,
-		isCrossBlock: () => selection.isCrossBlock
+		isCrossBlock: () => selection.isCrossBlock,
+		textMoves
 	});
 
 	// Every caret-edge key goes through this one dispatch (G4.12); entering a widget stays in

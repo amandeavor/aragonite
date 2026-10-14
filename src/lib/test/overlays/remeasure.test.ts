@@ -4,6 +4,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { BlockComponent } from '#lib/block-component.js';
 import { wireOverlayRemeasure } from '#lib/components/overlays/remeasure.js';
+import { createTextMoves } from '#lib/components/overlays/text-moves.js';
+import { tick } from 'svelte';
 
 let resizeCallback: ResizeObserverCallback | null = null;
 
@@ -82,12 +84,28 @@ describe('wireOverlayRemeasure', () => {
 		expect(measure).toHaveBeenCalledTimes(2);
 	});
 
-	it('stops measuring once disposed', () => {
+	it('measures again when text inside the block moves without a resize', async () => {
 		const parts = mountParts();
-		const { measure, dispose } = wire(parts);
+		const textMoves = createTextMoves();
+		const measure = vi.fn();
+		wireOverlayRemeasure({ ...parts, blockRef: undefined, measure, textMoves });
+
+		textMoves.movedWithin(parts.el);
+		await tick();
+
+		expect(measure).toHaveBeenCalledTimes(2);
+	});
+
+	it('stops measuring once disposed', async () => {
+		const parts = mountParts();
+		const textMoves = createTextMoves();
+		const measure = vi.fn();
+		const dispose = wireOverlayRemeasure({ ...parts, blockRef: undefined, measure, textMoves });
 
 		dispose();
 		parts.editorRoot.dispatchEvent(new Event('scroll'));
+		textMoves.movedEverywhere();
+		await tick();
 
 		expect(measure).toHaveBeenCalledTimes(1);
 		expect(resizeCallback).toBeNull();

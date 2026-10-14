@@ -8,6 +8,7 @@ import { parse } from '#lib/core/parser.js';
 import { createEditorEvents } from '#lib/editor-events.js';
 import LinkCard from '#lib/components/link-card/LinkCard.svelte';
 import LinkCardHost from '#lib/components/link-card/LinkCardHost.svelte';
+import { createTextMoves } from '#lib/components/overlays/text-moves.js';
 import { createLinkCardState } from '#lib/components/link-card/link-card-state.svelte.js';
 import { type InlineRangeCommit } from '#lib/editor-actions/inline-range-commit.js';
 import { type CaretRestore } from '#lib/selection/caret-restore.js';
@@ -121,7 +122,8 @@ describe('IME guard', () => {
 				grammar: defaultGrammarView,
 				caretRestore: { save: vi.fn(), saveCurrent: vi.fn(), restore } as CaretRestore,
 				menuPresence: createMenuPresence({ isReading: () => false }),
-				commands: commandContext()
+				commands: commandContext(),
+				textMoves: createTextMoves()
 			}
 		});
 		card.enter({ path: [0], sourceStart: 6 });

@@ -8,6 +8,7 @@
 	import { createLinkCardCommitter } from './link-card-commit';
 	import type { LinkCardState } from './link-card-state.svelte';
 	import type { MenuPresence } from '../menu/menu-presence.svelte';
+	import type { TextMoves } from '../overlays/text-moves';
 	import type { Reading } from '../../schema/reading';
 	import type { CommandDispatchContext } from '../../schema/block-commands';
 	import { commandForKey } from '../../schema/commands';
@@ -27,7 +28,8 @@
 		caretRestore,
 		reading,
 		menuPresence,
-		commands
+		commands,
+		textMoves
 	}: {
 		card: LinkCardState;
 		inlineRange: InlineRangeCommit;
@@ -43,6 +45,7 @@
 		menuPresence: MenuPresence;
 		/** The editor's command dispatch, which says what a keypress means at the card's block. */
 		commands: CommandDispatchContext;
+		textMoves: TextMoves;
 	} = $props();
 
 	let cardEl: HTMLDivElement | undefined = $state();
@@ -57,7 +60,8 @@
 		inlineRange,
 		events,
 		measureRange,
-		reading
+		reading,
+		textMoves
 	});
 
 	$effect(() => {

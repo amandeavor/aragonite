@@ -102,6 +102,7 @@
 	} from './editor-root/geometry';
 	import { createSelectionAnnouncer } from '../selection/selection-announcer';
 	import { createKindCue } from './kind-cue.svelte';
+	import { createTextMoves } from './overlays/text-moves';
 	import {
 		installEditorBlurAnnouncer,
 		installModActiveTracker,
@@ -752,6 +753,8 @@
 		}
 	});
 
+	const textMoves = createTextMoves();
+
 	// ── Context provision ───────────────────────────────────────────────
 
 	const crossBlockCommands = createCrossBlockCommands({
@@ -809,7 +812,8 @@
 		menuPresence,
 		drafts,
 		stamps,
-		kindCue
+		kindCue,
+		textMoves
 	} satisfies EditorServices);
 
 	setContext(EDITOR_POLICIES_KEY, {
@@ -864,7 +868,8 @@
 		restoreCaret: (path, offset) => roundTripRestore(caretAt(path, offset), { reveal: 'mount' }),
 		holdOutgoingMode: (mode) => {
 			outgoingMode = mode;
-		}
+		},
+		textMoves
 	});
 	$effect.pre(() => {
 		const mode = effectiveMode;
@@ -944,6 +949,8 @@
 		if (next === lastTheme) return;
 		lastTheme = next;
 		events.emit('themeChange', next);
+		// A host's styles can key on the theme attribute and change the text's metrics.
+		textMoves.movedEverywhere();
 	});
 
 	// Hides the native caret and highlight while the overlay paints; keyed on the overlay's own
@@ -1126,7 +1133,8 @@
 	const focusAttribution = createFocusAttribution({
 		get mode() {
 			return reading.mode();
-		}
+		},
+		textMoves
 	});
 	$effect(() => {
 		void effectiveMode;
@@ -1135,6 +1143,10 @@
 	$effect(() => {
 		if (!editorEl) return;
 		return focusAttribution.install(editorEl);
+	});
+	$effect(() => {
+		if (!editorEl) return;
+		return textMoves.install(editorEl);
 	});
 
 	// ── Top-level windowing ─────────────────────────────────────────────
@@ -1445,6 +1457,7 @@
 		{reading}
 		{menuPresence}
 		{commands}
+		{textMoves}
 	/>
 	<InlineMenuHost
 		menu={inlineMenu}

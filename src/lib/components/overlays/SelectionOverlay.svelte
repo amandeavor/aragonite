@@ -106,7 +106,13 @@
 		}
 
 		const editorRoot = getEditorRoot?.() ?? null;
-		return wireOverlayRemeasure({ el, editorRoot, blockRef: ref, measure });
+		return wireOverlayRemeasure({
+			el,
+			editorRoot,
+			blockRef: ref,
+			measure,
+			textMoves: services.textMoves
+		});
 	});
 </script>
 

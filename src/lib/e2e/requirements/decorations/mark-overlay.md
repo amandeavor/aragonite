@@ -26,6 +26,4 @@ Sources register through the public registry, here through the e2e bridge rather
   the marked term adds a matching overlay (the commit → notifyEdit → re-provide path)
 - A marked block whose kind changes (`# ` typed at its start turns a paragraph into a heading)
   keeps its overlay, re-measured at the new geometry
-- A mark still paints after switching to reading mode: decorations are view-only, so an inert
-  read-only block with no caret does not suppress the overlay
 - Disposing the source unpaints every overlay it produced
