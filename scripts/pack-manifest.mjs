@@ -13,7 +13,7 @@ const EXTRA_PATHS = ['dist/components/Editor.svelte', 'dist/styles/editor.css'];
  * @param {unknown} value
  * @param {string[]} out
  */
-function collectLeafStrings(value, out) {
+export function collectLeafStrings(value, out) {
 	if (typeof value === 'string') out.push(value);
 	else if (value && typeof value === 'object') {
 		for (const nested of Object.values(value)) collectLeafStrings(nested, out);

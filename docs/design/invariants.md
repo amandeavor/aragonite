@@ -258,6 +258,7 @@ These checks run in three kinds of place:
 | G1.87 | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
 | G1.90 | A plugin component compiled against another Svelte runtime is named as such in dev         | N       |
 | G1.91 | A live removal keeps the marks on the visible characters it keeps                          | P·N     |
+| G1.94 | One editor per mount target: a second `createEditor` there before `destroy` warns in dev   | A       |
 
 ### The entries
 
@@ -747,6 +748,12 @@ stays with no marker on screen. `components/blocks/text/live-join-seam.ts :: cle
 (each kept character's marks, read by `test/harness/live-oracles.ts :: markedChars`, with the drop
 fallback held to a small share), `test/blocks/text/live-join-seam.test.ts`.
 
+**G1.94 · One editor per target.** A framework wrapper creates the editor when its component mounts
+and destroys it when it unmounts. A wrapper that skips the destroy stacks a second editor in the
+same element, and React's StrictMode (which mounts every component twice in dev) shows it at once.
+`createEditor` remembers which targets hold an editor it hasn't destroyed and warns
+`target-occupied` in dev on a second mount there. `editor-root/create-editor.test.ts`.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -875,6 +882,7 @@ what the type retired.
 | G3.9  | Forgetting one part of what the caret means without the others                    | T     |
 | G3.10 | A registration pairing fields that can't mean anything together                   | T     |
 | G3.11 | An editor prop with no word on whether it can change after mount                  | T     |
+| G3.12 | A React wrapper prop that isn't an editor option, or hides one                    | T     |
 
 ### The entries
 
@@ -945,6 +953,13 @@ ignored), typed `satisfies PropTimings<EditorProps>`, so a prop added without on
 `create-editor.ts :: createEditor` reads it to skip the `once` keys on `update`, and the consumer
 guide's Props section lists the same split. `src/lib/test/editor-root/create-editor.test.ts ::
 compileTimePins` holds the `@ts-expect-error`.
+
+**G3.12 · The React props are the editor's options.** `AragoniteProps` in `packages/react` is
+`CreateEditorOptions` with `source` swapped for `value`, plus the props only React has (`value`,
+`defaultValue`, `onChange`, `className`, `style`). A type pin at the bottom of
+`packages/react/src/aragonite.tsx` fails to compile when any other prop appears, or when an editor
+option takes one of those React names, and the wrapper forwards every prop outside that list to
+`update`. The wrapper compiles in `npm run package`, so that's the gate here, not `npm run check`.
 
 ## Group 4: source scans
 
@@ -1104,6 +1119,8 @@ unguarded.
 | G4.175 | Every library component compiles in runes mode                                            | L       |
 | G4.178 | Every route that mounts a plugin view falls back and reports when it throws               | L       |
 | G4.180 | Every top-right hover control on a block moves below the open find bar                    | L       |
+| G4.181 | Every wrapper package carries the core's version and peers the core at exactly that       | L       |
+| G4.183 | An app that doesn't compile Svelte installs no Svelte                                     | harness |
 
 ### The entries
 
@@ -2105,6 +2122,16 @@ that throws while it unmounts is held to the same report by `components/plugin-v
 corner (absolute, placed by `top` and `right` or by `inset`, hidden at rest by opacity or visibility)
 carries `data-corner-control`, so the open find bar moves it below itself when it covers it.
 `lint/corner-control-marker.test.ts`.
+
+**G4.181 · Wrappers release in lockstep.** Each package under `packages/` (the framework wrappers)
+has the root's version and peers `@voithos-labs/aragonite` at exactly that version, so an app can
+only ever install one core next to them. `scripts/check-lockstep.mjs` holds the rule;
+`npm run release:publish` runs it before publishing every package together, and
+`lint/lockstep-versions.test.ts` runs it on the tree.
+
+**G4.183 · No Svelte in a non-Svelte app.** The prebuilt build carries its own Svelte, so the core
+declares `svelte` an optional peer. `scripts/adapter-smoke.mjs` installs the packed tarballs into
+each framework example and fails if `node_modules/svelte` shows up there.
 
 ## Accessibility
 

@@ -160,7 +160,7 @@
 	// `__registryEnablement` is for tests only; the intersection type keeps it off the
 	// public EditorProps.
 	let {
-		source = '',
+		source,
 		resolveImageUrl,
 		resolveLinkUrl,
 		imageLoadPolicy = 'auto',
@@ -236,7 +236,7 @@
 
 	// Plain state, not $derived: structural edits write `doc` and `blockIds` directly.
 	// svelte-ignore state_referenced_locally
-	const initial = initDocument(source, registryView.grammar);
+	const initial = initDocument(source ?? '', registryView.grammar);
 	let doc: Document = $state(initial.doc);
 	// svelte-ignore state_referenced_locally
 	let blockIds = $state<string[]>(assignIds(doc.children));
@@ -437,12 +437,13 @@
 
 	// The mount parsed `source` already, so the first run swaps only for a write made since.
 	// svelte-ignore state_referenced_locally
-	let parsedAtMount: string | undefined = source;
+	let parsedAtMount: string | undefined = source ?? '';
 	$effect(() => {
 		const next = source;
 		const unchangedSinceMount = next === parsedAtMount;
 		parsedAtMount = undefined;
-		if (unchangedSinceMount) return;
+		// An absent source means the host has no new document to show, never an empty one.
+		if (unchangedSinceMount || next === undefined) return;
 		// Untracked so typing never re-runs it: `docs/design/editor.md` § Reactive state plumbing.
 		untrack(() => documentSwap.swapTo(next));
 	});

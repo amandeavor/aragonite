@@ -17,6 +17,7 @@ const CI_CONTEXTS = [
 	'e2e (4/4)',
 	'perf',
 	'consumer-smoke',
+	'adapter-smoke',
 	'emoji-table'
 ];
 

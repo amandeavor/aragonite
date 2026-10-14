@@ -1,0 +1,23 @@
+{
+	"name": "aragonite-next-example",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "next dev -p 1491",
+		"build": "next build",
+		"start": "next start -p 1491"
+	},
+	"dependencies": {
+		"@voithos-labs/aragonite": "file:../..",
+		"@voithos-labs/aragonite-react": "file:../../packages/react",
+		"next": "^16.4.1",
+		"react": "^19.3.1",
+		"react-dom": "^19.3.1"
+	},
+	"devDependencies": {
+		"@types/node": "^26.2.0",
+		"@types/react": "^19.3.0",
+		"@types/react-dom": "^19.3.0",
+		"typescript": "^6.0.3"
+	}
+}

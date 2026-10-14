@@ -24,6 +24,8 @@ Where to jump:
   keystroke, the best test this repo has at catching a corrupted document.
 - [The consumer smoke](#the-consumer-smoke): the example app that installs the packed tarball,
   what CI checks with it, and how to run it yourself.
+- [The adapter suite](#the-adapter-suite): the same idea for the framework wrappers, one suite
+  over a React app and a Next app.
 - The performance harness (fixtures, instruments, threshold policy) lives in
   `docs/design/performance.md` § The numbers and the gate.
 - The debug panel, its console helpers, and dumping editor state inside a test are in
@@ -874,3 +876,27 @@ again and the example sees it. Don't edit `examples/consumer/src/plugins/`: it's
 copy of the callout fixture (`src/routes/test/plugins/callout/`) that
 `scripts/sync-consumer-plugins.mjs` regenerates before every `dev`, `build`, `check`, and `test`,
 with its `#lib` imports rewritten to the package name.
+
+## The adapter suite
+
+The framework wrappers (`packages/*`) get the consumer smoke's treatment, with one twist: every
+app renders the same page (the editor, a mirror of the value, load and revert buttons, a theme
+toggle, an unmount toggle, a header input), so one spec directory in `examples/adapter-suite/`
+drives all of them. The page is spelled out in `examples/adapter-suite/requirements/page-contract.md`.
+The apps today are `examples/react` (Vite, built and in dev, plus a React 18 build of it) and
+`examples/next` (server rendered).
+
+`scripts/adapter-smoke.mjs` packs the core and every wrapper, installs the tarballs into each app,
+checks no Svelte came along, builds the apps and runs the suite. CI runs the React projects on
+every PR (`--per-pr`) and everything on the release PR into `main`. To iterate on one project
+once its app is built (`npm run package` at the root, then `npm install` and `npm run build` in
+the app), name it in `ADAPTER_PROJECTS`, since the config starts a server for every app it's
+told about:
+
+```bash
+ADAPTER_PROJECTS=react npx playwright test -c examples/adapter-suite/playwright.config.ts
+```
+
+```powershell
+$env:ADAPTER_PROJECTS = 'react'; npx playwright test -c examples/adapter-suite/playwright.config.ts
+```

@@ -8,6 +8,7 @@ import { EDITOR_PROP_TIMING, type EditorProps, type PropTimings } from '#lib/edi
 import { installLayoutStubs } from '#lib/test/harness/mount-editor.svelte.js';
 import { settleEditor, pressKey } from '#lib/test/harness/settle.js';
 import { CODE_RUN_LABEL } from '#lib/a11y-strings.js';
+import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
 
 installLayoutStubs();
@@ -79,6 +80,20 @@ describe('createEditor', () => {
 		await update(editor, { placeholder: undefined });
 
 		expect(hinted()).toBeUndefined();
+	});
+
+	it('with no source, mounts what an empty source mounts', () => {
+		const empty = create({ source: '' }).editor.getSource();
+
+		expect(create().editor.getSource()).toBe(empty);
+	});
+
+	it('keeps the document for a source passed as undefined', async () => {
+		const { editor } = create({ source: '# Kept\n' });
+
+		await update(editor, { source: undefined });
+
+		expect(editor.getSource()).toBe('# Kept\n');
 	});
 
 	it('ignores plugins passed after mount', async () => {
@@ -182,5 +197,24 @@ describe('destroy', () => {
 		await update(editor, { theme: 'light' });
 
 		expect(heard).not.toHaveBeenCalled();
+	});
+});
+
+// G1.94: a framework wrapper that skips `destroy` (a StrictMode remount, say) stacks two editors.
+describe('a second editor in one target', () => {
+	function mountTwice(destroyFirst: boolean): string[] {
+		const { editor, target } = create({ source: 'a\n' });
+		if (destroyFirst) editor.destroy();
+		handles.push(createEditor(target, { source: 'a\n' }));
+		flushSync();
+		return takeDevWarns().map((record) => record.tag);
+	}
+
+	it('warns while the first is still mounted', () => {
+		expect(mountTwice(false)).toEqual(['target-occupied']);
+	});
+
+	it('mounts quietly once the first is destroyed', () => {
+		expect(mountTwice(true)).toEqual([]);
 	});
 });

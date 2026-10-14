@@ -9,10 +9,10 @@
 	let { text, echo = false }: { text: string; echo?: boolean } = $props();
 
 	// svelte-ignore state_referenced_locally
-	let note = $state({ text });
+	let note = $state<{ text: string | undefined }>({ text });
 	let editor = $state<EditorInstance>();
 
-	export function load(next: string): void {
+	export function load(next: string | undefined): void {
 		note = { text: next };
 	}
 
