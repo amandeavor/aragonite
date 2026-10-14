@@ -113,7 +113,11 @@ describe('container shim routing through the host', () => {
 		const boxEl = box();
 		const landed: HTMLElement[] = [];
 		const host = proxyIn(boxEl);
-		const proxy: WholeBlockInputProxy = { el: () => host, focus: (d) => landed.push(d) };
+		const proxy: WholeBlockInputProxy = {
+			el: () => host,
+			focus: (d) => landed.push(d),
+			typeText: async () => true
+		};
 
 		shim(boxEl, proxy).focus(0);
 		shim(boxEl, proxy).focusAtColumn?.(120, 'above');
@@ -127,7 +131,11 @@ describe('container shim routing through the host', () => {
 	it('reports offset 0 while the host holds focus, and null once focus leaves the block', () => {
 		const boxEl = box();
 		const host = proxyIn(boxEl);
-		const shimApi = shim(boxEl, { el: () => host, focus: () => host.focus() });
+		const shimApi = shim(boxEl, {
+			el: () => host,
+			focus: () => host.focus(),
+			typeText: async () => true
+		});
 
 		host.focus();
 		expect(shimApi.getCursorOffset()).toBe(0);

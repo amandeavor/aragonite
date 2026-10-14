@@ -15,12 +15,19 @@ import {
 	__resetLiveJoinSeamCleanerForTests
 } from '#lib/schema/inline-construct-policy.js';
 import type { StoredAs } from '#lib/schema/stored-as.js';
+import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 
 beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
 afterAll(() => __resetLiveJoinSeamCleanerForTests());
 
-function leaving(source: string, path: number[], from: string, to: string, mode = 'live' as const) {
+function leaving(
+	source: string,
+	path: number[],
+	from: string,
+	to: string,
+	mode: PresentationMode = 'live'
+) {
 	const doc = parse(source);
 	const node = blockNodeAt(doc, path)!;
 	const start = node.raw.indexOf(from);
