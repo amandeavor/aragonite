@@ -79,8 +79,8 @@ export interface EditorOptions {
 	/** Theme name reflected to `data-editor-theme` on the editor root. Built-ins:
 	 *  `'dark'` (default) and `'light'`; any other value activates a consumer's
 	 *  own `.editor[data-editor-theme='<name>']` token block. The editor paints no
-	 *  background, so the name should match the page; an `aragonite-editor-theme`
-	 *  wrapper keys its own palette off the same attribute set on the wrapper. */
+	 *  background, so the name should match the page; a host color the page leaves
+	 *  undeclared takes this theme's built-in value. */
 	theme?: string;
 	/** Who draws the caret, read live; only a drawn one shows the format the next letter will get.
 	 *  `'auto'` (default) draws on a fine pointer and leaves a touch screen the browser's own;

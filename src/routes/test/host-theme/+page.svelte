@@ -12,7 +12,25 @@
 		name: string;
 		type: 'dark' | 'light';
 		vars: Record<string, string>;
+		/** A page painted with plain colors rather than tokens. */
+		page?: { background: string; color: string };
 	}
+
+	// The site stylesheet declares page tokens on `:root`; `initial` takes each back to undeclared.
+	const NO_HOST_COLORS = Object.fromEntries(
+		[
+			'bg',
+			'surface',
+			'border',
+			'text-primary',
+			'text-secondary',
+			'ui-dulled',
+			'ui-muted',
+			'accent',
+			'error',
+			'selection'
+		].map((role) => [`color-${role}`, 'initial'])
+	);
 
 	const THEMES: Record<string, HostTheme> = {
 		'slate-dark': {
@@ -78,6 +96,19 @@
 				'color-error': '#d03025',
 				'color-selection': '#b5793f'
 			}
+		},
+		// No colour tokens at all, so only the `theme` prop decides the editor's look.
+		'bare-light': {
+			name: 'No host colors, light',
+			type: 'light',
+			vars: NO_HOST_COLORS,
+			page: { background: '#ffffff', color: '#1f1f1f' }
+		},
+		'bare-dark': {
+			name: 'No host colors, dark',
+			type: 'dark',
+			vars: NO_HOST_COLORS,
+			page: { background: '#1b1b1b', color: '#dddddd' }
 		}
 	};
 
@@ -120,6 +151,7 @@
 		[
 			...Object.entries(theme.vars).map(([k, v]) => `--${k}: ${v}`),
 			`--color-accent: ${accent}`,
+			...(theme.page ? [`background: ${theme.page.background}`, `color: ${theme.page.color}`] : []),
 			`--font-editor: 'Cascadia Code', 'Cascadia Mono', 'Consolas', ui-monospace, monospace`,
 			`--font-ui: ui-sans-serif, system-ui, sans-serif`,
 			`--page-max-width: 1200px`

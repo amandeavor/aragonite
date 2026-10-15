@@ -54,9 +54,7 @@ When you want the document on disk, call `getSource()` and write it.
 	const source = '# Hello\n';
 </script>
 
-<div class="aragonite-editor-theme" data-editor-theme="light">
-	<Editor bind:this={editor} {source} theme="light" />
-</div>
+<Editor bind:this={editor} {source} theme="light" />
 <button onclick={() => save(editor.getSource())}>Save</button>
 ```
 
@@ -64,7 +62,7 @@ A few things in the above example snippet are decently important; you might want
 
 1. **`source` seeds the document at mount**, and a later write loads the new text ([Loading another document](#loading-another-document) has the one Svelte catch). It's not a two way bound: the editor never writes back into it, so the document you read is always `getSource()`.
 2. **`bind:this` is how you talk to a mounted editor.** For example, you might want to use important read functions like `getSource()` and `getSelection()`, or important write functions like `setSelection()` and `runCommand()`. [The instance surface](#the-instance-surface) covers all of it.
-3. **The editor paints no background of its own.** It inherits your page, so its mode has to match the page it lands on, and it says `light` twice because there are two things to match: the wrapper carries the built-in look (font, colors) for everything inside it, and the `theme` prop keys the editor's own surfaces. A fresh app's page is white, hence `light`; on a dark page write `dark` in both spots, or write nothing, dark being the default. Skip the wrapper if your app already declares the tokens; [Theming](#theming) has the two tiers and how to customize yours.
+3. **`theme` should match your page.** The editor paints no background of its own, so its text takes your page's color, and everything it does paint (menus, the find bar, toolbars, code block fills) uses `theme`'s colors. A fresh app's page is white, hence `light`; on a dark page write `dark`, or nothing, dark being the default. Want the built-in page colors and font around the editor too? Wrap it in a `div` with the `aragonite-editor-theme` class and the same `data-editor-theme`; [Theming](#theming) has that and how to customize the rest.
 
 Two more that aren't in the snippet but bite early: plugins install once, app-wide, but each editor only runs the ones its own `plugins` prop lists ([Plugins](#plugins)); and `editor.__test.*` is internal and will move, so don't build on it.
 
@@ -840,7 +838,7 @@ Both renderers are optional; without one, each formula or diagram shows its sour
 The module owns its CSS. Two stylesheets ship under `styles/`:
 
 - **`editor.css`**: the structural rules. In a Svelte app the component imports it itself, so there's nothing to do. A bundler with no Svelte plugin gets the prebuilt build instead, and that needs `@voithos-labs/aragonite/style.css` imported once. It's `editor.css` plus every component's own styles, bundled plugins included.
-- **`editor-theme.css`**: the default token palette, light and dark. Import it for the default look, or replace it wholesale to retheme. It's the authoritative manifest, so read it for the exact token set and values rather than trusting a copy in a doc. This one included.
+- **`editor-theme.css`**: the default token palette, light and dark. Import it for the default look, or replace it wholesale to retheme. It's the authoritative manifest, so read it for the exact token set and values rather than trusting a copy in a doc. This one included. Forget it on a page that declares no colors of its own and a dev build says so in the console.
 
 No font ships, so the `--font-*` tokens resolve to whatever your page provides, or to their fallback stacks. (The showcase at aragonite.dev loads Inter and JetBrains Mono itself, in case you're wondering why it looks nicer than your first mount.)
 
@@ -850,12 +848,12 @@ You don't need a CSS reset for the editor, either. `editor.css` brings its own (
 
 Nothing is declared on `:root`. The tokens come in two tiers, and the tier decides where you override:
 
-- **Host-chrome tokens** are your vocabulary: the editor only reads them, and their defaults live behind the opt-in `aragonite-editor-theme` class alone. A host with a theme system of its own declares the same names anywhere in its cascade (`:root` included), skips the class, and the editor blends in with no bridge stylesheet. Standalone, add the class to a wrapper for the built-in palette; non-editor UI inside the wrapper (a surrounding toolbar, say) inherits it too.
+- **Host-chrome tokens** are your vocabulary, and the editor only reads them. A host with a theme system of its own declares the same names anywhere in its cascade (`:root` included) and the editor blends in with no bridge stylesheet. Leave one undeclared and the editor uses the built-in palette's value for it, in the mode its `theme` prop names. Want those built-in values for your own UI too (a surrounding toolbar, say)? Put the opt-in `aragonite-editor-theme` class on a wrapper, which declares the whole palette for everything inside it.
 - **Editor-owned tokens** (the syntax and code palettes, the overlays, and the surfaces in the second table under [Theme tokens](#theme-tokens)) keep their defaults on `.editor` itself, so they render correctly with or without the class.
 
 ### Light and dark
 
-Mode keys on `data-editor-theme` on the scoped element. Set the `theme` prop on `<Editor>` (`'dark'` default, `'light'`, or any custom name); on an `aragonite-editor-theme` wrapper, set the attribute directly. Dark is the base, and `'light'` overrides only the tokens that differ. In a themed host the attribute governs the editor-owned tier alone; the host-chrome tier's mode is whatever your own theme applied.
+Mode keys on `data-editor-theme` on the scoped element. Set the `theme` prop on `<Editor>` (`'dark'` default, `'light'`, or any custom name); on an `aragonite-editor-theme` wrapper, set the attribute directly. Dark is the base, and `'light'` overrides only the tokens that differ. A host-chrome token you declare keeps your value whatever the attribute says, so in a themed host the mode of those is whatever your own theme applied.
 
 The prop is live: changing it rethemes through the cascade, and plugin content whose colors an engine paints rather than CSS (a Mermaid diagram's SVG) is redrawn for the new theme.
 
@@ -921,7 +919,7 @@ The caret the editor draws (the `caret` prop) takes the color of the text it's s
 
 Set any of these at `.editor`. Each width rounds to the nearest whole screen pixel (never under one), the way the browser's own caret does, so the bar stays sharp on a 125% display, where `1px` would otherwise smear across two. The bar the editor lays across a gap between blocks (the caret that sits between, say, a table and a code block, where there's nothing to type into) takes `--color-text-secondary` instead. A reader with reduced motion gets a caret that doesn't blink.
 
-**A host-chrome token you leave undeclared falls back.** If your host skips the `aragonite-editor-theme` class, declare the whole host-chrome table: anything you leave out resolves to the inline fallback its reads carry (`var(--color-ui-muted, #93938d)`), which is a dark-mode value whatever mode your page is in. The exception is `--color-text-primary` where the text sits on your page: it falls back to `currentColor`, so it inherits your page's own color instead of painting white on it. A menu paints its own dark surface, so its text keeps the dark-mode value.
+**A host-chrome token you leave undeclared takes the built-in palette's value** for the editor's `theme`, so a host that declares none still gets menus and a find bar that match the mode. The one exception is the text sitting on your page. With no `--color-text-primary` declared it keeps your page's own color, since the editor paints no background behind it and only your page knows what's readable there.
 
 ## Keyboard shortcuts
 
@@ -1134,7 +1132,7 @@ By default the bar pins to the editor root's top edge. In self-scroll mode that 
 }
 ```
 
-- **The bar keeps the editor's look.** The moved bar takes the current `data-editor-theme` and the editor's own tokens with it. When the editor sits under `aragonite-editor-theme` it carries that class too, so it keeps the built-in palette. In a themed host with no class, it picks up your host-chrome tokens from wherever the anchor sits. Your own overrides of the editor's tokens at `.editor` don't follow it, so if you've moved the bar, declare them on `.editor, .aragonite-editor-portal` instead.
+- **The bar keeps the editor's look.** The moved bar takes the current `data-editor-theme` and the editor's own tokens with it. When the editor sits under `aragonite-editor-theme` it carries that class too, so it keeps the built-in palette. In a themed host with no class, it picks up your host-chrome tokens from wherever the anchor sits, and any you leave undeclared follow `theme` like the rest of the editor. Your own overrides of the editor's tokens at `.editor` don't follow it, so if you've moved the bar, declare them on `.editor, .aragonite-editor-portal` instead.
 
 ## Embedding in a webview shell
 

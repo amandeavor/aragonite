@@ -6,6 +6,4 @@
 	const source = '# Hello\n';
 </script>
 
-<div class="aragonite-editor-theme" data-editor-theme="light">
-	<Editor bind:this={editor} {source} theme="light" />
-</div>
+<Editor bind:this={editor} {source} theme="light" />

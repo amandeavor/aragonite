@@ -262,6 +262,7 @@ These checks run in three kinds of place:
 | G1.94 | One editor per mount target: a second `createEditor` there before `destroy` warns in dev   | A       |
 | G1.96 | A plugin's widget, decoration or row view mounts once, updates in place, is destroyed once | N       |
 | G1.97 | A value a Vue app holds in reactive state reaches the editor unwrapped                     | harness |
+| G1.99 | A laid-out editor resolves the host colors, from the theme stylesheet or the page          | A       |
 
 ### The entries
 
@@ -775,6 +776,14 @@ plain list built from reactive state still holds proxies. The adapter suite's `v
 editors sharing a plugin, three of them taking it out of reactive state in those shapes, and fails
 on the `plugin-install` warning a proxy would raise.
 
+**G1.99 · The host colors resolve.** Inside the editor a host color read carries no fallback,
+because `editor-theme.css` resolves each one to the page's value or the built-in palette's. An app
+that forgets that stylesheet on a page declaring no colors gets menus and a find bar painted with
+none. Once an editor mounts with its own stylesheet applied (the `editor.css` reset makes its root
+border-box), it checks that `--md-color-bg` or `--color-bg` resolves on the root, and warns
+`invariant:host-colors-resolve` naming the import when neither does. A DOM with no stylesheet (the
+unit suites) is skipped. `invariants/theme-stylesheet.ts`; `e2e/tests/theme-stylesheet.spec.ts`.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -1189,8 +1198,9 @@ fake timers or `vi.waitFor`, never by flushing a macrotask.
 `lint/file-rules.test.ts`.
 
 **G4.6 · CSS ownership.** `app.css` holds no editor rules or tokens; every editor-owned token read
-is declared in `editor-theme.css`; every host-token read carries a fallback; and host-chrome
-defaults sit behind the opt-in theme class alone (G4.6d). The bundled and reference plugins follow
+is declared in `editor-theme.css`; every radius read carries a fallback; and host-chrome defaults
+sit behind the opt-in theme class alone (G4.6d), except the root's children re-exposing the root's
+resolved host colors. The bundled and reference plugins follow
 the same rule and may also read tokens they declare. `lint/css-ownership.test.ts` (editor),
 `lint/plugin-css-ownership.test.ts` (plugins).
 

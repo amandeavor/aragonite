@@ -145,6 +145,7 @@
 	import { runStartupInvariantChecks } from '../invariants/install';
 	import { assertInvariant } from '../assert';
 	import { checkMarkerCssParity } from '../invariants/marker-css-parity';
+	import { checkHostColorsResolve } from '../invariants/theme-stylesheet';
 	import { registerEditorBuiltIns } from './editor-built-ins';
 	import { blockContentElAt, type BlockElLookup } from '../caret/block-el-lookup';
 
@@ -688,6 +689,8 @@
 	// onMount, not $effect: plugin callbacks read reactive state, and an effect would tear
 	// every subscription down on the first structural edit.
 	onMount(() => {
+		const root = editorEl;
+		if (root) assertInvariant('host-colors-resolve', () => checkHostColorsResolve(root));
 		pluginContexts.attachAll(({ plugin, error }) =>
 			events.emit('error', { origin: 'subscriber', error, context: { plugin } })
 		);
@@ -1502,13 +1505,13 @@
 		font-size: var(--editor-font-size, 1rem);
 		line-height: 1.6;
 		/* Inherit rather than assume a dark host: an unthemed page keeps its own text color. */
-		color: var(--color-text-primary, currentColor);
+		color: var(--md-page-text);
 		min-height: 200px;
 		overflow-y: auto;
 		/* The editor corrects scroll by hand; browser anchoring would correct twice (VR-2). */
 		overflow-anchor: none;
 		scrollbar-width: thin;
-		scrollbar-color: var(--color-border, #3e3e3b) transparent;
+		scrollbar-color: var(--md-color-border) transparent;
 		/* Containing block for the image overlay portal, and for `.width-probe`, whose width is the
 		   root's only while this holds. */
 		position: relative;
@@ -1575,12 +1578,12 @@
 	}
 
 	.editor::-webkit-scrollbar-thumb {
-		background: var(--color-ui-muted, #a4a4a4);
+		background: var(--md-color-ui-muted);
 		border-radius: 3px;
 	}
 
 	.editor::-webkit-scrollbar-thumb:hover {
-		background: var(--color-ui-dulled, #afb1b3);
+		background: var(--md-color-ui-dulled);
 	}
 
 	.editor-sr-live,
@@ -1619,7 +1622,7 @@
 	.drop-caret {
 		position: fixed;
 		width: 1.5px;
-		background: var(--color-text-primary, currentColor);
+		background: var(--md-page-text);
 		pointer-events: none;
 		z-index: 20;
 	}

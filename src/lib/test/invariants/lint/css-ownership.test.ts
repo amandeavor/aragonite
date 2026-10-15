@@ -1,8 +1,8 @@
 /**
  * The editor module owns its CSS (G4.6): app.css holds no editor-owned rules or tokens, every
- * editor-owned token read is declared in editor-theme.css, every host-token read carries a
- * fallback so an extracted editor renders with no host theme, and no read falls outside the two
- * families (an off-family typo like `--text-muted` can never be declared).
+ * editor-owned token read is declared in editor-theme.css, every radius read carries a fallback so
+ * an editor with no host theme still renders, and no read falls outside the two families (an
+ * off-family typo like `--text-muted` can never be declared).
  */
 import { describe, it, expect } from 'vitest';
 import { collectEditorSources, readSource } from './scan-source';
@@ -68,19 +68,17 @@ describe('G4.6 CSS ownership: app.css holds no editor-owned rules', () => {
 	}
 });
 
-// ── G4.6b: every host-token read carries a fallback ──────────────────────────
-// A consumer-provided token read without a fallback renders nothing in an extracted
-// editor. Editor-owned reads are exempt, since editor-theme.css declares them.
-const HOST_READ_NO_FALLBACK = /var\(\s*--(?:color|radius)-[a-z0-9-]+\s*\)/;
+// ── G4.6b: every radius read carries a fallback ──────────────────────────────
+// A radius the host leaves undeclared has no default inside the editor, so the read carries one.
+// Host colors are exempt: editor-theme.css resolves every one of them inside the editor.
+const RADIUS_READ_NO_FALLBACK = /var\(\s*--radius-[a-z0-9-]+\s*\)/;
 
-describe('G4.6 CSS ownership: host-token reads carry a fallback', () => {
-	it('no host-token var() read is missing a fallback', () => {
-		const offenders = EDITOR_CSS_SURFACES.filter((f) => HOST_READ_NO_FALLBACK.test(f.text)).map(
+describe('G4.6 CSS ownership: radius reads carry a fallback', () => {
+	it('no radius var() read is missing a fallback', () => {
+		const offenders = EDITOR_CSS_SURFACES.filter((f) => RADIUS_READ_NO_FALLBACK.test(f.text)).map(
 			(f) => f.rel
 		);
-		expect(offenders, `host-token reads missing a fallback in: ${offenders.join(', ')}`).toEqual(
-			[]
-		);
+		expect(offenders, `radius reads missing a fallback in: ${offenders.join(', ')}`).toEqual([]);
 	});
 });
 
@@ -106,6 +104,9 @@ describe('G4.6 CSS ownership: every token read belongs to a declared family', ()
 // ── G4.6d: host-chrome defaults sit behind the opt-in class alone ────────────
 // A host-chrome default on `.editor` shadows what a themed host cascades from `:root`, except
 // for host-family names no host vocabulary carries, which the editor supplies in both modes.
+
+// The root's children may re-expose the root's resolved value, the host's own where it has one.
+const REEXPOSED = (name: string) => new RegExp(`^${name}\\s*:\\s*var\\(--md-${name.slice(2)}\\)$`);
 
 const EDITOR_SUPPLIED_HOST_NAMED = new Set([
 	'--color-bg-secondary',
@@ -142,7 +143,8 @@ describe('G4.6 CSS ownership: editor-theme.css keeps host-chrome defaults off `.
 		const offenders: string[] = [];
 		for (const { selector, body } of themeRules()) {
 			if (!selector.includes('.editor')) continue;
-			for (const [, name] of body.matchAll(/(--[a-z0-9-]+)\s*:/g)) {
+			for (const [declaration, name] of body.matchAll(/(--[a-z0-9-]+)\s*:[^;]*/g)) {
+				if (selector.endsWith('> *') && REEXPOSED(name).test(declaration.trim())) continue;
 				if (HOST_TOKEN.test(name) && !EDITOR_SUPPLIED_HOST_NAMED.has(name)) {
 					offenders.push(`${name} under ${selector}`);
 				}
@@ -196,9 +198,15 @@ describe('G4.6 CSS ownership: matcher non-vacuity', () => {
 		expect(new RegExp(`${token}\\s*:`).test(undeclared)).toBe(false);
 	});
 
-	it('HOST_READ_NO_FALLBACK flags a bare host read but accepts one with a fallback', () => {
-		expect(HOST_READ_NO_FALLBACK.test('var(--color-surface)')).toBe(true);
-		expect(HOST_READ_NO_FALLBACK.test('var(--color-surface, #fff)')).toBe(false);
+	it('RADIUS_READ_NO_FALLBACK flags a bare radius read but accepts one with a fallback', () => {
+		expect(RADIUS_READ_NO_FALLBACK.test('var(--radius-ui)')).toBe(true);
+		expect(RADIUS_READ_NO_FALLBACK.test('var(--radius-ui, 4px)')).toBe(false);
+	});
+
+	it('the re-expose exemption takes only the resolved name, never a literal', () => {
+		expect(REEXPOSED('--color-bg').test('--color-bg: var(--md-color-bg)')).toBe(true);
+		expect(REEXPOSED('--color-bg').test('--color-bg: #2c2c2a')).toBe(false);
+		expect(REEXPOSED('--color-bg').test('--color-bg: var(--md-color-border)')).toBe(false);
 	});
 
 	it('the family split rejects an off-family token both guards would otherwise miss', () => {

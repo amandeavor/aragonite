@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { readSource } from './scan-source';
 import { SOURCE } from './source-paths';
-import { declaredValue, themeBlocks } from './theme-css';
+import { defaultValue, themeBlocks } from './theme-css';
 
 const AA_CONTRAST = 4.5;
 
@@ -69,7 +69,7 @@ function themeValue(theme: Theme): (token: string) => string {
 	const layers = theme === 'light' ? [light, base] : [base];
 	return (token) => {
 		for (const block of layers) {
-			const declared = declaredValue(block, token);
+			const declared = defaultValue(block, token);
 			if (declared !== null) return declared;
 		}
 		throw new Error(`${token} is declared in neither theme block`);

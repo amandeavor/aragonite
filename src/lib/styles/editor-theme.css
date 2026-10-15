@@ -1,8 +1,9 @@
 /**
- * The editor's default theme, in two tiers (consumer-guide.md § Theming). Host-chrome tokens
- * default only behind the opt-in `.aragonite-editor-theme` class, so a themed host's own cascade
- * reaches the editor untouched; editor-owned tokens default on `.editor` and on a find bar moved
- * out of it (`.aragonite-editor-portal`). `:where()` keeps specificity at 0 so `.editor { … }` wins.
+ * The editor's default theme, in two tiers (consumer-guide.md § Theming). Host-chrome tokens are
+ * declared only behind the opt-in `.aragonite-editor-theme` class, so a host's own cascade reaches
+ * the editor untouched; inside the editor an undeclared one takes the palette in the editor's mode.
+ * Editor-owned tokens default on `.editor` and on a moved find bar (`.aragonite-editor-portal`).
+ * `:where()` keeps specificity at 0 so `.editor { … }` wins.
  */
 
 /* ── Host-chrome tokens: the consumer's names, defaults behind the class ── */
@@ -23,37 +24,68 @@
 	--radius-ui: 4px;
 	--radius-surface: 8px;
 
-	/* The page background the menus, the find bar and the image toolbar paint on. */
-	--color-bg: #2c2c2a;
-	--color-surface: #1a1a19;
-	--color-text-secondary: #cfcfca;
-	--color-text-primary: #e8e8e5;
-	--color-border: #3e3e3b;
-	--color-ui-muted: #93938d;
-	--color-ui-dulled: #a3a39d;
-	--color-accent: #567b67;
+	/* The built-in palette in the wrapper's own mode, under the host's names. */
+	--color-bg: var(--md-palette-bg);
+	--color-surface: var(--md-palette-surface);
+	--color-text-secondary: var(--md-palette-text-secondary);
+	--color-text-primary: var(--md-palette-text-primary);
+	--color-border: var(--md-palette-border);
+	--color-ui-muted: var(--md-palette-ui-muted);
+	--color-ui-dulled: var(--md-palette-ui-dulled);
+	--color-accent: var(--md-palette-accent);
 	/* The base the selection, search-match and reorder tints derive from, following the accent,
 	   so one declaration recolors them all; the tints themselves stay editor-owned. */
-	--color-selection: var(--color-accent, #567b67);
-	--color-error: #ff5f57;
+	--color-selection: var(--color-accent);
+	--color-error: var(--md-palette-error);
 }
 
-:where(.aragonite-editor-theme)[data-editor-theme='light'] {
-	--color-bg: #dfddd7;
-	--color-surface: #efeee9;
-	--color-text-secondary: #4a4a45;
-	--color-text-primary: #2a2a27;
-	--color-border: #c9c7c0;
-	--color-ui-muted: #62625c;
-	--color-ui-dulled: #5c5c56;
-	--color-accent: #567b67;
-	--color-selection: var(--color-accent, #567b67);
-	--color-error: #d03025;
+/* ── The host's colors inside the editor: declared, or the palette in the editor's mode ── */
+
+:where(.editor, .aragonite-editor-portal, .aragonite-editor-theme) {
+	--md-color-bg: var(--color-bg, var(--md-palette-bg));
+	--md-color-surface: var(--color-surface, var(--md-palette-surface));
+	--md-color-text-secondary: var(--color-text-secondary, var(--md-palette-text-secondary));
+	--md-color-text-primary: var(--color-text-primary, var(--md-palette-text-primary));
+	--md-color-border: var(--color-border, var(--md-palette-border));
+	--md-color-ui-muted: var(--color-ui-muted, var(--md-palette-ui-muted));
+	--md-color-ui-dulled: var(--color-ui-dulled, var(--md-palette-ui-dulled));
+	--md-color-accent: var(--color-accent, var(--md-palette-accent));
+	--md-color-selection: var(--color-selection, var(--md-color-accent));
+	--md-color-error: var(--color-error, var(--md-palette-error));
+	/* Text on the page: the host's color, else the page's own, as the editor paints no background. */
+	--md-page-text: var(--color-text-primary, currentColor);
+}
+
+/* A token can't fall back to itself on one element, so the root resolves and its children take the
+   result: inside the editor every host color has a value, and a read needs no fallback. */
+:where(.editor, .aragonite-editor-portal) > * {
+	--color-bg: var(--md-color-bg);
+	--color-surface: var(--md-color-surface);
+	--color-text-secondary: var(--md-color-text-secondary);
+	--color-text-primary: var(--md-color-text-primary);
+	--color-border: var(--md-color-border);
+	--color-ui-muted: var(--md-color-ui-muted);
+	--color-ui-dulled: var(--md-color-ui-dulled);
+	--color-accent: var(--md-color-accent);
+	--color-selection: var(--md-color-selection);
+	--color-error: var(--md-color-error);
 }
 
 /* ── Editor-owned tokens: defaults on `.editor`, so they hold with or without the class ── */
 
 :where(.editor, .aragonite-editor-portal, .aragonite-editor-theme) {
+	/* The built-in palette, per mode: what the class publishes and what an undeclared host color
+	   resolves to. */
+	--md-palette-bg: #2c2c2a;
+	--md-palette-surface: #1a1a19;
+	--md-palette-text-secondary: #cfcfca;
+	--md-palette-text-primary: #e8e8e5;
+	--md-palette-border: #3e3e3b;
+	--md-palette-ui-muted: #93938d;
+	--md-palette-ui-dulled: #a3a39d;
+	--md-palette-accent: #567b67;
+	--md-palette-error: #ff5f57;
+
 	/* Host-family backgrounds a host theme rarely names, so the editor supplies both modes
 	   rather than falling back to one fixed tint over the host's palette. */
 	--color-bg-secondary: rgba(128, 128, 128, 0.12);
@@ -76,19 +108,19 @@
 	   most chain to a host-chrome token that holds the light and dark split. */
 	--syntax-heading: currentColor;
 	--syntax-emphasis: currentColor;
-	--syntax-link: var(--color-accent, #567b67);
-	--syntax-url: var(--color-accent, #567b67);
-	--syntax-quote: var(--color-ui-muted, #a4a4a4);
+	--syntax-link: var(--md-color-accent);
+	--syntax-url: var(--md-color-accent);
+	--syntax-quote: var(--md-color-ui-muted);
 	--syntax-code: currentColor;
 	--syntax-comment: currentColor;
 	--syntax-list: currentColor;
 	/* The rendered horizontal rule's colour: a rule separates rather than announces, so it
 	   defaults to the border token. */
-	--syntax-separator: var(--color-border, #3e3e3b);
+	--syntax-separator: var(--md-color-border);
 	--syntax-task: currentColor;
 	--syntax-task-done: #8f8f89;
-	--syntax-task-checked: var(--color-text-primary, currentColor);
-	--syntax-task-checked-tick: var(--color-bg, #2c2c2a);
+	--syntax-task-checked: var(--md-page-text);
+	--syntax-task-checked-tick: var(--md-color-bg);
 
 	/* Code block syntax highlighting: a monokai-inspired palette. */
 	--code-tok-keyword: #ff79a8;
@@ -128,12 +160,12 @@
 	/* The hanging indent a task item reserves for its marker: the width the visible `- [ ] `
 	   draws, which editor.css overrides where the box is drawn instead. */
 	--md-task-indent: 2.1em;
-	--md-reorder-indicator: var(--color-selection, #6496ff);
+	--md-reorder-indicator: var(--md-color-selection);
 	/* The name a typed kind change leaves on its block, and how long it stays before it fades. */
-	--md-kind-cue-color: var(--color-ui-muted, #8f8f89);
+	--md-kind-cue-color: var(--md-color-ui-muted);
 	--md-kind-cue-duration: 1.2s;
 	/* An empty block's hint (the `placeholder` prop): a quiet grey, not a second text colour. */
-	--md-placeholder-color: var(--color-ui-muted, #8f8f89);
+	--md-placeholder-color: var(--md-color-ui-muted);
 	/* Tint on the container a nested drag is reordering inside. It uses the reorder accent rather
 	   than neutral grey, so the change stays visible to low-contrast vision. */
 	--reorder-scope-bg: rgba(100, 150, 255, 0.14);
@@ -175,13 +207,23 @@
    values above are the default base's tints for a browser without it. */
 @supports (color: color-mix(in srgb, red, blue)) {
 	:where(.editor, .aragonite-editor-portal, .aragonite-editor-theme) {
-		--selection-overlay-bg: color-mix(in srgb, var(--color-selection, #6496ff) 30%, transparent);
-		--search-match-bg: color-mix(in srgb, var(--color-selection, #6496ff) 22%, transparent);
-		--reorder-scope-bg: color-mix(in srgb, var(--color-selection, #6496ff) 14%, transparent);
+		--selection-overlay-bg: color-mix(in srgb, var(--md-color-selection) 30%, transparent);
+		--search-match-bg: color-mix(in srgb, var(--md-color-selection) 22%, transparent);
+		--reorder-scope-bg: color-mix(in srgb, var(--md-color-selection) 14%, transparent);
 	}
 }
 
 :where(.editor, .aragonite-editor-portal, .aragonite-editor-theme)[data-editor-theme='light'] {
+	--md-palette-bg: #dfddd7;
+	--md-palette-surface: #efeee9;
+	--md-palette-text-secondary: #4a4a45;
+	--md-palette-text-primary: #2a2a27;
+	--md-palette-border: #c9c7c0;
+	--md-palette-ui-muted: #62625c;
+	--md-palette-ui-dulled: #5c5c56;
+	--md-palette-accent: #567b67;
+	--md-palette-error: #d03025;
+
 	--color-bg-secondary: rgba(0, 0, 0, 0.035);
 	--md-inline-code-bg: rgba(0, 0, 0, 0.045);
 	--md-inline-code-border: transparent;

@@ -35,12 +35,10 @@ npm install @voithos-labs/aragonite
 	const source = '# Hello\n';
 </script>
 
-<div class="aragonite-editor-theme" data-editor-theme="light">
-	<Editor bind:this={editor} {source} theme="light" />
-</div>
+<Editor bind:this={editor} {source} theme="light" />
 ```
 
-(the wrapper switches on the built-in look, and it says `light` twice because the editor paints no background of its own: the wrapper and the editor both have to match the page they land on, and a fresh app's page is white. On a dark page write `dark` in both spots, or write nothing, dark being the default.)
+(`theme` should match your page, since the editor paints no background of its own. Its text takes your page's color, and its menus and find bar paint in `theme`'s colors. A fresh app's page is white, hence `light`; on a dark page write `dark`, or nothing, dark being the default.)
 
 To save the source, just do something like:
 

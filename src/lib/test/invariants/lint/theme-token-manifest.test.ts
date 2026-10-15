@@ -1,6 +1,6 @@
 /**
  * The consumer guide's "Theme tokens" role table, read as the published manifest, matches
- * `editor-theme.css`. A themed token carries a light and a dark value; the same value twice
+ * `editor-theme.css`. A themed token defaults to a light and a dark value; the same value twice
  * would satisfy that, so values are compared too and a deliberate one-value token joins
  * MODE_BLIND_BY_DESIGN.
  */
@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { readSource } from './scan-source';
 import { SOURCE } from './source-paths';
-import { declaredValue, LIGHT_SELECTOR, themeBlocks } from './theme-css';
+import { defaultValue, LIGHT_SELECTOR, themeBlocks } from './theme-css';
 
 const THEMED_TOKENS = [
 	'--color-bg',
@@ -24,7 +24,6 @@ const THEMED_TOKENS = [
 	'--color-ui-dulled',
 	'--color-ui-faint',
 	'--color-accent',
-	'--color-selection',
 	'--color-border',
 	'--color-error'
 ];
@@ -38,9 +37,11 @@ const MODE_INDEPENDENT_TOKENS = [
 	'--radius-surface'
 ];
 
+/** The selection base follows the accent in either mode rather than holding values of its own. */
+const SELECTION_TOKEN = '--color-selection';
+
 /** Themed tokens whose light value deliberately repeats the dark one, with the reason. */
 const MODE_BLIND_BY_DESIGN: Record<string, string> = {
-	'--color-selection': 'tracks --color-accent, so it follows whatever that resolves to per mode',
 	'--color-accent':
 		'one brand accent across both modes, matching the host app whose palette these defaults follow'
 };
@@ -71,8 +72,15 @@ describe('theme-token manifest ↔ editor-theme.css', () => {
 	const { base, light } = themeBlocks();
 
 	it.each(THEMED_TOKENS)('%s carries a value in both the dark base and light blocks', (token) => {
-		expect(declares(base, token), `${token} missing from the dark base block`).toBe(true);
-		expect(declares(light, token), `${token} missing from the light override block`).toBe(true);
+		expect(defaultValue(base, token), `${token} missing from the dark base block`).not.toBeNull();
+		expect(defaultValue(light, token), `${token} missing from the light block`).not.toBeNull();
+	});
+
+	it('the selection base defaults to the accent', () => {
+		expect(defaultValue(base, SELECTION_TOKEN)).toBe('var(--color-accent)');
+		expect(base).toMatch(
+			/--md-color-selection:\s*var\(--color-selection, var\(--md-color-accent\)\)/
+		);
 	});
 
 	it.each(MODE_INDEPENDENT_TOKENS)('%s is declared once in the base block', (token) => {
@@ -80,7 +88,7 @@ describe('theme-token manifest ↔ editor-theme.css', () => {
 	});
 
 	it.each(THEMED_TOKENS)('%s actually responds to the mode (or says why it does not)', (token) => {
-		const repeatsDarkValue = declaredValue(base, token) === declaredValue(light, token);
+		const repeatsDarkValue = defaultValue(base, token) === defaultValue(light, token);
 		expect(
 			repeatsDarkValue ? token in MODE_BLIND_BY_DESIGN : true,
 			`${token} repeats its dark value in the light block: give it a light value or record it in MODE_BLIND_BY_DESIGN`
@@ -90,8 +98,8 @@ describe('theme-token manifest ↔ editor-theme.css', () => {
 	it('every MODE_BLIND_BY_DESIGN entry is a live one (no stale exemption)', () => {
 		for (const token of Object.keys(MODE_BLIND_BY_DESIGN)) {
 			expect(THEMED_TOKENS, `${token} is not a themed token`).toContain(token);
-			expect(declaredValue(base, token), `${token} now differs per mode: drop its exemption`).toBe(
-				declaredValue(light, token)
+			expect(defaultValue(base, token), `${token} now differs per mode: drop its exemption`).toBe(
+				defaultValue(light, token)
 			);
 		}
 	});
@@ -100,22 +108,20 @@ describe('theme-token manifest ↔ editor-theme.css', () => {
 	it('the block split and matcher are non-vacuous', () => {
 		const css = readSource(SOURCE.themeTokens).code;
 		expect(css.indexOf(LIGHT_SELECTOR)).toBeGreaterThan(0);
-		expect(declares(base, '--color-error')).toBe(true);
-		expect(declares(light, '--color-error')).toBe(true);
+		expect(defaultValue(base, '--color-error')).not.toBeNull();
+		expect(defaultValue(light, '--color-error')).not.toBeNull();
 		expect(declares(light, '--font-editor')).toBe(false);
 		expect(declares(base, '--not-a-real-token')).toBe(false);
 		// The value reader must distinguish two declarations of the same token.
-		expect(declaredValue(base, '--color-surface')).not.toBe(
-			declaredValue(light, '--color-surface')
-		);
-		expect(declaredValue(base, '--not-a-real-token')).toBeNull();
+		expect(defaultValue(base, '--color-surface')).not.toBe(defaultValue(light, '--color-surface'));
+		expect(defaultValue(base, '--not-a-real-token')).toBeNull();
 	});
 });
 
 describe('theme-token manifest ↔ consumer-guide § Theme tokens', () => {
 	it('pins exactly the tokens the guide publishes', () => {
 		expect(tokensInTable(themeTokenSection())).toEqual(
-			[...THEMED_TOKENS, ...MODE_INDEPENDENT_TOKENS].sort()
+			[...THEMED_TOKENS, SELECTION_TOKEN, ...MODE_INDEPENDENT_TOKENS].sort()
 		);
 	});
 
