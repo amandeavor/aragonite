@@ -5,7 +5,12 @@
  * maps that URL back to the bytes at render time. Page-lifetime only.
  */
 
-import type { PastedImage } from '#lib';
+/** The editor's `PastedImage`, spelled out so this file imports nothing and every host can read it. */
+interface PastedImage {
+	blob: Blob;
+	mimeType: string;
+	suggestedName?: string;
+}
 
 export const PASTED_IMAGE_BASE = 'https://demo.aragonite/pasted/';
 

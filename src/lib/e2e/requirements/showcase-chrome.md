@@ -1,6 +1,6 @@
 # Feature: `/` showcase header controls
 
-What the seeded document says is read out of `src/routes/showcase-content.md` at run time,
+What the seeded document says is read out of `examples/showcase/showcase-content.md` at run time,
 never quoted here: the owner rewrites it by hand, and the version quoting its prose went red
 on the rewrite.
 

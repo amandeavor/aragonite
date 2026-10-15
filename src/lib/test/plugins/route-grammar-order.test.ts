@@ -15,7 +15,7 @@ import type { EditorPlugin } from '#lib/plugin.js';
 import { calloutPlugin } from '../../../routes/test/plugins/callout/register';
 import { memoPlugin } from '../../../routes/test/plugins/memo/register';
 import { docStatsPlugin } from '../../../routes/test/plugins/doc-stats/doc-stats-plugin';
-import SHOWCASE_DOCUMENT from '../../../routes/showcase-content.md?raw';
+import SHOWCASE_DOCUMENT from '../../../../examples/showcase/showcase-content.md?raw';
 import { CHANGELOG_FAMILIES } from '../../../routes/changelog/changelog-content';
 import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 

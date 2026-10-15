@@ -12,7 +12,7 @@ import { highlightOccurrencesPlugin } from '#lib/plugins/highlight-occurrences/i
 import { latexPlugin, MATH_BLOCK } from '#lib/plugins/latex/index.js';
 import { mermaidPlugin } from '#lib/plugins/mermaid/index.js';
 import { parrotPlugin } from '#lib/plugins/parrot/index.js';
-import SHOWCASE_DOCUMENT from '../../../routes/showcase-content.md?raw';
+import SHOWCASE_DOCUMENT from '../../../../examples/showcase/showcase-content.md?raw';
 
 /**
  * The `/` showcase is the broadest realistic document in the repo and the first thing a

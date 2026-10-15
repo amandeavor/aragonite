@@ -1,6 +1,6 @@
 # Feature: `/` showcase paints the occurrence marks
 
-The word this spec clicks is read out of `src/routes/showcase-content.md` at run time and never
+The word this spec clicks is read out of `examples/showcase/showcase-content.md` at run time and never
 named in the spec: the owner rewrites that document by hand, and the version that hard-coded a
 word went red the first time the word left the page.
 

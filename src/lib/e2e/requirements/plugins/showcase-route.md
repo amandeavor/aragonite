@@ -1,6 +1,6 @@
 # Feature: `/` showcase route (bundled-plugin smoke)
 
-Every expectation here is derived from `src/routes/showcase-content.md` at run time, never from
+Every expectation here is derived from `examples/showcase/showcase-content.md` at run time, never from
 its prose. The owner rewrites that document by hand, and the suite that pinned its sentences
 went red on the rewrite while proving nothing about whether the tour still works.
 

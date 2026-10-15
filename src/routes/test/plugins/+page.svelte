@@ -26,7 +26,7 @@
 	import { tagMarksPlugin, TAG_MENU } from '../../demo-tags/tag-marks-plugin';
 	import { docLinkMenuPlugin, DOC_LINK_MENU } from './inline-menu/doc-link-menu-plugin';
 	import { heldCommitMenuPlugin } from './inline-menu/held-commit-menu-plugin';
-	import '../../demo-tags/tag-marks.css';
+	import '../../../../examples/showcase/tag-marks.css';
 	import type { EditorPluginEntry } from '#lib';
 
 	// docStatsPlugin is a bare entry (no options), so it runs on its defaults.
