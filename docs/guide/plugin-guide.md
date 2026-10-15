@@ -1,6 +1,6 @@
 # Plugin Author Guide
 
-This guide is for teaching the editor your own block or inline content. All of the authoring API comes from one import, `@voithos-labs/aragonite/plugin`. The package root, `@voithos-labs/aragonite`, is the embedding side, what a host app mounts the editor with (you'll borrow its `installPlugins` once or twice), and your test suite imports from `@voithos-labs/aragonite/testing`.
+This guide is for teaching the editor your own block or inline content. The authoring API comes from `@voithos-labs/aragonite/plugin`, plus `@voithos-labs/aragonite/svelte` for the parts typed with Svelte's types (the block factories, and the helpers that turn a Svelte component into a view). The package root, `@voithos-labs/aragonite`, is the embedding side, what a host app mounts the editor with (you'll borrow its `installPlugins` once or twice), and your test suite imports from `@voithos-labs/aragonite/testing`.
 
 Four neighbouring docs carry what this one doesn't:
 
@@ -9,7 +9,7 @@ Four neighbouring docs carry what this one doesn't:
 - [plugin-api.md](plugin-api.md): a catalog of every export named anywhere below, for checking a name is real.
 - [plugin-testing.md](plugin-testing.md): testing what you build.
 
-This page is the first read: [a working plugin in fifteen minutes](#the-first-fifteen-minutes), then [what a plugin is](#what-a-plugin-is), [views](#views-what-you-read-what-you-own), and [what a plugin may and may not do](#what-a-plugin-may-and-may-not-do). The recipes live on pages of their own, one job each, so open whichever matches what you're building:
+This page is the first read: [a working plugin in fifteen minutes](#the-first-fifteen-minutes), then [what a plugin is](#what-a-plugin-is), [what draws it and where it runs](#what-draws-your-plugin-and-where-it-runs), [views](#views-what-you-read-what-you-own), and [what a plugin may and may not do](#what-a-plugin-may-and-may-not-do). The recipes live on pages of their own, one job each, so open whichever matches what you're building:
 
 | Page                                                                                         | Reach for it when                                                                                                                                    |
 | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -28,7 +28,7 @@ This page is the first read: [a working plugin in fifteen minutes](#the-first-fi
 
 ## The first fifteen minutes
 
-All three import paths come with `@voithos-labs/aragonite` itself, so there's nothing else to install.
+All four import paths (`/plugin`, `/svelte`, `/testing` and the root) come with `@voithos-labs/aragonite` itself, so there's nothing else to install.
 
 The plugin we're about to build is an homage to `curl parrot.live`: a line that starts with `%%parrot` renders as an animated ASCII party parrot, and any text after the marker becomes the parrot's caption.
 
@@ -376,7 +376,7 @@ A plugin teaches the editor a new kind, one that parses, renders, and saves alon
 
 ```
 declare a kind ──┬─▶ descriptor   how it merges, its container shape, its keymap
-                 ├─▶ component    how it renders and hosts any editable content
+                 ├─▶ view         how it renders and hosts any editable content
                  └─▶ grammar      how source becomes the kind:
                                     a block opener  │  a :::name directive  │  an inline recognizer
 ```
@@ -386,12 +386,12 @@ Each part has a defined absence, which is prob the easiest way to remember what 
 | Part       | It makes the kind       | Leave it out and                                                                                                                                                                           |
 | ---------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | descriptor | behave                  | the kind errors at first use; this one is never optional                                                                                                                                   |
-| component  | visible                 | the kind renders as a visible raw-text fallback                                                                                                                                            |
+| view       | visible                 | the kind renders as a visible raw-text fallback                                                                                                                                            |
 | grammar    | parseable from Markdown | nothing ever parses to the kind, so it doesn't survive a reload ([the menu recipe](plugin-guide/menu-only-kinds.md#recipe-a-kind-only-a-menu-creates) is the route to a kind nobody types) |
 
 ### Registration is global, and register-once
 
-A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind, component, or opener twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
+A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind, view, or opener twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
 
 Who guarantees a registration runs only once depends on where it runs:
 
@@ -471,10 +471,26 @@ installPlugins([parrot]); // no-op (a fresh parrotPlugin() here would no-op too,
 
 The API is going to freeze, and you deserve to know which half of it has settled already.
 
-- **The registration base, settled.** Kind declaration, descriptor/component/opener registration, typed per-node metadata, and the probes above. The model won't change: which calls exist, that each registers once, what a kind is. The exact shapes those calls take (a descriptor field, what an opener returns) can still change before the freeze, and freeze with everything else at the public release.
+- **The registration base, settled.** Kind declaration, descriptor/view/opener registration, typed per-node metadata, and the probes above. The model won't change: which calls exist, that each registers once, what a kind is. The exact shapes those calls take (a descriptor field, what an opener returns) can still change before the freeze, and freeze with everything else at the public release.
 - **Pre-freeze, still moving.** Everything else: the plugin unit itself, the authoring tiers (container, editable leaf, inline, directive), the grammar hooks, paste transforms, and the view surfaces (decorations, rects, selection geometry). The [API reference](plugin-api.md) labels each such section _(pre-freeze / unstable)_, and they all freeze at the public release.
 
 After the freeze the version number carries the promise: a breaking change to a frozen surface rides a **major** version, and additive needs ship as **minors**.
+
+## What draws your plugin, and where it runs
+
+Two shapes draw everything a plugin puts on screen. (Not to be confused with the read-only node types in [Views](#views-what-you-read-what-you-own), below; same word, different job.)
+
+- **A block draws through a `BlockView`**, the thing `registerBlockView` and `definePluginBlock`'s `view` take. For now the one way to make one is `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, so a block is a Svelte component.
+- **Everything else draws through a `PluginView`**: an inline widget, a decoration's widget or badge, and an inline menu row. It's a plain function, `(target, props) => ({ update?, destroy? })`, that fills an element the editor made for it ([Rendering it as a widget](plugin-guide/inline-kinds.md#rendering-it-as-a-widget) walks one through). Already writing Svelte? `svelteInlineWidget`, `svelteDecorationWidget` and `svelteMenuRow`, also from `/svelte`, turn a component into one.
+
+Which apps can run your plugin follows from that. An app whose bundler compiles Svelte (a Svelte app, say) compiles the editor from source, along with your components. An app whose bundler doesn't (most React, Vue and plain JavaScript apps) runs a prebuilt copy with its own Svelte compiled in, and a Svelte component of yours can't run on that copy's Svelte. So:
+
+| Your plugin draws with                                                                                    | It runs in                                               |
+| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Plain DOM views, or nothing at all (syntax, commands, paste transforms, decorations, menus with DOM rows) | Every app                                                |
+| A block, or any other Svelte component                                                                    | An app whose bundler compiles Svelte (a Svelte app, say) |
+
+The bundled plugins run everywhere, since they're compiled into the prebuilt copy. Mount a Svelte component of yours in an app that doesn't compile Svelte, and it fails the way any throwing view does: a block shows a "block failed to render" notice above its source, a widget shows just its source. In a dev build the notice and the console name the cause: the component was compiled against a different copy of Svelte.
 
 ## Views: what you read, what you own
 
