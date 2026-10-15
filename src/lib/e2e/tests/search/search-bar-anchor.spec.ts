@@ -8,11 +8,10 @@ const anchor = (page: Page) => page.getByTestId('search-anchor');
 const anchoredBar = (page: Page) => anchor(page).locator('.search-bar');
 const rootBar = (page: Page) => page.locator('.editor .search-bar');
 
-// `--color-bg` is declared only in the theme scope, and the bar's inline fallback is a
-// different grey, so the computed value says which one resolved.
+// The theme scope's `--color-bg` per mode; the page's own `:root` value stays dark, so a bar that
+// left the scope behind would hold dark through the flip.
 const TOKEN_DARK = 'rgb(44, 44, 42)';
 const TOKEN_LIGHT = 'rgb(223, 221, 215)';
-const INLINE_FALLBACK = 'rgb(30, 30, 29)';
 
 const barBackground = (page: Page) =>
 	anchoredBar(page).evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -50,7 +49,6 @@ test.describe('search bar: consumer anchor', () => {
 		// The bar's anchor element sits outside every `.aragonite-editor-theme` ancestor, so this value
 		// can only come from the scope the portaled node brought with it.
 		expect(await barBackground(page)).toBe(TOKEN_DARK);
-		expect(await barBackground(page)).not.toBe(INLINE_FALLBACK);
 
 		await page.getByTestId('theme-toggle').click();
 		await expect.poll(() => barBackground(page)).toBe(TOKEN_LIGHT);

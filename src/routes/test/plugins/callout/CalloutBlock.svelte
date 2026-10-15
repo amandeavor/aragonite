@@ -28,9 +28,9 @@
 	   `:scope > .block-list` lookup needs BlockList to stay a direct child, not the only one. */
 	.callout-block {
 		position: relative;
-		border: 1px solid var(--color-ui-muted, #a4a4a4);
+		border: 1px solid var(--color-ui-muted);
 		border-radius: 6px;
-		background: color-mix(in srgb, var(--color-ui-muted, #a4a4a4) 8%, transparent);
+		background: color-mix(in srgb, var(--color-ui-muted) 8%, transparent);
 		padding: 8px 12px 8px 34px;
 		margin: 6px 0;
 	}
@@ -41,20 +41,20 @@
 		top: 8px;
 		font-size: 14px;
 		line-height: 1.4;
-		color: var(--color-text-muted, #aaaaaa);
+		color: var(--color-text-muted);
 	}
 
 	/* CSS makes the `callout-title` leaf look like a title row, but it stays a real block inside
 	   the one `.block-list`, so selection and windowing treat it as an ordinary child. */
 	.callout-block :global(.callout-title) {
 		font-weight: 600;
-		border-bottom: 1px solid var(--color-ui-muted, #a4a4a4);
+		border-bottom: 1px solid var(--color-ui-muted);
 		margin-bottom: 4px;
 		padding-bottom: 4px;
 	}
 	.callout-block :global(.callout-title:empty)::before {
 		content: 'Title';
-		color: var(--color-ui-dulled, #afb1b3);
+		color: var(--color-ui-dulled);
 		pointer-events: none;
 	}
 </style>

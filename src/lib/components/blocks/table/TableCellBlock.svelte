@@ -1116,11 +1116,11 @@
 		min-height: 1.4em;
 		white-space: pre-wrap;
 		word-wrap: break-word;
-		border-right: 1px solid var(--color-border, #3e3e3b);
-		border-bottom: 1px solid var(--color-border, #3e3e3b);
+		border-right: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--color-border);
 	}
 	.table-cell:focus {
-		outline: 2px solid var(--color-accent, #567b67);
+		outline: 2px solid var(--color-accent);
 		outline-offset: -2px;
 	}
 </style>

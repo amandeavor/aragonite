@@ -228,13 +228,13 @@
 		display: flex;
 		flex-direction: column;
 		border-radius: 10px;
-		background: var(--color-bg, #1e1e1d);
-		border: 1px solid var(--color-border, #3e3e3b);
+		background: var(--color-bg);
+		border: 1px solid var(--color-border);
 		box-shadow: var(--menu-shadow, 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35));
 		font-family: var(--font-ui, system-ui, sans-serif);
 		font-size: 14px;
 		line-height: 1.4;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 		transition:
 			border-color 120ms ease,
 			box-shadow 120ms ease;
@@ -242,18 +242,18 @@
 	/* The edge and a hairline outside it make a 2px ring in the muted text colour, which holds 3:1
 	   against the card and the page in both themes. */
 	.search-bar:focus-within {
-		border-color: var(--color-ui-muted, #93938d);
+		border-color: var(--color-ui-muted);
 		box-shadow:
-			0 0 0 1px var(--color-ui-muted, #93938d),
+			0 0 0 1px var(--color-ui-muted),
 			var(--menu-shadow, 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35));
 	}
 	/* A pattern the engine refused: the card's edge says so, the count says why. */
 	.search-bar.invalid {
-		border-color: var(--color-error, #e06c75);
+		border-color: var(--color-error);
 	}
 	.search-bar.invalid:focus-within {
 		box-shadow:
-			0 0 0 1px var(--color-error, #e06c75),
+			0 0 0 1px var(--color-error),
 			var(--menu-shadow, 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35));
 	}
 
@@ -265,7 +265,7 @@
 		padding: 6px 6px 6px 12px;
 	}
 	.search-replace-row {
-		border-top: 1px solid var(--color-border, #3e3e3b);
+		border-top: 1px solid var(--color-border);
 	}
 
 	.search-input {
@@ -279,10 +279,10 @@
 		outline: none;
 		background: transparent;
 		font: inherit;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 	}
 	.search-input::placeholder {
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 	}
 	.search-count {
 		flex-shrink: 0;
@@ -294,14 +294,14 @@
 		white-space: nowrap;
 		font-size: 13px;
 		font-variant-numeric: tabular-nums;
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 	}
 	/* Out of the flow rather than hidden, so the live region is there before its first count. */
 	.search-count:empty {
 		position: absolute;
 	}
 	.search-count.error {
-		color: var(--color-error, #e06c75);
+		color: var(--color-error);
 	}
 
 	.search-controls {
@@ -327,7 +327,7 @@
 		border: none;
 		border-radius: 6px;
 		background: transparent;
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 		font: inherit;
 		cursor: pointer;
 		transition:
@@ -339,16 +339,16 @@
 		padding: 0 10px;
 		font-size: 13px;
 		font-weight: 500;
-		color: var(--color-text-secondary, #cfcfca);
+		color: var(--color-text-secondary);
 	}
 	.search-icon-btn:hover:not(:disabled),
 	.search-btn:hover:not(:disabled) {
 		background: var(--menu-chip-bg-hover, rgba(255, 255, 255, 0.085));
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 	}
 	.search-icon-btn:focus-visible,
 	.search-btn:focus-visible {
-		outline: 1px solid var(--color-ui-muted, #93938d);
+		outline: 1px solid var(--color-ui-muted);
 		outline-offset: -1px;
 	}
 	.search-icon-btn:disabled,
@@ -358,8 +358,8 @@
 	}
 	.search-tog.on,
 	.search-tog.on:hover {
-		background: color-mix(in srgb, var(--color-text-primary, #e8e8e5) 14%, transparent);
-		color: var(--color-text-primary, #e8e8e5);
+		background: color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+		color: var(--color-text-primary);
 	}
 
 	/* Forced colors drop every fill and shadow, which is all a pressed toggle and the focus ring

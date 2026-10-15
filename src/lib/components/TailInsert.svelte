@@ -53,7 +53,7 @@
 		cursor: text;
 	}
 	.editor-tail-row:focus-visible {
-		outline: 1px solid var(--color-border, #3e3e3b);
+		outline: 1px solid var(--color-border);
 		outline-offset: -1px;
 		border-radius: 4px;
 	}

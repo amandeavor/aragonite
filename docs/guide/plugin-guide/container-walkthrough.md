@@ -246,8 +246,8 @@ Your component supplies only its own chrome: the border, the title styling, an i
 	.conspiracy-block {
 		/* the corkboard, with one piece of red string */
 		position: relative;
-		border: 1px solid var(--color-ui-muted, #93938d);
-		border-left: 3px solid var(--color-error, #ff5f57);
+		border: 1px solid var(--color-ui-muted);
+		border-left: 3px solid var(--color-error);
 		border-radius: 6px;
 		padding: 8px 12px;
 	}
@@ -256,7 +256,7 @@ Your component supplies only its own chrome: the border, the title styling, an i
 	}
 	/* debunked: the string comes down, the theory gets crossed out, the stamp lands */
 	.debunked {
-		border-left-color: var(--color-ui-muted, #93938d);
+		border-left-color: var(--color-ui-muted);
 	}
 	.debunked :global(.conspiracy-title) {
 		text-decoration: line-through;
@@ -269,7 +269,7 @@ Your component supplies only its own chrome: the border, the title styling, an i
 		transform: rotate(-12deg);
 		font: 600 0.75em monospace;
 		letter-spacing: 0.12em;
-		color: var(--color-error, #ff5f57);
+		color: var(--color-error);
 		border: 2px solid currentColor;
 		border-radius: 3px;
 		padding: 1px 6px;
@@ -281,7 +281,7 @@ Three rules for that file, each earned the hard way:
 
 - **`export { containerApi }` is the whole publication.** It's how the editor talks to your container (a caret walking in descends through it, for one), and the name is fixed. Leave it out and your typecheck (svelte-check, or `tsc` on a plain-TypeScript plugin) fails at the call that registers the component (`definePluginBlock` here). The factory's `containerApi` is always complete; a hand-rolled one can annotate itself `satisfies ContainerBlockComponent` to get a missing member reported at the definition instead.
 - **`BlockList` stays a _direct_ child of your box**, so the container's windowing finds it. Other chrome (an icon, a toggle button) may sit beside it.
-- **Chrome CSS reads the editor's theme tokens**, with an inline fallback on every read (`var(--color-ui-muted, #93938d)`), so the block still renders outside the editor's own style scope. Match the fallback to the token's dark value; dark is the base theme. The stable token set by role is the [consumer guide's theme-token manifest](../consumer-guide.md#theme-tokens).
+- **Chrome CSS reads the editor's theme tokens**, plain (`var(--color-ui-muted)`). Inside the editor every one of them has a value, the host's own or the built-in palette's for the current `theme`, so a read needs no fallback. The stable token set by role is the [consumer guide's theme-token manifest](../consumer-guide.md#theme-tokens).
 
 The factory returns more than the walkthrough destructures:
 

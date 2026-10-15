@@ -391,7 +391,7 @@
 		border: 0;
 		border-radius: 5px;
 		background: transparent;
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 		cursor: pointer;
 	}
 	.alignment-segment:hover,
@@ -401,6 +401,6 @@
 		outline: none;
 	}
 	.alignment-segment.active {
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 	}
 </style>

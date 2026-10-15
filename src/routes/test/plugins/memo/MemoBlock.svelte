@@ -29,7 +29,7 @@
 		width: 100%;
 		box-sizing: border-box;
 		padding: 2px 0 2px 10px;
-		border-left: 3px solid var(--color-accent, #567b67);
+		border-left: 3px solid var(--color-accent);
 		font-family: var(--font-editor, ui-monospace, monospace);
 		font-size: 0.9em;
 		white-space: pre-wrap;

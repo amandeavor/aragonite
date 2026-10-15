@@ -92,7 +92,7 @@
 		position: relative;
 		margin: 0.4em 0;
 		padding-left: 0.9em;
-		border-left: 2px solid var(--color-border, #3d4047);
+		border-left: 2px solid var(--color-border);
 		font-size: 0.95em;
 	}
 

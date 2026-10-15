@@ -2,7 +2,7 @@
  * Structural editor styles: the painting rules for DOM the renderers build in JavaScript, which
  * cannot live in a component's <style> block. Every rule is wrapped in :where(), which adds no
  * specificity and keeps the names to the editor. The token values live in editor-theme.css;
- * a host's --color-* tokens are read here with fallbacks, never declared.
+ * a host's --color-* tokens are read here, never declared, and resolve in editor-theme.css.
  */
 
 /* The reset every editor style assumes, so a page without one lays the editor out the same. DOM a
@@ -338,13 +338,13 @@
 :where(.editor) .md-image-placeholder {
 	min-width: 100px;
 	min-height: 60px;
-	border: 1px dashed var(--color-ui-muted, #a4a4a4);
-	background: var(--color-bg-muted, #2a2a2a);
+	border: 1px dashed var(--color-ui-muted);
+	background: var(--color-bg-muted);
 }
 
 :where(.editor) .md-image-broken {
 	padding: 8px;
-	color: var(--color-text-muted, #aaa);
+	color: var(--color-text-muted);
 	font-style: italic;
 }
 
@@ -392,7 +392,7 @@
 	content: '';
 	position: absolute;
 	inset: -2px;
-	border: 1px solid var(--color-accent, #567b67);
+	border: 1px solid var(--color-accent);
 	border-radius: calc(var(--md-image-radius, 4px) + 2px);
 	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
 	pointer-events: none;
@@ -405,7 +405,7 @@
 /* Scoped to the anchor so a blocked-scheme `span.md-link-content` never looks clickable, and
    excluding image widgets so a wrapped one is not underlined as if it were text. */
 :where(.editor) a.md-link-content:not(:has(.md-image-widget)) {
-	color: var(--syntax-link, var(--color-accent, #567b67));
+	color: var(--syntax-link, var(--color-accent));
 	text-decoration: underline;
 }
 
@@ -479,8 +479,8 @@
 	font-size: 0.9em;
 	line-height: 1.5;
 	color: inherit;
-	background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
-	border: 1px solid var(--color-accent, #567b67);
+	background: var(--color-bg-secondary);
+	border: 1px solid var(--color-accent);
 	border-radius: 4px;
 }
 
@@ -541,7 +541,7 @@
 }
 
 :where(.editor) :is(.md-marker:has(+ .inline-code-content), .inline-code-content + .md-marker) {
-	color: var(--color-ui-muted, #93938d);
+	color: var(--color-ui-muted);
 }
 
 :where(.editor) .md-marker:has(+ .inline-code-content) {
@@ -563,7 +563,7 @@
 /* An inline widget's source shown for editing (`$x$`) takes the inline-code tint so it reads as
    one span, but keeps the prose typeface so the line does not reflow. */
 ::highlight(md-inline-reveal) {
-	background-color: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+	background-color: var(--color-bg-secondary);
 }
 
 /* Raw-HTML block source text; inline raw HTML keeps --md-raw-html-color above. */
@@ -572,11 +572,11 @@
 }
 
 :where(.editor) .block-host[data-block-kind='blockquote'] > .blockquote-block {
-	border-left-color: var(--syntax-quote, var(--color-ui-muted, #a4a4a4));
+	border-left-color: var(--syntax-quote, var(--color-ui-muted));
 }
 
 :where(.editor) .thematic-break-block > .thematic-break-rule > hr {
-	border-top-color: var(--syntax-separator, var(--color-border, #3e3e3b));
+	border-top-color: var(--syntax-separator, var(--color-border));
 }
 
 /* The [contenteditable='false'] part limits this to the leading marker the renderer injects,
@@ -596,14 +596,14 @@
 	z-index: 2000;
 	min-width: 168px;
 	padding: 4px;
-	background: var(--color-bg, #2c2c2a);
-	border: 1px solid var(--color-border, #3e3e3b);
+	background: var(--color-bg);
+	border: 1px solid var(--color-border);
 	border-radius: 8px;
 	box-shadow: var(--menu-shadow, 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35));
 	font-family: var(--font-ui, system-ui, sans-serif);
 	font-size: 13px;
 	line-height: 1.4;
-	color: var(--color-text-primary, #e8e8e5);
+	color: var(--color-text-primary);
 	user-select: none;
 }
 
@@ -643,13 +643,13 @@
 	display: inline-flex;
 	align-items: center;
 	flex-shrink: 0;
-	color: var(--color-ui-muted, #93938d);
+	color: var(--color-ui-muted);
 }
 
 :where(.editor) .md-menu-divider {
 	height: 1px;
 	margin: 4px 6px;
-	background: var(--color-border, #3e3e3b);
+	background: var(--color-border);
 }
 
 /* ── Rendered markers, shared by every mode that hides them ───────────────────
@@ -812,7 +812,7 @@
 	width: round(1.2em, 1px);
 	height: round(1.2em, 1px);
 	box-sizing: border-box;
-	border: 1.5px solid var(--color-ui-muted, #93938d);
+	border: 1.5px solid var(--color-ui-muted);
 	border-radius: 0.28em;
 	background: transparent;
 }
@@ -826,8 +826,8 @@
 	)
 	.list-item-block[data-task-checked='true']
 	.task-checkbox::before {
-	background: var(--syntax-task-checked, var(--color-text-primary, currentColor));
-	border-color: var(--syntax-task-checked, var(--color-text-primary, currentColor));
+	background: var(--syntax-task-checked, var(--color-text-primary));
+	border-color: var(--syntax-task-checked, var(--color-text-primary));
 }
 
 :where(.editor):is(
@@ -847,7 +847,7 @@
 	width: 0.32em;
 	height: 0.6em;
 	box-sizing: border-box;
-	border: solid var(--syntax-task-checked-tick, var(--color-bg, #2c2c2a));
+	border: solid var(--syntax-task-checked-tick, var(--color-bg));
 	border-width: 0 0.15em 0.15em 0;
 	transform: translate(-50%, -50%) rotate(45deg);
 }
@@ -1003,7 +1003,7 @@
 	width: auto;
 	height: 2px;
 	border-radius: 1px;
-	background-color: var(--color-text-secondary, #d6d9e0);
+	background-color: var(--color-text-secondary);
 }
 
 /* Lengths round in device pixels, where a half is exact and rounds up: widths to the nearest, at

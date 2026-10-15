@@ -221,6 +221,6 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 	}
 </style>

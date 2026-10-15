@@ -249,6 +249,6 @@
 	}
 	.block-menu-danger,
 	.block-menu-danger .md-menu-icon {
-		color: var(--color-error, #d03025);
+		color: var(--color-error);
 	}
 </style>
