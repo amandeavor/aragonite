@@ -14,10 +14,10 @@ const SKIPPED_DIRS = new Set(['node_modules', 'build', 'dist', '.svelte-kit']);
  * @param {string[]} roots
  * @returns {string[]}
  */
-function ignoredPaths(roots) {
+export function ignoredPaths(roots) {
 	try {
 		const listed = execSync(
-			`git ls-files --others --ignored --exclude-standard --directory -- ${roots.join(' ')}`,
+			`git ls-files --others --ignored --exclude-standard --directory -- ${roots.map((root) => `"${root}"`).join(' ')}`,
 			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
 		);
 		return listed.split('\n').filter(Boolean);
@@ -57,8 +57,16 @@ export function corpusFiles(roots, extensions) {
 		if (!existsSync(root)) return [];
 		return statSync(root).isDirectory() ? walk(root, extensions, []) : [root];
 	});
-	/** @param {string} file */
-	const isIgnored = (file) =>
-		ignored.some((path) => (path.endsWith('/') ? file.startsWith(path) : file === path));
-	return found.filter((file) => !isIgnored(file)).sort();
+	return found.filter((file) => !isIgnoredBy(ignored, file)).sort();
+}
+
+/**
+ * Whether `file` (a posix path from the working directory) is one of `ignored` or under one of its
+ * `dir/` entries.
+ * @param {readonly string[]} ignored
+ * @param {string} file
+ * @returns {boolean}
+ */
+export function isIgnoredBy(ignored, file) {
+	return ignored.some((entry) => (entry.endsWith('/') ? file.startsWith(entry) : file === entry));
 }
