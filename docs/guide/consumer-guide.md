@@ -70,7 +70,7 @@ Two more that aren't in the snippet but bite early: plugins install once, app-wi
 
 ## What your build needs
 
-aragonite never imports SvelteKit, so it doesn't care which SvelteKit you're on. It doesn't even need Svelte: the package ships two builds, and its `exports` map picks one for you. A bundler that compiles Svelte gets the source and compiles it with your own components. Anything else (React, Vue, plain JavaScript) gets a prebuilt copy with Svelte compiled in, so your app installs no Svelte at all.
+aragonite never imports SvelteKit, so it doesn't care which SvelteKit you're on. It doesn't even need Svelte. The package ships two builds, and its `exports` map picks one for you. A bundler that compiles Svelte gets the source and compiles it with your own components. Anything else (React, Vue, plain JavaScript) gets a prebuilt copy with Svelte compiled in, so your app installs no Svelte at all.
 
 Three things to check. Though, prob already true in sveltekit apps (if thats you, skip ahead).
 
