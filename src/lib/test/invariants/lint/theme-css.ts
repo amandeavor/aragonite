@@ -29,3 +29,12 @@ export function themeBlocks(): ThemeBlocks {
 export function declaredValue(block: string, token: string): string | null {
 	return block.match(new RegExp(`${token}\\s*:\\s*([^;]+);`))?.[1].trim() ?? null;
 }
+
+/**
+ * The value a token defaults to in one block: a host color's palette entry (`--md-palette-<role>`,
+ * which the opt-in class and an undeclared host both resolve to), else the token's own declaration.
+ */
+export function defaultValue(block: string, token: string): string | null {
+	const palette = token.replace(/^--color-/, '--md-palette-');
+	return (palette !== token ? declaredValue(block, palette) : null) ?? declaredValue(block, token);
+}

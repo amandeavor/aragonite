@@ -320,7 +320,7 @@ cNd.........................................;lOc
 			color: #3fd3d3;
 		}
 		85.714% {
-			color: var(--color-text-primary, currentColor);
+			color: currentColor;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {

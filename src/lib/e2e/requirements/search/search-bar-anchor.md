@@ -14,9 +14,8 @@ restore.
 
 ## Edge cases
 
-- Theme tokens resolve inside the anchor: the bar computes to the token value, not to the
-  component's inline fallback, even though the anchor sits outside every element that carries
-  the theme.
+- Theme tokens resolve inside the anchor: the bar computes to the theme scope's value, not the
+  page's own, even though the anchor sits outside every element that carries the theme.
 - Switching the `theme` prop while the bar is anchored re-resolves those tokens live.
 - In a themed host with no `.aragonite-editor-theme` anywhere, the moved bar still resolves the
   editor's own tokens (its focus ring and hover fills) to the current mode's value, light and dark. Miss-analysis:

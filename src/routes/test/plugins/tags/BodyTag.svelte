@@ -23,8 +23,8 @@
 	.body-tag {
 		padding: 0.05em 0.45em;
 		border-radius: 999px;
-		background: var(--color-ui-faint, rgba(255, 255, 255, 0.07));
-		color: var(--color-accent, #567b67);
+		background: var(--color-ui-faint);
+		color: var(--color-accent);
 		cursor: pointer;
 	}
 </style>

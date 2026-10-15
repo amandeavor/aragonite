@@ -126,7 +126,7 @@
 		border: none;
 		/* A hairline on the border token, not the muted-UI one: a divider separates, and at
 		   2px of mid-grey it competed with the text it sits between. */
-		border-top: 1px solid var(--color-border, #3e3e3b);
+		border-top: 1px solid var(--color-border);
 		margin: 0;
 	}
 </style>

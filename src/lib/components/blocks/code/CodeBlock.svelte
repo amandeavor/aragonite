@@ -812,7 +812,7 @@
 		font-family: var(--font-code, ui-monospace, monospace);
 		font-size: 0.9em;
 		line-height: 1.55;
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+		background: var(--color-bg-secondary);
 		border: 1px solid transparent;
 		border-radius: var(--radius-surface, 8px);
 		color: inherit;
@@ -831,7 +831,7 @@
 	   so the block would otherwise drop its focused look mid-interaction. */
 	.code-block:focus,
 	.code-block:has(~ :global(.code-rail-open)) {
-		border-color: var(--color-border, #3d4047);
+		border-color: var(--color-border);
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -845,7 +845,7 @@
 	}
 
 	.code-block :global(.md-marker.md-lang) {
-		color: var(--color-accent, #567b67);
+		color: var(--color-accent);
 		opacity: 0.7;
 	}
 </style>

@@ -32,7 +32,7 @@
 		pointer-events: none;
 		cursor: grab;
 		user-select: none;
-		color: var(--color-ui-muted, #a4a4a4);
+		color: var(--color-ui-muted);
 	}
 
 	/* Centred on the line `alignDragHandle` measures. Always clickable, unlike the strip, so

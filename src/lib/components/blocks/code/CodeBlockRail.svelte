@@ -563,7 +563,7 @@
 		border: none;
 		border-radius: 5px;
 		background: transparent;
-		color: var(--color-ui-muted, #999999);
+		color: var(--color-ui-muted);
 		font: inherit;
 		cursor: pointer;
 	}
@@ -574,8 +574,8 @@
 
 	/* An open picker keeps its trigger lit, so the two read as one control. */
 	.code-lang-button.open {
-		background: var(--color-ui-faint, rgba(255, 255, 255, 0.07));
-		color: var(--color-text-secondary, #cfcfca);
+		background: var(--color-ui-faint);
+		color: var(--color-text-secondary);
 	}
 
 	.code-rail-action {
@@ -585,12 +585,12 @@
 	}
 
 	button:hover:not(:disabled) {
-		background: var(--color-ui-faint, rgba(255, 255, 255, 0.07));
-		color: var(--color-text-secondary, #d6d9e0);
+		background: var(--color-ui-faint);
+		color: var(--color-text-secondary);
 	}
 
 	button:focus-visible {
-		outline: 1px solid var(--color-accent, #567b67);
+		outline: 1px solid var(--color-accent);
 		outline-offset: -1px;
 	}
 
@@ -615,7 +615,7 @@
 		margin: -4px -4px 4px;
 		padding: 8px 12px;
 		border-bottom: 1px solid var(--menu-search-divider, rgba(255, 255, 255, 0.08));
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 	}
 
 	.code-lang-search input {
@@ -624,14 +624,14 @@
 		padding: 0;
 		border: 0;
 		background: transparent;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 		font: inherit;
 		font-size: 13px;
 		outline: none;
 	}
 
 	.code-lang-search input::placeholder {
-		color: var(--color-ui-dulled, #a3a39d);
+		color: var(--color-ui-dulled);
 	}
 
 	.code-lang-list {
@@ -683,7 +683,7 @@
 	.code-lang-check {
 		display: inline-flex;
 		flex-shrink: 0;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 	}
 
 	.code-rail-popout button:hover:not(:disabled),
@@ -700,6 +700,6 @@
 	.code-lang-empty {
 		margin: 0;
 		padding: 7px 10px;
-		color: var(--color-ui-dulled, #a3a39d);
+		color: var(--color-ui-dulled);
 	}
 </style>

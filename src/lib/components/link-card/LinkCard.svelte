@@ -164,14 +164,14 @@
 		width: 300px;
 		padding: 8px 8px 8px 10px;
 		box-sizing: border-box;
-		background: var(--color-bg, #2c2c2a);
-		border: 1px solid var(--color-border, #3e3e3b);
+		background: var(--color-bg);
+		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		box-shadow: var(--menu-shadow, 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35));
 		font-family: var(--font-ui, system-ui, sans-serif);
 		font-size: 13px;
 		line-height: 1.4;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 	}
 	.md-link-card-field {
 		flex: 1;
@@ -185,16 +185,16 @@
 		font-weight: 600;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: var(--color-text-muted, #aaaaaa);
+		color: var(--color-text-muted);
 	}
 	/* Underlined, not boxed: a box inside the rounded card would read as a frame in a frame. */
 	.md-link-card-field input {
 		width: 100%;
 		box-sizing: border-box;
 		background: transparent;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 		border: none;
-		border-bottom: 1px solid var(--color-border, #3e3e3b);
+		border-bottom: 1px solid var(--color-border);
 		border-radius: 0;
 		padding: 3px 1px 5px;
 		font-family: inherit;
@@ -204,10 +204,10 @@
 		transition: border-color 120ms ease-out;
 	}
 	.md-link-card-field input:focus {
-		border-bottom-color: var(--color-accent, #567b67);
+		border-bottom-color: var(--color-accent);
 	}
 	.md-link-card-field input::placeholder {
-		color: var(--color-text-muted, #aaaaaa);
+		color: var(--color-text-muted);
 	}
 	.md-link-card-actions {
 		display: flex;
@@ -225,13 +225,13 @@
 		border: none;
 		border-radius: 6px;
 		background: transparent;
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 		cursor: pointer;
 	}
 	.md-link-card-btn:hover:not(:disabled),
 	.md-link-card-btn:focus-visible {
 		background: var(--menu-item-hover, rgba(255, 255, 255, 0.07));
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 		outline: none;
 	}
 	.md-link-card-btn:disabled {

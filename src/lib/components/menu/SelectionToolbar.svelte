@@ -351,11 +351,11 @@
 		width: 34px;
 		height: 30px;
 		padding: 0;
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 	}
 	.selection-toolbar-mark:hover:not(:disabled),
 	.selection-toolbar-mark[aria-pressed='true'] {
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 	}
 	/* The marks are serif letters; a Lucide outline beside them needs a heavier stroke to weigh
 	   the same. */

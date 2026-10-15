@@ -1111,7 +1111,7 @@
 	}
 
 	.text-editable-block :global(.md-autolink) {
-		color: var(--syntax-url, var(--color-accent, #567b67));
+		color: var(--syntax-url, var(--color-accent));
 		text-decoration: underline;
 	}
 </style>

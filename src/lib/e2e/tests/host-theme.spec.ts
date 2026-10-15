@@ -135,3 +135,95 @@ test.describe('/test/host-theme', () => {
 		expect(await accentToken(page)).not.toBe(dark);
 	});
 });
+
+// The built-in palette's page ground per mode, which the find bar and the menus paint on.
+const PALETTE_BG = { light: 'rgb(223, 221, 215)', dark: 'rgb(44, 44, 42)' };
+
+const HOST_COLORS = [
+	'--color-bg',
+	'--color-surface',
+	'--color-border',
+	'--color-text-primary',
+	'--color-text-secondary',
+	'--color-ui-dulled',
+	'--color-ui-muted',
+	'--color-accent',
+	'--color-error',
+	'--color-selection'
+];
+
+const background = (page: Page, selector: string) =>
+	page
+		.locator(selector)
+		.first()
+		.evaluate((el: Element) => getComputedStyle(el).backgroundColor);
+
+async function openFindBar(page: Page): Promise<void> {
+	await page.locator('.editor [contenteditable="true"]').first().click();
+	await page.keyboard.press('ControlOrMeta+f');
+	await expect(page.getByRole('textbox', { name: 'Find' })).toBeVisible();
+}
+
+async function openBlockMenu(page: Page): Promise<void> {
+	await page.locator('.editor .paragraph-block').first().click({ button: 'right' });
+	await expect(page.getByRole('menu').first()).toBeVisible();
+}
+
+const pickTheme = (page: Page, key: string) =>
+	page.getByLabel('Theme', { exact: true }).selectOption(key);
+
+test.describe('/test/host-theme: a host that declares no colors', () => {
+	test.beforeEach(async ({ page }) => {
+		await gotoReady(page, '/test/host-theme');
+	});
+
+	for (const mode of ['light', 'dark'] as const) {
+		test(`theme="${mode}" paints the find bar and the block menu in the ${mode} palette`, async ({
+			page
+		}) => {
+			await pickTheme(page, `bare-${mode}`);
+			await openFindBar(page);
+			expect(await background(page, '.search-bar')).toBe(PALETTE_BG[mode]);
+			await openBlockMenu(page);
+			expect(await background(page, '[role="menu"]')).toBe(PALETTE_BG[mode]);
+		});
+	}
+
+	test("the editor's body text keeps the page's own color", async ({ page }) => {
+		await pickTheme(page, 'bare-dark');
+		// The page paints its text with a plain color, not a token; the editor takes that one.
+		expect(await colorOf(page, '.editor')).toBe(await colorOf(page, '.host-page'));
+	});
+
+	test('a live theme switch repaints the open find bar', async ({ page }) => {
+		await pickTheme(page, 'bare-light');
+		await openFindBar(page);
+		expect(await background(page, '.search-bar')).toBe(PALETTE_BG.light);
+		await pickTheme(page, 'bare-dark');
+		await expect.poll(() => background(page, '.search-bar')).toBe(PALETTE_BG.dark);
+	});
+
+	test('a find bar moved into an anchor follows the theme prop too', async ({ page }) => {
+		await gotoReady(page, '/test/host-theme?searchAnchor=on');
+		await pickTheme(page, 'bare-light');
+		await openFindBar(page);
+		const anchored = '[data-testid="search-anchor"] .search-bar';
+		expect(await background(page, anchored)).toBe(PALETTE_BG.light);
+		await pickTheme(page, 'bare-dark');
+		await expect.poll(() => background(page, anchored)).toBe(PALETTE_BG.dark);
+	});
+});
+
+test.describe('/test/host-theme: a host that declares every color', () => {
+	for (const key of ['slate-dark', 'paper-light']) {
+		test(`inside the editor every host color is the host's own (${key})`, async ({ page }) => {
+			await gotoReady(page, '/test/host-theme');
+			await pickTheme(page, key);
+			for (const token of HOST_COLORS) {
+				expect(await tokenOn(page, '.editor > .block-list', token), token).toBe(
+					await tokenOn(page, '.host-page', token)
+				);
+			}
+		});
+	}
+});
