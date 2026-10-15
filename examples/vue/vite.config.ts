@@ -17,6 +17,17 @@ export default defineConfig(({ mode }) => ({
 	],
 	resolve: {
 		alias: mode === 'vue33' ? { vue: vue33 } : undefined,
-		dedupe: ['vue']
+		// `examples/showcase/` sits outside this app, so its package imports must resolve from here,
+		// or they find the repo root's own copy and run a second editor beside this app's.
+		dedupe: ['vue', '@voithos-labs/aragonite']
+	},
+	// The adapter suite's page is `index.html`; the showcase is a second page it never loads.
+	build: {
+		rollupOptions: {
+			input: {
+				main: path.resolve(import.meta.dirname, 'index.html'),
+				showcase: path.resolve(import.meta.dirname, 'showcase.html')
+			}
+		}
 	}
 }));
