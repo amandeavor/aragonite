@@ -888,6 +888,11 @@ on the oldest React or Vue the wrapper supports), and `examples/next` and `examp
 rendered). `examples/adapter-suite/apps.mjs` lists every project: its app, port, the specs it
 runs, and whether it gates each PR. A new app goes in there, or a lint test fails (G4.187).
 
+The React and Vue apps also carry the showcase, the same page as the Svelte one at `/`, on a second
+page the suite doesn't load. To try it by hand, `npm run showcase:react` or `npm run showcase:vue`
+builds and packs this checkout, installs it into the app the way a user would, and serves
+`http://localhost:1490/showcase.html` or `http://localhost:1495/showcase.html`.
+
 The wrappers are npm workspaces of the root, so the root `npm install` installs them too, and
 `npm run package` builds them after the core. Each carries the core's version and peers the core at
 exactly that version, since all three packages publish together (`npm run release:publish`);
