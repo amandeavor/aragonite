@@ -138,8 +138,8 @@ Test files take turns in a shared Node process, which bites in three ways:
 
 The inline-scanner suite (`test/core/inline/scan/`) and the directive suite
 (`test/core/directive/`) fold under `test:editor:core`. Anything without a script of its own
-(the root-level tests, `test/components/`, `test/inline-menu/`) runs in the full `test:editor`
-suite. A new area is one `vitest run src/lib/test/<dir>` line in `package.json`.
+(the root-level tests, `test/components/`, `test/editor-root/`, `test/inline-menu/`) runs in the
+full `test:editor` suite. A new area is one `vitest run src/lib/test/<dir>` line in `package.json`.
 
 ### Mounting a block in isolation
 
@@ -338,22 +338,22 @@ goes in `optimizeDeps.include` in `vite.config.js`; the unit lint usually tells 
 
 Specs are organized by feature area at the top level, and per block inside `tests/blocks/`.
 
-| Script                    | Covers                                                                                                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `test:e2e:top`            | Top-level specs: smoke, text editing, keyboard nav, undo, inline, containers                                                                                                                |
-| `test:e2e:blocks`         | All per-block specs under `tests/blocks/`                                                                                                                                                   |
-| `test:e2e:blocks:<block>` | One block only: `list`, `code`, `image`, `table`, `blockquote`                                                                                                                              |
-| `test:e2e:plugins`        | Plugin authoring: plugin containers, reserved chrome, collapse, the `plugins` prop, component-portal widgets, editable leaves, and the browser conformance sweep over every registered kind |
-| `test:e2e:clipboard`      | Cut / copy / paste                                                                                                                                                                          |
-| `test:e2e:selection`      | Cross-block selection behavior                                                                                                                                                              |
-| `test:e2e:sticky-column`  | Vertical cursor column tracking across block transitions                                                                                                                                    |
-| `test:e2e:search`         | Find/replace bar and controller behavior                                                                                                                                                    |
-| `test:e2e:decorations`    | Decoration engine in the browser: mark / widget / block paint, search as its first client                                                                                                   |
-| `test:e2e:presentation`   | Presentation modes: reading-mode inertness, block- and inline-granular preview reveal, mid-session mode flips                                                                               |
-| `test:e2e:simulation`     | The note-taking simulation sessions (their own section below)                                                                                                                               |
-| `test:e2e:a11y`           | axe over `.editor`: fails on any violation outside the committed allowlist                                                                                                                  |
-| `test:e2e:vr`             | Virtual rendering on large fixtures: windowing, reveal, table-row windowing, mounted-count ceiling                                                                                          |
-| `test:e2e:webkit`         | The second-engine lane: a curated slice under the WebKit binary, env-gated; CI runs it on every PR and the release PR can't merge past it (next section)                                    |
+| Script                    | Covers                                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `test:e2e:top`            | Top-level specs: smoke, text editing, keyboard nav, undo, inline, containers                                                                                                                                 |
+| `test:e2e:blocks`         | All per-block specs under `tests/blocks/`                                                                                                                                                                    |
+| `test:e2e:blocks:<block>` | One block only: `list`, `code`, `image`, `table`, `blockquote`                                                                                                                                               |
+| `test:e2e:plugins`        | Plugin authoring: plugin containers, reserved chrome, collapse, the `plugins` prop, inline widgets drawn by Svelte components, editable leaves, and the browser conformance sweep over every registered kind |
+| `test:e2e:clipboard`      | Cut / copy / paste                                                                                                                                                                                           |
+| `test:e2e:selection`      | Cross-block selection behavior                                                                                                                                                                               |
+| `test:e2e:sticky-column`  | Vertical cursor column tracking across block transitions                                                                                                                                                     |
+| `test:e2e:search`         | Find/replace bar and controller behavior                                                                                                                                                                     |
+| `test:e2e:decorations`    | Decoration engine in the browser: mark / widget / block paint, search as its first client                                                                                                                    |
+| `test:e2e:presentation`   | Presentation modes: reading-mode inertness, block- and inline-granular preview reveal, mid-session mode flips                                                                                                |
+| `test:e2e:simulation`     | The note-taking simulation sessions (their own section below)                                                                                                                                                |
+| `test:e2e:a11y`           | axe over `.editor`: fails on any violation outside the committed allowlist                                                                                                                                   |
+| `test:e2e:vr`             | Virtual rendering on large fixtures: windowing, reveal, table-row windowing, mounted-count ceiling                                                                                                           |
+| `test:e2e:webkit`         | The second-engine lane: a curated slice under the WebKit binary, env-gated; CI runs it on every PR and the release PR can't merge past it (next section)                                                     |
 
 The a11y allowlist and the VR ceilings both fail closed and only shrink. Neither is a perf gate;
 both ride `npm test`.
@@ -386,9 +386,9 @@ seed table is in `+page.svelte`. What each fixture is for, so you can pick one:
   bare here (the no-options path) and with per-editor options on the `multi/` subroute; the
   working example of `registerGlobalCommand` plus a per-editor context. Always on; seed
   `docstats`.
-- `ghost-text/`: one component widget at the end of the focused paragraph, with no completion
-  backend behind it; its spec proves typing next to the widget never captures the ghost text
-  into the document. Seed `ghost`.
+- `ghost-text/`: one decoration widget, drawn by a Svelte component, at the end of the focused
+  paragraph, with no completion backend behind it; its spec proves typing next to the widget never
+  captures the ghost text into the document. Seed `ghost`.
 - `fold/`: `[>hidden<]` ranges collapse to a clickable `…` that reopens on click; the
   `ReplaceDecoration.widget` fixture, covering a live click handler inside a decoration and
   decorations inside table cells. Seeds `fold` and `fold-table`.

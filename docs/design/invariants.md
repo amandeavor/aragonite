@@ -1023,7 +1023,7 @@ unguarded.
 | G4.13  | No view-stripping cast outside `tree-operations/` and the undo controller                   | T·L     |
 | G4.14  | Every component prop reading the CST is typed as a readonly view                            | L       |
 | G4.15  | Coordinate brands are created only at their home modules                                    | L       |
-| G4.16  | Bundled plugins import only the public authoring barrel                                     | L       |
+| G4.16  | Bundled plugins import only the public authoring barrels                                    | L       |
 | G4.17  | No spec is collected by two Playwright projects                                             | L       |
 | G4.18  | The scan switch matches the trigger table; prefix handlers run from one site                | L       |
 | G4.19  | _Retired upward_: reading mode is refused at the commit, not per dispatch site              | L       |
@@ -1245,8 +1245,8 @@ brand through those or a named conversion. G3.7's runtime-source complement.
 `lint/file-rules.test.ts`.
 
 **G4.16 · Bundled-plugin import boundary.** Every file under `src/lib/plugins/**` imports only the
-public authoring barrel (`#lib/plugin.js`), its own plugin directory, `svelte`, or, for a
-`renderer.ts`, its one declared rendering engine, which proves the authoring barrel is complete.
+public authoring barrels (`#lib/plugin.js` and `#lib/svelte.js`), its own plugin directory, `svelte`,
+or, for a `renderer.ts`, its one declared rendering engine, which proves the barrels are complete.
 Every import-boundary scan (this one, G4.63, G4.64, G4.122) reads specifiers through
 `src/lib/test/invariants/lint/scan-source.ts :: importSpecifiers`, so an import quoted in a string
 or comment is no edge. `lint/plugin-import-boundary.test.ts`.
@@ -1561,7 +1561,7 @@ done-or-inert families and the faded blocks are named lists in the test, so a ne
 of them needs its own row there. `lint/code-token-contrast.test.ts`.
 
 **G4.63 · Bundled-plugin test boundary.** Every file under `src/lib/test/plugins/<plugin>/` imports
-only the published entry points (`#lib`, `#lib/plugin.js`, `#lib/testing.js`), its own plugin's
+only a published entry point (any the exports map lists, `#lib/svelte.js` included), its own plugin's
 source, another plugin's published subpath, the copyable test support, a relative path outside
 library code, or an npm package. A deep `#lib` import names something the testing entry point is
 missing; each allowlist entry names it, and a dead entry fails. `lint/bundled-plugin-test-boundary.test.ts`.

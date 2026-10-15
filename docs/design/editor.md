@@ -385,7 +385,7 @@ What "entering" means splits by the kind's editing policy:
 - A mutation of the block closes the reveal _before_ it touches a byte: a clipboard splice and every branch of the block's command dispatch run against `node.raw`, which the ephemeral edit hasn't reached. That's what keeps Enter meaning "split" inside a revealed source (the command dispatch closes the reveal, then splits at the caret) rather than the reveal claiming the key and costing the user the press.
 - The reveal claims exactly one key of its own, Escape, with one carve-out a table cell carries at its own keydown: a cell's Enter is a row hop rather than a split, and hopping would move the ephemeral edit out of the surface that owns it, so there a revealed source commits and the caret stays put.
 
-To add a widget kind, register it in the inline-widget registry so recognition stays in one place, then render it as a Svelte component (recommended: the render layer keeps the instance alive across per-keystroke rebuilds) or as hand-built DOM ([`inline-parsing.md`](inline-parsing.md) § Widget render paths).
+To add a widget kind, register it in the inline-widget registry so recognition stays in one place, then give it a `view` that draws into the span the editor makes for it ([`inline-parsing.md`](inline-parsing.md) § Widget render paths).
 
 ## 7. CST mutability and reactive state
 
@@ -863,7 +863,7 @@ Plugin kinds sit alongside these in the same registries, keyed by their own stri
 
 ## 15. Extension points
 
-Everything above is reachable by a plugin without touching an editor internal. The surface itself is specified in [`plugin-contract.md`](plugin-contract.md), and [`../guide/plugin-guide.md`](../guide/plugin-guide.md) is the authoring guide. One design fact belongs here rather than there: `plugin.ts` is a **facade** over the library's internals (chiefly `schema/`, `core/` and `components/`), the curated public face of those directories rather than a layer sitting above them, and it's also a **sink**, meaning nothing it re-exports may import it back, because a bundler that splits the two sides of such a re-export cycle into different chunks can break execution order in a consumer's build. The proof the surface is complete is `plugins/`, whose bundled packages import the barrel and nothing else from the editor.
+Everything above is reachable by a plugin without touching an editor internal. The surface itself is specified in [`plugin-contract.md`](plugin-contract.md), and [`../guide/plugin-guide.md`](../guide/plugin-guide.md) is the authoring guide. One design fact belongs here rather than there: `plugin.ts` is a **facade** over the library's internals (chiefly `schema/`, `core/` and `components/`), the curated public face of those directories rather than a layer sitting above them, and `svelte.ts` is its sibling for everything typed with Svelte's types. Both are **sinks**, meaning nothing they re-export may import them back, because a bundler that splits the two sides of such a re-export cycle into different chunks can break execution order in a consumer's build. The proof the surface is complete is `plugins/`, whose bundled packages import those two barrels and nothing else from the editor.
 
 ## 16. Standing directions
 
