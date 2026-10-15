@@ -13,7 +13,8 @@ import { TABLE_THEN_FENCE, arriveAtBoundary } from '../selection/gap-caret-fixtu
 // (requirements/caret/drawn-caret-pixels.md).
 
 /** A line height that puts the second block's lines between pixels. */
-const OFF_GRID = '.editor .text-editable-block { line-height: 1.37; }';
+// A fractional line height and letter spacing put boundaries between device pixels in any font.
+const OFF_GRID = '.editor .text-editable-block { line-height: 1.37; letter-spacing: 0.37px; }';
 
 /** Two frames, so a paint armed by the last event has run. */
 function nextFrames(page: Page): Promise<unknown> {

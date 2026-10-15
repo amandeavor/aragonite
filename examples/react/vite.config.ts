@@ -13,6 +13,17 @@ export default defineConfig(({ mode }) => ({
 			mode === 'react18'
 				? { react: react18('react'), 'react-dom': react18('react-dom') }
 				: undefined,
-		dedupe: ['react', 'react-dom']
+		// `examples/showcase/` sits outside this app, so its package imports must resolve from here,
+		// or they find the repo root's own copy and run a second editor beside this app's.
+		dedupe: ['react', 'react-dom', '@voithos-labs/aragonite']
+	},
+	// The adapter suite's page is `index.html`; the showcase is a second page it never loads.
+	build: {
+		rollupOptions: {
+			input: {
+				main: path.resolve(import.meta.dirname, 'index.html'),
+				showcase: path.resolve(import.meta.dirname, 'showcase.html')
+			}
+		}
 	}
 }));

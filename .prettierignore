@@ -19,4 +19,4 @@ examples/consumer/src/plugins/
 src/lib/plugins/emoji/emoji-table.ts
 
 # The demo document shows syntax variants (a setext heading, *italic*) Prettier would normalize
-src/routes/showcase-content.md
+examples/showcase/showcase-content.md

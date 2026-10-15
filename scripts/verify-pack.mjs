@@ -94,9 +94,9 @@ console.log(
 );
 
 /**
- * A wrapper's tarball holds every path its `exports` names, each entry imports in Node with no DOM
- * as a server render does, and a React wrapper's entries open with `'use client'`, so a Next server
- * component can render them. Run after the wrapper builds.
+ * A wrapper's tarball holds every path its `exports` names plus its license and readme, each entry
+ * imports in Node with no DOM as a server render does, and a React wrapper's entries open with
+ * `'use client'`, so a Next server component can render them. Run after the wrapper builds.
  * @param {string} dir
  * @returns {string[]}
  */
@@ -108,8 +108,7 @@ function verifyWrapper(dir) {
 	/** @type {string[]} */
 	const named = [];
 	collectLeafStrings(pkg.exports ?? {}, named);
-	const failures = named
-		.map((target) => target.replace(/^\.\//, ''))
+	const failures = [...named.map((target) => target.replace(/^\.\//, '')), 'LICENSE', 'README.md']
 		.filter((target) => !packed.includes(target))
 		.map((target) => `${pkg.name} ships no ${target}`);
 	failures.push(...nodeImportFailures(dir));

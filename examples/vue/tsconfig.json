@@ -7,7 +7,16 @@
 		"strict": true,
 		"skipLibCheck": true,
 		"noEmit": true,
-		"types": ["vite/client"]
+		"types": ["vite/client"],
+		// The shared showcase module sits outside this app; its package imports read the types
+		// installed here, by path, since a `paths` match skips the package's export map.
+		"paths": {
+			"@voithos-labs/aragonite": ["./node_modules/@voithos-labs/aragonite/dist/index.d.ts"],
+			"@voithos-labs/aragonite/*": [
+				"./node_modules/@voithos-labs/aragonite/dist/*",
+				"./node_modules/@voithos-labs/aragonite/dist/*/index"
+			]
+		}
 	},
 	"include": ["src", "vite.config.ts"]
 }

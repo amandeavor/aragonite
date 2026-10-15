@@ -1,6 +1,6 @@
 # Feature: showcase presentation-mode toggle
 
-Nothing here names a sentence of `src/routes/showcase-content.md`: the owner rewrites that
+Nothing here names a sentence of `examples/showcase/showcase-content.md`: the owner rewrites that
 document by hand, and the version pinned to its prose went red on the rewrite. What the mode
 switch must preserve is read off the rendered document instead.
 

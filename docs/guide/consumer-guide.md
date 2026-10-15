@@ -14,11 +14,11 @@ This is gonna be a long one, so here are the sections:
 | Section                                                       | What it covers                                                                                                 |
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | [What you are embedding](#what-you-are-embedding)             | What you're mounting, how you save, and a few things worth knowing before the rest                             |
-| [What your build needs](#what-your-build-needs)               | Node version, TypeScript settings, and how the package expects to be bundled                                   |
+| [What your build needs](#what-your-build-needs)               | Node version, TypeScript settings, and which of the package's two builds your bundler gets                     |
+| [Mounting without Svelte](#mounting-without-svelte)           | React, Vue and plain JavaScript: the two components, `createEditor` under them, and SSR in Next and Nuxt       |
 | [The public surface](#the-public-surface)                     | What the package exports, and what the version number promises about it                                        |
 | [Props](#props)                                               | Every prop, and which ones you can change after mount                                                          |
 | [The instance surface](#the-instance-surface)                 | The methods on a mounted editor: read the document, move the caret, run commands                               |
-| [Mounting without Svelte](#mounting-without-svelte)           | `createEditor` and the React and Vue components, for an app that doesn't render Svelte components              |
 | [Events](#events)                                             | The eight channels an editor reports on, and what each one carries                                             |
 | [Presentation modes](#presentation-modes)                     | One document shown five ways, from raw Markdown to fully rendered                                              |
 | [Images and links](#images-and-links)                         | Rewriting URLs, importing pasted images, and which URLs the editor refuses to load                             |
@@ -33,7 +33,7 @@ This is gonna be a long one, so here are the sections:
 
 ## What you are embedding
 
-aragonite is a Markdown editor you mount as a Svelte component (or, from an app that isn't Svelte, with [`createEditor`](#mounting-without-svelte)). You hand it Markdown and read Markdown back, unchanged (there's no in-between document format). On screen the document is a stack of blocks (a paragraph, a heading, a list, a table), each its own editing surface, with the Markdown markers visible but dimmed.
+aragonite is a Markdown editor you mount as a Svelte component, or as a React or Vue one, or with plain JavaScript ([Mounting without Svelte](#mounting-without-svelte) has those three; the snippets elsewhere in this guide are Svelte). You hand it Markdown and read Markdown back, unchanged (there's no in-between document format). On screen the document is a stack of blocks (a paragraph, a heading, a list, a table), each its own editing surface, with the Markdown markers visible but dimmed.
 
 ```mermaid
 flowchart LR
@@ -68,9 +68,9 @@ Two more that aren't in the snippet but bite early: plugins install once, app-wi
 
 ## What your build needs
 
-aragonite never imports SvelteKit, so it doesn't care which SvelteKit you're on.
+aragonite never imports SvelteKit, so it doesn't care which SvelteKit you're on. It doesn't even need Svelte. The package ships two builds, and its `exports` map picks one for you. A bundler that compiles Svelte gets the source and compiles it with your own components. Anything else (React, Vue, plain JavaScript) gets a prebuilt copy with Svelte compiled in, so your app installs no Svelte at all.
 
-Three things. Though, prob already true in sveltekit apps (if thats you, skip ahead).
+Three things to check. Though, prob already true in sveltekit apps (if thats you, skip ahead).
 
 1. **Node `^20.19.0 || >=22.12.0`.** That floor is Vite's, not ours: a Svelte app compiles the package's Svelte itself, so your bundler's requirement is the real one.
 2. **TypeScript resolves the package through its `exports` map**, which needs one of these in `tsconfig.json`:
@@ -81,7 +81,7 @@ Three things. Though, prob already true in sveltekit apps (if thats you, skip ah
 
    `node16` and `nodenext` work too. Classic `node` doesn't read `exports`, and the symptom is odd: the root `@voithos-labs/aragonite` import typechecks fine while every subpath import (`/plugin`, `/plugins/*`, `/testing`) reports "Cannot find module".
 
-3. **Your Vite Svelte plugin compiles the package out of `node_modules`**, since it ships `.svelte` and `.svelte.js` files uncompiled. That's `vite-plugin-svelte`'s default, so a plain config is all it takes:
+3. **In a Svelte app, your Vite Svelte plugin compiles the package out of `node_modules`**, since the source build ships `.svelte` and `.svelte.js` files uncompiled. That's `vite-plugin-svelte`'s default, so a plain config is all it takes:
 
    ```js
    // vite.config.js
@@ -90,6 +90,127 @@ Three things. Though, prob already true in sveltekit apps (if thats you, skip ah
    ```
 
    If you hand-tune `optimizeDeps` or `ssr.noExternal`, keep `@voithos-labs/aragonite` on the Svelte plugin's side of those lists rather than pre-bundling it.
+
+   Not a Svelte app? There's nothing to configure, but the prebuilt build wants one more stylesheet imported ([Mounting without Svelte](#mounting-without-svelte), next).
+
+## Mounting without Svelte
+
+React and Vue each get a component, in a package of their own, and both sit on `createEditor`, which mounts the editor into any element from plain JavaScript. All three take the editor's [props](#props) under the same names, and hand you the same handle a Svelte app gets through `bind:this` ([The instance surface](#the-instance-surface) has its methods).
+
+Two things hold for all three:
+
+- **Import the stylesheets once.** Your app gets the prebuilt build, and that one needs its structural CSS imported beside the theme (more in [Theming](#theming)):
+
+  ```ts
+  import '@voithos-labs/aragonite/style.css';
+  import '@voithos-labs/aragonite/styles/editor-theme.css';
+  ```
+
+- **Plugins go in `plugins` as usual.** Every bundled plugin runs here, and so does any plugin that draws with plain DOM. One that ships Svelte components of its own (any plugin with a custom block, for now) needs a bundler that compiles Svelte; [the plugin guide](plugin-guide.md#what-draws-your-plugin-and-where-it-runs) says which plugins those are.
+
+### React
+
+React 18 or 19. The package peers the core at the exact same version (they release together), so install both:
+
+```powershell
+npm install @voithos-labs/aragonite @voithos-labs/aragonite-react
+```
+
+```tsx
+import { useRef, useState } from 'react';
+import { Aragonite, type EditorHandle } from '@voithos-labs/aragonite-react';
+import '@voithos-labs/aragonite/style.css';
+import '@voithos-labs/aragonite/styles/editor-theme.css';
+
+function Note() {
+	const [text, setText] = useState('# Grocery list\n\n- eggs\n- more eggs\n');
+	const editor = useRef<EditorHandle>(null);
+
+	return (
+		<Aragonite
+			ref={editor}
+			value={text}
+			onChange={setText}
+			theme="light"
+			header={<input placeholder="Title" />}
+			style={{ height: '70vh' }}
+		/>
+	);
+}
+```
+
+The props are the editor's [props](#props), plus a few React ones:
+
+- `value` and `onChange` keep the document in your state. `onChange` gets the whole Markdown after every edit (undo and redo included). The editor holds the document while you type, so `value` only does something when it changes. Hand back what `onChange` gave you and nothing happens. Set it to anything else and it loads as a new document, which clears undo and takes the caret out of the editor, so don't reshape the text inside `onChange` (do it when you save).
+- `defaultValue` is the document to start with if you'd rather not hold it in state. `onChange` still reports every edit, or read it through the ref when you need it.
+- `header` is a React node, rendered above the first block.
+- `className` and `style` go on the element the editor mounts into. Give it a height and the editor scrolls inside it (or let your page scroll it, see [Host scroll mode](#host-scroll-mode)).
+
+The ref is the same handle `createEditor` returns, and it's `null` until the editor mounts. The component is marked `'use client'`, so in Next you can render it from a server component too (the editor itself only shows up once the page reaches the browser). Import the two stylesheets in your root layout there.
+
+### Vue
+
+Vue 3.3 or newer. Same deal: install both, and the wrapper pins the core to its own version.
+
+```powershell
+npm install @voithos-labs/aragonite @voithos-labs/aragonite-vue
+```
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { Aragonite, type AragoniteInstance } from '@voithos-labs/aragonite-vue';
+import '@voithos-labs/aragonite/style.css';
+import '@voithos-labs/aragonite/styles/editor-theme.css';
+
+const text = ref('# Grocery list\n\n- eggs\n- more eggs\n');
+const editor = ref<AragoniteInstance | null>(null);
+</script>
+
+<template>
+	<Aragonite ref="editor" v-model="text" theme="light" style="height: 70vh">
+		<template #header><input placeholder="Title" /></template>
+	</Aragonite>
+</template>
+```
+
+The props are the editor's [props](#props), in kebab-case if you like (`presentation-mode="reading"`), plus:
+
+- `v-model` keeps the document in your state, and you get the whole Markdown after every edit (undo and redo included). The editor holds the document while you type, so the bound value only does something when it changes. Hand back what you got and nothing happens. Set it to anything else and it loads as a new document, which clears undo and takes the caret out of the editor, so don't reshape the text on its way back through `v-model` (do it when you save).
+- `default-value` is the document to start with if you'd rather not bind one. `@update:model-value` still reports every edit.
+- The `header` slot renders above the first block.
+- `class` and `style` land on the element the editor mounts into.
+- A boolean option you leave out keeps the editor's default, and a bare attribute (`search-bar`) means `true`.
+
+A template ref on it holds `handle`, the same handle `createEditor` returns (`editor.value?.handle?.getSource()`), and it's `null` until the editor mounts. `plugins` may come from reactive state. In Nuxt, use it as is, no `<ClientOnly>` needed: the server renders an empty container and the editor mounts in the browser. The two stylesheets go in `nuxt.config`'s `css` array.
+
+### Plain JavaScript
+
+`createEditor` mounts the editor into an element you own, for anything that isn't Svelte, React or Vue (plain DOM, a web component, whatever you've got). You get back the handle plus `update` and `destroy`.
+
+```ts
+createEditor(target: HTMLElement, options?: CreateEditorOptions): EditorHandle
+```
+
+- `target` is the element to mount into. The editor appends itself there, and `destroy` takes it back out.
+- `options` are the [props](#props), with one change: `header` is an element of yours instead of a Svelte snippet.
+
+```ts
+import { createEditor } from '@voithos-labs/aragonite';
+
+const title = document.createElement('input');
+const editor = createEditor(document.querySelector<HTMLElement>('#note')!, {
+	source: '# Hello\n',
+	theme: 'light',
+	header: title
+});
+
+editor.getEvents().on('edit', () => save(editor.getSource()));
+editor.update({ theme: 'dark' });
+editor.destroy();
+```
+
+`update` takes any subset of the options and works like handing a component new props: an unchanged value does nothing, so passing every option again on each render is fine, and a key set to `undefined` clears it. Except `source`: the editor keeps the document it has (empty it with `''`). The three set-once props (`plugins`, `syntax`, `scrollMode`) are ignored after mount. Call `destroy` before you throw the element away; anything the editor still had in flight then lands nowhere and fires no event.
 
 ## The public surface
 
@@ -144,7 +265,7 @@ Everything supported is exported from `@voithos-labs/aragonite`, except the Svel
 
 **Hooks:** `onPasteImage`, `onRunCode`, `codeMenuItems`, and `onLinkActivate` can be swapped, added or dropped after mount, and the editor always calls the one you passed last. Same for `resolveImageUrl` and `resolveLinkUrl`, with one catch: they run when a block renders, so an image or link already on screen keeps its URL until its block renders again.
 
-**Read live:** `theme`, `caret`, `searchBar`, `searchBarAnchor`, `selectionToolbar`, `blockDragHandles`, `placeholder`, `presentationMode`, `linkClick`, `keybindings`, and `imageLoadPolicy` may change after mount, and `header` re-renders like any other Svelte snippet.
+**Read live:** `theme`, `caret`, `searchBar`, `searchBarAnchor`, `selectionToolbar`, `blockDragHandles`, `placeholder`, `presentationMode`, `linkClick`, `keybindings`, and `imageLoadPolicy` may change after mount, and so may `header`.
 
 ### Loading another document
 
@@ -208,7 +329,7 @@ The `block` it gets is a `PlaceholderBlock`:
 
 ## The instance surface
 
-You set the editor up with props when it mounts. After that you talk to it through the `bind:this` handle. Here's what you can read:
+You set the editor up with props when it mounts. After that you talk to it through its handle: `bind:this` in Svelte, the ref in React or Vue, or what `createEditor` returns. Here's what you can read:
 
 | Method                                      | What it answers                                                                                                                     |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -420,117 +541,6 @@ Two details:
 - The link editor isn't a mark, so it reads its own state: `true` in live mode when the caret, or a selection lying wholly inside a link, sits in the link its card would edit. `false` for an id with no state of its own, and with nothing focused.
 
 Ask both questions on the same `selectionChange` (it's cheap). [The selection toolbar recipe](#recipe-a-selection-toolbar) puts all three together.
-
-## Mounting without Svelte
-
-`createEditor` mounts the editor into an element you own, for an app that doesn't render Svelte components itself (React, Vue, plain DOM, whatever you've got). You get back the same handle `bind:this` gives a Svelte app, plus `update` and `destroy`.
-
-```ts
-createEditor(target: HTMLElement, options?: CreateEditorOptions): EditorHandle
-```
-
-- `target` is the element to mount into. The editor appends itself there, and `destroy` takes it back out.
-- `options` are the [props](#props), with one change: `header` is an element of yours instead of a Svelte snippet.
-
-```ts
-import { createEditor } from '@voithos-labs/aragonite';
-
-const title = document.createElement('input');
-const editor = createEditor(document.querySelector<HTMLElement>('#note')!, {
-	source: '# Hello\n',
-	theme: 'light',
-	header: title
-});
-
-editor.getEvents().on('edit', () => save(editor.getSource()));
-editor.update({ theme: 'dark' });
-editor.destroy();
-```
-
-`update` takes any subset of the options and works like handing a component new props: an unchanged value does nothing, so passing every option again on each render is fine, and a key set to `undefined` clears it. Except `source`: the editor keeps the document it has (empty it with `''`). The three set-once props (`plugins`, `syntax`, `scrollMode`) are ignored after mount. Call `destroy` before you throw the element away; anything the editor still had in flight then lands nowhere and fires no event.
-
-Your bundler doesn't need a Svelte plugin for this. Without one it gets the package's prebuilt build, which has Svelte compiled in, so there's one more stylesheet to import (see [Theming](#theming)):
-
-```ts
-import '@voithos-labs/aragonite/style.css';
-import '@voithos-labs/aragonite/styles/editor-theme.css';
-```
-
-### React
-
-There's a React component on top of `createEditor`, in its own package. It peers the core at the exact same version (they release together), so install both:
-
-```powershell
-npm install @voithos-labs/aragonite @voithos-labs/aragonite-react
-```
-
-```tsx
-import { useRef, useState } from 'react';
-import { Aragonite, type EditorHandle } from '@voithos-labs/aragonite-react';
-import '@voithos-labs/aragonite/style.css';
-import '@voithos-labs/aragonite/styles/editor-theme.css';
-
-function Note() {
-	const [text, setText] = useState('# Grocery list\n\n- eggs\n- more eggs\n');
-	const editor = useRef<EditorHandle>(null);
-
-	return (
-		<Aragonite
-			ref={editor}
-			value={text}
-			onChange={setText}
-			theme="light"
-			header={<input placeholder="Title" />}
-			style={{ height: '70vh' }}
-		/>
-	);
-}
-```
-
-The props are the editor's [props](#props), plus a few React ones:
-
-- `value` and `onChange` keep the document in your state. `onChange` gets the whole Markdown after every edit (undo and redo included). The editor holds the document while you type, so `value` only does something when it changes. Hand back what `onChange` gave you and nothing happens. Set it to anything else and it loads as a new document, which clears undo and takes the caret out of the editor, so don't reshape the text inside `onChange` (do it when you save).
-- `defaultValue` is the document to start with if you'd rather not hold it in state. `onChange` still reports every edit, or read it through the ref when you need it.
-- `header` is a React node, rendered above the first block.
-- `className` and `style` go on the element the editor mounts into. Give it a height and the editor scrolls inside it (or let your page scroll it, see [Host scroll mode](#host-scroll-mode)).
-
-The ref is the same handle `createEditor` returns, and it's `null` until the editor mounts. Plugins go in `plugins` as usual. Every bundled plugin works here, and so does any plugin that doesn't ship Svelte components of its own; one that does (a custom block, say) needs a bundler that compiles Svelte. The component is marked `'use client'`, so in Next you can render it from a server component too (the editor itself only shows up once the page reaches the browser).
-
-### Vue
-
-Same deal in Vue 3.3 or newer: a component on top of `createEditor`, in its own package, pinned to the core's exact version.
-
-```powershell
-npm install @voithos-labs/aragonite @voithos-labs/aragonite-vue
-```
-
-```vue
-<script setup lang="ts">
-import { ref } from 'vue';
-import { Aragonite, type AragoniteInstance } from '@voithos-labs/aragonite-vue';
-import '@voithos-labs/aragonite/style.css';
-import '@voithos-labs/aragonite/styles/editor-theme.css';
-
-const text = ref('# Grocery list\n\n- eggs\n- more eggs\n');
-const editor = ref<AragoniteInstance | null>(null);
-</script>
-
-<template>
-	<Aragonite ref="editor" v-model="text" theme="light" style="height: 70vh">
-		<template #header><input placeholder="Title" /></template>
-	</Aragonite>
-</template>
-```
-
-The props are the editor's [props](#props), in kebab-case if you like (`presentation-mode="reading"`), plus:
-
-- `v-model` keeps the document in your state, and you get the whole Markdown after every edit (undo and redo included). The editor holds the document while you type, so the bound value only does something when it changes. Hand back what you got and nothing happens. Set it to anything else and it loads as a new document, which clears undo and takes the caret out of the editor, so don't reshape the text on its way back through `v-model` (do it when you save).
-- `default-value` is the document to start with if you'd rather not bind one. `@update:model-value` still reports every edit.
-- The `header` slot renders above the first block.
-- `class` and `style` land on the element the editor mounts into.
-- A boolean option you leave out keeps the editor's default, and a bare attribute (`search-bar`) means `true`.
-
-A template ref on it holds `handle`, the same handle `createEditor` returns (`editor.value?.handle?.getSource()`), and it's `null` until the editor mounts. Plugins go in `plugins`, from reactive state or not. Every bundled plugin works, and one that ships Svelte components of its own needs a bundler that compiles Svelte, same as in React. In Nuxt, use it as is, no `<ClientOnly>` needed: the server renders an empty container and the editor mounts in the browser.
 
 ## Events
 
@@ -837,7 +847,7 @@ Both renderers are optional; without one, each formula or diagram shows its sour
 
 The module owns its CSS. Two stylesheets ship under `styles/`:
 
-- **`editor.css`**: the structural rules. In a Svelte app the component imports it itself, so there's nothing to do. A bundler with no Svelte plugin gets the prebuilt build instead, and that needs `@voithos-labs/aragonite/style.css` imported once. It's `editor.css` plus every component's own styles, bundled plugins included.
+- **`editor.css`**: the structural rules. In a Svelte app the component imports it itself, so there's nothing to do. Anywhere else it comes inside the prebuilt `style.css` ([Mounting without Svelte](#mounting-without-svelte) has the import), along with every component's own styles.
 - **`editor-theme.css`**: the default token palette, light and dark. Import it for the default look, or replace it wholesale to retheme. It's the authoritative manifest, so read it for the exact token set and values rather than trusting a copy in a doc. This one included. Forget it on a page that declares no colors of its own and a dev build says so in the console.
 
 No font ships, so the `--font-*` tokens resolve to whatever your page provides, or to their fallback stacks. (The showcase at aragonite.dev loads Inter and JetBrains Mono itself, in case you're wondering why it looks nicer than your first mount.)
@@ -853,7 +863,7 @@ Nothing is declared on `:root`. The tokens come in two tiers, and the tier decid
 
 ### Light and dark
 
-Mode keys on `data-editor-theme` on the scoped element. Set the `theme` prop on `<Editor>` (`'dark'` default, `'light'`, or any custom name); on an `aragonite-editor-theme` wrapper, set the attribute directly. Dark is the base, and `'light'` overrides only the tokens that differ. A host-chrome token you declare keeps your value whatever the attribute says, so in a themed host the mode of those is whatever your own theme applied.
+Mode keys on `data-editor-theme` on the scoped element. Set the editor's `theme` prop (`'dark'` default, `'light'`, or any custom name); on an `aragonite-editor-theme` wrapper, set the attribute directly. Dark is the base, and `'light'` overrides only the tokens that differ. A host-chrome token you declare keeps your value whatever the attribute says, so in a themed host the mode of those is whatever your own theme applied.
 
 The prop is live: changing it rethemes through the cascade, and plugin content whose colors an engine paints rather than CSS (a Mermaid diagram's SVG) is redrawn for the new theme.
 
@@ -1092,7 +1102,7 @@ You'll see a `data-scroll-mode` attribute on the root in host mode. Don't style 
 
 ### The header slot
 
-`header` is a Svelte snippet rendered inside the scroll container, above the first block: a document title, a properties panel, a tag row, chrome that belongs to the document rather than the app frame. It scrolls away with the document instead of pinning above it.
+`header` is your own UI, rendered inside the scroll container above the first block: a document title, a properties panel, a tag row, chrome that belongs to the document rather than the app frame. It scrolls away with the document instead of pinning above it. In Svelte it's a snippet; from `createEditor` it's an element, in React a node, and in Vue the `header` slot ([Mounting without Svelte](#mounting-without-svelte)).
 
 ```svelte
 {#snippet documentHero()}
@@ -1403,7 +1413,7 @@ editor.getInlineMenus().open('doc-links');
 8. **Style it as you would the editor's other menus.** The list is the shared `.md-menu` surface and reads the same tokens. For rows richer than a label and a detail (a snippet, a highlighted match), pass a `row` view: a function that fills the element the editor hands it, given the `item`, whether it's `active`, and the `query`. It hands back an `update`, called as the row turns active or the query changes, and a `destroy`, where you unmount whatever you rendered there. In Svelte, `row: svelteMenuRow(TagRow)` (from `@voithos-labs/aragonite/svelte`) makes one from a component. A row whose view throws falls back to the default label, and the throw shows up on the `error` event. Your row keeps your page's styles, since the editor's reset stops at it.
 9. **From a plugin, the same registry is `editor.inlineMenus`** on your `onEditor` context; return the handle's `dispose` from the callback. Add your source in `onEditor` itself, not after an `await` there: a pick's context is built on the context of the plugin that added the source, and a source added late gets the editor's own context instead, which belongs to no plugin, so its `options` reads as `{}`. A source you add through `editor.getInlineMenus()` gets that same context.
 
-In the aragonite repo, the tag source in `src/routes/demo-tags/tag-marks-plugin.ts` is this recipe over a synchronous list, `src/routes/test/plugins/inline-menu/doc-link-menu-plugin.ts` over a late one, and `src/lib/plugins/slash-commands/slash-source.ts` over picks that insert blocks.
+In the aragonite repo, the tag source in `examples/showcase/tag-marks.ts` is this recipe over a synchronous list, `src/routes/test/plugins/inline-menu/doc-link-menu-plugin.ts` over a late one, and `src/lib/plugins/slash-commands/slash-source.ts` over picks that insert blocks.
 
 ## Rewriting a document
 

@@ -224,17 +224,10 @@ where `ambientPrefix` is the read-only string a parent container lends its first
 
 ## 6. Widget render paths
 
-A widget kind renders one of two ways.
+A plugin's widget kind draws through the `view` on its registration, a `PluginView`: a plain function the editor hands an element and some props, which fills the element and hands back an optional `update` and `destroy` (`src/lib/plugin-view.ts`). The render layer builds the span itself, stamped with `[data-inline-widget]`, the `data-source-*` offsets and `contenteditable="false"`, so no view can get those wrong. The view gets `{ inline, source }` plus live getters for the presentation mode, the theme, the root document and the content version, read per render since a view outlives a mode flip or an edit elsewhere. `svelteInlineWidget` makes a view out of a Svelte component, and since a view is just a function, `core/` never learns what drew it.
 
-**Component (recommended).** The kind supplies a Svelte component, and the render layer does the rest:
+The editor's own widgets (raw HTML, decoded entities, directive text) skip the view: an internal table maps each to a `draw` function that builds its span directly (`core/inline/inline-widgets.ts`), and plugins never see that table.
 
-- It builds the atomic widget's span itself, stamping `[data-inline-widget]`, the `data-source-*` offsets, and `contenteditable="false"`.
-- It mounts the component inside with a frozen `{ inline, source }` snapshot.
-- Beside the snapshot ride live getters for the presentation mode, the theme, the root document, and the content version. A pooled instance survives a mode flip and an edit elsewhere, so those are read per render rather than captured at mount.
-- Mounting is _injected_ into the core layer, so `core/` stays framework-free: the registry records only that a kind is a component widget, never how to mount one.
-
-**Hand-built.** The kind emits its own DOM root and has to carry those same attributes itself.
-
-Because the editor rebuilds a block's entire inline DOM on every keystroke, component widgets ride a **keyed reuse pool**. An instance is keyed by kind and source text, so a rebuild _adopts_ an unchanged instance, re-stamping only its shifted `data-source-*` offsets, instead of remounting it. Typing next to a rendered formula keeps its mount, and its render cost, stable; editing the formula makes a new one. An instance left unadopted at the end of a pass is torn down, and a mount that throws is caught, reported on the editor's `error` channel, and falls back to the raw source span.
+The editor rebuilds a block's whole inline DOM on every keystroke, so a plugin's views sit in a reuse pool keyed by kind and source text (`src/lib/components/blocks/widget-portal.ts`). Typing next to a rendered formula keeps its view and hands it the moved `inline` through `update`; editing the formula itself mounts a new one. A view that throws is reported on the editor's `error` channel, and its widget falls back to the raw source span.
 
 The editing behavior of a widget (reveal-to-edit, select-then-delete, or atomic step-over, what its keys do while selected, and what a press on the rendered widget does) is a per-kind **editing policy** on the same registry. `editor.md` § Atomic inline widgets covers the caret model those policies drive.

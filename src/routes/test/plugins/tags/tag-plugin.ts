@@ -14,7 +14,7 @@ import {
 } from '#lib/plugin.js';
 import { svelteInlineWidget } from '#lib/svelte.js';
 import BodyTag from './BodyTag.svelte';
-import { recognizeTag } from '../../../demo-tags/tag-scan';
+import { recognizeTag } from '../../../../../examples/showcase/tag-scan';
 
 export const BODY_TAG_KIND = 'harness-tag';
 

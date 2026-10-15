@@ -20,7 +20,7 @@ import { MERMAID } from '#lib/plugins/mermaid/index.js';
 import { PARROT } from '#lib/plugins/parrot/index.js';
 import { TOC_BLOCK } from '#lib/plugins/toc/index.js';
 import { DEMO_PLUGINS } from '../../../routes/demo-plugins';
-import SHOWCASE_DOCUMENT from '../../../routes/showcase-content.md?raw';
+import SHOWCASE_DOCUMENT from '../../../../examples/showcase/showcase-content.md?raw';
 
 /**
  * What the `/` tour demonstrates, derived from the registries rather than from the

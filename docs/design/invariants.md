@@ -262,7 +262,7 @@ These checks run in three kinds of place:
 | G1.94 | One editor per mount target: a second `createEditor` there before `destroy` warns in dev   | A       |
 | G1.96 | A plugin's widget, decoration or row view mounts once, updates in place, is destroyed once | N       |
 | G1.97 | A value a Vue app holds in reactive state reaches the editor unwrapped                     | harness |
-| G1.99 | A laid-out editor resolves the host colors, from the theme stylesheet or the page          | A       |
+| G1.99 | A styled editor resolves the host colors, from the theme stylesheet or the page            | A       |
 
 ### The entries
 
@@ -722,25 +722,25 @@ class list when its kind changes. Predicate
 `caret/drawn-caret.svelte.ts` · `e2e/tests/caret/drawn-caret.spec.ts` (`caretsShowing`, one caret in
 every row).
 
-**G1.87 · Nothing outlives the unmount.** A write still in flight when the editor unmounts (an
-`insertMarkdown` waiting on a tick, a paste waiting on its clipboard) is refused quietly at the write
-gate, the way one made for a document a swap replaced is: the unmount ends the document in place, and
-a write that names no document is made for that one. The events channel goes quiet at the same
-moment, and a caret landing stops at its next await rather than read the torn-down lists. Nothing is
-asserted, since a host unmounting mid-write is ordinary. `editor-actions/commit/reading-write-gate.ts
-:: admitsWrite`, `editor-actions/commit/document-stamp.ts :: end`, `block-lists/child-list.ts ::
-descendTo` · `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/document-stamp.test.ts`,
+**G1.87 · Nothing outlives the unmount.** Unmounting ends the document in place, so a write still in
+flight (an `insertMarkdown` waiting on a tick, a paste waiting on its clipboard) is refused quietly
+at the write gate, the way one for a document a swap replaced is; a write that names no document
+counts as one for the document that just ended. The events go quiet at the same moment, and a caret
+landing stops at its next await instead of reading the torn-down lists. Nothing is asserted, since a
+host unmounting mid-write is ordinary. `editor-actions/commit/reading-write-gate.ts :: admitsWrite`,
+`editor-actions/commit/document-stamp.ts :: end`, `block-lists/child-list.ts :: descendTo` ·
+`editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/document-stamp.test.ts`,
 `block-lists/child-list.test.ts`, `selection/caret-landing.test.ts`.
 
 **G1.90 · A foreign Svelte runtime is named.** A plugin component compiled against a second copy of
-Svelte (a precompiled plugin on the prebuilt build, say) fails as soon as the editor mounts it,
-since its runtime has no component or effect in progress. Each route that mounts a plugin's
-component (the block's error boundary, `plugin-view.ts :: mountPluginView` for every widget and row
-view, the inline menu's row boundary) asks `foreign-runtime.ts :: isForeignRuntimeError` and warns
-`foreign-runtime` in dev; the block's notice says the cause too. G4.178 holds new routes to it.
-The match is by message: `effect_orphan`, or the two crashes of a runtime that never mounted
-anything, which V8 words vaguely enough that a plugin's own `undefined.call` matches too.
-`components/foreign-runtime.test.ts` loads its fixtures on a second runtime through a module reset.
+Svelte (a precompiled plugin on the prebuilt build, say) fails the moment the editor mounts it,
+since its runtime has no component or effect in progress. Every route that mounts a plugin's
+component (the block's error boundary, `plugin-view.ts :: mountPluginView`, the inline menu's row
+boundary) asks `foreign-runtime.ts :: isForeignRuntimeError` and warns `foreign-runtime` in dev, and
+the block's notice names the cause too; G4.178 holds new routes to it. The match reads the message
+(`effect_orphan`, or the two crashes of a runtime that never mounted anything), so a plugin's own
+`undefined.call` can match as well. `components/foreign-runtime.test.ts` loads its fixtures on a
+second runtime through a module reset.
 
 **G1.91 · A live removal keeps the marks it keeps.** A live-mode delete, cut or typed-over range
 that cuts through a format run closes the run on the half before the cut and reopens it on the half
@@ -752,21 +752,20 @@ stays with no marker on screen. `components/blocks/text/live-join-seam.ts :: cle
 (each kept character's marks, read by `test/harness/live-oracles.ts :: markedChars`, with the drop
 fallback held to a small share), `test/blocks/text/live-join-seam.test.ts`.
 
-**G1.94 · One editor per target.** A framework wrapper creates the editor when its component mounts
-and destroys it when it unmounts. A wrapper that skips the destroy stacks a second editor in the
-same element, and React's StrictMode (which mounts every component twice in dev) shows it at once.
-`createEditor` remembers which targets hold an editor it hasn't destroyed and warns
+**G1.94 · One editor per target.** A wrapper that skips `destroy` on unmount stacks a second editor
+in the same element, and React's StrictMode (which mounts every component twice in dev) shows it at
+once. `createEditor` remembers which targets hold an editor it hasn't destroyed and warns
 `target-occupied` in dev on a second mount there. `editor-root/create-editor.test.ts`.
 
 **G1.96 · One lifecycle for every plugin view.** An inline widget, a decoration's widget or badge,
-and an inline menu row are each a `PluginView` the editor mounts into an element it made, through
-`plugin-view.ts :: mountPluginView`. The view mounts once, takes new props through `update` (a
-pooled widget typing moved, a decoration at the same place, a row turning active), and is
-destroyed once. A throw at any of the three is reported once, the view is never called again, and
-the slot draws its fallback; a pooled widget or a badge mounts no fresh view in its place while it
-stays put (a decoration widget is drawn afresh with its block, so a throwing one reports once per
-rebuild). `plugins/view/lifecycle.test.ts` and `plugins/view/failure.test.ts` run every slot, the
-first against a DOM view and a Svelte one; G4.186 holds new routes to the wrapper.
+and an inline menu row are each a `PluginView`, mounted through `plugin-view.ts :: mountPluginView`
+into an element the editor made. A view mounts once, takes new props through `update` (a widget
+typing moved, a decoration in the same place, a row turning active), and is destroyed once. A throw
+at any of the three is reported once, the view is never called again, and the slot draws its
+fallback. A pooled widget or a badge mounts no new view while it stays put; a decoration widget is
+drawn afresh with its block, so a throwing one reports once per rebuild.
+`plugins/view/lifecycle.test.ts` (a DOM view and a Svelte one) and `plugins/view/failure.test.ts`
+run every slot; G4.186 holds new routes to the wrapper.
 
 **G1.97 · Vue hands over the real object.** A value a Vue app keeps in `ref` or `reactive` reaches
 a component as a Vue proxy. The editor keeps a plugin by identity, so a proxied plugin and the
@@ -1032,7 +1031,7 @@ unguarded.
 | G4.13  | No view-stripping cast outside `tree-operations/` and the undo controller                    | T·L     |
 | G4.14  | Every component prop reading the CST is typed as a readonly view                             | L       |
 | G4.15  | Coordinate brands are created only at their home modules                                     | L       |
-| G4.16  | Bundled plugins import only the public authoring barrel                                      | L       |
+| G4.16  | Bundled plugins import only the public authoring barrels                                     | L       |
 | G4.17  | No spec is collected by two Playwright projects                                              | L       |
 | G4.18  | The scan switch matches the trigger table; prefix handlers run from one site                 | L       |
 | G4.19  | _Retired upward_: reading mode is refused at the commit, not per dispatch site               | L       |
@@ -1256,8 +1255,8 @@ brand through those or a named conversion. G3.7's runtime-source complement.
 `lint/file-rules.test.ts`.
 
 **G4.16 · Bundled-plugin import boundary.** Every file under `src/lib/plugins/**` imports only the
-public authoring barrel (`#lib/plugin.js`), its own plugin directory, `svelte`, or, for a
-`renderer.ts`, its one declared rendering engine, which proves the authoring barrel is complete.
+public authoring barrels (`#lib/plugin.js` and `#lib/svelte.js`), its own plugin directory, `svelte`,
+or, for a `renderer.ts`, its one declared rendering engine, which proves the barrels are complete.
 Every import-boundary scan (this one, G4.63, G4.64, G4.122) reads specifiers through
 `src/lib/test/invariants/lint/scan-source.ts :: importSpecifiers`, so an import quoted in a string
 or comment is no edge. `lint/plugin-import-boundary.test.ts`.
@@ -1572,7 +1571,7 @@ done-or-inert families and the faded blocks are named lists in the test, so a ne
 of them needs its own row there. `lint/code-token-contrast.test.ts`.
 
 **G4.63 · Bundled-plugin test boundary.** Every file under `src/lib/test/plugins/<plugin>/` imports
-only the published entry points (`#lib`, `#lib/plugin.js`, `#lib/testing.js`), its own plugin's
+only a published entry point (any the exports map lists, `#lib/svelte.js` included), its own plugin's
 source, another plugin's published subpath, the copyable test support, a relative path outside
 library code, or an npm package. A deep `#lib` import names something the testing entry point is
 missing; each allowlist entry names it, and a dead entry fails. `lint/bundled-plugin-test-boundary.test.ts`.
@@ -2152,18 +2151,18 @@ loses the registrations inside it. `lint/plugin-pack-parity.test.ts`; `scripts/v
 then checks the built output: it imports nothing but its listed externals, every entry loads in Node,
 a kind registered through its `/plugin` parses through its root, and it stays within its size budget.
 
-**G4.175 · Runes mode only.** A component with no rune compiles in legacy mode, which switches on
-the legacy flag in the Svelte runtime of the app that compiles it. The prebuilt build forces runes
-mode itself, so this guards Svelte hosts. Every `.svelte` file under `src/lib` uses a rune or says `<svelte:options runes />`.
-`lint/file-rules.test.ts`.
+**G4.175 · Runes mode only.** A component with no rune compiles in legacy mode, which turns on the
+legacy flag in the Svelte runtime of the app compiling it. The prebuilt build forces runes mode
+itself, so this guards Svelte hosts: every `.svelte` file under `src/lib` uses a rune or says
+`<svelte:options runes />`. `lint/file-rules.test.ts`.
 
 **G4.178 · A plugin view that throws costs only itself.** A file under `src/lib` that mounts a
 Svelte component a plugin handed it (a `mount`, or a component picked at render time) also calls
-`warnIfForeignRuntime`, which is the sign it catches the throw, paints its fallback and reports on
-`error` (G1.90). The editor's own mount in `create-editor.ts` is one exception, and the Svelte view
-helpers in `svelte-views.svelte.ts` the other, since only `mountPluginView` calls them.
-`lint/file-rules.test.ts`. A Svelte view that throws while it unmounts is held to the same report
-by `plugins/view/mount-plugin-view.test.ts`.
+`warnIfForeignRuntime`, the sign it catches the throw, paints its fallback and reports on `error`
+(G1.90). Two files are exempt: the editor's own mount in `create-editor.ts`, and the Svelte view
+helpers in `svelte-views.svelte.ts`, which only `mountPluginView` calls. `lint/file-rules.test.ts`;
+`plugins/view/mount-plugin-view.test.ts` holds a Svelte view that throws while unmounting to the
+same report.
 
 **G4.180 · Corner controls clear the find bar.** A hover control pinned to a block's top-right
 corner (absolute, placed by `top` and `right` or by `inset`, hidden at rest by opacity or visibility)
@@ -2197,14 +2196,14 @@ holds the walk to every import shape over a small declaration tree.
 
 **G4.186 · One wrapper draws every plugin view.** No file calls a plugin's `view` or `row` field
 itself: it hands the view to `plugin-view.ts :: mountPluginView`, the one place that contains a
-throw, reports it once and destroys the view once (G1.96). `lint/file-rules.test.ts` fails a
-call on either field, or on a local named `view` or `row`, anywhere under `src/lib`; a local under
-another name is past a regex's reach.
+throw, reports it once and destroys the view once (G1.96). `lint/file-rules.test.ts` fails a call on
+either field, or on a local named `view` or `row`, anywhere under `src/lib`; a local under any other
+name gets past it.
 
 **G4.187 · Every framework app is tested.** `examples/adapter-suite/apps.mjs` lists the suite's
-projects, and `scripts/adapter-smoke.mjs` builds and installs whatever it lists. So an app under
-`examples/` with no entry there would never be installed from the tarballs or tested, and a spec
-no project names would never run. `lint/adapter-apps.test.ts` fails on either.
+projects, and `scripts/adapter-smoke.mjs` builds and installs whatever it lists. An app under
+`examples/` with no entry there is never installed from the tarballs or tested, and a spec no
+project names never runs. `lint/adapter-apps.test.ts` fails on either.
 
 **G4.188 · Wrappers import on a server.** A server render imports a wrapper before any browser
 exists, so each JS entry a wrapper's `exports` names must load in plain Node without touching the
