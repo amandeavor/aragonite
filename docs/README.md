@@ -1,6 +1,6 @@
 # aragonite docs
 
-aragonite is a block editor for GFM Markdown (GitHub's dialect): the raw text is the document, edited as styled blocks and written back byte for byte, shipped as an embeddable Svelte library.
+aragonite is a block editor for GFM Markdown (GitHub's dialect): the raw text is the document, edited as styled blocks and written back byte for byte, shipped as an embeddable library for Svelte, React, Vue or plain JavaScript apps.
 
 New here? Run it with the root [`README.md`](../README.md) (which also argues why any of this is a good idea), work in it with [`CONTRIBUTING.md`](../CONTRIBUTING.md). This page is just the map.
 
@@ -38,7 +38,7 @@ The published pack. This folder ships inside the npm package (the only docs fold
 
 | Doc                                                                                          | Scope                                                                                                                                   |
 | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| [`guide/consumer-guide.md`](guide/consumer-guide.md)                                         | Embedding the editor: props, events, theming, and everything else a host app touches                                                    |
+| [`guide/consumer-guide.md`](guide/consumer-guide.md)                                         | Embedding the editor in Svelte, React, Vue or plain JavaScript: props, events, theming, and everything else a host app touches          |
 | [`guide/plugin-guide.md`](guide/plugin-guide.md)                                             | Teaching the editor your own blocks and inline syntax: a first working plugin, the model behind it, and a map of the recipe pages below |
 | [`guide/plugin-guide/per-editor.md`](guide/plugin-guide/per-editor.md)                       | Per-editor state, events and options, for a page with more than one editor on it                                                        |
 | [`guide/plugin-guide/container-walkthrough.md`](guide/plugin-guide/container-walkthrough.md) | The biggest worked example, a `:::conspiracy` box end to end, then the `closure` checklist every block kind fills in                    |
@@ -53,7 +53,7 @@ The published pack. This folder ships inside the npm package (the only docs fold
 | [`guide/plugin-guide/paste-transforms.md`](guide/plugin-guide/paste-transforms.md)           | Rewriting pasted text before it parses                                                                                                  |
 | [`guide/plugin-guide/menu-only-kinds.md`](guide/plugin-guide/menu-only-kinds.md)             | A block that comes from a menu instead of typing, and still survives a reload                                                           |
 | [`guide/plugin-testing.md`](guide/plugin-testing.md)                                         | Proving a plugin never eats bytes: the checks to write, and the ready-made suites the built-in blocks pass, run against yours           |
-| [`guide/plugin-api.md`](guide/plugin-api.md)                                                 | Every `@voithos-labs/aragonite/plugin` export, grouped by job; a page for Ctrl+F, not for reading                                       |
+| [`guide/plugin-api.md`](guide/plugin-api.md)                                                 | Every `/plugin` and `/svelte` export, grouped by job; a page for Ctrl+F, not for reading                                                |
 | [`guide/directives.md`](guide/directives.md)                                                 | The `:::name` fence: a named box in Markdown, and how a plugin claims a name                                                            |
 | [`guide/plugin-guide/parrot-frames.md`](guide/plugin-guide/parrot-frames.md)                 | All ten party-parrot frames, ready to paste over the quickstart's two                                                                   |
 
