@@ -78,7 +78,7 @@ describe('theme-token manifest ↔ editor-theme.css', () => {
 
 	it('the selection base defaults to the accent', () => {
 		expect(defaultValue(base, SELECTION_TOKEN)).toBe('var(--color-accent)');
-		expect(base).toMatch(
+		expect(readSource(SOURCE.editorCss).code).toMatch(
 			/--md-color-selection:\s*var\(--color-selection, var\(--md-color-accent\)\)/
 		);
 	});

@@ -1,8 +1,8 @@
 /**
  * Structural editor styles: the painting rules for DOM the renderers build in JavaScript, which
  * cannot live in a component's <style> block. Every rule is wrapped in :where(), which adds no
- * specificity and keeps the names to the editor. The token values live in editor-theme.css;
- * a host's --color-* tokens are read here, never declared, and resolve in editor-theme.css.
+ * specificity and keeps the names to the editor. The token values live in editor-theme.css; the
+ * rules that hand a host's --color-* tokens to everything inside the editor live here.
  */
 
 /* The reset every editor style assumes, so a page without one lays the editor out the same. DOM a
@@ -28,6 +28,38 @@
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
+}
+
+/* ── The host's colors inside the editor: declared, or the palette in the editor's mode ── */
+
+:where(.editor, .aragonite-editor-portal, .aragonite-editor-theme) {
+	--md-color-bg: var(--color-bg, var(--md-palette-bg));
+	--md-color-surface: var(--color-surface, var(--md-palette-surface));
+	--md-color-text-secondary: var(--color-text-secondary, var(--md-palette-text-secondary));
+	--md-color-text-primary: var(--color-text-primary, var(--md-palette-text-primary));
+	--md-color-border: var(--color-border, var(--md-palette-border));
+	--md-color-ui-muted: var(--color-ui-muted, var(--md-palette-ui-muted));
+	--md-color-ui-dulled: var(--color-ui-dulled, var(--md-palette-ui-dulled));
+	--md-color-accent: var(--color-accent, var(--md-palette-accent));
+	--md-color-selection: var(--color-selection, var(--md-color-accent));
+	--md-color-error: var(--color-error, var(--md-palette-error));
+	/* Text on the page: the host's color, else the page's own, as the editor paints no background. */
+	--md-page-text: var(--color-text-primary, currentColor);
+}
+
+/* A custom property can't be its own fallback, so the root resolves each color above and its
+   children take the result back under the host's name. */
+:where(.editor, .aragonite-editor-portal) > * {
+	--color-bg: var(--md-color-bg);
+	--color-surface: var(--md-color-surface);
+	--color-text-secondary: var(--md-color-text-secondary);
+	--color-text-primary: var(--md-color-text-primary);
+	--color-border: var(--md-color-border);
+	--color-ui-muted: var(--md-color-ui-muted);
+	--color-ui-dulled: var(--md-color-ui-dulled);
+	--color-accent: var(--md-color-accent);
+	--color-selection: var(--md-color-selection);
+	--color-error: var(--md-color-error);
 }
 
 /* Classes applied by code-renderer.ts; an unknown one falls through to --code-tok-unknown

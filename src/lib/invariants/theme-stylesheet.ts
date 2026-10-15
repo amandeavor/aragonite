@@ -9,8 +9,8 @@ export function checkHostColorsResolve(root: HTMLElement): InvariantViolation | 
 	const style = getComputedStyle(root);
 	// The editor.css reset makes the root border-box, so anything else is a DOM with no stylesheet.
 	if (style.boxSizing !== 'border-box') return null;
-	const unset = (name: string) => style.getPropertyValue(name) === '';
-	if (!unset('--md-color-bg') || !unset('--color-bg')) return null;
+	// editor.css resolves this from the page's `--color-bg`, else the theme stylesheet's palette.
+	if (style.getPropertyValue('--md-color-bg') !== '') return null;
 	return {
 		code: 'theme-stylesheet-missing',
 		message:

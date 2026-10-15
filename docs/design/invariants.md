@@ -776,11 +776,11 @@ editors sharing a plugin, three of them taking it out of reactive state in those
 on the `plugin-install` warning a proxy would raise.
 
 **G1.99 · The host colors resolve.** Inside the editor a host color read carries no fallback (G4.189),
-because `editor-theme.css` resolves each one to the page's value or the built-in palette's. An app
-that forgets that stylesheet on a page declaring no colors gets menus and a find bar painted with
-none. Once an editor mounts with its own stylesheet applied (the `editor.css` reset makes its root
-border-box), it checks that `--md-color-bg` or `--color-bg` resolves on the root, and warns
-`invariant:host-colors-resolve` naming the import when neither does. A DOM with no stylesheet (the
+because `editor.css` resolves each one to the page's value or the palette `editor-theme.css`
+declares. An app that forgets the theme stylesheet on a page declaring no colors gets menus and a
+find bar painted with none. Once an editor mounts with its own stylesheet applied (the `editor.css`
+reset makes its root border-box), it checks that `--md-color-bg` resolves on the root, and warns
+`invariant:host-colors-resolve` naming the import when it doesn't. A DOM with no stylesheet (the
 unit suites) is skipped. `invariants/theme-stylesheet.ts`; `e2e/tests/theme-stylesheet.spec.ts`.
 
 ## Group 2: property and regression tested
@@ -1198,11 +1198,12 @@ fake timers or `vi.waitFor`, never by flushing a macrotask.
 `lint/file-rules.test.ts`.
 
 **G4.6 · CSS ownership.** `app.css` holds no editor rules or tokens; every editor-owned token read
-is declared in `editor-theme.css`; every radius read carries a fallback; and host-chrome defaults
-sit behind the opt-in theme class alone (G4.6d), except the root's children re-exposing the root's
-resolved host colors. The bundled and reference plugins follow the same rule and may also read
-tokens they declare. `lint/css-ownership.test.ts` (editor),
-`lint/plugin-css-ownership.test.ts` (plugins).
+is declared in `editor-theme.css`, except the resolved host colors (`--md-color-*`,
+`--md-page-text`), which only `editor.css` declares; every radius read carries a fallback; and
+host-chrome defaults sit behind the opt-in theme class alone (G4.6d), with `editor.css` declaring a
+host color only where the root's children re-expose the resolved one. The bundled and reference
+plugins follow the same rule and may also read tokens they declare. `lint/css-ownership.test.ts`
+(editor), `lint/plugin-css-ownership.test.ts` (plugins).
 
 **G4.7 · Render-memo completeness.** A block's render memo key includes every input its built DOM
 embeds; no live value (tree path, index, load policy, checkbox state) is baked into the DOM unless
@@ -2212,13 +2213,15 @@ nodeImportFailures` imports each one in a child Node process, and `scripts/verif
 on every wrapper after the build. `lint/wrapper-node-import.test.ts` feeds it a clean entry and two
 broken ones.
 
-**G4.189 · Host colors come from one place.** `editor-theme.css` resolves each host color on the
+**G4.189 · Host colors come from one place.** `editor.css` resolves each host color on the
 editor root (the page's value, or the built-in palette in the editor's mode) and hands the result to
 the root's children under the host's own name. So a read inside the editor carries no fallback,
 since a literal there would hold one mode whatever `theme` says, and a rule on the root itself (or
 its scrollbar) reads the resolved `--md-color-*` name, since the root sees the page's value
-unresolved. `lint/host-color-reads.test.ts` covers the library, the bundled plugins and the
-reference plugins; route pages are the host and read their own tokens however they like.
+unresolved. The rules sit in `editor.css` rather than the theme file, so a theme stylesheet
+replaced wholesale keeps them. `lint/host-color-reads.test.ts` covers the library, the bundled
+plugins and the reference plugins; route pages are the host and read their own tokens however they
+like.
 
 ## Accessibility
 

@@ -1,7 +1,7 @@
 /**
  * The editor's default theme, in two tiers (consumer-guide.md § Theming). Host-chrome tokens are
  * declared only behind the opt-in `.aragonite-editor-theme` class, so a host's own cascade reaches
- * the editor untouched; inside the editor an undeclared one takes the palette in the editor's mode.
+ * the editor untouched; an undeclared one takes the palette below, by the rules in editor.css.
  * Editor-owned tokens default on `.editor` and on a moved find bar (`.aragonite-editor-portal`).
  * `:where()` keeps specificity at 0 so `.editor { … }` wins.
  */
@@ -37,38 +37,6 @@
 	   so one declaration recolors them all; the tints themselves stay editor-owned. */
 	--color-selection: var(--color-accent);
 	--color-error: var(--md-palette-error);
-}
-
-/* ── The host's colors inside the editor: declared, or the palette in the editor's mode ── */
-
-:where(.editor, .aragonite-editor-portal, .aragonite-editor-theme) {
-	--md-color-bg: var(--color-bg, var(--md-palette-bg));
-	--md-color-surface: var(--color-surface, var(--md-palette-surface));
-	--md-color-text-secondary: var(--color-text-secondary, var(--md-palette-text-secondary));
-	--md-color-text-primary: var(--color-text-primary, var(--md-palette-text-primary));
-	--md-color-border: var(--color-border, var(--md-palette-border));
-	--md-color-ui-muted: var(--color-ui-muted, var(--md-palette-ui-muted));
-	--md-color-ui-dulled: var(--color-ui-dulled, var(--md-palette-ui-dulled));
-	--md-color-accent: var(--color-accent, var(--md-palette-accent));
-	--md-color-selection: var(--color-selection, var(--md-color-accent));
-	--md-color-error: var(--color-error, var(--md-palette-error));
-	/* Text on the page: the host's color, else the page's own, as the editor paints no background. */
-	--md-page-text: var(--color-text-primary, currentColor);
-}
-
-/* A custom property can't be its own fallback, so the root resolves each color above and its
-   children take the result back under the host's name. */
-:where(.editor, .aragonite-editor-portal) > * {
-	--color-bg: var(--md-color-bg);
-	--color-surface: var(--md-color-surface);
-	--color-text-secondary: var(--md-color-text-secondary);
-	--color-text-primary: var(--md-color-text-primary);
-	--color-border: var(--md-color-border);
-	--color-ui-muted: var(--md-color-ui-muted);
-	--color-ui-dulled: var(--md-color-ui-dulled);
-	--color-accent: var(--md-color-accent);
-	--color-selection: var(--md-color-selection);
-	--color-error: var(--md-color-error);
 }
 
 /* ── Editor-owned tokens: defaults on `.editor`, so they hold with or without the class ── */

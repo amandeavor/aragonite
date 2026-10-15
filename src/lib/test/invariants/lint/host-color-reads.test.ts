@@ -1,7 +1,7 @@
 /**
- * G4.189: inside the editor a host color read carries no fallback, since `editor-theme.css` resolves
- * every one to the page's value or the palette in the editor's mode; a literal there would pin one
- * mode. The root itself sits above where the resolved names are taken, so its rules read those.
+ * G4.189: inside the editor a host color read carries no fallback, since `editor.css` resolves every
+ * one to the page's value or the palette in the editor's mode; a literal there would pin one mode.
+ * The root itself sits above where the resolved names are taken, so its rules read those.
  */
 import { describe, it, expect } from 'vitest';
 import { collectEditorSources, readSource, splitTopLevel, type SourceFile } from './scan-source';
@@ -9,7 +9,7 @@ import { SOURCE } from './source-paths';
 
 const FALLBACK_READ = /var\(\s*(--color-[a-z0-9-]+)\s*,/g;
 const ANY_READ = /var\(\s*(--color-[a-z0-9-]+)/g;
-/** The theme file's declarations that resolve a host color, the one place a fallback belongs. */
+/** The editor.css declarations that resolve a host color, the one place a fallback belongs. */
 const RESOLVE_DECLARATION = /^(?:--md-color-[a-z0-9-]+|--md-page-text)$/;
 const ROOT_CLASS = /\.(?:editor|aragonite-editor-portal)(?![\w-])/;
 
@@ -55,7 +55,7 @@ function selectsRoot(selector: string): boolean {
 }
 
 function fallbackOffenders(file: SourceFile): string[] {
-	if (file.relPath !== SOURCE.themeTokens) {
+	if (file.relPath !== SOURCE.editorCss) {
 		return [...file.code.matchAll(FALLBACK_READ)].map((m) => `${m[1]} in ${file.relPath}`);
 	}
 	return rulesOf(file.code).flatMap(({ declarations }) =>
@@ -80,7 +80,7 @@ function rootReadOffenders(file: SourceFile): string[] {
 }
 
 describe('G4.189 host color reads inside the editor', () => {
-	it('carry no fallback outside the theme file’s resolving declarations', () => {
+	it('carry no fallback outside the resolving declarations in editor.css', () => {
 		const offenders = surfaces().flatMap(fallbackOffenders);
 		expect(offenders, `host color reads with a fallback: ${offenders.join(', ')}`).toEqual([]);
 	});

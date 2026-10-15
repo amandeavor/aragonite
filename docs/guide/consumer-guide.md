@@ -875,7 +875,7 @@ Three paths, by how much you want to change:
 
 1. **Override individual tokens.** Host-chrome tokens: declare them anywhere in your cascade (`:root { --color-accent: #f90; }` reaches the editor, as long as no `aragonite-editor-theme` ancestor sits between and shadows it). Editor-owned tokens: declare them on `.editor` (or a narrower selector of yours) in a stylesheet loaded after `editor-theme.css`, so `.editor { --syntax-heading: #f90; }` wins. Per mode: `.editor[data-editor-theme='light'] { … }`.
 2. **Add a named theme.** Define `.editor[data-editor-theme='solarized'] { … }` and pass `theme="solarized"`. The base block supplies fallbacks for any token the custom theme omits, so a partial theme overrides only what it names.
-3. **Replace wholesale.** Skip `editor-theme.css` and ship your own token file scoped to `.editor`. Start from a copy, though: besides the values, it holds the rules that get your host colors to everything inside the editor, the editor's own text color included.
+3. **Replace wholesale.** Skip `editor-theme.css` and ship your own token file scoped to `.editor`.
 
 ### Theme tokens
 

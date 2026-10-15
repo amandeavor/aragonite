@@ -2,8 +2,8 @@ import { type Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { gotoReady } from '../goto-ready';
 
-// The dev warning for an app that forgot `editor-theme.css` (G1.99). Unit mounts have no layout,
-// so only a real browser can show it fires where it should and nowhere else.
+// An app that forgot `editor-theme.css` (the G1.99 dev warning) or replaced it with its own sheet.
+// Unit mounts load no stylesheet, so only a real browser shows either.
 // Requirements: e2e/requirements/theme-stylesheet.md.
 
 /** Drops the theme stylesheet the dev server injected and, unless kept, the page's own colors. */
@@ -28,6 +28,26 @@ async function remount(page: Page): Promise<void> {
 	await expect(page.locator('.editor .block-host').first()).toBeVisible();
 }
 
+// A wholesale replacement for `editor-theme.css`: color values on `.editor`, none of the rules
+// that hand them to the editor's own surfaces.
+const REPLACEMENT_SHEET = `.editor {
+	--color-bg: rgb(10, 20, 30);
+	--color-surface: rgb(11, 21, 31);
+	--color-text-primary: rgb(200, 210, 220);
+	--color-text-secondary: rgb(190, 200, 210);
+	--color-border: rgb(60, 70, 80);
+	--color-ui-muted: rgb(120, 130, 140);
+	--color-ui-dulled: rgb(130, 140, 150);
+	--color-accent: rgb(40, 160, 90);
+	--color-error: rgb(230, 60, 50);
+}`;
+
+const computed = (page: Page, selector: string, property: string) =>
+	page
+		.locator(selector)
+		.first()
+		.evaluate((el, name) => getComputedStyle(el).getPropertyValue(name), property);
+
 test.describe('theme stylesheet warning', () => {
 	test.beforeEach(async ({ page }) => {
 		await gotoReady(page, '/test/editor');
@@ -51,5 +71,24 @@ test.describe('theme stylesheet warning', () => {
 			await remount(page);
 			expect((await message).text()).toContain('@voithos-labs/aragonite/styles/editor-theme.css');
 		});
+	});
+});
+
+test.describe('a theme stylesheet replaced wholesale', () => {
+	test('the editor text, its scrollbar and the find bar take the replacement colors', async ({
+		page
+	}) => {
+		await gotoReady(page, '/test/editor');
+		await dropThemeStylesheet(page, false);
+		await page.addStyleTag({ content: REPLACEMENT_SHEET });
+		await remount(page);
+		expect(await computed(page, '.editor', 'color')).toBe('rgb(200, 210, 220)');
+		expect(await computed(page, '.editor', 'scrollbar-color')).toBe(
+			'rgb(60, 70, 80) rgba(0, 0, 0, 0)'
+		);
+		await page.locator('.editor [contenteditable="true"]').first().click();
+		await page.keyboard.press('ControlOrMeta+f');
+		await expect(page.getByRole('textbox', { name: 'Find' })).toBeVisible();
+		expect(await computed(page, '.search-bar', 'background-color')).toBe('rgb(10, 20, 30)');
 	});
 });
