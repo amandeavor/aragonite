@@ -166,6 +166,7 @@ CI runs on every pull request:
 - the e2e suite, split four ways
 - the perf job, scaled for the runner, against a production build
 - a consumer smoke test, which packs the library, installs the tarball into a real app and checks it survives server rendering and hydration
+- the adapter suite, the same idea for the React and Vue wrappers: their example apps, built from the packed tarballs, run one shared set of browser tests
 - a check that the committed emoji table still matches the upstream it was generated from
 
 Before you open it, run the six lines in [rules.md § Before you open the PR](docs/contributing/rules.md#before-you-open-the-pr). They're the checks a PR here trips most, each takes seconds, and the review will ask about them otherwise.

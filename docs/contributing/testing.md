@@ -888,6 +888,11 @@ on the oldest React or Vue the wrapper supports), and `examples/next` and `examp
 rendered). `examples/adapter-suite/apps.mjs` lists every project: its app, port, the specs it
 runs, and whether it gates each PR. A new app goes in there, or a lint test fails (G4.187).
 
+The wrappers are npm workspaces of the root, so the root `npm install` installs them too, and
+`npm run package` builds them after the core. Each carries the core's version and peers the core at
+exactly that version, since all three packages publish together (`npm run release:publish`);
+`src/lib/test/invariants/lint/lockstep-versions.test.ts` fails when one drifts.
+
 `scripts/adapter-smoke.mjs` packs the core and every wrapper, installs the tarballs into each app,
 checks no Svelte came along, builds the apps and runs the suite. CI runs the `perPr` projects on
 every PR (`--per-pr`) and everything on the release PR into `main`. To iterate on one project
