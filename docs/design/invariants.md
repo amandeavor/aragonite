@@ -721,12 +721,12 @@ class list when its kind changes. Predicate
 `caret/drawn-caret.svelte.ts` · `e2e/tests/caret/drawn-caret.spec.ts` (`caretsShowing`, one caret in
 every row).
 
-**G1.87 · Nothing outlives the unmount.** Unmounting ends the document the way a `source` swap does,
-so a write still in flight (an `insertMarkdown` waiting on a tick, a paste waiting on its clipboard)
-is refused quietly at the write gate; a write that names no document counts as one for the document
-that just ended. The events go quiet at the same moment, and a caret landing stops at its next await
-instead of reading the torn-down lists. Nothing is asserted, since a host unmounting mid-write is
-ordinary. `editor-actions/commit/reading-write-gate.ts :: admitsWrite`,
+**G1.87 · Nothing outlives the unmount.** Unmounting ends the document in place, so a write still in
+flight (an `insertMarkdown` waiting on a tick, a paste waiting on its clipboard) is refused quietly
+at the write gate, the way one for a document a swap replaced is; a write that names no document
+counts as one for the document that just ended. The events go quiet at the same moment, and a caret
+landing stops at its next await instead of reading the torn-down lists. Nothing is asserted, since a
+host unmounting mid-write is ordinary. `editor-actions/commit/reading-write-gate.ts :: admitsWrite`,
 `editor-actions/commit/document-stamp.ts :: end`, `block-lists/child-list.ts :: descendTo` ·
 `editor-root/destroy-mid-write.test.ts`, `editor-actions/commit/document-stamp.test.ts`,
 `block-lists/child-list.test.ts`, `selection/caret-landing.test.ts`.
