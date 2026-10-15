@@ -1200,8 +1200,8 @@ fake timers or `vi.waitFor`, never by flushing a macrotask.
 **G4.6 · CSS ownership.** `app.css` holds no editor rules or tokens; every editor-owned token read
 is declared in `editor-theme.css`; every radius read carries a fallback; and host-chrome defaults
 sit behind the opt-in theme class alone (G4.6d), except the root's children re-exposing the root's
-resolved host colors. The bundled and reference plugins follow
-the same rule and may also read tokens they declare. `lint/css-ownership.test.ts` (editor),
+resolved host colors. The bundled and reference plugins follow the same rule and may also read
+tokens they declare. `lint/css-ownership.test.ts` (editor),
 `lint/plugin-css-ownership.test.ts` (plugins).
 
 **G4.7 · Render-memo completeness.** A block's render memo key includes every input its built DOM

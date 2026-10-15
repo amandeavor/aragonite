@@ -7,7 +7,7 @@ import type { InvariantViolation } from '../assert';
 
 export function checkHostColorsResolve(root: HTMLElement): InvariantViolation | null {
 	const style = getComputedStyle(root);
-	// The editor's own reset makes its root border-box; without it no stylesheet applies at all.
+	// The editor.css reset makes the root border-box, so anything else is a DOM with no stylesheet.
 	if (style.boxSizing !== 'border-box') return null;
 	const unset = (name: string) => style.getPropertyValue(name) === '';
 	if (!unset('--md-color-bg') || !unset('--color-bg')) return null;

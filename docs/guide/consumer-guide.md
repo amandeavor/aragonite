@@ -64,7 +64,7 @@ A few things in the above example snippet are decently important; you might want
 
 1. **`source` seeds the document at mount**, and a later write loads the new text ([Loading another document](#loading-another-document) has the one Svelte catch). It's not a two way bound: the editor never writes back into it, so the document you read is always `getSource()`.
 2. **`bind:this` is how you talk to a mounted editor.** For example, you might want to use important read functions like `getSource()` and `getSelection()`, or important write functions like `setSelection()` and `runCommand()`. [The instance surface](#the-instance-surface) covers all of it.
-3. **`theme` should match your page.** The editor paints no background of its own, so its text takes your page's color, and everything it does paint (menus, the find bar, toolbars, code block fills) uses `theme`'s colors. A fresh app's page is white, hence `light`; on a dark page write `dark`, or nothing, dark being the default. The wrapper around it is optional: its `aragonite-editor-theme` class and matching `data-editor-theme` add the built-in page colors and font around the editor. [Theming](#theming) has how to customize the rest.
+3. **`theme` should match your page.** The editor paints no background of its own, so its text takes your page's color, and everything it does paint (menus, the find bar, toolbars, code block fills) uses `theme`'s colors. A fresh app's page is white, hence `light`; on a dark page write `dark` in both spots, or nothing, dark being the default. The wrapper is optional: its `aragonite-editor-theme` class hands the built-in colors and font to the editor's text and to anything of yours inside it, in the mode its `data-editor-theme` names. [Theming](#theming) has how to customize the rest.
 
 Two more that aren't in the snippet but bite early: plugins install once, app-wide, but each editor only runs the ones its own `plugins` prop lists ([Plugins](#plugins)); and `editor.__test.*` is internal and will move, so don't build on it.
 
@@ -875,7 +875,7 @@ Three paths, by how much you want to change:
 
 1. **Override individual tokens.** Host-chrome tokens: declare them anywhere in your cascade (`:root { --color-accent: #f90; }` reaches the editor, as long as no `aragonite-editor-theme` ancestor sits between and shadows it). Editor-owned tokens: declare them on `.editor` (or a narrower selector of yours) in a stylesheet loaded after `editor-theme.css`, so `.editor { --syntax-heading: #f90; }` wins. Per mode: `.editor[data-editor-theme='light'] { … }`.
 2. **Add a named theme.** Define `.editor[data-editor-theme='solarized'] { … }` and pass `theme="solarized"`. The base block supplies fallbacks for any token the custom theme omits, so a partial theme overrides only what it names.
-3. **Replace wholesale.** Skip `editor-theme.css` and ship your own token file scoped to `.editor`.
+3. **Replace wholesale.** Skip `editor-theme.css` and ship your own token file scoped to `.editor`. Start from a copy, though: besides the values, it holds the rules that get your host colors to everything inside the editor, the editor's own text color included.
 
 ### Theme tokens
 

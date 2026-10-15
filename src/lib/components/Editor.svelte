@@ -1504,7 +1504,7 @@
 		/* Every construct sizes in `em` off this. */
 		font-size: var(--editor-font-size, 1rem);
 		line-height: 1.6;
-		/* Inherit rather than assume a dark host: an unthemed page keeps its own text color. */
+		/* The host's text color, else the page's own, since the editor paints no background. */
 		color: var(--md-page-text);
 		min-height: 200px;
 		overflow-y: auto;

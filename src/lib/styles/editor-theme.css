@@ -56,8 +56,8 @@
 	--md-page-text: var(--color-text-primary, currentColor);
 }
 
-/* A token can't fall back to itself on one element, so the root resolves and its children take the
-   result: inside the editor every host color has a value, and a read needs no fallback. */
+/* A custom property can't be its own fallback, so the root resolves each color above and its
+   children take the result back under the host's name. */
 :where(.editor, .aragonite-editor-portal) > * {
 	--color-bg: var(--md-color-bg);
 	--color-surface: var(--md-color-surface);
