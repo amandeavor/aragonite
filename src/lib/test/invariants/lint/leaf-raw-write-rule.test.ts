@@ -107,7 +107,7 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		count: 1,
 		why: 'find and replace installs the bytes `legalizeWrite` returned into a private copy, which it then reparses whole'
 	},
-	'src/lib/editor-actions/commit/undo-controller.ts': {
+	'src/lib/editor-actions/commit/structural-commit.ts': {
 		count: 1,
 		why: 'the rollback restores raws the tree already held; nothing new is created'
 	},

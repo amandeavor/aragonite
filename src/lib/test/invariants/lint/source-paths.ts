@@ -66,6 +66,7 @@ export const SOURCE = {
 
 	// ── Editor actions and the commit ───────────────────────────────────────
 	undoController: 'src/lib/editor-actions/commit/undo-controller.ts',
+	structuralCommit: 'src/lib/editor-actions/commit/structural-commit.ts',
 	blockEditCore: 'src/lib/editor-actions/block-edit-core.ts',
 	leafWrite: 'src/lib/editor-actions/leaf-write.ts',
 	containerBlockComponent: 'src/lib/editor-actions/container-block-component.ts',
@@ -214,6 +215,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 
 	// ── Editor actions and the commit ───────────────────────────────────────
 	undoController: 'export function createUndoController',
+	structuralCommit: 'export function createStructuralCommit',
 	blockEditCore: 'export function contentUpdate',
 	leafWrite: 'export type LeafTyping',
 	containerBlockComponent: 'export function dispatchWholeBlockGlobalChord',

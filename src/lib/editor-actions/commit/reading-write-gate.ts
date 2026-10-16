@@ -63,10 +63,11 @@ function isReadOnly(reading: Reading): boolean {
 
 const FRAME = /^\s*at (?:async )?(?:(.+?) \()?.*?\/src\/lib\/([^\s:?)]+\.(?:ts|svelte))/;
 
-// This module and the undo controller sit between every caller and the check.
+// This module and the commit's two files sit between every caller and the check.
 const OWN_FILES = new Set([
 	'editor-actions/commit/reading-write-gate.ts',
-	'editor-actions/commit/undo-controller.ts'
+	'editor-actions/commit/undo-controller.ts',
+	'editor-actions/commit/structural-commit.ts'
 ]);
 
 /** The nearest five editor frames outside the write machinery, innermost first. */

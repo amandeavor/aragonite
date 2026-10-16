@@ -39,7 +39,7 @@ interface Pin {
 
 /** Every other file that rebuilds, with its exact call count and why no commit repeats it. */
 const PINNED: Record<string, Pin> = {
-	'src/lib/editor-actions/commit/undo-controller.ts': {
+	'src/lib/editor-actions/commit/structural-commit.ts': {
 		calls: { rebuildUnsharedChain: 1, rebuildOwnedContainer: 1 },
 		why: 'the commit’s own chain rebuild, and the scope’s `rebuild` it hands the mutation'
 	},

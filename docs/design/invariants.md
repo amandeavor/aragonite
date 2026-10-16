@@ -387,7 +387,7 @@ bootstrap counterpart to G1.14's per-commit slot check. Predicate `checkReserved
 
 **G1.19 · Multi-scope commit path.** A scope's declared path still resolves to its captured node,
 checked over all scopes _before_ any spine is copied, since a stale-but-in-range path would copy and
-rebuild the wrong spine. Inline closure, watcher-netted. In `editor-actions/commit/undo-controller.ts`.
+rebuild the wrong spine. Inline closure, watcher-netted. In `editor-actions/commit/structural-commit.ts`.
 
 **G1.20 · Unshared-spine depth.** The chain the keystroke's in-place write copies is as deep as
 the leaf path it was given; a short chain means the write would change a node it doesn't own, so it
@@ -523,7 +523,7 @@ run the id check over the whole document. Predicates `checkStructuralDescriptor`
 `checkIdsChildrenLockstep`, `checkChildSpansLockstep` (`structural-descriptor.ts`),
 `checkChildIdParity` (`child-id-parity.ts`) · run at
 `tree-operations/structural-change.ts :: applyStructuralChangeToIdsRefs`, the commit primitive
-(`editor-actions/commit/undo-controller.ts`), and `invariants/install.ts :: assertCommittedNodes` ·
+(`editor-actions/commit/structural-commit.ts`), and `invariants/install.ts :: assertCommittedNodes` ·
 `structural-descriptor.test.ts`, `test/schema/child-spans.test.ts`,
 `test/selection/cross-block/cross-block-delete-seam-fold.test.ts`,
 `test/invariants/child-id-parity.test.ts`.
@@ -652,7 +652,7 @@ the document among its scopes hands its mutation a plain copy of the top-level a
 at publish. A mutation that writes the tree's own array instead has its splice thrown away, so the
 commit fails here if that array was replaced or written (skipped while the perf instruments are
 armed). Predicate `invariants/top-level-untouched.ts :: checkTopLevelUntouched` · run by
-`editor-actions/commit/undo-controller.ts` · `test/invariants/top-level-untouched.test.ts`,
+`editor-actions/commit/structural-commit.ts` · `test/invariants/top-level-untouched.test.ts`,
 `test/perf/top-level-splice-writes.test.ts`.
 
 **G1.55 · A written block reads back as itself** (`reads-back`). After a keystroke's rebuild and

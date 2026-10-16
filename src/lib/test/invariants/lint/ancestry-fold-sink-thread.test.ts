@@ -28,7 +28,7 @@ interface SiteStance {
 }
 
 const SITES: Record<string, SiteStance> = {
-	'src/lib/editor-actions/commit/undo-controller.ts': {
+	'src/lib/editor-actions/commit/structural-commit.ts': {
 		declines: 0,
 		sinks: 1,
 		why: 'the multi-scope commit sequence owns the doc-level ids/refs and every prepared scope’s state, so it reconciles and publishes the fold’s unwind'
