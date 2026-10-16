@@ -27,6 +27,7 @@ import {
 	registerDirective,
 	setPluginMetadata,
 	trimWhitespace,
+	type BlockView,
 	type CstNode,
 	type EditorPlugin,
 	type ParsedDirective
@@ -78,7 +79,7 @@ const rebuildConspiracyRaw = createDirectiveRebuild<ConspiracyMetadata>(
 	(meta) => meta?.name ?? CONSPIRACY
 );
 
-function registerConspiracy(): void {
+function registerConspiracy(view: BlockView): void {
 	activateDirectives(); // idempotent; the shared grammar must be live before the first parse
 
 	const conspiracy = declarePluginKind(CONSPIRACY);
@@ -108,7 +109,7 @@ function registerConspiracy(): void {
 	});
 
 	registerBlockKind(conspiracy, {
-		view: svelteBlockView(ConspiracyBlock),
+		view,
 		mergeRole: 'container',
 		editable: true,
 		supportsInline: false,
@@ -174,7 +175,7 @@ function registerConspiracy(): void {
 export function conspiracyPlugin(): EditorPlugin {
 	return definePlugin({
 		name: 'conspiracy',
-		setup: registerConspiracy
+		setup: () => registerConspiracy(svelteBlockView(ConspiracyBlock))
 	});
 }
 ```
