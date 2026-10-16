@@ -164,6 +164,18 @@ export function emitCommandError(
 	});
 }
 
+/** Report a failed or refused write to the `error` channel with its op and document path. */
+export function emitCommitError(
+	events: EditorEvents,
+	report: { error: unknown; op?: OperationKind; path?: number[] }
+): void {
+	events.emit('error', {
+		origin: 'commit',
+		error: report.error,
+		context: { op: report.op, path: report.path }
+	});
+}
+
 /** Report a link the scheme allowlist refused to the `error` channel. Default activation only: a
  *  consumer supplying `onLinkActivate` owns its own policy. */
 export function emitBlockedLinkError(events: EditorEvents | undefined, url: string): void {

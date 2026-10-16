@@ -264,6 +264,7 @@ These checks run in three kinds of place:
 | G1.99  | A styled editor resolves the host colors, from the theme stylesheet or the page            | A       |
 | G1.104 | A plugin registers only from its `definePlugin` setup                                      | N       |
 | G1.106 | A range delete takes whole rows from a table it keeps an edge of                           | A·N     |
+| G1.110 | A metadata write to a leaf is refused, since a leaf's metadata comes from its bytes        | A·N     |
 
 ### The entries
 
@@ -306,7 +307,7 @@ independently, checked at both places a node is copied: `tree-operations/clone.t
 **G1.7 · Metadata writes route through `updateBlockMetadata`.** No predicate of its own; the rule is
 enforced by routing. `editor-actions/block-edit-core.ts :: updateBlockMetadata` rebuilds raw after
 the merge, and both factories delegate to the shared core, so metadata and bytes can't drift apart.
-G1.1 is the runtime backstop for a bypass. Test `test/editor-actions/update-block-metadata.test.ts`.
+A leaf has no rebuild, so the core refuses it (G1.110). G1.1 is the runtime backstop for a bypass. Test `test/editor-actions/update-block-metadata.test.ts`.
 
 **G1.8 · Well-formed content ranges.** `getContentRange` is well-formed for every kind that has one:
 the prose kinds, plus any non-prose kind declaring its own (the directive leaf does), because the
@@ -801,6 +802,14 @@ and runs past it deletes whole rows of that table, never part of one. `coverRang
 `selection/range-coverage.ts` snaps both ends to a row's edge first. If a run that splits a row
 still shows up (only an end that skipped the snap could hand one over), `rangeCoverage` warns
 `invariant:kept-table-edge`. `test/selection/range-coverage.test.ts`.
+
+**G1.110 · A leaf takes no metadata write.** A leaf's metadata is whatever its opener reads out of
+its bytes (a heading's level, a code block's language), so a metadata write that leaves the bytes
+alone is gone on the next reload. `editor-actions/block-edit-core.ts :: updateBlockMetadata`
+refuses any kind that isn't a container before it writes: no bytes, no undo entry, no edit event.
+A dev build warns `invariant:metadata-without-rebuild` naming the kind, and every build reports an
+`error` event (`origin: 'commit'`) whose message points at `replaceRaw`, the bytes write a leaf's
+command uses instead. `test/editor-actions/update-block-metadata.test.ts`.
 
 ## Group 2: property and regression tested
 

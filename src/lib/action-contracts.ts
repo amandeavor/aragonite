@@ -11,7 +11,7 @@ import type { TrackedPosition } from './tree-operations/neighbour-merge';
 import type { SharingState } from './tree-operations/sharing';
 import type { BodyParent } from './tree-operations/node-primitives';
 import type { BlockComponent, FocusPosition } from './block-component';
-import type { OperationDetailMap, ScopedOpDescriptor } from './schema/operations';
+import type { OperationDetailMap, OperationKind, ScopedOpDescriptor } from './schema/operations';
 import type { WriteMode } from './schema/block-kind-descriptor';
 import type { DocPath } from './selection/path-math';
 import type { CaretPosition, Landing } from './selection/primitives';
@@ -119,8 +119,8 @@ export interface BlockEditActions {
 	/** Replace the block with the structure an on-type completer makes of its line (a typed `$$`),
 	 *  with `caret` where the typing left it; false when no completer takes the line. */
 	completeLineOnType(blockIndex: number, caret: number): Promise<boolean>;
-	/** Shallow-merges metadata the kind's rebuild writes into its bytes (a checkbox toggle). A key no
-	 *  parse gives back is dropped at the next re-read; a heading's level goes through the text. */
+	/** Shallow-merges metadata a container's rebuild writes into its bytes (a checkbox toggle). A
+	 *  leaf's metadata comes from its bytes, so a leaf refuses it and writes nothing. */
 	updateBlockMetadata(
 		blockIndex: number,
 		metadata: Record<string, unknown>,
@@ -327,6 +327,8 @@ export interface ContainerEditActions {
 	land(pos: CaretPosition): Promise<LandingOutcome>;
 	/** Where the caret goes once the block at `removedPath` is gone, read on the document now. */
 	survivorAfterRemoval(removedPath: DocPath, gesture: RemovalGesture): CaretPosition | null;
+	/** Report a write refused before its commit to the editor's `error` event. */
+	reportCommitError(error: unknown, op: OperationKind, path: DocPath): void;
 }
 
 export type InPlaceResult =

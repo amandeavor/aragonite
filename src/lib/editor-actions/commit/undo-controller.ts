@@ -25,7 +25,7 @@ import { createStructuralCommit, type CommitArgs } from './structural-commit';
 import { admitsSnapshot, admitsWrite } from './reading-write-gate';
 import type { EditorActionsDeps, UndoController } from '../deps';
 import type { CommitLanding, HeldLanding, CommitSnapshotArg } from '../../action-contracts';
-import { toEditEvent } from '../../editor-events';
+import { emitCommitError, toEditEvent } from '../../editor-events';
 import {
 	assertCommitPaths,
 	assertCommittedNodes,
@@ -260,11 +260,7 @@ export function createUndoController(
 
 	/** The one path to the `error` event, so every throw site reports alike (`docs/design/editor.md` § The event channel). */
 	function reportCommitError(args: CommitArgs, error: unknown): void {
-		deps.events.emit('error', {
-			origin: 'commit',
-			error,
-			context: { op: args.op?.kind, path: args.op?.eventPath }
-		});
+		emitCommitError(deps.events, { error, op: args.op?.kind, path: args.op?.eventPath });
 	}
 
 	/** `discarded` is a `discardIfNoop` commit that changed nothing: no write, but it still lands. */

@@ -70,6 +70,7 @@ import type { RevealPolicy } from '../selection/caret-landing';
 import type { RemovalGesture } from '../selection/caret-target';
 import { admitsWrite } from './commit/reading-write-gate';
 import { refusedWrite, withStoredCaret } from './stored-caret';
+import { assertInvariant } from '../assert';
 
 /** What both merge directions do when the neighbour cannot merge; `dir` names its side. */
 async function handleIneligibleNeighbor(
@@ -297,6 +298,19 @@ function landedFocus(
 	return { replacementIndex: moved.index, offset: moved.offset };
 }
 
+/** A leaf's metadata is what its opener reads from its bytes, so a metadata write there could not
+ *  survive a reload; it is refused, in every build, before anything is written (G1.110). */
+function refuseLeafMetadata(scope: CommitScope, i: number, kind: string): void {
+	const message =
+		`updateBlockMetadata wrote nothing: '${kind}' is a leaf, whose metadata comes from its ` +
+		"bytes. A leaf's command rewrites them with replaceRaw.";
+	assertInvariant('metadata-without-rebuild', () => ({
+		code: 'metadata-without-rebuild',
+		message
+	}));
+	scope.reportCommitError(new Error(`aragonite: ${message}`), 'metadataUpdate', i);
+}
+
 export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 	const core: BlockEditCore = {
 		async split(i, offset) {
@@ -446,6 +460,10 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 			if (i < 0 || i >= children.length) return false;
 			const fields = Object.keys(metadata);
 			if (fields.length === 0) return false;
+			if (!getBlockKindDescriptor(children[i].kind).isContainer) {
+				refuseLeafMetadata(scope, i, children[i].kind);
+				return false;
+			}
 			// `mutate` returns noop, so the stale-raw check needs the changed node named; the copy
 			// exists only after unshareChild, so the commit reads this array after mutate.
 			const touchedNodes: CstNode[] = [];
