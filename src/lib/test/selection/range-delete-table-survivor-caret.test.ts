@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { blockNodeAt, nodeAt } from '../../tree-operations/node-primitives';
 import type { Document } from '../../core/nodes';
-import type { SelectionPoint } from '../../selection/primitives';
+import { cellPoint, type SelectionPoint } from '../../selection/primitives';
 import { deleteRange } from '../harness/range-delete';
 
 // Two 2×2 tables followed by a blockquote, and the same pair nested inside a blockquote holding a
@@ -26,7 +26,7 @@ function isLeafAt(doc: Document, path: number[]): boolean {
 
 describe('rangeDelete: survivor caret when both endpoint tables are consumed', () => {
 	it('descends into a surviving container instead of naming its bare path', () => {
-		const { doc, caret } = run(FLAT, { path: [0], offset: 0 }, { path: [1], offset: 3 });
+		const { doc, caret } = run(FLAT, cellPoint([0], 0), cellPoint([1], 3));
 
 		expect(doc.children).toHaveLength(1);
 		expect(doc.children[0].kind).toBe('blockquote');
@@ -35,7 +35,7 @@ describe('rangeDelete: survivor caret when both endpoint tables are consumed', (
 	});
 
 	it('finds the survivor in the deleted block’s own container, not at document level', () => {
-		const { doc, caret } = run(NESTED, { path: [1, 1], offset: 0 }, { path: [1, 2], offset: 3 });
+		const { doc, caret } = run(NESTED, cellPoint([1, 1], 0), cellPoint([1, 2], 3));
 
 		// The blockquote keeps "para B"; the caret belongs at its end, not at the
 		// end of the unrelated top-level "para A" that shares index 0.

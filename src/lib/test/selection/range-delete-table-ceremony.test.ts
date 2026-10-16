@@ -1,14 +1,9 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
 import type { Document } from '../../core/nodes';
-import type { SelectionPoint } from '../../selection/primitives';
-import { allowDevWarns } from '#lib/test/support/warn-gate.js';
+import { cellPoint, type SelectionPoint } from '../../selection/primitives';
 import { deleteRange } from '../harness/range-delete';
-
-// rangeDelete is driven with hand-built endpoints, so the table branches see character offsets
-// `SelectionState` would have snapped to cell coordinates first.
-afterEach(() => allowDevWarns(['rangeCoverage:tableEdge']));
 
 // As in the title-line branch, a covered container between the endpoints goes as one splice with
 // its children intact, so the undo entry holds a whole detached node.
@@ -32,7 +27,7 @@ describe('rangeDelete table branch: covered containers die whole', () => {
 		const blockquote = input.children[1];
 		expect(blockquote.kind).toBe('blockquote');
 
-		const { doc, source } = run(input, { path: [0], offset: 2 }, { path: [2], offset: 1 });
+		const { doc, source } = run(input, { path: [0], offset: 2 }, cellPoint([2], 1));
 
 		expect(blockquote.children).toHaveLength(1);
 		expect(doc.children.map((c) => c.kind)).toEqual(['paragraph', 'table']);
@@ -45,7 +40,7 @@ describe('rangeDelete table branch: covered containers die whole', () => {
 		const blockquote = input.children[1];
 		expect(blockquote.children?.map((c) => c.kind)).toEqual(['table']);
 
-		const { doc } = run(input, { path: [0], offset: 0 }, { path: [2], offset: 2 });
+		const { doc } = run(input, cellPoint([0], 0), { path: [2], offset: 2 });
 
 		expect(blockquote.children).toHaveLength(1);
 		expect(blockquote.children![0].kind).toBe('table');
@@ -59,7 +54,7 @@ describe('rangeDelete table branch: covered containers die whole', () => {
 		const input = parse(`${TWO_COL_TWO_ROW}\n> quoted\n\n${TWO_COL_TWO_ROW}`);
 		const blockquote = input.children[1];
 
-		const { doc, caret } = run(input, { path: [0], offset: 0 }, { path: [2], offset: 1 });
+		const { doc, caret } = run(input, cellPoint([0], 0), cellPoint([2], 1));
 
 		expect(blockquote.children).toHaveLength(1);
 		expect(doc.children.map((c) => c.kind)).toEqual(['table']);

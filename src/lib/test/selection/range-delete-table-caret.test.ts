@@ -1,13 +1,8 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
-import type { SelectionPoint } from '../../selection/primitives';
-import { allowDevWarns } from '#lib/test/support/warn-gate.js';
+import { cellPoint, type SelectionPoint } from '../../selection/primitives';
 import { TWO_COL_THREE_ROW } from './table-fixtures';
 import { deleteRange } from '../harness/range-delete';
-
-// rangeDelete is driven with hand-built endpoints, so the table branches see character offsets
-// `SelectionState` would have snapped to cell coordinates.
-afterEach(() => allowDevWarns(['rangeCoverage:tableEdge']));
 
 function run(source: string, start: SelectionPoint, end: SelectionPoint) {
 	const doc = parse(source);
@@ -16,21 +11,20 @@ function run(source: string, start: SelectionPoint, end: SelectionPoint) {
 }
 
 describe('rangeDelete: across two top-level tables (char-addressable caret)', () => {
-	it('both tables survive: caret lands in the start table anchor cell with a char offset', () => {
-		// Tables A=[0], B=[1], 6 cells each. Anchor cell 3 of A (row 1, col 1), focus inclusive cell 2
-		// of B: A's cell (1,1) clears and its last body row drops; B's header row drops.
+	it('both tables survive: caret lands at the end of the start table’s kept rows', () => {
+		// Tables A=[0], B=[1], 6 cells each. Anchor cell 3 of A (row 1, col 1) takes A's rows from
+		// row 1 down; focus cell 2 of B takes B's rows through row 1.
 		const { doc, caret } = run(
 			`${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}`,
-			{ path: [0], offset: 3 },
-			{ path: [1], offset: 2 }
+			cellPoint([0], 3),
+			cellPoint([1], 2)
 		);
 
 		expect(doc.children).toHaveLength(2);
 		expect(doc.children[0].kind).toBe('table');
 		expect(doc.children[1].kind).toBe('table');
-		// Anchor cell 3 = row 1, col 1 of the (still [0]) start table; it was
-		// cleared, so a char offset of 0 into a real cell leaf.
-		expect(caret).toEqual({ path: [0, 1, 1], offset: 0 });
+		// The anchor's row went, so the caret ends the last cell of the row above: 'B', offset 1.
+		expect(caret).toEqual({ path: [0, 0, 1], offset: 1 });
 	});
 
 	it('start empties, end survives: caret lands in the first surviving cell of the end table', () => {
@@ -38,8 +32,8 @@ describe('rangeDelete: across two top-level tables (char-addressable caret)', ()
 		// header row (cells 0,1,2 cleared by inclusive focus offset 2) drops, body promotes.
 		const { doc, caret } = run(
 			`${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}`,
-			{ path: [0], offset: 0 },
-			{ path: [1], offset: 2 }
+			cellPoint([0], 0),
+			cellPoint([1], 2)
 		);
 
 		expect(doc.children).toHaveLength(1);
@@ -48,18 +42,18 @@ describe('rangeDelete: across two top-level tables (char-addressable caret)', ()
 		expect(caret).toEqual({ path: [0, 0, 0], offset: 0 });
 	});
 
-	it('start survives, end empties: caret lands in the start table anchor cell', () => {
-		// Anchor cell 3 of A clears A's tail; A survives at [0]. Focus inclusive cell 5
-		// (last cell) clears B entirely → B removed.
+	it('start survives, end empties: caret lands at the end of the start table’s kept rows', () => {
+		// Anchor cell 3 of A takes A's rows from row 1 down; A survives at [0]. Focus cell 5 (the
+		// last cell) takes B whole.
 		const { doc, caret } = run(
 			`${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}`,
-			{ path: [0], offset: 3 },
-			{ path: [1], offset: 5 }
+			cellPoint([0], 3),
+			cellPoint([1], 5)
 		);
 
 		expect(doc.children).toHaveLength(1);
 		expect(doc.children[0].kind).toBe('table');
-		expect(caret).toEqual({ path: [0, 1, 1], offset: 0 });
+		expect(caret).toEqual({ path: [0, 0, 1], offset: 1 });
 	});
 
 	it('both empty with surrounding paragraphs: caret lands at the end of the preceding paragraph', () => {
@@ -67,8 +61,8 @@ describe('rangeDelete: across two top-level tables (char-addressable caret)', ()
 		// convention puts the caret at the end of the nearest surviving block before the range.
 		const { doc, caret } = run(
 			`pre\n\n${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}\npost\n`,
-			{ path: [1], offset: 0 },
-			{ path: [2], offset: 5 }
+			cellPoint([1], 0),
+			cellPoint([2], 5)
 		);
 
 		expect(doc.children).toHaveLength(2);
@@ -83,8 +77,8 @@ describe('rangeDelete: across two top-level tables (char-addressable caret)', ()
 		// last cell as a char-offset leaf, never the table block shallowly.
 		const { doc, caret } = run(
 			`${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}`,
-			{ path: [1], offset: 0 },
-			{ path: [2], offset: 5 }
+			cellPoint([1], 0),
+			cellPoint([2], 5)
 		);
 
 		expect(doc.children).toHaveLength(1);
@@ -98,8 +92,8 @@ describe('rangeDelete: across two top-level tables (char-addressable caret)', ()
 		// blockquote's deepest leaf: a char offset on the container path names bytes no leaf owns.
 		const { doc, caret } = run(
 			`> alpha\n>\n> bravo\n\n${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}`,
-			{ path: [1], offset: 0 },
-			{ path: [2], offset: 5 }
+			cellPoint([1], 0),
+			cellPoint([2], 5)
 		);
 
 		expect(doc.children).toHaveLength(1);
@@ -113,8 +107,8 @@ describe('rangeDelete: across two top-level tables (char-addressable caret)', ()
 		// survivor caret must descend by whether a leaf can take focus, not whether it can merge.
 		const { doc, caret } = run(
 			'> alpha\n>\n> ```\n> code\n> ```\n\n' + `${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}`,
-			{ path: [1], offset: 0 },
-			{ path: [2], offset: 5 }
+			cellPoint([1], 0),
+			cellPoint([2], 5)
 		);
 
 		expect(doc.children).toHaveLength(1);
@@ -129,8 +123,8 @@ describe('rangeDelete: across two top-level tables (char-addressable caret)', ()
 		// item's leaf, deep-pathed, not at a shallow offset on the list's container path.
 		const { doc, caret } = run(
 			`- one\n- two\n\n${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}`,
-			{ path: [1], offset: 0 },
-			{ path: [2], offset: 5 }
+			cellPoint([1], 0),
+			cellPoint([2], 5)
 		);
 
 		expect(doc.children).toHaveLength(1);
@@ -144,8 +138,8 @@ describe('rangeDelete: across two top-level tables (char-addressable caret)', ()
 		// paragraph are both deletion paths, and counting the nested one would over-shift B's index.
 		const { doc, caret } = run(
 			`${TWO_COL_THREE_ROW}\n> quoted\n\n${TWO_COL_THREE_ROW}`,
-			{ path: [0], offset: 0 },
-			{ path: [2], offset: 2 }
+			cellPoint([0], 0),
+			cellPoint([2], 2)
 		);
 
 		expect(doc.children).toHaveLength(1);
@@ -156,8 +150,8 @@ describe('rangeDelete: across two top-level tables (char-addressable caret)', ()
 	it('both empty with no surrounding blocks: no block and no caret, for the commit to fill', () => {
 		const { doc, caret } = run(
 			`${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}`,
-			{ path: [0], offset: 0 },
-			{ path: [1], offset: 5 }
+			cellPoint([0], 0),
+			cellPoint([1], 5)
 		);
 
 		expect(doc.children).toEqual([]);

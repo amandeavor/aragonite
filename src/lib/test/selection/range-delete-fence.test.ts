@@ -1,18 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import type { SelectionPoint } from '#lib/selection/primitives.js';
+import { cellPoint, type SelectionPoint } from '#lib/selection/primitives.js';
 import { registerCalloutForTests } from './chrome-plugins';
 import { expectParseConverged } from '../harness/parse-converged';
-import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 import { deleteRange } from '../harness/range-delete';
 
 // A range delete that takes a fenced code block's opener, its closer, or a line break in its body
 // leaves bytes that read back as the same blocks.
-
-// rangeDelete is driven with hand-built endpoints, so the table branch sees a character offset
-// `SelectionState` would have snapped to a cell coordinate.
-afterEach(() => allowDevWarns(['rangeCoverage:tableEdge']));
 
 const at = (path: number[], offset: number): SelectionPoint => ({ path, offset });
 const kindsOf = (doc: ReturnType<typeof parse>) => doc.children.map((c) => c.kind);
@@ -113,7 +108,7 @@ describe('range delete that consumes a fenced code opener', () => {
 	it('drops it when the range starts in a table', () => {
 		const doc = parse('| a | b |\n| --- | --- |\n| c | d |\n\n```js\nbody\n```\n\ntail\n');
 
-		deleteRange(doc, at([0], 0), at([1], 8));
+		deleteRange(doc, cellPoint([0], 0), at([1], 8));
 
 		expect(kindsOf(doc)).toEqual(['paragraph', 'paragraph']);
 		expectParseConverged(doc);
@@ -196,7 +191,7 @@ describe('range delete that consumes a fenced code closer', () => {
 	it('restores it when the range ends inside a table', () => {
 		const doc = parse('```js\nbody\n```\n\n| a | b |\n| --- | --- |\n| c | d |\n\ntail\n');
 
-		deleteRange(doc, at([0], 8), at([1], 1));
+		deleteRange(doc, at([0], 8), cellPoint([1], 1));
 
 		expect(kindsOf(doc)).toEqual(['fencedCode', 'table', 'paragraph']);
 		expectParseConverged(doc);
