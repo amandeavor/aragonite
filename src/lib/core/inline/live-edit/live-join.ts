@@ -97,33 +97,37 @@ export function cleanLiveJoinSeam(join: JoinSeam): CleanedJoin | null {
 			return { raw, seam: at + typedAt, seamEnd: at + (atJoin?.insert.length ?? 0), map, keeps };
 		})
 	);
-	const reads = written.map(({ raw, seam }) =>
-		lazy(() => readCandidate(raw.slice(0, seam) + typed + raw.slice(seam), store))
-	);
 	// A pair left over nothing also passes the screen check, so among the readings that pass, the
-	// one leaving the fewest such pairs wins (`docs/design/live-mode.md` § 4.1).
-	const floor = lazy(() => Math.min(...reads.map((read) => read()?.residue ?? Infinity)));
+	// first leaving the fewest such pairs wins (`docs/design/live-mode.md` § 4.1).
+	let best: { written: (typeof written)[number]; residue: number } | null = null;
 	let kept: { before: string[]; after: string[] } | null = null;
-	for (const [at, { raw: candidate, seam, seamEnd, map, keeps }] of written.entries()) {
-		const read = reads[at]();
+	for (const candidate of written) {
+		const read = readCandidate(
+			candidate.raw.slice(0, candidate.seam) + typed + candidate.raw.slice(candidate.seam),
+			store
+		);
 		if (read === null || read.visible !== shown) continue;
-		// One leaving no such pair can't lose, so the readings after it go unread.
-		if (read.residue > 0 && read.residue > floor()) continue;
 		// G1.91: a reading that keeps the runs must keep every kept character's marks.
-		if (keeps) {
+		if (candidate.keeps) {
 			kept ??= keptMarks(left, right);
 			if (!keepsEdgeMarks(read.marks, kept.before, kept.after)) continue;
 		}
-		// A candidate that changed nothing is the plain concatenation: refusing says so, and keeps
-		// the caller off a rewrite path it does not need.
-		if (candidate === join.mergedRaw) return null;
-		// A survivor of whitespace only draws nothing, and would reload as a blank line.
-		if (readsAsBlankLine(candidate)) {
-			return { raw: candidate.slice(displayLength(candidate)), seam: 0, seamEnd: 0, map: () => 0 };
+		if (best === null || read.residue < best.residue) {
+			best = { written: candidate, residue: read.residue };
 		}
-		return { raw: candidate, seam, seamEnd, map };
+		// One leaving no such pair can't lose, so the readings after it go unread.
+		if (read.residue === 0) break;
 	}
-	return null;
+	if (best === null) return null;
+	const { raw, seam, seamEnd, map } = best.written;
+	// A candidate that changed nothing is the plain concatenation: refusing says so, and keeps the
+	// caller off a rewrite path it does not need.
+	if (raw === join.mergedRaw) return null;
+	// A survivor of whitespace only draws nothing, and would reload as a blank line.
+	if (readsAsBlankLine(raw)) {
+		return { raw: raw.slice(displayLength(raw)), seam: 0, seamEnd: 0, map: () => 0 };
+	}
+	return { raw, seam, seamEnd, map };
 }
 
 const standsOnSeam = (side: Side): boolean => side.dangling.length > 0 || side.touching.length > 0;
@@ -640,17 +644,4 @@ function countResidue(
 		}
 	}
 	return found;
-}
-
-/** `compute`'s value, computed on the first call. */
-function lazy<T>(compute: () => T): () => T {
-	let done = false;
-	let value: T;
-	return () => {
-		if (!done) {
-			value = compute();
-			done = true;
-		}
-		return value;
-	};
 }

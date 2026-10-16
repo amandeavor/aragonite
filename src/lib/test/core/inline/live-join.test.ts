@@ -331,6 +331,12 @@ describe('a join that would leave a construct enclosing nothing unwraps it', () 
 	it('leaves residue the cut did not create', () => {
 		expect(sameBlock('[](url) some text\n', 9, 13)).toBeNull();
 	});
+
+	// Miss-analysis: no case had a reading that leaves fewer empty pairs but shows the wrong text,
+	// so a floor taken over every reading went unseen.
+	it('weighs empty pairs only among the readings that show what the screen showed', () => {
+		expect(typeOver('~~a~~*[](u)***\n', 2, 5, 'X')).toBe('~~X~~*[](u)***\n');
+	});
 });
 
 describe('what the cleanup refuses to be asked', () => {
