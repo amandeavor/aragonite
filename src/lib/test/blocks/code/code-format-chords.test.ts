@@ -6,7 +6,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { vi } from 'vitest';
 import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
-import { inlineMarkForCommand } from '#lib/schema/inline-construct-policy.js';
+import { isInlineFormatCommand } from '#lib/schema/built-in-descriptors.js';
+import { listInlineMarks } from '#lib/schema/inline-construct-policy.js';
 import type { CommandId } from '#lib/schema/commands.js';
 import { mountCode, type MountedCode } from './mount-code';
 
@@ -19,7 +20,7 @@ afterEach(async () => {
 const formatCommands = (kind: 'paragraph' | 'tableCell' | 'fencedCode'): string[] =>
 	(getBlockKindDescriptor(kind).keymap ?? [])
 		.map((binding) => binding.command)
-		.filter((command) => inlineMarkForCommand(command) !== null || command === 'link.openCard');
+		.filter(isInlineFormatCommand);
 
 describe('the code block and the format chords', () => {
 	it('binds the same format chords as a paragraph and a table cell', () => {
@@ -28,6 +29,13 @@ describe('the code block and the format chords', () => {
 		expect(commands.length).toBeGreaterThan(1);
 		expect(formatCommands('paragraph')).toEqual(commands);
 		expect(formatCommands('tableCell')).toEqual(commands);
+	});
+
+	it('covers every built-in mark command', () => {
+		mounted = mountCode('```\ncode\n```\n');
+		const marks = listInlineMarks().map(({ mark }) => mark.command);
+		expect(marks.length).toBeGreaterThan(1);
+		expect(marks.filter((command) => !isInlineFormatCommand(command))).toEqual([]);
 	});
 
 	it('claims each one and writes nothing', () => {

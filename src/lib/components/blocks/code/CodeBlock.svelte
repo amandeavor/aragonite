@@ -45,7 +45,7 @@
 	import type { WriteIntent } from '../editable/surface-write';
 	import type { ContentWrite } from '../../../action-contracts';
 	import type { CommandRun } from '../../../schema/block-commands';
-	import { inlineMarkForCommand } from '../../../schema/inline-construct-policy';
+	import { isInlineFormatCommand } from '../../../schema/built-in-descriptors';
 	import { nodeAt, emptyParagraph } from '../../../tree-operations';
 	import { type CommandId } from '../../../schema/commands';
 
@@ -493,7 +493,7 @@
 		(id: CommandId, _arg?: unknown, run: CommandRun = { afterRemoval: false }): boolean => {
 			// A code block carries no inline constructs, so a format chord is swallowed to stop the
 			// browser's own bold or link.
-			if (inlineMarkForCommand(id) || id === 'link.openCard') return true;
+			if (isInlineFormatCommand(id)) return true;
 			switch (id) {
 				case 'code.newline':
 					return codeNewline(run);

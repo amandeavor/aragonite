@@ -46,7 +46,7 @@ function headingContentRange(node: NodeView): { start: number; end: number } {
 
 // Every block the caret types in binds these, so a chord means the same in a paragraph, a cell and a
 // code block (which swallows them, having no inline constructs).
-const INLINE_FORMAT_KEYMAP: KeyBinding[] = [
+const INLINE_FORMAT_KEYMAP: readonly KeyBinding[] = [
 	{ chord: 'Mod+B', command: 'format.toggleStrong' },
 	{ chord: 'Mod+I', command: 'format.toggleEmphasis' },
 	{ chord: 'Mod+Shift+X', command: 'format.toggleStrikethrough' },
@@ -55,6 +55,13 @@ const INLINE_FORMAT_KEYMAP: KeyBinding[] = [
 	// through would trigger the browser's own Mod+K.
 	{ chord: 'Mod+K', command: 'link.openCard' }
 ];
+
+const INLINE_FORMAT_COMMANDS = new Set<string>(INLINE_FORMAT_KEYMAP.map((b) => b.command));
+
+/** Whether a command is one of the format chords every typing block binds. */
+export function isInlineFormatCommand(command: string): boolean {
+	return INLINE_FORMAT_COMMANDS.has(command);
+}
 
 // Shared by every kind TextEditableBlock renders, prose and the raw-editable fallback alike, so
 // the chords that transform a block behave the same in all of them.
