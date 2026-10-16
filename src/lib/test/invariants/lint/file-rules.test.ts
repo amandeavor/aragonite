@@ -98,8 +98,11 @@ const callsOutsideHome =
 	(file: SourceFile): boolean =>
 		file.relPath !== home && resolver.test(file.code);
 
-/** Both directions of a surface rule: every prose surface calls the resolver, and every caller
- *  outside its home is a prose surface. */
+const TYPED_INPUT_HOME = SOURCE.typedInput;
+const CREATES_TYPED_INPUT = /(?<![\w.])createTypedInput\s*\(/;
+
+/** Both directions of a surface rule: every prose surface builds the shared typed-input step, and
+ *  that step is the resolver's one caller outside its home. */
 function surfaceParity(
 	id: string,
 	home: string,
@@ -112,19 +115,19 @@ function surfaceParity(
 		{
 			id,
 			population: isProseSurface,
-			matches: (file) => !callsResolver(file),
+			matches: (file) => !CREATES_TYPED_INPUT.test(file.code),
 			reason,
 			atLeast: 2,
 			hits: [at(ROGUE_SURFACE, PROSE_SURFACE)],
-			misses: [at(ROGUE_SURFACE, `${PROSE_SURFACE} ${call}`)]
+			misses: [at(ROGUE_SURFACE, `${PROSE_SURFACE} createTypedInput(deps);`)]
 		},
 		{
-			id: `${id}: the callers are exactly those surfaces`,
+			id: `${id}: the shared typed-input step is its one caller`,
 			population: callsResolver,
-			matches: (file) => !isProseSurface(file),
+			matches: (file) => file.relPath !== TYPED_INPUT_HOME,
 			reason:
-				'only a prose surface may call the resolver, which prevents the default and owns where the caret lands',
-			atLeast: 2,
+				'the resolver prevents the default and owns where the caret lands, so a prose surface reaches it through `createTypedInput`, never on its own',
+			reaches: [TYPED_INPUT_HOME],
 			hits: [at('src/lib/components/blocks/x/rogue.ts', call)],
 			misses: [`// ${call} is the resolver`, `const x = my${call}`]
 		}
@@ -444,6 +447,23 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
+		id: 'G4.195 a block command takes its own undo step in one place',
+		matches: /\.\s*isolateUndoEntry\s*\(/,
+		allowed: {
+			'src/lib/components/blocks/text/inline-commands.ts':
+				'`perform`: every command of a paragraph and a table cell, once a shown source is written',
+			'src/lib/components/blocks/code/CodeBlock.svelte':
+				'the language field’s write, a command with no chord behind it'
+		},
+		reason:
+			'a command is not typing, so its write is an undo step of its own; a block that isolates its own writes keeps a second copy of that rule, which drifts from `createInlineCommands :: perform`',
+		hits: [
+			'controller.isolateUndoEntry(() => write());',
+			'deps.controller\n\t.isolateUndoEntry(w);'
+		],
+		misses: ['isolateUndoEntry(write: () => void): void;', 'isolateUndoEntry: (write) => {']
+	},
+	{
 		id: 'every dev-only check reads the build flag through env.ts',
 		matches: /from\s*['"]esm-env['"]/,
 		allowed: {
@@ -644,6 +664,10 @@ const RULES: FileRule[] = [
 				'table sticky-X exit re-enters the editor column state',
 			'src/lib/components/blocks/text/widget-interaction.ts':
 				'CST inline offsets (unbranded model values) enter cursor IO',
+			'src/lib/components/blocks/text/inline-commands.ts':
+				'Edit link puts the caret at a construct’s text end, a CST offset (unbranded model value)',
+			'src/lib/components/blocks/text/typed-input.ts':
+				'the auto-pair’s caret, counted in the block’s displayed text, enters cursor IO',
 			'src/lib/selection/multi-click.ts':
 				'the point probe’s raw offsets and the segmenter’s walk-text indices (both unbranded) cross the walk in each direction'
 		},
@@ -815,14 +839,14 @@ const RULES: FileRule[] = [
 		LIVE_EDIT_HOME,
 		RESOLVES_LIVE_EDIT,
 		'resolveLiveRangeEdit(e, node, cursor, r);',
-		'a prose surface reads the pending range off getTargetRanges() through resolveLiveRangeEdit; the live selection alone loses every word, line and drag delete at a collapsed caret'
+		'a prose surface reads the pending range off getTargetRanges() through resolveLiveRangeEdit, by way of `createTypedInput`; the live selection alone loses every word, line and drag delete at a collapsed caret'
 	),
 	...surfaceParity(
 		'G4.65 every prose surface hands typed delimiters to applyDelimiterAutoPair',
 		AUTOPAIR_HOME,
 		APPLIES_AUTOPAIR,
 		'applyDelimiterAutoPair(e, deps);',
-		'a prose surface hands its typed delimiters to applyDelimiterAutoPair, which pairs, steps over and closes them; a local copy drifts'
+		'a prose surface hands its typed delimiters to applyDelimiterAutoPair through `createTypedInput`, which pairs, steps over and closes them; a local copy drifts'
 	),
 	{
 		id: 'G4.39 every component mounting the text surface publishes runCommand',

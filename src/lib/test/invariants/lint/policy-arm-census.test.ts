@@ -78,6 +78,8 @@ const POLICY_ARMS: Record<string, string> = {
 		'the look: edgeAffinity, whether the next letter sits inside a box whose border has two stops',
 	'src/lib/components/blocks/text/link-at-point.ts':
 		'what a click follows and how Edit link edits it: followEdit',
+	'src/lib/components/blocks/text/inline-commands.ts':
+		'the format commands of a paragraph and a table cell: which mark a command toggles',
 	'src/lib/components/blocks/text/next-byte.ts':
 		'the caret look: the mark column, for which constructs a typed letter would carry',
 	'src/lib/components/blocks/text/live-join-seam.ts':
