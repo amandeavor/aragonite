@@ -423,10 +423,6 @@ export interface TableContext {
 	/** Scroll the grid sideways so the cell's column is inside the table's own box. */
 	revealColumn(rowIdx: number, colIdx: number): void;
 
-	getStickyColumn(): number | null;
-	setStickyColumn(colIdx: number): void;
-	resetStickyColumn(): void;
-
 	exitUpward(stickyX: number): void;
 	exitDownward(stickyX: number): void;
 

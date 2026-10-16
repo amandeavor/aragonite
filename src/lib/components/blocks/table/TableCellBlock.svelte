@@ -615,7 +615,6 @@
 		if (fold) await fold.settled;
 		switch (plan.kind) {
 			case 'focus-cell':
-				if (plan.setStickyColumn !== undefined) tableContext.setStickyColumn(plan.setStickyColumn);
 				tableContext.focusCell(plan.rowIdx, plan.colIdx, plan.position);
 				return;
 			case 'insert-row-below':
