@@ -31,8 +31,16 @@ const ANNOUNCERS: Record<string, string> = {
 /** A byte write outside a commit copies ancestors off `deps.doc` (a commit reaches them through its
  *  own view); each such file is the commit itself or announces the new version. */
 const ROOT_UNSHARERS: Record<string, string> = {
-	'src/lib/editor-actions/commit/undo-controller.ts': 'the ceremony itself',
+	'src/lib/editor-actions/commit/structural-commit.ts':
+		'the commit’s own copy of each block list’s chain',
 	'src/lib/editor-actions/leaf-write.ts': 'announces'
+};
+
+/** Root unsharers that write only inside the mutate `__commit` runs, which announces and asks the
+ *  reading-mode check for them. */
+const INSIDE_THE_COMMIT: Record<string, string> = {
+	'src/lib/editor-actions/commit/structural-commit.ts':
+		'copies each block list’s chain in the mutate the undo controller’s `__commit` runs'
 };
 
 type ReadingCheck = 'admitsWrite' | 'admitsSnapshot';
@@ -93,12 +101,16 @@ describeManifests(
 
 describe('content-version entry points that write outside a commit', () => {
 	it('every root unsharer is the commit sequence or announces for itself', () => {
-		const silent = Object.keys(ROOT_UNSHARERS).filter((relPath) => !(relPath in ANNOUNCERS));
+		const silent = Object.keys(ROOT_UNSHARERS).filter(
+			(relPath) => !(relPath in ANNOUNCERS) && !(relPath in INSIDE_THE_COMMIT)
+		);
 		expect(silent).toEqual([]);
 	});
 
 	it('every root unsharer names the functions that must ask the reading-mode check', () => {
-		const unnamed = Object.keys(ROOT_UNSHARERS).filter((relPath) => !(relPath in READING_CHECKED));
+		const unnamed = Object.keys(ROOT_UNSHARERS).filter(
+			(relPath) => !(relPath in READING_CHECKED) && !(relPath in INSIDE_THE_COMMIT)
+		);
 		expect(unnamed).toEqual([]);
 	});
 

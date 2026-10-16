@@ -117,7 +117,7 @@ A key nobody claims falls through to the keymap, and a byte it types is placed i
 
 ## 6. Which side of a hidden marker
 
-`src/lib/components/blocks/text/edge-seat.ts` :: `resolveEdgeSeat`. In live mode a construct's markers paint nothing, so one screen position names two raw offsets: just before the `**`, or just after it. The resolver decides which one a typed byte goes to (its symbols call that position a seat). It's asked by the write every insertion ends in (`src/lib/caret/next-insertion.ts`), after the browser or the paste has put the text in, so a key, a soft keyboard, an IME commit and a paste all land the same way.
+`src/lib/components/blocks/text/edge-seat.ts` :: `hiddenEdges`. In live mode a construct's markers paint nothing, so one screen position names two raw offsets: just before the `**`, or just after it. The resolver decides which one a typed byte goes to (its symbols call that position a seat). It's asked by the write every insertion ends in (`src/lib/caret/next-insertion.ts`), after the browser or the paste has put the text in, so a key, a soft keyboard, an IME commit and a paste all land the same way.
 
 The answer is the word processor's: the byte takes the format of the visible character before the position (at a line start, the one after), whichever of the two raw offsets the browser left the caret at. Three things can change that, in order:
 

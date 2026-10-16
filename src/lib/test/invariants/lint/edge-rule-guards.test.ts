@@ -1,8 +1,8 @@
 /**
- * The edge rule's source guards. Which side of a hidden edge the next letter takes is decided in
- * one place, the edge resolver, from the caret memory's records; no other file reads a side or
- * keeps an arrival (G4.150). A click's side is checked once, from the shared click entry both prose
- * blocks go through, and neither block measures the press against its text itself (G4.151).
+ * The edge rule's source guards. The edge resolver alone turns the caret memory's records into a
+ * side (G4.150), and `hidingScreenOf` alone says whether a block hides markers (G4.200). A click's
+ * side is checked once, from the shared click entry both prose blocks go through, and neither
+ * block measures the press against its text itself (G4.151).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -78,12 +78,26 @@ describeManifests(
 		},
 		{
 			id: 'G4.150 only the edge resolver picks a boundary of a hidden edge',
-			matches: /\b(?:resolveEdgeSeat|typingOffset)\s*\(/,
+			matches: /\btypingOffset\s*\(/,
 			declared: { [RESOLVER]: 'the resolver itself, and the reads it offers the block' },
 			reason:
 				'every insertion, the chord’s seat and the look already ask the resolver through the block’s placement; a second caller is a second copy of the rule',
-			hits: ['const at = typingOffset(caret, inlines, null, raw, screen, reading);'],
+			hits: ['const at = edges.typingOffset(caret, null);'],
 			misses: ['placement.offsetFor(caret, typed);']
+		},
+		{
+			id: 'G4.200 only the hidden-screen read pairs a block’s mode with its screen',
+			matches: /\bscreenVisibilityOf\s*\(/,
+			declared: {
+				'src/lib/caret/widget-offset.ts':
+					'defines it, and `hidingScreenOf`, which every edge rule asks',
+				'src/lib/invariants/marker-css-parity.ts':
+					'the dev check compares the screen against the stylesheet in every mode'
+			},
+			reason:
+				'an edge rule reads the screen only where the block hides markers at the caret; ask `hidingScreenOf`, which answers both at once',
+			hits: ['const screen = screenVisibilityOf(el);'],
+			misses: ['const screen = hidingScreenOf(el);']
 		},
 		{
 			id: 'G4.150 only the record’s home, its holder, its carriers and the resolver name it',

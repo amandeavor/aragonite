@@ -18,7 +18,7 @@ import { firstLine, followBytes, lastLine } from '../schema/container-raw';
 import { reservedChromeKindOf } from '../schema/reserved-chrome';
 import { perfEnabled, recordRebuildDepth } from '../perf/instruments';
 import { rebuildOwnedContainer, walkUnsharing } from './unshare';
-import { absorbWindowSeams, type TrackedPosition } from './settle';
+import { absorbWindowSeams, type TrackedPosition } from './neighbour-merge';
 import { installReading } from './content-write';
 import { settleSublistSeparator } from './list/sublist-separator';
 

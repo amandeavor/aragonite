@@ -2,7 +2,8 @@
  * Per-container-kind raw rebuilders. Kept apart from `container-raw.ts`, which walks a node's
  * ancestors, so the built-in registrations can declare `rebuildRaw` directly: this file imports
  * no registry, that walk must, and one file holding both would cycle. The two shared rebuild
- * shapes live in `child-spans.ts`; each kind here adds only its own per-line syntax.
+ * shapes live in `child-spans.ts` and `strip-rebuild.ts`; each kind here adds only its own per-line
+ * syntax.
  */
 
 import type { CstNode, TableAlignment, TableRowMetadata } from '../core/nodes';
@@ -34,13 +35,8 @@ import {
 	tableRowLine,
 	type CellSpan
 } from '../core/parsers/table-line';
-import {
-	rebuildConcatRaw,
-	rebuildStripRaw,
-	spliceVerbatimChild,
-	type ChildRawChange,
-	type StripRebuild
-} from './child-spans';
+import { rebuildConcatRaw, spliceVerbatimChild, type ChildRawChange } from './child-spans';
+import { rebuildStripRaw, type StripRebuild } from './strip-rebuild';
 
 // ── Blockquote ───────────────────────────────────────────────────────────────
 

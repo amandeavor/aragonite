@@ -20,7 +20,8 @@ import {
 } from './block-kind-descriptor';
 import { isBlockOpenerRegistered, type GrammarView } from './block-openers';
 import { readAsOpened } from './opened-reading';
-import type { ChildRawChange, StripRebuild } from './child-spans';
+import type { ChildRawChange } from './child-spans';
+import type { StripRebuild } from './strip-rebuild';
 
 /**
  * Rebuild `raw` for every container along `path`, innermost first. The leaf at the end of `path`

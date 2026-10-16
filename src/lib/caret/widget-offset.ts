@@ -618,6 +618,12 @@ export function revealsNoMarkers(container: ParentNode): boolean {
 	return mode !== null && hidesDelimitersAtCaret(mode);
 }
 
+/** The screen a block's edge rules read, or null where its mode paints the markers at the caret
+ *  and every delimiter is a byte the user can see. */
+export function hidingScreenOf(el: HTMLElement | null): VisibilityContext | null {
+	return el && revealsNoMarkers(el) ? screenVisibilityOf(el) : null;
+}
+
 /** How this container's bytes read on screen, its mode plus its content-empty attribute, so a text
  *  rewrite needs no marker knowledge of its own. An unmounted block reads as source. */
 export function screenVisibilityOf(container: ParentNode | null): VisibilityContext {

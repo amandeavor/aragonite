@@ -107,6 +107,7 @@
 		onRoot,
 		removeAll
 	} from './editor-root/listeners';
+	import { createRootEffect } from './editor-root/root-effect.svelte';
 	import { collectReservedChords, chordIsClaimed } from '../schema/reserved-chords';
 	import { portalInto } from './portal';
 	import {
@@ -274,6 +275,7 @@
 	const blockRefs: (BlockComponent | undefined)[] = [];
 	const blockRefSlots = refSlotsOver(blockRefs);
 	let editorEl: HTMLDivElement | undefined = $state();
+	const rootEffect = createRootEffect(() => editorEl);
 	// A portaled search bar inside a themed host skips the theme class, whose defaults would
 	// shadow the host's tokens.
 	const inThemedScope = $derived(!!editorEl?.closest('.aragonite-editor-theme'));
@@ -470,10 +472,8 @@
 	// ── Hidden-run class check ──────────────────────────────────────────
 
 	// Once per mode change, so the getComputedStyle cost stays off the keystroke path.
-	$effect(() => {
+	rootEffect((root) => {
 		void effectiveMode;
-		if (!editorEl) return;
-		const root = editorEl;
 		assertInvariant('marker-css-parity', () => checkMarkerCssParity(root));
 	});
 
@@ -481,16 +481,13 @@
 
 	// On the resolved scroll container, not the root: in host mode the user scrolls outside the
 	// editor, and that scroll must release the block held in place.
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect(() => {
 		const target = getScrollHost();
 		if (!target) return;
 		return installRevealAnchorRelease(target, scrollOwner.release);
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		// focusout bubbles, so reset only when focus leaves the editor's content: for somewhere
 		// outside it, or for the host's header, which holds no caret of the editor's.
 		return onRoot(root, 'focusout', (e: FocusEvent) => {
@@ -509,15 +506,10 @@
 		})
 	);
 
-	$effect(() => {
-		if (!editorEl) return;
-		return installUndoStepEnd(editorEl, () => controller.endUndoStep());
-	});
+	rootEffect((root) => installUndoStepEnd(root, () => controller.endUndoStep()));
 
 	// A chord that reaches <body> goes to one editor: the only one, or the last one interacted with.
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		registerEditor(root);
 		const removeMark = onRoot(root, 'focusin', () => markEditorInteracted(root));
 		return () => {
@@ -902,9 +894,7 @@
 		linkCard,
 		reading
 	});
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		return removeAll(
 			rootGestures.install(root),
 			installSelectionDrop({
@@ -959,25 +949,22 @@
 
 	// Hides the native caret and highlight while the overlay paints; keyed on the overlay's own
 	// test, so a range it does not paint keeps the native one.
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect((root) => {
 		if (selectionState.isCustomRendered) {
-			editorEl.setAttribute('data-cross-block', '');
+			root.setAttribute('data-cross-block', '');
 		} else {
-			editorEl.removeAttribute('data-cross-block');
+			root.removeAttribute('data-cross-block');
 		}
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
-		return removeAll(installModActiveTracker(editorEl), installPressTracker(editorEl, presses));
-	});
+	rootEffect((root) =>
+		removeAll(installModActiveTracker(root), installPressTracker(root, presses))
+	);
 
 	// A delegated handle-drag on the root, torn down on unmount via the lifetime signal.
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect((root) => {
 		const handle = installReorderDrag({
-			editorRoot: editorEl,
+			editorRoot: root,
 			getScrollHost,
 			moveReorderUnit: reorder.moveReorderUnit,
 			getDoc,
@@ -991,10 +978,9 @@
 		return () => handle.dispose();
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect((root) => {
 		return installSelectionChangeBridge({
-			root: editorEl,
+			root,
 			isHostChrome,
 			announceIfMoved: selectionAnnouncer.announceIfMoved,
 			selection: selectionState,
@@ -1002,10 +988,9 @@
 		});
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect((root) => {
 		return installEditorBlurAnnouncer({
-			root: editorEl,
+			root,
 			announce: selectionAnnouncer.announce
 		});
 	});
@@ -1054,9 +1039,7 @@
 		setReplaceExpanded: (expanded) => (replaceExpanded = expanded)
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		return onRoot(root.ownerDocument, 'keydown', (e: KeyboardEvent) =>
 			rootKeydown.handleKeyDown(e, root)
 		);
@@ -1073,9 +1056,7 @@
 		getBlockComponent
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		const doc = root.ownerDocument;
 		return removeAll(
 			onRoot(doc, 'copy', (e: ClipboardEvent) => rootClipboard.handleCopy(e, root)),
@@ -1099,8 +1080,7 @@
 	});
 
 	// The scroll container's height sets how many blocks mount.
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect(() => {
 		const target = getScrollHost();
 		if (!target) return;
 		return installViewportHeightWatcher(target, layout.noteViewportHeight);
@@ -1141,14 +1121,8 @@
 		void effectiveMode;
 		focusAttribution.applyForMode();
 	});
-	$effect(() => {
-		if (!editorEl) return;
-		return focusAttribution.install(editorEl);
-	});
-	$effect(() => {
-		if (!editorEl) return;
-		return textMoves.install(editorEl);
-	});
+	rootEffect((root) => focusAttribution.install(root));
+	rootEffect((root) => textMoves.install(root));
 
 	// ── Top-level windowing ─────────────────────────────────────────────
 

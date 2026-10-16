@@ -8,6 +8,7 @@
 import type { DocumentView, NodeView } from '../core/node-views';
 import { displayLength } from '../core/lines';
 import { metadataOf } from '../core/nodes';
+import { assertInvariant } from '../assert';
 import { cellIndexOf, normalize, type SelectionPoint } from './primitives';
 import { snapCrossBlockTableEndpoints } from './table-endpoint-snap';
 import { collapsedContainerHiding } from './path-lookup';
@@ -313,7 +314,20 @@ function keptTableRun(
 	const node = nodeAt(doc, point.path);
 	if (!node || !isBlockNode(node) || !countsCells(node)) return null;
 	const cell = cellIndexOf(point, 'rangeCoverage:tableEdge');
-	return side === 'start' ? { from: cell, to: tableCellCount(node) } : { from: 0, to: cell + 1 };
+	const run =
+		side === 'start' ? { from: cell, to: tableCellCount(node) } : { from: 0, to: cell + 1 };
+	// `coverRange` snaps a cross-block table endpoint to a row's bounds, so the delete removes whole
+	// rows only (G1.106).
+	const columns = metadataOf(node, 'table').columnCount;
+	assertInvariant('kept-table-edge', () =>
+		run.from % columns === 0 && run.to % columns === 0
+			? null
+			: {
+					code: 'kept-table-edge',
+					message: `a kept table edge [${run.from}, ${run.to}) splits a row`
+				}
+	);
+	return run;
 }
 
 /** A whole table beats the row or column that spans it (a one-row or one-column table). */

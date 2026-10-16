@@ -42,7 +42,8 @@ import {
 	type BodyParentArg
 } from './node-primitives';
 import { ensureEditableContainers } from '../schema/opened-reading';
-import { absorbSeamReading, deleteNode, type TrackedPosition } from './settle';
+import { deleteNode } from './settle';
+import { absorbSeamReading, type TrackedPosition } from './neighbour-merge';
 import { cutKeepingStructure } from './structural-suffix';
 import { leafAtRawOffset, rawOffsetOfLeaf } from './container-offsets';
 import { CURSOR_END, CURSOR_EXACT_START, CURSOR_START } from '../block-component';

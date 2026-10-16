@@ -55,6 +55,8 @@ export const SOURCE = {
 	nodePrimitives: 'src/lib/tree-operations/node-primitives.ts',
 	openTail: 'src/lib/tree-operations/open-tail.ts',
 	unshare: 'src/lib/tree-operations/unshare.ts',
+	separatorWrites: 'src/lib/tree-operations/separator-writes.ts',
+	neighbourMerge: 'src/lib/tree-operations/neighbour-merge.ts',
 	settle: 'src/lib/tree-operations/settle.ts',
 	contentWrite: 'src/lib/tree-operations/content-write.ts',
 	nodeOps: 'src/lib/tree-operations/node-ops.ts',
@@ -64,6 +66,7 @@ export const SOURCE = {
 
 	// ── Editor actions and the commit ───────────────────────────────────────
 	undoController: 'src/lib/editor-actions/commit/undo-controller.ts',
+	structuralCommit: 'src/lib/editor-actions/commit/structural-commit.ts',
 	blockEditCore: 'src/lib/editor-actions/block-edit-core.ts',
 	leafWrite: 'src/lib/editor-actions/leaf-write.ts',
 	containerBlockComponent: 'src/lib/editor-actions/container-block-component.ts',
@@ -201,6 +204,8 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	nodePrimitives: 'export type BodyParent',
 	openTail: 'export function keepOpenTail',
 	unshare: 'export function walkUnsharing',
+	separatorWrites: 'export function writeSeparator',
+	neighbourMerge: 'export function absorbWindowSeams',
 	settle: 'export function clearRedundantSeparator',
 	contentWrite: 'export interface LegalWrite',
 	nodeOps: 'export interface SplitResult',
@@ -210,6 +215,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 
 	// ── Editor actions and the commit ───────────────────────────────────────
 	undoController: 'export function createUndoController',
+	structuralCommit: 'export function createStructuralCommit',
 	blockEditCore: 'export function contentUpdate',
 	leafWrite: 'export type LeafTyping',
 	containerBlockComponent: 'export function dispatchWholeBlockGlobalChord',

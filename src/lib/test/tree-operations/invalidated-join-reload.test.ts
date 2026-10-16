@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { absorbWindowSeams } from '#lib/tree-operations/settle.js';
+import { absorbWindowSeams } from '#lib/tree-operations/neighbour-merge.js';
 import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { reorderChildrenWithTrivia } from '#lib/tree-operations/reorder.js';
 import { documentBody } from '#lib/tree-operations/node-primitives.js';

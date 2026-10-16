@@ -7,7 +7,7 @@ import type { CstNode, TableAlignment } from './core/nodes';
 import type { NodeView } from './core/node-views';
 import type { LineEnding } from './core/lines';
 import type { StructuralChange } from './tree-operations/structural-change';
-import type { TrackedPosition } from './tree-operations/settle';
+import type { TrackedPosition } from './tree-operations/neighbour-merge';
 import type { SharingState } from './tree-operations/sharing';
 import type { BodyParent } from './tree-operations/node-primitives';
 import type { BlockComponent, FocusPosition } from './block-component';

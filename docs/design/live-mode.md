@@ -153,18 +153,19 @@ The typing position, on § 2's block (`raw`, `inlines`, `live` and `reading` as 
 
 ```ts
 // the caret sits right after 'bold': one screen position, two raw offsets
-seatOffsetsAt(11, inlines, raw, live, reading.grammar); // [11, 13]
-resolveEdgeSeat(11, inlines, null, raw, live, 'X', reading); // null: the 'd' before is bold, where typing lands anyway
-resolveEdgeSeat(13, inlines, null, raw, live, 'X', reading); // { offset: 11, kind: 'strong' }: same answer from past the run
-resolveEdgeSeat(11, inlines, 'outside', raw, live, 'X', reading); // { offset: 13, kind: 'strong' }: a fresh start or a typed closer
+const edges = hiddenEdges(inlines, raw, live, reading);
+edges.seatOffsets(11); // [11, 13]
+edges.typingOffset(11, null); // 11: the 'd' before is bold, where typing lands anyway
+edges.typingOffset(13, null); // 11: same answer from past the run
+edges.typingOffset(11, 'outside'); // 13: a fresh start or a typed closer
 
 // a code chip's border is a stop of its own
 const chip = 'via `code` end'; // the closer is [9,10)
-edgeStep(9, parseInline(chip, 0, chip.length), null, chip, live, reading, 'forward'); // 10: the bar moves past the border
+hiddenEdges(parseInline(chip, 0, chip.length), chip, live, reading).edgeStep(9, null, 'forward'); // 10: the bar moves past the border
 
 // a link never extends
 const link = 'see [here](https://x.example) now';
-resolveEdgeSeat(9, parseInline(link, 0, link.length), null, link, live, 'X', reading); // { offset: 29, kind: 'link' }
+hiddenEdges(parseInline(link, 0, link.length), link, live, reading).typingOffset(9, null); // 29
 ```
 
 What the resolver chooses from is the caret's screen position, not one construct's run. A hidden run's hidden neighbours name the same position, so a byte the construct's own edge would break can still land at the boundary of the run beside it. The candidates are tried in order, and a later one is asked only when the painter refuses the ones before it:

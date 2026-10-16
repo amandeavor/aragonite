@@ -62,7 +62,7 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		count: 3,
 		why: 'the split re-attaches the blank line that parse stripped (GH #97); both branches of `joinIntoLeaf` land bytes that already crossed `legalizeWrite` and a fragment reparse (GH #54)'
 	},
-	'src/lib/tree-operations/settle.ts': {
+	'src/lib/tree-operations/neighbour-merge.ts': {
 		count: 1,
 		why: 'the join absorb re-attaches the blank run its own reparse stripped (GH #61)'
 	},
@@ -71,8 +71,12 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: 'the table grid re-emits its own bytes from its rows (G4.20 branch 3 reads the same writes)'
 	},
 	'src/lib/schema/child-spans.ts': {
-		count: 5,
-		why: 'the strip and concat container shapes re-emitting their own bytes from their children: the two span-seeding rebuilds, the whole-body fallback, and the one-region splice; and a marker gaining its space in its own line'
+		count: 3,
+		why: 'the concat container shape re-emitting its own bytes from its children: its span-seeding rebuild and the one-region splice; and a marker gaining its space in its own line'
+	},
+	'src/lib/schema/strip-rebuild.ts': {
+		count: 2,
+		why: 'the strip container shape re-emitting its own bytes from its children: its span-seeding rebuild and the whole-body fallback'
 	},
 	'src/lib/core/directive/kinds.ts': { count: 1, why: "the directive container's own rebuildRaw" },
 	'src/lib/editor-actions/plugin/directive-container.ts': {
@@ -103,7 +107,7 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		count: 1,
 		why: 'find and replace installs the bytes `legalizeWrite` returned into a private copy, which it then reparses whole'
 	},
-	'src/lib/editor-actions/commit/undo-controller.ts': {
+	'src/lib/editor-actions/commit/structural-commit.ts': {
 		count: 1,
 		why: 'the rollback restores raws the tree already held; nothing new is created'
 	},
@@ -112,8 +116,8 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: 'the chrome-clear and the truncation atoms’ two chrome-endpoint branches, reserved-chrome slots no leaf kind declaring a rule can occupy; and the endpoint reparse re-attaching the blank line that parse stripped (GH #97)'
 	},
 	'src/lib/selection/range-delete-table.ts': {
-		count: 2,
-		why: 'two cell clears; a cleared cell is empty, which `tableCell`’s own rule already returns unchanged'
+		count: 1,
+		why: 'a cell clear; a cleared cell is empty, which `tableCell`’s own rule already returns unchanged'
 	},
 	'src/lib/tree-operations/list/reconcile-task.ts': {
 		count: 3,

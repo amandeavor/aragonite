@@ -15,7 +15,9 @@ import { SOURCE } from './source-paths';
  * being created is a fresh node, not a separator anybody relied on, so it is not a write.
  */
 const TRIVIA_WRITERS: Record<string, string> = {
-	'src/lib/tree-operations/settle.ts': 'the settle doors and the two funnel entries live here',
+	'src/lib/tree-operations/separator-writes.ts': 'the one separator write lives here',
+	'src/lib/tree-operations/neighbour-merge.ts':
+		'a merge gives the block it builds from the joined bytes the line the window’s head had',
 	'src/lib/tree-operations/node-ops.ts':
 		'the merge-installed leaf and the reparsed halves carry the slot’s own line',
 	'src/lib/tree-operations/content-write.ts':
@@ -100,10 +102,12 @@ describeManifests(
 
 /** A function writing a separator rewrites bytes the owner's child spans describe, so it must drop
  *  those spans (`schema/child-spans.ts`); the lists above fix the files, this one the functions. */
-const DOORS_FILE = SOURCE.settle;
+const DOORS_FILE = SOURCE.separatorWrites;
 
 /** The other files writing separators, held to the same rule. */
 const CARRY_FILES = [
+	SOURCE.settle,
+	SOURCE.neighbourMerge,
 	SOURCE.nodeOps,
 	SOURCE.contentWrite,
 	SOURCE.nodePrimitives,

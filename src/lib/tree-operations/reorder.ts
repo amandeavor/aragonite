@@ -5,12 +5,8 @@ import type { SharingState } from './sharing';
 import { ensureUnsharedChild } from './unshare';
 import { endWindowLines } from './open-tail';
 import type { BodyParent } from './node-primitives';
-import {
-	absorbWindowSeams,
-	settleSeparatorOnBlank,
-	widenForTailMint,
-	type SettledSplice
-} from './settle';
+import { settleSeparatorOnBlank, widenForTailMint } from './settle';
+import { absorbWindowSeams, type SettledSplice } from './neighbour-merge';
 import type { StructuralChange } from './structural-change';
 import { devWarn } from '../dev-warn';
 import type { GrammarView } from '../schema/block-openers';
