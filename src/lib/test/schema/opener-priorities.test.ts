@@ -1,17 +1,16 @@
 /**
  * Keeps the published opener priorities in step with the registry: `OPENER_PRIORITIES` must
  * match the built-in openers the registry holds, in both directions. A new built-in opener that
- * skips the constant and a constant key with no registration are the same defect. Importing the
- * parser is what registers the built-ins.
+ * skips the constant and a constant key with no registration are the same defect.
  */
 import { describe, it, expect } from 'vitest';
-import '../../core/parser';
-import { listRegisteredOpeners } from '../../schema/block-openers';
+import { getOrderedOpeners, listRegisteredOpeners } from '../../schema/block-openers';
 import { OPENER_PRIORITIES } from '../../schema/opener-priorities';
 import { isBuiltinBlockKind } from '../../core/nodes';
 
 describe('OPENER_PRIORITIES ↔ registry parity', () => {
 	it('equals the built-in openers the registry holds after registration', () => {
+		getOrderedOpeners();
 		const registered = Object.fromEntries(
 			listRegisteredOpeners()
 				.filter((o) => isBuiltinBlockKind(o.kind))

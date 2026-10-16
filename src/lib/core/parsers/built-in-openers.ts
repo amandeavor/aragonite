@@ -1,6 +1,6 @@
 /**
- * Registers the built-in block openers. Called explicitly from `core/parser.ts`, since a bare
- * side-effect import would be tree-shaken from the production build.
+ * Registers the built-in block openers. The first grammar read calls it, never a module's top
+ * level: this module sits on the parser's import cycle, so a call at load would run half-loaded.
  */
 
 import { registerBlockOpener } from '../../schema/block-openers';

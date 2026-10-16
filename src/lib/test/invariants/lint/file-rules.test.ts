@@ -1026,6 +1026,8 @@ const RULES: FileRule[] = [
 				'the editor’s own bootstraps (blocks, code languages, context-menu rows), which the reset keeps',
 			'src/lib/schema/plugin-registry.ts':
 				'`registerCore`, which also flags a key the registry can’t tell is built-in so the reset keeps it',
+			'src/lib/schema/block-openers.ts':
+				'the built-in kinds, registered on the first grammar read, which can fall inside a plugin’s setup',
 			'src/lib/components/blocks/directive/activate-directives.ts':
 				'the directive grammar and its components, which a consumer may turn on from a plugin’s setup and the reset drops'
 		},

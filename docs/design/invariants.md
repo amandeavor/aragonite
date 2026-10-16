@@ -1190,6 +1190,7 @@ unguarded.
 | G4.187 | Every framework app under `examples/` runs in the adapter suite                              | L       |
 | G4.188 | Every wrapper entry imports in Node with no DOM, as a server render does                     | harness |
 | G4.189 | A host color read inside the editor carries no fallback, and the root reads the resolved one | L       |
+| G4.197 | A parse finds every built-in kind whichever module a host imports first                      | harness |
 
 ### The entries
 
@@ -2248,6 +2249,16 @@ unresolved. The rules sit in `editor.css` rather than the theme file, so a theme
 replaced wholesale keeps them. `lint/host-color-reads.test.ts` covers the library, the bundled
 plugins and the reference plugins; route pages are the host and read their own tokens however they
 like.
+
+**G4.197 · Built-ins register on the first grammar read.** The block parser's modules import each
+other in a loop, so a built-in registered at a module's top level runs before its own module has
+finished loading, and a host that imports that module first gets a crash or a grammar with no
+built-ins. So nothing on the loop registers at load: `schema/block-openers.ts` registers the
+built-ins inside the first read of the grammar, under `registerAsCore`, so they belong to no plugin
+even when that read happens inside a plugin's setup and survive the test reset.
+`test/core/built-in-load-order.test.ts` resets the module graph, imports each module on the loop
+first, and parses one block of every built-in kind; putting a registration back at the top level of
+`core/parser.ts` turns it red with the load-order `ReferenceError`.
 
 ## Accessibility
 

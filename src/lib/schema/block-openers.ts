@@ -14,7 +14,9 @@ import {
 import { flushPendingRegistrationChecks } from './registration-checks';
 import { createBlockKindRegistry, type RegistryRecord } from './plugin-registry';
 import { everyInstalledPlugin, resolvesIn, type PluginActivation } from './plugin-activation';
-import { pluginInstallGeneration } from './plugin-install';
+import { pluginInstallGeneration, registerAsCore } from './plugin-install';
+import { registerBuiltInDescriptors } from './built-in-descriptors';
+import { registerBuiltInOpeners } from '../core/parsers/built-in-openers';
 
 /** Created fresh for each block and read synchronously; never keep it past the call. */
 export interface OpenContext {
@@ -117,12 +119,24 @@ export function getOrderedOpeners(): readonly BlockOpener[] {
 	return orderedCache;
 }
 
+let builtInsRegistered = false;
+
 // Pending registrations are checked before the read and the grammar marked used only after it, so
 // a registration racing the first read is not warned about as a late opener (G1.17).
 function consumedRecords(): readonly OpenerRecord[] {
+	if (!builtInsRegistered) registerBuiltIns();
 	if (hasPendingRegistrationChecks()) flushPendingRegistrationChecks();
 	markGrammarConsumed();
 	return orderedRecords();
+}
+
+// On the first read, whichever module loaded first (G4.197), and as no plugin even inside a setup.
+function registerBuiltIns(): void {
+	builtInsRegistered = true;
+	registerAsCore(() => {
+		registerBuiltInDescriptors();
+		registerBuiltInOpeners();
+	});
 }
 
 /**

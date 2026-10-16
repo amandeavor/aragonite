@@ -1,7 +1,7 @@
 /**
- * Built-in block-kind descriptors and inline-construct policies. Nothing registers on import:
- * `core/inline/index.ts` and `components/built-in-blocks.ts` call `registerBuiltInDescriptors()`,
- * since the `sideEffects` list names built paths and tree-shaking keeps only a called binding.
+ * Built-in block-kind descriptors and inline-construct policies. Nothing registers on import: the
+ * first grammar read, `core/inline/index.ts` and `components/built-in-blocks.ts` call
+ * `registerBuiltInDescriptors()`, since tree-shaking keeps only a called binding.
  */
 
 import { metadataOf } from '../core/nodes';
