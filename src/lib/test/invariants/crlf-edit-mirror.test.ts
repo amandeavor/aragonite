@@ -65,12 +65,15 @@ async function pasteInto(
 ): Promise<Document> {
 	ensurePasteSurface(tableCellPasteSurface);
 	ensurePasteSurface(codePasteSurface);
+	const before = serialize(doc);
 	const h = makePasteCommit(doc);
 	await runPasteDispatch(
 		h,
 		{ pastedText: clipboard, targetPath, offset },
 		{ blockEdit: createBlockEditActions(h.deps, h.undo) }
 	);
+	// A paste that wrote nothing mirrors trivially.
+	expect(serialize(h.doc), 'the paste left the document as it was').not.toBe(before);
 	return h.doc;
 }
 

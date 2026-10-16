@@ -74,7 +74,7 @@ describe('an edit route reparses in the editor grammar', () => {
 			targetPath: [0],
 			offset: '    lead'.length
 		});
-		expect(kindsOf(h.doc.children)).not.toContain('indentedCode');
+		expect(kindsOf(h.doc.children)).toEqual(['paragraph', 'paragraph', 'paragraph', 'paragraph']);
 		expect(describeConvergence(h.doc, noIndentedCode)).toBeNull();
 	});
 });
