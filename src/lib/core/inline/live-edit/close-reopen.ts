@@ -6,7 +6,15 @@
  */
 
 import type { AnyInlineKind } from '../../nodes';
-import { getInlineMarkPolicy } from '../../../schema/inline-construct-policy';
+import {
+	getInlineConstructPolicy,
+	getInlineMarkPolicy
+} from '../../../schema/inline-construct-policy';
+
+/** Whether a cut through `kind` closes it on the half before and reopens it on the half after. */
+export function closesAndReopens(kind: AnyInlineKind): boolean {
+	return getInlineConstructPolicy(kind)?.splitBehavior === 'close-and-reopen';
+}
 
 /** A construct a cut passes through, in its block's raw coordinates. */
 export interface CutConstruct {

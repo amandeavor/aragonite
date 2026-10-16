@@ -25,6 +25,7 @@ import type { NodeView } from '../../../core/node-views';
 import { isBlankText, readsAsBlankLine } from '../../../core/lines';
 import {
 	closeBefore,
+	closesAndReopens,
 	reopenAfter,
 	type CutConstruct
 } from '../../../core/inline/live-edit/close-reopen';
@@ -150,7 +151,7 @@ export function splittableChainAt(
 		if (!holds(node)) continue;
 		const content = constructContentRange(node);
 		if (!content) return null;
-		if (getInlineConstructPolicy(node.kind)?.splitBehavior !== 'close-and-reopen') return null;
+		if (!closesAndReopens(node.kind)) return null;
 		chain.push({
 			kind: node.kind,
 			start: node.start,

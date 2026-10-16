@@ -3,7 +3,14 @@ import { describe, it, expect } from 'vitest';
 import { parseInline } from '#lib/core/inline/index.js';
 import { CONTENT_VISIBILITY, renderedText } from '#lib/core/inline/visibility.js';
 import { resolveMarkedInsertion } from '#lib/components/blocks/text/pending-mark-insert.js';
-import type { InlineMarkKind } from '#lib/schema/inline-construct-policy.js';
+import {
+	getInlineConstructPolicy,
+	registerInlineConstructPolicy,
+	type InlineConstructPolicy,
+	type InlineMarkKind
+} from '#lib/schema/inline-construct-policy.js';
+import { configureEditorEnv } from '#lib/env.js';
+import { takeDevWarns } from '../../support/warn-gate';
 import type { InlineNode } from '#lib/core/nodes.js';
 import { renderOptions } from '../../harness/fixture-grammar';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
@@ -169,8 +176,8 @@ describe('a candidate that would not parse back is not written', () => {
 		expect(visibleText(result!.raw)).toBe('a b cX');
 	});
 
-	// The escape would have to cut the link open, and a link's delimiters are not a symmetric
-	// pair: splicing `**` inside its text writes bytes the user sees.
+	// Cutting the link open puts the byte outside the link it was typed in, and stepping outside
+	// the bold does too, so no candidate parses as asked.
 	it('declines rather than splice a delimiter inside link text', () => {
 		expect(insert('**[ab](u)**', 4, 'X', ['strong'])).toBeNull();
 	});
@@ -257,5 +264,36 @@ describe('a construct a mark would cut open is in the chain', () => {
 describe('a candidate that spends a construct is declined', () => {
 	it('declines rather than rebind the strong pairing of a shared underscore run', () => {
 		expect(insert(' __foo__', 2, 'X', ['emphasis'])).toBeNull();
+	});
+});
+
+// Miss-analysis: pending marks asked the edge column whether a cut may close and reopen a run, and
+// every built-in row answers the edge and split columns alike, so no case told them apart.
+describe('the row’s split column decides whether a pending mark cuts a run open', () => {
+	function withStrongRow(row: InlineConstructPolicy, body: () => void): void {
+		const original = getInlineConstructPolicy('strong')!;
+		// The dev server replaces a row rather than throwing, the one way to swap a built-in in place.
+		configureEditorEnv({ isDev: true, isTest: false });
+		registerInlineConstructPolicy('strong', row);
+		try {
+			body();
+		} finally {
+			registerInlineConstructPolicy('strong', original);
+			takeDevWarns();
+		}
+	}
+
+	it('steps outside a run whose row leaves a cut plain, whatever its edge', () => {
+		const strong = getInlineConstructPolicy('strong')!;
+		withStrongRow({ ...strong, splitBehavior: 'plain' }, () => {
+			expect(insert('**ab**', 3, 'X', ['strong'])).toEqual({ raw: 'X**ab**', caret: 1 });
+		});
+	});
+
+	it('cuts open a run whose row closes and reopens it, whatever its edge', () => {
+		const strong = getInlineConstructPolicy('strong')!;
+		withStrongRow({ ...strong, edgeAffinity: 'never-extend' }, () => {
+			expect(insert('**ab**', 3, 'X', ['strong'])).toEqual({ raw: '**a**X**b**', caret: 6 });
+		});
 	});
 });

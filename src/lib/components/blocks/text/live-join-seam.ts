@@ -21,6 +21,7 @@ import {
 import { readBack, readSource, shownRunsOf } from '../../../core/inline/live-edit/read-back';
 import {
 	closeBefore,
+	closesAndReopens,
 	markSpelling,
 	reopenAfter,
 	type CutConstruct
@@ -31,7 +32,7 @@ import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
 import type { GrammarView } from '../../../schema/block-openers';
 import type { RenderInlineOptions } from '../../../core/inline-render';
-import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
+import type { InlineNode } from '../../../core/nodes';
 import {
 	getInlineConstructPolicy,
 	type JoinEndpoint,
@@ -156,7 +157,7 @@ function readSide(endpoint: JoinEndpoint, keep: 'before' | 'after', reading: Rea
 			? c.contentStart <= offset && offset < c.end
 			: c.start < offset && offset <= c.contentEnd
 	);
-	if (dangling.some((c) => !isRejoinable(c.kind))) return null;
+	if (dangling.some((c) => !closesAndReopens(c.kind))) return null;
 
 	return {
 		raw: node.raw,
@@ -202,11 +203,6 @@ function classifyConstructs(inlines: readonly InlineNode[]): {
 const splitsARun = (c: CutConstruct, at: number): boolean =>
 	(at > c.start && at < c.contentStart) || (at > c.contentEnd && at < c.end);
 
-/** Whether the family can be cut and rejoined (`docs/design/live-mode.md` § 4.4). */
-function isRejoinable(kind: AnyInlineKind): boolean {
-	return getInlineConstructPolicy(kind)?.splitBehavior === 'close-and-reopen';
-}
-
 /** The nested chain of closers ending at `cut` (or openers starting there), outermost first:
  *  `**a *b***` cut at its end gives the strong emphasis, then the emphasis. */
 function touchingChain(
@@ -218,7 +214,7 @@ function touchingChain(
 	let at = cut;
 	for (;;) {
 		const link = constructs.find((c) => (keep === 'before' ? c.end === at : c.start === at));
-		if (!link || !isRejoinable(link.kind)) return chain;
+		if (!link || !closesAndReopens(link.kind)) return chain;
 		chain.push(link);
 		at = keep === 'before' ? link.contentEnd : link.contentStart;
 	}

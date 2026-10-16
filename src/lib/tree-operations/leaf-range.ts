@@ -16,6 +16,7 @@ import {
 } from '../core/inline';
 import { readsInParts, shownOfSpan } from '../core/inline/live-edit/read-back';
 import type { ShownSpan } from '../core/inline/live-edit/shown-marks';
+import { closesAndReopens } from '../core/inline/live-edit/close-reopen';
 import {
 	ownTrailingLineEnding,
 	snapToScalarBoundary,
@@ -23,7 +24,6 @@ import {
 	type LineEnding
 } from '../core/lines';
 import {
-	getInlineConstructPolicy,
 	getLiveJoinSeamCleaner,
 	type CleanedJoin,
 	type JoinEndpoint,
@@ -174,7 +174,7 @@ function carriesRuns(text: string, store: StoredAs): boolean {
 	const { resolver, grammar } = store.reading;
 	for (const node of inlineDescendants(readInline(text, 0, text.length, resolver, grammar))) {
 		if (node.kind === 'text' || constructContentRange(node) === null) continue;
-		if (getInlineConstructPolicy(node.kind)?.splitBehavior === 'close-and-reopen') return true;
+		if (closesAndReopens(node.kind)) return true;
 	}
 	return false;
 }
