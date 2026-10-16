@@ -18,10 +18,23 @@ import {
 } from 'vue';
 import {
 	createEditor,
+	EDITOR_OPTION_SPECS,
 	type CreateEditorOptions,
 	type EditorHandle,
 	type EditorPluginEntry
 } from '@voithos-labs/aragonite';
+
+// The props only Vue has; every other prop is the editor option of the same name.
+const VUE_ONLY_KEYS = ['modelValue', 'defaultValue'] as const;
+
+// The editor options Vue takes another way: the document as `modelValue`, the header as a slot.
+const SWAPPED_KEYS = ['source', 'header'] as const satisfies readonly (keyof CreateEditorOptions)[];
+
+type OptionKey = Exclude<keyof typeof EDITOR_OPTION_SPECS, (typeof SWAPPED_KEYS)[number]>;
+
+const OPTION_KEYS = (
+	Object.keys(EDITOR_OPTION_SPECS) as (keyof typeof EDITOR_OPTION_SPECS)[]
+).filter((key): key is OptionKey => !(SWAPPED_KEYS as readonly string[]).includes(key));
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -88,53 +101,27 @@ export const Aragonite = defineComponent(
 
 // ── Internal ────────────────────────────────────────────────────────────────
 
-// The props only Vue has; every other prop is the editor option of the same name.
-const VUE_ONLY_KEYS = ['modelValue', 'defaultValue'] as const;
-
 // Vue reads an absent `Boolean` prop as `false`; `default: undefined` leaves the editor's default.
-// A function, since the component above declares its props before a module constant would exist.
 function optionalBoolean() {
 	return { type: Boolean, default: undefined } as const;
 }
 
 type Declarations = {
-	[K in keyof AragoniteProps]-?: NonNullable<AragoniteProps[K]> extends boolean
+	[K in keyof AragoniteProps]-?: [NonNullable<AragoniteProps[K]>] extends [boolean]
 		? ReturnType<typeof optionalBoolean>
 		: null;
 };
 
-// Vue needs every prop named at runtime. The annotation fails to compile on a missing or extra key,
-// or a boolean option declared without `optionalBoolean` (G3.13).
+// Vue needs every prop named at runtime, and the core table says which are booleans (G3.13).
+// Functions, since the component above declares its props before a module constant here exists.
 function declarations(): Declarations {
-	return {
-		modelValue: null,
-		defaultValue: null,
-		theme: null,
-		presentationMode: null,
-		linkClick: null,
-		caret: null,
-		keybindings: null,
-		placeholder: null,
-		searchBar: optionalBoolean(),
-		searchBarAnchor: null,
-		selectionToolbar: optionalBoolean(),
-		blockDragHandles: optionalBoolean(),
-		imageLoadPolicy: null,
-		resolveImageUrl: null,
-		resolveLinkUrl: null,
-		onLinkActivate: null,
-		onPasteImage: null,
-		onRunCode: null,
-		codeMenuItems: null,
-		plugins: null,
-		syntax: null,
-		scrollMode: null
-	};
+	const props: Record<string, ReturnType<typeof optionalBoolean> | null> = {};
+	for (const key of VUE_ONLY_KEYS) props[key] = null;
+	for (const key of OPTION_KEYS) {
+		props[key] = 'boolean' in EDITOR_OPTION_SPECS[key] ? optionalBoolean() : null;
+	}
+	return props as Declarations;
 }
-
-const OPTION_KEYS = (Object.keys(declarations()) as (keyof AragoniteProps)[]).filter(
-	(key) => !(VUE_ONLY_KEYS as readonly string[]).includes(key)
-);
 
 /** The editor's options from the props. Vue hands a value held in `ref` or `reactive` over as a
  *  proxy, and the editor gets the object it wraps (G1.97). */
@@ -159,14 +146,19 @@ function rawPlugins(entries: readonly EditorPluginEntry[] | undefined) {
 	});
 }
 
-// No editor option hides behind a Vue-only name or an attribute Vue keeps for itself (G3.13).
+// The declared props are exactly the component's, and no editor option hides behind a Vue-only
+// name or an attribute Vue keeps for itself (G3.13).
 type Holds<T extends true> = T;
 type Never<T> = [T] extends [never] ? true : false;
-type _PropsCheck = Holds<
-	Never<
-		Extract<
-			keyof CreateEditorOptions,
-			(typeof VUE_ONLY_KEYS)[number] | 'class' | 'style' | 'key' | 'ref'
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type _PropsCheck = [
+	Holds<Same<OptionKey | (typeof VUE_ONLY_KEYS)[number], keyof AragoniteProps>>,
+	Holds<
+		Never<
+			Extract<
+				keyof CreateEditorOptions,
+				(typeof VUE_ONLY_KEYS)[number] | 'class' | 'style' | 'key' | 'ref'
+			>
 		>
 	>
->;
+];

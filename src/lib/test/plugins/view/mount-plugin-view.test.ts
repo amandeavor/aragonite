@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushSync, type Component } from 'svelte';
 import { mountPluginView, type PluginView } from '#lib/plugin-view.js';
 import { registerInlineWidgetKind, UPGRADE_HINT } from '#lib/core/inline/inline-widgets.js';
-import { svelteDecorationWidget, svelteInlineWidget } from '#lib/svelte-views.svelte.js';
+import { svelteView } from '#lib/svelte-view.svelte.js';
 import { domProbe, stages, svelteLog, viewExploded, type LogEntry } from './fixtures/probe-view';
 import SvelteProbe from './fixtures/SvelteProbe.svelte';
 import SourceReader from './fixtures/SourceReader.svelte';
@@ -65,7 +65,7 @@ describe('mountPluginView', () => {
 	});
 
 	it('reports a Svelte view whose own teardown throws', async () => {
-		const view = svelteDecorationWidget(ThrowingTeardown as Component as never);
+		const view = svelteView(ThrowingTeardown as Component as never);
 		const report = vi.fn();
 		const target = document.createElement('span');
 		const mounted = mountPluginView(
@@ -84,15 +84,15 @@ describe('mountPluginView', () => {
 	});
 });
 
-describe('the Svelte helpers', () => {
-	it('keep a getter prop live instead of copying it at mount', () => {
+describe('svelteView', () => {
+	it('keeps a getter prop live instead of copying it at mount', () => {
 		let reader = 'first';
 		const props = {
 			get computeInlineContent() {
 				return reader;
 			}
 		};
-		const view = svelteInlineWidget(SvelteProbe as never);
+		const view = svelteView(SvelteProbe as never);
 		mountPluginView(view, document.createElement('span'), props as never, {
 			report: vi.fn(),
 			subject: 'probe'
@@ -102,10 +102,10 @@ describe('the Svelte helpers', () => {
 		expect(seen.computeInlineContent).toBe('second');
 	});
 
-	it('re-render only what reads a prop the update changed', () => {
+	it('re-renders only what reads a prop the update changed', () => {
 		const getTheme = () => 'light';
 		const props = (start: number) => ({ inline: { start }, source: '$x$', getTheme }) as never;
-		const view = svelteInlineWidget(SourceReader as never);
+		const view = svelteView(SourceReader as never);
 		const mounted = mountPluginView(view, document.createElement('span'), props(0), {
 			report: vi.fn(),
 			subject: 'probe'

@@ -115,35 +115,46 @@ export interface EditorOptions {
  *  use), `once` never, since it is read at mount. */
 export type PropTiming = 'live' | 'once';
 
-/** One timing for every key of `P`, optional keys included. */
-export type PropTimings<P> = { readonly [K in keyof Required<P>]: PropTiming };
+/** What a wrapper needs to know about one option. `boolean` marks the options typed `boolean`,
+ *  which a wrapper like Vue must declare with no default so an absent one keeps the editor's. */
+export type EditorOptionSpec<T> = [NonNullable<T>] extends [boolean]
+	? { readonly timing: PropTiming; readonly boolean: true }
+	: { readonly timing: PropTiming; readonly boolean?: never };
 
-/** Each prop's timing, matching how `Editor.svelte` reads it; a prop added without one fails
- *  `npm run check`. `createEditor` updates by it. */
-export const EDITOR_PROP_TIMING = {
-	source: 'live',
-	theme: 'live',
-	presentationMode: 'live',
-	linkClick: 'live',
-	caret: 'live',
-	keybindings: 'live',
-	placeholder: 'live',
-	searchBar: 'live',
-	searchBarAnchor: 'live',
-	selectionToolbar: 'live',
-	blockDragHandles: 'live',
-	imageLoadPolicy: 'live',
-	header: 'live',
-	resolveImageUrl: 'live',
-	resolveLinkUrl: 'live',
-	onLinkActivate: 'live',
-	onPasteImage: 'live',
-	onRunCode: 'live',
-	codeMenuItems: 'live',
-	plugins: 'once',
-	syntax: 'once',
-	scrollMode: 'once'
-} as const satisfies PropTimings<EditorOptions & { header?: unknown }>;
+/** One spec for every key of `P`, optional keys included. */
+export type EditorOptionSpecs<P = EditorOptions & { header?: unknown }> = {
+	readonly [K in keyof Required<P>]: EditorOptionSpec<P[K]>;
+};
+
+/**
+ * Every editor option, `header` included, with when a new value takes effect and whether it's a
+ * boolean. `createEditor` skips the `once` options on `update`, and a framework wrapper declares
+ * its props from this list.
+ */
+export const EDITOR_OPTION_SPECS = {
+	source: { timing: 'live' },
+	theme: { timing: 'live' },
+	presentationMode: { timing: 'live' },
+	linkClick: { timing: 'live' },
+	caret: { timing: 'live' },
+	keybindings: { timing: 'live' },
+	placeholder: { timing: 'live' },
+	searchBar: { timing: 'live', boolean: true },
+	searchBarAnchor: { timing: 'live' },
+	selectionToolbar: { timing: 'live', boolean: true },
+	blockDragHandles: { timing: 'live', boolean: true },
+	imageLoadPolicy: { timing: 'live' },
+	header: { timing: 'live' },
+	resolveImageUrl: { timing: 'live' },
+	resolveLinkUrl: { timing: 'live' },
+	onLinkActivate: { timing: 'live' },
+	onPasteImage: { timing: 'live' },
+	onRunCode: { timing: 'live' },
+	codeMenuItems: { timing: 'live' },
+	plugins: { timing: 'once' },
+	syntax: { timing: 'once' },
+	scrollMode: { timing: 'once' }
+} as const satisfies EditorOptionSpecs;
 
 /** The empty block a function `placeholder` is asked about. */
 export interface PlaceholderBlock {

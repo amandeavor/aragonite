@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import type { EditorError } from '#lib/editor-events.js';
 import type { PluginView } from '#lib/plugin-view.js';
-import { svelteMenuRow } from '#lib/svelte-views.svelte.js';
+import { svelteView } from '#lib/svelte-view.svelte.js';
 import type {
 	InlineMenuItem,
 	InlineMenuRowProps,
@@ -97,7 +97,7 @@ describe('a DOM row', () => {
 
 describe('a component row', () => {
 	it('takes a new active flag in place', async () => {
-		const { mounted } = await openMenu(svelteMenuRow(ThrowingRow), ['a', 'b']);
+		const { mounted } = await openMenu(svelteView(ThrowingRow), ['a', 'b']);
 		const first = option(mounted, 'a').querySelector<HTMLElement>('.custom-row');
 		expect(first?.dataset.activeRow).toBe('true');
 
@@ -109,7 +109,7 @@ describe('a component row', () => {
 
 	// Svelte re-renders a row after its update returns, so only the row's error boundary sees that.
 	it('that throws on a later re-render shows the default row and reports the source', async () => {
-		const { mounted, errors } = await openMenu(svelteMenuRow(ThrowWhenActiveRow), ['a', 'late']);
+		const { mounted, errors } = await openMenu(svelteView(ThrowWhenActiveRow), ['a', 'late']);
 
 		await pressKey(surfaceAt(mounted, [0]), { key: 'ArrowDown' });
 		await mounted.settle();
@@ -135,7 +135,7 @@ describe('an inline menu row that fails to mount', () => {
 	};
 
 	it.each([
-		['a component', svelteMenuRow(ThrowingRow)],
+		['a component', svelteView(ThrowingRow)],
 		['a DOM row', throwingDomRow]
 	])('as %s, shows the default row and reports the source', async (_name, row) => {
 		const { mounted, errors } = await openMenu(row);

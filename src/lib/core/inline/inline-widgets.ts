@@ -158,8 +158,7 @@ function widgetOf(kind: AnyInlineKind, grammar: GrammarView): WidgetEntry | unde
 
 /** The message a plugin gets when it passes a drawing field where a `view` belongs. */
 export const UPGRADE_HINT =
-	'buildWidget, buildDom and component became `view`; svelteInlineWidget, ' +
-	'svelteDecorationWidget and svelteMenuRow wrap a Svelte component';
+	'buildWidget, buildDom and component became `view`; svelteView wraps a Svelte component';
 
 export function registerInlineWidgetKind(
 	kind: AnyInlineKind,

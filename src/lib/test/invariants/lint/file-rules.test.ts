@@ -332,7 +332,7 @@ const PLUGIN_VIEW_FALLBACK: FileRule = {
 		MOUNTS_PLUGIN_VIEW.test(file.code) && !/\bwarnIfForeignRuntime\(/.test(file.code),
 	allowed: {
 		'src/lib/create-editor.ts': 'mounts the editor itself, which no plugin supplies',
-		'src/lib/svelte-views.svelte.ts':
+		'src/lib/svelte-view.svelte.ts':
 			'its views mount only through `plugin-view.ts :: mountPluginView`, which contains their throws'
 	},
 	reason:

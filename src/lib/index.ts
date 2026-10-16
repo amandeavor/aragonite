@@ -6,6 +6,7 @@
 
 export { createEditor, type CreateEditorOptions, type EditorHandle } from './create-editor';
 
+export { EDITOR_OPTION_SPECS } from './editor-props';
 export type {
 	EditorOptions,
 	EditorInstance,

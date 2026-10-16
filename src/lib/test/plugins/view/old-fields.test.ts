@@ -27,17 +27,17 @@ export const inlineBuilder: InlineWidgetDescriptor = {
 export const inlineComponent: InlineWidgetDescriptor = {
 	isWidget: () => true,
 	view: () => ({}),
-	// @ts-expect-error a Svelte widget goes through `svelteInlineWidget`
+	// @ts-expect-error a Svelte widget goes through `svelteView`, as `view`
 	component: widgetComponent
 };
 
 // @ts-expect-error a decoration widget draws through `view`, not a builder
 export const decorationBuilder: DecorationWidgetSpec = { buildDom: () => document.body };
 
-// @ts-expect-error a Svelte decoration widget goes through `svelteDecorationWidget`
+// @ts-expect-error a Svelte decoration widget goes through `svelteView`
 export const decorationComponent: DecorationWidgetSpec = { component: widgetComponent };
 
-// @ts-expect-error a Svelte row goes through `svelteMenuRow`
+// @ts-expect-error a Svelte row goes through `svelteView`
 export const rowAsComponent: InlineMenuSource['row'] = rowComponent;
 
 // @ts-expect-error a DOM row is a view, not a builder object

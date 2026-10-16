@@ -30,7 +30,7 @@ import {
 	type WriteContext,
 	type WriteRule
 } from '#lib/plugin.js';
-import { svelteInlineWidget } from '#lib/svelte.js';
+import { svelteView } from '#lib/svelte.js';
 import MathInline from './MathInline.svelte';
 import { isFlankingSpace } from './flanking';
 import { registerMathBlockCompleter } from './math-completion';
@@ -101,7 +101,7 @@ export function registerMathInline(): void {
 	});
 	registerInlineWidgetKind(kind, {
 		isWidget: () => true,
-		view: svelteInlineWidget(MathInline),
+		view: svelteView(MathInline),
 		editing: {
 			revealSource: true,
 			revealContentSpan: mathContentSpan,
