@@ -1,8 +1,8 @@
 /**
  * One drawn gesture, applied through the same code a real keystroke goes through: the caret-edge
  * dispatch over a mounted block, the block-edit bundle's split and merge, the range delete, and the
- * browser's own replace of a selection. Never a registered rewrite function directly: the code that
- * calls those is what this tests.
+ * browser's own replace of a selection. Never the live join or split rewrite directly: the code
+ * that calls them is what this tests.
  */
 
 import { defaultGrammarView } from '#lib/schema/block-openers.js';

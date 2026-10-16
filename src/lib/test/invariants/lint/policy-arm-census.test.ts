@@ -186,13 +186,6 @@ const HAND_WRITTEN_ARMS: readonly HandWrittenArm[] = [
 			'the no-residue rule is restated at four `arms` entries; single-sourcing it into the table folds into the slots-to-rows move'
 	},
 	{
-		path: POLICY_TABLE,
-		detection: 'declared',
-		fate: 'deferred',
-		reason:
-			'the two rewrite slots hold one global function each rather than per-kind rows; moving them turns a register-once throw into a silent per-row degrade, so it needs the close-and-reopen producer assertion first'
-	},
-	{
 		path: 'src/lib/components/built-in-blocks.ts',
 		detection: 'kind-literal',
 		fate: 'outside',

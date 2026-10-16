@@ -28,10 +28,6 @@ const ALLOWLIST: Record<string, Declaration> = {
 		mode: 'bounded',
 		reason: 'a block command’s own arguments: an id and its value, or one clipboard payload'
 	},
-	'src/lib/core/inline/live-edit/live-join.ts :: cleanLiveJoinSeam': {
-		mode: 'bounded',
-		reason: 'a Math.min over the two readings the join offers, deduplicated to one when they agree'
-	},
 	'src/lib/decorations/island-dom.ts :: applyReplace': {
 		mode: 'bounded',
 		reason: 'the tokens of one decoration’s own class attribute; no document axis scales it'
