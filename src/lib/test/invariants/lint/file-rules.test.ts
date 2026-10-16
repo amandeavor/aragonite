@@ -398,8 +398,6 @@ const RULES: FileRule[] = [
 		matches: /\b(?:setTimeout|setInterval|queueMicrotask|requestAnimationFrame)\s*\(/,
 		allowed: {
 			'src/lib/selection/autoscroll.ts': 'rAF autoscroll loop: an animation cadence, not ordering',
-			'src/lib/components/blocks/editable/editable-leaf.ts':
-				'rAF fold of a revealed source after a range drag: the blur it answers arrives inside the frame that measured the range',
 			'src/lib/windowing/observe-resize.ts':
 				'rAF start of a size observation: one begun while a frame delivers resize notifications is skipped and reported as a loop error',
 			'src/lib/components/drag-handle.ts':

@@ -1187,8 +1187,8 @@ containers).
 
 **G4.4 · No timing hacks.** No timing primitive is used for sequencing (`await tick()` is the one).
 The allowlist in `lint/file-rules.test.ts` is short and closed, each entry with its reason: the rAF
-throttles in `selection/autoscroll.ts` and `selection/pointer-session.ts`, the rAF fold in
-`components/blocks/editable/editable-leaf.ts`, the rAF placement in `components/drag-handle.ts`, the rAF
+throttles in `selection/autoscroll.ts` and `selection/pointer-session.ts`, the rAF placement in
+`components/drag-handle.ts`, the rAF
 start of a size watch in `windowing/observe-resize.ts`, the drawn caret's frame paint in
 `caret/drawn-caret.svelte.ts` (read-only, G4.143), the wall-clock undo debounce in
 `editor-actions/commit/text-batch.ts` and the occurrence plugin's typing pause in

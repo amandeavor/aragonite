@@ -5,7 +5,7 @@
  * synchronously during initialisation. `plugin-guide/editable-content.md` § The editable leaf.
  */
 
-import { onDestroy } from 'svelte';
+import { onDestroy, tick } from 'svelte';
 import { createAttachmentKey } from 'svelte/attachments';
 import type { BlockEditActions } from '../../../action-contracts';
 import type { EditableLeafBlockApi, StickyColumnDirection } from '../../../block-component';
@@ -343,23 +343,23 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		});
 	}
 
-	// A blur during a cross-block range is a drag leaving this source; it hides a frame later, once
-	// the range has measured its text, unless focus came back.
-	let foldFrame = 0;
-	function foldAfterRange(): void {
-		if (foldFrame) return;
-		foldFrame = requestAnimationFrame(() => {
-			foldFrame = 0;
-			const el = deps.getEl();
-			if (!isRevealed() || (el && el.contains(document.activeElement))) return;
-			void commitReveal(true);
-		});
+	// A blur during a cross-block range is a drag leaving this source; it hides once the release's
+	// render has landed, unless focus came back.
+	let foldPending = false;
+	async function foldAfterRange(): Promise<void> {
+		if (foldPending) return;
+		foldPending = true;
+		await tick();
+		foldPending = false;
+		const el = deps.getEl();
+		if (!isRevealed() || (el && el.contains(document.activeElement))) return;
+		void commitReveal(true);
 	}
 
 	async function commitReveal(force = false): Promise<void> {
 		if (mode !== 'render-primary' || !isRevealed()) return;
 		if (selection.isCrossBlock && !force) {
-			foldAfterRange();
+			void foldAfterRange();
 			return;
 		}
 		traceRevealFold('blur');
@@ -374,7 +374,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		await commitSource(edited);
 	}
 
-	// Forced, because a cross-block range would put the write off a frame and the command runs now.
+	// Forced, because a cross-block range would put the write off until the next render.
 	function afterSourceCommit(run: () => void): void {
 		if (mode !== 'render-primary' || !isRevealed()) return run();
 		void commitReveal(true).then(run);
