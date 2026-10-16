@@ -1506,7 +1506,7 @@ N-vs-4N ratio (`measureScanGrowth`) cancels the machine. The allowlist carries a
 **G4.49 · The shared IME driver.** A spec that builds a `CompositionEvent` or an
 `insertCompositionText` input event by hand tests a browser no user has, so it fails the scan. The
 driver file is the one exemption (WebKit has no CDP session), pinned exactly, so a widened exemption
-and a deleted WebKit branch each fail. `e2e/lint/composition-driver.test.ts`.
+and a deleted WebKit branch each fail. `e2e/lint/e2e-drivers.test.ts`.
 
 **G4.50 · Cross-block-range classification.** Every block command id is range-declined, has a
 cross-block branch, or is recorded range-safe with its reason; the decline is what stops a command
@@ -2029,7 +2029,7 @@ row per syntax (`SYNTAX_MODULES`) that fails a copy elsewhere:
 source mode, where most live-mode assertions pass anyway. `EditorPage.goto` checks the mode its query
 names, `EditorPage.setPresentationMode` waits for the one it sets, and `src/lib/e2e/mode-switch.ts`
 holds the clicks (`clickModeToggle`, `clickModeButton`), each waiting on `data-presentation`.
-`e2e/lint/mode-switch.test.ts` fails a bridge `setPresentationMode` call outside `editor-page.ts`,
+`e2e/lint/e2e-drivers.test.ts` fails a bridge `setPresentationMode` call outside `editor-page.ts`,
 and a mode toggle or button mentioned outside `mode-switch.ts` and its two allowed specs.
 
 **G4.141 · One writer for the drawn caret.** `data-caret-drawn` (the attribute that hides the

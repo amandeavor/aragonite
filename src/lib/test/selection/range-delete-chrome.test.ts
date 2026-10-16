@@ -1,14 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import { involvesReservedChrome } from '../../selection/range-delete-chrome';
 import { createSharingState } from '../../tree-operations/sharing';
 import { registerCalloutForTests } from './chrome-plugins';
 import { expectParseConverged } from '../harness/parse-converged';
 import type { SelectionPoint } from '../../selection/primitives';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 // Two body children so in-place truncation is distinguishable from an upward merge. Paths:
 // [0]=Above, [1]=note ([1,0]=title, [1,1]=Body1, [1,2]=Body2), [2]=Below.
@@ -20,13 +18,7 @@ function point(path: number[], offset: number): SelectionPoint {
 
 function run(source: string, start: SelectionPoint, end: SelectionPoint) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end);
 	return {
 		doc: result.newDoc,
 		source: serialize(result.newDoc),
@@ -119,13 +111,7 @@ describe('chrome wall: rangeDelete post-states', () => {
 	it("end at the container's last byte: the container dies as one unit, children intact", () => {
 		const doc = parse(FIXTURE);
 		const note = doc.children[1];
-		const result = rangeDelete(
-			doc,
-			rangeCoverage(doc, coverRange(doc, point([0], 5), point([1, 2], 5))),
-			createSharingState(),
-			fixtureReading(),
-			'keyless'
-		);
+		const result = deleteRange(doc, point([0], 5), point([1, 2], 5));
 		expect(serialize(result.newDoc)).toBe('Above\n\nBelow\n');
 		// One splice, not an emptying followed by cleanup: the detached node keeps its children,
 		// so the undo entry holds a whole node.
@@ -158,13 +144,7 @@ describe('chrome wall: rangeDelete post-states', () => {
 
 		const sharing = createSharingState();
 		sharing.markSnapshotTaken();
-		rangeDelete(
-			doc,
-			rangeCoverage(doc, coverRange(doc, point([0], 2), point([1, 1], 2))),
-			sharing,
-			fixtureReading(),
-			'keyless'
-		);
+		deleteRange(doc, point([0], 2), point([1, 1], 2), { sharing });
 
 		expect(snapshotTitle.raw).toBe('Title\n');
 	});

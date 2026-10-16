@@ -30,18 +30,17 @@ import {
 	type SelectionPoint
 } from '../../selection/primitives';
 import { coverRange, rangeCoverage, type RangeCoverage } from '../../selection/range-coverage';
-import { rangeDelete } from '../../selection/range-delete';
 import {
 	crossBlockClipboardArm,
 	type CrossBlockClipboardDeps
 } from '../../selection/cross-block/clipboard';
-import { createSharingState } from '../../tree-operations/sharing';
 import { fixtureReading } from '../harness/fixture-grammar';
 import {
 	BOUNDED_GROWTH_CEILING,
 	expectBoundedGrowth,
 	measureScanGrowth
 } from '../harness/scan-growth';
+import { deleteRange } from '../harness/range-delete';
 
 const N = 250;
 
@@ -111,16 +110,7 @@ describe('a range over a long list costs in proportion to what it covers', () =>
 	it('deletes the range in near linear path comparisons', () => {
 		const small = wholeListSelection(N);
 		const large = wholeListSelection(4 * N);
-		const cost = ({ doc, start, end }: typeof small) =>
-			counted(() =>
-				rangeDelete(
-					doc,
-					rangeCoverage(doc, coverRange(doc, start, end)),
-					createSharingState(),
-					fixtureReading(),
-					'keyless'
-				)
-			);
+		const cost = ({ doc, start, end }: typeof small) => counted(() => deleteRange(doc, start, end));
 
 		expect(cost(large)).toBeLessThanOrEqual(GROWTH_CEILING * cost(small));
 	});

@@ -5,11 +5,8 @@ import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import type { CstNode } from '#lib/core/nodes.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import { makeEditorActionsDeps, pasteContext } from '../../harness/editor-actions';
+import { runPasteDispatch, makePasteCommit } from '../../harness/editor-actions';
 
 // A paste that splits a task item's first paragraph leaves each half in a slot a checkbox stands
 // in front of, so each half reads the way a reload reads it there: `# b` stays paragraph text.
@@ -24,18 +21,14 @@ function shape(nodes: readonly CstNode[]): unknown[] {
 }
 
 async function paste(source: string, offset: number, clipboard: string): Promise<string> {
-	const { deps } = makeEditorActionsDeps(parse(source).children);
-	const controller = createUndoController(deps);
-	await pasteDispatch(
+	const h = makePasteCommit(parse(source).children);
+	await runPasteDispatch(
+		h,
 		{ pastedText: clipboard, targetPath: [0, 0, 0], offset },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: createBlockEditActions(deps, controller),
-			controller: createPasteCoordinator(deps, controller)
-		})
+		{ blockEdit: createBlockEditActions(h.deps, h.undo) }
 	);
-	const written = serialize(deps.doc);
-	expect(shape(deps.doc.children), written).toEqual(shape(parse(written).children));
+	const written = serialize(h.doc);
+	expect(shape(h.doc.children), written).toEqual(shape(parse(written).children));
 	return written;
 }
 

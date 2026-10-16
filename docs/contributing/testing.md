@@ -544,7 +544,7 @@ await gotoReady(page, '/test/syntax'); // waits for window.__syntax, then the fo
 It lives in `src/lib/e2e/goto-ready.ts` and waits for the global the route sets once it's
 hydrated, since the server-rendered markup shows up well before any click handler does.
 `reloadReady(page)` is the reload version, and `editor.goto()` already calls `gotoReady` for you.
-A raw `page.goto` or `page.reload` fails `src/lib/e2e/lint/goto-ready.test.ts`.
+A raw `page.goto` or `page.reload` fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
 A new route gets a row in `src/lib/e2e/goto-ready.ts :: READY_BY_ROUTE`, or `gotoReady` won't
 compile for it. Every route that mounts an editor already sets `__parityDocuments`, so that's the
@@ -555,7 +555,7 @@ To switch the presentation mode, call `editor.setPresentationMode(mode)`, or cli
 toggle with `clickModeToggle(page, mode)` from `src/lib/e2e/mode-switch.ts` (the showcase's and
 the changelog's buttons take `clickModeButton`). Each one waits until the editor shows the mode.
 A mode that never applied leaves you in source mode, where most live-mode assertions pass anyway,
-so a raw bridge call or toggle click fails `src/lib/e2e/lint/mode-switch.test.ts`.
+so a raw bridge call or toggle click fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
 ### Patterns and gotchas
 

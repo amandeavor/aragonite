@@ -3,13 +3,10 @@
 // respects collapse, so the caret belongs on a collapsed container's title line.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '../../core/parser';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
-import { createSharingState } from '../../tree-operations/sharing';
 import { blockNodeAt } from '../../tree-operations/node-primitives';
 import { registerDetailsKind } from '../../plugins/details/details-kind';
 import type { CellSelectionPoint } from '../../selection/primitives';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 /** Row-major cell index on the table block's own path. */
 const cell = (path: number[], index: number): CellSelectionPoint => ({
@@ -26,13 +23,7 @@ function twoTables(lineEnding: string): string {
 
 function deleteBothTables(source: string, firstTableIndex: number) {
 	const doc = parse(source);
-	return rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, cell([firstTableIndex], 0), cell([firstTableIndex + 1], 3))),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	return deleteRange(doc, cell([firstTableIndex], 0), cell([firstTableIndex + 1], 3));
 }
 
 describe('when nothing survives', () => {

@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import {
-	makeEditorActionsDeps,
 	makeStubBlockEdit,
-	pasteContext
+	runPasteDispatch,
+	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { ensurePasteSurface } from '#lib/test/support/paste-surface.js';
 
@@ -19,19 +16,16 @@ const TABLE = '| A | B |\n| --- | --- |\n| 1 | 2 |\n';
 
 /** Paste into the body row's first cell, path [0, 1, 0]. */
 async function pasteIntoCell(clipboard: string) {
-	const { deps } = makeEditorActionsDeps(parse(TABLE).children);
+	const h = makePasteCommit(parse(TABLE).children);
 	const blockEdit = makeStubBlockEdit();
 
-	await pasteDispatch(
+	await runPasteDispatch(
+		h,
 		{ pastedText: clipboard, targetPath: [0, 1, 0], offset: 0 },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
+		{ blockEdit }
 	);
 	return {
-		doc: deps.doc,
+		doc: h.doc,
 		updateBlockContent: blockEdit.updateBlockContent as ReturnType<typeof vi.fn>
 	};
 }

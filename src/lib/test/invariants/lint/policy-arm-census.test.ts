@@ -6,10 +6,9 @@
  * registry answers for non-editable widgets, and a file asking both says why.
  */
 
-import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { collectEditorSources, type SourceFile } from './scan-source';
-import { probeFile } from './file-rule';
+import { describeManifests, under } from './file-rule';
 import { SOURCE, SOURCE_DIR } from './source-paths';
 
 /** Where a live gesture can live: the block components and the layers they dispatch into. `core/`
@@ -62,8 +61,6 @@ const ROWED_KINDS = [
 ];
 
 const KIND_LITERAL = new RegExp(`['"](${ROWED_KINDS.join('|')})['"]`);
-
-const namesConstructKind = (file: SourceFile): boolean => KIND_LITERAL.test(file.code);
 
 // ── The branches that read rows ──────────────────────────────────────────────
 
@@ -204,40 +201,85 @@ const HAND_WRITTEN_ARMS: readonly HandWrittenArm[] = [
 
 /** Empty: every live gesture rule is a row, a decided `outside`, or a `deferred` naming its blocker. */
 const backlog = HAND_WRITTEN_ARMS.filter((arm) => arm.fate === 'backlog');
-const kindLiteralArms = HAND_WRITTEN_ARMS.filter((arm) => arm.detection === 'kind-literal');
 
 // ── The census ───────────────────────────────────────────────────────────────
 
-describe('inline-construct policy branch census', () => {
-	const allSources = collectEditorSources();
-	const gestureSources = [
-		...GESTURE_ROOTS.flatMap((root) => collectEditorSources(path.resolve(root))),
-		...allSources.filter((file) => GESTURE_FILES.includes(file.relPath))
-	];
-	const paths = (files: SourceFile[]) => files.map((file) => file.relPath).sort();
-	const unique = (values: string[]) => [...new Set(values)].sort();
+const allSources = collectEditorSources();
+const inGestureCode = (file: SourceFile): boolean =>
+	under(...GESTURE_ROOTS)(file) || GESTURE_FILES.includes(file.relPath);
+const gestureProbe = (code: string) => ({
+	relPath: 'src/lib/components/blocks/text/probe.ts',
+	code
+});
 
-	it('every declared branch is on disk and reachable by the scan', () => {
-		const declared = unique([
-			...Object.keys(POLICY_ARMS),
-			...HAND_WRITTEN_ARMS.map((arm) => arm.path)
-		]);
+describeManifests(
+	[
+		{
+			id: 'every reader of the policy table is declared with the column it reads',
+			matches: readsPolicyTable,
+			declared: POLICY_ARMS,
+			reason:
+				'a new file started reading the policy table: add it to POLICY_ARMS with the column it is there for',
+			hits: [
+				'const p = getInlineConstructPolicy(node.kind);',
+				'if (isRevealableInlineKind(kind)) out.push(node);',
+				'for (const { kind } of listInlineMarks()) seen.add(kind);'
+			],
+			misses: [
+				'// getInlineConstructPolicy(kind) is the door',
+				'const x = myGetInlineConstructPolicy(kind);'
+			]
+		},
+		{
+			id: 'every gesture branch naming a construct kind is declared with its reason and fate',
+			population: inGestureCode,
+			matches: KIND_LITERAL,
+			declared: Object.fromEntries(
+				HAND_WRITTEN_ARMS.filter((arm) => arm.detection === 'kind-literal').map((arm) => [
+					arm.path,
+					arm.reason
+				])
+			),
+			reason:
+				'a gesture branch started naming a construct kind: give the question a row, or declare the branch in HAND_WRITTEN_ARMS with why it stays',
+			hits: [
+				gestureProbe("if (node.kind === 'inlineCode') return codeWrap(slice);"),
+				gestureProbe('const MARKS = ["strong", "emphasis"];')
+			],
+			// The nearby spellings that are not a per-construct answer: a command id, a DOM tag read,
+			// and the same word in prose.
+			misses: [
+				gestureProbe("if (id === 'format.toggleStrong') return toggle();"),
+				gestureProbe("el.querySelector('strong > em')"),
+				gestureProbe('// a link never extends at its edges')
+			]
+		},
+		// Only a whole block legitimately asks both tables, hosting every inline kind at once; a
+		// declared entry matching both also proves neither matcher is dead.
+		{
+			id: 'a file reading both tables is declared with why it needs both answers',
+			matches: (file) => readsPolicyTable(file) && readsWidgetRegistry(file),
+			declared: BOTH_TABLE_READERS,
+			reason:
+				'a file started asking both tables: declare it in BOTH_TABLE_READERS with why one answer is not enough',
+			hits: [
+				'getInlineWidgetEditing(widget.kind)?.revealSource;\nconst p = getInlineConstructPolicy(kind);',
+				'if (isInlineWidget(node)) return null;\nif (isRevealableInlineKind(kind)) return kind;'
+			],
+			misses: [
+				'getInlineWidgetEditing(widget.kind)?.revealSource;',
+				'/* widgetSourceRange(el) answers */\nconst p = getInlineConstructPolicy(kind);'
+			]
+		}
+	],
+	allSources
+);
+
+describe('inline-construct policy hand-written branches', () => {
+	it('every branch declared by reading is on disk', () => {
 		const onDisk = new Set(allSources.map((file) => file.relPath));
-		expect(declared.filter((file) => !onDisk.has(file))).toEqual([]);
-	});
-
-	it('every reader of the policy table is declared with the column it reads', () => {
-		expect(
-			paths(allSources.filter(readsPolicyTable)),
-			'a new file started reading the policy table: add it to POLICY_ARMS with the column it is there for'
-		).toEqual(Object.keys(POLICY_ARMS).sort());
-	});
-
-	it('every gesture branch naming a construct kind is declared with its reason and fate', () => {
-		expect(
-			paths(gestureSources.filter(namesConstructKind)),
-			'a gesture branch started naming a construct kind: give the question a row, or declare the branch in HAND_WRITTEN_ARMS with why it stays'
-		).toEqual(unique(kindLiteralArms.map((arm) => arm.path)));
+		const declared = HAND_WRITTEN_ARMS.filter((arm) => arm.detection === 'declared');
+		expect(declared.map((arm) => arm.path).filter((file) => !onDisk.has(file))).toEqual([]);
 	});
 
 	it('no hand-written branch is an undecided backlog entry', () => {
@@ -250,78 +292,5 @@ describe('inline-construct policy branch census', () => {
 	it('every declared branch carries a reason', () => {
 		expect(HAND_WRITTEN_ARMS.filter((arm) => arm.reason.trim() === '')).toEqual([]);
 		expect(Object.entries(POLICY_ARMS).filter(([, reason]) => reason.trim() === '')).toEqual([]);
-	});
-
-	// ── The two-table boundary ───────────────────────────────────────────────
-
-	it('a file reading both tables is declared with why it needs both answers', () => {
-		const both = allSources.filter((file) => readsPolicyTable(file) && readsWidgetRegistry(file));
-		expect(
-			paths(both),
-			'a file started asking both tables: declare it in BOTH_TABLE_READERS with why one answer is not enough'
-		).toEqual(Object.keys(BOTH_TABLE_READERS).sort());
-	});
-
-	// An empty intersection above proves the boundary only while both halves can see anything.
-	it('both table matchers find readers, so the boundary is not an artifact of a dead matcher', () => {
-		expect(allSources.filter(readsPolicyTable).length).toBeGreaterThan(0);
-		expect(allSources.filter(readsWidgetRegistry).length).toBeGreaterThan(0);
-	});
-
-	// ── Matcher self-tests (non-vacuity) ─────────────────────────────────────
-
-	const probe = (matcher: (file: SourceFile) => boolean, text: string) =>
-		matcher(probeFile({ relPath: 'src/lib/components/blocks/text/probe.ts', code: text }));
-
-	it('the policy matcher sees every entry point and skips a mention in prose', () => {
-		expect(probe(readsPolicyTable, 'const p = getInlineConstructPolicy(node.kind);')).toBe(true);
-		expect(probe(readsPolicyTable, 'if (isRevealableInlineKind(kind)) out.push(node);')).toBe(true);
-		expect(
-			probe(readsPolicyTable, 'for (const { kind } of listInlineMarks()) seen.add(kind);')
-		).toBe(true);
-		expect(probe(readsPolicyTable, '// getInlineConstructPolicy(kind) is the door')).toBe(false);
-		expect(probe(readsPolicyTable, 'const x = myGetInlineConstructPolicy(kind);')).toBe(false);
-	});
-
-	it('the widget matcher sees the registry entry points and skips prose', () => {
-		expect(probe(readsWidgetRegistry, 'getInlineWidgetEditing(widget.kind)?.revealSource')).toBe(
-			true
-		);
-		expect(probe(readsWidgetRegistry, 'if (isInlineWidget(node)) return null;')).toBe(true);
-		expect(probe(readsWidgetRegistry, '/* widgetSourceRange(el) answers */')).toBe(false);
-	});
-
-	it('the kind matcher sees a literal in either quote and skips a dotted command id', () => {
-		expect(
-			probe(namesConstructKind, "if (node.kind === 'inlineCode') return codeWrap(slice);")
-		).toBe(true);
-		expect(probe(namesConstructKind, 'const MARKS = ["strong", "emphasis"];')).toBe(true);
-		// The nearby spellings that are not a per-construct answer: a command id, a DOM tag read,
-		// and the same word in prose.
-		expect(probe(namesConstructKind, "if (id === 'format.toggleStrong') return toggle();")).toBe(
-			false
-		);
-		expect(probe(namesConstructKind, "el.querySelector('strong > em')")).toBe(false);
-		expect(probe(namesConstructKind, '// a link never extends at its edges')).toBe(false);
-	});
-
-	it('an undeclared gesture branch naming a kind fails the set equality', () => {
-		const rogue = probeFile({
-			relPath: 'src/lib/components/blocks/text/rogue.ts',
-			code: "if (node.kind === 'strikethrough') return null;"
-		});
-		expect(paths([...gestureSources, rogue].filter(namesConstructKind))).not.toEqual(
-			unique(kindLiteralArms.map((arm) => arm.path))
-		);
-	});
-
-	it('an undeclared policy reader fails the set equality', () => {
-		const rogue = probeFile({
-			relPath: 'src/lib/selection/rogue.ts',
-			code: 'const p = getInlineConstructPolicy(kind);'
-		});
-		expect(paths([...allSources, rogue].filter(readsPolicyTable))).not.toEqual(
-			Object.keys(POLICY_ARMS).sort()
-		);
 	});
 });

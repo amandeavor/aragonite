@@ -277,7 +277,7 @@ const RULES: FileRule[] = [
 		},
 		reason:
 			'a private walk reads a bracket or quote inside a literal as code the day one appears (#287): use collectFiles, stripComments, walkCode or the helpers built on them in scan-source.ts',
-		reaches: [SOURCE.scanSource, SOURCE.compositionDriverLint],
+		reaches: [SOURCE.scanSource, SOURCE.e2eDriversLint],
 		hits: [
 			at(
 				`${LINT_DIRS[0]}a.test.ts`,

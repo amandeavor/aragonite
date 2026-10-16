@@ -6,14 +6,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
-import { createSharingState } from '../../tree-operations/sharing';
 import type { PresentationMode } from '../../presentation-mode';
 import type { SelectionPoint } from '../../selection/primitives';
 import { describeConvergence } from '../harness/parse-converged';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { registerChromePluginsForTests } from './chrome-plugins';
+import { deleteRange } from '../harness/range-delete';
 
 function run(
 	source: string,
@@ -22,13 +20,7 @@ function run(
 	mode: PresentationMode = 'live'
 ) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading({}, mode),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end, { reading: fixtureReading({}, mode) });
 	return { doc, caret: result.caret(result.newDoc) };
 }
 

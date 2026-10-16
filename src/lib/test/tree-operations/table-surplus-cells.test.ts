@@ -18,12 +18,10 @@ import {
 	moveColumn
 } from '#lib/tree-operations/table-mutations.js';
 import { sliceTableAtRow } from '#lib/tree-operations/paste/table-slice.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
-import { fixtureReading } from '../harness/fixture-grammar';
 import { documentLineEnding } from '#lib/core/lines.js';
+import { deleteRange } from '../harness/range-delete';
+import { cellPoint } from '#lib/selection/primitives.js';
 
 const WIDE = '| H0 |\n| --- |\n| x | y |\n';
 
@@ -141,20 +139,7 @@ describe('the table’s structural edits keep them', () => {
 
 	it('a range delete from the paragraph above through the header row', () => {
 		const doc = parse('para\n\n| H0 |\n| --- |\n| x | y |\n| 1 |\n');
-		const [start, end] = [
-			{ path: [0], offset: 0 },
-			{ path: [1], offset: 0 }
-		];
-
-		rangeDelete(
-			doc,
-			rangeCoverage(doc, coverRange(doc, start, end)),
-			createSharingState(),
-			fixtureReading(),
-			'keyless'
-		);
-		// The end is given in cells, the unit the selection snaps a table endpoint to.
-		allowDevWarns(['rangeCoverage:tableEdge']);
+		deleteRange(doc, { path: [0], offset: 0 }, cellPoint([1], 0));
 
 		expect(serialize(doc)).toBe('\n| x | y |\n| --- | --- |\n| 1 |  |\n');
 		expect(describeConvergence(doc)).toBeNull();
