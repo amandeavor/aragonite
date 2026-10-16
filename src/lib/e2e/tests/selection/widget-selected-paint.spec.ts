@@ -132,12 +132,21 @@ test.describe('a widget selected whole shows that it is', () => {
 			});
 		}
 
-		test(`${shape.name}, washed, is replaced by the next typed letter`, async ({ page }) => {
+		test(`${shape.name}, washed, is replaced by the next typed letter and undo brings it back`, async ({
+			page
+		}) => {
 			await selectIn(shape, HOSTS[0]);
 			await expect.poll(async () => (await readWash(page)).count).toBe(1);
 
 			await page.keyboard.type('X');
 			await expect.poll(() => editor.bridge.getSource()).toBe('ab X cd\n');
+
+			// Undo puts a caret back, as it does for a replaced text range, so nothing stays washed.
+			await page.keyboard.press('ControlOrMeta+z');
+			await expect
+				.poll(() => editor.bridge.getSource())
+				.toBe(HOSTS[0].doc.replace('W', shape.source));
+			expect((await readWash(page)).count).toBe(0);
 		});
 	}
 

@@ -17,7 +17,8 @@ An image whose editing ring is up keeps the ring alone.
 ## User interactions
 
 - A `<br>` or a chip selected and wearing the wash, then a typed letter: the letter replaces the
-  widget, as the selection promised.
+  widget, as the selection promised. Ctrl+Z brings the widget back with a caret, as it does a
+  replaced text range, and nothing stays washed.
 
 ## Edge cases
 
