@@ -15,7 +15,7 @@ and one in a table cell (block 1, first body cell).
 
 ## Regressions
 
-- Copy, cut and paste over a chip a table cell had selected did nothing: the event reached the
-  editor root, which hands a selected widget's clipboard to its block, and the cell had no
-  handler there. Miss-analysis: every selected-widget clipboard test drove a paragraph; no test
-  selected a widget in a cell, since no bundled widget a cell draws can be selected.
+- Copy and cut over a chip a table cell had selected did nothing: the event reached the focused
+  cell, whose clipboard had no step for a selected widget. Miss-analysis: every selected-widget
+  clipboard test drove a paragraph; no test selected a widget in a cell, since no bundled widget a
+  cell draws can be selected.

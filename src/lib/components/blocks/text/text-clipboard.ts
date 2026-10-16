@@ -54,9 +54,6 @@ export interface TextClipboard extends ClipboardHandlers {
 	/** The block's handler for a clipboard event the editor root received: a selected widget clears
 	 *  the browser selection, so the event arrives at `<body>`, past the block's own binding. */
 	claimRootClipboard(event: ClipboardEvent): void;
-	/** Deletes `range` as a cut does, with undo's caret at `undoCaret`; for a menu's cut, which
-	 *  fires no clipboard event of its own. */
-	removeRange(range: RawRange, undoCaret: number): void;
 }
 
 export function createTextClipboard(deps: TextClipboardDeps): TextClipboard {
@@ -108,13 +105,13 @@ export function createTextClipboard(deps: TextClipboardDeps): TextClipboard {
 
 	// A cut is a delete, so it goes through the same join rules: in live mode the range can span
 	// delimiter runs the user never saw, and a plain splice would print them.
-	function removeRange(range: RawRange, undoCaret: number): void {
+	function removeRange(range: RawRange): void {
 		const edit = replaceRangeInLeaf(deps.node, range, '', deps.storedAs());
 		const write = deps.surface.blockEdit.updateBlockContent(
 			deps.index,
 			edit.raw,
 			'literal',
-			undoCaret,
+			deps.surface.caret.getPreEditOffset(),
 			edit.caret
 		);
 		if (write.admitted) deps.setPendingCursor(write.caret);
@@ -123,10 +120,7 @@ export function createTextClipboard(deps: TextClipboardDeps): TextClipboard {
 	const handlers = deps.surface.clipboard({
 		foldReveal: deps.foldRevealBeforeMutation,
 		selectionArms: [{ copy: copyWidget, remove: removeWidget }],
-		rangeArm: {
-			copy: copyRange,
-			remove: (range: RawRange) => removeRange(range, deps.surface.caret.getPreEditOffset())
-		},
+		rangeArm: { copy: copyRange, remove: removeRange },
 		pastePreHook: deps.pastePreHook,
 		pasteTail: (pastedText, { range, held }) => {
 			// A selected widget is the selection a paste replaces, through the same route as any.
@@ -146,7 +140,6 @@ export function createTextClipboard(deps: TextClipboardDeps): TextClipboard {
 
 	return {
 		...handlers,
-		removeRange,
 		// Routed to the same handlers a caret-side event reaches, so the reading-mode check, the
 		// source hide and the sticky-column reset come along rather than being repeated here.
 		claimRootClipboard(event) {

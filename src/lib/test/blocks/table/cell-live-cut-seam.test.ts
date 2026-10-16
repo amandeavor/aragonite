@@ -10,6 +10,7 @@ import {
 } from '#lib/schema/inline-construct-policy.js';
 import { mountCell, type MountedCell } from './mount-cell';
 import { settleEditor } from '#lib/test/harness/settle.js';
+import { installClipboardEvents } from '#lib/test/harness/clipboard-events.js';
 
 beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
 afterAll(() => __resetLiveJoinSeamCleanerForTests());
@@ -70,11 +71,12 @@ describe('live mode: every cell cut crosses the join', () => {
 	});
 
 	it('the context-menu cut takes the same join', async () => {
-		document.execCommand = vi.fn(() => true);
+		installClipboardEvents();
 		mounted = mountCell(MIXED, LIVE);
 		mounted.el.focus();
 
 		await mounted.ref().applyMenuClipboard!('cut', { start: 4, end: 11 });
+		await settleCommit(mounted);
 
 		expect(committedCalls(mounted)).toEqual([[0, '**bo***t*', 'literal', 4, 4]]);
 	});

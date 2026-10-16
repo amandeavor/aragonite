@@ -62,8 +62,8 @@ const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
 		why: 'the menu paste reads through navigator.clipboard and re-dispatches the text as a paste event on the focused surface, whose handler is the editable-surface route above'
 	},
 	'src/lib/components/blocks/table/TableCellBlock.svelte': {
-		handoff: 'pasteInline',
-		why: 'the right-click menu paste has no ClipboardEvent to read, so it reads through navigator.clipboard and hands the text to the surface’s inline paste'
+		handoff: 'pasteTextInto',
+		why: 'the cell’s right-click menu paste reads through navigator.clipboard and re-dispatches the text as a paste event on the cell, whose handler is the editable-surface route above'
 	},
 	'src/lib/components/paste-image-arm.ts': {
 		handoff: 'handlePaste',
@@ -215,7 +215,6 @@ const PRE_DELETE_NAMERS: Record<string, string> = {
 		'the cell replacing the range with its text through replaceRangeInLeaf, ahead of the escaping',
 	'src/lib/components/blocks/text/text-clipboard.ts': 'creates the range from its selection',
 	'src/lib/components/blocks/code/CodeBlock.svelte': 'creates the range from its selection',
-	'src/lib/components/blocks/table/TableCellBlock.svelte': 'creates the range from its selection',
 	'src/lib/components/blocks/code/code-paste-surface.ts':
 		'the one splicer: a fenced body has no inline constructs to clean'
 };

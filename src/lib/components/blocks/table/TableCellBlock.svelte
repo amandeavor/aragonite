@@ -8,7 +8,6 @@
 	import type { NodeView } from '../../../core/node-views';
 	import { TABLE_CONTEXT_KEY } from '../../../editor-keys';
 	import type { AnyInlineKind, TableAlignment } from '../../../core/nodes';
-	import { normalizeLineEndings } from '../../../core/lines';
 	import { blockNodeAt } from '../../../tree-operations/node-primitives';
 	import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 	import { storedAsAt } from '../../../tree-operations/stored-as';
@@ -834,7 +833,7 @@
 		const fold = widgetInteraction.foldRevealBeforeMutation();
 		if (fold) await fold.settled;
 		// A rectangle has no range inside one cell to restore: refocusing keeps it live in
-		// `SelectionState`, and the copy and cut branches for a rectangle do the rest.
+		// `SelectionState`, where the cell's cut and copy find it.
 		const hasRect = action !== 'paste' && !!rangeCoverage()?.grid;
 		if (action !== 'paste' && !hasRect && sel.start === sel.end) return;
 		// Clicking the menu item moved focus off the cell, so every branch refocuses before
@@ -851,25 +850,16 @@
 				return;
 			}
 			// The cell can unmount while the read waits (a delete, a `source` swap).
-			if (!el) return;
-			const text = normalizeLineEndings(raw);
-			// Over a live range, as a paste event, so it takes the route Ctrl+V does.
-			if (text && selection.isCrossBlock) pasteTextInto(el, text);
-			else if (text) {
-				const preDelete = sel.start !== sel.end ? sel : undefined;
-				await editableSurface.pasteInline({ pastedText: text, offset: sel.start, preDelete });
-			}
+			if (!el || !raw) return;
+			// A live range stays as it is; otherwise the paste replaces what the menu was opened on.
+			if (!selection.isCrossBlock) setSelection(sel.start, sel.end);
+			// As a paste event, so it takes the route Ctrl+V does.
+			pasteTextInto(el, raw);
 			return;
 		}
-		if (hasRect) {
-			document.execCommand('copy');
-			if (action === 'cut') await crossBlock.performCrossBlockCut();
-			return;
-		}
-		setSelection(sel.start, sel.end);
-		document.execCommand('copy');
-		// The menu's cut records no caret, so undo's goes to the range's start.
-		if (action === 'cut') clipboard.removeRange(sel, sel.start);
+		if (!hasRect) setSelection(sel.start, sel.end);
+		// The document's own command fires the clipboard event, so cut and copy run the cell's handlers.
+		document.execCommand(action);
 	}
 
 	// A click past a widget leaves the caret with no text to sit in, so it moves to the
