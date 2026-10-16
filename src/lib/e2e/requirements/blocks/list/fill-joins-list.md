@@ -1,6 +1,6 @@
 # Feature: a to-do filled beside a to-do list joins it
 
-A new line made right above or below a to-do list, then filled with a to-do, becomes an item of that list: the blank line that kept the line apart goes, a reload reads one list with even spacing between its items, and the key after the fill lands in the new item. Undo walks back through the same entries the gesture made, and the entry that turned the line into a list brings the blank line back. The unit suite `test/tree-operations/list-fill-join.test.ts` holds the rows about which pairs count as the same list.
+A new line made right above or below a to-do list, then filled with a to-do, becomes an item of that list: the blank line that kept the line apart goes, a reload reads one list with even spacing between its items, and the key after the fill lands in the new item, in source and live mode. Undo walks back through the same entries the gesture made, and the entry that turned the line into a list brings the blank line back. The unit suite `test/tree-operations/list-fill-join.test.ts` holds the rows about which pairs count as the same list.
 
 ## Happy paths
 
@@ -15,6 +15,7 @@ A new line made right above or below a to-do list, then filled with a to-do, bec
 
 ## Edge cases
 
+- The same line typed under a 150-item to-do list, too long to draw whole: it joins as the last item and the key after it lands there
 - Each gesture, reloaded from its saved bytes: one list block, and the new item sits as far from the next as the next sits from the one after
 - One Ctrl+Z after typing the to-do keeps the joined `- ` item; the next gives back the blank line and the empty line, two blocks again
 - One Ctrl+Z after the slash pick keeps the joined `- [ ] `; the next gives back the `/todo` line with its blank line

@@ -7,6 +7,7 @@ import { EditorPage } from '../../../editor-page';
 // Requirements: `e2e/requirements/blocks/list/fill-joins-list.md`.
 
 const LIST = '- [ ] fold laundry\n- [ ] move email\n';
+const LONG_LIST = Array.from({ length: 150 }, (_, i) => `- [ ] item ${i}\n`).join('');
 
 interface Gesture {
 	name: string;
@@ -15,9 +16,8 @@ interface Gesture {
 	/** Makes the line and fills it, leaving the caret after `start`. */
 	fill(editor: EditorPage, page: Page): Promise<void>;
 	joined: string;
-	/** The list's path once joined, and the new item's index in it. */
+	/** The joined list's top-level index. */
 	list: number;
-	item: number;
 	/** The bytes after each Ctrl+Z, down to the entry that wrote the join. */
 	undos: string[];
 }
@@ -25,6 +25,13 @@ interface Gesture {
 const enterAfterIntro = async (editor: EditorPage, page: Page) => {
 	await editor.focusBlockEnd(0);
 	await page.keyboard.press('Enter');
+};
+
+const typeUnder = async (editor: EditorPage, page: Page) => {
+	await editor.focusBlockStart(1);
+	await page.keyboard.press('Enter');
+	await page.keyboard.press('ArrowUp');
+	await page.keyboard.type('- [ ] start');
 };
 
 const GESTURES: Gesture[] = [
@@ -37,40 +44,23 @@ const GESTURES: Gesture[] = [
 		},
 		joined: `intro\n\n- [ ] start\n${LIST}`,
 		list: 1,
-		item: 0,
-		undos: [
-			`intro
-
-- 
-${LIST}`,
-			`intro
-
-
-${LIST}`
-		]
+		undos: [`intro\n\n- \n${LIST}`, `intro\n\n\n${LIST}`]
 	},
 	{
 		name: 'typing a to-do on a new line under the list',
 		source: `${LIST}\nafter\n`,
-		async fill(editor, page) {
-			await editor.focusBlockStart(1);
-			await page.keyboard.press('Enter');
-			await page.keyboard.press('ArrowUp');
-			await page.keyboard.type('- [ ] start');
-		},
+		fill: typeUnder,
 		joined: `${LIST}- [ ] start\n\nafter\n`,
 		list: 0,
-		item: 2,
-		undos: [
-			`${LIST}- 
-
-after
-`,
-			`${LIST}
-
-after
-`
-		]
+		undos: [`${LIST}- \n\nafter\n`, `${LIST}\n\nafter\n`]
+	},
+	{
+		name: 'typing a to-do on a new line under a list too long to draw whole',
+		source: `${LONG_LIST}\nafter\n`,
+		fill: typeUnder,
+		joined: `${LONG_LIST}- [ ] start\n\nafter\n`,
+		list: 0,
+		undos: [`${LONG_LIST}- \n\nafter\n`, `${LONG_LIST}\n\nafter\n`]
 	},
 	{
 		name: 'the slash menu to-do row on a new line over the list',
@@ -85,18 +75,7 @@ after
 		},
 		joined: `intro\n\n- [ ] start\n${LIST}`,
 		list: 1,
-		item: 0,
-		undos: [
-			`intro
-
-- [ ] 
-${LIST}`,
-			`intro
-
-/todo
-
-${LIST}`
-		]
+		undos: [`intro\n\n- [ ] \n${LIST}`, `intro\n\n/todo\n\n${LIST}`]
 	},
 	{
 		name: 'a to-do pasted on a new line over the list',
@@ -108,13 +87,7 @@ ${LIST}`
 		},
 		joined: `intro\n\n- [ ] start\n${LIST}`,
 		list: 1,
-		item: 0,
-		undos: [
-			`intro
-
-
-${LIST}`
-		]
+		undos: [`intro\n\n\n${LIST}`]
 	},
 	{
 		name: 'the right-click Insert block to-do row over the list',
@@ -127,16 +100,7 @@ ${LIST}`
 		},
 		joined: `intro\n\n- [ ] start\n${LIST}`,
 		list: 1,
-		item: 0,
-		undos: [
-			`intro
-
-- [ ] 
-${LIST}`,
-			`intro
-
-${LIST}`
-		]
+		undos: [`intro\n\n- [ ] \n${LIST}`, `intro\n\n${LIST}`]
 	}
 ];
 
@@ -151,34 +115,37 @@ async function itemSteps(page: Page, list: number): Promise<number[]> {
 }
 
 test.describe('a to-do filled beside a to-do list joins it', () => {
-	for (const gesture of GESTURES) {
-		test(gesture.name, async ({ page }) => {
-			const editor = new EditorPage(page);
-			await editor.goto(gesture.query ?? '');
-			await editor.loadContent(gesture.source);
+	for (const mode of ['source', 'live'] as const) {
+		for (const gesture of GESTURES) {
+			test(`${mode}: ${gesture.name}`, async ({ page }) => {
+				const editor = new EditorPage(page);
+				await editor.goto(gesture.query ?? '');
+				await editor.setPresentationMode(mode);
+				await editor.loadContent(gesture.source);
 
-			await gesture.fill(editor, page);
-			await editor.bridge.waitForSourceEquals(gesture.joined);
-			expect(await editor.parseConverged()).toBe(true);
-			// The caret stayed in the new item: the key after the fill lands in its text.
-			await page.keyboard.type('!');
-			await editor.bridge.waitForSourceContains('- [ ] start!\n');
-			await page.keyboard.press('Backspace');
-			await editor.bridge.waitForSourceEquals(gesture.joined);
+				await gesture.fill(editor, page);
+				await editor.bridge.waitForSourceEquals(gesture.joined);
+				expect(await editor.parseConverged()).toBe(true);
+				// The caret stayed in the new item: the key after the fill lands in its text.
+				await page.keyboard.type('!');
+				await editor.bridge.waitForSourceContains('- [ ] start!\n');
+				await page.keyboard.press('Backspace');
+				await editor.bridge.waitForSourceEquals(gesture.joined);
 
-			await editor.loadContent(gesture.joined);
-			expect(await editor.bridge.getBlockKind(gesture.list)).toBe('list');
-			const steps = await itemSteps(page, gesture.list);
-			expect(steps[0]).toBe(steps[1]);
+				await editor.loadContent(gesture.joined);
+				expect(await editor.bridge.getBlockKind(gesture.list)).toBe('list');
+				const steps = await itemSteps(page, gesture.list);
+				expect(steps[0]).toBe(steps[1]);
 
-			await editor.loadContent(gesture.source);
-			await gesture.fill(editor, page);
-			await editor.bridge.waitForSourceEquals(gesture.joined);
-			for (const bytes of gesture.undos) {
-				await editor.waitForUndoBatchFlush();
-				await editor.undo();
-				await editor.bridge.waitForSourceEquals(bytes);
-			}
-		});
+				await editor.loadContent(gesture.source);
+				await gesture.fill(editor, page);
+				await editor.bridge.waitForSourceEquals(gesture.joined);
+				for (const bytes of gesture.undos) {
+					await editor.waitForUndoBatchFlush();
+					await editor.undo();
+					await editor.bridge.waitForSourceEquals(bytes);
+				}
+			});
+		}
 	}
 });
