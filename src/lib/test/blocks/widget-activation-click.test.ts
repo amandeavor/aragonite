@@ -3,7 +3,7 @@
 // and never neither, for every host gesture, mode and Ctrl state, with or without a claim.
 // Miss-analysis: the editor's click check read the policy and the widget's check didn't, and no
 // test mounted a widget through the editor's own pool to ask it under a plain-click host.
-import { svelteInlineWidget } from '#lib/svelte-views.svelte.js';
+import { svelteView } from '#lib/svelte-view.svelte.js';
 import { describe, it, expect } from 'vitest';
 import { createViewWidgetPool } from '#lib/components/blocks/widget-portal.js';
 import { createWidgetInteraction } from '#lib/components/blocks/text/widget-interaction.js';
@@ -37,7 +37,7 @@ function registerClickWidget(claimsActivationClick: boolean): string {
 	});
 	registerInlineWidgetKind(kind, {
 		isWidget: () => true,
-		view: svelteInlineWidget(ActivationClickWidget),
+		view: svelteView(ActivationClickWidget),
 		editing: { revealSource: true, claimsActivationClick }
 	});
 	return kind;

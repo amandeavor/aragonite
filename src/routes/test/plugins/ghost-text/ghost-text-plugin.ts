@@ -7,7 +7,7 @@ import {
 	type DocumentView,
 	type NodeView
 } from '#lib/plugin.js';
-import { svelteDecorationWidget } from '#lib/svelte.js';
+import { svelteView } from '#lib/svelte.js';
 import GhostText from './GhostText.svelte';
 
 function nodeAt(doc: DocumentView, path: number[]): NodeView | null {
@@ -21,7 +21,7 @@ function nodeAt(doc: DocumentView, path: number[]): NodeView | null {
 	return node;
 }
 
-const ghostText = svelteDecorationWidget(GhostText);
+const ghostText = svelteView(GhostText);
 
 export const ghostTextPlugin = definePlugin({
 	name: 'ghost-text',

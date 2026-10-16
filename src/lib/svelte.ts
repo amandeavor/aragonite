@@ -10,7 +10,7 @@ export type { EditorProps } from './components/editor-component-props';
 // ── Plugin views from Svelte components ──────────────────────────────────────
 
 export { svelteBlockView } from './components/svelte-block-view';
-export { svelteInlineWidget, svelteDecorationWidget, svelteMenuRow } from './svelte-views.svelte';
+export { svelteView } from './svelte-view.svelte';
 
 // ── Editable-leaf authoring (pre-freeze) ─────────────────────────────────────
 // A text-editing leaf with a built-in block's caret, IME, undo and selection: plain (a commit per

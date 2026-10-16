@@ -6,7 +6,7 @@
 		type InlineMenuSource,
 		type PluginView
 	} from '#lib';
-	import { Editor, svelteMenuRow } from '#lib/svelte.js';
+	import { Editor, svelteView } from '#lib/svelte.js';
 	import type { KeybindingOverride } from '#lib/schema/keybinding-overrides.js';
 	import { installTestProbes } from '../editor/test-probes';
 	import { HarnessSource } from '../editor/harness-source.svelte';
@@ -75,7 +75,7 @@
 		// Untracked: adding a source reads the state it then writes.
 		const handles = untrack(() => [
 			instance.getDecorations().addSource(hostDecorations),
-			instance.getInlineMenus().addSource(hostMenu('component-row', '@@', svelteMenuRow(HostRow))),
+			instance.getInlineMenus().addSource(hostMenu('component-row', '@@', svelteView(HostRow))),
 			instance.getInlineMenus().addSource(
 				hostMenu('dom-row', '%%', (target, { item }) => {
 					target.append(hostButton(item.label)());

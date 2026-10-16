@@ -8,7 +8,7 @@ import { createEditorEvents } from '#lib/editor-events.js';
 import { registerBlockView } from '#lib/schema/block-view-registry.js';
 import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import { mountPluginView } from '#lib/plugin-view.js';
-import { svelteInlineWidget } from '#lib/svelte-views.svelte.js';
+import { svelteView } from '#lib/svelte-view.svelte.js';
 import { isForeignRuntimeError } from '#lib/foreign-runtime.js';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
@@ -54,7 +54,7 @@ function mountBlock(component: Component<never>, raw = 'hello\n'): HTMLElement {
 
 /** A plugin view from a Svelte component, mounted the way every widget and row slot mounts one. */
 function mountAsView(component: Component): boolean {
-	const view = svelteInlineWidget(component as never);
+	const view = svelteView(component as never);
 	const target = document.createElement('span');
 	return (
 		mountPluginView(view, target, {} as never, { report: () => {}, subject: 'probe' }) !== null

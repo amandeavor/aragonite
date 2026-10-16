@@ -913,6 +913,7 @@ what the type retired.
 | G3.11 | An editor option with no word on whether it can change after mount, or is a boolean  | T     |
 | G3.12 | A React wrapper prop that isn't an editor option, or hides one                       | T     |
 | G3.13 | A Vue wrapper prop that isn't an editor option, or a boolean Vue would read as false | T     |
+| G3.14 | A Svelte view whose component wants a prop its slot never passes                     | T     |
 
 ### The entries
 
@@ -1003,6 +1004,11 @@ editor's default. A type pin fails to compile when the declared keys and `Aragon
 and a second when an editor option takes a Vue-only name or `class`, `style`, `key` or `ref`.
 `npm run package` compiles it; the adapter suite's `vue.spec.ts` checks an absent boolean keeps the
 editor's default.
+
+**G3.14 · A Svelte view fits its slot.** `svelte-view.svelte.ts :: svelteView` takes its props type
+from the component, so `view: svelteView(C)` compiles in any slot whose props cover what `C`
+declares and fails where `C` asks for one the slot never passes.
+`src/lib/test/plugins/view/svelte-view.types.test.ts` holds the `@ts-expect-error`s.
 
 ## Group 4: source scans
 
@@ -2165,8 +2171,8 @@ itself, so this guards Svelte hosts: every `.svelte` file under `src/lib` uses a
 **G4.178 · A plugin view that throws costs only itself.** A file under `src/lib` that mounts a
 Svelte component a plugin handed it (a `mount`, or a component picked at render time) also calls
 `warnIfForeignRuntime`, the sign it catches the throw, paints its fallback and reports on `error`
-(G1.90). Two files are exempt: the editor's own mount in `create-editor.ts`, and the Svelte view
-helpers in `svelte-views.svelte.ts`, which only `mountPluginView` calls. `lint/file-rules.test.ts`;
+(G1.90). Two files are exempt: the editor's own mount in `create-editor.ts`, and `svelteView` in
+`svelte-view.svelte.ts`, whose views only `mountPluginView` calls. `lint/file-rules.test.ts`;
 `plugins/view/mount-plugin-view.test.ts` holds a Svelte view that throws while unmounting to the
 same report.
 
