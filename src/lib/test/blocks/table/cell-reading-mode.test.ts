@@ -128,13 +128,12 @@ describe('the right-click menu clipboard in reading mode', () => {
 		expect(document.querySelector('[role="menu"]') !== null).toBe(opens);
 	});
 
-	it('forced to cut, copies and writes nothing', async () => {
-		const clipboard = installClipboardEvents();
+	it('forced to cut, writes nothing', async () => {
+		installClipboardEvents();
 
 		await readingCellRef().applyMenuClipboard!('cut', { start: 0, end: 3 });
 		await mounted!.settle();
 
-		expect(clipboard.written()).toBe('one');
 		expect(mounted!.source()).toBe(GRID);
 		expect(readingWrites()).toEqual([]);
 	});

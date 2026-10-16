@@ -1188,8 +1188,7 @@ containers).
 **G4.4 · No timing hacks.** No timing primitive is used for sequencing (`await tick()` is the one).
 The allowlist in `lint/file-rules.test.ts` is short and closed, each entry with its reason: the rAF
 throttles in `selection/autoscroll.ts` and `selection/pointer-session.ts`, the rAF placement in
-`components/drag-handle.ts`, the rAF
-start of a size watch in `windowing/observe-resize.ts`, the drawn caret's frame paint in
+`components/drag-handle.ts`, the rAF start of a size watch in `windowing/observe-resize.ts`, the drawn caret's frame paint in
 `caret/drawn-caret.svelte.ts` (read-only, G4.143), the wall-clock undo debounce in
 `editor-actions/commit/text-batch.ts` and the occurrence plugin's typing pause in
 `plugins/highlight-occurrences/highlight-occurrences-plugin.ts`, and the scan deadline in
@@ -2229,8 +2228,8 @@ like.
 
 **G4.194 · A block's clipboard comes from its surface.** A block gets its copy, cut and paste
 handlers from `editable-surface.ts :: clipboard`, which fills in the editor's half (the reading-mode
-check, the caret memory, the image hook, the cross-block arm), and pastes into its own text through
-`pasteInline`, which parks the caret where the paste left it. A block that built its own handlers
+check, the caret memory, the image hook, the copy and cut of a range across blocks), and pastes into
+its own text through `pasteInline`, which puts the caret where the paste left it. A block that built its own handlers
 or called `pasteDispatch` itself would carry a copy of both, and copies drift.
 `lint/file-rules.test.ts` fails a `createClipboardHandlers` or `pasteDispatch` call anywhere but the
 surface, `surface-clipboard.ts` and the cross-block range replace.

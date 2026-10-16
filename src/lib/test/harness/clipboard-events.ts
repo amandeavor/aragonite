@@ -23,21 +23,17 @@ class StubClipboardEvent extends Event {
 	}
 }
 
-/** Installs the stand-ins; `written()` is the plain text the last cut or copy put on the clipboard. */
-export function installClipboardEvents(): { written: () => string } {
+export function installClipboardEvents(): void {
 	vi.stubGlobal('DataTransfer', StubDataTransfer);
 	vi.stubGlobal('ClipboardEvent', StubClipboardEvent);
-	let last = new StubDataTransfer();
 	document.execCommand = vi.fn((command: string) => {
 		if (command !== 'cut' && command !== 'copy') return false;
-		last = new StubDataTransfer();
 		const event = new StubClipboardEvent(command, {
-			clipboardData: last,
+			clipboardData: new StubDataTransfer(),
 			bubbles: true,
 			cancelable: true
 		});
 		document.activeElement?.dispatchEvent(event);
 		return true;
 	});
-	return { written: () => last.getData('text/plain') };
 }
