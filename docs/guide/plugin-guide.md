@@ -38,11 +38,15 @@ A **kind** is aragonite's word for a block type. Paragraph is a kind, fenced cod
 
 A block's **raw** is its exact source bytes, markers included. The editor saves a document by joining raws (plus the blank lines kept between blocks) and nothing else, so whatever your plugin writes into that field is exactly what lands in the user's file.
 
-**Declare and describe.** Registering a kind is three calls inside a plugin. The rest of the guide keeps coming back to them, and so will you. Here's each one properly:
+**Declare and describe.** Registering a kind is two calls inside a plugin. The rest of the guide keeps coming back to them, and so will you. Here's each one properly, plus the plugin that holds them:
 
 - **`declarePluginKind(name)`** creates a new kind and returns it (a name that's already taken throws). Every other call here takes that return value, and the type system won't accept the bare string in its place. A module that didn't create the kind recovers it with `declaredPluginKind(name)`, which throws for an undeclared name (a typo, say) rather than registering against a kind that doesn't exist.
-- **`registerBlockKind(kind, registration)`** describes how the kind behaves and what draws it: does it merge, is it editable, does it host inline content, where can a caret sit beside it, how it answers every cross-cutting editor system (the `closure` field), and its `view`. A view is what draws the block. `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component, and `textBlockView()` hands you the editor's own plain text block. A leaf needs only what the sample below fills.
-- **`registerBlockOpener(kind, opener)`** teaches the parser to recognize the syntax. An **opener** is the part of the parser that spots the line a block starts with: you give it a `priority` (its place in the dispatch order), an `interruptsParagraph` predicate (or `false`, for never), and a `tryOpen` that claims lines or declines. [Teaching the parser](plugin-guide/parser.md#teaching-the-parser) is its full story.
+- **`registerBlockKind(kind, registration)`** describes how the kind behaves and what draws it: does it merge, is it editable, does it host inline content, where can a caret sit beside it, how it answers every cross-cutting editor system (the `closure` field), its `view`, and its `opener`. Two of those need a word:
+  - A **view** is what draws the block. `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component, and `textBlockView()` hands you the editor's own plain text block.
+  - An **opener** is the part of the parser that spots the line a block starts with: you give it a `priority` (its place in the dispatch order), an `interruptsParagraph` predicate (or `false`, for never), and a `tryOpen` that claims lines or declines. [Teaching the parser](plugin-guide/parser.md#teaching-the-parser) is its full story. Leave it out for a kind no line starts, like one only a menu inserts.
+
+  A leaf needs only what the sample below fills.
+
 - **`definePlugin({ name, setup })`** packages the lot as one installable unit, and the editor runs your `setup` once per page. [The plugin unit](#the-plugin-unit) has the rest: per-editor options, and `onEditor` for work each editor does.
 
 The first one in action (a kind is a plain string underneath, with a type brand on top):
@@ -370,7 +374,7 @@ That's the loop: describe the kind, render it, install it, verify the bytes. Eve
 
 ## What a plugin is
 
-A plugin teaches the editor a new kind, one that parses, renders, and saves alongside the built-ins. You declare the kind, then wire up to three things (the descriptor and the view go in one `registerBlockKind` call):
+A plugin teaches the editor a new kind, one that parses, renders, and saves alongside the built-ins. You declare the kind, then wire up to three things (the descriptor, the view and a block opener all go in one `registerBlockKind` call):
 
 ```
 declare a kind ──┬─▶ descriptor   how it merges, its container shape, its keymap
@@ -389,12 +393,12 @@ Each part has a defined absence, which is prob the easiest way to remember what 
 
 ### Registration is global, and register-once
 
-A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind or opener twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
+A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
 
 Who guarantees a registration runs only once depends on where it runs:
 
 - **Inside a plugin unit** (the installable package the next section defines), `setup` runs at most once per process. Write each `register*` call straight; the unit owns the guarantee.
-- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
+- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
 
 ```ts
 isBlockKindDeclared('parrot'); // false on a fresh page
@@ -468,7 +472,7 @@ installPlugins([parrot]); // no-op (a fresh parrotPlugin() here would no-op too,
 
 The API is going to freeze, and you deserve to know which half of it has settled already.
 
-- **The registration base, settled.** Kind declaration, descriptor/view/opener registration, typed per-node metadata, and the probes above. The model won't change: which calls exist, that each registers once, what a kind is. The exact shapes those calls take (a descriptor field, what an opener returns) can still change before the freeze, and freeze with everything else at the public release.
+- **The registration base, settled.** Kind declaration, kind registration (descriptor, view and opener in one call), typed per-node metadata, and the probes above. The model won't change: which calls exist, that each registers once, what a kind is. The exact shapes those calls take (a descriptor field, what an opener returns) can still change before the freeze, and freeze with everything else at the public release.
 - **Pre-freeze, still moving.** Everything else: the plugin unit itself, the authoring tiers (container, editable leaf, inline, directive), the grammar hooks, paste transforms, and the view surfaces (decorations, rects, selection geometry). The [API reference](plugin-api.md) labels each such section _(pre-freeze / unstable)_, and they all freeze at the public release.
 
 After the freeze the version number carries the promise: a breaking change to a frozen surface rides a **major** version, and additive needs ship as **minors**.

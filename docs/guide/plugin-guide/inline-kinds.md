@@ -1,8 +1,8 @@
 # Inline kinds
 
-Part of the [plugin guide](../plugin-guide.md). The block tier's declare, describe, recognize calls it mirrors are in [the quickstart](../plugin-guide.md#the-first-fifteen-minutes).
+Part of the [plugin guide](../plugin-guide.md). The block tier it mirrors is in [the quickstart](../plugin-guide.md#the-first-fifteen-minutes).
 
-Blocks are only half the story. An inline kind takes three calls, mirroring the block tier's declare, describe, recognize:
+Blocks are only half the story. An inline kind does the same three jobs as a block kind (declare it, recognize it, say how it draws), one call each:
 
 - **`declarePluginInlineKind(name)`** creates the inline kind and returns it, exactly as `declarePluginKind` does one level up; `declaredPluginInlineKind(name)` recovers it in a module that didn't create it.
 - **`registerInlineSyntax(trigger, recognizer, options?)`** hooks the inline scanner on a single **trigger** character: at each occurrence of the trigger, your recognizer claims the syntax by returning a node, or declines with `null`. The options carry the prefix and rewrite machinery this section works through.

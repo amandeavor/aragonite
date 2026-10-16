@@ -24,7 +24,7 @@ flowchart LR
   N["union member<br/>core/nodes.ts"] --> D["descriptor<br/>schema/block-kind-descriptor.ts"]
   D --> R[("schema<br/>registries")]
   C["component<br/>components/blocks/"] --> R
-  O["opener (optional)<br/>schema/block-openers.ts"] --> R
+  O["opener (optional)<br/>core/parsers/built-in-openers.ts"] --> D
   R --> H["BlockHost renders by kind"]
   R --> X["merge · paste · selection<br/>inline · container raw"]
 ```
@@ -89,6 +89,7 @@ Call `registerBuiltinBlockKind(kind, registration)` from `schema/built-in-descri
 ```ts
 // schema/built-in-descriptors.ts
 registerBuiltinBlockKind('thematicBreak', {
+	opener: BUILT_IN_OPENERS.thematicBreak, // step 3
 	pageRole: 'object',
 	dragLabel: 'Divider',
 	estimateHeight: singleLineEstimate,
@@ -215,11 +216,11 @@ BlockHost reads your view off the kind's registration and hands every block the 
 
 ### 3. The opener, if you need one
 
-A kind the block parser must recognize on a line registers an opener: `registerBlockOpener(kind, { priority, tryOpen, interruptsParagraph })` from `schema/block-openers.ts`, called from `core/parsers/built-in-openers.ts`. How an opener claims lines, interrupts paragraphs, and consumes multi-line constructs is the plugin guide's ["Teaching the parser"](../guide/plugin-guide/parser.md#teaching-the-parser); the built-in wiring is what's here.
+A kind the block parser must recognize on a line gets an opener: a `{ priority, tryOpen, interruptsParagraph }` entry in `BUILT_IN_OPENERS` (`core/parsers/built-in-openers.ts`), which your step-1 registration takes as its `opener: BUILT_IN_OPENERS.yourKind`. Read it there, inside `registerBuiltInDescriptors`, never at a module's top level: the parser's modules import each other in a loop, and the built-ins register on the first read of the grammar for the same reason (G4.197). How an opener claims lines, interrupts paragraphs, and consumes multi-line constructs is the plugin guide's ["Teaching the parser"](../guide/plugin-guide/parser.md#teaching-the-parser); the built-in wiring is what's here.
 
 ```ts
-// core/parsers/built-in-openers.ts
-registerBlockOpener('thematicBreak', {
+// core/parsers/built-in-openers.ts, inside BUILT_IN_OPENERS
+thematicBreak: {
 	priority: OPENER_PRIORITIES.thematicBreak,
 	tryOpen(ctx) {
 		const marker = matchThematicBreak(ctx.line.text);
@@ -234,7 +235,7 @@ registerBlockOpener('thematicBreak', {
 		const marker = matchThematicBreak(t);
 		return marker === '*' || marker === '_';
 	}
-});
+},
 ```
 
 Priority orders the parser's attempts, ascending. The built-in order lives in `src/lib/schema/opener-priorities.ts` :: `OPENER_PRIORITIES`, so slot yours against that constant (`OPENER_PRIORITIES.heading + 5`, say) rather than a copied number. Give each kind its own priority; a tie still resolves (by kind name) but is almost always a mistake, so it warns at bootstrap.
