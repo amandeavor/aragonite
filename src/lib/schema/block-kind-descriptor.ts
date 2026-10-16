@@ -480,14 +480,16 @@ interface KindEntry {
 	opener?: BlockOpener;
 }
 
-let generation = 0;
+const changeListeners = new Set<() => void>();
 
 // The descriptor is never filtered by activation: a kind an editor left out still needs it to
 // degrade. The view is read only through `blockViewFor`, which filters.
 const registry = createBlockKindRegistry<KindEntry>({
 	label: 'registerBlockKind',
 	isBuiltin: isBuiltinBlockKind,
-	onChange: () => generation++
+	onChange: () => {
+		for (const listener of changeListeners) listener();
+	}
 });
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -545,9 +547,10 @@ export function openerRecords(): RegistryRecord<AnyBlockKind, BlockOpener>[] {
 		);
 }
 
-/** Bumps on every registration change, so a cache derived from the openers knows it's stale. */
-export function blockKindGeneration(): number {
-	return generation;
+/** Runs `listener` after every registration change, the test reset included, so a cache derived
+ *  from the openers can drop itself without asking on every read. */
+export function onBlockKindChange(listener: () => void): void {
+	changeListeners.add(listener);
 }
 
 function storeKind(

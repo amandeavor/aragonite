@@ -11,7 +11,7 @@ import { flushPendingRegistrationChecks } from './registration-checks';
 import type { RegistryRecord } from './plugin-registry';
 import { everyInstalledPlugin, resolvesIn, type PluginActivation } from './plugin-activation';
 import { pluginInstallGeneration, registerAsCore } from './plugin-install';
-import { blockKindGeneration, openerRecords } from './block-kind-descriptor';
+import { onBlockKindChange, openerRecords } from './block-kind-descriptor';
 import { registerBuiltInDescriptors } from './built-in-descriptors';
 
 /** Created fresh for each block and read synchronously; never keep it past the call. */
@@ -58,8 +58,8 @@ export interface BlockOpener {
 
 type OpenerRecord = RegistryRecord<AnyBlockKind, BlockOpener>;
 
-// Each cache holds the registration generation it was built at; a mismatch rebuilds it.
-let orderedRecordsCache: { generation: number; records: OpenerRecord[] } | null = null;
+// A registration change drops the ordering; the caches below hold the ordering they were built from.
+let orderedRecordsCache: OpenerRecord[] | null = null;
 let orderedCache: { records: readonly OpenerRecord[]; openers: BlockOpener[] } | null = null;
 let interruptCache: {
 	records: readonly OpenerRecord[];
@@ -73,17 +73,10 @@ export type OpenerEnablement = (kind: AnyBlockKind) => boolean;
 // Priority-ascending, ties broken by kind name: dispatch order is a pure function of the
 // declarations, never of registration order.
 function orderedRecords(): readonly OpenerRecord[] {
-	const generation = blockKindGeneration();
-	if (orderedRecordsCache?.generation !== generation) {
-		orderedRecordsCache = {
-			generation,
-			records: openerRecords().sort(
-				(a, b) =>
-					a.value.priority - b.value.priority || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
-			)
-		};
-	}
-	return orderedRecordsCache.records;
+	orderedRecordsCache ??= openerRecords().sort(
+		(a, b) => a.value.priority - b.value.priority || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
+	);
+	return orderedRecordsCache;
 }
 
 /** Every registered opener in dispatch order, whoever registered it. An editor's own order is its
@@ -110,6 +103,8 @@ function consumedRecords(): readonly OpenerRecord[] {
 // On the first read, whichever module loaded first (G4.197), and as no plugin even inside a setup.
 function registerBuiltIns(): void {
 	builtInsRegistered = true;
+	// Subscribed here rather than at load, since this module sits on the parser's import loop.
+	onBlockKindChange(() => (orderedRecordsCache = null));
 	registerAsCore(registerBuiltInDescriptors);
 }
 
