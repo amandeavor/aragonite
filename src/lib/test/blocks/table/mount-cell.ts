@@ -32,9 +32,6 @@ function makeStubTableContext(): StubTableContext {
 	return {
 		focusCell: vi.fn(),
 		revealColumn: vi.fn(),
-		getStickyColumn: vi.fn(() => null),
-		setStickyColumn: vi.fn(),
-		resetStickyColumn: vi.fn(),
 		exitUpward: vi.fn(),
 		exitDownward: vi.fn(),
 		notifyCellFocused: vi.fn(),

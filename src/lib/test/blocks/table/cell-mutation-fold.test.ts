@@ -65,4 +65,23 @@ describe('a cell mutation folds the open reveal before it runs', () => {
 			'x $a_n$ yz'
 		);
 	});
+
+	// Miss-analysis: the toggle tests above ran at a collapsed caret, where reading the selection
+	// after the fold or before it gives the same range.
+	it('toggles the range selected when the chord ran, which hiding the source collapses', async () => {
+		registerMathInline();
+		mounted = mountCell(CELL);
+		const { el, blockEdit, instance } = mounted;
+		el.focus();
+		instance.setSelection(5, 5);
+		await revealAndEdit(el, '$a_n$');
+		instance.setSelection(0, 1);
+
+		instance.runCommand('format.toggleStrong');
+		await settleEditor();
+
+		// The stub stores nothing, so the toggle reads the cell back as it was; its range is the point.
+		const writes = vi.mocked(blockEdit.updateBlockContent).mock.calls;
+		expect(writes.map((c) => trimTrailingLineEnding(c[1]))).toEqual(['x $a_n$ yz', '**x** $a$ yz']);
+	});
 });

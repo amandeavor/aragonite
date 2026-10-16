@@ -5,6 +5,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mountCell, type MountedCell } from './mount-cell';
 import { settleEditor } from '#lib/test/harness/settle.js';
+import { installClipboardEvents } from '#lib/test/harness/clipboard-events.js';
 
 // Raw `**bold** *it*`: [4, 11) runs from inside the bold out past the italic's opener, so a
 // literal cut strands the `**` opener and the italic's closer.
@@ -62,11 +63,12 @@ describe('live mode: every cell cut crosses the join', () => {
 	});
 
 	it('the context-menu cut takes the same join', async () => {
-		document.execCommand = vi.fn(() => true);
+		installClipboardEvents();
 		mounted = mountCell(MIXED, LIVE);
 		mounted.el.focus();
 
 		await mounted.ref().applyMenuClipboard!('cut', { start: 4, end: 11 });
+		await settleCommit(mounted);
 
 		expect(committedCalls(mounted)).toEqual([[0, '**bo***t*', 'literal', 4, 4]]);
 	});

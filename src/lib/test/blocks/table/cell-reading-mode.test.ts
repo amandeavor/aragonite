@@ -14,6 +14,7 @@ import { READING_WRITE_TAG } from '#lib/editor-actions/commit/reading-write-gate
 import { pressKey } from '#lib/test/harness/settle.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { cellAt, installTableLayoutStubs, pressInCell } from './mount-table';
+import { installClipboardEvents } from '#lib/test/harness/clipboard-events.js';
 
 let restoreLayout: () => void;
 beforeAll(() => {
@@ -99,8 +100,8 @@ describe('a reading-mode cell still navigates', () => {
 	});
 });
 
-// The menu never opens in reading mode; forced, its cut and paste reach the write, which refuses.
-// Miss-analysis: the handler's own reading-mode check was the only thing tested, never the write's.
+// The menu never opens in reading mode; forced, its cut and paste fire the cell's own clipboard
+// events, whose handlers copy and decline before anything writes.
 describe('the right-click menu clipboard in reading mode', () => {
 	function readingCellRef(): BlockComponent {
 		mountReading();
@@ -127,17 +128,18 @@ describe('the right-click menu clipboard in reading mode', () => {
 		expect(document.querySelector('[role="menu"]') !== null).toBe(opens);
 	});
 
-	it('forced to cut, writes nothing and warns', async () => {
-		document.execCommand = vi.fn(() => true);
+	it('forced to cut, writes nothing', async () => {
+		installClipboardEvents();
 
 		await readingCellRef().applyMenuClipboard!('cut', { start: 0, end: 3 });
 		await mounted!.settle();
 
 		expect(mounted!.source()).toBe(GRID);
-		expect(readingWrites()).toEqual([READING_WRITE_TAG]);
+		expect(readingWrites()).toEqual([]);
 	});
 
-	it('forced to paste, writes nothing and warns', async () => {
+	it('forced to paste, writes nothing', async () => {
+		installClipboardEvents();
 		// A clipboard that answers: with none installed the read throws and nothing is written anyway.
 		Object.defineProperty(navigator, 'clipboard', {
 			value: { readText: async () => 'pasted' },
@@ -148,7 +150,7 @@ describe('the right-click menu clipboard in reading mode', () => {
 		await mounted!.settle();
 
 		expect(mounted!.source()).toBe(GRID);
-		expect(readingWrites()).toEqual([READING_WRITE_TAG]);
+		expect(readingWrites()).toEqual([]);
 	});
 
 	it('still allows copy, which mutates nothing', async () => {

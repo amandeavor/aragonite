@@ -433,7 +433,7 @@ the reveal holds bytes the CST hasn't seen; a fire is a command entry path that 
 source-length precondition holds at reveal entry. Legal bails (blur with no reveal, a blur during a
 cross-block selection that keeps the source shown, entry while one is active) stay silent. Inline
 closures in `components/blocks/text/widget-interaction.ts` (the fold halves) and
-`components/blocks/text/TextEditableBlock.svelte :: performBlockCommand` (the mutation half), plus
+`components/blocks/text/inline-commands.ts :: perform` (the mutation half), plus
 `checkRevealSourceLength` (`inline-transitions.ts`) at `caret/reveal-source.ts` ·
 `test/blocks/text/widget-reveal-transitions.test.ts`.
 
@@ -1177,6 +1177,8 @@ unguarded.
 | G4.187 | Every framework app under `examples/` runs in the adapter suite                              | L       |
 | G4.188 | Every wrapper entry imports in Node with no DOM, as a server render does                     | harness |
 | G4.189 | A host color read inside the editor carries no fallback, and the root reads the resolved one | L       |
+| G4.194 | A block reaches the clipboard steps and its inline paste only through its editable surface   | L       |
+| G4.195 | A paragraph's or a table cell's command takes its own undo step in one place                 | L       |
 
 ### The entries
 
@@ -1197,9 +1199,8 @@ containers).
 
 **G4.4 · No timing hacks.** No timing primitive is used for sequencing (`await tick()` is the one).
 The allowlist in `lint/file-rules.test.ts` is short and closed, each entry with its reason: the rAF
-throttles in `selection/autoscroll.ts` and `selection/pointer-session.ts`, the rAF fold in
-`components/blocks/editable/editable-leaf.ts`, the rAF placement in `components/drag-handle.ts`, the rAF
-start of a size watch in `windowing/observe-resize.ts`, the drawn caret's frame paint in
+throttles in `selection/autoscroll.ts` and `selection/pointer-session.ts`, the rAF placement in
+`components/drag-handle.ts`, the rAF start of a size watch in `windowing/observe-resize.ts`, the drawn caret's frame paint in
 `caret/drawn-caret.svelte.ts` (read-only, G4.143), the wall-clock undo debounce in
 `editor-actions/commit/text-batch.ts` and the occurrence plugin's typing pause in
 `plugins/highlight-occurrences/highlight-occurrences-plugin.ts`, and the scan deadline in
@@ -1474,8 +1475,9 @@ once per split CALL, so a caller growing a second split whose caret it puts at `
 and marks that landing `fresh`, so Enter starts the new block plain. `lint/split-landing-parity.test.ts`.
 
 **G4.44 · Live ranged-edit parity.** Every editable prose surface resolves native ranged edits
-through `components/blocks/text/live-selection-edit.ts :: resolveLiveRangeEdit`, and no other file
-calls it. A destructive input carries its range on the event (`getTargetRanges()`), not in the
+through `components/blocks/text/live-selection-edit.ts :: resolveLiveRangeEdit`, by building the
+shared typed-input step (`components/blocks/text/typed-input.ts :: createTypedInput`), the one
+other file that calls it. A destructive input carries its range on the event (`getTargetRanges()`), not in the
 selection, so a surface reading only its selection lets word, line and drag deletes cut through
 delimiter runs. The fenced-code surface is outside the set (no inline constructs).
 `lint/file-rules.test.ts`.
@@ -1597,8 +1599,8 @@ source scan holds it. `lint/tree-op-ladder.test.ts`.
 
 **G4.65 · Delimiter auto-pair parity.** Every editable prose surface (G4.44's set) routes its
 `beforeinput` through
-`src/lib/components/blocks/text/delimiter-autopair.ts :: applyDelimiterAutoPair`, and no other file
-calls it, so what a typed delimiter writes and where the caret ends up has one answer.
+`src/lib/components/blocks/text/delimiter-autopair.ts :: applyDelimiterAutoPair`, by way of the same
+typed-input step, so what a typed delimiter writes and where the caret ends up has one answer.
 `lint/file-rules.test.ts`.
 
 **G4.66 · Relative scroll through `scrollBy`.** A correction that moves the scroll position by a
@@ -2235,6 +2237,20 @@ unresolved. The rules sit in `editor.css` rather than the theme file, so a theme
 replaced wholesale keeps them. `lint/host-color-reads.test.ts` covers the library, the bundled
 plugins and the reference plugins; route pages are the host and read their own tokens however they
 like.
+
+**G4.194 · A block's clipboard comes from its surface.** A block gets its copy, cut and paste
+handlers from `editable-surface.ts :: clipboard`, which fills in the editor's half (the reading-mode
+check, the caret memory, the image hook, the copy and cut of a range across blocks), and pastes into
+its own text through `pasteInline`, which puts the caret where the paste left it. A block that built its own handlers
+or called `pasteDispatch` itself would carry a copy of both, and copies drift.
+`lint/file-rules.test.ts` fails a `createClipboardHandlers` or `pasteDispatch` call anywhere but the
+surface, `surface-clipboard.ts` and the cross-block range replace.
+
+**G4.195 · One place makes a command its own undo step.** A command isn't typing, so one Ctrl+Z
+should undo the command and nothing around it. A paragraph and a table cell both run their commands
+through `components/blocks/text/inline-commands.ts :: perform`, which waits for a shown source to be
+written and then isolates the write. `lint/file-rules.test.ts` fails an `isolateUndoEntry` call
+anywhere else but the code block's language field.
 
 ## Accessibility
 

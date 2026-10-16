@@ -467,8 +467,9 @@ const FAMILIES: Family[] = [
 	{
 		name: 'a range edit on beforeinput',
 		stores: {
-			'components/blocks/text/TextEditableBlock.svelte': 2,
-			'components/blocks/table/TableCellBlock.svelte': 2
+			'components/blocks/text/TextEditableBlock.svelte': 1,
+			'components/blocks/table/TableCellBlock.svelte': 1,
+			'components/blocks/text/typed-input.ts': 1
 		},
 		rows: [
 			{ shape: 'a to-do', run: () => withText(TODO, deleteX), want: ['# y\n'] },
@@ -504,10 +505,7 @@ const FAMILIES: Family[] = [
 	},
 	{
 		name: 'a delimiter typed where it may pair',
-		stores: {
-			'components/blocks/text/TextEditableBlock.svelte': 1,
-			'components/blocks/table/TableCellBlock.svelte': 1
-		},
+		stores: { 'components/blocks/text/typed-input.ts': 1 },
 		rows: [
 			{
 				shape: 'a to-do',
@@ -591,8 +589,7 @@ const FAMILIES: Family[] = [
 	{
 		name: 'a cut',
 		stores: {
-			'components/blocks/text/text-clipboard.ts': 1,
-			'components/blocks/table/TableCellBlock.svelte': 1
+			'components/blocks/text/text-clipboard.ts': 1
 		},
 		rows: [
 			{ shape: 'a to-do', run: () => withText(TODO, cutX), want: ['# y\n'] },
@@ -608,7 +605,6 @@ const FAMILIES: Family[] = [
 		name: 'the bytes a copy carries',
 		stores: {
 			'components/blocks/text/text-clipboard.ts': 1,
-			'components/blocks/table/TableCellBlock.svelte': 1,
 			'selection/clipboard-text.ts': 1
 		},
 		rows: [

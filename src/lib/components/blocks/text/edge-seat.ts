@@ -181,15 +181,6 @@ export function createTypedPlacement(deps: TypedPlacementDeps): TypedPlacement {
 	};
 }
 
-/** A prose block's `beforeinput` steps for typed text: the auto-pair first, since the live range
- *  edit writes a delimiter at a collapsed caret as a lone byte. True when a step took the event. */
-export function applyTypedInput(
-	e: InputEvent,
-	steps: { autoPair: (e: InputEvent) => boolean; rangeEdit: (e: InputEvent) => boolean }
-): boolean {
-	return steps.autoPair(e) || steps.rangeEdit(e);
-}
-
 /** Every raw offset the caret's screen position allows: each boundary in a stretch of abutting
  *  hidden runs, never an offset inside a run's bytes, which may exclude the caret itself. */
 export function seatOffsetsAt(

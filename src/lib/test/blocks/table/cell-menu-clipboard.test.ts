@@ -4,9 +4,10 @@
 // The e2e spec covers the happy paths; a unit mount reaches a clipboard that refuses, and what
 // happens before anything is written.
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { tick } from 'svelte';
 import { registerBuiltInBlocks } from '#lib/components/built-in-blocks.js';
 import { mountCell, type MountedCell } from './mount-cell';
+import { installClipboardEvents } from '#lib/test/harness/clipboard-events.js';
+import { settleEditor } from '#lib/test/harness/settle.js';
 
 // The cell's paste handling is registered by the editor itself; without it the dispatcher falls
 // through to the prose default and the cell's own escaping never runs.
@@ -35,10 +36,11 @@ describe('a menu paste asks the clipboard and lands through the cell’s paste s
 		// Also the control for the refusal below: a plain splice would leave the newline in, and
 		// a `\n` in `cell.raw` reparses the row one column short.
 		installClipboard(async () => 'x\ny');
+		installClipboardEvents();
 		mounted = mountCell('one');
 
 		await mounted.ref().applyMenuClipboard!('paste', { start: 3, end: 3 });
-		await tick();
+		await settleEditor(() => committedRaw() !== null);
 
 		expect(committedRaw()).toBe('onex y');
 	});

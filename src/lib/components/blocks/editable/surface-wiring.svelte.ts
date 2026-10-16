@@ -50,11 +50,16 @@ export type SharedSurfaceDeps = Pick<
 	| 'reading'
 	| 'commands'
 	| 'placeholder'
+	| 'onPasteImage'
 >;
 
 export interface SurfaceWiring {
 	/** Spread first into `createEditableSurface`; per-block fields follow and may override. */
 	deps: SharedSurfaceDeps;
+	/** The editor's context groups, read once here so a block reads its own fields off them. */
+	services: EditorServices;
+	policies: EditorPolicies;
+	doc: EditorDoc;
 	/** Resolve a chord at `target` through the editor's command context; consumes a handled event. */
 	dispatchChord(e: KeyboardEvent, target: KindCommandTarget): boolean;
 	/** The command a keypress names at `kind`, overrides included, without running it. */
@@ -65,6 +70,9 @@ export function wireSurfaceContexts(): SurfaceWiring {
 	const blockEdit = getContext<BlockEditActions>(BLOCK_EDIT_KEY);
 	const focusActions = getContext<FocusActions>(FOCUS_KEY);
 	const history = getContext<HistoryActions>(HISTORY_KEY);
+	const services = getContext<EditorServices>(EDITOR_SERVICES_KEY);
+	const policies = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
+	const doc = getContext<EditorDoc>(EDITOR_DOC_KEY);
 	const {
 		controller,
 		caretLanding,
@@ -78,7 +86,7 @@ export function wireSurfaceContexts(): SurfaceWiring {
 		commands,
 		scrollOwner,
 		kindCue
-	} = getContext<EditorServices>(EDITOR_SERVICES_KEY);
+	} = services;
 	const {
 		blockElLookup: getBlockElByPath,
 		doc: getDoc,
@@ -86,8 +94,8 @@ export function wireSurfaceContexts(): SurfaceWiring {
 		scrollHost: getScrollHost,
 		lifetime: editorLifetime,
 		reading
-	} = getContext<EditorDoc>(EDITOR_DOC_KEY);
-	const { placeholder } = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
+	} = doc;
+	const { placeholder, onPasteImage } = policies;
 
 	const deps: SharedSurfaceDeps = {
 		selection,
@@ -111,7 +119,8 @@ export function wireSurfaceContexts(): SurfaceWiring {
 		kindCue,
 		reading,
 		commands,
-		placeholder
+		placeholder,
+		onPasteImage
 	};
 
 	const dispatchChord = (e: KeyboardEvent, target: KindCommandTarget): boolean => {
@@ -124,7 +133,7 @@ export function wireSurfaceContexts(): SurfaceWiring {
 	const resolveChord = (e: KeyboardEvent, kind: AnyBlockKind): AnyCommandId | null =>
 		commandForKey(e, kind, commands);
 
-	return { deps, dispatchChord, resolveChord };
+	return { deps, services, policies, doc, dispatchChord, resolveChord };
 }
 
 // Windowed out while focused: hand focus to the editor root so the next keystroke
