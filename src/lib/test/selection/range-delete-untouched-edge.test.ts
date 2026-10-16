@@ -6,26 +6,20 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
 import type { SelectionPoint } from '#lib/selection/primitives.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { expectParseConverged } from '../harness/parse-converged';
 import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 const at = (path: number[], offset: number): SelectionPoint => ({ path, offset });
 
 function del(source: string, start: SelectionPoint, end: SelectionPoint, mode: PresentationMode) {
 	const doc = parse(source);
-	const coverage = rangeCoverage(doc, coverRange(doc, start, end));
-	const result = rangeDelete(
-		doc,
-		coverage,
-		createSharingState(),
-		fixtureReading({}, mode),
-		'Backspace'
-	);
+	const result = deleteRange(doc, start, end, {
+		reading: fixtureReading({}, mode),
+		gesture: 'Backspace'
+	});
 	return { doc, caret: result.caret(result.newDoc) };
 }
 

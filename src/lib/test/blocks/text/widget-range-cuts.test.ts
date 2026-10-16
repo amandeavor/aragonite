@@ -12,6 +12,10 @@ import {
 	createTextClipboard,
 	type TextClipboardDeps
 } from '#lib/components/blocks/text/text-clipboard.js';
+import {
+	clipboardSurface,
+	type ClipboardSurfaceParts
+} from '#lib/test/harness/clipboard-surface.js';
 import { selectWidgetWhole } from '#lib/selection/place-caret.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
@@ -139,7 +143,8 @@ function clipboardOver(source: string, start = IMAGE_RANGE.start) {
 		isRevealing: () => false,
 		storedAs: () => storedAsAt(actions.doc, [0], LIVE),
 		reading: LIVE
-	} as unknown as TextClipboardDeps;
+	} as unknown as TextClipboardDeps & ClipboardSurfaceParts;
+	deps.surface = clipboardSurface(deps);
 	const writes = () => vi.mocked(blockEdit.updateBlockContent).mock.calls.map((call) => call[1]);
 	return { handlers: createTextClipboard(deps), writes };
 }

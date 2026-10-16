@@ -117,6 +117,25 @@ test.describe('table block: cell right-click clipboard', () => {
 		expect(await editor.bridge.getSource()).toContain('| 1 | 2 |');
 	});
 
+	test('Cut over an intra-table rectangle empties it as Ctrl+X does', async ({ page }) => {
+		const grid = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
+		await editor.loadContent(grid);
+		await dragBetweenCells(page, 2, 5);
+		await editor.waitForCrossBlock(true);
+		await page.keyboard.press('ControlOrMeta+x');
+		await editor.bridge.waitForSourceNotContains('| 1 | 2 |');
+		const cut = await editor.bridge.getSource();
+
+		await editor.goto();
+		await editor.loadContent(grid);
+		await dragBetweenCells(page, 2, 5);
+		await editor.waitForCrossBlock(true);
+		await page.locator('.table-cell').nth(2).click({ button: 'right' });
+		await page.getByRole('menuitem', { name: /^cut$/i }).click();
+		await editor.bridge.waitForSourceEquals(cut);
+		expect(await editor.readClipboard()).toContain('4');
+	});
+
 	test('Paste over a selection replaces the selected text', async ({ page }) => {
 		await editor.seedClipboard('bye');
 		const cell = page.locator('.table-cell').nth(2); // "hello"
@@ -125,6 +144,25 @@ test.describe('table block: cell right-click clipboard', () => {
 		await cell.click({ button: 'right' });
 		await page.getByRole('menuitem', { name: /^paste$/i }).click();
 		await editor.bridge.waitForSourceContains('| bye | world |');
+	});
+
+	// Miss-analysis: the menu's Paste was only ever given plain text, so nothing saw it skip the
+	// grid fill Ctrl+V runs.
+	test('Paste of a spreadsheet grid fills cells as Ctrl+V does', async ({ page }) => {
+		const grid = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
+		await editor.loadContent(grid);
+		await editor.seedClipboard('p\tq\ns\tt\n');
+		await page.locator('.table-cell').nth(5).click();
+		await editor.paste();
+		await editor.bridge.waitForSourceContains('| s | t |');
+		const pasted = await editor.bridge.getSource();
+
+		await editor.goto();
+		await editor.loadContent(grid);
+		await editor.seedClipboard('p\tq\ns\tt\n');
+		await page.locator('.table-cell').nth(5).click({ button: 'right' });
+		await page.getByRole('menuitem', { name: /^paste$/i }).click();
+		await editor.bridge.waitForSourceEquals(pasted);
 	});
 });
 

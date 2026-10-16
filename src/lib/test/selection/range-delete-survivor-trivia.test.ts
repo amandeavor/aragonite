@@ -1,29 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { registerCalloutForTests } from './chrome-plugins';
 import { expectParseConverged } from '../harness/parse-converged';
 import type { SelectionPoint } from '#lib/selection/primitives.js';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 // The plain merge must keep the start block's separator: a survivor taken straight from a fragment
 // reparse gets the fragment's own leading blank lines and runs into the block above on reload.
 // Miss-analysis: GH #60; every fixture started in the first block, and none reparsed the bytes.
 
-const sharing = () => createSharingState();
-
 function del(source: string, start: SelectionPoint, end: SelectionPoint) {
 	const doc = parse(source);
-	rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		sharing(),
-		fixtureReading(),
-		'keyless'
-	);
+	deleteRange(doc, start, end);
 	return doc;
 }
 

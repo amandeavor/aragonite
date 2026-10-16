@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
-import { createSharingState } from '../../tree-operations/sharing';
 import { describeConvergence } from '../harness/parse-converged';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 // The same-block branch writes the joined bytes in place, so parse-owned metadata must re-derive
 // in `writeOwnRaw` or the live node drifts from what its bytes parse to.
@@ -14,13 +11,7 @@ describe('a same-block delete re-derives parse-owned metadata (GH #54)', () => {
 	it('deleting a marker byte from a heading refreshes its level', () => {
 		const doc = parse('## ab\n');
 
-		rangeDelete(
-			doc,
-			rangeCoverage(doc, coverRange(doc, { path: [0], offset: 1 }, { path: [0], offset: 2 })),
-			createSharingState(),
-			fixtureReading(),
-			'keyless'
-		);
+		deleteRange(doc, { path: [0], offset: 1 }, { path: [0], offset: 2 });
 
 		expect(doc.children[0].raw).toBe('# ab\n');
 		expect(doc.children[0].metadata).toMatchObject({ level: 1 });

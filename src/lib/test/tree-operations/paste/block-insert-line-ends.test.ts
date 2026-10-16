@@ -2,15 +2,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
-} from '#lib/test/harness/editor-actions.js';
+import { runPasteDispatch, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { ensurePasteSurface } from '#lib/test/support/paste-surface.js';
 
@@ -24,16 +17,9 @@ beforeEach(() => {
 });
 
 async function insert(source: string, targetPath: number[], offset: number, markdown: string) {
-	const { deps } = makeEditorActionsDeps(parse(source).children);
-	await pasteDispatch(
-		{ pastedText: markdown, targetPath, offset },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: makeStubBlockEdit(),
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
-	);
-	return deps.doc;
+	const h = makePasteCommit(parse(source).children);
+	await runPasteDispatch(h, { pastedText: markdown, targetPath, offset });
+	return h.doc;
 }
 
 describe('blocks inserted from a table cell', () => {

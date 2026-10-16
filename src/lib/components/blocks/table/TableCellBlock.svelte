@@ -1,38 +1,18 @@
 <script lang="ts">
-	import { getContext, onDestroy, tick } from 'svelte';
-	import type { ContentWrite, TableContext } from '../../../action-contracts';
+	import { getContext, onDestroy } from 'svelte';
+	import type { TableContext } from '../../../action-contracts';
 	import { type BlockComponent } from '../../../block-component';
 	import { type CommandId } from '../../../schema/commands';
 	import { endsSelectAllRun } from '../../../schema/keybindings';
-	import {
-		createInlineFormatActiveMemo,
-		toggleInlineFormat
-	} from '../../../core/inline/format-toggle';
-	import {
-		inlineMarkForCommand,
-		type InlineMarkKind
-	} from '../../../schema/inline-construct-policy';
+	import { inlineMarkForCommand } from '../../../schema/inline-construct-policy';
 	import type { NodeView } from '../../../core/node-views';
-	import {
-		EDITOR_DOC_KEY,
-		EDITOR_POLICIES_KEY,
-		EDITOR_SERVICES_KEY,
-		TABLE_CONTEXT_KEY,
-		type EditorDoc,
-		type EditorPolicies,
-		type EditorServices
-	} from '../../../editor-keys';
+	import { TABLE_CONTEXT_KEY } from '../../../editor-keys';
 	import type { AnyInlineKind, TableAlignment } from '../../../core/nodes';
-	import { normalizeLineEndings, trimTrailingLineEnding } from '../../../core/lines';
-	import { pasteDispatch, type PasteDispatchInput } from '../../../tree-operations/paste/dispatch';
 	import { blockNodeAt } from '../../../tree-operations/node-primitives';
-	import { bytesLeavingLeaf, replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
+	import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 	import { storedAsAt } from '../../../tree-operations/stored-as';
-	import { keepsKindAt } from '../../../core/inline/live-edit/read-back';
-	import { applyLiveRangeEdit } from '../text/live-selection-edit';
 	import { parseClipboardGrid, tileGridTo } from '../../../tree-operations/table-grid-clipboard';
 	import { pathsEqual } from '../../../selection/path-math';
-	import { applyDelimiterAutoPair } from '../text/delimiter-autopair';
 	import { FALLBACK_CONTENT_WIDTH } from '../../../windowing/typography-estimates';
 	import {
 		rawTextOfNode,
@@ -45,12 +25,10 @@
 	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { getCurrentCursorEditorRelativeX } from '../../../caret/sticky-measure';
 	import { handleEdgeStep, handleSharedKeydown } from '../../../selection/shared-keydown';
-	import {
-		createEditableSurface,
-		createClipboardHandlers,
-		consumePendingRestore
-	} from '../editable/editable-surface';
-	import type { ClipboardCopy } from '../editable/clipboard-step';
+	import { createEditableSurface, consumePendingRestore } from '../editable/editable-surface';
+	import { createTextClipboard } from '../text/text-clipboard';
+	import { createInlineCommands } from '../text/inline-commands';
+	import { createTypedInput } from '../text/typed-input';
 	import { rangeWrite } from '../editable/surface-write';
 	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import { resetForPointerDown } from '../../../selection/cross-block/pointer';
@@ -81,11 +59,10 @@
 	import { createWidgetInteraction } from '../text/widget-interaction';
 	import { createEdgePolicyDispatch } from '../text/edge-policy-dispatch';
 	import { createEdgeStep } from '../text/edge-step';
-	import { applyTypedInput, createTypedPlacement } from '../text/edge-seat';
+	import { createTypedPlacement } from '../text/edge-seat';
 	import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 	import { widgetElByStart } from '../text/widget-adjacency';
 	import { getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
-	import { editTargetAt, enterLinkCardAtCaret } from '../../link-card/link-card-entry';
 
 	type ExitDirection = 'up' | 'down';
 
@@ -119,14 +96,12 @@
 		blockEdit,
 		focusActions,
 		controller,
-		pasteCoordinator,
 		caretMemory,
 		caretWriter,
 		selection,
 		getDoc,
 		getBlockElByPath,
 		getEditorRoot,
-		activePlugins,
 		events: editorEvents,
 		reading
 	} = wiring.deps;
@@ -143,16 +118,10 @@
 		drafts,
 		presses,
 		textMoves
-	} = getContext<EditorServices>(EDITOR_SERVICES_KEY);
+	} = wiring.services;
 	const ownPairs = autoPairs.forBlock();
-	const {
-		theme: getTheme,
-		resolveLinkUrl,
-		onPasteImage,
-		activationClick
-	} = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
-	const { contentVersion: getContentVersion, lifetime: editorLifetime } =
-		getContext<EditorDoc>(EDITOR_DOC_KEY);
+	const { theme: getTheme, resolveLinkUrl, activationClick } = wiring.policies;
+	const { contentVersion: getContentVersion, lifetime: editorLifetime } = wiring.doc;
 	const readOnly = $derived(reading.mode() === 'reading');
 
 	// A shared constant keeps an empty decoration list out of the render key.
@@ -312,8 +281,8 @@
 		completeMarker: () => {},
 		setSnapTarget: () => {},
 		isRevealing: () => widgetInteraction.isRevealing(),
-		// A widget that cannot show its source, reached this way, was reached by an arrow
-		// key, so step the caret over it as contenteditable would.
+		// An arrow steps over a widget that cannot show its source, since in a cell that is the `<br>`
+		// line break or a construct the cell draws as plain source (an image).
 		enterWidget: (widget, fromTrailingEdge) => {
 			if (widgetEditing(widget.kind)?.revealSource) {
 				widgetInteraction.enterWidget(widget, fromTrailingEdge);
@@ -323,8 +292,8 @@
 				});
 			}
 		},
-		// A cell draws no selection outline around a widget, so a drawn widget deletes whole
-		// instead of being selected first; the registered policy is otherwise kept.
+		// One press deletes a drawn widget whole, so a `<br>` goes like the line break it is; a
+		// construct drawn as source keeps its registered policy.
 		widgetEdgePolicy: (widget) => {
 			const registered = widgetEditing(widget.kind);
 			if (!el || registered?.revealSource) return undefined;
@@ -351,118 +320,63 @@
 	export const setSelection = editableSurface.surface.setSelection;
 	export const measurePartialRects = editableSurface.surface.measurePartialRects;
 
-	// The chord passes a null `range`, so a cell never creates a link; the pressed state passes
-	// the live selection.
-	const linkCardQuery = (contentEl: HTMLElement, range: { start: number; end: number } | null) => ({
-		contentEl,
-		block: node,
-		path: myPath,
+	const commands = createInlineCommands({
+		getEl: () => el ?? null,
+		get node() {
+			return node;
+		},
+		get index() {
+			return index;
+		},
+		get path() {
+			return myPath;
+		},
 		reading,
-		selection: range,
-		crossBlockRange: selection.isCrossBlock
+		cursor,
+		selection,
+		widgets: widgetInteraction,
+		surface: editableSurface,
+		controller,
+		linkCard,
+		// A cell has no markers of its own, so its whole text is content, read from the DOM rather
+		// than `node.raw`, whose bytes carry the escapes the write adds.
+		formatText: () => {
+			const display = readCellText();
+			return { display, content: { start: 0, end: display.length } };
+		},
+		setSelection: (start, end) => setSelection(start, end)
 	});
 
-	// A toolbar asks once per button on every selection change, so the buttons share the parse.
-	const formatActive = createInlineFormatActiveMemo();
+	export const isCommandActive = commands.isCommandActive;
+	export const afterSourceCommit = commands.afterSourceCommit;
 
-	// Whether a button shows as pressed: the same cell text and selection the toggle itself
-	// uses, and for the card the same construct its own entry resolves.
-	export function isCommandActive(id: CommandId): boolean {
-		if (!el) return false;
-		const marked = inlineMarkForCommand(id);
-		if (!marked) {
-			if (id !== 'link.openCard') return false;
-			return editTargetAt(linkCardQuery(el, cursor.getRawSelection())) !== null;
-		}
-		const caret = cursor.getRaw() ?? 0;
-		const selection = cursor.getRawSelection() ?? { start: caret, end: caret };
-		const cellText = readCellText();
-		return formatActive(
-			{ display: cellText, content: { start: 0, end: cellText.length }, selection, reading },
-			marked.kind
-		);
-	}
-
-	// Takes the chord even with no caret to act on: declining leaves Mod+B to the browser's
-	// own contenteditable bold, an edit this block never wrote.
-	function toggleFormat(format: InlineMarkKind): boolean {
-		if (!el) return true;
-		const caret = cursor.getRaw();
-		// A collapsed caret is the empty-pair case, not a refusal; see `toggleInlineFormat`.
-		const offsets =
-			cursor.getRawSelection() ?? (caret === null ? null : { start: caret, end: caret });
-		if (!offsets) return true;
-		// A mode that draws no delimiter would keep an empty pair as invisible bytes, so the mark
-		// waits for the next insertion instead (live-mode.md § 4.3).
-		if (reading.hidesDelimitersAtCaret() && offsets.start === offsets.end) {
-			controller.flushDebouncedCheckpoint();
-			editableSurface.pendingMarks.toggle(format);
-			return true;
-		}
-		// A cell has no markers of its own, so the whole read is content, taken from the DOM text
-		// rather than `getContentRange(node)`, whose bytes carry the escapes the write adds.
-		const cellText = readCellText();
-		const result = toggleInlineFormat(
-			{
-				display: cellText,
-				content: { start: 0, end: cellText.length },
-				selection: offsets,
-				reading
-			},
-			format
-		);
-		if (!result) return true;
-		// A command is not typing, so the toggle's bytes are their own undo step.
-		let write!: ContentWrite;
-		controller.isolateUndoEntry(() => {
-			write = blockEdit.updateBlockContent(
-				index,
-				result.newDisplay,
-				'literal',
-				offsets.start,
-				result.newSelStart
-			);
-		});
-		if (!write.admitted) return true;
-		// The write may have escaped a pipe inside the toggled span, so the far edge moves too.
-		const selStart = write.caret;
-		const selEnd = write.storedOffset(result.newSelEnd);
-		void tick().then(() => setSelection(selStart, selEnd));
-		return true;
-	}
-
-	// A shown source holds bytes the tree has not seen, so a command runs only after the source
-	// is hidden and its edit written.
-	export function afterSourceCommit(run: () => void): void {
-		if (!widgetInteraction.isRevealing()) {
-			run();
-			return;
-		}
-		const fold = widgetInteraction.foldRevealBeforeMutation();
-		void (fold?.settled ?? tick()).then(run);
-	}
+	const typedInput = createTypedInput({
+		get node() {
+			return node;
+		},
+		cursor,
+		storedAs,
+		widgets: widgetInteraction,
+		placement: typedPlacement,
+		caretMemory,
+		hiddenRunAt: edgeStep.hiddenRunAt,
+		reading,
+		ownPairs,
+		writeText,
+		text: () => readCellText(),
+		content: () => ({ start: 0, end: readCellText().length })
+	});
 
 	/** One entry per command this cell owns, resolved before a shown source is hidden, so hiding
 	 *  fits between resolving and writing, as the prose block does. Null declines the chord. */
-	function cellCommand(id: CommandId, contentEl: HTMLElement): (() => void) | null {
+	function cellCommand(id: CommandId, range: RawRange): (() => void) | null {
 		// The format chords come from the policy table: a construct that declares a mark names
 		// the command that toggles it, so a new one needs no branch here.
 		const marked = inlineMarkForCommand(id);
-		if (marked) return () => void toggleFormat(marked.kind);
-		// Consumed whether or not a card opens, the same rule the prose block follows:
-		// `reservedChords()` reports Mod+K as the editor's wherever the keymaps bind it.
-		if (id === 'link.openCard') {
-			return () =>
-				enterLinkCardAtCaret({
-					...linkCardQuery(contentEl, null),
-					card: linkCard,
-					enterWidget: widgetInteraction.enterWidget,
-					placeCaretInText: (offset) => {
-						cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
-						editableSurface.insideCloser.open(offset);
-					}
-				});
-		}
+		if (marked) return () => commands.toggleFormat(marked.kind, range);
+		// Consumed whether or not a card opens, as in prose; the null selection means a cell never
+		// creates a link.
+		if (id === 'link.openCard') return () => commands.enterLinkCard(null);
 		const axisCommand = tableAxisCommand(id);
 		if (axisCommand) {
 			return () =>
@@ -487,9 +401,11 @@
 	// plans that act without one run.
 	export const runCommand = editableSurface.command((id: CommandId): boolean => {
 		if (!el) return false;
-		const perform = cellCommand(id, el);
+		// Read before a shown source hides, which collapses the live selection.
+		const offset = cursor.getRaw() ?? 0;
+		const perform = cellCommand(id, cursor.getRawSelection() ?? { start: offset, end: offset });
 		if (!perform) return false;
-		afterSourceCommit(perform);
+		commands.perform(id, perform, offset);
 		return true;
 	});
 
@@ -514,6 +430,7 @@
 			applyMenuClipboard,
 			snapCaretToPoint,
 			insertMarkdown: clipboard.insertMarkdown,
+			claimRootClipboard: clipboard.claimRootClipboard,
 			typeText: editableSurface.surface.typeText,
 			afterSelectionRemoved: editableSurface.afterSelectionRemoved
 		} satisfies BlockComponent;
@@ -697,7 +614,6 @@
 		if (fold) await fold.settled;
 		switch (plan.kind) {
 			case 'focus-cell':
-				if (plan.setStickyColumn !== undefined) tableContext.setStickyColumn(plan.setStickyColumn);
 				tableContext.focusCell(plan.rowIdx, plan.colIdx, plan.position);
 				return;
 			case 'insert-row-below':
@@ -766,58 +682,8 @@
 		else tableContext.exitDownward(x);
 	}
 
-	// The cell's version of the prose block's live range edit: a browser edit over a range
-	// spanning hidden delimiters, the one destructive case with no offsets of its own.
-	function handleLiveSelectionEdit(e: InputEvent): boolean {
-		return applyLiveRangeEdit(
-			e,
-			node,
-			cursor,
-			storedAs(),
-			widgetInteraction.isRevealing,
-			(edit) =>
-				void writeText({
-					...rangeWrite(edit),
-					intent: 'typed',
-					mode: 'authored',
-					source: 'live-selection-edit'
-				})
-		);
-	}
-
-	// The cell's version of the prose block's self-closing delimiters (delimiter-autopair.ts).
-	function handleDelimiterAutoPair(e: InputEvent): boolean {
-		return applyDelimiterAutoPair(e, {
-			text: readCellText,
-			content: () => ({ start: 0, end: readCellText().length }),
-			caret: () => cursor.getRaw(),
-			placeTyped: typedPlacement.offsetFor,
-			hasSelection: () => cursor.getRawSelection() !== null,
-			isRevealing: widgetInteraction.isRevealing,
-			foldReveal: () => widgetInteraction.foldRevealBeforeMutation(),
-			setCaret: (offset) => cursor.setRaw(asRawOffset(offset), { clamp: 'exact' }),
-			seatOutside: caretMemory.noteOutside,
-			passCloser: typedPlacement.passCloser,
-			hiddenRunAt: edgeStep.hiddenRunAt,
-			// Each auto-pair caller asks this itself until the caret-edge key table gives it one caller.
-			keepsKind: (line) => keepsKindAt(node, line, storedAs()),
-			reading,
-			ownPairs,
-			write: (text, caretAfter) =>
-				void writeText({
-					text,
-					caretAfter,
-					intent: 'typed',
-					mode: 'authored',
-					source: 'delimiter-autopair',
-					inPlace: true
-				})
-		});
-	}
-
 	async function onBeforeInput(e: InputEvent): Promise<void> {
-		const typedSteps = { autoPair: handleDelimiterAutoPair, rangeEdit: handleLiveSelectionEdit };
-		if (applyTypedInput(e, typedSteps)) return;
+		if (typedInput(e)) return;
 		if (e.inputType === 'insertLineBreak') {
 			// GFM cells can't carry raw newlines, so a line break is a literal `<br>`,
 			// which the inline-HTML pipeline renders as a live widget.
@@ -921,81 +787,32 @@
 		return true;
 	}
 
-	const clipboard = createClipboardHandlers({
-		caretMemory,
-		selection,
-		getDoc,
-		crossBlock,
-		isReadOnly: () => readOnly,
-		caret: editableSurface.caret,
-		events: editorEvents,
-		onPasteImage,
-		foldReveal: () => widgetInteraction.foldRevealBeforeMutation(),
-		pastePreHook: pasteGridHere,
-		rangeArm: {
-			copy: copyCellRange,
-			remove: (range: RawRange) =>
-				deleteCellRange(range.start, range.end, editableSurface.caret.getPreEditOffset())
+	// While a source is shown the DOM holds an edit `node.raw` has not seen, so a copy reads the
+	// cell's live text.
+	const clipboard = createTextClipboard({
+		storedAs,
+		get node() {
+			return node;
 		},
-		pasteTail: async (pastedText, { range, held }) => {
-			if (!el) return;
-			await applyCellPaste(pastedText, range ?? { start: 0, end: 0 }, {
-				caretBefore: editableSurface.caret.getPreEditOffset(),
-				spend: held.spend
-			});
-		}
+		get index() {
+			return index;
+		},
+		get myPath() {
+			return myPath;
+		},
+		cursor,
+		surface: editableSurface,
+		selection,
+		setPendingCursor: parkCursor,
+		foldRevealBeforeMutation: () => widgetInteraction.foldRevealBeforeMutation(),
+		isRevealing: () => widgetInteraction.isRevealing(),
+		readRevealedText: () => readCellText(),
+		get reading() {
+			return reading;
+		},
+		pastePreHook: pasteGridHere
 	});
 	const { onCopy, onCut, onPaste } = clipboard;
-
-	// While a source is shown the DOM holds an edit `node.raw` has not seen; copy never writes, so
-	// it slices the live DOM text rather than hiding it first.
-	function copyCellRange(e: ClipboardEvent): ClipboardCopy<RawRange> {
-		if (!el) return null;
-		const range = cursor.getRawSelection();
-		if (!range || range.start === range.end) return null;
-		const display = widgetInteraction.isRevealing()
-			? readCellText()
-			: trimTrailingLineEnding(node.raw);
-		// What a cut there takes, so a paste gives back what was cut.
-		const carried = bytesLeavingLeaf({ ...node, raw: display }, range, storedAs());
-		e.clipboardData?.setData('text/plain', carried);
-		return { held: range };
-	}
-
-	// ── Shared edit helpers (event handlers and the right-click menu) ────────
-
-	// Through the join rules, since in live mode the delete can strand delimiter runs the user
-	// never saw (live-mode.md § 4.5). The menu's cut records no caret, so undo's defaults to `start`.
-	function deleteCellRange(start: number, end: number, undoCaret = start): void {
-		const cut = replaceRangeInLeaf(node, { start, end }, '', storedAs());
-		const display = trimTrailingLineEnding(cut.raw);
-		const write = blockEdit.updateBlockContent(index, display, 'literal', undoCaret, cut.caret);
-		if (write.admitted) parkCursor(write.caret);
-	}
-
-	async function applyCellPaste(
-		pastedText: string,
-		sel: { start: number; end: number },
-		recorded?: Pick<PasteDispatchInput, 'caretBefore' | 'spend'>
-	): Promise<void> {
-		const result = await pasteDispatch(
-			{
-				pastedText,
-				targetPath: myPath,
-				offset: sel.start,
-				preDelete: sel.start !== sel.end ? { start: sel.start, end: sel.end } : undefined,
-				...recorded
-			},
-			{
-				doc: getDoc(),
-				blockEdit,
-				controller: pasteCoordinator,
-				reading,
-				activePlugins
-			}
-		);
-		if (result.inlineCaretOffset !== undefined) parkCursor(result.inlineCaretOffset);
-	}
 
 	// ── Right-click menu clipboard (no ClipboardEvent) ──────────────────────
 
@@ -1016,7 +833,7 @@
 		const fold = widgetInteraction.foldRevealBeforeMutation();
 		if (fold) await fold.settled;
 		// A rectangle has no range inside one cell to restore: refocusing keeps it live in
-		// `SelectionState`, and the copy and cut branches for a rectangle do the rest.
+		// `SelectionState`, where the cell's cut and copy find it.
 		const hasRect = action !== 'paste' && !!rangeCoverage()?.grid;
 		if (action !== 'paste' && !hasRect && sel.start === sel.end) return;
 		// Clicking the menu item moved focus off the cell, so every branch refocuses before
@@ -1033,21 +850,16 @@
 				return;
 			}
 			// The cell can unmount while the read waits (a delete, a `source` swap).
-			if (!el) return;
-			const text = normalizeLineEndings(raw);
-			// Over a live range, as a paste event, so it takes the route Ctrl+V does.
-			if (text && selection.isCrossBlock) pasteTextInto(el, text);
-			else if (text) await applyCellPaste(text, sel);
+			if (!el || !raw) return;
+			// A live range stays as it is; otherwise the paste replaces what the menu was opened on.
+			if (!selection.isCrossBlock) setSelection(sel.start, sel.end);
+			// As a paste event, so it takes the route Ctrl+V does.
+			pasteTextInto(el, raw);
 			return;
 		}
-		if (hasRect) {
-			document.execCommand('copy');
-			if (action === 'cut') await crossBlock.performCrossBlockCut();
-			return;
-		}
-		setSelection(sel.start, sel.end);
-		document.execCommand('copy');
-		if (action === 'cut') deleteCellRange(sel.start, sel.end);
+		if (!hasRect) setSelection(sel.start, sel.end);
+		// The document's own command fires the clipboard event, so cut and copy run the cell's handlers.
+		document.execCommand(action);
 	}
 
 	// A click past a widget leaves the caret with no text to sit in, so it moves to the

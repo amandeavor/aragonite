@@ -7,15 +7,13 @@ import { serialize } from '#lib/core/serializer.js';
 import { displayLength } from '#lib/core/lines.js';
 import { getContentRange, parseInline } from '#lib/core/inline/index.js';
 import { CONTENT_VISIBILITY, renderedText } from '#lib/core/inline/visibility.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { markedChars, marksWithin, type MarkedChar } from '#lib/test/harness/live-oracles.js';
 import { unpaintedResidue } from '#lib/test/simulation/live-screen-reading.js';
 import { arbInlineSource, freshOrFixedSeed } from './arbitraries';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading, renderOptions } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 /**
  * The join of live-mode.md § 4.5 under random range deletes, compared with the literal join for
@@ -69,7 +67,7 @@ interface DeleteResult {
 	kept: MarkedChar[];
 }
 
-function deleteRange(
+function deleteAcross(
 	source: string,
 	cut: Cut,
 	mode: PresentationMode | undefined
@@ -83,19 +81,11 @@ function deleteRange(
 		({ block, at }) =>
 			block < lo || block > hi || (block === lo && at < a) || (block === hi && at >= b)
 	);
-	rangeDelete(
+	deleteRange(
 		doc,
-		rangeCoverage(
-			doc,
-			coverRange(
-				doc,
-				{ path: points.start.slice(0, 1), offset: points.start[1] },
-				{ path: points.end.slice(0, 1), offset: points.end[1] }
-			)
-		),
-		createSharingState(),
-		fixtureReading({}, mode),
-		'keyless'
+		{ path: points.start.slice(0, 1), offset: points.start[1] },
+		{ path: points.end.slice(0, 1), offset: points.end[1] },
+		{ reading: fixtureReading({}, mode) }
 	);
 	const bytes = serialize(doc);
 	return {
@@ -149,8 +139,8 @@ describe('live-mode joins over random range deletes', () => {
 		const glyphs = (text: string) => (text.match(/[*_~`[\]]/g) ?? []).length;
 		fc.assert(
 			fc.property(arbInlineDoc, arbCut, (source, cut) => {
-				const literal = deleteRange(source, cut, undefined);
-				const live = deleteRange(source, cut, 'live');
+				const literal = deleteAcross(source, cut, undefined);
+				const live = deleteAcross(source, cut, 'live');
 				if (literal === null || live === null) return;
 				if (live.bytes !== literal.bytes) rewritten++;
 				if (glyphs(live.visible) < glyphs(literal.visible)) cleaned++;

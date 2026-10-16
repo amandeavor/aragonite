@@ -4,12 +4,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
 import type { CstNode, Document } from '../../core/nodes';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import { cellPoint, type SelectionPoint } from '../../selection/primitives';
-import { createSharingState } from '../../tree-operations/sharing';
-import { fixtureReading } from '../harness/fixture-grammar';
 import { registerChromePluginsForTests } from './chrome-plugins';
+import { deleteRange } from '../harness/range-delete';
 
 // Bytes a range delete leaves at a list item's first slot read as a reload reads them: after a
 // task marker `# b` is paragraph text, and a first block that is no paragraph gives the marker up.
@@ -29,13 +26,7 @@ function shape(nodes: readonly CstNode[]): unknown[] {
 
 function del(source: string, start: SelectionPoint, end: SelectionPoint): Document {
 	const doc = parse(source);
-	rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	deleteRange(doc, start, end);
 	expect(shape(doc.children), serialize(doc)).toEqual(shape(parse(serialize(doc)).children));
 	return doc;
 }

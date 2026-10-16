@@ -7,12 +7,10 @@ import { beforeEach, describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
 import type { PresentationMode } from '../../presentation-mode';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
-import { createSharingState } from '../../tree-operations/sharing';
 import { cellPoint, type SelectionPoint } from '../../selection/primitives';
 import { registerCalloutForTests } from './chrome-plugins';
 import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 beforeEach(() => {
 	registerCalloutForTests();
@@ -20,13 +18,7 @@ beforeEach(() => {
 
 function run(source: string, start: SelectionPoint, end: SelectionPoint, mode?: PresentationMode) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading({}, mode),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end, { reading: fixtureReading({}, mode) });
 	return { source: serialize(result.newDoc), caret: result.caret(result.newDoc) };
 }
 

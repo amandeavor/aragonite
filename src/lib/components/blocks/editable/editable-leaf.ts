@@ -5,23 +5,16 @@
  * synchronously during initialisation. `plugin-guide/editable-content.md` § The editable leaf.
  */
 
-import { getContext, onDestroy } from 'svelte';
+import { onDestroy, tick } from 'svelte';
 import { createAttachmentKey } from 'svelte/attachments';
 import type { BlockEditActions } from '../../../action-contracts';
 import type { EditableLeafBlockApi, StickyColumnDirection } from '../../../block-component';
 import type { NodeView } from '../../../core/node-views';
-import {
-	EDITOR_POLICIES_KEY,
-	EDITOR_SERVICES_KEY,
-	type EditorPolicies,
-	type EditorServices
-} from '../../../editor-keys';
 import { asRawOffset } from '../../../caret/coordinate-spaces';
 import { createSurfaceBackend } from './surface-backend';
 import { handleSharedKeydown } from '../../../selection/shared-keydown';
 import {
 	createEditableSurface,
-	createClipboardHandlers,
 	consumePendingRestore,
 	REMOVED_IN_PLACE,
 	type EditableSurfaceAttributes
@@ -214,16 +207,14 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		caretMemory,
 		caretWriter,
 		selection,
-		getDoc,
 		getBlockElByPath,
 		getEditorRoot,
-		events: editorEvents,
 		reading,
 		commands
 	} = wiring.deps;
 	const { pluginEditor } = commands;
-	const { inlineMenuCombobox, drafts, presses } = getContext<EditorServices>(EDITOR_SERVICES_KEY);
-	const { theme: getTheme, onPasteImage } = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
+	const { inlineMenuCombobox, drafts, presses } = wiring.services;
+	const { theme: getTheme } = wiring.policies;
 	const getPresentationMode = reading.mode;
 	const getEditor = (): EditorContext | undefined =>
 		componentPluginEditor(pluginEditor, deps.getNode().kind);
@@ -352,23 +343,23 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		});
 	}
 
-	// A blur during a cross-block range is a drag leaving this source; it hides a frame later, once
-	// the range has measured its text, unless focus came back.
-	let foldFrame = 0;
-	function foldAfterRange(): void {
-		if (foldFrame) return;
-		foldFrame = requestAnimationFrame(() => {
-			foldFrame = 0;
-			const el = deps.getEl();
-			if (!isRevealed() || (el && el.contains(document.activeElement))) return;
-			void commitReveal(true);
-		});
+	// A blur during a cross-block range is a drag leaving this source; it hides once the release's
+	// render has landed, unless focus came back.
+	let foldPending = false;
+	async function foldAfterRange(): Promise<void> {
+		if (foldPending) return;
+		foldPending = true;
+		await tick();
+		foldPending = false;
+		const el = deps.getEl();
+		if (!isRevealed() || (el && el.contains(document.activeElement))) return;
+		void commitReveal(true);
 	}
 
 	async function commitReveal(force = false): Promise<void> {
 		if (mode !== 'render-primary' || !isRevealed()) return;
 		if (selection.isCrossBlock && !force) {
-			foldAfterRange();
+			void foldAfterRange();
 			return;
 		}
 		traceRevealFold('blur');
@@ -383,7 +374,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		await commitSource(edited);
 	}
 
-	// Forced, because a cross-block range would put the write off a frame and the command runs now.
+	// Forced, because a cross-block range would put the write off until the next render.
 	function afterSourceCommit(run: () => void): void {
 		if (mode !== 'render-primary' || !isRevealed()) return run();
 		void commitReveal(true).then(run);
@@ -572,15 +563,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		if (el) spliceSourceText(el, range.start, range.end, '');
 	}
 
-	const clipboard = createClipboardHandlers({
-		caretMemory,
-		selection,
-		getDoc,
-		crossBlock,
-		isReadOnly: isReading,
-		caret: editableSurface.caret,
-		events: editorEvents,
-		onPasteImage,
+	const clipboard = editableSurface.clipboard({
 		rangeArm: { copy: copyRange, remove: removeRange },
 		pasteTail: (pastedText, { range }) => {
 			const el = deps.getEl();

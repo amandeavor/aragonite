@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { balancedBlock, collectEditorSources, readSource, type SourceFile } from './scan-source';
-import { probeFile } from './file-rule';
+import { balancedBlock, collectEditorSources, readSource } from './scan-source';
+import { describeManifests } from './file-rule';
 import { SOURCE } from './source-paths';
 
 /**
@@ -60,64 +60,41 @@ const HAND_SETTLE_CALLERS: Record<string, string> = {
 		'its same-block arm writes bytes rather than splicing, so it settles as the content door does'
 };
 
-const writesTrivia = (file: SourceFile): boolean => /\.leadingTrivia\s*\+?=(?!=)/.test(file.code);
+const writesTrivia = /\.leadingTrivia\s*\+?=(?!=)/;
 
-const namesHandSettle = (file: SourceFile): boolean =>
-	/(?<![\w'"])(clearRedundantSeparator|dropDoubledSeparator|restoreSeparatorOnFill|restoreSeparatorAfterBlank|settleSeparatorOnBlank|settleSublistSeparator)\b/.test(
-		file.code
-	);
+const namesHandSettle =
+	/(?<![\w'"])(clearRedundantSeparator|dropDoubledSeparator|restoreSeparatorOnFill|restoreSeparatorAfterBlank|settleSeparatorOnBlank|settleSublistSeparator)\b/;
 
-function census(
-	sources: SourceFile[],
-	matches: (file: SourceFile) => boolean,
-	allowed: Record<string, string>
-): void {
-	expect(
-		sources
-			.filter(matches)
-			.map((f) => f.relPath)
-			.sort()
-	).toEqual(Object.keys(allowed).sort());
-}
-
-describe('separator-write entry-point census', () => {
-	const sources = collectEditorSources();
-
-	it('the files writing a sibling leadingTrivia are the declared ones', () => {
-		census(sources, writesTrivia, TRIVIA_WRITERS);
-	});
-
-	it('the files calling a settle entry point by hand are the declared ones', () => {
-		census(sources, namesHandSettle, HAND_SETTLE_CALLERS);
-	});
-
-	// ── Matcher self-tests (non-vacuity) ─────────────────────────────────────
-
-	it('the blank-line matcher sees both write forms and skips creates, reads and comments', () => {
-		const probe = (text: string) => writesTrivia(probeFile({ relPath: 'x', code: text }));
-		expect(probe("node.leadingTrivia = '';")).toBe(true);
-		expect(probe('children[i].leadingTrivia += lineEnding;')).toBe(true);
-		expect(probe("{ kind: 'paragraph', leadingTrivia: '', raw }")).toBe(false);
-		expect(probe("if (node.leadingTrivia === '') return;")).toBe(false);
-		expect(probe("// node.leadingTrivia = '' would strand the follower")).toBe(false);
-	});
-
-	it('the hand-settle matcher sees a call and an import, and skips prose', () => {
-		const probe = (text: string) => namesHandSettle(probeFile({ relPath: 'x', code: text }));
-		expect(probe('restoreSeparatorOnFill(parent, i + 1, sharing);')).toBe(true);
-		expect(probe("import { dropDoubledSeparator } from '../tree-operations';")).toBe(true);
-		expect(probe('// dropDoubledSeparator is the run-level twin')).toBe(false);
-	});
-
-	it('an undeclared file writing leadingTrivia fails the set equality', () => {
-		const rogue = probeFile({
-			relPath: 'src/lib/tree-operations/rogue.ts',
-			code: "children[at].leadingTrivia = '\\n';"
-		});
-		const writers = [...sources, rogue].filter(writesTrivia).map((f) => f.relPath);
-		expect(writers.sort()).not.toEqual(Object.keys(TRIVIA_WRITERS).sort());
-	});
-});
+describeManifests(
+	[
+		{
+			id: 'the files writing a sibling leadingTrivia are the declared ones',
+			matches: writesTrivia,
+			declared: TRIVIA_WRITERS,
+			reason:
+				'a splice wrote a separator by hand: settle it through the shared function, or declare why the file must',
+			hits: ["node.leadingTrivia = '';", 'children[i].leadingTrivia += lineEnding;'],
+			misses: [
+				"{ kind: 'paragraph', leadingTrivia: '', raw }",
+				"if (node.leadingTrivia === '') return;",
+				"// node.leadingTrivia = '' would strand the follower"
+			]
+		},
+		{
+			id: 'the files calling a settle entry point by hand are the declared ones',
+			matches: namesHandSettle,
+			declared: HAND_SETTLE_CALLERS,
+			reason:
+				'a file names a settle function directly: use the shared one, or declare why it cannot',
+			hits: [
+				'restoreSeparatorOnFill(parent, i + 1, sharing);',
+				"import { dropDoubledSeparator } from '../tree-operations';"
+			],
+			misses: ['// dropDoubledSeparator is the run-level twin']
+		}
+	],
+	collectEditorSources()
+);
 
 // ── The span drop, inside those functions’ own file ───────────────────────
 

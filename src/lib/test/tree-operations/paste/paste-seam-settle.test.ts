@@ -2,14 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
-} from '#lib/test/harness/editor-actions.js';
+import { runPasteDispatch, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 
 // Pasted blocks can stop interrupting the block above, so every commit's join check covers paste.
@@ -17,19 +10,11 @@ import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 
 describe('a structural paste whose result the block above absorbs', () => {
 	it('settles the join the splice disturbed', async () => {
-		const { deps } = makeEditorActionsDeps(parse('- a\n\nzz\n'));
-		const controller = createUndoController(deps);
+		const h = makePasteCommit(parse('- a\n\nzz\n'));
 
-		await pasteDispatch(
-			{ pastedText: '    code\n\nmore\n', targetPath: [1], offset: 0 },
-			pasteContext({
-				doc: deps.doc,
-				blockEdit: makeStubBlockEdit(),
-				controller: createPasteCoordinator(deps, controller)
-			})
-		);
+		await runPasteDispatch(h, { pastedText: '    code\n\nmore\n', targetPath: [1], offset: 0 });
 
-		expect(serialize(deps.doc)).toBe('- a\n\n    code\n\nmore\n\nzz\n');
-		expect(describeConvergence(deps.doc)).toBeNull();
+		expect(serialize(h.doc)).toBe('- a\n\n    code\n\nmore\n\nzz\n');
+		expect(describeConvergence(h.doc)).toBeNull();
 	});
 });

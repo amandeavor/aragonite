@@ -4,8 +4,8 @@ import { describe, it, expect } from 'vitest';
 import {
 	createClipboardHandlers,
 	type ClipboardSurfaceDeps
-} from '../../../components/blocks/editable/editable-surface';
-import type { ClipboardArm } from '../../../components/blocks/editable/clipboard-step';
+} from '../../../components/blocks/editable/surface-clipboard';
+import { type ClipboardArm } from '../../../components/blocks/editable/clipboard-step';
 import { createInsertionRecords } from '#lib/caret/next-insertion.js';
 import type { PastedImage, PasteImageHook } from '../../../host-hooks';
 

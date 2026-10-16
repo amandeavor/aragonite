@@ -109,6 +109,7 @@ export const SOURCE = {
 	widgetAdjacency: 'src/lib/components/blocks/text/widget-adjacency.ts',
 	liveSelectionEdit: 'src/lib/components/blocks/text/live-selection-edit.ts',
 	delimiterAutopair: 'src/lib/components/blocks/text/delimiter-autopair.ts',
+	typedInput: 'src/lib/components/blocks/text/typed-input.ts',
 	codeBlockComponent: 'src/lib/components/blocks/code/CodeBlock.svelte',
 	codeFenceBoundary: 'src/lib/components/blocks/code/code-fence-boundary.ts',
 	listBlock: 'src/lib/components/blocks/list/ListBlock.svelte',
@@ -133,7 +134,7 @@ export const SOURCE = {
 	unitPluginPlatform: 'src/lib/test/support/plugin-platform.ts',
 	scanTestHelpers: 'src/lib/test/core/inline/scan/scan-test-helpers.ts',
 	revealLeafFixture: 'src/lib/test/blocks/fixtures/RevealLeafBlock.svelte',
-	compositionDriverLint: 'src/lib/e2e/lint/composition-driver.test.ts',
+	e2eDriversLint: 'src/lib/e2e/lint/e2e-drivers.test.ts',
 
 	// ── Demo routes and the consumer example ────────────────────────────────
 	appCss: 'src/app.css',
@@ -254,6 +255,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	widgetAdjacency: 'export function widgetsIn(',
 	liveSelectionEdit: 'export interface LiveEditCursor',
 	delimiterAutopair: 'export type AutoPairEdit',
+	typedInput: 'export interface TypedInputDeps',
 	codeBlockComponent: 'function writeCode(',
 	codeFenceBoundary: 'export function editSpan(',
 	listBlock: 'class="list-block"',
@@ -278,7 +280,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	unitPluginPlatform: 'Vitest setup: every unit test starts from',
 	scanTestHelpers: 'export function assertTotalCoverage',
 	revealLeafFixture: 'class="reveal-leaf-block"',
-	compositionDriverLint: 'G4.49 e2e composition rides the shared IME driver',
+	e2eDriversLint: 'G4.49 e2e composition rides the shared IME driver',
 
 	// ── Demo routes and the consumer example ────────────────────────────────
 	appCss: 'Page-chrome tokens for the demo routes',
@@ -377,7 +379,7 @@ export const SOURCE_DIR_ANCHORS: Record<keyof typeof SOURCE_DIR, string> = {
 	e2e: 'browser-engine.ts',
 	e2eTests: 'perf',
 	e2ePerfTests: 'attribution.perf.spec.ts',
-	e2eLint: 'composition-driver.test.ts',
+	e2eLint: 'e2e-drivers.test.ts',
 	e2eRequirements: 'block-error-boundary.md',
 	routes: '+layout.svelte',
 	referencePlugins: 'callout',

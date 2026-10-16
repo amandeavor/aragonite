@@ -1,14 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { registerCalloutForTests } from './chrome-plugins';
 import { expectParseConverged } from '../harness/parse-converged';
 import type { Document } from '#lib/core/nodes.js';
 import type { SelectionPoint } from '#lib/selection/primitives.js';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 // A blank block covered as a range's middle is the separating line of the block after it, but
 // the `deleteAtPath` splice hands nothing down to that successor, and `clearRedundantSeparator`
@@ -19,13 +16,7 @@ const TABLE = '| h1 | h2 |\n| --- | --- |\n| a | b |\n';
 
 function del(source: string, start: SelectionPoint, end: SelectionPoint): Document {
 	const doc = parse(source);
-	rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	deleteRange(doc, start, end);
 	return doc;
 }
 

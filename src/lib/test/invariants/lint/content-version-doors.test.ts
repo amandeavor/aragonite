@@ -12,10 +12,9 @@ import {
 	enclosingFunction,
 	fileClasses,
 	sourceFile,
-	stripComments,
 	type SourceFile
 } from './scan-source';
-import { probeFile } from './file-rule';
+import { describeManifests } from './file-rule';
 
 /** Every file naming the announcement, and the write it owns. */
 const ANNOUNCERS: Record<string, string> = {
@@ -63,34 +62,36 @@ function missingReadingChecks(file: SourceFile, spec: Partial<Record<ReadingChec
 const ANNOUNCES = /\bbumpContentVersion\b|\bcontentVersion\.bump\b/;
 const UNSHARES_ROOT = /\bensureUnsharedPath\s*\(\s*deps\.doc\b/;
 
-function matching(sources: SourceFile[], re: RegExp): string[] {
-	return sources
-		.filter((f) => re.test(f.code))
-		.map((f) => f.relPath)
-		.sort();
-}
+const sources = collectEditorSources();
 
-describe('content-version entry-point census', () => {
-	const sources = collectEditorSources();
+describeManifests(
+	[
+		{
+			id: 'exactly the declared files announce a byte write',
+			matches: ANNOUNCES,
+			declared: ANNOUNCERS,
+			reason:
+				'an announcement was added or dropped: name the entry point it owns, or the memos over the document go stale',
+			hits: ['deps.bumpContentVersion();', 'contentVersion.bump();'],
+			misses: ['// bumpContentVersion would announce it']
+		},
+		{
+			id: 'exactly the declared files unshare an ancestor chain off the editor’s own document',
+			matches: UNSHARES_ROOT,
+			declared: ROOT_UNSHARERS,
+			reason:
+				'a new write entry point outside the commit sequence: announce the bytes it moves, or route it through that sequence',
+			hits: ['ensureUnsharedPath(deps.doc, [i], deps.sharing);'],
+			misses: [
+				'ensureUnsharedPath({ children }, [i], view.sharing);',
+				'// ensureUnsharedPath(deps.doc, path, sharing) is the door'
+			]
+		}
+	],
+	sources
+);
 
-	it('inspected at least one editor source file', () => {
-		expect(sources.length).toBeGreaterThan(0);
-	});
-
-	it('exactly the declared files announce a byte write', () => {
-		expect(
-			matching(sources, ANNOUNCES),
-			'an announcement was added or dropped: name the entry point it owns, or the memos over the document go stale'
-		).toEqual(Object.keys(ANNOUNCERS).sort());
-	});
-
-	it('exactly the declared files unshare an ancestor chain off the editor’s own document', () => {
-		expect(
-			matching(sources, UNSHARES_ROOT),
-			'a new write entry point outside the commit sequence: announce the bytes it moves, or route it through that sequence'
-		).toEqual(Object.keys(ROOT_UNSHARERS).sort());
-	});
-
+describe('content-version entry points that write outside a commit', () => {
 	it('every root unsharer is the commit sequence or announces for itself', () => {
 		const silent = Object.keys(ROOT_UNSHARERS).filter((relPath) => !(relPath in ANNOUNCERS));
 		expect(silent).toEqual([]);
@@ -122,31 +123,5 @@ describe('content-version entry-point census', () => {
 		expect(missingReadingChecks(file, { admitsWrite: ['requestUndo', 'requestRedo'] })).toEqual([
 			'admitsWrite:requestUndo'
 		]);
-	});
-
-	// ── Matcher self-tests (non-vacuity) ─────────────────────────────────────
-
-	it('the announcement matcher sees both spellings and skips prose', () => {
-		const probe = (text: string) => ANNOUNCES.test(stripComments(text, 'script'));
-		expect(probe('deps.bumpContentVersion();')).toBe(true);
-		expect(probe('contentVersion.bump();')).toBe(true);
-		expect(probe('// bumpContentVersion would announce it')).toBe(false);
-	});
-
-	it('the root-unshare matcher skips a scope-view unshare and a comment', () => {
-		const probe = (text: string) => UNSHARES_ROOT.test(stripComments(text, 'script'));
-		expect(probe('ensureUnsharedPath(deps.doc, [i], deps.sharing);')).toBe(true);
-		expect(probe('ensureUnsharedPath({ children }, [i], view.sharing);')).toBe(false);
-		expect(probe('// ensureUnsharedPath(deps.doc, path, sharing) is the door')).toBe(false);
-	});
-
-	it('an undeclared entry point fails the set equality', () => {
-		const rogue = probeFile({
-			relPath: 'src/lib/editor-actions/rogue.ts',
-			code: 'ensureUnsharedPath(deps.doc, path, deps.sharing);'
-		});
-		expect(matching([...sources, rogue], UNSHARES_ROOT)).not.toEqual(
-			Object.keys(ROOT_UNSHARERS).sort()
-		);
 	});
 });

@@ -14,4 +14,4 @@ Paste / cut into unusual positions: empty document, heterogeneous clipboard, cut
 ## Pinned below the browser
 
 An empty clipboard is a no-op: the block's paste step never runs
-(`test/blocks/editable/editable-surface-clipboard.test.ts`).
+(`test/blocks/editable/surface-clipboard.test.ts`).

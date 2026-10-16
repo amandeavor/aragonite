@@ -10,16 +10,12 @@ import { mergeWithNext } from '#lib/tree-operations/index.js';
 import { reorderChildrenWithTrivia } from '#lib/tree-operations/reorder.js';
 import { documentBody } from '#lib/tree-operations/node-primitives.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { planEnterCompletion } from '#lib/editor-actions/enter-completion.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import { describeConvergence } from '../harness/parse-converged';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import { makeEditorActionsDeps, makeStubBlockEdit, pasteContext } from '../harness/editor-actions';
+import { runPasteDispatch, makePasteCommit } from '../harness/editor-actions';
 import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 const noIndentedCode = createRegistryView({ syntax: { indentedCode: false } }).grammar;
 const read = (source: string) => parse(source, { grammar: noIndentedCode });
@@ -57,12 +53,11 @@ describe('an edit route reparses in the editor grammar', () => {
 
 	it('a range delete whose survivor leads with four spaces leaves a paragraph', () => {
 		const doc = read('first\n\nx    rest\n');
-		rangeDelete(
+		deleteRange(
 			doc,
-			rangeCoverage(doc, coverRange(doc, { path: [0], offset: 0 }, { path: [1], offset: 1 })),
-			createSharingState(),
-			fixtureReading({ grammar: noIndentedCode }),
-			'keyless'
+			{ path: [0], offset: 0 },
+			{ path: [1], offset: 1 },
+			{ reading: fixtureReading({ grammar: noIndentedCode }) }
 		);
 		expect(kindsOf(doc.children)).toEqual(['paragraph']);
 		expect(describeConvergence(doc, noIndentedCode)).toBeNull();
@@ -73,17 +68,13 @@ describe('an edit route reparses in the editor grammar', () => {
 	it('a structural paste that splits an indented paragraph leaves both halves prose', async () => {
 		// One reading for the editor and the paste, as an editor hands both the same one.
 		const reading = fixtureReading({ grammar: noIndentedCode });
-		const { deps } = makeEditorActionsDeps(read('    lead tail\n'), { reading });
-		await pasteDispatch(
-			{ pastedText: 'a\n\nb\n', targetPath: [0], offset: '    lead'.length },
-			pasteContext({
-				doc: deps.doc,
-				blockEdit: makeStubBlockEdit(),
-				controller: createPasteCoordinator(deps, createUndoController(deps)),
-				reading
-			})
-		);
-		expect(kindsOf(deps.doc.children)).not.toContain('indentedCode');
-		expect(describeConvergence(deps.doc, noIndentedCode)).toBeNull();
+		const h = makePasteCommit(read('    lead tail\n'), { reading });
+		await runPasteDispatch(h, {
+			pastedText: 'a\n\nb\n',
+			targetPath: [0],
+			offset: '    lead'.length
+		});
+		expect(kindsOf(h.doc.children)).toEqual(['paragraph', 'paragraph', 'paragraph', 'paragraph']);
+		expect(describeConvergence(h.doc, noIndentedCode)).toBeNull();
 	});
 });

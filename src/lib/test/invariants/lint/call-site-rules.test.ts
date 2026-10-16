@@ -112,20 +112,16 @@ const RULES: CallSiteRule[] = [
 		allowed: {
 			'src/lib/components/blocks/editable/editable-surface.ts :: updateBlockContent':
 				'the block’s own edit actions, which the surface write and every route below write through',
-			'src/lib/components/blocks/text/TextEditableBlock.svelte :: toggleFormat':
-				'a command, which moves once commands take their own undo entry through the surface write',
+			'src/lib/components/blocks/text/inline-commands.ts :: toggleFormat':
+				'a format command in a paragraph or a table cell, which moves once commands take their own undo entry through the surface write',
 			'src/lib/components/blocks/text/TextEditableBlock.svelte :: perform':
 				'the demote and heading cycle commands, moving with the other commands',
 			'src/lib/components/blocks/text/TextEditableBlock.svelte :: writeHardBreak':
 				'Shift+Enter inside the text, a command moving with the other commands (at the end it writes nothing until the next insertion)',
-			'src/lib/components/blocks/table/TableCellBlock.svelte :: toggleFormat':
-				'a command, moving with the other commands',
-			'src/lib/components/blocks/table/TableCellBlock.svelte :: deleteCellRange':
-				'the cell menu’s cut, moving with the other clipboard edits',
 			'src/lib/components/blocks/text/text-clipboard.ts :: removeWidget':
 				'a cut of a selected widget, moving with the other clipboard edits',
 			'src/lib/components/blocks/text/text-clipboard.ts :: removeRange':
-				'a cut in a text block, moving with the other clipboard edits',
+				'a cut in a text block or a table cell, moving with the other clipboard edits',
 			'src/lib/components/blocks/text/widget-interaction.ts :: commitReveal':
 				'an inline widget’s shown source, moving with the fold that closes it'
 		},
@@ -161,9 +157,7 @@ const RULES: CallSiteRule[] = [
 			'src/lib/components/blocks/text/text-clipboard.ts :: copyWidget':
 				'the text block’s copy of a selected widget',
 			'src/lib/components/blocks/text/text-clipboard.ts :: copyRange':
-				'the text block’s copy of its own range',
-			'src/lib/components/blocks/table/TableCellBlock.svelte :: copyCellRange':
-				'the cell’s copy of its own range',
+				'a text block’s or a table cell’s copy of its own range',
 			'src/lib/components/blocks/editable/editable-leaf.ts :: copyRange':
 				'a plugin leaf’s copy of its own range',
 			'src/lib/selection/cross-block/clipboard.ts :: copyCrossBlock':
@@ -205,7 +199,7 @@ const RULES: CallSiteRule[] = [
 				'Enter in a multi-line plugin source types a new line',
 			'src/lib/components/blocks/editable/editable-leaf.ts :: onBeforeInput':
 				'a line break with no key in a painted plugin source types a new line',
-			'src/lib/components/blocks/text/TextEditableBlock.svelte :: handleDelimiterAutoPair':
+			'src/lib/components/blocks/text/TextEditableBlock.svelte :: completesLine':
 				'asks whether a completion is planned, and writes nothing'
 		},
 		reason:

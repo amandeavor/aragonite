@@ -1,12 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
 import { nodeAt } from '../../tree-operations/node-primitives';
-import { createSharingState } from '../../tree-operations/sharing';
 import type { Document } from '../../core/nodes';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 function run(
 	source: string,
@@ -14,13 +11,7 @@ function run(
 	end: { path: number[]; offset: number }
 ) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end);
 	return {
 		doc: result.newDoc,
 		source: serialize(result.newDoc),

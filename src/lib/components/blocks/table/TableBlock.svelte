@@ -90,7 +90,6 @@
 
 	// Plain `let`, not $state: writes happen during keyed-each reconcile via
 	// the focusout handler, which Svelte 5 traps as state_unsafe_mutation.
-	let internalStickyColumn: number | null = null;
 	let focusedCell: { rowIdx: number; colIdx: number } | null = null;
 	// The reactive mirror the edge affordances read, written a microtask after the plain one so
 	// a focusout fired mid-reconcile never mutates state inside the render.
@@ -220,25 +219,14 @@
 			focusActions.followArrival([...myPath, rowIdx, colIdx]);
 		},
 		revealColumn,
-		getStickyColumn() {
-			return internalStickyColumn;
-		},
-		setStickyColumn(colIdx) {
-			internalStickyColumn = colIdx;
-		},
-		resetStickyColumn() {
-			internalStickyColumn = null;
-		},
 		exitUpward(stickyX) {
 			captureExitColumn(asEditorX(stickyX));
-			internalStickyColumn = null;
 			focusActions.moveFocus(myPath[myPath.length - 1] - 1, {
 				stickyColumnFrom: 'below'
 			});
 		},
 		exitDownward(stickyX) {
 			captureExitColumn(asEditorX(stickyX));
-			internalStickyColumn = null;
 			focusActions.moveFocus(myPath[myPath.length - 1] + 1, {
 				stickyColumnFrom: 'above'
 			});
@@ -432,7 +420,6 @@
 		const handler = (e: FocusEvent) => {
 			const next = e.relatedTarget as Node | null;
 			if (next && el.contains(next)) return;
-			internalStickyColumn = null;
 			focusedCell = null;
 		};
 		el.addEventListener('focusout', handler);
@@ -468,9 +455,7 @@
 	export function focusAtColumn(x: number, from: StickyColumnDirection): void {
 		if (rowCount === 0) return;
 		const targetRow = from === 'above' ? 0 : rowCount - 1;
-		const colIdx = columnNearestX(asEditorX(x), collectColumnRects());
-		internalStickyColumn = colIdx;
-		focusCell(targetRow, colIdx, 'start');
+		focusCell(targetRow, columnNearestX(asEditorX(x), collectColumnRects()), 'start');
 	}
 
 	export function focusByPath(path: number[], offset: number): void {

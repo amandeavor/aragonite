@@ -5,15 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { metadataOf, type Document } from '#lib/core/nodes.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import {
 	makeBlockListState,
 	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
+	runPasteDispatch,
+	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { replaceRange } from '#lib/selection/cross-block/range-replace.js';
@@ -21,20 +19,13 @@ import { rangeContext } from '../../selection/cross-block/range-context';
 
 /** `pasted` at the start of the first item's text, through the paste dispatcher. */
 async function pasteAtItemStart(source: string, pasted: string): Promise<Document> {
-	const { deps } = makeEditorActionsDeps(parse(source));
+	const h = makePasteCommit(parse(source));
 	registerBlockListState(
-		deps.doc.children[0],
-		makeBlockListState(() => deps.doc.children[0])
+		h.doc.children[0],
+		makeBlockListState(() => h.doc.children[0])
 	);
-	await pasteDispatch(
-		{ pastedText: pasted, targetPath: [0, 0, 0], offset: 0 },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: makeStubBlockEdit(),
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
-	);
-	return deps.doc;
+	await runPasteDispatch(h, { pastedText: pasted, targetPath: [0, 0, 0], offset: 0 });
+	return h.doc;
 }
 
 /** `pasted` over a range from the first item's text start into the item after it. */

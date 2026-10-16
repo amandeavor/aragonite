@@ -12,15 +12,13 @@ import { screenVisibility } from '#lib/core/inline/visibility.js';
 import { ownTrailingLineEnding, trimTrailingLineEnding } from '#lib/core/lines.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
 import { resolveEdgeDeletion } from '#lib/components/blocks/text/construct-edge-delete.js';
 import { makeContainerHarness, makeTopHarness } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 // A live cut under a container marker writes the text bytes the same cut writes at the top level,
 // and leaves a tree a reload of those bytes reads back unchanged.
@@ -121,12 +119,12 @@ async function rangeEdit(
 /** A cross-block delete from inside `bc` to inside `ef`, both endpoints in the container. */
 function crossBlockDelete(container: Container): Document {
 	const doc = parse(container.wrap(['a **bc**', 'd *ef* g']));
-	const range = coverRange(
+	deleteRange(
 		doc,
 		{ path: container.first, offset: 5 },
-		{ path: container.second, offset: 5 }
+		{ path: container.second, offset: 5 },
+		{ reading: LIVE, gesture: 'Backspace' }
 	);
-	rangeDelete(doc, rangeCoverage(doc, range), createSharingState(), LIVE, 'Backspace');
 	return doc;
 }
 
