@@ -12,17 +12,11 @@ import { svelteBlockView } from '../components/svelte-block-view';
 import { augmentBuiltin } from '../schema/block-kind-descriptor';
 import { registerBuiltInDescriptors } from '../schema/built-in-descriptors';
 import { augmentInlineWidgetKind } from '../core/inline/inline-widgets';
-import {
-	registerLiveJoinSeamCleaner,
-	registerLiveSplitRebalancer
-} from '../schema/inline-construct-policy';
 import { registerPasteSurface } from '../tree-operations/paste-surfaces';
 import { registerBuiltInRangeIndent } from '../schema/range-indent-forms';
 import { shiftBodyLines } from './blocks/code/code-indent';
 import { codeBodyRange } from './blocks/code/code-renderer';
 import { imageWidgetOnSelectedKey } from './image/image-widget-editing';
-import { cleanLiveJoinSeam } from './blocks/text/live-join-seam';
-import { rebalanceLiveSplit } from './blocks/text/live-split-rebalance';
 import TextEditableBlock from './blocks/text/TextEditableBlock.svelte';
 import CodeBlock from './blocks/code/CodeBlock.svelte';
 import ThematicBreakBlock from './blocks/ThematicBreakBlock.svelte';
@@ -100,9 +94,4 @@ export function registerBuiltInBlocks(): void {
 	// Image resize is editor-layer behavior, so the core image kind stays data-only
 	// and gains its selected-key handler here, where the render layer is reachable.
 	augmentInlineWidgetKind('image', { onSelectedKey: imageWidgetOnSelectedKey });
-
-	// These need the inline parser and render path, which `tree-operations` may not import, so
-	// they are filled in here.
-	registerLiveSplitRebalancer(rebalanceLiveSplit);
-	registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
 }

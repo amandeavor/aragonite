@@ -1,10 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, beforeEach, describe, it, expect } from 'vitest';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { collectCrossBlockText } from '../../selection/clipboard-text';
 import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import type { SelectionPoint } from '../../selection/primitives';
@@ -18,8 +13,6 @@ const SOURCE_READING = fixtureReading({}, 'source');
 // Miss-analysis: every copy row read source mode, so an edge cut through a format run in live
 // mode put a stray closer or opener on the clipboard and none saw it.
 describe('a live copy across blocks carries what a cut there takes', () => {
-	beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-	afterAll(() => __resetLiveJoinSeamCleanerForTests());
 	const LIVE_READING = fixtureReading({}, 'live');
 	const doc = parse('Some **bold** x\n\ny *it* z\n');
 	const range = coverRange(doc, { path: [0], offset: 9 }, { path: [1], offset: 4 });

@@ -3,12 +3,7 @@
 // link or a bold run leaves no `[](u)` or `****` behind, and a construct swapped for another stays.
 // Miss-analysis: no test called the image overlay's Remove, and every inline range test ran in
 // source mode, so the range write's literal splice never stood beside a hidden run.
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
+import { describe, expect, it } from 'vitest';
 import { createInlineRangeCommit } from '#lib/editor-actions/inline-range-commit.js';
 import { createImageEditCommitter } from '#lib/components/image/image-edit-commit.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
@@ -16,9 +11,6 @@ import type { PresentationMode } from '#lib/presentation-mode.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 import { makeTopHarness } from '../harness/editor-actions';
 import { fixtureReading } from '../harness/fixture-grammar';
-
-beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
 
 function harness(source: string, mode: PresentationMode) {
 	const reading = fixtureReading({}, mode);

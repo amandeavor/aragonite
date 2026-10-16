@@ -1,20 +1,12 @@
 // @vitest-environment jsdom
 // Miss-analysis: every list split row checked the bytes, and none read the new item back, so an
 // item built over a leading space or indented code kept a marker its reload widens.
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { metadataOf, type Document, type ListItemMetadata } from '#lib/core/nodes.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
-import { rebalanceLiveSplit } from '#lib/components/blocks/text/live-split-rebalance.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	registerLiveSplitRebalancer,
-	__resetLiveJoinSeamCleanerForTests,
-	__resetLiveSplitRebalancerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import {
 	makeBlockListState,
 	makeEditorActionsDeps,
@@ -22,15 +14,6 @@ import {
 } from '#lib/test/harness/editor-actions.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { describeConvergence } from '../harness/parse-converged';
-
-beforeEach(() => {
-	registerLiveSplitRebalancer(rebalanceLiveSplit);
-	registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
-});
-afterEach(() => {
-	__resetLiveSplitRebalancerForTests();
-	__resetLiveJoinSeamCleanerForTests();
-});
 
 /** Enter at `offset` in the first item's first block, through the list's own split. */
 async function enterInFirstItem(

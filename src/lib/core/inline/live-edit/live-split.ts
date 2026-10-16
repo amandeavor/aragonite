@@ -12,38 +12,33 @@ import {
 	inlineDescendants,
 	isProseKind,
 	readInline
-} from '../../../core/inline';
-import {
-	CONTENT_VISIBILITY,
-	paintsOnlyChrome,
-	renderedText
-} from '../../../core/inline/visibility';
-import { readBack, shownOf } from '../../../core/inline/live-edit/read-back';
+} from '../index';
+import { CONTENT_VISIBILITY, paintsOnlyChrome, renderedText } from '../visibility';
+import { readBack, shownOf } from './read-back';
 import type { StoredAs } from '../../../schema/stored-as';
-import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
-import type { NodeView } from '../../../core/node-views';
-import { isBlankText, readsAsBlankLine } from '../../../core/lines';
-import {
-	closeBefore,
-	closesAndReopens,
-	reopenAfter,
-	type CutConstruct
-} from '../../../core/inline/live-edit/close-reopen';
-import {
-	getInlineConstructPolicy,
-	type LiveSplitRebalancer,
-	type SplitStores
-} from '../../../schema/inline-construct-policy';
+import type { AnyInlineKind, InlineNode } from '../../nodes';
+import type { NodeView } from '../../node-views';
+import { isBlankText, readsAsBlankLine } from '../../lines';
+import { closeBefore, closesAndReopens, reopenAfter, type CutConstruct } from './close-reopen';
+import { getInlineConstructPolicy } from '../../../schema/inline-construct-policy';
 
 // ── The rewrite ──────────────────────────────────────────────────────────────
 
-export const rebalanceLiveSplit: LiveSplitRebalancer = (
-	node,
-	offset,
-	firstRaw,
-	secondRaw,
-	stores
-) => {
+/** Where each half of a split is stored: the first in the block's own slot, the second where the
+ *  split puts it (the next slot, or a new list item's first). */
+export interface SplitStores {
+	first: StoredAs;
+	second: StoredAs;
+}
+
+/** The two halves with the cut's constructs closed and reopened, or null to keep the literal cut. */
+export function rebalanceLiveSplit(
+	node: NodeView,
+	offset: number,
+	firstRaw: string,
+	secondRaw: string,
+	stores: SplitStores
+): { firstRaw: string; secondRaw: string } | null {
 	const { reading } = stores.first;
 	const read = readSplitBytes(node, offset, firstRaw, secondRaw);
 	if (read === null) return null;
@@ -78,7 +73,7 @@ export const rebalanceLiveSplit: LiveSplitRebalancer = (
 		}
 	}
 	return null;
-};
+}
 
 // ── What the caller already decided ──────────────────────────────────────────
 

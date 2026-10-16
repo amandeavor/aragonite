@@ -1,6 +1,6 @@
-// A range that ends at a block's first byte, or starts past a block's last, cuts nothing of that
-// block. A block with text joins the other edge by its text alone, its marker going with the
-// boundary; a block with none (a rule, a fence) stays whole rather than join as text.
+// @vitest-environment jsdom
+// A range ending at a block's first byte, or starting past its last, cuts nothing of it: a block
+// with text joins by its text, its marker going with the boundary, and a rule or fence stays whole.
 // Miss-analysis: every range delete row cut into both edge blocks, so none asked what a join does
 // with a block the range only touches, and a rule's bytes joined a paragraph as text.
 import { describe, it, expect } from 'vitest';

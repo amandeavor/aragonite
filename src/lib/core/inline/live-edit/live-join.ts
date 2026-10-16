@@ -11,38 +11,64 @@ import {
 	inlineDescendants,
 	isProseKind,
 	readInline
-} from '../../../core/inline';
-import {
-	CONTENT_VISIBILITY,
-	paintsOnlyChrome,
-	renderedText,
-	visibleRuns
-} from '../../../core/inline/visibility';
-import { readBack, readSource, shownRunsOf } from '../../../core/inline/live-edit/read-back';
+} from '../index';
+import { CONTENT_VISIBILITY, paintsOnlyChrome, renderedText, visibleRuns } from '../visibility';
+import { readBack, readSource, shownRunsOf } from './read-back';
 import {
 	closeBefore,
 	closesAndReopens,
 	markSpelling,
 	reopenAfter,
 	type CutConstruct
-} from '../../../core/inline/live-edit/close-reopen';
-import { keepsEdgeMarks, marksShown } from '../../../core/inline/live-edit/shown-marks';
-import { displayLength, readsAsBlankLine } from '../../../core/lines';
+} from './close-reopen';
+import { keepsEdgeMarks, marksShown } from './shown-marks';
+import { displayLength, readsAsBlankLine } from '../../lines';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
 import type { GrammarView } from '../../../schema/block-openers';
-import type { RenderInlineOptions } from '../../../core/inline-render';
-import type { InlineNode } from '../../../core/nodes';
-import {
-	getInlineConstructPolicy,
-	type JoinEndpoint,
-	type JoinSeam,
-	type LiveJoinSeamCleaner
-} from '../../../schema/inline-construct-policy';
+import type { RenderInlineOptions } from '../../inline-render';
+import type { InlineNode } from '../../nodes';
+import type { NodeView } from '../../node-views';
+import { getInlineConstructPolicy } from '../../../schema/inline-construct-policy';
 
 // ── The rewrite ──────────────────────────────────────────────────────────────
 
-export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
+/** One side of a join: the block it contributed bytes from and the offset they were cut at. A
+ *  merge cuts at the end of the block's content, a range delete at the selection endpoint. */
+export interface JoinEndpoint {
+	node: NodeView;
+	offset: number;
+}
+
+/** The bytes a join produced, plus where the second side's contribution starts in them. */
+export interface JoinSeam {
+	mergedRaw: string;
+	seam: number;
+	start: JoinEndpoint;
+	end: JoinEndpoint;
+	/** Text the caller will insert at the join after the cleanup, `''` for a plain delete. The
+	 *  cleanup checks it too, since typed text changes what a surviving delimiter pairs against. */
+	typed: string;
+	/** Where the joined bytes will be stored, with the editor's reading: the cleanup reads each
+	 *  candidate back there, a list item's marker line or a cell's text included. */
+	store: StoredAs;
+}
+
+/** The bytes a cleanup wrote and where the two sides now meet in them: the runs it dropped and the
+ *  closers and openers it wrote at the join move the point the caret lands on. */
+export interface CleanedJoin {
+	raw: string;
+	/** Where typed text and the caret go: inside a closed run that grows at its edge. */
+	seam: number;
+	/** Where the second side's bytes start, past every closer and opener written at the join. */
+	seamEnd: number;
+	/** Where an offset of the merged bytes lands in `raw`; a byte the cleanup dropped lands where
+	 *  its run stood, and the join's own offset lands before the runs written there. */
+	map(offset: number): number;
+}
+
+/** The join's bytes with each kept half's format kept, or null to keep the plain concatenation. */
+export function cleanLiveJoinSeam(join: JoinSeam): CleanedJoin | null {
 	const { typed, store } = join;
 	const left = readSide(join.start, 'before', store.reading);
 	const right = readSide(join.end, 'after', store.reading);
@@ -98,7 +124,7 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 		return { raw: candidate, seam, seamEnd, map };
 	}
 	return null;
-};
+}
 
 const standsOnSeam = (side: Side): boolean => side.dangling.length > 0 || side.touching.length > 0;
 

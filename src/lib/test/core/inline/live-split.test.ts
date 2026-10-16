@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import {
-	parsesBack,
-	rebalanceLiveSplit
-} from '#lib/components/blocks/text/live-split-rebalance.js';
+import { parsesBack, rebalanceLiveSplit } from '#lib/core/inline/live-edit/live-split.js';
 import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
 import { getContentRange, parseInline } from '#lib/core/inline/index.js';
 import { CONTENT_VISIBILITY, renderedText } from '#lib/core/inline/visibility.js';
@@ -288,8 +285,8 @@ describe('the first half never parses to more than one block', () => {
 	});
 });
 
-// The resolver is passed per call because it is per editor while the registry is process-wide;
-// without it a reference form reads as brackets and the cut leaves a marker on screen.
+// The resolver is passed per call because it is per editor; without it a reference form reads as
+// brackets and the cut leaves a marker on screen.
 describe('a reference form rebalances only when the resolver reaches the join', () => {
 	const DOC = 'Visit [example][site] here\n\n[site]: https://example.com\n';
 

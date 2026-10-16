@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import type { Document } from '#lib/core/nodes.js';
 import { parse } from '#lib/core/parser.js';
@@ -13,11 +13,6 @@ import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { markedChars, marksWithin, type MarkedChar } from '#lib/test/harness/live-oracles.js';
 import { unpaintedResidue } from '#lib/test/simulation/live-screen-reading.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import { arbInlineSource, freshOrFixedSeed } from './arbitraries';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading, renderOptions } from '../harness/fixture-grammar';
@@ -144,9 +139,6 @@ function visibleTextOf(node: Document['children'][number]): string {
 }
 
 describe('live-mode joins over random range deletes', () => {
-	beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-	afterAll(() => __resetLiveJoinSeamCleanerForTests());
-
 	// G1.91. The counters prove the draws reach the rewrite and that it takes glyphs off the
 	// screen; a comparison over draws that never rewrite proves nothing about the rewrite.
 	it('a live delete keeps every kept character and its marks, adds no residue, and diverges only where the literal one does', () => {

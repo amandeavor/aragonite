@@ -522,7 +522,7 @@ const RULES: FileRule[] = [
 			at('src/lib/test/g.test.ts', hookCall('beforeAll', 'installLayoutStubs()')),
 			at(
 				'src/lib/test/h.test.ts',
-				'registerBuiltInDescriptors();\nbeforeAll(registerLiveJoinSeamCleaner);'
+				'registerBuiltInDescriptors();\nbeforeAll(registerBuiltInBlocks);'
 			),
 			at(
 				'src/lib/test/i.test.ts',

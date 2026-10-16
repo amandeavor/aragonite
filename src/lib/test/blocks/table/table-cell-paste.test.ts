@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { CstNode } from '../../../core/nodes';
 import type { PresentationMode } from '../../../presentation-mode';
 import {
@@ -11,11 +11,6 @@ import type { PasteRange } from '../../../tree-operations/paste-surfaces';
 import { updateNodeContent } from '../../../tree-operations/content-write';
 import { writeTableRow } from '../../../schema/container-rebuilders';
 import { parse } from '../../../core/parser';
-import { cleanLiveJoinSeam } from '../../../components/blocks/text/live-join-seam';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '../../../schema/inline-construct-policy';
 import { fixtureReading, topLevelStore } from '../../harness/fixture-grammar';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import type { Reading } from '#lib/schema/reading.js';
@@ -137,9 +132,6 @@ describe('tableCellInlinePaste', () => {
 	// The paste's delete is a join, and a cell's stranded marker runs are hidden as a paragraph's
 	// are; the join runs before escaping, so the escaping sees the final bytes.
 	describe('the delete half crosses the live join', () => {
-		beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-		afterAll(() => __resetLiveJoinSeamCleanerForTests());
-
 		const CUT = { start: 8, end: 18 };
 		const readingIn = (presentationMode: PresentationMode) => fixtureReading({}, presentationMode);
 		const cellIn = (presentationMode: PresentationMode) => {

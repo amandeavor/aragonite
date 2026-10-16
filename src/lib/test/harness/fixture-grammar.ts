@@ -7,7 +7,7 @@ import type { Reading } from '#lib/schema/reading.js';
 import type { ChildSlot } from '#lib/tree-operations/list/task-paragraph.js';
 import type { NodeView } from '#lib/core/node-views.js';
 import type { StoredAs } from '#lib/schema/stored-as.js';
-import type { SplitStores } from '#lib/schema/inline-construct-policy.js';
+import type { SplitStores } from '#lib/core/inline/live-edit/live-split.js';
 import { storedAsIn } from '#lib/tree-operations/stored-as.js';
 import { hidesDelimitersAtCaret, type PresentationMode } from '#lib/presentation-mode.js';
 

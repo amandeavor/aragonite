@@ -12,11 +12,6 @@ import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
 import { makeEditorActionsDeps, type EditorActionsHarness } from '../../harness/editor-actions';
 import { createCompositionSeat } from '#lib/components/blocks/text/composition-seat.js';
 import { replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import { type EdgeAffinity } from '#lib/caret/edge-affinity.js';
 import { createCaretMemory } from '#lib/caret/caret-memory.js';
@@ -251,9 +246,7 @@ describe('composed text placement', () => {
 	// What a `compositionend` commit writes in each presentation mode, by the side the caret meant.
 	// Miss-analysis: no composition test ran outside live mode, so only keydown checked the mode.
 
-	beforeEach(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
 	afterEach(() => {
-		__resetLiveJoinSeamCleanerForTests();
 		document.body.innerHTML = '';
 	});
 

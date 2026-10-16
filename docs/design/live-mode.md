@@ -74,13 +74,13 @@ Field by field:
 
 - `edgeAffinity`: which side of the delimiters a typed byte lands on (§ 4.2).
 - `autoUnwrapOnEmpty`: whether emptying the construct takes its delimiters with it (§ 4.4).
-- `splitBehavior`: what Enter inside it does (§ 4.4). `close-and-reopen` closes it before the cut and reopens it after, and `plain` leaves the literal cut. `whole` (an autolink, an escape) says no part of the construct stands alone: Enter moves the cut to its nearer edge, and a delete whose every cut unmakes it takes it whole.
+- `splitBehavior`: what a cut inside it does, whether it's Enter (§ 4.4), a pending mark stepping out of it (§ 4.3) or a delete through it (§ 4.5). `close-and-reopen` closes it before the cut and reopens it after, and `plain` leaves the literal cut. `whole` (an autolink, an escape) says no part of the construct stands alone: Enter moves the cut to its nearer edge, and a delete whose every cut unmakes it takes it whole.
 - `revealable`: whether preview-inline may show its markers when the caret enters.
 - `followEdit`: whether a click follows the construct, and how "Edit link" and Mod+K edit it then. A link's `'card'` opens the link card (§ 4.6); an autolink's `'text'` puts the caret at the URL's end, since the URL is the text you see. The follow path reads this too, so nothing follows that can't be edited.
 - `prose`: how much of the construct is text the author writes, which decides where a trigger like `#` may open the inline menu. All of it (bold), only its content (a link's text, not its URL), or none (a code span, an image). A kind whose row declares no `prose`, or that has no row at all, counts as all of it, unless it's an inline widget (a plugin's formula), which counts as none.
 - `mark`: what a format chord writes for it. The delimiter run, the rank it nests at when one insertion carries several marks, the command that toggles it, and a wrap function for a kind whose delimiters depend on what they enclose (a code span sizes its backtick fence past the longest run inside it).
 
-The same table holds the two registered rewrite slots, the split rebalancer (§ 4.4) and the join cleaner (§ 4.5). Each slot holds one function for every construct and has exactly one reader: the rebalancer's is `tree-operations/node-ops.ts`, the cleaner's `tree-operations/leaf-range.ts`.
+The split rebalancer (§ 4.4) and the join cleaner (§ 4.5) are one function each for every construct, reading these rows (`core/inline/live-edit/`). Each has exactly one caller: the rebalancer's is `tree-operations/node-ops.ts`, the cleaner's `tree-operations/leaf-range.ts`.
 
 Two things stay outside the table on purpose, and a lint records both with their reasons so they can't drift:
 
@@ -247,7 +247,7 @@ const image = parse('a ![alt](i.png) b\n').children[0];
 rebalanceLiveSplit(image, 5, 'a ![a\n', 'lt](i.png) b\n', stores); // null: a plain kind, so the literal cut stands
 ```
 
-- Enter inside a `close-and-reopen` construct closes it before the cut and reopens it after, innermost first, so neither half strands a run, and a split link carries its destination into both halves (`live-split-rebalance.ts`). A `plain` kind with content declines, and the byte-literal cut stands.
+- Enter inside a `close-and-reopen` construct closes it before the cut and reopens it after, innermost first, so neither half strands a run, and a split link carries its destination into both halves (`core/inline/live-edit/live-split.ts`). A `plain` kind with content declines, and the byte-literal cut stands.
 - Each half has to re-parse to one prose block that a reload of the file would keep, read where it lands: whitespace-only halves are refused, a boundary space may move outside the runs, and only terminal whitespace the screen never painted may drop. So in a to-do item, a `# **bo**` half above the cut is read behind the checkbox, where it stays text (not a heading), just as it was before the cut.
 - In a list item the second half becomes the first line of a new item, and that item takes the marker its bytes read as. `- **bo ld**` cut after `bo` writes `- **bo**` and `-  **ld**`: the space stays (live drops only what it never showed), the new item's marker is `-  `, and the tree matches a reload. Source mode does the same with `- a b` cut after `a`.
 - A `whole` kind (autolink, escape) has no interior for a cut to land in at all. Two halves of a URL are not two URLs, and half an escape is a literal backslash, so the cut moves to its nearer edge and one half takes the construct whole, every byte kept (which is what rules out the alternative, dropping the delimiter pair). A hard break is `plain`: its moved cut doesn't parse back, so there the literal cut stands.
@@ -286,7 +286,7 @@ The fallback these rules share is § 2's. A split, a join or a typed byte whose 
 
 ### 4.5 Joins clean up where they meet
 
-Every destructive join crosses one call, `cleanJoinedRaw` in `tree-operations/leaf-range.ts`, the sole reader of the registered cleaner (`live-join-seam.ts`). It does what a word processor does with a cut through bold: the half you kept stays bold. So the cleanup:
+Every destructive join crosses one call, `cleanJoinedRaw` in `tree-operations/leaf-range.ts`, the only caller of the join rewrite (`core/inline/live-edit/live-join.ts`). It does what a word processor does with a cut through bold: the half you kept stays bold. So the cleanup:
 
 - closes a format run the cut went through on the half before the cut, and reopens it on the half after, the same close-and-reopen Enter does (`core/inline/live-edit/close-reopen.ts`). A half that keeps none of the run's text takes none of its delimiters, since live never writes a pair around nothing;
 - drops the closer/opener chain a join brings back to back around nothing, which is the split's inverse. Matching runs from the outside in stay one run, so cutting the middle out of one bold word leaves one bold word;

@@ -24,11 +24,11 @@ import {
 	type LineEnding
 } from '../core/lines';
 import {
-	getLiveJoinSeamCleaner,
+	cleanLiveJoinSeam,
 	type CleanedJoin,
 	type JoinEndpoint,
 	type JoinSeam
-} from '../schema/inline-construct-policy';
+} from '../core/inline/live-edit/live-join';
 import type { StoredAs } from '../schema/stored-as';
 import { normalizeOwnRaw } from './node-primitives';
 import { cutBeforeSuffix, joinKeepingSuffix } from './structural-suffix';
@@ -162,7 +162,7 @@ export function cleanJoinedRaw(join: JoinSeam): CleanedJoin {
 		map: (offset: number) => offset
 	};
 	if (!join.store.reading.hidesDelimitersAtCaret()) return literal;
-	return getLiveJoinSeamCleaner()?.(join) ?? literal;
+	return cleanLiveJoinSeam(join) ?? literal;
 }
 
 // ── Text that brings its own runs ────────────────────────────────────────────

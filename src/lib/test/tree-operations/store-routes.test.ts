@@ -3,7 +3,7 @@
 // through the gesture's own entry with bytes the right store and a top-level one read differently.
 // Miss-analysis: every container shape read the same at the top level, so a route handed a lone
 // paragraph's store instead of its own passed every suite.
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import { installPlugins } from '#lib';
 import { footnotesPlugin } from '#lib/plugins/footnotes/index.js';
@@ -24,20 +24,12 @@ import { collectCrossBlockText } from '#lib/selection/clipboard-text.js';
 import type { SelectionPoint } from '#lib/selection/primitives.js';
 import { movedText, runDrop } from '#lib/selection/selection-drop.js';
 import { createInlineRangeCommit } from '#lib/editor-actions/inline-range-commit.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
-import { rebalanceLiveSplit } from '#lib/components/blocks/text/live-split-rebalance.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import { allowDevWarns } from '../support/warn-gate';
-import {
-	registerLiveJoinSeamCleaner,
-	registerLiveSplitRebalancer,
-	__resetLiveJoinSeamCleanerForTests,
-	__resetLiveSplitRebalancerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import {
 	makeBlockListState,
 	makeContainerHarness,
@@ -83,8 +75,6 @@ vi.mock('#lib/tree-operations/stored-as.js', async (importOriginal) => {
 const LIVE = fixtureReading({}, 'live');
 
 beforeAll(() => {
-	registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
-	registerLiveSplitRebalancer(rebalanceLiveSplit);
 	ensurePasteSurface(tableCellPasteSurface);
 });
 beforeEach(() => {
@@ -99,11 +89,6 @@ afterEach(() => {
 	delete document.body.dataset.presentation;
 	window.getSelection()?.removeAllRanges();
 });
-afterAll(() => {
-	__resetLiveJoinSeamCleanerForTests();
-	__resetLiveSplitRebalancerForTests();
-});
-
 // ── Where the bytes go ───────────────────────────────────────────────────────
 
 // After a to-do's box, `# y` is text; at the top level it is a heading. After a plain item's
@@ -873,8 +858,8 @@ const REWRITES = [
 	'tree-operations/leaf-range.ts',
 	'components/blocks/text/live-selection-edit.ts',
 	'components/blocks/text/construct-edge-delete.ts',
-	'components/blocks/text/live-join-seam.ts',
-	'components/blocks/text/live-split-rebalance.ts',
+	'core/inline/live-edit/live-join.ts',
+	'core/inline/live-edit/live-split.ts',
 	'core/inline/live-edit/read-back.ts'
 ];
 

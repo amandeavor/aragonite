@@ -1211,8 +1211,8 @@ const RULES: FileRule[] = [
 		population: holdsLiveRewrites,
 		matches: /(?<![\w.])(?:readBlocks|parse|parseTaskItemBody)\s*\(/,
 		reaches: [
-			`${TEXT_BLOCK_DIR}live-split-rebalance.ts`,
-			`${TEXT_BLOCK_DIR}live-join-seam.ts`,
+			`${LIVE_EDIT_DIR}live-split.ts`,
+			`${LIVE_EDIT_DIR}live-join.ts`,
 			`${TEXT_BLOCK_DIR}construct-edge-delete.ts`,
 			`${TEXT_BLOCK_DIR}live-selection-edit.ts`,
 			`${LIVE_EDIT_DIR}read-back.ts`
@@ -1366,7 +1366,7 @@ const LEAF_RANGE_RULES: FileRule[] = [
 		matches: SAME_SOURCE_SPLICE,
 		allowed: {
 			'src/lib/tree-operations/leaf-range.ts': 'the in-leaf range replace itself',
-			'src/lib/components/blocks/text/live-join-seam.ts':
+			'src/lib/core/inline/live-edit/live-join.ts':
 				'the join cleanup, which the range replace calls',
 			'src/lib/tree-operations/structural-suffix.ts': "a split's two halves, which remove nothing",
 			'src/lib/components/blocks/text/construct-edge-delete.ts':

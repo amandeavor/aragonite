@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { displayLength } from '#lib/core/lines.js';
-import { cleanLiveJoinSeam, pairedPrefix } from '#lib/components/blocks/text/live-join-seam.js';
+import { cleanLiveJoinSeam, pairedPrefix } from '#lib/core/inline/live-edit/live-join.js';
 import { topLevelStore } from '../../harness/fixture-grammar';
 
 // The bytes a live-mode join writes. Each case states the plain concatenation a refusal leaves,

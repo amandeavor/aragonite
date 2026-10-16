@@ -3,7 +3,7 @@
 // puts half a surrogate pair in each of two blocks.
 // Miss-analysis: every offset these writes were driven with came from an ASCII fixture.
 // Which modules may snap is G4.89's list, in `lint/file-rules.test.ts`.
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { snapToScalarBoundary } from '#lib/core/lines.js';
@@ -12,11 +12,6 @@ import { replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
 import { buildPastedReplacement } from '#lib/tree-operations/paste/paste-replacement.js';
 import { splitLeafForPaste } from '#lib/tree-operations/list/list-builders.js';
 import { fragmentReaderAt } from '#lib/tree-operations/list/task-paragraph.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import type { NodeView } from '#lib/core/node-views.js';
@@ -120,9 +115,6 @@ describe('the absorb split’s item halves', () => {
 });
 
 describe('the in-leaf range replace’s join', () => {
-	beforeEach(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-	afterEach(() => __resetLiveJoinSeamCleanerForTests());
-
 	// The pair sits inside `**…**`, so the delete strands the marker runs and the join cleanup
 	// runs: the branch where a mid-pair endpoint reaches the slice.
 	const SOURCE = 'Some **\u{1F466}bold** and *italic* words\n';
