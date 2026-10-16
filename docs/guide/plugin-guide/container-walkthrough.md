@@ -8,7 +8,7 @@ It reuses the `:::name` directive grammar rather than a hand-written opener. The
 
 ## The registration module
 
-One file declares the kinds, describes them (the component that draws them included), maps the directive names, and returns the whole thing as a `conspiracyPlugin()` unit.
+One file declares the kinds, describes them along with the component that draws them, maps the directive names, and returns the whole thing as a `conspiracyPlugin()` unit.
 
 ```ts
 // conspiracy-kind.ts
@@ -27,7 +27,6 @@ import {
 	registerDirective,
 	setPluginMetadata,
 	trimWhitespace,
-	type BlockView,
 	type CstNode,
 	type EditorPlugin,
 	type ParsedDirective
@@ -79,7 +78,7 @@ const rebuildConspiracyRaw = createDirectiveRebuild<ConspiracyMetadata>(
 	(meta) => meta?.name ?? CONSPIRACY
 );
 
-function registerConspiracy(view: BlockView): void {
+function registerConspiracy(): void {
 	activateDirectives(); // idempotent; the shared grammar must be live before the first parse
 
 	const conspiracy = declarePluginKind(CONSPIRACY);
@@ -109,7 +108,7 @@ function registerConspiracy(view: BlockView): void {
 	});
 
 	registerBlockKind(conspiracy, {
-		view,
+		view: svelteBlockView(ConspiracyBlock),
 		mergeRole: 'container',
 		editable: true,
 		supportsInline: false,
@@ -172,11 +171,10 @@ function registerConspiracy(view: BlockView): void {
 	registerChromeLeaf(conspiracyTitle, { label: 'Theory', blockClass: 'conspiracy-title' });
 }
 
-// The setup hands the kind its view, so the kind's file never imports a component.
 export function conspiracyPlugin(): EditorPlugin {
 	return definePlugin({
 		name: 'conspiracy',
-		setup: () => registerConspiracy(svelteBlockView(ConspiracyBlock))
+		setup: registerConspiracy
 	});
 }
 ```

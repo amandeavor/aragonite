@@ -391,7 +391,7 @@ Each part has a defined absence, which is prob the easiest way to remember what 
 
 ### Registration is global, and register-once
 
-A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind, view, or opener twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
+A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind or opener twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
 
 Who guarantees a registration runs only once depends on where it runs:
 
@@ -400,7 +400,7 @@ Who guarantees a registration runs only once depends on where it runs:
 
 ```ts
 isBlockKindDeclared('parrot'); // false on a fresh page
-if (!isBlockKindDeclared(PARROT)) registerParrotBlock();
+if (!isBlockKindDeclared(PARROT)) registerParrotBlock(svelteBlockView(ParrotBlock));
 isBlockKindDeclared('parrot'); // true, so a second import of this module skips the register
 ```
 

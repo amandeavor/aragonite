@@ -1,10 +1,10 @@
 # Feature: BlockHost no-view fallback
 
 A block kind whose view this editor can't resolve must render a visible raw-editable
-block, not nothing. Every kind registers with its view, so the way a block gets here is
-a kind whose plugin's setup threw after registering it: the plugin never installs, and
-nothing it registered resolves. The node still serializes, so nothing is silently
-dropped from the display.
+block, not nothing. Every kind registers with its view, so a block gets here only when
+its kind's plugin isn't active in this editor: the editor's `plugins` list leaves it out,
+or its setup threw after registering the kind (the route these cases take). The node
+still serializes, so nothing is silently dropped from the display.
 
 ## Happy paths
 
