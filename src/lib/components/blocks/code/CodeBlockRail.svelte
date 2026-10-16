@@ -61,10 +61,9 @@
 
 	const language = $derived(fenceLanguage(info) || 'text');
 
-	/** At most one popout is open: the language list or the overflow menu. */
+	/** At most one popout is open: the language list or the overflow menu. Read as the state itself,
+	 *  never a derived, since the draft and menu registries and a blur reach here after unmount. */
 	let popout = $state<'closed' | 'languages' | 'menu'>('closed');
-	const editing = $derived(popout === 'languages');
-	const menuOpen = $derived(popout === 'menu');
 	let draft = $state('');
 	let fieldDraft: Draft | null = null;
 	onDestroy(() => fieldDraft?.end());
@@ -160,7 +159,7 @@
 	}
 
 	function close(): void {
-		if (editing) popout = 'closed';
+		if (popout === 'languages') popout = 'closed';
 		fieldDraft?.end();
 		fieldDraft = null;
 	}
@@ -215,7 +214,7 @@
 	}
 
 	function onFieldBlur(e: FocusEvent): void {
-		if (!editing) return;
+		if (popout !== 'languages') return;
 		// A pointer moving from the field to its own list is not a dismissal: the list's
 		// mousedown handler commits, and this must not tear the field down before it does.
 		const next = e.relatedTarget;
@@ -235,11 +234,11 @@
 	}
 
 	function closeMenu(): void {
-		if (menuOpen) popout = 'closed';
+		if (popout === 'menu') popout = 'closed';
 	}
 
 	function toggleMenu(): void {
-		if (menuOpen) {
+		if (popout === 'menu') {
 			closeMenu();
 			return;
 		}
@@ -257,7 +256,7 @@
 	// Escape is handled on the ⋮ button and the items, where focus sits while the menu is open:
 	// the gutter is a labelled `group`, and a non-interactive role may not carry key handlers.
 	function onMenuKeyDown(e: KeyboardEvent): void {
-		if (e.key !== 'Escape' || !menuOpen) return;
+		if (e.key !== 'Escape' || popout !== 'menu') return;
 		e.stopPropagation();
 		e.preventDefault();
 		closeMenu();
@@ -307,8 +306,8 @@
 	// A fixed popout does not move with the gutter, so it is placed again on every scroll and
 	// resize; not closed, since focusing the field can itself scroll and would close the picker.
 	$effect(() => {
-		const anchor = editing ? chipEl : menuButtonEl;
-		const el = editing ? pickerEl : menuOpen ? menuEl : undefined;
+		const anchor = popout === 'languages' ? chipEl : menuButtonEl;
+		const el = popout === 'languages' ? pickerEl : popout === 'menu' ? menuEl : undefined;
 		if (!el) {
 			popoutAt = null;
 			return;
@@ -350,11 +349,11 @@
 		<button
 			type="button"
 			class="code-lang-button"
-			class:open={editing}
+			class:open={popout === 'languages'}
 			aria-haspopup="listbox"
-			aria-expanded={editing}
+			aria-expanded={popout === 'languages'}
 			aria-label={codeLanguageLabel(language)}
-			onclick={() => (editing ? close() : open())}
+			onclick={() => (popout === 'languages' ? close() : open())}
 			>{language}<MenuIcon name="chevron-down" /></button
 		>
 	</span>
@@ -386,7 +385,7 @@
 			class="code-rail-action"
 			aria-label={CODE_MENU_LABEL}
 			aria-haspopup="menu"
-			aria-expanded={menuOpen}
+			aria-expanded={popout === 'menu'}
 			onclick={toggleMenu}
 			onkeydown={onMenuKeyDown}
 		>
@@ -395,7 +394,7 @@
 	{/if}
 </div>
 
-{#if editing}
+{#if popout === 'languages'}
 	<div
 		bind:this={pickerEl}
 		class="md-menu code-rail-popout code-lang-picker"
@@ -462,7 +461,7 @@
 {/if}
 
 <!-- Not marked as editing: a host's items may only read, so the menu opens in reading mode too. -->
-{#if menuOpen}
+{#if popout === 'menu'}
 	<ul
 		bind:this={menuEl}
 		class="md-menu code-rail-popout code-rail-menu"
