@@ -25,8 +25,8 @@ import {
 	reopenAfter,
 	type CutConstruct
 } from '../../../core/inline/live-edit/close-reopen';
-import { marksShown } from '../../../core/inline/live-edit/shown-marks';
-import { isBlankText, trimTrailingLineEnding } from '../../../core/lines';
+import { keepsEdgeMarks, marksShown } from '../../../core/inline/live-edit/shown-marks';
+import { displayLength, readsAsBlankLine } from '../../../core/lines';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
 import type { GrammarView } from '../../../schema/block-openers';
@@ -57,13 +57,11 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 	// Keeping each half's format comes first; dropping the runs the cut stranded is the fallback,
 	// least destructive first, where no reading that keeps them shows what the screen showed.
 	const pairs = abuttingPairSpans(join, left, right);
-	const drops = [unpairedSpans(join, left, right), everyDanglingSpan(join, left, right)].map(
-		(dangling): JoinReading => ({
-			edits: [...dangling, ...pairs].map(dropped),
-			typedAt: 0,
-			keeps: false
-		})
-	);
+	const drops = [pairedPrefix(left, right), 0].map((paired): JoinReading => ({
+		edits: [...strandedSpans(join, left, right, paired), ...pairs].map(dropped),
+		typedAt: 0,
+		keeps: false
+	}));
 	const written = distinct(
 		[...keepingReadings(join, left, right), ...drops].map(({ edits, typedAt, keeps }) => {
 			const { raw, map } = withEdits(join.mergedRaw, edits);
@@ -85,15 +83,16 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 		// One leaving no such pair can't lose, so the readings after it go unread.
 		if (read.residue > 0 && read.residue > floor()) continue;
 		// G1.91: a reading that keeps the runs must keep every kept character's marks.
-		if (keeps && !keepsMarks(read.marks, (kept ??= keptMarks(left, right)))) continue;
+		if (keeps) {
+			kept ??= keptMarks(left, right);
+			if (!keepsEdgeMarks(read.marks, kept.before, kept.after)) continue;
+		}
 		// A candidate that changed nothing is the plain concatenation: refusing says so, and keeps
 		// the caller off a rewrite path it does not need.
 		if (candidate === join.mergedRaw) return null;
-		// The split half's trailing-whitespace rule, applied to the join: a survivor that is only
-		// whitespace draws nothing and reparses as a blank line, not the block that was written.
-		const display = trimTrailingLineEnding(candidate);
-		if (display !== '' && isBlankText(display)) {
-			return { raw: candidate.slice(display.length), seam: 0, seamEnd: 0, map: () => 0 };
+		// A survivor of whitespace only draws nothing, and would reload as a blank line.
+		if (readsAsBlankLine(candidate)) {
+			return { raw: candidate.slice(displayLength(candidate)), seam: 0, seamEnd: 0, map: () => 0 };
 		}
 		return { raw: candidate, seam, seamEnd, map };
 	}
@@ -123,6 +122,9 @@ interface Side {
 	 *  trailing closers of the block above, the leading openers of the block below. */
 	touching: CutConstruct[];
 }
+
+/** The bytes a side's constructs index into, all a spelling reads. */
+type SideBytes = Pick<Side, 'raw'>;
 
 /** One endpoint's surviving bytes and the constructs its cut leaves at the join. Null for a
  *  non-prose kind, an offset outside the content, or a cut through a family that cannot reopen. */
@@ -248,31 +250,37 @@ const closerRun = (c: CutConstruct): Span => ({ start: c.contentEnd, end: c.end 
 
 /** Whether two constructs are written with the same delimiters: the byte-level test for "these
  *  are one construct's two halves", which matching kinds alone cannot make (`__a__` vs `**a**`). */
-const sameDelimiters = (left: Side, lc: CutConstruct, right: Side, rc: CutConstruct): boolean =>
-	sameSpelling(asCut(left, lc), asCut(right, rc));
+const sameDelimiters = (
+	left: SideBytes,
+	lc: CutConstruct,
+	right: SideBytes,
+	rc: CutConstruct
+): boolean => sameSpelling(asCut(left, lc), asCut(right, rc));
 
-/** The runs a truncation stranded that the join does not rejoin: the left's openers and the right's
- *  closers, minus the leading pairs whose kinds line up and so make one construct again. */
-function unpairedSpans(join: { seam: number }, left: Side, right: Side): Span[] {
+/** How many of the two sides' stranded runs, outermost first, make one construct again across the
+ *  join. Exported for the test. */
+export function pairedPrefix(
+	left: SideBytes & Pick<Side, 'dangling'>,
+	right: SideBytes & Pick<Side, 'dangling'>
+): number {
 	let paired = 0;
 	while (
 		paired < left.dangling.length &&
 		paired < right.dangling.length &&
-		left.dangling[paired].kind === right.dangling[paired].kind
+		left.dangling[paired].kind === right.dangling[paired].kind &&
+		sameDelimiters(left, left.dangling[paired], right, right.dangling[paired])
 	) {
 		paired++;
 	}
+	return paired;
+}
+
+/** The runs a truncation stranded past the first `paired`: the left's openers and the right's
+ *  closers. With none paired, every one goes and the joined text stands as plain content. */
+function strandedSpans(join: { seam: number }, left: Side, right: Side, paired: number): Span[] {
 	return [
 		...left.dangling.slice(paired).map(openerRun),
 		...right.dangling.slice(paired).map((c) => rightSpan(join, right, closerRun(c)))
-	];
-}
-
-/** The fallback reading: every stranded run goes, so the joined text stands as plain content. */
-function everyDanglingSpan(join: { seam: number }, left: Side, right: Side): Span[] {
-	return [
-		...left.dangling.map(openerRun),
-		...right.dangling.map((c) => rightSpan(join, right, closerRun(c)))
 	];
 }
 
@@ -340,7 +348,7 @@ interface JoinReading {
 }
 
 /** A construct's delimiters as one reading writes them. */
-type Spelling = (side: Side, c: CutConstruct) => { opener: string; closer: string };
+type Spelling = (side: SideBytes, c: CutConstruct) => { opener: string; closer: string };
 
 const asCut: Spelling = (side, c) => ({
 	opener: side.raw.slice(c.start, c.contentStart),
@@ -519,17 +527,6 @@ function keptMarks(left: Side, right: Side): { before: string[]; after: string[]
 		before: marksOf(left, left.content.start, left.cut),
 		after: marksOf(right, right.cut, right.content.end)
 	};
-}
-
-/** Whether the candidate's characters open with the left side's marks and end with the right's. */
-function keepsMarks(
-	marks: readonly string[],
-	kept: { before: string[]; after: string[] }
-): boolean {
-	const { before, after } = kept;
-	if (marks.length < before.length + after.length) return false;
-	const tail = marks.slice(marks.length - after.length);
-	return before.every((mark, i) => marks[i] === mark) && after.every((mark, i) => tail[i] === mark);
 }
 
 // ── Verification ─────────────────────────────────────────────────────────────

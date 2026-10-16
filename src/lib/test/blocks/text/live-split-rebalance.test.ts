@@ -73,6 +73,13 @@ describe('a cut inside a symmetric pair closes it and reopens it', () => {
 		expect(split('`` a`b ``\n', 4)).toBeNull();
 	});
 
+	// Miss-analysis: the blank-half check read what each half shows, and no row cut a code span
+	// beside a space, whose bytes stay a code span when all it shows is that space.
+	it('a half left holding one space of a code span is still a code span', () => {
+		expect(split('` a`\n', 2)).toEqual({ firstRaw: '` `\n', secondRaw: '`a`\n' });
+		expect(split('`a `\n', 2)).toEqual({ firstRaw: '`a`\n', secondRaw: '` `\n' });
+	});
+
 	// A cut on the soft break inside a construct: the split consumes the line ending, and both
 	// halves still close. `splitNode` moved the cut past the ending before offering the halves.
 	it('closes across a soft break the cut consumes', () => {

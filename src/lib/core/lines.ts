@@ -57,6 +57,13 @@ export function trimTrailingLineEnding(raw: string): string {
 	return raw.slice(0, displayLength(raw));
 }
 
+/** Whether `raw` holds whitespace and nothing else, which a reload reads as a blank line rather
+ *  than the block it was written as. Empty is not: an empty block stays a block. */
+export function readsAsBlankLine(raw: string): boolean {
+	const display = trimTrailingLineEnding(raw);
+	return display !== '' && isBlankText(display);
+}
+
 /** The ending `raw` actually carries, empty when it has none: {@link trimTrailingLineEnding}'s
  *  complement, for code reattaching a block's own bytes. */
 export function ownTrailingLineEnding(raw: string): '' | LineEnding {

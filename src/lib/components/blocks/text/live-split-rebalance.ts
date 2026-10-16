@@ -22,7 +22,7 @@ import { readBack, shownOf } from '../../../core/inline/live-edit/read-back';
 import type { StoredAs } from '../../../schema/stored-as';
 import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
 import type { NodeView } from '../../../core/node-views';
-import { isBlankText } from '../../../core/lines';
+import { isBlankText, readsAsBlankLine } from '../../../core/lines';
 import {
 	closeBefore,
 	reopenAfter,
@@ -251,9 +251,9 @@ export function parsesBack(
 	const first = proseHalf(candidate.firstRaw, stores.first);
 	const second = proseHalf(candidate.secondRaw, stores.second);
 	if (first === null || second === null) return false;
-	// Each half must be a block a reparse keeps. Empty is one; whitespace-only is not, since the
-	// document reads those bytes as a blank line and the pair comes back a different shape.
-	if (readsAsBlankLine(first.visible) || readsAsBlankLine(second.visible)) return false;
+	// Each half must be a block a reparse keeps, judged by its bytes: a code span showing one space
+	// is still a code span.
+	if (readsAsBlankLine(candidate.firstRaw) || readsAsBlankLine(candidate.secondRaw)) return false;
 	if (!seam.closed.every((kind) => first.kinds.has(kind))) return false;
 	if (!seam.reopened.every((kind) => second.kinds.has(kind))) return false;
 	// The render check below counts characters while CSS collapses a trailing run to nothing, so
@@ -272,8 +272,6 @@ export function parsesBack(
 	const tail = second.visible + (candidate.droppedTail ?? '');
 	return rest === tail || rest === '\n' + tail || rest === '\r\n' + tail;
 }
-
-const readsAsBlankLine = (visible: string): boolean => visible !== '' && isBlankText(visible);
 
 /** A half read where `store` keeps it: exactly one prose block, or null. */
 function proseHalf(raw: string, store: StoredAs): HalfRead | null {

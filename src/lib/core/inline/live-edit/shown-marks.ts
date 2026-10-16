@@ -83,12 +83,21 @@ export function landsKeepingMarks(
 		return false;
 	}
 	const middle = read.marks.slice(before.marks.length, before.marks.length + landed.marks.length);
-	const tail = read.marks.slice(before.marks.length + landed.marks.length);
 	return (
-		before.marks.every((mark, i) => read.marks[i] === mark) &&
-		after.marks.every((mark, i) => tail[i] === mark) &&
+		keepsEdgeMarks(read.marks, before.marks, after.marks) &&
 		landed.marks.every((mark, i) => holdsMarks(middle[i], mark))
 	);
+}
+
+/** Whether `marks` open with `before` and end with `after`, whatever stands between them. */
+export function keepsEdgeMarks(
+	marks: readonly string[],
+	before: readonly string[],
+	after: readonly string[]
+): boolean {
+	if (marks.length < before.length + after.length) return false;
+	const tail = marks.slice(marks.length - after.length);
+	return before.every((mark, i) => marks[i] === mark) && after.every((mark, i) => tail[i] === mark);
 }
 
 /** Whether `outer`'s marks include every one of `inner`'s, in order. */
