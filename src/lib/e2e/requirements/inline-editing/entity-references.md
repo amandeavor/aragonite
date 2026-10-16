@@ -37,6 +37,6 @@ The following scenarios are exercised at the unit-test level (`src/lib/test/core
 
 - Malformed forms (`&;`, `&amp` without semicolon, `&#abc;`, `&#xZZ;`) emitted as plain text.
 - The byte-for-byte round-trip of each reference form: entities are never serialized to their
-  decoded form (`src/lib/test/round-trip.test.ts`).
+  decoded form (`src/lib/test/invariants/round-trip.property.test.ts`).
 - Boundary numeric references (`&#0;`, `&#x110000;`, surrogate-range code points) decoded to U+FFFD per CommonMark §6.2, and a U+FFFD glyph is visible, so it renders as a widget.
 - The visibility check (`&nbsp;` and other whitespace/control decodings keep the literal span) is unit-pinned in `src/lib/test/core/inline/entity-widget.test.ts`.

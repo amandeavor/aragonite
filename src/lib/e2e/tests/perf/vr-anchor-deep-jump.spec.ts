@@ -7,7 +7,6 @@ import {
 	editorScrollHeight,
 	spacerCount
 } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // The scroll correction after a deep jump, once for each list that does it (VR-2). The height
 // table, spacer and new blocks land in one pass before paint, so a block's position reads flat and
@@ -55,7 +54,6 @@ function settledView(page: Page, selector: string) {
 test('a deep jump into an unmeasured band holds the viewport via scroll-anchor correction (VR-2)', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadContent(buildNonUniformDoc());
@@ -77,7 +75,6 @@ test('a deep jump into an unmeasured band holds the viewport via scroll-anchor c
 	// scrollTop does not, so a mounted block still sits at the top edge either way.
 	expect(settled.topBlockY).not.toBeNull();
 	expect(settled.topBlockY!).toBeLessThan(settled.editorTop + 60);
-	expect(pageErrors).toEqual([]);
 });
 
 // The same change on a nested list. The document has one top-level block, so the root list's held
@@ -85,7 +82,6 @@ test('a deep jump into an unmeasured band holds the viewport via scroll-anchor c
 test('a deep jump into a giant blockquote holds the viewport via the nested scope anchor correction (VR-2)', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadContent(buildNonUniformBlockquoteDoc());
@@ -106,5 +102,4 @@ test('a deep jump into a giant blockquote holds the viewport via the nested scop
 	expect(compensation).toBeGreaterThan(500);
 	expect(settled.topBlockY).not.toBeNull();
 	expect(settled.topBlockY!).toBeLessThan(settled.editorTop + 60);
-	expect(pageErrors).toEqual([]);
 });

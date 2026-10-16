@@ -9,6 +9,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { aliasPath, isAliasSpelling, publishedEntries } from '../../../../../scripts/lib-alias.mjs';
+import { ignoredPaths, isIgnoredBy } from '../../../../../scripts/doc-corpus.mjs';
 export { aliasPath, aliasSpecifier, isAliasSpelling } from '../../../../../scripts/lib-alias.mjs';
 import { SOURCE, SOURCE_DIR } from './source-paths';
 
@@ -93,9 +94,12 @@ export function collectEditorSources(
 ): SourceFile[] {
 	const extensions = options.includeStyles ? ['.ts', '.svelte', '.css'] : ['.ts', '.svelte'];
 	const skip = options.includeTests ? [] : ['test', 'e2e'];
-	return (dir === undefined ? REPO_WIDE_ROOTS : [dir])
+	const roots = dir === undefined ? REPO_WIDE_ROOTS : [dir];
+	// A gitignored file is a generated copy (the consumer's synced plugins), never the source.
+	const ignored = ignoredPaths([...roots]);
+	return roots
 		.flatMap((root) => collectFiles(root, { extensions, skip }))
-		.filter((relPath) => !relPath.endsWith('.d.ts'))
+		.filter((relPath) => !relPath.endsWith('.d.ts') && !isIgnoredBy(ignored, relPath))
 		.map(readSource);
 }
 

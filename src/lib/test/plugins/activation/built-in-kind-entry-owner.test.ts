@@ -20,7 +20,7 @@ beforeEach(() => {
 				});
 				registerInlineWidgetKind('emphasis', {
 					isWidget: () => true,
-					buildWidget: () => document.createElement('span')
+					view: () => ({})
 				});
 			}
 		})

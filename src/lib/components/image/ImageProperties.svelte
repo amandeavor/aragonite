@@ -477,18 +477,18 @@
 		padding: 0;
 		border: none;
 		border-radius: 6px;
-		background: var(--color-bg, #2c2c2a);
-		color: var(--color-text-secondary, #cfcfca);
+		background: var(--color-bg);
+		color: var(--color-text-secondary);
 		cursor: pointer;
 		box-shadow: var(--menu-shadow, 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35));
 	}
 	.md-image-btn:hover,
 	.md-image-btn.active,
 	.md-image-btn.set {
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 	}
 	.md-image-btn.active {
-		background: var(--color-surface, #2d3033);
+		background: var(--color-surface);
 	}
 
 	/* The alt field hangs off the toolbar's far side: a caption over its input. */
@@ -502,8 +502,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: 5px;
-		background: var(--color-bg, #2c2c2a);
-		border: 1px solid var(--color-border, #3e3e3b);
+		background: var(--color-bg);
+		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		box-shadow: var(--menu-shadow, 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35));
 	}
@@ -521,7 +521,7 @@
 		font-weight: 600;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: var(--color-text-muted, #aaaaaa);
+		color: var(--color-text-muted);
 	}
 
 	/* Underlined, not boxed: a box inside the rounded panel would read as a frame in a frame. */
@@ -529,9 +529,9 @@
 		width: 100%;
 		box-sizing: border-box;
 		background: transparent;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 		border: none;
-		border-bottom: 1px solid var(--color-border, #3e3e3b);
+		border-bottom: 1px solid var(--color-border);
 		border-radius: 0;
 		padding: 3px 1px 5px;
 		font-family: inherit;
@@ -541,10 +541,10 @@
 		transition: border-color 120ms ease-out;
 	}
 	.md-image-field input:focus {
-		border-bottom-color: var(--color-accent, #567b67);
+		border-bottom-color: var(--color-accent);
 	}
 	.md-image-field input::placeholder {
-		color: var(--color-text-muted, #aaaaaa);
+		color: var(--color-text-muted);
 	}
 
 	/* While cropping: the whole image can be dragged to pan, with brackets at the corners. */

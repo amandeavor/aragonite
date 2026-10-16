@@ -12,6 +12,7 @@ import type { EditEvent } from '#lib/editor-events.js';
 import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // The container fixtures are hand-built, not parser output, so the dev-mode stale-raw and
 // read-back checks read them as stale.
@@ -175,7 +176,7 @@ describe('inline-range commit: the caret it lands', () => {
 // Miss-analysis: every length check ran at the top level, where no container rewrites the bytes.
 describe('inline-range commit: the length it reports is the length it stores', () => {
 	beforeEach(() => {
-		registerDetailsKind();
+		registerDetailsKind(testView());
 	});
 
 	it('counts the escape a details body gives a closing tag', async () => {

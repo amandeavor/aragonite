@@ -1,8 +1,8 @@
 /**
  * One drawn gesture, applied through the same code a real keystroke goes through: the caret-edge
  * dispatch over a mounted block, the block-edit bundle's split and merge, the range delete, and the
- * browser's own replace of a selection. Never a registered rewrite function directly: the code that
- * calls those is what this tests.
+ * browser's own replace of a selection. Never the live join or split rewrite directly: the code
+ * that calls them is what this tests.
  */
 
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
@@ -38,9 +38,8 @@ import {
 } from '#lib/components/blocks/text/edge-seat.js';
 import { resolveLiveRangeEdit } from '#lib/components/blocks/text/live-selection-edit.js';
 import { replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
 import { blockNodeAt, nodeAt } from '#lib/tree-operations/node-primitives.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
+import { coverRange } from '#lib/selection/range-coverage.js';
 import {
 	applyCrossBlockFormat,
 	planCrossBlockFormat
@@ -59,6 +58,7 @@ import { fixtureReading, renderOptions } from '../harness/fixture-grammar';
 import { documentBody } from '#lib/tree-operations/node-primitives.js';
 import { createInsertionRecords } from '#lib/caret/next-insertion.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { deleteRange } from '../harness/range-delete';
 
 export type GestureKind =
 	| 'type'
@@ -605,13 +605,10 @@ function acrossLeaves(
 	const range = drawnLeafRange(h.doc, gesture);
 	if (!range) return null;
 	if (gesture.kind === 'range-delete') {
-		rangeDelete(
-			h.doc,
-			rangeCoverage(h.doc, coverRange(h.doc, range.start, range.end)),
-			h.sharing,
-			fixtureReading({}, mode),
-			'keyless'
-		);
+		deleteRange(h.doc, range.start, range.end, {
+			sharing: h.sharing,
+			reading: fixtureReading({}, mode)
+		});
 		return false;
 	}
 	const plan = planCrossBlockFormat(

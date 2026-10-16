@@ -3,37 +3,22 @@
 // join, so a delimiter run the cut leaves unpaired must still go through the live-mode cleanup, or
 // it paints as literal `**`; source mode, and a title line's own bytes, stay byte for byte.
 // Miss-analysis: the live-join cases only crossed text-to-text merges, never these branches.
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
 import type { PresentationMode } from '../../presentation-mode';
-import { cleanLiveJoinSeam } from '../../components/blocks/text/live-join-seam';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '../../schema/inline-construct-policy';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
-import { createSharingState } from '../../tree-operations/sharing';
 import { cellPoint, type SelectionPoint } from '../../selection/primitives';
 import { registerCalloutForTests } from './chrome-plugins';
 import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 beforeEach(() => {
 	registerCalloutForTests();
-	registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
 });
-afterEach(() => __resetLiveJoinSeamCleanerForTests());
 
 function run(source: string, start: SelectionPoint, end: SelectionPoint, mode?: PresentationMode) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading({}, mode),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end, { reading: fixtureReading({}, mode) });
 	return { source: serialize(result.newDoc), caret: result.caret(result.newDoc) };
 }
 
@@ -68,19 +53,17 @@ const CROSSINGS: { name: string; head: Cut; headPath: number[]; tail: Cut }[] = 
 ];
 
 describe.each(CROSSINGS)('a delete across $name', ({ head, headPath, tail }) => {
-	it('in live, drops the opener it stranded from the kept head, and the caret follows', () => {
+	it('in live, closes the run on the kept head, the caret before the closer', () => {
 		const { source, caret } = run(head.source, head.start, head.end, 'live');
 
-		expect(source).not.toContain('**');
-		expect(source).toContain('Some bo\n');
-		expect(caret).toEqual({ path: headPath, offset: 7 });
+		expect(source).toContain('Some **bo**\n');
+		expect(caret).toEqual({ path: headPath, offset: 9 });
 	});
 
-	it('in live, drops the closer it stranded from the kept tail', () => {
+	it('in live, reopens the run on the kept tail', () => {
 		const { source } = run(tail.source, tail.start, tail.end, 'live');
 
-		expect(source).not.toContain('**');
-		expect(source).toContain('ld text\n');
+		expect(source).toContain('\n**ld** text\n');
 	});
 
 	it('in source mode, keeps the truncation byte-literal, delimiters included', () => {

@@ -1,8 +1,8 @@
 # Feature: `/test/host-theme`, a host cascade with no opt-in class
 
 The only route that mounts `<Editor>` with no `.aragonite-editor-theme` anywhere: the
-host-chrome tokens are declared on the page wrapper and the editor inherits them straight
-down the cascade. That makes it the route-level check on G4.6d: the host-chrome defaults
+host-chrome tokens are declared on the page wrapper (or, for the "No host colors" entries,
+undeclared) and the editor inherits them straight down the cascade. That makes it the route-level check on G4.6d: the host-chrome defaults
 sit behind the opt-in class alone, so a themed host's own values reach the editor with
 nothing in between.
 
@@ -38,6 +38,18 @@ that rules.md names, one level up from a module.
   (miss-analysis: no test read a painted selection colour at all, so the four presentational
   tints could ignore any host cascade: the blind spot at the entry layer, one level below the
   declared list of tokens, which only pins declarations)
+
+- a host that declares no colors (the picker's two "No host colors" entries take the site's own
+  page tokens back to undeclared) gets the find bar and the block menu in the built-in palette of
+  the `theme` prop's mode, light and dark alike
+  (miss-analysis: every route declared host colors, from the opt-in class or `app.css`, so no test
+  saw the dark inline fallbacks an app with no theme system got whatever its mode)
+- in that host the editor's body text keeps the page's own color, since the editor paints no
+  background behind it
+- a live theme switch repaints the open find bar, and a find bar moved into an anchor follows the
+  `theme` prop the same way
+- in a host that declares every color, each host color read inside the editor (on a child of its
+  root) is the host's own value, for all ten tokens, in a dark and a light theme
 
 ## Edge cases
 

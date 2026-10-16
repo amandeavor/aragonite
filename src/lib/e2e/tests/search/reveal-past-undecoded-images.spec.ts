@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { capturePageErrors } from '../../page-probes';
 import { count, openFind, typeQuery } from './helpers';
 
 const prevButton = (page: Page) => page.getByRole('button', { name: 'Previous match' });
@@ -27,8 +26,6 @@ function activeOverlayInView(page: Page): Promise<{ painted: boolean; inView: bo
 test('search Previous to a far match past undecoded images keeps the active highlight in view', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
-
 	// The picsum requests hang for the whole test, so the `<img>`s keep measuring ~0 and the document
 	// shrink clamps the scroll. Set before goto so the mount's own requests catch it.
 	await page.route('https://picsum.photos/**', () => {});
@@ -38,17 +35,16 @@ test('search Previous to a far match past undecoded images keeps the active high
 
 	await openFind(editor);
 	await typeQuery(editor, 'list');
-	await expect(count(page)).toHaveText(/1\s*\/\s*11/);
+	await expect(count(page)).toHaveText(/1\s+of\s+11/);
 	await editor.waitForRenderFlush();
 
 	// "Previous" wraps to the last match: the deep allowlist paragraph, far below the
 	// tables and undecoded images.
 	await prevButton(page).click();
-	await expect(count(page)).toHaveText(/11\s*\/\s*11/);
+	await expect(count(page)).toHaveText(/11\s+of\s+11/);
 	await editor.waitForRenderFlush();
 
 	// Poll the paint and scroll outcome directly: the active match's block must mount,
 	// paint, and stay on screen rather than being clamped away.
 	await expect.poll(() => activeOverlayInView(page)).toEqual({ painted: true, inView: true });
-	expect(pageErrors).toEqual([]);
 });

@@ -98,8 +98,11 @@ const callsOutsideHome =
 	(file: SourceFile): boolean =>
 		file.relPath !== home && resolver.test(file.code);
 
-/** Both directions of a surface rule: every prose surface calls the resolver, and every caller
- *  outside its home is a prose surface. */
+const TYPED_INPUT_HOME = SOURCE.typedInput;
+const CREATES_TYPED_INPUT = /(?<![\w.])createTypedInput\s*\(/;
+
+/** Both directions of a surface rule: every prose surface builds the shared typed-input step, and
+ *  that step is the resolver's one caller outside its home. */
 function surfaceParity(
 	id: string,
 	home: string,
@@ -112,19 +115,19 @@ function surfaceParity(
 		{
 			id,
 			population: isProseSurface,
-			matches: (file) => !callsResolver(file),
+			matches: (file) => !CREATES_TYPED_INPUT.test(file.code),
 			reason,
 			atLeast: 2,
 			hits: [at(ROGUE_SURFACE, PROSE_SURFACE)],
-			misses: [at(ROGUE_SURFACE, `${PROSE_SURFACE} ${call}`)]
+			misses: [at(ROGUE_SURFACE, `${PROSE_SURFACE} createTypedInput(deps);`)]
 		},
 		{
-			id: `${id}: the callers are exactly those surfaces`,
+			id: `${id}: the shared typed-input step is its one caller`,
 			population: callsResolver,
-			matches: (file) => !isProseSurface(file),
+			matches: (file) => file.relPath !== TYPED_INPUT_HOME,
 			reason:
-				'only a prose surface may call the resolver, which prevents the default and owns where the caret lands',
-			atLeast: 2,
+				'the resolver prevents the default and owns where the caret lands, so a prose surface reaches it through `createTypedInput`, never on its own',
+			reaches: [TYPED_INPUT_HOME],
 			hits: [at('src/lib/components/blocks/x/rogue.ts', call)],
 			misses: [`// ${call} is the resolver`, `const x = my${call}`]
 		}
@@ -312,6 +315,78 @@ const PRIVATE_WRITER_HOMES: Record<string, string> = {
 	releaseLastLine: SOURCE.openTail
 };
 
+// ── G4.175 runes mode ────────────────────────────────────────────────────────
+
+/** What puts a component in runes mode: a rune, or the explicit option. */
+const RUNES_MODE_RE =
+	/\$(?:props|state|derived|effect|bindable|host|inspect)\b|<svelte:options[^>]*\brunes\b/;
+
+// ── G4.178 plugin views mount behind a fallback ──────────────────────────────
+
+/** Where the editor paints a Svelte component a plugin supplied: a `mount`, or a component chosen
+ *  at render time. */
+const MOUNTS_PLUGIN_VIEW =
+	/import\s*\{[^}]*\bmount\b[^}]*\}\s*from\s*'svelte'|\{@const\s+[A-Z]\w*\s*=|<svelte:component\b/;
+
+const PLUGIN_VIEW_FALLBACK: FileRule = {
+	id: 'G4.178 every route that mounts a plugin view contains its failure',
+	population: under(SOURCE_DIR.library),
+	matches: (file) =>
+		MOUNTS_PLUGIN_VIEW.test(file.code) && !/\bwarnIfForeignRuntime\(/.test(file.code),
+	allowed: {
+		'src/lib/create-editor.ts': 'mounts the editor itself, which no plugin supplies',
+		'src/lib/svelte-view.svelte.ts':
+			'its views mount only through `plugin-view.ts :: mountPluginView`, which contains their throws'
+	},
+	reason:
+		'a plugin view that throws must fall back, report on the `error` event and name a foreign Svelte runtime in dev: catch it and call `warnIfForeignRuntime` with the reporter, as `plugin-view.ts` does',
+	reaches: [SOURCE.blockHost, SOURCE.inlineWidgets],
+	hits: [
+		at('src/lib/x.ts', "import { mount, unmount } from 'svelte';\nmount(C, { target });"),
+		at('src/lib/x.svelte', '{@const Row = view.source.row}\n<Row {item} />')
+	],
+	misses: [
+		at('src/lib/x.ts', "import { tick } from 'svelte';\nawait landing.mount(path);"),
+		at('src/lib/x.svelte', '{@const cause = foreignRuntimeCause(error)}'),
+		at(
+			'src/lib/x.ts',
+			"import { mount } from 'svelte';\ntry {\n\tmount(C, { target });\n} catch (e) {\n\twarnIfForeignRuntime(e, 'x');\n}"
+		)
+	]
+};
+
+// ── G4.186 one wrapper draws every plugin view ───────────────────────────────
+
+/** A call on a plugin's view, by its field or a local of the same name: a route drawing an inline
+ *  widget, decoration widget or menu row itself. A local under another name is past its reach. */
+const CALLS_PLUGIN_VIEW =
+	/(?<![\w$.]|\bas\s+|\bfunction\s+)(?:view|row)\s*(?:\?\.\s*)?\(|\.(?:view|row)\s*(?:\?\.\s*)?(?:\(|\.(?:call|apply)\b)/;
+
+const ONE_VIEW_WRAPPER: FileRule = {
+	id: 'G4.186 a plugin view is drawn only through mountPluginView',
+	population: under(SOURCE_DIR.library),
+	matches: CALLS_PLUGIN_VIEW,
+	allowed: {
+		'src/lib/plugin-view.ts': 'the wrapper itself, the one place a view is called'
+	},
+	reason:
+		'an inline widget, decoration widget or menu row view mounts through `plugin-view.ts :: mountPluginView`, which contains a throw at mount, update or destroy, reports it once and destroys the view once: hand the view to it instead of calling it',
+	reaches: [SOURCE.pluginView],
+	hits: [
+		at('src/lib/x.ts', 'const handle = spec.view(target, { decoration });'),
+		at('src/lib/x.svelte', '{@attach (el) => source.row (el, props)}'),
+		at('src/lib/x.ts', 'const view = getInlineWidgetView(kind, grammar);\nview(shell, props);'),
+		at('src/lib/x.ts', 'spec.view?.(target, props);'),
+		at('src/lib/x.ts', 'spec.view.call(null, target, props);')
+	],
+	misses: [
+		at('src/lib/x.ts', 'mountPluginView(spec.view, target, props, opts);'),
+		at('src/lib/x.ts', 'const view = getInlineWidgetView(kind, grammar);'),
+		at('src/lib/x.svelte', '{#each rows as row (row.command)}'),
+		at('src/lib/x.ts', 'records.preview(block, side);')
+	]
+};
+
 // ── The rules ────────────────────────────────────────────────────────────────
 
 /** A file the G4.80 population holds, for its probes. */
@@ -323,8 +398,6 @@ const RULES: FileRule[] = [
 		matches: /\b(?:setTimeout|setInterval|queueMicrotask|requestAnimationFrame)\s*\(/,
 		allowed: {
 			'src/lib/selection/autoscroll.ts': 'rAF autoscroll loop: an animation cadence, not ordering',
-			'src/lib/components/blocks/editable/editable-leaf.ts':
-				'rAF fold of a revealed source after a range drag: the blur it answers arrives inside the frame that measured the range',
 			'src/lib/windowing/observe-resize.ts':
 				'rAF start of a size observation: one begun while a frame delivers resize notifications is skipped and reported as a loop error',
 			'src/lib/components/drag-handle.ts':
@@ -350,6 +423,62 @@ const RULES: FileRule[] = [
 		],
 		misses: [
 			'clearTimeout(id);\ncancelAnimationFrame(raf);\nlet t: ReturnType<typeof setTimeout> | null = null;'
+		]
+	},
+	{
+		id: 'G4.194 a block reaches the clipboard steps and the inline paste through its surface',
+		matches: /(?<!function\s)\b(?:createClipboardHandlers|pasteDispatch)\s*\(/,
+		allowed: {
+			'src/lib/components/blocks/editable/editable-surface.ts':
+				'`clipboard`: the surface fills in the editor-wide half for every block',
+			'src/lib/components/blocks/editable/surface-clipboard.ts':
+				'`pasteIntoBlock`: the one paste into a block’s own text, which the surface’s `pasteInline` calls',
+			'src/lib/selection/cross-block/range-replace.ts':
+				'a paste over a range across blocks, which lands where the range’s delete left the caret'
+		},
+		reason:
+			'a block that builds its own clipboard or dispatches its own paste copies the editor-wide fields and the caret park, and a copy drifts: go through `editableSurface.clipboard` and `pasteInline`',
+		hits: ['const c = createClipboardHandlers({ rangeArm });', 'await pasteDispatch(input, ctx);'],
+		misses: [
+			'export function createClipboardHandlers(deps) {}',
+			'export async function pasteDispatch(\n\tinput,'
+		]
+	},
+	{
+		id: 'G4.195 a block command takes its own undo step in one place',
+		matches: /\.\s*isolateUndoEntry\s*\(/,
+		allowed: {
+			'src/lib/components/blocks/text/inline-commands.ts':
+				'`perform`: every command of a paragraph and a table cell, once a shown source is written',
+			'src/lib/components/blocks/code/CodeBlock.svelte':
+				'the language field’s write, a command with no chord behind it'
+		},
+		reason:
+			'a command is not typing, so its write is an undo step of its own; a block that isolates its own writes keeps a second copy of that rule, which drifts from `createInlineCommands :: perform`',
+		hits: [
+			'controller.isolateUndoEntry(() => write());',
+			'deps.controller\n\t.isolateUndoEntry(w);'
+		],
+		misses: ['isolateUndoEntry(write: () => void): void;', 'isolateUndoEntry: (write) => {']
+	},
+	{
+		id: 'G4.201 one painter puts the selection wash on a widget',
+		matches: /(['"`])md-widget-selected\1|\bclass:md-widget-selected\b/,
+		allowed: {
+			'src/lib/selection/widget-selection-paint.ts':
+				'the one painter: the widget held selected whole, else the widgets a browser range overlaps'
+		},
+		reason:
+			'a second place writing the selection wash paints by its own idea of what is selected, and a widget shape it forgets shows nothing while the next key replaces it: let `installWidgetSelectionPainter` paint it',
+		hits: [
+			"el.classList.add('md-widget-selected');",
+			'const SELECTED = "md-widget-selected";',
+			'<span class:md-widget-selected={held}></span>'
+		],
+		misses: [
+			"page.locator('.md-widget-selected');",
+			'// paints `md-widget-selected` here\nconst a = 1;',
+			':global(.md-widget-selected) { outline: none; }'
 		]
 	},
 	{
@@ -445,6 +574,22 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
+		id: 'G4.175 every library component compiles in runes mode',
+		population: (file) => svelteOnly(file) && file.relPath.startsWith(SOURCE_DIR.library),
+		matches: (file) => !RUNES_MODE_RE.test(file.code),
+		reason:
+			'a component with no rune compiles in legacy mode in a Svelte host, which turns on the legacy flag in the Svelte runtime of that app: add `<svelte:options runes />`',
+		reaches: [SOURCE.blockHost],
+		hits: [
+			at('src/lib/x.svelte', '<span class="grip"></span>'),
+			at('src/lib/x.svelte', '<script>\n\texport let name;\n</script>\n<p>{name}</p>')
+		],
+		misses: [
+			at('src/lib/x.svelte', '<svelte:options runes />\n<span class="grip"></span>'),
+			at('src/lib/x.svelte', '<script>\n\tlet { node } = $props();\n</script>')
+		]
+	},
+	{
 		id: 'G4.99 a windowed list keeps its table height while blocks mount',
 		population: svelteOnly,
 		// Any spacer in markup (a class list, an expression, a `class:` directive), not a style rule.
@@ -537,6 +682,10 @@ const RULES: FileRule[] = [
 				'table sticky-X exit re-enters the editor column state',
 			'src/lib/components/blocks/text/widget-interaction.ts':
 				'CST inline offsets (unbranded model values) enter cursor IO',
+			'src/lib/components/blocks/text/inline-commands.ts':
+				'Edit link puts the caret at a construct’s text end, a CST offset (unbranded model value)',
+			'src/lib/components/blocks/text/typed-input.ts':
+				'the auto-pair’s caret, counted in the block’s displayed text, enters cursor IO',
 			'src/lib/selection/multi-click.ts':
 				'the point probe’s raw offsets and the segmenter’s walk-text indices (both unbranded) cross the walk in each direction'
 		},
@@ -629,8 +778,8 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
-		id: 'G4.13 no view-stripping cast outside tree-operations and the undo controller',
-		population: notUnder(SOURCE_DIR.treeOperations, SOURCE.undoController, SOURCE.cstNodes),
+		id: 'G4.13 no view-stripping cast outside tree-operations and the structural commit',
+		population: notUnder(SOURCE_DIR.treeOperations, SOURCE.structuralCommit, SOURCE.cstNodes),
 		matches: stripsView,
 		mustMatch: [SOURCE.unshare],
 		reason:
@@ -690,29 +839,32 @@ const RULES: FileRule[] = [
 	{
 		id: 'G4.32 one spelling for the inline cache: no consumer reaches for the raw accessor',
 		population: except(SOURCE.inlineCache),
-		matches: /(?<![\w.])getInlineContent\s*\(/,
+		matches: /\bgetInlineContent\b/,
 		allowed: {
 			'src/lib/core/inline/transparency.ts':
 				'the vertical-skip decision, run by path walkers holding no linkRef; its header states the resolver-less answer as its contract'
 		},
 		reason:
 			'a caller dropping the resolver or the signature reads a different cache sub-entry from the one the render filled; go through resolvedInlineContent',
-		hits: ['const x = getInlineContent(node);'],
-		misses: ['cache.getInlineContent(node);', '// getInlineContent(node) would be wrong']
+		hits: [
+			'const x = getInlineContent(node);',
+			"import { getInlineContent as read } from './inline-cache';"
+		],
+		misses: ['// getInlineContent(node) would be wrong', 'const x = resolvedInlineContent(node);']
 	},
 	...surfaceParity(
 		'G4.44 every prose surface resolves native ranged edits through resolveLiveRangeEdit',
 		LIVE_EDIT_HOME,
 		RESOLVES_LIVE_EDIT,
 		'resolveLiveRangeEdit(e, node, cursor, r);',
-		'a prose surface reads the pending range off getTargetRanges() through resolveLiveRangeEdit; the live selection alone loses every word, line and drag delete at a collapsed caret'
+		'a prose surface reads the pending range off getTargetRanges() through resolveLiveRangeEdit, by way of `createTypedInput`; the live selection alone loses every word, line and drag delete at a collapsed caret'
 	),
 	...surfaceParity(
 		'G4.65 every prose surface hands typed delimiters to applyDelimiterAutoPair',
 		AUTOPAIR_HOME,
 		APPLIES_AUTOPAIR,
 		'applyDelimiterAutoPair(e, deps);',
-		'a prose surface hands its typed delimiters to applyDelimiterAutoPair, which pairs, steps over and closes them; a local copy drifts'
+		'a prose surface hands its typed delimiters to applyDelimiterAutoPair through `createTypedInput`, which pairs, steps over and closes them; a local copy drifts'
 	),
 	{
 		id: 'G4.39 every component mounting the text surface publishes runCommand',
@@ -916,7 +1068,7 @@ const RULES: FileRule[] = [
 			'const on = $derived(getDragHandles?.() ?? false);',
 			'const doc = getDocument?.();',
 			'if (path) void navigateTo?.(path);',
-			"const mode = policies.presentationMode() || 'source';"
+			"const mode = reading.mode() || 'source';"
 		],
 		misses: [
 			"const isReading = getPresentationMode() === 'reading';",
@@ -925,7 +1077,7 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
-		id: 'G4.77 only the editor bootstrap, registerCore and directives register on behalf of no plugin',
+		id: 'G4.77 only the editor’s own registrations run on behalf of no plugin',
 		// The bare name, so an aliased import is flagged at its import line.
 		matches: /\bregisterAsCore\b/,
 		allowed: {
@@ -935,11 +1087,21 @@ const RULES: FileRule[] = [
 				'the editor’s own bootstraps (blocks, code languages, context-menu rows), which the reset keeps',
 			'src/lib/schema/plugin-registry.ts':
 				'`registerCore`, which also flags a key the registry can’t tell is built-in so the reset keeps it',
+			'src/lib/schema/built-in-descriptors.ts':
+				'the built-in kinds, whose first registration can fall inside a plugin’s setup (the first grammar read)',
 			'src/lib/components/blocks/directive/activate-directives.ts':
-				'the directive grammar and its components, which a consumer may turn on from a plugin’s setup and the reset drops'
+				'the directive grammar and its components, which a consumer may turn on from a plugin’s setup and the reset drops',
+			'src/lib/schema/commands.ts':
+				'the editor’s own global commands, registered as the module loads',
+			'src/lib/tree-operations/paste/hooks.ts':
+				'the built-in kinds’ default paste surfaces, registered as the module loads',
+			'src/lib/core/parsers/table-completion.ts':
+				'the table’s Enter completer, registered as the parser loads',
+			'src/lib/core/inline/inline-widgets.ts':
+				'`registerCoreInlineWidget`, the inline widgets the editor draws itself'
 		},
 		reason:
-			'an entry belongs to no plugin only through one of these routes: an editor built-in goes in `registerEditorBuiltIns`, a built-in key the reset can’t recognize goes through `registerCore`, and a kind a plugin declared already answers to that plugin',
+			'an entry belongs to no plugin only through one of these routes: an editor built-in goes in `registerEditorBuiltIns` or registers as its module loads, a built-in key the reset can’t recognize goes through `registerCore`, and a kind a plugin declared already answers to that plugin',
 		hits: [
 			'registerAsCore(() => registerLanguage(name, grammar));',
 			"import { registerAsCore as runUnowned } from './plugin-install';"
@@ -1123,8 +1285,8 @@ const RULES: FileRule[] = [
 		population: holdsLiveRewrites,
 		matches: /(?<![\w.])(?:readBlocks|parse|parseTaskItemBody)\s*\(/,
 		reaches: [
-			`${TEXT_BLOCK_DIR}live-split-rebalance.ts`,
-			`${TEXT_BLOCK_DIR}live-join-seam.ts`,
+			`${LIVE_EDIT_DIR}live-split.ts`,
+			`${LIVE_EDIT_DIR}live-join.ts`,
 			`${TEXT_BLOCK_DIR}construct-edge-delete.ts`,
 			`${TEXT_BLOCK_DIR}live-selection-edit.ts`,
 			`${LIVE_EDIT_DIR}read-back.ts`
@@ -1278,7 +1440,7 @@ const LEAF_RANGE_RULES: FileRule[] = [
 		matches: SAME_SOURCE_SPLICE,
 		allowed: {
 			'src/lib/tree-operations/leaf-range.ts': 'the in-leaf range replace itself',
-			'src/lib/components/blocks/text/live-join-seam.ts':
+			'src/lib/core/inline/live-edit/live-join.ts':
 				'the join cleanup, which the range replace calls',
 			'src/lib/tree-operations/structural-suffix.ts': "a split's two halves, which remove nothing",
 			'src/lib/components/blocks/text/construct-edge-delete.ts':
@@ -1309,11 +1471,7 @@ const LEAF_RANGE_RULES: FileRule[] = [
 				'the format toggle writes delimiters and checks its candidate against the screen',
 			'src/lib/core/inline/link-source-bytes.ts':
 				'the link writer rewrites one whole link and checks its candidate against the screen',
-			'src/lib/editor-actions/inline-range-commit.ts':
-				'a popover or menu insert over the range it replaces, nothing cut from under a delimiter it keeps',
 			'src/lib/inline-menu/inline-menu-session.ts': 'compares two texts and writes nothing',
-			'src/lib/selection/selection-drop.ts':
-				'a drop inserts at the drop point; its cut goes through the range replace',
 			'src/lib/selection/range-delete.ts':
 				'the range delete’s own join, a known gap until it calls `joinLeaves` (T18 slice 5)',
 			'src/lib/selection/cross-block/range-replace.ts':
@@ -1626,6 +1784,34 @@ const MEASURE_CHANNEL: ManifestRule = {
 	misses: [
 		'const channel = getContext(CHILD_MEASURE_KEYS);',
 		'// `CHILD_MEASURE_KEY` is the channel.\nconst a = 1;'
+	]
+};
+
+/** A mark's handlers are plugin code: called from one place per gesture, each through the
+ *  engine's guarded runner, so a new route cannot skip the hover lifecycle or the error event. */
+const MARK_HANDLER_CALLERS: ManifestRule = {
+	id: 'G4.163 a mark’s interactive handlers are called only by the hover lifecycle, the activate command and the overlay’s click',
+	matches: /\binteractive\s*\??\.\s*on(?:Click|Hover|Activate)\s*(?:\?\.)?\s*\(/,
+	declared: {
+		'src/lib/decorations/mark-hover.ts':
+			'`onHover`, started and ended by the one lifecycle keyed on the decoration',
+		'src/lib/decorations/mark-activation.ts':
+			'`onActivate`, run by `decorations.activateAtCaret` on the mark the precedence rule picks',
+		'src/lib/components/overlays/DecorationOverlay.svelte':
+			'`onClick`, on the rect the click landed on'
+	},
+	reason:
+		'a mark handler called from anywhere else skips the hover lifecycle’s one-end rule or the `error` event: route the gesture through `DecorationEngine.markHover` or `runMarkHandler`',
+	reaches: [SOURCE.markHover],
+	hits: [
+		'dec.interactive?.onHover?.(dec, null);',
+		'mark.interactive.onClick(mark, ev);',
+		'd.interactive?.onActivate(d, { anchor });'
+	],
+	misses: [
+		'if (dec.interactive?.onHover) start();',
+		'const onActivate = range.onActivate;\nonActivate();',
+		'// `interactive.onClick(dec, ev)` runs on a click.\nconst a = 1;'
 	]
 };
 
@@ -2557,7 +2743,9 @@ describeFileRules(
 		FOLLOW_ROUTE,
 		TEXT_MOVES,
 		...CODE_EDIT_SPAN,
-		...SYNTAX_MODULES
+		...SYNTAX_MODULES,
+		PLUGIN_VIEW_FALLBACK,
+		ONE_VIEW_WRAPPER
 	],
 	SOURCES
 );
@@ -2572,6 +2760,7 @@ describeCorrections(SOURCES);
 describeOwnerWrites(SOURCES);
 describeMeasureWrites(SOURCES);
 describeManifests([MEASURE_CHANNEL], SOURCES);
+describeManifests([MARK_HANDLER_CALLERS], SOURCES);
 describeManifests(HEIGHT_LIFETIME, SOURCES);
 describeManifests(SELECTION_WRITERS, SOURCES);
 describeDomPresence(SOURCES);

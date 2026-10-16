@@ -13,9 +13,13 @@ import {
 	readInline
 } from '../../../core/inline';
 import { CONTENT_VISIBILITY, renderedText } from '../../../core/inline/visibility';
+import {
+	closeBefore,
+	closesAndReopens,
+	reopenAfter
+} from '../../../core/inline/live-edit/close-reopen';
 import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
 import {
-	getInlineConstructPolicy,
 	getInlineMarkPolicy,
 	listInlineMarks,
 	type InlineMark,
@@ -104,9 +108,9 @@ function* candidateInsertions(
 	const outside = chain.slice(0, depth);
 	const payload = marksToWrite(intended, outside);
 
-	// A link or widget between the caret and the escaped construct cannot be cut open, since its
-	// closer does not mirror its opener, so only stepping outside is tried.
-	if (escaped.every((node) => isSymmetricPair(node.kind))) {
+	// A construct between the caret and the escaped one whose row forbids the cut leaves only
+	// stepping outside.
+	if (escaped.every((node) => closesAndReopens(node.kind))) {
 		yield splitOpen(display, caretOffset, text, escaped, payload);
 	}
 
@@ -143,8 +147,7 @@ function spliceWrapped(
 	};
 }
 
-/** Close every escaped construct before the insertion and reopen it after. A side left empty
- *  steps outside the run instead, since live mode never writes a pair around nothing. */
+/** Close every escaped construct before the insertion and reopen it after. */
 function splitOpen(
 	display: string,
 	caretOffset: number,
@@ -152,20 +155,17 @@ function splitOpen(
 	escaped: readonly ChainNode[],
 	payload: readonly InlineMark[]
 ): Candidate {
-	let leftEnd = caretOffset;
-	let rightStart = caretOffset;
-	let closers = '';
-	let openers = '';
-	for (const node of [...escaped].reverse()) {
-		if (leftEnd === node.contentStart) leftEnd = node.start;
-		else closers += display.slice(node.contentEnd, node.end);
-		if (rightStart === node.contentEnd) rightStart = node.end;
-		else openers = display.slice(node.start, node.contentStart) + openers;
-	}
+	const left = closeBefore(display, escaped, caretOffset);
+	const right = reopenAfter(display, escaped, caretOffset);
 	const inner = spliceWrapped('', 0, text, payload);
 	return {
-		raw: display.slice(0, leftEnd) + closers + inner.raw + openers + display.slice(rightStart),
-		textAt: leftEnd + closers.length + inner.textAt
+		raw:
+			display.slice(0, left.end) +
+			left.closers +
+			inner.raw +
+			right.openers +
+			display.slice(right.start),
+		textAt: left.end + left.closers.length + inner.textAt
 	};
 }
 
@@ -241,13 +241,6 @@ export interface ChainNode {
 /** Read off the kind's row rather than a second list, so a new format joins in one place. */
 function markOf(kind: AnyInlineKind): InlineMarkKind | null {
 	return getInlineMarkPolicy(kind) ? kind : null;
-}
-
-/** Whether a construct's closer mirrors its opener, so a split can close and reopen it. The policy
- *  table answers, not this module's mark list: the rule is the table's to change. */
-function isSymmetricPair(kind: AnyInlineKind): boolean {
-	const edge = getInlineConstructPolicy(kind)?.edgeAffinity;
-	return edge === 'left-sticky' || edge === 'boxed';
 }
 
 /** Every construct holding `offset`, outermost first; one missing here could be destroyed unnoticed.

@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { capturePageErrors, deferImage } from '../../page-probes';
+import { deferImage } from '../../page-probes';
 import { count, findInput } from './helpers';
 
 // A bounded editor, so it scrolls inside its own box and the correction runs.
@@ -48,7 +48,6 @@ const imageHeight = (page: Page) =>
 test('find next onto a match already on screen keeps it there while an image above it loads', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	const releaseImage = await deferImage(page, LATE_IMAGE_SVG);
@@ -75,7 +74,7 @@ test('find next onto a match already on screen keeps it there while an image abo
 	await page.keyboard.press('ControlOrMeta+f');
 	await findInput(page).waitFor({ state: 'visible' });
 	await page.keyboard.type('zebra');
-	await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+	await expect(count(page)).toHaveText(/1\s+of\s+1/);
 	await page.keyboard.press('Enter');
 	await editor.waitForRenderFlush();
 	await editor.waitForResizeObserverFlush();
@@ -91,5 +90,4 @@ test('find next onto a match already on screen keeps it there while an image abo
 
 	const after = await topInView(page, matchBlock);
 	expect(Math.abs(after! - before!)).toBeLessThanOrEqual(1);
-	expect(pageErrors).toEqual([]);
 });

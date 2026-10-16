@@ -1,6 +1,6 @@
 # Plugin Author Guide
 
-This guide is for teaching the editor your own block or inline content. All of the authoring API comes from one import, `@voithos-labs/aragonite/plugin`. The package root, `@voithos-labs/aragonite`, is the embedding side, what a host app mounts the editor with (you'll borrow its `installPlugins` once or twice), and your test suite imports from `@voithos-labs/aragonite/testing`.
+This guide is for teaching the editor your own block or inline content. The authoring API comes from `@voithos-labs/aragonite/plugin`, plus `@voithos-labs/aragonite/svelte` for the parts typed with Svelte's types (the block factories, and the helpers that turn a Svelte component into a view). The package root, `@voithos-labs/aragonite`, is the embedding side, what a host app mounts the editor with (you'll borrow its `installPlugins` once or twice), and your test suite imports from `@voithos-labs/aragonite/testing`.
 
 Four neighbouring docs carry what this one doesn't:
 
@@ -9,7 +9,7 @@ Four neighbouring docs carry what this one doesn't:
 - [plugin-api.md](plugin-api.md): a catalog of every export named anywhere below, for checking a name is real.
 - [plugin-testing.md](plugin-testing.md): testing what you build.
 
-This page is the first read: [a working plugin in fifteen minutes](#the-first-fifteen-minutes), then [what a plugin is](#what-a-plugin-is), [views](#views-what-you-read-what-you-own), and [what a plugin may and may not do](#what-a-plugin-may-and-may-not-do). The recipes live on pages of their own, one job each, so open whichever matches what you're building:
+This page is the first read: [a working plugin in fifteen minutes](#the-first-fifteen-minutes), then [what a plugin is](#what-a-plugin-is), [what draws it and where it runs](#what-draws-your-plugin-and-where-it-runs), [views](#views-what-you-read-what-you-own), and [what a plugin may and may not do](#what-a-plugin-may-and-may-not-do). The recipes live on pages of their own, one job each, so open whichever matches what you're building:
 
 | Page                                                                                         | Reach for it when                                                                                                                                    |
 | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -28,7 +28,7 @@ This page is the first read: [a working plugin in fifteen minutes](#the-first-fi
 
 ## The first fifteen minutes
 
-All three import paths come with `@voithos-labs/aragonite` itself, so there's nothing else to install.
+All four import paths (`/plugin`, `/svelte`, `/testing` and the root) come with `@voithos-labs/aragonite` itself, so there's nothing else to install.
 
 The plugin we're about to build is an homage to `curl parrot.live`: a line that starts with `%%parrot` renders as an animated ASCII party parrot, and any text after the marker becomes the parrot's caption.
 
@@ -38,12 +38,16 @@ A **kind** is aragonite's word for a block type. Paragraph is a kind, fenced cod
 
 A block's **raw** is its exact source bytes, markers included. The editor saves a document by joining raws (plus the blank lines kept between blocks) and nothing else, so whatever your plugin writes into that field is exactly what lands in the user's file.
 
-**Declare and describe.** Registering a kind is four calls. The rest of the guide keeps coming back to them, and so will you. Here's each one properly:
+**Declare and describe.** Registering a kind is two calls inside a plugin. The rest of the guide keeps coming back to them, and so will you. Here's each one properly, plus the plugin that holds them:
 
 - **`declarePluginKind(name)`** creates a new kind and returns it (a name that's already taken throws). Every other call here takes that return value, and the type system won't accept the bare string in its place. A module that didn't create the kind recovers it with `declaredPluginKind(name)`, which throws for an undeclared name (a typo, say) rather than registering against a kind that doesn't exist.
-- **`registerBlockKind(kind, descriptor)`** describes how the kind behaves: does it merge, is it editable, does it host inline content, where can a caret sit beside it, and how it answers every cross-cutting editor system (the `closure` field). A leaf needs only what the sample below fills.
-- **`registerBlockOpener(kind, opener)`** teaches the parser to recognize the syntax. An **opener** is the part of the parser that spots the line a block starts with: you give it a `priority` (its place in the dispatch order), an `interruptsParagraph` predicate (or `false`, for never), and a `tryOpen` that claims lines or declines. [Teaching the parser](plugin-guide/parser.md#teaching-the-parser) is its full story.
-- **`definePluginBlock({ name, kind, component, register })`** packages the lot as one installable unit: it runs your `register` step, then binds the component to the kind. It's the one-kind shortcut over the general `definePlugin` ([The plugin unit](#the-plugin-unit)), and takes the same optional `defaults` and `parseOptions`. Its `register` gets no setup context, though, so a plugin that needs per-editor work (`onEditor`) uses `definePlugin`.
+- **`registerBlockKind(kind, registration)`** describes how the kind behaves and what draws it: does it merge, is it editable, does it host inline content, where can a caret sit beside it, how it answers every cross-cutting editor system (the `closure` field), its `view`, and its `opener`. Two of those need a word:
+  - A **view** is what draws the block. `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component, and `textBlockView()` hands you the editor's own plain text block.
+  - An **opener** is the part of the parser that spots the line a block starts with: you give it a `priority` (its place in the dispatch order), an `interruptsParagraph` predicate (or `false`, for never), and a `tryOpen` that claims lines or declines. [Teaching the parser](plugin-guide/parser.md#teaching-the-parser) is its full story. Leave it out for a kind no line starts, like one only a menu inserts.
+
+  A leaf needs only what the sample below fills.
+
+- **`definePlugin({ name, setup })`** packages the lot as one installable unit, and the editor runs your `setup` once per page. [The plugin unit](#the-plugin-unit) has the rest: per-editor options, and `onEditor` for work each editor does.
 
 The first one in action (a kind is a plain string underneath, with a type brand on top):
 
@@ -54,20 +58,21 @@ declaredPluginKind('parot'); // throws: "parot" has not been declared
 declarePluginKind('paragraph'); // throws: "paragraph" is a built-in BlockKind
 ```
 
-And all four together, which is the whole plugin minus its component:
+And all of it together, which is the whole plugin minus its component:
 
 ```ts
 // parrot-plugin.ts
 import {
 	caretOffsetAtPoint,
 	declarePluginKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockKind,
-	registerBlockOpener,
 	simpleLeafClosure,
+	type BlockView,
 	type CaretTarget,
 	type EditorPlugin
 } from '@voithos-labs/aragonite/plugin';
+import { svelteBlockView } from '@voithos-labs/aragonite/svelte';
 import ParrotBlock from './ParrotBlock.svelte';
 
 export const PARROT = 'parrot';
@@ -86,10 +91,20 @@ function parrotCaretAtPoint(
 	return { path: [], offset: source ? offset : offset + Number(view.dataset.captionStart) };
 }
 
-function registerParrotBlock(): void {
+function registerParrotBlock(view: BlockView): void {
 	const parrot = declarePluginKind(PARROT);
 
 	registerBlockKind(parrot, {
+		view,
+		opener: {
+			priority: 25,
+			interruptsParagraph: (text) => text.startsWith('%%parrot'),
+			tryOpen(ctx) {
+				if (!ctx.line.text.startsWith('%%parrot')) return null;
+				const node = { kind: parrot, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw };
+				return { node, consumed: 1 };
+			}
+		},
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -103,24 +118,12 @@ function registerParrotBlock(): void {
 			simOracle: { mode: 'inherit-default' }
 		})
 	});
-
-	registerBlockOpener(parrot, {
-		priority: 25,
-		interruptsParagraph: (text) => text.startsWith('%%parrot'),
-		tryOpen(ctx) {
-			if (!ctx.line.text.startsWith('%%parrot')) return null;
-			const node = { kind: parrot, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw };
-			return { node, consumed: 1 };
-		}
-	});
 }
 
 export function parrotPlugin(): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: 'parrot',
-		kind: PARROT,
-		component: ParrotBlock,
-		register: registerParrotBlock
+		setup: () => registerParrotBlock(svelteBlockView(ParrotBlock))
 	});
 }
 ```
@@ -137,12 +140,13 @@ The parrot's answer is two steps. The caption and the source line are different 
 
 On the opener, `priority` decides where you sit in the built-in openers' dispatch order ([Opener priority](plugin-guide/parser.md#opener-priority)) and `consumed` is the number of lines you claimed ([What an opener returns](plugin-guide/parser.md#what-an-opener-returns)).
 
-**Render.** The parrot is a **leaf**, a block with no child blocks (a container holds other blocks; [the walkthrough](plugin-guide/container-walkthrough.md) builds one). `createEditableLeaf` hands a leaf a native caret, IME composition (typing through an input method, the way Chinese or Japanese is typed), undo, selection, and clipboard. The parrot asks for it in `render-primary` mode, where the caption is what you see at rest and the source line only shows while the caret is in the block. The bird itself is ordinary **chrome** (a block's furniture, as opposed to its content): every frame stacked in one `<pre>` that CSS scrolls a frame at a time.
+**Render.** The parrot is a **leaf**, a block with no child blocks (a container holds other blocks; [the walkthrough](plugin-guide/container-walkthrough.md) builds one). `createEditableLeaf` hands a leaf a native caret, IME composition (typing through an input method, the way Chinese or Japanese is typed), undo, selection, and clipboard. The parrot asks for it in `render-primary` mode, where the caption is what you see at rest and the source line only shows while the caret is in the block. The bird itself is ordinary **chrome** (a block's furniture, as opposed to its content): every frame stacked in one `<pre>` that CSS scrolls a frame at a time. If you ever give your chrome a button that shows on hover in the block's top-right corner (where the bundled diagram block keeps its toolbar), put `data-corner-control` on it. The find bar opens in that same corner, and the attribute is how it knows to move your button below itself instead of sitting on top of it.
 
 ```svelte
 <!-- ParrotBlock.svelte -->
 <script lang="ts">
-	import { createEditableLeaf, trimWhitespace, type NodeView } from '@voithos-labs/aragonite/plugin';
+	import { trimWhitespace, type NodeView } from '@voithos-labs/aragonite/plugin';
+	import { createEditableLeaf } from '@voithos-labs/aragonite/svelte';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
 	let sourceEl: HTMLDivElement | undefined = $state();
@@ -302,7 +306,7 @@ cNo.....................................oc
 			color: #3fd3d3;
 		}
 		85.714% {
-			color: var(--color-text-primary, currentColor);
+			color: currentColor;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
@@ -336,7 +340,7 @@ The editing half is the factory call, the `revealed` flag, two spreads, and one 
 - The commit happens when the caret leaves, not per keystroke. Reveal, type, arrow out: one undo entry, and the caption follows the new raw.
 - `singleLine: true` says the bytes are one line (the opener claims exactly one), so Enter ends the block instead of typing a newline nothing could show you: whatever sits after the caret becomes a paragraph below, and the caret goes with it, same as in a heading. A leaf whose bytes can span lines leaves the flag off and gives its source element `white-space: pre-wrap` instead, for a reason [The editable leaf](plugin-guide/editable-content.md#the-editable-leaf) explains.
 
-The parrot half is the `<pre>`, its CSS, and the caption reading straight off `node.raw`. No script runs per frame, and `prefers-reduced-motion` parks the bird on its first frame for free. It does have to do one thing, like every block wider than the text column: scroll inside your own box (`overflow-x: auto`, same as a code block or a table). The editor root scrolls, so an uncontained block pans the whole page sideways and takes the prose with it.
+The parrot half is the `<pre>`, its CSS, and the caption reading straight off `node.raw`. No script runs per frame, and `prefers-reduced-motion` parks the bird on its first frame for free. It does have to do one thing, like every block wider than the text column: scroll inside your own box (`overflow-x: auto`, same as a code block or a table). The editor root scrolls, so an uncontained block pans the whole page sideways and takes the prose with it. Your view also sits under the editor's own CSS reset, so a `<pre>` or a `<p>` in it starts with no margin or padding on any page, and `box-sizing` is `border-box`.
 
 And the full ten-frame dance? Go see [parrot-frames.md](plugin-guide/parrot-frames.md) for the actual frames; not gonna put them all here.
 
@@ -370,11 +374,11 @@ That's the loop: describe the kind, render it, install it, verify the bytes. Eve
 
 ## What a plugin is
 
-A plugin teaches the editor a new kind, one that parses, renders, and saves alongside the built-ins. You declare the kind, then wire up to three things:
+A plugin teaches the editor a new kind, one that parses, renders, and saves alongside the built-ins. You declare the kind, then wire up to three things (the descriptor, the view and a block opener all go in one `registerBlockKind` call):
 
 ```
 declare a kind ──┬─▶ descriptor   how it merges, its container shape, its keymap
-                 ├─▶ component    how it renders and hosts any editable content
+                 ├─▶ view         how it renders and hosts any editable content
                  └─▶ grammar      how source becomes the kind:
                                     a block opener  │  a :::name directive  │  an inline recognizer
 ```
@@ -384,27 +388,14 @@ Each part has a defined absence, which is prob the easiest way to remember what 
 | Part       | It makes the kind       | Leave it out and                                                                                                                                                                           |
 | ---------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | descriptor | behave                  | the kind errors at first use; this one is never optional                                                                                                                                   |
-| component  | visible                 | the kind renders as a visible raw-text fallback                                                                                                                                            |
+| view       | visible                 | the registration doesn't compile (and throws from plain JavaScript); an editor that leaves your plugin out shows the kind as a raw-text fallback                                           |
 | grammar    | parseable from Markdown | nothing ever parses to the kind, so it doesn't survive a reload ([the menu recipe](plugin-guide/menu-only-kinds.md#recipe-a-kind-only-a-menu-creates) is the route to a kind nobody types) |
 
 ### Registration is global, and register-once
 
-A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind, component, or opener twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
+A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
 
-Who guarantees a registration runs only once depends on where it runs:
-
-- **Inside a plugin unit** (the installable package the next section defines), `setup` runs at most once per process. Write each `register*` call straight; the unit owns the guarantee.
-- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockComponentRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
-
-```ts
-isBlockKindDeclared('parrot'); // false on a fresh page
-if (!isBlockKindDeclared(PARROT)) registerParrotBlock();
-isBlockKindDeclared('parrot'); // true, so a second import of this module skips the register
-```
-
-Guard on the probe, never on a module-level `registered` flag: the flag survives `resetPluginPlatformForTests()` and then silently skips the re-registration your next test case needed, which is a fun half hour to spend.
-
-One dev-time softening. Under a dev server a duplicate registration replaces the earlier one with a warning, so hot reload picks up a changed definition (editing a plugin unit's own `definePlugin` still needs a page reload). Production builds and test runs keep the throw.
+Every `register*` and `declare*` call goes inside a plugin unit's `setup` (the next section), which runs at most once per page, so you write each call straight and never check whether it already ran. A call anywhere else, a module's top level say, throws in development with that fix in the message. (Hot reload of a changed plugin module keeps the old definition, with a console warning, since the first install of a name wins. Reload the page to pick up your edit.)
 
 ### The plugin unit
 
@@ -421,8 +412,7 @@ export function myPlugin(options?: { renderer?: Renderer }): EditorPlugin {
 	return definePlugin({
 		name: 'my-plugin',
 		setup() {
-			registerMyKind(options?.renderer ?? defaultRenderer);
-			registerBlockComponent(declaredPluginKind('my-kind'), defineBlockComponent(MyBlock));
+			registerMyKind(svelteBlockView(MyBlock), options?.renderer ?? defaultRenderer);
 		}
 	});
 }
@@ -469,10 +459,26 @@ installPlugins([parrot]); // no-op (a fresh parrotPlugin() here would no-op too,
 
 The API is going to freeze, and you deserve to know which half of it has settled already.
 
-- **The registration base, settled.** Kind declaration, descriptor/component/opener registration, typed per-node metadata, and the probes above. The model won't change: which calls exist, that each registers once, what a kind is. The exact shapes those calls take (a descriptor field, what an opener returns) can still change before the freeze, and freeze with everything else at the public release.
+- **The registration base, settled.** Kind declaration, kind registration (descriptor, view and opener in one call), and typed per-node metadata. The model won't change: which calls exist, that each registers once, what a kind is. The exact shapes those calls take (a descriptor field, what an opener returns) can still change before the freeze, and freeze with everything else at the public release.
 - **Pre-freeze, still moving.** Everything else: the plugin unit itself, the authoring tiers (container, editable leaf, inline, directive), the grammar hooks, paste transforms, and the view surfaces (decorations, rects, selection geometry). The [API reference](plugin-api.md) labels each such section _(pre-freeze / unstable)_, and they all freeze at the public release.
 
 After the freeze the version number carries the promise: a breaking change to a frozen surface rides a **major** version, and additive needs ship as **minors**.
+
+## What draws your plugin, and where it runs
+
+Two shapes draw everything a plugin puts on screen. (Not to be confused with the read-only node types in [Views](#views-what-you-read-what-you-own), below; same word, different job.)
+
+- **A block draws through a `BlockView`**, the `view` its `registerBlockKind` call takes. For now a view is either `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, or `textBlockView()`, the editor's own plain text block, so a block with a look of its own is a Svelte component.
+- **Everything else draws through a `PluginView`**: an inline widget, a decoration's widget or badge, and an inline menu row. It's a plain function, `(target, props) => ({ update?, destroy? })`, that fills an element the editor made for it ([Rendering it as a widget](plugin-guide/inline-kinds.md#rendering-it-as-a-widget) walks one through). Already writing Svelte? `svelteView(Component)`, also from `/svelte`, turns a component into one for any of those slots.
+
+Which apps can run your plugin follows from that. An app whose bundler compiles Svelte (a Svelte app, say) compiles the editor from source, along with your components. An app whose bundler doesn't (most React, Vue and plain JavaScript apps) runs a prebuilt copy with its own Svelte compiled in, and a Svelte component of yours can't run on that copy's Svelte. So:
+
+| Your plugin draws with                                                                                    | It runs in                                               |
+| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Plain DOM views, or nothing at all (syntax, commands, paste transforms, decorations, menus with DOM rows) | Every app                                                |
+| A block, or any other Svelte component                                                                    | An app whose bundler compiles Svelte (a Svelte app, say) |
+
+The bundled plugins run everywhere, since they're compiled into the prebuilt copy. Mount a Svelte component of yours in an app that doesn't compile Svelte, and it fails the way any throwing view does: a block shows a "block failed to render" notice above its source, a widget shows just its source. In a dev build the notice and the console name the cause: the component was compiled against a different copy of Svelte.
 
 ## Views: what you read, what you own
 
@@ -542,3 +548,4 @@ What each mistake does in each build:
 | An opener claims no line (`consumed < 1`) | Warns, naming the kind, and declines the opener                     | Declines the same way, silently; no hang            |
 | An opener's `raw` ≠ the lines it consumed | Parse warns, naming the kind                                        | Silent round-trip break                             |
 | An opener throws                          | Propagates uncaught (parse runs at init and on every edit)          | Same; uncaught                                      |
+| A register call outside a plugin's setup  | Throws, naming `definePlugin`                                       | Runs, unchecked and unsupported                     |

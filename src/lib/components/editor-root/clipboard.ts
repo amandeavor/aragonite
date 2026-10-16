@@ -7,7 +7,8 @@
 
 import { claimsBodyChord } from '../../active-editor';
 import type { BlockComponent } from '../../block-component';
-import type { DocumentGetter, PasteImageHook } from '../../editor-keys';
+import type { DocumentGetter } from '../../editor-keys';
+import type { PasteImageHook } from '../../host-hooks';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import type { CrossBlockHandlers } from '../../selection/cross-block/dispatch';
 import { emitClipboardError, type EditorEvents } from '../../editor-events';
@@ -19,9 +20,8 @@ export interface EditorRootClipboardDeps {
 	selection: SelectionState;
 	getDoc: DocumentGetter;
 	crossBlock: CrossBlockHandlers;
-	/** Required but nullable, so this route cannot silently skip the image handling the
-	 *  blocks do; `undefined` means no hook. */
-	onPasteImage: PasteImageHook | undefined;
+	/** Required, so this route cannot silently skip the image handling the blocks do. */
+	onPasteImage: () => PasteImageHook | undefined;
 	events: EditorEvents;
 	/** The mounted block at `path`, which takes a selected widget's clipboard events. */
 	getBlockComponent(path: number[]): BlockComponent | null;

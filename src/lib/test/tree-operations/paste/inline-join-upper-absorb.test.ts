@@ -1,16 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import {
 	makeBlockListState,
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
+	runPasteDispatch,
+	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import type { BlockListState } from '#lib/block-lists/block-list-state.svelte.js';
 
@@ -19,43 +15,33 @@ import type { BlockListState } from '#lib/block-lists/block-list-state.svelte.js
 
 describe('inline paste landing after a fold above the target', () => {
 	it('answers the merged predecessor and the shifted offset at top level', async () => {
-		const { deps } = makeEditorActionsDeps(parse('a\n# h\nb\n').children);
-		const coordinator = createPasteCoordinator(deps, createUndoController(deps));
+		const h = makePasteCommit(parse('a\n# h\nb\n').children);
 
-		const result = await pasteDispatch(
+		const result = await runPasteDispatch(
+			h,
 			{ pastedText: 'x', targetPath: [1], offset: 0 },
-			pasteContext({
-				doc: deps.doc,
-				blockEdit: makeStubBlockEdit(),
-				controller: coordinator,
-				crossBlock: true
-			})
+			{ crossBlock: true }
 		);
 
-		expect(serialize(deps.doc)).toBe('a\nx# h\nb\n');
-		expect(deps.doc.children).toHaveLength(1);
+		expect(serialize(h.doc)).toBe('a\nx# h\nb\n');
+		expect(h.doc.children).toHaveLength(1);
 		expect(result.inlineCaretPath).toEqual([0]);
 		expect(result.inlineCaretOffset).toBe(3);
 	});
 
 	it('answers the container-deep path when the fold runs inside a blockquote body', async () => {
-		const { deps } = makeEditorActionsDeps(parse('> a\n> # h\n> b\n').children);
-		const liveQuote = () => deps.doc.children[0];
+		const h = makePasteCommit(parse('> a\n> # h\n> b\n').children);
+		const liveQuote = () => h.doc.children[0];
 		const state = makeBlockListState(liveQuote, ['c0', 'c1', 'c2']);
 		registerBlockListState(liveQuote(), state as unknown as BlockListState);
-		const coordinator = createPasteCoordinator(deps, createUndoController(deps));
 
-		const result = await pasteDispatch(
+		const result = await runPasteDispatch(
+			h,
 			{ pastedText: 'x', targetPath: [0, 1], offset: 0 },
-			pasteContext({
-				doc: deps.doc,
-				blockEdit: makeStubBlockEdit(),
-				controller: coordinator,
-				crossBlock: true
-			})
+			{ crossBlock: true }
 		);
 
-		expect(serialize(deps.doc)).toBe('> a\n> x# h\n> b\n');
+		expect(serialize(h.doc)).toBe('> a\n> x# h\n> b\n');
 		expect(liveQuote().children).toHaveLength(1);
 		expect(liveQuote().childIds).toHaveLength(1);
 		expect(result.inlineCaretPath).toEqual([0, 0]);

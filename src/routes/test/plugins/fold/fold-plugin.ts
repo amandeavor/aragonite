@@ -30,7 +30,7 @@ export const foldPlugin = definePlugin({
 							end: range.end,
 							class: 'fold-island',
 							widget: {
-								buildDom: () => {
+								view: (target) => {
 									const el = document.createElement('span');
 									el.className = 'fold-ellipsis';
 									el.textContent = '…';
@@ -39,7 +39,8 @@ export const foldPlugin = definePlugin({
 										opened.add(keyOf(range));
 										handle.invalidate();
 									});
-									return el;
+									target.append(el);
+									return {};
 								}
 							}
 						}))

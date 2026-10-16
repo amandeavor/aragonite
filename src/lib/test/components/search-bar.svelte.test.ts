@@ -52,7 +52,7 @@ function render(
 	document.body.appendChild(target);
 	const instance = mount(SearchBar, {
 		target,
-		props,
+		props: { ...props, editorRoot: () => target },
 		context: new Map([[EDITOR_SERVICES_KEY, { search }]])
 	});
 	flushSync();
@@ -131,8 +131,8 @@ describe('the find field', () => {
 });
 
 describe('the buttons', () => {
-	it('step, close and the chevron each ask for their own action', () => {
-		const search = fakeSearch();
+	it('step, close and the replace toggle each ask for their own action', () => {
+		const search = fakeSearch({ query: 'alpha', matches: [1, 2] });
 		const onToggleReplace = vi.fn();
 		const bar = render(search, { onToggleReplace });
 
@@ -147,13 +147,21 @@ describe('the buttons', () => {
 		expect(onToggleReplace).toHaveBeenCalledTimes(1);
 	});
 
+	it('the steps wait for a match', () => {
+		const bar = render(fakeSearch({ query: 'zeta' }));
+
+		expect(button(bar, SEARCH_NEXT_LABEL).disabled).toBe(true);
+		expect(button(bar, SEARCH_PREVIOUS_LABEL).disabled).toBe(true);
+		expect(button(bar, SEARCH_CLOSE_LABEL).disabled).toBe(false);
+	});
+
 	it('draws nothing while the search is closed', () => {
 		expect(render(fakeSearch({ isOpen: false })).querySelector('.search-bar')).toBeNull();
 	});
 });
 
 describe('the replace row', () => {
-	it('shows only while expanded, and the chevron reports it', () => {
+	it('shows only while expanded, and the replace toggle reports it', () => {
 		const collapsed = render(fakeSearch(), { replaceExpanded: false });
 		expect(input(collapsed, SEARCH_REPLACE)).toBeNull();
 		expect(button(collapsed, SEARCH_TOGGLE_REPLACE).getAttribute('aria-expanded')).toBe('false');
@@ -164,7 +172,7 @@ describe('the replace row', () => {
 	});
 
 	it('Enter replaces the current match, Escape closes, and the buttons replace one or all', () => {
-		const search = fakeSearch();
+		const search = fakeSearch({ query: 'alpha', matches: [1, 2] });
 		const bar = render(search, { replaceExpanded: true });
 		const field = input(bar, SEARCH_REPLACE);
 
@@ -192,10 +200,16 @@ describe('the replace row', () => {
 
 describe('the readout', () => {
 	const STATES: [name: string, over: Record<string, unknown>, text: string, error: boolean][] = [
-		['the position among the matches', { matches: [1, 2, 3], activeIndex: 1 }, '2 / 3', false],
-		['no results', {}, 'No results', false],
-		['a scan in progress', { isScanning: true }, 'Searching…', false],
-		['a replaced count', { replacedCount: 4 }, '4 replaced', false],
+		['nothing before a query', {}, '', false],
+		[
+			'the position among the matches',
+			{ query: 'a', matches: [1, 2, 3], activeIndex: 1 },
+			'2 of 3',
+			false
+		],
+		['no results', { query: 'zeta' }, 'No results', false],
+		['a scan in progress', { query: 'a', isScanning: true }, 'Searching…', false],
+		['a replaced count', { query: 'a', replacedCount: 4 }, '4 replaced', false],
 		['an error in place of any count', { error: 'Unterminated group', matches: [1] }, '', true]
 	];
 
@@ -205,5 +219,50 @@ describe('the readout', () => {
 		if (error) expect(cell.textContent).toContain('Unterminated group');
 		else expect(cell.textContent?.trim()).toBe(text);
 		expect(cell.classList.contains('error')).toBe(error);
+	});
+});
+
+describe('the open bar beside the blocks it may cover', () => {
+	it('stops listening to the editor and the page when the editor unmounts with the bar open', () => {
+		const watched = new Set(['pointerover', 'focusin', 'scroll']);
+		const listening: Array<[EventTarget, string, unknown]> = [];
+		// The test environment's window carries its own listener methods, so it is tracked too.
+		const track = (owner: EventTarget) => {
+			const { addEventListener, removeEventListener } = owner;
+			return [
+				vi.spyOn(owner, 'addEventListener').mockImplementation(function (
+					this: EventTarget,
+					type,
+					listener,
+					options
+				) {
+					if (watched.has(type)) listening.push([this, type, listener]);
+					addEventListener.call(this, type, listener, options);
+				}),
+				vi.spyOn(owner, 'removeEventListener').mockImplementation(function (
+					this: EventTarget,
+					type,
+					listener,
+					options
+				) {
+					const at = listening.findIndex(
+						([t, ty, l]) => t === this && ty === type && l === listener
+					);
+					if (at >= 0) listening.splice(at, 1);
+					removeEventListener.call(this, type, listener, options);
+				})
+			];
+		};
+		const spies = [...track(EventTarget.prototype), ...track(window)];
+		try {
+			render(fakeSearch());
+			expect(listening.map(([, type]) => type)).toEqual(
+				expect.arrayContaining(['pointerover', 'focusin', 'scroll'])
+			);
+			mounted.splice(0).forEach((undo) => undo());
+			expect(listening.map(([, type]) => type)).toEqual([]);
+		} finally {
+			spies.forEach((spy) => spy.mockRestore());
+		}
 	});
 });

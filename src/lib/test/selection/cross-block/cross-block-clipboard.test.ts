@@ -5,12 +5,14 @@ import { runClipboardCut } from '#lib/components/blocks/editable/clipboard-step.
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { parse } from '#lib/core/parser.js';
 import type { CrossBlockHandlers } from '#lib/selection/cross-block/dispatch.js';
+import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import type { SelectionState } from '#lib/selection/selection-state.svelte.js';
 
 function makeDeps(selection: SelectionState, deleteSpy = vi.fn(async () => {})) {
 	const doc = parse('hello\n\nworld\n');
 	const crossBlock = {
-		performCrossBlockCut: deleteSpy
+		performCrossBlockCut: deleteSpy,
+		reading: fixtureReading()
 	} as unknown as CrossBlockHandlers;
 	return { selection, getDoc: () => doc, crossBlock };
 }

@@ -157,7 +157,7 @@ The next insertion writes the break in front of itself, whichever way it arrives
 
 Every route spends the pending break in one place. While `writeText` (§ 3) writes, it holds whatever the caret memory keeps for its block (`src/lib/caret/next-insertion.ts` :: `createInsertionRecords`). A composition and a paste have to clear the caret memory before they write, so they take the hold earlier, for the whole gesture. The pending marks (`live-mode.md` § 4.3), the pending break, the held space and Edit link's caret in a URL (§ 4.2) are the kinds of record in that list, so another kind is one more entry every route picks up.
 
-Once the break is written it's ordinary bytes. Delete the text after it and the empty line stays, a line like any other: Backspace on it, or Delete at the end of the line above, takes the break with it (live mode reads the block back with that line still in it, `live-mode.md` § 4.4), and the arrows land on it from above and below.
+Once the break is written it's ordinary bytes, until you delete everything after it. Then the bytes would end on a backslash with nothing after it, which a reload reads as a plain backslash, so the write drops the break with that text (`src/lib/tree-operations/content-write.ts` :: `droppedOpenLines`, for every prose block on every route). If the caret was on that line, it goes back to being a pending break, caret and all, whether the text went by Backspace, a word delete or a cut: the block's own `updateBlockContent`, which all of those write through, opens it again (`src/lib/components/blocks/editable/editable-surface.ts`). Type and the break comes back; leave the line and it's gone.
 
 Shift+Enter anywhere inside the text still writes its `\` and line ending right away. Both routes get their bytes from one writer, `src/lib/core/inline/index.ts` :: `withHardBreak`.
 
@@ -200,7 +200,7 @@ The caret surface reads as three layers, and a new gesture composes them rather 
 
 [`caret-placement.md`](caret-placement.md) walks one click through all three layers, and then through what the caret does on the next keystroke, one file per stage.
 
-A block publishes the shape one of three ways, and `BlockHost` resolves all three at the single point it stores a ref (`resolveBlockSurface`): a hand-built leaf as its own instance exports, a plugin leaf built on `createEditableLeaf` under one `blockApi` export, a container under one `containerApi` export. The two factories hand their surface over as one object because Svelte 5 instance exports can't be spread. The component registry types the three shapes as a union, so a block publishing none of them doesn't compile.
+A block publishes the shape one of three ways, and `BlockHost` resolves all three at the single point it stores a ref (`resolveBlockSurface`): a hand-built leaf as its own instance exports, a plugin leaf built on `createEditableLeaf` under one `blockApi` export, a container under one `containerApi` export. The two factories hand their surface over as one object because Svelte 5 instance exports can't be spread. `svelteBlockView` types the three shapes as a union, so a block publishing none of them doesn't compile.
 
 ## 5. Schema
 
@@ -299,22 +299,25 @@ The same dispatch point answers `EditorInstance.canRunCommand`, the read a host 
 
 ### The other registries
 
-- **Block openers.** An opener is the part of the parser that recognizes the syntax a block starts with. A kind the block parser dispatches declares one:
+- **Block openers.** Not a registry of their own: an opener is the part of the parser that recognizes the syntax a block starts with, and a kind the block parser dispatches carries one on its `registerBlockKind` call:
 
   ```ts
-  registerBlockOpener(kind, {
-  	priority: 25, // lower dispatches first; ties break by kind name
-  	tryOpen(ctx) {
-  		/* claim the lines from ctx.index: return { node, consumed }, or null to decline */
-  	},
-  	interruptsParagraph: (lineText) => lineText.startsWith(':::') // or false
+  registerBlockKind(kind, {
+  	// ...the descriptor fields and the view
+  	opener: {
+  		priority: 25, // lower dispatches first; ties break by kind name
+  		tryOpen(ctx) {
+  			/* claim the lines from ctx.index: return { node, consumed }, or null to decline */
+  		},
+  		interruptsParagraph: (lineText) => lineText.startsWith(':::') // or false
+  	}
   });
   ```
 
-  Both the parser's dispatch order and its paragraph-interrupt scan derive from the declarations. Built-in openers live in `core/parsers/`, and their priorities are published as one constant, `OPENER_PRIORITIES` (`schema/opener-priorities.ts`), so a plugin opener whose matcher is a superset of a built-in's prices below that built-in's entry, and one that only slots between built-ins prices into the gap.
+  Both the parser's dispatch order and its paragraph-interrupt scan derive from the registrations (`schema/block-openers.ts`). Built-in openers live in `core/parsers/built-in-openers.ts`, ride on the built-in registrations, and register on the first read of the grammar, so a parse finds them whichever module loaded first (G4.197), and their priorities are published as one constant, `OPENER_PRIORITIES` (`schema/opener-priorities.ts`), so a plugin opener whose matcher is a superset of a built-in's prices below that built-in's entry, and one that only slots between built-ins prices into the gap.
 
-- **Enter completion.** The opener registry's sibling, for kinds whose grammar spans adjacent lines and so can't be typed into existence. A registered completer reads one typed line and answers the lines completing it plus where the caret lands; § 8 shows the call.
-- **Components.** The runtime kind-to-component map `BlockHost` looks up. The built-in registrations live in `components/built-in-blocks.ts`, and every editor calls them when it's created; only the first call does anything.
+- **Enter completion.** The opener's sibling, for kinds whose grammar spans adjacent lines and so can't be typed into existence. A registered completer reads one typed line and answers the lines completing it plus where the caret lands; § 8 shows the call.
+- **Views.** Not a registry of their own: what draws a kind rides on its `registerBlockKind` call, and `BlockHost` reads it through the editor's activation (`schema/block-kind-descriptor.ts` :: `blockViewFor`). Built-ins register without one, since `schema/` can't import a component, and get theirs from `components/built-in-blocks.ts`, which every editor calls when it's created; only the first call does anything.
 
 Two more things live in `schema/` that read like registries but aren't: the merge rules (eligibility predicates for Backspace-merge, plus the walker that finds the deepest mergeable leaf, § 8) and the container raw rebuild (per-kind rebuild plus ancestry dispatch, so an edit deep in a nesting chain re-emits every enclosing container's `raw`, § 9). Both are functions over descriptor fields (`mergeRole`, `container.rebuildRaw`).
 
@@ -327,7 +330,7 @@ registerBlockKind('paragraph', {
 // throws: registerBlockKind: "paragraph" is already registered. Kinds are register-once ...
 ```
 
-Strict on purpose, because a registry you can quietly overwrite is a registry two plugins can fight over. Under a dev server a duplicate replaces with a note instead (`schema/register-once.ts`), so a re-evaluated registrar survives hot reload rather than 500-ing every route.
+Strict on purpose, because a registry you can quietly overwrite is a registry two plugins can fight over. Under a dev server the editor re-registering one of its own entries replaces it with a note instead (`schema/register-once.ts`), so a re-evaluated editor module survives hot reload rather than 500-ing every route. A plugin never gets that: it registers only inside its setup, which runs once per process (G1.104), and a duplicate from it throws, a built-in's key included.
 
 ## 6. CST ↔ DOM synchronization
 
@@ -385,7 +388,7 @@ What "entering" means splits by the kind's editing policy:
 - A mutation of the block closes the reveal _before_ it touches a byte: a clipboard splice and every branch of the block's command dispatch run against `node.raw`, which the ephemeral edit hasn't reached. That's what keeps Enter meaning "split" inside a revealed source (the command dispatch closes the reveal, then splits at the caret) rather than the reveal claiming the key and costing the user the press.
 - The reveal claims exactly one key of its own, Escape, with one carve-out a table cell carries at its own keydown: a cell's Enter is a row hop rather than a split, and hopping would move the ephemeral edit out of the surface that owns it, so there a revealed source commits and the caret stays put.
 
-To add a widget kind, register it in the inline-widget registry so recognition stays in one place, then render it as a Svelte component (recommended: the render layer keeps the instance alive across per-keystroke rebuilds) or as hand-built DOM ([`inline-parsing.md`](inline-parsing.md) § Widget render paths).
+To add a widget kind, register it in the inline-widget registry so recognition stays in one place, then give it a `view` that draws into the span the editor makes for it ([`inline-parsing.md`](inline-parsing.md) § Widget render paths).
 
 ## 7. CST mutability and reactive state
 
@@ -599,7 +602,7 @@ quote.children[1].children[1].children[0].raw; // 'two\n'  the item's paragraph
 
 The two are redundant, not additive, which is why the serializer never recurses (§ 12 is where the trade pays for itself). Three contracts relate a container's `raw` to its children (`strip`, `grid`, `opaque`), declared per kind in the descriptor's `container` group; [`syntax-tree.md`](syntax-tree.md) § The container contract is authoritative on what each promises and which kinds pick which.
 
-A container's `rebuildRaw` rewrites its `raw` from its children and metadata after any edit inside it, and ancestry dispatch runs it up the whole nesting chain. It reads its own previous bytes too, so the lines an edit didn't touch keep the spelling they had (`src/lib/schema/child-spans.ts :: rebuildStripRaw` pairs each new line with the line it used to be; a table goes row by row). A line you changed keeps its old prefix while that prefix still reads the new text; only a new line, a line that's blank before or after the edit, or one whose tab the content column cuts in half gets the container's own spelling. Inside a commit, the commit runs it for you, once per container, after the mutation. A mutation that needs a node's bytes early (a node below its scope, which the commit won't reach) asks the scope's `rebuild` instead.
+A container's `rebuildRaw` rewrites its `raw` from its children and metadata after any edit inside it, and ancestry dispatch runs it up the whole nesting chain. It reads its own previous bytes too, so the lines an edit didn't touch keep the spelling they had (`src/lib/schema/strip-rebuild.ts :: rebuildStripRaw` pairs each new line with the line it used to be; a table goes row by row). A line you changed keeps its old prefix while that prefix still reads the new text; only a new line, a line that's blank before or after the edit, or one whose tab the content column cuts in half gets the container's own spelling. Inside a commit, the commit runs it for you, once per container, after the mutation. A mutation that needs a node's bytes early (a node below its scope, which the commit won't reach) asks the scope's `rebuild` instead.
 
 The lazy line is the one catch. It's a paragraph's continuation written with no prefix at all, and the rebuild keeps it as it is, but once the line above it changes it can stop continuing anything. Then the rebuild returns `{ rereads: true }` and the container's bytes are read whole, the way a reload reads them. A lazy line you rewrite yourself into one that can't continue (`- ` typed at its start) gets the container's prefix instead.
 
@@ -613,7 +616,7 @@ A plugin rebuilder that ignores the hint is correct, just not incremental.
 
 **Kind re-derivation.** Each rebuilt container then re-derives its own kind from the raw it just produced: the container half of § 8's kind change, and the one place that notices a container's opener line was rewritten from the inside. Three rules bound it:
 
-- **Eligibility is the opener registry.** Registering an opener is the claim that `parse(raw)` reproduces the kind, so kinds without one are excluded by construction rather than by name: `listItem` (whose `- x` parses to a _list_), `tableRow`, reserved chrome, `tableCell`, and `table` itself, which emerges from the paragraph continuation scan rather than an opener. A list item's first line is still read for its marker (the metadata re-derivation below); it just never changes kind.
+- **Eligibility is the opener.** Registering a kind with an opener is the claim that `parse(raw)` reproduces the kind, so kinds without one are excluded by construction rather than by name: `listItem` (whose `- x` parses to a _list_), `tableRow`, reserved chrome, `tableCell`, and `table` itself, which emerges from the paragraph continuation scan rather than an opener. A list item's first line is still read for its marker (the metadata re-derivation below); it just never changes kind.
 - **The re-parse resolves through the instance grammar**, so a kind an instance disabled stays unreachable. The grammar is a required parameter of the rebuild, so a caller can't leave it out.
 - **Cost is gated twice.** An opener claims from line 1, so a body-line edit skips on a string compare, and an edit that _does_ rewrite line 1 skips only when the rewritten line, read alone, still opens as the kind the node already is. Typing into a list's first item leaves `- one` opening as a list, so the re-parse never runs ([`performance.md`](performance.md)). The check is a positive identification, not a before/after comparison: a line no opener recognizes alone (a directive container wants its closer) falls through to the full parse, rather than comparing equal and hiding a real kind change.
 
@@ -789,7 +792,7 @@ That cached text is also what a `source` prop write gets compared with. The writ
 
 ### The event channel
 
-The editor exposes an observer surface via `getEvents()`: seven channels, where `on(name, cb)` returns a disposer. Events fire synchronously from their emission sites, and handlers must not mutate the document (reentrant edits aren't supported).
+The editor exposes an observer surface via `getEvents()`: eight channels, where `on(name, cb)` returns a disposer. Events fire synchronously from their emission sites, and handlers must not mutate the document (reentrant edits aren't supported).
 
 ```ts
 const off = editor.getEvents().on('edit', (e) => e);
@@ -813,6 +816,7 @@ off();
   A swap also drops every draft first. Some edits wait outside the document until they commit (a formula's shown source, a code fence's language field, a diagram's edit box), each a draft of the bytes it opened on, kept in `src/lib/components/draft-registry.ts`. The torn-down block still blurs a render later, so a draft's commit asks `canWrite()` first and writes nothing for a document that's gone. A mode change closes the drafts too, after the switch's own blur has saved the focused one.
 
 - **`menuChange`.** `true` when an editor-owned menu opens while none was and `false` when the last one closes, so a host's own controls over the selection can step aside rather than stack. Every menu and popover counts (the right-click menu, an inline menu's list, the code block's language picker, the link card, ...): each attaches itself, with its own close, to one open-menu registry (`components/menu/menu-presence.svelte.ts`), so it reads open exactly while it's mounted. A document swap and a mode change close every one of them with one call. The selection toolbar isn't counted, since it steps aside on this event itself, and neither is a view a plugin draws.
+- **`searchChange`.** No payload: what the find bar shows changed (open or closed, the query, the options, the current match, the match count, the error or a replace's count), and the handler reads `getSearch()`. One `$effect` in `Editor.svelte` compares `search-state.svelte.ts :: viewKey` with the last one it fired on, so every route that changes the search fires it, once per flush. A regex scan or a replace in flight reads as no change until it lands, so a replace-all that commits block by block fires once.
 - **`error`.** A failure the editor _contained_ rather than propagated, `{ origin, error, context? }`, discriminated by `origin`; one channel for surfacing or logging every contained failure.
 
 | `origin`     | What happened, and what the containment did                                                                                                                                                                                           |
@@ -821,7 +825,7 @@ off();
 | `render`     | a block threw, and the per-`BlockHost` boundary degrades it to a readable fallback while its siblings survive; or a prose leaf's or a table cell's inline render, or a decoration badge, failed, and that piece falls back on its own |
 | `commit`     | a commit threw (§ 11 says which throws roll the tree and the undo/redo stacks back first, and which roll nothing back), or replace-all failed to build a subtree                                                                      |
 | `command`    | a plugin's block-command handler threw; the gesture no-ops, attributed to its kind, command id, and owning plugin                                                                                                                     |
-| `decoration` | a decoration source's `provide` threw, and its prior decorations are retained rather than blanked, attributed to the source; or a mark's `onClick` threw, attributed to its path                                                      |
+| `decoration` | a decoration source's `provide` threw, and its prior decorations are retained rather than blanked, attributed to the source; or one of a mark's own handlers (`onClick`, `onHover`, `onActivate`) threw, attributed to its path       |
 | `clipboard`  | a paste consumed the gesture and inserted nothing, a host image-import hook threw, or a drop threw between its two writes; the channel a host reads to release an `onPasteImage` asset                                                |
 | `link`       | the default activation declined a disallowed scheme; a consumer supplying `onLinkActivate` owns its own policy and never reaches this                                                                                                 |
 
@@ -862,7 +866,7 @@ Plugin kinds sit alongside these in the same registries, keyed by their own stri
 
 ## 15. Extension points
 
-Everything above is reachable by a plugin without touching an editor internal. The surface itself is specified in [`plugin-contract.md`](plugin-contract.md), and [`../guide/plugin-guide.md`](../guide/plugin-guide.md) is the authoring guide. One design fact belongs here rather than there: `plugin.ts` is a **facade** over the library's internals (chiefly `schema/`, `core/` and `components/`), the curated public face of those directories rather than a layer sitting above them, and it's also a **sink**, meaning nothing it re-exports may import it back, because a bundler that splits the two sides of such a re-export cycle into different chunks can break execution order in a consumer's build. The proof the surface is complete is `plugins/`, whose bundled packages import the barrel and nothing else from the editor.
+Everything above is reachable by a plugin without touching an editor internal. The surface itself is specified in [`plugin-contract.md`](plugin-contract.md), and [`../guide/plugin-guide.md`](../guide/plugin-guide.md) is the authoring guide. One design fact belongs here rather than there: `plugin.ts` is a **facade** over the library's internals (chiefly `schema/`, `core/` and `components/`), the curated public face of those directories rather than a layer sitting above them, and `svelte.ts` is its sibling for everything typed with Svelte's types. Both are **sinks**, meaning nothing they re-export may import them back, because a bundler that splits the two sides of such a re-export cycle into different chunks can break execution order in a consumer's build. The proof the surface is complete is `plugins/`, whose bundled packages import those two barrels and nothing else from the editor.
 
 ## 16. Standing directions
 

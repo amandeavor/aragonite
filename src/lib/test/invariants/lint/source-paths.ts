@@ -10,12 +10,14 @@ export const SOURCE = {
 	// ── Published entry points and root modules ─────────────────────────────
 	publicBarrel: 'src/lib/index.ts',
 	pluginBarrel: 'src/lib/plugin.ts',
+	svelteBarrel: 'src/lib/svelte.ts',
 	testingBarrel: 'src/lib/testing.ts',
 	editorProps: 'src/lib/editor-props.ts',
 	blockComponentApi: 'src/lib/block-component.ts',
 	actionContracts: 'src/lib/action-contracts.ts',
 	envFlags: 'src/lib/env.ts',
 	devChecks: 'src/lib/assert.ts',
+	pluginView: 'src/lib/plugin-view.ts',
 
 	// ── Parsing and the inline pipeline ─────────────────────────────────────
 	cstNodes: 'src/lib/core/nodes.ts',
@@ -46,12 +48,15 @@ export const SOURCE = {
 	keybindings: 'src/lib/schema/keybindings.ts',
 	fenceRule: 'src/lib/schema/fenced-code-raw.ts',
 	tableCellEscape: 'src/lib/schema/table-cell-raw.ts',
+	containerRebuilders: 'src/lib/schema/container-rebuilders.ts',
 
 	// ── Tree operations ─────────────────────────────────────────────────────
 	treeOperationsBarrel: 'src/lib/tree-operations/index.ts',
 	nodePrimitives: 'src/lib/tree-operations/node-primitives.ts',
 	openTail: 'src/lib/tree-operations/open-tail.ts',
 	unshare: 'src/lib/tree-operations/unshare.ts',
+	separatorWrites: 'src/lib/tree-operations/separator-writes.ts',
+	neighbourMerge: 'src/lib/tree-operations/neighbour-merge.ts',
 	settle: 'src/lib/tree-operations/settle.ts',
 	contentWrite: 'src/lib/tree-operations/content-write.ts',
 	nodeOps: 'src/lib/tree-operations/node-ops.ts',
@@ -61,6 +66,7 @@ export const SOURCE = {
 
 	// ── Editor actions and the commit ───────────────────────────────────────
 	undoController: 'src/lib/editor-actions/commit/undo-controller.ts',
+	structuralCommit: 'src/lib/editor-actions/commit/structural-commit.ts',
 	blockEditCore: 'src/lib/editor-actions/block-edit-core.ts',
 	leafWrite: 'src/lib/editor-actions/leaf-write.ts',
 	containerBlockComponent: 'src/lib/editor-actions/container-block-component.ts',
@@ -84,6 +90,7 @@ export const SOURCE = {
 	blockContentSelector: 'src/lib/caret/block-content-selector.ts',
 	blockElLookup: 'src/lib/caret/block-el-lookup.ts',
 	scrollOwner: 'src/lib/windowing/scroll-owner.ts',
+	markHover: 'src/lib/decorations/mark-hover.ts',
 	scrollport: 'src/lib/windowing/scrollport.ts',
 	steadyBlock: 'src/lib/windowing/steady-block.ts',
 	layoutState: 'src/lib/windowing/layout-state.svelte.ts',
@@ -100,18 +107,17 @@ export const SOURCE = {
 	editableLeaf: 'src/lib/components/blocks/editable/editable-leaf.ts',
 	surfaceWrite: 'src/lib/components/blocks/editable/surface-write.ts',
 	textBlockComponent: 'src/lib/components/blocks/text/TextEditableBlock.svelte',
-	textRender: 'src/lib/components/blocks/text/text-render.ts',
 	textClipboard: 'src/lib/components/blocks/text/text-clipboard.ts',
 	edgePolicyDispatch: 'src/lib/components/blocks/text/edge-policy-dispatch.ts',
 	widgetAdjacency: 'src/lib/components/blocks/text/widget-adjacency.ts',
 	liveSelectionEdit: 'src/lib/components/blocks/text/live-selection-edit.ts',
 	delimiterAutopair: 'src/lib/components/blocks/text/delimiter-autopair.ts',
+	typedInput: 'src/lib/components/blocks/text/typed-input.ts',
 	codeBlockComponent: 'src/lib/components/blocks/code/CodeBlock.svelte',
 	codeFenceBoundary: 'src/lib/components/blocks/code/code-fence-boundary.ts',
 	listBlock: 'src/lib/components/blocks/list/ListBlock.svelte',
 	tableBlock: 'src/lib/components/blocks/table/TableBlock.svelte',
 	tableCell: 'src/lib/components/blocks/table/TableCellBlock.svelte',
-	cellRender: 'src/lib/components/blocks/table/cell-render.ts',
 	imageProperties: 'src/lib/components/image/ImageProperties.svelte',
 	imageWidgetEditing: 'src/lib/components/image/image-widget-editing.ts',
 	linkCard: 'src/lib/components/link-card/LinkCard.svelte',
@@ -131,7 +137,7 @@ export const SOURCE = {
 	unitPluginPlatform: 'src/lib/test/support/plugin-platform.ts',
 	scanTestHelpers: 'src/lib/test/core/inline/scan/scan-test-helpers.ts',
 	revealLeafFixture: 'src/lib/test/blocks/fixtures/RevealLeafBlock.svelte',
-	compositionDriverLint: 'src/lib/e2e/lint/composition-driver.test.ts',
+	e2eDriversLint: 'src/lib/e2e/lint/e2e-drivers.test.ts',
 
 	// ── Demo routes and the consumer example ────────────────────────────────
 	appCss: 'src/app.css',
@@ -151,14 +157,16 @@ export const SOURCE = {
 /** Text each file must hold, so an entry pointed at the wrong real file fails too. */
 export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	// ── Published entry points and root modules ─────────────────────────────
-	publicBarrel: 'export { default as Editor }',
+	publicBarrel: 'export { createEditor',
 	pluginBarrel: 'export function highlightCode',
+	svelteBarrel: 'export { default as Editor }',
 	testingBarrel: 'export function applyPasteTransforms',
-	editorProps: 'export interface EditorProps',
+	editorProps: 'export interface EditorOptions',
 	blockComponentApi: 'export interface BlockComponent ',
 	actionContracts: 'export type CommitSnapshotArg',
 	envFlags: 'export const editorEnv',
 	devChecks: 'export function documentForCheck',
+	pluginView: 'export function mountPluginView',
 
 	// ── Parsing and the inline pipeline ─────────────────────────────────────
 	cstNodes: 'export type LeafBlockKind',
@@ -189,12 +197,15 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	keybindings: 'export interface KeyBinding',
 	fenceRule: 'export type FenceWriteMode',
 	tableCellEscape: 'export function escapeUnescapedPipes',
+	containerRebuilders: 'export function rebuildTableRaw(',
 
 	// ── Tree operations ─────────────────────────────────────────────────────
 	treeOperationsBarrel: 'export { updateNodeContent, reclassifyContainer }',
 	nodePrimitives: 'export type BodyParent',
 	openTail: 'export function keepOpenTail',
 	unshare: 'export function walkUnsharing',
+	separatorWrites: 'export function writeSeparator',
+	neighbourMerge: 'export function absorbWindowSeams',
 	settle: 'export function clearRedundantSeparator',
 	contentWrite: 'export interface LegalWrite',
 	nodeOps: 'export interface SplitResult',
@@ -204,6 +215,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 
 	// ── Editor actions and the commit ───────────────────────────────────────
 	undoController: 'export function createUndoController',
+	structuralCommit: 'export function createStructuralCommit',
 	blockEditCore: 'export function contentUpdate',
 	leafWrite: 'export type LeafTyping',
 	containerBlockComponent: 'export function dispatchWholeBlockGlobalChord',
@@ -227,6 +239,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	blockContentSelector: 'export const BLOCK_CONTENT_SELECTOR',
 	blockElLookup: 'export function blockContentElAt',
 	scrollOwner: 'export type PlaceBlock',
+	markHover: 'export function createMarkHover',
 	scrollport: 'export interface ScrollportReader',
 	steadyBlock: 'export interface HeightTable',
 	layoutState: 'export interface LayoutState',
@@ -243,18 +256,17 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	editableLeaf: 'export type EditableLeafMode',
 	surfaceWrite: 'export type WriteIntent',
 	textBlockComponent: 'const widgetEdgeOwner = {};',
-	textRender: 'export interface TextRenderDeps',
 	textClipboard: 'export interface TextClipboardDeps',
 	edgePolicyDispatch: 'export type EdgePolicy',
 	widgetAdjacency: 'export function widgetsIn(',
 	liveSelectionEdit: 'export interface LiveEditCursor',
 	delimiterAutopair: 'export type AutoPairEdit',
+	typedInput: 'export interface TypedInputDeps',
 	codeBlockComponent: 'function writeCode(',
 	codeFenceBoundary: 'export function editSpan(',
 	listBlock: 'class="list-block"',
 	tableBlock: 'function mirrorCaretCell(',
 	tableCell: 'function parkCursor(',
-	cellRender: 'export interface CellRenderDeps',
 	imageProperties: 'function draftFields(',
 	imageWidgetEditing: 'export function imageWidgetOnSelectedKey',
 	linkCard: 'function focusStops(',
@@ -274,7 +286,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	unitPluginPlatform: 'Vitest setup: every unit test starts from',
 	scanTestHelpers: 'export function assertTotalCoverage',
 	revealLeafFixture: 'class="reveal-leaf-block"',
-	compositionDriverLint: 'G4.49 e2e composition rides the shared IME driver',
+	e2eDriversLint: 'G4.49 e2e composition rides the shared IME driver',
 
 	// ── Demo routes and the consumer example ────────────────────────────────
 	appCss: 'Page-chrome tokens for the demo routes',
@@ -332,6 +344,8 @@ export const SOURCE_DIR = {
 	routes: 'src/routes/',
 	referencePlugins: 'src/routes/test/plugins/',
 	consumerExample: 'examples/consumer/src/',
+	examples: 'examples/',
+	adapterSuiteTests: 'examples/adapter-suite/tests/',
 	pluginGuidePages: 'docs/guide/plugin-guide/'
 } as const;
 
@@ -371,10 +385,12 @@ export const SOURCE_DIR_ANCHORS: Record<keyof typeof SOURCE_DIR, string> = {
 	e2e: 'browser-engine.ts',
 	e2eTests: 'perf',
 	e2ePerfTests: 'attribution.perf.spec.ts',
-	e2eLint: 'composition-driver.test.ts',
+	e2eLint: 'e2e-drivers.test.ts',
 	e2eRequirements: 'block-error-boundary.md',
 	routes: '+layout.svelte',
 	referencePlugins: 'callout',
 	consumerExample: 'plugin-probe.ts',
+	examples: 'consumer',
+	adapterSuiteTests: 'page-contract.spec.ts',
 	pluginGuidePages: 'parrot-frames.md'
 };

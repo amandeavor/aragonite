@@ -5,7 +5,6 @@
  * concatenation, with the reason it is not a destructive join.
  */
 
-import { describe, it, expect } from 'vitest';
 import {
 	callsAnywhere,
 	callsTo,
@@ -14,6 +13,7 @@ import {
 	splitTopLevel,
 	type SourceFile
 } from './scan-source';
+import { describeManifests } from './file-rule';
 
 /** Every file naming the cleaner, and what it joins. */
 const CLEANER_READERS: Record<string, string> = {
@@ -43,10 +43,10 @@ const NON_JOIN_CONCATENATIONS: Record<string, string> = {
 		'the first-slot reader gives back the spaces a marker line takes from the bytes it was handed: one write’s bytes, re-split',
 	'src/lib/schema/child-spans.ts':
 		"a container splicing ONE child's region back into its own raw: both surrounding operands are bytes that container already emitted",
+	'src/lib/schema/strip-rebuild.ts':
+		'a quote or list item writing its rewritten lines between the head and tail lines it kept: both kept operands are bytes that container already emitted',
 	'src/lib/tree-operations/paste/container-match.ts':
 		'a paste INSERTS between the target’s own halves; its delete half, the one place a cut can strand a run, is `preDelete`, cut by `replaceRangeInLeaf` before the container routes run',
-	'src/lib/editor-actions/inline-range-commit.ts':
-		'a popover or menu splice INSERTS between one leaf’s own halves over the range it replaces; nothing is cut out from under a delimiter it does not also rewrite',
 	'src/lib/selection/cross-block/range-replace.ts':
 		'a key typed over a selection across blocks is a range removal, then the character at the caret it left: the removal cleans its join without the typed text in it, a known gap until the range replace carries the text into the join (T18 slice 5)'
 };
@@ -96,82 +96,51 @@ function bindingOf(code: string, name: string): string[] {
 	return [...code.matchAll(binding)].map((m) => m[1]);
 }
 
-describe('cross-node join entry-point census', () => {
-	const sources = collectEditorSources();
-	const namesCleaner = (file: SourceFile) => /(?<![\w.])cleanJoinedRaw\b/.test(file.code);
+const namesCleaner = (file: SourceFile) => /(?<![\w.])cleanJoinedRaw\b/.test(file.code);
 
-	it('the files naming the cleaner are the declared ones', () => {
-		expect(
-			sources
-				.filter(namesCleaner)
-				.map((f) => f.relPath)
-				.sort(),
-			'a new reader of the join cleaner: declare what it joins'
-		).toEqual(Object.keys(CLEANER_READERS).sort());
-	});
-
-	it('the files calling joinIntoLeaf are the declared ones', () => {
-		expect(
-			sources
-				.filter((file) => callsAnywhere(file.code, 'joinIntoLeaf'))
-				.map((f) => f.relPath)
-				.sort(),
-			'a new caller of the one join into a leaf: declare what it joins'
-		).toEqual(Object.keys(JOIN_INTO_LEAF_CALLERS).sort());
-	});
-
-	it('every file concatenating several sources into a leaf’s bytes names the cleaner or is manifested', () => {
-		const concatenating = sources
-			.filter((file) => byteExpressions(file).some(joinsSources))
-			.filter((file) => !namesCleaner(file))
-			.map((f) => f.relPath);
-		expect(
-			concatenating.sort(),
-			'a leaf’s bytes are being built from more than one source. A destructive join crosses ' +
+describeManifests(
+	[
+		{
+			id: 'the files naming the cleaner are the declared ones',
+			matches: namesCleaner,
+			declared: CLEANER_READERS,
+			reason: 'a new reader of the join cleaner: declare what it joins',
+			hits: ['node.raw = cleanJoinedRaw(left, right, reading);'],
+			misses: ['// cleanJoinedRaw does the join', 'policy.cleanJoinedRaw(left, right);']
+		},
+		{
+			id: 'the files calling joinIntoLeaf are the declared ones',
+			matches: (file) => callsAnywhere(file.code, 'joinIntoLeaf'),
+			declared: JOIN_INTO_LEAF_CALLERS,
+			reason: 'a new caller of the one join into a leaf: declare what it joins',
+			hits: ['const r = joinIntoLeaf(body, [0], next, reading, sharing);'],
+			misses: ['const r = rejoinIntoLeafs(body);']
+		},
+		{
+			id: 'every file concatenating several sources into a leaf’s bytes names the cleaner or is declared',
+			matches: (file) => byteExpressions(file).some(joinsSources) && !namesCleaner(file),
+			declared: NON_JOIN_CONCATENATIONS,
+			reason:
+				'a leaf’s bytes are being built from more than one source. A destructive join crosses ' +
 				'`cleanJoinedRaw`, or live surfaces the delimiter runs the join orphaned; anything else ' +
-				'joins NON_JOIN_CONCATENATIONS with the reason it is not one'
-		).toEqual(Object.keys(NON_JOIN_CONCATENATIONS).sort());
-	});
-
-	// ── Matcher self-tests (non-vacuity) ─────────────────────────────────────
-
-	it('the operand split sees two sources and skips literals and terminators', () => {
-		expect(joinsSources('targetText + currentText + lineEnding')).toBe(true);
-		expect(joinsSources("display.slice(0, at) + '\\n'")).toBe(false);
-		expect(joinsSources('body + trailingLineEnding(node.raw)')).toBe(false);
-		// A `+` inside a call argument or a string is not a top-level operand boundary.
-		expect(joinsSources('marker.repeat(a + b) + lineEnding')).toBe(false);
-		expect(joinsSources("'| ' + cells.join(' | ')")).toBe(false);
-	});
-
-	// Miss-analysis: the private split knew quotes and brackets only, and no case fed it a regex.
-	it('a quantifier inside a regex literal is not an operand boundary', () => {
-		expect(joinsSources('/a+b/.test(head) ? head : head + lineEnding')).toBe(false);
-	});
-
-	it('a call to joinIntoLeaf is seen, and a name that only contains it is not', () => {
-		expect(
-			callsAnywhere('const r = joinIntoLeaf(body, [0], next, reading, sharing);', 'joinIntoLeaf')
-		).toBe(true);
-		expect(callsAnywhere('const r = rejoinIntoLeafs(body);', 'joinIntoLeaf')).toBe(false);
-	});
-
-	it('an undeclared file building a join fails the set equality', () => {
-		const rogue: SourceFile = {
-			relPath: 'src/lib/tree-operations/rogue.ts',
-			text: 'node.raw = prevText + currText + lineEnding;',
-			code: 'node.raw = prevText + currText + lineEnding;'
-		};
-		expect(byteExpressions(rogue).some(joinsSources)).toBe(true);
-	});
-
-	// Miss-analysis: the scan read only call arguments written in place, so a join bound to a
-	// name first, or handed to a method, slipped past it.
-	it('a join bound to a name and handed to a method write is seen', () => {
-		const code =
-			'const text = before + typed + after;\n' +
-			'await ctx.pasteCoordinator.commitLeafText(path, text, opts);';
-		const bound: SourceFile = { relPath: 'src/lib/x.ts', text: code, code };
-		expect(byteExpressions(bound).some(joinsSources)).toBe(true);
-	});
-});
+				'joins NON_JOIN_CONCATENATIONS with the reason it is not one',
+			hits: [
+				'node.raw = prevText + currText + lineEnding;',
+				// Miss-analysis: the scan read only call arguments written in place, so a join bound
+				// to a name first, or handed to a method, slipped past it.
+				'const text = before + typed + after;\nawait ctx.pasteCoordinator.commitLeafText(path, text, opts);'
+			],
+			misses: [
+				"node.raw = display.slice(0, at) + '\\n';",
+				'node.raw = body + trailingLineEnding(node.raw);',
+				// A `+` inside a call argument or a string is not a top-level operand boundary.
+				'node.raw = marker.repeat(a + b) + lineEnding;',
+				"node.raw = '| ' + cells.join(' | ');",
+				// Miss-analysis: the private split knew quotes and brackets only, and no case fed it a regex.
+				'node.raw = /a+b/.test(head) ? head : head + lineEnding;',
+				'node.raw = cleanJoinedRaw(prevText + currText, reading);'
+			]
+		}
+	],
+	collectEditorSources()
+);

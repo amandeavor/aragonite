@@ -1,5 +1,6 @@
 import { tick } from 'svelte';
-import type { Editor, EditorProps, PastedImage, PresentationMode } from '#lib';
+import type { PastedImage, PresentationMode } from '#lib';
+import type { Editor, EditorProps } from '#lib/svelte.js';
 import { readBlocks } from '#lib/core/parser.js';
 import type { GrammarView } from '#lib/schema/block-openers.js';
 import { serialize } from '#lib/core/serializer.js';
@@ -7,7 +8,7 @@ import { parseConverges } from '#lib/testing/parse-convergence.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { spliceChildren } from '#lib/tree-operations/children.js';
 import { getStateForNode } from '#lib/block-lists/state-registry.js';
-import type { BlockKind, CstNode, Document } from '#lib/core/nodes.js';
+import type { CstNode, Document, PluginBlockKind } from '#lib/core/nodes.js';
 import type { GapCaretPosition } from '#lib/selection/gap-caret.js';
 import type { EditorSelection } from '#lib/selection/primitives.js';
 import type { DecorationSource, DecorationSourceHandle } from '#lib/decorations/types.js';
@@ -15,15 +16,13 @@ import type { KeybindingOverride } from '#lib/schema/keybinding-overrides.js';
 import {
 	getAllRegisteredKinds,
 	getBlockKindDescriptor,
-	registerBlockKind,
-	tryGetBlockKindDescriptor
+	registerBlockKind
 } from '#lib/schema/block-kind-descriptor.js';
-import { registerBlockComponent } from '#lib/schema/block-component-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
+import { textBlockView } from '#lib/components/blocks/text/text-block-view.js';
+import { declarePluginKind, declaredPluginKind } from '#lib/schema/plugin-kind.js';
+import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import type { HarnessSource } from './harness-source.svelte';
-import {
-	isPasteTransformRegistered,
-	registerPasteTransform
-} from '#lib/tree-operations/paste/paste-transforms.js';
 import {
 	dumpTree,
 	dumpUndoStack,
@@ -74,6 +73,51 @@ const HARNESS_PROBE_CLOSURE: ClosureBlock = {
 	clipboard: { mode: 'not-supported', reason: 'harness probe — not clipboard-tested' },
 	simOracle: { mode: 'not-supported', reason: 'harness probe — drives the fallback path only' }
 };
+
+// A kind whose component throws on render: a throwing stub isn't a full BlockComponent, but it
+// throws before any method is read.
+const throwProbePlugin = definePlugin({
+	name: 'throw-probe',
+	setup() {
+		registerBlockKind(declarePluginKind('throwTest'), {
+			gapEdges: 'none',
+			mergeRole: 'not-mergeable',
+			editable: false,
+			supportsInline: false,
+			closure: HARNESS_PROBE_CLOSURE,
+			view: svelteBlockView(ThrowOnRenderBlock as never)
+		});
+	}
+});
+
+let orphanKind: PluginBlockKind | undefined;
+
+// The plugin installs once per page, and a failed install can't be retried, so the kind is kept.
+function installOrphanKind(): PluginBlockKind {
+	try {
+		installPlugins([
+			definePlugin({
+				name: 'orphan-probe',
+				setup() {
+					orphanKind = declarePluginKind('orphanTest');
+					registerBlockKind(orphanKind, {
+						gapEdges: 'none',
+						mergeRole: 'not-mergeable',
+						editable: true,
+						supportsInline: false,
+						closure: HARNESS_PROBE_CLOSURE,
+						view: textBlockView()
+					});
+					throw new Error('orphan-probe: setup fails on purpose');
+				}
+			})
+		]);
+	} catch {
+		// The failed setup is the point: it leaves the kind registered under a plugin that never
+		// installed.
+	}
+	return orphanKind!;
+}
 
 export interface TestProbeDeps {
 	editor: EditorInstance;
@@ -449,19 +493,10 @@ export function installTestProbes({
 		},
 		getConformanceEntries: (): ConformanceSweepEntry[] =>
 			collectConformanceEntries(editor.__test.getGrammar()),
-		// A kind with no registered component reaches BlockHost's visible-raw fallback; it stays
-		// outside ALL_BLOCK_KINDS so the startup completeness check is unaffected.
+		// A kind whose plugin's setup threw resolves no view in any editor, so it reaches BlockHost's
+		// visible-raw fallback, the way a broken plugin's blocks do.
 		makeBlockOrphan: (index: number): void => {
-			const kind = 'orphanTest' as BlockKind;
-			if (!tryGetBlockKindDescriptor(kind)) {
-				registerBlockKind(kind, {
-					gapEdges: 'none',
-					mergeRole: 'not-mergeable',
-					editable: true,
-					supportsInline: false,
-					closure: HARNESS_PROBE_CLOSURE
-				});
-			}
+			const kind = orphanKind ?? installOrphanKind();
 			const doc = editor.__test.getDocument();
 			const node = doc.children[index] as CstNode | undefined;
 			if (!node) return;
@@ -471,23 +506,8 @@ export function installTestProbes({
 		// A component that throws during render reaches BlockHost's <svelte:boundary>
 		// failed-snippet path.
 		makeBlockThrowOnRender: (index: number): void => {
-			const kind = 'throwTest' as BlockKind;
-			if (!tryGetBlockKindDescriptor(kind)) {
-				registerBlockKind(kind, {
-					gapEdges: 'none',
-					mergeRole: 'not-mergeable',
-					editable: false,
-					supportsInline: false,
-					closure: HARNESS_PROBE_CLOSURE
-				});
-				// A throwing stub isn't a full BlockComponent, but it throws before any
-				// method is read.
-				registerBlockComponent(kind, {
-					component: ThrowOnRenderBlock as unknown as Parameters<
-						typeof registerBlockComponent
-					>[1]['component']
-				});
-			}
+			installPlugins([throwProbePlugin]);
+			const kind = declaredPluginKind('throwTest');
 			const doc = editor.__test.getDocument();
 			const node = doc.children[index] as CstNode | undefined;
 			if (!node) return;
@@ -576,15 +596,7 @@ export function installTestProbes({
 		// The command call, made the way a toolbar's button makes it: an id and its argument,
 		// no key combination, no keydown.
 		runCommand: (commandId: string, arg?: unknown): boolean => editor.runCommand(commandId, arg),
-		// A plugin-shaped paste transform without a plugin. Transforms are register-once and
-		// process-global, so the probe asks before registering rather than catching the throw.
-		registerPasteTransform: (name: string, find: string, replace: string): void => {
-			if (isPasteTransformRegistered(name)) return;
-			registerPasteTransform({
-				name,
-				transform: (text) => (text.includes(find) ? text.split(find).join(replace) : null)
-			});
-		},
+		canRunCommand: (commandId: string): boolean => editor.canRunCommand(commandId),
 		roundTripStable: (): boolean => {
 			const src = editor.getSource();
 			return (

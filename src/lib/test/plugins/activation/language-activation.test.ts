@@ -6,7 +6,6 @@ import { activationFor, everyInstalledPlugin } from '#lib/schema/plugin-activati
 import {
 	getLanguageAliases,
 	getLanguageGrammar,
-	isLanguageRegistered,
 	listLanguages,
 	registerLanguage
 } from '#lib/components/blocks/code/code-languages.js';
@@ -44,6 +43,10 @@ describe("a plugin's language resolves only in an editor that lists the plugin",
 		expect(() => installPlugins([half])).toThrow(/setup failed halfway/);
 		expect(getLanguageGrammar('halflang', everyInstalledPlugin)).toBeNull();
 		expect(listLanguages(everyInstalledPlugin)).not.toContain('halflang');
-		expect(isLanguageRegistered('halflang')).toBe(true);
+		expect(() =>
+			installPlugins([
+				definePlugin({ name: 'again', setup: () => registerLanguage('halflang', python) })
+			])
+		).toThrow(/already registered/);
 	});
 });

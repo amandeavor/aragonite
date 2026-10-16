@@ -80,8 +80,8 @@ The fix's shape is the rule: the render path computes its inline content fresh, 
 rendering use the accessor backed by an external, non-reactive WeakMap, and no reactive
 inline-cache field may exist on any node.
 
-**Caught by:** a source scan (`src/lib/test/invariants/lint/render-inlinecontent.test.ts`) that
-pulls each render effect's body out and refuses the caching accessor inside it.
+**Caught by:** a source scan (the G4.32 row in `src/lib/test/invariants/lint/file-rules.test.ts`)
+that refuses the caching accessor in every file but its own module.
 **Spec:** `docs/design/inline-parsing.md`. ([rule 1](rules.md#the-five-rules))
 
 ## Only `await tick()` for sequencing

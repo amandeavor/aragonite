@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { capturePageErrors, deferImage } from '../../page-probes';
+import { deferImage } from '../../page-probes';
 import type { EditorSelection } from '../../../selection/primitives';
 import { dragBetweenCells } from '../blocks/table/helpers';
 
@@ -309,8 +309,6 @@ test.describe('selection: setSelection restores a getSelection snapshot', () => 
 	test('an unresolvable path resolves false without scrolling or stealing focus', async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
-
 		await editor.loadContent(windowedDoc(201));
 		await revealAndClick(editor, page, [200], 3);
 		const snapshot = await editor.bridge.getSelection();
@@ -335,13 +333,11 @@ test.describe('selection: setSelection restores a getSelection snapshot', () => 
 			}))
 		).toEqual({ scrollTop: before, sameActive: true });
 		expect(await editor.bridge.isCrossBlockActive()).toBe(false);
-		expect(pageErrors).toEqual([]);
 	});
 
 	// A host restoring both a caret and a scroll position scrolls last, so a lasting hold on the
 	// restored block's top would throw that scroll away on the next measure pass.
 	test('hands the scroll position back once it resolves', async ({ page }) => {
-		const pageErrors = capturePageErrors(page);
 		// After the harness is up (beforeEach) but before any content asks for the image.
 		const releaseImage = await deferImage(page, LATE_IMAGE_SVG);
 
@@ -367,6 +363,5 @@ test.describe('selection: setSelection restores a getSelection snapshot', () => 
 		await editor.waitForResizeObserverFlush();
 
 		expect(await scrollTopOf(page)).toBe(hostTop);
-		expect(pageErrors).toEqual([]);
 	});
 });

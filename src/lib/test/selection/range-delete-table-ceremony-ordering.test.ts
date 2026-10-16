@@ -1,30 +1,16 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
+import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { createSharingState } from '../../tree-operations/sharing';
-import type { SelectionPoint } from '../../selection/primitives';
-import { allowDevWarns } from '#lib/test/support/warn-gate.js';
+import { cellPoint, type SelectionPoint } from '../../selection/primitives';
 import { TWO_COL_FOUR_ROW } from './table-fixtures';
-import { fixtureReading } from '../harness/fixture-grammar';
-
-// rangeDelete is driven with hand-built endpoints, so the table branches see character offsets
-// `SelectionState` would have snapped to cell coordinates first.
-afterEach(() => allowDevWarns(['rangeCoverage:tableEdge']));
+import { deleteRange } from '../harness/range-delete';
 
 // Each case truncates its text endpoint on a different side of the shared cross-block deletion
 // steps, and finds its survivor by node identity, since a delete inside the range shifts it.
 
 function run(source: string, start: SelectionPoint, end: SelectionPoint) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end);
 	return {
 		doc: result.newDoc,
 		source: serialize(result.newDoc),
@@ -34,42 +20,41 @@ function run(source: string, start: SelectionPoint, end: SelectionPoint) {
 
 describe('cross-block delete commit sequence: per-case ordering survives the shared path', () => {
 	it('Case 1 (prose→table): the between block drops and the start truncates through the shared path', () => {
-		// para[0], mid[1], table[2]. mid is strictly between → deleted, shifting the table [2]→[1]. The
-		// start truncates after the delete; before would shift the between/end deletion paths mid-plan.
+		// mid goes, shifting the table [2]→[1], before the start truncates; the end in body row 1
+		// takes the header and that row, so row 2 is promoted.
 		const { doc, source, caret } = run(
 			`head\n\nmid\n\n${TWO_COL_FOUR_ROW}`,
 			{ path: [0], offset: 2 },
-			{ path: [2], offset: 2 }
+			cellPoint([2], 2)
 		);
 
 		const survivors = doc.children;
 		expect(survivors.map((c) => c.kind)).toEqual(['paragraph', 'table']);
 		expect(survivors[0].raw.trimEnd()).toBe('he');
 		const table = survivors[1];
-		expect(table.children).toHaveLength(3);
-		expect(table.children![0].children![0].raw).toBe('');
-		expect(table.children![0].children![1].raw).toBe('2');
+		expect(table.children).toHaveLength(2);
+		expect(table.children![0].children![0].raw).toBe('3');
+		expect(table.children![0].children![1].raw).toBe('4');
 		expect(caret).toEqual({ path: [0], offset: 2 });
 		expect(source).not.toContain('mid');
 	});
 
 	it('Case 2 (table→prose): end replaces before the delete; surviving tail resolves its shifted path by identity', () => {
-		// table[0] survives, mid[1], tail[2]. mid deleted → tail [2]→[1]. The end tail is replaced at
-		// its live path first, then found again by identity; replacing after would hit a stale position.
+		// The tail is replaced at its live path, then found by identity once mid goes ([2]→[1]); the
+		// start in body row 1 takes that row and every row below, leaving the header.
 		const { doc, source, caret } = run(
 			`${TWO_COL_FOUR_ROW}\nmid\n\ntail text\n`,
-			{ path: [0], offset: 3 },
+			cellPoint([0], 3),
 			{ path: [2], offset: 5 }
 		);
 
 		const survivors = doc.children;
 		expect(survivors.map((c) => c.kind)).toEqual(['table', 'paragraph']);
 		const table = survivors[0];
-		expect(table.children).toHaveLength(2);
-		expect(table.children![1].children![0].raw).toBe('1');
-		expect(table.children![1].children![1].raw).toBe('');
+		expect(table.children).toHaveLength(1);
+		expect(table.children![0].children!.map((cell) => cell.raw)).toEqual(['A', 'B']);
 		expect(survivors[1].raw.trimEnd()).toBe('text');
-		expect(caret).toEqual({ path: [0, 1, 1], offset: 0 });
+		expect(caret).toEqual({ path: [0, 0, 1], offset: 1 });
 		expect(source).not.toContain('mid');
 	});
 
@@ -78,14 +63,14 @@ describe('cross-block delete commit sequence: per-case ordering survives the sha
 		// goes, shifting B [3]→[0]; the caret addresses B by identity, since a stale [3] is off-tree.
 		const { doc, source, caret } = run(
 			`${TWO_COL_FOUR_ROW}\nmid1\n\nmid2\n\n${TWO_COL_FOUR_ROW}`,
-			{ path: [0], offset: 0 },
-			{ path: [3], offset: 2 }
+			cellPoint([0], 0),
+			cellPoint([3], 2)
 		);
 
 		const survivors = doc.children;
 		expect(survivors.map((c) => c.kind)).toEqual(['table']);
-		expect(survivors[0].children).toHaveLength(3);
-		expect(survivors[0].children![0].children![1].raw).toBe('2');
+		expect(survivors[0].children).toHaveLength(2);
+		expect(survivors[0].children![0].children![1].raw).toBe('4');
 		expect(caret).toEqual({ path: [0, 0, 0], offset: 0 });
 		expect(source).not.toContain('mid1');
 		expect(source).not.toContain('mid2');

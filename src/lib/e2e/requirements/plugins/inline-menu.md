@@ -11,7 +11,7 @@ The caret never leaves the document. The list takes no focus, so the author keep
 query, and an empty list holds no key at all.
 
 Seed `inline-menu` installs two plugin sources at once: tag autocomplete over the document's own
-tags (`src/routes/demo-tags/tag-marks-plugin.ts`, synchronous) and a document picker on `[[` whose
+tags (`examples/showcase/tag-marks.ts`, synchronous) and a document picker on `[[` whose
 list arrives asynchronously (`inline-menu/doc-link-menu-plugin.ts`), the shape a host's wikilink
 menu takes. The seed also lists the bundled slash-commands plugin, a `/` list whose pick inserts a
 block: `insert` is empty and `onCommit` goes through the context's `insertMarkdown`. Its own

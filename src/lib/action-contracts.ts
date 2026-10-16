@@ -7,7 +7,7 @@ import type { CstNode, TableAlignment } from './core/nodes';
 import type { NodeView } from './core/node-views';
 import type { LineEnding } from './core/lines';
 import type { StructuralChange } from './tree-operations/structural-change';
-import type { TrackedPosition } from './tree-operations/settle';
+import type { TrackedPosition } from './tree-operations/neighbour-merge';
 import type { SharingState } from './tree-operations/sharing';
 import type { BodyParent } from './tree-operations/node-primitives';
 import type { BlockComponent, FocusPosition } from './block-component';
@@ -264,8 +264,6 @@ export interface CommitContainerStructuralArgs {
  * (editor-actions/deps) adds the two selection-typed members.
  */
 export interface CommitController {
-	/** The editor's structural-sharing counters, for copy-before-write outside a commit. */
-	sharing: SharingState;
 	/** Debounced typing snapshot; `leafPath` is the edited leaf's document-absolute path. */
 	pushUndoSnapshotDebounced(leafPath: number[], offset: number, batchKey?: string | number): void;
 	/** Start the batch's pause timer, once the keystroke's own edit is done. Paired with
@@ -424,10 +422,6 @@ export interface TableContext {
 	focusCell(rowIdx: number, colIdx: number, position: CellPosition): void;
 	/** Scroll the grid sideways so the cell's column is inside the table's own box. */
 	revealColumn(rowIdx: number, colIdx: number): void;
-
-	getStickyColumn(): number | null;
-	setStickyColumn(colIdx: number): void;
-	resetStickyColumn(): void;
 
 	exitUpward(stickyX: number): void;
 	exitDownward(stickyX: number): void;

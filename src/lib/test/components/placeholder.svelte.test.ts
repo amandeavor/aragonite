@@ -18,7 +18,7 @@ import { dispatchBeforeInput } from '#lib/test/harness/insertion-routes.js';
 import { makeSurface } from '#lib/test/harness/editable-surface.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
 import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
-import type { EditorProps, PlaceholderBlock } from '#lib/editor-props.js';
+import type { EditorOptions, PlaceholderBlock } from '#lib/editor-props.js';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
 import type { MathRenderer } from '#lib/plugins/latex/math-renderer.js';
 
@@ -42,7 +42,7 @@ const echo = (block: PlaceholderBlock): string =>
 	`${block.kind} ${JSON.stringify(block.path)}${block.documentEmpty ? ' document' : ''}` +
 	`${block.focused ? ' focused' : ''}${block.editable ? '' : ' read-only'}`;
 
-async function setPlaceholder(editor: MountedEditor, value: EditorProps['placeholder']) {
+async function setPlaceholder(editor: MountedEditor, value: EditorOptions['placeholder']) {
 	editor.props.placeholder = value;
 	flushSync();
 	await editor.settle();

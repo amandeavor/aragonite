@@ -4,9 +4,6 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { installPlugins } from '#lib';
 import { parse } from '#lib/core/parser.js';
 import { parrotPlugin, PARROT } from '#lib/plugins/parrot/index.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { normalizeReplacementForBody } from '#lib/tree-operations/paste/body-write.js';
 import { declaredPluginKind } from '#lib/schema/plugin-kind.js';
 import { DETAILS, registerDetailsKind } from '#lib/plugins/details/details-kind.js';
@@ -15,11 +12,12 @@ import { createRegistryView } from '#lib/schema/registry-view.js';
 import { defaultGrammarView, type GrammarView } from '#lib/schema/block-openers.js';
 import { activationFor } from '#lib/schema/plugin-activation.js';
 import {
-	makeEditorActionsDeps,
 	makeStubBlockEdit,
-	pasteContext
+	runPasteDispatch,
+	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const PARROT_LINE = '%%parrot party responsibly\n';
 
@@ -31,22 +29,18 @@ function grammarListing(names: string[]) {
 beforeEach(() => {
 	installPlugins([parrotPlugin()]);
 	// A bodyWrite-declaring owner, so the escape below has a reparse to run.
-	registerDetailsKind();
+	registerDetailsKind(testView());
 });
 
 async function pasteInto(grammar: ReturnType<typeof grammarListing>) {
-	const { deps } = makeEditorActionsDeps(parse('target\n').children);
+	const h = makePasteCommit(parse('target\n').children);
 	const blockEdit = makeStubBlockEdit();
-	await pasteDispatch(
+	await runPasteDispatch(
+		h,
 		{ pastedText: PARROT_LINE, targetPath: [0], offset: 'target'.length },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			controller: createPasteCoordinator(deps, createUndoController(deps)),
-			reading: fixtureReading({ grammar })
-		})
+		{ blockEdit, reading: fixtureReading({ grammar }) }
 	);
-	return { doc: deps.doc, blockEdit };
+	return { doc: h.doc, blockEdit };
 }
 
 describe('a paste parses through the instance grammar, not the global one', () => {

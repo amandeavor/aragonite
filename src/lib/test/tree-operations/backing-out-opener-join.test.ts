@@ -5,12 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { CstNode } from '#lib/core/nodes.js';
 import { installPlugins } from '#lib';
-import {
-	OPENER_PRIORITIES,
-	registerBlockOpener,
-	type BlockOpener,
-	type BlockOpenerResult
-} from '#lib/plugin.js';
+import { OPENER_PRIORITIES, type BlockOpener, type BlockOpenerResult } from '#lib/plugin.js';
 import { parse } from '#lib/core/parser.js';
 import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
@@ -99,8 +94,8 @@ function fencedOpener(kind: string, fence: string, declared: boolean): BlockOpen
 
 describe('a backing-out opener that leaves its declaration out', () => {
 	beforeEach(() => {
-		registerBlockOpener(testLeaf('undeclared'), fencedOpener('undeclared', '%%%', false));
-		registerBlockOpener(testLeaf('declared'), fencedOpener('declared', '@@@', true));
+		testLeaf('undeclared', { opener: fencedOpener('undeclared', '%%%', false) });
+		testLeaf('declared', { opener: fencedOpener('declared', '@@@', true) });
 	});
 
 	it('leaves its own shape two blocks where a reload reads one', () => {

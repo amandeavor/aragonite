@@ -22,7 +22,8 @@ const noCross: CrossBlockHandlers = {
 	insertText: async () => false,
 	handleCompositionStart: () => false,
 	handleCompositionEnd: () => {},
-	performCrossBlockCut: async () => {}
+	performCrossBlockCut: async () => {},
+	reading: fixtureReading()
 };
 
 function makeCtx(): SharedKeydownContext {

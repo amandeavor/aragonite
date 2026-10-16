@@ -1,7 +1,8 @@
 <script lang="ts">
 	// A plain-mode editable leaf: every editing behavior lives in `createEditableLeaf`, and
 	// spreading `leaf.surfaceProps` sets up the whole editable element.
-	import { createEditableLeaf, type NodeView } from '#lib/plugin.js';
+	import { type NodeView } from '#lib/plugin.js';
+	import { createEditableLeaf } from '#lib/svelte.js';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
 
@@ -28,7 +29,7 @@
 		width: 100%;
 		box-sizing: border-box;
 		padding: 2px 0 2px 10px;
-		border-left: 3px solid var(--color-accent, #567b67);
+		border-left: 3px solid var(--color-accent);
 		font-family: var(--font-editor, ui-monospace, monospace);
 		font-size: 0.9em;
 		white-space: pre-wrap;

@@ -1,6 +1,6 @@
 # Adding a Block Type
 
-So you want the editor to understand a new kind of Markdown block: a callout, a spoiler, a footnote. This doc walks you through it, **for built-in blocks only**, meaning kinds that ship inside aragonite. If you're writing a plugin against the published library, stop here and read [`docs/guide/plugin-guide.md`](../guide/plugin-guide.md) instead; plugins get most of what's below through `createContainerBlock` and `createEditableLeaf` from `@voithos-labs/aragonite/plugin`. Everything here is internal machinery, and honestly, a block that belongs in the core is rarer than it feels at the moment you want one.
+So you want the editor to understand a new kind of Markdown block: a callout, a spoiler, a footnote. This doc walks you through it, **for built-in blocks only**, meaning kinds that ship inside aragonite. If you're writing a plugin against the published library, stop here and read [`docs/guide/plugin-guide.md`](../guide/plugin-guide.md) instead; plugins get most of what's below through `createContainerBlock` and `createEditableLeaf` from `@voithos-labs/aragonite/svelte`. Everything here is internal machinery, and honestly, a block that belongs in the core is rarer than it feels at the moment you want one.
 
 The plugin guide is also where the concepts live: what a kind is, what a descriptor declares, how an opener claims lines, what the closure block promises. This doc glosses each and covers only what a built-in author touches that a plugin author never sees. Orient from `docs/design/editor.md` first if you haven't; it'll save you at least one wrong turn.
 
@@ -24,7 +24,7 @@ flowchart LR
   N["union member<br/>core/nodes.ts"] --> D["descriptor<br/>schema/block-kind-descriptor.ts"]
   D --> R[("schema<br/>registries")]
   C["component<br/>components/blocks/"] --> R
-  O["opener (optional)<br/>schema/block-openers.ts"] --> R
+  O["opener (optional)<br/>core/parsers/built-in-openers.ts"] --> D
   R --> H["BlockHost renders by kind"]
   R --> X["merge · paste · selection<br/>inline · container raw"]
 ```
@@ -84,11 +84,12 @@ export interface BlockMetadataByKind {
 
 ### 1. The descriptor
 
-Call `registerBlockKind(kind, registration)` from `schema/built-in-descriptors.ts` (the registry itself is `schema/block-kind-descriptor.ts`). Here's the thematic break's descriptor, the smallest built-in:
+Call `registerBuiltinBlockKind(kind, registration)` from `schema/built-in-descriptors.ts` (the registry itself is `schema/block-kind-descriptor.ts`). It's the plugins' `registerBlockKind` minus the view, which a built-in gets from the component layer in step 2, since `schema/` can't import a component. Here's the thematic break's descriptor, the smallest built-in:
 
 ```ts
 // schema/built-in-descriptors.ts
-registerBlockKind('thematicBreak', {
+registerBuiltinBlockKind('thematicBreak', {
+	opener: BUILT_IN_OPENERS.thematicBreak, // step 3
 	pageRole: 'object',
 	dragLabel: 'Divider',
 	estimateHeight: singleLineEstimate,
@@ -178,12 +179,16 @@ Optional, each earning its place:
 
 ### 2. The component
 
-Call `registerBlockComponent(kind, defineBlockComponent(YourBlock, extraProps?))` in `components/built-in-blocks.ts`:
+Add a row to the `BUILT_IN_VIEWS` table in `components/built-in-blocks.ts`, which `attachBuiltinViews` hands to the descriptors from step 1. The table is typed as one row per kind BlockHost can mount, so `npm run check` fails until yours is there. A kind that's just editable text takes `textBlockView({ blockClass })`; anything with a look of its own takes `svelteBlockView(YourBlock, extraProps?)`:
 
 ```ts
 // components/built-in-blocks.ts
-registerBlockComponent('thematicBreak', defineBlockComponent(ThematicBreakBlock));
-registerBlockComponent('heading', defineBlockComponent(TextEditableBlock, headingExtraProps));
+const BUILT_IN_VIEWS = {
+	paragraph: textBlockView({ blockClass: 'paragraph-block' }),
+	heading: svelteBlockView(TextEditableBlock, headingExtraProps),
+	thematicBreak: svelteBlockView(ThematicBreakBlock),
+	// ...one row per kind
+} satisfies Record<StandaloneBuiltinKind, BlockView>;
 
 function headingExtraProps(node: NodeView): Record<string, unknown> {
 	// ...
@@ -192,7 +197,7 @@ function headingExtraProps(node: NodeView): Record<string, unknown> {
 }
 ```
 
-Go through `defineBlockComponent` rather than building the entry object by hand. It type-checks your component's exports and props against what BlockHost expects, so a wrong shape is something `npm run check` tells you about rather than a user. A hand-built leaf exports its methods one by one and ends with `satisfies BlockComponent`; a container exports a single `containerApi`. The thematic break's tail, as a leaf:
+Go through `svelteBlockView` rather than casting an object to `BlockView` yourself. It type-checks your component's exports and props against what BlockHost expects, so a wrong shape is something `npm run check` tells you about rather than a user. A hand-built leaf exports its methods one by one and ends with `satisfies BlockComponent`; a container exports a single `containerApi`. The thematic break's tail, as a leaf:
 
 ```ts
 // components/blocks/ThematicBreakBlock.svelte
@@ -207,15 +212,15 @@ void ({ editable, focusable, focus, parkCaret, getCursorOffset, measurePartialRe
 
 What each method must provide is the plugin guide's territory; it's identical for built-ins.
 
-BlockHost looks your component up by kind and hands every block the same props: `node`, `index`, `myPath`, `ambientPrefix`, plus `document` (the root, read-only, so a block at any depth can read the structure above it) and `rects` (measure, reveal, and scroll by path). `extraProps` is a `(node) => Record<string, unknown>` for anything beyond that, like the heading's `blockClass` above. BlockHost `bind:this`-es your component and reads the surface off its exports; you publish it and never hold a handle to it.
+BlockHost reads your view off the kind's registration and hands every block the same props: `node`, `index`, `myPath`, `ambientPrefix`, plus `document` (the root, read-only, so a block at any depth can read the structure above it) and `rects` (measure, reveal, and scroll by path). `extraProps` is a `(node) => Record<string, unknown>` for anything beyond that, like the heading's `blockClass` above. BlockHost `bind:this`-es your component and reads the surface off its exports; you publish it and never hold a handle to it.
 
 ### 3. The opener, if you need one
 
-A kind the block parser must recognize on a line registers an opener: `registerBlockOpener(kind, { priority, tryOpen, interruptsParagraph })` from `schema/block-openers.ts`, called from `core/parsers/built-in-openers.ts`. How an opener claims lines, interrupts paragraphs, and consumes multi-line constructs is the plugin guide's ["Teaching the parser"](../guide/plugin-guide/parser.md#teaching-the-parser); the built-in wiring is what's here.
+A kind the block parser must recognize on a line gets an opener: a `{ priority, tryOpen, interruptsParagraph }` entry in `BUILT_IN_OPENERS` (`core/parsers/built-in-openers.ts`), which your step-1 registration takes as its `opener: BUILT_IN_OPENERS.yourKind`. Read it there, inside `registerBuiltInDescriptors`, never at a module's top level: the parser's modules import each other in a loop, and the built-ins register on the first read of the grammar for the same reason (G4.197). How an opener claims lines, interrupts paragraphs, and consumes multi-line constructs is the plugin guide's ["Teaching the parser"](../guide/plugin-guide/parser.md#teaching-the-parser); the built-in wiring is what's here.
 
 ```ts
-// core/parsers/built-in-openers.ts
-registerBlockOpener('thematicBreak', {
+// core/parsers/built-in-openers.ts, inside BUILT_IN_OPENERS
+thematicBreak: {
 	priority: OPENER_PRIORITIES.thematicBreak,
 	tryOpen(ctx) {
 		const marker = matchThematicBreak(ctx.line.text);
@@ -230,7 +235,7 @@ registerBlockOpener('thematicBreak', {
 		const marker = matchThematicBreak(t);
 		return marker === '*' || marker === '_';
 	}
-});
+},
 ```
 
 Priority orders the parser's attempts, ascending. The built-in order lives in `src/lib/schema/opener-priorities.ts` :: `OPENER_PRIORITIES`, so slot yours against that constant (`OPENER_PRIORITIES.heading + 5`, say) rather than a copied number. Give each kind its own priority; a tie still resolves (by kind name) but is almost always a mistake, so it warns at bootstrap.

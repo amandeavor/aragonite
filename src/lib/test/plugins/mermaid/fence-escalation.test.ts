@@ -4,6 +4,7 @@ import { parse, serialize, type CstNode, type Document } from '#lib';
 import { describeConvergence } from '#lib/testing/parse-convergence.js';
 import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import { makeTopHarness } from '#lib/test/harness/editor-actions.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 /** The commit a code edit makes (`updateOwnMetadata`), through the chain rebuild. */
 async function commitCode(source: string, code: string): Promise<{ node: CstNode; doc: Document }> {
@@ -15,7 +16,7 @@ async function commitCode(source: string, code: string): Promise<{ node: CstNode
 
 describe('a mermaid body carrying a fence run', () => {
 	beforeEach(() => {
-		registerMermaidKind();
+		registerMermaidKind(testView());
 	});
 
 	it('grows the opener and the closer past the run, so the block survives its next parse', async () => {

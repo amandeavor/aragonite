@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 // Miss-analysis: the cell render was tested against raw, references and decorations, never mode.
+import { svelteView } from '#lib/svelte-view.svelte.js';
 import { afterEach, describe, it, expect } from 'vitest';
 import { flushSync } from 'svelte';
 import { createCellRender, type CellRender } from '#lib/components/blocks/table/cell-render.js';
@@ -23,7 +24,10 @@ function registerModeWidget(): void {
 		if (close < 0 || close + 2 > end) return null;
 		return { kind, start: pos, end: close + 2, children: [] };
 	});
-	registerInlineWidgetKind(kind, { isWidget: () => true, component: ModeReadingWidget });
+	registerInlineWidgetKind(kind, {
+		isWidget: () => true,
+		view: svelteView(ModeReadingWidget)
+	});
 }
 
 const rendered: CellRender[] = [];

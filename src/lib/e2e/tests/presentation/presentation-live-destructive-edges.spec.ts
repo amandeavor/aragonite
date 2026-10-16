@@ -67,16 +67,16 @@ test.describe('live mode: a destructive key at a hidden run takes what the reade
 
 	// A chorded delete reports its range on the event at a still-collapsed caret, bypassing the
 	// caret-edge handler; the browser alone leaves `Some **big ** text`, where both halves paint.
-	test('a word delete inside a construct takes the run it broke', async ({ page }) => {
+	test('a word delete inside a construct keeps the bold on the word it left', async ({ page }) => {
 		await clickWordSettled(ep, page, 'brave');
 		await stepTo(ep, page, 'ArrowRight', 16);
 
 		await page.keyboard.press('Control+Backspace');
-		await ep.bridge.waitForSourceContains('Some big  text');
+		await ep.bridge.waitForSourceContains('Some **big**  text');
 
 		const block = ep.getBlock(TWO_WORD_BOLD);
 		await expect(block).toHaveText('Some big text', { useInnerText: true });
-		await expect(block.locator('strong')).toHaveCount(0);
+		await expect(block.locator('strong')).toHaveText('big', { useInnerText: true });
 	});
 
 	// The browser deletes from where the byte is, so the first content character is destructive one

@@ -1,11 +1,10 @@
 /**
  * The one registry of which inline kinds render as live widgets (non-editable spans marked
- * `[data-inline-widget]`) and how each is recognized. DOM building has three routes: a
- * `buildWidget` for core-built widgets, a `component` mounted through the injected portal
- * builder, or neither for the image, whose builder is injected per render.
+ * `[data-inline-widget]`) and how each is recognized. A plugin's kind draws through its `view`,
+ * mounted in a shell the render layer makes; the editor's own kinds draw here, and the image is
+ * built per render.
  */
 
-import type { Component } from 'svelte';
 import { isBuiltinInlineKind, type AnyInlineKind, type InlineNode } from '../nodes';
 import type { DocumentView, NodeView } from '../node-views';
 import type { PresentationMode } from '../../presentation-mode';
@@ -13,16 +12,18 @@ import type { ActivationClick, ClickInput } from '../../activation-click';
 import { isLiveHtmlTag, buildLiveHtmlWidget } from './raw-html-widget';
 import { entityRendersGlyph, buildEntityWidget } from './entity-widget';
 import { createInlineKindRegistry } from '../../schema/plugin-registry';
+import { registerAsCore } from '../../schema/plugin-install';
 import type { GrammarView } from '../../schema/block-openers';
 import { inlineDescendants } from './walk';
+import type { PluginView } from '../../plugin-view';
 
 /**
- * The widget shell every core builder shares. Its `data-*` attributes are the only handle the
+ * The shell every inline widget is drawn in. Its `data-*` attributes are the only handle the
  * DOM-to-offset traversal has, so the shell is created here once and builders add only the body.
  */
-export function mintWidgetShell(className: string, node: InlineNode): HTMLSpanElement {
+export function mintWidgetShell(node: InlineNode, className?: string): HTMLSpanElement {
 	const shell = document.createElement('span');
-	shell.className = className;
+	if (className) shell.className = className;
 	shell.dataset.inlineWidget = '';
 	shell.dataset.sourceStart = String(node.start);
 	shell.dataset.sourceEnd = String(node.end);
@@ -39,12 +40,17 @@ export function widgetSourceRange(el: Element): { start: number; end: number } |
 	return { start, end };
 }
 
+/** The inline-widget element whose source starts at `start`, or null. The only place this
+ *  selector is written: a mistyped copy would fail silently as a null `querySelector`. */
+export function widgetElByStart(el: HTMLElement, start: number): HTMLElement | null {
+	return el.querySelector<HTMLElement>(`[data-inline-widget][data-source-start="${start}"]`);
+}
+
 /**
- * Props a `component` widget kind is mounted with. Frozen at mount: the pool remounts on a
- * source change, so `source` never shifts under a live instance, but `inline.start`/`end` can
- * lag once typing beside the widget moves it. The live position is the wrapper's rewritten
- * `data-source-*`, never these fields. The getters below are live for the inverse reason: a
- * reused instance would go stale on a frozen value.
+ * Props an inline widget's view gets. The editor mounts a new view when the widget's source
+ * changes, so `source` never shifts under one, and sends `update` with the new `inline` when typing
+ * beside the widget moves it. The getters stay live between updates, since the mode, theme and
+ * document change without touching the widget.
  */
 export interface InlineWidgetComponentProps {
 	inline: InlineNode;
@@ -134,35 +140,54 @@ export interface InlineWidgetEditingContext {
 
 export interface InlineWidgetDescriptor {
 	isWidget(node: InlineNode, raw: string): boolean;
-	/** Omitted for a kind whose builder is injected per render (image) or that uses `component`. */
-	buildWidget?(node: InlineNode, raw: string): HTMLElement;
-	/** The recommended path, mutually exclusive with `buildWidget`: the render layer wraps it in
-	 *  the widget shell span and mounts it through the injected portal builder. */
-	component?: Component<InlineWidgetComponentProps>;
+	/** Draws the widget into the shell the editor makes for it, the element that carries its bytes. */
+	view: PluginView<InlineWidgetComponentProps>;
 	editing?: InlineWidgetEditingPolicy;
 }
 
-const registry = createInlineKindRegistry<InlineWidgetDescriptor>({
+/** The editor's own kinds draw without a view: a builder here, or none for the image, which the
+ *  render builds per block. */
+interface WidgetEntry extends Omit<InlineWidgetDescriptor, 'view'> {
+	view?: InlineWidgetDescriptor['view'];
+	draw?(node: InlineNode, raw: string): HTMLElement;
+}
+
+const registry = createInlineKindRegistry<WidgetEntry>({
 	label: 'registerInlineWidgetKind',
 	isBuiltin: isBuiltinInlineKind
 });
 
 /** The kind's descriptor under an editor's grammar: absent where the editor left out the plugin
  *  the entry answers to, so a node of that kind renders as its source. */
-function widgetOf(kind: AnyInlineKind, grammar: GrammarView): InlineWidgetDescriptor | undefined {
+function widgetOf(kind: AnyInlineKind, grammar: GrammarView): WidgetEntry | undefined {
 	return registry.get(kind, grammar.activation);
 }
+
+/** The message a plugin gets when it passes a drawing field where a `view` belongs. */
+export const UPGRADE_HINT =
+	'buildWidget, buildDom and component became `view`; svelteView wraps a Svelte component';
 
 export function registerInlineWidgetKind(
 	kind: AnyInlineKind,
 	descriptor: InlineWidgetDescriptor
 ): void {
-	if (descriptor.component && descriptor.buildWidget) {
-		throw new Error(
-			`registerInlineWidgetKind: "${kind}" declares both a component and a buildWidget; ` +
-				`a widget kind renders through exactly one. Drop one.`
-		);
+	if (typeof descriptor.view !== 'function') {
+		throw new TypeError(`registerInlineWidgetKind: "${kind}" needs a \`view\` (${UPGRADE_HINT})`);
 	}
+	// Only the published fields, so a stray `draw` on the object can't skip the view's wrapper.
+	registerWidgetEntry(kind, {
+		isWidget: (node, raw) => descriptor.isWidget(node, raw),
+		view: descriptor.view,
+		editing: descriptor.editing
+	});
+}
+
+/** For a kind the editor draws itself (`core/directive/kinds.ts`), never a plugin's. */
+export function registerCoreInlineWidget(kind: AnyInlineKind, entry: WidgetEntry): void {
+	registerAsCore(() => registerWidgetEntry(kind, entry));
+}
+
+function registerWidgetEntry(kind: AnyInlineKind, descriptor: WidgetEntry): void {
 	registry.register(
 		kind,
 		descriptor,
@@ -197,7 +222,23 @@ export function isInlineWidgetKind(kind: AnyInlineKind, grammar: GrammarView): b
 /** Kind-level recognition, independent of per-block render policy (renderImagesAsWidgets). */
 export function isInlineWidget(node: InlineNode, raw: string, grammar: GrammarView): boolean {
 	const descriptor = widgetOf(node.kind, grammar);
-	return descriptor ? descriptor.isWidget(node, raw) : false;
+	return descriptor ? matchesWidget(descriptor, node, raw) : false;
+}
+
+/** A plugin's `isWidget` that throws reads as false, so the render shows the construct as its
+ *  source and the caret walks it as text; only the render has a reporter to hand it. */
+function matchesWidget(
+	descriptor: WidgetEntry,
+	node: InlineNode,
+	raw: string,
+	reportWidgetError?: (error: unknown) => void
+): boolean {
+	try {
+		return descriptor.isWidget(node, raw);
+	} catch (error) {
+		reportWidgetError?.(error);
+		return false;
+	}
 }
 
 export function getInlineWidgetEditing(
@@ -213,11 +254,11 @@ export function isCharacterLikeWidget(kind: AnyInlineKind, grammar: GrammarView)
 	return getInlineWidgetEditing(kind, grammar)?.onEdge === 'step-over';
 }
 
-export function getInlineWidgetComponent(
+export function getInlineWidgetView(
 	kind: AnyInlineKind,
 	grammar: GrammarView
-): Component<InlineWidgetComponentProps> | undefined {
-	return widgetOf(kind, grammar)?.component;
+): InlineWidgetDescriptor['view'] | undefined {
+	return widgetOf(kind, grammar)?.view;
 }
 
 /** Descends into non-widget parents (the `image` inside `[![alt][ref]][repo]`) but never into a
@@ -235,36 +276,44 @@ export function flattenInlineWidgets(
 	return out;
 }
 
-/** A `component` kind mounts through the injected `buildPortalWidget`, keeping `core/` free of
- *  Svelte. Null for a non-widget, an image (built per render), or a missing or failed portal. */
+export interface WidgetBuildOptions {
+	/** The shell holding a plugin kind's mounted view, from the block's widget pool. Absent (a render
+	 *  nobody sees, which only measures) or null draws the widget as its raw source. */
+	acquireViewWidget?: (node: InlineNode, raw: string) => HTMLElement | null;
+	/** Where an `isWidget` throw goes; absent for a render nobody sees. */
+	reportWidgetError?: (error: unknown) => void;
+	/** The editor's grammar: a widget kind whose plugin it leaves out renders as its source. */
+	grammar: GrammarView;
+}
+
+/** Null for a non-widget, an image (built per render), or a plugin kind with no view to show. */
 export function buildCoreInlineWidget(
 	node: InlineNode,
 	raw: string,
-	buildPortalWidget: ((node: InlineNode, raw: string) => HTMLElement | null) | undefined,
-	grammar: GrammarView
+	opts: WidgetBuildOptions
 ): HTMLElement | null {
-	const descriptor = widgetOf(node.kind, grammar);
-	if (!descriptor || !descriptor.isWidget(node, raw)) return null;
-	if (descriptor.component) return buildPortalWidget?.(node, raw) ?? null;
-	return descriptor.buildWidget ? descriptor.buildWidget(node, raw) : null;
+	const entry = widgetOf(node.kind, opts.grammar);
+	if (!entry || !matchesWidget(entry, node, raw, opts.reportWidgetError)) return null;
+	if (entry.draw) return entry.draw(node, raw);
+	return entry.view ? (opts.acquireViewWidget?.(node, raw) ?? null) : null;
 }
 
-registerInlineWidgetKind('image', {
+registerCoreInlineWidget('image', {
 	isWidget: () => true,
 	// Empty because the image's edge behavior is the dispatch's default; the editor layer
 	// augments this with the resize `onSelectedKey` (components/built-in-blocks.ts).
 	editing: {}
 });
 
-registerInlineWidgetKind('rawHtml', {
+registerCoreInlineWidget('rawHtml', {
 	isWidget: (node, raw) => isLiveHtmlTag(raw.slice(node.start, node.end)),
-	buildWidget: (node) => buildLiveHtmlWidget(node)
+	draw: (node) => buildLiveHtmlWidget(node)
 });
 
 // Only an entity that draws a glyph becomes a widget: an invisible one keeps its literal-source
 // span, or the caret would step over something it cannot see.
-registerInlineWidgetKind('entityReference', {
+registerCoreInlineWidget('entityReference', {
 	isWidget: (node) => entityRendersGlyph(node.decoded),
-	buildWidget: (node) => buildEntityWidget(node),
+	draw: (node) => buildEntityWidget(node),
 	editing: { deleteGranularity: 'atomic', onEdge: 'step-over' }
 });

@@ -7,7 +7,7 @@
 export type ClipboardAction = 'cut' | 'copy' | 'paste' | 'paste-plain';
 
 /** Markdown-significant bytes, escaped so pasted text reads back exactly as pasted. */
-export function escapeMarkdownLiteral(text: string): string {
+function escapeMarkdownLiteral(text: string): string {
 	return text
 		.replace(/[\\`*_[\]<>|~]/g, '\\$&')
 		.replace(/^([ \t]*)([#>+-])/gm, '$1\\$2')

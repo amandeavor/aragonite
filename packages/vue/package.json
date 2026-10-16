@@ -1,0 +1,49 @@
+{
+	"name": "@voithos-labs/aragonite-vue",
+	"version": "0.11.0",
+	"description": "Vue component for the aragonite Markdown editor",
+	"keywords": [
+		"editor",
+		"markdown",
+		"vue"
+	],
+	"homepage": "https://aragonite.dev",
+	"bugs": {
+		"url": "https://github.com/voithos-labs/aragonite/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/voithos-labs/aragonite.git",
+		"directory": "packages/vue"
+	},
+	"author": "voithos-labs",
+	"type": "module",
+	"license": "MPL-2.0",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"prepack": "npm run build"
+	},
+	"peerDependencies": {
+		"@voithos-labs/aragonite": "0.11.0",
+		"vue": "^3.3.0"
+	},
+	"devDependencies": {
+		"@voithos-labs/aragonite": "file:../..",
+		"vue": "^3.5.44"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

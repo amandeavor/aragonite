@@ -8,8 +8,6 @@ import { serialize } from '#lib/core/serializer.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { asDocPath } from '#lib/selection/path-math.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { trackChildIds } from '#lib/tree-operations/structural-change.js';
 import { documentBody } from '#lib/tree-operations/node-primitives.js';
 import type { MultiScopeTarget } from '#lib/action-contracts.js';
@@ -20,7 +18,7 @@ import {
 	makeListContextAt
 } from '#lib/test/harness/editor-actions.js';
 import { drainDevWarns, takeDevWarns } from '#lib/test/support/warn-gate.js';
-import { fixtureReading } from '../../harness/fixture-grammar';
+import { deleteRange } from '../../harness/range-delete';
 
 describe('multi-scope commits with a scope detached by the mutation', () => {
 	it('unindent of the only nested item fires nothing (nested-list scope dies)', async () => {
@@ -76,13 +74,7 @@ describe('multi-scope commits with a scope detached by the mutation', () => {
 			snapshot: { path: asDocPath([0, 0, 0]), offset: 0 },
 			mutate: (views) => {
 				const ledgers = views.map((v) => trackChildIds(v.node));
-				rangeDelete(
-					deps.doc,
-					rangeCoverage(deps.doc, coverRange(deps.doc, start, end)),
-					views[0].sharing,
-					fixtureReading(),
-					'keyless'
-				);
+				deleteRange(deps.doc, start, end, { sharing: views[0].sharing });
 				return ledgers.map((ledger) => {
 					const change = ledger.read();
 					ledger.release();
@@ -116,13 +108,7 @@ describe('multi-scope commits with a scope detached by the mutation', () => {
 				// Through the document's view, as every commit's mutation writes.
 				const top = documentBody(deps.doc, views[0].children);
 				const ledgers = views.map((v, i) => trackChildIds(i === 0 ? top : v.node));
-				rangeDelete(
-					top,
-					rangeCoverage(top, coverRange(top, start, end)),
-					views[0].sharing,
-					fixtureReading(),
-					'keyless'
-				);
+				deleteRange(top, start, end, { sharing: views[0].sharing });
 				return ledgers.map((ledger) => {
 					const change = ledger.read();
 					ledger.release();

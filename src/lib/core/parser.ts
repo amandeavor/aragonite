@@ -15,10 +15,8 @@ import {
 } from '../schema/block-openers';
 import { assertInvariant } from '../assert';
 import { parseParagraph } from './parsers/paragraph';
-import { registerBuiltInOpeners } from './parsers/built-in-openers';
 import { registerTableCompleter } from './parsers/table-completion';
 
-registerBuiltInOpeners();
 // The Enter completer is the typing-side counterpart of the table grammar, so it loads here
 // rather than behind a side-effect import the production build tree-shakes away.
 registerTableCompleter();

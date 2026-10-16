@@ -14,6 +14,11 @@ source-mode edit.
 - The alt commit lands for an image inside a list item (nested-paragraph commit)
 - The title has no field; an existing `"title"` survives URL and alt commits byte-for-byte
 - The remove button deletes the image span from the paragraph
+- In live mode, removing an image that was the only content of a link or a bold run takes that
+  link's or run's markers with it (`x [![b](i.png)](u) y` leaves `x  y`, `a **![b](i.png)** c`
+  leaves `a  c`), the bytes Ctrl+X on the selected image writes
+  - Miss-analysis: no test pressed Remove in live mode, so the button's literal splice never sat
+    inside a construct it emptied
 
 ## Edge cases
 

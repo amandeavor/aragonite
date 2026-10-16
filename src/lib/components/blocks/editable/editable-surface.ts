@@ -21,8 +21,10 @@ import {
 } from '../../../block-component';
 import type { UserScrollport } from '../../../windowing/scroll-ancestors';
 import type { ScrollOwner } from '../../../windowing/scroll-owner';
-import type { BlockElLookup, DocumentGetter, PasteImageHook } from '../../../editor-keys';
-import { emitClipboardError, emitCommandError, type EditorEvents } from '../../../editor-events';
+import type { DocumentGetter } from '../../../editor-keys';
+import type { BlockElLookup } from '../../../caret/block-el-lookup';
+import type { PasteImageHook } from '../../../host-hooks';
+import { emitCommandError, type EditorEvents } from '../../../editor-events';
 import type { InlineMenuCombobox } from '../../../inline-menu/inline-menu-state.svelte';
 import type { NodeView } from '../../../core/node-views';
 import { blockAccessibleName } from '../../../a11y-strings';
@@ -51,11 +53,12 @@ import { findOffsetNearestX } from '../../../caret/sticky-measure';
 import { measurePartialRectsInContentEditable } from '../../overlays/rects';
 import {
 	documentLineEnding,
-	normalizeLineEndings,
 	trailingLineEnding,
 	trimTrailingLineEnding,
 	type LineEnding
 } from '../../../core/lines';
+import { getContentRange, sameLineSuffix } from '../../../core/inline';
+import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
 import type { BlockAutoPairs } from '../text/auto-pair-record';
 import { createSurfaceWrite, type TextWrite } from './surface-write';
@@ -63,14 +66,14 @@ import {
 	createCrossBlockHandlers,
 	type CrossBlockHandlers
 } from '../../../selection/cross-block/dispatch';
-import { crossBlockClipboardArm } from '../../../selection/cross-block/clipboard';
 import {
-	runClipboardCut,
-	takeCopy,
-	writeShownSelection,
-	type ClipboardArm
-} from './clipboard-step';
-import { createImagePasteArm, type ImagePasteArm } from '../../paste-image-arm';
+	createClipboardHandlers,
+	type BlockClipboard,
+	type ClipboardCaretIO,
+	type ClipboardHandlers,
+	type InlinePaste,
+	pasteIntoBlock
+} from './surface-clipboard';
 import {
 	rawOfWalkOffset,
 	revealsNoMarkers,
@@ -203,8 +206,10 @@ export interface EditableSurfaceDeps {
 	pasteCoordinator: PasteCommitCoordinator;
 	/** The plugins this instance activated, forwarded to the paste-transform pipeline. */
 	activePlugins: PluginActivation;
-	/** This editor's events, for the cross-block clipboard's error reports. */
+	/** This editor's events, for the clipboard's error reports. */
 	events: EditorEvents;
+	/** Host image-import hook from the policies context, read at each paste. */
+	onPasteImage: () => PasteImageHook | undefined;
 	/** Names a new block kind a typed write made, in the modes that hide markers. */
 	kindCue: KindCue;
 	/** The `placeholder` prop as the editor hands it down, read live. */
@@ -266,10 +271,15 @@ export interface EditableSurface {
 	/** Every edit the block makes to its own text: the input commit, and each key the block
 	 *  writes for itself (`surface-write.ts`). */
 	writeText(write: TextWrite): ContentWrite;
+	/** The block's edit actions, its content writes keeping the open line a write leaves the caret on. */
+	blockEdit: BlockEditActions;
 	/** The ending a line typed into the block takes: its own, else the document's. */
 	lineEnding(): LineEnding;
 	/** The line Shift+Enter at the block's end opened, which this block's next insertion spends. */
 	pendingBreak: BlockPendingBreak;
+	/** Opens `lines` lines past the end of the block's text, as Shift+Enter there does; the offset
+	 *  the open line's caret sits at. */
+	openBreakAtEnd(lines: number): number;
 	/** A space typed at a hidden closer here, which the next letter takes back inside. */
 	heldSpace: HeldSpaceView;
 	/** The caret Edit link left before a hidden closer here, which types inside the URL. */
@@ -279,6 +289,11 @@ export interface EditableSurface {
 	/** The formats a letter typed at raw offset `caret` would carry (`text/next-byte.ts`); plain
 	 *  where the block has no `getInlines`. */
 	nextByte(caret: number): NextByte;
+	/** The block's copy, cut and paste handlers: the shared steps, given what only the block knows. */
+	clipboard(block: BlockClipboard): ClipboardHandlers;
+	/** Pastes into the block's own text through the paste dispatch, then puts the caret where the
+	 *  paste left it. */
+	pasteInline(paste: InlinePaste): Promise<void>;
 	/** Wraps the block's `runCommand` (or a clipboard edit), so a command dispatched from
 	 *  anywhere, a key or a toolbar, anchors undo on the caret it found. */
 	command<A extends unknown[], R>(run: (...args: A) => R): (...args: A) => R;
@@ -302,24 +317,6 @@ export interface EditableSurface {
 	noteShownSource(read: (() => string) | null): void;
 	/** Name the pre-edit caret for an edit the block splices itself rather than the browser. */
 	notePreEditOffset(offset: number): void;
-}
-
-/**
- * The caret calls the shared clipboard code borrows from a block. `getEl` is a liveness
- * test: a host import hook can outlive the block that started the paste.
- */
-export interface ClipboardCaretIO {
-	getEl: () => HTMLElement | null;
-	getCursorOffset: () => number | null;
-	focus: (offset: number) => void;
-	/** Reads the caret undo puts back after a cut or a paste, before a shown source hides. */
-	recordPreEditOffset: () => void;
-	/** The caret that record read. */
-	getPreEditOffset: () => number;
-	/** The selection, or the caret as an empty range; null when the block holds neither. */
-	getSelection: () => RawRange | null;
-	/** Takes what the caret memory keeps for this block's next insertion. */
-	holdInsertion: () => HeldInsertion;
 }
 
 /** The BlockComponent methods shared verbatim across every editable surface. */
@@ -495,6 +492,28 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// This block's identity in the caret memory, so a record left here is spent only here.
 	const block = {};
 	const pendingMarks = deps.caretMemory.pendingMarks.forBlock(block);
+	const pendingBreak = deps.caretMemory.pendingBreak.forBlock(block);
+
+	function openBreakAtEnd(lines: number): number {
+		const node = deps.getNode();
+		const textEnd = getContentRange(node).end;
+		const line = { textEnd, lineEnd: textEnd + sameLineSuffix(node).length, ending: lineEnding() };
+		for (let i = 0; i < lines; i++) pendingBreak.open(line);
+		return line.lineEnd;
+	}
+	// A write that drops the empty lines after a final hard break, leaving the caret on them, keeps
+	// them open the way Shift+Enter opened them, whichever route in the block wrote it.
+	const blockEdit: BlockEditActions = {
+		...deps.blockEdit,
+		updateBlockContent(index, text, mode, preEditOffset, caret) {
+			const open = droppedOpenLines(deps.getNode(), text);
+			const written = deps.blockEdit.updateBlockContent(index, text, mode, preEditOffset, caret);
+			if (open && caret === open.end && written.admitted) {
+				void written.then((wrote) => wrote && openBreakAtEnd(open.lines));
+			}
+			return written;
+		}
+	};
 	const holdInsertion = (): HeldInsertion =>
 		deps.caretMemory.holdInsertion(block, deps.placement?.insertion);
 	const { getInlines } = deps;
@@ -513,7 +532,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		getNode: deps.getNode,
 		getIndex: deps.getIndex,
 		getPath: deps.getMyPath,
-		blockEdit: deps.blockEdit,
+		blockEdit,
 		kindCue: deps.kindCue,
 		getPreEditOffset: () => preEditOffset,
 		requestCaret: deps.requestCaret,
@@ -663,6 +682,34 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		holdInsertion
 	};
 
+	function clipboard(block: BlockClipboard): ClipboardHandlers {
+		return createClipboardHandlers({
+			caretMemory: deps.caretMemory,
+			selection: deps.selection,
+			getDoc: deps.getDoc,
+			crossBlock,
+			isReadOnly: () => deps.reading.mode() === 'reading',
+			caret,
+			events: deps.events,
+			onPasteImage: deps.onPasteImage,
+			...block
+		});
+	}
+
+	const pasteInline = (paste: InlinePaste): Promise<void> =>
+		pasteIntoBlock(
+			{
+				getMyPath: deps.getMyPath,
+				getDoc: deps.getDoc,
+				blockEdit,
+				controller: deps.pasteCoordinator,
+				reading: deps.reading,
+				activePlugins: deps.activePlugins,
+				requestCaret: deps.requestCaret
+			},
+			paste
+		);
+
 	// The element, not the binding: a torn-down host drops out of the document before Svelte's
 	// `bind:this` teardown nulls the reference a resuming handler still holds.
 	const isDetached = (): boolean => deps.getEl()?.isConnected !== true;
@@ -736,12 +783,16 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		caret,
 		isDetached,
 		writeText,
+		blockEdit,
 		lineEnding,
-		pendingBreak: deps.caretMemory.pendingBreak.forBlock(block),
+		pendingBreak,
+		openBreakAtEnd,
 		heldSpace: deps.caretMemory.heldSpace.forBlock(block),
 		insideCloser: deps.caretMemory.insideCloser.forBlock(block),
 		pendingMarks,
 		nextByte,
+		clipboard,
+		pasteInline,
 		command,
 		afterSelectionRemoved,
 		onKeyDown,
@@ -759,193 +810,4 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			preEditOffset = offset;
 		}
 	};
-}
-
-// ── Hiding a shown source ───────────────────────────────────────────────────
-
-/**
- * What hiding a shown source hands back to the edit that triggered it. A commit that changes
- * the block's kind takes the structural path, whose completion is a promise, so an edit waits
- * on `settled` rather than on a tick that happens to outlast it.
- */
-export interface RevealFold {
-	/** The committed caret offset: where the edit left the caret. */
-	caret: number;
-	/** Resolves once that write has landed and its render has flushed. */
-	settled: Promise<void>;
-}
-
-// ── Clipboard ───────────────────────────────────────────────────────────────
-
-/**
- * The copy, cut and paste steps every editable block shares, in one order no block can
- * skip or reshuffle. Paste prevents the default before its first await, or the native paste runs
- * while a shown source hides. Everything goes through the event's synchronous `clipboardData`;
- * `navigator.clipboard` is permission-gated and unreliable in Tauri's webview.
- */
-export interface ClipboardSurfaceDeps {
-	caretMemory: CaretMemory;
-	selection: SelectionState;
-	getDoc: DocumentGetter;
-	crossBlock: CrossBlockHandlers;
-	/** Reading mode: copy/cut write the visible selection string, paste is inert. */
-	isReadOnly: () => boolean;
-	/** The block's caret calls, borrowed by the image branch to anchor its insertion. */
-	caret: ClipboardCaretIO;
-	/** This editor's events: the image branch's only way to report a host hook that
-	 *  rejects. Required so a block cannot silently swallow a failed import. */
-	events: EditorEvents;
-	/** Host image-import hook from the policies context. Undefined leaves an
-	 *  image-bearing paste on the text/plain path. */
-	onPasteImage: PasteImageHook | undefined;
-	/** Hides a shown inline source before a cut or paste mutates, so the mutation runs against a
-	 *  CST that matches the DOM. Omit on a block that never shows source. */
-	foldReveal?: () => RevealFold | null;
-	/** Selections tried before a range across blocks: a selected widget. */
-	selectionArms?: readonly ClipboardArm[];
-	/** The block's own range, tried last. */
-	rangeArm: ClipboardArm;
-	/** The paste step before cross-block handling, given the normalised text while a rectangle is
-	 *  readable (a grid into a table's cells). True when it consumed the paste. */
-	pastePreHook?: (text: string) => boolean | Promise<boolean>;
-	/** The intra-block paste, handed the normalized text and where the paste goes. */
-	pasteTail: (pastedText: string, target: PasteTarget) => void | Promise<void>;
-}
-
-/** Where a paste goes, read as its event arrives: before a shown source hides, which moves the
- *  selection, and before the paste forgets the caret memory. */
-export interface PasteTarget {
-	/** The selection, or the caret as an empty range; null when the block holds neither. */
-	range: RawRange | null;
-	/** What the caret memory kept for this block's next insertion, held until the paste ends; an
-	 *  inline paste spends it. */
-	held: HeldInsertion;
-}
-
-export interface ClipboardHandlers {
-	onCopy(e: ClipboardEvent): void;
-	onCut(e: ClipboardEvent): Promise<void>;
-	onPaste(e: ClipboardEvent): Promise<void>;
-	/** Insert `md` as pasting it here would, for `EditorInstance.insertMarkdown`. Resolves once
-	 *  the paste lands; false in reading mode or for an empty payload. */
-	insertMarkdown(md: string): Promise<boolean>;
-}
-
-export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHandlers {
-	const arms: readonly ClipboardArm[] = [
-		...(deps.selectionArms ?? []),
-		crossBlockClipboardArm({
-			selection: deps.selection,
-			getDoc: deps.getDoc,
-			crossBlock: deps.crossBlock
-		}),
-		deps.rangeArm
-	];
-	const imageArm = createImagePasteArm({
-		onPasteImage: deps.onPasteImage,
-		events: deps.events,
-		crossBlock: deps.crossBlock
-	});
-
-	function onCopy(e: ClipboardEvent): void {
-		deps.caretMemory.forget();
-		e.preventDefault();
-		// Reading mode, and a copy no `ClipboardArm` takes, copy what the user sees.
-		if (deps.isReadOnly() || takeCopy(e, arms) === null) writeShownSelection(e);
-	}
-
-	function onCut(e: ClipboardEvent): Promise<void> {
-		if (deps.isReadOnly()) {
-			onCopy(e);
-			return Promise.resolve();
-		}
-		deps.caretMemory.forget();
-		deps.caret.recordPreEditOffset();
-		return runClipboardCut(e, arms, deps.foldReveal);
-	}
-
-	/** Undo's caret, the target and what the next insertion spends, all read before the first
-	 *  await: a shown source hides on the way, and its commit forgets the caret memory. */
-	function readPasteTarget(): PasteTarget {
-		deps.caret.recordPreEditOffset();
-		return { range: deps.caret.getSelection(), held: deps.caret.holdInsertion() };
-	}
-
-	async function onPaste(e: ClipboardEvent): Promise<void> {
-		e.preventDefault();
-		if (deps.isReadOnly()) return;
-		const target = readPasteTarget();
-		try {
-			// Read `clipboardData` before the first await, while the event still holds it.
-			const images = imageArm.filesOf(e.clipboardData);
-			if (images.length === 0) {
-				const text = normalizeLineEndings(e.clipboardData?.getData('text/plain') ?? '');
-				await insertPastedText(text, e, target);
-				return;
-			}
-			await deps.foldReveal?.()?.settled;
-			deps.caretMemory.forget();
-			await pasteImages(deps, imageArm, e, images, target);
-		} finally {
-			target.held.finish(true);
-		}
-	}
-
-	/** Everything a plain-text paste does, shared by the gesture and the API call; `e` is null
-	 *  when there is no gesture to consume. */
-	async function insertPastedText(
-		text: string,
-		e: ClipboardEvent | null,
-		target: PasteTarget
-	): Promise<void> {
-		await deps.foldReveal?.()?.settled;
-		if (text && deps.pastePreHook && (await deps.pastePreHook(text))) return;
-		if (await deps.crossBlock.handlePaste(e, text)) return;
-		deps.caretMemory.forget();
-		if (!text) return;
-		await deps.pasteTail(text, target);
-	}
-
-	async function insertMarkdown(md: string): Promise<boolean> {
-		if (deps.isReadOnly()) return false;
-		const text = normalizeLineEndings(md);
-		if (!text) return false;
-		const target = readPasteTarget();
-		try {
-			await insertPastedText(text, null, target);
-		} finally {
-			target.held.finish(true);
-		}
-		return true;
-	}
-
-	return { onCopy, onCut, onPaste, insertMarkdown };
-}
-
-// ── Pasting an image ────────────────────────────────────────────────────────
-
-/** The part of an image paste that needs a caret. The target was read as the event arrived, so a
- *  slow import cannot follow a caret the user moved meanwhile. */
-async function pasteImages(
-	deps: ClipboardSurfaceDeps,
-	imageArm: ImagePasteArm,
-	e: ClipboardEvent,
-	images: File[],
-	target: PasteTarget
-): Promise<void> {
-	const anchor = target.range?.start ?? 0;
-	const text = await imageArm.run(e, images);
-	if (text === null) return;
-	// A hook slow enough to outlive its block leaves nothing to insert into, and the
-	// paste tails would fall back to offset 0. Decline, loudly.
-	if (!deps.caret.getEl()) {
-		emitClipboardError(deps.events, {
-			error: new Error('onPasteImage resolved after its block was gone; insertion declined')
-		});
-		return;
-	}
-	// Move the caret only if it drifted: placing one collapses the DOM range the block reads its
-	// replaced span from, and this paste would stop replacing the selection.
-	if (deps.caret.getCursorOffset() !== anchor) deps.caret.focus(anchor);
-	await deps.pasteTail(text, target);
 }

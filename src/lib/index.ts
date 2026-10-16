@@ -1,12 +1,14 @@
 // The editor module's public, supported API: adding an export is non-breaking,
-// removing one is breaking. Anything not re-exported here is internal.
+// removing one is breaking. Anything not re-exported here is internal. Its types name no Svelte
+// type; the `<Editor>` component and the Svelte helpers are on `@voithos-labs/aragonite/svelte`.
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Mounting ─────────────────────────────────────────────────────────────────
 
-export { default as Editor } from './components/Editor.svelte';
+export { createEditor, type CreateEditorOptions, type EditorHandle } from './create-editor';
 
+export { EDITOR_OPTION_SPECS } from './editor-props';
 export type {
-	EditorProps,
+	EditorOptions,
 	EditorInstance,
 	InsertMarkdownOptions,
 	PlaceholderBlock,
@@ -25,7 +27,7 @@ export type {
 	RunCodeHook,
 	CodeMenuItem,
 	CodeMenuItemsHook
-} from './editor-keys';
+} from './host-hooks';
 export type { ImageLoadPolicy } from './core/inline-render';
 export type { PresentationMode } from './presentation-mode';
 export type { LinkClick } from './activation-click';
@@ -104,6 +106,8 @@ export type {
 export type {
 	Decoration,
 	MarkDecoration,
+	MarkInteractions,
+	MarkHover,
 	WidgetDecoration,
 	ReplaceDecoration,
 	BlockDecoration,
@@ -113,6 +117,12 @@ export type {
 	DecorationSourceHandle,
 	DecorationRegistry
 } from './decorations/types';
+
+// ── Plugin views ─────────────────────────────────────────────────────────────
+
+// What a decoration widget or a menu row draws with: a function that fills the element the editor
+// hands it. `@voithos-labs/aragonite/svelte` makes one from a Svelte component.
+export type { PluginView, PluginViewHandle } from './plugin-view';
 
 // ── Rects ──────────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 import type { AnyBlockKind, AnyInlineKind, BlockKind } from '../core/nodes';
 import type { InvariantViolation } from '../assert';
+import type { SplitBehavior } from '../schema/inline-construct-policy';
 
 /**
  * The registry checks take every lookup as a parameter, so they stay pure and so this file never
@@ -7,16 +8,10 @@ import type { InvariantViolation } from '../assert';
  * it back would close a cycle.
  */
 
-/** `listItem` renders inside its parent `ListBlock`, never through a `BlockHost` lookup, so it is
- *  the one kind with no component-registry entry. */
-const NO_STANDALONE_COMPONENT: ReadonlySet<BlockKind> = new Set(['listItem']);
-
-/** G1.2: every BlockKind resolves to a descriptor, and to a component unless it renders inside a
- *  parent. Returns the first gap. */
+/** G1.2: every BlockKind resolves to a descriptor. Returns the first gap. */
 export function checkRegistryCompleteness(
 	kinds: readonly BlockKind[],
-	hasDescriptor: (kind: BlockKind) => boolean,
-	hasComponent: (kind: BlockKind) => boolean
+	hasDescriptor: (kind: BlockKind) => boolean
 ): InvariantViolation | null {
 	for (const kind of kinds) {
 		if (!hasDescriptor(kind)) {
@@ -26,32 +21,17 @@ export function checkRegistryCompleteness(
 				detail: { kind, missing: 'descriptor' }
 			};
 		}
-		if (!NO_STANDALONE_COMPONENT.has(kind) && !hasComponent(kind)) {
-			return {
-				code: 'registry-incomplete',
-				message: `kind "${kind}" has no registered component`,
-				detail: { kind, missing: 'component' }
-			};
-		}
 	}
 	return null;
 }
 
-/** G1.10: every opener belongs to a registered kind, and no two share a priority. A tie still
- *  dispatches by kind name but is almost always a mistake, so it warns. */
+/** G1.10: no two openers share a priority. A tie still dispatches by kind name but is almost
+ *  always a mistake, so it warns. */
 export function checkOpenerRegistry(
-	entries: readonly { kind: AnyBlockKind; priority: number }[],
-	hasDescriptor: (kind: AnyBlockKind) => boolean
+	entries: readonly { kind: AnyBlockKind; priority: number }[]
 ): InvariantViolation | null {
 	const seen = new Map<number, AnyBlockKind>();
 	for (const { kind, priority } of entries) {
-		if (!hasDescriptor(kind)) {
-			return {
-				code: 'opener-registry',
-				message: `opener registered for "${kind}" but no descriptor exists`,
-				detail: { kind, missing: 'descriptor' }
-			};
-		}
 		const holder = seen.get(priority);
 		if (holder !== undefined) {
 			return {
@@ -120,12 +100,11 @@ export interface ReservedChromeCoherenceEntry {
 	reservedChromeKind?: AnyBlockKind;
 }
 
-/** G1.18: the title-row kind a container's `reservedChrome` names has a descriptor and a
- *  component. G1.14 checks the child itself on every commit. */
+/** G1.18: the title-row kind a container's `reservedChrome` names is registered, which brings its
+ *  view with it. G1.14 checks the child itself on every commit. */
 export function checkReservedChromeCoherence(
 	entries: readonly ReservedChromeCoherenceEntry[],
-	hasDescriptor: (kind: AnyBlockKind) => boolean,
-	hasComponent: (kind: AnyBlockKind) => boolean
+	hasDescriptor: (kind: AnyBlockKind) => boolean
 ): InvariantViolation | null {
 	for (const { kind, reservedChromeKind } of entries) {
 		if (reservedChromeKind === undefined) continue;
@@ -134,13 +113,6 @@ export function checkReservedChromeCoherence(
 				code: 'reserved-chrome-coherence',
 				message: `reservedChrome kind "${reservedChromeKind}" (declared by "${kind}") has no registered descriptor`,
 				detail: { kind, chromeKind: reservedChromeKind, missing: 'descriptor' }
-			};
-		}
-		if (!hasComponent(reservedChromeKind)) {
-			return {
-				code: 'reserved-chrome-coherence',
-				message: `reservedChrome kind "${reservedChromeKind}" (declared by "${kind}") has no registered component`,
-				detail: { kind, chromeKind: reservedChromeKind, missing: 'component' }
 			};
 		}
 	}
@@ -220,7 +192,7 @@ export interface InlineConstructPolicyEntry {
 	kind: AnyInlineKind;
 	revealable: boolean;
 	autoUnwrapOnEmpty: boolean;
-	splitBehavior: 'close-and-reopen' | 'whole' | 'plain';
+	splitBehavior: SplitBehavior;
 	/** The mark vocabulary, for a kind a format chord addresses. */
 	mark?: { nestingRank: number; command: string };
 }
@@ -298,29 +270,6 @@ function markClashOf(
 	}
 	ranks.set(mark.nestingRank, kind);
 	commands.set(mark.command, kind);
-	return null;
-}
-
-export interface DescriptorFieldEntry {
-	kind: AnyBlockKind;
-	contextDependentKind: boolean;
-	hasOpener: boolean;
-}
-
-/** G1.37: a context-dependent kind registers no opener. The two live in separate registries, so
- *  the registration type can't see the pair; it fails silently until a gesture reaches the kind. */
-export function checkDescriptorFieldCoherence(
-	entries: readonly DescriptorFieldEntry[]
-): InvariantViolation | null {
-	for (const entry of entries) {
-		if (entry.contextDependentKind && entry.hasOpener) {
-			return {
-				code: 'descriptor-field-coherence',
-				message: `kind "${entry.kind}" declares contextDependentKind but registers an opener: the field suppresses the reparse that would re-derive the kind, so a kind the parser can recognize stops re-deriving; drop one`,
-				detail: { kind: entry.kind, fields: ['contextDependentKind', 'opener'] }
-			};
-		}
-	}
 	return null;
 }
 

@@ -8,6 +8,7 @@ import { registerMathBlock } from '#lib/plugins/latex/latex-kind.js';
 import type { Document } from '#lib/core/nodes.js';
 import { expectParseConverged } from '#lib/test/harness/parse-converged.js';
 import { makeSearchReplace, scanCompiled } from '#lib/test/harness/search-replace.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const scan = (doc: Document, query: string) => scanCompiled(doc, query, { caseSensitive: true });
 
@@ -15,7 +16,7 @@ const scan = (doc: Document, query: string) => scanCompiled(doc, query, { caseSe
 const reloadKinds = (doc: Document) => parse(serialize(doc)).children.map((c) => c.kind);
 
 beforeEach(() => {
-	registerMathBlock();
+	registerMathBlock(testView());
 });
 
 describe('search/replace into a math fence', () => {

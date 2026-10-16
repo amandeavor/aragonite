@@ -7,6 +7,7 @@ import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { registerFootnoteDefinition } from '#lib/plugins/footnotes/footnote-definition.js';
 import { makeContainerHarness } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 /** A container holding a setext title, its body lines prefixed, and the container's path. */
 const CONTAINERS = [
@@ -24,7 +25,7 @@ const CONTAINERS = [
 
 beforeEach(() => {
 	vi.useFakeTimers();
-	registerFootnoteDefinition();
+	registerFootnoteDefinition(testView());
 });
 
 afterEach(() => {

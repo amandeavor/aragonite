@@ -9,6 +9,7 @@ import {
 import { getCommand, resolveGlobalBinding } from '#lib/schema/commands.js';
 import { eventToChord } from '#lib/schema/keybindings.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
+import { INERT_MARK_ACTIVATION } from '../../support/command-context';
 
 const slashKey = {
 	key: '/',
@@ -31,6 +32,7 @@ describe('slashCommands.open', () => {
 				pluginEditor: () => editor,
 				getPresentationMode: () => 'source',
 				onCommandError: () => {},
+				markActivation: INERT_MARK_ACTIVATION,
 				arg
 			});
 

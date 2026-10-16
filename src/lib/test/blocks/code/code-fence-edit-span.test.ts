@@ -169,7 +169,7 @@ const MODES: { label: string; mode: PresentationMode; shown: boolean }[] = [
 describe.each(MODES)('code block write routes, fence lines $label', ({ mode, shown }) => {
 	for (const route of ROUTES) {
 		it.each(SHAPES)(`${route.name} over a range $name`, async ({ range, hidden }) => {
-			mounted = mountCode(`${DISPLAY}\n`, { policies: { presentationMode: () => mode } });
+			mounted = mountCode(`${DISPLAY}\n`, { mode: () => mode });
 			select(range);
 			const e = route.act();
 			await settleEditor();

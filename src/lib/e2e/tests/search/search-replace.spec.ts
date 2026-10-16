@@ -23,7 +23,7 @@ test.describe('search: replace', () => {
 		await findInput(page).click();
 		await typeQuery(editor, 'foo');
 		await replaceInput(page).fill('bar');
-		await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+		await expect(count(page)).toHaveText(/1\s+of\s+3/);
 
 		await page.getByRole('button', { name: 'Replace', exact: true }).click();
 		await editor.bridge.waitForSourceContains('bar one');
@@ -33,7 +33,7 @@ test.describe('search: replace', () => {
 		expect(source).toContain('foo two');
 		expect(source).toContain('foo three');
 		// One match consumed; two remain.
-		await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/1\s+of\s+2/);
 	});
 
 	test('Replace All rewrites every match in one undo step', async ({ page }) => {
@@ -52,8 +52,8 @@ test.describe('search: replace', () => {
 		expect(replaced).toContain('bar two');
 		expect(replaced).toContain('bar three');
 
-		// One undo restores the whole document. "All" left focus on the button, and Ctrl+Z routes only
-		// through a focused block or the editor root, so a block is focused first.
+		// One undo restores the whole document. Ctrl+Z routes only through a focused block or the
+		// editor root, so a block is focused first.
 		await editor.clickBlock(0);
 		await editor.undo();
 		await editor.bridge.waitForSourceContains('foo three');
@@ -71,7 +71,7 @@ test.describe('search: replace', () => {
 		await findInput(page).click();
 		await typeQuery(editor, '(\\d{4})-(\\d{2})-(\\d{2})');
 		await replaceInput(page).fill('$3/$2/$1');
-		await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/1\s+of\s+2/);
 
 		await page.getByRole('button', { name: 'All', exact: true }).click();
 		await editor.bridge.waitForSourceContains('21/06/2026');
@@ -79,6 +79,29 @@ test.describe('search: replace', () => {
 		expect(source).toContain('21/06/2026');
 		expect(source).toContain('31/12/1999');
 	});
+
+	// Both replace buttons disable once no match is left, and a disabled button can't hold focus.
+	for (const [button, tabs] of [
+		['Replace', 1],
+		['All', 2]
+	] as const) {
+		test(`${button} from the keyboard that leaves no match hands focus to the replace field`, async ({
+			page
+		}) => {
+			await editor.loadContent('foo one\n');
+			await openReplace(editor);
+			await findInput(page).click();
+			await typeQuery(editor, 'foo');
+			await replaceInput(page).click();
+			await page.keyboard.type('bar');
+			for (let i = 0; i < tabs; i++) await page.keyboard.press('Tab');
+			await expect(page.getByRole('button', { name: button, exact: true })).toBeFocused();
+
+			await page.keyboard.press('Enter');
+			await editor.bridge.waitForSourceContains('bar one');
+			await expect(replaceInput(page)).toBeFocused();
+		});
+	}
 });
 
 test.describe('search: tables', () => {
@@ -100,7 +123,7 @@ test.describe('search: tables', () => {
 	test('find counts and highlights matches inside table cells', async ({ page }) => {
 		await openFind(editor);
 		await typeQuery(editor, 'dev');
-		await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/1\s+of\s+2/);
 		// The table's BlockHost paints one whole-cell overlay per matching cell
 		// (positioned over the cell via cellRect, not nested inside [role=cell]).
 		await expect(overlays(page)).toHaveCount(2);
@@ -129,7 +152,7 @@ test.describe('search: tables', () => {
 		await findInput(page).click();
 		await typeQuery(editor, 'dev');
 		await replaceInput(page).fill('engineer');
-		await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/1\s+of\s+2/);
 
 		await page.getByRole('button', { name: 'Replace', exact: true }).click();
 		await editor.bridge.waitForSourceContains('engineer');
@@ -137,6 +160,6 @@ test.describe('search: tables', () => {
 		// Exactly one cell changed; the other still reads dev.
 		expect(source.match(/engineer/g)?.length).toBe(1);
 		expect(source).toContain('| dev |');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 	});
 });

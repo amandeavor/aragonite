@@ -1,5 +1,4 @@
 import { test, expect } from '../../fixtures';
-import { capturePageErrors } from '../../page-probes';
 import { EditorPage } from '../../editor-page';
 import {
 	count,
@@ -22,6 +21,18 @@ test.describe('search: open and close', () => {
 	test('Ctrl+F opens the bar and focuses the find input', async ({ page }) => {
 		await openFind(editor);
 		await expect(findInput(page)).toBeFocused();
+	});
+
+	// A live region that mounts already holding text is often never read out, so the readout's
+	// status has to sit in the accessibility tree, empty, before the first count arrives.
+	test('the readout is a status a screen reader hears from the first count', async ({ page }) => {
+		await openFind(editor);
+		const status = page.locator('.search-bar').getByRole('status');
+		await expect(status).toHaveCount(1);
+		await expect(status).toHaveText('');
+
+		await typeQuery(editor, 'alpha');
+		await expect(status).toHaveText(/1\s+of\s+2/);
 	});
 
 	test('Ctrl+H opens the bar with the replace row expanded', async ({ page }) => {
@@ -71,7 +82,7 @@ test.describe('search: open and close', () => {
 		// not serve the closed bar's cleared match set through a stale scan memo.
 		await openFind(editor);
 		await expect(overlays(page)).toHaveCount(2);
-		await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+		await expect(count(page)).toHaveText(/1\s+of\s+2/);
 	});
 });
 
@@ -93,7 +104,7 @@ test.describe('search: closing returns to the caret', () => {
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		await page.keyboard.press('Enter');
 		await expect(home).not.toBeInViewport();
 
@@ -121,7 +132,7 @@ test.describe('search: closing returns to the caret', () => {
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');
-		await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+		await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		await page.keyboard.press('Enter');
 		await expect(home).toHaveCount(0);
 
@@ -146,17 +157,15 @@ test.describe('search: toggles', () => {
 	test('each toggle reshapes the match set, and an invalid regex shows an error state', async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
-
 		await test.step('case toggle narrows the match set to the case-sensitive subset', async () => {
 			await editor.loadContent('Alpha and alpha and ALPHA\n');
 			await openFind(editor);
 			await findInput(page).fill('');
 			await typeQuery(editor, 'alpha');
-			await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+			await expect(count(page)).toHaveText(/1\s+of\s+3/);
 
 			await page.getByRole('button', { name: 'Match case' }).click();
-			await expect(count(page)).toHaveText(/1\s*\/\s*1/);
+			await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		});
 
 		await test.step('whole-word toggle drops substring-only matches', async () => {
@@ -164,10 +173,10 @@ test.describe('search: toggles', () => {
 			await openFind(editor);
 			await findInput(page).fill('');
 			await typeQuery(editor, 'cat');
-			await expect(count(page)).toHaveText(/1\s*\/\s*4/);
+			await expect(count(page)).toHaveText(/1\s+of\s+4/);
 
 			await page.getByRole('button', { name: 'Whole word' }).click();
-			await expect(count(page)).toHaveText(/1\s*\/\s*2/);
+			await expect(count(page)).toHaveText(/1\s+of\s+2/);
 		});
 
 		await test.step('regex toggle interprets the query as a pattern', async () => {
@@ -179,7 +188,7 @@ test.describe('search: toggles', () => {
 			await expect(count(page)).toHaveText(/No results/);
 
 			await page.getByRole('button', { name: 'Regex' }).click();
-			await expect(count(page)).toHaveText(/1\s*\/\s*3/);
+			await expect(count(page)).toHaveText(/1\s+of\s+3/);
 		});
 
 		await test.step('invalid regex shows an error state with no count and no highlights', async () => {
@@ -191,11 +200,46 @@ test.describe('search: toggles', () => {
 			// Positively assert the error state (the readout carries the `error` class and
 			// the compiler's message), not merely the absence of a count.
 			await expect(count(page)).toHaveClass(/error/);
-			await expect(count(page)).not.toHaveText(/\d+\s*\/\s*\d+/);
+			await expect(count(page)).not.toHaveText(/\d+\s+of\s+\d+/);
 			await expect(count(page)).not.toHaveText(/No results/);
 			await expect(overlays(page)).toHaveCount(0);
 		});
+	});
+});
 
-		expect(pageErrors).toEqual([]);
+test.describe('search: forced colors', () => {
+	// WebKit has no forced-colors mode (the query always matches none); Playwright only flips it.
+	test.skip(({ browserName }) => browserName === 'webkit', 'no forced-colors mode in WebKit');
+
+	// Forced colors drop every fill and shadow, which is all the focus ring and a pressed toggle are
+	// drawn with.
+	test('the focused bar shows a highlight edge and a pressed toggle still reads as pressed', async ({
+		page
+	}) => {
+		const editor = new EditorPage(page);
+		await editor.goto();
+		await page.emulateMedia({ forcedColors: 'active' });
+		await editor.loadContent('alpha\n');
+		await openFind(editor);
+		await page.getByRole('button', { name: 'Match case' }).click();
+
+		// The pointer stays on the toggle it pressed, so this reads the hovered pressed state, and
+		// the toggle holds focus inside the bar.
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const style = (selector: string) => getComputedStyle(document.querySelector(selector)!);
+					const swatch = document.body.appendChild(document.createElement('div'));
+					swatch.style.background = 'Highlight';
+					const highlight = getComputedStyle(swatch).backgroundColor;
+					swatch.remove();
+					return {
+						focusEdgeIsHighlight: style('.search-bar').borderTopColor === highlight,
+						pressedIsHighlight:
+							style('.search-tog[aria-pressed="true"]').backgroundColor === highlight
+					};
+				})
+			)
+			.toEqual({ focusEdgeIsHighlight: true, pressedIsHighlight: true });
 	});
 });

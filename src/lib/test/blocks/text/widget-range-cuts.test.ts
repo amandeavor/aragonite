@@ -3,20 +3,19 @@
 // other cut: a bold word emptied of its only widget leaves no `****` behind.
 // Miss-analysis: the widget and decoration deletes were tested for their undo anchor and caret, always
 // outside a construct, so their literal splice never had a delimiter run beside it.
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
 import { parse } from '#lib/core/parser.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import {
 	createTextClipboard,
 	type TextClipboardDeps
 } from '#lib/components/blocks/text/text-clipboard.js';
+import {
+	clipboardSurface,
+	type ClipboardSurfaceParts
+} from '#lib/test/harness/clipboard-surface.js';
 import { selectWidgetWhole } from '#lib/selection/place-caret.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
@@ -42,8 +41,6 @@ const LIVE = fixtureReading({}, 'live');
 const IMAGE = 'x **![a](b.png)** y\n';
 const IMAGE_RANGE = { start: 4, end: 15 };
 
-beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
 installEdgeDispatchCleanup();
 
 const storeOf = (source: string) => {
@@ -125,12 +122,14 @@ function clipboardOver(source: string, start = IMAGE_RANGE.start) {
 		myPath: [0],
 		cursor: { getRaw: () => null, getRawSelection: () => null },
 		caret: {
+			getEl: () => document.body,
 			recordPreEditOffset: () => {},
 			getPreEditOffset: () => 0,
 			getSelection: () => null,
 			holdInsertion: () => createInsertionRecords([]).hold({}, null)
 		},
 		pasteOffset: (caret: number) => caret,
+		onPasteImage: () => undefined,
 		selection,
 		crossBlock: { handlePaste: async () => false, handleCut: async () => false },
 		caretMemory: stubCaretMemory(),
@@ -144,7 +143,8 @@ function clipboardOver(source: string, start = IMAGE_RANGE.start) {
 		isRevealing: () => false,
 		storedAs: () => storedAsAt(actions.doc, [0], LIVE),
 		reading: LIVE
-	} as unknown as TextClipboardDeps;
+	} as unknown as TextClipboardDeps & ClipboardSurfaceParts;
+	deps.surface = clipboardSurface(deps);
 	const writes = () => vi.mocked(blockEdit.updateBlockContent).mock.calls.map((call) => call[1]);
 	return { handlers: createTextClipboard(deps), writes };
 }

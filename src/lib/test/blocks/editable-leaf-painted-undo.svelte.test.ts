@@ -36,7 +36,7 @@ function mountLeaf(keybindings: KeybindingOverride[] = []) {
 	const overrides = normalizeKeybindingOverrides(keybindings);
 	const mounted = mountRevealLeaf(doc, {
 		props: { paint },
-		overrides: { history, policies: { keybindingOverrides: () => overrides } }
+		overrides: { history, commands: { keybindingOverrides: () => overrides } }
 	});
 	return { ...mounted, history };
 }

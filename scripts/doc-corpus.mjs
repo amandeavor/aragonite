@@ -8,19 +8,23 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 const SKIPPED_DIRS = new Set(['node_modules', 'build', 'dist', '.svelte-kit']);
 
 /**
- * Outside a work tree nothing is ignored, which suits a synthetic corpus in a temp dir.
+ * The ignored paths under `roots`, a wholly ignored directory as one `dir/` entry so an installed
+ * example app can't flood the listing. Outside a work tree nothing is ignored, which suits a
+ * synthetic corpus in a temp dir; any other git failure throws rather than ignore nothing.
  * @param {string[]} roots
- * @returns {Set<string>}
+ * @returns {string[]}
  */
-function ignoredFiles(roots) {
+export function ignoredPaths(roots) {
 	try {
 		const listed = execSync(
-			`git ls-files --others --ignored --exclude-standard -- ${roots.join(' ')}`,
-			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+			`git ls-files --others --ignored --exclude-standard --directory -- ${roots.map((root) => `"${root}"`).join(' ')}`,
+			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
 		);
-		return new Set(listed.split('\n').filter(Boolean));
-	} catch {
-		return new Set();
+		return listed.split('\n').filter(Boolean);
+	} catch (error) {
+		const stderr = /** @type {{ stderr?: unknown }} */ (error).stderr;
+		if (/not a git repository/i.test(String(stderr ?? ''))) return [];
+		throw error;
 	}
 }
 
@@ -48,10 +52,21 @@ function walk(dir, extensions, out) {
  * @returns {string[]}
  */
 export function corpusFiles(roots, extensions) {
-	const ignored = ignoredFiles([...roots]);
+	const ignored = ignoredPaths([...roots]);
 	const found = roots.flatMap((root) => {
 		if (!existsSync(root)) return [];
 		return statSync(root).isDirectory() ? walk(root, extensions, []) : [root];
 	});
-	return found.filter((file) => !ignored.has(file)).sort();
+	return found.filter((file) => !isIgnoredBy(ignored, file)).sort();
+}
+
+/**
+ * Whether `file` (a posix path from the working directory) is one of `ignored` or under one of its
+ * `dir/` entries.
+ * @param {readonly string[]} ignored
+ * @param {string} file
+ * @returns {boolean}
+ */
+export function isIgnoredBy(ignored, file) {
+	return ignored.some((entry) => (entry.endsWith('/') ? file.startsWith(entry) : file === entry));
 }

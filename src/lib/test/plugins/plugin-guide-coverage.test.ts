@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { readSource } from '../invariants/lint/scan-source';
 
-// Drift guard: every export of the two published author barrels must appear in the docs pack,
+// Drift guard: every export of the three published author barrels must appear in the docs pack,
 // so a new export can't ship undocumented. Names match in backtick form, so incidental prose
 // cannot stand in for an entry. Each section is found by its heading, so the heading matters:
 // rename it in both.
@@ -58,11 +58,30 @@ describe('plugin-api § API reference catalogs the whole aragonite/plugin surfac
 		expect(section, `${CATALOG_DOC} has no "${CATALOG_HEADING.trim()}" heading`).not.toBe('');
 		expect(exportNames.length).toBeGreaterThan(40);
 		expect(exportNames).toContain('serializeChildren');
-		expect(exportNames).toContain('BlockList');
 		expect(exportNames).not.toContain('concatChildren');
 	});
 
 	it('lists every export verbatim in the catalog tables', () => {
+		expect(undocumented(exportNames, section)).toEqual([]);
+	});
+
+	it('is not vacuous: a dropped catalog entry is detected', () => {
+		const withoutOne = section.replaceAll('`registerChromeLeaf`', '`__dropped__`');
+		expect(undocumented(exportNames, withoutOne)).toEqual(['registerChromeLeaf']);
+	});
+});
+
+describe('plugin-api § API reference catalogs the whole aragonite/svelte surface', () => {
+	const exportNames = barrelExports('src/lib/svelte.ts');
+	const section = guideSection(CATALOG_DOC, CATALOG_HEADING);
+
+	it('finds the Svelte exports, the default-export aliases resolved', () => {
+		expect(exportNames).toContain('Editor');
+		expect(exportNames).toContain('BlockList');
+		expect(exportNames).toContain('svelteBlockView');
+	});
+
+	it('lists every export verbatim in the catalog', () => {
 		expect(undocumented(exportNames, section)).toEqual([]);
 	});
 

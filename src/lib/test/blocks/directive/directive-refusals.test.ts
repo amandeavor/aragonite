@@ -11,6 +11,8 @@ import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 import { dispatchKey } from '#lib/test/harness/settle.js';
 import { descendTo } from '#lib/block-lists/child-list.js';
 
+const live = () => true;
+
 // The harness mounts BlockHost without the component layer, so unregistered kinds render raw.
 afterEach(() => allowDevWarns(['block-host']));
 
@@ -41,7 +43,10 @@ describe('an unconfigured container does nothing where the dispatch declines', (
 	it('reveals a body child without committing a byte to open it', async () => {
 		mounted = mountDirective(BODY);
 
-		const child = await descendTo(mounted.containerApi.childList(), [1], { openCollapsed: true });
+		const child = await descendTo(mounted.containerApi.childList(), [1], {
+			openCollapsed: true,
+			current: live
+		});
 
 		expect(child?.editable).toBe(true);
 		expect(mounted.blockEdit.updateBlockMetadata).not.toHaveBeenCalled();

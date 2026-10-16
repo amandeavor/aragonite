@@ -14,7 +14,21 @@ async function raiseOnerrorOnly(page: Page): Promise<void> {
 	);
 }
 
-test.describe('the e2e fixture watches window.onerror', () => {
+test.describe('the e2e fixture watches uncaught errors', () => {
+	test('an uncaught thrown error fails the spec', async ({ page }) => {
+		test.fail();
+		await new EditorPage(page).goto();
+		await page.evaluate(
+			() =>
+				new Promise<void>((resolve) => {
+					setTimeout(() => {
+						setTimeout(resolve, 50);
+						throw new Error('injected uncaught throw');
+					}, 0);
+				})
+		);
+	});
+
 	test('an unclaimed onerror-only error fails the spec', async ({ page }) => {
 		test.fail();
 		await raiseOnerrorOnly(page);

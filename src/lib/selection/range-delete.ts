@@ -21,7 +21,9 @@ import {
 	normalizeOwnRaw
 } from '../tree-operations/node-primitives';
 import { settleSeparatorOnBlank } from '../tree-operations/settle';
-import { documentLineEnding } from '../core/lines';
+import { displayLength, documentLineEnding } from '../core/lines';
+import { isProseKind } from '../core/inline';
+import { isMergeEligible } from '../schema/merge-rules';
 import { cleanJoinedRaw } from '../tree-operations/leaf-range';
 import { storedAsAt } from '../tree-operations/stored-as';
 import { joinKeepingSuffix } from '../tree-operations/structural-suffix';
@@ -75,7 +77,12 @@ export function rangeDelete(
 	}
 	// Nothing merges across a title-line container's edge, and a range that holds an edge's block
 	// whole has nothing there to merge.
-	if (!coverage.startEdge || !coverage.endEdge || involvesReservedChrome(doc, start, end)) {
+	if (
+		!coverage.startEdge ||
+		!coverage.endEdge ||
+		involvesReservedChrome(doc, start, end) ||
+		!joinsAcross(doc, start, end)
+	) {
 		return unjoinedRangeDelete(doc, coverage, sharing, reading, gesture, landing);
 	}
 	return joinedRangeDelete(doc, coverage, sharing, reading);
@@ -95,6 +102,18 @@ export function removeHeldWhole(
 }
 
 // ── Internal ────────────────────────────────────────────────────────────────
+
+/** An edge that cuts nothing of its block (an end at its first byte, a start past its last) joins
+ *  when the block holds text or Backspace would merge the two; a rule or a fence stays whole. */
+function joinsAcross(doc: Document, start: SelectionPoint, end: SelectionPoint): boolean {
+	const startBlock = blockNodeAt(doc, start.path);
+	const endBlock = blockNodeAt(doc, end.path);
+	// Inside one block a range always cuts what it covers.
+	if (!startBlock || !endBlock || comparePaths(start.path, end.path) === 0) return true;
+	const merges = isMergeEligible(startBlock.kind, endBlock.kind);
+	if (end.offset === 0 && !merges && !isProseKind(endBlock.kind)) return false;
+	return start.offset < displayLength(startBlock.raw) || merges || isProseKind(startBlock.kind);
+}
 
 /** Both edges kept and plain: the end's tail joins the start's head in the start's block. */
 function joinedRangeDelete(

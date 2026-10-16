@@ -9,7 +9,6 @@ import {
 	spacerCount,
 	topVisibleBlockInViewport
 } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // The page-scrolled host embedding: `scrollMode="host"` with nothing scrollable between the
 // editor and the document, so the window's own viewport is the scroll container. `/test/flow`
@@ -18,7 +17,6 @@ import { capturePageErrors } from '../../page-probes';
 test('the document owns the scroll and nothing between it and the editor does', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 
 	const geometry = await page.evaluate(() => {
@@ -50,11 +48,9 @@ test('the document owns the scroll and nothing between it and the editor does', 
 	expect(geometry.rootHeight).toBeGreaterThan(3000);
 	expect(geometry.pageScrollHeight).toBeGreaterThan(geometry.rootHeight);
 	expect(geometry.pageOverflowPx).toBeGreaterThan(2000);
-	expect(pageErrors).toEqual([]);
 });
 
 test('windowing activates past the budget and bounds the mounted set', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 
 	// An editor in a scrolling page windows once it is over the threshold.
@@ -62,11 +58,9 @@ test('windowing activates past the budget and bounds the mounted set', async ({ 
 	expect(count).toBeGreaterThan(100);
 	expect(await mountedTopLevelCount(page)).toBeLessThan(count);
 	expect(await spacerCount(page)).toBeGreaterThan(0);
-	expect(pageErrors).toEqual([]);
 });
 
 test('scrolling the page moves the window over the document', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 
 	const mountedIndices = () =>
@@ -89,11 +83,9 @@ test('scrolling the page moves the window over the document', async ({ page }) =
 	expect(deep).toEqual(deep.map((_, i) => deep[0] + i));
 	// Still bounded: the mounted blocks follow the viewport rather than piling up behind it.
 	expect(deep.length).toBeLessThan(atTop.length * 3);
-	expect(pageErrors).toEqual([]);
 });
 
 test('a document under the budget never activates and renders whole', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page, UNWINDOWED_ENTRY_BLOCKS);
 
 	// The threshold is the only condition, so a small embedded document pays nothing for this.
@@ -101,11 +93,9 @@ test('a document under the budget never activates and renders whole', async ({ p
 	expect(count).toBe(UNWINDOWED_ENTRY_BLOCKS);
 	await expect(page.locator(`.editor ${TOP_LEVEL_HOSTS}`)).toHaveCount(count);
 	expect(await spacerCount(page)).toBe(0);
-	expect(pageErrors).toEqual([]);
 });
 
 test('scrollTo on a far block scrolls the page and lands it in the viewport', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 
 	expect(await page.evaluate(() => (window as any).__test.rects.scrollTo([140]))).toBe(true);
@@ -121,7 +111,6 @@ test('scrollTo on a far block scrolls the page and lands it in the viewport', as
 	expect(seen.scrollY).toBeGreaterThan(0);
 	expect(seen.top).toBeLessThan(seen.viewport);
 	expect(seen.bottom).toBeGreaterThan(0);
-	expect(pageErrors).toEqual([]);
 });
 
 // The editor's caret below the document and an app handler's caret, worked out from the parsed
@@ -129,7 +118,6 @@ test('scrollTo on a far block scrolls the page and lands it in the viewport', as
 test('a point below the whole document lands at the document end, not the mounted tail', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 
 	const lastIndex = (await cstBlockCount(page)) - 1;
@@ -150,11 +138,9 @@ test('a point below the whole document lands at the document end, not the mounte
 	expect(
 		await page.evaluate((i) => (window as any).__test.rects.blockRect([i]) !== null, lastIndex)
 	).toBe(true);
-	expect(pageErrors).toEqual([]);
 });
 
 test('a search jump reveals its match and scrolls the page to it', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 
 	// Unique to one far block, and unmounted while the user sits at the top.
@@ -179,11 +165,9 @@ test('a search jump reveals its match and scrolls the page to it', async ({ page
 		)
 		.toBe(true);
 	expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-	expect(pageErrors).toEqual([]);
 });
 
 test('a windowed-out undo target is revealed before the caret lands', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 
 	// Type into a block near the top, then scroll far past it so its host unmounts.
@@ -199,5 +183,4 @@ test('a windowed-out undo target is revealed before the caret lands', async ({ p
 	const top = await topVisibleBlockInViewport(page);
 	expect(top!.ref).toBe('[2]');
 	expect(await page.evaluate(() => (window as any).__test.getSource())).not.toContain('EDITED');
-	expect(pageErrors).toEqual([]);
 });

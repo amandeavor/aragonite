@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Editor, type ImageLoadPolicy, type PresentationMode } from '#lib';
+	import { type ImageLoadPolicy, type PresentationMode } from '#lib';
+	import { Editor } from '#lib/svelte.js';
 	import type { KeybindingOverride } from '#lib/schema/keybinding-overrides.js';
 	import { installTestProbes } from '../editor/test-probes';
 	import { HarnessSource } from '../editor/harness-source.svelte';

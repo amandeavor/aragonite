@@ -25,13 +25,7 @@ export interface CellKeyState {
 export type CellKeyPlan =
 	| { kind: 'native' }
 	| { kind: 'select-all-step'; step: 'native' | 'document' }
-	| {
-			kind: 'focus-cell';
-			rowIdx: number;
-			colIdx: number;
-			position: 'start' | 'end';
-			setStickyColumn?: number;
-	  }
+	| { kind: 'focus-cell'; rowIdx: number; colIdx: number; position: 'start' | 'end' }
 	| { kind: 'insert-row-below' }
 	| { kind: 'exit'; direction: 'up' | 'down' };
 
@@ -90,8 +84,7 @@ function verticalMove(move: CellCoord | null, exit: 'up' | 'down'): CellKeyPlan 
 				kind: 'focus-cell',
 				rowIdx: move.rowIdx,
 				colIdx: move.colIdx,
-				position: 'start',
-				setStickyColumn: move.colIdx
+				position: 'start'
 			}
 		: { kind: 'exit', direction: exit };
 }

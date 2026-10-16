@@ -2,7 +2,7 @@ import { test, expect } from '../../fixtures';
 import { PluginsPage, capturedErrors } from './helpers';
 
 /**
- * In-body tags as a mark decoration over ordinary text (`routes/demo-tags/tag-marks-plugin.ts`)
+ * In-body tags as a mark decoration over ordinary text (`examples/showcase/tag-marks.ts`)
  * rather than an inline widget: a tag's source is its display, so no non-editable widget costs the
  * caret or Backspace anything. Seed `tags-marks` holds the same document as `tags.md`, comparing
  * the two models on the same bytes. Requirements: e2e/requirements/plugins/tags-marks.md.

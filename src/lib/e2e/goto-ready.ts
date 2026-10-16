@@ -23,6 +23,7 @@ const READY_BY_ROUTE = {
 	'/test/flow': '__flow',
 	'/test/host-theme': '__parityDocuments',
 	'/test/multi-editor': '__editorsReady',
+	'/test/no-reset': '__test',
 	'/test/page-scroll': '__pageScroll',
 	'/test/plugins': '__test',
 	'/test/plugins/activation': '__activation',

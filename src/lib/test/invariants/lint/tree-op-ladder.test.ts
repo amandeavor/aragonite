@@ -17,6 +17,8 @@ import { SOURCE_DIR } from './source-paths';
 const LADDER = [
 	'node-primitives',
 	'unshare',
+	'separator-writes',
+	'neighbour-merge',
 	'settle',
 	'content-write',
 	'stored-as',

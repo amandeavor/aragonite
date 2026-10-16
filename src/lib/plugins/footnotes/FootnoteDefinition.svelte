@@ -4,13 +4,12 @@
 	// stays read-only. Clicking the marker, or Enter on it in reading mode, jumps back to the first
 	// reference.
 	import {
-		BlockList,
-		createContainerBlock,
 		getPluginMetadata,
 		type DocumentView,
 		type EditorRects,
 		type NodeView
 	} from '#lib/plugin.js';
+	import { BlockList, createContainerBlock } from '#lib/svelte.js';
 	import type { FootnoteDefMetadata } from './footnote-definition';
 	import { backToReferenceLabel } from './constants';
 	import { collectFootnoteReferences } from './footnote-numbering';
@@ -93,7 +92,7 @@
 		position: relative;
 		margin: 0.4em 0;
 		padding-left: 0.9em;
-		border-left: 2px solid var(--color-border, #3d4047);
+		border-left: 2px solid var(--color-border);
 		font-size: 0.95em;
 	}
 

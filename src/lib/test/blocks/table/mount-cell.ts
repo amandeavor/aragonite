@@ -9,7 +9,8 @@ import type { TableContext } from '#lib/action-contracts.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import { parse } from '#lib/core/parser.js';
 import { refSlotsOver } from '#lib/block-lists/child-refs.js';
-import type { EditorPolicies, EditorServices } from '#lib/editor-keys.js';
+import type { EditorServices } from '#lib/editor-keys.js';
+import type { MountContextOverrides } from '../../harness/mount-context';
 import { TABLE_CONTEXT_KEY } from '#lib/editor-keys.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { makeStubBlockEdit } from '../../harness/editor-actions';
@@ -31,9 +32,6 @@ function makeStubTableContext(): StubTableContext {
 	return {
 		focusCell: vi.fn(),
 		revealColumn: vi.fn(),
-		getStickyColumn: vi.fn(() => null),
-		setStickyColumn: vi.fn(),
-		resetStickyColumn: vi.fn(),
 		exitUpward: vi.fn(),
 		exitDownward: vi.fn(),
 		notifyCellFocused: vi.fn(),
@@ -79,7 +77,10 @@ function documentAround(node: CstNode): Document {
 }
 
 /** The cell sits in the last row of a 2x2 table, so a vertical move exits the table. */
-export function mountCell(raw: string, policies: Partial<EditorPolicies> = {}): MountedCell {
+export function mountCell(
+	raw: string,
+	options: Pick<MountContextOverrides, 'mode'> = {}
+): MountedCell {
 	const node: CstNode = { kind: 'tableCell', leadingTrivia: '', raw };
 	const selection = createSelectionState();
 	const tableContext = makeStubTableContext();
@@ -90,7 +91,7 @@ export function mountCell(raw: string, policies: Partial<EditorPolicies> = {}): 
 		path: [0, 1, 0],
 		props: { rowIdx: 1, columnCount: 2, rowCount: 2, slots: refSlotsOver(refs) },
 		overrides: {
-			policies,
+			...options,
 			services: {
 				decorations: noIslands,
 				selection

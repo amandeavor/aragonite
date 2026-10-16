@@ -58,11 +58,6 @@ function languageEntry(
 	};
 }
 
-/** Whether the name is taken, whatever the activation: the check before a guarded register. */
-export function isLanguageRegistered(name: string): boolean {
-	return grammars.has(name.toLowerCase());
-}
-
 /** Any spelling of a language to the one name it is registered under. A name of its own beats
  *  another language's alternate spelling, so no grammar is hidden behind somebody's nickname. */
 function canonicalName(spelling: string, activation: PluginActivation): string {

@@ -116,9 +116,9 @@ function platformResetHooks(code: string): string[] {
 	return HOOKS.flatMap((hook) => callsTo(code, hook)).filter((args) => pattern.test(args));
 }
 
-// Built-in registrations survive the reset, and the live cleaner slots sit outside it.
+// Built-in registrations survive the reset, so they are not plugin registrations.
 const PLUGIN_REGISTRATION = new RegExp(
-	`(?<!function\\s+)\\b(?:${['install', 'Plugins'].join('')}|activateDirective\\w*|declarePlugin\\w*|register(?!Built[Ii]n|Live)[A-Z]\\w*)\\s*\\(`
+	`(?<!function\\s+)\\b(?:${['install', 'Plugins'].join('')}|activateDirective\\w*|declarePlugin\\w*|register(?!Built[Ii]n)[A-Z]\\w*)\\s*\\(`
 );
 // A body opens after a parameter list and its return type, which may be one flat object type.
 const FUNCTION_BODY = /\)\s*(?::\s*(?:\{[^{}]*\}|[^{=;]*))?\s*\{/g;
@@ -277,7 +277,7 @@ const RULES: FileRule[] = [
 		},
 		reason:
 			'a private walk reads a bracket or quote inside a literal as code the day one appears (#287): use collectFiles, stripComments, walkCode or the helpers built on them in scan-source.ts',
-		reaches: [SOURCE.scanSource, SOURCE.compositionDriverLint],
+		reaches: [SOURCE.scanSource, SOURCE.e2eDriversLint],
 		hits: [
 			at(
 				`${LINT_DIRS[0]}a.test.ts`,
@@ -522,7 +522,7 @@ const RULES: FileRule[] = [
 			at('src/lib/test/g.test.ts', hookCall('beforeAll', 'installLayoutStubs()')),
 			at(
 				'src/lib/test/h.test.ts',
-				'registerBuiltInDescriptors();\nbeforeAll(registerLiveJoinSeamCleaner);'
+				'registerBuiltInDescriptors();\nbeforeAll(registerBuiltInBlocks);'
 			),
 			at(
 				'src/lib/test/i.test.ts',

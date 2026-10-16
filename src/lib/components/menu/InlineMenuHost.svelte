@@ -2,8 +2,11 @@
 	import { tick } from 'svelte';
 	import { INLINE_MENU_LABEL } from '../../a11y-strings';
 	import type { EditorEvents } from '../../editor-events';
+	import { warnIfForeignRuntime } from '../../foreign-runtime';
+	import type { InlineMenuItem } from '../../inline-menu/types';
 	import type { InlineMenuState } from '../../inline-menu/inline-menu-state.svelte';
 	import MenuIcon from './MenuIcon.svelte';
+	import InlineMenuRowView from './InlineMenuRowView.svelte';
 	import type { MenuPresence } from './menu-presence.svelte';
 	import { eventToChord } from '../../schema/keybindings';
 
@@ -112,14 +115,31 @@
 		return () => root.removeEventListener('focusout', onFocusOut);
 	});
 
+	// Takes the name now: a row's `destroy` can reject after the menu, and its derived name, are gone.
+	function rowReporter(source: string): (error: unknown) => void {
+		return (error) => menu.reportSourceError(error, source);
+	}
+
+	function onRowError(error: unknown, source: string): void {
+		warnIfForeignRuntime(error, `inline menu row ${source}`);
+		menu.reportSourceError(error, source);
+	}
+
 	$effect(() => {
 		void view?.activeIndex;
 		menuEl?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
 	});
 </script>
 
+{#snippet defaultRow(item: InlineMenuItem)}
+	{#if item.icon}<span class="md-menu-icon"><MenuIcon name={item.icon} /></span>{/if}
+	<span class="inline-menu-label">{item.label}</span>
+	{#if item.detail}<span class="inline-menu-detail">{item.detail}</span>{/if}
+{/snippet}
+
 {#if showing && view}
-	{@const Row = view.source.row}
+	{@const row = view.source.row}
+	{@const sourceName = view.source.name}
 	<!-- A press on the list must not blur the document: the block under the caret commits on blur,
 	     and the pick needs that caret. -->
 	<div
@@ -130,30 +150,45 @@
 		{@attach menuPresence.track(() => menu.close(), { edits: true })}
 		tabindex="-1"
 		aria-label={INLINE_MENU_LABEL}
-		data-inline-menu={view.source.name}
+		data-inline-menu={sourceName}
 		style:left="{position?.left ?? 0}px"
 		style:top="{position?.top ?? 0}px"
 		style:visibility={position ? 'visible' : 'hidden'}
 		onpointerdown={(e) => e.preventDefault()}
 	>
 		{#each view.items as item, i (item.id)}
+			<!-- Derived per row, so a moved active row repaints only the two rows it changed. -->
+			{@const active = i === view.activeIndex}
+			{@const query = view.query}
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div
 				id={menu.optionId(item.id)}
 				class="md-menu-item inline-menu-item"
 				role="option"
 				tabindex="-1"
-				aria-selected={i === view.activeIndex}
-				data-active={i === view.activeIndex}
+				aria-selected={active}
+				data-active={active}
 				onpointermove={() => menu.setActive(i)}
 				onclick={() => menu.commit(i)}
 			>
-				{#if Row}
-					<Row {item} active={i === view.activeIndex} query={view.query} />
+				{#if row}
+					<!-- The boundary catches a Svelte row's throw on a later re-render, which runs
+					     outside the view's own update. -->
+					<svelte:boundary onerror={(error) => onRowError(error, sourceName)}>
+						<InlineMenuRowView
+							view={row}
+							{item}
+							{active}
+							{query}
+							report={rowReporter(sourceName)}
+							subject="inline menu row {sourceName}"
+						>
+							{#snippet fallback()}{@render defaultRow(item)}{/snippet}
+						</InlineMenuRowView>
+						{#snippet failed()}{@render defaultRow(item)}{/snippet}
+					</svelte:boundary>
 				{:else}
-					{#if item.icon}<span class="md-menu-icon"><MenuIcon name={item.icon} /></span>{/if}
-					<span class="inline-menu-label">{item.label}</span>
-					{#if item.detail}<span class="inline-menu-detail">{item.detail}</span>{/if}
+					{@render defaultRow(item)}
 				{/if}
 			</div>
 		{/each}
@@ -186,6 +221,6 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 	}
 </style>

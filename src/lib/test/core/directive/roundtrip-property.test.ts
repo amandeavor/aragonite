@@ -7,8 +7,9 @@ import { rebuildDirectiveContainerRaw } from '#lib/core/directive/kinds.js';
 import { registerDirective } from '#lib/core/directive/registry.js';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
 import { roundTripCases } from '#lib/test/support/round-trip.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
-beforeEach(activateDirectiveGrammar);
+beforeEach(() => activateDirectiveGrammar(testDirectiveViews()));
 
 const cases = [
 	':::note\nbody\n:::\n',

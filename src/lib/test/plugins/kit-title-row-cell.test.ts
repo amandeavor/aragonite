@@ -20,6 +20,7 @@ import { runContainerConformance, type ContainerConformanceProfile } from '#lib/
 import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import { registerCalloutKind, CALLOUT } from '../../../routes/test/plugins/callout/callout-kind';
+import { testView } from '#lib/test/support/test-view.js';
 
 interface TitledMetadata {
 	title: string;
@@ -58,6 +59,7 @@ function registerTitledKind(): PluginBlockKind {
 		}
 	});
 	registerBlockKind(kind, {
+		view: testView(),
 		gapEdges: 'none',
 		mergeRole: 'container',
 		editable: true,
@@ -96,7 +98,7 @@ describe('the container kit writes the title row (#640)', () => {
 	});
 
 	it.each([
-		['the callout', () => (registerCalloutKind(), CALLOUT), ':::callout T\nbody\n:::\n'],
+		['the callout', () => (registerCalloutKind(testView()), CALLOUT), ':::callout T\nbody\n:::\n'],
 		[
 			'an admonition',
 			() => (installPlugins([admonitionsPlugin()]), 'admonition'),

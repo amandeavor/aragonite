@@ -49,7 +49,7 @@ const CLIPBOARD_READ_RE =
 /** Each site reading external text, and the name that carries its text to a declared route.
  *  `editor-root/clipboard.ts` forwards the carrier and reads no payload of its own. */
 const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
-	'src/lib/components/blocks/editable/editable-surface.ts': {
+	'src/lib/components/blocks/editable/surface-clipboard.ts': {
 		handoff: 'pasteTail',
 		why: 'the shared paste handler hands the text to the block’s pasteTail, which dispatches through the paste tree-op'
 	},
@@ -62,8 +62,8 @@ const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
 		why: 'the menu paste reads through navigator.clipboard and re-dispatches the text as a paste event on the focused surface, whose handler is the editable-surface route above'
 	},
 	'src/lib/components/blocks/table/TableCellBlock.svelte': {
-		handoff: 'pasteDispatch',
-		why: 'the right-click menu paste has no ClipboardEvent to read, so it reads through navigator.clipboard and calls the paste tree-op directly'
+		handoff: 'pasteTextInto',
+		why: 'the cell’s right-click menu paste reads through navigator.clipboard and re-dispatches the text as a paste event on the cell, whose handler is the editable-surface route above'
 	},
 	'src/lib/components/paste-image-arm.ts': {
 		handoff: 'handlePaste',
@@ -114,9 +114,7 @@ const NON_EDITING_RENDERERS: Record<string, string> = {
 	'src/lib/core/inline/visibility.ts':
 		'renders into a detached fragment to read what paints, and mounts nothing',
 	'src/lib/components/blocks/code/code-renderer.ts':
-		'defines renderCodeBlock and hands the fragment back; the caller mounts it',
-	'src/lib/testing/inline-conformance.ts':
-		'measures the offset walk over a synthetic container the editor never mounts'
+		'defines renderCodeBlock and hands the fragment back; the caller mounts it'
 };
 
 const SYNTHETIC_STAMPERS: Record<string, string> = {
@@ -187,7 +185,10 @@ const codeOutsideStyleBlocks = (file: SourceFile): string =>
 // ── G4.33 live byte rewrites ─────────────────────────────────────────────────
 
 const ORACLE_HOME = SOURCE.inlineVisibility;
-const SLOT_HOME = SOURCE.inlineConstructPolicy;
+const LIVE_REWRITE_HOMES = [
+	'src/lib/core/inline/live-edit/live-join.ts',
+	'src/lib/core/inline/live-edit/live-split.ts'
+];
 
 /** The modules building live-mode byte candidates, each verifying through the render path. */
 const REWRITE_MODULES: Record<string, string> = {
@@ -195,8 +196,8 @@ const REWRITE_MODULES: Record<string, string> = {
 	'src/lib/components/blocks/text/construct-edge-delete.ts': 'the destructive edge delete',
 	'src/lib/components/blocks/text/edge-seat.ts': 'the typing position at a construct edge',
 	'src/lib/core/inline/link-source-bytes.ts': 'the link byte writer',
-	'src/lib/components/blocks/text/live-join-seam.ts': 'the join cleaner',
-	'src/lib/components/blocks/text/live-split-rebalance.ts': 'the split rebalancer',
+	'src/lib/core/inline/live-edit/live-join.ts': 'the join cleaner',
+	'src/lib/core/inline/live-edit/live-split.ts': 'the split rebalancer',
 	'src/lib/components/blocks/text/pending-mark-insert.ts': 'the pending-mark resolver',
 	'src/lib/core/inline/format-toggle.ts': 'the format toggle',
 	'src/lib/core/inline/live-edit/read-back.ts':
@@ -217,7 +218,6 @@ const PRE_DELETE_NAMERS: Record<string, string> = {
 		'the cell replacing the range with its text through replaceRangeInLeaf, ahead of the escaping',
 	'src/lib/components/blocks/text/text-clipboard.ts': 'creates the range from its selection',
 	'src/lib/components/blocks/code/CodeBlock.svelte': 'creates the range from its selection',
-	'src/lib/components/blocks/table/TableCellBlock.svelte': 'creates the range from its selection',
 	'src/lib/components/blocks/code/code-paste-surface.ts':
 		'the one splicer: a fenced body has no inline constructs to clean'
 };
@@ -295,7 +295,7 @@ const PLAIN_READS: Record<string, string> = {
 		'hands on: reads the clipboard’s own blocks to pick the paste strategy, which a childless container steers; the routes that land them fill in at the splice',
 	'src/lib/tree-operations/reorder.ts':
 		'probe: asks whether two neighbours still read as a pair, and installs nothing',
-	'src/lib/tree-operations/settle.ts':
+	'src/lib/tree-operations/neighbour-merge.ts':
 		'installs after backfill: merges a window of whole sibling blocks by how their joined bytes read, comparing block counts on the plain read',
 	'src/lib/tree-operations/list/list-builders.ts':
 		'hands on: a split item’s halves are read at the slot and land through list absorb and list break-out, which fill in at the splice',
@@ -624,16 +624,16 @@ const MANIFESTS: ManifestRule[] = [
 		misses: ["el.querySelectorAll('.block')", at('x.svelte', "el.querySelectorAll('.md-marker')")]
 	},
 	{
-		id: 'G4.33 the registered rewrite slots have exactly one reader',
-		population: (file) => file.relPath !== SLOT_HOME,
-		matches: /(?<![\w.])(getLiveJoinSeamCleaner|getLiveSplitRebalancer)\s*\(/,
+		id: 'G4.33 the live join and split rewrites each have exactly one caller',
+		population: (file) => !LIVE_REWRITE_HOMES.includes(file.relPath),
+		matches: /(?<![\w.])(cleanLiveJoinSeam|rebalanceLiveSplit)\s*\(/,
 		declared: {
-			'src/lib/tree-operations/leaf-range.ts': 'the one reader of the join slot',
-			'src/lib/tree-operations/node-ops.ts': 'the one reader of the split slot'
+			'src/lib/tree-operations/leaf-range.ts': 'the one caller of the join rewrite',
+			'src/lib/tree-operations/node-ops.ts': 'the one caller of the split rewrite'
 		},
-		reason: 'a second reader of the rewrite slots is a second opinion on what a join cleans',
-		hits: ['getLiveJoinSeamCleaner()?.(join)'],
-		misses: ['// getLiveSplitRebalancer() answers']
+		reason: 'a second caller of a live rewrite is a second opinion on what a join or split writes',
+		hits: ['cleanLiveJoinSeam(join) ?? literal'],
+		misses: ['// rebalanceLiveSplit() answers']
 	},
 	{
 		id: 'G4.33 the files naming preDelete are the declared ones',
@@ -685,13 +685,13 @@ const OBLIGATIONS: FileRule[] = [
 		reaches: Object.keys(PLAIN_READS).filter((path) => BACKFILLS_HERE.test(PLAIN_READS[path])),
 		hits: [
 			at(
-				SOURCE_DIR.treeOperations + 'settle.ts',
+				SOURCE_DIR.treeOperations + 'neighbour-merge.ts',
 				"const read = readBlocks(bytes, { grammar, scope: 'fragment' });"
 			)
 		],
 		misses: [
 			at(
-				SOURCE_DIR.treeOperations + 'settle.ts',
+				SOURCE_DIR.treeOperations + 'neighbour-merge.ts',
 				'for (const block of blocks) ensureEditableContainers(block, ending);'
 			)
 		]

@@ -5,6 +5,13 @@ node_modules
 /package
 dist/
 *.tgz
+# The framework example apps' builds
+dist-react18/
+dist-vue33/
+.nuxt/
+.output/
+.next/
+next-env.d.ts
 .env
 .env.*
 !.env.example
@@ -22,9 +29,9 @@ playwright-report/
 simulation-captures/
 
 # svelte-package emits a .d.mts beside any scripts/*.mjs that a compiled
-# src/lib/test file imports (pack-manifest.mjs, shared with verify-pack). Generated
-# build byproduct, pruned from the tarball — not source.
+# src/lib/test file imports; scripts/prune-dist.mjs deletes them after packaging.
 scripts/*.d.mts
+examples/adapter-suite/*.d.mts
 
 # Raw perf harness output; curated numbers live in baseline.json
 perf-results/

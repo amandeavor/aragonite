@@ -19,6 +19,10 @@ caret as it stood when the menu opened, the same as the browser's items would.
   range named the cell menu's Cut and not its Paste, so the Paste kept writing into the clicked
   cell with the range still painted, and no test picked it over a range.
 - Cut is a single undo entry.
+- Cut over a cell rectangle empties it exactly as Ctrl+X over the same rectangle does.
+- Paste of a spreadsheet grid (tab-separated rows) fills cells from the clicked cell exactly as
+  Ctrl+V does. Miss-analysis: the menu's Paste wrote straight into the cell's text instead of
+  firing the paste Ctrl+V fires, and no test gave it a grid, so the skipped grid fill went unseen.
 
 - Paste picked while the host loads another document (the clipboard read held until the swap
   is done): the text lands nowhere, and the next document is exactly what was loaded

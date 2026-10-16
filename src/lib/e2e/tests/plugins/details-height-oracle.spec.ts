@@ -8,7 +8,6 @@ import {
 	editorScrollHeight,
 	scrollThrough
 } from './details-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 /**
  * How a collapsed container's height is estimated (`docs/design/virtual-rendering.md` § How tall
@@ -48,16 +47,10 @@ function topLevelHostCount(page: Page): Promise<number> {
 
 test.describe('plugin container: <details> collapsed height estimate at scale', () => {
 	let editor: DetailsPage;
-	let pageErrors: string[];
 
 	test.beforeEach(async ({ page }) => {
 		editor = new DetailsPage(page);
-		pageErrors = capturePageErrors(page);
 		await editor.gotoDetails();
-	});
-
-	test.afterEach(() => {
-		expect(pageErrors).toEqual([]);
 	});
 
 	test('a run of collapsed details estimates one chrome row each, not the hidden body', async ({

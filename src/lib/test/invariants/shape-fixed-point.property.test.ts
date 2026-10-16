@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import { isBlankParagraph, parse } from '#lib/core/parser.js';
@@ -39,11 +39,6 @@ import { legalizeWrite } from '#lib/tree-operations/content-write.js';
 import { blockNodeAt, documentBody } from '#lib/tree-operations/node-primitives.js';
 import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
 import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerLiveSplitRebalancer,
-	__resetLiveSplitRebalancerForTests
-} from '#lib/schema/inline-construct-policy.js';
-import { rebalanceLiveSplit } from '#lib/components/blocks/text/live-split-rebalance.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { rebuildUnsharedChain } from '#lib/tree-operations/chain-rebuild.js';
@@ -417,12 +412,7 @@ describe('G2.13 shape fixed point across load → edit → reload', () => {
 
 	/** Compared with the byte-literal cut, since the split itself is not defect-free: closing and
 	 *  reopening a construct may differ nowhere the literal cut does not. */
-	describe('with the live split rebalancer registered', () => {
-		// The registration happens once, so this hands it back rather than leaving the production
-		// value installed for whatever file the runner loads into this worker next.
-		beforeAll(() => registerLiveSplitRebalancer(rebalanceLiveSplit));
-		afterAll(() => __resetLiveSplitRebalancerForTests());
-
+	describe('with the live split rebalancer', () => {
 		const arbInlineDoc = fc
 			.array(arbInlineSource, { minLength: 1, maxLength: 3 })
 			.map((paragraphs) => paragraphs.join('\n\n') + '\n');

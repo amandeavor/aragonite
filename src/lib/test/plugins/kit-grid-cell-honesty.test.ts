@@ -1,7 +1,7 @@
 // Miss-analysis (#576): every container-kit test used built-in kinds, so no test asked what the kit
 // reports for a plugin grid kind.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerBlockOpener, type CstNode, type PluginBlockKind } from '#lib/plugin.js';
+import { type CstNode, type PluginBlockKind } from '#lib/plugin.js';
 import { runContainerConformance, type ContainerConformanceProfile } from '#lib/testing.js';
 import { testContainer, testLeaf } from '#lib/test/harness/test-kinds.js';
 
@@ -10,32 +10,37 @@ const EXCUSED = 'the plugin grid in this suite exists only to probe the cells it
 // Each `%` line is one cell; the rebuild writes garbage, so no honest grid check passes over it.
 function registerCorruptGrid(): PluginBlockKind {
 	const cell = testLeaf('honesty-grid-cell');
-	const grid = testContainer('honesty-grid', {
-		contract: 'grid',
-		rebuildRaw: (node) => {
-			node.raw = 'corrupted\n';
-		}
-	});
-	registerBlockOpener(grid, {
-		priority: 45,
-		interruptsParagraph: false,
-		tryOpen(ctx) {
-			let end = ctx.index;
-			while (end < ctx.end && ctx.lines[end].text.startsWith('%')) end++;
-			if (end === ctx.index) return null;
-			const lines = ctx.lines.slice(ctx.index, end);
-			const children: CstNode[] = lines.map((line) => ({
-				kind: cell,
-				leadingTrivia: '',
-				raw: line.raw
-			}));
-			const raw = lines.map((line) => line.raw).join('');
-			return {
-				node: { kind: grid, leadingTrivia: ctx.leadingTrivia, raw, children },
-				consumed: end - ctx.index
-			};
-		}
-	});
+	const grid = testContainer(
+		'honesty-grid',
+		{
+			contract: 'grid',
+			rebuildRaw: (node) => {
+				node.raw = 'corrupted\n';
+			}
+		},
+		(grid) => ({
+			opener: {
+				priority: 45,
+				interruptsParagraph: false,
+				tryOpen(ctx) {
+					let end = ctx.index;
+					while (end < ctx.end && ctx.lines[end].text.startsWith('%')) end++;
+					if (end === ctx.index) return null;
+					const lines = ctx.lines.slice(ctx.index, end);
+					const children: CstNode[] = lines.map((line) => ({
+						kind: cell,
+						leadingTrivia: '',
+						raw: line.raw
+					}));
+					const raw = lines.map((line) => line.raw).join('');
+					return {
+						node: { kind: grid, leadingTrivia: ctx.leadingTrivia, raw, children },
+						consumed: end - ctx.index
+					};
+				}
+			}
+		})
+	);
 	return grid;
 }
 

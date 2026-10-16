@@ -23,7 +23,7 @@
 
 <style>
 	.wikilink {
-		color: var(--color-accent, #567b67);
+		color: var(--color-accent);
 		text-decoration: underline;
 		cursor: pointer;
 	}

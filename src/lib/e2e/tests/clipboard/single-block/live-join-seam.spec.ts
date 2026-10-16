@@ -26,7 +26,9 @@ async function selectAcrossTheCloser(ep: EditorPage, page: Page): Promise<void> 
 }
 
 test.describe('single-block paste over a construct edge', () => {
-	test('live: the stranded delimiter goes with the cut, not onto the screen', async ({ page }) => {
+	test('live: the bold the cut went through closes around the pasted text, no marker on screen', async ({
+		page
+	}) => {
 		const ep = new EditorPage(page);
 		await ep.goto('?presentationMode=live');
 		await ep.loadContent(DOC);
@@ -41,7 +43,7 @@ test.describe('single-block paste over a construct edge', () => {
 		await ep.waitForRenderFlush();
 
 		expect(await textOutsideMarkers(ep.getBlock(0))).not.toContain('*');
-		expect(await ep.bridge.getSource()).not.toContain('**b');
+		expect(await ep.bridge.getSource()).toContain('Some **bX**');
 	});
 
 	test('source: the same paste stays byte-literal', async ({ page }) => {
@@ -114,7 +116,7 @@ test.describe('table-cell paste over a construct edge', () => {
 		await ep.waitForRenderFlush();
 	}
 
-	test('live: the cell drops the run its cut stranded', async ({ page }) => {
+	test('live: the cell closes the bold its cut went through', async ({ page }) => {
 		const ep = new EditorPage(page);
 		await ep.goto('?presentationMode=live');
 		await ep.loadContent(CELL_DOC);
@@ -128,7 +130,7 @@ test.describe('table-cell paste over a construct edge', () => {
 		await ep.waitForRenderFlush();
 
 		expect(await textOutsideMarkers(ep.getBlock(0))).not.toContain('*');
-		expect(await ep.bridge.getSource()).toContain('| Some bXxt |');
+		expect(await ep.bridge.getSource()).toContain('| Some **bX**xt |');
 	});
 
 	test('source: the cell paste stays byte-literal', async ({ page }) => {

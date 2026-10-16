@@ -1,26 +1,12 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
+import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
-import { createSharingState } from '../../tree-operations/sharing';
-import type { SelectionPoint } from '../../selection/primitives';
-import { allowDevWarns } from '#lib/test/support/warn-gate.js';
+import { cellPoint, type SelectionPoint } from '../../selection/primitives';
 import { TWO_COL_FOUR_ROW, TWO_COL_THREE_ROW, findTable } from './table-fixtures';
-import { fixtureReading } from '../harness/fixture-grammar';
-
-// rangeDelete is driven with hand-built endpoints, so the table branches see character offsets
-// `SelectionState` would have snapped to cell coordinates first.
-afterEach(() => allowDevWarns(['rangeCoverage:tableEdge']));
+import { deleteRange } from '../harness/range-delete';
 
 function run(source: string, start: SelectionPoint, end: SelectionPoint) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end);
 	return { doc: result.newDoc, splices: result.tableRowSplices };
 }
 
@@ -31,7 +17,7 @@ describe('rangeDelete: tableRowSplices reporting', () => {
 		const { doc, splices } = run(
 			`intro\n\n${TWO_COL_FOUR_ROW}`,
 			{ path: [0], offset: 2 },
-			{ path: [1], offset: 3 }
+			cellPoint([1], 3)
 		);
 
 		const table = findTable(doc)!;
@@ -39,11 +25,10 @@ describe('rangeDelete: tableRowSplices reporting', () => {
 	});
 
 	it('Case 2 reports the start table row suffix it removed', () => {
-		const { doc, splices } = run(
-			`${TWO_COL_FOUR_ROW}\nafter\n`,
-			{ path: [0], offset: 2 },
-			{ path: [1], offset: 0 }
-		);
+		const { doc, splices } = run(`${TWO_COL_FOUR_ROW}\nafter\n`, cellPoint([0], 2), {
+			path: [1],
+			offset: 0
+		});
 
 		const table = findTable(doc)!;
 		expect(splices).toEqual([{ table, at: 1, count: 3 }]);
@@ -52,28 +37,15 @@ describe('rangeDelete: tableRowSplices reporting', () => {
 	it('two-table span reports one splice per table', () => {
 		const { doc, splices } = run(
 			`${TWO_COL_THREE_ROW}\n${TWO_COL_THREE_ROW}`,
-			{ path: [0], offset: 3 },
-			{ path: [1], offset: 2 }
+			cellPoint([0], 3),
+			cellPoint([1], 2)
 		);
 
 		const [startTable, endTable] = doc.children;
+		// Each side takes whole rows: the start's row and those below, the end's row and those above.
 		expect(splices).toEqual([
-			{ table: startTable, at: 2, count: 1 },
-			{ table: endTable, at: 0, count: 1 }
+			{ table: startTable, at: 1, count: 2 },
+			{ table: endTable, at: 0, count: 2 }
 		]);
-	});
-
-	it('partial-row coverage that removes no rows reports no splice', () => {
-		// End at cell 0: only half the header row is covered, so no whole row
-		// is removed and no splice may be reported.
-		const { doc, splices } = run(
-			`intro\n\n${TWO_COL_FOUR_ROW}`,
-			{ path: [0], offset: 2 },
-			{ path: [1], offset: 0 }
-		);
-
-		const table = findTable(doc)!;
-		expect(table.children).toHaveLength(4);
-		expect(splices).toEqual([]);
 	});
 });

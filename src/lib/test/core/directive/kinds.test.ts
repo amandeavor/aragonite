@@ -13,17 +13,18 @@ import {
 	rebuildDirectiveContainerRaw,
 	type DirectiveContainerMetadata
 } from '#lib/core/directive/kinds.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 describe('registerDirectiveKinds', () => {
 	it('registers the generic container and leaf fallback kinds', () => {
-		registerDirectiveKinds();
+		registerDirectiveKinds(testDirectiveViews());
 		expect(isBlockKindRegistered(DIRECTIVE_CONTAINER)).toBe(true);
 		expect(isBlockKindRegistered(DIRECTIVE_LEAF)).toBe(true);
 	});
 
 	it('is idempotent: a re-import re-runs it without throwing', () => {
-		registerDirectiveKinds();
-		expect(() => registerDirectiveKinds()).not.toThrow();
+		registerDirectiveKinds(testDirectiveViews());
+		expect(() => registerDirectiveKinds(testDirectiveViews())).not.toThrow();
 		expect(isBlockKindRegistered(DIRECTIVE_CONTAINER)).toBe(true);
 	});
 });
@@ -32,7 +33,7 @@ describe('registerDirectiveKinds', () => {
 // a non-prose kind.
 describe('directiveLeaf render descriptor', () => {
 	beforeEach(() => {
-		registerDirectiveKinds();
+		registerDirectiveKinds(testDirectiveViews());
 	});
 
 	const leaf = () => getBlockKindDescriptor(declaredPluginKind(DIRECTIVE_LEAF));
@@ -68,7 +69,7 @@ describe('directiveLeaf render descriptor', () => {
 // the captured metadata and children after a structural edit) can prove the capture.
 describe('rebuildDirectiveContainerRaw', () => {
 	beforeEach(() => {
-		registerDirectiveKinds();
+		registerDirectiveKinds(testDirectiveViews());
 	});
 
 	const build = (

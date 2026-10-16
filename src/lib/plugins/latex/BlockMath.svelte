@@ -7,7 +7,8 @@
 <script lang="ts">
 	// A render-primary editable block: all editing behavior lives in `createEditableLeaf`, so
 	// this component owns only how the render and the source are laid out.
-	import { createEditableLeaf, type NodeView } from '#lib/plugin.js';
+	import { type NodeView } from '#lib/plugin.js';
+	import { createEditableLeaf } from '#lib/svelte.js';
 	// The layout toggle cycles through these, and its label names the layout it switches to.
 	type MathLayout = MathBlockLayout;
 	const LAYOUT_NEXT: Record<MathLayout, MathLayout> = {
@@ -155,6 +156,7 @@
 	<button
 		type="button"
 		class="math-preview-toggle"
+		data-corner-control
 		aria-label={LAYOUT_TITLE[next]}
 		title={LAYOUT_TITLE[next]}
 		onmousedown={(e) => e.preventDefault()}
@@ -221,7 +223,7 @@
 	.math-block-editing .math-block-card {
 		display: flex;
 		align-items: center;
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+		background: var(--color-bg-secondary);
 	}
 
 	/* Only the differences from the shared .md-source-surface (editor.css), including dropping
@@ -260,7 +262,7 @@
 
 	/* Empty and not being edited: the fill stays, so there is a box to see and click into. */
 	.math-block:not(.math-block-editing) .math-block-render[data-empty] {
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+		background: var(--color-bg-secondary);
 		/* Exactly the editing card's height (one source line at its size, plus its padding and
 		   hairline border), so opening and closing an empty equation moves nothing. */
 		min-height: calc(0.9em * 1.5 + 22px);
@@ -270,7 +272,7 @@
 	/* When not editing, the render is the whole block and a hover tint is its only cue; inside
 	   a card the fill is already there, so the tint would double it. */
 	.math-block:not(.math-block-editing) .math-block-render:hover {
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+		background: var(--color-bg-secondary);
 	}
 
 	.math-preview-toggle {
@@ -286,7 +288,7 @@
 		border: none;
 		border-radius: 5px;
 		background: transparent;
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 		cursor: pointer;
 		opacity: 0;
 		transition: opacity 120ms ease-out;
@@ -300,8 +302,8 @@
 	}
 
 	.math-preview-toggle:hover {
-		background: var(--color-ui-faint, rgba(255, 255, 255, 0.07));
-		color: var(--color-text-secondary, #cfcfca);
+		background: var(--color-ui-faint);
+		color: var(--color-text-secondary);
 	}
 
 	@media (prefers-reduced-motion: reduce) {

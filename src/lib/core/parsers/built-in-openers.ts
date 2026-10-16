@@ -1,9 +1,10 @@
 /**
- * Registers the built-in block openers. Called explicitly from `core/parser.ts`, since a bare
- * side-effect import would be tree-shaken from the production build.
+ * The built-in block openers, which `schema/built-in-descriptors.ts` puts on the built-in
+ * registrations. Read only inside a function: this module sits on the parser's import cycle.
  */
 
-import { registerBlockOpener } from '../../schema/block-openers';
+import type { BlockKind } from '../nodes';
+import type { BlockOpener } from '../../schema/block-openers';
 import { OPENER_PRIORITIES } from '../../schema/opener-priorities';
 import { matchFenceOpen } from './fence-syntax';
 import { parseFencedCode } from './fenced-code';
@@ -19,15 +20,8 @@ import {
 } from './html-block';
 import { definitionReadingNotFinal, parseLinkReferenceDefinition } from './link-reference';
 
-// Idempotence guard, not a registry bypass: a dev-server re-eval resets it so
-// the register-once dev path still replaces.
-let registered = false;
-
-export function registerBuiltInOpeners(): void {
-	if (registered) return;
-	registered = true;
-
-	registerBlockOpener('fencedCode', {
+export const BUILT_IN_OPENERS = {
+	fencedCode: {
 		priority: OPENER_PRIORITIES.fencedCode,
 		tryOpen(ctx) {
 			const fence = matchFenceOpen(ctx.line.text);
@@ -35,9 +29,9 @@ export function registerBuiltInOpeners(): void {
 			return parseFencedCode(ctx.lines, ctx.index, ctx.end, ctx.leadingTrivia, fence);
 		},
 		interruptsParagraph: (t) => matchFenceOpen(t) !== null
-	});
+	},
 
-	registerBlockOpener('heading', {
+	heading: {
 		priority: OPENER_PRIORITIES.heading,
 		tryOpen(ctx) {
 			const heading = matchHeading(ctx.line.text);
@@ -53,11 +47,11 @@ export function registerBuiltInOpeners(): void {
 			};
 		},
 		interruptsParagraph: (t) => matchHeading(t) !== null
-	});
+	},
 
 	// Setext heading's `---` underline is disambiguated inside parseParagraph;
 	// at dispatch a bare thematic line can't be an underline (no open paragraph).
-	registerBlockOpener('thematicBreak', {
+	thematicBreak: {
 		priority: OPENER_PRIORITIES.thematicBreak,
 		tryOpen(ctx) {
 			const marker = matchThematicBreak(ctx.line.text);
@@ -77,9 +71,9 @@ export function registerBuiltInOpeners(): void {
 			const marker = matchThematicBreak(t);
 			return marker === '*' || marker === '_';
 		}
-	});
+	},
 
-	registerBlockOpener('blockquote', {
+	blockquote: {
 		priority: OPENER_PRIORITIES.blockquote,
 		tryOpen(ctx) {
 			if (!matchBlockquote(ctx.line.text)) return null;
@@ -94,9 +88,9 @@ export function registerBuiltInOpeners(): void {
 			);
 		},
 		interruptsParagraph: matchBlockquote
-	});
+	},
 
-	registerBlockOpener('list', {
+	list: {
 		priority: OPENER_PRIORITIES.list,
 		tryOpen(ctx) {
 			if (!matchListItem(ctx.line.text)) return null;
@@ -111,9 +105,9 @@ export function registerBuiltInOpeners(): void {
 			);
 		},
 		interruptsParagraph: listCanInterrupt
-	});
+	},
 
-	registerBlockOpener('indentedCode', {
+	indentedCode: {
 		priority: OPENER_PRIORITIES.indentedCode,
 		tryOpen(ctx) {
 			if (!matchIndentedCode(ctx.line.text)) return null;
@@ -122,9 +116,9 @@ export function registerBuiltInOpeners(): void {
 		// GFM §4.4: indented code cannot interrupt a paragraph. An open paragraph absorbs the
 		// indented line lazily, so this opener only sees lines with no paragraph open.
 		interruptsParagraph: false
-	});
+	},
 
-	registerBlockOpener('htmlBlock', {
+	htmlBlock: {
 		priority: OPENER_PRIORITIES.htmlBlock,
 		tryOpen(ctx) {
 			const type = matchHtmlBlock(ctx.line.text);
@@ -132,14 +126,14 @@ export function registerBuiltInOpeners(): void {
 			return parseHtmlBlock(ctx.lines, ctx.index, ctx.end, ctx.leadingTrivia, type);
 		},
 		interruptsParagraph: htmlCanInterrupt
-	});
+	},
 
-	registerBlockOpener('linkReferenceDefinition', {
+	linkReferenceDefinition: {
 		priority: OPENER_PRIORITIES.linkReferenceDefinition,
 		tryOpen(ctx) {
 			return parseLinkReferenceDefinition(ctx.lines, ctx.index, ctx.end, ctx.leadingTrivia);
 		},
 		interruptsParagraph: false,
 		readingNotFinal: definitionReadingNotFinal
-	});
-}
+	}
+} satisfies Partial<Record<BlockKind, BlockOpener>>;

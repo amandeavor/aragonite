@@ -11,7 +11,8 @@
 
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Editor, type PresentationMode } from '#lib';
+	import { type PresentationMode } from '#lib';
+	import { Editor } from '#lib/svelte.js';
 	import { CHANGELOG_FAMILIES } from './changelog-content';
 	import { trackParityDocument } from '../parity-documents.svelte';
 

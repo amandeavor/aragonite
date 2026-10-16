@@ -4,9 +4,10 @@
 // addressed by doc-absolute path, the coordinate the CST uses.
 
 import { mount, unmount, flushSync } from 'svelte';
-import { SvelteMap } from 'svelte/reactivity';
 import Editor from '#lib/components/Editor.svelte';
-import type { EditorInstance, EditorProps } from '#lib/editor-props.js';
+import { createReactiveProps } from '#lib/reactive-props.js';
+import type { EditorInstance } from '#lib/editor-props.js';
+import type { EditorProps } from '#lib/components/editor-component-props.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 
 import { settleEditor, pressKey } from '#lib/test/harness/settle.js';
@@ -35,7 +36,7 @@ const live = new Set<MountedEditor<unknown>>();
 export function mountEditor<Seam = unknown>(initial: EditorProps): MountedEditor<Seam> {
 	const target = document.createElement('div');
 	document.body.appendChild(target);
-	const props = hostProps(initial);
+	const props = createReactiveProps(initial);
 	const instance = mount(Editor, { target, props }) as MountedEditor<Seam>['instance'];
 	flushSync();
 	const mounted: MountedEditor<Seam> = {
@@ -52,26 +53,6 @@ export function mountEditor<Seam = unknown>(initial: EditorProps): MountedEditor
 	};
 	live.add(mounted);
 	return mounted;
-}
-
-/** Props a test writes the way a host does: each key is reactive, and a value is stored as given,
- *  not wrapped in a deep proxy, so a plugin definition keeps its identity across editors. */
-function hostProps(initial: EditorProps): EditorProps {
-	const values = new SvelteMap<PropertyKey, unknown>(Object.entries(initial));
-	return new Proxy({} as EditorProps, {
-		get: (_, key) => values.get(key),
-		set: (_, key, value) => {
-			values.set(key, value);
-			return true;
-		},
-		has: (_, key) => values.has(key),
-		ownKeys: () =>
-			[...values.keys()].filter((key) => typeof key !== 'number') as (string | symbol)[],
-		getOwnPropertyDescriptor: (_, key) =>
-			values.has(key)
-				? { value: values.get(key), writable: true, enumerable: true, configurable: true }
-				: undefined
-	});
 }
 
 /** Teardown for `afterEach`: every editor still mounted. */

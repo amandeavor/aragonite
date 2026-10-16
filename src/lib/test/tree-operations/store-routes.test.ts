@@ -3,7 +3,7 @@
 // through the gesture's own entry with bytes the right store and a top-level one read differently.
 // Miss-analysis: every container shape read the same at the top level, so a route handed a lone
 // paragraph's store instead of its own passed every suite.
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import { installPlugins } from '#lib';
 import { footnotesPlugin } from '#lib/plugins/footnotes/index.js';
@@ -16,32 +16,25 @@ import { asDomTextOffset, asRawOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { runDrop } from '#lib/selection/selection-drop.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
+import { collectCrossBlockText } from '#lib/selection/clipboard-text.js';
+import type { SelectionPoint } from '#lib/selection/primitives.js';
+import { movedText, runDrop } from '#lib/selection/selection-drop.js';
+import { createInlineRangeCommit } from '#lib/editor-actions/inline-range-commit.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
-import { rebalanceLiveSplit } from '#lib/components/blocks/text/live-split-rebalance.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import { allowDevWarns } from '../support/warn-gate';
-import {
-	registerLiveJoinSeamCleaner,
-	registerLiveSplitRebalancer,
-	__resetLiveJoinSeamCleanerForTests,
-	__resetLiveSplitRebalancerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import {
 	makeBlockListState,
 	makeContainerHarness,
 	makeEditorActionsDeps,
 	makeListContextAt,
 	makeStubBlockEdit,
-	pasteContext
+	runPasteDispatch,
+	makePasteCommit
 } from '../harness/editor-actions';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
 import { createCaretMemory, type CaretMemory } from '#lib/caret/caret-memory.js';
@@ -62,6 +55,7 @@ import { replaceSelectedWidget } from '#lib/components/blocks/text/widget-intera
 import { selectWidgetWhole } from '#lib/selection/place-caret.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { deleteRange } from '#lib/test/harness/range-delete.js';
 
 // While `TOP.on`, every store the source makes is a lone top-level paragraph's instead of its own.
 const TOP = vi.hoisted(() => ({ on: false }));
@@ -80,8 +74,6 @@ vi.mock('#lib/tree-operations/stored-as.js', async (importOriginal) => {
 const LIVE = fixtureReading({}, 'live');
 
 beforeAll(() => {
-	registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
-	registerLiveSplitRebalancer(rebalanceLiveSplit);
 	ensurePasteSurface(tableCellPasteSurface);
 });
 beforeEach(() => {
@@ -96,11 +88,6 @@ afterEach(() => {
 	delete document.body.dataset.presentation;
 	window.getSelection()?.removeAllRanges();
 });
-afterAll(() => {
-	__resetLiveJoinSeamCleanerForTests();
-	__resetLiveSplitRebalancerForTests();
-});
-
 // ── Where the bytes go ───────────────────────────────────────────────────────
 
 // After a to-do's box, `# y` is text; at the top level it is a heading. After a plain item's
@@ -148,7 +135,7 @@ function mountText(place: Place, caretMemory?: CaretMemory): Mounted {
 		source: place.source,
 		path: place.leaf,
 		overrides: {
-			policies: { presentationMode: () => 'live' },
+			mode: () => 'live',
 			services: { decorations: noIslands, ...(caretMemory ? { caretMemory } : {}) }
 		}
 	});
@@ -156,7 +143,7 @@ function mountText(place: Place, caretMemory?: CaretMemory): Mounted {
 	return { el, blockEdit: mounted.blockEdit };
 }
 
-const mountLiveCell = (raw: string): Mounted => mountCell(raw, { presentationMode: () => 'live' });
+const mountLiveCell = (raw: string): Mounted => mountCell(raw, { mode: () => 'live' });
 
 function select(el: HTMLElement, start: number, end = start): void {
 	el.focus();
@@ -189,6 +176,26 @@ function cut(el: HTMLElement): void {
 	const e = new Event('cut', { bubbles: true, cancelable: true });
 	Object.defineProperty(e, 'clipboardData', { value: { setData: () => {}, getData: () => '' } });
 	el.dispatchEvent(e);
+}
+
+/** What a copy of `range` in the mounted block puts on the clipboard. */
+function copied(mounted: Mounted, range: typeof X): string {
+	select(mounted.el, range.start, range.end);
+	let text = '';
+	const e = new Event('copy', { bubbles: true, cancelable: true });
+	const clipboardData = {
+		setData: (_type: string, value: string) => (text = value),
+		getData: () => ''
+	};
+	Object.defineProperty(e, 'clipboardData', { value: clipboardData });
+	mounted.el.dispatchEvent(e);
+	return text;
+}
+
+/** What a copy from `start` in the first leaf to `end` in the next block puts on the clipboard. */
+function copiedAcross(source: string, start: SelectionPoint, end: SelectionPoint): string {
+	const doc = parse(source);
+	return collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, start, end)), LIVE);
 }
 
 /** An IME run typed over `range`, the DOM left holding `composed` when it ends. */
@@ -351,10 +358,10 @@ async function enterInFirstItem(source: string, offset: number): Promise<string>
 	return serialize(deps.doc);
 }
 
-function deleteRange(source: string, from: [number[], number], to: [number[], number]): string {
+function backspaceRange(source: string, from: [number[], number], to: [number[], number]): string {
 	const doc = parse(source);
-	const range = coverRange(doc, { path: from[0], offset: from[1] }, { path: to[0], offset: to[1] });
-	rangeDelete(doc, rangeCoverage(doc, range), createSharingState(), LIVE, 'Backspace');
+	const [start, end] = [from, to].map(([path, offset]) => ({ path, offset }));
+	deleteRange(doc, start, end, { reading: LIVE, gesture: 'Backspace' });
 	return serialize(doc);
 }
 
@@ -382,18 +389,52 @@ async function dragXAway(place: Place, inCell: boolean): Promise<string> {
 	return serialize(deps.getDoc());
 }
 
+/** Drops a copy of `text` at `offset` of the leaf at `place`, as a drag with the copy key held. */
+async function dropCopy(place: Place, offset: number, text: string): Promise<string> {
+	const harness = makeEditorActionsDeps(`${place.source}\nsrc\n`, { reading: LIVE });
+	const controller = createUndoController(harness.deps);
+	const deps = {
+		editorRoot: document.createElement('div'),
+		getDoc: () => harness.deps.doc,
+		controller,
+		coordinator: createPasteCoordinator(harness.deps, controller),
+		reading: LIVE,
+		activePlugins: everyInstalledPlugin,
+		events: harness.events,
+		setDropCaret: () => {},
+		isReadOnly: () => false
+	};
+	const from = { path: [1], start: 0, end: 3, inCell: false, text };
+	await runDrop(deps, from, { path: place.leaf, offset }, true);
+	return serialize(deps.getDoc());
+}
+
+/** The bytes a drag of `range` carries out of the leaf at `place`. */
+function dragText(place: Place, range: typeof X): string | null {
+	const { deps } = makeEditorActionsDeps(place.source, { reading: LIVE });
+	const drop = { getDoc: () => deps.doc, reading: LIVE, activePlugins: everyInstalledPlugin };
+	return movedText(drop, { path: place.leaf, ...range, inCell: false });
+}
+
+/** Takes `range` out of the leaf at `place` through the write the popovers and menus share. */
+async function removeInline(place: Place, range: typeof X): Promise<string> {
+	const harness = makeEditorActionsDeps(place.source, { reading: LIVE });
+	const write = createInlineRangeCommit({
+		deps: harness.deps,
+		controller: createUndoController(harness.deps)
+	});
+	await write.commitInlineRange(place.leaf, range.start, range.end, '', range.start);
+	return serialize(harness.deps.doc);
+}
+
 /** Pastes `text` over `range`: the bytes the leaf's commit writes. */
 async function pasteOver(place: Place, range: typeof X, text: string): Promise<string[]> {
-	const { deps } = makeEditorActionsDeps(place.source, { reading: LIVE });
+	const h = makePasteCommit(place.source, { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
-	await pasteDispatch(
+	await runPasteDispatch(
+		h,
 		{ pastedText: text, targetPath: place.leaf, offset: range.start, preDelete: range },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			reading: LIVE,
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
+		{ blockEdit }
 	);
 	return vi.mocked(blockEdit.updateBlockContent).mock.calls.map((call) => call[1]);
 }
@@ -421,8 +462,9 @@ const FAMILIES: Family[] = [
 	{
 		name: 'a range edit on beforeinput',
 		stores: {
-			'components/blocks/text/TextEditableBlock.svelte': 2,
-			'components/blocks/table/TableCellBlock.svelte': 2
+			'components/blocks/text/TextEditableBlock.svelte': 1,
+			'components/blocks/table/TableCellBlock.svelte': 1,
+			'components/blocks/text/typed-input.ts': 1
 		},
 		rows: [
 			{ shape: 'a to-do', run: () => withText(TODO, deleteX), want: ['# y\n'] },
@@ -433,13 +475,15 @@ const FAMILIES: Family[] = [
 	{
 		name: 'a composition over a selection',
 		stores: { 'components/blocks/text/TextEditableBlock.svelte': 1 },
+		// A link never grows at its edge, so the composed text lands outside the one the range
+		// emptied, and the link's runs go with it.
 		rows: [
 			{
 				shape: 'a to-do',
 				run: () =>
 					withText(
-						{ source: '- [ ] **x** y\n', leaf: [0, 0, 0] },
-						(m) => () => compose(m.el, { start: 2, end: 5 }, '**# y')
+						{ source: '- [ ] [x](u) y\n', leaf: [0, 0, 0] },
+						(m) => () => compose(m.el, { start: 1, end: 6 }, '[# y')
 					),
 				want: ['# y\n']
 			},
@@ -447,19 +491,16 @@ const FAMILIES: Family[] = [
 				shape: 'a plain item',
 				run: () =>
 					withText(
-						{ source: '- **x** ] y\n', leaf: [0, 0, 0] },
-						(m) => () => compose(m.el, { start: 2, end: 5 }, '**[ ] y')
+						{ source: '- [x](u) ] y\n', leaf: [0, 0, 0] },
+						(m) => () => compose(m.el, { start: 1, end: 6 }, '[[ ] y')
 					),
-				want: ['**[ ] y\n']
+				want: ['[[ ] y\n']
 			}
 		]
 	},
 	{
 		name: 'a delimiter typed where it may pair',
-		stores: {
-			'components/blocks/text/TextEditableBlock.svelte': 1,
-			'components/blocks/table/TableCellBlock.svelte': 1
-		},
+		stores: { 'components/blocks/text/typed-input.ts': 1 },
 		rows: [
 			{
 				shape: 'a to-do',
@@ -512,14 +553,14 @@ const FAMILIES: Family[] = [
 			{
 				shape: 'a to-do, at a widget',
 				run: () =>
-					typedAtWidget({ source: '- [ ] **x** y\n', leaf: [0, 0, 0] }, { start: 2, end: 5 }, '#'),
+					typedAtWidget({ source: '- [ ] [x](u) y\n', leaf: [0, 0, 0] }, { start: 1, end: 6 }, '#'),
 				want: ['# y\n']
 			},
 			{
 				shape: 'a plain item, at a widget',
 				run: () =>
-					typedAtWidget({ source: '- **x** ] y\n', leaf: [0, 0, 0] }, { start: 2, end: 5 }, '['),
-				want: ['**[ ] y\n']
+					typedAtWidget({ source: '- [x](u) ] y\n', leaf: [0, 0, 0] }, { start: 1, end: 6 }, '['),
+				want: ['[[ ] y\n']
 			}
 		]
 	},
@@ -543,8 +584,7 @@ const FAMILIES: Family[] = [
 	{
 		name: 'a cut',
 		stores: {
-			'components/blocks/text/text-clipboard.ts': 1,
-			'components/blocks/table/TableCellBlock.svelte': 1
+			'components/blocks/text/text-clipboard.ts': 1
 		},
 		rows: [
 			{ shape: 'a to-do', run: () => withText(TODO, cutX), want: ['# y\n'] },
@@ -552,6 +592,33 @@ const FAMILIES: Family[] = [
 			{ shape: 'a to-do in a quote', run: () => withText(QUOTED_TODO, cutX), want: ['# y\n'] },
 			{ shape: 'a nested to-do', run: () => withText(NESTED_TODO, cutX), want: ['# y\n'] },
 			{ shape: 'a table cell', run: () => withCell('**x**# y', cutX), want: ['# y'] }
+		]
+	},
+	{
+		// The copy starts at the bold's hidden closer, which empties it, so the closer goes and `# y`
+		// reads as text in a to-do or a cell; at the top level it is a heading, so the closer stays.
+		name: 'the bytes a copy carries',
+		stores: {
+			'components/blocks/text/text-clipboard.ts': 1,
+			'selection/clipboard-text.ts': 1
+		},
+		rows: [
+			{ shape: 'a to-do', run: () => copied(mountText(TODO), { start: 3, end: 8 }), want: '# y' },
+			{
+				shape: 'a table cell',
+				run: () => copied(mountLiveCell('**x**# y'), { start: 3, end: 8 }),
+				want: '# y'
+			},
+			{
+				shape: 'a to-do, across blocks',
+				run: () =>
+					copiedAcross(
+						'- [ ] **x**# y\n\nnext\n',
+						{ path: [0, 0, 0], offset: 3 },
+						{ path: [1], offset: 2 }
+					),
+				want: '- [ ] # y\n\nne'
+			}
 		]
 	},
 	{
@@ -608,17 +675,17 @@ const FAMILIES: Family[] = [
 		rows: [
 			...[TODO, QUOTED_TODO, NESTED_TODO, FOOTNOTE_TODO].map((place) => ({
 				shape: place.name,
-				run: () => deleteRange(place.source, [place.leaf, X.start], [place.leaf, X.end]),
+				run: () => backspaceRange(place.source, [place.leaf, X.start], [place.leaf, X.end]),
 				want: place.source.replace('**x**', '')
 			})),
 			{
 				shape: ITEM.name,
-				run: () => deleteRange(ITEM.source, [ITEM.leaf, X.start], [ITEM.leaf, X.end]),
+				run: () => backspaceRange(ITEM.source, [ITEM.leaf, X.start], [ITEM.leaf, X.end]),
 				want: '- ****[ ] y\n'
 			},
 			{
 				shape: 'across two to-dos',
-				run: () => deleteRange('- [ ] **a**\n- [ ] **c**# y\n', [[0, 0, 0], 2], [[0, 1, 0], 3]),
+				run: () => backspaceRange('- [ ] **a**\n- [ ] **c**# y\n', [[0, 0, 0], 2], [[0, 1, 0], 3]),
 				want: '- [ ] # y\n'
 			}
 		]
@@ -629,22 +696,17 @@ const FAMILIES: Family[] = [
 		rows: [
 			{
 				shape: 'the kept head of a to-do',
-				run: () => deleteRange(`- [ ] **# y** z\n\n${CALLOUT}`, [[0, 0, 0], 5], [[1, 1], 2]),
+				run: () => backspaceRange(`- [ ] # y**z**\n\n${CALLOUT}`, [[0, 0, 0], 5], [[1, 1], 2]),
 				want: `- [ ] # y\n\n:::callout\ndy\n:::\n`
 			},
 			{
-				shape: 'the kept head of a plain item',
-				run: () => deleteRange(`- **[ ] y** z\n\n${CALLOUT}`, [[0, 0, 0], 7], [[1, 1], 2]),
-				want: `- **[ ] y\n\n:::callout\ndy\n:::\n`
-			},
-			{
 				shape: 'the kept tail of a to-do',
-				run: () => deleteRange(`${CALLOUT}\n- [ ] **x**# y\n`, [[0, 1], 2], [[1, 0, 0], 3]),
+				run: () => backspaceRange(`${CALLOUT}\n- [ ] **x**# y\n`, [[0, 1], 2], [[1, 0, 0], 3]),
 				want: `:::callout T\nbo\n:::\n\n- [ ] # y\n`
 			},
 			{
 				shape: 'the kept tail of a plain item',
-				run: () => deleteRange(`${CALLOUT}\n- **x**[ ] y\n`, [[0, 1], 2], [[1, 0, 0], 3]),
+				run: () => backspaceRange(`${CALLOUT}\n- **x**[ ] y\n`, [[0, 1], 2], [[1, 0, 0], 3]),
 				want: `:::callout T\nbo\n:::\n\n- **[ ] y\n`
 			}
 		]
@@ -663,11 +725,76 @@ const FAMILIES: Family[] = [
 		]
 	},
 	{
+		// The range starts at the bold's hidden closer, which empties it, so the closer goes. In a
+		// to-do or a cell `# y` then reads as text; at the top level it is a heading, so it stays.
+		name: 'the bytes a drag carries',
+		stores: { 'selection/selection-drop.ts': 1 },
+		rows: [
+			{
+				shape: 'a to-do',
+				run: () =>
+					dragText({ source: '- [ ] **x**# y z\n', leaf: [0, 0, 0] }, { start: 3, end: 8 }),
+				want: '# y'
+			},
+			{
+				shape: 'a plain item',
+				run: () => dragText({ source: '- **x**[ ] y z\n', leaf: [0, 0, 0] }, { start: 3, end: 10 }),
+				want: '**[ ] y'
+			},
+			{
+				shape: 'a table cell',
+				run: () =>
+					dragText(
+						{ source: '| h |\n| - |\n| **x**# y z |\n', leaf: [0, 1, 0] },
+						{ start: 3, end: 8 }
+					),
+				want: '# y'
+			}
+		]
+	},
+	{
+		// A to-do's `# ` is text, so the dropped bold joins the bold it lands in; at the top level the
+		// joined text would read as a heading, so the plain splice stands.
+		name: 'the text a drop lands',
+		stores: { 'selection/selection-drop.ts': 1 },
+		rows: [
+			{
+				shape: 'a to-do',
+				run: () => dropCopy({ source: '- [ ] # **bo**d z\n', leaf: [0, 0, 0] }, 6, '**ld** an'),
+				want: '- [ ] # **bold** and z\n\nsrc\n'
+			}
+		]
+	},
+	{
+		name: 'a popover or menu write over a range',
+		stores: { 'editor-actions/inline-range-commit.ts': 1 },
+		rows: [
+			{
+				shape: 'a to-do',
+				run: () =>
+					removeInline(
+						{ source: '- [ ] **![a](b.png)**# y\n', leaf: [0, 0, 0] },
+						{ start: 2, end: 13 }
+					),
+				want: '- [ ] # y\n'
+			},
+			{
+				shape: 'a plain item',
+				run: () =>
+					removeInline(
+						{ source: '- **![a](b.png)**[ ] y\n', leaf: [0, 0, 0] },
+						{ start: 2, end: 13 }
+					),
+				want: '- ****[ ] y\n'
+			}
+		]
+	},
+	{
 		name: 'a paste over a selection',
 		stores: { 'tree-operations/paste/dispatch.ts': 1 },
 		passesOn: ['tree-operations/paste/hooks.ts', 'components/blocks/table/table-cell-paste.ts'],
 		rows: [
-			// The pasted text lands after a run the cut strands, so the join still has something to drop.
+			// The pasted text lands after a run the cut empties, so the join still has something to drop.
 			{
 				shape: 'a to-do',
 				run: () => pasteOver({ source: '- [ ] #**x** y\n', leaf: [0, 0, 0] }, HASH_RUN, ' a'),
@@ -676,15 +803,15 @@ const FAMILIES: Family[] = [
 			{
 				shape: 'a plain item',
 				run: () =>
-					pasteOver({ source: '- **x** ] y\n', leaf: [0, 0, 0] }, { start: 2, end: 5 }, '['),
-				want: ['**[ ] y\n']
+					pasteOver({ source: '- [x](u) ] y\n', leaf: [0, 0, 0] }, { start: 1, end: 6 }, '['),
+				want: ['[[ ] y\n']
 			},
 			{
 				shape: 'a table cell',
 				run: () =>
 					pasteOver(
-						{ source: '| h |\n| - |\n| # **x** y |\n', leaf: [0, 1, 0] },
-						{ start: 4, end: 7 },
+						{ source: '| h |\n| - |\n| # [x](u) y |\n', leaf: [0, 1, 0] },
+						{ start: 3, end: 8 },
 						'a'
 					),
 				want: ['# a y']
@@ -722,8 +849,8 @@ const REWRITES = [
 	'tree-operations/leaf-range.ts',
 	'components/blocks/text/live-selection-edit.ts',
 	'components/blocks/text/construct-edge-delete.ts',
-	'components/blocks/text/live-join-seam.ts',
-	'components/blocks/text/live-split-rebalance.ts',
+	'core/inline/live-edit/live-join.ts',
+	'core/inline/live-edit/live-split.ts',
 	'core/inline/live-edit/read-back.ts'
 ];
 
@@ -735,6 +862,7 @@ const STORE_TAKERS = [
 	'cleanJoinedRaw',
 	'joinLeaves',
 	'replaceRangeInLeaf',
+	'bytesLeavingLeaf',
 	'applyLiveRangeEdit',
 	'resolveEdgeDeletion',
 	'keepsKindAt',

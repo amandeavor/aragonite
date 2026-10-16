@@ -21,10 +21,10 @@ import {
 	registerBuiltinBlockContextActions
 } from '#lib/schema/context-actions.js';
 import {
-	isLanguageRegistered,
+	getLanguageGrammar,
 	registerBuiltinLanguage
 } from '#lib/components/blocks/code/code-languages.js';
-import { isBlockCompleterRegistered } from '#lib/schema/block-completions.js';
+import { completeTypedLine } from '#lib/schema/block-completions.js';
 import { isInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import type { LanguageFn } from 'highlight.js';
@@ -88,7 +88,7 @@ describe('a built-in registered from inside a plugin install', () => {
 		]);
 		resetPluginPlatformForTests();
 		expect(rowIds()).toEqual(['lazy.row']);
-		expect(isLanguageRegistered('lazylang')).toBe(true);
+		expect(getLanguageGrammar('lazylang', everyInstalledPlugin)).not.toBeNull();
 	});
 });
 
@@ -98,15 +98,19 @@ describe('a plugin’s entry for a built-in kind', () => {
 	const routes = [
 		{
 			name: 'a block completer for paragraph',
-			register: () => registerBlockCompleter('paragraph', { tryComplete: () => null }),
-			isRegistered: () => isBlockCompleterRegistered('paragraph')
+			register: () =>
+				registerBlockCompleter('paragraph', {
+					tryComplete: (line) =>
+						line === '¤' ? { lines: ['¤', '¤'], caret: { path: [], line: 1, column: 1 } } : null
+				}),
+			isRegistered: () => completeTypedLine('¤', defaultGrammarView) !== null
 		},
 		{
 			name: 'an inline widget for emphasis',
 			register: () =>
 				registerInlineWidgetKind('emphasis', {
 					isWidget: () => true,
-					buildWidget: () => document.createElement('span')
+					view: () => ({})
 				}),
 			isRegistered: () => isInlineWidgetKind('emphasis', defaultGrammarView)
 		}

@@ -4,14 +4,13 @@
  * not stay live, and a multi-block selection is deleted only after the hook answers.
  */
 
-import type { PasteImageHook } from '../editor-keys';
+import type { PasteImageHook } from '../host-hooks';
 import { emitClipboardError, type EditorEvents } from '../editor-events';
 import type { CrossBlockHandlers } from '../selection/cross-block/dispatch';
 
 export interface ImagePasteArmDeps {
-	/** Undefined leaves a paste carrying images on the text/plain path: `filesOf`
-	 *  then reports none. */
-	onPasteImage: PasteImageHook | undefined;
+	/** Read at each paste; undefined leaves a paste carrying images on the text/plain path. */
+	onPasteImage: () => PasteImageHook | undefined;
 	/** A failed import reports here rather than vanishing. */
 	events: EditorEvents;
 	crossBlock: CrossBlockHandlers;
@@ -27,10 +26,10 @@ export interface ImagePasteArm {
 
 export function createImagePasteArm(deps: ImagePasteArmDeps): ImagePasteArm {
 	return {
-		filesOf: (data) => (deps.onPasteImage ? imageFilesOf(data) : []),
+		filesOf: (data) => (deps.onPasteImage() ? imageFilesOf(data) : []),
 
 		async run(e, files) {
-			const importImage = deps.onPasteImage;
+			const importImage = deps.onPasteImage();
 			if (!importImage) return null;
 			const markdown = await importAll(deps, importImage, files);
 			// Empty markdown ends this the same way no markdown does, and keeps the

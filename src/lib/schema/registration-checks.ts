@@ -1,8 +1,7 @@
 /**
  * Checks that the registrations agree with each other. Registrations made after startup queue up
  * and are checked at the next Editor mount or parser read of the grammar, never part-way through a
- * batch, so a forward reference within one batch warns about nothing. This module and
- * `block-openers` import each other for use inside function bodies only, so the cycle is safe.
+ * batch, so a forward reference within one batch warns about nothing.
  */
 import {
 	ALL_BLOCK_KINDS,
@@ -21,11 +20,9 @@ import {
 	checkClosureCoherence,
 	checkLateOpenerRegistration,
 	checkMergeRoleVocabulary,
-	checkDescriptorFieldCoherence,
 	checkInlineConstructPolicy,
 	checkBuiltinPresentationFacts,
 	type ClosureCoherenceEntry,
-	type DescriptorFieldEntry,
 	type MergeRoleEntry,
 	type PresentationFactEntry
 } from '../invariants/registry';
@@ -34,11 +31,10 @@ import { isInlineKindDeclared } from './plugin-kind';
 import {
 	tryGetBlockKindDescriptor,
 	getAllRegisteredKinds,
+	openerRecords,
 	isKnownMergeRole,
 	type BlockKindDescriptor
 } from './block-kind-descriptor';
-import { isBlockComponentRegistered } from './block-component-registry';
-import { listRegisteredOpeners } from './block-openers';
 import { isBuiltinCommandId } from './commands';
 import { isPluginCommandId } from './command-id';
 import { takeRegistrationFlushWork } from './registration-pending';
@@ -51,7 +47,8 @@ export type RegistrationCheckReport = (tag: string, check: () => InvariantViolat
 const hasDescriptor = (kind: AnyBlockKind): boolean =>
 	tryGetBlockKindDescriptor(kind) !== undefined;
 
-const hasComponent = (kind: AnyBlockKind): boolean => isBlockComponentRegistered(kind);
+const openerPriorities = () =>
+	openerRecords().map(({ key, value }) => ({ kind: key, priority: value.priority }));
 
 const keymapEntries = (kinds: readonly AnyBlockKind[]) =>
 	kinds.map((kind) => ({ kind, keymap: tryGetBlockKindDescriptor(kind)?.keymap }));
@@ -99,22 +96,6 @@ const mergeRoleEntries = (kinds: readonly AnyBlockKind[]): MergeRoleEntry[] =>
 		return mergeRole === undefined ? [] : [{ kind, mergeRole }];
 	});
 
-const descriptorFieldEntries = (
-	kinds: readonly AnyBlockKind[],
-	openerKinds: ReadonlySet<AnyBlockKind>
-): DescriptorFieldEntry[] =>
-	kinds.flatMap((kind) => {
-		const d = tryGetBlockKindDescriptor(kind);
-		if (!d) return [];
-		return [
-			{
-				kind,
-				contextDependentKind: d.contextDependentKind === true,
-				hasOpener: openerKinds.has(kind)
-			}
-		];
-	});
-
 const presentationFactEntries = (kinds: readonly AnyBlockKind[]): PresentationFactEntry[] =>
 	kinds.filter(isBuiltinBlockKind).map((kind) => {
 		const d = tryGetBlockKindDescriptor(kind);
@@ -138,23 +119,18 @@ export function flushPendingRegistrationChecks(
 	if (!work) return;
 	if (work.firstFlush) {
 		report('registry-completeness', () =>
-			checkRegistryCompleteness(ALL_BLOCK_KINDS, hasDescriptor, hasComponent)
+			checkRegistryCompleteness(ALL_BLOCK_KINDS, hasDescriptor)
 		);
 	}
 	// The first run covers every registered kind, plugin kinds included; the completeness check
-	// alone stays on built-ins, since a plugin kind's component may register later.
+	// stays on built-ins, the one closed set.
 	const kinds = work.firstFlush ? getAllRegisteredKinds() : work.kinds;
-	report('opener-registry', () => checkOpenerRegistry(listRegisteredOpeners(), hasDescriptor));
+	report('opener-registry', () => checkOpenerRegistry(openerPriorities()));
 	report('keymap-coherence', () => checkKeymapCoherence(keymapEntries(kinds), isKnownCommandId));
 	report('reserved-chrome-coherence', () =>
-		checkReservedChromeCoherence(reservedChromeEntries(kinds), hasDescriptor, hasComponent)
+		checkReservedChromeCoherence(reservedChromeEntries(kinds), hasDescriptor)
 	);
 	report('closure-coherence', () => checkClosureCoherence(closureEntries(kinds)));
-	report('descriptor-field-coherence', () =>
-		checkDescriptorFieldCoherence(
-			descriptorFieldEntries(kinds, new Set(listRegisteredOpeners().map((entry) => entry.kind)))
-		)
-	);
 	report('merge-role-vocabulary', () =>
 		checkMergeRoleVocabulary(mergeRoleEntries(kinds), isKnownMergeRole)
 	);

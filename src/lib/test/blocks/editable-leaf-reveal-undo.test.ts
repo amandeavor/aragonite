@@ -23,7 +23,7 @@ function mountLeaf(overrides: KeybindingOverride[] = []) {
 				return fragment;
 			}
 		},
-		overrides: { policies: { keybindingOverrides: () => keybindings } }
+		overrides: { commands: { keybindingOverrides: () => keybindings } }
 	});
 }
 

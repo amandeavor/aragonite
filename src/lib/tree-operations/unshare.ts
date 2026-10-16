@@ -11,7 +11,8 @@ import type { NodeParent } from './node-primitives';
 import { assertInvariant } from '../assert';
 import { checkCloneSafeMetadata } from '../invariants/node-shape';
 import { rebuildContainerRawIfContainer } from '../schema/container-raw';
-import type { ChildRawChange, StripRebuild } from '../schema/child-spans';
+import type { ChildRawChange } from '../schema/child-spans';
+import type { StripRebuild } from '../schema/strip-rebuild';
 import { cloneMetadata } from './clone';
 
 function copyNode(node: NodeView, sharing: SharingState): CstNode {

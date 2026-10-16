@@ -5,14 +5,16 @@
  */
 
 import { definePlugin, type EditorPlugin } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { registerFootnoteDefinition } from './footnote-definition';
 import { registerFootnoteReference } from './footnote-reference';
+import FootnoteDefinition from './FootnoteDefinition.svelte';
 
 export function footnotesPlugin(): EditorPlugin {
 	return definePlugin({
 		name: 'footnotes',
 		setup() {
-			registerFootnoteDefinition();
+			registerFootnoteDefinition(svelteBlockView(FootnoteDefinition));
 			registerFootnoteReference();
 		}
 	});

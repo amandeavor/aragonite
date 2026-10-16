@@ -8,7 +8,7 @@ import { parseInline } from '#lib/core/inline/index.js';
 import { screenVisibility } from '#lib/core/inline/visibility.js';
 import { canWrapRangeAsLink } from '#lib/core/inline/link-source-bytes.js';
 import { resolveMarkedInsertion } from '#lib/components/blocks/text/pending-mark-insert.js';
-import { resolveEdgeSeat } from '#lib/components/blocks/text/edge-seat.js';
+import { hiddenEdges } from '#lib/components/blocks/text/edge-seat.js';
 import { resolveEdgeDeletion } from '#lib/components/blocks/text/construct-edge-delete.js';
 import { makeBlockNode } from '#lib/core/nodes.js';
 import { grammarListing } from './grammar-listing';
@@ -61,16 +61,9 @@ describe('the typing position at a hidden run reads the syntax the editor draws'
 	// `**:smile**`: typing `:` inside the bold spells an emoji only where emoji is listed.
 	it('keeps the typed byte at the caret inside the bold', () => {
 		const raw = '**:smile**';
-		const seat = resolveEdgeSeat(
-			8,
-			inlinesOf(raw),
-			null,
-			raw,
-			LIVE,
-			':',
-			fixtureReading({ grammar: withoutEither() })
-		);
-		expect(seat).toBeNull();
+		const reading = fixtureReading({ grammar: withoutEither() });
+		const edges = hiddenEdges(inlinesOf(raw), raw, LIVE, reading);
+		expect(edges.typingOffset(8, null, ':')).toBe(8);
 	});
 });
 

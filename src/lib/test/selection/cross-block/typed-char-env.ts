@@ -5,7 +5,7 @@
 import { createCrossBlockHandlers } from '#lib/selection/cross-block/dispatch.js';
 import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import { makeTopHarness, type TopHarness } from '#lib/test/harness/editor-actions.js';
-import { type GrammarView } from '#lib/schema/block-openers.js';
+import type { GrammarView } from '#lib/schema/block-openers.js';
 import type { SelectionState } from '#lib/selection/selection-state.svelte.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
@@ -67,8 +67,14 @@ export function makeHandlers(
 	});
 }
 
-export function selectAcross(selection: SelectionState, anchor: number[], focus: number[]): void {
-	selection.enterCrossBlock({ path: anchor, offset: 0 }, { path: focus, offset: 0 });
+/** A range from the start of `anchor` to `focusOffset` in `focus`. */
+export function selectAcross(
+	selection: SelectionState,
+	anchor: number[],
+	focus: number[],
+	focusOffset = 0
+): void {
+	selection.enterCrossBlock({ path: anchor, offset: 0 }, { path: focus, offset: focusOffset });
 }
 
 export function makeBeforeInputEvent(typed: string): InputEvent {

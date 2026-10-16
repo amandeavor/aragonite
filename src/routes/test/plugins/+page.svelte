@@ -23,10 +23,11 @@
 	import { wikiEmbedPlugin } from './wiki-embed/wiki-embed-plugin';
 	import { tagsPlugin } from './tags/tag-plugin';
 	import { wikiLinksPlugin } from './wikilinks/link-plugin';
+	import { chipsPlugin } from './chips/chip-plugin';
 	import { tagMarksPlugin, TAG_MENU } from '../../demo-tags/tag-marks-plugin';
 	import { docLinkMenuPlugin, DOC_LINK_MENU } from './inline-menu/doc-link-menu-plugin';
 	import { heldCommitMenuPlugin } from './inline-menu/held-commit-menu-plugin';
-	import '../../demo-tags/tag-marks.css';
+	import '../../../../examples/showcase/tag-marks.css';
 	import type { EditorPluginEntry } from '#lib';
 
 	// docStatsPlugin is a bare entry (no options), so it runs on its defaults.
@@ -63,6 +64,8 @@
 		tags: [tagsPlugin()],
 		// `[[` takes `[` ahead of the built-in link in every other seed's prose; kept to its own.
 		wikilinks: [wikiLinksPlugin()],
+		// `{{` would take `{` in every other seed's prose; kept to its own.
+		chips: [chipsPlugin()],
 		// The same tags as mark decorations over plain text: no widget, no source to show.
 		'tags-marks': [tagMarks],
 		// Every inline-menu source at once: `#`, `[[`, `@` and `/` must not take each other's keys.
@@ -85,7 +88,8 @@
 </script>
 
 <script lang="ts">
-	import { Editor, type LinkClick, type PresentationMode } from '#lib';
+	import { type LinkClick, type PresentationMode } from '#lib';
+	import { Editor } from '#lib/svelte.js';
 	import type { KeybindingOverride } from '#lib/schema/keybinding-overrides.js';
 	import type { PageData } from './$types';
 	import { installTestProbes } from '../editor/test-probes';
@@ -225,6 +229,8 @@
 		// a bare URL and an angle autolink (requirements/plugins/wikilinks.md has what each is for).
 		wikilinks:
 			'See [[Meeting notes]] for today\n\nType here\n\nRead [the docs](https://example.com/) first\n\n| Note |\n| - |\n| [[Cell note]] here https://example.org/cell |\n\nhttps://example.org/bare\n\nSee <https://example.org/angle> here\n',
+		// A chip in a paragraph and one inside a table cell, the two blocks a selected widget lives in.
+		chips: 'Prose {{alpha}} here\n\n| Note | B |\n| --- | --- |\n| x {{beta}} y | z |\n\nAfter\n',
 		'tags-marks':
 			'Filed under #project and #work/admin today\n\n#inbox leads this line\n\n# Heading with #tag inside\n\nType here\n',
 		// `project` appears twice so it ranks first; the code span and the link destination are

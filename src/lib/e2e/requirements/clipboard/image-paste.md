@@ -32,16 +32,16 @@ set-once at mount) and swaps its per-image response through `window.__test.image
 ## Edge cases
 
 - Hook returns `null` for one of two images: only the other image's markdown lands.
-  Pinned by `test/blocks/editable/editable-surface-clipboard.test.ts`.
+  Pinned by `test/blocks/editable/surface-clipboard.test.ts`.
 - Pasted while an inline-source reveal is open: the reveal collapses first, and the
   caret that collapse committed anchors the insertion, because the block reads no caret
   of its own on a widget's element-level edge. Pinned by
-  `test/blocks/editable/editable-surface-clipboard.test.ts`; opening a reveal and holding an
+  `test/blocks/editable/surface-clipboard.test.ts`; opening a reveal and holding an
   import across it is not reachable as one user gesture at e2e level.
 - The block holding the captured caret is gone by the time a slow hook resolves
   (windowed out, or the document was replaced): nothing is inserted and an `error`
   event is emitted. The insertion is declined rather than landing at a guessed offset.
-  Pinned by `test/blocks/editable/editable-surface-clipboard.test.ts`, since unmounting a
+  Pinned by `test/blocks/editable/surface-clipboard.test.ts`, since unmounting a
   block mid-import is not reachable through a user gesture at e2e level.
 
 ## Pinned below the browser
@@ -49,13 +49,13 @@ set-once at mount) and swaps its per-image response through `window.__test.image
 These run the paste handler without a page:
 
 - Two images in one paste land at the captured caret in clipboard order, as one insertion and one
-  undo entry (`test/blocks/editable/editable-surface-clipboard.test.ts`).
+  undo entry (`test/blocks/editable/surface-clipboard.test.ts`).
 - A hook that returns `null` inserts nothing, emits no error and does not fall back to `text/plain`
-  (`test/blocks/editable/editable-surface-clipboard.test.ts`).
+  (`test/blocks/editable/surface-clipboard.test.ts`).
 - A caret moved while a slow hook is still resolving does not redirect the insertion
-  (`test/blocks/editable/editable-surface-clipboard.test.ts`).
+  (`test/blocks/editable/surface-clipboard.test.ts`).
 - A non-image attachment (a `.txt`) leaves the paste on the `text/plain` path, and the hook is not
-  called (`test/blocks/editable/editable-surface-clipboard.test.ts`).
+  called (`test/blocks/editable/surface-clipboard.test.ts`).
 
 ## User interactions
 

@@ -8,7 +8,7 @@
 </script>
 
 <script lang="ts">
-	import { Editor } from '#lib';
+	import { Editor } from '#lib/svelte.js';
 	import { trackParityDocument } from '../../../parity-documents.svelte';
 
 	let showRight = $state(true);

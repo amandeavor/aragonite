@@ -6,11 +6,8 @@
  */
 
 import { isBuiltinInlineKind, type AnyInlineKind } from '../core/nodes';
-import type { NodeView } from '../core/node-views';
-import type { StoredAs } from './stored-as';
 import type { AnyCommandId } from './command-id';
 import { isBuiltinCommandId } from './commands';
-import { registerOnce } from './register-once';
 import { everyInstalledPlugin } from './plugin-activation';
 import { createInlineKindRegistry } from './plugin-registry';
 
@@ -40,9 +37,7 @@ export interface InlineMarkPolicy {
 
 /** How a hidden edge decides where a letter typed at it goes: with the character before the caret,
  *  at one of two drawn stops either side of a painted box, or never inside the construct. */
-export const EDGE_POLICIES = ['left-sticky', 'boxed', 'never-extend'] as const;
-
-export type EdgePolicy = (typeof EDGE_POLICIES)[number];
+export type EdgePolicy = 'left-sticky' | 'boxed' | 'never-extend';
 
 export interface InlineConstructPolicy {
 	edgeAffinity: EdgePolicy;
@@ -63,10 +58,10 @@ export interface InlineConstructPolicy {
 
 export type InlineProseExtent = 'none' | 'content' | 'all';
 
-/** How a cut inside the construct treats it. `close-and-reopen` closes it before an Enter's cut and
- *  reopens it after, `plain` leaves the literal cut, and `whole` means no part stands alone: Enter
- *  moves the cut to its nearer edge, and a delete whose every cut unmakes it takes it whole
- *  (live-mode.md § 4.4). */
+/** How a cut inside the construct treats it. `close-and-reopen` closes it before the cut and reopens
+ *  it after (Enter, a pending mark, a live delete), `plain` leaves the literal cut, and `whole` means
+ *  no part stands alone: Enter moves the cut to its nearer edge, and a delete whose every cut
+ *  unmakes it takes it whole (live-mode.md § 4.4). */
 export type SplitBehavior = 'close-and-reopen' | 'whole' | 'plain';
 
 /** `card`: the link card edits the destination, the only way in a mode that hides the URL
@@ -150,103 +145,4 @@ export function listInlineMarks(): readonly InlineMark[] {
 /** The mark a command toggles, or null when no row names that command. */
 export function inlineMarkForCommand(command: string): InlineMark | null {
 	return listInlineMarks().find((entry) => entry.mark.command === command) ?? null;
-}
-
-// ── Split rebalancer ────────────────────────────────────────────────────────
-
-/** Where each half of a split is stored: the first in the block's own slot, the second where the
- *  split puts it (the next slot, or a new list item's first). */
-export interface SplitStores {
-	first: StoredAs;
-	second: StoredAs;
-}
-
-/**
- * The one live-mode split rewrite, consulting each construct's own `splitBehavior`, so
- * `splitNode` needs neither `parseInline` nor a per-kind dispatch. Null declines the rewrite.
- * Registration is process-wide, so each call brings the stores, which carry the reading.
- */
-export type LiveSplitRebalancer = (
-	node: NodeView,
-	offset: number,
-	firstRaw: string,
-	secondRaw: string,
-	stores: SplitStores
-) => { firstRaw: string; secondRaw: string } | null;
-
-let splitRebalancer: LiveSplitRebalancer | undefined;
-
-export function registerLiveSplitRebalancer(rebalancer: LiveSplitRebalancer): void {
-	registerOnce(
-		splitRebalancer !== undefined,
-		() => (splitRebalancer = rebalancer),
-		`registerLiveSplitRebalancer: a rebalancer is already registered. The slot holds one ` +
-			`function for every construct — extend that one rather than registering a second.`
-	);
-}
-
-export function getLiveSplitRebalancer(): LiveSplitRebalancer | undefined {
-	return splitRebalancer;
-}
-
-// ── Join cleanup ───────────────────────────────────────────────────────────
-
-/** One side of a join: the block it contributed bytes from and the offset they were cut at. A
- *  merge cuts at the end of the block's content, a range delete at the selection endpoint. */
-export interface JoinEndpoint {
-	node: NodeView;
-	offset: number;
-}
-
-/** The bytes a join produced, plus where the second side's contribution starts in them. */
-export interface JoinSeam {
-	mergedRaw: string;
-	seam: number;
-	start: JoinEndpoint;
-	end: JoinEndpoint;
-	/** Text the caller will insert at the join after the cleanup, `''` for a plain delete. The
-	 *  cleanup checks it too, since typed text changes what a surviving delimiter pairs against. */
-	typed: string;
-	/** Where the joined bytes will be stored, with the editor's reading: the cleanup reads each
-	 *  candidate back there, a list item's marker line or a cell's text included. */
-	store: StoredAs;
-}
-
-/** The bytes a cleanup wrote and where the two sides now meet in them: dropping characters from
- *  the first side moves the point the caret lands on. */
-export interface CleanedJoin {
-	raw: string;
-	seam: number;
-}
-
-/**
- * The one live-mode join rewrite, consulting each construct's own policy row, so the merge
- * primitives need neither `parseInline` nor a per-kind dispatch. Null declines the rewrite.
- */
-export type LiveJoinSeamCleaner = (join: JoinSeam) => CleanedJoin | null;
-
-let joinSeamCleaner: LiveJoinSeamCleaner | undefined;
-
-export function registerLiveJoinSeamCleaner(cleaner: LiveJoinSeamCleaner): void {
-	registerOnce(
-		joinSeamCleaner !== undefined,
-		() => (joinSeamCleaner = cleaner),
-		`registerLiveJoinSeamCleaner: a cleaner is already registered. The slot holds one ` +
-			`function for every construct — extend that one rather than registering a second.`
-	);
-}
-
-export function getLiveJoinSeamCleaner(): LiveJoinSeamCleaner | undefined {
-	return joinSeamCleaner;
-}
-
-/** Test-only, and separate on purpose: only a suite testing this one function wants it cleared,
- *  and the registry's own reset must not clear it as a side effect. */
-export function __resetLiveSplitRebalancerForTests(): void {
-	splitRebalancer = undefined;
-}
-
-/** Test-only, the join cleaner's counterpart to {@link __resetLiveSplitRebalancerForTests}. */
-export function __resetLiveJoinSeamCleanerForTests(): void {
-	joinSeamCleaner = undefined;
 }

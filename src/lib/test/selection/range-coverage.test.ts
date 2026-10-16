@@ -3,6 +3,7 @@ import { parse } from '../../core/parser';
 import { cellPoint, type SelectionPoint } from '../../selection/primitives';
 import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import { registerChromePluginsForTests } from './chrome-plugins';
+import { takeDevWarns } from '../support/warn-gate';
 
 // What a range covers is read once; these rows pin the answer every reader then shares.
 
@@ -32,6 +33,19 @@ describe('coverRange orders and snaps the pair', () => {
 		const doc = parse(TABLE);
 		const range = coverRange(doc, cellPoint([0], 3), cellPoint([0], 0));
 		expect([range.start, range.end]).toEqual([cellPoint([0], 0), cellPoint([0], 3)]);
+	});
+});
+
+// A kept table edge loses whole rows only; the snap above is what guarantees it.
+describe('a kept table edge that skipped the snap', () => {
+	it('is flagged twice: an offset that is no cell index, and a run that splits a row', () => {
+		const doc = parse('above\n\n' + TABLE);
+		const coverage = rangeCoverage(doc, coverRange(doc, point([0], 1), point([1], 2)));
+		expect(coverage.endCells).toEqual({ from: 0, to: 3 });
+		expect(takeDevWarns().map((w) => w.tag)).toEqual([
+			'rangeCoverage:tableEdge',
+			'invariant:kept-table-edge'
+		]);
 	});
 });
 

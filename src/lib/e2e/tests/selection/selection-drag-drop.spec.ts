@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { blockCenter, pastLineEnd } from './multi-click-helpers';
-import { pointAtRaw, textRunCenter, textRunStart } from '../../text-runs';
+import { pointAtRaw, textOutsideMarkers, textRunCenter, textRunStart } from '../../text-runs';
 
 // Dragging a selection and dropping it (`requirements/selection/selection-drag-drop.md`). Drops
 // aim past a line's end or at its first glyph: the two points whose offset no font metric moves.
@@ -240,6 +240,47 @@ test.describe('dragging a selection', () => {
 		expect(await blockRaw(page, 0)).toBe('```js\nconst x = 1\n```\n');
 		expect(await page.evaluate(() => (window as any).__test.getSource())).toBe(LIVE_CODE_DOC);
 		await undoLeavesDocument(editor, LIVE_CODE_DOC);
+	});
+
+	test('a range cut out of a bold run in live mode keeps its bold, with no marker on screen', async ({
+		page
+	}) => {
+		await editor.setPresentationMode('live');
+		await editor.loadContent('- [ ] Some **bold** and words tail\n');
+		const after = await pointAtRaw(page, [0, 0, 0], 'Some **bo'.length);
+		await page.mouse.click(after.x, after.y);
+		// `ld`, the hidden closer, then ` an`: the arrows step over the closer.
+		for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight');
+		expect(await page.evaluate(() => window.getSelection()?.toString())).toBe('ld an');
+		const grab = await pointAtRaw(page, [0, 0, 0], 'Some **bol'.length);
+		await dragSelection(page, grab, await pastLineEnd(page, 'tail'));
+		const text = page.locator("[data-block-path='[0,0,0]'] [contenteditable='true']");
+		await expect.poll(() => textOutsideMarkers(text)).toBe('Some bod words tailld an');
+		// Both halves keep the bold: the kept `bo` closes, the moved `ld` reopens.
+		expect(await page.evaluate(() => (window as any).__test.getSource())).toBe(
+			'- [ ] Some **bo**d words tail**ld** an\n'
+		);
+		expect(await converged(page)).toBe(true);
+	});
+
+	test('a bold range dropped inside another bold run in live mode joins it, no marker on screen', async ({
+		page
+	}) => {
+		await editor.setPresentationMode('live');
+		await editor.loadContent('- [ ] Some **bold** and words **tail**\n');
+		const after = await pointAtRaw(page, [0, 0, 0], 'Some **bo'.length);
+		await page.mouse.click(after.x, after.y);
+		for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight');
+		const grab = await pointAtRaw(page, [0, 0, 0], 'Some **bol'.length);
+		const into = await pointAtRaw(page, [0, 0, 0], 'Some **bold** and words **ta'.length);
+		await dragSelection(page, grab, into);
+		// The carried `**ld**` joins the bold it lands in, which closes before ` an` and reopens after.
+		await expect
+			.poll(() => page.evaluate(() => (window as any).__test.getSource()))
+			.toBe('- [ ] Some **bo**d words **tald** an**il**\n');
+		const text = page.locator("[data-block-path='[0,0,0]'] [contenteditable='true']");
+		expect(await textOutsideMarkers(text)).toBe('Some bod words tald anil');
+		expect(await converged(page)).toBe(true);
 	});
 
 	const RULE_DOC = 'alpha beta gamma\n\n---\n\nsecond para here\n';

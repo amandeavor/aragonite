@@ -21,6 +21,8 @@ import type {
 	FocusActions
 } from '#lib/action-contracts.js';
 import type { Document } from '#lib/core/nodes.js';
+import type { PresentationMode } from '#lib/presentation-mode.js';
+import type { CommandDispatchContext } from '#lib/schema/block-commands.js';
 import type { DocumentView } from '#lib/core/node-views.js';
 import { createDecorationEngine } from '#lib/decorations/decoration-state.svelte.js';
 import { createLinkCardState } from '#lib/components/link-card/link-card-state.svelte.js';
@@ -61,6 +63,10 @@ export interface MountContextOverrides {
 	containerEdit?: ContainerEditActions;
 	services?: Partial<EditorServices>;
 	policies?: Partial<EditorPolicies>;
+	/** The presentation mode the block reads, `'source'` unless given. */
+	mode?: () => PresentationMode;
+	/** Members of the editor's command context, over the stub defaults. */
+	commands?: Partial<CommandDispatchContext>;
 	/** Overrides one group; the document getter is the `doc` member (`doc: { doc: () => d }`). */
 	doc?: Partial<EditorDoc>;
 }
@@ -139,17 +145,15 @@ function stubbedPolicies(): EditorPolicies {
 		imageLoadPolicy: () => 'auto',
 		blockDragHandles: () => false,
 		placeholder: () => null,
-		presentationMode: () => 'source',
 		theme: () => 'dark',
 		activationClick: bindActivationClick(
 			() => 'source',
 			() => 'modifier',
 			createPressTracker()
 		),
-		keybindingOverrides: () => ({ global: new Map(), byKind: new Map() }),
-		onPasteImage: undefined,
-		onRunCode: undefined,
-		codeMenuItems: undefined,
+		onPasteImage: () => undefined,
+		onRunCode: () => undefined,
+		codeMenuItems: () => undefined,
 		brokenImageUrls: new Set<string>()
 	};
 }
@@ -198,7 +202,7 @@ export function editorMountContext(overrides: MountContextOverrides = {}): Map<s
 		get grammar() {
 			return services.registryView.grammar;
 		},
-		mode: () => policies.presentationMode()
+		mode: overrides.mode ?? (() => 'source')
 	});
 	const doc: EditorDoc = { ...docBase, ...overrides.doc };
 	const services: EditorServices = { ...stubbedServices(doc.doc), ...overrides.services };
@@ -238,9 +242,12 @@ export function editorMountContext(overrides: MountContextOverrides = {}): Map<s
 		isCrossBlockRange: () => services.selection.isCrossBlock,
 		// Inert: a bare mount has no cross-block range, so every member answers no.
 		crossBlockCommands: { canRun: () => false, run: () => false, isActive: () => false },
-		keybindingOverrides: () => policies.keybindingOverrides(),
+		// Inert too: a bare mount activates no decoration.
+		markActivation: { canActivate: () => false, activate: () => false },
+		keybindingOverrides: () => ({ global: new Map(), byKind: new Map() }),
 		onCommandError: (report) => emitCommandError(services.events, report),
-		reorder: services.reorder
+		reorder: services.reorder,
+		...overrides.commands
 	};
 	return new Map<symbol, unknown>([
 		[BLOCK_EDIT_KEY, overrides.blockEdit ?? makeStubBlockEdit()],

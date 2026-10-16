@@ -76,15 +76,16 @@ export type DrawnCaretTarget =
 	| { state: 'chip'; rect: DrawnCaretRect }
 	| { state: 'widget'; rect: DrawnCaretRect & { width: number } }
 	| { state: 'pressed' }
-	| { state: 'gap' };
+	/** `y` is the bar's top in the host's pixels; its ends follow the gap's element. */
+	| { state: 'gap'; y: number };
 
 export function drawnCaretTarget(reads: DrawnCaretReads): DrawnCaretTarget {
 	// Forced colors show the browser's caret whatever `caret-color` says, so a bar would be a second.
 	if (reads.forcedColors) return { state: 'native' };
 	if (!drawsHere(reads)) return { state: 'native' };
 	if (hides(reads)) return { state: 'hidden' };
-	if (reads.gap) return { state: 'gap' };
-	const { source, caret, host, widgetEdge } = reads;
+	const { source, caret, host, widgetEdge, devicePixelRatio: dpr } = reads;
+	if (reads.gap) return { state: 'gap', y: host ? gapTop(host, dpr) : GAP_RISE };
 	if (!source || !source.drawable) return { state: 'native' };
 	// Nothing draws until the click lands, so no frame shows a caret where it won't stay.
 	if (reads.pressed) return { state: 'pressed' };
@@ -93,12 +94,9 @@ export function drawnCaretTarget(reads: DrawnCaretReads): DrawnCaretTarget {
 		const rect = inHost(widgetEdge.left, widgetEdge, host);
 		return { state: 'widget', rect: { ...rect, width: widgetEdge.width / host.scale } };
 	}
-	// Snapped in client pixels, where the device grid is, so a 1px bar never smears over two.
-	const dpr = reads.devicePixelRatio;
-	const snap = (x: number) => Math.round(x * dpr) / dpr;
-	if (reads.chip) return { state: 'chip', rect: inHost(snap(reads.chip.left), reads.chip, host) };
+	if (reads.chip) return { state: 'chip', rect: onDeviceGrid(reads.chip, host, dpr) };
 	if (!caret || offTheRange(reads)) return { state: 'native' };
-	return { state: 'text', rect: inHost(snap(caret.left), caret, host) };
+	return { state: 'text', rect: onDeviceGrid(caret, host, dpr) };
 }
 
 /** Whether the paint hides the browser's caret on the editable: wherever a bar would draw, and
@@ -106,6 +104,28 @@ export function drawnCaretTarget(reads: DrawnCaretReads): DrawnCaretTarget {
 export function hidesBrowserCaret(target: DrawnCaretTarget): boolean {
 	return target.state !== 'hidden' && target.state !== 'native';
 }
+
+// In client pixels, where the device grid is: the bar stands in the column the letter boundary falls
+// in, as the browser's caret does, and covers every row the line touches.
+function onDeviceGrid(box: ClientCaretBox, host: HostBox, dpr: number): DrawnCaretRect {
+	const top = deviceFloor(box.top, dpr);
+	const bottom = Math.ceil(box.bottom * dpr - GRID_SLACK) / dpr;
+	return inHost(deviceFloor(box.left, dpr), { left: 0, top, bottom }, host);
+}
+
+// The gap bar's top sits a pixel above the boundary, on the device row that pixel starts in.
+function gapTop(host: HostBox, dpr: number): number {
+	return (deviceFloor(host.top + GAP_RISE, dpr) - host.top) / host.scale;
+}
+
+function deviceFloor(x: number, dpr: number): number {
+	return Math.floor(x * dpr + GRID_SLACK) / dpr;
+}
+
+/** Absorbs float error on an edge that is already on the grid, so it isn't pushed a row away. */
+const GRID_SLACK = 1e-3;
+
+const GAP_RISE = -1;
 
 function inHost(left: number, box: ClientCaretBox, host: HostBox): DrawnCaretRect {
 	return {

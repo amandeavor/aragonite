@@ -10,6 +10,10 @@ import {
 	createTextClipboard,
 	type TextClipboardDeps
 } from '#lib/components/blocks/text/text-clipboard.js';
+import {
+	clipboardSurface,
+	type ClipboardSurfaceParts
+} from '#lib/test/harness/clipboard-surface.js';
 import { selectWidgetWhole } from '#lib/selection/place-caret.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import type { CstNode } from '#lib/core/nodes.js';
@@ -80,12 +84,14 @@ function harness(source: string, sourceStart: number, options: HarnessOptions = 
 		},
 		cursor: { getRaw: () => null, getRawSelection: () => null },
 		caret: {
+			getEl: () => document.body,
 			recordPreEditOffset: () => {},
 			getPreEditOffset: () => 0,
 			getSelection: () => null,
 			holdInsertion: () => createInsertionRecords([]).hold({}, null)
 		},
 		pasteOffset: (caret: number) => caret,
+		onPasteImage: () => undefined,
 		selection,
 		crossBlock: options.crossBlockDeclines ? { handlePaste: async () => false } : trap,
 		caretMemory: stubCaretMemory(),
@@ -106,7 +112,8 @@ function harness(source: string, sourceStart: number, options: HarnessOptions = 
 			return fixtureReading();
 		},
 		storedAs: () => topLevelStore(node)
-	} as unknown as TextClipboardDeps;
+	} as unknown as TextClipboardDeps & ClipboardSurfaceParts;
+	deps.surface = clipboardSurface(deps);
 
 	return { handlers: createTextClipboard(deps), commits, selection };
 }
@@ -265,12 +272,14 @@ function foldSettleHarness() {
 		},
 		cursor: { getRaw: () => null, getRawSelection: () => null },
 		caret: {
+			getEl: () => document.body,
 			recordPreEditOffset: () => {},
 			getPreEditOffset: () => 0,
 			getSelection: () => null,
 			holdInsertion: () => createInsertionRecords([]).hold({}, null)
 		},
 		pasteOffset: (caret: number) => caret,
+		onPasteImage: () => undefined,
 		selection,
 		crossBlock: { handlePaste: async () => false, handleCut: async () => false },
 		caretMemory: stubCaretMemory(),
@@ -289,7 +298,8 @@ function foldSettleHarness() {
 			return fixtureReading();
 		},
 		storedAs: () => topLevelStore(node)
-	} as unknown as TextClipboardDeps;
+	} as unknown as TextClipboardDeps & ClipboardSurfaceParts;
+	deps.surface = clipboardSurface(deps);
 
 	return { handlers: createTextClipboard(deps), order, releaseWrite };
 }

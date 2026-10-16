@@ -7,6 +7,7 @@ import {
 	type DocumentView,
 	type NodeView
 } from '#lib/plugin.js';
+import { svelteView } from '#lib/svelte.js';
 import GhostText from './GhostText.svelte';
 
 function nodeAt(doc: DocumentView, path: number[]): NodeView | null {
@@ -19,6 +20,8 @@ function nodeAt(doc: DocumentView, path: number[]): NodeView | null {
 	}
 	return node;
 }
+
+const ghostText = svelteView(GhostText);
 
 export const ghostTextPlugin = definePlugin({
 	name: 'ghost-text',
@@ -38,7 +41,7 @@ export const ghostTextPlugin = definePlugin({
 							// A widget's offset is measured in the block's raw content, which
 							// leaves out the trailing line ending.
 							offset: trimTrailingLineEnding(node.raw).length,
-							widget: { component: GhostText }
+							widget: { view: ghostText }
 						}
 					];
 				}

@@ -1,18 +1,11 @@
 // @vitest-environment jsdom
-// A live cut through hidden delimiter runs drops what it strands (live-mode.md § 4.5) on every
+// A live cut through hidden delimiter runs closes and reopens them (live-mode.md § 4.5) on every
 // destructive cell path: the event cut, the menu cut, and typing or deleting over a selection.
 // Miss-analysis: cell unit tests covered only escaping, and the cell e2e cases drove only paste.
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mountCell, type MountedCell } from './mount-cell';
 import { settleEditor } from '#lib/test/harness/settle.js';
-
-beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
+import { installClipboardEvents } from '#lib/test/harness/clipboard-events.js';
 
 // Raw `**bold** *it*`: [4, 11) runs from inside the bold out past the italic's opener, so a
 // literal cut strands the `**` opener and the italic's closer.
@@ -24,7 +17,7 @@ afterEach(async () => {
 	document.body.innerHTML = '';
 });
 
-const LIVE = { presentationMode: () => 'live' as const };
+const LIVE = { mode: () => 'live' as const };
 
 function committedCalls(cell: MountedCell): unknown[][] {
 	return vi.mocked(cell.blockEdit.updateBlockContent).mock.calls;
@@ -56,7 +49,7 @@ function dispatchBeforeInput(el: HTMLElement, inputType: string, data?: string):
 }
 
 describe('live mode: every cell cut crosses the join', () => {
-	it('the clipboard cut drops the runs it strands and copies the raw slice', async () => {
+	it('the clipboard cut closes and reopens the runs it cuts through', async () => {
 		mounted = mountCell(MIXED, LIVE);
 		mounted.el.focus();
 		mounted.instance.setSelection(4, 11);
@@ -64,21 +57,23 @@ describe('live mode: every cell cut crosses the join', () => {
 		const clipboard = dispatchCut(mounted.el);
 		await settleCommit(mounted);
 
-		expect(clipboard.get('text/plain')).toBe('ld** *i');
-		expect(committedCalls(mounted)).toEqual([[0, 'bot', 'literal', 4, 2]]);
+		// The clipboard carries what the cut took, so a paste gives it back.
+		expect(clipboard.get('text/plain')).toBe('**ld** *i*');
+		expect(committedCalls(mounted)).toEqual([[0, '**bo***t*', 'literal', 4, 4]]);
 	});
 
 	it('the context-menu cut takes the same join', async () => {
-		document.execCommand = vi.fn(() => true);
+		installClipboardEvents();
 		mounted = mountCell(MIXED, LIVE);
 		mounted.el.focus();
 
 		await mounted.ref().applyMenuClipboard!('cut', { start: 4, end: 11 });
+		await settleCommit(mounted);
 
-		expect(committedCalls(mounted)).toEqual([[0, 'bot', 'literal', 4, 2]]);
+		expect(committedCalls(mounted)).toEqual([[0, '**bo***t*', 'literal', 4, 4]]);
 	});
 
-	it('typing over the selection lands the character at the cleaned join', async () => {
+	it('typing over the selection lands the character inside the closed bold', async () => {
 		mounted = mountCell(MIXED, LIVE);
 		mounted.el.focus();
 		mounted.instance.setSelection(4, 11);
@@ -87,7 +82,7 @@ describe('live mode: every cell cut crosses the join', () => {
 		await settleCommit(mounted);
 
 		expect(e.defaultPrevented).toBe(true);
-		expect(committedCalls(mounted)).toEqual([[0, 'boXt', 'authored', 4, 3]]);
+		expect(committedCalls(mounted)).toEqual([[0, '**boX***t*', 'authored', 4, 5]]);
 	});
 
 	it('a native Backspace over the selection takes the same join', async () => {
@@ -99,7 +94,7 @@ describe('live mode: every cell cut crosses the join', () => {
 		await settleCommit(mounted);
 
 		expect(e.defaultPrevented).toBe(true);
-		expect(committedCalls(mounted)).toEqual([[0, 'bot', 'authored', 4, 2]]);
+		expect(committedCalls(mounted)).toEqual([[0, '**bo***t*', 'authored', 4, 4]]);
 	});
 
 	// Miss-analysis: #523, every cell case started with a delimiter, so none held text a block
@@ -115,7 +110,7 @@ describe('live mode: every cell cut crosses the join', () => {
 			await settleCommit(mounted);
 
 			expect(e.defaultPrevented).toBe(true);
-			expect(committedCalls(mounted)).toEqual([[0, `${lead}ad`, 'authored', 5, 3]]);
+			expect(committedCalls(mounted)).toEqual([[0, `${lead}**a**d`, 'authored', 5, 5]]);
 		}
 	);
 
@@ -127,7 +122,7 @@ describe('live mode: every cell cut crosses the join', () => {
 		dispatchCut(mounted.el);
 		await settleCommit(mounted);
 
-		expect(committedCalls(mounted)).toEqual([[0, 'a\\|b bot', 'literal', 9, 7]]);
+		expect(committedCalls(mounted)).toEqual([[0, 'a\\|b **bo***t*', 'literal', 9, 9]]);
 	});
 });
 

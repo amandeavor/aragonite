@@ -18,7 +18,7 @@ function mountText(source: string, mode: PresentationMode) {
 	const { instance, target } = mountBlock(TextEditableBlock, {
 		source,
 		overrides: {
-			policies: { presentationMode: () => mode },
+			mode: () => mode,
 			services: { decorations: noIslands }
 		}
 	});

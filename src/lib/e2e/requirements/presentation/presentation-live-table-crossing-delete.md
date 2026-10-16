@@ -1,18 +1,17 @@
-# Feature: live-mode table-crossing deletes clean their stranded runs
+# Feature: live-mode table-crossing deletes close the runs they cut
 
 A selection crossing the table wall deletes by truncating its prose endpoint in
 place, with no join, so the delimiter runs the cut strands (their partner gone
 with the deleted range) never reached the live join cleaner and painted as a
-literal `**` on screen. The contract is `live-mode.md` § 4.5's: live mode may
-drop only bytes the user never saw, checked against what is painted, and the
-truncation takes the cleaner's unpaired-run half. Driven on `/test/editor` via
+literal `**` on screen. The contract is `live-mode.md` § 4.5's: a run the cut
+went through closes on the kept head, checked against what is painted, and the
+truncation goes through the same cleaner as a join. Driven on `/test/editor` via
 `?presentationMode=live`; the source bridge is what each scenario checks against.
 
 ## Happy paths
 
 - select from inside `**bold**` in a paragraph into a table below it, Backspace:
-  the kept head shows no stranded delimiter on screen or in the source, and the
-  caret sits at the cleaned join
+  the kept head reads `Some **bo**`, still bold, with no delimiter on screen
 
 ## Edge cases
 

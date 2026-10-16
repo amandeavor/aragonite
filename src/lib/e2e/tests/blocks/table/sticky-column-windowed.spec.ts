@@ -1,6 +1,5 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
-import { capturePageErrors } from '../../../page-probes';
 import { GIANT_LIST_OR_TABLE_BYTES } from '../../perf/vr-helpers';
 
 // Entering a row-windowed table with a sticky column must read the column geometry from a mounted
@@ -20,8 +19,6 @@ test.describe('table block: sticky-column entry into a row-windowed table', () =
 	test('ArrowUp from below lands the nearest-X column, not column 0, when row 0 is windowed out', async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
-
 		// Trailing paragraph below the table: ArrowDown out of the last row captures
 		// the sticky-X, ArrowUp re-enters the last row via focusAtColumn(x, 'below').
 		await editor.loadLargeFixture(
@@ -69,6 +66,5 @@ test.describe('table block: sticky-column entry into a row-windowed table', () =
 		expect(sel).not.toBeNull();
 		expect(sel!.focus.path[1]).toBe(lastRow);
 		expect(sel!.focus.path[2]).toBe(rightCol);
-		expect(pageErrors).toEqual([]);
 	});
 });

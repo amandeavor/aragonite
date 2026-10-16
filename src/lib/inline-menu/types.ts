@@ -5,7 +5,7 @@
  * up, and replacing the typed range with the pick as one undo entry. A source supplies the rest.
  */
 
-import type { Component } from 'svelte';
+import type { PluginView } from '../plugin-view';
 import type { MenuIconName } from '../menu-icons';
 import type { EditorContext } from '../schema/plugin-install';
 
@@ -73,8 +73,9 @@ export interface InlineMenuSource {
 		query: Omit<InlineMenuQuery, 'signal'>,
 		editor: InlineMenuCommit
 	): void | Promise<void>;
-	/** Paints one row's content in place of the default label and detail. */
-	row?: Component<InlineMenuRowProps>;
+	/** Paints a row in place of the default label and detail, updated as it turns active or the
+	 *  query changes. A row whose view throws shows the default, and the throw goes to `error`. */
+	row?: PluginView<InlineMenuRowProps>;
 }
 
 export interface InlineMenuSourceHandle {

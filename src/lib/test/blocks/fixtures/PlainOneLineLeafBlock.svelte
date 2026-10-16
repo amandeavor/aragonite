@@ -1,7 +1,8 @@
 <script lang="ts">
 	// A plain-mode editable leaf that is one line, whose source stays mounted and focusable in
 	// reading mode, unlike a render-primary leaf's.
-	import { createEditableLeaf, type NodeView } from '#lib/plugin.js';
+	import { type NodeView } from '#lib/plugin.js';
+	import { createEditableLeaf } from '#lib/svelte.js';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
 

@@ -1,12 +1,8 @@
 <script lang="ts">
 	// The document's collapsed state comes from `reservedChrome.isCollapsed`; reading mode's
 	// temporary open state is passed to the factory on top of it, so windowing and focus agree.
-	import {
-		BlockList,
-		createContainerBlock,
-		isCollapsedContainer,
-		type NodeView
-	} from '#lib/plugin.js';
+	import { isCollapsedContainer, type NodeView } from '#lib/plugin.js';
+	import { BlockList, createContainerBlock } from '#lib/svelte.js';
 	import { createReaderDisclosure } from './details-disclosure.svelte';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
@@ -72,7 +68,7 @@
 		position: relative;
 		margin: 0.8em 0;
 		padding: 0.15em 0 0.15em 1.7em;
-		border-left: 3px solid var(--color-border, #3d4047);
+		border-left: 3px solid var(--color-border);
 	}
 
 	/* A real focusable button (keyboard disclosure), so it is a sibling of BlockList: the
@@ -94,7 +90,7 @@
 		border: none;
 		background: transparent;
 		cursor: pointer;
-		color: var(--color-text-muted, #aaaaaa);
+		color: var(--color-text-muted);
 	}
 	.details-toggle::before {
 		content: '';
@@ -111,7 +107,7 @@
 		transform: rotate(90deg);
 	}
 	.details-toggle:focus-visible {
-		outline: 2px solid var(--color-accent, #567b67);
+		outline: 2px solid var(--color-accent);
 		outline-offset: 1px;
 		border-radius: var(--radius-ui, 3px);
 	}
@@ -123,7 +119,7 @@
 	}
 	.details-block :global(.details-summary:empty)::before {
 		content: 'Summary';
-		color: var(--color-ui-dulled, #afb1b3);
+		color: var(--color-ui-dulled);
 		pointer-events: none;
 	}
 </style>

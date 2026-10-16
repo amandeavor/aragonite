@@ -16,7 +16,7 @@ import {
 import { pressKey } from '#lib/test/harness/settle.js';
 import { insertBy } from '#lib/test/harness/insertion-routes.js';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
-import type { EditorProps } from '#lib/editor-props.js';
+import type { EditorProps } from '#lib/components/editor-component-props.js';
 import type { EditorSelection } from '#lib/selection/primitives.js';
 
 beforeAll(installLayoutStubs);

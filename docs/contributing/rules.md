@@ -240,5 +240,5 @@ Three more places a record lives, or pointedly doesn't:
 **A behavior change sweeps its prose claim by claim.** Grep misses the sentences that describe the
 old behavior in plain words, with no symbol to search for. So every sentence about the changed
 behavior gets a verdict, across `docs/guide/`, `docs/design/`, `src/lib/editor-props.ts` and the
-shipped-source manifests (the section notes in `src/lib/plugin.ts` and `src/lib/index.ts`, the
-tables in `docs/README.md`).
+shipped-source manifests (the section notes in `src/lib/plugin.ts`, `src/lib/svelte.ts` and
+`src/lib/index.ts`, the tables in `docs/README.md`).

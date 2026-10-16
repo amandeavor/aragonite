@@ -7,26 +7,27 @@
 
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Editor, type PresentationMode } from '#lib';
-	import SHOWCASE_DOCUMENT from './showcase-content.md?raw';
-	import './demo-tags/tag-marks.css';
+	import { Editor } from '#lib/svelte.js';
+	import SHOWCASE_DOCUMENT from '../../examples/showcase/showcase-content.md?raw';
+	import '../../examples/showcase/tag-marks.css';
+	import {
+		HANDLES_GATED_TITLE,
+		INITIAL_STATE,
+		PRESENTATION_MODES,
+		TOGGLES,
+		handlesGated,
+		showsSelectionMenu
+	} from '../../examples/showcase/controls';
 	import { trackParityDocument } from './parity-documents.svelte';
 	import DebugPanel from './debug-panel/DebugPanel.svelte';
 	import InsertToolbar from './InsertToolbar.svelte';
 	import { createPanelState } from './debug-panel/panel-state.svelte';
 	import { createDebugPanelFeed } from './debug-panel/panel-feed.svelte';
-	import { demoPasteImage, resolveDemoImageUrl } from './demo-image-store';
+	import { demoPasteImage, resolveDemoImageUrl } from '../../examples/showcase/image-store';
 
 	// Props that can change while the editor runs: the toggles set these in place, no remount.
-	const MODES: PresentationMode[] = [
-		'source',
-		'reading',
-		'preview-block',
-		'preview-inline',
-		'live'
-	];
-	let presentationMode = $state<PresentationMode>('live');
-	let theme = $state<'dark' | 'light'>('light');
+	let presentationMode = $state(INITIAL_STATE.presentationMode);
+	let theme = $state(INITIAL_STATE.theme);
 
 	// The showcase installs no test probes, so `trackParityDocument` is the only thing putting
 	// its container-heavy document under the teardown parity check.
@@ -36,9 +37,9 @@
 	// blockDragHandles and the plugin set are both fixed at mount, so their toggles remount the
 	// editor through {#key}, passing the current content across so a visitor's edits survive.
 	let source = $state(SHOWCASE_DOCUMENT);
-	let dragHandles = $state(true);
-	let occurrences = $state(false);
-	let selectionMenu = $state(true);
+	let dragHandles = $state(INITIAL_STATE.dragHandles);
+	let occurrences = $state(INITIAL_STATE.occurrences);
+	let selectionMenu = $state(INITIAL_STATE.selectionMenu);
 	// In-body tags are a consumer's plugin, not one of ours: the showcase runs them beside the
 	// bundled tour so a `#tag` can be tried against everything else.
 	const showcasePlugins = $derived([
@@ -56,9 +57,7 @@
 		occurrences = !occurrences;
 	}
 
-	// Reading mode only: the editor turns the handles off there, so an enabled toggle would show
-	// an active state it cannot produce. Live is an editing mode, so it keeps every control.
-	const handlesGated = $derived(presentationMode === 'reading');
+	const handlesOff = $derived(handlesGated(presentationMode));
 
 	// Kept here rather than inside the panel, so the header button and the panel's own
 	// Ctrl+Shift+D drive one state.
@@ -76,45 +75,45 @@
 			type="button"
 			class="showcase-toggle"
 			class:active={theme === 'light'}
-			data-testid="theme-toggle"
+			data-testid={TOGGLES.theme.testId}
 			aria-pressed={theme === 'light'}
 			onclick={() => (theme = theme === 'dark' ? 'light' : 'dark')}
 		>
-			light
+			{TOGGLES.theme.label}
 		</button>
 		<button
 			type="button"
 			class="showcase-toggle"
 			class:active={dragHandles}
-			data-testid="drag-handles-toggle"
+			data-testid={TOGGLES.dragHandles.testId}
 			aria-pressed={dragHandles}
-			disabled={handlesGated}
-			title={handlesGated ? 'Reading mode hides the drag handles' : undefined}
+			disabled={handlesOff}
+			title={handlesOff ? HANDLES_GATED_TITLE : undefined}
 			onclick={toggleDragHandles}
 		>
-			handles
+			{TOGGLES.dragHandles.label}
 		</button>
 		<button
 			type="button"
 			class="showcase-toggle"
 			class:active={selectionMenu}
-			data-testid="selection-menu-toggle"
+			data-testid={TOGGLES.selectionMenu.testId}
 			aria-pressed={selectionMenu}
-			title="Show the formatting menu over a selection"
+			title={TOGGLES.selectionMenu.title}
 			onclick={() => (selectionMenu = !selectionMenu)}
 		>
-			selection menu
+			{TOGGLES.selectionMenu.label}
 		</button>
 		<button
 			type="button"
 			class="showcase-toggle"
 			class:active={occurrences}
-			data-testid="occurrences-toggle"
+			data-testid={TOGGLES.occurrences.testId}
 			aria-pressed={occurrences}
-			title="Highlight every other occurrence of the word under the caret"
+			title={TOGGLES.occurrences.title}
 			onclick={toggleOccurrences}
 		>
-			occurrences
+			{TOGGLES.occurrences.label}
 		</button>
 		<button
 			type="button"
@@ -128,7 +127,7 @@
 		</button>
 		<span class="showcase-hint">Mod+F to search</span>
 		<div class="showcase-modes" role="group" aria-label="Presentation mode">
-			{#each MODES as mode (mode)}
+			{#each PRESENTATION_MODES as mode (mode)}
 				<button
 					type="button"
 					class="showcase-mode"
@@ -160,7 +159,7 @@
 				resolveImageUrl={resolveDemoImageUrl}
 				{presentationMode}
 				linkClick="plain"
-				selectionToolbar={presentationMode === 'live' && selectionMenu}
+				selectionToolbar={showsSelectionMenu(presentationMode, selectionMenu)}
 				{theme}
 			/>
 		{/key}

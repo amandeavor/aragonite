@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 // Only the table knows where the caret is in its grid, and a cell reports it by calls with no
 // return value (a focus notification, the exit gesture), so the table's response is asserted.
-// `internalStickyColumn` is not: nothing calls `getStickyColumn` or `resetStickyColumn`.
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { vi } from 'vitest';
 import { installTableLayoutStubs, mountTable, type MountedTable } from './mount-table';

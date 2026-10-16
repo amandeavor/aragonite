@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import type { Document } from '#lib/core/nodes.js';
 import { parse } from '#lib/core/parser.js';
@@ -7,20 +7,13 @@ import { serialize } from '#lib/core/serializer.js';
 import { displayLength } from '#lib/core/lines.js';
 import { getContentRange, parseInline } from '#lib/core/inline/index.js';
 import { CONTENT_VISIBILITY, renderedText } from '#lib/core/inline/visibility.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
-import { isSubsequence } from '#lib/test/harness/live-oracles.js';
+import { markedChars, marksWithin, type MarkedChar } from '#lib/test/harness/live-oracles.js';
 import { unpaintedResidue } from '#lib/test/simulation/live-screen-reading.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import { arbInlineSource, freshOrFixedSeed } from './arbitraries';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading, renderOptions } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 /**
  * The join of live-mode.md § 4.5 under random range deletes, compared with the literal join for
@@ -69,9 +62,12 @@ interface DeleteResult {
 	shape: string | null;
 	visible: string;
 	residue: number;
+	marked: MarkedChar[];
+	/** The characters of the document before the delete that the range left standing. */
+	kept: MarkedChar[];
 }
 
-function deleteRange(
+function deleteAcross(
 	source: string,
 	cut: Cut,
 	mode: PresentationMode | undefined
@@ -79,28 +75,47 @@ function deleteRange(
 	const doc = parse(source);
 	const points = endpointsIn(doc, cut);
 	if (!points) return null;
-	rangeDelete(
+	const [lo, a] = points.start;
+	const [hi, b] = points.end;
+	const kept = markedChars(doc.children.map(contentOf)).filter(
+		({ block, at }) =>
+			block < lo || block > hi || (block === lo && at < a) || (block === hi && at >= b)
+	);
+	deleteRange(
 		doc,
-		rangeCoverage(
-			doc,
-			coverRange(
-				doc,
-				{ path: points.start.slice(0, 1), offset: points.start[1] },
-				{ path: points.end.slice(0, 1), offset: points.end[1] }
-			)
-		),
-		createSharingState(),
-		fixtureReading({}, mode),
-		'keyless'
+		{ path: points.start.slice(0, 1), offset: points.start[1] },
+		{ path: points.end.slice(0, 1), offset: points.end[1] },
+		{ reading: fixtureReading({}, mode) }
 	);
 	const bytes = serialize(doc);
 	return {
 		bytes,
 		shape: describeConvergence(doc),
 		visible: doc.children.map(visibleTextOf).join('\n'),
-		residue: unpaintedResidue(doc)
+		residue: unpaintedResidue(doc),
+		marked: markedChars(doc.children.map(contentOf)),
+		kept
 	};
 }
+
+const contentOf = (node: Document['children'][number]) => ({
+	raw: node.raw,
+	content: getContentRange(node)
+});
+
+/** How the characters a delete shows compare with the ones it kept: each in the same marks, some
+ *  in fewer (a fallback that dropped a run it could not close), or anything else. */
+function compareMarks(
+	shown: readonly MarkedChar[],
+	kept: readonly MarkedChar[]
+): 'same' | 'fewer' | 'other' {
+	if (shown.length !== kept.length || shown.some((c, i) => c.char !== kept[i].char)) return 'other';
+	if (shown.every((c, i) => c.marks === kept[i].marks)) return 'same';
+	return shown.every((c, i) => marksWithin(c.marks, kept[i].marks)) ? 'fewer' : 'other';
+}
+
+const describeMarks = (chars: readonly MarkedChar[]): string =>
+	chars.map(({ char, marks }) => (marks === '' ? char : `${char}[${marks}]`)).join('');
 
 function visibleTextOf(node: Document['children'][number]): string {
 	const range = getContentRange(node);
@@ -114,27 +129,32 @@ function visibleTextOf(node: Document['children'][number]): string {
 }
 
 describe('live-mode joins over random range deletes', () => {
-	beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-	afterAll(() => __resetLiveJoinSeamCleanerForTests());
-
-	// The counters prove the draws reach the rewrite and that it takes glyphs off the screen; a
-	// comparison over draws that never rewrite proves nothing about the rewrite.
-	it('a live delete only drops bytes, adds no residue, and diverges only where the literal one does', () => {
+	// G1.91. The counters prove the draws reach the rewrite and that it takes glyphs off the
+	// screen; a comparison over draws that never rewrite proves nothing about the rewrite.
+	it('a live delete keeps every kept character and its marks, adds no residue, and diverges only where the literal one does', () => {
 		let rewritten = 0;
 		let cleaned = 0;
+		let same = 0;
+		let fewer = 0;
 		const glyphs = (text: string) => (text.match(/[*_~`[\]]/g) ?? []).length;
 		fc.assert(
 			fc.property(arbInlineDoc, arbCut, (source, cut) => {
-				const literal = deleteRange(source, cut, undefined);
-				const live = deleteRange(source, cut, 'live');
+				const literal = deleteAcross(source, cut, undefined);
+				const live = deleteAcross(source, cut, 'live');
 				if (literal === null || live === null) return;
 				if (live.bytes !== literal.bytes) rewritten++;
 				if (glyphs(live.visible) < glyphs(literal.visible)) cleaned++;
 
-				if (!isSubsequence(live.bytes, literal.bytes)) {
+				// Where live mode rewrote the join, the reader sees the characters the range left,
+				// each in the marks it had; where it wrote the literal join, the markers show instead.
+				const marks =
+					live.bytes === literal.bytes ? 'literal' : compareMarks(live.marked, live.kept);
+				if (marks === 'same') same++;
+				if (marks === 'fewer') fewer++;
+				if (marks === 'other') {
 					throw new Error(
-						`${JSON.stringify(source)}: live wrote ${JSON.stringify(live.bytes)}, not a ` +
-							`subsequence of ${JSON.stringify(literal.bytes)}`
+						`${JSON.stringify(source)}: live wrote ${JSON.stringify(live.bytes)}, showing ` +
+							`${describeMarks(live.marked)} for ${describeMarks(live.kept)}`
 					);
 				}
 				// Neither baseline alone: the literal cut can swallow leftovers the document already
@@ -160,5 +180,9 @@ describe('live-mode joins over random range deletes', () => {
 		);
 		expect(rewritten).toBeGreaterThan(20);
 		expect(cleaned).toBeGreaterThan(10);
-	});
+		// A run whose closer would butt against a run of its own delimiter has no spelling, so a few
+		// deletes fall back to dropping it; the rest keep every mark.
+		expect(same).toBeGreaterThan(80);
+		expect(fewer).toBeLessThan(rewritten / 8);
+	}, 30_000);
 });

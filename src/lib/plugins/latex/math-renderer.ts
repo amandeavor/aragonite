@@ -35,6 +35,6 @@ export const mathSlot = createRendererSlot<{ source: string; display: boolean },
 export function mathErrorNode(source: string, message: string): HTMLElement {
 	const dom = renderSourceFallback(source, message);
 	dom.className = 'math-error';
-	dom.style.color = 'var(--color-error, #d03025)';
+	dom.style.color = 'var(--color-error)';
 	return dom;
 }

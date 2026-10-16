@@ -6,6 +6,7 @@ import {
 	rebuildMermaidRaw,
 	type MermaidMetadata
 } from '#lib/plugins/mermaid/mermaid-kind.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // An opaque container serializes `raw` verbatim, so the byte round trip passes even when the
 // metadata was captured wrongly. The cases pin the rebuild instead, which is what every
@@ -25,7 +26,7 @@ function patchCode(node: CstNode, code: string): void {
 
 describe('mermaid metadata → rebuildRaw fidelity', () => {
 	beforeEach(() => {
-		registerMermaidKind();
+		registerMermaidKind(testView());
 	});
 
 	it('captures the code and fence shape in metadata', () => {

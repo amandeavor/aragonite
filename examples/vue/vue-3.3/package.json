@@ -1,0 +1,7 @@
+{
+	"name": "aragonite-vue-example-vue-3-3",
+	"private": true,
+	"dependencies": {
+		"vue": "~3.3.13"
+	}
+}

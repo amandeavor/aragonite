@@ -7,6 +7,10 @@ import { restoreLandingOver } from '../harness/restore-landing';
 import { parse } from '../../core/parser';
 import { collectCrossBlockText } from '../../selection/clipboard-text';
 import { coverRange, rangeCoverage } from '../../selection/range-coverage';
+import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
+
+// Source mode, where a copied range carries its bytes as they stand.
+const SOURCE_READING = fixtureReading({}, 'source');
 
 // A 2-column table with a header and two body rows: cell indices 0..5.
 const TABLE = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n\npara\n';
@@ -47,7 +51,11 @@ describe('an endpoint on a table path is stored as a cell index', () => {
 		expect([state.anchor, state.focus, state.wholeUnitPath]).toEqual([cell(0), cell(5), [0]]);
 		const doc = parse(TABLE);
 		expect(
-			collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, state.anchor!, state.focus!)))
+			collectCrossBlockText(
+				doc,
+				rangeCoverage(doc, coverRange(doc, state.anchor!, state.focus!)),
+				SOURCE_READING
+			)
 		).toBe('| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n');
 	});
 

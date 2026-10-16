@@ -28,15 +28,11 @@ const ALLOWLIST: Record<string, Declaration> = {
 		mode: 'bounded',
 		reason: 'a block command’s own arguments: an id and its value, or one clipboard payload'
 	},
-	'src/lib/components/blocks/text/live-join-seam.ts :: cleanLiveJoinSeam': {
-		mode: 'bounded',
-		reason: 'a Math.min over the two readings the join offers, deduplicated to one when they agree'
-	},
 	'src/lib/decorations/island-dom.ts :: applyReplace': {
 		mode: 'bounded',
 		reason: 'the tokens of one decoration’s own class attribute; no document axis scales it'
 	},
-	'src/lib/editor-actions/commit/undo-controller.ts :: mutate': {
+	'src/lib/editor-actions/commit/structural-commit.ts :: mutate': {
 		mode: 'bounded',
 		reason:
 			'one reclassification per ancestor container, and the parser folds nesting past MAX_NESTING_DEPTH into paragraph content'

@@ -6,11 +6,8 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
-import { createSharingState } from '../../tree-operations/sharing';
 import type { CellSelectionPoint, SelectionPoint } from '../../selection/primitives';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 // Paragraph at [0], 3-row table at [1] (header + two body rows), blank line between.
 const PROSE_THEN_TABLE = 'intro text\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
@@ -25,15 +22,7 @@ const cell = (path: number[], index: number): CellSelectionPoint => ({
 
 function deletedBytes(source: string, start: SelectionPoint, end: SelectionPoint): string {
 	const doc = parse(source);
-	return serialize(
-		rangeDelete(
-			doc,
-			rangeCoverage(doc, coverRange(doc, start, end)),
-			createSharingState(),
-			fixtureReading(),
-			'keyless'
-		).newDoc
-	);
+	return serialize(deleteRange(doc, start, end).newDoc);
 }
 
 /** The block kinds the delete's own output parses back to. */

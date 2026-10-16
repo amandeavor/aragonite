@@ -1,6 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { configureEditorEnv } from '#lib/env.js';
-import { takeDevWarns } from '../support/warn-gate';
+import { describe, expect, it } from 'vitest';
 import { INLINE_KIND_TABLE, type AnyInlineKind } from '#lib/core/nodes.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 import {
@@ -11,12 +9,8 @@ import {
 	followEditOf,
 	isRevealableInlineKind,
 	listInlineMarks,
-	registerLiveSplitRebalancer,
-	getLiveSplitRebalancer,
-	__resetLiveSplitRebalancerForTests,
 	type InlineConstructPolicy,
-	type InlineMarkPolicy,
-	type LiveSplitRebalancer
+	type InlineMarkPolicy
 } from '#lib/schema/inline-construct-policy.js';
 import {
 	flushPendingRegistrationChecks,
@@ -32,14 +26,6 @@ const atomic: InlineConstructPolicy = {
 	splitBehavior: 'plain',
 	revealable: false
 };
-
-const rebalancer = (): LiveSplitRebalancer => () => null;
-
-afterEach(() => {
-	// A separate reset: clearing the rows deliberately leaves this function registered, so only
-	// this suite, which tests that function, clears it between cases.
-	__resetLiveSplitRebalancerForTests();
-});
 
 describe('built-in rows', () => {
 	it.each([
@@ -179,19 +165,7 @@ describe('registration lifecycle', () => {
 		expect(() => registerInlineConstructPolicy(kind, atomic)).not.toThrow();
 	});
 
-	it('replaces instead of throwing on a dev server', () => {
-		const kind = declarePluginInlineKind('policy-dev');
-		registerInlineConstructPolicy(kind, atomic);
-		configureEditorEnv({ isDev: true, isTest: false });
-		expect(() =>
-			registerInlineConstructPolicy(kind, { ...atomic, revealable: true })
-		).not.toThrow();
-		expect(getInlineConstructPolicy(kind)?.revealable).toBe(true);
-		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);
-	});
-
-	// Registration refuses an invalid row rather than leaving it to the mount warning (G1.31). The
-	// dev server forgives a duplicate, never an invalid row: a re-run would submit the same one.
+	// Registration refuses an invalid row rather than leaving it to the mount warning (G1.31).
 	const claimsCard = (name: string) => () =>
 		registerInlineConstructPolicy(declarePluginInlineKind(name), {
 			...atomic,
@@ -202,47 +176,6 @@ describe('registration lifecycle', () => {
 	it('throws on a mark claiming a built-in command id', () => {
 		expect(claimsCard('policy-builtin-command')).toThrow(/link\.openCard/);
 	});
-
-	it('throws on that same claim under the dev valve', () => {
-		configureEditorEnv({ isDev: true, isTest: false });
-		expect(claimsCard('policy-builtin-command-dev')).toThrow(/link\.openCard/);
-	});
-});
-
-describe('live split rebalancer slot', () => {
-	// A parse-only startup loads the descriptors and never the component layer, so nothing is
-	// registered there and `splitNode` falls back to cutting the bytes.
-	it('is empty until the editor layer registers into it', () => {
-		expect(getLiveSplitRebalancer()).toBeUndefined();
-	});
-
-	it('reads back the registered function', () => {
-		const fn = rebalancer();
-		registerLiveSplitRebalancer(fn);
-		expect(getLiveSplitRebalancer()).toBe(fn);
-	});
-
-	it('throws on a second registration under test', () => {
-		registerLiveSplitRebalancer(rebalancer());
-		expect(() => registerLiveSplitRebalancer(rebalancer())).toThrow(/already registered/i);
-	});
-
-	it('replaces instead of throwing on a dev server', () => {
-		registerLiveSplitRebalancer(rebalancer());
-		configureEditorEnv({ isDev: true, isTest: false });
-		const second = rebalancer();
-		expect(() => registerLiveSplitRebalancer(second)).not.toThrow();
-		expect(getLiveSplitRebalancer()).toBe(second);
-		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);
-	});
-
-	// Miss-analysis: no test reset and then read this function, which nothing re-adds once cleared.
-	it('survives the plugin-row reset, being a built-in registration', () => {
-		const fn = rebalancer();
-		registerLiveSplitRebalancer(fn);
-		__resetSchemaRegistriesForTests();
-		expect(getLiveSplitRebalancer()).toBe(fn);
-	});
 });
 
 describe('coherence check scope', () => {
@@ -252,8 +185,8 @@ describe('coherence check scope', () => {
 		return kind;
 	};
 
-	// The parser's getOrderedOpeners empties the same queue inside parse-only unit tests, where
-	// the component layer that registers the policy's functions is absent.
+	// The parser's getOrderedOpeners empties the same queue inside parse-only unit tests, where no
+	// editor mounts.
 	it('stays out of the registration flush the parser also drains', () => {
 		incoherent('scope-parser');
 		const { report, byTag } = collector();

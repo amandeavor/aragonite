@@ -9,6 +9,8 @@ import {
 	stubBlockComponent
 } from '#lib/test/harness/editor-actions.js';
 
+const live = () => true;
+
 // A navigation aimed into a collapsed container opens it first, so the descent runs against the
 // opened tree; `test/plugins/expand-door.test.ts` covers the open itself.
 
@@ -35,7 +37,7 @@ describe('descendTo, opening a collapsed container', () => {
 		});
 		const root = rootHolding(container(refs, { isCollapsed: () => true, openCollapsed }));
 
-		const resolved = await descendTo(root, [0, 1], { openCollapsed: true });
+		const resolved = await descendTo(root, [0, 1], { openCollapsed: true, current: live });
 
 		expect(openCollapsed).toHaveBeenCalledTimes(1);
 		expect(resolved).toBe(body);
@@ -47,7 +49,7 @@ describe('descendTo, opening a collapsed container', () => {
 			container([stubBlockComponent(), undefined], { isCollapsed: () => true, openCollapsed })
 		);
 
-		expect(await descendTo(root, [0, 1])).toBeNull();
+		expect(await descendTo(root, [0, 1], { current: live })).toBeNull();
 		expect(openCollapsed).not.toHaveBeenCalled();
 	});
 
@@ -56,7 +58,7 @@ describe('descendTo, opening a collapsed container', () => {
 		const openCollapsed = vi.fn(async () => true);
 		const root = rootHolding(container([title], { isCollapsed: () => true, openCollapsed }));
 
-		const resolved = await descendTo(root, [0, 0], { openCollapsed: true });
+		const resolved = await descendTo(root, [0, 0], { openCollapsed: true, current: live });
 
 		expect(openCollapsed).not.toHaveBeenCalled();
 		expect(resolved).toBe(title);
@@ -67,7 +69,7 @@ describe('descendTo, opening a collapsed container', () => {
 		const refs = [stubBlockComponent(), stubBlockComponent()];
 		const root = rootHolding(container(refs, { isCollapsed: () => false, openCollapsed }));
 
-		await descendTo(root, [0, 1], { openCollapsed: true });
+		await descendTo(root, [0, 1], { openCollapsed: true, current: live });
 
 		expect(openCollapsed).not.toHaveBeenCalled();
 	});
@@ -78,7 +80,7 @@ describe('descendTo, opening a collapsed container', () => {
 			container([stubBlockComponent(), undefined], { isCollapsed: () => true })
 		);
 
-		expect(await descendTo(root, [0, 1], { openCollapsed: true })).toBeNull();
+		expect(await descendTo(root, [0, 1], { openCollapsed: true, current: live })).toBeNull();
 	});
 
 	it('opens every collapsed ancestor on the path, outermost first', async () => {
@@ -103,7 +105,10 @@ describe('descendTo, opening a collapsed container', () => {
 			}
 		});
 
-		const resolved = await descendTo(rootHolding(outer), [0, 1, 1], { openCollapsed: true });
+		const resolved = await descendTo(rootHolding(outer), [0, 1, 1], {
+			openCollapsed: true,
+			current: live
+		});
 
 		expect(order).toEqual(['outer', 'inner']);
 		expect(resolved).toBe(target);

@@ -9,7 +9,8 @@ import { firstDisplayLine, splitLines } from '#lib/core/lines.js';
 import { quoteLines } from '#lib/core/parsers/blockquote.js';
 import { listItemLines, readItemShape } from '#lib/core/parsers/list.js';
 import type { LineCodec } from '#lib/core/strip-lines.js';
-import { rebuildConcatRaw, rebuildStripRaw } from '#lib/schema/child-spans.js';
+import { rebuildConcatRaw } from '#lib/schema/child-spans.js';
+import { rebuildStripRaw } from '#lib/schema/strip-rebuild.js';
 import { rebuildContainerRawIfContainer } from '#lib/schema/container-raw.js';
 import { arbRespelledContainerDoc, freshOrFixedSeed } from './arbitraries';
 

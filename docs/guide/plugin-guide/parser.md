@@ -62,16 +62,19 @@ Some openers read past their first line looking for something and decline when i
 An opener that reads on and never backs out doesn't need one. A fence left open just runs to the end of the document, like the built-in code block's, and nothing typed below changes that.
 
 ```ts
-registerBlockOpener(mathBlock, {
-	priority: OPENER_PRIORITIES.fencedCode + 5,
-	interruptsParagraph: (text) => text === '$$',
-	// A lone `$$` with no closing `$$` under it is still waiting
-	readingNotFinal: (raw) => {
-		const [first, ...rest] = displayLines(raw);
-		return first.text === '$$' && !rest.some((line) => line.text === '$$');
-	},
-	tryOpen(ctx) {
-		// scans for the closing `$$`, and returns null when there isn't one
+registerBlockKind(mathBlock, {
+	// ...the descriptor fields and the view
+	opener: {
+		priority: OPENER_PRIORITIES.fencedCode + 5,
+		interruptsParagraph: (text) => text === '$$',
+		// A lone `$$` with no closing `$$` under it is still waiting
+		readingNotFinal: (raw) => {
+			const [first, ...rest] = displayLines(raw);
+			return first.text === '$$' && !rest.some((line) => line.text === '$$');
+		},
+		tryOpen(ctx) {
+			// scans for the closing `$$`, and returns null when there isn't one
+		}
 	}
 });
 ```

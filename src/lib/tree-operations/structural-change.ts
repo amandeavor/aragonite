@@ -123,6 +123,13 @@ export function trackChildIds(parent: IdCarrier): {
 	};
 }
 
+/** Applies to `parent`'s ids a change a write reported rather than splicing them itself. */
+export function recordChildIdsChange(parent: IdCarrier, change: StructuralChange): void {
+	const ids = parent.childIds;
+	if (!ids) return;
+	applyStructuralChangeToIdsRefs(change, ids, new Array<BlockComponent | undefined>(ids.length));
+}
+
 /**
  * The one contiguous change carrying `before` to `after`, read off slot identity: the matching
  * ends fall outside the window, and every marker surviving inside it maps to where it stood.

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { appendView } from '#lib/test/harness/views.js';
 import { describe, it, expect, afterEach } from 'vitest';
 import fc from 'fast-check';
 import type { InlineNode } from '../../core/nodes';
@@ -7,7 +8,7 @@ import { renderInlineNodes } from '../../core/inline-render';
 import { buildAmbientSpan } from '../../ambient/ambient-dom';
 import { rawTextOfNode } from '../../caret/widget-offset';
 import type { IndexedDecoration } from '../../decorations/buckets';
-import { applyIslandDecorations } from '../../decorations/island-dom';
+import { applyIslandDecorations, type ApplyIslandsOpts } from '../../decorations/island-dom';
 import type { ReplaceDecoration, WidgetDecoration } from '../../decorations/types';
 import { mountDecorationWidget } from '../../decorations/widget-dom';
 import { arbAltOnlyImage, arbInlineSource, freshOrFixedSeed } from './arbitraries';
@@ -161,7 +162,9 @@ describe('G2.4 textContent chain (alt-only images)', () => {
 // Any number of inline widgets, wherever placed, still reproduce the source, and overlapping
 // replaces reach the end-snapping path; `decorations/island-dom.test.ts` covers the start one.
 describe('G2.4 textContent chain (decoration widgets)', () => {
-	const opts = { mountWidget: mountDecorationWidget };
+	const opts: Pick<ApplyIslandsOpts, 'mountWidget'> = {
+		mountWidget: (spec, dec, target) => mountDecorationWidget(spec, dec, target, () => {})
+	};
 
 	type IslandSpec = { kind: 'widget'; at: number } | { kind: 'replace'; a: number; b: number };
 
@@ -185,7 +188,7 @@ describe('G2.4 textContent chain (decoration widgets)', () => {
 					type: 'widget',
 					path: [0],
 					offset: clamp(spec.at),
-					widget: { buildDom: () => document.createElement('span') }
+					widget: { view: appendView() }
 				};
 				return { index, dec };
 			}

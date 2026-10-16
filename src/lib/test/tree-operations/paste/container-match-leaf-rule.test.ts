@@ -2,12 +2,10 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../../core/parser';
 import { serialize } from '../../../core/serializer';
-import { pasteDispatch } from '../../../tree-operations/paste/dispatch';
 import {
 	makePasteCommit,
-	makeStubBlockEdit,
 	registerStubBlockListState,
-	pasteContext
+	runPasteDispatch
 } from '../../harness/editor-actions';
 import { expectParseConverged } from '../../harness/parse-converged';
 
@@ -18,18 +16,10 @@ import { expectParseConverged } from '../../harness/parse-converged';
 const ITEM_WITH_CODE = '- a\n\n  ```js\n  ``\n  code\n  ```\n';
 
 async function pasteInto(source: string, targetPath: number[], text: string) {
-	const { doc, controller } = makePasteCommit(source);
-	registerStubBlockListState(doc.children[0]);
-	await pasteDispatch(
-		{ pastedText: text, targetPath, offset: 8 },
-		pasteContext({
-			doc,
-			blockEdit: makeStubBlockEdit(),
-			controller,
-			crossBlock: true
-		})
-	);
-	return doc;
+	const h = makePasteCommit(source);
+	registerStubBlockListState(h.doc.children[0]);
+	await runPasteDispatch(h, { pastedText: text, targetPath, offset: 8 }, { crossBlock: true });
+	return h.doc;
 }
 
 describe('container-matching paste into a leaf with its own write rule', () => {

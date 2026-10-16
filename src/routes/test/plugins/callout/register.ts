@@ -3,15 +3,14 @@
  * installs this setup once per process, so it runs unguarded and survives a schema reset.
  */
 
-import { definePluginBlock, type EditorPlugin } from '#lib/plugin.js';
-import { registerCalloutKind, CALLOUT } from './callout-kind';
+import { definePlugin, type EditorPlugin } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
+import { registerCalloutKind } from './callout-kind';
 import CalloutBlock from './CalloutBlock.svelte';
 
 export function calloutPlugin(): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: 'callout',
-		kind: CALLOUT,
-		component: CalloutBlock,
-		register: registerCalloutKind
+		setup: () => registerCalloutKind(svelteBlockView(CalloutBlock))
 	});
 }

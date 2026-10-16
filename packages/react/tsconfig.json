@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ES2022", "DOM"],
+		"jsx": "react-jsx",
+		"strict": true,
+		"declaration": true,
+		"verbatimModuleSyntax": true,
+		"skipLibCheck": false,
+		"rootDir": "src",
+		"outDir": "dist",
+		// This checkout's own core build, wherever npm linked the package from.
+		"paths": { "@voithos-labs/aragonite": ["../../dist/index.d.ts"] }
+	},
+	"include": ["src"]
+}

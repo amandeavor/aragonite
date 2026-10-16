@@ -10,7 +10,6 @@ import {
 	matchFenceInfo,
 	OPENER_PRIORITIES,
 	registerBlockKind,
-	registerBlockOpener,
 	scanFence,
 	setPluginMetadata,
 	type CstNode
@@ -24,6 +23,7 @@ import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import { makeTopHarness, type TopHarness } from '#lib/test/harness/editor-actions.js';
 import { scanCompiled } from '#lib/test/harness/search-replace.js';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // ── A third-party kind following the guide's "Code in metadata" recipe ──────
 
@@ -50,6 +50,35 @@ function registerSketchKind(): void {
 	const sketch = declarePluginKind('sketch');
 	const matchSketch = matchFenceInfo('sketch');
 	registerBlockKind(sketch, {
+		opener: {
+			priority: OPENER_PRIORITIES.fencedCode - 6,
+			interruptsParagraph: (line) => matchSketch(line) !== null,
+			tryOpen(ctx) {
+				const fence = matchSketch(ctx.line.text);
+				if (!fence || fence.indent !== '') return null;
+				const scan = scanFence(ctx, fence);
+				const closer = scan.closer === -1 ? '' : ctx.lines[scan.closer].text;
+				if (!/^(`+|~+)$/.test(closer)) return null;
+				const node: CstNode = {
+					kind: sketch,
+					leadingTrivia: ctx.leadingTrivia,
+					raw: '',
+					children: []
+				};
+				setPluginMetadata<SketchMetadata>(node, {
+					code: scan.body,
+					marker: fence.marker,
+					fenceLength: fence.length,
+					closerLength: closer.length,
+					info: fence.infoRaw,
+					lineEnding: ctx.line.lineEnding,
+					closerLineEnding: ctx.lines[scan.closer].lineEnding
+				});
+				rebuildSketchRaw(node);
+				return { node, consumed: scan.consumed };
+			}
+		},
+		view: testView(),
 		gapEdges: 'before',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -58,34 +87,6 @@ function registerSketchKind(): void {
 		blockFocus: 'whole-block',
 		container: { contract: 'opaque', rebuildRaw: rebuildSketchRaw },
 		closure: testClosure
-	});
-	registerBlockOpener(sketch, {
-		priority: OPENER_PRIORITIES.fencedCode - 6,
-		interruptsParagraph: (line) => matchSketch(line) !== null,
-		tryOpen(ctx) {
-			const fence = matchSketch(ctx.line.text);
-			if (!fence || fence.indent !== '') return null;
-			const scan = scanFence(ctx, fence);
-			const closer = scan.closer === -1 ? '' : ctx.lines[scan.closer].text;
-			if (!/^(`+|~+)$/.test(closer)) return null;
-			const node: CstNode = {
-				kind: sketch,
-				leadingTrivia: ctx.leadingTrivia,
-				raw: '',
-				children: []
-			};
-			setPluginMetadata<SketchMetadata>(node, {
-				code: scan.body,
-				marker: fence.marker,
-				fenceLength: fence.length,
-				closerLength: closer.length,
-				info: fence.infoRaw,
-				lineEnding: ctx.line.lineEnding,
-				closerLineEnding: ctx.lines[scan.closer].lineEnding
-			});
-			rebuildSketchRaw(node);
-			return { node, consumed: scan.consumed };
-		}
 	});
 }
 
@@ -175,7 +176,7 @@ const ROWS: Row[] = [
 describe('an edit after a lengthened fence gives the bytes a reload would (#640)', () => {
 	beforeEach(() => {
 		installPlugins([admonitionsPlugin()]);
-		registerMermaidKind();
+		registerMermaidKind(testView());
 		registerSketchKind();
 	});
 

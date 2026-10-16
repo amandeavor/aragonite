@@ -2,10 +2,7 @@
 // reads with no entry, with half an entry, or with one its own check rejects.
 import { describe, it, expect } from 'vitest';
 import { createEditorPluginContexts } from '#lib/schema/plugin-editor-context.js';
-import type { Component } from 'svelte';
-import { definePluginBlock } from '#lib/schema/define-plugin-block.js';
-import { definePlugin, installPlugins, resolvePluginOptions } from '#lib/schema/plugin-install.js';
-import type { BlockComponentExports } from '#lib/block-component.js';
+import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { pluginContextDeps } from '../support/plugin-context-deps';
 
 interface BadgeOptions {
@@ -117,23 +114,5 @@ describe("a plugin's options in one editor", () => {
 		expect(contexts.get('badge')!.options).toEqual(DEFAULTS);
 		expect(contexts.get('badge')!.options).toEqual(DEFAULTS);
 		expect(reports).toEqual(['badge']);
-	});
-});
-
-describe('the one-block shortcut', () => {
-	it('carries defaults and parseOptions onto the unit it returns', () => {
-		const stubComponent = (() => {}) as unknown as Component<
-			Record<string, unknown>,
-			BlockComponentExports
-		>;
-		const unit = definePluginBlock({
-			name: 'badge',
-			kind: 'badge',
-			component: stubComponent,
-			register() {},
-			defaults: DEFAULTS,
-			parseOptions: parseBadgeOptions
-		});
-		expect(resolvePluginOptions(unit, { depth: 1, label: 7 })).toEqual({ ...DEFAULTS, depth: 1 });
 	});
 });

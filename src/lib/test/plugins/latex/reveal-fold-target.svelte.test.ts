@@ -2,7 +2,8 @@
 // Miss-analysis: every source closed over a still document, never after an undo or `source` swap.
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { mount, unmount, flushSync, tick } from 'svelte';
-import { Editor, type EditorInstance } from '#lib';
+import type { EditorInstance } from '#lib';
+import { Editor } from '#lib/svelte.js';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
 import type { MathRenderer } from '#lib/plugins/latex/math-renderer.js';

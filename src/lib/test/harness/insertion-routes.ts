@@ -87,6 +87,17 @@ export function dispatchPaste(el: HTMLElement, text: string): Event {
 	return e;
 }
 
+/** A paste carrying one PNG file and no text, sent to `el`. */
+export function dispatchImagePaste(el: HTMLElement): Event {
+	const e = new Event('paste', { bubbles: true, cancelable: true });
+	const files = [new File([new Uint8Array([137, 80])], 'shot.png', { type: 'image/png' })];
+	Object.defineProperty(e, 'clipboardData', {
+		value: { types: ['Files'], files, items: [], getData: () => '' }
+	});
+	el.dispatchEvent(e);
+	return e;
+}
+
 /** A `beforeinput` of `inputType`, then the browser's insert and `input` unless it was prevented. */
 async function inputEvent(el: HTMLElement, inputType: string, data: string): Promise<void> {
 	const before = dispatchBeforeInput(el, inputType, { data });

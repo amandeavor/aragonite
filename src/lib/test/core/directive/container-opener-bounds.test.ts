@@ -4,8 +4,9 @@ import { serialize } from '#lib/core/serializer.js';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
 import { DIRECTIVE_CONTAINER } from '#lib/core/directive/kinds.js';
 import { expectBoundedGrowth, measureScanGrowth } from '../../harness/scan-growth';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
-beforeEach(activateDirectiveGrammar);
+beforeEach(() => activateDirectiveGrammar(testDirectiveViews()));
 
 const parseOnly = (source: string) => void parse(source);
 

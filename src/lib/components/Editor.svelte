@@ -1,14 +1,10 @@
 <script lang="ts">
-	import { setContext, tick, onMount, untrack } from 'svelte';
+	import { setContext, tick, onMount, onDestroy, untrack } from 'svelte';
 	import '../styles/editor.css';
 	import type { BlockComponent } from '../block-component';
 	import type { AnyBlockKind, Document } from '../core/nodes';
-	import type {
-		EditorProps,
-		EditorInstance,
-		EditorDiagnostics,
-		InsertMarkdownOptions
-	} from '../editor-props';
+	import type { EditorProps } from './editor-component-props';
+	import type { EditorInstance, EditorDiagnostics, InsertMarkdownOptions } from '../editor-props';
 	import type { EditorEvents } from '../editor-events';
 	import {
 		BLOCK_EDIT_KEY,
@@ -18,15 +14,13 @@
 		EDITOR_SERVICES_KEY,
 		FOCUS_KEY,
 		HISTORY_KEY,
-		type BlockElLookup,
 		type DocumentGetter,
 		type EditorDoc,
 		type EditorPolicies,
 		type EditorServices,
-		type PluginEditorLookup,
-		type ResolveImageUrl,
-		type ResolveLinkUrl
+		type PluginEditorLookup
 	} from '../editor-keys';
+	import type { ResolveImageUrl, ResolveLinkUrl } from '../host-hooks';
 	import { createCaretMemory } from '../caret/caret-memory';
 	import { createCaretWriter } from '../caret/widget-offset';
 	import { createDrawnCaret } from '../caret/drawn-caret.svelte';
@@ -71,6 +65,8 @@
 	import { createSearchReplace } from '../editor-actions/search-replace';
 	import { createSearchState, type SearchState } from '../search/search-state.svelte';
 	import { createDecorationEngine } from '../decorations/decoration-state.svelte';
+	import { createMarkActivation } from '../decorations/mark-activation';
+	import { paintedMarkRects } from '../decorations/mark-interactions';
 	import type { DecorationRegistry } from '../decorations/types';
 	import { createEditorRects, type EditorRects } from '../editor-rects';
 	import { createCaretLanding } from '../selection/caret-landing';
@@ -111,6 +107,7 @@
 		onRoot,
 		removeAll
 	} from './editor-root/listeners';
+	import { createRootEffect } from './editor-root/root-effect.svelte';
 	import { collectReservedChords, chordIsClaimed } from '../schema/reserved-chords';
 	import { portalInto } from './portal';
 	import {
@@ -149,8 +146,9 @@
 	import { runStartupInvariantChecks } from '../invariants/install';
 	import { assertInvariant } from '../assert';
 	import { checkMarkerCssParity } from '../invariants/marker-css-parity';
+	import { checkHostColorsResolve } from '../invariants/theme-stylesheet';
 	import { registerEditorBuiltIns } from './editor-built-ins';
-	import { blockContentElAt } from '../caret/block-el-lookup';
+	import { blockContentElAt, type BlockElLookup } from '../caret/block-el-lookup';
 
 	registerEditorBuiltIns();
 	runStartupInvariantChecks();
@@ -158,7 +156,7 @@
 	// `__registryEnablement` is for tests only; the intersection type keeps it off the
 	// public EditorProps.
 	let {
-		source = '',
+		source,
 		resolveImageUrl,
 		resolveLinkUrl,
 		imageLoadPolicy = 'auto',
@@ -234,7 +232,7 @@
 
 	// Plain state, not $derived: structural edits write `doc` and `blockIds` directly.
 	// svelte-ignore state_referenced_locally
-	const initial = initDocument(source, registryView.grammar);
+	const initial = initDocument(source ?? '', registryView.grammar);
 	let doc: Document = $state(initial.doc);
 	// svelte-ignore state_referenced_locally
 	let blockIds = $state<string[]>(assignIds(doc.children));
@@ -277,6 +275,7 @@
 	const blockRefs: (BlockComponent | undefined)[] = [];
 	const blockRefSlots = refSlotsOver(blockRefs);
 	let editorEl: HTMLDivElement | undefined = $state();
+	const rootEffect = createRootEffect(() => editorEl);
 	// A portaled search bar inside a themed host skips the theme class, whose defaults would
 	// shadow the host's tokens.
 	const inThemedScope = $derived(!!editorEl?.closest('.aragonite-editor-theme'));
@@ -379,6 +378,13 @@
 
 	const menuPresence = createMenuPresence({ isReading: () => effectiveMode === 'reading' });
 	const stamps = createDocumentStamps();
+	// Work still in flight at the unmount stops there: its write is refused at the write gate, its
+	// report reaches no handler, and its caret landing reads no more of the tree.
+	onDestroy(() => {
+		stamps.end();
+		events.end();
+		caretLanding.noteTreeSwap();
+	});
 	// Apart from the menus, so a shown source fires no `menuChange`.
 	const drafts = createDraftRegistry(stamps);
 	// Emits on open/close transitions only, so a subscriber's first event is a real menu.
@@ -412,6 +418,8 @@
 		menus: menuPresence,
 		stamps,
 		drafts,
+		// Built below; a swap runs post-init.
+		markHover: { end: () => decorationEngine.markHover.end() },
 		selection: selectionState,
 		// The counter bumps only when the link-reference signature differs; the resolver
 		// refreshes regardless.
@@ -426,12 +434,13 @@
 
 	// The mount parsed `source` already, so the first run swaps only for a write made since.
 	// svelte-ignore state_referenced_locally
-	let parsedAtMount: string | undefined = source;
+	let parsedAtMount: string | undefined = source ?? '';
 	$effect(() => {
 		const next = source;
 		const unchangedSinceMount = next === parsedAtMount;
 		parsedAtMount = undefined;
-		if (unchangedSinceMount) return;
+		// An absent source means the host has no new document to show, never an empty one.
+		if (unchangedSinceMount || next === undefined) return;
 		// Untracked so typing never re-runs it: `docs/design/editor.md` § Reactive state plumbing.
 		untrack(() => documentSwap.swapTo(next));
 	});
@@ -463,10 +472,8 @@
 	// ── Hidden-run class check ──────────────────────────────────────────
 
 	// Once per mode change, so the getComputedStyle cost stays off the keystroke path.
-	$effect(() => {
+	rootEffect((root) => {
 		void effectiveMode;
-		if (!editorEl) return;
-		const root = editorEl;
 		assertInvariant('marker-css-parity', () => checkMarkerCssParity(root));
 	});
 
@@ -474,16 +481,13 @@
 
 	// On the resolved scroll container, not the root: in host mode the user scrolls outside the
 	// editor, and that scroll must release the block held in place.
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect(() => {
 		const target = getScrollHost();
 		if (!target) return;
 		return installRevealAnchorRelease(target, scrollOwner.release);
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		// focusout bubbles, so reset only when focus leaves the editor's content: for somewhere
 		// outside it, or for the host's header, which holds no caret of the editor's.
 		return onRoot(root, 'focusout', (e: FocusEvent) => {
@@ -502,15 +506,10 @@
 		})
 	);
 
-	$effect(() => {
-		if (!editorEl) return;
-		return installUndoStepEnd(editorEl, () => controller.endUndoStep());
-	});
+	rootEffect((root) => installUndoStepEnd(root, () => controller.endUndoStep()));
 
 	// A chord that reaches <body> goes to one editor: the only one, or the last one interacted with.
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		registerEditor(root);
 		const removeMark = onRoot(root, 'focusin', () => markEditorInteracted(root));
 		return () => {
@@ -605,9 +604,21 @@
 	const decorationEngine = createDecorationEngine({
 		getDoc,
 		onSourceError: (source, error) =>
-			events.emit('error', { origin: 'decoration', error, context: { source } })
+			events.emit('error', { origin: 'decoration', error, context: { source } }),
+		onMarkError: (path, error) =>
+			events.emit('error', { origin: 'decoration', error, context: { path } })
 	});
 	const decorations: DecorationRegistry = { addSource: decorationEngine.addSource };
+	const markActivation = createMarkActivation({
+		caret: () => {
+			const focus = getSelection()?.focus;
+			return focus && !focus.cellCoordinate ? { path: focus.path, offset: focus.offset } : null;
+		},
+		marksForPath: (path) => decorationEngine.marksForPath(path),
+		paintedRects: (dec) => paintedMarkRects(dec, getBlockComponent),
+		caretRect: () => rects.caretRect(),
+		runMarkHandler: decorationEngine.runMarkHandler
+	});
 
 	const rects = createEditorRects({
 		getBlockElByPath,
@@ -670,6 +681,8 @@
 	// onMount, not $effect: plugin callbacks read reactive state, and an effect would tear
 	// every subscription down on the first structural edit.
 	onMount(() => {
+		const root = editorEl;
+		if (root) assertInvariant('host-colors-resolve', () => checkHostColorsResolve(root));
 		pluginContexts.attachAll(({ plugin, error }) =>
 			events.emit('error', { origin: 'subscriber', error, context: { plugin } })
 		);
@@ -681,6 +694,8 @@
 	$effect(() => () => {
 		// Cancels the typing batch's pause timer, which would outlive the editor.
 		controller.flushDebouncedCheckpoint();
+		// Drops the hover's page scroll listener, which a pointer resting here would keep.
+		decorationEngine.markHover.leave();
 		lifetimeController.abort();
 	});
 
@@ -718,7 +733,16 @@
 		reveal: (p) => rects.scrollTo(p),
 		onClose: () => void searchCaret.restore()
 	});
-	// Lives here, not in SearchBar, so the root Ctrl+H and the bar's chevron share it.
+	// One fire per flush that changed what the find bar shows; a regex scan or a replace fires once
+	// it lands.
+	let lastSearchKey = searchState.viewKey();
+	$effect(() => {
+		const key = searchState.viewKey();
+		if (key === null || key === lastSearchKey) return;
+		lastSearchKey = key;
+		events.emit('searchChange', undefined);
+	});
+	// Lives here, not in SearchBar, so the root Ctrl+H and the bar's replace toggle share it.
 	let replaceExpanded = $state(false);
 
 	const reorder = createReorderAction(editorActionsDeps, controller);
@@ -756,6 +780,7 @@
 		getPresentationMode: reading.mode,
 		isCrossBlockRange: () => selectionState.isCrossBlock,
 		crossBlockCommands,
+		markActivation,
 		keybindingOverrides: () => overridesMap,
 		onCommandError: commandErrorSink,
 		reorder
@@ -804,21 +829,11 @@
 		// Reading mode turns the drag handles off through the prop's own getter.
 		blockDragHandles: () => blockDragHandles && effectiveMode !== 'reading',
 		placeholder: () => placeholderPolicy,
-		presentationMode: reading.mode,
 		theme: () => theme,
 		activationClick,
-		keybindingOverrides: () => overridesMap,
-		// An accessor, not the `onPasteImage,` shorthand, which would capture the prop's value.
-		get onPasteImage() {
-			return onPasteImage;
-		},
-		// Accessors, as above.
-		get onRunCode() {
-			return onRunCode;
-		},
-		get codeMenuItems() {
-			return codeMenuItems;
-		},
+		onPasteImage: () => onPasteImage,
+		onRunCode: () => onRunCode,
+		codeMenuItems: () => codeMenuItems,
 		brokenImageUrls
 	} satisfies EditorPolicies);
 
@@ -879,9 +894,7 @@
 		linkCard,
 		reading
 	});
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		return removeAll(
 			rootGestures.install(root),
 			installSelectionDrop({
@@ -936,25 +949,22 @@
 
 	// Hides the native caret and highlight while the overlay paints; keyed on the overlay's own
 	// test, so a range it does not paint keeps the native one.
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect((root) => {
 		if (selectionState.isCustomRendered) {
-			editorEl.setAttribute('data-cross-block', '');
+			root.setAttribute('data-cross-block', '');
 		} else {
-			editorEl.removeAttribute('data-cross-block');
+			root.removeAttribute('data-cross-block');
 		}
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
-		return removeAll(installModActiveTracker(editorEl), installPressTracker(editorEl, presses));
-	});
+	rootEffect((root) =>
+		removeAll(installModActiveTracker(root), installPressTracker(root, presses))
+	);
 
 	// A delegated handle-drag on the root, torn down on unmount via the lifetime signal.
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect((root) => {
 		const handle = installReorderDrag({
-			editorRoot: editorEl,
+			editorRoot: root,
 			getScrollHost,
 			moveReorderUnit: reorder.moveReorderUnit,
 			getDoc,
@@ -968,10 +978,9 @@
 		return () => handle.dispose();
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect((root) => {
 		return installSelectionChangeBridge({
-			root: editorEl,
+			root,
 			isHostChrome,
 			announceIfMoved: selectionAnnouncer.announceIfMoved,
 			selection: selectionState,
@@ -979,10 +988,9 @@
 		});
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect((root) => {
 		return installEditorBlurAnnouncer({
-			root: editorEl,
+			root,
 			announce: selectionAnnouncer.announce
 		});
 	});
@@ -1031,9 +1039,7 @@
 		setReplaceExpanded: (expanded) => (replaceExpanded = expanded)
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		return onRoot(root.ownerDocument, 'keydown', (e: KeyboardEvent) =>
 			rootKeydown.handleKeyDown(e, root)
 		);
@@ -1045,17 +1051,12 @@
 		selection: selectionState,
 		getDoc,
 		crossBlock: editorCrossBlock,
-		// An accessor, so the handler reads the live prop.
-		get onPasteImage() {
-			return onPasteImage;
-		},
+		onPasteImage: () => onPasteImage,
 		events,
 		getBlockComponent
 	});
 
-	$effect(() => {
-		if (!editorEl) return;
-		const root = editorEl;
+	rootEffect((root) => {
 		const doc = root.ownerDocument;
 		return removeAll(
 			onRoot(doc, 'copy', (e: ClipboardEvent) => rootClipboard.handleCopy(e, root)),
@@ -1079,8 +1080,7 @@
 	});
 
 	// The scroll container's height sets how many blocks mount.
-	$effect(() => {
-		if (!editorEl) return;
+	rootEffect(() => {
 		const target = getScrollHost();
 		if (!target) return;
 		return installViewportHeightWatcher(target, layout.noteViewportHeight);
@@ -1121,14 +1121,8 @@
 		void effectiveMode;
 		focusAttribution.applyForMode();
 	});
-	$effect(() => {
-		if (!editorEl) return;
-		return focusAttribution.install(editorEl);
-	});
-	$effect(() => {
-		if (!editorEl) return;
-		return textMoves.install(editorEl);
-	});
+	rootEffect((root) => focusAttribution.install(root));
+	rootEffect((root) => textMoves.install(root));
 
 	// ── Top-level windowing ─────────────────────────────────────────────
 
@@ -1230,7 +1224,8 @@
 		isReading: () => effectiveMode === 'reading',
 		insertParagraph: (boundary, text) => blockEdit.insertParagraph(boundary, text),
 		undoStep: (path, offset, run) => controller.undoStep({ path: docPathFrom(path), offset }, run),
-		contentVersion: contentVersion.read
+		contentVersion: contentVersion.read,
+		stamps
 	});
 
 	export function insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean> {
@@ -1353,12 +1348,15 @@
 	role="group"
 	aria-label={EDITOR_LABEL}
 	oncontextmenu={rootMenus.onRootContextMenu}
+	onpointermove={decorationEngine.markHover.move}
+	onpointerleave={decorationEngine.markHover.leave}
 >
 	{#if searchBar}
-		<!-- A zero-height sticky anchor; portaled out, it takes the theme class instead, since
-		     custom properties resolve by DOM ancestry. -->
+		<!-- A zero-height sticky anchor; portaled out, it brings the editor's token scope instead,
+		     since custom properties resolve by DOM ancestry. -->
 		<div
 			class:search-anchor={!searchBarAnchor}
+			class:aragonite-editor-portal={!!searchBarAnchor}
 			class:aragonite-editor-theme={!!searchBarAnchor && inThemedScope}
 			data-editor-theme={searchBarAnchor ? theme : undefined}
 			{@attach portalInto(searchBarAnchor)}
@@ -1366,6 +1364,7 @@
 			<SearchBar
 				replaceExpanded={replaceExpanded && canReplace}
 				onToggleReplace={() => (replaceExpanded = canReplace && !replaceExpanded)}
+				editorRoot={() => editorEl}
 			/>
 		</div>
 	{/if}
@@ -1375,7 +1374,7 @@
 	<div class="width-probe" bind:this={widthProbeEl} aria-hidden="true"></div>
 	{#if header}
 		<!-- A sibling of the block list: windowing needs the list as a direct child of the root. -->
-		<div class="editor-header" bind:this={headerEl}>{@render header()}</div>
+		<div class="editor-header" data-host-content bind:this={headerEl}>{@render header()}</div>
 	{/if}
 	<BlockList
 		children={doc.children}
@@ -1477,14 +1476,14 @@
 		/* Every construct sizes in `em` off this. */
 		font-size: var(--editor-font-size, 1rem);
 		line-height: 1.6;
-		/* Inherit rather than assume a dark host: an unthemed page keeps its own text color. */
-		color: var(--color-text-primary, currentColor);
+		/* The host's text color, else the page's own, since the editor paints no background. */
+		color: var(--md-page-text);
 		min-height: 200px;
 		overflow-y: auto;
 		/* The editor corrects scroll by hand; browser anchoring would correct twice (VR-2). */
 		overflow-anchor: none;
 		scrollbar-width: thin;
-		scrollbar-color: var(--color-border, #3e3e3b) transparent;
+		scrollbar-color: var(--md-color-border) transparent;
 		/* Containing block for the image overlay portal, and for `.width-probe`, whose width is the
 		   root's only while this holds. */
 		position: relative;
@@ -1551,12 +1550,12 @@
 	}
 
 	.editor::-webkit-scrollbar-thumb {
-		background: var(--color-ui-muted, #a4a4a4);
+		background: var(--md-color-ui-muted);
 		border-radius: 3px;
 	}
 
 	.editor::-webkit-scrollbar-thumb:hover {
-		background: var(--color-ui-dulled, #afb1b3);
+		background: var(--md-color-ui-dulled);
 	}
 
 	.editor-sr-live,
@@ -1595,7 +1594,7 @@
 	.drop-caret {
 		position: fixed;
 		width: 1.5px;
-		background: var(--color-text-primary, currentColor);
+		background: var(--md-page-text);
 		pointer-events: none;
 		z-index: 20;
 	}

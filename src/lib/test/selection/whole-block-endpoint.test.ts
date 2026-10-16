@@ -5,13 +5,16 @@ import { describe, it, expect } from 'vitest';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { collectCrossBlockText } from '#lib/selection/clipboard-text.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import type { Document } from '#lib/core/nodes.js';
 import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
+import { testView } from '#lib/test/support/test-view.js';
+
+// Source mode, where a copied range carries its bytes as they stand.
+const SOURCE_READING = fixtureReading({}, 'source');
 
 const DIAGRAM = '```mermaid\ngraph TD\n```\n';
 const DIAGRAM_END = 23;
@@ -23,24 +26,20 @@ function stateOver(doc: Document) {
 }
 
 function mermaidDoc(): Document {
-	registerMermaidKind();
+	registerMermaidKind(testView());
 	return parse(MERMAID_DOC);
 }
 
 function copySelected(doc: Document, s: ReturnType<typeof stateOver>): string {
-	return collectCrossBlockText(doc, rangeCoverage(doc, coverRange(doc, s.start!, s.end!)));
+	return collectCrossBlockText(
+		doc,
+		rangeCoverage(doc, coverRange(doc, s.start!, s.end!)),
+		SOURCE_READING
+	);
 }
 
 function deleteSelected(doc: Document, s: ReturnType<typeof stateOver>): string {
-	return serialize(
-		rangeDelete(
-			doc,
-			rangeCoverage(doc, coverRange(doc, s.start!, s.end!)),
-			createSharingState(),
-			fixtureReading(),
-			'keyless'
-		).newDoc
-	);
+	return serialize(deleteRange(doc, s.start!, s.end!).newDoc);
 }
 
 describe('cross-block endpoints inside a whole-block kind', () => {

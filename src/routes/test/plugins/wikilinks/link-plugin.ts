@@ -13,6 +13,7 @@ import {
 	type EditorPlugin,
 	type InlineNode
 } from '#lib/plugin.js';
+import { svelteView } from '#lib/svelte.js';
 import WikiLink from './WikiLink.svelte';
 
 export const WIKILINK_KIND = 'harness-wikilink';
@@ -32,7 +33,7 @@ export function wikiLinksPlugin(): EditorPlugin {
 			);
 			registerInlineWidgetKind(link, {
 				isWidget: () => true,
-				component: WikiLink,
+				view: svelteView(WikiLink),
 				editing: { revealSource: true, claimsActivationClick: true }
 			});
 		}

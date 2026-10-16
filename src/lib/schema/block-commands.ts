@@ -14,6 +14,7 @@ import {
 	resolveBinding,
 	resolveKindBinding,
 	getCommand,
+	canRunGlobalCommand,
 	isCommandRegistered,
 	warnDeadKeyCommand,
 	isBuiltinCommandId,
@@ -30,6 +31,7 @@ import {
 import type { KeybindingOverrideMap } from './keybinding-overrides';
 import { pluginEditorFor, type EditorContext } from './plugin-install';
 import { isReadingMode, type PresentationMode } from '../presentation-mode';
+import type { MarkActivation } from '../decorations/mark-activation';
 
 export interface BlockCommandContext extends CommandRun {
 	/** A read-only view of the node; metadata edits go through `updateMetadata`. */
@@ -160,6 +162,8 @@ export interface CommandGates {
 	/** True while a cross-block range is painted. */
 	isCrossBlockRange(): boolean;
 	crossBlockCommands: CrossBlockCommandRouter;
+	/** The interactive mark at the caret, which `decorations.activateAtCaret` runs. */
+	markActivation: MarkActivation;
 }
 
 /** Moves the block at a path one step among its siblings: the editor's reorder action. Resolves to
@@ -394,7 +398,8 @@ export function canRunCommandById(
 	const route = rangeRouteFor(id, gates);
 	if (route.kind !== 'block-local') return route.kind === 'cross-block';
 	const { tier } = resolveCommand(id, target, gates.activation);
-	return tier === 'global' || tier === 'minted' || tier === 'builtin' || tier === 'move';
+	if (tier === 'global') return canRunGlobalCommand(id, gates.activation, gates);
+	return tier === 'minted' || tier === 'builtin' || tier === 'move';
 }
 
 /** The read behind `EditorInstance.isCommandActive`: state, not permission, so a disabled button

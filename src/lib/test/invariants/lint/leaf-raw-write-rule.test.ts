@@ -15,6 +15,7 @@ import {
 	type SourceFile
 } from './scan-source';
 import { SOURCE } from './source-paths';
+import { describeManifests } from './file-rule';
 
 const READERS_HOME = SOURCE.nodePrimitives;
 const CONTENT_WRITE = SOURCE.contentWrite;
@@ -34,13 +35,6 @@ const ESCALATION_SITES: Record<string, string> = {
 		'sizes the fence its metadata body is rebuilt inside — the body is never re-parsed here',
 	'src/lib/plugin.ts': 'the author barrel: a plugin rebuilding its own raw needs the same rule'
 };
-
-function namesInCode(sources: { relPath: string; code: string }[], re: RegExp): string[] {
-	return sources
-		.filter((f) => re.test(f.code))
-		.map((f) => f.relPath)
-		.sort();
-}
 
 // ── The bare write: a byte write that names neither function ─────────────────
 
@@ -68,7 +62,7 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		count: 3,
 		why: 'the split re-attaches the blank line that parse stripped (GH #97); both branches of `joinIntoLeaf` land bytes that already crossed `legalizeWrite` and a fragment reparse (GH #54)'
 	},
-	'src/lib/tree-operations/settle.ts': {
+	'src/lib/tree-operations/neighbour-merge.ts': {
 		count: 1,
 		why: 'the join absorb re-attaches the blank run its own reparse stripped (GH #61)'
 	},
@@ -77,8 +71,12 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: 'the table grid re-emits its own bytes from its rows (G4.20 branch 3 reads the same writes)'
 	},
 	'src/lib/schema/child-spans.ts': {
-		count: 5,
-		why: 'the strip and concat container shapes re-emitting their own bytes from their children: the two span-seeding rebuilds, the whole-body fallback, and the one-region splice; and a marker gaining its space in its own line'
+		count: 3,
+		why: 'the concat container shape re-emitting its own bytes from its children: its span-seeding rebuild and the one-region splice; and a marker gaining its space in its own line'
+	},
+	'src/lib/schema/strip-rebuild.ts': {
+		count: 2,
+		why: 'the strip container shape re-emitting its own bytes from its children: its span-seeding rebuild and the whole-body fallback'
 	},
 	'src/lib/core/directive/kinds.ts': { count: 1, why: "the directive container's own rebuildRaw" },
 	'src/lib/editor-actions/plugin/directive-container.ts': {
@@ -109,7 +107,7 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		count: 1,
 		why: 'find and replace installs the bytes `legalizeWrite` returned into a private copy, which it then reparses whole'
 	},
-	'src/lib/editor-actions/commit/undo-controller.ts': {
+	'src/lib/editor-actions/commit/structural-commit.ts': {
 		count: 1,
 		why: 'the rollback restores raws the tree already held; nothing new is created'
 	},
@@ -118,8 +116,8 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: 'the chrome-clear and the truncation atoms’ two chrome-endpoint branches, reserved-chrome slots no leaf kind declaring a rule can occupy; and the endpoint reparse re-attaching the blank line that parse stripped (GH #97)'
 	},
 	'src/lib/selection/range-delete-table.ts': {
-		count: 2,
-		why: 'two cell clears; a cleared cell is empty, which `tableCell`’s own rule already returns unchanged'
+		count: 1,
+		why: 'a cell clear; a cleared cell is empty, which `tableCell`’s own rule already returns unchanged'
 	},
 	'src/lib/tree-operations/list/reconcile-task.ts': {
 		count: 3,
@@ -153,8 +151,10 @@ const BARE_WRITE_RULE =
 	'(ahead of your own reparse), or add the file to BARE_RAW_WRITE_ALLOWLIST with its count and ' +
 	'the reason its writes cannot reach a kind that declares one';
 
+const sources = collectEditorSources();
+
 describe('every bare raw write is allowed', () => {
-	const writes = bareWrites(collectEditorSources());
+	const writes = bareWrites(sources);
 
 	it('no file outside the allowed set writes a leaf’s raw directly', () => {
 		const unsanctioned = writes
@@ -183,19 +183,29 @@ describe('every bare raw write is allowed', () => {
 	});
 });
 
+describeManifests(
+	[
+		{
+			id: 'the fence rule has one implementation, and only its home names the reconciliation',
+			matches: /\breconcileFenceWrite\b/,
+			declared: { [FENCE_HOME]: 'the fencedCode write rule' },
+			reason: 'the fence write is reconciled in one place; reach it through the kind’s write rule',
+			hits: ['const out = reconcileFenceWrite(input);'],
+			misses: ['const out = reconcileFenceWrites(input);', '// reconcileFenceWrite sizes it']
+		},
+		{
+			id: 'exactly the documented sites name the escalation primitive',
+			matches: /\bescalatedFenceLength\b/,
+			declared: ESCALATION_SITES,
+			reason: 'a new site sizes a fence run over a body: declare why it cannot use the write rule',
+			hits: ['const run = escalatedFenceLength(body, marker, 3);'],
+			misses: ['// escalatedFenceLength sizes the run']
+		}
+	],
+	sources
+);
+
 describe('the fence rule has one implementation', () => {
-	const sources = collectEditorSources();
-
-	it('only its home names the reconciliation', () => {
-		expect(namesInCode(sources, /\breconcileFenceWrite\b/)).toEqual([FENCE_HOME]);
-	});
-
-	it('exactly the documented sites name the escalation primitive', () => {
-		expect(namesInCode(sources, /\bescalatedFenceLength\b/)).toEqual(
-			Object.keys(ESCALATION_SITES).sort()
-		);
-	});
-
 	// The rule reads the block's own fence shape, so it has to live where a headless caller can
 	// reach it: under `components/` it would exist only once the component tree loaded.
 	it('the rule home is in schema, importing no component', () => {

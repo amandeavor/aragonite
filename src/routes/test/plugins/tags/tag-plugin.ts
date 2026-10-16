@@ -12,8 +12,9 @@ import {
 	type EditorPlugin,
 	type InlineNode
 } from '#lib/plugin.js';
+import { svelteView } from '#lib/svelte.js';
 import BodyTag from './BodyTag.svelte';
-import { recognizeTag } from '../../../demo-tags/tag-scan';
+import { recognizeTag } from '../../../../../examples/showcase/tag-scan';
 
 export const BODY_TAG_KIND = 'harness-tag';
 
@@ -30,7 +31,7 @@ export function tagsPlugin(): EditorPlugin {
 			});
 			registerInlineWidgetKind(tag, {
 				isWidget: () => true,
-				component: BodyTag,
+				view: svelteView(BodyTag),
 				editing: { revealSource: true, claimsActivationClick: true }
 			});
 		}

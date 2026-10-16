@@ -26,7 +26,7 @@ function mountGapCaret(overrides?: KeybindingOverride[]): Mounted {
 		props: { index: 0, focusActions: undefined, blockEdit: undefined },
 		context: editorMountContext({
 			history: { requestUndo, requestRedo: vi.fn() },
-			policies: { keybindingOverrides: () => compiled }
+			commands: { keybindingOverrides: () => compiled }
 		})
 	});
 	flushSync();

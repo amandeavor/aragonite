@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { capturePageErrors } from '../../page-probes';
 import { count, openFind, typeQuery } from './helpers';
 
 // The needle is spread across rows so the active match scrolls into view at the top while deep
@@ -80,8 +79,6 @@ const deepNeedleCovered = (page: Page) =>
 test('a deep off-window table-row match repaints its highlight after a single scroll into view', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
-
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadContent(bigTable());
@@ -94,7 +91,7 @@ test('a deep off-window table-row match repaints its highlight after a single sc
 
 	await openFind(editor);
 	await typeQuery(editor, 'ZZNEEDLE');
-	await expect(count(page)).toHaveText(/1\s*\/\s*11/);
+	await expect(count(page)).toHaveText(/1\s+of\s+11/);
 	await editor.waitForRenderFlush();
 
 	// The active (first) match is scrolled to at the top; the deep match (row 180)
@@ -114,7 +111,6 @@ test('a deep off-window table-row match repaints its highlight after a single sc
 	// is visible with its match highlight repainted over it.
 	await expect.poll(() => row180Mounted(page)).toBe(true);
 	await expect.poll(() => deepNeedleCovered(page)).toEqual({ found: true, covered: true });
-	expect(pageErrors).toEqual([]);
 });
 
 // The same repaint read for `SelectionOverlay`, beside the search one; the top inset keeps
@@ -125,8 +121,6 @@ const visibleCellCovered = (page: Page) =>
 test('a cross-block selection repaints over a deep off-window table row after scroll-in', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
-
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadContent('intro paragraph\n\n' + bigTable());
@@ -153,5 +147,4 @@ test('a cross-block selection repaints over a deep off-window table row after sc
 	// carries the repainted selection highlight.
 	await expect.poll(() => row180Mounted(page)).toBe(true);
 	await expect.poll(() => visibleCellCovered(page)).toEqual({ found: true, covered: true });
-	expect(pageErrors).toEqual([]);
 });

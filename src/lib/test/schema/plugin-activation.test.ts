@@ -4,13 +4,8 @@ import { activationFor } from '#lib/schema/plugin-activation.js';
 import { createRegistryView, kindEnablementFor } from '#lib/schema/registry-view.js';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
-import { registerBlockKind } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerBlockComponent,
-	getBlockComponent,
-	type BlockComponentEntry
-} from '#lib/schema/block-component-registry.js';
-import { registerBlockOpener, type BlockOpener } from '#lib/schema/block-openers.js';
+import { blockViewFor, registerBlockKind } from '#lib/schema/block-kind-descriptor.js';
+import type { BlockOpener } from '#lib/schema/block-openers.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import {
 	blockContextActionsFor,
@@ -19,8 +14,9 @@ import {
 import type { NodeView } from '#lib/core/node-views.js';
 import type { PluginBlockKind } from '#lib/core/nodes.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
+import { testView } from '#lib/test/support/test-view.js';
 
-const stubComponent = {} as BlockComponentEntry;
+const stubView = testView();
 
 const markerOpener = (kind: PluginBlockKind, marker: string): BlockOpener => ({
 	priority: 5,
@@ -38,9 +34,10 @@ function installKindPlugin(name: string, marker: string): PluginBlockKind {
 		definePlugin({
 			name,
 			setup() {
-				kind = testLeaf(`${name}-block`);
-				registerBlockComponent(kind, stubComponent);
-				registerBlockOpener(kind, markerOpener(kind, marker));
+				kind = testLeaf(`${name}-block`, (kind) => ({
+					view: stubView,
+					opener: markerOpener(kind, marker)
+				}));
 			}
 		})
 	]);
@@ -53,8 +50,8 @@ describe('kind enablement derived from an instance activation set', () => {
 		const unlisted = installKindPlugin('unlisted', '@b');
 
 		const view = createRegistryView({ isEnabled: kindEnablementFor(activationFor(['listed'])) });
-		expect(view.component(listed)).toBe(stubComponent);
-		expect(view.component(unlisted)).toBeUndefined();
+		expect(view.blockView(listed)).toBe(stubView);
+		expect(view.blockView(unlisted)).toBeUndefined();
 		// Never filtered: the degraded block still needs its descriptor to fall back.
 		expect(view.descriptor(unlisted).mergeRole).toBe('not-mergeable');
 	});
@@ -73,7 +70,6 @@ describe('kind enablement derived from an instance activation set', () => {
 	it('never gates a kind no plugin owns, built-ins included', () => {
 		// Declared outside any install, so the registry records no owner for it.
 		const ownerless = testLeaf('ownerless-block');
-		registerBlockComponent(ownerless, stubComponent);
 
 		const isEnabled = kindEnablementFor(activationFor([]));
 		expect(isEnabled(ownerless)).toBe(true);
@@ -107,36 +103,35 @@ describe('one activation rule for every plugin registration', () => {
 			setup() {
 				kind = declarePluginKind('half-block');
 				registerBlockKind(kind, {
+					opener: markerOpener(kind, '@h'),
 					gapEdges: 'none',
 					mergeRole: 'not-mergeable',
 					editable: true,
 					supportsInline: false,
-					closure: testClosure
+					closure: testClosure,
+					view: stubView
 				});
-				registerBlockComponent(kind, stubComponent);
-				registerBlockOpener(kind, markerOpener(kind, '@h'));
 				throw new Error('setup failed halfway');
 			}
 		});
 		expect(() => installPlugins([setupThrows])).toThrow(/setup failed halfway/);
 
 		const view = createRegistryView();
-		expect(view.component(kind!)).toBeUndefined();
+		expect(view.blockView(kind!)).toBeUndefined();
 		expect(parse('@h hi\n', { grammar: view.grammar }).children[0].kind).toBe('paragraph');
 		expect(parse('@h hi\n').children[0].kind).toBe('paragraph');
 	});
 });
 
-// Miss-analysis: every case registered a kind and its component from one plugin, so checks agreed.
-describe("a kind's component answers to the plugin that owns the kind", () => {
-	it('resolves only where the kind owner is listed, whichever plugin registered the component', () => {
-		let kind: PluginBlockKind | undefined;
-		installPlugins([
-			definePlugin({ name: 'owner', setup: () => void (kind = declarePluginKind('owned-block')) }),
-			definePlugin({ name: 'skinner', setup: () => registerBlockComponent(kind!, stubComponent) })
-		]);
+describe("a kind's view answers to the plugin that registered the kind", () => {
+	it('resolves only in an editor whose plugins list that plugin', () => {
+		const listed = installKindPlugin('listed', '@a');
+		const unlisted = installKindPlugin('unlisted', '@b');
 
-		expect(getBlockComponent(kind!, activationFor(['skinner']))).toBeUndefined();
-		expect(getBlockComponent(kind!, activationFor(['owner']))).toBe(stubComponent);
+		const editor = createRegistryView({ plugins: activationFor(['listed']) });
+		expect(editor.blockView(listed)).toBe(stubView);
+		expect(editor.blockView(unlisted)).toBeUndefined();
+		expect(blockViewFor(unlisted, activationFor(['unlisted']))).toBe(stubView);
+		expect(blockViewFor(unlisted, activationFor(['listed']))).toBeUndefined();
 	});
 });

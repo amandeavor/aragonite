@@ -6,8 +6,8 @@ import type { InlineNode } from '#lib/core/nodes.js';
 import { parse } from '#lib/core/parser.js';
 import { constructChainAtOffset } from '#lib/components/blocks/text/construct-reveal.js';
 import { linkConstructAt } from '#lib/components/blocks/text/link-at-point.js';
-import { clipNodes } from '#lib/components/blocks/text/live-join-seam.js';
-import { splittableChainAt } from '#lib/components/blocks/text/live-split-rebalance.js';
+import { clipNodes } from '#lib/core/inline/live-edit/live-join.js';
+import { splittableChainAt } from '#lib/core/inline/live-edit/live-split.js';
 import { constructChainAt } from '#lib/components/blocks/text/pending-mark-insert.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
 

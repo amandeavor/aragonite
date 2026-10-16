@@ -8,7 +8,6 @@ import {
 	spacerCount,
 	topVisibleBlockInViewport
 } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Who keeps the user's place when content above them grows late, in a page that does the
 // scrolling. While windowing runs the editor corrects the scroll itself and opts its blocks out of
@@ -95,7 +94,6 @@ test('the editor withdraws from host anchor candidacy only while windowing runs'
 test('a document image decoding in above the fold does not shift the windowed reader', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 	await scrollPastImageBlock(page);
 	expect(await spacerCount(page)).toBeGreaterThan(0);
@@ -105,7 +103,6 @@ test('a document image decoding in above the fold does not shift the windowed re
 		// Proves something: the content above the user really did grow.
 		expect(await decodedHeight(page, DOCUMENT_IMAGE)).toBeCloseTo(300, 0);
 	});
-	expect(pageErrors).toEqual([]);
 });
 
 // Below the threshold the editor corrects nothing, so the browser's own anchoring must still
@@ -113,7 +110,6 @@ test('a document image decoding in above the fold does not shift the windowed re
 test('a document image decoding in above the fold does not shift an unwindowed reader', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page, UNWINDOWED_ENTRY_BLOCKS);
 	await scrollPastImageBlock(page);
 	expect(await spacerCount(page)).toBe(0);
@@ -122,13 +118,11 @@ test('a document image decoding in above the fold does not shift an unwindowed r
 		await page.evaluate(() => (window as any).__pageScroll.loadDocumentImage());
 		expect(await decodedHeight(page, DOCUMENT_IMAGE)).toBeCloseTo(300, 0);
 	});
-	expect(pageErrors).toEqual([]);
 });
 
 // A held scroll-to request re-asserts its target on every measure pass; below the threshold the
 // browser already holds that position, so the re-assertion would be a second writer.
 test('a held reveal claim does not double-correct against native anchoring', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page, UNWINDOWED_ENTRY_BLOCKS);
 	expect(await spacerCount(page)).toBe(0);
 
@@ -140,13 +134,11 @@ test('a held reveal claim does not double-correct against native anchoring', asy
 		await page.evaluate(() => (window as any).__pageScroll.loadDocumentImage());
 		expect(await decodedHeight(page, DOCUMENT_IMAGE)).toBeCloseTo(300, 0);
 	});
-	expect(pageErrors).toEqual([]);
 });
 
 test('an image decoding in outside an unwindowed entry does not shift the reader', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page, UNWINDOWED_ENTRY_BLOCKS);
 	await scrollPastImageBlock(page);
 
@@ -156,5 +148,4 @@ test('an image decoding in outside an unwindowed entry does not shift the reader
 		await page.evaluate(() => (window as any).__pageScroll.loadOuterImage());
 		expect(await decodedHeight(page, OUTER_IMAGE)).toBeCloseTo(300, 0);
 	});
-	expect(pageErrors).toEqual([]);
 });

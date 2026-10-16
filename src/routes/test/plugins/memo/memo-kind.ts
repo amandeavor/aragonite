@@ -8,13 +8,13 @@ import {
 	declarePluginKind,
 	registerBlockKind,
 	registerBlockCommand,
-	registerBlockOpener,
-	simpleLeafClosure
+	simpleLeafClosure,
+	type BlockView
 } from '#lib/plugin.js';
 
 export const MEMO_BLOCK = 'memo';
 
-export function registerMemoBlock(): void {
+export function registerMemoBlock(view: BlockView): void {
 	const memo = declarePluginKind(MEMO_BLOCK);
 
 	// Harness-only commands, dispatched the way an editable leaf's registered commands are:
@@ -28,6 +28,20 @@ export function registerMemoBlock(): void {
 	});
 
 	registerBlockKind(memo, {
+		view,
+		opener: {
+			// Lower priorities try first, so 27 lets the bundled parrot opener (25) take `%%parrot`
+			// lines before the memo sees them.
+			priority: 27,
+			interruptsParagraph: (text) => text.startsWith('%%'),
+			tryOpen(ctx) {
+				if (!ctx.line.text.startsWith('%%')) return null;
+				return {
+					node: { kind: memo, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw },
+					consumed: 1
+				};
+			}
+		},
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -52,19 +66,5 @@ export function registerMemoBlock(): void {
 				via: 'editable-leaf-plain / editable-leaf-command e2e'
 			}
 		})
-	});
-
-	registerBlockOpener(memo, {
-		// Lower priorities try first, so 27 lets the bundled parrot opener (25) take `%%parrot`
-		// lines before the memo sees them.
-		priority: 27,
-		interruptsParagraph: (text) => text.startsWith('%%'),
-		tryOpen(ctx) {
-			if (!ctx.line.text.startsWith('%%')) return null;
-			return {
-				node: { kind: memo, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw },
-				consumed: 1
-			};
-		}
 	});
 }

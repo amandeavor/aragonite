@@ -1,10 +1,10 @@
-// The plugin-authoring API, published at the `@voithos-labs/aragonite/plugin` subpath. Only the
-// authoring API belongs here: not the `<Editor>` embedding barrel (index.ts), no test
-// helpers, no internal dispatch. Nothing is frozen before 1.0: a (pre-freeze) section may change
-// shape, and an untagged one keeps its model while its call shapes can still change.
+// The plugin-authoring API, published at the `@voithos-labs/aragonite/plugin` subpath: no embedding
+// API (index.ts), no test helpers, and no type that names Svelte's (those are on `/svelte`).
+// Nothing is frozen before 1.0: a (pre-freeze) section may change shape, and an untagged one keeps
+// its model while its call shapes can still change.
 
-import TextEditableBlock from './components/blocks/text/TextEditableBlock.svelte';
 import { registerChromeLeaf as bindChromeLeaf } from './editor-actions/plugin/chrome-leaf';
+import { textBlockView } from './components/blocks/text/text-block-view';
 import { computeInlineContent as parseLeafInline } from './core/inline';
 import { defaultGrammarView } from './schema/block-openers';
 import { everyInstalledPlugin } from './schema/plugin-activation';
@@ -29,8 +29,6 @@ export type { InsertMarkdownOptions } from './editor-props';
 // The names every presentation-mode read reports, the `data-presentation` attribute included.
 export type { PresentationMode } from './presentation-mode';
 export type { ClickInput } from './activation-click';
-// The single-block shortcut: one kind, one component, one register step.
-export { definePluginBlock } from './schema/define-plugin-block';
 
 // ── Kind declaration ─────────────────────────────────────────────────────────
 export { declarePluginKind, declaredPluginKind } from './schema/plugin-kind';
@@ -38,15 +36,11 @@ export type { PluginBlockKind, AnyBlockKind } from './core/nodes';
 
 // ── Inline authoring API (pre-freeze) ────────────────────────────────────────
 // Declare an inline kind, hook the scanner on a trigger character, register a live widget.
-export {
-	declarePluginInlineKind,
-	declaredPluginInlineKind,
-	isInlineKindDeclared
-} from './schema/plugin-kind';
+export { declarePluginInlineKind, declaredPluginInlineKind } from './schema/plugin-kind';
 export type { PluginInlineKind, InlineNode, ImageFields, ImageSyntaxRewriter } from './core/nodes';
 export { registerInlineSyntax, INLINE_PRIORITIES } from './core/inline/scan/plugin-syntax';
 export type { InlineSyntaxRecognizer, InlineSyntaxOptions } from './core/inline/scan/plugin-syntax';
-export { registerInlineWidgetKind, mintWidgetShell } from './core/inline/inline-widgets';
+export { registerInlineWidgetKind } from './core/inline/inline-widgets';
 export type {
 	InlineWidgetDescriptor,
 	InlineWidgetComponentProps,
@@ -54,9 +48,14 @@ export type {
 	InlineWidgetEditingContext
 } from './core/inline/inline-widgets';
 
+// ── Plugin views ─────────────────────────────────────────────────────────────
+// The one shape an inline widget, a decoration widget and a menu row take: fill the element the
+// editor hands over, take new props through `update`. `/svelte` makes one from a Svelte component.
+export type { PluginView, PluginViewHandle } from './plugin-view';
+
 // ── Block-kind descriptor registry ───────────────────────────────────────────
-// `BlockKindRegistration` is the shape you register; fields that only mean something together
-// are declared together, so an incoherent pair fails to compile.
+// `BlockKindRegistration` is the shape you register, the view that draws the kind included; fields
+// that only mean something together are declared together, so an incoherent pair fails to compile.
 export { registerBlockKind, augmentBlockKind } from './schema/block-kind-descriptor';
 export type {
 	BlockKindRegistration,
@@ -84,13 +83,17 @@ export type {
 } from './schema/closure';
 export { simpleLeafClosure, containerClosure } from './schema/closure';
 
-// ── Component registry ───────────────────────────────────────────────────────
-export { registerBlockComponent, defineBlockComponent } from './schema/block-component-registry';
-export type { BlockComponentEntry } from './schema/block-component-registry';
+// ── Block views ──────────────────────────────────────────────────────────────
+// What draws a kind, the registration's `view`. `BlockView` is opaque: `svelteBlockView` on
+// `/svelte` makes one from a component.
+export type { BlockView } from './schema/block-view';
+// The editor's plain editable text block, for a kind drawn as plain text and for a host that
+// doesn't compile Svelte; `blockClass` lands on its element.
+export { textBlockView } from './components/blocks/text/text-block-view';
 export type { BlockComponent, BlockComponentExports, BlockComponentProps } from './block-component';
 
-// ── Parser-opener registry ───────────────────────────────────────────────────
-export { registerBlockOpener } from './schema/block-openers';
+// ── Parser openers ───────────────────────────────────────────────────────────
+// A registration's `opener`: how the block parser recognizes the kind from a line.
 export type { BlockOpener, BlockOpenerResult, OpenContext } from './schema/block-openers';
 // The shared "does this line start a block at the outer level" gate, so a container opener
 // scanning its own extent ends it where cmark-gfm does instead of forking the rule.
@@ -255,35 +258,17 @@ export function computeInlineContent(node: NodeView): InlineNode[] {
 	return parseLeafInline(node, undefined, defaultGrammarView);
 }
 
-// ── Re-registration checks ─────────────────────────────────────────────────────
-// The register-once registries throw on duplicate; a plugin re-registers safely
-// (HMR / re-import) by guarding on these.
-export { isBlockKindDeclared } from './schema/plugin-kind';
-export { isBlockKindRegistered } from './schema/block-kind-descriptor';
-export { isBlockComponentRegistered } from './schema/block-component-registry';
-export { isBlockOpenerRegistered } from './schema/block-openers';
-export { isBlockCompleterRegistered } from './schema/block-completions';
-export { isPasteTransformRegistered } from './tree-operations/paste/paste-transforms';
-export { isLanguageRegistered } from './components/blocks/code/code-languages';
-
 // ── Container-authoring API (pre-freeze) ─────────────────────────────────────
-// Lets a plugin build an editable nested container as thinly as the built-in
-// blockquote, without touching any editor context key.
-export { default as BlockList } from './components/BlockList.svelte';
-export { createContainerBlock } from './editor-actions/plugin/container';
-export type {
-	ContainerBlock,
-	ContainerBlockComponent,
-	ContainerBlockDeps,
-	ContainerBlockListProps
-} from './editor-actions/plugin/container';
+// The pieces a container plugin shares with the editor; `createContainerBlock` and `BlockList` are
+// on `/svelte`. `registerChromeLeaf` gives a container an editable title row.
 export type { Draft, DraftCloseCause, DraftSpec } from './schema/drafts';
 export type { RefSlots } from './block-lists/child-refs';
 export type { ChildList } from './block-lists/child-list';
 // The one place allowed to import from `components/`, so `editor-actions` keeps no upward
 // value dependency on the component tree.
 export function registerChromeLeaf(kind: AnyBlockKind, opts?: ChromeLeafOptions): void {
-	bindChromeLeaf(kind, TextEditableBlock, opts);
+	const { blockClass, ...rest } = opts ?? {};
+	bindChromeLeaf(kind, textBlockView({ blockClass }), rest);
 }
 export type { ChromeLeafOptions };
 // Create the reserved child-0 node for a container's title leaf: the text plus its newline.
@@ -291,17 +276,8 @@ export { chromeChild } from './editor-actions/plugin/chrome-leaf';
 // One definition of collapsed, shared by a component's getter and the traversals over the CST.
 export { isCollapsedContainer } from './schema/reserved-chrome';
 
-// ── Editable-leaf authoring API (pre-freeze) ─────────────────────────────────
-// A text-editing leaf with a built-in block's caret, IME, undo and selection: plain (a commit per
-// keystroke) or render-first (source while the caret is inside, one commit on blur).
-export { createEditableLeaf } from './components/blocks/editable/editable-leaf';
-export type {
-	EditableLeaf,
-	EditableLeafDeps,
-	EditableLeafMode,
-	EditableLeafSurfaceProps,
-	EditableLeafRenderProps
-} from './components/blocks/editable/editable-leaf';
+// ── Editable-leaf surface (pre-freeze) ───────────────────────────────────────
+// What a block built on `createEditableLeaf` (from `/svelte`) publishes.
 export type { EditableLeafBlockApi, StickyColumnDirection } from './block-component';
 
 // ── Directive authoring (pre-freeze) ─────────────────────────────────────────
@@ -355,6 +331,8 @@ export type { PasteTransform } from './tree-operations/paste/paste-transforms';
 export type {
 	Decoration,
 	MarkDecoration,
+	MarkInteractions,
+	MarkHover,
 	WidgetDecoration,
 	ReplaceDecoration,
 	BlockDecoration,

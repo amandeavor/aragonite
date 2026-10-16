@@ -4,7 +4,7 @@
 // compiled clean and lost whatever it skipped.
 import { describe, expect, it } from 'vitest';
 import type { Component } from 'svelte';
-import { defineBlockComponent } from '#lib/schema/block-component-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import {
 	createEditableLeaf,
 	type EditableLeaf,
@@ -21,13 +21,13 @@ type LeafProps = { node: NodeView; index: number };
 const typePins = (leaf: EditableLeaf, view: NodeView): void => {
 	const silent = null as unknown as Component<LeafProps, Record<never, never>>;
 	// @ts-expect-error a component that publishes nothing gives the editor nothing to focus
-	defineBlockComponent(silent);
+	svelteBlockView(silent);
 
 	const published = null as unknown as Component<
 		LeafProps,
 		{ readonly blockApi: EditableLeafBlockApi }
 	>;
-	defineBlockComponent(published);
+	svelteBlockView(published);
 
 	type HandBuilt = Pick<
 		EditableLeafBlockApi,
@@ -35,13 +35,13 @@ const typePins = (leaf: EditableLeaf, view: NodeView): void => {
 	>;
 	const handBuilt = null as unknown as Component<LeafProps, { readonly blockApi: HandBuilt }>;
 	// @ts-expect-error a hand-built object under the name drops what it skipped
-	defineBlockComponent(handBuilt);
+	svelteBlockView(handBuilt);
 	type WrittenOver = Omit<EditableLeafBlockApi, 'afterSourceCommit'> & {
 		afterSourceCommit: undefined;
 	};
 	const writtenOver = null as unknown as Component<LeafProps, { readonly blockApi: WrittenOver }>;
 	// @ts-expect-error so does the leaf's object with a member written over
-	defineBlockComponent(writtenOver);
+	svelteBlockView(writtenOver);
 
 	// @ts-expect-error the block methods sit on `blockApi` only
 	void leaf.focus;

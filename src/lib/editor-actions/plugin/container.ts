@@ -30,7 +30,7 @@ import {
 	type EditorServices
 } from '../../editor-keys';
 import type { EditorContext } from '../../schema/plugin-install';
-import { componentPluginEditor } from '../../schema/block-component-registry';
+import { componentPluginEditor } from '../../schema/block-kind-plugin';
 import type { WindowResult } from '../../windowing/block-window.svelte';
 import type { RefSlots } from '../../block-lists/child-refs';
 import type { ChildList } from '../../block-lists/child-list';
@@ -332,7 +332,7 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 				getFocusEl: wholeBlockSurface,
 				isReading: () => isReadingMode(getPresentationMode),
 				getLabel: () => blockAccessibleName(deps.getNode()),
-				mint: (text) => void parentBlockEdit.insertParagraph(deps.getIndex() + 1, text)
+				mint: (text) => parentBlockEdit.insertParagraph(deps.getIndex() + 1, text)
 			})
 		: undefined;
 

@@ -10,6 +10,7 @@ import { writeTableRow } from '#lib/schema/container-rebuilders.js';
 import { makeStubBlockEdit } from '../../harness/editor-actions';
 import { mountCell } from './mount-cell';
 import { settleEditor } from '#lib/test/harness/settle.js';
+import { installClipboardEvents } from '#lib/test/harness/clipboard-events.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 
@@ -104,10 +105,11 @@ describe('table cell write paths escape the pipes they free', () => {
 	it('cutting the escape away keeps the row at two cells', async () => {
 		mounted = mountCell(ESCAPED);
 		const { el, blockEdit } = mounted;
-		document.execCommand = vi.fn(() => true);
+		installClipboardEvents();
 		el.focus();
 
 		await mounted.ref().applyMenuClipboard!('cut', { start: 0, end: 2 });
+		await settleEditor(() => vi.mocked(blockEdit.updateBlockContent).mock.calls.length > 0);
 
 		expect(reparsedCells(committedRaw(blockEdit))).toEqual(['\\|b', 'keep']);
 	});

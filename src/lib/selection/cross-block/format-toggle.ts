@@ -4,7 +4,7 @@
  * through an injected router, so `schema/` keeps no import of selection code.
  */
 
-import type { CommitController } from '../../action-contracts';
+import type { CommitController, MultiScopeTarget } from '../../action-contracts';
 import { ownTrailingLineEnding } from '../../core/lines';
 import { docPathFrom } from '../../caret/coordinate-spaces';
 import type { DocumentGetter } from '../../editor-keys';
@@ -12,6 +12,9 @@ import type { CrossBlockCommandRouter } from '../../schema/block-commands';
 import { inlineMarkForCommand, type InlineMarkKind } from '../../schema/inline-construct-policy';
 import type { Reading } from '../../schema/reading';
 import { blockNodeAt } from '../../tree-operations/node-primitives';
+import { trackChildIds } from '../../tree-operations/structural-change';
+import { tryGetBlockKindDescriptor } from '../../schema/block-kind-descriptor';
+import { getStateForNode } from '../../block-lists/state-registry';
 import { comparePaths } from '../path-math';
 import { coverRange } from '../range-coverage';
 import type { SelectionPoint } from '../primitives';
@@ -97,16 +100,25 @@ async function toggleFormatOverRange(
 	const { start, end } = range;
 
 	const restored = restoredRange(anchor, focus, start, end, plan);
+	// A write whose bytes read as several blocks splices the list holding it, so each mounted one
+	// goes along to have its ids republished.
+	const scopes: MultiScopeTarget[] = [deps.controller.getDocScope(), ...writtenLists(doc, plan)];
 	await deps.controller.commitMultiScope({
-		// The document scope alone: the writes are bytes, not splices, so no container's children
-		// array or id list moves and each touched chain rebuilds from its own leaf.
-		scopes: [deps.controller.getDocScope()],
+		scopes,
 		// The endpoint's own space, like the plan's offsets: undo restores through the clamp that
 		// reads a grid's path as cell indices.
 		snapshot: { path: docPathFrom(start.path), offset: start.offset },
-		mutate: ([docScope]) => {
-			applyCrossBlockFormat(docScope.body, plan, docScope.sharing, deps.reading.grammar);
-			return [{ op: 'noop' }];
+		mutate: (views) => {
+			const [docScope] = views;
+			// One body for the ledger and the writes, so the writes splice the ids it tracks.
+			const body = docScope.body;
+			const ledgers = views.map((v, i) => trackChildIds(i === 0 ? body : v.node));
+			applyCrossBlockFormat(body, plan, docScope.sharing, deps.reading.grammar);
+			return ledgers.map((ledger) => {
+				const change = ledger.read();
+				ledger.release();
+				return change;
+			});
 		},
 		op: {
 			kind: 'updateContent',
@@ -115,6 +127,27 @@ async function toggleFormatOverRange(
 		},
 		landing: () => restored
 	});
+}
+
+/** The mounted containers directly holding a written prose block, outermost first. A grid's cell
+ *  keeps its kind whatever it holds, so its row never splices. */
+function writtenLists(
+	doc: ReturnType<DocumentGetter>,
+	plan: CrossBlockFormatPlan
+): MultiScopeTarget[] {
+	const lists = new Map<string, MultiScopeTarget>();
+	for (const { path } of plan.writes) {
+		if (path.length < 2) continue;
+		const ownerPath = path.slice(0, -1);
+		const owner = blockNodeAt(doc, ownerPath);
+		const leaf = blockNodeAt(doc, path);
+		if (!owner || !leaf || tryGetBlockKindDescriptor(leaf.kind)?.contextDependentKind) continue;
+		const state = getStateForNode(owner);
+		if (state) lists.set(ownerPath.join(','), { path: ownerPath, node: owner, state });
+	}
+	return [...lists.values()].sort(
+		(a, b) => a.path.length - b.path.length || comparePaths(a.path, b.path)
+	);
 }
 
 /** The same pair, re-offset, with the user's anchor still on the side it was drawn from. */

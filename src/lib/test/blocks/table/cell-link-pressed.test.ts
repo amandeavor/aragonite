@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 function pressed(start: number, end = start): boolean {
-	mounted = mountCell(LINKED, { presentationMode: () => 'live' });
+	mounted = mountCell(LINKED, { mode: () => 'live' });
 	mounted.el.focus();
 	mounted.instance.setSelection(start, end);
 	return mounted.instance.isCommandActive!('link.openCard');

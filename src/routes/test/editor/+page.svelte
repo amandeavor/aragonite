@@ -1,10 +1,19 @@
-<script lang="ts">
-	import { Editor, type EditorProps, type PresentationMode } from '#lib';
-	// `?extraLanguage=on` registers a grammar the editor does not bundle, through the public API a
-	// host uses (`@voithos-labs/aragonite/plugin`): one import, one call, before any editor mounts.
-	// Off by default, because the picker specs measure the language list.
-	import { isLanguageRegistered, registerLanguage } from '#lib/plugin.js';
+<script module lang="ts">
+	import { installPlugins } from '#lib';
+	import { definePlugin, registerLanguage } from '#lib/plugin.js';
 	import elixir from 'highlight.js/lib/languages/elixir';
+
+	// `?extraLanguage=on` installs a grammar the editor doesn't bundle, the way a host would; off by
+	// default, since the picker specs count languages. One unit, so a later visit's install is a no-op.
+	const elixirPlugin = definePlugin({
+		name: 'harness-elixir',
+		setup: () => registerLanguage('elixir', elixir, ['ex', 'exs'])
+	});
+</script>
+
+<script lang="ts">
+	import { type PresentationMode } from '#lib';
+	import { Editor, type EditorProps } from '#lib/svelte.js';
 	import { HARNESS_SHOWCASE_CONTENT } from '#lib/e2e/test-content.js';
 	import type { KeybindingOverride } from '#lib/schema/keybinding-overrides.js';
 	import DebugPanel from '../../debug-panel/DebugPanel.svelte';
@@ -44,12 +53,8 @@
 	const headerOn = param('header') === 'on';
 	let headerTall = $state(false);
 
-	// Languages are register-once, and a second visit to this page runs this again, so the call
-	// asks first.
 	const extraLanguagesOn = param('extraLanguage') === 'on';
-	if (extraLanguagesOn && !isLanguageRegistered('elixir')) {
-		registerLanguage('elixir', elixir, ['ex', 'exs']);
-	}
+	if (extraLanguagesOn) installPlugins([elixirPlugin]);
 
 	// Off by default: `/` would open a menu in every spec that types one after a space. Created
 	// here because the showcase's plugin module would load KaTeX's stylesheet into this page.

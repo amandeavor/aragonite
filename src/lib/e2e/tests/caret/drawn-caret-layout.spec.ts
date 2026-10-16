@@ -240,6 +240,11 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 	}
 
 	/** The bar's x once it shows in the chip state, with exactly one caret on the page. */
+	/** The bar stands in the pixel column `x` falls in. */
+	function expectInColumnOf(barX: number, x: number): void {
+		expect(barX, `bar at ${barX} for ${x}`).toBe(Math.floor(x + 0.001));
+	}
+
 	async function chipBarX(page: Page): Promise<number> {
 		await expect.poll(async () => (await drawnBar(page))?.state).toBe('chip');
 		expect(await caretsShowing(page)).toEqual({ native: false, drawn: 1 });
@@ -289,7 +294,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		const at = await focusOffset(editor);
 		await press(editor, 'ArrowRight');
 		const chip = await chipBox(page);
-		expect(Math.abs((await chipBarX(page)) - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		expect(await focusOffset(editor)).toBe(at);
 		await typed(editor, 'see `code`X after');
 	});
@@ -314,7 +319,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		expect(inside).toBeGreaterThan(chip.left + 1);
 		expect(inside).toBeLessThanOrEqual(chip.firstGlyph + 1);
 		await press(editor, 'ArrowLeft');
-		expect(Math.abs((await chipBarX(page)) - (chip.left - 2))).toBeLessThanOrEqual(0.5);
+		expectInColumnOf(await chipBarX(page), chip.left - 2);
 		await typed(editor, 'see X`code` after');
 	});
 
@@ -322,7 +327,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		const editor = await live(page);
 		const chip = await chipBox(page);
 		await page.mouse.click(chip.right + 1, (chip.lastTop + chip.lastBottom) / 2);
-		expect(Math.abs((await chipBarX(page)) - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		await typed(editor, 'see `code`X after');
 	});
 
@@ -344,7 +349,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		await press(editor, 'ArrowRight');
 		const chip = await chipBox(page);
 		const bar = (await drawnBar(page))!.box;
-		expect(Math.abs(bar.left - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+		expectInColumnOf(bar.left, chip.right + 2);
 		expect(bar.top + bar.height / 2).toBeGreaterThan(chip.lastTop);
 		expect(bar.top + bar.height / 2).toBeLessThan(chip.lastBottom);
 	});
@@ -384,7 +389,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		await chipBarX(page);
 		await press(editor, 'ArrowRight');
 		const chip = await chipBox(page);
-		expect(Math.abs((await chipBarX(page)) - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		await typed(editor, '| a `cee`X | z |');
 	});
 
@@ -401,7 +406,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 			await editor.waitForRenderFlush();
 			await press(editor, 'ArrowRight');
 			const chip = await chipBox(page);
-			expect(Math.abs((await chipBarX(page)) - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+			expectInColumnOf(await chipBarX(page), chip.right + 2);
 			await typed(editor, 'see `code`X after');
 		});
 	}
@@ -413,7 +418,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		await page.mouse.click(point.x - 4, point.y);
 		await press(editor, 'End');
 		const chip = await chipBox(page);
-		expect(Math.abs((await chipBarX(page)) - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		await typed(editor, 'see `code`X');
 	});
 
@@ -427,7 +432,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		await page.mouse.click(point.x, point.y);
 		await press(editor, 'ArrowLeft');
 		const chip = await chipBox(page);
-		expect(Math.abs((await chipBarX(page)) - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		await press(editor, 'ArrowLeft');
 		expect(await chipBarX(page)).toBeLessThan(chip.right - 1);
 		await typed(editor, 'see `codeX` after');
@@ -463,7 +468,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 			const xs = await barXsAcross(editor, key);
 			expect(xs.length, 'the bar moved').toBeGreaterThan(0);
 			expect(xs.filter((x) => Math.abs(x - chip.lastGlyph) <= 1)).toEqual([]);
-			expect(Math.abs((await chipBarX(page)) - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+			expectInColumnOf(await chipBarX(page), chip.right + 2);
 		});
 	}
 
@@ -474,7 +479,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		await press(editor, 'End');
 		await press(editor, 'End');
 		const chip = await chipBox(page);
-		expect(Math.abs((await chipBarX(page)) - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		await typed(editor, 'see `code`X');
 	});
 
@@ -485,7 +490,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		const chip = await chipBox(page);
 		expect(await chipBarX(page)).toBeLessThan(chip.right - 1);
 		await press(editor, 'End');
-		expect(Math.abs((await chipBarX(page)) - (chip.right + 2))).toBeLessThanOrEqual(0.5);
+		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		await typed(editor, 'see `code`X');
 	});
 });

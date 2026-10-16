@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { checkStaleRaw, checkOpaqueStaleRaw } from '../../invariants/node-shape';
-import { registerBlockOpener } from '../../schema/block-openers';
 import { testContainer } from '#lib/test/harness/test-kinds.js';
 import { parse } from '../../core/parser';
 import { concatChildren } from '../../core/serializer';
@@ -28,47 +27,52 @@ function registerNoteKind(opts: { declareChrome?: boolean } = {}): AnyBlockKind 
 	const title = testLeaf('spec-note-title', {
 		contextDependentKind: true
 	});
-	const note = testContainer('spec-note', {
-		rebuildRaw: rebuildNoteRaw,
-		...(opts.declareChrome ? { reservedChrome: { kind: title } } : {})
-	});
-	registerBlockOpener(note, {
-		priority: 45,
-		interruptsParagraph: false,
-		tryOpen(ctx) {
-			const opener = ctx.line.text.match(OPEN);
-			if (!opener) return null;
-			let i = ctx.index + 1;
-			while (i < ctx.end && !CLOSE.test(ctx.lines[i].text)) i++;
-			if (i >= ctx.end) return null;
-			const body = parse(
-				ctx.lines
-					.slice(ctx.index + 1, i)
-					.map((l) => l.raw)
-					.join('')
-			);
-			const raw = ctx.lines
-				.slice(ctx.index, i + 1)
-				.map((l) => l.raw)
-				.join('');
-			const titleChild: CstNode = {
-				kind: title,
-				leadingTrivia: '',
-				raw: opener[1] ? `${opener[1]}\n` : '\n'
-			};
-			return {
-				node: {
-					kind: note,
-					leadingTrivia: ctx.leadingTrivia,
-					raw,
-					innerPrefix: body.prefix,
-					children: [titleChild, ...body.children],
-					innerSuffix: body.suffix
-				},
-				consumed: i + 1 - ctx.index
-			};
-		}
-	});
+	const note = testContainer(
+		'spec-note',
+		{
+			rebuildRaw: rebuildNoteRaw,
+			...(opts.declareChrome ? { reservedChrome: { kind: title } } : {})
+		},
+		(note) => ({
+			opener: {
+				priority: 45,
+				interruptsParagraph: false,
+				tryOpen(ctx) {
+					const opener = ctx.line.text.match(OPEN);
+					if (!opener) return null;
+					let i = ctx.index + 1;
+					while (i < ctx.end && !CLOSE.test(ctx.lines[i].text)) i++;
+					if (i >= ctx.end) return null;
+					const body = parse(
+						ctx.lines
+							.slice(ctx.index + 1, i)
+							.map((l) => l.raw)
+							.join('')
+					);
+					const raw = ctx.lines
+						.slice(ctx.index, i + 1)
+						.map((l) => l.raw)
+						.join('');
+					const titleChild: CstNode = {
+						kind: title,
+						leadingTrivia: '',
+						raw: opener[1] ? `${opener[1]}\n` : '\n'
+					};
+					return {
+						node: {
+							kind: note,
+							leadingTrivia: ctx.leadingTrivia,
+							raw,
+							innerPrefix: body.prefix,
+							children: [titleChild, ...body.children],
+							innerSuffix: body.suffix
+						},
+						consumed: i + 1 - ctx.index
+					};
+				}
+			}
+		})
+	);
 	return note;
 }
 

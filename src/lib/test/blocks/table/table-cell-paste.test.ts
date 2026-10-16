@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { CstNode } from '../../../core/nodes';
 import type { PresentationMode } from '../../../presentation-mode';
 import {
@@ -11,11 +11,6 @@ import type { PasteRange } from '../../../tree-operations/paste-surfaces';
 import { updateNodeContent } from '../../../tree-operations/content-write';
 import { writeTableRow } from '../../../schema/container-rebuilders';
 import { parse } from '../../../core/parser';
-import { cleanLiveJoinSeam } from '../../../components/blocks/text/live-join-seam';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '../../../schema/inline-construct-policy';
 import { fixtureReading, topLevelStore } from '../../harness/fixture-grammar';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import type { Reading } from '#lib/schema/reading.js';
@@ -137,9 +132,6 @@ describe('tableCellInlinePaste', () => {
 	// The paste's delete is a join, and a cell's stranded marker runs are hidden as a paragraph's
 	// are; the join runs before escaping, so the escaping sees the final bytes.
 	describe('the delete half crosses the live join', () => {
-		beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-		afterAll(() => __resetLiveJoinSeamCleanerForTests());
-
 		const CUT = { start: 8, end: 18 };
 		const readingIn = (presentationMode: PresentationMode) => fixtureReading({}, presentationMode);
 		const cellIn = (presentationMode: PresentationMode) => {
@@ -147,10 +139,10 @@ describe('tableCellInlinePaste', () => {
 			return { cell, store: topLevelStore(cell, readingIn(presentationMode)) };
 		};
 
-		it('live: the run the cut stranded goes with it', () => {
+		it('live: the pasted text lands inside the bold the cut closed', () => {
 			const { cell, store } = cellIn('live');
 			const result = tableCellInlinePaste(cell, 8, 'X', CUT, store);
-			expect(result.newRaw).toBe('Some bX');
+			expect(result.newRaw).toBe('Some **bX**');
 		});
 
 		it('the escaping stage still runs over what the join wrote', () => {
@@ -161,8 +153,8 @@ describe('tableCellInlinePaste', () => {
 				{ start: 7, end: 10 },
 				readingIn('live')
 			);
-			// The stranded `**` went with the cut and the cell's own `\|` survived the round.
-			expect(cells).toEqual(['a\\|b X c', 'keep']);
+			// The pasted text fills the bold it replaced, and the cell's own `\|` survived the round.
+			expect(cells).toEqual(['a\\|b **X** c', 'keep']);
 		});
 
 		// Reading mode hides delimiters too, but it writes nothing, so a paste never gets here.

@@ -11,9 +11,10 @@ import {
 	MATH_FENCE
 } from '#lib/plugins/latex/latex-kind.js';
 import { makeContainerHarness, makeTopHarness } from '#lib/test/harness/editor-actions.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 beforeEach(() => {
-	registerMathFence();
+	registerMathFence(testView());
 });
 
 describe('typing a closer-shaped line into a math fence', () => {
@@ -43,7 +44,7 @@ describe('typing a closer-shaped line into a math fence', () => {
 describe('a $$ source committed without its closer', () => {
 	it('gets the closer back', async () => {
 		resetPluginPlatformForTests();
-		registerMathBlock();
+		registerMathBlock(testView());
 		const h = makeTopHarness('$$\nx\n$$\n');
 		expect(h.deps.doc.children[0].kind).toBe(MATH_BLOCK);
 

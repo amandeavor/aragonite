@@ -103,6 +103,13 @@ export function probeFile(probe: Probe): SourceFile {
 	return sourceFile(relPath, code);
 }
 
+/** A violation as `path:line` where a regex matcher can say where it matched, else the path. */
+function located(rule: Pick<FileRule, 'matches'>, relPath: string, sources: SourceFile[]): string {
+	const file = sources.find((f) => f.relPath === relPath);
+	const at = rule.matches instanceof RegExp && file ? file.code.search(rule.matches) : -1;
+	return at < 0 ? relPath : `${relPath}:${file!.code.slice(0, at).split('\n').length}`;
+}
+
 function probeText(probe: Probe): string {
 	return typeof probe === 'string' ? probe : `${probe.relPath}: ${probe.code}`;
 }
@@ -129,7 +136,8 @@ export function describeFileRules(rules: FileRule[], sources: SourceFile[]): voi
 			});
 
 			it('no file outside the allowlist matches', () => {
-				expect(report.violations, rule.reason).toEqual([]);
+				const where = report.violations.map((relPath) => located(rule, relPath, sources));
+				expect(where, rule.reason).toEqual([]);
 			});
 
 			if (rule.allowed && Object.keys(rule.allowed).length > 0) {
@@ -150,7 +158,8 @@ export function describeManifests(rules: ManifestRule[], sources: SourceFile[]):
 			const report = runFileRule(asFileRule, sources);
 
 			it('the matching files are exactly the declared ones', () => {
-				expect({ undeclared: report.violations, stale: report.stale }, rule.reason).toEqual({
+				const undeclared = report.violations.map((relPath) => located(rule, relPath, sources));
+				expect({ undeclared, stale: report.stale }, rule.reason).toEqual({
 					undeclared: [],
 					stale: []
 				});

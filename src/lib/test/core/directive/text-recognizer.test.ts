@@ -10,10 +10,11 @@ import { declaredPluginInlineKind } from '#lib/schema/plugin-kind.js';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
 import { DIRECTIVE_TEXT } from '#lib/core/directive/kinds.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 let kind: PluginInlineKind;
 beforeEach(() => {
-	activateDirectiveGrammar();
+	activateDirectiveGrammar(testDirectiveViews());
 	kind = declaredPluginInlineKind(DIRECTIVE_TEXT);
 });
 const recognize = (raw: string, pos: number, end: number) =>
@@ -72,7 +73,7 @@ describe('directiveText atomic widget', () => {
 		const raw = 'see :abbr[HTML]{title="x"} here';
 		const node = { kind, start: 4, end: 26 } as InlineNode;
 
-		const el = buildCoreInlineWidget(node, raw, undefined, defaultGrammarView);
+		const el = buildCoreInlineWidget(node, raw, { grammar: defaultGrammarView });
 
 		expect(el).not.toBeNull();
 		const shell = el as HTMLElement;

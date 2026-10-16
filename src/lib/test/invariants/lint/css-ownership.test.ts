@@ -1,8 +1,8 @@
 /**
  * The editor module owns its CSS (G4.6): app.css holds no editor-owned rules or tokens, every
- * editor-owned token read is declared in editor-theme.css, every host-token read carries a
- * fallback so an extracted editor renders with no host theme, and no read falls outside the two
- * families (an off-family typo like `--text-muted` can never be declared).
+ * editor-owned token read is declared in editor-theme.css (a resolved host color in editor.css
+ * alone), every radius read carries a fallback, and no read falls outside the two families (an
+ * off-family typo like `--text-muted` can never be declared).
  */
 import { describe, it, expect } from 'vitest';
 import { collectEditorSources, readSource } from './scan-source';
@@ -12,7 +12,7 @@ import { SOURCE, SOURCE_DIR } from './source-paths';
 // Editor-owned tokens vs consumer-provided host-chrome tokens. Every var() read in the
 // editor must belong to exactly one family.
 const OWNED_TOKEN =
-	/^--(?:(?:syntax|code-tok|md|search-match)-[a-z0-9-]+|selection-overlay-bg|reorder-scope-bg|vr-spacer-bg|menu-[a-z-]+|font-editor|font-code|font-ui|editor-font-size)$/;
+	/^--(?:(?:syntax|code-tok|md|search-match|search-bar)-[a-z0-9-]+|selection-overlay-bg|reorder-scope-bg|vr-spacer-bg|menu-[a-z-]+|font-editor|font-code|font-ui|editor-font-size)$/;
 const HOST_TOKEN = /^--(?:color|radius)-[a-z0-9-]+$/;
 const ANY_READ = /var\(\s*(--[a-z0-9-]+)/g;
 
@@ -28,23 +28,37 @@ const EDITOR_CSS_SURFACES: ReadonlyArray<{ rel: string; text: string }> = [
 ];
 
 // ── G4.6c: contract completeness ─────────────────────────────────────────────
-// Every editor-owned token read anywhere in the editor is declared in editor-theme.css.
+// Every editor-owned token read anywhere in the editor is declared in editor-theme.css, except the
+// resolved host colors, which editor.css declares so a replacement theme stylesheet keeps them.
 
-describe('G4.6 CSS ownership: editor-theme.css declares every editor-owned token read', () => {
+const RESOLVED_HOST_COLOR = /^--md-(?:color-[a-z0-9-]+|page-text)$/;
+const declares = (css: string, token: string) => new RegExp(`${token}\\s*:`).test(css);
+
+describe('G4.6 CSS ownership: every editor-owned token read is declared in its own file', () => {
+	const read = new Set<string>();
+	for (const m of EDITOR_CSS_SURFACES.map((f) => f.text)
+		.join('\n')
+		.matchAll(ANY_READ)) {
+		if (OWNED_TOKEN.test(m[1])) read.add(m[1]);
+	}
+	const owned = [...read];
+	const theme = readSource(SOURCE.themeTokens).code;
+	const structural = readSource(SOURCE.editorCss).code;
+
 	it('every owned token read has a declaration', () => {
-		const theme = readSource(SOURCE.themeTokens).text;
-		const haystack = EDITOR_CSS_SURFACES.map((f) => f.text).join('\n');
+		const missing = owned.filter((tok) =>
+			RESOLVED_HOST_COLOR.test(tok) ? !declares(structural, tok) : !declares(theme, tok)
+		);
+		expect(missing, `tokens read but not declared where they belong: ${missing}`).toEqual([]);
+	});
 
-		const read = new Set<string>();
-		for (const m of haystack.matchAll(ANY_READ)) {
-			if (OWNED_TOKEN.test(m[1])) read.add(m[1]);
-		}
+	it('editor-theme.css declares no resolved host color', () => {
+		const misplaced = owned.filter((tok) => RESOLVED_HOST_COLOR.test(tok) && declares(theme, tok));
+		expect(misplaced, `resolved host colors declared in the theme: ${misplaced}`).toEqual([]);
+	});
 
-		const missing = [...read].filter((tok) => !new RegExp(`${tok}\\s*:`).test(theme));
-		expect(
-			missing,
-			`tokens read but not declared in editor-theme.css: ${missing.join(', ')}`
-		).toEqual([]);
+	it('the scan reaches the resolved host colors', () => {
+		expect(owned).toEqual(expect.arrayContaining(['--md-color-border', '--md-page-text']));
 	});
 });
 
@@ -68,19 +82,17 @@ describe('G4.6 CSS ownership: app.css holds no editor-owned rules', () => {
 	}
 });
 
-// ── G4.6b: every host-token read carries a fallback ──────────────────────────
-// A consumer-provided token read without a fallback renders nothing in an extracted
-// editor. Editor-owned reads are exempt, since editor-theme.css declares them.
-const HOST_READ_NO_FALLBACK = /var\(\s*--(?:color|radius)-[a-z0-9-]+\s*\)/;
+// ── G4.6b: every radius read carries a fallback ──────────────────────────────
+// A radius the host leaves undeclared has no default inside the editor, so the read carries one.
+// Host colors are exempt: editor-theme.css resolves every one of them inside the editor.
+const RADIUS_READ_NO_FALLBACK = /var\(\s*--radius-[a-z0-9-]+\s*\)/;
 
-describe('G4.6 CSS ownership: host-token reads carry a fallback', () => {
-	it('no host-token var() read is missing a fallback', () => {
-		const offenders = EDITOR_CSS_SURFACES.filter((f) => HOST_READ_NO_FALLBACK.test(f.text)).map(
+describe('G4.6 CSS ownership: radius reads carry a fallback', () => {
+	it('no radius var() read is missing a fallback', () => {
+		const offenders = EDITOR_CSS_SURFACES.filter((f) => RADIUS_READ_NO_FALLBACK.test(f.text)).map(
 			(f) => f.rel
 		);
-		expect(offenders, `host-token reads missing a fallback in: ${offenders.join(', ')}`).toEqual(
-			[]
-		);
+		expect(offenders, `radius reads missing a fallback in: ${offenders.join(', ')}`).toEqual([]);
 	});
 });
 
@@ -107,6 +119,9 @@ describe('G4.6 CSS ownership: every token read belongs to a declared family', ()
 // A host-chrome default on `.editor` shadows what a themed host cascades from `:root`, except
 // for host-family names no host vocabulary carries, which the editor supplies in both modes.
 
+// The root's children re-expose the root's resolved value, the host's own where it has one.
+const REEXPOSED = (name: string) => new RegExp(`^${name}\\s*:\\s*var\\(--md-${name.slice(2)}\\)$`);
+
 const EDITOR_SUPPLIED_HOST_NAMED = new Set([
 	'--color-bg-secondary',
 	'--color-bg-elevated',
@@ -129,20 +144,22 @@ const HOST_CHROME_TOKENS = [
 	'--radius-surface'
 ];
 
-function themeRules(): Array<{ selector: string; body: string }> {
-	const css = readSource(SOURCE.themeTokens).code;
+function rulesIn(file: string): Array<{ selector: string; body: string }> {
+	const css = readSource(file).code;
 	return [...css.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map(([, selector, body]) => ({
 		selector: selector.trim(),
 		body
 	}));
 }
 
+const declarationsIn = (body: string) => [...body.matchAll(/(--[a-z0-9-]+)\s*:[^;]*/g)];
+
 describe('G4.6 CSS ownership: editor-theme.css keeps host-chrome defaults off `.editor`', () => {
 	it('no host-chrome token is declared in a rule that matches `.editor`', () => {
 		const offenders: string[] = [];
-		for (const { selector, body } of themeRules()) {
+		for (const { selector, body } of rulesIn(SOURCE.themeTokens)) {
 			if (!selector.includes('.editor')) continue;
-			for (const [, name] of body.matchAll(/(--[a-z0-9-]+)\s*:/g)) {
+			for (const [, name] of declarationsIn(body)) {
 				if (HOST_TOKEN.test(name) && !EDITOR_SUPPLIED_HOST_NAMED.has(name)) {
 					offenders.push(`${name} under ${selector}`);
 				}
@@ -153,26 +170,37 @@ describe('G4.6 CSS ownership: editor-theme.css keeps host-chrome defaults off `.
 		);
 	});
 
+	it('editor.css declares a host token only on a root child, re-exposing the resolved one', () => {
+		const offenders: string[] = [];
+		const reexposed: string[] = [];
+		for (const { selector, body } of rulesIn(SOURCE.editorCss)) {
+			for (const [declaration, name] of declarationsIn(body)) {
+				if (!HOST_TOKEN.test(name)) continue;
+				if (selector.endsWith('> *') && REEXPOSED(name).test(declaration.trim())) {
+					reexposed.push(name);
+				} else offenders.push(`${name} under ${selector}`);
+			}
+		}
+		expect(offenders, `host tokens declared in editor.css: ${offenders}`).toEqual([]);
+		expect(reexposed).toContain('--color-bg');
+	});
+
 	it('the class-only level declares every host-chrome token', () => {
-		const classOnly = themeRules()
+		const classOnly = rulesIn(SOURCE.themeTokens)
 			.filter(({ selector }) => !selector.includes('.editor'))
 			.map(({ body }) => body)
 			.join('\n');
-		const missing = HOST_CHROME_TOKENS.filter(
-			(token) => !new RegExp(`${token}\\s*:`).test(classOnly)
-		);
+		const missing = HOST_CHROME_TOKENS.filter((token) => !declares(classOnly, token));
 		expect(missing, `host-chrome tokens absent from the opt-in class: ${missing}`).toEqual([]);
 	});
 
 	it('every editor-supplied exemption is a live one (no stale entry)', () => {
-		const editorTier = themeRules()
+		const editorTier = rulesIn(SOURCE.themeTokens)
 			.filter(({ selector }) => selector.includes('.editor'))
 			.map(({ body }) => body)
 			.join('\n');
 		for (const token of EDITOR_SUPPLIED_HOST_NAMED) {
-			expect(new RegExp(`${token}\\s*:`).test(editorTier), `${token} no longer declared`).toBe(
-				true
-			);
+			expect(declares(editorTier, token), `${token} no longer declared`).toBe(true);
 		}
 	});
 });
@@ -196,9 +224,15 @@ describe('G4.6 CSS ownership: matcher non-vacuity', () => {
 		expect(new RegExp(`${token}\\s*:`).test(undeclared)).toBe(false);
 	});
 
-	it('HOST_READ_NO_FALLBACK flags a bare host read but accepts one with a fallback', () => {
-		expect(HOST_READ_NO_FALLBACK.test('var(--color-surface)')).toBe(true);
-		expect(HOST_READ_NO_FALLBACK.test('var(--color-surface, #fff)')).toBe(false);
+	it('RADIUS_READ_NO_FALLBACK flags a bare radius read but accepts one with a fallback', () => {
+		expect(RADIUS_READ_NO_FALLBACK.test('var(--radius-ui)')).toBe(true);
+		expect(RADIUS_READ_NO_FALLBACK.test('var(--radius-ui, 4px)')).toBe(false);
+	});
+
+	it('the re-expose exemption takes only the resolved name, never a literal', () => {
+		expect(REEXPOSED('--color-bg').test('--color-bg: var(--md-color-bg)')).toBe(true);
+		expect(REEXPOSED('--color-bg').test('--color-bg: #2c2c2a')).toBe(false);
+		expect(REEXPOSED('--color-bg').test('--color-bg: var(--md-color-border)')).toBe(false);
 	});
 
 	it('the family split rejects an off-family token both guards would otherwise miss', () => {

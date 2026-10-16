@@ -307,7 +307,7 @@ export interface BlockComponent {
 	 * Type `text` at raw `offset` as a keystroke would: the write a typed character makes, with the
 	 * name a new block kind gets and the line an on-type completer finishes. The editor calls it
 	 * for a character typed over a range, once the range is removed. Resolves once it lands.
-	 * Omitted by non-editable blocks.
+	 * Omitted by a block that takes no text; one focused whole takes it in a paragraph after itself.
 	 */
 	typeText?(text: string, offset: number): Promise<boolean>;
 	/**
@@ -379,7 +379,7 @@ export type EditableLeafBlockApi = BlockComponent &
  * themselves, a component built on the editable leaf its `blockApi`, a container its
  * `containerApi`. Svelte 5 instance exports have no spread, so the factories hand over one object
  * rather than a dozen members to copy by hand. A component publishing none of the three, or a
- * container publishing only a leaf's members, fails where `defineBlockComponent` registers it.
+ * container publishing only a leaf's members, fails where `svelteBlockView` wraps it.
  */
 export type BlockComponentExports =
 	| BlockComponent

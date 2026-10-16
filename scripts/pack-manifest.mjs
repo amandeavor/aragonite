@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-// Shipped, but named by no `exports` entry: the barrel re-exports `Editor.svelte`, which
+// Shipped, but named by no `exports` entry: the `/svelte` entry re-exports `Editor.svelte`, which
 // imports `editor.css`. Package-root-relative to match `npm pack --json` file paths.
 const EXTRA_PATHS = ['dist/components/Editor.svelte', 'dist/styles/editor.css'];
 
@@ -13,7 +13,7 @@ const EXTRA_PATHS = ['dist/components/Editor.svelte', 'dist/styles/editor.css'];
  * @param {unknown} value
  * @param {string[]} out
  */
-function collectLeafStrings(value, out) {
+export function collectLeafStrings(value, out) {
 	if (typeof value === 'string') out.push(value);
 	else if (value && typeof value === 'object') {
 		for (const nested of Object.values(value)) collectLeafStrings(nested, out);
@@ -31,4 +31,15 @@ export function requiredPackPaths() {
 	collectLeafStrings(pkg.exports ?? {}, fromExports);
 	const normalized = fromExports.map((target) => target.replace(/^\.\//, ''));
 	return [...new Set([...normalized, ...EXTRA_PATHS])].sort();
+}
+
+/**
+ * The packages the prebuilt build leaves to the host: every dependency and peer but Svelte, which
+ * it compiles in so a host without a Svelte toolchain needs no Svelte at all.
+ * @returns {string[]}
+ */
+export function prebuiltExternals() {
+	const pkg = JSON.parse(readFileSync(path.resolve('package.json'), 'utf8'));
+	const names = Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies });
+	return names.filter((name) => name !== 'svelte').sort();
 }

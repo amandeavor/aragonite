@@ -4,12 +4,14 @@ import { registerBlockKind, getBlockKindDescriptor } from '../../schema/block-ki
 import { isBuiltinBlockKind, type CstNode, type Document } from '../../core/nodes';
 import { serialize } from '../../core/serializer';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 describe('plugin-kind node is a first-class CST citizen', () => {
 	it('declares a non-builtin kind, registers a descriptor, and round-trips through serialize', () => {
 		const kind = declarePluginKind('nodeCitizenCallout');
 		expect(isBuiltinBlockKind(kind)).toBe(false);
 		registerBlockKind(kind, {
+			view: testView(),
 			gapEdges: 'none',
 			mergeRole: 'not-mergeable',
 			editable: true,

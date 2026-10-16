@@ -1,8 +1,8 @@
 /**
- * Public prop and instance-handle types for <Editor>. Editor.svelte annotates its
- * $props() and its instance methods against these, so neither can drift from the component.
+ * The editor's options and instance handle, free of Svelte types: `<Editor>`'s props add a
+ * snippet `header` to these, and `createEditor`'s add an element one. Editor.svelte annotates its
+ * props and methods against these, so neither can drift from the component.
  */
-import type { Snippet } from 'svelte';
 import type { AnyBlockKind } from './core/nodes';
 import type {
 	CodeMenuItemsHook,
@@ -10,7 +10,7 @@ import type {
 	ResolveImageUrl,
 	ResolveLinkUrl,
 	RunCodeHook
-} from './editor-keys';
+} from './host-hooks';
 import type { ImageLoadPolicy } from './core/inline-render';
 import type { PresentationMode } from './presentation-mode';
 import type { LinkClick } from './activation-click';
@@ -30,31 +30,28 @@ export type { EditorPluginEntry } from './schema/plugin-install';
 export type { SyntaxOptions } from './schema/registry-view';
 export type { InteractionTraceEntry } from './debug/interaction-trace';
 
-export interface EditorProps {
+/** Every editor prop but `header`, whose type depends on how the editor is mounted. */
+export interface EditorOptions {
 	/** The Markdown the editor mounts with. A later write replaces the document, clearing undo,
-	 *  when it differs from `getSource()`, and does nothing when it doesn't. The editor never
-	 *  writes back into it. */
+	 *  when it differs from `getSource()`, and does nothing when it doesn't or is `undefined`. The
+	 *  editor never writes back into it. */
 	source?: string;
 	resolveImageUrl?: ResolveImageUrl;
 	resolveLinkUrl?: ResolveLinkUrl;
 	imageLoadPolicy?: ImageLoadPolicy;
 	onLinkActivate?: (url: string, event: MouseEvent) => void;
-	/** Import hook for image-bearing pastes, set once at mount. Each image file is offered
-	 *  in order and the markdown returned is inserted at the caret; `null` skips it.
-	 *  Installing it takes the whole paste: the clipboard's `text/plain` is not pasted. */
+	/** Import hook for image-bearing pastes. Each image file is offered in order and the
+	 *  markdown returned is inserted at the caret; `null` skips it. Installing it takes the
+	 *  whole paste: the clipboard's `text/plain` is not pasted. */
 	onPasteImage?: PasteImageHook;
-	/** Execution hook for code blocks, set once at mount. The editor runs nothing itself:
-	 *  installing this is what puts the run button in a code block's side gutter, and the host
-	 *  owns the runtime, the result, and where output goes. Absent, no run button renders. */
+	/** Execution hook for code blocks. The editor runs nothing itself: installing this is what
+	 *  puts the run button in a code block's side gutter, and the host owns the runtime, the
+	 *  result, and where output goes. Absent, no run button renders. */
 	onRunCode?: RunCodeHook;
-	/** Overflow-menu hook for code blocks, set once at mount and consulted each time a menu
-	 *  opens so items can read live state. Absent, or returning nothing, renders no overflow
-	 *  button: the editor has no app-level actions of its own to offer there. */
+	/** Overflow-menu hook for code blocks, consulted each time a menu opens so items can read
+	 *  live state. Absent, or returning nothing, renders no overflow button: the editor has no
+	 *  app-level actions of its own to offer there. */
 	codeMenuItems?: CodeMenuItemsHook;
-	/** The host's own content, rendered inside the editor's scroll container above the first
-	 *  block (a title, properties panel, tag row). It scrolls away with the document rather than
-	 *  staying fixed, which is what lets the editor keep its own scroll container and windowing. */
-	header?: Snippet;
 	/** The block drag handle (default on; never in reading mode), shown on hover, or outright on
 	 *  touch. Only blocks a user picks up whole have one (code, tables, equations, diagrams,
 	 *  pictures, list items, dividers, cards), never prose. `false` removes them, except on a
@@ -82,8 +79,8 @@ export interface EditorProps {
 	/** Theme name reflected to `data-editor-theme` on the editor root. Built-ins:
 	 *  `'dark'` (default) and `'light'`; any other value activates a consumer's
 	 *  own `.editor[data-editor-theme='<name>']` token block. The editor paints no
-	 *  background, so the name should match the page; an `aragonite-editor-theme`
-	 *  wrapper keys its own palette off the same attribute set on the wrapper. */
+	 *  background, so the name should match the page; a host color the page leaves
+	 *  undeclared takes this theme's built-in value. */
 	theme?: string;
 	/** Who draws the caret, read live; only a drawn one shows the format the next letter will get.
 	 *  `'auto'` (default) draws on a fine pointer and leaves a touch screen the browser's own;
@@ -113,6 +110,51 @@ export interface EditorProps {
 	 *  reading changes: a loaded file keeps every byte, and saves as it came. */
 	syntax?: SyntaxOptions;
 }
+
+/** When a prop's new value takes effect: `live` at once (a hook is called as it stands at each
+ *  use), `once` never, since it is read at mount. */
+export type PropTiming = 'live' | 'once';
+
+/** What a wrapper needs to know about one option. `boolean` marks the options typed `boolean`,
+ *  which a wrapper like Vue must declare with no default so an absent one keeps the editor's. */
+export type EditorOptionSpec<T> = [NonNullable<T>] extends [boolean]
+	? { readonly timing: PropTiming; readonly boolean: true }
+	: { readonly timing: PropTiming; readonly boolean?: never };
+
+/** One spec for every key of `P`, optional keys included. */
+export type EditorOptionSpecs<P = EditorOptions & { header?: unknown }> = {
+	readonly [K in keyof Required<P>]: EditorOptionSpec<P[K]>;
+};
+
+/**
+ * Every editor option, `header` included, with when a new value takes effect and whether it's a
+ * boolean. `createEditor` skips the `once` options on `update`, and a framework wrapper declares
+ * its props from this list.
+ */
+export const EDITOR_OPTION_SPECS = {
+	source: { timing: 'live' },
+	theme: { timing: 'live' },
+	presentationMode: { timing: 'live' },
+	linkClick: { timing: 'live' },
+	caret: { timing: 'live' },
+	keybindings: { timing: 'live' },
+	placeholder: { timing: 'live' },
+	searchBar: { timing: 'live', boolean: true },
+	searchBarAnchor: { timing: 'live' },
+	selectionToolbar: { timing: 'live', boolean: true },
+	blockDragHandles: { timing: 'live', boolean: true },
+	imageLoadPolicy: { timing: 'live' },
+	header: { timing: 'live' },
+	resolveImageUrl: { timing: 'live' },
+	resolveLinkUrl: { timing: 'live' },
+	onLinkActivate: { timing: 'live' },
+	onPasteImage: { timing: 'live' },
+	onRunCode: { timing: 'live' },
+	codeMenuItems: { timing: 'live' },
+	plugins: { timing: 'once' },
+	syntax: { timing: 'once' },
+	scrollMode: { timing: 'once' }
+} as const satisfies EditorOptionSpecs;
 
 /** The empty block a function `placeholder` is asked about. */
 export interface PlaceholderBlock {

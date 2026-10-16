@@ -5,7 +5,7 @@
  * it goes once the landing's `restore` puts a selected widget back itself.
  */
 
-import type { BlockElLookup } from '../editor-keys';
+import type { BlockElLookup } from '../caret/block-el-lookup';
 import type { CaretLanding, LandOptions } from './caret-landing';
 import type { EditorSelection } from './primitives';
 import type { SelectionRestoreOutcome } from './selection-restore';

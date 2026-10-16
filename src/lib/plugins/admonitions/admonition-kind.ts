@@ -8,9 +8,7 @@ import {
 	containerClosure,
 	createDirectiveRebuild,
 	declarePluginKind,
-	defineBlockComponent,
 	DIRECTIVE_BODY_WRAP,
-	registerBlockComponent,
 	registerBlockKind,
 	registerBlockCommand,
 	registerChromeLeaf,
@@ -20,6 +18,7 @@ import {
 	setPluginMetadata,
 	getPluginMetadata,
 	trimWhitespace,
+	type BlockView,
 	type CstNode,
 	type ParsedDirective,
 	type PluginBlockKind
@@ -33,7 +32,6 @@ import {
 } from './kinds';
 import { githubAlertsPasteTransform } from './convert-document';
 import { registerGithubAlert } from './github-alert-kind';
-import AdmonitionBlock from './AdmonitionBlock.svelte';
 
 export interface AdmonitionsOptions {
 	/**
@@ -70,7 +68,8 @@ const rebuildAdmonitionRaw = createDirectiveRebuild<AdmonitionMetadata>((meta) =
 	coerceAdmonitionName(meta?.name)
 );
 
-export function registerAdmonitions(options?: AdmonitionsOptions): void {
+/** `view` draws both the admonition and the GitHub alert. */
+export function registerAdmonitions(view: BlockView, options?: AdmonitionsOptions): void {
 	activateDirectives(); // idempotent; the shared grammar must be live before the first parse
 
 	const admonition = declarePluginKind(ADMONITION);
@@ -96,6 +95,7 @@ export function registerAdmonitions(options?: AdmonitionsOptions): void {
 	});
 
 	registerBlockKind(admonition, {
+		view,
 		label: 'Admonition',
 		// A note reads as part of the text around it, so it shows no drag handle.
 		pageRole: 'prose',
@@ -135,12 +135,10 @@ export function registerAdmonitions(options?: AdmonitionsOptions): void {
 	});
 
 	registerChromeLeaf(title, { label: 'Title', blockClass: 'admonition-title' });
-	registerBlockComponent(admonition, defineBlockComponent(AdmonitionBlock));
 
 	if (options?.convertAlertsOnPaste) {
 		registerPasteTransform(githubAlertsPasteTransform);
 	}
 
-	// The component registered above renders both kinds.
-	registerGithubAlert();
+	registerGithubAlert(view);
 }

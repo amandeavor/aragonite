@@ -1,6 +1,7 @@
 <!-- ParrotBlock.svelte -->
 <script lang="ts">
-	import { createEditableLeaf, trimWhitespace, type NodeView } from '#lib/plugin.js';
+	import { trimWhitespace, type NodeView } from '#lib/plugin.js';
+	import { createEditableLeaf } from '#lib/svelte.js';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
 	let sourceEl: HTMLDivElement | undefined = $state();
@@ -319,7 +320,7 @@ cNd.........................................;lOc
 			color: #3fd3d3;
 		}
 		85.714% {
-			color: var(--color-text-primary, currentColor);
+			color: currentColor;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {

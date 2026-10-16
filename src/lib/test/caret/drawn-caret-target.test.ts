@@ -91,16 +91,30 @@ describe('the drawn caret steps aside for the native one', () => {
 });
 
 describe('the drawn caret draws a bar', () => {
-	it('at the caret, relative to its host, snapped to a device pixel', () => {
+	it('at the caret, relative to its host', () => {
 		expect(drawnCaretTarget(DRAWING)).toEqual({
 			state: 'text',
 			rect: { x: 30, y: 5, height: 20 }
 		});
 	});
 
-	it('on a half-pixel grid at a device pixel ratio of 2', () => {
-		const target = drawnCaretTarget(read({ devicePixelRatio: 2 }));
-		expect(target).toEqual({ state: 'text', rect: { x: 30.5, y: 5, height: 20 } });
+	// The column the letter boundary falls in is where the browser's own caret stands; the ends
+	// take every device row the line touches.
+	it.each([
+		[1, { left: 40.7, top: 25, bottom: 45 }, { x: 30, y: 5, height: 20 }],
+		[2, { left: 40.3, top: 25, bottom: 45 }, { x: 30, y: 5, height: 20 }],
+		[1.25, { left: 40.9, top: 25.3, bottom: 45.3 }, { x: 30.8, y: 4.8, height: 20.8 }],
+		[
+			1.5,
+			{ left: 40.7, top: 25.5, bottom: 45.5 },
+			{ x: 30 + 2 / 3, y: 5 + 1 / 3, height: 20 + 2 / 3 }
+		]
+	])('on whole device pixels at a device pixel ratio of %s', (devicePixelRatio, caret, want) => {
+		const target = drawnCaretTarget(read({ devicePixelRatio, caret }));
+		if (target.state !== 'text') throw new Error(`drew ${target.state}`);
+		for (const key of ['x', 'y', 'height'] as const) {
+			expect(target.rect[key], key).toBeCloseTo(want[key], 6);
+		}
 	});
 
 	it('in the host’s own units when an ancestor scales the editor', () => {
@@ -113,7 +127,7 @@ describe('the drawn caret draws a chip stop', () => {
 	// Drawn against the chip's own box, so where the range or the browser put the caret is moot.
 	it('at the stop the next letter types at, snapped, whatever the range measured', () => {
 		const target = drawnCaretTarget(
-			read({ atCodeChipEdge: true, chip: { left: 60.4, top: 24, bottom: 44 } })
+			read({ atCodeChipEdge: true, chip: { left: 60.7, top: 24, bottom: 44 } })
 		);
 		expect(target).toEqual({ state: 'chip', rect: { x: 50, y: 4, height: 20 } });
 	});
@@ -142,8 +156,15 @@ describe('the drawn caret draws where the browser can’t', () => {
 		expect(hidesBrowserCaret(target), 'the browser’s caret hides too').toBe(true);
 	});
 
-	it('across the gap while the gap proxy holds focus', () => {
-		expect(drawnCaretTarget(read(AT_GAP))).toEqual({ state: 'gap' });
+	it('across the gap while the gap proxy holds focus, its top a pixel above the boundary', () => {
+		expect(drawnCaretTarget(read(AT_GAP))).toEqual({ state: 'gap', y: -1 });
+	});
+
+	it('across the gap with its top on a whole device pixel', () => {
+		const host = { left: 10, top: 20.3, scale: 1 };
+		const target = drawnCaretTarget(read({ ...AT_GAP, host, devicePixelRatio: 1.25 }));
+		if (target.state !== 'gap') throw new Error(`drew ${target.state}`);
+		expect(target.y).toBeCloseTo(-1.1, 6);
 	});
 
 	it.each([

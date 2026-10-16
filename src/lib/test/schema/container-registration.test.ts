@@ -9,13 +9,15 @@ import {
 	type BlockKindRegistration
 } from '#lib/schema/block-kind-descriptor.js';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const leaf = {
 	gapEdges: 'none',
 	mergeRole: 'not-mergeable',
 	editable: true,
 	supportsInline: false,
-	closure: testClosure
+	closure: testClosure,
+	view: testView()
 } as const;
 
 const UNWRAP = {
@@ -75,7 +77,10 @@ describe('registerBlockKind normalizes the container group', () => {
 	// only protection to test; the casts here stand in for a JS caller.
 	it('a widened flat descriptor cannot smuggle container-only fields past the group', () => {
 		const kind = declarePluginKind('norm-widened');
-		registerBlockKind(kind, getBlockKindDescriptor('blockquote') as BlockKindRegistration);
+		registerBlockKind(kind, {
+			...getBlockKindDescriptor('blockquote'),
+			view: testView()
+		} as BlockKindRegistration);
 
 		const d = tryGetBlockKindDescriptor(kind)!;
 		expect(d.isContainer).toBe(false);

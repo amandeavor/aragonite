@@ -33,7 +33,7 @@ describe('reading a candidate back where it is stored', () => {
 	});
 
 	// Miss-analysis: #690, every candidate ended on a line with text, so none met the empty last
-	// line a write keeps in its block and the reload reads as a blank line after it.
+	// line the screen draws under a break and the reload reads as a blank line after the block.
 	it('an empty last line after a hard break is the block’s own line, as the screen draws it', () => {
 		expect(shown('a\n', [0], 'abc def\\\n\n')).toBe('abc def\n');
 		expect(shown('- a\n- b\n', [0, 0, 0], 'abc def\\\n\n')).toBe('abc def\n');

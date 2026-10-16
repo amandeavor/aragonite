@@ -3,12 +3,10 @@
 // clipboard, not the caret, and the paste's commit hands that position to the caret landing once.
 // No other paste suite checks where the caret ends up.
 import { describe, it, expect } from 'vitest';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import {
 	makePasteCommit,
-	makeStubBlockEdit,
 	registerStubBlockListState,
-	pasteContext
+	runPasteDispatch
 } from '../../harness/editor-actions';
 import { CURSOR_END } from '#lib/block-component.js';
 
@@ -21,13 +19,10 @@ async function pasteInto(
 	offset: number,
 	crossBlock: boolean
 ) {
-	const { doc, controller, landings } = makePasteCommit(source);
-	registerStubBlockListState(doc.children[0]);
-	await pasteDispatch(
-		{ pastedText, targetPath, offset },
-		pasteContext({ doc, blockEdit: makeStubBlockEdit(), controller, crossBlock })
-	);
-	return landings.map(({ leafPath, offset }) => ({ leafPath, offset }));
+	const h = makePasteCommit(source);
+	registerStubBlockListState(h.doc.children[0]);
+	await runPasteDispatch(h, { pastedText, targetPath, offset }, { crossBlock });
+	return h.landings.map(({ leafPath, offset }) => ({ leafPath, offset }));
 }
 
 describe('structural paste lands its caret through the commit', () => {

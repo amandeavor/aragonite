@@ -27,11 +27,12 @@ async function addSource(
 						...(withBadge
 							? {
 									badge: {
-										buildDom: () => {
+										view: (target: HTMLElement) => {
 											const el = document.createElement('span');
 											el.className = 'e2e-table-badge';
 											el.textContent = 'BADGE';
-											return el;
+											target.append(el);
+											return {};
 										}
 									}
 								}

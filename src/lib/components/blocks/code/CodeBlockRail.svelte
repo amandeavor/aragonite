@@ -9,13 +9,14 @@
 		CODE_RUN_LABEL,
 		codeLanguageLabel
 	} from '../../../a11y-strings';
-	import type { CodeMenuItem } from '../../../editor-keys';
+	import type { CodeMenuItem } from '../../../host-hooks';
 	import type { MenuPresence } from '../../menu/menu-presence.svelte';
 	import type { DraftRegistry } from '../../draft-registry';
 	import type { Draft } from '../../../schema/drafts';
 	import type { PluginActivation } from '../../../schema/plugin-activation';
 	import { getLanguageAliases, getLanguageGrammar, listLanguages } from './code-languages';
 	import { fenceLanguage } from '../../../core/parsers/fence-syntax';
+	import MenuIcon from '../../menu/MenuIcon.svelte';
 
 	// What the modes that draw no fence show instead: the language control plus whatever
 	// actions the host has enabled by installing a hook. A draft lives here and only a
@@ -60,7 +61,9 @@
 
 	const language = $derived(fenceLanguage(info) || 'text');
 
-	let editing = $state(false);
+	/** At most one popout is open: the language list or the overflow menu. Read as the state itself,
+	 *  never a derived, since the draft and menu registries and a blur reach here after unmount. */
+	let popout = $state<'closed' | 'languages' | 'menu'>('closed');
 	let draft = $state('');
 	let fieldDraft: Draft | null = null;
 	onDestroy(() => fieldDraft?.end());
@@ -71,7 +74,6 @@
 	/** The user moved the highlight, so the row it sits on wins over whatever they typed. */
 	let highlightMoved = false;
 	let copied = $state(false);
-	let menuOpen = $state(false);
 	let openMenuItems = $state<readonly CodeMenuItem[]>([]);
 
 	let railEl: HTMLElement | undefined = $state();
@@ -132,8 +134,7 @@
 		draft = '';
 		filtering = false;
 		highlightMoved = false;
-		menuOpen = false;
-		editing = true;
+		popout = 'languages';
 		fieldDraft?.end();
 		// The field never saves on its own, so a close for either cause just closes it.
 		fieldDraft = drafts.open({ seed: info, current: () => info, close });
@@ -144,7 +145,7 @@
 		// viewport's corner, focusing the field inside it would scroll the page up there.
 		const anchor = chipEl?.getBoundingClientRect();
 		if (anchor) {
-			listAt = {
+			popoutAt = {
 				x: Math.max(EDGE_MARGIN, anchor.right - 200),
 				y: anchor.bottom + ANCHOR_GAP,
 				maxHeight: MAX_POPOUT_HEIGHT
@@ -158,7 +159,7 @@
 	}
 
 	function close(): void {
-		editing = false;
+		if (popout === 'languages') popout = 'closed';
 		fieldDraft?.end();
 		fieldDraft = null;
 	}
@@ -213,7 +214,7 @@
 	}
 
 	function onFieldBlur(e: FocusEvent): void {
-		if (!editing) return;
+		if (popout !== 'languages') return;
 		// A pointer moving from the field to its own list is not a dismissal: the list's
 		// mousedown handler commits, and this must not tear the field down before it does.
 		const next = e.relatedTarget;
@@ -232,29 +233,33 @@
 		copied = false;
 	}
 
+	function closeMenu(): void {
+		if (popout === 'menu') popout = 'closed';
+	}
+
 	function toggleMenu(): void {
-		if (menuOpen) {
-			menuOpen = false;
+		if (popout === 'menu') {
+			closeMenu();
 			return;
 		}
 		close();
 		openMenuItems = menuItems?.() ?? [];
-		menuOpen = openMenuItems.length > 0;
+		if (openMenuItems.length > 0) popout = 'menu';
 	}
 
 	function activateMenuItem(item: CodeMenuItem): void {
 		if (item.disabled) return;
-		menuOpen = false;
+		closeMenu();
 		item.run();
 	}
 
 	// Escape is handled on the ⋮ button and the items, where focus sits while the menu is open:
 	// the gutter is a labelled `group`, and a non-interactive role may not carry key handlers.
 	function onMenuKeyDown(e: KeyboardEvent): void {
-		if (e.key !== 'Escape' || !menuOpen) return;
+		if (e.key !== 'Escape' || popout !== 'menu') return;
 		e.stopPropagation();
 		e.preventDefault();
-		menuOpen = false;
+		closeMenu();
 		menuButtonEl?.focus();
 	}
 
@@ -263,7 +268,7 @@
 	function onRailFocusOut(e: FocusEvent): void {
 		const next = e.relatedTarget;
 		if (next instanceof Node && (railEl?.contains(next) || menuEl?.contains(next))) return;
-		menuOpen = false;
+		closeMenu();
 		clearCopied();
 	}
 
@@ -278,8 +283,7 @@
 		 *  scrolls inside that space instead of growing past the viewport edge. */
 		maxHeight: number;
 	}
-	let listAt = $state<Placement | null>(null);
-	let menuAt = $state<Placement | null>(null);
+	let popoutAt = $state<Placement | null>(null);
 
 	const EDGE_MARGIN = 8;
 	const ANCHOR_GAP = 6;
@@ -299,30 +303,19 @@
 		return { x, y, maxHeight };
 	}
 
-	$effect(() => {
-		if (!editing || !pickerEl) {
-			listAt = null;
-			return;
-		}
-		listAt = placeAgainst(chipEl, pickerEl);
-	});
-
-	$effect(() => {
-		if (!menuOpen || !menuEl) {
-			menuAt = null;
-			return;
-		}
-		menuAt = placeAgainst(menuButtonEl, menuEl);
-	});
-
 	// A fixed popout does not move with the gutter, so it is placed again on every scroll and
 	// resize; not closed, since focusing the field can itself scroll and would close the picker.
 	$effect(() => {
-		if (!editing && !menuOpen) return;
+		const anchor = popout === 'languages' ? chipEl : menuButtonEl;
+		const el = popout === 'languages' ? pickerEl : popout === 'menu' ? menuEl : undefined;
+		if (!el) {
+			popoutAt = null;
+			return;
+		}
 		const reposition = (): void => {
-			if (editing && pickerEl) listAt = placeAgainst(chipEl, pickerEl);
-			if (menuOpen && menuEl) menuAt = placeAgainst(menuButtonEl, menuEl);
+			popoutAt = placeAgainst(anchor, el);
 		};
+		reposition();
 		window.addEventListener('scroll', reposition, { capture: true, passive: true });
 		window.addEventListener('resize', reposition, { passive: true });
 		return () => {
@@ -341,31 +334,13 @@
 	const showMenu = $derived(menuItems !== undefined);
 </script>
 
-<!-- Lucide (ISC) path data, inlined rather than adding an icon package; sized to match
-	the host app's menus. See THIRD-PARTY-NOTICES.md. -->
-{#snippet icon(paths: string)}
-	<svg
-		viewBox="0 0 24 24"
-		width="14"
-		height="14"
-		fill="none"
-		stroke="currentColor"
-		stroke-width="1.75"
-		stroke-linecap="round"
-		stroke-linejoin="round"
-		aria-hidden="true"
-	>
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -- static lucide path markup from this module's own constants -->
-		{@html paths}
-	</svg>
-{/snippet}
-
 <!-- `group`, not `toolbar`: these controls belong together, but a toolbar promises
 	arrow-key navigation between them, which this does not implement. -->
 <div
 	bind:this={railEl}
 	class="code-rail"
-	class:code-rail-open={editing || menuOpen}
+	class:code-rail-open={popout !== 'closed'}
+	data-corner-control
 	role="group"
 	aria-label={CODE_RAIL_LABEL}
 	onfocusout={onRailFocusOut}
@@ -374,20 +349,18 @@
 		<button
 			type="button"
 			class="code-lang-button"
-			class:open={editing}
+			class:open={popout === 'languages'}
 			aria-haspopup="listbox"
-			aria-expanded={editing}
+			aria-expanded={popout === 'languages'}
 			aria-label={codeLanguageLabel(language)}
-			onclick={() => (editing ? close() : open())}
-			>{language}{@render icon('<path d="m6 9 6 6 6-6"/>')}</button
+			onclick={() => (popout === 'languages' ? close() : open())}
+			>{language}<MenuIcon name="chevron-down" /></button
 		>
 	</span>
 
 	{#if showRun}
 		<button type="button" class="code-rail-action" aria-label={CODE_RUN_LABEL} onclick={onRun}>
-			{@render icon(
-				'<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>'
-			)}
+			<MenuIcon name="play" />
 		</button>
 	{/if}
 
@@ -399,11 +372,9 @@
 		onpointerleave={clearCopied}
 	>
 		{#if copied}
-			{@render icon('<path d="M20 6 9 17l-5-5"/>')}
+			<MenuIcon name="check" />
 		{:else}
-			{@render icon(
-				'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'
-			)}
+			<MenuIcon name="copy" />
 		{/if}
 	</button>
 
@@ -414,26 +385,24 @@
 			class="code-rail-action"
 			aria-label={CODE_MENU_LABEL}
 			aria-haspopup="menu"
-			aria-expanded={menuOpen}
+			aria-expanded={popout === 'menu'}
 			onclick={toggleMenu}
 			onkeydown={onMenuKeyDown}
 		>
-			{@render icon(
-				'<circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>'
-			)}
+			<MenuIcon name="ellipsis-vertical" />
 		</button>
 	{/if}
 </div>
 
-{#if editing}
+{#if popout === 'languages'}
 	<div
 		bind:this={pickerEl}
 		class="md-menu code-rail-popout code-lang-picker"
-		style={popoutStyle(listAt)}
+		style={popoutStyle(popoutAt)}
 		{@attach menuPresence.track(close, { edits: true })}
 	>
 		<div class="code-lang-search">
-			{@render icon('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>')}
+			<MenuIcon name="search" />
 			<input
 				bind:this={inputEl}
 				bind:value={draft}
@@ -478,7 +447,7 @@
 							<span class="code-lang-name">{name}</span>
 							{#if isCurrentLanguage(name)}
 								<span class="code-lang-check">
-									{@render icon('<path d="M20 6 9 17l-5-5"/>')}
+									<MenuIcon name="check" />
 								</span>
 							{/if}
 						</button>
@@ -492,14 +461,14 @@
 {/if}
 
 <!-- Not marked as editing: a host's items may only read, so the menu opens in reading mode too. -->
-{#if menuOpen}
+{#if popout === 'menu'}
 	<ul
 		bind:this={menuEl}
 		class="md-menu code-rail-popout code-rail-menu"
 		role="menu"
 		aria-label={CODE_MENU_LABEL}
-		style={popoutStyle(menuAt)}
-		{@attach menuPresence.track(() => (menuOpen = false))}
+		style={popoutStyle(popoutAt)}
+		{@attach menuPresence.track(closeMenu)}
 	>
 		{#each openMenuItems as item (item.id)}
 			<li role="none">
@@ -562,7 +531,7 @@
 		border: none;
 		border-radius: 5px;
 		background: transparent;
-		color: var(--color-ui-muted, #999999);
+		color: var(--color-ui-muted);
 		font: inherit;
 		cursor: pointer;
 	}
@@ -573,8 +542,8 @@
 
 	/* An open picker keeps its trigger lit, so the two read as one control. */
 	.code-lang-button.open {
-		background: var(--color-ui-faint, rgba(255, 255, 255, 0.07));
-		color: var(--color-text-secondary, #cfcfca);
+		background: var(--color-ui-faint);
+		color: var(--color-text-secondary);
 	}
 
 	.code-rail-action {
@@ -584,12 +553,12 @@
 	}
 
 	button:hover:not(:disabled) {
-		background: var(--color-ui-faint, rgba(255, 255, 255, 0.07));
-		color: var(--color-text-secondary, #d6d9e0);
+		background: var(--color-ui-faint);
+		color: var(--color-text-secondary);
 	}
 
 	button:focus-visible {
-		outline: 1px solid var(--color-accent, #567b67);
+		outline: 1px solid var(--color-accent);
 		outline-offset: -1px;
 	}
 
@@ -614,7 +583,7 @@
 		margin: -4px -4px 4px;
 		padding: 8px 12px;
 		border-bottom: 1px solid var(--menu-search-divider, rgba(255, 255, 255, 0.08));
-		color: var(--color-ui-muted, #93938d);
+		color: var(--color-ui-muted);
 	}
 
 	.code-lang-search input {
@@ -623,14 +592,14 @@
 		padding: 0;
 		border: 0;
 		background: transparent;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 		font: inherit;
 		font-size: 13px;
 		outline: none;
 	}
 
 	.code-lang-search input::placeholder {
-		color: var(--color-ui-dulled, #a3a39d);
+		color: var(--color-ui-dulled);
 	}
 
 	.code-lang-list {
@@ -640,6 +609,8 @@
 		list-style: none;
 		overflow-y: auto;
 		overscroll-behavior: contain;
+		scrollbar-width: thin;
+		scrollbar-color: var(--menu-scrollbar-thumb, rgba(255, 255, 255, 0.18)) transparent;
 	}
 
 	/* A hairline thumb, as the host app's list menus use, since the platform's default bar is
@@ -652,10 +623,6 @@
 	}
 	.code-lang-list::-webkit-scrollbar-thumb {
 		background: var(--menu-scrollbar-thumb, rgba(255, 255, 255, 0.18));
-	}
-	.code-lang-list {
-		scrollbar-width: thin;
-		scrollbar-color: var(--menu-scrollbar-thumb, rgba(255, 255, 255, 0.18)) transparent;
 	}
 
 	.code-rail-popout button {
@@ -682,7 +649,7 @@
 	.code-lang-check {
 		display: inline-flex;
 		flex-shrink: 0;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 	}
 
 	.code-rail-popout button:hover:not(:disabled),
@@ -699,6 +666,6 @@
 	.code-lang-empty {
 		margin: 0;
 		padding: 7px 10px;
-		color: var(--color-ui-dulled, #a3a39d);
+		color: var(--color-ui-dulled);
 	}
 </style>

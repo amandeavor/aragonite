@@ -12,9 +12,7 @@ import type { Document } from './core/nodes';
 import type { ImageLoadPolicy } from './core/inline-render';
 import type { UserScrollport } from './windowing/scroll-ancestors';
 import type { ScrollportReader } from './windowing/scrollport';
-import type { PresentationMode } from './presentation-mode';
 import type { ActivationClick, PressTracker } from './activation-click';
-import type { KeybindingOverrideMap } from './schema/keybinding-overrides';
 import type { EditorContext } from './schema/plugin-install';
 import type { RegistryView } from './schema/registry-view';
 import type { Reading } from './schema/reading';
@@ -42,67 +40,22 @@ import type { LinkCardState } from './components/link-card/link-card-state.svelt
 import type { KindCue } from './components/kind-cue.svelte';
 import type { TextMoves } from './components/overlays/text-moves';
 import type { PlaceholderPolicy } from './components/blocks/placeholder-hint.svelte';
+import type { BlockElLookup } from './caret/block-el-lookup';
+import type {
+	CodeMenuItemsHook,
+	PasteImageHook,
+	ResolveImageUrl,
+	ResolveLinkUrl,
+	RunCodeHook
+} from './host-hooks';
 
 // ── Shared value-shape types ─────────────────────────────────────────────────
 
-export type KeybindingOverridesGetter = () => KeybindingOverrideMap;
-export type ResolveImageUrl = (rawUrl: string) => string;
-export type ResolveLinkUrl = (rawUrl: string) => string;
-
-/** One image file lifted off an image-bearing paste, handed to the host's import
- *  hook. `suggestedName` is the clipboard's filename when it carried one. */
-export interface PastedImage {
-	blob: Blob;
-	mimeType: string;
-	suggestedName?: string;
-}
-
-/** Host import hook for pasted images: resolves to the markdown to insert, or null
- *  to skip that image. Called once per image file, in clipboard order. */
-export type PasteImageHook = (image: PastedImage) => Promise<string | null>;
-
-/** What a code block hands its host when the run button is pressed. */
-export interface CodeRunRequest {
-	/** The fence body alone; the opener and closer lines are left out. */
-	code: string;
-	/** The opener's full info string, untrimmed of trailing attributes (`py {1-3}`). */
-	info: string;
-	/** The info string's first word (`py`), shown as the code block's language; empty for none. */
-	language: string;
-	/** Child indices from the document root to this block. */
-	path: number[];
-}
-
-/**
- * Host hook for executing a code block. The editor runs nothing itself: installing this is
- * what puts the run button in the block's side gutter, and the host owns everything after,
- * the runtime, the result, and where output goes. Absent, no run button renders.
- */
-export type RunCodeHook = (request: CodeRunRequest) => void;
-
-/** One entry in a code block's overflow menu. `run` is called with the menu already closed. */
-export interface CodeMenuItem {
-	id: string;
-	label: string;
-	run: () => void;
-	/** Renders dimmed and refuses activation. */
-	disabled?: boolean;
-}
-
-/**
- * Host hook for the code block's overflow menu, consulted each time the menu opens so the
- * items can read live state. Absent, or returning nothing, renders no overflow button:
- * the editor has no app-level actions of its own to put there.
- */
-export type CodeMenuItemsHook = (request: CodeRunRequest) => readonly CodeMenuItem[];
-
-export type PresentationModeGetter = () => PresentationMode;
 /** The editor's theme name, as reflected to `data-editor-theme`. An open string:
  *  built-ins are `'dark'`/`'light'`, and a consumer may name its own. */
 export type ThemeGetter = () => string;
 /** `undefined` for a plugin installed in the process that this instance did not activate. */
 export type PluginEditorLookup = (pluginName: string) => EditorContext | undefined;
-export type BlockElLookup = (path: number[]) => HTMLElement | null;
 export type DocumentGetter = () => Document;
 export type FocusedPathGetter = () => number[] | null;
 export type VersionGetter = () => number;
@@ -210,21 +163,17 @@ export interface EditorPolicies {
 	/** Read live, so a prop change repaints built blocks: the `placeholder` prop and whether the
 	 *  document is one top-level block, or null while the prop is unset. */
 	placeholder: () => PlaceholderPolicy | null;
-	presentationMode: PresentationModeGetter;
 	/** For a renderer that paints rather than styles: a plugin emitting its own colored
 	 *  markup (a diagram SVG) cannot pick the theme up from CSS, so it needs the name. */
 	theme: ThemeGetter;
 	/** Whether a click follows what it lands on (a link, a widget that goes somewhere): the one
 	 *  answer every such route reads, with the mode and the `linkClick` prop read at the click. */
 	activationClick: ActivationClick;
-	keybindingOverrides: KeybindingOverridesGetter;
-	/** Set-once host import hook for image-bearing pastes. Required-nullable: a mount must
-	 *  answer, and `undefined` deliberately leaves the paste on the plain-text path. */
-	onPasteImage: PasteImageHook | undefined;
-	/** Set-once host execution hook; its presence is what renders the run button. */
-	onRunCode: RunCodeHook | undefined;
-	/** Set-once host menu hook; its presence is what renders the overflow button. */
-	codeMenuItems: CodeMenuItemsHook | undefined;
+	/** The host's hooks, read at each use so a swapped or added one reaches built blocks.
+	 *  Undefined leaves an image paste on the plain-text path and renders no run or menu button. */
+	onPasteImage: () => PasteImageHook | undefined;
+	onRunCode: () => RunCodeHook | undefined;
+	codeMenuItems: () => CodeMenuItemsHook | undefined;
 	/** Resolved image URLs that failed to load this session, one Set per instance so a failure never
 	 *  suppresses another editor's broken-state recompute. */
 	brokenImageUrls: Set<string>;

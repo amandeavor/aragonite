@@ -7,12 +7,13 @@ import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { fixtureReading, fixtureGrammar } from '../../harness/fixture-grammar';
+import { testView } from '#lib/test/support/test-view.js';
 
 // The structural paths into the same `</details>` escape: they write the body themselves,
 // with no per-block commit to apply the rule.
 
 beforeEach(() => {
-	registerDetailsKind();
+	registerDetailsKind(testView());
 });
 
 // Enter is the second way into the body: the split can leave a tag alone on its line that the

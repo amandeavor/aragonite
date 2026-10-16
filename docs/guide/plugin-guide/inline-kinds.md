@@ -1,8 +1,8 @@
 # Inline kinds
 
-Part of the [plugin guide](../plugin-guide.md). The block tier's declare, describe, recognize calls it mirrors are in [the quickstart](../plugin-guide.md#the-first-fifteen-minutes).
+Part of the [plugin guide](../plugin-guide.md). The block tier it mirrors is in [the quickstart](../plugin-guide.md#the-first-fifteen-minutes).
 
-Blocks are only half the story. An inline kind takes three calls, mirroring the block tier's declare, describe, recognize:
+Blocks are only half the story. An inline kind does the same three jobs as a block kind (declare it, recognize it, say how it draws), one call each:
 
 - **`declarePluginInlineKind(name)`** creates the inline kind and returns it, exactly as `declarePluginKind` does one level up; `declaredPluginInlineKind(name)` recovers it in a module that didn't create it.
 - **`registerInlineSyntax(trigger, recognizer, options?)`** hooks the inline scanner on a single **trigger** character: at each occurrence of the trigger, your recognizer claims the syntax by returning a node, or declines with `null`. The options carry the prefix and rewrite machinery this section works through.
@@ -17,7 +17,7 @@ const shortcode = declarePluginInlineKind('shortcode'); // 'shortcode', branded
 registerInlineSyntax(':', recognizeShortcode, { priority: INLINE_PRIORITIES.plugin + 20 });
 registerInlineWidgetKind(shortcode, {
 	isWidget: (node) => node.kind === shortcode,
-	component: ShortcodeWidget,
+	view: svelteView(ShortcodeWidget),
 	editing: { deleteGranularity: 'atomic', onEdge: 'step-over' }
 });
 ```
@@ -26,12 +26,25 @@ The inline tier isn't the block surface in miniature, though: **no keymap, no co
 
 ## Rendering it as a widget
 
-A widget renders through one of two paths, and the descriptor rejects declaring both:
+The descriptor's `view` draws the widget. The editor makes a span for it (the span carries which source bytes the widget stands for, so the caret walks it as one unit) and hands that span to your view along with the props below. A view is a plain function that fills the span and says what to do later:
 
-- **A `component` (recommended).** Supply a Svelte component; the editor wraps it in the widget's wrapper element and mounts it with frozen `{ inline, source }` props. Typing next to a widget keeps its instance, which is only remounted when its own source text changes.
-- **A hand-built `buildWidget`.** Return the wrapper's DOM yourself when you need DOM-level control. Start from `mintWidgetShell`, which stamps the attributes the editor needs to find the widget's bytes, then add the body. This is the lower-level path the image and emoji widgets use.
+```ts
+const shortcodeView: PluginView<InlineWidgetComponentProps> = (span, { inline }) => {
+	span.textContent = glyphFor(inline);
+	return {
+		update: ({ inline }) => {
+			/* typing moved the widget: `inline` has its new offsets */
+		},
+		destroy: () => {
+			/* drop a listener, unmount a framework root */
+		}
+	};
+};
+```
 
-Beside the frozen pair, a component gets these props, every one of them always passed. A test that mounts your widget by hand passes its own (a fixed mode, a stub `navigateTo`), and the types won't let it forget one.
+Both are optional. Leave out `update` and what you drew stays; leave out `destroy` if there's nothing to release. Typing next to a widget keeps its view, which is only mounted again when the widget's own source text changes, so `source` never shifts under it. Already writing Svelte? `view: svelteView(ShortcodeWidget)` (from `@voithos-labs/aragonite/svelte`) mounts the component into the span with these props live, so on `update` it re-renders only what reads a prop that changed. Decoration widgets and inline menu rows take this same shape, so you learn it once.
+
+Beside `{ inline, source }`, a view gets these props, every one of them always passed. A test that mounts your widget by hand passes its own (a fixed mode, a stub `navigateTo`), and the types won't let it forget one.
 
 | Prop                              | What it's for                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -48,13 +61,13 @@ Three habits for those props:
 - **Memoize a whole-document read on the content version.** Read the version inside the same `$derived` and use it as your memo key. The document itself isn't a usable key: the editor mutates it in place, so its identity never changes, and an identity-keyed memo hits forever on a stale answer. Reading the version inside the derived is also what subscribes your widget to edits anywhere.
 - **Act on a click only when `isActivationClick` says so.** If your `revealSource` widget goes somewhere on a click (jumps to a definition, opens a note), set `claimsActivationClick` in its editing policy and ask the prop in your handler: `if (isActivationClick(e)) openNote()`. Which click that is belongs to the host, not to you: Ctrl/Cmd-click by default, any click in live mode if the host set `linkClick: 'plain'`, any click at all in reading mode. The editor skips showing the source for exactly the clicks the prop says yes to, so your widget isn't swapped for its bytes under a click meant to navigate. To edit it, a user arrows in, presses `Mod+K` beside it, or picks "Edit link" from its right-click menu, and each of those shows the source.
 
-**Errors in a component widget are half yours.** A throw while the widget mounts is caught (the widget falls back to its raw source and an `error` event fires), but nothing catches a runtime error after that. Render a legible error for bad input instead of throwing (the KaTeX widget shows the formula's source in red, with the parser's message on hover). A renderer slot catches a throw and hands it to your `failed`, and `renderSourceFallback(source, message)` gets you most of that view: the source in the code font and the message on hover, with the red left to you.
+**Errors in a widget are half yours.** A throw while your view mounts, updates or gets destroyed is caught (the widget falls back to its raw source and an `error` event fires), but nothing catches a runtime error after that, a Svelte component's own re-render included. Render a legible error for bad input instead of throwing (the KaTeX widget shows the formula's source in red, with the parser's message on hover). A renderer slot catches a throw and hands it to your `failed`, and `renderSourceFallback(source, message)` gets you most of that view: the source in the code font and the message on hover, with the red left to you.
 
 ## Choosing a trigger
 
 **A bare trigger must be a character no built-in scanner claims.** Registering a bare recognizer on a reserved trigger (`` ` ``, `&`, `<`, `*`, `_`, `~`, `[`, `]`, `!`, `\`, or newline) throws, since built-in dispatch runs first and a bare recognizer there would never fire. The trigger is one character; anything longer throws too.
 
-**Several recognizers can share one trigger**, as long as each sits at its own priority or prefix (the same trigger, prefix and priority twice throws). The bundled **emoji** plugin (`@voithos-labs/aragonite/plugins/emoji`) is the bare-trigger recipe end to end: `:shortcode:` recognizes on the bare `:` trigger at `INLINE_PRIORITIES.plugin + 10`, next to the directive text tier's `:` at the default, renders through `buildWidget` + `mintWidgetShell`, and carries the `{ deleteGranularity: 'atomic', onEdge: 'step-over' }` edge policy so Backspace removes the whole `:name:` in one press and an arrow steps over it. A name it doesn't know declines and falls through to the next recognizer.
+**Several recognizers can share one trigger**, as long as each sits at its own priority or prefix (the same trigger, prefix and priority twice throws). The bundled **emoji** plugin (`@voithos-labs/aragonite/plugins/emoji`) is the bare-trigger recipe end to end: `:shortcode:` recognizes on the bare `:` trigger at `INLINE_PRIORITIES.plugin + 10`, next to the directive text tier's `:` at the default, draws its glyph with a plain DOM view, and carries the `{ deleteGranularity: 'atomic', onEdge: 'step-over' }` edge policy so Backspace removes the whole `:name:` in one press and an arrow steps over it. A name it doesn't know declines and falls through to the next recognizer.
 
 **A symmetric delimiter can close itself as it is typed.** Pass `autoPair: true` on a bare trigger whose construct opens and closes on the same byte, the way the bundled latex plugin does for `$…$`: typing the trigger lands its twin after the caret, typing it again over that twin steps past it, and a first body byte that leaves the pair no construct (`$5` is a price) drops the twin again. Without it a lone `$` typed ahead of an existing formula pairs with that formula's closer and wraps the prose between them. The built-in backtick, `*`, `_` and `~~` behave this way without registration. (`autoPair` with a `prefix` throws; it's for bare triggers.)
 
@@ -124,12 +137,12 @@ Three edges the snippet above is shaped by, and each one bites if you drop it:
 
 The policy on your widget registration says how the caret and the delete keys treat it. Its fields, all optional:
 
-| Field                   | What it decides                                                                                                                                                                                                                                                                                                                                            |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `revealSource`          | Open the source (the `$…$` bytes) for editing on caret entry; inline math's model                                                                                                                                                                                                                                                                          |
-| `revealContentSpan`     | Where the editable content sits inside the source (`$x$` answers `{ start: 1, end: 2 }`), so a caret entering the source stays between the delimiters; absent, it keeps the leading edge                                                                                                                                                                   |
-| `revealOffsetAtPoint`   | Which source offset a press on the rendered widget names, so a click puts the caret where it landed; inline math walks its KaTeX glyphs for this, and `null` falls back to the content span's end                                                                                                                                                          |
-| `onSelectedKey`         | A handler for keys while the widget is selected; image resize rides it                                                                                                                                                                                                                                                                                     |
-| `onEdge`                | `'select' \| 'step-over'`: an edge press selects the whole widget, or steps transparently over it; `'step-over'` also makes a press on the widget put the caret at the edge it landed by, where `'select'` leaves the widget its own click; and Up or Down onto a block holding only a step-over widget puts the caret beside it, one press in and one out |
-| `deleteGranularity`     | `'atomic' \| 'select-then-delete'`: one press deletes the whole widget, or the first press selects and the second deletes                                                                                                                                                                                                                                  |
-| `claimsActivationClick` | Your widget goes somewhere on a click, the way a link does, so the click the host picked for links (its `linkClick` prop) is your component's and opens no source; the footnote jump's model                                                                                                                                                               |
+| Field                   | What it decides                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `revealSource`          | Open the source (the `$…$` bytes) for editing on caret entry; inline math's model                                                                                                                                                                                                                                                                                                                                                            |
+| `revealContentSpan`     | Where the editable content sits inside the source (`$x$` answers `{ start: 1, end: 2 }`), so a caret entering the source stays between the delimiters; absent, it keeps the leading edge                                                                                                                                                                                                                                                     |
+| `revealOffsetAtPoint`   | Which source offset a press on the rendered widget names, so a click puts the caret where it landed; inline math walks its KaTeX glyphs for this, and `null` falls back to the content span's end                                                                                                                                                                                                                                            |
+| `onSelectedKey`         | A handler for keys while the widget is selected; image resize rides it                                                                                                                                                                                                                                                                                                                                                                       |
+| `onEdge`                | `'select' \| 'step-over'`: an edge press selects the whole widget (the editor tints it with the selection color, so you don't draw a selected look), or steps transparently over it; `'step-over'` also makes a press on the widget put the caret at the edge it landed by, where `'select'` leaves the widget its own click; and Up or Down onto a block holding only a step-over widget puts the caret beside it, one press in and one out |
+| `deleteGranularity`     | `'atomic' \| 'select-then-delete'`: one press deletes the whole widget, or the first press selects and the second deletes                                                                                                                                                                                                                                                                                                                    |
+| `claimsActivationClick` | Your widget goes somewhere on a click, the way a link does, so the click the host picked for links (its `linkClick` prop) is your view's and opens no source; the footnote jump's model                                                                                                                                                                                                                                                      |

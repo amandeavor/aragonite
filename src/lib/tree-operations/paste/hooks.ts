@@ -22,6 +22,7 @@ import {
 	type StructuralPasteResult
 } from '../paste-surfaces';
 import type { StoredAs } from '../../schema/stored-as';
+import { registerAsCore } from '../../schema/plugin-install';
 
 // Registered by their own component instead of the loop below. One registrar per kind, so
 // correctness doesn't hinge on module load order.
@@ -109,14 +110,16 @@ export function defaultStructuralHook(
 
 // Built-in kinds are all registered by the time this top level runs; a plugin kind
 // registering later must register its own paste surface.
-for (const kind of getAllRegisteredKinds()) {
-	if (!isBuiltinBlockKind(kind)) continue;
-	if (BESPOKE_SURFACE_KINDS.has(kind)) continue;
-	if (tryGetBlockKindDescriptor(kind)?.supportsInline) {
-		registerPasteSurface({
-			kind,
-			onInlinePaste: defaultInlineHook,
-			onStructuralPaste: defaultStructuralHook
-		});
+registerAsCore(() => {
+	for (const kind of getAllRegisteredKinds()) {
+		if (!isBuiltinBlockKind(kind)) continue;
+		if (BESPOKE_SURFACE_KINDS.has(kind)) continue;
+		if (tryGetBlockKindDescriptor(kind)?.supportsInline) {
+			registerPasteSurface({
+				kind,
+				onInlinePaste: defaultInlineHook,
+				onStructuralPaste: defaultStructuralHook
+			});
+		}
 	}
-}
+});

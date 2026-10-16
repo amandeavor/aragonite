@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
-import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
+import { mintWidgetShell, registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { parseInline } from '#lib/core/inline/index.js';
 import { renderInlineNodes } from '#lib/core/inline-render.js';
 import { defaultGrammarView, type GrammarView } from '#lib/schema/block-openers.js';
@@ -22,7 +22,7 @@ const unlisted = definePlugin({
 		);
 		registerInlineWidgetKind(kind, {
 			isWidget: () => true,
-			buildWidget: () => document.createElement('span')
+			view: () => ({})
 		});
 	}
 });
@@ -38,7 +38,11 @@ const kindsIn = (grammar: GrammarView) =>
 
 function renderMark(grammar: GrammarView): DocumentFragment {
 	const node: InlineNode = { kind: MARK as InlineNode['kind'], start: 2, end: 4 };
-	return renderInlineNodes([node], SOURCE, { grammar });
+	// The pool's part, standing in: a shell for any kind the render asks a view for.
+	return renderInlineNodes([node], SOURCE, {
+		grammar,
+		acquireViewWidget: (widget) => mintWidgetShell(widget)
+	});
 }
 
 describe("an unlisted plugin's inline syntax stays text", () => {
@@ -59,6 +63,6 @@ describe("an unlisted plugin's widget kind renders as its source", () => {
 	});
 
 	it('builds the widget where every installed plugin is active', () => {
-		expect(renderMark(defaultGrammarView).textContent).toBe('');
+		expect(renderMark(defaultGrammarView).querySelector('[data-inline-widget]')).not.toBeNull();
 	});
 });

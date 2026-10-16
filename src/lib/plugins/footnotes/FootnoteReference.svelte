@@ -65,7 +65,7 @@
 
 <style>
 	.footnote-ref {
-		color: var(--color-accent, #567b67);
+		color: var(--color-accent);
 		cursor: pointer;
 	}
 </style>

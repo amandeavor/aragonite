@@ -8,7 +8,7 @@ It reuses the `:::name` directive grammar rather than a hand-written opener. The
 
 ## The registration module
 
-One file declares the kinds, describes them, maps the directive names, binds the component, and returns the whole thing as a `conspiracyPlugin()` unit.
+One file declares the kinds, describes them along with the component that draws them, maps the directive names, and returns the whole thing as a `conspiracyPlugin()` unit.
 
 ```ts
 // conspiracy-kind.ts
@@ -18,7 +18,7 @@ import {
 	createDirectiveRebuild,
 	declarePluginKind,
 	declaredPluginKind,
-	definePluginBlock,
+	definePlugin,
 	DIRECTIVE_BODY_WRAP,
 	isDirectiveRegistered,
 	registerBlockKind,
@@ -27,10 +27,12 @@ import {
 	registerDirective,
 	setPluginMetadata,
 	trimWhitespace,
+	type BlockView,
 	type CstNode,
 	type EditorPlugin,
 	type ParsedDirective
 } from '@voithos-labs/aragonite/plugin';
+import { svelteBlockView } from '@voithos-labs/aragonite/svelte';
 import ConspiracyBlock from './ConspiracyBlock.svelte'; // the component built in the next section
 
 const CONSPIRACY = 'conspiracy';
@@ -77,7 +79,7 @@ const rebuildConspiracyRaw = createDirectiveRebuild<ConspiracyMetadata>(
 	(meta) => meta?.name ?? CONSPIRACY
 );
 
-function registerConspiracy(): void {
+function registerConspiracy(view: BlockView): void {
 	activateDirectives(); // idempotent; the shared grammar must be live before the first parse
 
 	const conspiracy = declarePluginKind(CONSPIRACY);
@@ -107,6 +109,7 @@ function registerConspiracy(): void {
 	});
 
 	registerBlockKind(conspiracy, {
+		view,
 		mergeRole: 'container',
 		editable: true,
 		supportsInline: false,
@@ -169,15 +172,10 @@ function registerConspiracy(): void {
 	registerChromeLeaf(conspiracyTitle, { label: 'Theory', blockClass: 'conspiracy-title' });
 }
 
-// definePluginBlock wraps definePlugin around the register step and the component
-// binding, so you write neither the setup-then-register order nor the
-// registerBlockComponent(declaredPluginKind(...), defineBlockComponent(...)) double-wrap.
 export function conspiracyPlugin(): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: 'conspiracy',
-		kind: CONSPIRACY,
-		component: ConspiracyBlock,
-		register: registerConspiracy
+		setup: () => registerConspiracy(svelteBlockView(ConspiracyBlock))
 	});
 }
 ```
@@ -216,12 +214,8 @@ Your component supplies only its own chrome: the border, the title styling, an i
 ```svelte
 <!-- ConspiracyBlock.svelte -->
 <script lang="ts">
-	import {
-		BlockList,
-		createContainerBlock,
-		getPluginMetadata,
-		type NodeView
-	} from '@voithos-labs/aragonite/plugin';
+	import { getPluginMetadata, type NodeView } from '@voithos-labs/aragonite/plugin';
+	import { BlockList, createContainerBlock } from '@voithos-labs/aragonite/svelte';
 	import type { ConspiracyMetadata } from './conspiracy-kind';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
@@ -249,8 +243,8 @@ Your component supplies only its own chrome: the border, the title styling, an i
 	.conspiracy-block {
 		/* the corkboard, with one piece of red string */
 		position: relative;
-		border: 1px solid var(--color-ui-muted, #93938d);
-		border-left: 3px solid var(--color-error, #ff5f57);
+		border: 1px solid var(--color-ui-muted);
+		border-left: 3px solid var(--color-error);
 		border-radius: 6px;
 		padding: 8px 12px;
 	}
@@ -259,7 +253,7 @@ Your component supplies only its own chrome: the border, the title styling, an i
 	}
 	/* debunked: the string comes down, the theory gets crossed out, the stamp lands */
 	.debunked {
-		border-left-color: var(--color-ui-muted, #93938d);
+		border-left-color: var(--color-ui-muted);
 	}
 	.debunked :global(.conspiracy-title) {
 		text-decoration: line-through;
@@ -272,7 +266,7 @@ Your component supplies only its own chrome: the border, the title styling, an i
 		transform: rotate(-12deg);
 		font: 600 0.75em monospace;
 		letter-spacing: 0.12em;
-		color: var(--color-error, #ff5f57);
+		color: var(--color-error);
 		border: 2px solid currentColor;
 		border-radius: 3px;
 		padding: 1px 6px;
@@ -282,9 +276,9 @@ Your component supplies only its own chrome: the border, the title styling, an i
 
 Three rules for that file, each earned the hard way:
 
-- **`export { containerApi }` is the whole publication.** It's how the editor talks to your container (a caret walking in descends through it, for one), and the name is fixed. Leave it out and your typecheck (svelte-check, or `tsc` on a plain-TypeScript plugin) fails at the call that registers the component (`definePluginBlock` here). The factory's `containerApi` is always complete; a hand-rolled one can annotate itself `satisfies ContainerBlockComponent` to get a missing member reported at the definition instead.
+- **`export { containerApi }` is the whole publication.** It's how the editor talks to your container (a caret walking in descends through it, for one), and the name is fixed. Leave it out and your typecheck (svelte-check, or `tsc` on a plain-TypeScript plugin) fails at the call that makes the view (`svelteBlockView` here). The factory's `containerApi` is always complete; a hand-rolled one can annotate itself `satisfies ContainerBlockComponent` to get a missing member reported at the definition instead.
 - **`BlockList` stays a _direct_ child of your box**, so the container's windowing finds it. Other chrome (an icon, a toggle button) may sit beside it.
-- **Chrome CSS reads the editor's theme tokens**, with an inline fallback on every read (`var(--color-ui-muted, #93938d)`), so the block still renders outside the editor's own style scope. Match the fallback to the token's dark value; dark is the base theme. The stable token set by role is the [consumer guide's theme-token manifest](../consumer-guide.md#theme-tokens).
+- **Chrome CSS reads the editor's theme tokens**, plain (`var(--color-ui-muted)`). Inside the editor every one of them has a value, the host's own or the built-in palette's for the current `theme`, so a read needs no fallback. The stable token set by role is the [consumer guide's theme-token manifest](../consumer-guide.md#theme-tokens).
 
 The factory returns more than the walkthrough destructures:
 
@@ -330,7 +324,7 @@ Pass the plugin to the editor's `plugins` prop. It installs before the seed pars
 </script>
 
 <script lang="ts">
-	import { Editor } from '@voithos-labs/aragonite';
+	import { Editor } from '@voithos-labs/aragonite/svelte';
 	import '@voithos-labs/aragonite/styles/editor-theme.css';
 
 	const SEED =

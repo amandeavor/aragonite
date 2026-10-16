@@ -6,10 +6,9 @@
  * registry answers for non-editable widgets, and a file asking both says why.
  */
 
-import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { collectEditorSources, type SourceFile } from './scan-source';
-import { probeFile } from './file-rule';
+import { describeManifests, under } from './file-rule';
 import { SOURCE, SOURCE_DIR } from './source-paths';
 
 /** Where a live gesture can live: the block components and the layers they dispatch into. `core/`
@@ -35,7 +34,7 @@ const WIDGET_REGISTRY = SOURCE.inlineWidgets;
 
 /** Every function that reads the policy table, the table's own module excluded. */
 const POLICY_READ =
-	/(?<![\w.])(getInlineConstructPolicy|getInlineMarkPolicy|inlineMarkForCommand|followEditOf|isRevealableInlineKind|listInlineConstructPolicies|listInlineMarks|getLiveSplitRebalancer|getLiveJoinSeamCleaner)\s*\(/;
+	/(?<![\w.])(getInlineConstructPolicy|getInlineMarkPolicy|inlineMarkForCommand|followEditOf|isRevealableInlineKind|listInlineConstructPolicies|listInlineMarks)\s*\(/;
 
 const readsPolicyTable = (file: SourceFile): boolean =>
 	file.relPath !== POLICY_TABLE && POLICY_READ.test(file.code);
@@ -63,8 +62,6 @@ const ROWED_KINDS = [
 
 const KIND_LITERAL = new RegExp(`['"](${ROWED_KINDS.join('|')})['"]`);
 
-const namesConstructKind = (file: SourceFile): boolean => KIND_LITERAL.test(file.code);
-
 // ── The branches that read rows ──────────────────────────────────────────────
 
 /** Every reader of the table, and which column it is there for. Set equality both ways, so a new
@@ -78,23 +75,26 @@ const POLICY_ARMS: Record<string, string> = {
 		'the look: edgeAffinity, whether the next letter sits inside a box whose border has two stops',
 	'src/lib/components/blocks/text/link-at-point.ts':
 		'what a click follows and how Edit link edits it: followEdit',
+	'src/lib/components/blocks/text/inline-commands.ts':
+		'the format commands of a paragraph and a table cell: which mark a command toggles',
 	'src/lib/components/blocks/text/next-byte.ts':
 		'the caret look: the mark column, for which constructs a typed letter would carry',
-	'src/lib/components/blocks/text/live-join-seam.ts':
-		'the join cleaner: splitBehavior, and autoUnwrapOnEmpty for a construct the cut emptied',
-	'src/lib/components/blocks/text/live-split-rebalance.ts': 'the split rebalancer: splitBehavior',
+	'src/lib/core/inline/live-edit/live-join.ts':
+		'the join cleaner: autoUnwrapOnEmpty for a construct the cut emptied, and edgeAffinity for where typed text lands',
+	'src/lib/core/inline/live-edit/live-split.ts':
+		'the split rebalancer: splitBehavior, for a construct a cut takes whole',
 	'src/lib/components/blocks/text/pending-mark-insert.ts':
-		'the pending-mark resolver: edgeAffinity and the mark nesting order',
+		'the pending-mark resolver: the mark nesting order',
 	'src/lib/components/blocks/table/TableCellBlock.svelte':
 		'the cell surface: which mark a format command toggles',
 	'src/lib/core/inline/format-toggle.ts': 'the toggle seam: the mark vocabulary',
+	'src/lib/core/inline/live-edit/close-reopen.ts':
+		'whether a cut closes and reopens a run: splitBehavior, and the marker it is written with: the mark vocabulary',
 	'src/lib/components/blocks/text/TextEditableBlock.svelte':
 		'the prose surface: the same command lookup',
 	'src/lib/schema/registration-checks.ts': 'the registration-time coherence check over every row',
 	'src/lib/selection/cross-block/format-toggle.ts':
 		'the cross-block arm: which mark a format command toggles',
-	'src/lib/tree-operations/leaf-range.ts': 'the one reader of the registered join slot',
-	'src/lib/tree-operations/node-ops.ts': 'the one reader of the registered split slot',
 	'src/lib/inline-menu/inline-menu-session.ts': 'whether a trigger sits in prose: prose'
 };
 
@@ -158,7 +158,7 @@ const HAND_WRITTEN_ARMS: readonly HandWrittenArm[] = [
 			'which constructs a key takes whole is a per-node fact: `[](u)` is a link with no content range, `![a](u)` an atomic widget with one, so a kind column would swap both answers; the row only says what an unmade URL falls back to'
 	},
 	{
-		path: 'src/lib/components/blocks/text/live-join-seam.ts',
+		path: 'src/lib/core/inline/live-edit/live-join.ts',
 		detection: 'declared',
 		fate: 'outside',
 		reason: 'the same per-node arity, in classifyConstructs, on the same two shapes'
@@ -185,13 +185,6 @@ const HAND_WRITTEN_ARMS: readonly HandWrittenArm[] = [
 			'the no-residue rule is restated at four `arms` entries; single-sourcing it into the table folds into the slots-to-rows move'
 	},
 	{
-		path: POLICY_TABLE,
-		detection: 'declared',
-		fate: 'deferred',
-		reason:
-			'the two rewrite slots hold one global function each rather than per-kind rows; moving them turns a register-once throw into a silent per-row degrade, so it needs the close-and-reopen producer assertion first'
-	},
-	{
 		path: 'src/lib/components/built-in-blocks.ts',
 		detection: 'kind-literal',
 		fate: 'outside',
@@ -208,40 +201,85 @@ const HAND_WRITTEN_ARMS: readonly HandWrittenArm[] = [
 
 /** Empty: every live gesture rule is a row, a decided `outside`, or a `deferred` naming its blocker. */
 const backlog = HAND_WRITTEN_ARMS.filter((arm) => arm.fate === 'backlog');
-const kindLiteralArms = HAND_WRITTEN_ARMS.filter((arm) => arm.detection === 'kind-literal');
 
 // ── The census ───────────────────────────────────────────────────────────────
 
-describe('inline-construct policy branch census', () => {
-	const allSources = collectEditorSources();
-	const gestureSources = [
-		...GESTURE_ROOTS.flatMap((root) => collectEditorSources(path.resolve(root))),
-		...allSources.filter((file) => GESTURE_FILES.includes(file.relPath))
-	];
-	const paths = (files: SourceFile[]) => files.map((file) => file.relPath).sort();
-	const unique = (values: string[]) => [...new Set(values)].sort();
+const allSources = collectEditorSources();
+const inGestureCode = (file: SourceFile): boolean =>
+	under(...GESTURE_ROOTS)(file) || GESTURE_FILES.includes(file.relPath);
+const gestureProbe = (code: string) => ({
+	relPath: 'src/lib/components/blocks/text/probe.ts',
+	code
+});
 
-	it('every declared branch is on disk and reachable by the scan', () => {
-		const declared = unique([
-			...Object.keys(POLICY_ARMS),
-			...HAND_WRITTEN_ARMS.map((arm) => arm.path)
-		]);
+describeManifests(
+	[
+		{
+			id: 'every reader of the policy table is declared with the column it reads',
+			matches: readsPolicyTable,
+			declared: POLICY_ARMS,
+			reason:
+				'a new file started reading the policy table: add it to POLICY_ARMS with the column it is there for',
+			hits: [
+				'const p = getInlineConstructPolicy(node.kind);',
+				'if (isRevealableInlineKind(kind)) out.push(node);',
+				'for (const { kind } of listInlineMarks()) seen.add(kind);'
+			],
+			misses: [
+				'// getInlineConstructPolicy(kind) is the door',
+				'const x = myGetInlineConstructPolicy(kind);'
+			]
+		},
+		{
+			id: 'every gesture branch naming a construct kind is declared with its reason and fate',
+			population: inGestureCode,
+			matches: KIND_LITERAL,
+			declared: Object.fromEntries(
+				HAND_WRITTEN_ARMS.filter((arm) => arm.detection === 'kind-literal').map((arm) => [
+					arm.path,
+					arm.reason
+				])
+			),
+			reason:
+				'a gesture branch started naming a construct kind: give the question a row, or declare the branch in HAND_WRITTEN_ARMS with why it stays',
+			hits: [
+				gestureProbe("if (node.kind === 'inlineCode') return codeWrap(slice);"),
+				gestureProbe('const MARKS = ["strong", "emphasis"];')
+			],
+			// The nearby spellings that are not a per-construct answer: a command id, a DOM tag read,
+			// and the same word in prose.
+			misses: [
+				gestureProbe("if (id === 'format.toggleStrong') return toggle();"),
+				gestureProbe("el.querySelector('strong > em')"),
+				gestureProbe('// a link never extends at its edges')
+			]
+		},
+		// Only a whole block legitimately asks both tables, hosting every inline kind at once; a
+		// declared entry matching both also proves neither matcher is dead.
+		{
+			id: 'a file reading both tables is declared with why it needs both answers',
+			matches: (file) => readsPolicyTable(file) && readsWidgetRegistry(file),
+			declared: BOTH_TABLE_READERS,
+			reason:
+				'a file started asking both tables: declare it in BOTH_TABLE_READERS with why one answer is not enough',
+			hits: [
+				'getInlineWidgetEditing(widget.kind)?.revealSource;\nconst p = getInlineConstructPolicy(kind);',
+				'if (isInlineWidget(node)) return null;\nif (isRevealableInlineKind(kind)) return kind;'
+			],
+			misses: [
+				'getInlineWidgetEditing(widget.kind)?.revealSource;',
+				'/* widgetSourceRange(el) answers */\nconst p = getInlineConstructPolicy(kind);'
+			]
+		}
+	],
+	allSources
+);
+
+describe('inline-construct policy hand-written branches', () => {
+	it('every branch declared by reading is on disk', () => {
 		const onDisk = new Set(allSources.map((file) => file.relPath));
-		expect(declared.filter((file) => !onDisk.has(file))).toEqual([]);
-	});
-
-	it('every reader of the policy table is declared with the column it reads', () => {
-		expect(
-			paths(allSources.filter(readsPolicyTable)),
-			'a new file started reading the policy table: add it to POLICY_ARMS with the column it is there for'
-		).toEqual(Object.keys(POLICY_ARMS).sort());
-	});
-
-	it('every gesture branch naming a construct kind is declared with its reason and fate', () => {
-		expect(
-			paths(gestureSources.filter(namesConstructKind)),
-			'a gesture branch started naming a construct kind: give the question a row, or declare the branch in HAND_WRITTEN_ARMS with why it stays'
-		).toEqual(unique(kindLiteralArms.map((arm) => arm.path)));
+		const declared = HAND_WRITTEN_ARMS.filter((arm) => arm.detection === 'declared');
+		expect(declared.map((arm) => arm.path).filter((file) => !onDisk.has(file))).toEqual([]);
 	});
 
 	it('no hand-written branch is an undecided backlog entry', () => {
@@ -254,76 +292,5 @@ describe('inline-construct policy branch census', () => {
 	it('every declared branch carries a reason', () => {
 		expect(HAND_WRITTEN_ARMS.filter((arm) => arm.reason.trim() === '')).toEqual([]);
 		expect(Object.entries(POLICY_ARMS).filter(([, reason]) => reason.trim() === '')).toEqual([]);
-	});
-
-	// ── The two-table boundary ───────────────────────────────────────────────
-
-	it('a file reading both tables is declared with why it needs both answers', () => {
-		const both = allSources.filter((file) => readsPolicyTable(file) && readsWidgetRegistry(file));
-		expect(
-			paths(both),
-			'a file started asking both tables: declare it in BOTH_TABLE_READERS with why one answer is not enough'
-		).toEqual(Object.keys(BOTH_TABLE_READERS).sort());
-	});
-
-	// An empty intersection above proves the boundary only while both halves can see anything.
-	it('both table matchers find readers, so the boundary is not an artifact of a dead matcher', () => {
-		expect(allSources.filter(readsPolicyTable).length).toBeGreaterThan(0);
-		expect(allSources.filter(readsWidgetRegistry).length).toBeGreaterThan(0);
-	});
-
-	// ── Matcher self-tests (non-vacuity) ─────────────────────────────────────
-
-	const probe = (matcher: (file: SourceFile) => boolean, text: string) =>
-		matcher(probeFile({ relPath: 'src/lib/components/blocks/text/probe.ts', code: text }));
-
-	it('the policy matcher sees every entry point and skips a mention in prose', () => {
-		expect(probe(readsPolicyTable, 'const p = getInlineConstructPolicy(node.kind);')).toBe(true);
-		expect(probe(readsPolicyTable, 'if (isRevealableInlineKind(kind)) out.push(node);')).toBe(true);
-		expect(probe(readsPolicyTable, 'getLiveJoinSeamCleaner()?.(join)')).toBe(true);
-		expect(probe(readsPolicyTable, '// getInlineConstructPolicy(kind) is the door')).toBe(false);
-		expect(probe(readsPolicyTable, 'const x = myGetInlineConstructPolicy(kind);')).toBe(false);
-	});
-
-	it('the widget matcher sees the registry entry points and skips prose', () => {
-		expect(probe(readsWidgetRegistry, 'getInlineWidgetEditing(widget.kind)?.revealSource')).toBe(
-			true
-		);
-		expect(probe(readsWidgetRegistry, 'if (isInlineWidget(node)) return null;')).toBe(true);
-		expect(probe(readsWidgetRegistry, '/* widgetSourceRange(el) answers */')).toBe(false);
-	});
-
-	it('the kind matcher sees a literal in either quote and skips a dotted command id', () => {
-		expect(
-			probe(namesConstructKind, "if (node.kind === 'inlineCode') return codeWrap(slice);")
-		).toBe(true);
-		expect(probe(namesConstructKind, 'const MARKS = ["strong", "emphasis"];')).toBe(true);
-		// The nearby spellings that are not a per-construct answer: a command id, a DOM tag read,
-		// and the same word in prose.
-		expect(probe(namesConstructKind, "if (id === 'format.toggleStrong') return toggle();")).toBe(
-			false
-		);
-		expect(probe(namesConstructKind, "el.querySelector('strong > em')")).toBe(false);
-		expect(probe(namesConstructKind, '// a link never extends at its edges')).toBe(false);
-	});
-
-	it('an undeclared gesture branch naming a kind fails the set equality', () => {
-		const rogue = probeFile({
-			relPath: 'src/lib/components/blocks/text/rogue.ts',
-			code: "if (node.kind === 'strikethrough') return null;"
-		});
-		expect(paths([...gestureSources, rogue].filter(namesConstructKind))).not.toEqual(
-			unique(kindLiteralArms.map((arm) => arm.path))
-		);
-	});
-
-	it('an undeclared policy reader fails the set equality', () => {
-		const rogue = probeFile({
-			relPath: 'src/lib/selection/rogue.ts',
-			code: 'const p = getInlineConstructPolicy(kind);'
-		});
-		expect(paths([...allSources, rogue].filter(readsPolicyTable))).not.toEqual(
-			Object.keys(POLICY_ARMS).sort()
-		);
 	});
 });

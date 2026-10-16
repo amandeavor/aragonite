@@ -7,7 +7,7 @@ import { WORD_CHAR } from '../plugins/highlight-occurrences/word-char';
  * side only: a spec must not import the parser, so this scanner is deliberately rough and every
  * count it produces is checked against the rendered DOM.
  */
-export const SHOWCASE_MD = readFileSync('src/routes/showcase-content.md', 'utf8');
+export const SHOWCASE_MD = readFileSync('examples/showcase/showcase-content.md', 'utf8');
 
 export interface ShowcaseHeading {
 	level: number;

@@ -63,7 +63,7 @@ test.describe('/ showcase on a phone', () => {
 		expect(word, 'the demo document holds no repeated word to search for').not.toBeNull();
 		await page.locator('.search-input').first().tap();
 		await page.keyboard.type(word!.word);
-		await expect(page.locator('.search-count')).toContainText(' / ');
+		await expect(page.locator('.search-count')).toContainText(' of ');
 	});
 
 	test('the drag handles show without a hover and answer a tap', async ({ page }) => {

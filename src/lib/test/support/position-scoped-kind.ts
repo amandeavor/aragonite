@@ -4,11 +4,7 @@
  */
 
 import { joinRaw } from '#lib/core/parser.js';
-import {
-	registerBlockOpener,
-	type BlockOpenerResult,
-	type OpenContext
-} from '#lib/schema/block-openers.js';
+import { type BlockOpenerResult, type OpenContext } from '#lib/schema/block-openers.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
@@ -38,13 +34,13 @@ function openFrontMatter(ctx: OpenContext, kind: PluginKind): BlockOpenerResult 
 
 /** Register the kind and its opener into the freshly-reset registries; returns the kind. */
 export function registerDocumentTopKind(): PluginKind {
-	const kind = testLeaf('test-front-matter', {
+	const kind = testLeaf('test-front-matter', (kind) => ({
+		opener: {
+			priority: 1,
+			interruptsParagraph: false,
+			tryOpen: (ctx) => openFrontMatter(ctx, kind)
+		},
 		editable: false
-	});
-	registerBlockOpener(kind, {
-		priority: 1,
-		interruptsParagraph: false,
-		tryOpen: (ctx) => openFrontMatter(ctx, kind)
-	});
+	}));
 	return kind;
 }

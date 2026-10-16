@@ -94,6 +94,14 @@ export function rowMajorCellIndex(row: number, col: number, colCount: number): C
 	return asCellIndex(row * colCount + col);
 }
 
+/** A rect in a block's own pixels, from the block box's top-left corner. */
+export interface LocalRect {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
 /** A rectangle of table cells: its top-left cell plus its size. */
 export interface CellRect {
 	top: number;

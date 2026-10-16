@@ -12,8 +12,9 @@
 	import DecorationOverlay from './overlays/DecorationOverlay.svelte';
 	import BlockDragHandle from './BlockDragHandle.svelte';
 	import { showsDragHandle } from './drag-handle';
-	import TextEditableBlock from './blocks/text/TextEditableBlock.svelte';
 	import { defaultRegistryView } from '../schema/registry-view';
+	import { svelteBlockEntry } from './svelte-block-view';
+	import { RAW_TEXT_VIEW } from './blocks/text/text-block-view';
 	import { isGridDescriptor } from '../schema/block-kind-descriptor';
 	import { FAILED_BLOCK_LABEL } from '../a11y-strings';
 	import {
@@ -28,6 +29,7 @@
 	import { useMeasuredChild } from '../windowing/use-measured-child.svelte';
 	import { publishRefSlot, type RefSlots } from '../block-lists/child-refs';
 	import { devWarn } from '../dev-warn';
+	import { foreignRuntimeCause, warnIfForeignRuntime } from '../foreign-runtime';
 	import { stampBlockContexts } from './stamp-block-contexts';
 
 	let {
@@ -64,7 +66,7 @@
 	// $derived, so a runtime toggle reaches blocks that mount after it.
 	const dragHandles = $derived(policies.blockDragHandles());
 	// Checked here too, because an image's handle does not go through the drag-handle prop.
-	const isReading = $derived(policies.presentationMode() === 'reading');
+	const isReading = $derived(editorDoc?.reading.mode() === 'reading');
 	// A bare mount has no editor reading: every installed plugin's syntax, no link definitions.
 	const inlineReading = editorDoc?.reading ?? {
 		grammar: registryView.grammar,
@@ -97,12 +99,11 @@
 		isContainer && !delegatesPainting && !!ref?.measurePartialRects
 	);
 
-	let entry = $derived(registryView.component(node.kind));
+	let view = $derived(registryView.blockView(node.kind));
+	let entry = $derived(svelteBlockEntry(view ?? RAW_TEXT_VIEW));
 
-	// A kind with no registered component falls back to the plain editable block below
-	// rather than silently rendering nothing.
 	$effect(() => {
-		if (!entry) devWarn('block-host', 'no component for kind, rendering raw', node.kind);
+		if (!view) devWarn('block-host', 'no view for kind, rendering raw', node.kind);
 	});
 
 	// The error boundary retries only when the bytes change, so a failing render cannot loop.
@@ -113,6 +114,7 @@
 	function onRenderError(error: unknown, reset: () => void): void {
 		failedRaw = node.raw;
 		retryFailedRender = reset;
+		warnIfForeignRuntime(error, `block ${node.kind}`);
 		editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } });
 	}
 
@@ -131,7 +133,7 @@
 		return publishRefSlot(slots, index, ref, hostEl);
 	});
 
-	// `defineBlockComponent` types this; the check catches a registration cast past it.
+	// `svelteBlockView` types this; the check catches a registration cast past it.
 	$effect(() => {
 		if (ref && typeof ref.focus !== 'function')
 			devWarn('block-host', 'component published no BlockComponent surface', node.kind);
@@ -174,34 +176,22 @@
 	bind:this={hostEl}
 >
 	<svelte:boundary onerror={onRenderError}>
-		{#if entry}
-			{@const Comp = entry.component}
-			<Comp
-				{node}
-				{index}
-				{myPath}
-				{ambientPrefix}
-				document={getDoc?.()}
-				{rects}
-				bind:this={instance}
-				{...entry.extraProps?.(node) ?? {}}
-			/>
-		{:else}
-			<TextEditableBlock
-				{node}
-				{index}
-				{myPath}
-				{ambientPrefix}
-				document={getDoc?.()}
-				{rects}
-				bind:this={instance}
-				blockClass="raw-block"
-			/>
-		{/if}
+		{@const Comp = entry.component}
+		<Comp
+			{node}
+			{index}
+			{myPath}
+			{ambientPrefix}
+			document={getDoc?.()}
+			{rects}
+			bind:this={instance}
+			{...entry.extraProps?.(node) ?? {}}
+		/>
 
-		{#snippet failed()}
+		{#snippet failed(error)}
+			{@const cause = foreignRuntimeCause(error)}
 			<div class="failed-block" data-failed-block role="group" aria-label={FAILED_BLOCK_LABEL}>
-				<span class="failed-block-notice">⚠ block failed to render</span>
+				<span class="failed-block-notice">⚠ block failed to render{cause ? `: ${cause}` : ''}</span>
 				<pre class="failed-block-raw">{node.raw}</pre>
 			</div>
 		{/snippet}
@@ -241,7 +231,7 @@
 	}
 
 	.failed-block {
-		border: 1px dashed var(--color-ui-muted, #a4a4a4);
+		border: 1px dashed var(--color-ui-muted);
 		border-radius: 4px;
 		padding: 0.25rem 0.5rem;
 		opacity: 0.8;
@@ -249,7 +239,7 @@
 	.failed-block-notice {
 		display: block;
 		font-size: 0.85em;
-		color: var(--color-text-muted, #aaa);
+		color: var(--color-text-muted);
 	}
 	.failed-block-raw {
 		margin: 0.25rem 0 0;

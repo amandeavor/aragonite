@@ -9,11 +9,8 @@ import {
 	definePlugin,
 	declarePluginKind,
 	declaredPluginKind,
-	defineBlockComponent,
 	registerBlockKind,
-	registerBlockComponent,
 	registerDirective,
-	isDirectiveRegistered,
 	setPluginMetadata,
 	getPluginMetadata,
 	serializeDirective,
@@ -22,6 +19,7 @@ import {
 	type EditorPlugin,
 	type ParsedDirective
 } from '@voithos-labs/aragonite/plugin';
+import { svelteBlockView } from '@voithos-labs/aragonite/svelte';
 import DevProbeBlock from './DevProbeBlock.svelte';
 
 export const DEVPROBE = 'devprobe';
@@ -72,6 +70,7 @@ export function devProbePlugin(): EditorPlugin {
 		setup() {
 			activateDirectives();
 			registerBlockKind(declarePluginKind(DEVPROBE), {
+				view: svelteBlockView(DevProbeBlock),
 				mergeRole: 'container',
 				editable: true,
 				gapEdges: 'none',
@@ -101,17 +100,10 @@ export function devProbePlugin(): EditorPlugin {
 				}
 			});
 
-			const devprobe = declaredPluginKind(DEVPROBE);
-			// The directive registry survives a schema reset and re-registering a claimed name
-			// throws, so this stays guarded even though the plugin unit owns once-per-process.
-			if (!isDirectiveRegistered('container', DEVPROBE)) {
-				registerDirective('container', DEVPROBE, {
-					kind: devprobe,
-					fromDirective: devprobeFromDirective
-				});
-			}
-
-			registerBlockComponent(devprobe, defineBlockComponent(DevProbeBlock));
+			registerDirective('container', DEVPROBE, {
+				kind: declaredPluginKind(DEVPROBE),
+				fromDirective: devprobeFromDirective
+			});
 		}
 	});
 }

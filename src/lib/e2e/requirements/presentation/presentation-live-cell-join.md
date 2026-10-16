@@ -10,15 +10,15 @@ reports where each gesture put the caret, and the source is what each scenario c
 
 ## Happy paths
 
-- a selection from inside `**bold**` to inside `*it*` cut with `Mod+X` leaves the joined cell
-  text with no stranded delimiter in the source, and the clipboard carries the raw slice
-- the same selection typed over lands the character at the cleaned join with no delimiter
-  around it
+- a selection from inside `**bold**` to inside `*it*` cut with `Mod+X` leaves
+  `| Some **bo***t* x |`, each half keeping its format with no delimiter on screen, and the
+  clipboard carries what the cut took with its runs closed (`**ld** *i*`)
+- the same selection typed over lands the character inside the bold
 - one `Mod+Z` after the cut restores the original cell bytes
 
 ## Edge cases
 
-- a cell whose text opens with `# ` or `- ` cleans its join too: a cell stores text, so those
+- a cell whose text opens with `# ` or `- ` closes the bold the same way (`# **a**d`): a cell stores text, so those
   bytes open no heading and no list there, and the cleanup reads them the way the cell keeps
   them (miss-analysis: every cell case started with a delimiter, so none held text a paragraph
   would read as another block, which is how the cleanup used to read the cell)

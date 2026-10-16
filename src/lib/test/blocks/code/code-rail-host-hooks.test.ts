@@ -2,7 +2,7 @@
 // Miss-analysis: only the type checker covered the code block gutter's host hooks.
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { flushSync } from 'svelte';
-import type { CodeMenuItem, CodeRunRequest } from '#lib/editor-keys.js';
+import type { CodeMenuItem, CodeRunRequest } from '#lib/host-hooks.js';
 import { CODE_MENU_LABEL, CODE_RUN_LABEL } from '#lib/a11y-strings.js';
 import { mountCode, type MountedCode } from './mount-code';
 
@@ -30,7 +30,7 @@ function openMenu(): HTMLButtonElement {
 
 describe('the code rail’s host hooks', () => {
 	it('renders neither the run nor the menu affordance for a host that installed no hook', () => {
-		mounted = mountCode(FENCE, { policies: { presentationMode: () => 'live' } });
+		mounted = mountCode(FENCE, { mode: () => 'live' });
 
 		expect(railButton(CODE_RUN_LABEL)).toBeNull();
 		expect(railButton(CODE_MENU_LABEL)).toBeNull();
@@ -39,7 +39,10 @@ describe('the code rail’s host hooks', () => {
 	// Miss-analysis: each host split the info string for the language, and no test checked it.
 	it('hands onRunCode the fence body, the info string, its language and the block path', () => {
 		const onRunCode = vi.fn<(request: CodeRunRequest) => void>();
-		mounted = mountCode(FENCE, { policies: { presentationMode: () => 'live', onRunCode } });
+		mounted = mountCode(FENCE, {
+			mode: () => 'live',
+			policies: { onRunCode: () => onRunCode }
+		});
 
 		railButton(CODE_RUN_LABEL)!.click();
 		flushSync();
@@ -55,7 +58,8 @@ describe('the code rail’s host hooks', () => {
 	it('consults codeMenuItems on every open, so its items read live state', () => {
 		const codeMenuItems = vi.fn(() => [{ id: 'a', label: 'Attach', run: () => {} }]);
 		mounted = mountCode(FENCE, {
-			policies: { presentationMode: () => 'live', codeMenuItems }
+			mode: () => 'live',
+			policies: { codeMenuItems: () => codeMenuItems }
 		});
 
 		const menu = openMenu();
@@ -75,7 +79,8 @@ describe('the code rail’s host hooks', () => {
 		const run = vi.fn();
 		const items: CodeMenuItem[] = [{ id: 'export', label: 'Export', run, disabled: true }];
 		mounted = mountCode(FENCE, {
-			policies: { presentationMode: () => 'live', codeMenuItems: () => items }
+			mode: () => 'live',
+			policies: { codeMenuItems: () => () => items }
 		});
 		openMenu();
 

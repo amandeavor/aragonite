@@ -1,12 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
-import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
-import {
-	getBlockComponent,
-	isBlockComponentRegistered
-} from '#lib/schema/block-component-registry.js';
-import { registerChromeLeaf } from '#lib/editor-actions/plugin/chrome-leaf.js';
-import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
+import { blockViewFor, getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
+import { svelteBlockEntry } from '#lib/components/svelte-block-view.js';
+import { registerChromeLeaf } from '#lib/plugin.js';
 import type { KeyBinding } from '#lib/schema/keybindings.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 
@@ -17,7 +13,7 @@ function keymapByChord(keymap: KeyBinding[] | undefined): Record<string, string>
 describe('registerChromeLeaf', () => {
 	it('registers a context-dependent, not-mergeable editable chrome leaf + its component', () => {
 		const kind = declarePluginKind('spec-chrome-leaf');
-		registerChromeLeaf(kind, TextEditableBlock, {
+		registerChromeLeaf(kind, {
 			blockClass: 'spec-chrome-leaf',
 			keymap: [{ chord: 'Enter', command: 'block.split' }]
 		});
@@ -29,12 +25,12 @@ describe('registerChromeLeaf', () => {
 		expect(d.contextDependentKind).toBe(true);
 		expect(d.mergeRole).toBe('not-mergeable');
 		expect(d.keymap?.[0]).toEqual({ chord: 'Enter', command: 'block.split' });
-		expect(isBlockComponentRegistered(kind)).toBe(true);
+		expect(blockViewFor(kind, everyInstalledPlugin)).toBeDefined();
 	});
 
 	it('defaults the keymap to descend-on-Enter plus the two merge chords', () => {
 		const kind = declarePluginKind('spec-chrome-leaf');
-		registerChromeLeaf(kind, TextEditableBlock);
+		registerChromeLeaf(kind);
 
 		expect(getBlockKindDescriptor(kind).keymap).toEqual([
 			{ chord: 'Enter', command: 'chrome.descendToBody' },
@@ -45,7 +41,7 @@ describe('registerChromeLeaf', () => {
 
 	it('merges a caller keymap chord-keyed: the override wins its chord, defaults fill the rest', () => {
 		const kind = declarePluginKind('spec-chrome-leaf');
-		registerChromeLeaf(kind, TextEditableBlock, {
+		registerChromeLeaf(kind, {
 			keymap: [{ chord: 'Enter', command: 'block.split' }]
 		});
 
@@ -60,16 +56,16 @@ describe('registerChromeLeaf', () => {
 
 	it('honors a mergeRole override', () => {
 		const kind = declarePluginKind('spec-chrome-leaf');
-		registerChromeLeaf(kind, TextEditableBlock, { mergeRole: 'container' });
+		registerChromeLeaf(kind, { mergeRole: 'container' });
 
 		expect(getBlockKindDescriptor(kind).mergeRole).toBe('container');
 	});
 
 	it('yields extraProps with an undefined blockClass when none is given', () => {
 		const kind = declarePluginKind('spec-chrome-leaf');
-		registerChromeLeaf(kind, TextEditableBlock);
+		registerChromeLeaf(kind);
 
-		const extraProps = getBlockComponent(kind, everyInstalledPlugin)?.extraProps;
+		const extraProps = svelteBlockEntry(blockViewFor(kind, everyInstalledPlugin)!).extraProps;
 		expect(extraProps?.({ kind, leadingTrivia: '', raw: '\n' })).toStrictEqual({
 			blockClass: undefined
 		});

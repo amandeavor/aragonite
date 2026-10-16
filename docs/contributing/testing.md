@@ -24,6 +24,8 @@ Where to jump:
   keystroke, the best test this repo has at catching a corrupted document.
 - [The consumer smoke](#the-consumer-smoke): the example app that installs the packed tarball,
   what CI checks with it, and how to run it yourself.
+- [The adapter suite](#the-adapter-suite): the same idea for the framework wrappers, one suite
+  over React, Next, Vue and Nuxt apps.
 - The performance harness (fixtures, instruments, threshold policy) lives in
   `docs/design/performance.md` § The numbers and the gate.
 - The debug panel, its console helpers, and dumping editor state inside a test are in
@@ -136,8 +138,8 @@ Test files take turns in a shared Node process, which bites in three ways:
 
 The inline-scanner suite (`test/core/inline/scan/`) and the directive suite
 (`test/core/directive/`) fold under `test:editor:core`. Anything without a script of its own
-(the root-level tests, `test/components/`, `test/inline-menu/`) runs in the full `test:editor`
-suite. A new area is one `vitest run src/lib/test/<dir>` line in `package.json`.
+(the root-level tests, `test/components/`, `test/editor-root/`, `test/inline-menu/`) runs in the
+full `test:editor` suite. A new area is one `vitest run src/lib/test/<dir>` line in `package.json`.
 
 ### Mounting a block in isolation
 
@@ -336,22 +338,22 @@ goes in `optimizeDeps.include` in `vite.config.js`; the unit lint usually tells 
 
 Specs are organized by feature area at the top level, and per block inside `tests/blocks/`.
 
-| Script                    | Covers                                                                                                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `test:e2e:top`            | Top-level specs: smoke, text editing, keyboard nav, undo, inline, containers                                                                                                                |
-| `test:e2e:blocks`         | All per-block specs under `tests/blocks/`                                                                                                                                                   |
-| `test:e2e:blocks:<block>` | One block only: `list`, `code`, `image`, `table`, `blockquote`                                                                                                                              |
-| `test:e2e:plugins`        | Plugin authoring: plugin containers, reserved chrome, collapse, the `plugins` prop, component-portal widgets, editable leaves, and the browser conformance sweep over every registered kind |
-| `test:e2e:clipboard`      | Cut / copy / paste                                                                                                                                                                          |
-| `test:e2e:selection`      | Cross-block selection behavior                                                                                                                                                              |
-| `test:e2e:sticky-column`  | Vertical cursor column tracking across block transitions                                                                                                                                    |
-| `test:e2e:search`         | Find/replace bar and controller behavior                                                                                                                                                    |
-| `test:e2e:decorations`    | Decoration engine in the browser: mark / widget / block paint, search as its first client                                                                                                   |
-| `test:e2e:presentation`   | Presentation modes: reading-mode inertness, block- and inline-granular preview reveal, mid-session mode flips                                                                               |
-| `test:e2e:simulation`     | The note-taking simulation sessions (their own section below)                                                                                                                               |
-| `test:e2e:a11y`           | axe over `.editor`: fails on any violation outside the committed allowlist                                                                                                                  |
-| `test:e2e:vr`             | Virtual rendering on large fixtures: windowing, reveal, table-row windowing, mounted-count ceiling                                                                                          |
-| `test:e2e:webkit`         | The second-engine lane: a curated slice under the WebKit binary, env-gated; CI runs it on every PR and the release PR can't merge past it (next section)                                    |
+| Script                    | Covers                                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `test:e2e:top`            | Top-level specs: smoke, text editing, keyboard nav, undo, inline, containers                                                                                                                                 |
+| `test:e2e:blocks`         | All per-block specs under `tests/blocks/`                                                                                                                                                                    |
+| `test:e2e:blocks:<block>` | One block only: `list`, `code`, `image`, `table`, `blockquote`                                                                                                                                               |
+| `test:e2e:plugins`        | Plugin authoring: plugin containers, reserved chrome, collapse, the `plugins` prop, inline widgets drawn by Svelte components, editable leaves, and the browser conformance sweep over every registered kind |
+| `test:e2e:clipboard`      | Cut / copy / paste                                                                                                                                                                                           |
+| `test:e2e:selection`      | Cross-block selection behavior                                                                                                                                                                               |
+| `test:e2e:sticky-column`  | Vertical cursor column tracking across block transitions                                                                                                                                                     |
+| `test:e2e:search`         | Find/replace bar and controller behavior                                                                                                                                                                     |
+| `test:e2e:decorations`    | Decoration engine in the browser: mark / widget / block paint, search as its first client                                                                                                                    |
+| `test:e2e:presentation`   | Presentation modes: reading-mode inertness, block- and inline-granular preview reveal, mid-session mode flips                                                                                                |
+| `test:e2e:simulation`     | The note-taking simulation sessions (their own section below)                                                                                                                                                |
+| `test:e2e:a11y`           | axe over `.editor`: fails on any violation outside the committed allowlist                                                                                                                                   |
+| `test:e2e:vr`             | Virtual rendering on large fixtures: windowing, reveal, table-row windowing, mounted-count ceiling                                                                                                           |
+| `test:e2e:webkit`         | The second-engine lane: a curated slice under the WebKit binary, env-gated; CI runs it on every PR and the release PR can't merge past it (next section)                                                     |
 
 The a11y allowlist and the VR ceilings both fail closed and only shrink. Neither is a perf gate;
 both ride `npm test`.
@@ -384,9 +386,9 @@ seed table is in `+page.svelte`. What each fixture is for, so you can pick one:
   bare here (the no-options path) and with per-editor options on the `multi/` subroute; the
   working example of `registerGlobalCommand` plus a per-editor context. Always on; seed
   `docstats`.
-- `ghost-text/`: one component widget at the end of the focused paragraph, with no completion
-  backend behind it; its spec proves typing next to the widget never captures the ghost text
-  into the document. Seed `ghost`.
+- `ghost-text/`: one decoration widget, drawn by a Svelte component, at the end of the focused
+  paragraph, with no completion backend behind it; its spec proves typing next to the widget never
+  captures the ghost text into the document. Seed `ghost`.
 - `fold/`: `[>hidden<]` ranges collapse to a clickable `…` that reopens on click; the
   `ReplaceDecoration.widget` fixture, covering a live click handler inside a decoration and
   decorations inside table cells. Seeds `fold` and `fold-table`.
@@ -542,7 +544,7 @@ await gotoReady(page, '/test/syntax'); // waits for window.__syntax, then the fo
 It lives in `src/lib/e2e/goto-ready.ts` and waits for the global the route sets once it's
 hydrated, since the server-rendered markup shows up well before any click handler does.
 `reloadReady(page)` is the reload version, and `editor.goto()` already calls `gotoReady` for you.
-A raw `page.goto` or `page.reload` fails `src/lib/e2e/lint/goto-ready.test.ts`.
+A raw `page.goto` or `page.reload` fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
 A new route gets a row in `src/lib/e2e/goto-ready.ts :: READY_BY_ROUTE`, or `gotoReady` won't
 compile for it. Every route that mounts an editor already sets `__parityDocuments`, so that's the
@@ -553,7 +555,7 @@ To switch the presentation mode, call `editor.setPresentationMode(mode)`, or cli
 toggle with `clickModeToggle(page, mode)` from `src/lib/e2e/mode-switch.ts` (the showcase's and
 the changelog's buttons take `clickModeButton`). Each one waits until the editor shows the mode.
 A mode that never applied leaves you in source mode, where most live-mode assertions pass anyway,
-so a raw bridge call or toggle click fails `src/lib/e2e/lint/mode-switch.test.ts`.
+so a raw bridge call or toggle click fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
 ### Patterns and gotchas
 
@@ -844,7 +846,10 @@ from the packed tarball, importing only published entry points. It's a test, not
 (if something is only learnable from that folder, that's a docs bug; file it). CI's
 `consumer-smoke` job runs `scripts/consumer-smoke.mjs`, which:
 
-1. builds and packs `dist/`, and checks the tarball holds every published path and no test file
+1. builds and packs `dist/`, and checks the tarball holds every published path and no test file.
+   It checks the prebuilt build too (`dist/prebuilt/`, what a bundler with no Svelte plugin gets):
+   no Svelte import of its own, every entry loads in Node, one plugin registry across entries, and
+   a size budget (`scripts/verify-prebuilt.mjs`)
 2. installs the tarball into the example with `--no-save`
 3. typechecks and builds the example, where an import cycle through a published entry point is
    a build error
@@ -871,3 +876,41 @@ again and the example sees it. Don't edit `examples/consumer/src/plugins/`: it's
 copy of the callout fixture (`src/routes/test/plugins/callout/`) that
 `scripts/sync-consumer-plugins.mjs` regenerates before every `dev`, `build`, `check`, and `test`,
 with its `#lib` imports rewritten to the package name.
+
+## The adapter suite
+
+The framework wrappers (`packages/*`) get the consumer smoke's treatment, with one twist: every
+app renders the same page (the editor, a mirror of the value, load and revert buttons, a theme
+toggle, an unmount toggle, a header input), so one spec directory in `examples/adapter-suite/`
+drives all of them. The page is spelled out in `examples/adapter-suite/requirements/page-contract.md`.
+The apps today are `examples/react` and `examples/vue` (Vite, each built and in dev, plus a build
+on the oldest React or Vue the wrapper supports), and `examples/next` and `examples/nuxt` (server
+rendered). `examples/adapter-suite/apps.mjs` lists every project: its app, port, the specs it
+runs, and whether it gates each PR. A new app goes in there, or a lint test fails (G4.187).
+
+The React and Vue apps also carry the showcase, the same page as the Svelte one at `/`, on a second
+page the suite doesn't load. To try it by hand, `npm run showcase:react` or `npm run showcase:vue`
+builds and packs this checkout, installs it into the app the way a user would, and serves
+`http://localhost:1490/showcase.html` or `http://localhost:1495/showcase.html`.
+
+The wrappers are npm workspaces of the root, so the root `npm install` installs them too, and
+`npm run package` builds them after the core. Each carries the core's version and peers the core at
+exactly that version, since all three packages publish together (`npm run release:publish`);
+`src/lib/test/invariants/lint/lockstep-versions.test.ts` fails when one drifts.
+
+`scripts/adapter-smoke.mjs` packs the core and every wrapper, installs the tarballs into each app,
+checks no Svelte came along, builds the apps and runs the suite. CI runs the `perPr` projects on
+every PR (`--per-pr`) and everything on the release PR into `main`. To iterate on one project
+once its app is built (`npm run package` at the root, then `npm install` and `npm run build` in
+the app), name it in `ADAPTER_PROJECTS`, since the config starts a server for every app it's
+told about:
+
+```bash
+ADAPTER_PROJECTS=react npx playwright test -c examples/adapter-suite/playwright.config.ts
+```
+
+```powershell
+$env:ADAPTER_PROJECTS = 'react'; npx playwright test -c examples/adapter-suite/playwright.config.ts
+```
+
+Heads up if you're mutating a wrapper to see what reds: outside CI the config reuses any server already on an app's port, so one left over from an earlier run keeps serving the old build. Stop it first, or set `CI=1` for the run.

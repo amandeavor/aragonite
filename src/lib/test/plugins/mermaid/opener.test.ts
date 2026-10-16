@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse, serialize } from '#lib';
 import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 describe('mermaid opener claims and declines', () => {
 	beforeEach(() => {
-		registerMermaidKind();
+		registerMermaidKind(testView());
 	});
 
 	it('claims a ```mermaid fence as a childless mermaid container', () => {

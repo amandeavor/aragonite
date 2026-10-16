@@ -6,6 +6,7 @@ import {
 	rebuildCalloutRaw,
 	CALLOUT_TITLE
 } from '../../../routes/test/plugins/callout/callout-kind';
+import { testView } from '#lib/test/support/test-view.js';
 
 // `createDirectiveRebuild` is the shared body behind both callout and admonitions (the
 // only per-kind difference is the name resolver), so its byte-assembly is pinned once
@@ -13,7 +14,7 @@ import {
 
 describe('createDirectiveRebuild threads the authored line ending', () => {
 	beforeEach(() => {
-		registerCalloutKind();
+		registerCalloutKind(testView());
 	});
 
 	// What the factory exists to prevent: a hand-written copy that forgot `lineEnding`
@@ -47,7 +48,7 @@ describe('createDirectiveRebuild threads the authored line ending', () => {
 
 describe('chromeChild builds the reserved child-0 node', () => {
 	beforeEach(() => {
-		registerCalloutKind();
+		registerCalloutKind(testView());
 	});
 
 	it('appends a trailing newline to non-empty title text', () => {

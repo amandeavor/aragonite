@@ -2,31 +2,16 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
-} from '#lib/test/harness/editor-actions.js';
+import { runPasteDispatch, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 
 // The fix-up can merge pasted blocks into neighbours, so the caret follows bytes, not an index.
 // Miss-analysis: the structural-paste caret tests checked the block index, never the offset in it.
 
 async function pasteAt(source: string, pastedText: string, targetPath: number[], offset: number) {
-	const { deps, landings } = makeEditorActionsDeps(parse(source));
-	const coordinator = createPasteCoordinator(deps, createUndoController(deps));
+	const h = makePasteCommit(parse(source));
 
-	await pasteDispatch(
-		{ pastedText, targetPath, offset },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: makeStubBlockEdit(),
-			controller: coordinator
-		})
-	);
-	return { doc: deps.doc, landings };
+	await runPasteDispatch(h, { pastedText, targetPath, offset });
+	return { doc: h.doc, landings: h.landings };
 }
 
 describe('structural paste landing after the splice settle folds', () => {

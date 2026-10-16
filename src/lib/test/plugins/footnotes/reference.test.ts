@@ -2,10 +2,7 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { parseInline, type InlineNode } from '#lib';
 import { resetPluginPlatformForTests } from '#lib/testing.js';
-import {
-	getInlineWidgetComponent,
-	getInlineWidgetEditing
-} from '#lib/core/inline/inline-widgets.js';
+import { getInlineWidgetEditing } from '#lib/core/inline/inline-widgets.js';
 import { registerFootnoteReference } from '#lib/plugins/footnotes/footnote-reference.js';
 import { FOOTNOTE_REF_KIND } from '#lib/plugins/footnotes/constants.js';
 
@@ -79,10 +76,7 @@ describe('[^label] recognizer grammar', () => {
 describe('footnote reference widget registration', () => {
 	beforeEach(() => registerFootnoteReference());
 
-	it('registers a component widget that reveals its source and claims the activation click', () => {
-		expect(
-			getInlineWidgetComponent(FOOTNOTE_REF_KIND as InlineNode['kind'], defaultGrammarView)
-		).toBeDefined();
+	it('registers a widget that reveals its source and claims the activation click', () => {
 		// Both fields: `revealSource` is what a plain click does, and `claimsActivationClick`
 		// turns that off so the click jumps instead. Drop it and the source opens on a click.
 		expect(

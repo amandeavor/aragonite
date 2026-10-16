@@ -3,8 +3,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	declarePluginInlineKind,
-	mintWidgetShell,
-	registerBlockOpener,
 	registerInlineSyntax,
 	registerInlineWidgetKind,
 	type CstNode,
@@ -25,28 +23,37 @@ const EXCUSED = 'the plugin kind in this suite exists only to probe the cell it 
 // Each `%` line is one child; the rebuild writes garbage, so no honest delete over it converges.
 function registerCorruptStrip(): PluginBlockKind {
 	const line = testLeaf('subject-strip-line');
-	const strip = testContainer('subject-strip', {
-		contract: 'strip',
-		rebuildRaw: (node) => {
-			node.raw = 'corrupted\n';
-		}
-	});
-	registerBlockOpener(strip, {
-		priority: 45,
-		interruptsParagraph: false,
-		tryOpen(ctx) {
-			let end = ctx.index;
-			while (end < ctx.end && ctx.lines[end].text.startsWith('%')) end++;
-			if (end === ctx.index) return null;
-			const lines = ctx.lines.slice(ctx.index, end);
-			const children: CstNode[] = lines.map((l) => ({ kind: line, leadingTrivia: '', raw: l.raw }));
-			const raw = lines.map((l) => l.raw).join('');
-			return {
-				node: { kind: strip, leadingTrivia: ctx.leadingTrivia, raw, children },
-				consumed: end - ctx.index
-			};
-		}
-	});
+	const strip = testContainer(
+		'subject-strip',
+		{
+			contract: 'strip',
+			rebuildRaw: (node) => {
+				node.raw = 'corrupted\n';
+			}
+		},
+		(strip) => ({
+			opener: {
+				priority: 45,
+				interruptsParagraph: false,
+				tryOpen(ctx) {
+					let end = ctx.index;
+					while (end < ctx.end && ctx.lines[end].text.startsWith('%')) end++;
+					if (end === ctx.index) return null;
+					const lines = ctx.lines.slice(ctx.index, end);
+					const children: CstNode[] = lines.map((l) => ({
+						kind: line,
+						leadingTrivia: '',
+						raw: l.raw
+					}));
+					const raw = lines.map((l) => l.raw).join('');
+					return {
+						node: { kind: strip, leadingTrivia: ctx.leadingTrivia, raw, children },
+						consumed: end - ctx.index
+					};
+				}
+			}
+		})
+	);
 	return strip;
 }
 
@@ -85,7 +92,7 @@ describe('inline kit: a cell about the kind checks nodes of that kind', () => {
 		});
 		registerInlineWidgetKind(marker, {
 			isWidget: () => true,
-			buildWidget: (node) => mintWidgetShell('subject-marker', node),
+			view: () => ({}),
 			editing: { deleteGranularity: 'atomic', onEdge: 'step-over' }
 		});
 	});

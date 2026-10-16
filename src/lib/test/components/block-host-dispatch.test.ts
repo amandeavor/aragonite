@@ -1,14 +1,10 @@
 // @vitest-environment jsdom
 // Mounts the kind-to-component dispatch once per class of kind, so a mis-wired registry
-// or a lost fallback fails here as a block that did not render rather than reaching
-// review; the source scan (invariants/lint/block-host-prop-thread) cannot see either.
+// or a lost fallback fails here as a block that did not render rather than reaching review.
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { registerBuiltInBlocks } from '#lib/components/built-in-blocks.js';
-import {
-	registerBlockComponent,
-	defineBlockComponent
-} from '#lib/schema/block-component-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import { createRegistryView } from '#lib/schema/registry-view.js';
 import RecordingBlock from './fixtures/RecordingBlock.svelte';
 import { mountBlockHost } from './mount-host';
@@ -16,6 +12,8 @@ import type { MountedHost } from './mount-host';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
+import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
+import type { PluginBlockKind } from '#lib/core/nodes.js';
 
 // The harness mounts BlockHost without the component layer, so unregistered kinds render raw.
 afterEach(() => allowDevWarns(['block-host']));
@@ -73,8 +71,7 @@ describe('BlockHost dispatches each kind class to its registered component', () 
 	it('renders a plugin kind’s registered component, same as a built-in', () => {
 		// Positive control for the fallback pair below: "no component rendered" only
 		// means something once a plugin kind is shown to render one.
-		const kind = testLeaf('host-plugin');
-		registerBlockComponent(kind, defineBlockComponent(RecordingBlock));
+		const kind = testLeaf('host-plugin', { view: svelteBlockView(RecordingBlock) });
 		const doc = parse('plugin text\n');
 		doc.children[0].kind = kind;
 
@@ -93,22 +90,29 @@ describe('BlockHost dispatches each kind class to its registered component', () 
 });
 
 describe('BlockHost falls back to a raw-editable surface when no component resolves', () => {
-	it('renders a kind that has a descriptor but no component', () => {
+	it('renders a kind whose plugin threw during setup, with its view registered', () => {
+		let kind: PluginBlockKind | undefined;
+		const broken = definePlugin({
+			name: 'host-broken',
+			setup() {
+				kind = testLeaf('host-orphan', { view: svelteBlockView(RecordingBlock) });
+				throw new Error('setup fails after registering');
+			}
+		});
+		expect(() => installPlugins([broken])).toThrow(/setup fails/);
 		const doc = parse('orphan text\n');
-		doc.children[0].kind = testLeaf('host-orphan');
+		doc.children[0].kind = kind!;
 
 		mounted = mountBlockHost(doc);
 
-		const fallback = mounted.el.querySelector('.raw-block');
-		expect(fallback).not.toBeNull();
-		expect(fallback?.textContent).toBe('orphan text');
+		expect(mounted.el.querySelector('.recording-block')).toBeNull();
+		expect(mounted.el.querySelector('.raw-block')?.textContent).toBe('orphan text');
 	});
 
 	it('renders a kind whose component this instance’s registry view disables', () => {
 		// Turning a kind off reaches BlockHost through this editor's own registry
 		// view: a host reading the global registry instead would still render it.
-		const kind = testLeaf('host-disabled');
-		registerBlockComponent(kind, defineBlockComponent(RecordingBlock));
+		const kind = testLeaf('host-disabled', { view: svelteBlockView(RecordingBlock) });
 		const doc = parse('disabled text\n');
 		doc.children[0].kind = kind;
 

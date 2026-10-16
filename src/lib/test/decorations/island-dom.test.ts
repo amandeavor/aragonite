@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { appendView } from '#lib/test/harness/views.js';
 import { describe, it, expect, vi } from 'vitest';
 import { applyIslandDecorations, type ApplyIslandsOpts } from '#lib/decorations/island-dom.js';
 import { takeDevWarns } from '../support/warn-gate';
@@ -46,7 +47,7 @@ const widgetAt = (offset: number): WidgetDecoration => ({
 	type: 'widget',
 	path: [0],
 	offset,
-	widget: { buildDom: () => document.createElement('span') }
+	widget: { view: appendView() }
 });
 const replaceRange = (start: number, end: number): ReplaceDecoration => ({
 	type: 'replace',
@@ -62,7 +63,7 @@ const idx = <D extends WidgetDecoration | ReplaceDecoration>(
 /** Every fixture here renders its whole raw, so a paragraph over it is the CST the check
  *  reads. */
 const optsFor = (raw: string): ApplyIslandsOpts => ({
-	mountWidget: (spec, dec) => mountDecorationWidget(spec, dec),
+	mountWidget: (spec, dec, target) => mountDecorationWidget(spec, dec, target, () => {}),
 	contentLength: contentLengthOf({ kind: 'paragraph', leadingTrivia: '', raw })
 });
 

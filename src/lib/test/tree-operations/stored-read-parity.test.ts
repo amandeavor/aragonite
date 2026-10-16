@@ -2,7 +2,7 @@
 // Miss-analysis: the join's container check read a field the parse result lacks, so it refused
 // every candidate under a list marker; the fuzzer took any refusal as no worse than the literal
 // edit, ran its caret-edge gestures on top-level blocks only, and no unit gave the join a container.
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { installPlugins } from '#lib';
 import { footnotesPlugin } from '#lib/plugins/footnotes/index.js';
 import { parse } from '#lib/core/parser.js';
@@ -12,27 +12,18 @@ import { screenVisibility } from '#lib/core/inline/visibility.js';
 import { ownTrailingLineEnding, trimTrailingLineEnding } from '#lib/core/lines.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
 import { resolveEdgeDeletion } from '#lib/components/blocks/text/construct-edge-delete.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import { makeContainerHarness, makeTopHarness } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 // A live cut under a container marker writes the text bytes the same cut writes at the top level,
 // and leaves a tree a reload of those bytes reads back unchanged.
 
-beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
 beforeEach(() => installPlugins([footnotesPlugin()]));
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
 
 const LIVE = fixtureReading({}, 'live');
 
@@ -128,12 +119,12 @@ async function rangeEdit(
 /** A cross-block delete from inside `bc` to inside `ef`, both endpoints in the container. */
 function crossBlockDelete(container: Container): Document {
 	const doc = parse(container.wrap(['a **bc**', 'd *ef* g']));
-	const range = coverRange(
+	deleteRange(
 		doc,
 		{ path: container.first, offset: 5 },
-		{ path: container.second, offset: 5 }
+		{ path: container.second, offset: 5 },
+		{ reading: LIVE, gesture: 'Backspace' }
 	);
-	rangeDelete(doc, rangeCoverage(doc, range), createSharingState(), LIVE, 'Backspace');
 	return doc;
 }
 
@@ -158,22 +149,22 @@ async function edgeBackspace(container: Container): Promise<Document | null> {
 }
 
 describe.each(CONTAINERS)('a live cut in $name', (container) => {
-	// From inside `ab` past its hidden closer: `b** c` goes, and so does the stranded opener.
-	it('a deleted selection drops the runs it strands', async () => {
+	// From inside `ab` past its hidden closer: `b** c` goes, and the bold closes on what stays.
+	it('a deleted selection closes the run it cut through', async () => {
 		expectParity(
 			await rangeEdit(container, '**ab** cd', { start: 3, end: 8 }, ''),
 			container,
-			'ad'
+			'**a**d'
 		);
 	});
 
-	it('a typed-over selection drops them too', async () => {
+	it('a typed-over selection closes it after the typed text', async () => {
 		const doc = await rangeEdit(container, '**ab** cd', { start: 3, end: 8 }, 'x');
-		expectParity(doc, container, 'axd');
+		expectParity(doc, container, '**ax**d');
 	});
 
 	it('a cross-block delete joins without a run on screen', () => {
-		expectParity(crossBlockDelete(container), container, 'a b g');
+		expectParity(crossBlockDelete(container), container, 'a **b** g');
 	});
 
 	// Both runs go with the construct the cut emptied; the space left against a list marker widens

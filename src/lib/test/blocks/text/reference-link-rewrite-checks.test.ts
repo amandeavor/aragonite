@@ -8,7 +8,7 @@ import {
 	type LinkReferenceResolver
 } from '#lib/core/inline/link-reference-resolver.js';
 import { resolveMarkedInsertion } from '#lib/components/blocks/text/pending-mark-insert.js';
-import { resolveEdgeSeat } from '#lib/components/blocks/text/edge-seat.js';
+import { hiddenEdges } from '#lib/components/blocks/text/edge-seat.js';
 import {
 	resolveEdgeDeletion,
 	type DeleteDirection
@@ -59,9 +59,8 @@ describe('a typed byte at a reference link’s hidden closing run', () => {
 		const display = '*see [te*xt][ref] here';
 		const { resolver, inlines } = drawn(display);
 
-		expect(
-			resolveEdgeSeat(11, inlines, null, display, LIVE, '*', fixtureReading({ resolver: resolver }))
-		).toBeNull();
+		const edges = hiddenEdges(inlines, display, LIVE, fixtureReading({ resolver: resolver }));
+		expect(edges.typingOffset(11, null, '*')).toBe(11);
 	});
 });
 

@@ -90,7 +90,6 @@
 
 	// Plain `let`, not $state: writes happen during keyed-each reconcile via
 	// the focusout handler, which Svelte 5 traps as state_unsafe_mutation.
-	let internalStickyColumn: number | null = null;
 	let focusedCell: { rowIdx: number; colIdx: number } | null = null;
 	// The reactive mirror the edge affordances read, written a microtask after the plain one so
 	// a focusout fired mid-reconcile never mutates state inside the render.
@@ -220,25 +219,14 @@
 			focusActions.followArrival([...myPath, rowIdx, colIdx]);
 		},
 		revealColumn,
-		getStickyColumn() {
-			return internalStickyColumn;
-		},
-		setStickyColumn(colIdx) {
-			internalStickyColumn = colIdx;
-		},
-		resetStickyColumn() {
-			internalStickyColumn = null;
-		},
 		exitUpward(stickyX) {
 			captureExitColumn(asEditorX(stickyX));
-			internalStickyColumn = null;
 			focusActions.moveFocus(myPath[myPath.length - 1] - 1, {
 				stickyColumnFrom: 'below'
 			});
 		},
 		exitDownward(stickyX) {
 			captureExitColumn(asEditorX(stickyX));
-			internalStickyColumn = null;
 			focusActions.moveFocus(myPath[myPath.length - 1] + 1, {
 				stickyColumnFrom: 'above'
 			});
@@ -432,7 +420,6 @@
 		const handler = (e: FocusEvent) => {
 			const next = e.relatedTarget as Node | null;
 			if (next && el.contains(next)) return;
-			internalStickyColumn = null;
 			focusedCell = null;
 		};
 		el.addEventListener('focusout', handler);
@@ -468,9 +455,7 @@
 	export function focusAtColumn(x: number, from: StickyColumnDirection): void {
 		if (rowCount === 0) return;
 		const targetRow = from === 'above' ? 0 : rowCount - 1;
-		const colIdx = columnNearestX(asEditorX(x), collectColumnRects());
-		internalStickyColumn = colIdx;
-		focusCell(targetRow, colIdx, 'start');
+		focusCell(targetRow, columnNearestX(asEditorX(x), collectColumnRects()), 'start');
 	}
 
 	export function focusByPath(path: number[], offset: number): void {
@@ -667,10 +652,10 @@
 		max-width: 100%;
 		overflow-x: auto;
 		scrollbar-width: thin;
-		scrollbar-color: var(--color-border, #3e3e3b) transparent;
+		scrollbar-color: var(--color-border) transparent;
 		/* The two sides the cells do not draw; see `.table-cell`. */
-		border-top: 1px solid var(--color-border, #3e3e3b);
-		border-left: 1px solid var(--color-border, #3e3e3b);
+		border-top: 1px solid var(--color-border);
+		border-left: 1px solid var(--color-border);
 	}
 	/* The edge strips sit outside the grid's scroller, starting at the table's edge so they never
 	   cover a cell; `.table-add-pinned` means the caret holds them open. */
@@ -695,10 +680,10 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0;
-		border: 1px solid var(--color-border, #3e3e3b);
+		border: 1px solid var(--color-border);
 		border-radius: 3px;
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
-		color: var(--color-ui-muted, #93938d);
+		background: var(--color-bg-secondary);
+		color: var(--color-ui-muted);
 		cursor: pointer;
 		opacity: 0;
 		transition: opacity 120ms ease-out;
@@ -709,7 +694,7 @@
 	.table-add-zone:hover .table-add,
 	.table-add:focus-visible {
 		opacity: 1;
-		color: var(--color-text-primary, #e8e8e5);
+		color: var(--color-text-primary);
 	}
 	.table-add-column {
 		width: 18px;
@@ -734,10 +719,10 @@
 		background: transparent;
 	}
 	.table-block::-webkit-scrollbar-thumb {
-		background: var(--color-border, #3e3e3b);
+		background: var(--color-border);
 		border-radius: 3px;
 	}
 	.table-block::-webkit-scrollbar-thumb:hover {
-		background: var(--color-ui-dulled, #afb1b3);
+		background: var(--color-ui-dulled);
 	}
 </style>

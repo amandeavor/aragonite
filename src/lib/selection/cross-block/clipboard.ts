@@ -31,7 +31,8 @@ function copyCrossBlock(e: ClipboardEvent, deps: CrossBlockClipboardDeps): boole
 	const doc = deps.getDoc();
 	const coverage = rangeCoverage(doc, coverRange(doc, selection.anchor, selection.focus));
 	const cells = coverage.grid && gridClipboard(doc, coverage.grid);
-	e.clipboardData?.setData('text/plain', cells ? cells.text : collectCrossBlockText(doc, coverage));
+	const text = cells ? cells.text : collectCrossBlockText(doc, coverage, deps.crossBlock.reading);
+	e.clipboardData?.setData('text/plain', text);
 	// A rectangle of cells also goes on as an HTML table, which spreadsheets read.
 	if (cells) e.clipboardData?.setData('text/html', cells.html);
 	return true;

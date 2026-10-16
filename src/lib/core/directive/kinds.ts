@@ -11,6 +11,7 @@ import {
 	isInlineKindDeclared
 } from '../../schema/plugin-kind';
 import { registerBlockKind, isBlockKindRegistered } from '../../schema/block-kind-descriptor';
+import type { BlockView } from '../../schema/block-view';
 import { containerClosure } from '../../schema/closure';
 import type { KeyBinding } from '../../schema/keybindings';
 import { getPluginMetadata, type CstNode, type InlineNode } from '../nodes';
@@ -18,8 +19,9 @@ import type { ContainerBodyWrap } from '../parser';
 import type { NodeView } from '../node-views';
 import { displayLength, ownTrailingLineEnding, trimTrailingLineEnding } from '../lines';
 import { concatChildren as serializeChildren } from '../serializer';
-import { registerInlineWidgetKind, mintWidgetShell } from '../inline/inline-widgets';
+import { registerCoreInlineWidget, mintWidgetShell } from '../inline/inline-widgets';
 import { matchDirectiveOpener, serializeDirective } from './grammar';
+import { directiveContainerOpener } from './container-opener';
 
 export const DIRECTIVE_CONTAINER = 'directiveContainer';
 export const DIRECTIVE_LEAF = 'directiveLeaf';
@@ -42,10 +44,20 @@ export interface DirectiveContainerMetadata {
 	lineEnding: string;
 }
 
-export function registerDirectiveKinds(): void {
-	if (isBlockKindRegistered(DIRECTIVE_CONTAINER)) return; // idempotent for HMR / re-import
+/** What draws the two generic directive kinds; core can't import components, so they arrive here. */
+export interface DirectiveViews {
+	container: BlockView;
+	leaf: BlockView;
+}
 
-	registerBlockKind(declarePluginKind(DIRECTIVE_CONTAINER), {
+export function registerDirectiveKinds(views: DirectiveViews): void {
+	if (isBlockKindRegistered(DIRECTIVE_CONTAINER)) return; // idempotent for HMR / re-import
+	const container = declarePluginKind(DIRECTIVE_CONTAINER);
+	const leaf = declarePluginKind(DIRECTIVE_LEAF);
+
+	registerBlockKind(container, {
+		view: views.container,
+		opener: directiveContainerOpener(container, leaf),
 		label: 'Directive',
 		mergeRole: 'container',
 		editable: true,
@@ -74,7 +86,8 @@ export function registerDirectiveKinds(): void {
 		})
 	});
 
-	registerBlockKind(declarePluginKind(DIRECTIVE_LEAF), {
+	registerBlockKind(leaf, {
+		view: views.leaf,
 		label: 'Directive',
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
@@ -110,16 +123,16 @@ export function registerDirectiveKinds(): void {
 export function registerDirectiveTextKind(): void {
 	if (isInlineKindDeclared(DIRECTIVE_TEXT)) return;
 	const kind = declarePluginInlineKind(DIRECTIVE_TEXT);
-	registerInlineWidgetKind(kind, {
+	registerCoreInlineWidget(kind, {
 		isWidget: () => true,
-		buildWidget: buildDirectiveTextWidget,
+		draw: buildDirectiveTextWidget,
 		editing: { revealSource: true }
 	});
 }
 
 /** Renders the verbatim `:name[...]` source dimmed inside the shared widget shell. */
 function buildDirectiveTextWidget(node: InlineNode, raw: string): HTMLElement {
-	const shell = mintWidgetShell('directive-text-widget', node);
+	const shell = mintWidgetShell(node, 'directive-text-widget');
 	shell.textContent = raw.slice(node.start, node.end);
 	return shell;
 }

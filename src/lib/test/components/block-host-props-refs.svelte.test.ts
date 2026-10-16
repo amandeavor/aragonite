@@ -7,10 +7,7 @@ import { flushSync } from 'svelte';
 import { parse } from '#lib/core/parser.js';
 import type { BlockComponent } from '#lib/block-component.js';
 import type { EditorServices } from '#lib/editor-keys.js';
-import {
-	registerBlockComponent,
-	defineBlockComponent
-} from '#lib/schema/block-component-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import RecordingBlock from './fixtures/RecordingBlock.svelte';
 import { mountBlockHost } from './mount-host';
 import type { HostProps, MountedHost } from './mount-host';
@@ -32,11 +29,9 @@ type Recorder = BlockComponent & {
 /** A document whose block at `index` renders through the recording fixture. */
 function recordingDoc(source: string, index = 0) {
 	const doc = parse(source);
-	const kind = testLeaf('host-recording');
-	registerBlockComponent(
-		kind,
-		defineBlockComponent(RecordingBlock, () => ({ badge: 'from-extra-props' }))
-	);
+	const kind = testLeaf('host-recording', {
+		view: svelteBlockView(RecordingBlock, () => ({ badge: 'from-extra-props' }))
+	});
 	doc.children[index].kind = kind;
 	return doc;
 }

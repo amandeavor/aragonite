@@ -7,8 +7,9 @@ import { declarePluginKind, declarePluginInlineKind } from '#lib/schema/plugin-k
 import { registerDirective } from '#lib/core/directive/registry.js';
 import { DIRECTIVE_LEAF, DIRECTIVE_TEXT } from '#lib/core/directive/kinds.js';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
-beforeEach(activateDirectiveGrammar);
+beforeEach(() => activateDirectiveGrammar(testDirectiveViews()));
 
 // Leaf and text directives must dispatch a registered name exactly as a container does
 // (pinned in roundtrip-property.test.ts).

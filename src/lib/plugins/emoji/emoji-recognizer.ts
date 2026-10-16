@@ -8,11 +8,12 @@
 import {
 	INLINE_PRIORITIES,
 	declarePluginInlineKind,
-	mintWidgetShell,
 	registerInlineSyntax,
 	registerInlineWidgetKind,
 	type InlineNode,
-	type PluginInlineKind
+	type InlineWidgetComponentProps,
+	type PluginInlineKind,
+	type PluginView
 } from '#lib/plugin.js';
 import { EMOJI_TABLE } from './emoji-table';
 
@@ -50,13 +51,13 @@ export function recognizeEmoji(
 }
 
 /** `user-select: none` keeps the caret from entering the glyph; set inline because a widget
- *  built by `buildWidget` has no scoped stylesheet. */
-export function buildEmojiWidget(node: InlineNode): HTMLSpanElement {
-	const shell = mintWidgetShell('md-emoji-widget', node);
-	shell.textContent = node.decoded ?? '';
+ *  drawn as plain DOM has no scoped stylesheet. */
+export const drawEmoji: PluginView<InlineWidgetComponentProps> = (shell, { inline }) => {
+	shell.classList.add('md-emoji-widget');
+	shell.textContent = inline.decoded ?? '';
 	shell.style.userSelect = 'none';
-	return shell;
-}
+	return {};
+};
 
 export function registerEmoji(): void {
 	const kind = declarePluginInlineKind(EMOJI_KIND);
@@ -67,7 +68,7 @@ export function registerEmoji(): void {
 	});
 	registerInlineWidgetKind(kind, {
 		isWidget: () => true,
-		buildWidget: (node) => buildEmojiWidget(node),
+		view: drawEmoji,
 		editing: { deleteGranularity: 'atomic', onEdge: 'step-over' }
 	});
 }

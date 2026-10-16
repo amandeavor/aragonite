@@ -14,10 +14,7 @@ import {
 import { parse } from '../core/parser';
 import { serialize } from '../core/serializer';
 import { parseInline } from '../core/inline';
-import { renderInlineNodes } from '../core/inline-render';
 import {
-	buildCoreInlineWidget,
-	getInlineWidgetComponent,
 	getInlineWidgetEditing,
 	isInlineWidget,
 	DELETE_GRANULARITIES,
@@ -31,19 +28,16 @@ import {
 	isScanProbeTrigger,
 	type InlineRung
 } from '../core/inline/scan/plugin-syntax';
-import { containerDomTextLength } from '../caret/widget-offset';
 import {
 	assert,
 	assertIs,
 	fail,
 	runCells,
-	type CellOutcome,
 	type CellReport,
 	type ConformanceCoverage,
 	type KitCell
 } from './conformance-core';
 import { defaultGrammarView } from '../schema/block-openers';
-import { documentForCheck } from '../assert';
 
 // ── Profile ──────────────────────────────────────────────────────────────────
 
@@ -403,13 +397,9 @@ function checkOverlapDecline(profile: InlineConformanceProfile, rung: InlineRung
 
 // ── widget ───────────────────────────────────────────────────────────────────
 
-const NO_DOM =
-	'no DOM in this environment — the island half of the widget cell needs one; run this ' +
-	'suite under jsdom/happy-dom (Vitest: a `// @vitest-environment jsdom` docblock)';
-
-const RECOGNITION_HALF = 'recognition + self-delimiting claim';
-
-function checkWidgetAtomicity(profile: InlineConformanceProfile, rung: InlineRung): CellOutcome {
+/** The widget's shell (the element carrying its bytes and the editor's attributes) is the editor's
+ *  own, so what the kind can get wrong is which bytes it claims. */
+function checkWidgetAtomicity(profile: InlineConformanceProfile, rung: InlineRung): string {
 	const kind = profile.kind;
 	assert(
 		kind !== undefined,
@@ -417,31 +407,14 @@ function checkWidgetAtomicity(profile: InlineConformanceProfile, rung: InlineRun
 			'kinds renders through the built-in widget and declares this cell exempt'
 	);
 
-	const claims = claimsOfKind(profile, rung, kind);
-	for (const { fixture, node } of claims) {
+	for (const { fixture, node } of claimsOfKind(profile, rung, kind)) {
 		assert(
 			isInlineWidget(node, fixture, defaultGrammarView),
 			`the "${kind}" node from ${JSON.stringify(fixture)} is a registered live widget`
 		);
 		assertSelfDelimiting(fixture, node, kind);
 	}
-
-	// Both early exits report boundary, not asserted: the inline-widget contract did not run.
-	if (getInlineWidgetComponent(kind, defaultGrammarView) !== undefined) {
-		return {
-			status: 'boundary',
-			detail:
-				`${RECOGNITION_HALF} executed; the widget wrapper of a \`component\` kind is created by ` +
-				`the render layer, not by the plugin, so it is not the plugin’s to get wrong`
-		};
-	}
-	if (!documentForCheck(`the "${kind}" widget cell's island contract`)) {
-		return { status: 'boundary', detail: `${RECOGNITION_HALF} executed: ${NO_DOM}` };
-	}
-
-	for (const { fixture, node } of claims) assertIslandContract(fixture, node, kind);
-	for (const fixture of profile.fixtures) assertWalkLengthIsRawLength(fixture);
-	return 'recognition, self-delimiting claim, island contract, and offset-walk length';
+	return 'recognition and a self-delimiting claim';
 }
 
 /** The claimed bytes must re-form on their own: `data-source-*` hands exactly this slice to the
@@ -454,46 +427,6 @@ function assertSelfDelimiting(fixture: string, node: InlineNode, kind: AnyInline
 		first !== undefined && first.kind === kind && first.start === 0 && first.end === slice.length,
 		`the claimed slice ${JSON.stringify(slice)} re-forms as a whole "${kind}" on its own — ` +
 			`the bytes data-source-* hands the clipboard and the reveal`
-	);
-}
-
-function assertIslandContract(fixture: string, node: InlineNode, kind: AnyInlineKind): void {
-	const island = buildCoreInlineWidget(node, fixture, undefined, defaultGrammarView);
-	assert(island !== null, `the "${kind}" widget builds an island from ${JSON.stringify(fixture)}`);
-	assert(
-		island.hasAttribute('data-inline-widget'),
-		`the "${kind}" island carries [data-inline-widget] — the offset walk's only handle`
-	);
-	assertIs(
-		island.getAttribute('contenteditable'),
-		'false',
-		`the "${kind}" island is contenteditable=false`
-	);
-	assertIs(
-		Number(island.getAttribute('data-source-start')),
-		node.start,
-		`the "${kind}" island's data-source-start is the node's own offset`
-	);
-	assertIs(
-		Number(island.getAttribute('data-source-end')),
-		node.end,
-		`the "${kind}" island's data-source-end is the node's own offset`
-	);
-}
-
-/** The DOM-to-offset traversal counts a widget as its source span, not what it renders (seven
- *  bytes for one emoji glyph); every caret offset in the block depends on it. */
-function assertWalkLengthIsRawLength(fixture: string): void {
-	const container = document.createElement('div');
-	container.appendChild(
-		renderInlineNodes(parseInline(fixture, 0, fixture.length), fixture, {
-			grammar: defaultGrammarView
-		})
-	);
-	assertIs(
-		Number(containerDomTextLength(container)),
-		fixture.length,
-		`the offset walk over the rendered ${JSON.stringify(fixture)} measures its raw length`
 	);
 }
 

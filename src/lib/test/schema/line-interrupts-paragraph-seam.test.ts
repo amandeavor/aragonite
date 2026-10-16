@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
 	flushPendingRegistrationChecks,
 	hasPendingRegistrationChecks
@@ -8,19 +8,16 @@ import {
 	registerBlockKind,
 	type BlockKindRegistration
 } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerBlockOpener,
-	lineInterruptsParagraph,
-	type BlockOpener
-} from '#lib/schema/block-openers.js';
+import { lineInterruptsParagraph, type BlockOpener } from '#lib/schema/block-openers.js';
 import { testClosure } from '#lib/test/support/closure.js';
-import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 import { collector } from '#lib/test/harness/violation-collector.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // lineInterruptsParagraph reads the same grammar as getOrderedOpeners, so it has the same duties
 // around pending registrations: the two sibling paths must behave alike.
 
 const leaf: BlockKindRegistration = {
+	view: testView(),
 	gapEdges: 'none',
 	mergeRole: 'not-mergeable',
 	editable: true,
@@ -34,16 +31,11 @@ const opener = (priority: number): BlockOpener => ({
 	interruptsParagraph: false
 });
 
-// The unit setup registers built-in descriptors but never components, so every check this file
-// forces reports the missing components; what matters here is what else it finds.
-afterEach(() => allowDevWarns(['invariant:registry-completeness']));
-
 describe('lineInterruptsParagraph as a grammar-consumption join', () => {
 	it('drains pending registration checks like getOrderedOpeners', () => {
 		flushPendingRegistrationChecks();
 		const kind = declarePluginKind('interrupt-flushed');
-		registerBlockKind(kind, leaf);
-		registerBlockOpener(kind, opener(9201));
+		registerBlockKind(kind, { ...leaf, opener: opener(9201) });
 		expect(hasPendingRegistrationChecks()).toBe(true);
 
 		lineInterruptsParagraph('# h');
@@ -56,8 +48,7 @@ describe('lineInterruptsParagraph as a grammar-consumption join', () => {
 		lineInterruptsParagraph('# h');
 
 		const kind = declarePluginKind('interrupt-late');
-		registerBlockKind(kind, leaf);
-		registerBlockOpener(kind, opener(9202));
+		registerBlockKind(kind, { ...leaf, opener: opener(9202) });
 
 		const { report, byTag } = collector();
 		flushPendingRegistrationChecks(report);

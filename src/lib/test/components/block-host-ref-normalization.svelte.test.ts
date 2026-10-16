@@ -6,7 +6,7 @@ import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { resolveBlockSurface, type ContainerBlockComponent } from '#lib/block-component.js';
 import { takeDevWarns } from '../support/warn-gate';
-import { registerBlockComponent } from '#lib/schema/block-component-registry.js';
+import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import { registerBuiltInBlocks } from '#lib/components/built-in-blocks.js';
 import SurfacelessBlock from './fixtures/SurfacelessBlock.svelte';
 import { mountBlockHost, type MountedHost } from './mount-host';
@@ -94,13 +94,10 @@ describe('BlockHost publishes the resolved surface, not the instance', () => {
 
 	it('dev-warns when a component publishes neither surface shape', () => {
 		const doc = parse('surfaceless\n');
-		const kind = testLeaf('host-surfaceless');
-		// The cast is the point: `defineBlockComponent` rejects this component, so the
+		// The cast is the point: `svelteBlockView` rejects this component, so the
 		// only way here is the escape hatch, and this warn is what covers it.
-		registerBlockComponent(kind, {
-			component: SurfacelessBlock as unknown as Parameters<
-				typeof registerBlockComponent
-			>[1]['component']
+		const kind = testLeaf('host-surfaceless', {
+			view: svelteBlockView(SurfacelessBlock as never)
 		});
 		doc.children[0].kind = kind;
 

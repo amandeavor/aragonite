@@ -1,13 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-	registerLiveJoinSeamCleaner,
-	registerLiveSplitRebalancer,
-	__resetLiveJoinSeamCleanerForTests,
-	__resetLiveSplitRebalancerForTests
-} from '#lib/schema/inline-construct-policy.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import { rebalanceLiveSplit } from '#lib/components/blocks/text/live-split-rebalance.js';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { freshOrFixedSeed } from '#lib/test/invariants/arbitraries/index.js';
 import { fuzzLiveGestures, judgeGesture, type FuzzStats } from './live-gesture-fuzz';
 import { parse } from '#lib/core/parser.js';
@@ -38,15 +30,8 @@ let stats: FuzzStats;
 
 // The whole sweep runs in this hook, which outlasts the default hook timeout on a busy machine.
 beforeAll(async () => {
-	registerLiveSplitRebalancer(rebalanceLiveSplit);
-	registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
 	stats = await fuzzLiveGestures({ seed: SEED, docs: DOCS, steps: STEPS });
 }, 120_000);
-afterAll(() => {
-	__resetLiveSplitRebalancerForTests();
-	__resetLiveJoinSeamCleanerForTests();
-});
-
 describe('live-mode gestures at hidden edges', () => {
 	it('leaves no divergence the byte-literal counterpart does not already have', () => {
 		const seams = stats.violations.filter((v) => v.category === 'seam');
@@ -66,6 +51,10 @@ describe('live-mode gestures at hidden edges', () => {
 		// reaches. Both count draws where live diverged from the byte-literal edit.
 		expect(stats.rewrote['format-toggle']).toBeGreaterThan(5);
 		expect(stats.rewrote['word-delete']).toBeGreaterThan(5);
+		// G1.91: a join keeps every kept character's marks but where no spelling can close the run.
+		const joins =
+			stats.rewrote['range-delete'] + stats.rewrote['type-over'] + stats.rewrote['word-delete'];
+		expect(stats.marksDropped).toBeLessThan(joins / 8);
 		// The toggle again, spread over two leaves: the per-block spans a range decomposes into
 		// are verified one at a time, so a range can rewrite where a single block would not.
 		expect(stats.rewrote['cross-format-toggle']).toBeGreaterThan(5);
@@ -176,8 +165,8 @@ describe('the shapes that used to need an exclusion', () => {
 		expect(cut.screen).toBe('https://example.com\n tail');
 	});
 
-	// The typed run goes into the cleanup's verification with the join, so the reading that would
-	// show a pair around it is rejected and the byte-literal replace stands.
+	// The typed run goes into the cleanup's verification with the join, and it fills the code span
+	// it replaced, so the span closes on its own fence instead of a backtick showing.
 	it('#165: the selection replace verifies the bytes it writes', async () => {
 		const typed = await liveAndLiteral('lorem*汉[](u)*`a`\n', {
 			kind: 'type-over',
@@ -185,8 +174,9 @@ describe('the shapes that used to need an exclusion', () => {
 			endOffset: 16,
 			char: 'a'
 		});
-		expect(typed.live).toBe(typed.literal);
-		expect(typed.screen).toBe('lorem汉`a');
+		expect(typed.literal).toBe('lorem*汉[](u)*`a\n');
+		expect(typed.live).toBe('lorem*汉[](u)*`a`\n');
+		expect(typed.screen).toBe('lorem汉a');
 	});
 
 	// The cleaned body starts with a space the item's marker takes on reload: the cleanup reads it

@@ -5,12 +5,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { Component } from 'svelte';
 import type { BlockComponent, BlockComponentExports, BlockComponentProps } from '#lib/plugin.js';
 import {
-	definePluginBlock,
-	registerBlockOpener,
+	definePlugin,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
 	type EditorPlugin
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { mountEditor, type MountedEditor } from '#lib/test/harness/mount-editor.svelte.js';
 import { takeDevWarns } from '../support/warn-gate';
@@ -31,34 +31,33 @@ function markerLinePlugin<P extends Partial<BlockComponentProps> & Record<string
 	marker: string,
 	component: Component<P, BlockComponentExports>
 ): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: kind,
-		kind,
-		component,
-		register: () => {
-			const declared = testLeaf(kind, {
+		setup: () => {
+			testLeaf(kind, (declared) => ({
+				opener: {
+					priority: OPENER_PRIORITIES.thematicBreak - 5,
+					interruptsParagraph: false,
+					tryOpen: (ctx) =>
+						ctx.lines[ctx.index].text === marker
+							? {
+									node: {
+										kind: declared,
+										raw: ctx.lines[ctx.index].raw,
+										leadingTrivia: ctx.leadingTrivia
+									},
+									consumed: 1
+								}
+							: null
+				},
+				view: svelteBlockView(component),
 				closure: simpleLeafClosure({
 					focus: { mode: 'implemented', via: 'the fixture owns the caret door under test' },
 					searchPaint: { mode: 'inherit-default' },
 					undo: { mode: 'inherit-default' },
 					simOracle: { mode: 'inherit-default' }
 				})
-			});
-			registerBlockOpener(declared, {
-				priority: OPENER_PRIORITIES.thematicBreak - 5,
-				interruptsParagraph: false,
-				tryOpen: (ctx) =>
-					ctx.lines[ctx.index].text === marker
-						? {
-								node: {
-									kind: declared,
-									raw: ctx.lines[ctx.index].raw,
-									leadingTrivia: ctx.leadingTrivia
-								},
-								consumed: 1
-							}
-						: null
-			});
+			}));
 		}
 	});
 }

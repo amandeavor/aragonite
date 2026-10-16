@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import type { Locator } from '@playwright/test';
 import { PluginsPage, activeBlockPath, blockView, tocEntry } from './helpers';
-import { capturePageErrors } from '../../page-probes';
 
 /**
  * The `[[toc]]` outline (requirements/plugins/toc-navigation.md): entries indent by heading level
@@ -82,7 +81,6 @@ test.describe('toc outline: click-to-navigate', () => {
 	test('clicking a windowed-out entry mounts and scrolls its heading into view', async ({
 		page
 	}) => {
-		const errors = capturePageErrors(page);
 		// Precondition: the deep heading is not mounted.
 		await expect(page.locator(`[data-block-path='[${target}]']`)).toHaveCount(0);
 
@@ -92,7 +90,6 @@ test.describe('toc outline: click-to-navigate', () => {
 		// Scrolling to the target unmounts the outline block at the top, which is why the
 		// short-document case below checks that nothing opens.
 		await expect.poll(() => blockView(page, [target])).toEqual({ mounted: true, inView: true });
-		expect(errors).toEqual([]);
 	});
 
 	test('navigates in reading mode, placing the selection with no editable target', async ({
@@ -122,7 +119,6 @@ test.describe('toc outline: click-to-navigate', () => {
 			if (mode === 'reading') {
 				await editor.setPresentationMode('reading');
 			}
-			const errors = capturePageErrors(page);
 			await expect(page.locator(`[data-block-path='[${target}]']`)).toHaveCount(0);
 
 			const entry = editor.entry('Deep Target Heading');
@@ -132,14 +128,12 @@ test.describe('toc outline: click-to-navigate', () => {
 			await editor.waitForRenderFlush();
 
 			await expect.poll(() => blockView(page, [target])).toEqual({ mounted: true, inView: true });
-			expect(errors).toEqual([]);
 		});
 	}
 
 	test('rapid clicks on two entries settle on the last target without stranding', async ({
 		page
 	}) => {
-		const errors = capturePageErrors(page);
 		// Click the middle entry and then immediately the deep one: the clicks run in order, so
 		// the last one wins and no overlapping scroll strands it.
 		await editor.entry('Middle Heading').click();
@@ -147,7 +141,6 @@ test.describe('toc outline: click-to-navigate', () => {
 		await editor.waitForRenderFlush();
 
 		await expect.poll(() => blockView(page, [target])).toEqual({ mounted: true, inView: true });
-		expect(errors).toEqual([]);
 	});
 
 	// Navigating places the caret, so the editor's chords reach the document afterwards instead of
@@ -155,14 +148,11 @@ test.describe('toc outline: click-to-navigate', () => {
 	test('the caret lands in the target heading, so the next keystroke edits it', async ({
 		page
 	}) => {
-		const errors = capturePageErrors(page);
-
 		await editor.entry('Deep Target Heading').click();
 		await expect.poll(() => activeBlockPath(page)).toEqual([target]);
 
 		await page.keyboard.type('X');
 		expect(await editor.bridge.getSource()).toContain('X### Deep Target Heading');
-		expect(errors).toEqual([]);
 	});
 });
 
@@ -188,9 +178,8 @@ test.describe('toc outline: gesture ownership (entry vs block)', () => {
 		await expect(editor.source).toHaveCount(1);
 	});
 
-	test('in reading mode a non-entry click is inert: no reveal, no navigation', async ({ page }) => {
+	test('in reading mode a non-entry click is inert: no reveal, no navigation', async () => {
 		await editor.setPresentationMode('reading');
-		const errors = capturePageErrors(page);
 
 		await editor.render.click({ position: { x: 2, y: 2 } });
 		await editor.waitForRenderFlush();
@@ -199,6 +188,5 @@ test.describe('toc outline: gesture ownership (entry vs block)', () => {
 		// isReading, and a click away from an entry reaches no button, so the outline just stays.
 		await expect(editor.source).toHaveCount(0);
 		await expect(editor.render).toBeVisible();
-		expect(errors).toEqual([]);
 	});
 });

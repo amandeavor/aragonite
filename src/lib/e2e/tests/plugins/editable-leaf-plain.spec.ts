@@ -76,9 +76,10 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 
 		await page.keyboard.type('x');
 
-		// The range starts in `Before` and ends at the memo's start, so the two become one line.
+		// The range ends at the memo's first byte, so the memo stays whole and the character
+		// replaces only the text before it.
 		await editor.waitForCrossBlock(false);
-		await expect.poll(() => editor.bridge.getSource()).toMatch(/^[^\n]*x%% memo text\n/);
+		await expect.poll(() => editor.bridge.getSource()).toBe('x\n\n%% memo text\n\nAfter\n');
 		expect(await roundTripStable(page)).toBe(true);
 	});
 

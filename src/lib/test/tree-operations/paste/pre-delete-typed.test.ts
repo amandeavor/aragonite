@@ -2,7 +2,7 @@
 // In live mode a paste over a selection writes what typing the same text over it writes.
 // Miss-analysis: the paste rows cut a range that left the run unpaired, never one the pasted text
 // refills, so no row saw the cut cleaned without the text it was about to take.
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import { parse } from '#lib/core/parser.js';
 import { trimTrailingLineEnding, ownTrailingLineEnding } from '#lib/core/lines.js';
@@ -10,20 +10,8 @@ import type { CstNode } from '#lib/core/nodes.js';
 import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
-import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
-} from '../../harness/editor-actions';
+import { makeStubBlockEdit, runPasteDispatch, makePasteCommit } from '../../harness/editor-actions';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { mountBlock } from '../../harness/mount-block';
 import { settleEditor } from '../../harness/settle';
@@ -33,14 +21,12 @@ import { mountCell, noIslands } from '../../blocks/table/mount-cell';
 const LIVE = fixtureReading({}, 'live');
 
 beforeAll(() => {
-	registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
 	ensurePasteSurface(tableCellPasteSurface);
 });
 afterEach(() => {
 	document.body.innerHTML = '';
 	window.getSelection()?.removeAllRanges();
 });
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
 
 interface Place {
 	name: string;
@@ -65,25 +51,19 @@ const PLACES: Place[] = [
 const leafBytes = (calls: unknown[][]): string[] => calls.map((call) => call[1] as string);
 
 async function paste(place: Place, text: string, range: { start: number; end: number }) {
-	const { deps } = makeEditorActionsDeps(place.wrap(text), { reading: LIVE });
+	const h = makePasteCommit(place.wrap(text), { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
-	await pasteDispatch(
+	await runPasteDispatch(
+		h,
 		{ pastedText: 'x', targetPath: place.leaf, offset: range.start, preDelete: range },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			reading: LIVE,
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
+		{ blockEdit }
 	);
 	return leafBytes(vi.mocked(blockEdit.updateBlockContent).mock.calls);
 }
 
 /** `x` typed over `range`: the block's own rewrite, else the edit the browser keeps. */
 async function type(place: Place, text: string, range: { start: number; end: number }) {
-	const mounted = place.inCell
-		? mountCell(text, { presentationMode: () => 'live' })
-		: mountText(place, text);
+	const mounted = place.inCell ? mountCell(text, { mode: () => 'live' }) : mountText(place, text);
 	const { el } = mounted;
 	el.focus();
 	const at = createRangeAtDomTextOffsets(
@@ -116,7 +96,7 @@ function mountText(place: Place, text: string) {
 		source: place.wrap(text),
 		path: place.leaf,
 		overrides: {
-			policies: { presentationMode: () => 'live' },
+			mode: () => 'live',
 			services: { decorations: noIslands }
 		}
 	});
@@ -149,19 +129,15 @@ describe.each(PLACES)('typing and pasting over one selection, in $name', (place)
 	});
 });
 
-// The pasted text lands where the cleanup left the join, so the caret moves with the runs it dropped.
-it('a paste over a range whose cleanup drops a run puts the caret after the pasted text', async () => {
-	const { deps } = makeEditorActionsDeps('**ab** c\n', { reading: LIVE });
+// The pasted text lands inside the run the cleanup closed, and the caret right after it.
+it('a paste over a range whose cleanup closes a run puts the caret after the pasted text', async () => {
+	const h = makePasteCommit('**ab** c\n', { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
-	await pasteDispatch(
+	await runPasteDispatch(
+		h,
 		{ pastedText: 'x', targetPath: [0], offset: 3, preDelete: { start: 3, end: 8 } },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			reading: LIVE,
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
+		{ blockEdit }
 	);
 	const [call] = vi.mocked(blockEdit.updateBlockContent).mock.calls;
-	expect([call[1], call[4]]).toEqual(['ax\n', 2]);
+	expect([call[1], call[4]]).toEqual(['**ax**\n', 4]);
 });

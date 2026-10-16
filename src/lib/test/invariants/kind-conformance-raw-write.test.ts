@@ -6,8 +6,7 @@ import {
 	declaredPluginKind,
 	matchFenceClose,
 	matchFenceOpen,
-	OPENER_PRIORITIES,
-	registerBlockOpener
+	OPENER_PRIORITIES
 } from '#lib/plugin.js';
 import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
 import { fencedCodeWrite } from '#lib/schema/fenced-code-raw.js';
@@ -18,13 +17,14 @@ import { registerMathBlock, MATH_BLOCK, MATH_FENCE } from '#lib/plugins/latex/la
 import { registerMermaidKind, MERMAID } from '#lib/plugins/mermaid/mermaid-kind.js';
 import type { AnyBlockKind } from '#lib/core/nodes.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const rawWriteStatus = (report: KindConformanceReport) =>
 	report.cells.find((c) => c.cell === 'rawWrite')?.status;
 
 beforeEach(() => {
-	registerMathBlock();
-	registerMermaidKind();
+	registerMathBlock(testView());
+	registerMermaidKind(testView());
 });
 
 describe('kind conformance: the raw-write cell', () => {
@@ -53,29 +53,29 @@ describe('kind conformance: the raw-write cell', () => {
 // A fenced leaf whose raw is its own lines and which declares no rule: cutting its closer leaves an
 // unterminated fence that reads every block below it as its body.
 function registerRulelessFence(): AnyBlockKind {
-	const kind = testLeaf('ruleless-fence', {
+	const kind = testLeaf('ruleless-fence', (kind) => ({
+		opener: {
+			priority: OPENER_PRIORITIES.fencedCode - 5,
+			interruptsParagraph: false,
+			tryOpen(ctx) {
+				const fence = matchFenceOpen(ctx.line.text);
+				if (!fence || fence.info !== 'ruleless') return null;
+				let end = ctx.index + 1;
+				while (end < ctx.end && !matchFenceClose(ctx.lines[end].text, fence.marker, fence.length)) {
+					end++;
+				}
+				end = Math.min(end + 1, ctx.end);
+				const raw = ctx.lines
+					.slice(ctx.index, end)
+					.map((line) => line.raw)
+					.join('');
+				const node = { kind, leadingTrivia: ctx.leadingTrivia, raw, children: [] };
+				return { node, consumed: end - ctx.index };
+			}
+		},
 		editable: false,
 		conformanceFixture: '```ruleless\nbody\n```\n'
-	});
-	registerBlockOpener(kind, {
-		priority: OPENER_PRIORITIES.fencedCode - 5,
-		interruptsParagraph: false,
-		tryOpen(ctx) {
-			const fence = matchFenceOpen(ctx.line.text);
-			if (!fence || fence.info !== 'ruleless') return null;
-			let end = ctx.index + 1;
-			while (end < ctx.end && !matchFenceClose(ctx.lines[end].text, fence.marker, fence.length)) {
-				end++;
-			}
-			end = Math.min(end + 1, ctx.end);
-			const raw = ctx.lines
-				.slice(ctx.index, end)
-				.map((line) => line.raw)
-				.join('');
-			const node = { kind, leadingTrivia: ctx.leadingTrivia, raw, children: [] };
-			return { node, consumed: end - ctx.index };
-		}
-	});
+	}));
 	return kind;
 }
 

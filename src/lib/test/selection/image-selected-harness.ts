@@ -6,7 +6,7 @@ import {
 	surfaceAt,
 	type MountedEditor
 } from '#lib/test/harness/mount-editor.svelte.js';
-import type { EditorProps } from '#lib/editor-props.js';
+import type { EditorProps } from '#lib/components/editor-component-props.js';
 import type { EditorSelection } from '#lib/selection/primitives.js';
 import type { EditorTestSurface } from '#lib/components/editor-root/test-surface.js';
 

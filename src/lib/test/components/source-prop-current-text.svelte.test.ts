@@ -64,7 +64,7 @@ function mountHost(text: string, echo = false) {
 		editor,
 		swaps,
 		surface,
-		async load(next: string) {
+		async load(next: string | undefined) {
 			host.load(next);
 			await settleEditor();
 		},
@@ -164,6 +164,23 @@ describe('mount', () => {
 		flushSync();
 		expect(swapLog.calls).toEqual([{ source: 'b\n', swapped: true }]);
 		expect(host.getEditor().getSource()).toBe('b\n');
+	});
+});
+
+describe('a source write of undefined', () => {
+	it('keeps the document and its undo history, and a later text still loads', async () => {
+		const host = mountHost('Kept\n');
+		await host.type('Kepttyped');
+
+		await host.load(undefined);
+		expect(host.editor.getSource()).toBe('Kepttyped\n');
+		expect(host.swaps).toEqual([]);
+		host.editor.runCommand('history.undo');
+		await settleEditor();
+		expect(host.editor.getSource()).toBe('Kept\n');
+
+		await host.load('other\n');
+		expect(host.editor.getSource()).toBe('other\n');
 	});
 });
 

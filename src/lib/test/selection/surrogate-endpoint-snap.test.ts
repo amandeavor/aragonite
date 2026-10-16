@@ -4,14 +4,11 @@
 // Miss-analysis: GH #167; every generator feeding the endpoint normalizers drew pure ASCII.
 import { describe, it, expect } from 'vitest';
 import { createSelectionState } from '../../selection/selection-state.svelte';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import { normalizeCharEndpoint } from '../../selection/char-endpoint-snap';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { createSharingState } from '../../tree-operations/sharing';
 import type { Document } from '../../core/nodes';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 /** 'a' + U+1F466 (a surrogate pair at offsets 1–2) + 'b'. */
 const BOY = 'a\u{1F466}b\n\ntail\n';
@@ -35,13 +32,7 @@ function loneSurrogatesIn(text: string): number[] {
 function deleteAcross(doc: Document, startOffset: number, endOffset: number): string {
 	const state = createSelectionState({ getDoc: () => doc });
 	state.enterCrossBlock({ path: [0], offset: startOffset }, { path: [1], offset: endOffset });
-	const { newDoc } = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, state.start!, state.end!)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	const { newDoc } = deleteRange(doc, state.start!, state.end!);
 	return serialize(newDoc);
 }
 

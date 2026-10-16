@@ -18,7 +18,7 @@ separately and search restarts on that signal alone.
   total and one overlay paints per new match
 - navigate to the last match, then swap to a document with more matches: the bar
   reads the first match of the new document, not the position carried from the old
-  one (the regression reads `3 / 5` on a document never navigated)
+  one (the regression reads `3 of 5` on a document never navigated)
 
 ## Edge cases
 

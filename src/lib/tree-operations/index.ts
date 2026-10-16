@@ -5,12 +5,8 @@ export {
 	paragraphNode,
 	normalizeReplacementTrivia
 } from './node-primitives';
-export {
-	deleteNode,
-	focusTargetInReplacement,
-	restoreSeparatorOnFill,
-	dropDoubledSeparator
-} from './settle';
+export { deleteNode, restoreSeparatorOnFill, dropDoubledSeparator } from './settle';
+export { focusTargetInReplacement } from './neighbour-merge';
 export { updateNodeContent, reclassifyContainer } from './content-write';
 export type { MergeIntoPrevResult, MergeResult, SplitResult } from './node-ops';
 export { splitNode, assertSingleNodeSink, mergeWithNext, mergeIntoPrevDeepLeaf } from './node-ops';

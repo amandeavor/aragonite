@@ -1,12 +1,8 @@
 <script lang="ts">
 	// A render-primary editable block: all editing behavior lives in `createEditableLeaf`, so
 	// this component owns only the swap between the list and the source, and navigation.
-	import {
-		createEditableLeaf,
-		type DocumentView,
-		type EditorRects,
-		type NodeView
-	} from '#lib/plugin.js';
+	import { type DocumentView, type EditorRects, type NodeView } from '#lib/plugin.js';
+	import { createEditableLeaf } from '#lib/svelte.js';
 	import { collectHeadings } from './heading-outline';
 	import { createNavigationQueue } from './navigation-queue';
 	import type { TocOptions } from './toc-plugin';
@@ -114,12 +110,12 @@
 		padding: 4px 12px;
 		cursor: text;
 		border: 1px solid transparent;
-		border-left: 3px solid var(--color-accent, #567b67);
+		border-left: 3px solid var(--color-accent);
 		border-radius: 4px;
 	}
 
 	.toc-block-render:hover {
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+		background: var(--color-bg-secondary);
 	}
 
 	.toc-block-nav ol {
@@ -146,12 +142,12 @@
 	}
 
 	.toc-block-item:hover {
-		color: var(--color-accent, #567b67);
+		color: var(--color-accent);
 		text-decoration: underline;
 	}
 
 	.toc-block-item:focus-visible {
-		outline: 2px solid var(--color-accent, #567b67);
+		outline: 2px solid var(--color-accent);
 		outline-offset: 1px;
 	}
 
@@ -177,7 +173,7 @@
 
 	.toc-block-empty {
 		font-size: 0.9em;
-		color: var(--color-text-muted, #aaaaaa);
+		color: var(--color-text-muted);
 	}
 
 	/* The entry's own line box lands a pixel under the WCAG 2.5.8 minimum a thumb needs. */

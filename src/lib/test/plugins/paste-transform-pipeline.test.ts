@@ -3,7 +3,7 @@
 // so it is exactly the suite a third-party author can write.
 // Miss-analysis: only e2e specs pinned `registerPasteTransform`, so no unit test saw its wiring.
 import { describe, it, expect } from 'vitest';
-import { definePlugin, registerPasteTransform, isPasteTransformRegistered } from '#lib/plugin.js';
+import { definePlugin, registerPasteTransform } from '#lib/plugin.js';
 import { installPlugins } from '#lib';
 import { applyPasteTransforms, resetPluginPlatformForTests } from '#lib/testing.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
@@ -69,29 +69,9 @@ describe('the registered paste pipeline, driven through aragonite/testing', () =
 	});
 });
 
-describe('isPasteTransformRegistered', () => {
-	it('answers before and after a registration, and after a reset', () => {
-		expect(isPasteTransformRegistered('upcase-headings')).toBe(false);
+describe('registerPasteTransform is register-once', () => {
+	it('throws on a duplicate name, as every registry does', () => {
 		registerPasteTransform(upcaseHeadings);
-		expect(isPasteTransformRegistered('upcase-headings')).toBe(true);
-		expect(isPasteTransformRegistered('never-registered')).toBe(false);
-
-		resetPluginPlatformForTests();
-		expect(isPasteTransformRegistered('upcase-headings')).toBe(false);
-	});
-
-	// What the check exists for: a module-level `registered` flag survives the reset and
-	// silently skips re-registration, so the check has to read the registry itself.
-	it('lets an idempotent registrar re-run across a reset without a dup throw', () => {
-		const registerOnce = () => {
-			if (!isPasteTransformRegistered(upcaseHeadings.name)) registerPasteTransform(upcaseHeadings);
-		};
-		registerOnce();
-		registerOnce();
-		expect(applyPasteTransforms('# title\n')).toBe('# TITLE\n');
-
-		resetPluginPlatformForTests();
-		registerOnce();
-		expect(applyPasteTransforms('# title\n')).toBe('# TITLE\n');
+		expect(() => registerPasteTransform(upcaseHeadings)).toThrow(/already registered/);
 	});
 });

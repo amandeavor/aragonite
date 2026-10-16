@@ -57,7 +57,7 @@ The plugin platform is register-once: setup writes into process-global registrie
 
 **`resetPluginPlatformForTests()`**
 
-Empties every registry a plugin writes into, so each case re-installs from nothing. Call it, then re-install your plugin's **unit**, the installable package `definePlugin` or `definePluginBlock` returns:
+Empties every registry a plugin writes into, so each case re-installs from nothing. Call it, then re-install your plugin's **unit**, the installable package `definePlugin` returns:
 
 ```ts
 import { installPlugins } from '@voithos-labs/aragonite';
@@ -88,7 +88,7 @@ What that clears, and what it deliberately leaves alone:
 - Cleared: everything a plugin registered (kinds, components, openers, commands, languages, inline syntax, paste transforms, directive names and the rest), the renderer a plugin set on a renderer slot, and the installed-plugin set.
 - Built-in registrations survive, exactly as in production, the built-in paste surfaces and code languages included, so a case that pastes into a built-in block after a reset needs nothing re-registered.
 - Runtime state is untouched. The undo stack, the selection, and any live document are yours to set up.
-- It's test-only and throws outside a detected test environment. Detection is Vitest-specific (it reads `process.env.VITEST`), so a suite on another runner opts in first and puts the detected defaults back after:
+- It's test-only and throws outside a detected test environment. Detection is Vitest-specific (it reads `process.env.VITEST`), so a suite on another runner (Jest, Playwright component tests, anything else) opts in first and puts the detected defaults back after. The same switch lets a test call a register function outside a plugin's setup, which throws in a dev build otherwise:
 
 ```ts
 import { configureEditorEnv, resetEditorEnv } from '@voithos-labs/aragonite/testing';
@@ -97,7 +97,7 @@ beforeAll(() => configureEditorEnv({ isTest: true })); // "yes, this really is a
 afterAll(() => resetEditorEnv());
 ```
 
-**Install the unit, not your register function.** `definePluginBlock` generates a setup that runs your `register` step and then binds the component, so calling your own `registerParrotBlock()` here leaves the kind without a component: the editor falls back to a raw-text surface with a dev warning, and your tests pass against a block that isn't yours. Three more identity rules keep a suite honest:
+**Install the unit, not your register function.** Your registrations answer to your plugin only when its setup runs them, and that's how an editor's `plugins` list turns your kind on or off. Call `registerParrotBlock(view)` yourself and the kind belongs to no plugin at all, so every editor shows it and your activation tests pass against a setup no user runs. Three more identity rules keep a suite honest:
 
 - Installing the **same unit instance** twice (the `beforeEach` above plus an editor's `plugins` prop, say) is a no-op, which is why the sample builds `parrot` once at module scope.
 - A **different instance under the same name** is kept out by a first-wins rule, with a dev warning naming the loser.
@@ -139,7 +139,7 @@ fires[0];
 
 `setDevWarnSink` returns the callback it replaced, so a nested harness restores rather than clears.
 
-One prerequisite: warnings and invariant checks only run while the editor believes it's in a dev build, and a callback over a production build stays empty for the wrong reason. A Vitest suite gets the dev flag automatically, because its build resolves it. Under another runner, or a bundler that resolves no export conditions, call `configureEditorEnv({ isDev: true, isTest: true })` in your setup and `resetEditorEnv()` in teardown. `isDev` alone turns both on; `isTest` beside it keeps the test-process rules, so the reset works and a duplicate registration throws instead of being replaced the way a dev server does it.
+One prerequisite: warnings and invariant checks only run while the editor believes it's in a dev build, and a callback over a production build stays empty for the wrong reason. A Vitest suite gets the dev flag automatically, because its build resolves it. Under another runner, or a bundler that resolves no export conditions, call `configureEditorEnv({ isDev: true, isTest: true })` in your setup and `resetEditorEnv()` in teardown. `isDev` alone turns both on; `isTest` beside it keeps the test-process rules, so the reset works and a register call outside a plugin's setup doesn't throw.
 
 ### Proving a paste transform is wired
 
@@ -166,7 +166,7 @@ A component is only really verified mounted, and a jsdom mount is a supported wa
 ```ts
 // @vitest-environment jsdom
 import { mount, flushSync } from 'svelte';
-import { Editor } from '@voithos-labs/aragonite';
+import { Editor } from '@voithos-labs/aragonite/svelte';
 import { installEditorDomStubsForTests } from '@voithos-labs/aragonite/testing';
 
 installEditorDomStubsForTests();
@@ -431,7 +431,7 @@ it('the embed recognizer conforms', async () => {
 
 (The guide's own embed, the one that builds real built-in images, asserts `imageClaim` instead, and excuses `widget` and `editingPolicy`, since a built-in kind renders through the built-in widget.)
 
-Its `detail` strings say how much each cell actually chewed through. For that profile, with the embed rendered by a Svelte `component`, under jsdom:
+Its `detail` strings say how much each cell actually chewed through. For that profile:
 
 ```ts
 const report = await runInlineKindConformance(profile);
@@ -440,7 +440,7 @@ report.cells.map((c) => `${c.cell}: ${c.status} (${c.detail})`);
 //   'claims: asserted (2 claim(s) across 2 fixture(s))',
 //   'roundTrip: asserted (20 source(s) round-trip byte-for-byte and tile their scan range)',
 //   'overlapDecline: asserted (1 prefix position(s) declined across 1 overlap fixture(s))',
-//   'widget: boundary (recognition + self-delimiting claim executed; the widget wrapper of a `component` kind is created by the render layer ...)',
+//   'widget: asserted (recognition and a self-delimiting claim)',
 //   'editingPolicy: asserted (policy vocabulary)', // plus a whole-delete check if your policy says atomic
 //   'imageClaim: exempt (this recognizer builds only its own kind, never a built-in one)',
 //   'registration: asserted (prefix rung at priority 40, below the built-in boundary)'
@@ -459,7 +459,7 @@ Error: overlapDecline asserts but the profile supplies no overlapFixtures
 
 The other three declared cells are yours to excuse, since only you know whether they have anything to bite on. But an excuse the kit can falsify, it falsifies: declaring `imageClaim` exempt while a fixture produces a stamped built-in (a built-in node the scan marked as your recognizer's) fails, as does excusing `widget` for a kind that **is** a registered live widget, or `editingPolicy` for a kind that declares one.
 
-Two things worth knowing about `widget`. It asserts your claimed slice is **self-delimiting**: re-scanning the slice alone must re-form the same kind over its whole length, because that slice is exactly what the widget's `data-source-*` attributes (the ones saying which bytes it stands for) hand the clipboard and a source reveal. And where your kind builds its own widget DOM (`buildWidget`), the kit renders your fixture and measures the caret walk across it, which must equal the source length: a widget counts as its source span, never as what it draws, so an emoji showing one glyph for seven bytes still walks seven. A `component` kind's wrapper is built by the editor, not by you, so that half doesn't run and the cell reports `boundary` rather than claiming a pass (that's the report above). Run the suite under a DOM (`// @vitest-environment jsdom` for Vitest); without one the rendering half can't run either, and the cell again reports `boundary` naming what you lost, while the recognition and self-delimiting checks still execute. That run also prints an `[aragonite:needs-dom]` warning, so you hear about it even if you never read the report: add the jsdom docblock to the top of that test file and the rendering half runs.
+One thing worth knowing about `widget`: it asserts your claimed slice is **self-delimiting**. Re-scanning the slice alone must re-form the same kind over its whole length, because that slice is exactly what the widget's `data-source-*` attributes (the ones saying which bytes it stands for) hand the clipboard and a source reveal. Those attributes sit on the span the editor makes for your view, not on anything you build, so there's nothing about the span left for you to get wrong and the cell needs no DOM.
 
 `registration` is the thinnest cell. It checks three things:
 

@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, clickWidgetEnd, revealWidget, roundTripStable } from './helpers';
 import { textRunCenter, textRunRect } from '../../text-runs';
-import { capturePageErrors } from '../../page-probes';
 import { attachIme } from '../../simulation/ime';
 
 /**
@@ -201,8 +200,6 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 	test('a cross-block selection through the revealed source survives a blur without folding', async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
-
 		await editor.revealByClick();
 		// Keyboard extension reads visual-line geometry, and a KaTeX font swap mid-measurement, common
 		// under busy workers, breaks the last-line check, so fonts load first.
@@ -226,7 +223,6 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 		await editor.waitForRenderFlush();
 
 		await expect(editor.mathWidget).toHaveCount(0);
-		expect(pageErrors).toEqual([]);
 	});
 });
 

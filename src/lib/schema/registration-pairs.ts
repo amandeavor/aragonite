@@ -14,6 +14,8 @@ interface RegistrationFields {
 		reservedChrome?: unknown;
 		unwrapRole?: { firstChildBackspace?: string };
 	};
+	contextDependentKind?: boolean;
+	opener?: unknown;
 }
 
 interface IncoherentPair {
@@ -71,6 +73,13 @@ export const INCOHERENT_REGISTRATION_PAIRS = [
 		holds: (r) =>
 			r.container?.reservedChrome === undefined &&
 			r.container?.unwrapRole?.firstChildBackspace === 'keep-reserved-chrome'
+	},
+	{
+		id: 'context-dependent-opener',
+		fields: 'contextDependentKind with an opener',
+		reason:
+			"the kind's container rebuilds its bytes and skips the reparse, so the opener could never re-derive the kind",
+		holds: (r) => r.contextDependentKind === true && r.opener !== undefined
 	}
 ] as const satisfies readonly IncoherentPair[];
 

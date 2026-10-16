@@ -1,10 +1,14 @@
 # <img alt="header" src="docs/assets/header.png" />
 
+[![npm](https://img.shields.io/npm/v/@voithos-labs/aragonite?color=c56836)](https://www.npmjs.com/package/@voithos-labs/aragonite)
+[![license](https://img.shields.io/npm/l/@voithos-labs/aragonite?color=c56836)](LICENSE)
+[![CI](https://github.com/voithos-labs/aragonite/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/voithos-labs/aragonite/actions/workflows/ci.yml)
+
 > Made for [Limestone Notes](https://limestone.app/) ([source](https://github.com/voithos-labs/limestone)), by [Voithos Labs](https://voithoslabs.com/).
 
 This project is an effort (perhaps in vain) to create a markdown editor that is both open source and not crap. In my book, this means that it has to be lossless, extensible, fast, have a graceful ui/ux, and have a hella good plugin interface. So you know, just some simplistic and easy to achieve goals [^1] [^2].
 
-Note that aragonite is a work in progress [^3]. It's written in typescript and svelte [^4] [^5] [^6] [^7], and tested on chromium browsers (chrome and edge) [^8]. Yes, there are plans to port to different frontend frameworks and test in different browsers. No, not right now, sometime in the future.
+Note that aragonite is a work in progress [^3]. It's written in typescript and svelte [^4] [^5] [^6] [^7] (but usable in react, vue or plain js), and tested on chromium browsers (chrome and edge) [^8]. Yes, there are plans to test in other browsers too. Firefox and safari are next.
 
 _What does it look like?_ Amazing of course:
 
@@ -24,19 +28,17 @@ npm install @voithos-labs/aragonite
 
 ```svelte
 <script>
-	import { Editor } from '@voithos-labs/aragonite';
+	import { Editor } from '@voithos-labs/aragonite/svelte';
 	import '@voithos-labs/aragonite/styles/editor-theme.css';
 
 	let editor;
 	const source = '# Hello\n';
 </script>
 
-<div class="aragonite-editor-theme" data-editor-theme="light">
-	<Editor bind:this={editor} {source} theme="light" />
-</div>
+<Editor bind:this={editor} {source} theme="light" />
 ```
 
-(the wrapper switches on the built-in look, and it says `light` twice because the editor paints no background of its own: the wrapper and the editor both have to match the page they land on, and a fresh app's page is white. On a dark page write `dark` in both spots, or write nothing, dark being the default.)
+(`theme` should match your page, since the editor paints no background of its own. `dark` is the default, btw.)
 
 To save the source, just do something like:
 
@@ -45,6 +47,8 @@ To save the source, just do something like:
 ```
 
 (obviously define the save function)
+
+Not on svelte? There's `@voithos-labs/aragonite-react` and `@voithos-labs/aragonite-vue`, plus `createEditor` for plain js. The [consumer guide](docs/guide/consumer-guide.md#mounting-without-svelte) has a snippet for each.
 
 ## Demo
 
@@ -197,7 +201,7 @@ A plugin component that throws takes down its own block, which degrades to a rea
 
 Also, shipping a kind forces the boring questions up front: the registration type requires declaring how the kind behaves under all nine cross-cutting subsystems (round-tripping, focus, merge, selection, search, reordering, undo, clipboard, and how the fuzzer drives it), and registering enrolls it in a conformance battery: the headless half runs in your own test suite, the browser half in this repo's e2e sweep.
 
-This is the bet. Aragonite cannot top Obsidian in plugin count (in the short term, at least), but what it can try to do is trade plugin count for plugin quality. Score it against my three criterias: reach is the whole own a kind story above, safety is the lossless promise doing double duty, and ergonomics is the part I haven't argued yet, so here it is: svelte and typescript end to end, the entire authoring surface on one import path (`@voithos-labs/aragonite/plugin`), and a public testing seam so your plugin's own test suite isn't an afterthought.
+This is the bet. Aragonite can't top Obsidian on plugin count (not in the short term, anyway), so it's trading count for quality. Against my three criteria: reach is the own-a-kind story above, and safety is the lossless promise pulling double duty. Ergonomics is the one I haven't argued yet: typescript end to end, one import path for the whole authoring surface (@voithos-labs/aragonite/plugin, plus /svelte if you draw your views in svelte), and a public testing seam so your plugin's tests aren't an afterthought.
 
 Does the design actually work in practice? Well, the ten bundled first party plugins (admonitions, details, footnotes, emoji, math, diagrams, table of contents, occurrence highlighting, slash commands, and a party parrot) are built on the exact surface third parties get, so I would describe it as "so far, so good".
 

@@ -8,6 +8,7 @@ import { serialize } from '#lib/core/serializer.js';
 import type { GrammarView } from '#lib/schema/block-openers.js';
 import { createRegistryView } from '#lib/schema/registry-view.js';
 import { registerMathBlock } from '#lib/plugins/latex/latex-kind.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const TABLE = '| a | b |\n| --- | --- |\n| 1 | 2 |\n';
 
@@ -19,7 +20,7 @@ function kinds(source: string, grammar?: GrammarView): string[] {
 
 describe('a table under the editor’s grammar', () => {
 	beforeEach(() => {
-		registerMathBlock();
+		registerMathBlock(testView());
 	});
 
 	it('ends at a `$$` block that closes below, as a paragraph does', () => {

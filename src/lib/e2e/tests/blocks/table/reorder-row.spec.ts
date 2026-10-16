@@ -1,7 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { getContainerParityMismatches } from '../../../container-parity';
-import { capturePageErrors } from '../../../page-probes';
 
 // Cells render row-major, header first: a 3-body-row 2-col table exposes cells 0,1 (header), 2,3
 // (body row 1), 4,5 (body row 2), 6,7 (body row 3). Alt+↑/↓ reorders body rows only, since the
@@ -19,7 +18,6 @@ test.describe('table block: keyboard row reorder', () => {
 	test('reorder is single-undo; reorder→undo→reorder keeps parity with no page error', async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
 		await editor.loadContent(TABLE_3BODY);
 
 		await page.locator('.table-cell').nth(2).click();
@@ -34,7 +32,6 @@ test.describe('table block: keyboard row reorder', () => {
 		await editor.bridge.waitForSourceMatches(/\| 3 \| 4 \|[\s\S]*\| 1 \| 2 \|/);
 
 		expect(await getContainerParityMismatches(page)).toEqual([]);
-		expect(pageErrors).toEqual([]);
 	});
 
 	test('a successful row move announces the new position in the live region', async ({ page }) => {

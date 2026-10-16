@@ -15,6 +15,7 @@ import {
 	type InlineNode,
 	type PluginInlineKind
 } from '#lib/plugin.js';
+import { svelteView } from '#lib/svelte.js';
 import FootnoteReference from './FootnoteReference.svelte';
 import { FOOTNOTE_REF_KIND } from './constants';
 
@@ -58,7 +59,7 @@ export function registerFootnoteReference(): void {
 	});
 	registerInlineWidgetKind(kind, {
 		isWidget: () => true,
-		component: FootnoteReference,
+		view: svelteView(FootnoteReference),
 		editing: { revealSource: true, claimsActivationClick: true }
 	});
 }

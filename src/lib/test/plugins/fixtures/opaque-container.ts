@@ -5,10 +5,9 @@ import {
 	declarePluginKind,
 	declaredPluginKind,
 	registerBlockKind,
-	registerBlockComponent,
-	defineBlockComponent,
 	containerClosure
 } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import type { ContainerBlockComponent } from '#lib/block-component.js';
 import { makeStubBlockEdit } from '../../harness/editor-actions';
@@ -20,6 +19,7 @@ export const OPAQUE_KIND = 'opaque-fixture-container';
 export function registerOpaqueKind(): void {
 	const kind = declarePluginKind(OPAQUE_KIND);
 	registerBlockKind(kind, {
+		view: svelteBlockView(OpaqueContainerBlock),
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
 		// A block whose only edit path would be its own UI.
@@ -35,10 +35,6 @@ export function registerOpaqueKind(): void {
 			simOracle: { mode: 'not-supported', reason: 'test fixture, never in a shipped document' }
 		})
 	});
-	registerBlockComponent(
-		declaredPluginKind(OPAQUE_KIND),
-		defineBlockComponent(OpaqueContainerBlock)
-	);
 }
 
 export interface MountedOpaque {

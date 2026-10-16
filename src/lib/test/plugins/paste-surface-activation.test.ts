@@ -7,15 +7,10 @@ import { activationFor, type PluginActivation } from '#lib/schema/plugin-activat
 import { registerPasteTransform } from '#lib/tree-operations/paste/paste-transforms.js';
 import { getPasteSurface, registerPasteSurface } from '#lib/tree-operations/paste-surfaces.js';
 import { defaultInlineHook } from '#lib/tree-operations/paste/hooks.js';
-import { registerChromeLeaf } from '#lib/editor-actions/plugin/chrome-leaf.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import { makeEditorActionsDeps, makeStubBlockEdit } from '#lib/test/harness/editor-actions.js';
+import { registerChromeLeaf } from '#lib/plugin.js';
+import { makePasteCommit, runPasteDispatch } from '#lib/test/harness/editor-actions.js';
 import type { CstNode } from '#lib/core/nodes.js';
-import type { BlockComponent } from '#lib/block-component.js';
-import type { Component } from 'svelte';
-import { fixtureReading, topLevelStore } from '../harness/fixture-grammar';
+import { topLevelStore } from '../harness/fixture-grammar';
 
 const KIND = 'stamp-note';
 const LEAF = 'stamp-title';
@@ -39,7 +34,7 @@ const stampPlugin = definePlugin({
 				return defaultInlineHook(node, offset, text, undefined, topLevelStore(node), '\n');
 			}
 		});
-		registerChromeLeaf(declarePluginKind(LEAF), {} as Component<object, BlockComponent>);
+		registerChromeLeaf(declarePluginKind(LEAF));
 	}
 });
 
@@ -50,16 +45,11 @@ beforeEach(() => {
 
 async function pasteUnder(activePlugins: PluginActivation): Promise<string[]> {
 	const node = { kind: KIND, leadingTrivia: '', raw: 'target\n' } as CstNode;
-	const { deps } = makeEditorActionsDeps([node]);
-	await pasteDispatch(
+	const h = makePasteCommit([node]);
+	await runPasteDispatch(
+		h,
 		{ pastedText: 'word', targetPath: [0], offset: 'target'.length },
-		{
-			doc: deps.doc,
-			blockEdit: makeStubBlockEdit(),
-			controller: createPasteCoordinator(deps, createUndoController(deps)),
-			reading: fixtureReading(),
-			activePlugins
-		}
+		{ activePlugins }
 	);
 	return ran;
 }

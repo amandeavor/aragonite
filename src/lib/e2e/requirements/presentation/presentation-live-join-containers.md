@@ -1,7 +1,7 @@
 # Feature: live-mode joins under a list marker
 
-When a live cut strands a delimiter run, the join cleanup drops it, so the joined text carries no
-`**` the user never saw. It works under a list marker too: a delete, a cut or typing over a
+When a live cut goes through a format run, the join closes it on the half that stays, so that
+half keeps its format and no `**` shows. It works under a list marker too: a delete, a cut or typing over a
 selection in a list item's first paragraph writes the same text as the same edit at the top level,
 and a reload of the document reads back the tree the edit left. Driven on `/test/editor`
 with `?presentationMode=live`. Every scenario checks the source, since a hidden delimiter and a
@@ -10,12 +10,12 @@ missing one look the same on screen.
 ## Happy paths
 
 - in a list item, a selection from inside bold to inside italic, deleted with Backspace, leaves
-  the joined text with neither `**` nor `*` in the source, and the reload agrees with the tree
-- the same selection typed over puts the character where the two sides now meet
+  `- Some **bo***alic* words` with no delimiter on screen, and the reload agrees with the tree
+- the same selection typed over puts the character inside the bold
 - the same selection cut with `Mod+X` leaves the same bytes
-- in a to-do item the same Backspace cleans up the same way, and the checkbox stays
+- in a to-do item the same Backspace keeps the format the same way, and the checkbox stays
 - a selection from inside a construct in one item into the next item joins the two, and the
-  run it cut off goes with it
+  bold it cut through closes on the first item's text (`- Alpha **be**delta`)
 
 ## Edge cases
 

@@ -10,6 +10,7 @@ import {
 	type IndexedDecoration
 } from './buckets';
 import { islandPosition } from './island-dom';
+import { createMarkHover, type MarkHoverTracker, type MarkIdentity } from './mark-hover';
 import type {
 	BlockDecoration,
 	Decoration,
@@ -33,6 +34,8 @@ const EMPTY_BLOCKS: BlockDecoration[] = [];
 export interface DecorationEngineDeps {
 	getDoc: () => DocumentView;
 	onSourceError?: (sourceName: string, error: unknown) => void;
+	/** A mark's own handler threw; `path` is the mark's. */
+	onMarkError?: (path: number[], error: unknown) => void;
 }
 
 export type DecorationEngine = {
@@ -45,6 +48,9 @@ export type DecorationEngine = {
 	marksForDescendants(path: number[]): IndexedDecoration<MarkDecoration>[];
 	islandsForPath(path: number[]): IndexedDecoration<WidgetDecoration | ReplaceDecoration>[];
 	blockDecorationsForPath(path: number[]): BlockDecoration[];
+	/** Every call into a mark's `interactive` handlers goes through here, so a throw is reported. */
+	runMarkHandler(dec: MarkDecoration, call: () => void): void;
+	markHover: MarkHoverTracker;
 };
 
 export function createDecorationEngine(deps: DecorationEngineDeps): DecorationEngine {
@@ -80,6 +86,26 @@ export function createDecorationEngine(deps: DecorationEngineDeps): DecorationEn
 		const copy = results.slice();
 		copy[i] = next;
 		results = copy;
+	}
+
+	function runMarkHandler(dec: MarkDecoration, call: () => void): void {
+		try {
+			call();
+		} catch (error) {
+			deps.onMarkError?.(dec.path, error);
+		}
+	}
+
+	const markHover = createMarkHover({ identify, runHandler: runMarkHandler });
+
+	function identify(dec: MarkDecoration): MarkIdentity | null {
+		if (!dec.interactive?.onHover) return null;
+		const i = results.findIndex((decs) => decs.includes(dec));
+		if (i < 0) return null;
+		const ordinal = results[i]
+			.slice(0, results[i].indexOf(dec))
+			.filter((d) => sameHoverRange(d, dec)).length;
+		return { source: sources[i].name, path: dec.path, start: dec.start, end: dec.end, ordinal };
 	}
 
 	/** Why the render path will apply nothing for this inline widget, or null when it will.
@@ -216,8 +242,24 @@ export function createDecorationEngine(deps: DecorationEngineDeps): DecorationEn
 			return bucket
 				.filter((d): d is IndexedDecoration<BlockDecoration> => d.dec.type === 'block')
 				.map((d) => d.dec);
-		}
+		},
+		runMarkHandler,
+		markHover
 	};
+}
+
+/** A mark with `onHover` over the same block range. */
+function sameHoverRange(
+	d: Decoration,
+	range: { path: readonly number[]; start: number; end: number }
+): boolean {
+	return (
+		d.type === 'mark' &&
+		!!d.interactive?.onHover &&
+		d.start === range.start &&
+		d.end === range.end &&
+		pathKey(d.path) === pathKey(range.path)
+	);
 }
 
 // A re-run inside a commit would let a source read a half-applied tree.

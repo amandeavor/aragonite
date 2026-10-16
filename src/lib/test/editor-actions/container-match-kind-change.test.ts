@@ -6,16 +6,12 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import { assignChildIdsDeep } from '#lib/block-id.js';
 import {
 	makeBlockListState,
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
+	runPasteDispatch,
+	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 
@@ -25,29 +21,24 @@ describe('a container-matching merge that completes a code fence', () => {
 		['alone', '- `a\n', 1, '- ``\n', '- ```a\n'],
 		['under a line it splits off', '- a\n  `b\n', 3, '- ``\n- z\n', '- a\n  ```\n- zb\n']
 	])('%s: the target block follows its bytes', async (_name, source, offset, pasted, after) => {
-		const { deps } = makeEditorActionsDeps(parse(source));
-		const list = deps.doc.children[0];
+		const h = makePasteCommit(parse(source));
+		const list = h.doc.children[0];
 		// A mounted item holds ids for its children, which a kind change has to keep in step.
 		assignChildIdsDeep(list);
 		registerBlockListState(
 			list,
-			makeBlockListState(() => deps.doc.children[0])
+			makeBlockListState(() => h.doc.children[0])
 		);
-		const coordinator = createPasteCoordinator(deps, createUndoController(deps));
 
-		await pasteDispatch(
+		await runPasteDispatch(
+			h,
 			{ pastedText: pasted, targetPath: [0, 0, 0], offset },
-			pasteContext({
-				doc: deps.doc,
-				blockEdit: makeStubBlockEdit(),
-				controller: coordinator,
-				crossBlock: true
-			})
+			{ crossBlock: true }
 		);
 
-		expect(serialize(deps.doc)).toBe(after);
-		expect(describeConvergence(deps.doc)).toBeNull();
-		const item = deps.doc.children[0].children![0];
+		expect(serialize(h.doc)).toBe(after);
+		expect(describeConvergence(h.doc)).toBeNull();
+		const item = h.doc.children[0].children![0];
 		expect(item.childIds).toHaveLength(item.children!.length);
 	});
 });

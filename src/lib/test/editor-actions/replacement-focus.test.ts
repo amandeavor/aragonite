@@ -10,6 +10,7 @@ import { declaredPluginKind } from '#lib/schema/plugin-kind.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { legalizeWrite } from '#lib/tree-operations/content-write.js';
 import type { NodeView } from '#lib/core/node-views.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 /** `text` made legal as the only child of `owner`, the way the write hands it to the trial. */
 const legalIn = (node: NodeView, text: string, owner?: NodeView) =>
@@ -71,7 +72,7 @@ describe('focusMovedOutsideReplacement', () => {
 // bytes the write stores, which differ when a container rewrites its body's bytes.
 describe('previewContentReparse reads the write the owning container made legal', () => {
 	beforeEach(() => {
-		registerDetailsKind();
+		registerDetailsKind(testView());
 	});
 
 	const bodyParagraph = () => parse('body\n').children[0];

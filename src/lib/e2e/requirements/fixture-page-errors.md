@@ -1,10 +1,12 @@
-# Harness: the fixture sees window.onerror
+# Harness: the fixture sees uncaught errors
 
-Chromium reports some failures, a ResizeObserver loop among them, only to `window.onerror`, never
-as a Playwright `pageerror`. The fixture relays those to its console watch, so they fail the spec
-that provoked them unless the spec claims them in `expectPageErrors`.
+The fixture fails any spec that provokes an uncaught error, so specs assert none of their own. A
+thrown error or rejection arrives as a Playwright `pageerror`. Chromium reports some failures, a
+ResizeObserver loop among them, only to `window.onerror`; the fixture relays those too, and a spec
+claims one in `expectPageErrors`.
 
 ## Happy paths
 
+- an uncaught thrown error fails the spec at teardown, with no assertion in the spec
 - an onerror-only error nobody claims fails the spec at teardown
 - a claimed onerror-only error passes, and the claimed message must fire

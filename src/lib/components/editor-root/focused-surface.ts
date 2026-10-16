@@ -7,6 +7,7 @@
 
 import type { BlockComponent } from '../../block-component';
 import type { DocumentGetter } from '../../editor-keys';
+import type { DocumentStamp, DocumentStamps } from '../../editor-actions/commit/document-stamp';
 import type { InsertMarkdownOptions } from '../../editor-props';
 import type { KindCommandTarget } from '../../schema/block-commands';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
@@ -26,6 +27,7 @@ export interface FocusedSurfaceDeps {
 	undoStep(path: number[], offset: number, run: () => Promise<unknown>): Promise<void>;
 	/** The counter every byte write bumps (`editor-actions/commit/content-version.svelte.ts`). */
 	contentVersion(): number;
+	stamps: Pick<DocumentStamps, 'current'>;
 }
 
 export interface FocusedSurface {
@@ -46,21 +48,21 @@ export function createFocusedSurface(deps: FocusedSurfaceDeps): FocusedSurface {
 		return findSurfacePathForElement(active);
 	}
 
-	// True only when bytes moved: a block answers for the paste it handled, and a write the
-	// commit then refused (a switch to reading mid-insert) moves none.
-	async function insertAtFocus(md: string): Promise<boolean> {
+	// True only when bytes moved into the document the insert was made for: a block answers for
+	// the paste it handled, and a write the commit refused (reading mode, a swap) moves none.
+	async function insertAtFocus(md: string, madeFor: DocumentStamp): Promise<boolean> {
 		const at = path();
-		if (!at) return false;
+		if (!at || !madeFor.live) return false;
 		const before = deps.contentVersion();
 		const handled = (await deps.getBlockComponent(at)?.insertMarkdown?.(md)) ?? false;
-		return handled && deps.contentVersion() !== before;
+		return handled && madeFor.live && deps.contentVersion() !== before;
 	}
 
-	async function insertBelow(topIndex: number, md: string): Promise<boolean> {
+	async function insertBelow(topIndex: number, md: string, madeFor: DocumentStamp) {
 		let inserted = false;
 		await deps.undoStep([topIndex], 0, async () => {
 			await deps.insertParagraph(topIndex + 1, '');
-			inserted = await insertAtFocus(md);
+			inserted = await insertAtFocus(md, madeFor);
 		});
 		return inserted;
 	}
@@ -85,12 +87,14 @@ export function createFocusedSurface(deps: FocusedSurfaceDeps): FocusedSurface {
 			};
 		},
 		insertMarkdown(md, options) {
-			if (options?.placement !== 'below') return insertAtFocus(md);
+			// Made for the document in place now, so a swap or an unmount before it lands refuses it.
+			const madeFor = deps.stamps.current();
+			if (options?.placement !== 'below') return insertAtFocus(md, madeFor);
 			const at = path();
 			if (!at || deps.isReading() || !deps.getBlockComponent(at)?.insertMarkdown) {
 				return Promise.resolve(false);
 			}
-			return insertBelow(at[0], md);
+			return insertBelow(at[0], md, madeFor);
 		}
 	};
 }

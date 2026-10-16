@@ -46,7 +46,7 @@ export type Op =
 	| { t: 'typeItem'; i: number; n: number }
 	| { t: 'toggleTask'; i: number }
 	| { t: 'typeQuote'; i: number; n: number }
-	| { t: 'tableInsertRow'; i: number }
+	| { t: 'tableInsertRow'; i: number; above?: boolean }
 	| { t: 'tableDeleteRow'; i: number }
 	| { t: 'tableInsertColumn'; i: number }
 	| { t: 'tableDeleteColumn'; i: number }
@@ -79,7 +79,7 @@ export const arbOp: fc.Arbitrary<Op> = fc.oneof(
 	fc.record({ t: fc.constant('typeItem' as const), i: fc.nat(5), n: fc.nat(2) }),
 	fc.record({ t: fc.constant('toggleTask' as const), i: fc.nat(5) }),
 	fc.record({ t: fc.constant('typeQuote' as const), i: fc.nat(3), n: fc.nat(2) }),
-	fc.record({ t: fc.constant('tableInsertRow' as const), i: fc.nat(4) }),
+	fc.record({ t: fc.constant('tableInsertRow' as const), i: fc.nat(4), above: fc.boolean() }),
 	fc.record({ t: fc.constant('tableDeleteRow' as const), i: fc.nat(4) }),
 	fc.record({ t: fc.constant('tableInsertColumn' as const), i: fc.nat(3) }),
 	fc.record({ t: fc.constant('tableDeleteColumn' as const), i: fc.nat(3) }),
@@ -380,8 +380,10 @@ async function runTableOp(
 		reading: fixtureReading()
 	});
 
-	if (op.t === 'tableInsertRow') await ctx.insertRowBelow(op.i % rowCount);
-	else if (op.t === 'tableDeleteRow') await ctx.deleteRow(op.i % rowCount);
+	if (op.t === 'tableInsertRow') {
+		const rowIdx = op.i % rowCount;
+		await (op.above ? ctx.insertRowAbove(rowIdx) : ctx.insertRowBelow(rowIdx));
+	} else if (op.t === 'tableDeleteRow') await ctx.deleteRow(op.i % rowCount);
 	else if (op.t === 'tableInsertColumn') await ctx.insertColumnRight(op.i % colCount);
 	else if (op.t === 'tableDeleteColumn') await ctx.deleteColumn(op.i % colCount);
 	else if (op.t === 'tableReorderRow') {

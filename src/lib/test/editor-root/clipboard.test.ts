@@ -7,8 +7,9 @@ import { registerEditor, __resetActiveEditorForTests } from '#lib/active-editor.
 import { parse } from '#lib/core/parser.js';
 import { createEditorEvents, type EditorError } from '#lib/editor-events.js';
 import type { BlockComponent } from '#lib/block-component.js';
-import type { PasteImageHook } from '#lib/editor-keys.js';
+import type { PasteImageHook } from '#lib/host-hooks.js';
 import type { CrossBlockHandlers } from '#lib/selection/cross-block/dispatch.js';
+import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 
 // Chromium retargets a clipboard event to <body> when the selection has no caret, at a cross-block
@@ -49,7 +50,8 @@ function harness(options: HarnessOptions = {}) {
 			selection.collapse();
 			return false;
 		},
-		performCrossBlockCut: deleted
+		performCrossBlockCut: deleted,
+		reading: fixtureReading()
 	} as unknown as CrossBlockHandlers;
 
 	const events = createEditorEvents();
@@ -60,7 +62,7 @@ function harness(options: HarnessOptions = {}) {
 		selection,
 		getDoc: () => doc,
 		crossBlock,
-		onPasteImage: options.onPasteImage,
+		onPasteImage: () => options.onPasteImage,
 		events,
 		getBlockComponent: (path) => (path[0] === 0 ? (options.widgetBlock ?? null) : null)
 	});

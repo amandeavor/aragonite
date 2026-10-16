@@ -2,14 +2,10 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext,
-	registerStubBlockListState
+	registerStubBlockListState,
+	runPasteDispatch,
+	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 
@@ -17,22 +13,15 @@ import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 // Miss-analysis: GH #436, every residue test cut a one-line leaf, and the shortened tree converged.
 
 async function paste(source: string, targetPath: number[], offset: number, clipboard: string) {
-	const { deps } = makeEditorActionsDeps(parse(source));
+	const h = makePasteCommit(parse(source));
 	// Every container on the path stands for a mounted scope, as it does in the editor.
-	let scope = deps.doc.children[targetPath[0]];
+	let scope = h.doc.children[targetPath[0]];
 	for (const index of targetPath.slice(1)) {
 		registerStubBlockListState(scope);
 		scope = scope.children![index];
 	}
-	await pasteDispatch(
-		{ pastedText: clipboard, targetPath, offset },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: makeStubBlockEdit(),
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
-	);
-	return deps.doc;
+	await runPasteDispatch(h, { pastedText: clipboard, targetPath, offset });
+	return h.doc;
 }
 
 describe('a multi-block paste keeps every line after the caret', () => {

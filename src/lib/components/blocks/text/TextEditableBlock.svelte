@@ -1,19 +1,10 @@
 <script lang="ts">
-	import { getContext, onDestroy, tick, untrack } from 'svelte';
+	import { getContext, onDestroy, untrack } from 'svelte';
 	import { CURSOR_START, type AmbientPrefix, type BlockComponent } from '../../../block-component';
 	import { ambientHoldsTaskBox } from '../list/task-checkbox';
 	import type { DocumentView, NodeView } from '../../../core/node-views';
 	import type { EditorRects } from '../../../editor-rects';
-	import { editTargetAt, enterLinkCardAtCaret } from '../../link-card/link-card-entry';
-	import {
-		EDITOR_DOC_KEY,
-		EDITOR_POLICIES_KEY,
-		EDITOR_SERVICES_KEY,
-		LIST_CONTEXT_KEY,
-		type EditorDoc,
-		type EditorPolicies,
-		type EditorServices
-	} from '../../../editor-keys';
+	import { LIST_CONTEXT_KEY } from '../../../editor-keys';
 	import type { IndexedDecoration } from '../../../decorations/buckets';
 	import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 	import {
@@ -28,14 +19,7 @@
 	import { widgetEdgeBox } from '../../../caret/drawn-caret-measure';
 	import type { WidgetEdgeBox } from '../../../caret/drawn-caret-target';
 	import { FALLBACK_CONTENT_WIDTH } from '../../../windowing/typography-estimates';
-	import {
-		createInlineFormatActiveMemo,
-		toggleInlineFormat
-	} from '../../../core/inline/format-toggle';
-	import {
-		inlineMarkForCommand,
-		type InlineMarkKind
-	} from '../../../schema/inline-construct-policy';
+	import { inlineMarkForCommand } from '../../../schema/inline-construct-policy';
 	import {
 		cycleHeading,
 		demoteEmptyAtxHeading,
@@ -48,25 +32,24 @@
 	import { blockNodeAt } from '../../../tree-operations/node-primitives';
 	import { readAsOpened } from '../../../schema/opened-reading';
 	import { createTextClipboard } from './text-clipboard';
+	import { createInlineCommands } from './inline-commands';
+	import { createTypedInput } from './typed-input';
 	import { createTextRender } from './text-render';
 	import { createWidgetInteraction } from './widget-interaction';
 	import { createEdgePolicyDispatch } from './edge-policy-dispatch';
 	import { createEdgeStep } from './edge-step';
-	import { applyTypedInput, createTypedPlacement } from './edge-seat';
+	import { createTypedPlacement } from './edge-seat';
 	import { handlePendingBreakKey, type PendingBreakKeyDeps } from './pending-break-keys';
 	import { handleHomeKey, type HomeKeyDeps } from './home-key';
-	import { keepsKindAt } from '../../../core/inline/live-edit/read-back';
 	import { storedAsAt } from '../../../tree-operations/stored-as';
-	import { applyLiveRangeEdit } from './live-selection-edit';
 	import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
-	import { applyDelimiterAutoPair } from './delimiter-autopair';
 	import { createCompositionSeat } from './composition-seat';
 	import { createConstructReveal } from './construct-reveal';
-	import { assertInvariant } from '../../../assert';
-	import { widgetElByStart, widgetsIn } from './widget-adjacency';
+	import { widgetsIn } from './widget-adjacency';
+	import { widgetElByStart } from '../../../core/inline/inline-widgets';
 	import { caretLandableBounds, handleSharedKeydown } from '../../../selection/shared-keydown';
 	import { createEditableSurface, consumePendingRestore } from '../editable/editable-surface';
-	import { rangeWrite, withOwnEnding } from '../editable/surface-write';
+	import { rangeWrite } from '../editable/surface-write';
 	import type { ContentWrite } from '../../../action-contracts';
 	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import {
@@ -124,16 +107,13 @@
 
 	const wiring = wireSurfaceContexts();
 	const {
-		blockEdit,
 		focusActions,
 		controller,
-		pasteCoordinator,
 		caretMemory,
 		caretWriter,
 		selection,
 		getDoc,
 		getEditorRoot,
-		activePlugins,
 		events: editorEvents,
 		reading
 	} = wiring.deps;
@@ -151,7 +131,7 @@
 		drawnCaret,
 		presses,
 		textMoves
-	} = getContext<EditorServices>(EDITOR_SERVICES_KEY);
+	} = wiring.services;
 	const ownPairs = autoPairs.forBlock();
 
 	const {
@@ -160,36 +140,12 @@
 		imageLoadPolicy,
 		brokenImageUrls: brokenUrlCache,
 		theme: getTheme,
-		onPasteImage,
 		activationClick
-	} = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
-	const { contentVersion: getContentVersion } = getContext<EditorDoc>(EDITOR_DOC_KEY);
+	} = wiring.policies;
+	const { contentVersion: getContentVersion } = wiring.doc;
 	const readOnly = $derived(reading.mode() === 'reading');
 	const combobox = $derived(inlineMenuCombobox(myPath));
 
-	/** What the link card is asked about here, the same shape a table cell passes: `range` is the
-	 *  live selection both when the chord runs and when the pressed state is read. */
-	const linkCardQuery = (contentEl: HTMLElement, range: { start: number; end: number } | null) => ({
-		contentEl,
-		block: node,
-		path: myPath,
-		reading,
-		selection: range,
-		crossBlockRange: selection.isCrossBlock
-	});
-	const enterLinkCard = () => {
-		if (el) {
-			enterLinkCardAtCaret({
-				...linkCardQuery(el, cursor.getRawSelection()),
-				card: linkCard,
-				enterWidget: widgetInteraction.enterWidget,
-				placeCaretInText: (offset) => {
-					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
-					editableSurface.insideCloser.open(offset);
-				}
-			});
-		}
-	};
 	// A shared constant keeps an empty decoration list out of the render key.
 	const NO_ISLANDS: IndexedDecoration<WidgetDecoration | ReplaceDecoration>[] = [];
 	let el: HTMLDivElement | undefined = $state();
@@ -299,7 +255,7 @@
 				)
 			)
 	});
-	const { writeText, pendingBreak } = editableSurface;
+	const { writeText, blockEdit, pendingBreak } = editableSurface;
 	export const afterSelectionRemoved = editableSurface.afterSelectionRemoved;
 
 	const crossBlock = editableSurface.crossBlock;
@@ -356,18 +312,9 @@
 			return myPath;
 		},
 		cursor,
-		caret: editableSurface.caret,
-		crossBlock,
+		surface: editableSurface,
 		selection,
-		caretMemory,
-		blockEdit,
-		pasteCoordinator,
-		activePlugins,
-		getDoc,
-		events: editorEvents,
-		onPasteImage,
 		setPendingCursor: (offset) => setPendingCursorOffset(offset, 'clipboard'),
-		isReadOnly: () => readOnly,
 		foldRevealBeforeMutation: () => widgetInteraction.foldRevealBeforeMutation(),
 		isRevealing: () => widgetInteraction.isRevealing(),
 		readRevealedText: () => readRawText(),
@@ -375,6 +322,51 @@
 			return reading;
 		}
 	});
+
+	const commands = createInlineCommands({
+		getEl: () => el ?? null,
+		get node() {
+			return node;
+		},
+		get index() {
+			return index;
+		},
+		get path() {
+			return myPath;
+		},
+		reading,
+		cursor,
+		selection,
+		widgets: widgetInteraction,
+		surface: editableSurface,
+		controller,
+		linkCard,
+		formatText: () => ({ display: getDisplayText(), content: getContentRange(node) }),
+		setSelection: (start, end) => setSelection(start, end)
+	});
+
+	const typedInput = createTypedInput({
+		get node() {
+			return node;
+		},
+		cursor,
+		storedAs,
+		widgets: widgetInteraction,
+		placement: typedPlacement,
+		caretMemory,
+		hiddenRunAt: edgeStep.hiddenRunAt,
+		reading,
+		ownPairs,
+		writeText,
+		// While a source is shown the caret counts into the DOM text.
+		text: () => (widgetInteraction.isRevealing() ? readRawText() : getDisplayText()),
+		content: () => getContentRange(node),
+		completesLine
+	});
+
+	function completesLine(caret: number): boolean {
+		return planTypedCompletion(node, caret, grammar, editableSurface.lineEnding()) !== null;
+	}
 
 	// Showing markers in preview-inline mode: CSS classes only, no keys intercepted.
 	const constructReveal = createConstructReveal({
@@ -513,7 +505,6 @@
 	function writeHardBreak(offset: number): void {
 		const content = getContentRange(node);
 		const lineEnd = content.end + sameLineSuffix(node).length;
-		const ending = editableSurface.lineEnding();
 		// A caret in front of a hidden closer at the end is at the end too: nothing paints past it.
 		const textEnd = Math.min(content.end, caretBounds().end);
 		if (offset >= textEnd && offset <= lineEnd) {
@@ -521,10 +512,10 @@
 			if (!controller.admitsGesture('hardBreak')) return;
 			// The insertion that writes the break starts its own undo entry.
 			controller.flushDebouncedCheckpoint();
-			pendingBreak.open({ textEnd: content.end, lineEnd, ending });
-			setPendingCursorOffset(lineEnd, 'hard-break');
+			setPendingCursorOffset(editableSurface.openBreakAtEnd(1), 'hard-break');
 			return;
 		}
+		const ending = editableSurface.lineEnding();
 		const { newRaw, caretOffset } = insertHardBreak(node.raw, offset, ending, content);
 		const write = blockEdit.updateBlockContent(index, newRaw, 'authored', offset, caretOffset);
 		if (write.admitted) setPendingCursorOffset(write.caret, 'hard-break');
@@ -586,7 +577,7 @@
 			case 'link.openCard':
 				// Consumed whether or not a card opens: `reservedChords()` reports Mod+K as the editor's,
 				// and the browser default (Ctrl+K kills a line) would surprise the host.
-				return always(enterLinkCard);
+				return always(() => commands.enterLinkCard(cursor.getRawSelection()));
 			case 'heading.cycle':
 				return {
 					// A heading marks prose. The raw-editable kinds bind this keymap too, and there
@@ -622,7 +613,9 @@
 				const marked = inlineMarkForCommand(id);
 				return marked === null
 					? null
-					: always(() => toggleFormat(marked.kind, selected ?? { start: offset, end: offset }));
+					: always(() =>
+							commands.toggleFormat(marked.kind, selected ?? { start: offset, end: offset })
+						);
 			}
 		}
 	}
@@ -633,51 +626,13 @@
 			const offset = cursor.getRaw() ?? 0;
 			const command = blockCommand(id, arg, offset, cursor.getRawSelection(), run);
 			if (!command || !command.applies()) return false;
-			afterSourceCommit(() => performBlockCommand(id, command.perform), offset);
+			commands.perform(id, command.perform, offset);
 			return true;
 		}
 	);
 
-	// A shown source holds this block's edit in the DOM only, so a command waits for it to be
-	// written; the user's offset stays valid, since the written text is the DOM text.
-	export function afterSourceCommit(run: () => void, offset = cursor.getRaw() ?? 0): void {
-		if (!widgetInteraction.isRevealing()) return run();
-		const fold = widgetInteraction.foldRevealBeforeMutation(offset);
-		void (fold?.settled ?? tick()).then(run);
-	}
-
-	// A toolbar asks once per button on every selection change, so the buttons share the parse.
-	const formatActive = createInlineFormatActiveMemo();
-
-	// Whether a button shows as pressed: the same displayed text, content and selection the
-	// toggle itself uses, and for the card the same construct its own entry resolves.
-	export function isCommandActive(id: CommandId): boolean {
-		const marked = inlineMarkForCommand(id);
-		if (!marked) {
-			// The link card is the one pressed state no mark policy answers.
-			if (id !== 'link.openCard' || !el) return false;
-			return editTargetAt(linkCardQuery(el, cursor.getRawSelection())) !== null;
-		}
-		const caret = cursor.getRaw() ?? 0;
-		const selection = cursor.getRawSelection() ?? { start: caret, end: caret };
-		return formatActive(
-			{ display: getDisplayText(), content: getContentRange(node), selection, reading },
-			marked.kind
-		);
-	}
-
-	// A command never writes while a source is shown, so a failure means a `runCommand` branch
-	// skipped hiding it (G1.26). TODO: hide a shown source at the other entry paths that write.
-	function performBlockCommand(id: CommandId, perform: () => void): void {
-		assertInvariant('reveal-transition', () =>
-			widgetInteraction.isRevealing()
-				? { code: 'command-during-reveal', message: `${id} mutated the block with a reveal open` }
-				: null
-		);
-		// A command is not typing: its bytes are their own undo step, so one Ctrl+Z undoes the
-		// command alone rather than the burst of typing around it.
-		controller.isolateUndoEntry(perform);
-	}
+	export const afterSourceCommit = commands.afterSourceCommit;
+	export const isCommandActive = commands.isCommandActive;
 
 	void ({
 		editable,
@@ -854,61 +809,8 @@
 		if (wiring.dispatchChord(e, target)) return;
 	}
 
-	/** A range edit in a mode that draws no delimiter goes through the join rules, since the browser
-	 *  would leave the crossed markers behind. Elsewhere the browser keeps its own edit. */
-	function handleLiveSelectionEdit(e: InputEvent): boolean {
-		return applyLiveRangeEdit(
-			e,
-			node,
-			cursor,
-			storedAs(),
-			widgetInteraction.isRevealing,
-			(edit) =>
-				void writeText({
-					...rangeWrite(edit),
-					intent: 'typed',
-					mode: 'authored',
-					source: 'live-selection-edit'
-				})
-		);
-	}
-
-	// The write takes the same path as the range edit above, so the block repaints once with the
-	// caret inside the pair. While a source is shown the caret counts into the DOM text instead.
-	function handleDelimiterAutoPair(e: InputEvent): boolean {
-		return applyDelimiterAutoPair(e, {
-			text: () => (widgetInteraction.isRevealing() ? readRawText() : getDisplayText()),
-			content: () => getContentRange(node),
-			caret: () => cursor.getRaw(),
-			placeTyped: typedPlacement.offsetFor,
-			hasSelection: () => cursor.getRawSelection() !== null,
-			isRevealing: widgetInteraction.isRevealing,
-			foldReveal: () => widgetInteraction.foldRevealBeforeMutation(),
-			setCaret: (offset) => cursor.setRaw(asRawOffset(offset), { clamp: 'exact' }),
-			seatOutside: caretMemory.noteOutside,
-			passCloser: typedPlacement.passCloser,
-			hiddenRunAt: edgeStep.hiddenRunAt,
-			completesLine: (caret) =>
-				planTypedCompletion(node, caret, grammar, editableSurface.lineEnding()) !== null,
-			// Each auto-pair caller asks this itself until the caret-edge key table gives it one caller.
-			keepsKind: (line) => keepsKindAt(node, line, storedAs()),
-			reading,
-			ownPairs,
-			write: (text, caretAfter) =>
-				void writeText({
-					text,
-					caretAfter,
-					intent: 'typed',
-					mode: 'authored',
-					source: 'delimiter-autopair',
-					inPlace: true
-				})
-		});
-	}
-
 	function onBeforeInput(e: InputEvent): void {
-		const typedSteps = { autoPair: handleDelimiterAutoPair, rangeEdit: handleLiveSelectionEdit };
-		if (applyTypedInput(e, typedSteps)) return;
+		if (typedInput(e)) return;
 		// An `insertLineBreak` from a soft keyboard or IME got past `onKeyDown`: consume it, since
 		// Shift+Enter is what makes a hard break.
 		if (e.inputType === 'insertLineBreak') {
@@ -992,49 +894,6 @@
 			moved: presses.travelled(e)
 		});
 	}
-
-	// ── Formatting shortcuts ────────────────────────────────────────────
-
-	// `range` was read before the command ran and must not be read again: hiding a shown source
-	// collapses the live selection.
-	function toggleFormat(format: InlineMarkKind, range: { start: number; end: number }): void {
-		if (!el) return;
-
-		// Where the markers stay hidden, an empty `****` would be invisible bytes, so the mark waits
-		// for the next insertion (`docs/design/live-mode.md` § 4.3).
-		if (reading.hidesDelimitersAtCaret() && range.start === range.end) {
-			// The insertion that spends the mark starts its own undo entry, so it is never
-			// merged into the burst the chord interrupted.
-			controller.flushDebouncedCheckpoint();
-			editableSurface.pendingMarks.toggle(format);
-			return;
-		}
-
-		const toggled = toggleInlineFormat(
-			{
-				display: getDisplayText(),
-				content: getContentRange(node),
-				selection: range,
-				reading
-			},
-			format
-		);
-		if (!toggled) return;
-		const { newDisplay, newSelStart, newSelEnd } = toggled;
-
-		const write = blockEdit.updateBlockContent(
-			index,
-			withOwnEnding(node, newDisplay),
-			'literal',
-			range.start,
-			newSelStart
-		);
-		if (!write.admitted) return;
-
-		tick().then(() => {
-			setSelection(write.caret, write.storedOffset(newSelEnd));
-		});
-	}
 </script>
 
 <!-- Reading mode turns contenteditable off, ruling out every browser edit; tabindex keeps focus
@@ -1113,7 +972,7 @@
 	}
 
 	.text-editable-block :global(.md-autolink) {
-		color: var(--syntax-url, var(--color-accent, #567b67));
+		color: var(--syntax-url, var(--color-accent));
 		text-decoration: underline;
 	}
 </style>

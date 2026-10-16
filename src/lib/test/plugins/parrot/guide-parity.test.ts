@@ -88,9 +88,11 @@ function nestOneLevel(block: string[]): string[] {
 	});
 }
 
-/** Adaptation (a): a bundled plugin imports only the in-repo barrel alias (G4.16). */
+/** Adaptation (a): a bundled plugin imports only the in-repo barrel aliases (G4.16). */
 const toLibImport = (code: string) =>
-	code.replaceAll("'@voithos-labs/aragonite/plugin'", `'${aliasSpecifier(SOURCE.pluginBarrel)}'`);
+	code
+		.replaceAll("'@voithos-labs/aragonite/plugin'", `'${aliasSpecifier(SOURCE.pluginBarrel)}'`)
+		.replaceAll("'@voithos-labs/aragonite/svelte'", `'${aliasSpecifier(SOURCE.svelteBarrel)}'`);
 
 function derivePluginModule(): string {
 	return toLibImport(fenceIn(PLUGIN_MARKER));
@@ -137,6 +139,8 @@ describe('the derivation performs both adaptations', () => {
 		const derived = derivePluginModule();
 		expect(fenceIn(PLUGIN_MARKER)).toContain("'@voithos-labs/aragonite/plugin'");
 		expect(derived).toContain("from '#lib/plugin.js'");
+		expect(fenceIn(PLUGIN_MARKER)).toContain("'@voithos-labs/aragonite/svelte'");
+		expect(derived).toContain("from '#lib/svelte.js'");
 		expect(derived).not.toContain('@voithos-labs/aragonite');
 	});
 

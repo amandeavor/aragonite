@@ -8,8 +8,6 @@ import { unmount } from 'svelte';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import { registerLiveJoinSeamCleaner } from '#lib/schema/inline-construct-policy.js';
 import { makeStubBlockEdit } from '../../harness/editor-actions';
 import { mountCell, noIslands, type MountedCell } from '../table/mount-cell';
 import { settleEditor } from '#lib/test/harness/settle.js';
@@ -22,7 +20,7 @@ function mountText(source: string) {
 	const { instance, target, blockEdit } = mountBlock(TextEditableBlock, {
 		source,
 		overrides: {
-			policies: { presentationMode: () => 'live' },
+			mode: () => 'live',
 			services: { decorations: noIslands }
 		}
 	});
@@ -71,8 +69,6 @@ const committed = (blockEdit: ReturnType<typeof makeStubBlockEdit>) =>
 let mounted: ReturnType<typeof mountText> | null = null;
 let cell: MountedCell | null = null;
 
-registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
-
 afterEach(async () => {
 	if (mounted) await unmount(mounted.instance);
 	if (cell) await cell.dispose();
@@ -100,14 +96,14 @@ describe('a destructive chord at a collapsed caret reaches the join', () => {
 	});
 
 	// A spellcheck replacement is the same range question with a payload. The range crosses the
-	// closer, so the opener is stranded whatever the payload does and the cleanup takes it.
-	it('insertReplacementText writes its text at the cleaned join', async () => {
+	// closer, so the cleanup closes the bold again after the payload that fills it.
+	it('insertReplacementText writes its text inside the bold it replaced', async () => {
 		mounted = mountText(BOLD);
 		seat(mounted.el, 6, 6);
 		const e = await press(mounted.el, 'insertReplacementText', { start: 2, end: 10 }, 'X');
 
 		expect(e.defaultPrevented).toBe(true);
-		expect(committed(mounted.blockEdit)).toEqual(['Xail\n']);
+		expect(committed(mounted.blockEdit)).toEqual(['**X**ail\n']);
 	});
 
 	// The payload is part of what the cleanup checks: `**brave**` strands nothing, so it
@@ -188,7 +184,7 @@ describe('what the branch leaves to the browser', () => {
 
 describe('the table cell takes the same branch', () => {
 	it('a word delete at a collapsed caret crosses the join there too', async () => {
-		cell = mountCell('**bold** tail', { presentationMode: () => 'live' });
+		cell = mountCell('**bold** tail', { mode: () => 'live' });
 		seat(cell.el, 6, 6);
 		const e = await press(cell.el, 'deleteWordBackward', { start: 2, end: 6 });
 

@@ -33,7 +33,7 @@
 
 <style>
 	.directive-block {
-		border-left: 2px solid var(--color-ui-muted, #a4a4a4);
+		border-left: 2px solid var(--color-ui-muted);
 		padding-left: 0.75em;
 		margin: 6px 0;
 	}

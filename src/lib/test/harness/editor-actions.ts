@@ -29,7 +29,12 @@ import {
 	type MoveFocusScope
 } from '#lib/editor-actions/focus/focus-dispatch.js';
 import type { PasteCommitCoordinator } from '#lib/tree-operations/paste/paste-deps.js';
-import type { PasteDispatchContext } from '#lib/tree-operations/paste/dispatch.js';
+import {
+	pasteDispatch,
+	type PasteDispatchContext,
+	type PasteDispatchInput,
+	type PasteDispatchResult
+} from '#lib/tree-operations/paste/dispatch.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
@@ -352,19 +357,40 @@ export function registerStubBlockListState(node: CstNode): void {
 	makeBlockListState(() => node);
 }
 
+export interface PasteCommitHarness extends EditorActionsHarness {
+	controller: PasteCommitCoordinator;
+	/** The undo controller under `controller`, for block edits that share its stack. */
+	undo: UndoController;
+}
+
 /** The editor's paste coordinator over a real undo controller on `source`. Read results through
  *  the returned `doc`: a commit replaces the nodes it touches rather than writing into them. */
-export function makePasteCommit(source: string | Document): {
-	doc: Document;
-	controller: PasteCommitCoordinator;
-	landings: readonly RecordedLanding[];
-} {
-	const { deps, landings } = makeEditorActionsDeps(source);
-	return {
-		doc: deps.doc,
-		controller: createPasteCoordinator(deps, createUndoController(deps)),
-		landings
-	};
+export function makePasteCommit(
+	source: string | CstNode[] | Document,
+	options: Omit<HeadlessActionsOptions, 'spy' | 'bumpContentVersion'> = {}
+): PasteCommitHarness {
+	const harness = makeEditorActionsDeps(source, options);
+	const undo = createUndoController(harness.deps);
+	return { ...harness, controller: createPasteCoordinator(harness.deps, undo), undo };
+}
+
+/** A paste through `h`'s coordinator, reading as `h` does, with stub block edits unless `fields`
+ *  names its own; a stub records an inline paste's write without making it. */
+export function runPasteDispatch(
+	h: PasteCommitHarness,
+	input: PasteDispatchInput,
+	fields: Partial<Omit<PasteDispatchContext, 'doc' | 'controller'>> = {}
+): Promise<PasteDispatchResult> {
+	return pasteDispatch(
+		input,
+		pasteContext({
+			doc: h.doc,
+			controller: h.controller,
+			blockEdit: makeStubBlockEdit(),
+			reading: h.deps.reading,
+			...fields
+		})
+	);
 }
 
 // ── EditorActionsDeps factory ────────────────────────────────────────────────

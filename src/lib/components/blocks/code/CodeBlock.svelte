@@ -1,14 +1,8 @@
 <script lang="ts">
-	import { getContext, tick } from 'svelte';
+	import { tick } from 'svelte';
 	import { type BlockComponent } from '../../../block-component';
 	import type { NodeView } from '../../../core/node-views';
-	import {
-		EDITOR_POLICIES_KEY,
-		EDITOR_SERVICES_KEY,
-		type CodeRunRequest,
-		type EditorPolicies,
-		type EditorServices
-	} from '../../../editor-keys';
+	import type { CodeRunRequest } from '../../../host-hooks';
 	import { asRawOffset } from '../../../caret/coordinate-spaces';
 	import {
 		CONTENT_EMPTY_ATTR,
@@ -17,11 +11,7 @@
 	} from '../../../caret/widget-offset';
 	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { handleSharedKeydown } from '../../../selection/shared-keydown';
-	import {
-		createEditableSurface,
-		createClipboardHandlers,
-		consumePendingRestore
-	} from '../editable/editable-surface';
+	import { createEditableSurface, consumePendingRestore } from '../editable/editable-surface';
 	import { writeShownSelection, type ClipboardCopy } from '../editable/clipboard-step';
 	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import { anchorTrailingNewline, plainTextOf } from '../editable/plain-text-backend';
@@ -55,7 +45,7 @@
 	import type { WriteIntent } from '../editable/surface-write';
 	import type { ContentWrite } from '../../../action-contracts';
 	import type { CommandRun } from '../../../schema/block-commands';
-	import { pasteDispatch } from '../../../tree-operations/paste/dispatch';
+	import { isInlineFormatCommand } from '../../../schema/built-in-descriptors';
 	import { nodeAt, emptyParagraph } from '../../../tree-operations';
 	import { type CommandId } from '../../../schema/commands';
 
@@ -68,19 +58,15 @@
 		blockEdit,
 		focusActions,
 		controller,
-		pasteCoordinator,
 		caretMemory,
 		caretWriter,
-		selection,
 		getDoc,
 		getEditorRoot,
 		activePlugins,
-		events: editorEvents,
 		reading
 	} = wiring.deps;
-	const { menuPresence, drafts } = getContext<EditorServices>(EDITOR_SERVICES_KEY);
-	const { onPasteImage, onRunCode, codeMenuItems } =
-		getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
+	const { menuPresence, drafts } = wiring.services;
+	const { onRunCode, codeMenuItems } = wiring.policies;
 	const presentationMode = $derived(reading.mode());
 	const readOnly = $derived(presentationMode === 'reading');
 	// The fence lines show where the mode paints the focused block's markers; every write over a
@@ -505,13 +491,10 @@
 
 	export const runCommand = editableSurface.command(
 		(id: CommandId, _arg?: unknown, run: CommandRun = { afterRemoval: false }): boolean => {
+			// A code block carries no inline constructs, so a format chord is swallowed to stop the
+			// browser's own bold or link.
+			if (isInlineFormatCommand(id)) return true;
 			switch (id) {
-				case 'format.toggleStrong':
-				case 'format.toggleEmphasis':
-				case 'format.toggleStrikethrough':
-				case 'format.toggleCode':
-				case 'link.openCard':
-					return true; // code blocks carry no inline constructs; swallow to stop the browser default
 				case 'code.newline':
 					return codeNewline(run);
 				case 'code.indent':
@@ -719,41 +702,18 @@
 		return edit && writeCode(edit.newText, edit.newCursor, source, 'command');
 	}
 
-	const clipboard = createClipboardHandlers({
-		caretMemory,
-		selection,
-		getDoc,
-		crossBlock,
-		isReadOnly: () => readOnly,
-		caret: editableSurface.caret,
-		events: editorEvents,
-		onPasteImage,
+	const clipboard = editableSurface.clipboard({
 		rangeArm: { copy: copySelection, remove: (range: RawRange) => void removeRange(range, 'cut') },
-		pasteTail: async (pastedText, { range }) => {
-			if (!el) return;
+		pasteTail: (pastedText, { range }) => {
 			// Paste refuses where typing refuses; the tree-op owns the splice.
 			const span = editSpan(node, range ?? { start: 0, end: 0 }, fenceLinesShown);
 			if (!span) return;
-			const result = await pasteDispatch(
-				{
-					pastedText,
-					targetPath: myPath,
-					offset: span.start,
-					preDelete: span.start !== span.end ? span : undefined,
-					caretBefore: editableSurface.caret.getPreEditOffset()
-				},
-				{
-					doc: getDoc(),
-					blockEdit,
-					controller: pasteCoordinator,
-					reading,
-					activePlugins
-				}
-			);
-
-			if (result.inlineCaretOffset !== undefined) {
-				pendingCursorOffset = result.inlineCaretOffset;
-			}
+			return editableSurface.pasteInline({
+				pastedText,
+				offset: span.start,
+				preDelete: span.start !== span.end ? span : undefined,
+				caretBefore: editableSurface.caret.getPreEditOffset()
+			});
 		}
 	});
 	const { onCopy, onCut, onPaste } = clipboard;
@@ -794,9 +754,9 @@
 		autoOpen={autoOpenLanguage}
 		onCommit={commitLanguage}
 		onCancel={(returnCaret) => returnCaret && returnCaretToBody()}
-		onRun={onRunCode ? () => onRunCode(runRequest()) : undefined}
+		onRun={onRunCode() ? () => onRunCode()?.(runRequest()) : undefined}
 		onCopy={copyBody}
-		menuItems={codeMenuItems ? () => codeMenuItems(runRequest()) : undefined}
+		menuItems={codeMenuItems() ? () => codeMenuItems()?.(runRequest()) ?? [] : undefined}
 		{menuPresence}
 		{drafts}
 	/>
@@ -812,7 +772,7 @@
 		font-family: var(--font-code, ui-monospace, monospace);
 		font-size: 0.9em;
 		line-height: 1.55;
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+		background: var(--color-bg-secondary);
 		border: 1px solid transparent;
 		border-radius: var(--radius-surface, 8px);
 		color: inherit;
@@ -831,7 +791,7 @@
 	   so the block would otherwise drop its focused look mid-interaction. */
 	.code-block:focus,
 	.code-block:has(~ :global(.code-rail-open)) {
-		border-color: var(--color-border, #3d4047);
+		border-color: var(--color-border);
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -845,7 +805,7 @@
 	}
 
 	.code-block :global(.md-marker.md-lang) {
-		color: var(--color-accent, #567b67);
+		color: var(--color-accent);
 		opacity: 0.7;
 	}
 </style>

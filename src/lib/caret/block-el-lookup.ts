@@ -5,6 +5,10 @@
  */
 
 import { BLOCK_CONTENT_SELECTOR, TABLE_CELL_SELECTOR } from './block-content-selector';
+import { widgetElByStart } from '../core/inline/inline-widgets';
+
+/** A block's content element by its path, or null when that block isn't mounted. */
+export type BlockElLookup = (path: number[]) => HTMLElement | null;
 
 export function blockContentElAt(root: HTMLElement, path: number[]): HTMLElement | null {
 	const wrapper = root.querySelector(`[data-block-path='${JSON.stringify(path)}']`);
@@ -21,4 +25,11 @@ export function blockContentElAt(root: HTMLElement, path: number[]): HTMLElement
 	if (!rowEl) return null;
 	const cells = rowEl.querySelectorAll(`:scope > ${TABLE_CELL_SELECTOR}`);
 	return (cells[colIdx] as HTMLElement | undefined) ?? null;
+}
+
+/** The inline widget whose source starts at `start` in the block at `path`, or null when either
+ *  isn't mounted. */
+export function widgetElAt(root: HTMLElement, path: number[], start: number): HTMLElement | null {
+	const block = blockContentElAt(root, path);
+	return block ? widgetElByStart(block, start) : null;
 }

@@ -5,6 +5,7 @@ import { isCollapsedContainer } from '../../schema/reserved-chrome';
 import { registerDetailsKind } from '#lib/plugins/details/details-kind.js';
 import { registerCalloutKind } from '../../../routes/test/plugins/callout/callout-kind';
 import type { CstNode } from '../../core/nodes';
+import { testView } from '#lib/test/support/test-view.js';
 
 // The Backspace merge walk must not go past a collapsed container's title row: the hidden body
 // is invisible, so a merge writing there puts text out of sight.
@@ -20,8 +21,8 @@ function parseBlock(src: string): CstNode {
 }
 
 function registerTitledKinds(): void {
-	registerDetailsKind();
-	registerCalloutKind();
+	registerDetailsKind(testView());
+	registerCalloutKind(testView());
 }
 
 describe('isCollapsedContainer', () => {

@@ -3,29 +3,14 @@
 // a pasted line's own ending where only a hidden closer follows it.
 // Miss-analysis: every structural paste row cut a range with visible text left beside it, and every
 // line-ending row pasted before visible text or at the bytes' very end.
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { serialize } from '#lib/core/serializer.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
-import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
-} from '../../harness/editor-actions';
+import { makeStubBlockEdit, runPasteDispatch, makePasteCommit } from '../../harness/editor-actions';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { settleEditor } from '../../harness/settle';
 
 const LIVE = fixtureReading({}, 'live');
 const SOURCE = fixtureReading({}, 'source');
-
-beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
 
 /** Pastes `text` over `[start, end)` of the leaf at `leaf`: the document after, and what the leaf's
  *  own commit wrote when the paste stayed inline. */
@@ -36,25 +21,21 @@ async function paste(
 	text: string,
 	reading = LIVE
 ) {
-	const { deps } = makeEditorActionsDeps(source, { reading });
+	const h = makePasteCommit(source, { reading });
 	const blockEdit = makeStubBlockEdit();
-	await pasteDispatch(
+	await runPasteDispatch(
+		h,
 		{
 			pastedText: text,
 			targetPath: leaf,
 			offset: start,
 			preDelete: start === end ? undefined : { start, end }
 		},
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			reading,
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
+		{ blockEdit }
 	);
 	await settleEditor();
 	const leafWrites = vi.mocked(blockEdit.updateBlockContent).mock.calls.map((call) => call[1]);
-	return { doc: serialize(deps.doc), leafWrites };
+	return { doc: serialize(h.doc), leafWrites };
 }
 
 describe('blocks pasted over a cut that leaves only stranded runs', () => {

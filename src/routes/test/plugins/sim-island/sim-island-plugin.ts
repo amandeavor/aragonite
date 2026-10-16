@@ -3,7 +3,13 @@
 // zero-width widget, `BADGE` a block decoration. They appear in no other `?seed=sim` document, so
 // this does nothing there. Every position is worked out from the text again on each edit, so a
 // decoration follows its bytes as the user types.
-import { definePlugin, type Decoration, type DocumentView, type NodeView } from '#lib/plugin.js';
+import {
+	definePlugin,
+	type Decoration,
+	type DocumentView,
+	type NodeView,
+	type PluginView
+} from '#lib/plugin.js';
 import { forEachLeaf } from '../../../walk-views';
 
 const REPLACE_OPEN = '[>';
@@ -38,7 +44,7 @@ function islandDecorations(doc: DocumentView): Decoration[] {
 				type: 'block',
 				path,
 				class: SIM_BADGED_BLOCK_CLASS,
-				badge: { buildDom: () => badgeElement() }
+				badge: { view: badgeView }
 			});
 		}
 	});
@@ -70,21 +76,23 @@ function collectWidgetIslands(node: NodeView, path: number[], out: Decoration[])
 			path,
 			offset,
 			side: 'before',
-			widget: { buildDom: () => widgetElement() }
+			widget: { view: widgetView }
 		});
 		from = offset + WIDGET_SENTINEL.length;
 	}
 }
 
-function widgetElement(): HTMLElement {
+const widgetView: PluginView<{ decoration: Decoration }> = (target) => {
 	const el = document.createElement('span');
 	el.className = 'sim-widget-island-content';
-	return el;
-}
+	target.append(el);
+	return {};
+};
 
-function badgeElement(): HTMLElement {
+const badgeView: PluginView<{ decoration: Decoration }> = (target) => {
 	const el = document.createElement('span');
 	el.className = 'sim-badge';
 	el.textContent = 'B';
-	return el;
-}
+	target.append(el);
+	return {};
+};

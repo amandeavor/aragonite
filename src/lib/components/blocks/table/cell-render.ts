@@ -8,7 +8,7 @@
 import type { ActivationClick } from '../../../activation-click';
 import type { InlineNode } from '../../../core/nodes';
 import type { DocumentView, NodeView } from '../../../core/node-views';
-import type { ResolveLinkUrl } from '../../../editor-keys';
+import type { ResolveLinkUrl } from '../../../host-hooks';
 import { computeInlineContent, contentLengthOf } from '../../../core/inline';
 import { renderInlineNodes } from '../../../core/inline-render';
 import { trimTrailingLineEnding } from '../../../core/lines';
@@ -19,12 +19,16 @@ import {
 	type CaretWriter
 } from '../../../caret/widget-offset';
 import type { IndexedDecoration } from '../../../decorations/buckets';
-import { applyIslandDecorations, islandRenderKeyPart } from '../../../decorations/island-dom';
+import {
+	applyIslandDecorations,
+	islandRenderKeyPart,
+	NO_ISLAND_VIEWS
+} from '../../../decorations/island-dom';
 import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 import { mountDecorationWidget } from '../../../decorations/widget-dom';
 import { devWarn } from '../../../dev-warn';
 import { getBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
-import { createSvelteWidgetPool } from '../widget-portal';
+import { createViewWidgetPool } from '../widget-portal';
 import type { Reading } from '../../../schema/reading';
 
 export interface CellRenderDeps {
@@ -66,7 +70,7 @@ export interface CellRender {
 
 export function createCellRender(deps: CellRenderDeps): CellRender {
 	let lastRenderedKey = '';
-	const widgetPool = createSvelteWidgetPool({
+	const widgetPool = createViewWidgetPool({
 		reportError: deps.reportRenderError,
 		getTheme: deps.getTheme,
 		getDocument: deps.getDocument,
@@ -75,14 +79,14 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		reading: deps.reading,
 		activationClick: deps.activationClick
 	});
-	let islandDestroys: Array<() => void> = [];
+	let islandViews = NO_ISLAND_VIEWS;
 
 	function destroyIslands(): void {
-		for (const destroy of islandDestroys) destroy();
-		islandDestroys = [];
+		islandViews.destroy();
+		islandViews = NO_ISLAND_VIEWS;
 	}
 
-	function buildPortalWidget(node: InlineNode, raw: string): HTMLElement | null {
+	function acquireViewWidget(node: InlineNode, raw: string): HTMLElement | null {
 		return widgetPool.acquire(node.kind, node, raw.slice(node.start, node.end));
 	}
 
@@ -103,7 +107,10 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		const islands = deps.islands;
 		const renderKey = `${node.raw}\0${sig}\0${modeKeyPart}${islandRenderKeyPart(islands)}`;
 		const forceRebuild = opts?.forceRebuild ?? false;
-		if (renderKey === lastRenderedKey && !forceRebuild) return;
+		if (renderKey === lastRenderedKey && !forceRebuild) {
+			islandViews.update(islands);
+			return;
+		}
 
 		const content = computeInlineContent(
 			node,
@@ -113,7 +120,7 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		// A decoration change rebuilds a focused cell with no restore pending, so the caret is
 		// carried across; an edit opts out because its own restore runs after.
 		const caret = (opts?.carryCaret ?? true) ? captureFocusedCaret(el) : null;
-		// Bracketing the rebuild pools portal widgets, so an unchanged `$…$` keeps its
+		// Bracketing the rebuild pools plugin widgets, so an unchanged `$…$` keeps its
 		// instance across per-keystroke rebuilds. Decoration widgets are not pooled.
 		widgetPool.beginPass();
 		destroyIslands();
@@ -121,16 +128,18 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 			renderInlineNodes(content, node.raw, {
 				renderImagesAsWidgets: getBlockKindDescriptor(node.kind).renderImagesAsWidgets ?? true,
 				resolveLinkUrl: deps.resolveLinkUrl,
-				buildPortalWidget,
+				acquireViewWidget,
+				reportWidgetError: deps.reportRenderError,
 				grammar: deps.reading.grammar,
 				// Live mode only: a cell has no per-construct reveal, so in preview-inline its markers
 				// show with the cell's focus, which only an untagged marker does (`widget-offset.ts`).
 				tagConstructMarkers: deps.reading.mode() === 'live'
 			})
 		);
-		islandDestroys = applyIslandDecorations(el, node.raw, islands, {
+		islandViews = applyIslandDecorations(el, node.raw, islands, {
 			contentLength: contentLengthOf(node),
-			mountWidget: (spec, dec) => mountDecorationWidget(spec, dec, deps.reportRenderError),
+			mountWidget: (spec, dec, target) =>
+				mountDecorationWidget(spec, dec, target, deps.reportRenderError),
 			onSkipped: (dec, reason) => devWarn('decorations', `decoration skipped: ${reason}`, dec)
 		});
 		widgetPool.sweep();

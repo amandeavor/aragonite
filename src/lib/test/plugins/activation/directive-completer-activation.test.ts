@@ -55,7 +55,7 @@ describe('an unlisted directive name resolves to the generic directive', () => {
 	// Miss-analysis: no case asked for the generic kinds' component with admonitions left out.
 	it('draws the generic container with its own component where admonitions is left out', () => {
 		const view = createRegistryView({ plugins: activationFor(['unlisted']) });
-		expect(view.component(declaredPluginKind(DIRECTIVE_CONTAINER))).toBeDefined();
+		expect(view.blockView(declaredPluginKind(DIRECTIVE_CONTAINER))).toBeDefined();
 	});
 
 	it('parses it as an admonition where every installed plugin is active', () => {

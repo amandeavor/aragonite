@@ -5,7 +5,6 @@
 	// metadata update as one undo entry.
 	import { tick } from 'svelte';
 	import {
-		createContainerBlock,
 		getPluginMetadata,
 		trimTrailingLineEnding,
 		normalizeLineEndings,
@@ -13,6 +12,7 @@
 		type Draft,
 		type NodeView
 	} from '#lib/plugin.js';
+	import { createContainerBlock } from '#lib/svelte.js';
 	import { joinMermaidBody, type MermaidMetadata } from './mermaid-kind';
 	import { mermaidSlot, type MermaidRenderResult } from './mermaid-renderer';
 
@@ -354,7 +354,7 @@
 			onfocusout={() => commitEdit(false)}
 			onpointerdown={(e) => e.stopPropagation()}></textarea>
 	{:else}
-		<div class="mermaid-toolbar" onpointerdown={(e) => e.stopPropagation()}>
+		<div class="mermaid-toolbar" data-corner-control onpointerdown={(e) => e.stopPropagation()}>
 			<button type="button" data-testid="mermaid-edit" onclick={openEdit}>Edit</button>
 			<button type="button" data-testid="mermaid-focus" onclick={openFocusView}>Focus</button>
 			<button type="button" data-testid="mermaid-reset" onclick={() => view.reset()}>
@@ -453,7 +453,7 @@
 <style>
 	.mermaid-block {
 		position: relative;
-		border: 1px solid var(--color-ui-muted, #a4a4a4);
+		border: 1px solid var(--color-ui-muted);
 		border-radius: 6px;
 		margin: 6px 0;
 		padding: 4px;
@@ -465,8 +465,8 @@
 	/* Matches CodeBlock's border shift: one treatment on the block root, no inner
 	   outline, and any descendant focus counts. */
 	.mermaid-block:focus-within {
-		border-color: var(--color-accent, #567b67);
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+		border-color: var(--color-accent);
+		background: var(--color-bg-secondary);
 	}
 
 	/* Shown on hover or focus so the diagram has no buttons over it at rest, following
@@ -480,8 +480,8 @@
 		gap: 4px;
 		padding: 3px;
 		border-radius: 6px;
-		background: var(--color-bg-elevated, #2a2c33);
-		border: 1px solid var(--color-border, #3d4047);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border);
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 		opacity: 0;
 		pointer-events: none;
@@ -504,16 +504,16 @@
 		font-family: var(--font-editor, ui-monospace, monospace);
 		font-size: 11px;
 		padding: 2px 8px;
-		color: var(--color-text-secondary, #d6d9e0);
+		color: var(--color-text-secondary);
 		background: transparent;
-		border: 1px solid var(--color-border, #3d4047);
+		border: 1px solid var(--color-border);
 		border-radius: var(--radius-ui, 3px);
 		cursor: pointer;
 	}
 
 	.mermaid-toolbar button:hover,
 	.mermaid-overlay-bar button:hover {
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+		background: var(--color-bg-secondary);
 	}
 
 	.mermaid-viewport {
@@ -554,7 +554,7 @@
 		padding: 8px;
 		font-family: var(--font-editor, ui-monospace, monospace);
 		font-size: 0.9em;
-		background: var(--color-bg-secondary, rgba(128, 128, 128, 0.12));
+		background: var(--color-bg-secondary);
 		border-radius: 4px;
 		white-space: pre;
 		overflow-x: auto;
@@ -564,18 +564,18 @@
 	.mermaid-error {
 		padding: 4px 8px;
 		font-size: 0.85em;
-		color: var(--color-text-muted, #aaaaaa);
+		color: var(--color-text-muted);
 	}
 
 	.mermaid-error {
-		color: var(--color-error, #e06c75);
+		color: var(--color-error);
 	}
 
 	.mermaid-loading,
 	.mermaid-empty {
 		padding: 12px;
 		font-size: 0.85em;
-		color: var(--color-text-muted, #aaaaaa);
+		color: var(--color-text-muted);
 	}
 
 	.mermaid-overlay {
@@ -584,11 +584,11 @@
 		z-index: 100;
 		display: flex;
 		flex-direction: column;
-		background: var(--color-bg-elevated, #2a2c33);
-		border: 1px solid var(--color-border, #3d4047);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border);
 		border-radius: var(--radius-surface, 8px);
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-		color: var(--color-text-secondary, #d6d9e0);
+		color: var(--color-text-secondary);
 		outline: none;
 	}
 
@@ -597,7 +597,7 @@
 		gap: 4px;
 		justify-content: flex-end;
 		padding: 8px;
-		border-bottom: 1px solid var(--color-border, #3d4047);
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.mermaid-overlay-viewport {

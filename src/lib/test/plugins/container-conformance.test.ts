@@ -20,6 +20,7 @@ import { GITHUB_ALERT } from '#lib/plugins/admonitions/kinds.js';
 import { parse } from '#lib/core/parser.js';
 import { childHoldingLastLine } from '#lib/schema/container-raw.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // The container conformance kit pointed at real plugin containers, the audience it is for.
 // Unlike the built-in sweep (`test/invariants/container-conformance.test.ts`), which takes its
@@ -74,8 +75,8 @@ const detailsProfile: ContainerConformanceProfile = {
 
 describe('G4.3 conformance kit: plugin containers', () => {
 	beforeEach(() => {
-		registerCalloutKind();
-		registerDetailsKind();
+		registerCalloutKind(testView());
+		registerDetailsKind(testView());
 	});
 
 	it('runs the whole kit over the callout container', async () => {
@@ -121,8 +122,8 @@ describe('G4.3 conformance kit: plugin containers', () => {
 // nothing, so these break a plugin container on purpose and require the red.
 describe('G4.3 conformance kit: a broken plugin container fails', () => {
 	beforeEach(() => {
-		registerCalloutKind();
-		registerDetailsKind();
+		registerCalloutKind(testView());
+		registerDetailsKind(testView());
 	});
 
 	// Non-vacuity for the terminator cell: neutralize the body-write rule and the
@@ -142,6 +143,7 @@ describe('G4.3 conformance kit: a broken plugin container fails', () => {
 	it('fails declaration sanity when unwrapRole names a strategy the registries do not implement', () => {
 		const kind = declarePluginKind('unwrap-typo');
 		registerBlockKind(kind, {
+			view: testView(),
 			gapEdges: 'none',
 			mergeRole: 'container',
 			editable: true,
@@ -243,7 +245,7 @@ describe('G4.3 conformance kit: a broken plugin container fails', () => {
 	// A quote-shaped alert's last child holds its last line, so a -1 answer leaves that child's
 	// ending behind when the file loses its final line break.
 	it('fails declaration sanity when lastLineChild answers -1 for a child’s line', () => {
-		registerGithubAlert();
+		registerGithubAlert(testView());
 		const alert = declaredPluginKind(GITHUB_ALERT);
 		augmentBlockKind(alert, { container: { lastLineChild: () => -1 } });
 

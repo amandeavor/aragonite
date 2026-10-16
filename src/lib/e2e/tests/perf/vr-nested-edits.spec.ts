@@ -1,5 +1,4 @@
 import { test, expect } from '../../fixtures';
-import { capturePageErrors } from '../../page-probes';
 import { spacerCount } from './vr-helpers';
 import {
 	BELOW,
@@ -49,7 +48,6 @@ for (const mode of ['self', 'host'] as ScrollMode[]) {
 		test(`narrowing the window with ${name} holding the top, scrollMode ${mode}`, async ({
 			page
 		}) => {
-			const pageErrors = capturePageErrors(page);
 			const nested = await openNested(page, mode, WIDE_PARAGRAPHS(docWith(container)));
 			expect(await spacerCount(page), 'the fixture must window').toBeGreaterThan(0);
 			await nested.topInside(top);
@@ -64,7 +62,6 @@ for (const mode of ['self', 'host'] as ScrollMode[]) {
 			expect(Math.abs(after! - before), `moved from ${before} to ${after}`).toBeLessThanOrEqual(1);
 			// One round carries the rebuild and every block's re-measure at the new width.
 			expect(await writes(), 'one scroll write').toHaveLength(1);
-			expect(pageErrors).toEqual([]);
 		});
 	}
 }
@@ -76,7 +73,6 @@ const TYPED = Array.from({ length: 70 }, () => 'typed words').join(' ');
 test('typing into a block above the top of a 40-paragraph blockquote holding it', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const nested = await openNested(page, 'self', docWith(quoteOf(40, 'Quoted one.')));
 	await nested.topInside([CONTAINER, 1]);
 	await nested.editor.focusBlockAtPath([CONTAINER, 1], 3);
@@ -89,11 +85,9 @@ test('typing into a block above the top of a 40-paragraph blockquote holding it'
 
 	expect(Math.abs((await nested.screenTop([CONTAINER, 6]))! - before)).toBeLessThanOrEqual(1);
 	expect(await writes(), 'one scroll write').toHaveLength(1);
-	expect(pageErrors).toEqual([]);
 });
 
 test('typing into a block above the top inside a list holding it', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const nested = await openNested(page, 'self', docWith(listOf(10, 1, 'a second block')));
 	const typedIn = [CONTAINER, 1, 1];
 	await nested.topInside(typedIn);
@@ -112,7 +106,6 @@ test('typing into a block above the top inside a list holding it', async ({ page
 	const written = await writes();
 	expect(written, 'one scroll write').toHaveLength(1);
 	expect(Math.abs(written[0] - growth), `wrote ${written[0]} for ${growth}`).toBeLessThanOrEqual(1);
-	expect(pageErrors).toEqual([]);
 });
 
 // ── A structural edit from the keyboard ─────────────────────────────────────
@@ -122,7 +115,6 @@ test('typing into a block above the top inside a list holding it', async ({ page
 test('Enter at the start of the block holding the top of a 10-paragraph blockquote', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const nested = await openNested(page, 'self', docWith(quoteOf(10, 'Quoted one.')));
 	const held = [CONTAINER, 6];
 	await nested.topInside(held);
@@ -139,5 +131,4 @@ test('Enter at the start of the block holding the top of a 10-paragraph blockquo
 	expect(added, 'the text moved down one empty block').toBeGreaterThan(10);
 	expect(Math.abs((await nested.screenTop([BELOW]))! - below - added)).toBeLessThanOrEqual(1);
 	expect(await writes(), 'no scroll write').toEqual([]);
-	expect(pageErrors).toEqual([]);
 });

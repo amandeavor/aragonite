@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { appendView } from '#lib/test/harness/views.js';
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { createTextRender } from '#lib/components/blocks/text/text-render.js';
 import { islandRenderKeyPart } from '#lib/decorations/island-dom.js';
@@ -19,7 +20,7 @@ const widgetIsland = (offset: number, buildDom?: () => HTMLElement): Island => (
 		type: 'widget',
 		path: [0],
 		offset,
-		widget: { buildDom: buildDom ?? (() => document.createElement('span')) }
+		widget: { view: appendView(buildDom) }
 	}
 });
 

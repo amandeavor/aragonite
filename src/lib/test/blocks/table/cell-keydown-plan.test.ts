@@ -44,18 +44,8 @@ const cell = (
 // nothing and must navigate; `native` hands it to the prose path, which moves by sibling index.
 describe('cellKeydownPlan: an unclaimed modified arrow still navigates', () => {
 	const cases: Array<[string, ChordKeys, Partial<CellKeyState>, CellKeyPlan]> = [
-		[
-			'Alt+ArrowUp',
-			key('ArrowUp', { altKey: true }),
-			{},
-			{ ...cell(0, 1, 'start'), setStickyColumn: 1 }
-		],
-		[
-			'Mod+ArrowDown',
-			key('ArrowDown', { ctrlKey: true }),
-			{},
-			{ ...cell(2, 1, 'start'), setStickyColumn: 1 }
-		],
+		['Alt+ArrowUp', key('ArrowUp', { altKey: true }), {}, cell(0, 1, 'start')],
+		['Mod+ArrowDown', key('ArrowDown', { ctrlKey: true }), {}, cell(2, 1, 'start')],
 		[
 			'Alt+ArrowLeft at the left edge',
 			key('ArrowLeft', { altKey: true }),
@@ -145,9 +135,9 @@ describe('cellKeydownPlan: arrow boundary moves', () => {
 			{ offset: 5, contentEnd: 5 },
 			cell(1, 2, 'start')
 		],
-		['ArrowUp mid-table', key('ArrowUp'), {}, { ...cell(0, 1, 'start'), setStickyColumn: 1 }],
+		['ArrowUp mid-table', key('ArrowUp'), {}, cell(0, 1, 'start')],
 		['ArrowUp top row', key('ArrowUp'), { rowIdx: 0 }, { kind: 'exit', direction: 'up' }],
-		['ArrowDown mid-table', key('ArrowDown'), {}, { ...cell(2, 1, 'start'), setStickyColumn: 1 }],
+		['ArrowDown mid-table', key('ArrowDown'), {}, cell(2, 1, 'start')],
 		['ArrowDown bottom row', key('ArrowDown'), { rowIdx: 2 }, { kind: 'exit', direction: 'down' }]
 	];
 	for (const [name, input, over, plan] of cases) {

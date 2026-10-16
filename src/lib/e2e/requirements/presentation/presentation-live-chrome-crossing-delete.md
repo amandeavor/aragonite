@@ -1,11 +1,11 @@
-# Feature: live-mode deletes across a reserved title row clean their stranded runs
+# Feature: live-mode deletes across a reserved title row close the runs they cut
 
 A selection crossing the wall of a container with a reserved title row deletes by
 truncating its prose endpoints in place, with no join, so the delimiter runs the
 cut strands (their partner gone with the deleted range) never reached the live
 join cleaner and painted as a literal `**` on screen. The contract is
-`live-mode.md` § 4.5's: live mode may drop only bytes the user never saw, and the
-truncation takes the cleaner's unpaired-run half, while the title row's own raw
+`live-mode.md` § 4.5's: a run the cut went through closes on the kept head, and the
+truncation goes through the same cleaner as a join, while the title row's own raw
 writes stay byte-literal with the wall left out of the cleaner's view. Driven on
 `/test/plugins` (callout seed) switched to live through the bridge; the source
 bridge is what each scenario checks against.
@@ -13,8 +13,8 @@ bridge is what each scenario checks against.
 ## Happy paths
 
 - select from inside `**bold**` in a callout body paragraph out across the
-  container wall, Backspace: the kept head shows no stranded delimiter on
-  screen or in the source
+  container wall, Backspace: the kept head reads `Some **bo**`, still bold, with no
+  delimiter on screen
 
 ## Edge cases
 

@@ -1,21 +1,13 @@
 /** The memo plugin: the plain-mode check on `createEditableLeaf`; see memo-kind.ts. */
 
-import {
-	definePlugin,
-	registerBlockComponent,
-	defineBlockComponent,
-	declaredPluginKind,
-	type EditorPlugin
-} from '#lib/plugin.js';
-import { registerMemoBlock, MEMO_BLOCK } from './memo-kind';
+import { definePlugin, type EditorPlugin } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
+import { registerMemoBlock } from './memo-kind';
 import MemoBlock from './MemoBlock.svelte';
 
 export function memoPlugin(): EditorPlugin {
 	return definePlugin({
 		name: 'memo',
-		setup() {
-			registerMemoBlock();
-			registerBlockComponent(declaredPluginKind(MEMO_BLOCK), defineBlockComponent(MemoBlock));
-		}
+		setup: () => registerMemoBlock(svelteBlockView(MemoBlock))
 	});
 }
