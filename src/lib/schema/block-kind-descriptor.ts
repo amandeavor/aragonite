@@ -514,7 +514,11 @@ export function registerBuiltinBlockKind(kind: BlockKind, registration: BuiltinR
 /** Give every standalone built-in its view; the table type makes a missing one a compile error. */
 export function attachBuiltinViews(views: Record<StandaloneBuiltinKind, BlockView>): void {
 	for (const [kind, view] of Object.entries(views) as [StandaloneBuiltinKind, BlockView][]) {
-		registry.update(kind, { ...existingEntry('attachBuiltinViews', kind), view });
+		registry.update(
+			kind,
+			{ ...existingEntry('attachBuiltinViews', kind), view },
+			'attachBuiltinViews'
+		);
 	}
 }
 
@@ -678,7 +682,7 @@ function mergeBlockKindFields(
 		);
 	}
 	// The entry keeps its view: a built-in's augment runs after the view attaches.
-	registry.update(kind, { ...existing, descriptor: next });
+	registry.update(kind, { ...existing, descriptor: next }, entry);
 	enqueueRegistrationCheck(kind);
 }
 

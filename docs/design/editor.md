@@ -330,7 +330,7 @@ registerBlockKind('paragraph', {
 // throws: registerBlockKind: "paragraph" is already registered. Kinds are register-once ...
 ```
 
-Strict on purpose, because a registry you can quietly overwrite is a registry two plugins can fight over. Under a dev server a duplicate of one of the editor's own entries replaces with a note instead (`schema/register-once.ts`), so a re-evaluated editor module survives hot reload rather than 500-ing every route. A plugin never meets that case: it registers only inside its setup, which runs once per process (G1.104).
+Strict on purpose, because a registry you can quietly overwrite is a registry two plugins can fight over. Under a dev server the editor re-registering one of its own entries replaces it with a note instead (`schema/register-once.ts`), so a re-evaluated editor module survives hot reload rather than 500-ing every route. A plugin never gets that: it registers only inside its setup, which runs once per process (G1.104), and a duplicate from it throws, a built-in's key included.
 
 ## 6. CST ↔ DOM synchronization
 

@@ -789,8 +789,8 @@ outside the editor's own bootstraps (`registerAsCore`), throws in a dev build, n
 `definePlugin` and, for a test on another runner, `configureEditorEnv({ isTest: true })`. A test
 run is exempt and production isn't checked. The check sits in the store every registry is built on
 (`schema/plugin-registry.ts`), behind `schema/plugin-install.ts :: rejectRegistrationOutsideSetup`.
-Since a setup runs once per process, the dev-server replacement of a duplicate applies to the
-editor's own entries only. `test/schema/register-in-setup.test.ts` pins the throw, the test switch
+No key is exempt, a built-in's included, so the editor's own load-time registrations run under
+`registerAsCore` too, and only those replace a duplicate on a dev server. `test/schema/register-in-setup.test.ts` pins the throw, the test switch
 and the replacement rule, and re-evaluates a plugin module to show the first registration wins;
 `test/schema/dev-server-load.test.ts` loads every entry and installs every bundled plugin under a
 dev server's flags.
@@ -1716,13 +1716,15 @@ source is a join, so its file names the cleanup or is listed with why it isn't (
 between one leaf's own halves). `lint/cross-node-join-doors.test.ts`.
 
 **G4.77 · One way to belong to no plugin.** `src/lib/schema/plugin-install.ts` :: `registerAsCore`
-runs registrations as if no plugin were installing. It has three callers:
+runs registrations as if no plugin were installing. Its callers:
 
 - `src/lib/components/editor-built-ins.ts` :: `registerEditorBuiltIns`, the editor's own bootstrap,
   which the test reset keeps
 - a registry's `registerCore`, for a built-in key the registry can't recognize itself (a code
   language, a context-menu row), also kept by the reset
 - `activateDirectives`, around the directive grammar, which the reset drops
+- `registerBuiltInDescriptors`, and the editor modules that register at load (the built-in global
+  commands, the default paste surfaces, the table's Enter completer, the core inline widgets)
 
 The scan matches the bare name, so an aliased import is caught at its import line.
 `lint/file-rules.test.ts`.

@@ -17,7 +17,7 @@ import {
 	type KeybindingOverrideMap
 } from './keybinding-overrides';
 // Type-only imports, so this file has no runtime dependency on plugin-install or block-commands.
-import type { EditorContext } from './plugin-install';
+import { registerAsCore, type EditorContext } from './plugin-install';
 import type { PluginActivation } from './plugin-activation';
 import type { CommandDispatchContext, CommandErrorSink, CommandGates } from './block-commands';
 import type { MarkActivation } from '../decorations/mark-activation';
@@ -271,19 +271,22 @@ function __resetCommandWarningsForTests(): void {
 }
 enrollTestReset(__resetCommandWarningsForTests);
 
-registerCommand('history.undo', (ctx) => {
-	void ctx.history.requestUndo();
-	return true;
+// The editor's own, so they belong to no plugin and a dev server's re-evaluation replaces them.
+registerAsCore(() => {
+	registerCommand('history.undo', (ctx) => {
+		void ctx.history.requestUndo();
+		return true;
+	});
+	registerCommand('history.redo', (ctx) => {
+		void ctx.history.requestRedo();
+		return true;
+	});
+	registerCommand(
+		'decorations.activateAtCaret',
+		(ctx) => ctx.markActivation.activate(),
+		(gates) => gates.markActivation.canActivate()
+	);
 });
-registerCommand('history.redo', (ctx) => {
-	void ctx.history.requestRedo();
-	return true;
-});
-registerCommand(
-	'decorations.activateAtCaret',
-	(ctx) => ctx.markActivation.activate(),
-	(gates) => gates.markActivation.canActivate()
-);
 
 export const GLOBAL_KEYMAP: KeyBinding[] = [
 	{ chord: 'Mod+Z', command: 'history.undo' },
@@ -342,8 +345,6 @@ export function assertPluginGlobalChordAvailable(rawChord: string): string {
 
 export function registerPluginGlobalBinding(binding: KeyBinding): void {
 	const chord = assertPluginGlobalChordAvailable(binding.chord);
-	// The check above already let a dev re-evaluation of the same command through, so the
-	// registry's own duplicate rule only ever replaces here.
 	pluginGlobalKeymap.register(chord, { ...binding, chord });
 }
 

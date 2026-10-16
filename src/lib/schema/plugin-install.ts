@@ -116,7 +116,7 @@ export function installPlugins(plugins: readonly EditorPlugin[]): void {
 			if (alreadyInstalled !== plugin) {
 				devWarn(
 					'plugin-install',
-					`plugin '${pluginLabel(plugin)}' already installed; this definition (including any options) is ignored; definitions are process-global`
+					`plugin '${pluginLabel(plugin)}' already installed; this definition (including any options) is ignored; definitions are process-global, so reload the page to use a changed one`
 				);
 			}
 			continue;
@@ -218,6 +218,12 @@ export function rejectRegistrationOutsideSetup(entry: string): void {
 			'other than Vitest calls configureEditorEnv({ isTest: true }) from ' +
 			'`@voithos-labs/aragonite/testing` first.'
 	);
+}
+
+/** Whether the editor's own registrations are running, the one caller a dev server's
+ *  re-evaluation may replace an entry for. */
+export function isRegisteringAsCore(): boolean {
+	return coreDepth > 0;
 }
 
 export function pluginInstallGeneration(): number {

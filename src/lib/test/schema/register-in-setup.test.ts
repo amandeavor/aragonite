@@ -8,7 +8,15 @@ import { definePlugin, installPlugins, registerAsCore } from '#lib/schema/plugin
 import { createPluginRegistry } from '#lib/schema/plugin-registry.js';
 import { registerPasteTransform } from '#lib/tree-operations/paste/paste-transforms.js';
 import { declarePluginKind, declaredPluginKind } from '#lib/schema/plugin-kind.js';
-import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
+import {
+	augmentBlockKind,
+	getBlockKindDescriptor,
+	registerBlockKind
+} from '#lib/schema/block-kind-descriptor.js';
+import { activateDirectives } from '#lib/plugin.js';
+import { DIRECTIVE_CONTAINER } from '#lib/core/directive/kinds.js';
+import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 
 const asDevServer = () => configureEditorEnv({ isDev: true, isTest: false });
@@ -79,5 +87,50 @@ describe('a duplicate on a dev server', () => {
 
 		expect(getBlockKindDescriptor(declaredPluginKind('parrot'))).toBe(registered);
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['plugin-install']);
+	});
+});
+
+// Miss: every duplicate row used a plugin key, so a plugin re-registering a built-in key, which the
+// dev replacement and the guard both waved through by key, never ran.
+describe('a plugin registering a built-in key on a dev server', () => {
+	beforeEach(asDevServer);
+
+	const paragraphRival = () =>
+		registerBlockKind('paragraph', {
+			gapEdges: 'none',
+			mergeRole: 'not-mergeable',
+			editable: true,
+			supportsInline: false,
+			closure: testClosure,
+			view: testView()
+		});
+
+	it('throws inside a setup, and leaves the built-in in place', () => {
+		const before = getBlockKindDescriptor('paragraph');
+		expect(() => installPlugins([definePlugin({ name: 'rival', setup: paragraphRival })])).toThrow(
+			/already registered/
+		);
+		expect(getBlockKindDescriptor('paragraph')).toBe(before);
+	});
+
+	it('throws outside a setup, and leaves the built-in in place', () => {
+		const before = getBlockKindDescriptor('paragraph');
+		expect(paragraphRival).toThrow(/outside a plugin's setup/);
+		expect(getBlockKindDescriptor('paragraph')).toBe(before);
+	});
+});
+
+// Miss: the setup check sat on the first registration only, and an augment writes in place.
+describe('an augment outside a plugin setup on a dev server', () => {
+	beforeEach(asDevServer);
+
+	it('throws for a kind no plugin owns, which the owner check lets through', () => {
+		activateDirectives();
+		const directive = declaredPluginKind(DIRECTIVE_CONTAINER);
+		const before = getBlockKindDescriptor(directive);
+		expect(() => augmentBlockKind(directive, { label: 'Rewritten' })).toThrow(
+			/augmentBlockKind: called outside a plugin's setup/
+		);
+		expect(getBlockKindDescriptor(directive)).toBe(before);
 	});
 });
