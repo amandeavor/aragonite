@@ -84,11 +84,11 @@ export interface BlockMetadataByKind {
 
 ### 1. The descriptor
 
-Call `registerBlockKind(kind, registration)` from `schema/built-in-descriptors.ts` (the registry itself is `schema/block-kind-descriptor.ts`). Here's the thematic break's descriptor, the smallest built-in:
+Call `registerBuiltinBlockKind(kind, registration)` from `schema/built-in-descriptors.ts` (the registry itself is `schema/block-kind-descriptor.ts`). It's the plugins' `registerBlockKind` minus the view, which a built-in gets from the component layer in step 2, since `schema/` can't import a component. Here's the thematic break's descriptor, the smallest built-in:
 
 ```ts
 // schema/built-in-descriptors.ts
-registerBlockKind('thematicBreak', {
+registerBuiltinBlockKind('thematicBreak', {
 	pageRole: 'object',
 	dragLabel: 'Divider',
 	estimateHeight: singleLineEstimate,
@@ -178,12 +178,16 @@ Optional, each earning its place:
 
 ### 2. The component
 
-Call `registerBlockView(kind, svelteBlockView(YourBlock, extraProps?))` in `components/built-in-blocks.ts`:
+Add a row to the `BUILT_IN_VIEWS` table in `components/built-in-blocks.ts`, which `attachBuiltinViews` hands to the descriptors from step 1. The table is typed as one row per kind BlockHost can mount, so `npm run check` fails until yours is there. A kind that's just editable text takes `textBlockView({ blockClass })`; anything with a look of its own takes `svelteBlockView(YourBlock, extraProps?)`:
 
 ```ts
 // components/built-in-blocks.ts
-registerBlockView('thematicBreak', svelteBlockView(ThematicBreakBlock));
-registerBlockView('heading', svelteBlockView(TextEditableBlock, headingExtraProps));
+const BUILT_IN_VIEWS = {
+	paragraph: textBlockView({ blockClass: 'paragraph-block' }),
+	heading: svelteBlockView(TextEditableBlock, headingExtraProps),
+	thematicBreak: svelteBlockView(ThematicBreakBlock),
+	// ...one row per kind
+} satisfies Record<StandaloneBuiltinKind, BlockView>;
 
 function headingExtraProps(node: NodeView): Record<string, unknown> {
 	// ...
@@ -207,7 +211,7 @@ void ({ editable, focusable, focus, parkCaret, getCursorOffset, measurePartialRe
 
 What each method must provide is the plugin guide's territory; it's identical for built-ins.
 
-BlockHost looks your component up by kind and hands every block the same props: `node`, `index`, `myPath`, `ambientPrefix`, plus `document` (the root, read-only, so a block at any depth can read the structure above it) and `rects` (measure, reveal, and scroll by path). `extraProps` is a `(node) => Record<string, unknown>` for anything beyond that, like the heading's `blockClass` above. BlockHost `bind:this`-es your component and reads the surface off its exports; you publish it and never hold a handle to it.
+BlockHost reads your view off the kind's registration and hands every block the same props: `node`, `index`, `myPath`, `ambientPrefix`, plus `document` (the root, read-only, so a block at any depth can read the structure above it) and `rects` (measure, reveal, and scroll by path). `extraProps` is a `(node) => Record<string, unknown>` for anything beyond that, like the heading's `blockClass` above. BlockHost `bind:this`-es your component and reads the surface off its exports; you publish it and never hold a handle to it.
 
 ### 3. The opener, if you need one
 

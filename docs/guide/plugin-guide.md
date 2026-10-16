@@ -372,7 +372,7 @@ That's the loop: describe the kind, render it, install it, verify the bytes. Eve
 
 ## What a plugin is
 
-A plugin teaches the editor a new kind, one that parses, renders, and saves alongside the built-ins. You declare the kind, then wire up to three things:
+A plugin teaches the editor a new kind, one that parses, renders, and saves alongside the built-ins. You declare the kind, then wire up to three things (the descriptor and the view go in one `registerBlockKind` call):
 
 ```
 declare a kind ──┬─▶ descriptor   how it merges, its container shape, its keymap
@@ -386,7 +386,7 @@ Each part has a defined absence, which is prob the easiest way to remember what 
 | Part       | It makes the kind       | Leave it out and                                                                                                                                                                           |
 | ---------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | descriptor | behave                  | the kind errors at first use; this one is never optional                                                                                                                                   |
-| view       | visible                 | the kind renders as a visible raw-text fallback                                                                                                                                            |
+| view       | visible                 | the registration doesn't compile (and throws from plain JavaScript); an editor that leaves your plugin out shows the kind as a raw-text fallback                                           |
 | grammar    | parseable from Markdown | nothing ever parses to the kind, so it doesn't survive a reload ([the menu recipe](plugin-guide/menu-only-kinds.md#recipe-a-kind-only-a-menu-creates) is the route to a kind nobody types) |
 
 ### Registration is global, and register-once
@@ -396,7 +396,7 @@ A kind is a definition every editor on the page shares, and it's defined exactly
 Who guarantees a registration runs only once depends on where it runs:
 
 - **Inside a plugin unit** (the installable package the next section defines), `setup` runs at most once per process. Write each `register*` call straight; the unit owns the guarantee.
-- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockViewRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
+- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockOpenerRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
 
 ```ts
 isBlockKindDeclared('parrot'); // false on a fresh page
@@ -423,8 +423,7 @@ export function myPlugin(options?: { renderer?: Renderer }): EditorPlugin {
 	return definePlugin({
 		name: 'my-plugin',
 		setup() {
-			registerMyKind(options?.renderer ?? defaultRenderer);
-			registerBlockView(declaredPluginKind('my-kind'), svelteBlockView(MyBlock));
+			registerMyKind(svelteBlockView(MyBlock), options?.renderer ?? defaultRenderer);
 		}
 	});
 }
@@ -480,7 +479,7 @@ After the freeze the version number carries the promise: a breaking change to a 
 
 Two shapes draw everything a plugin puts on screen. (Not to be confused with the read-only node types in [Views](#views-what-you-read-what-you-own), below; same word, different job.)
 
-- **A block draws through a `BlockView`**, the thing `registerBlockView` and `definePluginBlock`'s `view` take. For now the one way to make one is `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, so a block is a Svelte component.
+- **A block draws through a `BlockView`**, the `view` its `registerBlockKind` call takes. For now a view is either `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, or `textBlockView()`, the editor's own plain text block, so a block with a look of its own is a Svelte component.
 - **Everything else draws through a `PluginView`**: an inline widget, a decoration's widget or badge, and an inline menu row. It's a plain function, `(target, props) => ({ update?, destroy? })`, that fills an element the editor made for it ([Rendering it as a widget](plugin-guide/inline-kinds.md#rendering-it-as-a-widget) walks one through). Already writing Svelte? `svelteView(Component)`, also from `/svelte`, turns a component into one for any of those slots.
 
 Which apps can run your plugin follows from that. An app whose bundler compiles Svelte (a Svelte app, say) compiles the editor from source, along with your components. An app whose bundler doesn't (most React, Vue and plain JavaScript apps) runs a prebuilt copy with its own Svelte compiled in, and a Svelte component of yours can't run on that copy's Svelte. So:

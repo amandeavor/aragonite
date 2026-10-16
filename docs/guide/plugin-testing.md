@@ -57,7 +57,7 @@ The plugin platform is register-once: setup writes into process-global registrie
 
 **`resetPluginPlatformForTests()`**
 
-Empties every registry a plugin writes into, so each case re-installs from nothing. Call it, then re-install your plugin's **unit**, the installable package `definePlugin` or `definePluginBlock` returns:
+Empties every registry a plugin writes into, so each case re-installs from nothing. Call it, then re-install your plugin's **unit**, the installable package `definePlugin` returns:
 
 ```ts
 import { installPlugins } from '@voithos-labs/aragonite';
@@ -97,7 +97,7 @@ beforeAll(() => configureEditorEnv({ isTest: true })); // "yes, this really is a
 afterAll(() => resetEditorEnv());
 ```
 
-**Install the unit, not your register function.** `definePluginBlock` generates a setup that runs your `register` step and then binds the component, so calling your own `registerParrotBlock()` here leaves the kind without a component: the editor falls back to a raw-text surface with a dev warning, and your tests pass against a block that isn't yours. Three more identity rules keep a suite honest:
+**Install the unit, not your register function.** The unit's setup is what a real editor runs: it hands the kind its view, and it makes every registration answer to your plugin, which is how an editor's `plugins` list turns your kind on or off. Call your own `registerParrotBlock(view)` instead and the kind belongs to no plugin at all, so every editor shows it and your activation tests pass against a setup no user runs. Three more identity rules keep a suite honest:
 
 - Installing the **same unit instance** twice (the `beforeEach` above plus an editor's `plugins` prop, say) is a no-op, which is why the sample builds `parrot` once at module scope.
 - A **different instance under the same name** is kept out by a first-wins rule, with a dev warning naming the loser.

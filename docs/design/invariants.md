@@ -191,8 +191,7 @@ These checks run in three kinds of place:
 - **Bootstrap**: the registration-check flush (`schema/registration-checks.ts`), first at Editor
   mount via `runStartupInvariantChecks`, then at the next mount or grammar read
   (`getOrderedOpeners`), never mid-batch, so forward references inside one registration batch stay
-  quiet. Registry completeness (G1.2) checks built-ins only, since a plugin's component may register
-  on its own schedule.
+  quiet. Registry completeness (G1.2) checks built-ins only, the one closed set of kinds.
 - **Its own machinery**: the guard fires inside the code it protects. One exception: G1.33 fires in
   the editor root's focus handler (`components/editor-root/focus.ts`), above every caret entry, so a
   consumer's own caret component inherits it.
@@ -200,7 +199,7 @@ These checks run in three kinds of place:
 | ID    | What stays true                                                                            | Codes   |
 | ----- | ------------------------------------------------------------------------------------------ | ------- |
 | G1.1  | A strip container's raw and metadata never go stale against its children and bytes         | A·P·N·D |
-| G1.2  | Every block kind has a descriptor and a component                                          | A·P     |
+| G1.2  | Every built-in block kind has a descriptor (its view moved up to G3.15)                    | A·P     |
 | G1.3  | _Retired upward_: container-iff-rebuildRaw is now unrepresentable                          | T       |
 | G1.4  | No container publishes the undo-history context key                                        | A·L·N   |
 | G1.5  | Leaf fields on leaves, container fields on containers                                      | A·P·N   |
@@ -216,7 +215,7 @@ These checks run in three kinds of place:
 | G1.15 | A plugin opener claims at least one line, and its raw matches the lines it consumed        | A·N     |
 | G1.16 | Every coordinate a commit declares is document-absolute                                    | A·N     |
 | G1.17 | An opener registered after the grammar was read warns                                      | A·N     |
-| G1.18 | A container's `reservedChrome` names a fully registered chrome kind                        | A·N     |
+| G1.18 | A container's `reservedChrome` names a registered chrome kind                              | A·N     |
 | G1.19 | A commit scope's declared path still resolves to its captured node                         | A       |
 | G1.20 | An unshared chain is as deep as the path it was asked for                                  | A       |
 | G1.21 | A column edit's row scopes are the owned table's own children                              | A       |
@@ -277,11 +276,11 @@ fires too. Non-strip containers are exempt, grid outright and opaque via G1.12 a
 `checkStaleRaw` (`node-shape.ts`) · commit primitive · `stale-raw.test.ts`,
 `strip-stale-metadata.test.ts`.
 
-**G1.2 · Registry completeness.** Every `BlockKind` resolves to a descriptor and a component, the
-kinds enumerated from the union-derived manifest (`core/nodes.ts :: BLOCK_KIND_TABLE`,
-`ALL_BLOCK_KINDS`). The one exemption is `listItem`, which renders inside its `ListBlock` and has no
-component of its own (`NO_STANDALONE_COMPONENT`). Predicate `checkRegistryCompleteness`
-(`registry.ts`) · bootstrap · `registry.test.ts`.
+**G1.2 · Registry completeness.** Every `BlockKind` resolves to a descriptor, the kinds enumerated
+from the union-derived manifest (`core/nodes.ts :: BLOCK_KIND_TABLE`, `ALL_BLOCK_KINDS`). Predicate
+`checkRegistryCompleteness` (`registry.ts`) · bootstrap · `registry.test.ts`. The rule used to say
+"and a component" too; that half retired upward to G3.15, whose table type makes a built-in with
+no view a compile error.
 
 **G1.3 · Retired upward.** The rule was: `isContainer` iff `rebuildRaw`. The grouped registration
 shape (G3.6) derives `isContainer` from the `container` group, whose `rebuildRaw` is required, so
@@ -379,8 +378,9 @@ mounts. Predicate `checkLateOpenerRegistration` (`registry.ts`) · bootstrap ·
 `test/schema/registration-checks.test.ts`.
 
 **G1.18 · Reserved-chrome coherence.** The chrome kind a container's `reservedChrome` names (its
-title row) resolves to a descriptor and a component, both registered by `registerChromeLeaf`. The
-bootstrap counterpart to G1.14's per-commit slot check. Predicate `checkReservedChromeCoherence`
+title row) is registered, which `registerChromeLeaf` does, and a registered kind always carries its
+view (G3.15, which retired this check's component half). The bootstrap counterpart to G1.14's
+per-commit slot check. Predicate `checkReservedChromeCoherence`
 (`registry.ts`) · bootstrap · `reserved-chrome-coherence.test.ts`,
 `test/schema/registration-checks.test.ts`.
 
@@ -914,6 +914,7 @@ what the type retired.
 | G3.12 | A React wrapper prop that isn't an editor option, or hides one                       | T     |
 | G3.13 | A Vue wrapper prop that isn't an editor option, or a boolean Vue would read as false | T     |
 | G3.14 | A Svelte view whose component wants a prop its slot never passes                     | T     |
+| G3.15 | A block kind registered without the view that draws it                               | T     |
 
 ### The entries
 
@@ -1010,6 +1011,18 @@ attribute reads as `true`.
 from the component, so `view: svelteView(C)` compiles in any slot whose props cover what `C`
 declares and fails where `C` asks for one the slot never passes.
 `src/lib/test/plugins/view/svelte-view.types.test.ts` holds the `@ts-expect-error`s.
+
+**G3.15 · A kind comes with its view.** `BlockKindRegistration` requires `view`, so a plugin kind
+can't be registered without what draws it, and the viewless route,
+`src/lib/schema/block-kind-descriptor.ts :: registerBuiltinBlockKind`, takes only a built-in
+`BlockKind`. Built-ins get their views from the component layer through `attachBuiltinViews`, whose
+argument is typed as a complete table of every kind BlockHost can mount (`StandaloneBuiltinKind`),
+so a built-in left out of `components/built-in-blocks.ts` doesn't compile. A cast or a plain
+JavaScript plugin gets past the types, so `registerBlockKind` also refuses a missing or unbranded
+view at runtime, and `augmentBlockKind` refuses a `view` (it's on `FIXED_AT_REGISTRATION`). Pins in
+`src/lib/test/schema/descriptor-groups.types.test.ts`; runtime rows in
+`src/lib/test/schema/kind-view-registration.test.ts` and `augment-guard.test.ts`. Retired: G1.2's
+and G1.18's component halves.
 
 ## Group 4: source scans
 
