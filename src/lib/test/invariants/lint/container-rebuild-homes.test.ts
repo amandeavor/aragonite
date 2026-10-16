@@ -76,8 +76,8 @@ const PINNED: Record<string, Pin> = {
 		why: 'the same range delete, for the endpoints it truncates without joining them (T18 slice 5 retires it)'
 	},
 	'src/lib/selection/range-delete-table.ts': {
-		calls: { rebuildUnsharedChain: 2, rebuildTableRowRaw: 2 },
-		why: 'the same range delete, for the rows a table edge clears (which keep their bytes) and each kept edge’s chain (T18 slice 5)'
+		calls: { rebuildUnsharedChain: 2, rebuildTableRowRaw: 1 },
+		why: 'the same range delete, for the rows a pair inside one table clears (which keep their bytes) and each kept edge’s chain (T18 slice 5)'
 	},
 	'src/lib/selection/selection-drop.ts': {
 		calls: { rebuildAncestryRaw: 1 },

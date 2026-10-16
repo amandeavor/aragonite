@@ -12,6 +12,7 @@ import type { RangeDeleteResult } from './range-delete';
 import {
 	isChromeChild,
 	nearestChromeContainer,
+	type CellRun,
 	type GridCoverage,
 	type RangeCoverage
 } from './range-coverage';
@@ -31,7 +32,6 @@ import { attachedChainPrefix, rebuildUnsharedChain } from '../tree-operations/ch
 import { rebuildTableRowRaw } from '../schema/container-rebuilders';
 import { caretWhereRangeResumes } from './range-delete-chrome';
 import type { RemovalLanding } from './removal-landing';
-import { assertInvariant } from '../assert';
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -94,12 +94,8 @@ export function tableAwareRangeDelete(
 	if (startTable) ensureUnsharedSubtree(startTable, sharing);
 	if (endTable) ensureUnsharedSubtree(endTable, sharing);
 
-	const startSplice =
-		startTable && startCells
-			? deleteCellsAndCollapse(startTable, startCells.from, startCells.to)
-			: null;
-	const endSplice =
-		endTable && endCells ? deleteCellsAndCollapse(endTable, endCells.from, endCells.to) : null;
+	const startSplice = startTable && startCells ? deleteCoveredRows(startTable, startCells) : null;
+	const endSplice = endTable && endCells ? deleteCoveredRows(endTable, endCells) : null;
 
 	const plan = planCrossBlockDeletion(doc, coverage, [], sharing);
 	// A kept text end truncates first, while its path is still valid, and never merges.
@@ -158,60 +154,28 @@ export function tableAwareRangeDelete(
 
 // ── Internal ────────────────────────────────────────────────────────────────
 
-// The caret in the surviving start table's anchor cell, cleared from the anchor on, so at its end;
-// an anchor in column 0 lost its row, so the last cell of the row above.
+// The caret at the end of the last cell left above the start table's removed rows; the range
+// starts at a row's first cell, so the row above is whole.
 function survivingAnchorCellCaret(
 	table: CstNode,
 	startPath: number[],
 	anchorCellIdx: number
 ): SelectionPoint {
 	const cellsPerRow = metadataOf(table, 'table').columnCount;
-	const anchor = cellRowCol(anchorCellIdx, cellsPerRow);
-	const at = anchor.col > 0 ? anchor : { row: Math.max(anchor.row - 1, 0), col: cellsPerRow - 1 };
-	// A start table losing its first row is one the range holds whole, never a kept edge.
-	assertInvariant('kept-table-edge', () =>
-		anchor.col > 0 || anchor.row > 0
-			? null
-			: { code: 'kept-table-edge', message: 'a kept start table lost its first row' }
-	);
-	const cell = table.children![at.row].children![at.col];
-	return { path: [...startPath, at.row, at.col], offset: displayLength(cell.raw) };
+	const row = cellRowCol(anchorCellIdx, cellsPerRow).row - 1;
+	const col = cellsPerRow - 1;
+	const cell = table.children![row].children![col];
+	return { path: [...startPath, row, col], offset: displayLength(cell.raw) };
 }
-
-// ── Cell-range cleanup ─────────────────────────────────────────────────────
 
 type RowSplice = { at: number; count: number };
 
-/** Clears the cells in `[startCellIdx, endCellIdx)` and removes the rows fully inside it,
- *  returning the row window spliced, so the commit can sync row state. */
-function deleteCellsAndCollapse(
-	table: CstNode,
-	startCellIdx: number,
-	endCellIdx: number
-): RowSplice | null {
-	if (startCellIdx >= endCellIdx) return null;
-	clearCellsInRange(table, startCellIdx, endCellIdx);
-
+/** Removes the whole rows a kept table edge hands to the range, returning the row window
+ *  spliced, so the commit can sync row state. */
+function deleteCoveredRows(table: CstNode, cells: CellRun): RowSplice {
 	const cellsPerRow = metadataOf(table, 'table').columnCount;
-	const { row: startRow, col: startCol } = cellRowCol(startCellIdx, cellsPerRow);
-	const { row: lastRow, col: lastCol } = cellRowCol(endCellIdx - 1, cellsPerRow);
-	const firstFull = startCol === 0 ? startRow : startRow + 1;
-	const lastFull = lastCol === cellsPerRow - 1 ? lastRow : lastRow - 1;
-	if (firstFull > lastFull) return null;
-
-	table.children!.splice(firstFull, lastFull - firstFull + 1);
-	return { at: firstFull, count: lastFull - firstFull + 1 };
-}
-
-function clearCellsInRange(table: CstNode, startCellIdx: number, endCellIdx: number): void {
-	const meta = metadataOf(table, 'table');
-	const cellsPerRow = meta.columnCount;
-	const rows = table.children!;
-	const touchedRows = new Set<number>();
-	for (let i = startCellIdx; i < endCellIdx; i++) {
-		const { row: r, col: c } = cellRowCol(i, cellsPerRow);
-		rows[r].children![c].raw = '';
-		touchedRows.add(r);
-	}
-	for (const r of touchedRows) rebuildTableRowRaw(rows[r]);
+	const at = cells.from / cellsPerRow;
+	const count = (cells.to - cells.from) / cellsPerRow;
+	table.children!.splice(at, count);
+	return { at, count };
 }

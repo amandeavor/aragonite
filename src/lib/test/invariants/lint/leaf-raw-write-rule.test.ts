@@ -112,8 +112,8 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: 'the chrome-clear and the truncation atoms’ two chrome-endpoint branches, reserved-chrome slots no leaf kind declaring a rule can occupy; and the endpoint reparse re-attaching the blank line that parse stripped (GH #97)'
 	},
 	'src/lib/selection/range-delete-table.ts': {
-		count: 2,
-		why: 'two cell clears; a cleared cell is empty, which `tableCell`’s own rule already returns unchanged'
+		count: 1,
+		why: 'a cell clear; a cleared cell is empty, which `tableCell`’s own rule already returns unchanged'
 	},
 	'src/lib/tree-operations/list/reconcile-task.ts': {
 		count: 3,
