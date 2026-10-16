@@ -436,7 +436,10 @@ export type BuiltinRegistration = WholeBlockRegistration | CaretBlockRegistratio
  * The write-side shape `registerBlockKind` accepts: the descriptor fields plus the view that draws
  * the kind. `isContainer` is derived (`container !== undefined`), never declared.
  */
-export type BlockKindRegistration = BuiltinRegistration & { view: BlockView };
+export type BlockKindRegistration = BuiltinRegistration & {
+	/** What draws the kind: `svelteBlockView(Component)` from `/svelte`, or `textBlockView()`. */
+	view: BlockView;
+};
 
 /** Every built-in kind BlockHost can mount; a list item renders inside its list. */
 export type StandaloneBuiltinKind = Exclude<BlockKind, 'listItem'>;
@@ -473,8 +476,8 @@ export function registerBlockKind(kind: AnyBlockKind, registration: BlockKindReg
 	const { view, ...fields } = registration;
 	if (!isBlockView(view)) {
 		throw new TypeError(
-			`registerBlockKind: "${kind}" needs a view, such as \`svelteBlockView(Component)\` from ` +
-				'`@voithos-labs/aragonite/svelte`, or `textBlockView()`'
+			`registerBlockKind: "${kind}" needs a \`view\`, such as \`svelteBlockView(Component)\` from ` +
+				'`@voithos-labs/aragonite/svelte`, or `textBlockView()` from `@voithos-labs/aragonite/plugin`'
 		);
 	}
 	storeKind('registerBlockKind', kind, fields, view);
