@@ -252,10 +252,9 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 	let revealState: RevealState | null = null;
 	let draft: Draft | null = null;
 
-	// Kept outside the record to survive `resetReveal` for the async restore. The exact element
-	// is kept because two byte-identical widgets share a pool key, so a lookup could return the other.
-	let activeSourceNode: Text | null = null;
-	let revealedWidget: HTMLElement | null = null;
+	// The source text node and the exact element it replaced (two byte-identical widgets share a pool
+	// key), kept outside the record to survive `resetReveal` for the async restore.
+	let shown: { source: Text; widget: HTMLElement } | null = null;
 	// The offset left behind when a source was last hidden, which lies inside that construct:
 	// the restore must not read it as a formula closing around the caret and show it again.
 	let foldParkedCaret: number | null = null;
@@ -271,12 +270,12 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 	}
 
 	function restoreRenderedWidget(): void {
-		if (activeSourceNode === null || revealedWidget === null) return;
-		unwashRevealedSource(activeSourceNode);
-		activeSourceNode.replaceWith(revealedWidget);
-		deps.textMoves.movedWithin(revealedWidget);
-		activeSourceNode = null;
-		revealedWidget = null;
+		if (shown === null) return;
+		const { source, widget } = shown;
+		unwashRevealedSource(source);
+		source.replaceWith(widget);
+		deps.textMoves.movedWithin(widget);
+		shown = null;
 	}
 
 	// The swap handles are left alone: cancel resets the record before awaiting the restore,
@@ -324,16 +323,16 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 			get source() {
 				return source;
 			},
-			isRevealed: () => activeSourceNode !== null,
+			isRevealed: () => shown !== null,
 			showSource: () => {
 				const container = deps.getEl();
 				if (!container) return;
 				const widget = widgetElByStart(container, start);
 				if (!widget) return;
-				revealedWidget = widget;
-				activeSourceNode = document.createTextNode(source);
-				widget.replaceWith(activeSourceNode);
-				washRevealedSource(activeSourceNode);
+				const text = document.createTextNode(source);
+				shown = { source: text, widget };
+				widget.replaceWith(text);
+				washRevealedSource(text);
 				deps.textMoves.movedWithin(container);
 			},
 			// Re-inserts the exact element the swap detached, still current because the edit
@@ -379,7 +378,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		const active = revealState;
 		traceRevealFold(reason);
 		const el = deps.getEl();
-		const sourceNode = activeSourceNode;
+		const sourceNode = shown?.source ?? null;
 		const editedDisplay = deps.readRawText();
 		const caretAfter =
 			caretOverride ??
@@ -389,8 +388,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		// The reactive re-render rebuilds the widget, so drop the swap handles without
 		// restoring the DOM, then run the teardown.
 		if (sourceNode) unwashRevealedSource(sourceNode);
-		activeSourceNode = null;
-		revealedWidget = null;
+		shown = null;
 		resetReveal();
 		// The re-render that brings the widget back moves the text after it, write or not.
 		if (el) deps.textMoves.movedWithin(el);
@@ -474,7 +472,8 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 	// Compared by raw offset, bounds included: a caret at the source's edge may sit in the
 	// neighbouring text node, which a node comparison would misread as leaving.
 	function selectionEscapedSource(): boolean {
-		if (!revealState || !activeSourceNode || revealState.settling) return false;
+		const source = shown?.source;
+		if (!revealState || !source || revealState.settling) return false;
 		if (deps.isCrossBlock()) return false;
 		const el = deps.getEl();
 		const sel = window.getSelection();
@@ -482,9 +481,9 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		const { anchorNode, focusNode } = sel;
 		if (!anchorNode || !focusNode) return false;
 		if (!el.contains(anchorNode) || !el.contains(focusNode)) return false;
-		if (activeSourceNode.contains(anchorNode) || activeSourceNode.contains(focusNode)) return false;
-		const sourceStart = rawOffsetAt(el, activeSourceNode, 0);
-		const sourceEnd = sourceStart + activeSourceNode.length;
+		if (source.contains(anchorNode) || source.contains(focusNode)) return false;
+		const sourceStart = rawOffsetAt(el, source, 0);
+		const sourceEnd = sourceStart + source.length;
 		const anchorOff = rawOffsetAt(el, anchorNode, sel.anchorOffset);
 		const focusOff = rawOffsetAt(el, focusNode, sel.focusOffset);
 		const inSource = (o: number) => o >= sourceStart && o <= sourceEnd;
@@ -603,7 +602,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		if (revealState) {
 			const active = revealState;
 			const revealedStart =
-				activeSourceNode === null ? Number.POSITIVE_INFINITY : rawOffsetAt(el, activeSourceNode, 0);
+				shown === null ? Number.POSITIVE_INFINITY : rawOffsetAt(el, shown.source, 0);
 			const rawBefore = deps.node.raw.length;
 			if (deps.readRawText() === active.originalDisplay) {
 				foldRevealNoEdit();
@@ -624,7 +623,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 	/** Select the whole shown token if the double-click landed on it. Decided from the point: the
 	 *  editor root's word-select runs first and may have moved the selection off the source. */
 	function selectRevealedSource(x: number, y: number | null): boolean {
-		const source = activeSourceNode;
+		const source = shown?.source;
 		if (!revealState || !source || y === null) return false;
 		const range = document.createRange();
 		range.selectNodeContents(source);

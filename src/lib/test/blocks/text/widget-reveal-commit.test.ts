@@ -200,17 +200,14 @@ describe('commitReveal: the cross-block rule lives at the blur caller', () => {
 	});
 });
 
-describe('cancelReveal: identity-exact fold-back', () => {
-	// Two byte-identical widgets: cancelling must put back the exact element it detached.
+describe('identity-exact fold-back', () => {
+	// Two byte-identical widgets: hiding the source must put back the exact element it detached.
 	// Rebuilding by lookup (the pool keys on `${kind} ${source}`) would move the other instance.
-	it('Escape restores the same element it swapped out, leaving its counterpart untouched', async () => {
+	async function revealSecond() {
 		const { el, node, widgets, inlineWidgets } = mountWidgetBlock(
 			'Twice $x^2$ and $x^2$ again',
 			MATH_INLINE
 		);
-		const [firstWidget, secondWidget] = widgets;
-		const second = inlineWidgets[1];
-
 		const interaction = createWidgetInteraction(
 			widgetInteractionDeps(
 				{ node, el },
@@ -221,15 +218,30 @@ describe('cancelReveal: identity-exact fold-back', () => {
 				}
 			)
 		);
-
-		interaction.enterWidget(second, false);
+		interaction.enterWidget(inlineWidgets[1], false);
 		await settleEditor();
-		expect(el.childNodes[3]).not.toBe(secondWidget); // swapped for the source text node
+		expect(el.childNodes[3]).not.toBe(widgets[1]); // swapped for the source text node
+		return { el, interaction, widgets, second: inlineWidgets[1] };
+	}
+
+	it('Escape restores the same element it swapped out, leaving its counterpart untouched', async () => {
+		const { el, interaction, widgets, second } = await revealSecond();
 		await interaction.handleRevealingKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
 
 		// The same element, not an equal one: the detached element itself returns, in place.
-		expect(el.childNodes[1]).toBe(firstWidget);
-		expect(el.childNodes[3]).toBe(secondWidget);
+		expect(el.childNodes[1]).toBe(widgets[0]);
+		expect(el.childNodes[3]).toBe(widgets[1]);
 		expect((el.childNodes[3] as HTMLElement).dataset.sourceStart).toBe(String(second.start));
+	});
+
+	it('a caret leaving an unedited source restores the same element too', async () => {
+		const { el, interaction, widgets } = await revealSecond();
+		window.getSelection()!.collapse(el.childNodes[0], 2);
+		interaction.foldRevealIfSelectionEscaped();
+		await settleEditor();
+
+		expect(interaction.isRevealing()).toBe(false);
+		expect(el.childNodes[1]).toBe(widgets[0]);
+		expect(el.childNodes[3]).toBe(widgets[1]);
 	});
 });
