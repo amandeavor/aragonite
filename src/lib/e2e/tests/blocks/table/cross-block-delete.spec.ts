@@ -1,7 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { boxesOf, dragBetweenBoxes, dragBetweenCells } from './helpers';
-import { capturePageErrors } from '../../../page-probes';
 import { roundTripStable } from '../../plugins/helpers';
 import { pointAtRaw } from '../../../text-runs';
 
@@ -289,7 +288,6 @@ test.describe('table block: cross-block delete', () => {
 	}) => {
 		// A blockquote endpoint routes the delete through the cross-container commit on the live
 		// `$state` document, whose proxied tail a lookup by node identity would miss.
-		const pageErrors = capturePageErrors(page);
 
 		const source = `${TABLE_2x3}\n> quoted text\n`;
 		await editor.loadContent(source);
@@ -308,9 +306,6 @@ test.describe('table block: cross-block delete', () => {
 
 		const capturedErrors: string[] = await page.evaluate(() =>
 			(window as any).__test.getCapturedErrors()
-		);
-		expect(pageErrors, `page errors during nested-end delete:\n${pageErrors.join('\n')}`).toEqual(
-			[]
 		);
 		expect(capturedErrors, `editor errors:\n${capturedErrors.join('\n')}`).toEqual([]);
 

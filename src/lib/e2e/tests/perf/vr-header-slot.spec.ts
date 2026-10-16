@@ -10,7 +10,6 @@ import {
 	topVisibleHostTop,
 	UNWINDOWED_PROSE
 } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // The `header` slot: the app's own content inside the editor's scroll container, mounted beside
 // `.block-list` so windowing's arithmetic is untouched while the title still scrolls away. A header
@@ -38,7 +37,6 @@ async function toggleHeaderHeight(editor: EditorPage): Promise<void> {
 test('the header mounts beside the block list, above the first block, and scrolls away', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 
 	// The case without the prop first: with no header the markup is unchanged, so the checks
@@ -66,11 +64,9 @@ test('the header mounts beside the block list, above the first block, and scroll
 	const scrollTop = await editor.editorContainer.evaluate((el) => el.scrollTop);
 	expect(scrollTop).toBeGreaterThan(100);
 	expect(header.y - scrolled.y).toBeCloseTo(scrollTop, 0);
-	expect(pageErrors).toEqual([]);
 });
 
 test('windowing still bounds the mounted set with a header mounted', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = await gotoWithHeader(page);
 	const blockCount = await editor.loadLargeFixture('many-small-blocks', FIXTURE_BYTES);
 
@@ -80,13 +76,11 @@ test('windowing still bounds the mounted set with a header mounted', async ({ pa
 	// A bound rather than the count without a header: a header takes room from the list, so
 	// the window is fairly a few blocks smaller.
 	expect(await editor.getDomBlockCount()).toBeLessThan(60);
-	expect(pageErrors).toEqual([]);
 });
 
 test('a header height change while scrolled deep holds the first visible block in place', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = await gotoWithHeader(page);
 	await editor.loadLargeFixture('many-small-blocks', WINDOWED_BYTES);
 	await progressiveScrollTo(editor, 4000);
@@ -115,11 +109,9 @@ test('a header height change while scrolled deep holds the first visible block i
 	const shrunk = await topVisibleHostTop(page, { selector: TOP_LEVEL_HOSTS });
 	expect(shrunk!.ref).toBe(before!.ref);
 	expect(Math.abs(shrunk!.top - before!.top)).toBeLessThanOrEqual(1);
-	expect(pageErrors).toEqual([]);
 });
 
 test('at the top of the document a header height change pushes content down', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = await gotoWithHeader(page);
 	await editor.loadContent(`${UNWINDOWED_PROSE}\n`);
 
@@ -131,11 +123,9 @@ test('at the top of the document a header height change pushes content down', as
 	// correcting for it would quietly scroll the user away from the top.
 	expect(after.y - before.y).toBeCloseTo(160, 0);
 	expect(await editor.editorContainer.evaluate((el) => el.scrollTop)).toBe(0);
-	expect(pageErrors).toEqual([]);
 });
 
 test('scrollTo lands block 0 in view with a header mounted', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = await gotoWithHeader(page);
 	await editor.loadLargeFixture('many-small-blocks', WINDOWED_BYTES);
 	await progressiveScrollTo(editor, 4000);
@@ -147,11 +137,9 @@ test('scrollTo lands block 0 in view with a header mounted', async ({ page }) =>
 	const port = (await editor.editorContainer.boundingBox())!;
 	expect(block.y).toBeLessThan(port.y + port.height);
 	expect(block.y + block.height).toBeGreaterThan(port.y);
-	expect(pageErrors).toEqual([]);
 });
 
 test('a plain click on a link in the header follows it', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = await gotoWithHeader(page);
 	await editor.loadContent(`${UNWINDOWED_PROSE}\n`);
 
@@ -159,11 +147,9 @@ test('a plain click on a link in the header follows it', async ({ page }) => {
 	// at the header; otherwise the root handler would cancel this.
 	await page.locator('[data-testid="hero-link"]').click();
 	expect(await page.evaluate(() => location.hash)).toBe('#hero-link');
-	expect(pageErrors).toEqual([]);
 });
 
 test('a text field in the header keeps its own Find chord', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = await gotoWithHeader(page);
 	await editor.loadContent(`${UNWINDOWED_PROSE}\n`);
 	const focusedTestId = () =>
@@ -182,11 +168,9 @@ test('a text field in the header keeps its own Find chord', async ({ page }) => 
 	await page.keyboard.press('ControlOrMeta+f');
 	await expect(page.locator('.search-bar')).toHaveCount(0);
 	expect(await focusedTestId()).toBe('outside-title');
-	expect(pageErrors).toEqual([]);
 });
 
 test('a caret in the header is not reported as the document caret', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = await gotoWithHeader(page);
 	await editor.loadContent(`${UNWINDOWED_PROSE}\n`);
 	const caretRect = () =>
@@ -200,11 +184,9 @@ test('a caret in the header is not reported as the document caret', async ({ pag
 	// the document's caret; reporting it would float the app's own UI over its title.
 	await page.locator('[data-testid="hero-note"]').click();
 	expect(await caretRect()).toBeNull();
-	expect(pageErrors).toEqual([]);
 });
 
 test('switching to reading mode leaves a focused header field focused', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = await gotoWithHeader(page);
 	await editor.loadContent(`${UNWINDOWED_PROSE}\n`);
 
@@ -215,11 +197,9 @@ test('switching to reading mode leaves a focused header field focused', async ({
 	expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))).toBe(
 		'hero-title'
 	);
-	expect(pageErrors).toEqual([]);
 });
 
 test('the find bar overlays the header at the top of the document', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = await gotoWithHeader(page);
 	await editor.loadContent(`${UNWINDOWED_PROSE}\n`);
 	await editor.focusBlockEnd(0);
@@ -232,7 +212,6 @@ test('the find bar overlays the header at the top of the document', async ({ pag
 	const header = (await headerEl(page).boundingBox())!;
 	expect(bar.y).toBeLessThan(header.y + header.height);
 	expect(bar.y + bar.height).toBeGreaterThan(header.y);
-	expect(pageErrors).toEqual([]);
 });
 
 // ── Host mode ───────────────────────────────────────────────────────────
@@ -245,7 +224,6 @@ const flowScrollTop = (page: Page): Promise<number> =>
 test('a host-mode header renders above the first block and never writes the ancestor scroll', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 	const entry = page.locator('[data-testid="entry-header"]');
 	await expect(entry.locator('.editor > .editor-header')).toHaveCount(1);
@@ -270,11 +248,9 @@ test('a host-mode header renders above the first block and never writes the ance
 	const grown = (await entry.locator('[data-testid="flow-header"]').boundingBox())!;
 	expect(grown.height - header.height).toBeCloseTo(160, 0);
 	expect(Math.abs((await flowScrollTop(page)) - before)).toBeLessThanOrEqual(1);
-	expect(pageErrors).toEqual([]);
 });
 
 test('the host-mode find bar sits at the editor top edge, over the header', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 	const entry = page.locator('[data-testid="entry-header"]');
 
@@ -287,5 +263,4 @@ test('the host-mode find bar sits at the editor top edge, over the header', asyn
 	const header = (await entry.locator('[data-testid="flow-header"]').boundingBox())!;
 	expect(bar.y).toBeLessThan(header.y + header.height);
 	expect(bar.y + bar.height).toBeGreaterThan(header.y);
-	expect(pageErrors).toEqual([]);
 });

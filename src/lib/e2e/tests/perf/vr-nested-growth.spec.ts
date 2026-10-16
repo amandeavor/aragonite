@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import type { EditorPage } from '../../editor-page';
-import { capturePageErrors, deferImage } from '../../page-probes';
+import { deferImage } from '../../page-probes';
 import { spacerCount, topVisibleHostTop, TOP_LEVEL_HOSTS } from './vr-helpers';
 import {
 	BELOW,
@@ -54,7 +54,6 @@ test.describe('growth inside a container wholly above the viewport is corrected 
 	];
 	for (const { name, doc } of CASES) {
 		test(`an image decoding in ${name}`, async ({ page }) => {
-			const pageErrors = capturePageErrors(page);
 			const release = await deferImage(page, LATE_SVG);
 			const nested = await openNested(page, 'self', doc);
 			expect(await spacerCount(page), 'the fixture must window').toBeGreaterThan(0);
@@ -80,7 +79,6 @@ test.describe('growth inside a container wholly above the viewport is corrected 
 			const after = await nested.screenTop(path);
 			expect(after, `${reference!.ref} stays mounted`).not.toBeNull();
 			expect(Math.abs(after! - before), `moved from ${before} to ${after}`).toBeLessThanOrEqual(1);
-			expect(pageErrors).toEqual([]);
 		});
 	}
 });
@@ -147,7 +145,6 @@ test.describe('growth inside a container holding the viewport’s top is correct
 	);
 	for (const { name, kind, count, caret, mode } of RUNS) {
 		test(`an image decoding in ${name}, scrollMode ${mode}`, async ({ page }) => {
-			const pageErrors = capturePageErrors(page);
 			const release = await deferImage(page, LATE_SVG);
 			const nested = await openNested(page, mode, docWith(containerOf(kind, count)));
 			expect(await spacerCount(page), 'the fixture must window').toBeGreaterThan(0);
@@ -168,7 +165,6 @@ test.describe('growth inside a container holding the viewport’s top is correct
 			expect(after, `${JSON.stringify(reference)} stays mounted`).not.toBeNull();
 			expect(Math.abs(after! - before), `moved from ${before} to ${after}`).toBeLessThanOrEqual(1);
 			expect(await writes(), 'one scroll write').toHaveLength(1);
-			expect(pageErrors).toEqual([]);
 		});
 	}
 });

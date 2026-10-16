@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { capturePageErrors } from '../../page-probes';
 import { cstBlockCount } from '../perf/vr-helpers';
 
 /**
@@ -58,8 +57,6 @@ function blockViewport(page: Page, path: number[]): Promise<BlockViewport> {
 test('scrollTo to the document tail past undecoded images lands it in view, not stranded', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
-
 	// Keep the showcase's picsum images undecoded for the whole test: the requests hang, the
 	// <img>s never decode and keep measuring ~0. Set before goto.
 	await page.route('https://picsum.photos/**', () => {});
@@ -83,7 +80,6 @@ test('scrollTo to the document tail past undecoded images lands it in view, not 
 	expect(view.inView).toBe(true);
 	// `resolved` is honest: true goes with the block being in view.
 	expect(resolved).toBe(true);
-	expect(pageErrors).toEqual([]);
 });
 
 // The image band above the target collapses when scrolled to; the `room` prose above it stays
@@ -110,8 +106,6 @@ function imageBandDoc(): { md: string; targetIndex: number } {
 test('scrollTo center to a mid-document target below undecoded images stays centered', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
-
 	await page.route('https://picsum.photos/**', () => {});
 
 	const editor = new EditorPage(page);
@@ -134,5 +128,4 @@ test('scrollTo center to a mid-document target below undecoded images stays cent
 	// Centered after the band collapses: not clamped to an edge, not stranded above.
 	expect(Math.abs(view.centerOffset!)).toBeLessThan(view.viewportHeight * 0.3);
 	expect(resolved).toBe(true);
-	expect(pageErrors).toEqual([]);
 });

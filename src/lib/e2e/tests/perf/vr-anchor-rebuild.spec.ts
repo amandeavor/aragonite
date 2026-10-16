@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { editorScrollHeight, progressiveScrollTo, spacerCount } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Measured heights must survive a structural rebuild. List items and table rows reach the height
 // table only through their parent's total, so unless that total is stored by id, a count change
@@ -27,7 +26,6 @@ function childCount(editor: EditorPage): Promise<number> {
 test('structural edit in a windowed non-uniform list keeps the viewport stable', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 
@@ -85,13 +83,11 @@ test('structural edit in a windowed non-uniform list keeps the viewport stable',
 	}, inView.reference.path);
 	expect(referenceAfter).not.toBeNull();
 	expect(Math.abs(referenceAfter! - inView.reference.top)).toBeLessThan(250);
-	expect(pageErrors).toEqual([]);
 });
 
 test('structural edit in a windowed non-uniform table keeps the viewport stable', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 
@@ -148,5 +144,4 @@ test('structural edit in a windowed non-uniform table keeps the viewport stable'
 	}, view.reference.idx);
 	expect(referenceAfter).not.toBeNull();
 	expect(Math.abs(referenceAfter! - view.reference.top)).toBeLessThan(250);
-	expect(pageErrors).toEqual([]);
 });

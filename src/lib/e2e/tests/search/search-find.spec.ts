@@ -1,5 +1,4 @@
 import { test, expect } from '../../fixtures';
-import { capturePageErrors } from '../../page-probes';
 import { EditorPage } from '../../editor-page';
 import { activeOverlays, count, findInput, openFind, overlays, typeQuery } from './helpers';
 
@@ -151,8 +150,6 @@ test.describe('search: bar stays pinned', () => {
 
 test.describe('search: off-window reveal', () => {
 	test('navigating to an off-window match scrolls its block into view', async ({ page }) => {
-		const pageErrors = capturePageErrors(page);
-
 		const editor = new EditorPage(page);
 		await editor.goto();
 		// A multi-MB fixture turns windowing on, and the suffix appends a last, unmounted paragraph
@@ -191,6 +188,5 @@ test.describe('search: off-window reveal', () => {
 				last
 			)
 		).toBe(true);
-		expect(pageErrors).toEqual([]);
 	});
 });

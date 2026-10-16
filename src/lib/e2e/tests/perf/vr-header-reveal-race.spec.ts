@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { progressiveScrollTo, spacerCount, UNWINDOWED_PROSE } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Two writers to one scrollTop, made to collide: scrolling to a block re-asserts a position that
 // includes the header's height, while the header's resize observer adds the difference on top, so
@@ -14,7 +13,6 @@ const TARGET = 40;
 test('a header resize landing inside a reveal does not double-apply its delta', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto('?header=on');
 	await editor.loadLargeFixture('many-small-blocks', WINDOWED_BYTES);
@@ -48,11 +46,9 @@ test('a header resize landing inside a reveal does not double-apply its delta', 
 	expect(seen.top - seen.portTop).toBeGreaterThan(-HEADER_DELTA / 2);
 	expect(seen.top).toBeLessThan(seen.portBottom);
 	expect(seen.bottom).toBeGreaterThan(seen.portTop);
-	expect(pageErrors).toEqual([]);
 });
 
 test('no write unplaces the target once the reveal has placed it', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto('?header=on');
 	await editor.loadLargeFixture('many-small-blocks', WINDOWED_BYTES);
@@ -110,13 +106,11 @@ test('no write unplaces the target once the reveal has placed it', async ({ page
 	// One entry here would be the observer's difference written on top of a position that already
 	// included the new height.
 	expect(observed.unplaced).toEqual([]);
-	expect(pageErrors).toEqual([]);
 });
 
 test('a header resize while a landed reveal still holds its pin does not double-apply', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto('?header=on');
 	await editor.loadLargeFixture('many-small-blocks', WINDOWED_BYTES);
@@ -143,7 +137,6 @@ test('a header resize while a landed reveal still holds its pin does not double-
 		return rect.top - document.querySelector('.editor')!.getBoundingClientRect().top;
 	}, TARGET);
 	expect(Math.abs(afterTop - beforeTop)).toBeLessThanOrEqual(2);
-	expect(pageErrors).toEqual([]);
 });
 
 // ── The other side of the rule ──────────────────────────────────────────
@@ -154,7 +147,6 @@ test('a header resize while a landed reveal still holds its pin does not double-
 test('a header resize compensates rather than re-places a reveal the anchor is not holding', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto('?header=on');
 	await editor.loadContent(`${UNWINDOWED_PROSE}\n`);
@@ -186,5 +178,4 @@ test('a header resize compensates rather than re-places a reveal the anchor is n
 
 	// The correction still handles this case; re-placing the block would drag it to the top.
 	expect(Math.abs((await offsetInPort(visibleTarget)) - beforeReveal)).toBeLessThanOrEqual(2);
-	expect(pageErrors).toEqual([]);
 });

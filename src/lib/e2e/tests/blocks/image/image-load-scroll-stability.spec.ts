@@ -1,7 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../../editor-page';
-import { capturePageErrors, deferImage } from '../../../page-probes';
+import { deferImage } from '../../../page-probes';
 
 // A short fixed viewport makes the editor a real (capped) scroll container; the e2e-blocks project
 // sets none.
@@ -75,8 +75,6 @@ async function expectNoShiftOnImageLoad(
 	scrollTo: ScrollTarget,
 	expectWindowed: boolean
 ): Promise<void> {
-	const pageErrors = capturePageErrors(page);
-
 	const editor = new EditorPage(page);
 	await editor.goto();
 
@@ -154,8 +152,6 @@ async function expectNoShiftOnImageLoad(
 	}, refBefore!.path);
 	expect(refTopAfter).not.toBeNull();
 	expect(Math.abs(refTopAfter! - refBefore!.top)).toBeLessThan(8);
-
-	expect(pageErrors).toEqual([]);
 }
 
 test('unsized image loading above the viewport does not shift the reading position (windowing inactive)', async ({

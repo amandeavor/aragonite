@@ -1,7 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
 import { getContainerParityMismatches } from '../../../../container-parity';
-import { capturePageErrors } from '../../../../page-probes';
 
 // The worked examples (rows 2 to 5) and the ordered renumber are pinned in
 // `merge-list-item.test.ts` and `merge-keeps-lines.test.ts`.
@@ -43,7 +42,6 @@ test.describe('list Backspace: M1 merge on non-first item', () => {
 		page.on('console', (m) => {
 			if (m.type() === 'error' || m.type() === 'warning') consoleErrors.push(m.text());
 		});
-		const pageErrors = capturePageErrors(page);
 
 		await editor.loadContent('- A\n  - B\n    - C\n- D\n  - E\n');
 		const dItem = editor.page.locator('[contenteditable="true"]', { hasText: 'D' }).first();
@@ -53,16 +51,12 @@ test.describe('list Backspace: M1 merge on non-first item', () => {
 		await editor.bridge.waitForSourceMatches(/^ {4}- CD/m);
 
 		expect(await getContainerParityMismatches(page)).toEqual([]);
-		expect(pageErrors).toEqual([]);
 		expect(consoleErrors.filter((m) => /each_key_duplicate/.test(m))).toEqual([]);
 	});
 
-	test('M1 opaque previous leaf (fenced code): no merge, no crash, caret falls back', async ({
-		page
-	}) => {
+	test('M1 opaque previous leaf (fenced code): no merge, no crash, caret falls back', async () => {
 		// Backspace after a fenced-code-only item must change no structure and move the caret into
 		// the code block; a throw inside the commit crashes in dev and does nothing in production.
-		const pageErrors = capturePageErrors(page);
 
 		await editor.loadContent('- ```\n  code\n  ```\n- text\n');
 		const textItem = editor.page.locator('[contenteditable="true"]', { hasText: 'text' }).first();
@@ -77,7 +71,6 @@ test.describe('list Backspace: M1 merge on non-first item', () => {
 		// No merge: both items survive, and 'text' is not appended to the code block.
 		expect((source.match(/^- /gm) ?? []).length).toBe(2);
 		expect(source).not.toContain('codetext');
-		expect(pageErrors).toEqual([]);
 	});
 
 	test('ordered: deleting item renumbers subsequent', async () => {

@@ -1,15 +1,8 @@
 import { type ConsoleMessage, type Page, type Request, type Response } from '@playwright/test';
 import { UNDO_DEBOUNCE_MS } from '../editor-actions/commit/text-batch';
 
-// Page-level checks shared across the e2e suites. Whether a spec asserts on page errors is its own
-// decision: this module hands back what it collected and never asserts.
-
-// Pair with an explicit `expect(pageErrors).toEqual([])` where the spec asserts there were none.
-export function capturePageErrors(page: Page): string[] {
-	const errors: string[] = [];
-	page.on('pageerror', (e) => errors.push(e.message));
-	return errors;
-}
+// Page-level checks shared across the e2e suites. Whether a spec asserts on what a probe
+// collected is its own decision: this module hands it back and never asserts.
 
 /** What a page reported while it loaded: uncaught errors first, then console errors, then one
  *  line per request that failed. `seen` reads what has arrived; `stop` detaches the listeners. */

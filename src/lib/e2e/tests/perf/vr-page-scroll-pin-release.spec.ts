@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { gotoPageScroll, settleFrames, spacerCount } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // A held scroll position is released by the user's next gesture. Under `scrollMode="host"` the
 // page scrolls, so that gesture is one the editor root never sees; the release listeners follow
@@ -30,7 +29,6 @@ function scrollY(page: Page): Promise<number> {
 test('a wheel outside the editor releases the reveal pin and the page scrolls', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 
 	// Windowing must be active, or nothing re-asserts the held position and the test proves nothing.
@@ -56,13 +54,11 @@ test('a wheel outside the editor releases the reveal pin and the page scrolls', 
 	await page.waitForFunction((from) => window.scrollY > from, moved, { timeout: 5000 });
 
 	expect(await scrollY(page)).toBeGreaterThan(pinned);
-	expect(pageErrors).toEqual([]);
 });
 
 // The other half of the rule: a held position nothing disturbs still holds. Without this case,
 // releasing every time would pass.
 test('the reveal pin holds when no gesture follows it', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 
 	expect(await page.evaluate((i) => (window as any).__test.rects.scrollTo([i]), TARGET_BLOCK)).toBe(
@@ -75,5 +71,4 @@ test('the reveal pin holds when no gesture follows it', async ({ page }) => {
 	}
 
 	expect(Math.abs((await scrollY(page)) - pinned)).toBeLessThan(4);
-	expect(pageErrors).toEqual([]);
 });

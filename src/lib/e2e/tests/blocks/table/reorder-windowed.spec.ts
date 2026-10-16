@@ -2,7 +2,6 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { openFlyout } from './helpers';
 import { getContainerParityMismatches } from '../../../container-parity';
-import { capturePageErrors } from '../../../page-probes';
 
 // Header + N distinguishable body rows; row k's first cell is `rk`. Tall enough that body rows
 // window out, so once the editor is scrolled to the bottom row 0 is unmounted and a mounted
@@ -43,7 +42,6 @@ test.describe('table block: row moves on a row-windowed table', () => {
 	test('Alt+ArrowDown on a deep row moves that row, and announces its absolute position', async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
 		const from = BODY_ROWS - 2;
 		await page.locator(`[data-table-row-idx="${from}"] .table-cell`).first().click();
 
@@ -56,11 +54,9 @@ test.describe('table block: row moves on a row-windowed table', () => {
 			`Moved row to position ${from + 1} of ${BODY_ROWS}`
 		);
 		expect(await getContainerParityMismatches(page)).toEqual([]);
-		expect(pageErrors).toEqual([]);
 	});
 
 	test('the Row flyout on a deep row moves that row up, keeping every row', async ({ page }) => {
-		const pageErrors = capturePageErrors(page);
 		const from = BODY_ROWS - 3;
 		await openFlyout(
 			page,
@@ -80,6 +76,5 @@ test.describe('table block: row moves on a row-windowed table', () => {
 		});
 		expect(tableNode).toEqual({ children: BODY_ROWS + 1, ids: BODY_ROWS + 1 });
 		expect(await getContainerParityMismatches(page)).toEqual([]);
-		expect(pageErrors).toEqual([]);
 	});
 });

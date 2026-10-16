@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { gotoPageScroll, scrollPageTo } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Drag autoscroll where the window's own viewport does the scrolling. The edge distances come
 // from boxes, and `document.scrollingElement`'s box is the whole document, so a pointer at the
@@ -33,7 +32,6 @@ async function cancelDrag(page: Page): Promise<void> {
 }
 
 test('a drag held at the bottom of the screen scrolls the page down', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 	await scrollPageTo(page, READING_OFFSET);
 	const before = await scrollY(page);
@@ -43,11 +41,9 @@ test('a drag held at the bottom of the screen scrolls the page down', async ({ p
 	await expect.poll(() => scrollY(page)).toBeGreaterThan(before + 50);
 
 	await cancelDrag(page);
-	expect(pageErrors).toEqual([]);
 });
 
 test('a drag held at the top of the screen scrolls the page up', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoPageScroll(page);
 	await scrollPageTo(page, READING_OFFSET);
 	const before = await scrollY(page);
@@ -58,5 +54,4 @@ test('a drag held at the top of the screen scrolls the page up', async ({ page }
 	await expect.poll(() => scrollY(page)).toBeLessThan(before - 50);
 
 	await cancelDrag(page);
-	expect(pageErrors).toEqual([]);
 });

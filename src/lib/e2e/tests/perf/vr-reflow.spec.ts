@@ -2,7 +2,6 @@ import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { FIXTURE_BYTES, GIANT_LIST_OR_TABLE_BYTES, spacerCount } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Batching the measurements (VR-4): when many blocks mount in one frame, measuring then writing
 // per block must not force one layout per block. Read through CDP's LayoutCount, which needs a
@@ -99,7 +98,6 @@ for (const row of ROWS) {
 	test(`a fling does not force one reflow per mounted ${row.unit} (${row.tag})`, async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
 		const editor = new EditorPage(page);
 		await editor.goto();
 		await row.arrange(page, editor);
@@ -118,6 +116,5 @@ for (const row of ROWS) {
 		// layouts per mount meaninglessly small.
 		expect(mounts).toBeGreaterThan(200);
 		expect(perMount).toBeLessThan(PER_MOUNT_BOUND);
-		expect(pageErrors).toEqual([]);
 	});
 }

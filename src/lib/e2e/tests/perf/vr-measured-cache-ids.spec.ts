@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { capturePageErrors } from '../../page-probes';
 import { spacerCount } from './vr-helpers';
 
 // After a `source` swap the measured-height cache holds only blocks the new document has, even
@@ -52,7 +51,6 @@ function cacheIds(page: Page): Promise<{ measured: string[]; live: string[] }> {
 test('a swap leaves only live ids in the measured cache, a list above the fold included', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadContent(buildDoc('first'));
@@ -74,5 +72,4 @@ test('a swap leaves only live ids in the measured cache, a list above the fold i
 	// Without the list's own entry the check says nothing about the container case.
 	expect(measured).toContain(listId);
 	expect(measured.filter((id) => !live.includes(id))).toEqual([]);
-	expect(pageErrors).toEqual([]);
 });

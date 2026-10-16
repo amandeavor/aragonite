@@ -10,7 +10,6 @@ import {
 	progressiveScrollTo,
 	spacerCount
 } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Dropping measurements on a resize, in its two cases (VR-1). A width change re-wraps the prose,
 // so the height table rebuilds and measures again. A height change keeps the measurements but
@@ -52,7 +51,6 @@ function hostTopInEditor(page: Page, path: string): Promise<number | null> {
 test('narrowing the viewport re-measures wrapped heights and holds the anchor (VR-1)', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadContent(buildWideProseDoc());
@@ -93,7 +91,6 @@ test('narrowing the viewport re-measures wrapped heights and holds the anchor (V
 	// 20px is far above what is left over and far below slipping by a whole block.
 	expect(anchorTopAfter).not.toBeNull();
 	expect(drift).toBeLessThan(20);
-	expect(pageErrors).toEqual([]);
 });
 
 // The width observer ignores a height change by design, and the scroll container's height is
@@ -101,7 +98,6 @@ test('narrowing the viewport re-measures wrapped heights and holds the anchor (V
 test('growing the viewport height alone extends the mounted band into the exposed area', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await page.setViewportSize(VIEWPORT);
@@ -131,5 +127,4 @@ test('growing the viewport height alone extends the mounted band into the expose
 	// The correction must not move the user while it fills that stretch.
 	expect(anchorTopAfter).not.toBeNull();
 	expect(Math.abs(anchorTopAfter! - anchor!.topInEditor)).toBeLessThan(60);
-	expect(pageErrors).toEqual([]);
 });

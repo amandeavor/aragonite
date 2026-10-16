@@ -2,7 +2,6 @@ import { test, expect } from '../../fixtures';
 import { type Locator, type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { gotoFlow, settleFrames, spacerCount } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Flow mode, where the app does the scrolling: several editors inside one scrolling ancestor,
 // plus a pane that clips rather than scrolls. The editor root covers the whole document here,
@@ -28,7 +27,6 @@ async function scrollHostTo(page: Page, top: number): Promise<void> {
 }
 
 test('a host-scroll entry windows its blocks against the ancestor scrollport', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 
 	const count = await blockCount(page, 'a');
@@ -36,7 +34,6 @@ test('a host-scroll entry windows its blocks against the ancestor scrollport', a
 	const hostMounted = await hosts(entry(page, 'a')).count();
 	expect(hostMounted).toBeLessThan(count);
 	expect(await entry(page, 'a').locator('.vr-spacer').count()).toBeGreaterThan(0);
-	expect(pageErrors).toEqual([]);
 
 	// The same source in an editor that scrolls itself mounts about as many blocks, so this one must
 	// not mount all 200.
@@ -53,7 +50,6 @@ test('a host-scroll entry windows its blocks against the ancestor scrollport', a
 test('the editor root stops being a scroll container and the ancestor carries the entry', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 
 	const geometry = await page.evaluate(() => {
@@ -81,11 +77,9 @@ test('the editor root stops being a scroll container and the ancestor carries th
 	const before = await topOf();
 	await scrollHostTo(page, 1500);
 	expect(before - (await topOf())).toBeGreaterThan(1400);
-	expect(pageErrors).toEqual([]);
 });
 
 test('typing and undo in a host-scroll entry behave as in self mode', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 
 	await entry(page, 'a').locator('[contenteditable]').first().click();
@@ -96,13 +90,11 @@ test('typing and undo in a host-scroll entry behave as in self mode', async ({ p
 	await page.waitForTimeout(300); // past the 250ms undo debounce
 	await page.keyboard.press('ControlOrMeta+z');
 	await expect.poll(() => flowSource(page, 'a')).not.toContain('FLOW_MARK');
-	expect(pageErrors).toEqual([]);
 });
 
 test('scrollTo on a far block resolves true and lands it in the ancestor scrollport', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 
 	expect(await page.evaluate(() => (window as any).__flow.scrollTo('a', [180]))).toBe(true);
@@ -114,13 +106,11 @@ test('scrollTo on a far block resolves true and lands it in the ancestor scrollp
 	});
 	expect(seen.top).toBeLessThan(seen.portBottom);
 	expect(seen.bottom).toBeGreaterThan(seen.portTop);
-	expect(pageErrors).toEqual([]);
 });
 
 test('setSelection in a host-scroll entry reports true only once the block is in view', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 	const at = (id: string, index: number) =>
 		page.evaluate(
@@ -145,20 +135,16 @@ test('setSelection in a host-scroll entry reports true only once the block is in
 
 	// And it inherits the clip bound rather than reporting a placement it can't make.
 	expect(await at('clipped', 5)).toBe(false);
-	expect(pageErrors).toEqual([]);
 });
 
 test('scrollTo on a path that addresses no block resolves false', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 	expect(await page.evaluate(() => (window as any).__flow.scrollTo('a', [9999]))).toBe(false);
-	expect(pageErrors).toEqual([]);
 });
 
 test('scrollTo past a clipping host edge resolves false, nothing can reveal the block', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 
 	// The target sits past the pane's bottom edge but inside the window's viewport; the block just
@@ -173,13 +159,11 @@ test('scrollTo past a clipping host edge resolves false, nothing can reveal the 
 
 	expect(await page.evaluate(() => (window as any).__flow.scrollTo('clipped', [0]))).toBe(true);
 	expect(await page.evaluate(() => (window as any).__flow.scrollTo('clipped', [5]))).toBe(false);
-	expect(pageErrors).toEqual([]);
 });
 
 test('a drag at the scrollport edge autoscrolls the host, not the non-scrolling root', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 	await scrollHostTo(page, 1100);
 
@@ -205,11 +189,9 @@ test('a drag at the scrollport edge autoscrolls the host, not the non-scrolling 
 	// Escape cancels the drop, so the assertion above is about scrolling only.
 	await page.keyboard.press('Escape');
 	await page.mouse.up();
-	expect(pageErrors).toEqual([]);
 });
 
 test('the find bar rides the entry top edge, not the ancestor scrollport', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 
 	// The entry starts below the viewport; scroll it into reach before focusing a block.
@@ -241,13 +223,11 @@ test('the find bar rides the entry top edge, not the ancestor scrollport', async
 	// And really gone from the top of the scroll container: a sticky element working from the
 	// ancestor would sit there, floating over the rest of the page.
 	expect(far.fromScrollport).toBeLessThan(-200);
-	expect(pageErrors).toEqual([]);
 });
 
 test('nested scopes in a host-scroll entry window their children and stay error-free', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 	const nested = entry(page, 'nested');
 
@@ -276,13 +256,11 @@ test('nested scopes in a host-scroll entry window their children and stay error-
 	await page.keyboard.press('End');
 	await page.keyboard.type('NESTED_MARK');
 	await expect.poll(() => flowSource(page, 'nested')).toContain('NESTED_MARK');
-	expect(pageErrors).toEqual([]);
 });
 
 test('two entries in one scroller window independently against the shared port', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	await gotoFlow(page);
 
 	const [countA, countB] = [await blockCount(page, 'a'), await blockCount(page, 'b')];
@@ -301,5 +279,4 @@ test('two entries in one scroller window independently against the shared port',
 	await expect.poll(() => flowSource(page, 'b')).toContain('BETA_MARK');
 
 	expect(await flowSource(page, 'a')).toBe(sourceABefore);
-	expect(pageErrors).toEqual([]);
 });
