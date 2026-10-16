@@ -36,7 +36,9 @@ describe('registerBlockKind refuses a kind with no view', () => {
 		const kind = declarePluginKind('legacy-block');
 		expect(() =>
 			registerBlockKind(kind, { ...leaf, view } as unknown as BlockKindRegistration)
-		).toThrow(/"legacy-block" needs a view.*svelteBlockView.*textBlockView/);
+		).toThrow(
+			/"legacy-block" needs a `view`.*svelteBlockView.*`textBlockView\(\)` from `[^`]*\/plugin`/
+		);
 		expect(blockViewFor(kind, everyInstalledPlugin)).toBeUndefined();
 	});
 });
