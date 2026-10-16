@@ -84,8 +84,8 @@ describe('mountPluginView', () => {
 	});
 });
 
-describe('the Svelte helpers', () => {
-	it('keep a getter prop live instead of copying it at mount', () => {
+describe('svelteView', () => {
+	it('keeps a getter prop live instead of copying it at mount', () => {
 		let reader = 'first';
 		const props = {
 			get computeInlineContent() {
@@ -102,7 +102,7 @@ describe('the Svelte helpers', () => {
 		expect(seen.computeInlineContent).toBe('second');
 	});
 
-	it('re-render only what reads a prop the update changed', () => {
+	it('re-renders only what reads a prop the update changed', () => {
 		const getTheme = () => 'light';
 		const props = (start: number) => ({ inline: { start }, source: '$x$', getTheme }) as never;
 		const view = svelteView(SourceReader as never);

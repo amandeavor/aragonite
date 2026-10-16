@@ -127,9 +127,9 @@ export type EditorOptionSpecs<P = EditorOptions & { header?: unknown }> = {
 };
 
 /**
- * Every editor option, `header` included, with when a new value takes effect and whether it is a
- * boolean. `createEditor` updates by it and the Vue wrapper declares its props from it; an option
- * added without a row fails `npm run check`.
+ * Every editor option, `header` included, with when a new value takes effect and whether it's a
+ * boolean. `createEditor` skips the `once` options on `update`, and a framework wrapper declares
+ * its props from this list.
  */
 export const EDITOR_OPTION_SPECS = {
 	source: { timing: 'live' },
