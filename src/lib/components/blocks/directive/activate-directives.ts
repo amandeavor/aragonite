@@ -12,7 +12,7 @@ import { declaredPluginKind } from '#lib/schema/plugin-kind.js';
 import { registerAsCore } from '#lib/schema/plugin-install.js';
 import { DIRECTIVE_CONTAINER, DIRECTIVE_LEAF } from '#lib/core/directive/kinds.js';
 import DirectiveContainerBlock from './DirectiveContainerBlock.svelte';
-import TextEditableBlock from '../text/TextEditableBlock.svelte';
+import { textBlockView } from '../text/text-block-view';
 
 export function activateDirectives(): void {
 	// The shared directive kinds and their components belong to no plugin, whichever plugin's setup
@@ -32,7 +32,7 @@ export function activateDirectives(): void {
 		if (!isBlockViewRegistered(DIRECTIVE_LEAF)) {
 			registerBlockView(
 				declaredPluginKind(DIRECTIVE_LEAF),
-				svelteBlockView(TextEditableBlock, () => ({ blockClass: 'directive-leaf' }))
+				textBlockView({ blockClass: 'directive-leaf' })
 			);
 		}
 	});

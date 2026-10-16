@@ -26,6 +26,6 @@ export function svelteBlockView<P extends Partial<BlockComponentProps> & Record<
 }
 
 /** The component and props behind a registered view; every view is a Svelte entry today. */
-export function svelteBlockEntry(view: BlockView | undefined): SvelteBlockEntry | undefined {
-	return view as unknown as SvelteBlockEntry | undefined;
+export function svelteBlockEntry(view: BlockView): SvelteBlockEntry {
+	return view as unknown as SvelteBlockEntry;
 }

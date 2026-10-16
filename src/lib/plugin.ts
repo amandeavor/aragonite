@@ -3,9 +3,8 @@
 // Nothing is frozen before 1.0: a (pre-freeze) section may change shape, and an untagged one keeps
 // its model while its call shapes can still change.
 
-import TextEditableBlock from './components/blocks/text/TextEditableBlock.svelte';
 import { registerChromeLeaf as bindChromeLeaf } from './editor-actions/plugin/chrome-leaf';
-import { svelteBlockView } from './components/svelte-block-view';
+import { textBlockView } from './components/blocks/text/text-block-view';
 import { computeInlineContent as parseLeafInline } from './core/inline';
 import { defaultGrammarView } from './schema/block-openers';
 import { everyInstalledPlugin } from './schema/plugin-activation';
@@ -94,6 +93,9 @@ export { simpleLeafClosure, containerClosure } from './schema/closure';
 // What draws a kind. `BlockView` is opaque: `svelteBlockView` on `/svelte` makes one.
 export { registerBlockView } from './schema/block-view-registry';
 export type { BlockView } from './schema/block-view-registry';
+// The editor's plain editable text block, for a kind drawn as plain text and for a host that
+// doesn't compile Svelte; `blockClass` lands on its element.
+export { textBlockView } from './components/blocks/text/text-block-view';
 export type { BlockComponent, BlockComponentExports, BlockComponentProps } from './block-component';
 
 // ── Parser-opener registry ───────────────────────────────────────────────────
@@ -283,11 +285,7 @@ export type { ChildList } from './block-lists/child-list';
 // value dependency on the component tree.
 export function registerChromeLeaf(kind: AnyBlockKind, opts?: ChromeLeafOptions): void {
 	const { blockClass, ...rest } = opts ?? {};
-	bindChromeLeaf(
-		kind,
-		svelteBlockView(TextEditableBlock, () => ({ blockClass })),
-		rest
-	);
+	bindChromeLeaf(kind, textBlockView({ blockClass }), rest);
 }
 export type { ChromeLeafOptions };
 // Create the reserved child-0 node for a container's title leaf: the text plus its newline.

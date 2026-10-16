@@ -1,3 +1,10 @@
+<script module lang="ts">
+	import { textBlockView } from './blocks/text/text-block-view';
+
+	// A kind with no view this editor resolves still shows its bytes, as plain editable text.
+	const RAW_FALLBACK_VIEW = textBlockView({ blockClass: 'raw-block' });
+</script>
+
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import {
@@ -12,7 +19,6 @@
 	import DecorationOverlay from './overlays/DecorationOverlay.svelte';
 	import BlockDragHandle from './BlockDragHandle.svelte';
 	import { showsDragHandle } from './drag-handle';
-	import TextEditableBlock from './blocks/text/TextEditableBlock.svelte';
 	import { defaultRegistryView } from '../schema/registry-view';
 	import { svelteBlockEntry } from './svelte-block-view';
 	import { isGridDescriptor } from '../schema/block-kind-descriptor';
@@ -99,12 +105,11 @@
 		isContainer && !delegatesPainting && !!ref?.measurePartialRects
 	);
 
-	let entry = $derived(svelteBlockEntry(registryView.blockView(node.kind)));
+	let view = $derived(registryView.blockView(node.kind));
+	let entry = $derived(svelteBlockEntry(view ?? RAW_FALLBACK_VIEW));
 
-	// A kind with no registered view falls back to the plain editable block below rather than
-	// silently rendering nothing.
 	$effect(() => {
-		if (!entry) devWarn('block-host', 'no view for kind, rendering raw', node.kind);
+		if (!view) devWarn('block-host', 'no view for kind, rendering raw', node.kind);
 	});
 
 	// The error boundary retries only when the bytes change, so a failing render cannot loop.
@@ -177,30 +182,17 @@
 	bind:this={hostEl}
 >
 	<svelte:boundary onerror={onRenderError}>
-		{#if entry}
-			{@const Comp = entry.component}
-			<Comp
-				{node}
-				{index}
-				{myPath}
-				{ambientPrefix}
-				document={getDoc?.()}
-				{rects}
-				bind:this={instance}
-				{...entry.extraProps?.(node) ?? {}}
-			/>
-		{:else}
-			<TextEditableBlock
-				{node}
-				{index}
-				{myPath}
-				{ambientPrefix}
-				document={getDoc?.()}
-				{rects}
-				bind:this={instance}
-				blockClass="raw-block"
-			/>
-		{/if}
+		{@const Comp = entry.component}
+		<Comp
+			{node}
+			{index}
+			{myPath}
+			{ambientPrefix}
+			document={getDoc?.()}
+			{rects}
+			bind:this={instance}
+			{...entry.extraProps?.(node) ?? {}}
+		/>
 
 		{#snippet failed(error)}
 			{@const cause = foreignRuntimeCause(error)}

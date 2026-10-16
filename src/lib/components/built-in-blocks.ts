@@ -7,7 +7,7 @@
 import type { NodeView } from '../core/node-views';
 import { metadataOf } from '../core/nodes';
 import { shownKind } from '../core/parsers/heading';
-import { registerBlockView, type BlockView } from '../schema/block-view-registry';
+import { registerBlockView } from '../schema/block-view-registry';
 import { svelteBlockView } from '../components/svelte-block-view';
 import { augmentBuiltin } from '../schema/block-kind-descriptor';
 import { registerBuiltInDescriptors } from '../schema/built-in-descriptors';
@@ -18,6 +18,7 @@ import { shiftBodyLines } from './blocks/code/code-indent';
 import { codeBodyRange } from './blocks/code/code-renderer';
 import { imageWidgetOnSelectedKey } from './image/image-widget-editing';
 import TextEditableBlock from './blocks/text/TextEditableBlock.svelte';
+import { textBlockView } from './blocks/text/text-block-view';
 import CodeBlock from './blocks/code/CodeBlock.svelte';
 import ThematicBreakBlock from './blocks/ThematicBreakBlock.svelte';
 import BlockquoteBlock from './blocks/BlockquoteBlock.svelte';
@@ -33,9 +34,7 @@ function headingExtraProps(node: NodeView): Record<string, unknown> {
 	return { blockClass: `heading-${level}` };
 }
 
-const textAsRawBlock: BlockView = svelteBlockView(TextEditableBlock, () => ({
-	blockClass: 'raw-block'
-}));
+const textAsRawBlock = textBlockView({ blockClass: 'raw-block' });
 
 // Stops a second call doing the work twice, without bypassing the registry: a
 // dev-server re-evaluation resets it, so re-registering in dev still replaces.
@@ -48,10 +47,7 @@ export function registerBuiltInBlocks(): void {
 	// Descriptors first: augmentBuiltin('table') below needs `table` registered.
 	registerBuiltInDescriptors();
 
-	registerBlockView(
-		'paragraph',
-		svelteBlockView(TextEditableBlock, () => ({ blockClass: 'paragraph-block' }))
-	);
+	registerBlockView('paragraph', textBlockView({ blockClass: 'paragraph-block' }));
 	registerBlockView('heading', svelteBlockView(TextEditableBlock, headingExtraProps));
 	registerBlockView('setextHeading', svelteBlockView(TextEditableBlock, headingExtraProps));
 	registerBlockView('thematicBreak', svelteBlockView(ThematicBreakBlock));

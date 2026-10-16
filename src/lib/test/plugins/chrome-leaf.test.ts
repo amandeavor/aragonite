@@ -66,7 +66,7 @@ describe('registerChromeLeaf', () => {
 		const kind = declarePluginKind('spec-chrome-leaf');
 		registerChromeLeaf(kind);
 
-		const extraProps = svelteBlockEntry(getBlockView(kind, everyInstalledPlugin))?.extraProps;
+		const extraProps = svelteBlockEntry(getBlockView(kind, everyInstalledPlugin)!).extraProps;
 		expect(extraProps?.({ kind, leadingTrivia: '', raw: '\n' })).toStrictEqual({
 			blockClass: undefined
 		});

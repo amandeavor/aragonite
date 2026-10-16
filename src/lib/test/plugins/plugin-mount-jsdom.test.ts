@@ -12,6 +12,7 @@ import {
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
+	textBlockView,
 	OPENER_PRIORITIES,
 	type EditorPlugin,
 	type ParsedLine
@@ -37,11 +38,11 @@ function markerBlockExtent(lines: readonly ParsedLine[], index: number): number 
 	return 0;
 }
 
-function markerLeafPlugin(): EditorPlugin {
+function markerLeafPlugin(view = svelteBlockView(PlainLeafBlock)): EditorPlugin {
 	return definePluginBlock({
 		name: 'jsdommountplugin',
 		kind: KIND,
-		view: svelteBlockView(PlainLeafBlock),
+		view,
 		register: () => {
 			const kind = declarePluginKind(KIND);
 			registerBlockKind(kind, {
@@ -122,6 +123,24 @@ describe('mounting a plugin block through the published surface', () => {
 		const root = mountEditor([]);
 		expect(root.querySelector('.plain-leaf-block')).toBeNull();
 		expect(instance?.getSource()).toBe(SOURCE);
+	});
+});
+
+describe('a plugin kind drawn by textBlockView', () => {
+	it('mounts the editor text block with its class, and typing into it writes the source', async () => {
+		const root = mountEditor([markerLeafPlugin(textBlockView({ blockClass: 'marker-text' }))]);
+		const leaf = root.querySelector<HTMLElement>('.text-editable-block.marker-text');
+		expect(leaf, 'the text block mounted for the plugin kind').not.toBeNull();
+		expect(leaf?.getAttribute('contenteditable')).toBe('true');
+
+		leaf!.textContent = `${MARKER}
+first!
+second
+${MARKER}`;
+		leaf!.dispatchEvent(new InputEvent('input', { bubbles: true }));
+		await settleEditor();
+
+		expect(instance?.getSource()).toBe(SOURCE.replace('first', 'first!'));
 	});
 });
 
