@@ -17,6 +17,7 @@ import { selectWidgetWhole } from '../../selection/place-caret';
 import type { WidgetTarget } from '../../selection/primitives';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import type { CaretWriter } from '../../caret/widget-offset';
+import { widgetElAt } from '../../caret/block-el-lookup';
 import type { Reading } from '../../schema/reading';
 import { widgetNodeIn, widgetSpanAt } from '../blocks/text/widget-adjacency';
 
@@ -62,18 +63,6 @@ export interface ImageEditCommitter {
 export function createImageEditCommitter(deps: ImageEditCommitterDeps): ImageEditCommitter {
 	const { getDoc, getEditorEl, selection, inlineRange, events } = deps;
 
-	function queryWidgetEl(paragraphPath: number[], sourceStart: number): HTMLElement | null {
-		const root = getEditorEl();
-		if (!root) return null;
-		// Locate by the live block-host path, never an attribute baked into the widget:
-		// see widget-dom.ts's click handler.
-		const host = root.querySelector(`[data-block-path='${JSON.stringify(paragraphPath)}']`);
-		if (!host) return null;
-		return host.querySelector(
-			`[data-image-widget][data-source-start="${sourceStart}"]`
-		) as HTMLElement | null;
-	}
-
 	const imageAt = (target: WidgetTarget): InlineNode | null => {
 		const paragraph = blockNodeAt(getDoc(), target.paragraphPath);
 		return paragraph ? findImageInParagraph(paragraph, target.sourceStart, deps.reading) : null;
@@ -87,7 +76,8 @@ export function createImageEditCommitter(deps: ImageEditCommitterDeps): ImageEdi
 		const sel = selection.widget;
 		const image = sel && imageAt(sel);
 		if (!sel || !image) return null;
-		return { image, widgetEl: queryWidgetEl(sel.paragraphPath, sel.sourceStart) };
+		const root = getEditorEl();
+		return { image, widgetEl: root && widgetElAt(root, sel.paragraphPath, sel.sourceStart) };
 	}
 
 	function resolveEdit(

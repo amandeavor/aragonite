@@ -119,9 +119,3 @@ export function rawHasNoTextBefore(raw: string, offset: number): boolean {
 export function rawHasNoTextAfter(raw: string, offset: number): boolean {
 	return isBlankText(raw.slice(offset));
 }
-
-/** The inline-widget element whose source starts at `start`, or null. The only place this
- *  selector is written: a mistyped copy would fail silently as a null `querySelector`. */
-export function widgetElByStart(el: HTMLElement, start: number): HTMLElement | null {
-	return el.querySelector<HTMLElement>(`[data-inline-widget][data-source-start="${start}"]`);
-}

@@ -45,7 +45,8 @@
 	import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 	import { createCompositionSeat } from './composition-seat';
 	import { createConstructReveal } from './construct-reveal';
-	import { widgetElByStart, widgetsIn } from './widget-adjacency';
+	import { widgetsIn } from './widget-adjacency';
+	import { widgetElByStart } from '../../../core/inline/inline-widgets';
 	import { caretLandableBounds, handleSharedKeydown } from '../../../selection/shared-keydown';
 	import { createEditableSurface, consumePendingRestore } from '../editable/editable-surface';
 	import { rangeWrite } from '../editable/surface-write';
