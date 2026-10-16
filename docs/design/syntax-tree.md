@@ -260,6 +260,7 @@ That means a blank block does two jobs at once: it's a block, and it's the separ
 
 - **The two hold exactly one separator between them, and it can sit in either of two places.** A load puts it on the blank block's own `leadingTrivia` and gives the follower none (the snippet above); an Enter split puts it on the follower and gives the blank block none. Both serialize to the same bytes and reload to the same tree. Carrying it twice would reload as a second empty paragraph, and carrying it nowhere would swallow the blank block.
 - **When a blank block gets text, its slot and its follower each need a separator of their own**, since the one line was doing both jobs.
+- **Unless the text makes it a list item right next to a list of the same type.** Then the separator on that side goes and the two lists become one, so a to-do typed on a new line over a to-do list lands in that list. "Same type" is what GitHub reads as one list: the same bullet (`-`, `*`, `+`) or the same ordered delimiter (`.`, `)`), and a to-do counts as a bullet. It's the same when a paste or an inserted block fills the line, or when you turn a line that already has text into a list item.
 - **When a block turns blank, the run it joins gives one separator back.** The count belongs to the whole run, not to one pair: a run of blank blocks and the block below it hold exactly one separator between them.
 - A run at the top of the document, or at the top of a plain container's body, holds none, because there's nothing above it to separate from. A title or fence line above a body counts as something, so under one the run keeps its separator.
 
@@ -277,6 +278,7 @@ One exception, on purpose: when the new last line is blank, it keeps its break, 
 - drop a doubled one
 - give a slot its own separator back when a blank block in it gets text
 - give the follower its separator back after a blank line took it
+- take the separator back off a list an edit made next to a list of the same type
 - hand one back to the run when a block turns blank
 
 Every splice that changes what sits above a block goes through them. A primitive that writes its own trivia, like `splitNode`'s separator or `deleteNode` handing a deleted block's separator down, still runs them afterwards.
