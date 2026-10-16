@@ -22,7 +22,7 @@ import { shiftBodyLines } from './blocks/code/code-indent';
 import { codeBodyRange } from './blocks/code/code-renderer';
 import { imageWidgetOnSelectedKey } from './image/image-widget-editing';
 import TextEditableBlock from './blocks/text/TextEditableBlock.svelte';
-import { textBlockView } from './blocks/text/text-block-view';
+import { RAW_TEXT_VIEW, textBlockView } from './blocks/text/text-block-view';
 import CodeBlock from './blocks/code/CodeBlock.svelte';
 import ThematicBreakBlock from './blocks/ThematicBreakBlock.svelte';
 import BlockquoteBlock from './blocks/BlockquoteBlock.svelte';
@@ -38,8 +38,6 @@ function headingExtraProps(node: NodeView): Record<string, unknown> {
 	return { blockClass: `heading-${level}` };
 }
 
-const textAsRawBlock = textBlockView({ blockClass: 'raw-block' });
-
 // Kinds with no rendered component of their own show as plain editable text. tableRow and
 // tableCell render inside TableBlock; their entries catch only strays that reach BlockHost.
 const BUILT_IN_VIEWS = {
@@ -51,12 +49,12 @@ const BUILT_IN_VIEWS = {
 	blockquote: svelteBlockView(BlockquoteBlock),
 	list: svelteBlockView(ListBlock),
 	table: svelteBlockView(TableBlock),
-	indentedCode: textAsRawBlock,
-	htmlBlock: textAsRawBlock,
-	linkReferenceDefinition: textAsRawBlock,
-	tableRow: textAsRawBlock,
-	tableCell: textAsRawBlock,
-	unrecognized: textAsRawBlock
+	indentedCode: RAW_TEXT_VIEW,
+	htmlBlock: RAW_TEXT_VIEW,
+	linkReferenceDefinition: RAW_TEXT_VIEW,
+	tableRow: RAW_TEXT_VIEW,
+	tableCell: RAW_TEXT_VIEW,
+	unrecognized: RAW_TEXT_VIEW
 } satisfies Record<StandaloneBuiltinKind, BlockView>;
 
 // Stops a second call doing the work twice, without bypassing the registry: a

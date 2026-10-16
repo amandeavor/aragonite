@@ -1,10 +1,3 @@
-<script module lang="ts">
-	import { textBlockView } from './blocks/text/text-block-view';
-
-	// A kind with no view this editor resolves still shows its bytes, as plain editable text.
-	const RAW_FALLBACK_VIEW = textBlockView({ blockClass: 'raw-block' });
-</script>
-
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import {
@@ -21,6 +14,7 @@
 	import { showsDragHandle } from './drag-handle';
 	import { defaultRegistryView } from '../schema/registry-view';
 	import { svelteBlockEntry } from './svelte-block-view';
+	import { RAW_TEXT_VIEW } from './blocks/text/text-block-view';
 	import { isGridDescriptor } from '../schema/block-kind-descriptor';
 	import { FAILED_BLOCK_LABEL } from '../a11y-strings';
 	import {
@@ -106,7 +100,7 @@
 	);
 
 	let view = $derived(registryView.blockView(node.kind));
-	let entry = $derived(svelteBlockEntry(view ?? RAW_FALLBACK_VIEW));
+	let entry = $derived(svelteBlockEntry(view ?? RAW_TEXT_VIEW));
 
 	$effect(() => {
 		if (!view) devWarn('block-host', 'no view for kind, rendering raw', node.kind);
