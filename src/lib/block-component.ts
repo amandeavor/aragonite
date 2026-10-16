@@ -262,7 +262,8 @@ export interface BlockComponent {
 	 */
 	runCommand?(id: AnyCommandId, arg?: unknown, run?: CommandRun): boolean;
 	/** What a plugin's block command runs against at this block, for a command the editor runs
-	 *  here itself (a key over a selection, after the selection's removal). */
+	 *  here itself (a key over a selection, after the selection's removal). Its `replaceRaw`
+	 *  rewrites the block's bytes in the block's own list. */
 	getCommandContext?(): BlockCommandTarget;
 	/**
 	 * Whether the command's toggle reads on at this block's own caret or selection: the read
