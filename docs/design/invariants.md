@@ -1002,8 +1002,9 @@ and `header`, which arrive as `modelValue` and a slot), with `default: undefined
 table marks boolean, since Vue reads an absent `Boolean` prop as `false` and would override the
 editor's default. A type pin fails to compile when the declared keys and `AragoniteProps` differ,
 and a second when an editor option takes a Vue-only name or `class`, `style`, `key` or `ref`.
-`npm run package` compiles it; the adapter suite's `vue.spec.ts` checks an absent boolean keeps the
-editor's default.
+`npm run package` compiles it. Which declaration a boolean gets is decided at runtime, so the
+adapter suite's `vue.spec.ts` holds it: an absent boolean keeps the editor's default, and a bare
+attribute reads as `true`.
 
 **G3.14 · A Svelte view fits its slot.** `svelte-view.svelte.ts :: svelteView` takes its props type
 from the component, so `view: svelteView(C)` compiles in any slot whose props cover what `C`

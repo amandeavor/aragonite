@@ -32,6 +32,7 @@ aragonite dev warning or Vue warning.
 ## Vue
 
 - No boolean option passed: Mod+F in the editor opens the find bar, so an absent boolean keeps the editor's default instead of Vue's `false`.
+- `?bare-boolean`: the editor gets `search-bar` as a bare attribute, and Mod+F opens the find bar, so the wrapper declares each boolean option `Boolean` (any other declaration hands the editor `''`). Miss: the wrapper's declarations became derived from the core option table behind a cast, and only the absent-boolean scenario ran, which an untyped declaration passes too.
 - `?shared-plugin`: four editors share one plugin. The first three get it out of reactive state (the reactive list itself, a list filtered from it, and `{ plugin }` entries mapped from it), the last as imported. All four mount with no "already installed" warning, since the wrapper hands the editor the object behind each Vue proxy, the list's entries included. Miss: the old page only passed the reactive list itself, so a top-level `toRaw` passed it while a filtered list still handed over proxies.
 
 ## Server rendering (Next, Nuxt)
