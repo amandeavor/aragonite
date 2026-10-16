@@ -5,7 +5,7 @@ import { serialize } from '#lib/core/serializer.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import {
 	makeBlockListState,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 
@@ -25,7 +25,7 @@ describe('a paste over a selection inside a list item', () => {
 	it('spends the delete half before the strategy reads the target', async () => {
 		const h = harnessFor('- alpha\n');
 
-		await dispatchPaste(h, {
+		await runPasteDispatch(h, {
 			pastedText: '- x\n- y\n',
 			targetPath: [0, 0, 0],
 			offset: 0,
@@ -39,7 +39,7 @@ describe('a paste over a selection inside a list item', () => {
 	it('keeps the bytes outside the selection', async () => {
 		const h = harnessFor('- alpha beta\n');
 
-		await dispatchPaste(h, {
+		await runPasteDispatch(h, {
 			pastedText: '- x\n',
 			targetPath: [0, 0, 0],
 			offset: 0,

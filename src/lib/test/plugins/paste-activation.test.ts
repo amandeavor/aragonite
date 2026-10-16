@@ -13,7 +13,7 @@ import { defaultGrammarView, type GrammarView } from '#lib/schema/block-openers.
 import { activationFor } from '#lib/schema/plugin-activation.js';
 import {
 	makeStubBlockEdit,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
@@ -34,7 +34,7 @@ beforeEach(() => {
 async function pasteInto(grammar: ReturnType<typeof grammarListing>) {
 	const h = makePasteCommit(parse('target\n').children);
 	const blockEdit = makeStubBlockEdit();
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: PARROT_LINE, targetPath: [0], offset: 'target'.length },
 		{ blockEdit, reading: fixtureReading({ grammar }) }

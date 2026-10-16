@@ -4,7 +4,7 @@ import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import type { Document } from '#lib/core/nodes.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
-import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
+import { runPasteDispatch, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 import { expectParseConverged, triviaRawOf } from '#lib/test/harness/parse-converged.js';
 
 // A break-out keeps the list's separating line (`docs/design/syntax-tree.md` § Blank lines).
@@ -14,7 +14,7 @@ import { expectParseConverged, triviaRawOf } from '#lib/test/harness/parse-conve
 async function pasteInto(doc: Document, targetPath: number[], offset: number, clipboard: string) {
 	const h = makePasteCommit(doc.children);
 
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: clipboard, targetPath, offset },
 		{ blockEdit: createBlockEditActions(h.deps, h.undo) }

@@ -4,7 +4,7 @@ import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import { parse } from '#lib/core/parser.js';
 import {
 	makeBlockListState,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import type { EditEvent } from '#lib/editor-events.js';
@@ -24,7 +24,7 @@ describe('G2.9 paste op-kind emission', () => {
 		const onEdit = vi.fn<(e: EditEvent) => void>();
 		h.events.on('edit', onEdit);
 
-		await dispatchPaste(h, { pastedText: '# heading\n\nbody\n', targetPath: [0], offset: 6 });
+		await runPasteDispatch(h, { pastedText: '# heading\n\nbody\n', targetPath: [0], offset: 6 });
 
 		const ops = editOps(onEdit);
 		expect(ops).toContain('replaceBlock');
@@ -41,7 +41,7 @@ describe('G2.9 paste op-kind emission', () => {
 		const onEdit = vi.fn<(e: EditEvent) => void>();
 		h.events.on('edit', onEdit);
 
-		await dispatchPaste(h, { pastedText: '# heading\n\nbody\n', targetPath: path, offset: 6 });
+		await runPasteDispatch(h, { pastedText: '# heading\n\nbody\n', targetPath: path, offset: 6 });
 
 		expect(onEdit.mock.calls.map(([event]) => event)).toEqual([
 			expect.objectContaining({
@@ -63,7 +63,7 @@ describe('G2.9 paste op-kind emission', () => {
 		const onEdit = vi.fn<(e: EditEvent) => void>();
 		h.events.on('edit', onEdit);
 
-		await dispatchPaste(h, {
+		await runPasteDispatch(h, {
 			pastedText: '1. INSERTED\n',
 			targetPath: [0, 0, 0],
 			offset: 'one'.length
@@ -80,7 +80,7 @@ describe('G2.9 paste op-kind emission', () => {
 		const onEdit = vi.fn<(e: EditEvent) => void>();
 		h.events.on('edit', onEdit);
 
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: 'XYZ\nsecond', targetPath: [0], offset: 5 },
 			{ crossBlock: true }

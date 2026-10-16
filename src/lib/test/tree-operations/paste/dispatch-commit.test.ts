@@ -9,7 +9,7 @@ import {
 	makeStubController,
 	registerStubBlockListState,
 	pasteContext,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '../../harness/editor-actions';
 import type { CstNode } from '../../../core/nodes';
@@ -106,7 +106,11 @@ describe('pasteDispatch: cross-block inline join reparse', () => {
 		const h = makePasteCommit(parse('. item\n').children);
 		expect(h.doc.children[0].kind).toBe('paragraph');
 
-		await dispatchPaste(h, { pastedText: '1', targetPath: [0], offset: 0 }, { crossBlock: true });
+		await runPasteDispatch(
+			h,
+			{ pastedText: '1', targetPath: [0], offset: 0 },
+			{ crossBlock: true }
+		);
 
 		expect(h.doc.children[0].raw).toBe('1. item\n');
 		expect(h.doc.children[0].kind).toBe('list');
@@ -117,7 +121,11 @@ describe('pasteDispatch: cross-block inline join reparse', () => {
 		const reading = fixtureReading({ grammar: createGrammarView((kind) => kind !== 'list') });
 		const h = makePasteCommit(parse('. item\n').children, { reading });
 
-		await dispatchPaste(h, { pastedText: '1', targetPath: [0], offset: 0 }, { crossBlock: true });
+		await runPasteDispatch(
+			h,
+			{ pastedText: '1', targetPath: [0], offset: 0 },
+			{ crossBlock: true }
+		);
 
 		expect(h.doc.children[0].raw).toBe('1. item\n');
 		expect(h.doc.children[0].kind).toBe('paragraph');

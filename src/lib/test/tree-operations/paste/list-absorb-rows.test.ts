@@ -8,7 +8,7 @@ import { serialize } from '#lib/core/serializer.js';
 import {
 	makePasteCommit,
 	registerStubBlockListState,
-	dispatchPaste
+	runPasteDispatch
 } from '../../harness/editor-actions';
 
 interface AbsorbRow {
@@ -94,7 +94,7 @@ describe('a same-type list paste flattens into the enclosing list', () => {
 		const h = makePasteCommit(source);
 		registerStubBlockListState(h.doc.children[0]);
 
-		await dispatchPaste(h, { pastedText: clip, targetPath: target, offset });
+		await runPasteDispatch(h, { pastedText: clip, targetPath: target, offset });
 
 		expect(serialize(h.doc)).toBe(after);
 	});

@@ -33,7 +33,7 @@ import { fixtureReading, topLevelStore } from '../harness/fixture-grammar';
 import {
 	makeListContextAt,
 	makeTopHarness,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '../harness/editor-actions';
 import { createFocusActions } from '../../editor-actions/focus/focus';
@@ -66,7 +66,7 @@ async function pasteInto(
 	ensurePasteSurface(tableCellPasteSurface);
 	ensurePasteSurface(codePasteSurface);
 	const h = makePasteCommit(doc);
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: clipboard, targetPath, offset },
 		{ blockEdit: createBlockEditActions(h.deps, h.undo) }

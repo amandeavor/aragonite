@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
+import { runPasteDispatch, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 
 // The fix-up can merge pasted blocks into neighbours, so the caret follows bytes, not an index.
 // Miss-analysis: the structural-paste caret tests checked the block index, never the offset in it.
@@ -10,7 +10,7 @@ import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions
 async function pasteAt(source: string, pastedText: string, targetPath: number[], offset: number) {
 	const h = makePasteCommit(parse(source));
 
-	await dispatchPaste(h, { pastedText, targetPath, offset });
+	await runPasteDispatch(h, { pastedText, targetPath, offset });
 	return { doc: h.doc, landings: h.landings };
 }
 

@@ -4,7 +4,7 @@ import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import { parse } from '#lib/core/parser.js';
 import {
 	makeBlockListState,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import type { BlockListState } from '#lib/block-lists/block-list-state.svelte.js';
@@ -26,7 +26,7 @@ describe("cross-block inline paste ('join'): commit sequence participation", () 
 	it('keeps the container childIds aligned with children when the paste reparses to two blocks', async () => {
 		const { h, liveQuote } = blockquoteHarness();
 
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: 'foo\nbar', targetPath: [0, 0], offset: 'Head'.length + 2 },
 			{ crossBlock: true }
@@ -42,7 +42,7 @@ describe("cross-block inline paste ('join'): commit sequence participation", () 
 		const onEdit = vi.fn<(e: EditEvent) => void>();
 		h.events.on('edit', onEdit);
 
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: 'foo\nbar', targetPath: [0, 0], offset: 'Head'.length + 2 },
 			{ crossBlock: true }
@@ -56,7 +56,7 @@ describe("cross-block inline paste ('join'): commit sequence participation", () 
 		const onEdit = vi.fn<(e: EditEvent) => void>();
 		h.events.on('edit', onEdit);
 
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: 'ing', targetPath: [0, 0], offset: 'Head'.length + 2 },
 			{ crossBlock: true }
@@ -71,7 +71,7 @@ describe("cross-block inline paste ('join'): commit sequence participation", () 
 	it('an unmounted container still commits instead of throwing', async () => {
 		const h = makePasteCommit(parse('> # Head\n').children);
 
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: 'foo\nbar', targetPath: [0, 0], offset: 'Head'.length + 2 },
 			{ crossBlock: true }
@@ -86,7 +86,7 @@ describe("cross-block inline paste ('join'): commit sequence participation", () 
 	it('top-level target syncs the document-scope block ids', async () => {
 		const h = makePasteCommit(parse('# Head\n').children);
 
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: 'foo\nbar', targetPath: [0], offset: 'Head'.length + 2 },
 			{ crossBlock: true }

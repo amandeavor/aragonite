@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
-import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
+import { runPasteDispatch, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { ensurePasteSurface } from '#lib/test/support/paste-surface.js';
 
@@ -18,7 +18,7 @@ beforeEach(() => {
 
 async function insert(source: string, targetPath: number[], offset: number, markdown: string) {
 	const h = makePasteCommit(parse(source).children);
-	await dispatchPaste(h, { pastedText: markdown, targetPath, offset });
+	await runPasteDispatch(h, { pastedText: markdown, targetPath, offset });
 	return h.doc;
 }
 

@@ -6,7 +6,7 @@ import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
-import { dispatchPaste, makePasteCommit } from '../../harness/editor-actions';
+import { runPasteDispatch, makePasteCommit } from '../../harness/editor-actions';
 
 // A paste that splits a task item's first paragraph leaves each half in a slot a checkbox stands
 // in front of, so each half reads the way a reload reads it there: `# b` stays paragraph text.
@@ -22,7 +22,7 @@ function shape(nodes: readonly CstNode[]): unknown[] {
 
 async function paste(source: string, offset: number, clipboard: string): Promise<string> {
 	const h = makePasteCommit(parse(source).children);
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: clipboard, targetPath: [0, 0, 0], offset },
 		{ blockEdit: createBlockEditActions(h.deps, h.undo) }

@@ -5,7 +5,7 @@ import { serialize } from '#lib/core/serializer.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import {
 	makeBlockListState,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { expectParseConverged } from '#lib/test/harness/parse-converged.js';
@@ -27,7 +27,7 @@ describe('container-matching paste over a blank body block', () => {
 			makeBlockListState(() => h.doc.children[0])
 		);
 
-		await dispatchPaste(h, { pastedText: '> X\n>\n> Y\n', targetPath: [0, 1], offset: 0 });
+		await runPasteDispatch(h, { pastedText: '> X\n>\n> Y\n', targetPath: [0, 1], offset: 0 });
 
 		expect(serialize(h.doc)).toBe('> a\n>\n> X\n>\n> Y\n>\n> b\n');
 		expectParseConverged(h.doc);

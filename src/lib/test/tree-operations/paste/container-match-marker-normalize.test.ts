@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	makePasteCommit,
 	registerStubBlockListState,
-	dispatchPaste
+	runPasteDispatch
 } from '../../harness/editor-actions';
 import { metadataOf } from '../../../core/nodes';
 
@@ -56,7 +56,7 @@ describe('container-matching paste: marker normalization, both routes', () => {
 		if (emptyTarget) doc.children[0].children![0].children![0].raw = '';
 		registerStubBlockListState(doc.children[0]);
 
-		await dispatchPaste(h, { pastedText, targetPath: [0, 0, 0], offset }, { crossBlock: true });
+		await runPasteDispatch(h, { pastedText, targetPath: [0, 0, 0], offset }, { crossBlock: true });
 
 		const list = doc.children[0];
 		expect(list.children!.map((it) => metadataOf(it, 'listItem').marker)).toEqual(markers);

@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	makePasteCommit,
 	registerStubBlockListState,
-	dispatchPaste
+	runPasteDispatch
 } from '../../harness/editor-actions';
 import { CURSOR_END } from '#lib/block-component.js';
 
@@ -21,7 +21,7 @@ async function pasteInto(
 ) {
 	const h = makePasteCommit(source);
 	registerStubBlockListState(h.doc.children[0]);
-	await dispatchPaste(h, { pastedText, targetPath, offset }, { crossBlock });
+	await runPasteDispatch(h, { pastedText, targetPath, offset }, { crossBlock });
 	return h.landings.map(({ leafPath, offset }) => ({ leafPath, offset }));
 }
 

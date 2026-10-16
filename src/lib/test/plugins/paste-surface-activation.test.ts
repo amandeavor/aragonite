@@ -8,7 +8,7 @@ import { registerPasteTransform } from '#lib/tree-operations/paste/paste-transfo
 import { getPasteSurface, registerPasteSurface } from '#lib/tree-operations/paste-surfaces.js';
 import { defaultInlineHook } from '#lib/tree-operations/paste/hooks.js';
 import { registerChromeLeaf } from '#lib/plugin.js';
-import { makePasteCommit, dispatchPaste } from '#lib/test/harness/editor-actions.js';
+import { makePasteCommit, runPasteDispatch } from '#lib/test/harness/editor-actions.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import { topLevelStore } from '../harness/fixture-grammar';
 
@@ -46,7 +46,7 @@ beforeEach(() => {
 async function pasteUnder(activePlugins: PluginActivation): Promise<string[]> {
 	const node = { kind: KIND, leadingTrivia: '', raw: 'target\n' } as CstNode;
 	const h = makePasteCommit([node]);
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: 'word', targetPath: [0], offset: 'target'.length },
 		{ activePlugins }

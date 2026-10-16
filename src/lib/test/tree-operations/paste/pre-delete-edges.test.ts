@@ -5,7 +5,7 @@
 // line-ending row pasted before visible text or at the bytes' very end.
 import { describe, expect, it, vi } from 'vitest';
 import { serialize } from '#lib/core/serializer.js';
-import { makeStubBlockEdit, dispatchPaste, makePasteCommit } from '../../harness/editor-actions';
+import { makeStubBlockEdit, runPasteDispatch, makePasteCommit } from '../../harness/editor-actions';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { settleEditor } from '../../harness/settle';
 
@@ -23,7 +23,7 @@ async function paste(
 ) {
 	const h = makePasteCommit(source, { reading });
 	const blockEdit = makeStubBlockEdit();
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{
 			pastedText: text,

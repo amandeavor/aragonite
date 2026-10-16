@@ -6,7 +6,7 @@ import type { Document } from '#lib/core/nodes.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
 import { createHistoryActions } from '#lib/editor-actions/commit/history.js';
 import { splitNode } from '#lib/tree-operations/node-ops.js';
-import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
+import { runPasteDispatch, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 import { triviaRawOf } from '#lib/test/harness/parse-converged.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
@@ -18,7 +18,7 @@ import { createSharingState } from '#lib/tree-operations/sharing.js';
 async function pasteAfterX(clipboard: string): Promise<Document> {
 	const h = makePasteCommit(parse('x\n').children);
 
-	await dispatchPaste(h, { pastedText: clipboard, targetPath: [0], offset: 1 });
+	await runPasteDispatch(h, { pastedText: clipboard, targetPath: [0], offset: 1 });
 	return h.doc;
 }
 
@@ -40,7 +40,7 @@ async function pasteLive(
 	// The whole document, not its children: the trailing blank line is the subject here.
 	const h = makePasteCommit(doc);
 
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: clipboard, targetPath, offset },
 		{ blockEdit: createBlockEditActions(h.deps, h.undo) }

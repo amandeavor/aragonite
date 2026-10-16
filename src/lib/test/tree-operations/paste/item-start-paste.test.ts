@@ -10,7 +10,7 @@ import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import {
 	makeBlockListState,
 	makeEditorActionsDeps,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
@@ -24,7 +24,7 @@ async function pasteAtItemStart(source: string, pasted: string): Promise<Documen
 		h.doc.children[0],
 		makeBlockListState(() => h.doc.children[0])
 	);
-	await dispatchPaste(h, { pastedText: pasted, targetPath: [0, 0, 0], offset: 0 });
+	await runPasteDispatch(h, { pastedText: pasted, targetPath: [0, 0, 0], offset: 0 });
 	return h.doc;
 }
 

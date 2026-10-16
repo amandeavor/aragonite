@@ -4,7 +4,7 @@ import { serialize } from '../../../core/serializer';
 import {
 	makePasteCommit,
 	registerStubBlockListState,
-	dispatchPaste
+	runPasteDispatch
 } from '../../harness/editor-actions';
 import { expectParseConverged } from '../../harness/parse-converged';
 
@@ -19,7 +19,7 @@ describe('container-matching merge reattaches residue through the reparse shared
 		registerStubBlockListState(doc.children[0]);
 
 		// Caret after `code`, so the residue is the fence's own closing line.
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: '- one\n- two\n', targetPath: [0, 0, 0], offset: 10 },
 			{ crossBlock: true }

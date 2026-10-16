@@ -15,7 +15,7 @@ import { tryCompleteTableRow } from '#lib/core/parsers/table-completion.js';
 import { insertCatalogue } from '#lib/schema/insert-catalogue.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
-import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
+import { runPasteDispatch, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 
 const ENDINGS = [
 	['LF', '\n'],
@@ -184,7 +184,7 @@ describe.each(ENDINGS)('the table rows each route writes, %s', (_, ending) => {
 		const h = makePasteCommit(parse(`a${ending}`));
 		const blockEdit = createBlockEditActions(h.deps, h.undo);
 		await blockEdit.insertParagraph(1, '');
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: tableEntry().markdown, targetPath: [1], offset: 0 },
 			{ blockEdit }

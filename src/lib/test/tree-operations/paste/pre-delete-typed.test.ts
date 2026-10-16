@@ -11,7 +11,7 @@ import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
-import { makeStubBlockEdit, dispatchPaste, makePasteCommit } from '../../harness/editor-actions';
+import { makeStubBlockEdit, runPasteDispatch, makePasteCommit } from '../../harness/editor-actions';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { mountBlock } from '../../harness/mount-block';
 import { settleEditor } from '../../harness/settle';
@@ -53,7 +53,7 @@ const leafBytes = (calls: unknown[][]): string[] => calls.map((call) => call[1] 
 async function paste(place: Place, text: string, range: { start: number; end: number }) {
 	const h = makePasteCommit(place.wrap(text), { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: 'x', targetPath: place.leaf, offset: range.start, preDelete: range },
 		{ blockEdit }
@@ -133,7 +133,7 @@ describe.each(PLACES)('typing and pasting over one selection, in $name', (place)
 it('a paste over a range whose cleanup closes a run puts the caret after the pasted text', async () => {
 	const h = makePasteCommit('**ab** c\n', { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: 'x', targetPath: [0], offset: 3, preDelete: { start: 3, end: 8 } },
 		{ blockEdit }

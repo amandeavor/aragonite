@@ -5,7 +5,7 @@ import { parse } from '../../../core/parser';
 import {
 	makePasteCommit,
 	registerStubBlockListState,
-	dispatchPaste
+	runPasteDispatch
 } from '../../harness/editor-actions';
 
 describe('container-matching paste: empty-target newline-termination (A1)', () => {
@@ -16,7 +16,7 @@ describe('container-matching paste: empty-target newline-termination (A1)', () =
 		doc.children[0].children![0].children![0].raw = '';
 		registerStubBlockListState(doc.children[0]);
 
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: '- x\n- y', targetPath: [0, 0, 0], offset: 0 },
 			{ crossBlock: true }

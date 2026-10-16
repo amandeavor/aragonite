@@ -5,7 +5,7 @@ import { serialize } from '#lib/core/serializer.js';
 import {
 	makePasteCommit,
 	registerStubBlockListState,
-	dispatchPaste
+	runPasteDispatch
 } from '../../harness/editor-actions';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { buildListBreakOutReplacement } from '#lib/tree-operations/paste/list-break-out.js';
@@ -18,7 +18,7 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 async function pasteAfterAbc(source: string, clipboard: string) {
 	const h = makePasteCommit(source);
 	registerStubBlockListState(h.doc.children[0]);
-	await dispatchPaste(h, { pastedText: clipboard, targetPath: [0, 0, 0], offset: 'abc'.length });
+	await runPasteDispatch(h, { pastedText: clipboard, targetPath: [0, 0, 0], offset: 'abc'.length });
 	return h.doc;
 }
 

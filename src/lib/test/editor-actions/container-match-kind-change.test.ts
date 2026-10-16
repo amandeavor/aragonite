@@ -10,7 +10,7 @@ import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import { assignChildIdsDeep } from '#lib/block-id.js';
 import {
 	makeBlockListState,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
@@ -30,7 +30,7 @@ describe('a container-matching merge that completes a code fence', () => {
 			makeBlockListState(() => h.doc.children[0])
 		);
 
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: pasted, targetPath: [0, 0, 0], offset },
 			{ crossBlock: true }

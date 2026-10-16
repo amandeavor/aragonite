@@ -5,7 +5,7 @@ import { serialize } from '../../../core/serializer';
 import {
 	makePasteCommit,
 	registerStubBlockListState,
-	dispatchPaste
+	runPasteDispatch
 } from '../../harness/editor-actions';
 import { expectParseConverged } from '../../harness/parse-converged';
 
@@ -18,7 +18,7 @@ const ITEM_WITH_CODE = '- a\n\n  ```js\n  ``\n  code\n  ```\n';
 async function pasteInto(source: string, targetPath: number[], text: string) {
 	const h = makePasteCommit(source);
 	registerStubBlockListState(h.doc.children[0]);
-	await dispatchPaste(h, { pastedText: text, targetPath, offset: 8 }, { crossBlock: true });
+	await runPasteDispatch(h, { pastedText: text, targetPath, offset: 8 }, { crossBlock: true });
 	return h.doc;
 }
 

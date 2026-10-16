@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
-import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
+import { runPasteDispatch, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 
 // A line break ending a one-paragraph clipboard is dropped, or it reloads as a blank block.
@@ -11,7 +11,7 @@ import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 
 async function paste(source: string, offset: number, clipboard: string) {
 	const h = makePasteCommit(parse(source));
-	const result = await dispatchPaste(
+	const result = await runPasteDispatch(
 		h,
 		{ pastedText: clipboard, targetPath: [0], offset },
 		{ blockEdit: createBlockEditActions(h.deps, h.undo) }

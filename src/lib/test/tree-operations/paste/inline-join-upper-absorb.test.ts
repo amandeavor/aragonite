@@ -5,7 +5,7 @@ import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import {
 	makeBlockListState,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import type { BlockListState } from '#lib/block-lists/block-list-state.svelte.js';
@@ -17,7 +17,7 @@ describe('inline paste landing after a fold above the target', () => {
 	it('answers the merged predecessor and the shifted offset at top level', async () => {
 		const h = makePasteCommit(parse('a\n# h\nb\n').children);
 
-		const result = await dispatchPaste(
+		const result = await runPasteDispatch(
 			h,
 			{ pastedText: 'x', targetPath: [1], offset: 0 },
 			{ crossBlock: true }
@@ -35,7 +35,7 @@ describe('inline paste landing after a fold above the target', () => {
 		const state = makeBlockListState(liveQuote, ['c0', 'c1', 'c2']);
 		registerBlockListState(liveQuote(), state as unknown as BlockListState);
 
-		const result = await dispatchPaste(
+		const result = await runPasteDispatch(
 			h,
 			{ pastedText: 'x', targetPath: [0, 1], offset: 0 },
 			{ crossBlock: true }

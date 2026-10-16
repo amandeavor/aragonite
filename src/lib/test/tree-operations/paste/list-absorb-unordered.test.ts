@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	makePasteCommit,
 	registerStubBlockListState,
-	dispatchPaste
+	runPasteDispatch
 } from '../../harness/editor-actions';
 import { metadataOf } from '#lib/core/nodes.js';
 
@@ -17,7 +17,7 @@ describe('list-absorb: marker normalization', () => {
 		registerStubBlockListState(doc.children[0]);
 
 		// A single-caret paste routes to list-absorb rather than the container-match merge.
-		await dispatchPaste(h, {
+		await runPasteDispatch(h, {
 			pastedText: '* one\n* two\n',
 			targetPath: [0, 0, 0],
 			offset: 'alpha'.length

@@ -4,7 +4,7 @@ import { parse } from '#lib/core/parser.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
 import {
 	makeStubBlockEdit,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { ensurePasteSurface } from '#lib/test/support/paste-surface.js';
@@ -19,7 +19,7 @@ async function pasteIntoCell(clipboard: string) {
 	const h = makePasteCommit(parse(TABLE).children);
 	const blockEdit = makeStubBlockEdit();
 
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: clipboard, targetPath: [0, 1, 0], offset: 0 },
 		{ blockEdit }

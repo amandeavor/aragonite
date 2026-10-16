@@ -376,10 +376,10 @@ export function makePasteCommit(
 
 /** A paste through `h`'s coordinator, reading as `h` does, with stub block edits unless `fields`
  *  names its own; a stub records an inline paste's write without making it. */
-export function dispatchPaste(
+export function runPasteDispatch(
 	h: PasteCommitHarness,
 	input: PasteDispatchInput,
-	fields: Partial<PasteDispatchContext> = {}
+	fields: Partial<Omit<PasteDispatchContext, 'doc' | 'controller'>> = {}
 ): Promise<PasteDispatchResult> {
 	return pasteDispatch(
 		input,

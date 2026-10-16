@@ -5,7 +5,7 @@ import { serialize } from '#lib/core/serializer.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import {
 	makeBlockListState,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 
@@ -22,7 +22,7 @@ describe('the container-matching merge spends its residue settle', () => {
 
 		// Caret after `code`, so the text after it is the fence's own closing line: the reattach
 		// reparses into two blocks inside the last pasted item.
-		await dispatchPaste(
+		await runPasteDispatch(
 			h,
 			{ pastedText: '- one\n- two\n', targetPath: [0, 0, 0], offset: 10 },
 			{ crossBlock: true }

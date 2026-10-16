@@ -33,7 +33,7 @@ import {
 	makeEditorActionsDeps,
 	makeListContextAt,
 	makeStubBlockEdit,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '../harness/editor-actions';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
@@ -431,7 +431,7 @@ async function removeInline(place: Place, range: typeof X): Promise<string> {
 async function pasteOver(place: Place, range: typeof X, text: string): Promise<string[]> {
 	const h = makePasteCommit(place.source, { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
-	await dispatchPaste(
+	await runPasteDispatch(
 		h,
 		{ pastedText: text, targetPath: place.leaf, offset: range.start, preDelete: range },
 		{ blockEdit }

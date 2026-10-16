@@ -4,7 +4,7 @@ import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import {
 	registerStubBlockListState,
-	dispatchPaste,
+	runPasteDispatch,
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
@@ -20,7 +20,7 @@ async function paste(source: string, targetPath: number[], offset: number, clipb
 		registerStubBlockListState(scope);
 		scope = scope.children![index];
 	}
-	await dispatchPaste(h, { pastedText: clipboard, targetPath, offset });
+	await runPasteDispatch(h, { pastedText: clipboard, targetPath, offset });
 	return h.doc;
 }
 
