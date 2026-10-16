@@ -2,11 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as pluginBarrel from '#lib/plugin.js';
 import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
-import {
-	declarePluginInlineKind,
-	declaredPluginInlineKind,
-	isInlineKindDeclared
-} from '#lib/schema/plugin-kind.js';
+import { declarePluginInlineKind, declaredPluginInlineKind } from '#lib/schema/plugin-kind.js';
 import type {
 	InlineSyntaxRecognizer,
 	InlineWidgetDescriptor,

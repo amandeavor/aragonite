@@ -33,7 +33,6 @@ export function registerPasteTransform(transform: PasteTransform): void {
 	);
 }
 
-
 /**
  * Run every transform `activation` resolves over `text`, its line breaks made LF, in registration
  * order, each seeing the prior's output; a null return leaves the running text untouched.

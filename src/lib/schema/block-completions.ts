@@ -75,5 +75,3 @@ export function completeLineOnType(line: string, grammar: GrammarView): Completi
 	}
 	return null;
 }
-
-
