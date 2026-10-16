@@ -9,7 +9,6 @@ import { splitNode } from '../../tree-operations';
 import { NEXT_PROSE_LINE } from '../../tree-operations/node-primitives';
 import { probeLineOpensAsProse } from '../../tree-operations/content-write';
 import { rebuildBlockquoteRaw } from '../../schema/container-rebuilders';
-import { registerBlockOpener } from '../../schema/block-openers';
 import { describeConvergence } from '../harness/parse-converged';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { fixtureReading } from '../harness/fixture-grammar';
@@ -135,17 +134,17 @@ describe('split separator: the probe line', () => {
 	});
 
 	it('is reported claimed when an opener takes it, and the new block is what is lost', () => {
-		const kind = testLeaf('probe-claimer', {
+		testLeaf('probe-claimer', (kind) => ({
+			opener: {
+				priority: 1,
+				interruptsParagraph: () => true,
+				tryOpen: (ctx) =>
+					ctx.line.text === NEXT_PROSE_LINE
+						? { node: { kind, leadingTrivia: '', raw: ctx.line.raw }, consumed: 1 }
+						: null
+			},
 			editable: false
-		});
-		registerBlockOpener(kind, {
-			priority: 1,
-			interruptsParagraph: () => true,
-			tryOpen: (ctx) =>
-				ctx.line.text === NEXT_PROSE_LINE
-					? { node: { kind, leadingTrivia: '', raw: ctx.line.raw }, consumed: 1 }
-					: null
-		});
+		}));
 
 		expect(probeLineOpensAsProse(defaultGrammarView)).toBe(false);
 

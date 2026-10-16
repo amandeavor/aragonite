@@ -8,6 +8,7 @@ import { makeSearchReplace, scanCompiled } from '#lib/test/harness/search-replac
 import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import { testLeaf, testContainer } from '#lib/test/harness/test-kinds.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // A minimal stand-in for search/document-scan.ts, which the container cases below use instead.
 function scanForLiteral(doc: Document, needle: string) {
@@ -232,7 +233,7 @@ describe('replace: a batch that applies nothing leaves no undo entry', () => {
 describe('replace: a childless opaque container reparses its own bytes', () => {
 	// Miss-analysis (GH #41): containers were tested only by a decline of an unregistered opener.
 	beforeEach(() => {
-		registerMermaidKind();
+		registerMermaidKind(testView());
 	});
 
 	it('substitutes inside the diagram and comes back the same kind', async () => {

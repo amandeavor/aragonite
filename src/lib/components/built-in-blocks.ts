@@ -1,15 +1,19 @@
 /**
- * Built-in block component registrations, run by an explicit `registerBuiltInBlocks()` call: a
- * side-effect import could be dropped by a bundler, since `sideEffects` names only dist paths.
- * Lives in `components/` so `schema/` imports nothing downstream.
+ * Built-in block views and component-layer behavior, run by an explicit `registerBuiltInBlocks()`
+ * call: a side-effect import could be dropped by a bundler, since `sideEffects` names only dist
+ * paths. Lives in `components/` so `schema/` imports nothing downstream.
  */
 
 import type { NodeView } from '../core/node-views';
 import { metadataOf } from '../core/nodes';
 import { shownKind } from '../core/parsers/heading';
-import { registerBlockView, type BlockView } from '../schema/block-view-registry';
+import type { BlockView } from '../schema/block-view';
 import { svelteBlockView } from '../components/svelte-block-view';
-import { augmentBuiltin } from '../schema/block-kind-descriptor';
+import {
+	attachBuiltinViews,
+	augmentBuiltin,
+	type StandaloneBuiltinKind
+} from '../schema/block-kind-descriptor';
 import { registerBuiltInDescriptors } from '../schema/built-in-descriptors';
 import { augmentInlineWidgetKind } from '../core/inline/inline-widgets';
 import { registerPasteSurface } from '../tree-operations/paste-surfaces';
@@ -18,6 +22,7 @@ import { shiftBodyLines } from './blocks/code/code-indent';
 import { codeBodyRange } from './blocks/code/code-renderer';
 import { imageWidgetOnSelectedKey } from './image/image-widget-editing';
 import TextEditableBlock from './blocks/text/TextEditableBlock.svelte';
+import { RAW_TEXT_VIEW, textBlockView } from './blocks/text/text-block-view';
 import CodeBlock from './blocks/code/CodeBlock.svelte';
 import ThematicBreakBlock from './blocks/ThematicBreakBlock.svelte';
 import BlockquoteBlock from './blocks/BlockquoteBlock.svelte';
@@ -33,9 +38,24 @@ function headingExtraProps(node: NodeView): Record<string, unknown> {
 	return { blockClass: `heading-${level}` };
 }
 
-const textAsRawBlock: BlockView = svelteBlockView(TextEditableBlock, () => ({
-	blockClass: 'raw-block'
-}));
+// Kinds with no rendered component of their own show as plain editable text. tableRow and
+// tableCell render inside TableBlock; their entries catch only strays that reach BlockHost.
+const BUILT_IN_VIEWS = {
+	paragraph: textBlockView({ blockClass: 'paragraph-block' }),
+	heading: svelteBlockView(TextEditableBlock, headingExtraProps),
+	setextHeading: svelteBlockView(TextEditableBlock, headingExtraProps),
+	thematicBreak: svelteBlockView(ThematicBreakBlock),
+	fencedCode: svelteBlockView(CodeBlock),
+	blockquote: svelteBlockView(BlockquoteBlock),
+	list: svelteBlockView(ListBlock),
+	table: svelteBlockView(TableBlock),
+	indentedCode: RAW_TEXT_VIEW,
+	htmlBlock: RAW_TEXT_VIEW,
+	linkReferenceDefinition: RAW_TEXT_VIEW,
+	tableRow: RAW_TEXT_VIEW,
+	tableCell: RAW_TEXT_VIEW,
+	unrecognized: RAW_TEXT_VIEW
+} satisfies Record<StandaloneBuiltinKind, BlockView>;
 
 // Stops a second call doing the work twice, without bypassing the registry: a
 // dev-server re-evaluation resets it, so re-registering in dev still replaces.
@@ -45,29 +65,9 @@ export function registerBuiltInBlocks(): void {
 	if (registered) return;
 	registered = true;
 
-	// Descriptors first: augmentBuiltin('table') below needs `table` registered.
+	// Descriptors first: the views and the augments below attach to registered kinds.
 	registerBuiltInDescriptors();
-
-	registerBlockView(
-		'paragraph',
-		svelteBlockView(TextEditableBlock, () => ({ blockClass: 'paragraph-block' }))
-	);
-	registerBlockView('heading', svelteBlockView(TextEditableBlock, headingExtraProps));
-	registerBlockView('setextHeading', svelteBlockView(TextEditableBlock, headingExtraProps));
-	registerBlockView('thematicBreak', svelteBlockView(ThematicBreakBlock));
-	registerBlockView('fencedCode', svelteBlockView(CodeBlock));
-	registerBlockView('blockquote', svelteBlockView(BlockquoteBlock));
-	registerBlockView('list', svelteBlockView(ListBlock));
-	registerBlockView('table', svelteBlockView(TableBlock));
-
-	// Plain editable fallback for kinds with no rendered component. tableRow and tableCell
-	// render inside TableBlock; these catch only strays that reach BlockHost directly.
-	registerBlockView('indentedCode', textAsRawBlock);
-	registerBlockView('htmlBlock', textAsRawBlock);
-	registerBlockView('linkReferenceDefinition', textAsRawBlock);
-	registerBlockView('tableRow', textAsRawBlock);
-	registerBlockView('tableCell', textAsRawBlock);
-	registerBlockView('unrecognized', textAsRawBlock);
+	attachBuiltinViews(BUILT_IN_VIEWS);
 
 	// The default loop in `paste/hooks.ts` skips `tableCell`, so registration order cannot
 	// revert cell paste to the plain inline default.

@@ -11,6 +11,7 @@ import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import type { Document } from '#lib/core/nodes.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { deleteRange } from '../harness/range-delete';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Source mode, where a copied range carries its bytes as they stand.
 const SOURCE_READING = fixtureReading({}, 'source');
@@ -25,7 +26,7 @@ function stateOver(doc: Document) {
 }
 
 function mermaidDoc(): Document {
-	registerMermaidKind();
+	registerMermaidKind(testView());
 	return parse(MERMAID_DOC);
 }
 

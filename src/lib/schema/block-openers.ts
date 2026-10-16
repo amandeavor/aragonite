@@ -1,20 +1,18 @@
 /**
- * Per-kind block-opener registry: the parser's dispatch order and the paragraph-interrupt scan
- * both come from these declarations, so registering an opener puts it in both. Paragraph is the
- * fallback and has no opener; setext headings and tables come out of its continuation scan.
+ * The block grammar read off the kind registrations' openers: the parser's dispatch order and the
+ * paragraph-interrupt scan both come from them. Paragraph is the fallback and has no opener;
+ * setext headings and tables come out of its continuation scan.
  */
 
-import { isBuiltinBlockKind, type AnyBlockKind, type CstNode } from '../core/nodes';
+import type { AnyBlockKind, CstNode } from '../core/nodes';
 import type { ParsedLine } from '../core/lines';
-import {
-	enqueueRegistrationCheck,
-	hasPendingRegistrationChecks,
-	markGrammarConsumed
-} from './registration-pending';
+import { hasPendingRegistrationChecks, markGrammarConsumed } from './registration-pending';
 import { flushPendingRegistrationChecks } from './registration-checks';
-import { createBlockKindRegistry, type RegistryRecord } from './plugin-registry';
+import type { RegistryRecord } from './plugin-registry';
 import { everyInstalledPlugin, resolvesIn, type PluginActivation } from './plugin-activation';
 import { pluginInstallGeneration } from './plugin-install';
+import { onBlockKindChange, openerRecords } from './block-kind-descriptor';
+import { registerBuiltInDescriptors } from './built-in-descriptors';
 
 /** Created fresh for each block and read synchronously; never keep it past the call. */
 export interface OpenContext {
@@ -60,37 +58,14 @@ export interface BlockOpener {
 
 type OpenerRecord = RegistryRecord<AnyBlockKind, BlockOpener>;
 
+// A registration change drops the ordering; the caches below hold the ordering they were built from.
 let orderedRecordsCache: OpenerRecord[] | null = null;
-let orderedCache: BlockOpener[] | null = null;
-let interruptCache: { generation: number; predicates: ((lineText: string) => boolean)[] } | null =
-	null;
-
-const openers = createBlockKindRegistry<BlockOpener>({
-	label: 'registerBlockOpener',
-	isBuiltin: isBuiltinBlockKind,
-	onChange: () => {
-		orderedRecordsCache = null;
-		orderedCache = null;
-		interruptCache = null;
-	}
-});
-
-export function registerBlockOpener(kind: AnyBlockKind, opener: BlockOpener): void {
-	openers.register(
-		kind,
-		opener,
-		`registerBlockOpener: "${kind}" is already registered. Openers are register-once.`
-	);
-	enqueueRegistrationCheck(kind, 'opener');
-}
-
-/**
- * Is an opener registered? `registerBlockOpener` throws on a duplicate, so a plugin that may
- * register twice (hot reload, re-import) checks this first. Takes a plain name.
- */
-export function isBlockOpenerRegistered(kind: string): boolean {
-	return openers.has(kind as AnyBlockKind);
-}
+let orderedCache: { records: readonly OpenerRecord[]; openers: BlockOpener[] } | null = null;
+let interruptCache: {
+	records: readonly OpenerRecord[];
+	generation: number;
+	predicates: ((lineText: string) => boolean)[];
+} | null = null;
 
 /** A per-instance enablement predicate: `true` keeps the kind's opener in the grammar. */
 export type OpenerEnablement = (kind: AnyBlockKind) => boolean;
@@ -98,14 +73,9 @@ export type OpenerEnablement = (kind: AnyBlockKind) => boolean;
 // Priority-ascending, ties broken by kind name: dispatch order is a pure function of the
 // declarations, never of registration order.
 function orderedRecords(): readonly OpenerRecord[] {
-	if (!orderedRecordsCache) {
-		orderedRecordsCache = openers
-			.records()
-			.sort(
-				(a, b) =>
-					a.value.priority - b.value.priority || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
-			);
-	}
+	orderedRecordsCache ??= openerRecords().sort(
+		(a, b) => a.value.priority - b.value.priority || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
+	);
 	return orderedRecordsCache;
 }
 
@@ -113,16 +83,29 @@ function orderedRecords(): readonly OpenerRecord[] {
  *  `GrammarView.orderedOpeners`. */
 export function getOrderedOpeners(): readonly BlockOpener[] {
 	const records = consumedRecords();
-	if (!orderedCache) orderedCache = records.map((r) => r.value);
-	return orderedCache;
+	if (orderedCache?.records !== records) {
+		orderedCache = { records, openers: records.map((r) => r.value) };
+	}
+	return orderedCache.openers;
 }
+
+let builtInsRegistered = false;
 
 // Pending registrations are checked before the read and the grammar marked used only after it, so
 // a registration racing the first read is not warned about as a late opener (G1.17).
 function consumedRecords(): readonly OpenerRecord[] {
+	if (!builtInsRegistered) registerBuiltIns();
 	if (hasPendingRegistrationChecks()) flushPendingRegistrationChecks();
 	markGrammarConsumed();
 	return orderedRecords();
+}
+
+// On the first read, whichever module loaded first (G4.197).
+function registerBuiltIns(): void {
+	builtInsRegistered = true;
+	// Subscribed here rather than at load, since this module sits on the parser's import loop.
+	onBlockKindChange(() => (orderedRecordsCache = null));
+	registerBuiltInDescriptors();
 }
 
 /**
@@ -132,8 +115,9 @@ function consumedRecords(): readonly OpenerRecord[] {
 export function lineInterruptsParagraph(lineText: string): boolean {
 	const records = consumedRecords();
 	const generation = pluginInstallGeneration();
-	if (interruptCache?.generation !== generation) {
+	if (interruptCache?.records !== records || interruptCache.generation !== generation) {
 		interruptCache = {
+			records,
 			generation,
 			predicates: records
 				.filter((r) => resolvesIn(everyInstalledPlugin, r.owner))
@@ -237,9 +221,4 @@ export function lineStartsOuterBlock(line: ParsedLine, scan: OuterBlockScan): bo
 function claimOpensBlock(kind: AnyBlockKind, paragraphOpen: boolean): boolean {
 	if (kind === 'linkReferenceDefinition') return false;
 	return !(paragraphOpen && kind === 'indentedCode');
-}
-
-/** Read by the dev-mode check that warns when two kinds share a priority (G1.10). */
-export function listRegisteredOpeners(): { kind: AnyBlockKind; priority: number }[] {
-	return openers.records().map((r) => ({ kind: r.key, priority: r.value.priority }));
 }

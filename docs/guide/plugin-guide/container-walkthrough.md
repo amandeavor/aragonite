@@ -8,7 +8,7 @@ It reuses the `:::name` directive grammar rather than a hand-written opener. The
 
 ## The registration module
 
-One file declares the kinds, describes them, maps the directive names, binds the component, and returns the whole thing as a `conspiracyPlugin()` unit.
+One file declares the kinds, describes them along with the component that draws them, maps the directive names, and returns the whole thing as a `conspiracyPlugin()` unit.
 
 ```ts
 // conspiracy-kind.ts
@@ -18,7 +18,7 @@ import {
 	createDirectiveRebuild,
 	declarePluginKind,
 	declaredPluginKind,
-	definePluginBlock,
+	definePlugin,
 	DIRECTIVE_BODY_WRAP,
 	isDirectiveRegistered,
 	registerBlockKind,
@@ -27,6 +27,7 @@ import {
 	registerDirective,
 	setPluginMetadata,
 	trimWhitespace,
+	type BlockView,
 	type CstNode,
 	type EditorPlugin,
 	type ParsedDirective
@@ -78,7 +79,7 @@ const rebuildConspiracyRaw = createDirectiveRebuild<ConspiracyMetadata>(
 	(meta) => meta?.name ?? CONSPIRACY
 );
 
-function registerConspiracy(): void {
+function registerConspiracy(view: BlockView): void {
 	activateDirectives(); // idempotent; the shared grammar must be live before the first parse
 
 	const conspiracy = declarePluginKind(CONSPIRACY);
@@ -108,6 +109,7 @@ function registerConspiracy(): void {
 	});
 
 	registerBlockKind(conspiracy, {
+		view,
 		mergeRole: 'container',
 		editable: true,
 		supportsInline: false,
@@ -170,15 +172,10 @@ function registerConspiracy(): void {
 	registerChromeLeaf(conspiracyTitle, { label: 'Theory', blockClass: 'conspiracy-title' });
 }
 
-// definePluginBlock wraps definePlugin around the register step and the view
-// binding, so you write neither the setup-then-register order nor the
-// registerBlockView(declaredPluginKind(...), svelteBlockView(...)) double-wrap.
 export function conspiracyPlugin(): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: 'conspiracy',
-		kind: CONSPIRACY,
-		view: svelteBlockView(ConspiracyBlock),
-		register: registerConspiracy
+		setup: () => registerConspiracy(svelteBlockView(ConspiracyBlock))
 	});
 }
 ```
@@ -279,7 +276,7 @@ Your component supplies only its own chrome: the border, the title styling, an i
 
 Three rules for that file, each earned the hard way:
 
-- **`export { containerApi }` is the whole publication.** It's how the editor talks to your container (a caret walking in descends through it, for one), and the name is fixed. Leave it out and your typecheck (svelte-check, or `tsc` on a plain-TypeScript plugin) fails at the call that registers the component (`definePluginBlock` here). The factory's `containerApi` is always complete; a hand-rolled one can annotate itself `satisfies ContainerBlockComponent` to get a missing member reported at the definition instead.
+- **`export { containerApi }` is the whole publication.** It's how the editor talks to your container (a caret walking in descends through it, for one), and the name is fixed. Leave it out and your typecheck (svelte-check, or `tsc` on a plain-TypeScript plugin) fails at the call that makes the view (`svelteBlockView` here). The factory's `containerApi` is always complete; a hand-rolled one can annotate itself `satisfies ContainerBlockComponent` to get a missing member reported at the definition instead.
 - **`BlockList` stays a _direct_ child of your box**, so the container's windowing finds it. Other chrome (an icon, a toggle button) may sit beside it.
 - **Chrome CSS reads the editor's theme tokens**, plain (`var(--color-ui-muted)`). Inside the editor every one of them has a value, the host's own or the built-in palette's for the current `theme`, so a read needs no fallback. The stable token set by role is the [consumer guide's theme-token manifest](../consumer-guide.md#theme-tokens).
 

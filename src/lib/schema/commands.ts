@@ -7,7 +7,6 @@
 import type { AnyBlockKind } from '../core/nodes';
 import type { AnyCommandId } from './command-id';
 import { devWarn } from '../dev-warn';
-import { devReplacesRegistration } from './register-once';
 import { enrollTestReset } from './registry-reset';
 import { createPluginRegistry } from './plugin-registry';
 import { getAllRegisteredKinds, tryGetBlockKindDescriptor } from './block-kind-descriptor';
@@ -18,7 +17,7 @@ import {
 	type KeybindingOverrideMap
 } from './keybinding-overrides';
 // Type-only imports, so this file has no runtime dependency on plugin-install or block-commands.
-import type { EditorContext } from './plugin-install';
+import { registerAsCore, type EditorContext } from './plugin-install';
 import type { PluginActivation } from './plugin-activation';
 import type { CommandDispatchContext, CommandErrorSink, CommandGates } from './block-commands';
 import type { MarkActivation } from '../decorations/mark-activation';
@@ -272,19 +271,22 @@ function __resetCommandWarningsForTests(): void {
 }
 enrollTestReset(__resetCommandWarningsForTests);
 
-registerCommand('history.undo', (ctx) => {
-	void ctx.history.requestUndo();
-	return true;
+// The editor's own, so they belong to no plugin and a dev server's re-evaluation replaces them.
+registerAsCore(() => {
+	registerCommand('history.undo', (ctx) => {
+		void ctx.history.requestUndo();
+		return true;
+	});
+	registerCommand('history.redo', (ctx) => {
+		void ctx.history.requestRedo();
+		return true;
+	});
+	registerCommand(
+		'decorations.activateAtCaret',
+		(ctx) => ctx.markActivation.activate(),
+		(gates) => gates.markActivation.canActivate()
+	);
 });
-registerCommand('history.redo', (ctx) => {
-	void ctx.history.requestRedo();
-	return true;
-});
-registerCommand(
-	'decorations.activateAtCaret',
-	(ctx) => ctx.markActivation.activate(),
-	(gates) => gates.markActivation.canActivate()
-);
 
 export const GLOBAL_KEYMAP: KeyBinding[] = [
 	{ chord: 'Mod+Z', command: 'history.undo' },
@@ -319,12 +321,8 @@ export function reservedUiChords(): readonly string[] {
 	return [...RESERVED_UI_CHORDS];
 }
 
-/** The chord's normal form, or a throw when it can't be bound. A dev-server re-evaluation binding
- *  `candidateCommand` to its own chord again replaces the binding rather than colliding. */
-export function assertPluginGlobalChordAvailable(
-	rawChord: string,
-	candidateCommand?: string
-): string {
+/** The chord's normal form, or a throw when it can't be bound. */
+export function assertPluginGlobalChordAvailable(rawChord: string): string {
 	// Thrown before the id is created (`global-commands.ts`), so a rejected registration leaves
 	// no orphaned command.
 	const chord = registeredChord(rawChord, 'registerGlobalCommand');
@@ -338,7 +336,6 @@ export function assertPluginGlobalChordAvailable(
 	const collision =
 		findByChord(GLOBAL_KEYMAP, chord) ?? pluginGlobalKeymap.getIgnoringActivation(chord);
 	if (collision) {
-		if (devReplacesRegistration() && collision.command === candidateCommand) return chord;
 		throw new Error(
 			`plugin global chord "${rawChord}" is already bound to "${collision.command}": global chords are register-once`
 		);
@@ -347,9 +344,7 @@ export function assertPluginGlobalChordAvailable(
 }
 
 export function registerPluginGlobalBinding(binding: KeyBinding): void {
-	const chord = assertPluginGlobalChordAvailable(binding.chord, binding.command);
-	// The check above already let a dev re-evaluation of the same command through, so the
-	// registry's own duplicate rule only ever replaces here.
+	const chord = assertPluginGlobalChordAvailable(binding.chord);
 	pluginGlobalKeymap.register(chord, { ...binding, chord });
 }
 

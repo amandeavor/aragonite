@@ -5,6 +5,7 @@ import {
 	registerCalloutKind,
 	rebuildCalloutRaw
 } from '../../../routes/test/plugins/callout/callout-kind';
+import { testView } from '#lib/test/support/test-view.js';
 
 const TWO_PARA = ':::callout\nHello **world**\n\nSecond para\n:::\n';
 const TITLED = ':::callout My Title\nBody\n:::\n';
@@ -12,7 +13,7 @@ const UNTITLED = ':::callout\nBody\n:::\n';
 
 describe('callout kind round-trip', () => {
 	beforeEach(() => {
-		registerCalloutKind();
+		registerCalloutKind(testView());
 	});
 
 	it('round-trips a note container byte-for-byte', () => {
@@ -66,7 +67,7 @@ describe('callout kind round-trip', () => {
 // opener line; the round trips above only read the opener's verbatim `raw`.
 describe('callout rebuildRaw is the opener inverse', () => {
 	beforeEach(() => {
-		registerCalloutKind();
+		registerCalloutKind(testView());
 	});
 
 	it('reproduces the parsed raw, including the inner blank-line separator', () => {

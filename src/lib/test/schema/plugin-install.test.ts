@@ -6,13 +6,13 @@ import {
 	type EditorContext
 } from '#lib/schema/plugin-install.js';
 import { declarePluginKind, declaredPluginKind } from '#lib/schema/plugin-kind.js';
-import { componentPluginEditor, registerBlockView } from '#lib/schema/block-view-registry.js';
-import { svelteBlockView } from '#lib/components/svelte-block-view.js';
+import { componentPluginEditor } from '#lib/schema/block-kind-plugin.js';
 import { declareOwnedKind } from '#lib/test/support/owned-kind.js';
 import { registerBlockKind } from '#lib/schema/block-kind-descriptor.js';
 import { __resetSchemaRegistriesForTests } from '#lib/schema/registry-reset.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 /** The thrown error itself, where `toThrow` only proves that something threw. */
 function captureThrow(run: () => void): unknown {
@@ -29,7 +29,8 @@ const minimalRegistration = {
 	mergeRole: 'not-mergeable',
 	editable: false,
 	supportsInline: false,
-	closure: testClosure
+	closure: testClosure,
+	view: testView()
 } as const;
 
 describe('installPlugins', () => {
@@ -174,14 +175,13 @@ describe('installPlugins', () => {
 // the declarer or the registrant, and every test declared and registered in one plugin.
 describe('componentPluginEditor', () => {
 	const lookup = vi.fn((name: string) => ({ editorId: name }) as unknown as EditorContext);
-	const entry = svelteBlockView((() => {}) as never);
 
 	it("resolves the context of the plugin the component answers to, or the base context ''", () => {
 		const owned = declareOwnedKind('plug-a', 'owned-kind');
-		registerBlockView(owned, entry);
+		registerBlockKind(owned, minimalRegistration);
 		const loose = declarePluginKind('loose-kind');
 		installPlugins([
-			definePlugin({ name: 'plug-b', setup: () => registerBlockView(loose, entry) })
+			definePlugin({ name: 'plug-b', setup: () => registerBlockKind(loose, minimalRegistration) })
 		]);
 		const unregistered = declarePluginKind('unregistered-kind');
 

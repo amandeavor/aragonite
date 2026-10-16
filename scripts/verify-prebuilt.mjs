@@ -88,22 +88,25 @@ async function sharesOneRegistry(entries) {
 					editable: true,
 					supportsInline: false,
 					conformanceFixture: '%%probe\n',
+					// The prebuilt can't compile a component, so its one view is the text block.
+					view: plugin.textBlockView(),
+					opener: {
+						priority: 25,
+						interruptsParagraph: false,
+						tryOpen(/** @type {any} */ ctx) {
+							if (!ctx.line.text.startsWith('%%probe')) return null;
+							return {
+								node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw },
+								consumed: 1
+							};
+						}
+					},
 					closure: plugin.simpleLeafClosure({
 						focus: { mode: 'implemented', via: 'probe' },
 						searchPaint: { mode: 'implemented', via: 'probe' },
 						undo: { mode: 'implemented', via: 'probe' },
 						simOracle: { mode: 'inherit-default' }
 					})
-				});
-				plugin.registerBlockOpener(kind, {
-					priority: 25,
-					tryOpen(/** @type {any} */ ctx) {
-						if (!ctx.line.text.startsWith('%%probe')) return null;
-						return {
-							node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw },
-							consumed: 1
-						};
-					}
 				});
 			}
 		})

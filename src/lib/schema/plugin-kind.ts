@@ -61,14 +61,6 @@ export function declaredPluginKind(name: string): PluginBlockKind {
 	return name as PluginBlockKind;
 }
 
-/**
- * A module that may run twice (hot reload, a re-imported registration) asks this first instead of
- * catching {@link declarePluginKind}'s or {@link declaredPluginKind}'s throw.
- */
-export function isBlockKindDeclared(name: string): boolean {
-	return declaredPluginKinds.has(name);
-}
-
 const declaredPluginInlineKinds = createPluginRegistry<string, true>({
 	label: 'declarePluginInlineKind',
 	isBuiltin: () => false
@@ -106,7 +98,7 @@ export function pluginInlineKindOwner(kind: string): string | null {
 	return declaredPluginInlineKinds.ownerOf(kind);
 }
 
-/** The inline mirror of {@link isBlockKindDeclared}. */
+/** Whether an inline kind name is declared, for the editor's own checks. */
 export function isInlineKindDeclared(name: string): boolean {
 	return declaredPluginInlineKinds.has(name);
 }

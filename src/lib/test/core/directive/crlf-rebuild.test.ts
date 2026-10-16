@@ -6,11 +6,12 @@ import {
 	rebuildDirectiveContainerRaw,
 	type DirectiveContainerMetadata
 } from '#lib/core/directive/kinds.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 // Only a rebuild is at risk: an unedited container emits `raw` verbatim, but a structural
 // edit re-synthesizes the fence lines, which must not normalize CRLF to `\n`.
 
-beforeEach(() => activateDirectiveGrammar());
+beforeEach(() => activateDirectiveGrammar(testDirectiveViews()));
 
 describe('directive rebuild preserves CRLF chrome line endings', () => {
 	it('captures the authored line ending at parse time', () => {

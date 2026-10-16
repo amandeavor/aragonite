@@ -7,13 +7,11 @@
 import {
 	definePlugin,
 	declarePluginKind,
-	declaredPluginKind,
 	registerBlockKind,
-	registerBlockOpener,
-	registerBlockView,
 	registerInsertEntry,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
+	type BlockView,
 	type EditorPlugin
 } from '#lib/plugin.js';
 import { svelteBlockView } from '#lib/svelte.js';
@@ -24,12 +22,28 @@ export const TOC_BLOCK = 'toc';
 
 const TOC_LINE = '[[toc]]';
 
-export function registerTocBlock(): void {
+export function registerTocBlock(view: BlockView): void {
 	const toc = declarePluginKind(TOC_BLOCK);
 
 	// A block that holds its own source, like `fencedCode`: `serialize` re-emits
 	// `leadingTrivia + raw`, so a raw taken verbatim from the line round-trips.
 	registerBlockKind(toc, {
+		view,
+		opener: {
+			// Just below the only built-in that consumes brackets, so `[[toc]]` resolves here
+			// whatever that matcher does.
+			priority: OPENER_PRIORITIES.linkReferenceDefinition - 5,
+			interruptsParagraph: (text) => text === TOC_LINE,
+			tryOpen(ctx) {
+				// Exact line only, so this process-wide opener never misfires on indented or
+				// trailing content in a sibling plugin's document.
+				if (ctx.line.text !== TOC_LINE) return null;
+				return {
+					node: { kind: toc, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw },
+					consumed: 1
+				};
+			}
+		},
 		label: 'Table of contents',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -58,22 +72,6 @@ export function registerTocBlock(): void {
 			simOracle: { mode: 'implemented', via: 'toc document-prop e2e' }
 		})
 	});
-
-	registerBlockOpener(toc, {
-		// Just below the only built-in that consumes brackets, so `[[toc]]` resolves here
-		// whatever that matcher does.
-		priority: OPENER_PRIORITIES.linkReferenceDefinition - 5,
-		interruptsParagraph: (text) => text === TOC_LINE,
-		tryOpen(ctx) {
-			// Exact line only, so this process-wide opener never misfires on indented or
-			// trailing content in a sibling plugin's document.
-			if (ctx.line.text !== TOC_LINE) return null;
-			return {
-				node: { kind: toc, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw },
-				consumed: 1
-			};
-		}
-	});
 }
 
 export type MaxHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
@@ -95,8 +93,7 @@ export function tocPlugin(options?: TocOptions): EditorPlugin {
 			return isMaxHeadingLevel(maxDepth) ? { maxDepth } : {};
 		},
 		setup() {
-			registerTocBlock();
-			registerBlockView(declaredPluginKind(TOC_BLOCK), svelteBlockView(TocBlock));
+			registerTocBlock(svelteBlockView(TocBlock));
 			registerInsertEntry({
 				id: 'toc',
 				label: 'Table of contents',

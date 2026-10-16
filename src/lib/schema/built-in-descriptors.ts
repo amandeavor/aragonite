@@ -1,7 +1,7 @@
 /**
- * Built-in block-kind descriptors and inline-construct policies. Nothing registers on import:
- * `core/inline/index.ts` and `components/built-in-blocks.ts` call `registerBuiltInDescriptors()`,
- * since the `sideEffects` list names built paths and tree-shaking keeps only a called binding.
+ * Built-in block kinds (descriptor and opener) and inline-construct policies. Nothing registers on
+ * import: the first grammar read, `core/inline/index.ts` and `components/built-in-blocks.ts` call
+ * `registerBuiltInDescriptors()`, since tree-shaking keeps only a called binding.
  */
 
 import { metadataOf } from '../core/nodes';
@@ -10,7 +10,8 @@ import { displayLength } from '../core/lines';
 import { matchHeading } from '../core/parsers/heading';
 import { containerClosure, type ClosureBlock } from './closure';
 import type { KeyBinding } from './keybindings';
-import { registerBlockKind } from './block-kind-descriptor';
+import { registerBuiltinBlockKind } from './block-kind-descriptor';
+import { BUILT_IN_OPENERS } from '../core/parsers/built-in-openers';
 import {
 	rebuildBlockquoteRaw,
 	rebuildListItemRaw,
@@ -23,6 +24,7 @@ import { tableCellWrite } from './table-cell-raw';
 import { fencedCodeWrite } from './fenced-code-raw';
 import { setextHeadingContentRange, setextHeadingWrite } from './setext-raw';
 import { registerInlineConstructPolicy } from './inline-construct-policy';
+import { registerAsCore } from './plugin-install';
 import { registerBuiltInRangeIndent } from './range-indent-forms';
 import { wrapAsCodeSpan } from '../core/inline/backticks';
 import {
@@ -43,6 +45,25 @@ function headingContentRange(node: NodeView): { start: number; end: number } {
 
 // ── Keymaps ───────────────────────────────────────────────────────────────
 
+// Every block the caret types in binds these, so a chord means the same in a paragraph, a cell and a
+// code block (which swallows them, having no inline constructs).
+const INLINE_FORMAT_KEYMAP: readonly KeyBinding[] = [
+	{ chord: 'Mod+B', command: 'format.toggleStrong' },
+	{ chord: 'Mod+I', command: 'format.toggleEmphasis' },
+	{ chord: 'Mod+Shift+X', command: 'format.toggleStrikethrough' },
+	{ chord: 'Mod+E', command: 'format.toggleCode' },
+	// The live-mode link card. The chord is taken even where no card opens, since letting it
+	// through would trigger the browser's own Mod+K.
+	{ chord: 'Mod+K', command: 'link.openCard' }
+];
+
+const INLINE_FORMAT_COMMANDS = new Set<string>(INLINE_FORMAT_KEYMAP.map((b) => b.command));
+
+/** Whether a command is one of the format chords every typing block binds. */
+export function isInlineFormatCommand(command: string): boolean {
+	return INLINE_FORMAT_COMMANDS.has(command);
+}
+
 // Shared by every kind TextEditableBlock renders, prose and the raw-editable fallback alike, so
 // the chords that transform a block behave the same in all of them.
 const TEXT_EDITABLE_KEYMAP: KeyBinding[] = [
@@ -53,13 +74,7 @@ const TEXT_EDITABLE_KEYMAP: KeyBinding[] = [
 	{ chord: 'Delete', command: 'block.mergeNext' },
 	{ chord: 'Alt+ArrowUp', command: 'block.moveUp' },
 	{ chord: 'Alt+ArrowDown', command: 'block.moveDown' },
-	{ chord: 'Mod+B', command: 'format.toggleStrong' },
-	{ chord: 'Mod+I', command: 'format.toggleEmphasis' },
-	{ chord: 'Mod+Shift+X', command: 'format.toggleStrikethrough' },
-	{ chord: 'Mod+E', command: 'format.toggleCode' },
-	// The live-mode link card. The chord is taken even where no card opens, since letting it
-	// through would trigger the browser's own Mod+K.
-	{ chord: 'Mod+K', command: 'link.openCard' },
+	...INLINE_FORMAT_KEYMAP,
 	{ chord: 'Mod+0', command: 'heading.cycle', arg: 0 },
 	{ chord: 'Mod+1', command: 'heading.cycle', arg: 1 },
 	{ chord: 'Mod+2', command: 'heading.cycle', arg: 2 },
@@ -75,11 +90,7 @@ const TABLE_CELL_KEYMAP: KeyBinding[] = [
 	{ chord: 'Enter', command: 'cell.enter' },
 	{ chord: 'Tab', command: 'cell.tab' },
 	{ chord: 'Shift+Tab', command: 'cell.shiftTab' },
-	{ chord: 'Mod+B', command: 'format.toggleStrong' },
-	{ chord: 'Mod+I', command: 'format.toggleEmphasis' },
-	{ chord: 'Mod+Shift+X', command: 'format.toggleStrikethrough' },
-	{ chord: 'Mod+E', command: 'format.toggleCode' },
-	{ chord: 'Mod+K', command: 'link.openCard' },
+	...INLINE_FORMAT_KEYMAP,
 	{ chord: 'Mod+Enter', command: 'table.insertRowBelow' },
 	{ chord: 'Mod+Shift+Enter', command: 'table.insertRowAbove' },
 	{ chord: 'Alt+Shift+ArrowRight', command: 'table.insertColumnRight' },
@@ -227,10 +238,15 @@ let registered = false;
 export function registerBuiltInDescriptors(): void {
 	if (registered) return;
 	registered = true;
+	// Built-ins belong to no plugin, even when the first caller runs inside a plugin's setup, so the
+	// test reset keeps them.
+	registerAsCore(registerBuiltIns);
+}
 
+function registerBuiltIns(): void {
 	registerBuiltInInlinePolicies();
 
-	registerBlockKind('paragraph', {
+	registerBuiltinBlockKind('paragraph', {
 		pageRole: 'prose',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -246,7 +262,8 @@ export function registerBuiltInDescriptors(): void {
 			reorderVia: 'Alt+Arrow block.move keymap; resolveReorderUnit'
 		})
 	});
-	registerBlockKind('heading', {
+	registerBuiltinBlockKind('heading', {
+		opener: BUILT_IN_OPENERS.heading,
 		pageRole: 'prose',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -264,7 +281,7 @@ export function registerBuiltInDescriptors(): void {
 			searchPaintVia: 'content-range raw scanned; marks (marker prefix skipped)'
 		})
 	});
-	registerBlockKind('setextHeading', {
+	registerBuiltinBlockKind('setextHeading', {
 		pageRole: 'prose',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -281,7 +298,8 @@ export function registerBuiltInDescriptors(): void {
 			searchPaintVia: 'content-range raw scanned; marks (underline line skipped)'
 		})
 	});
-	registerBlockKind('fencedCode', {
+	registerBuiltinBlockKind('fencedCode', {
+		opener: BUILT_IN_OPENERS.fencedCode,
 		pageRole: 'object',
 		dragLabel: 'Code',
 		estimateHeight: sourceLinesEstimate,
@@ -299,11 +317,7 @@ export function registerBuiltInDescriptors(): void {
 			{ chord: 'Delete', command: 'code.delete' },
 			{ chord: 'Alt+ArrowUp', command: 'block.moveUp' },
 			{ chord: 'Alt+ArrowDown', command: 'block.moveDown' },
-			{ chord: 'Mod+B', command: 'format.toggleStrong' },
-			{ chord: 'Mod+I', command: 'format.toggleEmphasis' },
-			{ chord: 'Mod+Shift+X', command: 'format.toggleStrikethrough' },
-			{ chord: 'Mod+E', command: 'format.toggleCode' },
-			{ chord: 'Mod+K', command: 'link.openCard' }
+			...INLINE_FORMAT_KEYMAP
 		],
 		conformanceFixture: '```\ncode\n```\n',
 		closure: {
@@ -324,7 +338,8 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation under the loaded-ops oracles' }
 		}
 	});
-	registerBlockKind('thematicBreak', {
+	registerBuiltinBlockKind('thematicBreak', {
+		opener: BUILT_IN_OPENERS.thematicBreak,
 		pageRole: 'object',
 		dragLabel: 'Divider',
 		estimateHeight: singleLineEstimate,
@@ -359,7 +374,8 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation under the loaded-ops oracles' }
 		}
 	});
-	registerBlockKind('indentedCode', {
+	registerBuiltinBlockKind('indentedCode', {
+		opener: BUILT_IN_OPENERS.indentedCode,
 		pageRole: 'object',
 		estimateHeight: sourceLinesEstimate,
 		gapEdges: 'none',
@@ -370,7 +386,8 @@ export function registerBuiltInDescriptors(): void {
 		conformanceFixture: '    indented code\n',
 		closure: RAW_TEXT_LEAF_CLOSURE
 	});
-	registerBlockKind('htmlBlock', {
+	registerBuiltinBlockKind('htmlBlock', {
+		opener: BUILT_IN_OPENERS.htmlBlock,
 		pageRole: 'object',
 		estimateHeight: sourceLinesEstimate,
 		gapEdges: 'none',
@@ -381,7 +398,8 @@ export function registerBuiltInDescriptors(): void {
 		conformanceFixture: '<div>\nhtml\n</div>\n',
 		closure: RAW_TEXT_LEAF_CLOSURE
 	});
-	registerBlockKind('linkReferenceDefinition', {
+	registerBuiltinBlockKind('linkReferenceDefinition', {
+		opener: BUILT_IN_OPENERS.linkReferenceDefinition,
 		pageRole: 'object',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -392,7 +410,7 @@ export function registerBuiltInDescriptors(): void {
 		conformanceFixture: '[id]: /url "title"\n',
 		closure: RAW_TEXT_LEAF_CLOSURE
 	});
-	registerBlockKind('table', {
+	registerBuiltinBlockKind('table', {
 		pageRole: 'object',
 		estimateHeight: containerEstimate,
 		mergeRole: 'not-mergeable',
@@ -430,7 +448,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation drives table cell edits' }
 		}
 	});
-	registerBlockKind('tableRow', {
+	registerBuiltinBlockKind('tableRow', {
 		pageRole: 'object',
 		estimateHeight: containerEstimate,
 		gapEdges: 'none',
@@ -460,7 +478,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation (table edits)' }
 		}
 	});
-	registerBlockKind('tableCell', {
+	registerBuiltinBlockKind('tableCell', {
 		pageRole: 'prose',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -501,7 +519,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation (table cell edits)' }
 		}
 	});
-	registerBlockKind('unrecognized', {
+	registerBuiltinBlockKind('unrecognized', {
 		pageRole: 'object',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -521,7 +539,8 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'inherit-default' }
 		}
 	});
-	registerBlockKind('blockquote', {
+	registerBuiltinBlockKind('blockquote', {
+		opener: BUILT_IN_OPENERS.blockquote,
 		pageRole: 'prose',
 		estimateHeight: containerEstimate,
 		gapEdges: 'none',
@@ -555,7 +574,8 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation (nested blockquote edits)' }
 		})
 	});
-	registerBlockKind('list', {
+	registerBuiltinBlockKind('list', {
+		opener: BUILT_IN_OPENERS.list,
 		// Its items carry the handles: one on the list would sit over its first item's.
 		pageRole: 'prose',
 		estimateHeight: containerEstimate,
@@ -594,7 +614,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation (list edits)' }
 		})
 	});
-	registerBlockKind('listItem', {
+	registerBuiltinBlockKind('listItem', {
 		pageRole: 'object',
 		estimateHeight: containerEstimate,
 		gapEdges: 'none',

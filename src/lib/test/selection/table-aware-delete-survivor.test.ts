@@ -7,6 +7,7 @@ import { blockNodeAt } from '../../tree-operations/node-primitives';
 import { registerDetailsKind } from '../../plugins/details/details-kind';
 import type { CellSelectionPoint } from '../../selection/primitives';
 import { deleteRange } from '../harness/range-delete';
+import { testView } from '#lib/test/support/test-view.js';
 
 /** Row-major cell index on the table block's own path. */
 const cell = (path: number[], index: number): CellSelectionPoint => ({
@@ -37,7 +38,7 @@ describe('when nothing survives', () => {
 
 describe('the survivor descent stops at a collapsed container’s chrome child', () => {
 	beforeEach(() => {
-		registerDetailsKind();
+		registerDetailsKind(testView());
 	});
 
 	// `<details>` (no `open`) collapses; its children are [summary, body…], so the

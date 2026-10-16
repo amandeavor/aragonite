@@ -1,13 +1,7 @@
 // Miss-analysis: the convergence compare read a hand-kept list of built-in metadata fields, and
 // every test drove a built-in kind, so none asked whether a plugin kind's metadata was compared.
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-	parse,
-	registerBlockOpener,
-	setPluginMetadata,
-	type CstNode,
-	type PluginBlockKind
-} from '#lib/plugin.js';
+import { parse, setPluginMetadata, type CstNode, type PluginBlockKind } from '#lib/plugin.js';
 import { assertParseConverged } from '#lib/testing/parse-convergence.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
@@ -18,18 +12,19 @@ interface TagMetadata {
 
 // `@@ alpha beta` parses to one leaf whose metadata holds the first word and the word list.
 function registerTagKind(): PluginBlockKind {
-	const kind = testLeaf('convergence-tag');
-	registerBlockOpener(kind, {
-		priority: 45,
-		interruptsParagraph: false,
-		tryOpen(ctx) {
-			if (!ctx.line.text.startsWith('@@ ')) return null;
-			const words = ctx.line.text.slice(3).split(' ');
-			const node: CstNode = { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw };
-			setPluginMetadata<TagMetadata>(node, { tag: words[0], words });
-			return { node, consumed: 1 };
+	const kind = testLeaf('convergence-tag', (kind) => ({
+		opener: {
+			priority: 45,
+			interruptsParagraph: false,
+			tryOpen(ctx) {
+				if (!ctx.line.text.startsWith('@@ ')) return null;
+				const words = ctx.line.text.slice(3).split(' ');
+				const node: CstNode = { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw };
+				setPluginMetadata<TagMetadata>(node, { tag: words[0], words });
+				return { node, consumed: 1 };
+			}
 		}
-	});
+	}));
 	return kind;
 }
 

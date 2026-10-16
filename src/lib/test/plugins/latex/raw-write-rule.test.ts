@@ -4,6 +4,7 @@ import { normalizeOwnRaw } from '#lib/tree-operations/node-primitives.js';
 import { documentLineEnding } from '#lib/plugin.js';
 import { registerMathBlock } from '#lib/plugins/latex/latex-kind.js';
 import { tryGetBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Both math kinds declare a raw-write rule that puts back a closer a truncating write dropped, so
 // bytes written past the block's editable element (a range delete, a paste, a search-replace)
@@ -18,7 +19,7 @@ function write(source: string, raw: string): string {
 
 // One call registers both forms, as one install of the plugin does.
 beforeEach(() => {
-	registerMathBlock();
+	registerMathBlock(testView());
 });
 
 describe('a truncating write of a $$ block gets its closer back', () => {

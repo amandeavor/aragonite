@@ -4,14 +4,14 @@
 // Miss-analysis: every mounted-block suite used the internal harness, never the published API.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import { type EditorInstance } from '#lib';
+import type { EditorInstance } from '#lib';
 import { Editor } from '#lib/svelte.js';
 import {
 	declarePluginKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockKind,
-	registerBlockOpener,
 	simpleLeafClosure,
+	textBlockView,
 	OPENER_PRIORITIES,
 	type EditorPlugin,
 	type ParsedLine
@@ -37,14 +37,26 @@ function markerBlockExtent(lines: readonly ParsedLine[], index: number): number 
 	return 0;
 }
 
-function markerLeafPlugin(): EditorPlugin {
-	return definePluginBlock({
+function markerLeafPlugin(view = svelteBlockView(PlainLeafBlock)): EditorPlugin {
+	return definePlugin({
 		name: 'jsdommountplugin',
-		kind: KIND,
-		view: svelteBlockView(PlainLeafBlock),
-		register: () => {
+		setup: () => {
 			const kind = declarePluginKind(KIND);
 			registerBlockKind(kind, {
+				opener: {
+					priority: OPENER_PRIORITIES.thematicBreak - 5,
+					interruptsParagraph: false,
+					tryOpen: (ctx) => {
+						const consumed = markerBlockExtent(ctx.lines, ctx.index);
+						if (consumed === 0) return null;
+						const raw = ctx.lines
+							.slice(ctx.index, ctx.index + consumed)
+							.map((l) => l.raw)
+							.join('');
+						return { node: { kind, raw, leadingTrivia: ctx.leadingTrivia }, consumed };
+					}
+				},
+				view,
 				gapEdges: 'none',
 				mergeRole: 'not-mergeable',
 				editable: true,
@@ -55,19 +67,6 @@ function markerLeafPlugin(): EditorPlugin {
 					undo: { mode: 'implemented', via: 'plain mode — every keystroke commits' },
 					simOracle: { mode: 'inherit-default' }
 				})
-			});
-			registerBlockOpener(kind, {
-				priority: OPENER_PRIORITIES.thematicBreak - 5,
-				interruptsParagraph: false,
-				tryOpen: (ctx) => {
-					const consumed = markerBlockExtent(ctx.lines, ctx.index);
-					if (consumed === 0) return null;
-					const raw = ctx.lines
-						.slice(ctx.index, ctx.index + consumed)
-						.map((l) => l.raw)
-						.join('');
-					return { node: { kind, raw, leadingTrivia: ctx.leadingTrivia }, consumed };
-				}
 			});
 		}
 	});
@@ -122,6 +121,24 @@ describe('mounting a plugin block through the published surface', () => {
 		const root = mountEditor([]);
 		expect(root.querySelector('.plain-leaf-block')).toBeNull();
 		expect(instance?.getSource()).toBe(SOURCE);
+	});
+});
+
+describe('a plugin kind drawn by textBlockView', () => {
+	it('mounts the editor text block with its class, and typing into it writes the source', async () => {
+		const root = mountEditor([markerLeafPlugin(textBlockView({ blockClass: 'marker-text' }))]);
+		const leaf = root.querySelector<HTMLElement>('.text-editable-block.marker-text');
+		expect(leaf, 'the text block mounted for the plugin kind').not.toBeNull();
+		expect(leaf?.getAttribute('contenteditable')).toBe('true');
+
+		leaf!.textContent = `${MARKER}
+first!
+second
+${MARKER}`;
+		leaf!.dispatchEvent(new InputEvent('input', { bubbles: true }));
+		await settleEditor();
+
+		expect(instance?.getSource()).toBe(SOURCE.replace('first', 'first!'));
 	});
 });
 

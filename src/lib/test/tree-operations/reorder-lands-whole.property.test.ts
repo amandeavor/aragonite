@@ -13,11 +13,12 @@ import { createReorderAction } from '#lib/editor-actions/reorder-action.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
 import { freshOrFixedSeed } from '../invariants/arbitraries/property-seed';
+import { testView } from '#lib/test/support/test-view.js';
 
 const PARAMS = { numRuns: 100, seed: freshOrFixedSeed(414141) } as const;
 
 beforeEach(() => {
-	registerMathBlock();
+	registerMathBlock(testView());
 });
 
 // The blocks a user moves, and the prose they land beside; what each becomes flush against a

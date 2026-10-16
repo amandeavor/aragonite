@@ -45,6 +45,7 @@
 	import type { WriteIntent } from '../editable/surface-write';
 	import type { ContentWrite } from '../../../action-contracts';
 	import type { CommandRun } from '../../../schema/block-commands';
+	import { isInlineFormatCommand } from '../../../schema/built-in-descriptors';
 	import { nodeAt, emptyParagraph } from '../../../tree-operations';
 	import { type CommandId } from '../../../schema/commands';
 
@@ -490,13 +491,10 @@
 
 	export const runCommand = editableSurface.command(
 		(id: CommandId, _arg?: unknown, run: CommandRun = { afterRemoval: false }): boolean => {
+			// A code block carries no inline constructs, so a format chord is swallowed to stop the
+			// browser's own bold or link.
+			if (isInlineFormatCommand(id)) return true;
 			switch (id) {
-				case 'format.toggleStrong':
-				case 'format.toggleEmphasis':
-				case 'format.toggleStrikethrough':
-				case 'format.toggleCode':
-				case 'link.openCard':
-					return true; // code blocks carry no inline constructs; swallow to stop the browser default
 				case 'code.newline':
 					return codeNewline(run);
 				case 'code.indent':

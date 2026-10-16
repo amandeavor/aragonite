@@ -1,16 +1,16 @@
-/**
- * Two block kinds from one setup, so this wires `definePlugin` directly rather than
- * the single-kind `definePluginBlock` sugar.
- */
+/** The admonitions plugin: the `:::note` directive container and native GitHub alerts, both drawn
+ *  by one component. */
 
 import { definePlugin, registerInsertEntry, type EditorPlugin } from '#lib/plugin.js';
+import { svelteBlockView } from '#lib/svelte.js';
 import { registerAdmonitions, type AdmonitionsOptions } from './admonition-kind';
+import AdmonitionBlock from './AdmonitionBlock.svelte';
 
 export function admonitionsPlugin(options?: AdmonitionsOptions): EditorPlugin {
 	return definePlugin({
 		name: 'admonitions',
 		setup() {
-			registerAdmonitions(options);
+			registerAdmonitions(svelteBlockView(AdmonitionBlock), options);
 			registerInsertEntry({
 				id: 'note',
 				label: 'Note',

@@ -14,10 +14,7 @@ import {
 import {
 	declarePluginKind,
 	declarePluginInlineKind,
-	isInlineKindDeclared,
 	registerBlockKind,
-	registerBlockView,
-	registerBlockOpener,
 	registerBlockCompleter,
 	registerBlockCommand,
 	registerRangeIndent,
@@ -30,21 +27,15 @@ import {
 	registerLanguage,
 	registerPasteTransform,
 	registerDirective,
-	isBlockKindDeclared,
-	isBlockKindRegistered,
-	isBlockViewRegistered,
-	isBlockOpenerRegistered,
-	isBlockCompleterRegistered,
-	isPasteTransformRegistered,
 	isDirectiveRegistered,
 	listLanguages,
 	definePlugin,
 	isPluginInstalled,
+	textBlockView,
 	type NodeView,
 	type PluginBlockKind,
 	type PluginInlineKind
 } from '#lib/plugin.js';
-import { svelteBlockView } from '#lib/svelte.js';
 import { devWarn } from '#lib/dev-warn.js';
 import { installPlugins, onEditorCallbacks } from '#lib/schema/plugin-install.js';
 import { pluginGlobalBinding } from '#lib/schema/commands.js';
@@ -56,6 +47,9 @@ import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { isInlineWidget } from '#lib/core/inline/inline-widgets.js';
 import { getInlineRungs } from '#lib/core/inline/scan/plugin-syntax.js';
+import { isBlockKindRegistered } from '#lib/schema/block-kind-descriptor.js';
+import { declaredPluginKind, isInlineKindDeclared } from '#lib/schema/plugin-kind.js';
+import { completeTypedLine } from '#lib/schema/block-completions.js';
 import { collectFiles, importSpecifiers, readSource } from '../invariants/lint/scan-source';
 import { testClosure } from '#lib/test/support/closure.js';
 
@@ -75,7 +69,14 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 			block = declarePluginKind('probe-block');
 			chrome = declarePluginKind('probe-chrome');
 		},
-		registered: () => isBlockKindDeclared('probe-block')
+		registered: () => {
+			try {
+				declaredPluginKind('probe-block');
+				return true;
+			} catch {
+				return false;
+			}
+		}
 	},
 	{
 		entry: 'declarePluginInlineKind',
@@ -90,25 +91,19 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 				mergeRole: 'not-mergeable',
 				editable: false,
 				supportsInline: false,
-				closure: testClosure
+				closure: testClosure,
+				view: textBlockView()
 			}),
 		registered: () => isBlockKindRegistered('probe-block')
 	},
 	{
-		entry: 'registerBlockView',
-		register: () => registerBlockView(block, svelteBlockView((() => {}) as never)),
-		registered: () => isBlockViewRegistered('probe-block')
-	},
-	{
-		entry: 'registerBlockOpener',
-		register: () =>
-			registerBlockOpener(block, { priority: 0, tryOpen: () => null, interruptsParagraph: false }),
-		registered: () => isBlockOpenerRegistered('probe-block')
-	},
-	{
 		entry: 'registerBlockCompleter',
-		register: () => registerBlockCompleter(block, { tryComplete: () => null }),
-		registered: () => isBlockCompleterRegistered('probe-block')
+		register: () =>
+			registerBlockCompleter(block, {
+				tryComplete: (line) =>
+					line === '¤probe' ? { lines: ['x', 'y'], caret: { path: [], line: 1, column: 0 } } : null
+			}),
+		registered: () => completeTypedLine('¤probe', defaultGrammarView) !== null
 	},
 	{
 		entry: 'registerBlockCommand',
@@ -171,8 +166,12 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 	},
 	{
 		entry: 'registerPasteTransform',
-		register: () => registerPasteTransform({ name: 'probe-transform', transform: () => null }),
-		registered: () => isPasteTransformRegistered('probe-transform')
+		register: () =>
+			registerPasteTransform({
+				name: 'probe-transform',
+				transform: (text) => (text === 'probe' ? 'probed' : null)
+			}),
+		registered: () => applyPasteTransforms('probe') === 'probed'
 	},
 	{
 		entry: 'registerDirective',

@@ -8,8 +8,6 @@ import {
 } from '../../schema/block-completions';
 import { declarePluginKind } from '../../schema/plugin-kind';
 import { __resetSchemaRegistriesForTests } from '../../schema/registry-reset';
-import { configureEditorEnv } from '../../env';
-import { takeDevWarns } from '../support/warn-gate';
 
 function claims(marker: string, lines: string[]): BlockCompleter {
 	return {
@@ -55,17 +53,5 @@ describe('block-completion registry', () => {
 			/already registered/
 		);
 		expect(completeTypedLine('|', defaultGrammarView)?.lines).toEqual(['first']);
-	});
-
-	it('replaces with a note instead of throwing on a dev server (registrar re-eval)', () => {
-		const kind = declarePluginKind('spec-hmr');
-		registerBlockCompleter(kind, claims('|', ['first']));
-		configureEditorEnv({ isDev: true, isTest: false });
-
-		expect(() => registerBlockCompleter(kind, claims('|', ['second']))).not.toThrow();
-		expect(completeTypedLine('|', defaultGrammarView)?.lines).toEqual(['second']);
-		const fires = takeDevWarns();
-		expect(fires).toHaveLength(1);
-		expect(fires[0].message).toMatch(/dev re-registration replaces/);
 	});
 });

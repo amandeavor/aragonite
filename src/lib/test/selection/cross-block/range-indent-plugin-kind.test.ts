@@ -13,9 +13,8 @@ import {
 import { pressKey } from '#lib/test/harness/settle.js';
 import {
 	augmentBlockKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockCommand,
-	registerBlockOpener,
 	registerRangeIndent,
 	type EditorPlugin
 } from '#lib/plugin.js';
@@ -36,26 +35,26 @@ const KIND = 'quote-leaf';
 
 /** An `@@ ` line whose indent command puts a tab after its marker, at a caret or over a range. */
 function quoteLeafPlugin(): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: KIND,
-		kind: KIND,
-		view: svelteBlockView(RevealLeafBlock),
-		register: () => {
-			const kind = registerRevealLeafKind(KIND);
+		setup: () => {
+			const kind = registerRevealLeafKind(KIND, (kind) => ({
+				opener: {
+					priority: 25,
+					interruptsParagraph: false,
+					tryOpen: (ctx) =>
+						ctx.line.text.startsWith('@@ ')
+							? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
+							: null
+				},
+				view: svelteBlockView(RevealLeafBlock)
+			}));
 			const indent = registerBlockCommand(kind, 'quoteLeaf.indent', () => true);
 			augmentBlockKind(kind, { keymap: [{ chord: 'Tab', command: indent }] });
 			registerRangeIndent(kind, indent, (node, range) => ({
 				text: `@@ \t${trimTrailingLineEnding(node.raw).slice(3)}`,
 				selection: { start: range.start + 1, end: range.end + 1 }
 			}));
-			registerBlockOpener(kind, {
-				priority: 25,
-				interruptsParagraph: false,
-				tryOpen: (ctx) =>
-					ctx.line.text.startsWith('@@ ')
-						? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
-						: null
-			});
 		}
 	});
 }

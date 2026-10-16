@@ -17,6 +17,7 @@ import {
 	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const PARROT_LINE = '%%parrot party responsibly\n';
 
@@ -28,7 +29,7 @@ function grammarListing(names: string[]) {
 beforeEach(() => {
 	installPlugins([parrotPlugin()]);
 	// A bodyWrite-declaring owner, so the escape below has a reparse to run.
-	registerDetailsKind();
+	registerDetailsKind(testView());
 });
 
 async function pasteInto(grammar: ReturnType<typeof grammarListing>) {

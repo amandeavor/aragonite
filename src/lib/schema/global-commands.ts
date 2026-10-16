@@ -22,7 +22,7 @@ export function registerGlobalCommand(
 ): PluginCommandId {
 	// Validate the chord before creating the id: a collision must not leave a created name and a
 	// registered handler behind a failed registration.
-	if (opts?.chord) assertPluginGlobalChordAvailable(opts.chord, name);
+	if (opts?.chord) assertPluginGlobalChordAvailable(opts.chord);
 	const id = mintCommandId(name);
 	registerCommand(id, (ctx) => {
 		if (!ctx.pluginEditor) {

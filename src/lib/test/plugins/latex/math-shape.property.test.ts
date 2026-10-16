@@ -12,6 +12,7 @@ import { registerMathBlock } from '#lib/plugins/latex/latex-kind.js';
 import { reshapeMathEdit } from '#lib/plugins/latex/math-source.js';
 import { freshOrFixedSeed } from '#lib/test/invariants/arbitraries/property-seed.js';
 import { paintedSplit } from './painted-split';
+import { testView } from '#lib/test/support/test-view.js';
 
 const PARAMS = { numRuns: 400, seed: freshOrFixedSeed(688) } as const;
 
@@ -19,7 +20,7 @@ const PARAMS = { numRuns: 400, seed: freshOrFixedSeed(688) } as const;
 const BELOW = 'after\n\n$$\ny\n$$\n';
 
 beforeEach(() => {
-	registerMathBlock();
+	registerMathBlock(testView());
 });
 
 type Edit = { kind: 'break'; at: number } | { kind: 'delete'; at: number };

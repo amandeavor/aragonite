@@ -1077,7 +1077,7 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
-		id: 'G4.77 only the editor bootstrap, registerCore and directives register on behalf of no plugin',
+		id: 'G4.77 only the editor’s own registrations run on behalf of no plugin',
 		// The bare name, so an aliased import is flagged at its import line.
 		matches: /\bregisterAsCore\b/,
 		allowed: {
@@ -1087,11 +1087,21 @@ const RULES: FileRule[] = [
 				'the editor’s own bootstraps (blocks, code languages, context-menu rows), which the reset keeps',
 			'src/lib/schema/plugin-registry.ts':
 				'`registerCore`, which also flags a key the registry can’t tell is built-in so the reset keeps it',
+			'src/lib/schema/built-in-descriptors.ts':
+				'the built-in kinds, whose first registration can fall inside a plugin’s setup (the first grammar read)',
 			'src/lib/components/blocks/directive/activate-directives.ts':
-				'the directive grammar and its components, which a consumer may turn on from a plugin’s setup and the reset drops'
+				'the directive grammar and its components, which a consumer may turn on from a plugin’s setup and the reset drops',
+			'src/lib/schema/commands.ts':
+				'the editor’s own global commands, registered as the module loads',
+			'src/lib/tree-operations/paste/hooks.ts':
+				'the built-in kinds’ default paste surfaces, registered as the module loads',
+			'src/lib/core/parsers/table-completion.ts':
+				'the table’s Enter completer, registered as the parser loads',
+			'src/lib/core/inline/inline-widgets.ts':
+				'`registerCoreInlineWidget`, the inline widgets the editor draws itself'
 		},
 		reason:
-			'an entry belongs to no plugin only through one of these routes: an editor built-in goes in `registerEditorBuiltIns`, a built-in key the reset can’t recognize goes through `registerCore`, and a kind a plugin declared already answers to that plugin',
+			'an entry belongs to no plugin only through one of these routes: an editor built-in goes in `registerEditorBuiltIns` or registers as its module loads, a built-in key the reset can’t recognize goes through `registerCore`, and a kind a plugin declared already answers to that plugin',
 		hits: [
 			'registerAsCore(() => registerLanguage(name, grammar));',
 			"import { registerAsCore as runUnowned } from './plugin-install';"

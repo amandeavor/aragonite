@@ -6,6 +6,7 @@ import {
 	rebuildDetailsRaw,
 	type DetailsMetadata
 } from '#lib/plugins/details/details-kind.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Without edits an opaque container emits its `raw` verbatim, so only `rebuildDetailsRaw`
 // is at risk: the three tag lines it builds have to reproduce the authored line ending rather
@@ -15,7 +16,7 @@ const CRLF_SRC = '<details>\r\n<summary>T</summary>\r\n\r\nbody\r\n\r\n</details
 const LF_SRC = '<details>\n<summary>T</summary>\n\nbody\n\n</details>\n';
 
 describe('details rebuild preserves CRLF chrome line endings', () => {
-	beforeEach(registerDetailsKind);
+	beforeEach(() => registerDetailsKind(testView()));
 
 	it('captures the authored line ending at parse time', () => {
 		const meta = getPluginMetadata<DetailsMetadata>(parse(CRLF_SRC).children[0]);

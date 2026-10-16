@@ -9,6 +9,7 @@ import { describeConvergence } from '../harness/parse-converged';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Backspace on an emptied middle block collapses its line on the merge route as on the delete
 // route, whatever kind of block follows it.
@@ -37,7 +38,7 @@ function collapsed(tail: string, op: (doc: Document) => void): Document {
 
 describe('an emptied middle block takes its own blank line with it', () => {
 	beforeEach(() => {
-		registerFootnoteDefinition();
+		registerFootnoteDefinition(testView());
 	});
 
 	describe.each(TAILS)('above / blank / %s', (_name, tail) => {

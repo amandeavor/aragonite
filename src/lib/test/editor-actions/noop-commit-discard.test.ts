@@ -15,6 +15,7 @@ import {
 	makeTopHarness
 } from '#lib/test/harness/editor-actions.js';
 import type { EditEvent } from '#lib/editor-events.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // A structural edit that changes nothing must push no undo entry and emit no edit event.
 // The container path is the one that can leave traces: its discard runs the full in-place
@@ -24,7 +25,7 @@ const DETAILS = '<details>\n<summary>Summary</summary>\n\nBody\n\n</details>\n';
 
 describe('noop structural commit discards its snapshot', () => {
 	beforeEach(() => {
-		registerDetailsKind();
+		registerDetailsKind(testView());
 	});
 
 	it('splitting a chrome leaf (container scope) creates no entry and leaves bytes untouched', async () => {

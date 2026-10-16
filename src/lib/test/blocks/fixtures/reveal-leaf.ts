@@ -3,51 +3,42 @@
 
 import { expect } from 'vitest';
 import RevealLeafBlock from './RevealLeafBlock.svelte';
-import {
-	definePluginBlock,
-	registerBlockOpener,
-	simpleLeafClosure,
-	type EditorPlugin
-} from '#lib/plugin.js';
+import { definePlugin, simpleLeafClosure, type EditorPlugin } from '#lib/plugin.js';
 import { svelteBlockView } from '#lib/svelte.js';
-import type { BlockKindRegistration } from '#lib/schema/block-kind-descriptor.js';
 import type { CstNode, Document, PluginBlockKind } from '#lib/core/nodes.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import { mountBlock, type MountBlockOptions } from '../../harness/mount-block';
 import { settleEditor } from '#lib/test/harness/settle.js';
-import { testLeaf } from '#lib/test/harness/test-kinds.js';
+import { testLeaf, type TestKindFields } from '#lib/test/harness/test-kinds.js';
 
-export function registerRevealLeafKind(
-	name: string,
-	over: Partial<BlockKindRegistration> = {}
-): PluginBlockKind {
-	return testLeaf(name, {
+export function registerRevealLeafKind(name: string, over: TestKindFields = {}): PluginBlockKind {
+	return testLeaf(name, (kind) => ({
 		closure: simpleLeafClosure({
 			focus: { mode: 'implemented', via: 'createEditableLeaf render-primary reveal' },
 			searchPaint: { mode: 'inherit-default' },
 			undo: { mode: 'implemented', via: 'render-primary: one commit when the caret leaves' },
 			simOracle: { mode: 'inherit-default' }
 		}),
-		...over
-	});
+		...(typeof over === 'function' ? over(kind) : over)
+	}));
 }
 
 /** The same leaf installed as a plugin whose block is one `@@ ` line, for a suite that mounts an editor. */
 export function revealLeafPlugin(name: string): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name,
-		kind: name,
-		view: svelteBlockView(RevealLeafBlock),
-		register: () => {
-			const kind = registerRevealLeafKind(name);
-			registerBlockOpener(kind, {
-				priority: 25,
-				interruptsParagraph: false,
-				tryOpen: (ctx) =>
-					ctx.line.text.startsWith('@@ ')
-						? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
-						: null
-			});
+		setup: () => {
+			registerRevealLeafKind(name, (kind) => ({
+				opener: {
+					priority: 25,
+					interruptsParagraph: false,
+					tryOpen: (ctx) =>
+						ctx.line.text.startsWith('@@ ')
+							? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
+							: null
+				},
+				view: svelteBlockView(RevealLeafBlock)
+			}));
 		}
 	});
 }

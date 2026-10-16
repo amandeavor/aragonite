@@ -2,11 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as pluginBarrel from '#lib/plugin.js';
 import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
-import {
-	declarePluginInlineKind,
-	declaredPluginInlineKind,
-	isInlineKindDeclared
-} from '#lib/schema/plugin-kind.js';
+import { declarePluginInlineKind, declaredPluginInlineKind } from '#lib/schema/plugin-kind.js';
 import type {
 	InlineSyntaxRecognizer,
 	InlineWidgetDescriptor,
@@ -27,16 +23,9 @@ describe('@voithos-labs/aragonite/plugin inline authoring surface', () => {
 		expect(pluginBarrel.registerInlineWidgetKind).toBe(registerInlineWidgetKind);
 	});
 
-	it('re-exports the inline-kind create, lookup, and idempotence probe', () => {
+	it('re-exports the inline-kind create and lookup', () => {
 		expect(pluginBarrel.declarePluginInlineKind).toBe(declarePluginInlineKind);
 		expect(pluginBarrel.declaredPluginInlineKind).toBe(declaredPluginInlineKind);
-		expect(pluginBarrel.isInlineKindDeclared).toBe(isInlineKindDeclared);
-	});
-
-	it('isInlineKindDeclared probes the declared-set without throwing', () => {
-		expect(pluginBarrel.isInlineKindDeclared('probe-kind')).toBe(false);
-		declarePluginInlineKind('probe-kind');
-		expect(pluginBarrel.isInlineKindDeclared('probe-kind')).toBe(true);
 	});
 
 	it('keeps the internal inline modules off the barrel', () => {

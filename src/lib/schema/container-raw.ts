@@ -16,9 +16,10 @@ import {
 	isGridDescriptor,
 	isGridKind,
 	tryGetBlockKindDescriptor,
-	type BlockKindDescriptor
+	type BlockKindDescriptor,
+	hasOwnOpener
 } from './block-kind-descriptor';
-import { isBlockOpenerRegistered, type GrammarView } from './block-openers';
+import type { GrammarView } from './block-openers';
 import { readAsOpened } from './opened-reading';
 import type { ChildRawChange } from './child-spans';
 import type { StripRebuild } from './strip-rebuild';
@@ -121,7 +122,7 @@ export function followBytes(
 	}
 	if (!openerMoved) return KEPT;
 	const strip = contract === 'strip';
-	if (!strip && !isBlockOpenerRegistered(node.kind)) return KEPT;
+	if (!strip && !hasOwnOpener(node.kind)) return KEPT;
 	const opened = soleNodeOfKind(readOpenerLine(node.raw, grammar), node.kind);
 	// A strip container's metadata is all on its first line, so that line alone re-reads it.
 	if (opened) {
@@ -129,7 +130,7 @@ export function followBytes(
 		return same ? KEPT : rereadWhole(node, contract, grammar);
 	}
 	// A first line that opens another kind changes the reading, for a kind whose opener says so.
-	return isBlockOpenerRegistered(node.kind) ? rereadWhole(node, contract, grammar) : KEPT;
+	return hasOwnOpener(node.kind) ? rereadWhole(node, contract, grammar) : KEPT;
 }
 
 /**

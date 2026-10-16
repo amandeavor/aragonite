@@ -16,17 +16,14 @@ import {
 	isWhitespaceChar,
 	lineStartsOuterBlock,
 	parseContainerBody,
-	registerBlockView,
 	registerBlockKind,
-	registerBlockOpener,
 	setPluginMetadata,
 	splitLines,
 	type BlockOpenerResult,
+	type BlockView,
 	type CstNode,
 	type OpenContext
 } from '#lib/plugin.js';
-import { svelteBlockView } from '#lib/svelte.js';
-import FootnoteDefinition from './FootnoteDefinition.svelte';
 import { FOOTNOTE_DEF_KIND } from './constants';
 
 export interface FootnoteDefMetadata {
@@ -149,18 +146,18 @@ export function rebuildFootnoteDefRaw(node: CstNode): void {
 	node.raw = raw === '' ? marker : raw;
 }
 
-export function registerFootnoteDefinition(): void {
+export function registerFootnoteDefinition(view: BlockView): void {
 	const kind = declarePluginKind(FOOTNOTE_DEF_KIND);
 
-	registerBlockOpener(kind, {
-		// Below linkReferenceDefinition so the footnote form matches first, at a priority of
-		// its own so no two bundled plugins share one (G1.10).
-		priority: OPENER_PRIORITIES.linkReferenceDefinition - 4,
-		tryOpen,
-		interruptsParagraph: false
-	});
-
 	registerBlockKind(kind, {
+		view,
+		opener: {
+			// Below linkReferenceDefinition so the footnote form matches first, at a priority of
+			// its own so no two bundled plugins share one (G1.10).
+			priority: OPENER_PRIORITIES.linkReferenceDefinition - 4,
+			tryOpen,
+			interruptsParagraph: false
+		},
 		label: 'Footnote',
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
@@ -197,6 +194,4 @@ export function registerFootnoteDefinition(): void {
 			simOracle: { mode: 'inherit-default' }
 		})
 	});
-
-	registerBlockView(kind, svelteBlockView(FootnoteDefinition));
 }

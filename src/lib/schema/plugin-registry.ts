@@ -5,7 +5,12 @@
  * it, except in a kind registry, where a kind a plugin declared takes that plugin instead.
  */
 import type { AnyBlockKind, AnyInlineKind } from '../core/nodes';
-import { currentInstallingPlugin, registerAsCore } from './plugin-install';
+import {
+	currentInstallingPlugin,
+	isRegisteringAsCore,
+	registerAsCore,
+	rejectRegistrationOutsideSetup
+} from './plugin-install';
 import { resolvesIn, type PluginActivation } from './plugin-activation';
 import { registerOnce } from './register-once';
 import { enrollTestReset } from './registry-reset';
@@ -25,8 +30,9 @@ export interface PluginRegistry<K, V> {
 	/** `register` for an editor built-in whose key `isBuiltin` can't recognize: owned by no plugin
 	 *  and kept by the test reset. */
 	registerCore(key: K, value: V, conflict?: string): void;
-	/** Replace a registered key's value in place, keeping its owner and its position. */
-	update(key: K, value: V): void;
+	/** Replace a registered key's value in place, keeping its owner and its position; `entry` names
+	 *  the caller in the outside-a-setup refusal. */
+	update(key: K, value: V, entry: string): void;
 	/** Registration-time question, blind to activation: is the key taken? */
 	has(key: K): boolean;
 	ownerOf(key: K): string | null;
@@ -104,19 +110,26 @@ function buildRegistry<K, V>(
 	const changed = () => options.onChange?.();
 	const owner = (key: K, entry: Entry<V>) => answersTo(key, entry.registrant);
 
+	// The editor's own entries: the reset keeps them, and the editor re-registering one on a dev
+	// server's re-evaluation replaces it.
+	const editorOwned = (key: K, entry: Entry<V>) =>
+		entry.core || (entry.registrant === null && options.isBuiltin(key));
+
 	enrollTestReset(() => {
 		for (const [key, entry] of entries) {
-			// The editor's own entries survive; a plugin's never do, whichever plugin it answers to.
-			const builtin = entry.registrant === null && options.isBuiltin(key);
-			if (!entry.core && !builtin) entries.delete(key);
+			if (!editorOwned(key, entry)) entries.delete(key);
 		}
 		changed();
 	});
 
 	const store = (key: K, value: V, conflict: string | undefined, core: boolean) => {
+		// No key is exempt: a built-in key from a plugin is a plugin's registration like any other.
+		rejectRegistrationOutsideSetup(options.label);
 		const registrant = currentInstallingPlugin();
+		const existing = entries.get(key);
 		registerOnce(
-			entries.has(key),
+			existing !== undefined,
+			existing !== undefined && isRegisteringAsCore() && editorOwned(key, existing),
 			() => {
 				entries.set(key, { value, registrant, core });
 				changed();
@@ -131,7 +144,8 @@ function buildRegistry<K, V>(
 		// The editor's bootstrap and the directive grammar run inside `registerAsCore` too, so one
 		// function decides what belongs to no plugin.
 		registerCore: (key, value, conflict) => registerAsCore(() => store(key, value, conflict, true)),
-		update(key, value) {
+		update(key, value, caller) {
+			rejectRegistrationOutsideSetup(caller);
 			const entry = entries.get(key);
 			if (!entry)
 				throw new Error(`${options.label}: cannot update "${String(key)}"; it is not registered`);

@@ -12,6 +12,7 @@ import {
 	MERMAID,
 	type MermaidMetadata
 } from '#lib/plugins/mermaid/mermaid-kind.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const MERMAID_KIND = () => declaredPluginKind(MERMAID);
 
@@ -40,7 +41,7 @@ const mermaidProfile: ContainerConformanceProfile = {
 
 describe('G4.3 conformance kit: the childless opaque container', () => {
 	beforeEach(() => {
-		registerMermaidKind();
+		registerMermaidKind(testView());
 	});
 
 	it('runs the kit over mermaid, asserting the one cell its shape can answer', async () => {

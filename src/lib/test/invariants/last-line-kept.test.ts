@@ -7,6 +7,7 @@ import { checkLastLineKept } from '#lib/invariants/open-tail.js';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
 import { rebuildContainerRaw } from '#lib/schema/container-raw.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 /** `bytes` parsed, then the block at `path` stripped of its line ending, as a glue bug leaves it. */
 function glued(bytes: string, path: number[]): Document {
@@ -64,7 +65,7 @@ describe('G1.41 checkLastLineKept', () => {
 // Miss-analysis: the walk read line children only in strips and grids, so the body line above an
 // opaque container's own closing line went unchecked, and the rebuild glued the closer onto it.
 describe('G1.41 over a container with its own closing line', () => {
-	beforeEach(() => activateDirectiveGrammar());
+	beforeEach(() => activateDirectiveGrammar(testDirectiveViews()));
 
 	it('fails a body line glued onto a directive’s closing `:::`', () => {
 		const doc = glued('intro\n\n:::note\nbody\n:::\n', [1, 0]);

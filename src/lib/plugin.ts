@@ -3,9 +3,8 @@
 // Nothing is frozen before 1.0: a (pre-freeze) section may change shape, and an untagged one keeps
 // its model while its call shapes can still change.
 
-import TextEditableBlock from './components/blocks/text/TextEditableBlock.svelte';
 import { registerChromeLeaf as bindChromeLeaf } from './editor-actions/plugin/chrome-leaf';
-import { svelteBlockView } from './components/svelte-block-view';
+import { textBlockView } from './components/blocks/text/text-block-view';
 import { computeInlineContent as parseLeafInline } from './core/inline';
 import { defaultGrammarView } from './schema/block-openers';
 import { everyInstalledPlugin } from './schema/plugin-activation';
@@ -30,8 +29,6 @@ export type { InsertMarkdownOptions } from './editor-props';
 // The names every presentation-mode read reports, the `data-presentation` attribute included.
 export type { PresentationMode } from './presentation-mode';
 export type { ClickInput } from './activation-click';
-// The single-block shortcut: one kind, one component, one register step.
-export { definePluginBlock } from './schema/define-plugin-block';
 
 // ── Kind declaration ─────────────────────────────────────────────────────────
 export { declarePluginKind, declaredPluginKind } from './schema/plugin-kind';
@@ -39,11 +36,7 @@ export type { PluginBlockKind, AnyBlockKind } from './core/nodes';
 
 // ── Inline authoring API (pre-freeze) ────────────────────────────────────────
 // Declare an inline kind, hook the scanner on a trigger character, register a live widget.
-export {
-	declarePluginInlineKind,
-	declaredPluginInlineKind,
-	isInlineKindDeclared
-} from './schema/plugin-kind';
+export { declarePluginInlineKind, declaredPluginInlineKind } from './schema/plugin-kind';
 export type { PluginInlineKind, InlineNode, ImageFields, ImageSyntaxRewriter } from './core/nodes';
 export { registerInlineSyntax, INLINE_PRIORITIES } from './core/inline/scan/plugin-syntax';
 export type { InlineSyntaxRecognizer, InlineSyntaxOptions } from './core/inline/scan/plugin-syntax';
@@ -61,8 +54,8 @@ export type {
 export type { PluginView, PluginViewHandle } from './plugin-view';
 
 // ── Block-kind descriptor registry ───────────────────────────────────────────
-// `BlockKindRegistration` is the shape you register; fields that only mean something together
-// are declared together, so an incoherent pair fails to compile.
+// `BlockKindRegistration` is the shape you register, the view that draws the kind included; fields
+// that only mean something together are declared together, so an incoherent pair fails to compile.
 export { registerBlockKind, augmentBlockKind } from './schema/block-kind-descriptor';
 export type {
 	BlockKindRegistration,
@@ -91,13 +84,16 @@ export type {
 export { simpleLeafClosure, containerClosure } from './schema/closure';
 
 // ── Block views ──────────────────────────────────────────────────────────────
-// What draws a kind. `BlockView` is opaque: `svelteBlockView` on `/svelte` makes one.
-export { registerBlockView } from './schema/block-view-registry';
-export type { BlockView } from './schema/block-view-registry';
+// What draws a kind, the registration's `view`. `BlockView` is opaque: `svelteBlockView` on
+// `/svelte` makes one from a component.
+export type { BlockView } from './schema/block-view';
+// The editor's plain editable text block, for a kind drawn as plain text and for a host that
+// doesn't compile Svelte; `blockClass` lands on its element.
+export { textBlockView } from './components/blocks/text/text-block-view';
 export type { BlockComponent, BlockComponentExports, BlockComponentProps } from './block-component';
 
-// ── Parser-opener registry ───────────────────────────────────────────────────
-export { registerBlockOpener } from './schema/block-openers';
+// ── Parser openers ───────────────────────────────────────────────────────────
+// A registration's `opener`: how the block parser recognizes the kind from a line.
 export type { BlockOpener, BlockOpenerResult, OpenContext } from './schema/block-openers';
 // The shared "does this line start a block at the outer level" gate, so a container opener
 // scanning its own extent ends it where cmark-gfm does instead of forking the rule.
@@ -262,17 +258,6 @@ export function computeInlineContent(node: NodeView): InlineNode[] {
 	return parseLeafInline(node, undefined, defaultGrammarView);
 }
 
-// ── Re-registration checks ─────────────────────────────────────────────────────
-// The register-once registries throw on duplicate; a plugin re-registers safely
-// (HMR / re-import) by guarding on these.
-export { isBlockKindDeclared } from './schema/plugin-kind';
-export { isBlockKindRegistered } from './schema/block-kind-descriptor';
-export { isBlockViewRegistered } from './schema/block-view-registry';
-export { isBlockOpenerRegistered } from './schema/block-openers';
-export { isBlockCompleterRegistered } from './schema/block-completions';
-export { isPasteTransformRegistered } from './tree-operations/paste/paste-transforms';
-export { isLanguageRegistered } from './components/blocks/code/code-languages';
-
 // ── Container-authoring API (pre-freeze) ─────────────────────────────────────
 // The pieces a container plugin shares with the editor; `createContainerBlock` and `BlockList` are
 // on `/svelte`. `registerChromeLeaf` gives a container an editable title row.
@@ -283,11 +268,7 @@ export type { ChildList } from './block-lists/child-list';
 // value dependency on the component tree.
 export function registerChromeLeaf(kind: AnyBlockKind, opts?: ChromeLeafOptions): void {
 	const { blockClass, ...rest } = opts ?? {};
-	bindChromeLeaf(
-		kind,
-		svelteBlockView(TextEditableBlock, () => ({ blockClass })),
-		rest
-	);
+	bindChromeLeaf(kind, textBlockView({ blockClass }), rest);
 }
 export type { ChromeLeafOptions };
 // Create the reserved child-0 node for a container's title leaf: the text plus its newline.

@@ -10,6 +10,7 @@ import {
 	type InlineMarkKind
 } from '#lib/schema/inline-construct-policy.js';
 import { configureEditorEnv } from '#lib/env.js';
+import { registerAsCore } from '#lib/schema/plugin-install.js';
 import { takeDevWarns } from '../../support/warn-gate';
 import type { InlineNode } from '#lib/core/nodes.js';
 import { renderOptions } from '../../harness/fixture-grammar';
@@ -272,13 +273,14 @@ describe('a candidate that spends a construct is declined', () => {
 describe('the row’s split column decides whether a pending mark cuts a run open', () => {
 	function withStrongRow(row: InlineConstructPolicy, body: () => void): void {
 		const original = getInlineConstructPolicy('strong')!;
-		// The dev server replaces a row rather than throwing, the one way to swap a built-in in place.
+		// The editor re-registering its own row on a dev server replaces it, the one way to swap a
+		// built-in in place.
 		configureEditorEnv({ isDev: true, isTest: false });
-		registerInlineConstructPolicy('strong', row);
+		registerAsCore(() => registerInlineConstructPolicy('strong', row));
 		try {
 			body();
 		} finally {
-			registerInlineConstructPolicy('strong', original);
+			registerAsCore(() => registerInlineConstructPolicy('strong', original));
 			takeDevWarns();
 		}
 	}

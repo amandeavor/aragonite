@@ -57,7 +57,7 @@ The plugin platform is register-once: setup writes into process-global registrie
 
 **`resetPluginPlatformForTests()`**
 
-Empties every registry a plugin writes into, so each case re-installs from nothing. Call it, then re-install your plugin's **unit**, the installable package `definePlugin` or `definePluginBlock` returns:
+Empties every registry a plugin writes into, so each case re-installs from nothing. Call it, then re-install your plugin's **unit**, the installable package `definePlugin` returns:
 
 ```ts
 import { installPlugins } from '@voithos-labs/aragonite';
@@ -88,7 +88,7 @@ What that clears, and what it deliberately leaves alone:
 - Cleared: everything a plugin registered (kinds, components, openers, commands, languages, inline syntax, paste transforms, directive names and the rest), the renderer a plugin set on a renderer slot, and the installed-plugin set.
 - Built-in registrations survive, exactly as in production, the built-in paste surfaces and code languages included, so a case that pastes into a built-in block after a reset needs nothing re-registered.
 - Runtime state is untouched. The undo stack, the selection, and any live document are yours to set up.
-- It's test-only and throws outside a detected test environment. Detection is Vitest-specific (it reads `process.env.VITEST`), so a suite on another runner opts in first and puts the detected defaults back after:
+- It's test-only and throws outside a detected test environment. Detection is Vitest-specific (it reads `process.env.VITEST`), so a suite on another runner (Jest, Playwright component tests, anything else) opts in first and puts the detected defaults back after. The same switch lets a test call a register function outside a plugin's setup, which throws in a dev build otherwise:
 
 ```ts
 import { configureEditorEnv, resetEditorEnv } from '@voithos-labs/aragonite/testing';
@@ -97,7 +97,7 @@ beforeAll(() => configureEditorEnv({ isTest: true })); // "yes, this really is a
 afterAll(() => resetEditorEnv());
 ```
 
-**Install the unit, not your register function.** `definePluginBlock` generates a setup that runs your `register` step and then binds the component, so calling your own `registerParrotBlock()` here leaves the kind without a component: the editor falls back to a raw-text surface with a dev warning, and your tests pass against a block that isn't yours. Three more identity rules keep a suite honest:
+**Install the unit, not your register function.** Your registrations answer to your plugin only when its setup runs them, and that's how an editor's `plugins` list turns your kind on or off. Call `registerParrotBlock(view)` yourself and the kind belongs to no plugin at all, so every editor shows it and your activation tests pass against a setup no user runs. Three more identity rules keep a suite honest:
 
 - Installing the **same unit instance** twice (the `beforeEach` above plus an editor's `plugins` prop, say) is a no-op, which is why the sample builds `parrot` once at module scope.
 - A **different instance under the same name** is kept out by a first-wins rule, with a dev warning naming the loser.
@@ -139,7 +139,7 @@ fires[0];
 
 `setDevWarnSink` returns the callback it replaced, so a nested harness restores rather than clears.
 
-One prerequisite: warnings and invariant checks only run while the editor believes it's in a dev build, and a callback over a production build stays empty for the wrong reason. A Vitest suite gets the dev flag automatically, because its build resolves it. Under another runner, or a bundler that resolves no export conditions, call `configureEditorEnv({ isDev: true, isTest: true })` in your setup and `resetEditorEnv()` in teardown. `isDev` alone turns both on; `isTest` beside it keeps the test-process rules, so the reset works and a duplicate registration throws instead of being replaced the way a dev server does it.
+One prerequisite: warnings and invariant checks only run while the editor believes it's in a dev build, and a callback over a production build stays empty for the wrong reason. A Vitest suite gets the dev flag automatically, because its build resolves it. Under another runner, or a bundler that resolves no export conditions, call `configureEditorEnv({ isDev: true, isTest: true })` in your setup and `resetEditorEnv()` in teardown. `isDev` alone turns both on; `isTest` beside it keeps the test-process rules, so the reset works and a register call outside a plugin's setup doesn't throw.
 
 ### Proving a paste transform is wired
 

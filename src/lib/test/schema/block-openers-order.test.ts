@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AnyBlockKind } from '#lib/core/nodes.js';
-import {
-	registerBlockOpener,
-	getOrderedOpeners,
-	type BlockOpener
-} from '#lib/schema/block-openers.js';
+import { getOrderedOpeners, type BlockOpener } from '#lib/schema/block-openers.js';
+import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
 const opener = (priority: number): BlockOpener => ({
 	priority,
@@ -30,8 +27,8 @@ describe('opener order is registration-independent', () => {
 			[alpha, ALPHA],
 			[omega, OMEGA]
 		]);
-		registerBlockOpener(OMEGA, omega);
-		registerBlockOpener(ALPHA, alpha);
+		testLeaf(OMEGA, { opener: omega });
+		testLeaf(ALPHA, { opener: alpha });
 		expect(orderedKinds(kinds)).toEqual([ALPHA, OMEGA]);
 	});
 
@@ -42,8 +39,8 @@ describe('opener order is registration-independent', () => {
 			[alpha, ALPHA],
 			[omega, OMEGA]
 		]);
-		registerBlockOpener(ALPHA, alpha);
-		registerBlockOpener(OMEGA, omega);
+		testLeaf(ALPHA, { opener: alpha });
+		testLeaf(OMEGA, { opener: omega });
 		expect(orderedKinds(kinds)).toEqual([ALPHA, OMEGA]);
 	});
 
@@ -54,8 +51,8 @@ describe('opener order is registration-independent', () => {
 			[alpha, ALPHA],
 			[omega, OMEGA]
 		]);
-		registerBlockOpener(ALPHA, alpha);
-		registerBlockOpener(OMEGA, omega);
+		testLeaf(ALPHA, { opener: alpha });
+		testLeaf(OMEGA, { opener: omega });
 		expect(orderedKinds(kinds)).toEqual([OMEGA, ALPHA]);
 	});
 });

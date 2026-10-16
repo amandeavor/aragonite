@@ -6,9 +6,9 @@ import { DIRECTIVE_CONTAINER, DIRECTIVE_LEAF } from '#lib/core/directive/kinds.j
 import {
 	augmentBlockKind,
 	getAllRegisteredKinds,
-	getBlockKindDescriptor
+	getBlockKindDescriptor,
+	openerRecords
 } from '#lib/schema/block-kind-descriptor.js';
-import { listRegisteredOpeners } from '#lib/schema/block-openers.js';
 import { checkCopyIsRawByteSlice, runKindConformance } from '#lib/testing.js';
 import { registerMemoBlock, MEMO_BLOCK } from '../../../routes/test/plugins/memo/memo-kind';
 import {
@@ -26,6 +26,8 @@ import { registerMermaidKind, MERMAID } from '#lib/plugins/mermaid/mermaid-kind.
 import { registerTocBlock, TOC_BLOCK } from '#lib/plugins/toc/toc-plugin.js';
 import { parrotPlugin, PARROT } from '#lib/plugins/parrot/index.js';
 import { installPlugins } from '#lib';
+import { testView } from '#lib/test/support/test-view.js';
+import type { BlockView } from '#lib/schema/block-view.js';
 
 // The generic battery pointed at real plugin kinds, which exist only once their setup installs
 // them, so each case resets and re-installs.
@@ -38,8 +40,8 @@ const statusOf = (report: Awaited<ReturnType<typeof runKindConformance>>, cell: 
 
 describe('kind conformance: plugin kinds enroll', () => {
 	beforeEach(() => {
-		registerMemoBlock();
-		registerCalloutKind();
+		registerMemoBlock(testView());
+		registerCalloutKind(testView());
 	});
 
 	// The byte-slice copy cell runs through the same runner the built-ins use, so the
@@ -78,7 +80,7 @@ describe('kind conformance: plugin kinds enroll', () => {
 // ── Bundled plugins: the shipped kinds enroll too ────────────────────────────
 // The `src/lib/plugins` directory listing is the bundled set, so a plugin directory added or
 // dropped outside this table fails the check below at once.
-const BUNDLED_INSTALLS: { dir: string; kind: string; install: () => void }[] = [
+const BUNDLED_INSTALLS: { dir: string; kind: string; install: (view: BlockView) => void }[] = [
 	{ dir: 'details', kind: DETAILS, install: registerDetailsKind },
 	{ dir: 'footnotes', kind: FOOTNOTE_DEF_KIND, install: registerFootnoteDefinition },
 	{ dir: 'admonitions', kind: ADMONITION, install: registerAdmonitions },
@@ -98,7 +100,7 @@ describe('kind conformance: bundled plugin kinds enroll', () => {
 	it.each(BUNDLED_INSTALLS)(
 		'$kind registrar: every registered kind executes its headless cells',
 		async ({ kind, install }) => {
-			install();
+			install(testView());
 			const registered = getAllRegisteredKinds().filter((k) => !isBuiltinBlockKind(k));
 			expect(registered).toContain(declaredPluginKind(kind));
 			for (const k of registered) {
@@ -117,7 +119,7 @@ describe('kind conformance: bundled plugin kinds enroll', () => {
 	// Mermaid's claim that a cross-block copy carries it whole needs the kit's byte check, since
 	// the runner sends an `implemented` cell to the browser sweep and would never run it.
 	it('mermaid backs its cross-block clipboard claim with the byte-slice check', () => {
-		registerMermaidKind();
+		registerMermaidKind(testView());
 		const kind = declaredPluginKind(MERMAID);
 		expect(() =>
 			checkCopyIsRawByteSlice(kind, getBlockKindDescriptor(kind).conformanceFixture!)
@@ -139,7 +141,7 @@ describe('kind conformance: bundled plugin kinds enroll', () => {
 	// kinds `registerAdmonitions` adds are core, covered by `closure-fixtures.test.ts`.
 	const CO_REGISTERED_FIXTURED = [GITHUB_ALERT, MATH_FENCE];
 	it('sweeps exactly the bundled fixtured kinds', () => {
-		for (const { install } of BUNDLED_INSTALLS) install();
+		for (const { install } of BUNDLED_INSTALLS) install(testView());
 		const directiveFallback = new Set<string>([DIRECTIVE_CONTAINER, DIRECTIVE_LEAF]);
 		const registeredBundled = getAllRegisteredKinds()
 			.filter((k) => !isBuiltinBlockKind(k))
@@ -153,9 +155,10 @@ describe('kind conformance: bundled plugin kinds enroll', () => {
 	// A shared opener priority shows only once the colliding plugins install together and a
 	// parse runs, so every isolated suite misses it; installing the whole bundle catches it.
 	it('the co-installed bundle declares distinct opener priorities', () => {
-		for (const { install } of BUNDLED_INSTALLS) install();
+		for (const { install } of BUNDLED_INSTALLS) install(testView());
 		const kindsByPriority = new Map<number, string[]>();
-		for (const { kind, priority } of listRegisteredOpeners()) {
+		for (const { key: kind, value } of openerRecords()) {
+			const { priority } = value;
 			const kinds = kindsByPriority.get(priority) ?? [];
 			kinds.push(kind);
 			kindsByPriority.set(priority, kinds);
@@ -171,7 +174,7 @@ describe('kind conformance: bundled plugin kinds enroll', () => {
 // plugin registration on purpose and require the red.
 describe('kind conformance: a broken plugin registration fails', () => {
 	beforeEach(() => {
-		registerMemoBlock();
+		registerMemoBlock(testView());
 	});
 
 	// Profile drift: when an author's fixture stops producing their kind, the runner
@@ -202,7 +205,7 @@ describe('kind conformance: a broken plugin registration fails', () => {
 	// Undo and the byte-slice copy both act on the fixture's first block, so a kind under a
 	// later block lets the undo cell delete something else and still report `asserted`.
 	it('rejects a conformanceFixture whose kind is not under the first block', async () => {
-		registerAdmonitions();
+		registerAdmonitions(testView());
 		const alert = declaredPluginKind(GITHUB_ALERT);
 		augmentBlockKind(alert, {
 			conformanceFixture: 'lead paragraph\n\n> > [!NOTE]\n> > Heads up.\n'
@@ -216,7 +219,7 @@ describe('kind conformance: a broken plugin registration fails', () => {
 	// The undo cell's trailing marker must parse as its own block: a fixture that swallows it
 	// leaves one block, and deleting a document's only block still pushes an undo entry.
 	it('rejects a conformanceFixture that swallows the undo cell sentinel', async () => {
-		registerMermaidKind();
+		registerMermaidKind(testView());
 		const kind = declaredPluginKind(MERMAID);
 		const closure = getBlockKindDescriptor(kind).closure;
 		augmentBlockKind(kind, {

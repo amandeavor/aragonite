@@ -15,6 +15,7 @@ import { declaredPluginKind } from '#lib/schema/plugin-kind.js';
 import { makeStubBlockEdit } from '../../harness/editor-actions';
 import { editorMountContext } from '../../harness/mount-context';
 import { fixtureReading } from '../../harness/fixture-grammar';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 /** One block under a presentation root, focused, with the caret placed by the block itself. */
 function mountBlock(source: string, mode: PresentationMode, caret: number) {
@@ -139,7 +140,7 @@ describe('Backspace at content start in live mode', () => {
 	// A directive leaf's hidden `::` sends a content-start key to the merge; checked through the
 	// declarations, since the leaf's opener needs the plugin grammar a bare mount does not set up.
 	it('leaves a declared-content kind with no demote to the cascade', () => {
-		registerDirectiveKinds();
+		registerDirectiveKinds(testDirectiveViews());
 		const leaf = getBlockKindDescriptor(declaredPluginKind(DIRECTIVE_LEAF));
 		expect(leaf.getContentRange).toBeDefined();
 		expect(leaf.contentStartBackspace).toBeUndefined();

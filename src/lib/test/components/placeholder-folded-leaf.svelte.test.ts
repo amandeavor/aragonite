@@ -2,12 +2,7 @@
 // A render-primary leaf's hint judges its shown source only while that source is open: once it
 // folds, an undo that empties the block brings the hint back without reopening it.
 import { describe, it, expect, afterEach } from 'vitest';
-import {
-	definePluginBlock,
-	registerBlockOpener,
-	simpleLeafClosure,
-	OPENER_PRIORITIES
-} from '#lib/plugin.js';
+import { definePlugin, simpleLeafClosure, OPENER_PRIORITIES } from '#lib/plugin.js';
 import { svelteBlockView } from '#lib/svelte.js';
 import { displayLength } from '#lib/core/lines.js';
 import {
@@ -27,12 +22,22 @@ afterEach(destroyMountedEditors);
 const MARKER = '@@';
 
 /** A one-line kind spelled `@@ <body>`, whose body is what follows the marker and its space. */
-const hintRevealPlugin = definePluginBlock({
+const hintRevealPlugin = definePlugin({
 	name: 'hint-reveal',
-	kind: 'hint-reveal',
-	view: svelteBlockView(HintRevealBlock),
-	register: () => {
-		const kind = testLeaf('hint-reveal', {
+	setup: () => {
+		testLeaf('hint-reveal', (kind) => ({
+			opener: {
+				priority: OPENER_PRIORITIES.thematicBreak - 5,
+				interruptsParagraph: false,
+				tryOpen: (ctx) =>
+					ctx.lines[ctx.index].text.startsWith(MARKER)
+						? {
+								node: { kind, raw: ctx.lines[ctx.index].raw, leadingTrivia: ctx.leadingTrivia },
+								consumed: 1
+							}
+						: null
+			},
+			view: svelteBlockView(HintRevealBlock),
 			closure: simpleLeafClosure({
 				focus: { mode: 'implemented', via: 'the render-primary leaf under test' },
 				searchPaint: { mode: 'inherit-default' },
@@ -43,18 +48,7 @@ const hintRevealPlugin = definePluginBlock({
 				node.raw.startsWith(`${MARKER} `)
 					? { start: MARKER.length + 1, end: displayLength(node.raw) }
 					: null
-		});
-		registerBlockOpener(kind, {
-			priority: OPENER_PRIORITIES.thematicBreak - 5,
-			interruptsParagraph: false,
-			tryOpen: (ctx) =>
-				ctx.lines[ctx.index].text.startsWith(MARKER)
-					? {
-							node: { kind, raw: ctx.lines[ctx.index].raw, leadingTrivia: ctx.leadingTrivia },
-							consumed: 1
-						}
-					: null
-		});
+		}));
 	}
 });
 

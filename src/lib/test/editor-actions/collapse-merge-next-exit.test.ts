@@ -12,6 +12,7 @@ import {
 	makeTopHarness
 } from '#lib/test/harness/editor-actions.js';
 import type { CstNode } from '#lib/core/nodes.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Forward Delete at the end of a collapsed summary must exit past the container rather
 // than stop on the unmounted body (refAt(i+1) does nothing): a focus move, no edit.
@@ -35,7 +36,7 @@ function nestedFor(node: CstNode) {
 
 describe('collapsed container forward-merge exit', () => {
 	beforeEach(() => {
-		registerDetailsKind();
+		registerDetailsKind(testView());
 	});
 
 	it('mergeWithNext from a collapsed summary exits past the container without mutating', async () => {

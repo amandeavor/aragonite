@@ -19,11 +19,12 @@ import {
 	makePasteEvent
 } from './cross-block/typed-char-env';
 import { freshOrFixedSeed } from '../invariants/arbitraries/property-seed';
+import { testView } from '#lib/test/support/test-view.js';
 
 const PARAMS = { numRuns: 60, seed: freshOrFixedSeed(515151) } as const;
 
 beforeEach(() => {
-	registerMathBlock();
+	registerMathBlock(testView());
 });
 
 // One block of each kind, between two paragraphs whose survival is half the property.

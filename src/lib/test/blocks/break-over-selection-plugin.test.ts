@@ -14,9 +14,8 @@ import {
 import { pressKey, settleEditor } from '#lib/test/harness/settle.js';
 import {
 	augmentBlockKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockCommand,
-	registerBlockOpener,
 	type BlockCommandContext,
 	type EditorPlugin
 } from '#lib/plugin.js';
@@ -36,12 +35,20 @@ function verseLeafPlugin(ran: [string, boolean][]): EditorPlugin {
 		ran.push([ctx.node.raw, ctx.afterRemoval]);
 		return true;
 	};
-	return definePluginBlock({
+	return definePlugin({
 		name: KIND,
-		kind: KIND,
-		view: svelteBlockView(PlainOneLineLeafBlock),
-		register: () => {
-			const kind = registerRevealLeafKind(KIND);
+		setup: () => {
+			const kind = registerRevealLeafKind(KIND, (kind) => ({
+				opener: {
+					priority: 25,
+					interruptsParagraph: false,
+					tryOpen: (ctx) =>
+						ctx.line.text.startsWith('@@ ')
+							? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
+							: null
+				},
+				view: svelteBlockView(PlainOneLineLeafBlock)
+			}));
 			const removing = registerBlockCommand(kind, 'verseLeaf.break', handler, {
 				overSelection: 'afterRemoval'
 			});
@@ -51,14 +58,6 @@ function verseLeafPlugin(ran: [string, boolean][]): EditorPlugin {
 					{ chord: 'Mod+Shift+Enter', command: removing },
 					{ chord: 'Mod+Shift+L', command: atCaret }
 				]
-			});
-			registerBlockOpener(kind, {
-				priority: 25,
-				interruptsParagraph: false,
-				tryOpen: (ctx) =>
-					ctx.line.text.startsWith('@@ ')
-						? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
-						: null
 			});
 		}
 	});

@@ -13,13 +13,15 @@ import {
 	type IncoherentPairId
 } from '#lib/schema/registration-pairs.js';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const leaf = {
 	gapEdges: 'none',
 	mergeRole: 'not-mergeable',
 	editable: true,
 	supportsInline: false,
-	closure: testClosure
+	closure: testClosure,
+	view: testView()
 };
 const group = { contract: 'opaque', rebuildRaw: () => {} };
 const range = () => ({ start: 0, end: 0 });
@@ -59,6 +61,11 @@ const pairs: Record<IncoherentPairId, () => object> = {
 				middleChildBackspace: 'default-merge'
 			}
 		}
+	}),
+	'context-dependent-opener': () => ({
+		...leaf,
+		contextDependentKind: true,
+		opener: { priority: 9300, tryOpen: () => null, interruptsParagraph: false }
 	})
 };
 

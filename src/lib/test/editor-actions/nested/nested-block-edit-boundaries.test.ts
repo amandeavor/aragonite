@@ -17,10 +17,11 @@ import {
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { testChromeContainer } from '#lib/test/harness/test-kinds.js';
 import { createDocumentStamps } from '#lib/editor-actions/commit/document-stamp.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 let titled: ReturnType<typeof testChromeContainer>;
 beforeEach(() => {
-	registerDetailsKind();
+	registerDetailsKind(testView());
 	titled = testChromeContainer('nested-edit-titled');
 });
 

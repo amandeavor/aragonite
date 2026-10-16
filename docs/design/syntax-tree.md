@@ -389,7 +389,7 @@ The last one falls out of the design rather than being a preference: the blank-l
 
 ## 6. Extending the tree
 
-The tree itself doesn't care about kind strings: the parser, the serializer, and the node model treat a kind registered this morning like a built-in. A new block kind is three registrations: a descriptor (`registerBlockKind`), an opener (`registerBlockOpener`), and a view (`registerBlockView`). `docs/design/plugin-contract.md` specifies the API, and `docs/contributing/adding-a-block.md` walks the steps. That's the whole section; the detail lives there.
+The tree itself doesn't care about kind strings: the parser, the serializer, and the node model treat a kind registered this morning like a built-in. A new block kind is one registration, `registerBlockKind`: its descriptor, its view and, when a line opens it, its opener. The built-ins register on the first read of the grammar, so a `parse` finds them whichever module a host imported first. `docs/design/plugin-contract.md` specifies the API, and `docs/contributing/adding-a-block.md` walks the steps. That's the whole section; the detail lives there.
 
 ## Appendix: the architecture that was rejected
 

@@ -28,8 +28,9 @@ import {
 	type MathSource
 } from '#lib/plugins/latex/math-shape.js';
 import { paintedSplit } from './painted-split';
+import { testView } from '#lib/test/support/test-view.js';
 
-beforeEach(registerMathBlock);
+beforeEach(() => registerMathBlock(testView()));
 
 interface Shape {
 	label: string;

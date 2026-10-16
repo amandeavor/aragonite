@@ -8,6 +8,7 @@ import { checkClosureCoherence, type ClosureCoherenceEntry } from '#lib/invarian
 import { closureCoherenceEntry } from '#lib/schema/registration-checks.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import { testContainer } from '#lib/test/harness/test-kinds.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const leaf = { mergeRole: 'not-mergeable', editable: true, supportsInline: false } as const;
 
@@ -66,6 +67,7 @@ describe('closure lands on the read-side descriptor', () => {
 	it('survives leaf registration', () => {
 		const kind = declarePluginKind('closure-leaf');
 		registerBlockKind(kind, {
+			view: testView(),
 			gapEdges: 'none',
 			...leaf,
 			closure: testClosure
@@ -95,6 +97,7 @@ describe('simpleLeafClosure keeps a not-mergeable leaf coherent', () => {
 	it('passes for the baked preset', () => {
 		const kind = declarePluginKind('preset-coherent');
 		registerBlockKind(kind, {
+			view: testView(),
 			gapEdges: 'none',
 			...leaf,
 			closure: simpleLeafClosure(cells)
@@ -105,6 +108,7 @@ describe('simpleLeafClosure keeps a not-mergeable leaf coherent', () => {
 	it('fires when a baked mergeBackspace is overridden to inherit-default', () => {
 		const kind = declarePluginKind('preset-broken');
 		registerBlockKind(kind, {
+			view: testView(),
 			gapEdges: 'none',
 			...leaf,
 			closure: simpleLeafClosure({ ...cells, mergeBackspace: { mode: 'inherit-default' } })
@@ -130,6 +134,7 @@ describe('containerClosure keeps a strip container coherent', () => {
 	it('bakes roundTrip: implemented so a container clears G1.24', () => {
 		const kind = declarePluginKind('container-preset-coherent');
 		registerBlockKind(kind, {
+			view: testView(),
 			gapEdges: 'none',
 			mergeRole: 'container',
 			editable: true,

@@ -12,9 +12,16 @@ import {
 } from '#lib/schema/block-kind-descriptor.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
+import type { BlockOpener } from '#lib/schema/block-openers.js';
+
+/** Fields that override the leaf's defaults, or a function building them from the declared kind,
+ *  for an opener whose nodes name it. */
+export type TestKindFields =
+	Partial<BlockKindRegistration> | ((kind: PluginBlockKind) => Partial<BlockKindRegistration>);
 
 /** An editable, not-mergeable leaf with no inline content and no gap stops. */
-export function testLeaf(name: string, over: Partial<BlockKindRegistration> = {}): PluginBlockKind {
+export function testLeaf(name: string, over: TestKindFields = {}): PluginBlockKind {
 	const kind = declarePluginKind(name);
 	registerBlockKind(kind, {
 		gapEdges: 'none',
@@ -22,7 +29,8 @@ export function testLeaf(name: string, over: Partial<BlockKindRegistration> = {}
 		editable: true,
 		supportsInline: false,
 		closure: testClosure,
-		...over
+		view: testView(),
+		...(typeof over === 'function' ? over(kind) : over)
 	});
 	return kind;
 }
@@ -36,14 +44,18 @@ type ContractOptional<G> = G extends { contract: infer C }
 export function testContainer(
 	name: string,
 	container: ContractOptional<ContainerDescriptorGroup>,
-	over: Partial<Extract<CaretBlockRegistration, { container: object }>> = {}
+	over: ContainerFields | ((kind: PluginBlockKind) => ContainerFields) = {}
 ): PluginBlockKind {
-	return testLeaf(name, {
+	return testLeaf(name, (kind) => ({
 		mergeRole: 'container',
 		container: { contract: 'opaque', ...container },
-		...over
-	});
+		...(typeof over === 'function' ? over(kind) : over)
+	}));
 }
+
+type ContainerFields = Partial<Extract<CaretBlockRegistration, { container: object }>> & {
+	opener?: BlockOpener;
+};
 
 /** An opaque container whose child 0 is a title row, its title kind registered through the
  *  published `registerChromeLeaf` the way a plugin does, so production can build it. */

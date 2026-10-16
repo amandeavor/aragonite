@@ -3,7 +3,7 @@ import { EditorPage } from '../editor-page';
 
 // The fallback reports itself, and that report is half of what these cases check: a kind that
 // rendered its raw text with no warning would be a silent loss of display.
-test.describe('BlockHost no-component fallback', () => {
+test.describe('BlockHost no-view fallback', () => {
 	test.use({ expectWarns: ['block-host'] });
 
 	let editor: EditorPage;
@@ -13,7 +13,7 @@ test.describe('BlockHost no-component fallback', () => {
 		await editor.goto();
 	});
 
-	test('a kind with no component renders a visible raw block, not nothing', async ({ page }) => {
+	test('a kind with no view renders a visible raw block, not nothing', async ({ page }) => {
 		await editor.loadContent('orphan text\n');
 
 		await page.evaluate(() => (window as any).__test.makeBlockOrphan(0));

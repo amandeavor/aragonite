@@ -5,6 +5,7 @@ import { getInlineRungs } from '#lib/core/inline/scan/plugin-syntax.js';
 import { roundTripCases } from '#lib/test/support/round-trip.js';
 import { registerMathBlock, MATH_BLOCK } from '#lib/plugins/latex/latex-kind.js';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Recognition starts only once the opener registers: with the plugin absent a `$$` fence is
 // ordinary GFM text (a paragraph), byte-identical to plain GFM.
@@ -18,7 +19,7 @@ describe('block math is dormant until registered', () => {
 
 // Which lines open a block is `math-shape-parity.test.ts`'s; these pin the node and its neighbours.
 describe('a parsed math block', () => {
-	beforeEach(registerMathBlock);
+	beforeEach(() => registerMathBlock(testView()));
 
 	it('parses a fence to a single source-holding leaf (no children)', () => {
 		const node = parse('$$\nx^2\n$$\n').children[0];
@@ -41,7 +42,7 @@ describe('a parsed math block', () => {
 // Serialize re-emits `leadingTrivia + raw`, so a `raw` built from the exact fence bytes
 // round-trips. The unterminated rows prove the decline path preserves bytes too.
 describe('block math round-trip', () => {
-	beforeEach(registerMathBlock);
+	beforeEach(() => registerMathBlock(testView()));
 
 	roundTripCases([
 		'$$\nx^2\n$$\n',

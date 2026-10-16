@@ -11,13 +11,15 @@ import {
 } from '#lib/schema/block-kind-descriptor.js';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const minimal = {
 	gapEdges: 'none',
 	mergeRole: 'not-mergeable',
 	editable: true,
 	supportsInline: false,
-	closure: testClosure
+	closure: testClosure,
+	view: testView()
 } as const;
 
 describe('augmentBlockKind rejects built-in kinds', () => {
@@ -67,6 +69,12 @@ describe('fields fixed at registration refuse every augment', () => {
 		middleChildBackspace: 'default-merge'
 	};
 	const cases: { field: (typeof FIXED_AT_REGISTRATION)[number]; fields: () => object }[] = [
+		{ field: 'view', fields: () => ({ view: testView() }) },
+		{
+			field: 'opener',
+			fields: () => ({ opener: { priority: 1, tryOpen: () => null, interruptsParagraph: false } })
+		},
+		{ field: 'contextDependentKind', fields: () => ({ contextDependentKind: true }) },
 		{ field: 'blockFocus', fields: () => ({ blockFocus: 'whole-block' }) },
 		{ field: 'supportsInline', fields: () => ({ supportsInline: true }) },
 		{

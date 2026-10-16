@@ -12,6 +12,7 @@ import type { CstNode } from '#lib/core/nodes.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { fixtureGrammar } from '#lib/test/harness/fixture-grammar.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { testDirectiveViews, testView } from '#lib/test/support/test-view.js';
 
 // Inside a container whose parse strips the blank line after its opener into `innerPrefix`, the
 // fix-up keeps the line the reload strips, and reads a reserved title child as above the body.
@@ -39,7 +40,7 @@ function deleteBodyChild(
 
 describe('separator settle inside a chrome-wrapped container', () => {
 	beforeEach(() => {
-		registerCalloutKind();
+		registerCalloutKind(testView());
 	});
 
 	it('hands the freed separator to the wrap when the body head has none', () => {
@@ -88,7 +89,7 @@ describe('separator settle inside a chrome-wrapped container', () => {
 // Miss-analysis: GH #101, every emptied-block case ran where no fence line bounds the run.
 describe('emptying a body block against the wrap’s chrome lines', () => {
 	beforeEach(() => {
-		registerCalloutKind();
+		registerCalloutKind(testView());
 	});
 
 	/** The emptied-block gesture through the container write: typing sends the ending alone. */
@@ -173,7 +174,7 @@ describe('emptying a body block against the wrap’s chrome lines', () => {
 });
 
 describe('separator settle inside a strip container', () => {
-	beforeEach(activateDirectiveGrammar);
+	beforeEach(() => activateDirectiveGrammar(testDirectiveViews()));
 
 	// A blockquote body opens at the container's own first line, so nothing is stripped and the
 	// fix-up drops the separator it frees.

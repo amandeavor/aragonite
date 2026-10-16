@@ -6,7 +6,7 @@
  */
 
 import { registerBlockKind, type MergeRole } from '../../schema/block-kind-descriptor';
-import { registerBlockView, type BlockView } from '../../schema/block-view-registry';
+import type { BlockView } from '../../schema/block-view';
 import { normalizeChord, type KeyBinding } from '../../schema/keybindings';
 import { registerPasteSurface } from '../../tree-operations/paste-surfaces';
 import { defaultInlineHook } from '../../tree-operations/paste/hooks';
@@ -55,6 +55,7 @@ export function registerChromeLeaf(
 	opts: Omit<ChromeLeafOptions, 'blockClass'> = {}
 ): void {
 	registerBlockKind(kind, {
+		view,
 		...(opts.label !== undefined ? { label: opts.label } : {}),
 		gapEdges: 'none',
 		mergeRole: opts.mergeRole ?? 'not-mergeable',
@@ -94,7 +95,6 @@ export function registerChromeLeaf(
 			}
 		}
 	});
-	registerBlockView(kind, view);
 	// Inline-only, so `surfaceForcesInline` holds if a paste ever reaches the paste-target lookup:
 	// a second line of defense behind the check that already flattens title-row pastes.
 	registerPasteSurface({ kind, onInlinePaste: defaultInlineHook });

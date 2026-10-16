@@ -12,9 +12,8 @@ import {
 import { pressKey } from '#lib/test/harness/settle.js';
 import {
 	augmentBlockKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockCommand,
-	registerBlockOpener,
 	type BlockCommandContext,
 	type EditorPlugin
 } from '#lib/plugin.js';
@@ -35,12 +34,20 @@ function pinLeafPlugin(ran: (text: string) => void): EditorPlugin {
 		ran(ctx.node.raw);
 		return true;
 	};
-	return definePluginBlock({
+	return definePlugin({
 		name: KIND,
-		kind: KIND,
-		view: svelteBlockView(RevealLeafBlock),
-		register: () => {
-			const kind = registerRevealLeafKind(KIND);
+		setup: () => {
+			const kind = registerRevealLeafKind(KIND, (kind) => ({
+				opener: {
+					priority: 25,
+					interruptsParagraph: false,
+					tryOpen: (ctx) =>
+						ctx.line.text.startsWith('@@ ')
+							? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
+							: null
+				},
+				view: svelteBlockView(RevealLeafBlock)
+			}));
 			const options = { overRange: 'afterRemoval' } as const;
 			const enter = registerBlockCommand(kind, 'pinLeaf.enter', handler, options);
 			const mark = registerBlockCommand(kind, 'pinLeaf.mark', handler, options);
@@ -49,14 +56,6 @@ function pinLeafPlugin(ran: (text: string) => void): EditorPlugin {
 					{ chord: 'Enter', command: enter },
 					{ chord: 'Mod+Shift+Enter', command: mark }
 				]
-			});
-			registerBlockOpener(kind, {
-				priority: 25,
-				interruptsParagraph: false,
-				tryOpen: (ctx) =>
-					ctx.line.text.startsWith('@@ ')
-						? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
-						: null
 			});
 		}
 	});

@@ -7,12 +7,14 @@ import { registerMathBlock } from '#lib/plugins/latex/latex-kind.js';
 import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import {
 	getAllRegisteredKinds,
-	getBlockKindDescriptor
+	getBlockKindDescriptor,
+	hasOwnOpener
 } from '#lib/schema/block-kind-descriptor.js';
-import { isBlockOpenerRegistered, defaultGrammarView } from '#lib/schema/block-openers.js';
+import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { lineOpensAs } from '#lib/schema/container-raw.js';
 import { registerCalloutKind } from '../../../routes/test/plugins/callout/callout-kind';
 import type { AnyBlockKind, CstNode } from '#lib/core/nodes.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // The container kind check skips a reparse when the rewritten opener line, read alone,
 // still opens as the kind the node already is. That partition over every registered
@@ -26,12 +28,12 @@ import type { AnyBlockKind, CstNode } from '#lib/core/nodes.js';
 const CONSERVATIVE = new Set(['directiveContainer', 'admonition', 'details', 'callout']);
 
 beforeEach(() => {
-	registerAdmonitions();
-	registerDetailsKind();
-	registerFootnoteDefinition();
-	registerMathBlock();
-	registerMermaidKind();
-	registerCalloutKind();
+	registerAdmonitions(testView());
+	registerDetailsKind(testView());
+	registerFootnoteDefinition(testView());
+	registerMathBlock(testView());
+	registerMermaidKind(testView());
+	registerCalloutKind(testView());
 });
 
 /** The first node of `kind` anywhere in the fixture's tree. */
@@ -54,7 +56,7 @@ function eligibleContainers(): { kind: AnyBlockKind; node: CstNode }[] {
 	const out: { kind: AnyBlockKind; node: CstNode }[] = [];
 	for (const kind of getAllRegisteredKinds()) {
 		const descriptor = getBlockKindDescriptor(kind);
-		if (!descriptor.isContainer || !isBlockOpenerRegistered(kind)) continue;
+		if (!descriptor.isContainer || !hasOwnOpener(kind)) continue;
 		if (!descriptor.conformanceFixture) continue;
 		const node = findKind(parse(descriptor.conformanceFixture).children, kind);
 		if (node) out.push({ kind, node });

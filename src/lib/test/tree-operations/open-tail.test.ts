@@ -11,6 +11,7 @@ import { checkStaleRaw } from '#lib/invariants/node-shape.js';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
 import { DIRECTIVE_CONTAINER } from '#lib/core/directive/kinds.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 /** The body of the list that is `source`'s first block, as a list scope's commit sees it. */
 function listBody(source: string): BodyParent {
@@ -118,7 +119,7 @@ describe('endWindowLines', () => {
 	// `directiveContainer` is core's own `:::` fallback, so the opaque case needs no plugin.
 	// Miss-analysis: no case drove the descent into an opaque body, where it fails silently.
 	it('stops above an opaque container body rather than leaving the item unended', () => {
-		activateDirectiveGrammar();
+		activateDirectiveGrammar(testDirectiveViews());
 		const source = '- text\n\n  :::note Heads up\n  body\n  :::';
 		const body = listBody(source);
 		const opaque = body.children[0].children!.at(-1)!;

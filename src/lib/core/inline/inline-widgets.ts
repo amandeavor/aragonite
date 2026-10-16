@@ -12,6 +12,7 @@ import type { ActivationClick, ClickInput } from '../../activation-click';
 import { isLiveHtmlTag, buildLiveHtmlWidget } from './raw-html-widget';
 import { entityRendersGlyph, buildEntityWidget } from './entity-widget';
 import { createInlineKindRegistry } from '../../schema/plugin-registry';
+import { registerAsCore } from '../../schema/plugin-install';
 import type { GrammarView } from '../../schema/block-openers';
 import { inlineDescendants } from './walk';
 import type { PluginView } from '../../plugin-view';
@@ -183,7 +184,7 @@ export function registerInlineWidgetKind(
 
 /** For a kind the editor draws itself (`core/directive/kinds.ts`), never a plugin's. */
 export function registerCoreInlineWidget(kind: AnyInlineKind, entry: WidgetEntry): void {
-	registerWidgetEntry(kind, entry);
+	registerAsCore(() => registerWidgetEntry(kind, entry));
 }
 
 function registerWidgetEntry(kind: AnyInlineKind, descriptor: WidgetEntry): void {

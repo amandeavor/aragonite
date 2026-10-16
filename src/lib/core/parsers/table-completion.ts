@@ -5,6 +5,7 @@
  */
 
 import { registerBlockCompleter, type CompletionResult } from '../../schema/block-completions';
+import { registerAsCore } from '../../schema/plugin-install';
 import { tableHeaderCells } from './table';
 import { newTableLines, opensOnPipe } from './table-line';
 
@@ -25,5 +26,5 @@ export function tryCompleteTableRow(line: string): CompletionResult | null {
 }
 
 export function registerTableCompleter(): void {
-	registerBlockCompleter('table', { tryComplete: tryCompleteTableRow });
+	registerAsCore(() => registerBlockCompleter('table', { tryComplete: tryCompleteTableRow }));
 }

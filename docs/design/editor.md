@@ -299,22 +299,25 @@ The same dispatch point answers `EditorInstance.canRunCommand`, the read a host 
 
 ### The other registries
 
-- **Block openers.** An opener is the part of the parser that recognizes the syntax a block starts with. A kind the block parser dispatches declares one:
+- **Block openers.** Not a registry of their own: an opener is the part of the parser that recognizes the syntax a block starts with, and a kind the block parser dispatches carries one on its `registerBlockKind` call:
 
   ```ts
-  registerBlockOpener(kind, {
-  	priority: 25, // lower dispatches first; ties break by kind name
-  	tryOpen(ctx) {
-  		/* claim the lines from ctx.index: return { node, consumed }, or null to decline */
-  	},
-  	interruptsParagraph: (lineText) => lineText.startsWith(':::') // or false
+  registerBlockKind(kind, {
+  	// ...the descriptor fields and the view
+  	opener: {
+  		priority: 25, // lower dispatches first; ties break by kind name
+  		tryOpen(ctx) {
+  			/* claim the lines from ctx.index: return { node, consumed }, or null to decline */
+  		},
+  		interruptsParagraph: (lineText) => lineText.startsWith(':::') // or false
+  	}
   });
   ```
 
-  Both the parser's dispatch order and its paragraph-interrupt scan derive from the declarations. Built-in openers live in `core/parsers/`, and their priorities are published as one constant, `OPENER_PRIORITIES` (`schema/opener-priorities.ts`), so a plugin opener whose matcher is a superset of a built-in's prices below that built-in's entry, and one that only slots between built-ins prices into the gap.
+  Both the parser's dispatch order and its paragraph-interrupt scan derive from the registrations (`schema/block-openers.ts`). Built-in openers live in `core/parsers/built-in-openers.ts`, ride on the built-in registrations, and register on the first read of the grammar, so a parse finds them whichever module loaded first (G4.197), and their priorities are published as one constant, `OPENER_PRIORITIES` (`schema/opener-priorities.ts`), so a plugin opener whose matcher is a superset of a built-in's prices below that built-in's entry, and one that only slots between built-ins prices into the gap.
 
-- **Enter completion.** The opener registry's sibling, for kinds whose grammar spans adjacent lines and so can't be typed into existence. A registered completer reads one typed line and answers the lines completing it plus where the caret lands; § 8 shows the call.
-- **Components.** The runtime kind-to-component map `BlockHost` looks up. The built-in registrations live in `components/built-in-blocks.ts`, and every editor calls them when it's created; only the first call does anything.
+- **Enter completion.** The opener's sibling, for kinds whose grammar spans adjacent lines and so can't be typed into existence. A registered completer reads one typed line and answers the lines completing it plus where the caret lands; § 8 shows the call.
+- **Views.** Not a registry of their own: what draws a kind rides on its `registerBlockKind` call, and `BlockHost` reads it through the editor's activation (`schema/block-kind-descriptor.ts` :: `blockViewFor`). Built-ins register without one, since `schema/` can't import a component, and get theirs from `components/built-in-blocks.ts`, which every editor calls when it's created; only the first call does anything.
 
 Two more things live in `schema/` that read like registries but aren't: the merge rules (eligibility predicates for Backspace-merge, plus the walker that finds the deepest mergeable leaf, § 8) and the container raw rebuild (per-kind rebuild plus ancestry dispatch, so an edit deep in a nesting chain re-emits every enclosing container's `raw`, § 9). Both are functions over descriptor fields (`mergeRole`, `container.rebuildRaw`).
 
@@ -327,7 +330,7 @@ registerBlockKind('paragraph', {
 // throws: registerBlockKind: "paragraph" is already registered. Kinds are register-once ...
 ```
 
-Strict on purpose, because a registry you can quietly overwrite is a registry two plugins can fight over. Under a dev server a duplicate replaces with a note instead (`schema/register-once.ts`), so a re-evaluated registrar survives hot reload rather than 500-ing every route.
+Strict on purpose, because a registry you can quietly overwrite is a registry two plugins can fight over. Under a dev server the editor re-registering one of its own entries replaces it with a note instead (`schema/register-once.ts`), so a re-evaluated editor module survives hot reload rather than 500-ing every route. A plugin never gets that: it registers only inside its setup, which runs once per process (G1.104), and a duplicate from it throws, a built-in's key included.
 
 ## 6. CST ↔ DOM synchronization
 
@@ -613,7 +616,7 @@ A plugin rebuilder that ignores the hint is correct, just not incremental.
 
 **Kind re-derivation.** Each rebuilt container then re-derives its own kind from the raw it just produced: the container half of § 8's kind change, and the one place that notices a container's opener line was rewritten from the inside. Three rules bound it:
 
-- **Eligibility is the opener registry.** Registering an opener is the claim that `parse(raw)` reproduces the kind, so kinds without one are excluded by construction rather than by name: `listItem` (whose `- x` parses to a _list_), `tableRow`, reserved chrome, `tableCell`, and `table` itself, which emerges from the paragraph continuation scan rather than an opener. A list item's first line is still read for its marker (the metadata re-derivation below); it just never changes kind.
+- **Eligibility is the opener.** Registering a kind with an opener is the claim that `parse(raw)` reproduces the kind, so kinds without one are excluded by construction rather than by name: `listItem` (whose `- x` parses to a _list_), `tableRow`, reserved chrome, `tableCell`, and `table` itself, which emerges from the paragraph continuation scan rather than an opener. A list item's first line is still read for its marker (the metadata re-derivation below); it just never changes kind.
 - **The re-parse resolves through the instance grammar**, so a kind an instance disabled stays unreachable. The grammar is a required parameter of the rebuild, so a caller can't leave it out.
 - **Cost is gated twice.** An opener claims from line 1, so a body-line edit skips on a string compare, and an edit that _does_ rewrite line 1 skips only when the rewritten line, read alone, still opens as the kind the node already is. Typing into a list's first item leaves `- one` opening as a list, so the re-parse never runs ([`performance.md`](performance.md)). The check is a positive identification, not a before/after comparison: a line no opener recognizes alone (a directive container wants its closer) falls through to the full parse, rather than comparing equal and hiding a real kind change.
 

@@ -6,6 +6,7 @@ import { registerDetailsKind } from '#lib/plugins/details/details-kind.js';
 import { installReorderDrag } from '#lib/editor-actions/reorder-drag.js';
 import { parse } from '#lib/core/parser.js';
 import { fixtureReading } from '../harness/fixture-grammar';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Checks the root pointerdown listener's lifecycle: the unmount-mid-drag leak e2e cannot
 // reach. The per-drag document listeners are covered by the Escape and no-op e2e.
@@ -80,9 +81,9 @@ describe('installReorderDrag: root listener lifecycle', () => {
 // Miss-analysis: only the table's label had a test, so renaming the rest never went red.
 describe('the drag ghost names what it carries', () => {
 	beforeEach(() => {
-		registerMathBlock();
-		registerMermaidKind();
-		registerDetailsKind();
+		registerMathBlock(testView());
+		registerMermaidKind(testView());
+		registerDetailsKind(testView());
 	});
 
 	function ghostFor(source: string, text: string, rows = 0): string | undefined {

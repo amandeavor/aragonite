@@ -191,8 +191,7 @@ These checks run in three kinds of place:
 - **Bootstrap**: the registration-check flush (`schema/registration-checks.ts`), first at Editor
   mount via `runStartupInvariantChecks`, then at the next mount or grammar read
   (`getOrderedOpeners`), never mid-batch, so forward references inside one registration batch stay
-  quiet. Registry completeness (G1.2) checks built-ins only, since a plugin's component may register
-  on its own schedule.
+  quiet. Registry completeness (G1.2) checks built-ins only, the one closed set of kinds.
 - **Its own machinery**: the guard fires inside the code it protects. One exception: G1.33 fires in
   the editor root's focus handler (`components/editor-root/focus.ts`), above every caret entry, so a
   consumer's own caret component inherits it.
@@ -200,7 +199,7 @@ These checks run in three kinds of place:
 | ID     | What stays true                                                                            | Codes   |
 | ------ | ------------------------------------------------------------------------------------------ | ------- |
 | G1.1   | A strip container's raw and metadata never go stale against its children and bytes         | A·P·N·D |
-| G1.2   | Every block kind has a descriptor and a component                                          | A·P     |
+| G1.2   | Every built-in block kind has a descriptor (its view moved up to G3.15)                    | A·P     |
 | G1.3   | _Retired upward_: container-iff-rebuildRaw is now unrepresentable                          | T       |
 | G1.4   | No container publishes the undo-history context key                                        | A·L·N   |
 | G1.5   | Leaf fields on leaves, container fields on containers                                      | A·P·N   |
@@ -208,7 +207,7 @@ These checks run in three kinds of place:
 | G1.7   | Metadata writes that drive raw go through `updateBlockMetadata`                            | A·N     |
 | G1.8   | `getContentRange` is well-formed for every kind that has one                               | A·P·N   |
 | G1.9   | No mutation writes bytes through a node an undo entry shares                               | T·A·P·N |
-| G1.10  | Every opener's kind has a descriptor; opener priorities are unique                         | A·N     |
+| G1.10  | Opener priorities are unique (an opener's kind always has a descriptor now)                | A·N     |
 | G1.11  | Every keymap chord is unique per kind and names a known command                            | A·N     |
 | G1.12  | An opaque container's raw still reparses to its live children and metadata                 | A·N     |
 | G1.13  | An opaque `rebuildRaw` is deterministic over committed state                               | A·N     |
@@ -216,7 +215,7 @@ These checks run in three kinds of place:
 | G1.15  | A plugin opener claims at least one line, and its raw matches the lines it consumed        | A·N     |
 | G1.16  | Every coordinate a commit declares is document-absolute                                    | A·N     |
 | G1.17  | An opener registered after the grammar was read warns                                      | A·N     |
-| G1.18  | A container's `reservedChrome` names a fully registered chrome kind                        | A·N     |
+| G1.18  | A container's `reservedChrome` names a registered chrome kind                              | A·N     |
 | G1.19  | A commit scope's declared path still resolves to its captured node                         | A       |
 | G1.20  | An unshared chain is as deep as the path it was asked for                                  | A       |
 | G1.21  | A column edit's row scopes are the owned table's own children                              | A       |
@@ -235,7 +234,7 @@ These checks run in three kinds of place:
 | G1.34  | _Retired_: a split's landing reads the index `splitNode` returned (G4.43)                  | L       |
 | G1.35  | A slot that holds exactly one node never takes bytes that reparse to several               | A·N     |
 | G1.36  | A structural change fits the arrays it syncs; ids stay in lockstep with children           | A·N     |
-| G1.37  | A kind whose syntax its container owns registers no opener                                 | A·N     |
+| G1.37  | _Retired upward_: a context-dependent kind with an opener no longer compiles               | T       |
 | G1.38  | A spliced container raw equals what a full rebuild would write                             | A·P·N   |
 | G1.39  | At most one caret the editor draws shows at a time                                         | L       |
 | G1.40  | Every built-in kind declares its page role and its height estimate                         | A·N     |
@@ -263,6 +262,7 @@ These checks run in three kinds of place:
 | G1.96  | A plugin's widget, decoration or row view mounts once, updates in place, is destroyed once | N       |
 | G1.97  | A value a Vue app holds in reactive state reaches the editor unwrapped                     | harness |
 | G1.99  | A styled editor resolves the host colors, from the theme stylesheet or the page            | A       |
+| G1.104 | A plugin registers only from its `definePlugin` setup                                      | N       |
 | G1.106 | A range delete takes whole rows from a table it keeps an edge of                           | A·N     |
 
 ### The entries
@@ -278,11 +278,11 @@ fires too. Non-strip containers are exempt, grid outright and opaque via G1.12 a
 `checkStaleRaw` (`node-shape.ts`) · commit primitive · `stale-raw.test.ts`,
 `strip-stale-metadata.test.ts`.
 
-**G1.2 · Registry completeness.** Every `BlockKind` resolves to a descriptor and a component, the
-kinds enumerated from the union-derived manifest (`core/nodes.ts :: BLOCK_KIND_TABLE`,
-`ALL_BLOCK_KINDS`). The one exemption is `listItem`, which renders inside its `ListBlock` and has no
-component of its own (`NO_STANDALONE_COMPONENT`). Predicate `checkRegistryCompleteness`
-(`registry.ts`) · bootstrap · `registry.test.ts`.
+**G1.2 · Registry completeness.** Every `BlockKind` resolves to a descriptor, the kinds enumerated
+from the union-derived manifest (`core/nodes.ts :: BLOCK_KIND_TABLE`, `ALL_BLOCK_KINDS`). Predicate
+`checkRegistryCompleteness` (`registry.ts`) · bootstrap · `registry.test.ts`. The rule used to say
+"and a component" too; that half retired upward to G3.15, whose table type makes a built-in with
+no view a compile error.
 
 **G1.3 · Retired upward.** The rule was: `isContainer` iff `rebuildRaw`. The grouped registration
 shape (G3.6) derives `isContainer` from the `container` group, whose `rebuildRaw` is required, so
@@ -336,8 +336,10 @@ block the undo step already owns stays written after a throw. Only an internal m
 reaches it, and DEV re-throws. Covered by
 `test/editor-actions/commit/commit-rollback.test.ts` and `commit-rollback-bytes.test.ts`.
 
-**G1.10 · Opener-registry coherence.** Every opener's kind has a descriptor, and opener priorities
-are unique. Predicate `checkOpenerRegistry` (`registry.ts`) · bootstrap · `opener-registry.test.ts`.
+**G1.10 · Unique opener priorities.** No two openers share a priority: a tie still dispatches by
+kind name, but it's almost always a mistake. The rule used to say every opener's kind has a
+descriptor too; an opener is now a field of the kind's registration, so that half can't be written.
+Predicate `checkOpenerRegistry` (`registry.ts`) · bootstrap · `opener-registry.test.ts`.
 
 **G1.11 · Keymap coherence.** Every keymap chord names a known command id, and chords are unique
 per kind. A malformed chord throws earlier, at `registerBlockKind` or `augmentBlockKind`, in every
@@ -374,14 +376,15 @@ final index may name the one-past-end insert slot (append-shaped ops). Predicate
 `checkCommitPathAddressable` (`commit-paths.ts`) · commit primitive, before the mutation, via
 `invariants/install.ts :: assertCommitPaths` · `commit-paths.test.ts`.
 
-**G1.17 · No late opener.** An opener registered after the grammar was read warns: parsed documents
-never re-parse, so the kind would miss every open document. Register before the first editor
-mounts. Predicate `checkLateOpenerRegistration` (`registry.ts`) · bootstrap ·
+**G1.17 · No late opener.** A kind registered with an opener after the grammar was read warns:
+parsed documents never re-parse, so the kind would miss every open document. Register before the
+first editor mounts. Predicate `checkLateOpenerRegistration` (`registry.ts`) · bootstrap ·
 `test/schema/registration-checks.test.ts`.
 
 **G1.18 · Reserved-chrome coherence.** The chrome kind a container's `reservedChrome` names (its
-title row) resolves to a descriptor and a component, both registered by `registerChromeLeaf`. The
-bootstrap counterpart to G1.14's per-commit slot check. Predicate `checkReservedChromeCoherence`
+title row) is registered, which `registerChromeLeaf` does, and a registered kind always carries its
+view (G3.15, which retired this check's component half). The bootstrap counterpart to G1.14's
+per-commit slot check. Predicate `checkReservedChromeCoherence`
 (`registry.ts`) · bootstrap · `reserved-chrome-coherence.test.ts`,
 `test/schema/registration-checks.test.ts`.
 
@@ -528,13 +531,11 @@ run the id check over the whole document. Predicates `checkStructuralDescriptor`
 `test/selection/cross-block/cross-block-delete-seam-fold.test.ts`,
 `test/invariants/child-id-parity.test.ts`.
 
-**G1.37 · Descriptor-field coherence.** `contextDependentKind` (a kind with no opener of its own,
-whose container writes its syntax) beside a registered opener suppresses the reparse for a kind the
-parser CAN recognize, so its bytes stop re-deriving, silently. The field and the opener live in
-different registries, so no type sees both and the pair stays a runtime check (the descriptor's
-other incoherent pairs don't compile, G3.10). Predicate `checkDescriptorFieldCoherence`
-(`registry.ts`) · bootstrap · `descriptor-field-coherence.test.ts`,
-`test/schema/registration-checks.test.ts`.
+**G1.37 · Retired upward.** The rule was: `contextDependentKind` (a kind with no opener of its
+own, whose container writes its syntax) never sits beside an opener, since it suppresses the reparse
+for a kind the parser can recognize. The two used to live in different registries; now the opener
+is a field of the registration, so the pair is G3.10's `context-dependent-opener` row: a type error,
+and a throw for a cast. Its bootstrap check and tests are deleted.
 
 **G1.38 · Faithful container splices** (`child-spans-faithful`). After every one-region splice,
 dev re-derives the whole container raw on a scratch node and, on any difference, refuses the splice
@@ -784,6 +785,17 @@ reset makes its root border-box), it checks that `--md-color-bg` resolves on the
 `invariant:host-colors-resolve` naming the import when it doesn't. A DOM with no stylesheet (the
 unit suites) is skipped. `invariants/theme-stylesheet.ts`; `e2e/tests/theme-stylesheet.spec.ts`.
 
+**G1.104 · Registered from a setup.** A register or declare call outside any plugin's setup, and
+outside the editor's own bootstraps (`registerAsCore`), throws in a dev build, naming
+`definePlugin` and, for a test on another runner, `configureEditorEnv({ isTest: true })`. A test
+run is exempt and production isn't checked. The check sits in the store every registry is built on
+(`schema/plugin-registry.ts`), behind `schema/plugin-install.ts :: rejectRegistrationOutsideSetup`.
+No key is exempt, a built-in's included, so the editor's own load-time registrations run under
+`registerAsCore` too, and only those replace a duplicate on a dev server. `test/schema/register-in-setup.test.ts` pins the throw, the test switch
+and the replacement rule, and re-evaluates a plugin module to show the first registration wins;
+`test/schema/dev-server-load.test.ts` loads every entry and installs every bundled plugin under a
+dev server's flags.
+
 **G1.106 · A kept table edge loses whole rows.** A selection that starts or ends inside a table
 and runs past it deletes whole rows of that table, never part of one. `coverRange` in
 `selection/range-coverage.ts` snaps both ends to a row's edge first. If a run that splits a row
@@ -921,6 +933,7 @@ what the type retired.
 | G3.12 | A React wrapper prop that isn't an editor option, or hides one                       | T     |
 | G3.13 | A Vue wrapper prop that isn't an editor option, or a boolean Vue would read as false | T     |
 | G3.14 | A Svelte view whose component wants a prop its slot never passes                     | T     |
+| G3.15 | A block kind registered without the view that draws it                               | T     |
 
 ### The entries
 
@@ -973,8 +986,9 @@ capture-without-reset pairing.
 (`blockFocus: 'whole-block'`, so `supportsInline: false`, no `contentStart` and no title row), or a
 block the caret enters: a leaf, or a container, which never declares inline content since its
 children hold its text. A content range and its Backspace behavior register together as
-`contentStart`, and a container with a title row declares only its middle-child unwrap strategy.
-`augmentBlockKind` takes none of these fields.
+`contentStart`, and a container with a title row declares only its middle-child unwrap strategy. A
+kind whose container writes its syntax (`contextDependentKind: true`) takes no `opener`, since the
+container skips the reparse that opener would serve. `augmentBlockKind` takes none of these fields.
 
 A cast or a plain JavaScript plugin never meets the types, so both calls throw at runtime too:
 `registerBlockKind` checks each pair against
@@ -982,8 +996,7 @@ A cast or a plain JavaScript plugin never meets the types, so both calls throw a
 refuses every field on `src/lib/schema/block-kind-descriptor.ts :: FIXED_AT_REGISTRATION`.
 `src/lib/test/schema/descriptor-groups.types.test.ts` holds one `@ts-expect-error` per pair, and
 `src/lib/test/schema/registration-pairs.test.ts` fails when a table row and its pin don't match.
-Retired: G1.32 and four of G1.37's five pairs as dev-time checks, and G1.18's not-a-container
-branch.
+Retired: G1.32 and G1.37 as dev-time checks, and G1.18's not-a-container branch.
 
 **G3.11 · Every option has a spec.** `editor-props.ts :: EDITOR_OPTION_SPECS` gives each editor
 option, `header` included, a timing (`live`: a new value takes effect; `once`: read at mount, later
@@ -1017,6 +1030,18 @@ attribute reads as `true`.
 from the component, so `view: svelteView(C)` compiles in any slot whose props cover what `C`
 declares and fails where `C` asks for one the slot never passes.
 `src/lib/test/plugins/view/svelte-view.types.test.ts` holds the `@ts-expect-error`s.
+
+**G3.15 · A kind comes with its view.** `BlockKindRegistration` requires `view`, so a plugin kind
+can't be registered without what draws it, and the viewless route,
+`src/lib/schema/block-kind-descriptor.ts :: registerBuiltinBlockKind`, takes only a built-in
+`BlockKind`. Built-ins get their views from the component layer through `attachBuiltinViews`, whose
+argument is typed as a complete table of every kind BlockHost can mount (`StandaloneBuiltinKind`),
+so a built-in left out of `components/built-in-blocks.ts` doesn't compile. A cast or a plain
+JavaScript plugin gets past the types, so `registerBlockKind` also refuses a missing or unbranded
+view at runtime, and `augmentBlockKind` refuses a `view` (it's on `FIXED_AT_REGISTRATION`). Pins in
+`src/lib/test/schema/descriptor-groups.types.test.ts`; runtime rows in
+`src/lib/test/schema/kind-view-registration.test.ts` and `augment-guard.test.ts`. Retired: G1.2's
+and G1.18's component halves.
 
 ## Group 4: source scans
 
@@ -1186,6 +1211,7 @@ unguarded.
 | G4.189 | A host color read inside the editor carries no fallback, and the root reads the resolved one | L       |
 | G4.194 | A block reaches the clipboard steps and its inline paste only through its editable surface   | L       |
 | G4.195 | A paragraph's or a table cell's command takes its own undo step in one place                 | L       |
+| G4.197 | A parse finds every built-in kind whichever module a host imports first                      | harness |
 | G4.200 | Whether a block hides markers at the caret, with the screen it reads, is asked in one place  | L       |
 | G4.201 | One painter puts the selection tint on an inline widget                                      | L       |
 
@@ -1700,13 +1726,15 @@ source is a join, so its file names the cleanup or is listed with why it isn't (
 between one leaf's own halves). `lint/cross-node-join-doors.test.ts`.
 
 **G4.77 · One way to belong to no plugin.** `src/lib/schema/plugin-install.ts` :: `registerAsCore`
-runs registrations as if no plugin were installing. It has three callers:
+runs registrations as if no plugin were installing. Its callers:
 
 - `src/lib/components/editor-built-ins.ts` :: `registerEditorBuiltIns`, the editor's own bootstrap,
   which the test reset keeps
 - a registry's `registerCore`, for a built-in key the registry can't recognize itself (a code
   language, a context-menu row), also kept by the reset
 - `activateDirectives`, around the directive grammar, which the reset drops
+- `registerBuiltInDescriptors`, and the editor modules that register at load (the built-in global
+  commands, the default paste surfaces, the table's Enter completer, the core inline widgets)
 
 The scan matches the bare name, so an aliased import is caught at its import line.
 `lint/file-rules.test.ts`.
@@ -2261,6 +2289,17 @@ should undo the command and nothing around it. A paragraph and a table cell both
 through `components/blocks/text/inline-commands.ts :: perform`, which waits for a shown source to be
 written and then isolates the write. `lint/file-rules.test.ts` fails an `isolateUndoEntry` call
 anywhere else but the code block's language field.
+
+**G4.197 · Built-ins register on the first grammar read.** The block parser's modules import each
+other in a loop, so a built-in registered at a module's top level runs before its own module has
+finished loading, and a host that imports that module first gets a crash or a grammar with no
+built-ins. So nothing on the loop registers a built-in kind at load: `schema/block-openers.ts`
+registers them inside the first read of the grammar. `registerBuiltInDescriptors` runs under
+`registerAsCore`, so the built-ins belong to no plugin whichever caller gets there first (a plugin's
+setup included) and survive the test reset.
+`test/core/built-in-load-order.test.ts` resets the module graph, imports each module on the loop
+first, and parses one block of every built-in kind; putting a registration back at the top level of
+`core/parser.ts` turns it red with the load-order `ReferenceError`.
 
 **G4.200 · One read of a block's hidden screen.** The rules for a construct's hidden edge only
 apply where the block hides markers at the caret, and they need the screen it hides them on.

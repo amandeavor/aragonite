@@ -28,7 +28,6 @@ import {
 	declarePluginKind,
 	OPENER_PRIORITIES,
 	parseContainerBody,
-	registerBlockOpener,
 	registerChromeLeaf,
 	serializeChildren as concatChildren,
 	setPluginMetadata,
@@ -54,37 +53,39 @@ function registerTally(name: string, titled: boolean): void {
 	};
 	const chrome = titled ? declarePluginKind(`${name}-title`) : undefined;
 	if (chrome) registerChromeLeaf(chrome);
-	const kind = chrome
-		? testContainer(name, { rebuildRaw: rebuild, reservedChrome: { kind: chrome } })
-		: testContainer(name, { rebuildRaw: rebuild });
-	registerBlockOpener(kind, {
-		priority: OPENER_PRIORITIES.fencedCode - (titled ? 8 : 9),
-		interruptsParagraph: false,
-		tryOpen(ctx) {
-			const open = /^==\[(\d+)\](?: (.*))?$/.exec(ctx.line.text);
-			if (!open || (open[2] !== undefined) !== titled) return null;
-			let close = ctx.index + 1;
-			while (close < ctx.end && !ctx.lines[close].text.startsWith('==[end')) close++;
-			// The titled kind opens on a lone line too, so its kind check never parses and only the
-			// metadata re-read can.
-			const closed = close < ctx.end;
-			if (!closed && !titled) return null;
-			const lines = ctx.lines.slice(ctx.index, closed ? close + 1 : ctx.end);
-			const bodyText = lines
-				.slice(1, closed ? -1 : undefined)
-				.map((l) => l.raw)
-				.join('');
-			const body = parseContainerBody(bodyText, {}, { scope: 'fragment', grammar: ctx.grammar });
-			const node: CstNode = {
-				kind,
-				leadingTrivia: ctx.leadingTrivia,
-				raw: lines.map((l) => l.raw).join(''),
-				children: chrome ? [chromeChild(chrome, open[2]), ...body.children] : body.children
-			};
-			setPluginMetadata<TallyMetadata>(node, { size: Number(open[1]) });
-			return { node, consumed: lines.length };
+	const group = chrome
+		? { rebuildRaw: rebuild, reservedChrome: { kind: chrome } }
+		: { rebuildRaw: rebuild };
+	testContainer(name, group, (kind) => ({
+		opener: {
+			priority: OPENER_PRIORITIES.fencedCode - (titled ? 8 : 9),
+			interruptsParagraph: false,
+			tryOpen(ctx) {
+				const open = /^==\[(\d+)\](?: (.*))?$/.exec(ctx.line.text);
+				if (!open || (open[2] !== undefined) !== titled) return null;
+				let close = ctx.index + 1;
+				while (close < ctx.end && !ctx.lines[close].text.startsWith('==[end')) close++;
+				// The titled kind opens on a lone line too, so its kind check never parses and only the
+				// metadata re-read can.
+				const closed = close < ctx.end;
+				if (!closed && !titled) return null;
+				const lines = ctx.lines.slice(ctx.index, closed ? close + 1 : ctx.end);
+				const bodyText = lines
+					.slice(1, closed ? -1 : undefined)
+					.map((l) => l.raw)
+					.join('');
+				const body = parseContainerBody(bodyText, {}, { scope: 'fragment', grammar: ctx.grammar });
+				const node: CstNode = {
+					kind,
+					leadingTrivia: ctx.leadingTrivia,
+					raw: lines.map((l) => l.raw).join(''),
+					children: chrome ? [chromeChild(chrome, open[2]), ...body.children] : body.children
+				};
+				setPluginMetadata<TallyMetadata>(node, { size: Number(open[1]) });
+				return { node, consumed: lines.length };
+			}
 		}
-	});
+	}));
 }
 
 const KEYSTROKES = 20;

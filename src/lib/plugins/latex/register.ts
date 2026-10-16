@@ -3,15 +3,9 @@
  * source. The plugin installs this setup once per process, so it runs unguarded.
  */
 
-import {
-	definePlugin,
-	registerBlockView,
-	declaredPluginKind,
-	registerInsertEntry,
-	type EditorPlugin
-} from '#lib/plugin.js';
+import { definePlugin, registerInsertEntry, type EditorPlugin } from '#lib/plugin.js';
 import { svelteBlockView } from '#lib/svelte.js';
-import { registerMathInline, registerMathBlock, MATH_BLOCK, MATH_FENCE } from './latex-kind';
+import { registerMathInline, registerMathBlock } from './latex-kind';
 import { mathSlot, type MathRenderer } from './math-renderer';
 import { isMathBlockLayout, type MathBlockLayout } from './math-layout';
 import { mathBlockLines } from './math-shape';
@@ -46,11 +40,7 @@ export function latexPlugin(options: LatexPluginOptions = {}): EditorPlugin {
 				renderer ? ({ source, display }, { theme }) => renderer(source, { display, theme }) : null
 			);
 			registerMathInline();
-			// registerMathBlock also registers the ```math fence kind; both render through BlockMath.
-			registerMathBlock();
-			const blockMath = svelteBlockView(BlockMath);
-			registerBlockView(declaredPluginKind(MATH_BLOCK), blockMath);
-			registerBlockView(declaredPluginKind(MATH_FENCE), blockMath);
+			registerMathBlock(svelteBlockView(BlockMath));
 			registerInsertEntry({
 				id: 'math',
 				label: 'Math block',

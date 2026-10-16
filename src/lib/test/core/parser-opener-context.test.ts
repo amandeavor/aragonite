@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
-import { registerBlockOpener, type OpenContext } from '../../schema/block-openers';
-import { declarePluginKind } from '../../schema/plugin-kind';
+import type { OpenContext } from '../../schema/block-openers';
+import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
 // A re-stamped shared OpenContext mutates under an opener that retained the handle, so
 // the contract is a fresh context per block. The probe declines every block, which lets
@@ -11,14 +11,15 @@ describe('parser creates a fresh OpenContext per block', () => {
 	it('offers each block its own context, never a re-marked shared handle', () => {
 		const stashed: OpenContext[] = [];
 		const offeredFor: { index: number; text: string }[] = [];
-		const kind = declarePluginKind('context-probe');
-		registerBlockOpener(kind, {
-			priority: 1, // below every built-in: offered first, then declines to the real opener
-			interruptsParagraph: false,
-			tryOpen: (ctx) => {
-				stashed.push(ctx);
-				offeredFor.push({ index: ctx.index, text: ctx.line.text });
-				return null;
+		testLeaf('context-probe', {
+			opener: {
+				priority: 1, // below every built-in: offered first, then declines to the real opener
+				interruptsParagraph: false,
+				tryOpen: (ctx) => {
+					stashed.push(ctx);
+					offeredFor.push({ index: ctx.index, text: ctx.line.text });
+					return null;
+				}
 			}
 		});
 
