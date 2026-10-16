@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { splitNode } from '#lib/tree-operations/node-ops.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
@@ -10,6 +8,7 @@ import { expectParseConverged } from '../harness/parse-converged';
 import type { Document } from '#lib/core/nodes.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { deleteRange } from '../harness/range-delete';
 
 // A selection covering a block's whole text leaves it blank, and a blank block is the separating
 // line of the one below it, so both delete branches must fix up the blank-line run or the reload
@@ -19,16 +18,7 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 /** Select a block's whole text and delete it — the Backspace-over-a-selection gesture. */
 function emptyBlock(doc: Document, index: number): void {
 	const end = doc.children[index].raw.length - 1;
-	rangeDelete(
-		doc,
-		rangeCoverage(
-			doc,
-			coverRange(doc, { path: [index], offset: 0 }, { path: [index], offset: end })
-		),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	deleteRange(doc, { path: [index], offset: 0 }, { path: [index], offset: end });
 }
 
 /** [Hello, x('\n'), blank(''), Second('\n')] — the split shape, whose run line sits two below. */
@@ -74,13 +64,7 @@ describe('a delete that empties a block settles the run it joins', () => {
 	it('settles a cross-block delete whose surviving start block is empty', () => {
 		const doc = splitShape();
 
-		rangeDelete(
-			doc,
-			rangeCoverage(doc, coverRange(doc, { path: [1], offset: 0 }, { path: [2], offset: 0 })),
-			createSharingState(),
-			fixtureReading(),
-			'keyless'
-		);
+		deleteRange(doc, { path: [1], offset: 0 }, { path: [2], offset: 0 });
 
 		expect(doc.children.map((c) => c.raw)).toEqual(['Hello\n', '\n', 'Second\n']);
 		expectParseConverged(doc);

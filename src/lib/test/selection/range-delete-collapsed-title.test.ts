@@ -4,13 +4,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
-import { createSharingState } from '../../tree-operations/sharing';
 import type { SelectionPoint } from '../../selection/primitives';
-import { fixtureReading } from '../harness/fixture-grammar';
 import { expectParseConverged } from '../harness/parse-converged';
 import { registerChromePluginsForTests } from './chrome-plugins';
+import { deleteRange } from '../harness/range-delete';
 
 const CLOSED = '<details>\n<summary>Sum</summary>\n\nHidden\n\n</details>\n';
 const OPEN = '<details open>\n<summary>Sum</summary>\n\nShown\n\n</details>\n';
@@ -22,13 +19,7 @@ function point(path: number[], offset: number): SelectionPoint {
 // Whatever the delete leaves has to reload to the same tree.
 function run(source: string, start: SelectionPoint, end: SelectionPoint) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end);
 	expectParseConverged(result.newDoc);
 	return { source: serialize(result.newDoc), caret: result.caret(result.newDoc) };
 }

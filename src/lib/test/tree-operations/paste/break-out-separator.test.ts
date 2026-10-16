@@ -3,11 +3,8 @@ import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import type { Document } from '#lib/core/nodes.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
-import { makeEditorActionsDeps, pasteContext } from '#lib/test/harness/editor-actions.js';
+import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 import { expectParseConverged, triviaRawOf } from '#lib/test/harness/parse-converged.js';
 
 // A break-out keeps the list's separating line (`docs/design/syntax-tree.md` § Blank lines).
@@ -15,18 +12,14 @@ import { expectParseConverged, triviaRawOf } from '#lib/test/harness/parse-conve
 
 /** Paste `clipboard` at `offset` inside the leaf at `targetPath` of a live document. */
 async function pasteInto(doc: Document, targetPath: number[], offset: number, clipboard: string) {
-	const { deps } = makeEditorActionsDeps(doc.children);
-	const controller = createUndoController(deps);
+	const h = makePasteCommit(doc.children);
 
-	await pasteDispatch(
+	await dispatchPaste(
+		h,
 		{ pastedText: clipboard, targetPath, offset },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: createBlockEditActions(deps, controller),
-			controller: createPasteCoordinator(deps, controller)
-		})
+		{ blockEdit: createBlockEditActions(h.deps, h.undo) }
 	);
-	return deps.doc;
+	return h.doc;
 }
 
 const layout = (doc: Document) => triviaRawOf(doc.children);

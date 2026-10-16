@@ -10,15 +10,8 @@ import type { CstNode } from '#lib/core/nodes.js';
 import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { tableCellPasteSurface } from '#lib/components/blocks/table/table-cell-paste.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
-} from '../../harness/editor-actions';
+import { makeStubBlockEdit, dispatchPaste, makePasteCommit } from '../../harness/editor-actions';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { mountBlock } from '../../harness/mount-block';
 import { settleEditor } from '../../harness/settle';
@@ -58,16 +51,12 @@ const PLACES: Place[] = [
 const leafBytes = (calls: unknown[][]): string[] => calls.map((call) => call[1] as string);
 
 async function paste(place: Place, text: string, range: { start: number; end: number }) {
-	const { deps } = makeEditorActionsDeps(place.wrap(text), { reading: LIVE });
+	const h = makePasteCommit(place.wrap(text), { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
-	await pasteDispatch(
+	await dispatchPaste(
+		h,
 		{ pastedText: 'x', targetPath: place.leaf, offset: range.start, preDelete: range },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			reading: LIVE,
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
+		{ blockEdit }
 	);
 	return leafBytes(vi.mocked(blockEdit.updateBlockContent).mock.calls);
 }
@@ -142,16 +131,12 @@ describe.each(PLACES)('typing and pasting over one selection, in $name', (place)
 
 // The pasted text lands inside the run the cleanup closed, and the caret right after it.
 it('a paste over a range whose cleanup closes a run puts the caret after the pasted text', async () => {
-	const { deps } = makeEditorActionsDeps('**ab** c\n', { reading: LIVE });
+	const h = makePasteCommit('**ab** c\n', { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
-	await pasteDispatch(
+	await dispatchPaste(
+		h,
 		{ pastedText: 'x', targetPath: [0], offset: 3, preDelete: { start: 3, end: 8 } },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			reading: LIVE,
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
+		{ blockEdit }
 	);
 	const [call] = vi.mocked(blockEdit.updateBlockContent).mock.calls;
 	expect([call[1], call[4]]).toEqual(['**ax**\n', 4]);

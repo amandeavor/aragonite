@@ -5,14 +5,7 @@
 // line-ending row pasted before visible text or at the bytes' very end.
 import { describe, expect, it, vi } from 'vitest';
 import { serialize } from '#lib/core/serializer.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
-} from '../../harness/editor-actions';
+import { makeStubBlockEdit, dispatchPaste, makePasteCommit } from '../../harness/editor-actions';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { settleEditor } from '../../harness/settle';
 
@@ -28,25 +21,21 @@ async function paste(
 	text: string,
 	reading = LIVE
 ) {
-	const { deps } = makeEditorActionsDeps(source, { reading });
+	const h = makePasteCommit(source, { reading });
 	const blockEdit = makeStubBlockEdit();
-	await pasteDispatch(
+	await dispatchPaste(
+		h,
 		{
 			pastedText: text,
 			targetPath: leaf,
 			offset: start,
 			preDelete: start === end ? undefined : { start, end }
 		},
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			reading,
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
+		{ blockEdit }
 	);
 	await settleEditor();
 	const leafWrites = vi.mocked(blockEdit.updateBlockContent).mock.calls.map((call) => call[1]);
-	return { doc: serialize(deps.doc), leafWrites };
+	return { doc: serialize(h.doc), leafWrites };
 }
 
 describe('blocks pasted over a cut that leaves only stranded runs', () => {

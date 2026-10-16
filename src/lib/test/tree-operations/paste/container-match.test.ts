@@ -1,30 +1,25 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { pasteDispatch } from '../../../tree-operations/paste/dispatch';
 import { findContainerMatchingUnwrap } from '../../../tree-operations/paste/container-match';
 import { parse } from '../../../core/parser';
 import {
 	makePasteCommit,
-	makeStubBlockEdit,
 	registerStubBlockListState,
-	pasteContext
+	dispatchPaste
 } from '../../harness/editor-actions';
 
 describe('container-matching paste: empty-target newline-termination (A1)', () => {
 	it('pasting a list without a trailing newline into a non-last empty item keeps the following sibling separate', async () => {
-		const { doc, controller } = makePasteCommit('- a\n- keep\n');
+		const h = makePasteCommit('- a\n- keep\n');
+		const { doc } = h;
 		// An emptied first item stands in for the stub a cross-block delete leaves.
 		doc.children[0].children![0].children![0].raw = '';
 		registerStubBlockListState(doc.children[0]);
 
-		await pasteDispatch(
+		await dispatchPaste(
+			h,
 			{ pastedText: '- x\n- y', targetPath: [0, 0, 0], offset: 0 },
-			pasteContext({
-				doc,
-				blockEdit: makeStubBlockEdit(),
-				controller,
-				crossBlock: true
-			})
+			{ crossBlock: true }
 		);
 
 		// An un-terminated last pasted item mashes into the following sibling on one line.

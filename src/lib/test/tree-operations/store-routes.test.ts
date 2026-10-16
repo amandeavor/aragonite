@@ -16,9 +16,6 @@ import { asDomTextOffset, asRawOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { collectCrossBlockText } from '#lib/selection/clipboard-text.js';
 import type { SelectionPoint } from '#lib/selection/primitives.js';
@@ -36,7 +33,8 @@ import {
 	makeEditorActionsDeps,
 	makeListContextAt,
 	makeStubBlockEdit,
-	pasteContext
+	dispatchPaste,
+	makePasteCommit
 } from '../harness/editor-actions';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
 import { createCaretMemory, type CaretMemory } from '#lib/caret/caret-memory.js';
@@ -57,6 +55,7 @@ import { replaceSelectedWidget } from '#lib/components/blocks/text/widget-intera
 import { selectWidgetWhole } from '#lib/selection/place-caret.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { deleteRange } from '#lib/test/harness/range-delete.js';
 
 // While `TOP.on`, every store the source makes is a lone top-level paragraph's instead of its own.
 const TOP = vi.hoisted(() => ({ on: false }));
@@ -359,10 +358,10 @@ async function enterInFirstItem(source: string, offset: number): Promise<string>
 	return serialize(deps.doc);
 }
 
-function deleteRange(source: string, from: [number[], number], to: [number[], number]): string {
+function backspaceRange(source: string, from: [number[], number], to: [number[], number]): string {
 	const doc = parse(source);
-	const range = coverRange(doc, { path: from[0], offset: from[1] }, { path: to[0], offset: to[1] });
-	rangeDelete(doc, rangeCoverage(doc, range), createSharingState(), LIVE, 'Backspace');
+	const [start, end] = [from, to].map(([path, offset]) => ({ path, offset }));
+	deleteRange(doc, start, end, { reading: LIVE, gesture: 'Backspace' });
 	return serialize(doc);
 }
 
@@ -430,16 +429,12 @@ async function removeInline(place: Place, range: typeof X): Promise<string> {
 
 /** Pastes `text` over `range`: the bytes the leaf's commit writes. */
 async function pasteOver(place: Place, range: typeof X, text: string): Promise<string[]> {
-	const { deps } = makeEditorActionsDeps(place.source, { reading: LIVE });
+	const h = makePasteCommit(place.source, { reading: LIVE });
 	const blockEdit = makeStubBlockEdit();
-	await pasteDispatch(
+	await dispatchPaste(
+		h,
 		{ pastedText: text, targetPath: place.leaf, offset: range.start, preDelete: range },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit,
-			reading: LIVE,
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
+		{ blockEdit }
 	);
 	return vi.mocked(blockEdit.updateBlockContent).mock.calls.map((call) => call[1]);
 }
@@ -684,17 +679,17 @@ const FAMILIES: Family[] = [
 		rows: [
 			...[TODO, QUOTED_TODO, NESTED_TODO, FOOTNOTE_TODO].map((place) => ({
 				shape: place.name,
-				run: () => deleteRange(place.source, [place.leaf, X.start], [place.leaf, X.end]),
+				run: () => backspaceRange(place.source, [place.leaf, X.start], [place.leaf, X.end]),
 				want: place.source.replace('**x**', '')
 			})),
 			{
 				shape: ITEM.name,
-				run: () => deleteRange(ITEM.source, [ITEM.leaf, X.start], [ITEM.leaf, X.end]),
+				run: () => backspaceRange(ITEM.source, [ITEM.leaf, X.start], [ITEM.leaf, X.end]),
 				want: '- ****[ ] y\n'
 			},
 			{
 				shape: 'across two to-dos',
-				run: () => deleteRange('- [ ] **a**\n- [ ] **c**# y\n', [[0, 0, 0], 2], [[0, 1, 0], 3]),
+				run: () => backspaceRange('- [ ] **a**\n- [ ] **c**# y\n', [[0, 0, 0], 2], [[0, 1, 0], 3]),
 				want: '- [ ] # y\n'
 			}
 		]
@@ -705,17 +700,17 @@ const FAMILIES: Family[] = [
 		rows: [
 			{
 				shape: 'the kept head of a to-do',
-				run: () => deleteRange(`- [ ] # y**z**\n\n${CALLOUT}`, [[0, 0, 0], 5], [[1, 1], 2]),
+				run: () => backspaceRange(`- [ ] # y**z**\n\n${CALLOUT}`, [[0, 0, 0], 5], [[1, 1], 2]),
 				want: `- [ ] # y\n\n:::callout\ndy\n:::\n`
 			},
 			{
 				shape: 'the kept tail of a to-do',
-				run: () => deleteRange(`${CALLOUT}\n- [ ] **x**# y\n`, [[0, 1], 2], [[1, 0, 0], 3]),
+				run: () => backspaceRange(`${CALLOUT}\n- [ ] **x**# y\n`, [[0, 1], 2], [[1, 0, 0], 3]),
 				want: `:::callout T\nbo\n:::\n\n- [ ] # y\n`
 			},
 			{
 				shape: 'the kept tail of a plain item',
-				run: () => deleteRange(`${CALLOUT}\n- **x**[ ] y\n`, [[0, 1], 2], [[1, 0, 0], 3]),
+				run: () => backspaceRange(`${CALLOUT}\n- **x**[ ] y\n`, [[0, 1], 2], [[1, 0, 0], 3]),
 				want: `:::callout T\nbo\n:::\n\n- **[ ] y\n`
 			}
 		]

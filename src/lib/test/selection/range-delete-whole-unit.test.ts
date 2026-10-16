@@ -1,16 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { rangeDelete } from '#lib/selection/range-delete.js';
-import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { expectParseConverged } from '../harness/parse-converged';
 import type { Document } from '#lib/core/nodes.js';
 import type { SelectionPoint } from '#lib/selection/primitives.js';
-import { fixtureReading } from '../harness/fixture-grammar';
 import type { RemovalGesture } from '#lib/selection/caret-target.js';
 import { registerChromePluginsForTests } from './chrome-plugins';
 import { TWO_COL_THREE_ROW } from './table-fixtures';
+import { deleteRange } from '../harness/range-delete';
 
 // A block with no positions inside it (a rule, a diagram) is in a range whole or not at all, so
 // a range that covers it deletes the node: the same-block branch's byte write would leave a rule
@@ -24,13 +21,7 @@ function del(
 	gesture: RemovalGesture = 'keyless'
 ) {
 	const doc: Document = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		gesture
-	);
+	const result = deleteRange(doc, start, end, { gesture: gesture });
 	return { doc, caret: result.caret(result.newDoc) };
 }
 

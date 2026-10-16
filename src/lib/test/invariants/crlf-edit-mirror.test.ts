@@ -22,31 +22,26 @@ import {
 	rebuildTableRowRaw
 } from '../../schema/container-rebuilders';
 import { insertEmptyRow } from '../../tree-operations/table-mutations';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import type { SelectionPoint } from '../../selection/primitives';
-import { createSharingState } from '../../tree-operations/sharing';
 import { ensureEditableContainers } from '#lib/schema/opened-reading.js';
 import { buildExitReplacement } from '../../tree-operations/list/exit-replacement';
-import { pasteDispatch } from '../../tree-operations/paste/dispatch';
 import { parseReplacement } from '../../tree-operations/paste/replacement-parse';
 import { slotReaderAt } from '../../tree-operations/list/task-paragraph';
 import { replaceBlockRaw } from '../../editor-actions/block-edit-core';
-import { createPasteCoordinator } from '../../editor-actions/paste-coordinator';
-import { createUndoController } from '../../editor-actions/commit/undo-controller';
 import { createBlockEditActions } from '../../editor-actions/block-edit';
 import { fixtureReading, topLevelStore } from '../harness/fixture-grammar';
 import {
-	makeEditorActionsDeps,
 	makeListContextAt,
 	makeTopHarness,
-	pasteContext
+	dispatchPaste,
+	makePasteCommit
 } from '../harness/editor-actions';
 import { createFocusActions } from '../../editor-actions/focus/focus';
 import { blockContextActionsFor } from '../../schema/context-actions';
 import { everyInstalledPlugin } from '../../schema/plugin-activation';
 import { registerCodeContextActions } from '../../components/blocks/code/code-context-actions';
 import { ensurePasteSurface } from '#lib/test/support/paste-surface.js';
+import { deleteRange } from '../harness/range-delete';
 
 interface EditGesture {
 	name: string;
@@ -70,31 +65,19 @@ async function pasteInto(
 ): Promise<Document> {
 	ensurePasteSurface(tableCellPasteSurface);
 	ensurePasteSurface(codePasteSurface);
-	const { deps } = makeEditorActionsDeps(doc);
-	const controller = createUndoController(deps);
-	await pasteDispatch(
+	const h = makePasteCommit(doc);
+	await dispatchPaste(
+		h,
 		{ pastedText: clipboard, targetPath, offset },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: createBlockEditActions(deps, controller),
-			controller: createPasteCoordinator(deps, controller)
-		})
+		{ blockEdit: createBlockEditActions(h.deps, h.undo) }
 	);
-	return deps.doc;
+	return h.doc;
 }
 
 /** A range delete's emitted bytes. The grammar, mode and resolver arguments stay `undefined`:
  *  this test reads the line ending, and none of the three moves one. */
 const deleteBetween = (doc: Document, start: SelectionPoint, end: SelectionPoint) =>
-	serialize(
-		rangeDelete(
-			doc,
-			rangeCoverage(doc, coverRange(doc, start, end)),
-			createSharingState(),
-			fixtureReading(),
-			'keyless'
-		).newDoc
-	);
+	serialize(deleteRange(doc, start, end).newDoc);
 
 const GESTURES: EditGesture[] = [
 	{

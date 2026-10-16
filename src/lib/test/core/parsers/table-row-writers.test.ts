@@ -14,11 +14,8 @@ import { copyRectangleAsSubTable } from '#lib/tree-operations/sub-table-copy.js'
 import { tryCompleteTableRow } from '#lib/core/parsers/table-completion.js';
 import { insertCatalogue } from '#lib/schema/insert-catalogue.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
-import { makeEditorActionsDeps, pasteContext } from '#lib/test/harness/editor-actions.js';
+import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 
 const ENDINGS = [
 	['LF', '\n'],
@@ -184,19 +181,15 @@ describe.each(ENDINGS)('the table rows each route writes, %s', (_, ending) => {
 	});
 
 	it('the insert menu’s table, landed in the document', async () => {
-		const { deps } = makeEditorActionsDeps(parse(`a${ending}`));
-		const controller = createUndoController(deps);
-		const blockEdit = createBlockEditActions(deps, controller);
+		const h = makePasteCommit(parse(`a${ending}`));
+		const blockEdit = createBlockEditActions(h.deps, h.undo);
 		await blockEdit.insertParagraph(1, '');
-		await pasteDispatch(
+		await dispatchPaste(
+			h,
 			{ pastedText: tableEntry().markdown, targetPath: [1], offset: 0 },
-			pasteContext({
-				doc: deps.doc,
-				blockEdit,
-				controller: createPasteCoordinator(deps, controller)
-			})
+			{ blockEdit }
 		);
-		expect(serialize(deps.doc)).toBe(
+		expect(serialize(h.doc)).toBe(
 			inEnding('a\n\n| Column | Column |\n| --- | --- |\n|  |  |\n', ending)
 		);
 	});

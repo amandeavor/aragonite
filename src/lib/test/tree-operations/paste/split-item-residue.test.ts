@@ -1,13 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import {
 	makePasteCommit,
-	makeStubBlockEdit,
 	registerStubBlockListState,
-	pasteContext
+	dispatchPaste
 } from '../../harness/editor-actions';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { buildListBreakOutReplacement } from '#lib/tree-operations/paste/list-break-out.js';
@@ -18,13 +16,10 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 // Miss-analysis: GH #446, every split-item fixture put a paragraph after the caret.
 
 async function pasteAfterAbc(source: string, clipboard: string) {
-	const { doc, controller } = makePasteCommit(source);
-	registerStubBlockListState(doc.children[0]);
-	await pasteDispatch(
-		{ pastedText: clipboard, targetPath: [0, 0, 0], offset: 'abc'.length },
-		pasteContext({ doc, blockEdit: makeStubBlockEdit(), controller })
-	);
-	return doc;
+	const h = makePasteCommit(source);
+	registerStubBlockListState(h.doc.children[0]);
+	await dispatchPaste(h, { pastedText: clipboard, targetPath: [0, 0, 0], offset: 'abc'.length });
+	return h.doc;
 }
 
 describe('the text after the caret, split into an item of its own', () => {

@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { createSharingState } from '../../tree-operations/sharing';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 function run(
 	source: string,
@@ -12,13 +9,7 @@ function run(
 	end: { path: number[]; offset: number }
 ) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end);
 	return { source: serialize(result.newDoc), caret: result.caret(result.newDoc) };
 }
 

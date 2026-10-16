@@ -1,16 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import {
 	makeBlockListState,
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
+	dispatchPaste,
+	makePasteCommit
 } from '#lib/test/harness/editor-actions.js';
 import { expectParseConverged } from '#lib/test/harness/parse-converged.js';
 
@@ -19,29 +15,21 @@ import { expectParseConverged } from '#lib/test/harness/parse-converged.js';
 
 describe('container-matching paste over a blank body block', () => {
 	it('separates both the spliced head and the block below it', async () => {
-		const { deps } = makeEditorActionsDeps(parse('> a\n>\n>\n> b\n').children);
-		const quote = deps.doc.children[0];
+		const h = makePasteCommit(parse('> a\n>\n>\n> b\n').children);
+		const quote = h.doc.children[0];
 		expect(quote.children!.map((n) => [n.leadingTrivia, n.raw])).toEqual([
 			['', 'a\n'],
 			['\n', '\n'],
 			['', 'b\n']
 		]);
-		const controller = createUndoController(deps);
 		registerBlockListState(
 			quote,
-			makeBlockListState(() => deps.doc.children[0])
+			makeBlockListState(() => h.doc.children[0])
 		);
 
-		await pasteDispatch(
-			{ pastedText: '> X\n>\n> Y\n', targetPath: [0, 1], offset: 0 },
-			pasteContext({
-				doc: deps.doc,
-				blockEdit: makeStubBlockEdit(),
-				controller: createPasteCoordinator(deps, controller)
-			})
-		);
+		await dispatchPaste(h, { pastedText: '> X\n>\n> Y\n', targetPath: [0, 1], offset: 0 });
 
-		expect(serialize(deps.doc)).toBe('> a\n>\n> X\n>\n> Y\n>\n> b\n');
-		expectParseConverged(deps.doc);
+		expect(serialize(h.doc)).toBe('> a\n>\n> X\n>\n> Y\n>\n> b\n');
+		expectParseConverged(h.doc);
 	});
 });

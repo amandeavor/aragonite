@@ -2,29 +2,15 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
-} from '#lib/test/harness/editor-actions.js';
+import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 
 // Miss-analysis: no paste test filled one of two empty paragraphs with an unterminated block.
 
 async function pasteOnFirstEmptyLine(source: string, markdown: string) {
-	const { deps } = makeEditorActionsDeps(parse(source).children);
-	await pasteDispatch(
-		{ pastedText: markdown, targetPath: [1], offset: 0 },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: makeStubBlockEdit(),
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
-	);
-	return deps.doc;
+	const h = makePasteCommit(parse(source).children);
+	await dispatchPaste(h, { pastedText: markdown, targetPath: [1], offset: 0 });
+	return h.doc;
 }
 
 describe('blocks pasted onto an empty line between two paragraphs', () => {

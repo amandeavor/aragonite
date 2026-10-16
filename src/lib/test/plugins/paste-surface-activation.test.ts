@@ -8,12 +8,9 @@ import { registerPasteTransform } from '#lib/tree-operations/paste/paste-transfo
 import { getPasteSurface, registerPasteSurface } from '#lib/tree-operations/paste-surfaces.js';
 import { defaultInlineHook } from '#lib/tree-operations/paste/hooks.js';
 import { registerChromeLeaf } from '#lib/plugin.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import { makeEditorActionsDeps, makeStubBlockEdit } from '#lib/test/harness/editor-actions.js';
+import { makePasteCommit, dispatchPaste } from '#lib/test/harness/editor-actions.js';
 import type { CstNode } from '#lib/core/nodes.js';
-import { fixtureReading, topLevelStore } from '../harness/fixture-grammar';
+import { topLevelStore } from '../harness/fixture-grammar';
 
 const KIND = 'stamp-note';
 const LEAF = 'stamp-title';
@@ -48,16 +45,11 @@ beforeEach(() => {
 
 async function pasteUnder(activePlugins: PluginActivation): Promise<string[]> {
 	const node = { kind: KIND, leadingTrivia: '', raw: 'target\n' } as CstNode;
-	const { deps } = makeEditorActionsDeps([node]);
-	await pasteDispatch(
+	const h = makePasteCommit([node]);
+	await dispatchPaste(
+		h,
 		{ pastedText: 'word', targetPath: [0], offset: 'target'.length },
-		{
-			doc: deps.doc,
-			blockEdit: makeStubBlockEdit(),
-			controller: createPasteCoordinator(deps, createUndoController(deps)),
-			reading: fixtureReading(),
-			activePlugins
-		}
+		{ activePlugins }
 	);
 	return ran;
 }

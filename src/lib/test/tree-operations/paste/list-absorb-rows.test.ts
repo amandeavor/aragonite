@@ -4,13 +4,11 @@
 // Miss-analysis: only the unordered marker rows ran below a browser, so the position, numbering and
 // marker-style rows reached the absorb path through real pastes in e2e alone.
 import { describe, it, expect } from 'vitest';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import { serialize } from '#lib/core/serializer.js';
 import {
 	makePasteCommit,
-	makeStubBlockEdit,
 	registerStubBlockListState,
-	pasteContext
+	dispatchPaste
 } from '../../harness/editor-actions';
 
 interface AbsorbRow {
@@ -93,14 +91,11 @@ const ROWS: AbsorbRow[] = [
 
 describe('a same-type list paste flattens into the enclosing list', () => {
 	it.each(ROWS)('$name', async ({ doc: source, clip, target, offset, after }) => {
-		const { doc, controller } = makePasteCommit(source);
-		registerStubBlockListState(doc.children[0]);
+		const h = makePasteCommit(source);
+		registerStubBlockListState(h.doc.children[0]);
 
-		await pasteDispatch(
-			{ pastedText: clip, targetPath: target, offset },
-			pasteContext({ doc, blockEdit: makeStubBlockEdit(), controller })
-		);
+		await dispatchPaste(h, { pastedText: clip, targetPath: target, offset });
 
-		expect(serialize(doc)).toBe(after);
+		expect(serialize(h.doc)).toBe(after);
 	});
 });

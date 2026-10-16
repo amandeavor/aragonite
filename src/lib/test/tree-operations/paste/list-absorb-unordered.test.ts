@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
 import {
 	makePasteCommit,
-	makeStubBlockEdit,
 	registerStubBlockListState,
-	pasteContext
+	dispatchPaste
 } from '../../harness/editor-actions';
 import { metadataOf } from '#lib/core/nodes.js';
 
@@ -14,18 +12,16 @@ import { metadataOf } from '#lib/core/nodes.js';
 
 describe('list-absorb: marker normalization', () => {
 	it("templates pasted '*' markers to the enclosing '-' list", async () => {
-		const { doc, controller } = makePasteCommit('- alpha\n- beta\n');
+		const h = makePasteCommit('- alpha\n- beta\n');
+		const { doc } = h;
 		registerStubBlockListState(doc.children[0]);
 
 		// A single-caret paste routes to list-absorb rather than the container-match merge.
-		await pasteDispatch(
-			{ pastedText: '* one\n* two\n', targetPath: [0, 0, 0], offset: 'alpha'.length },
-			pasteContext({
-				doc,
-				blockEdit: makeStubBlockEdit(),
-				controller
-			})
-		);
+		await dispatchPaste(h, {
+			pastedText: '* one\n* two\n',
+			targetPath: [0, 0, 0],
+			offset: 'alpha'.length
+		});
 
 		const list = doc.children[0];
 		const markers = list.children!.map((it) => metadataOf(it, 'listItem').marker);

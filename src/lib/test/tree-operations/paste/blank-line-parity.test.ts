@@ -3,17 +3,10 @@ import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import type { Document } from '#lib/core/nodes.js';
-import { pasteDispatch } from '#lib/tree-operations/paste/dispatch.js';
-import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createBlockEditActions } from '#lib/editor-actions/block-edit.js';
 import { createHistoryActions } from '#lib/editor-actions/commit/history.js';
 import { splitNode } from '#lib/tree-operations/node-ops.js';
-import {
-	makeEditorActionsDeps,
-	makeStubBlockEdit,
-	pasteContext
-} from '#lib/test/harness/editor-actions.js';
+import { dispatchPaste, makePasteCommit } from '#lib/test/harness/editor-actions.js';
 import { triviaRawOf } from '#lib/test/harness/parse-converged.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
@@ -23,17 +16,10 @@ import { createSharingState } from '#lib/tree-operations/sharing.js';
 
 /** Paste `clipboard` at the end of a one-paragraph document. */
 async function pasteAfterX(clipboard: string): Promise<Document> {
-	const { deps } = makeEditorActionsDeps(parse('x\n').children);
+	const h = makePasteCommit(parse('x\n').children);
 
-	await pasteDispatch(
-		{ pastedText: clipboard, targetPath: [0], offset: 1 },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: makeStubBlockEdit(),
-			controller: createPasteCoordinator(deps, createUndoController(deps))
-		})
-	);
-	return deps.doc;
+	await dispatchPaste(h, { pastedText: clipboard, targetPath: [0], offset: 1 });
+	return h.doc;
 }
 
 /** Paste `clipboard` at the head of block `index` of a live document. */
@@ -52,18 +38,14 @@ async function pasteLive(
 	clipboard: string
 ): Promise<{ doc: Document; history: ReturnType<typeof createHistoryActions> }> {
 	// The whole document, not its children: the trailing blank line is the subject here.
-	const { deps } = makeEditorActionsDeps(doc);
-	const controller = createUndoController(deps);
+	const h = makePasteCommit(doc);
 
-	await pasteDispatch(
+	await dispatchPaste(
+		h,
 		{ pastedText: clipboard, targetPath, offset },
-		pasteContext({
-			doc: deps.doc,
-			blockEdit: createBlockEditActions(deps, controller),
-			controller: createPasteCoordinator(deps, controller)
-		})
+		{ blockEdit: createBlockEditActions(h.deps, h.undo) }
 	);
-	return { doc: deps.doc, history: createHistoryActions(deps, controller) };
+	return { doc: h.doc, history: createHistoryActions(h.deps, h.undo) };
 }
 
 const raws = (doc: Document): string[] => doc.children.map((n) => n.raw);

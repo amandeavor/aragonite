@@ -1,12 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { rangeDelete } from '../../selection/range-delete';
-import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import { parse } from '../../core/parser';
 import { blockNodeAt, nodeAt } from '../../tree-operations/node-primitives';
-import { createSharingState } from '../../tree-operations/sharing';
 import type { Document } from '../../core/nodes';
 import type { SelectionPoint } from '../../selection/primitives';
-import { fixtureReading } from '../harness/fixture-grammar';
+import { deleteRange } from '../harness/range-delete';
 
 // Two 2×2 tables followed by a blockquote, and the same pair nested inside a blockquote holding a
 // paragraph. Selecting across both tables empties them, forcing the survivor caret path.
@@ -17,13 +14,7 @@ const NESTED =
 
 function run(source: string, start: SelectionPoint, end: SelectionPoint) {
 	const doc = parse(source);
-	const result = rangeDelete(
-		doc,
-		rangeCoverage(doc, coverRange(doc, start, end)),
-		createSharingState(),
-		fixtureReading(),
-		'keyless'
-	);
+	const result = deleteRange(doc, start, end);
 	return { doc: result.newDoc, caret: result.caret(result.newDoc)! };
 }
 
