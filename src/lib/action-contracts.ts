@@ -126,6 +126,9 @@ export interface BlockEditActions {
 		metadata: Record<string, unknown>,
 		options?: { caret?: BlockCaret }
 	): Promise<boolean>;
+	/** Rewrite the block's bytes in the document's line ending through this list's write rules,
+	 *  as its own undo entry whatever typing came before; the parse derives kind and metadata. */
+	replaceRaw(blockIndex: number, raw: string): Promise<boolean>;
 	/** Replace the block with zero or more blocks (none is `deleteBlock`). `focus.path` addresses a
 	 *  caret inside the replacement; `snapshotOffset` is the undo entry's caret. */
 	replaceBlock(

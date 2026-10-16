@@ -1,9 +1,12 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { dispatchKeyCommand, registerBlockCommand } from '#lib/schema/block-commands.js';
+import {
+	blockCommandTarget,
+	dispatchKeyCommand,
+	registerBlockCommand
+} from '#lib/schema/block-commands.js';
 import { normalizeChordStrict } from '#lib/schema/keybindings.js';
 import type { KeybindingOverrideMap } from '#lib/schema/keybinding-overrides.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
-import { buildLeafCommandContext } from '#lib/components/blocks/editable/editable-leaf.js';
 import type { AnyBlockKind, CstNode, PluginBlockKind } from '#lib/core/nodes.js';
 import type { AnyCommandId } from '#lib/schema/command-id.js';
 import { commandContextWith } from '#lib/test/support/command-context.js';
@@ -31,9 +34,9 @@ function bindKindChord(
 	};
 }
 
-type BuildArgs = Parameters<typeof buildLeafCommandContext>;
+type BuildArgs = Parameters<typeof blockCommandTarget>;
 type CtxOverrides = Partial<Omit<BuildArgs[0], 'getIndex'> & BuildArgs[1]> & {
-	index?: number;
+	getIndex?: () => number;
 };
 
 // `getNode` stays a function through the builder: the dispatch re-reads it, so capturing what
@@ -41,23 +44,31 @@ type CtxOverrides = Partial<Omit<BuildArgs[0], 'getIndex'> & BuildArgs[1]> & {
 function buildCtx(over: CtxOverrides = {}) {
 	const {
 		getNode = () => leafNode(),
-		index = 0,
+		getIndex = () => 0,
 		commandHooks,
-		updateBlockMetadata = vi.fn()
+		updateBlockMetadata = vi.fn(),
+		replaceRaw = vi.fn()
 	} = over;
-	return buildLeafCommandContext(
-		{ getNode, getIndex: () => index, commandHooks },
-		{ updateBlockMetadata }
+	return blockCommandTarget(
+		{ getNode, getIndex, commandHooks },
+		{ updateBlockMetadata, replaceRaw }
 	);
 }
 
-describe('editable-leaf command context', () => {
-	it('routes updateMetadata to blockEdit.updateBlockMetadata at the live index', () => {
+describe('the block command target a leaf and a container share', () => {
+	// The index is read when the write runs, so a block that moved since the context was built
+	// writes where it is now.
+	it('routes updateMetadata and replaceRaw to the list at the index read at call time', () => {
+		let index = 1;
 		const updateBlockMetadata = vi.fn();
-		const ctx = buildCtx({ index: 3, updateBlockMetadata });
+		const replaceRaw = vi.fn();
+		const ctx = buildCtx({ getIndex: () => index, updateBlockMetadata, replaceRaw });
+		index = 3;
 
 		ctx.updateMetadata({ code: 'x' });
+		ctx.replaceRaw('%%! x');
 		expect(updateBlockMetadata).toHaveBeenCalledWith(3, { code: 'x' });
+		expect(replaceRaw).toHaveBeenCalledWith(3, '%%! x');
 	});
 
 	it('threads commandHooks so a handler reaches the component; absent → undefined', () => {

@@ -8,19 +8,24 @@ import {
 	declarePluginKind,
 	registerBlockKind,
 	registerBlockCommand,
+	setPluginMetadata,
 	simpleLeafClosure,
-	type BlockView
+	type BlockView,
+	type CstNode
 } from '#lib/plugin.js';
 
 export const MEMO_BLOCK = 'memo';
+// A memo whose line opens with this prefix is tagged; its metadata says so.
+const TAGGED = '%%!';
 
 export function registerMemoBlock(view: BlockView): void {
 	const memo = declarePluginKind(MEMO_BLOCK);
 
 	// Harness-only commands, dispatched the way an editable leaf's registered commands are:
-	// `memo.tag` commits the supported way, `memo.boom` throws so the containment shows.
+	// `memo.tag` writes the tag into the bytes (`%%!`), `memo.boom` throws so the containment shows.
 	const tag = registerBlockCommand(memo, 'memo.tag', (ctx) => {
-		ctx.updateMetadata({ memoTagged: true });
+		if (ctx.node.raw.startsWith(TAGGED)) return false;
+		ctx.replaceRaw(TAGGED + ctx.node.raw.slice(2));
 		return true;
 	});
 	const boom = registerBlockCommand(memo, 'memo.boom', () => {
@@ -36,10 +41,9 @@ export function registerMemoBlock(view: BlockView): void {
 			interruptsParagraph: (text) => text.startsWith('%%'),
 			tryOpen(ctx) {
 				if (!ctx.line.text.startsWith('%%')) return null;
-				return {
-					node: { kind: memo, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw },
-					consumed: 1
-				};
+				const node: CstNode = { kind: memo, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw };
+				if (ctx.line.text.startsWith(TAGGED)) setPluginMetadata(node, { memoTagged: true });
+				return { node, consumed: 1 };
 			}
 		},
 		gapEdges: 'none',

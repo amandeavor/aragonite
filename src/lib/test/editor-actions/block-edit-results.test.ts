@@ -47,6 +47,7 @@ const WRITES: Record<
 	deleteBlock: (a) => a.deleteBlock(1, 'keyless'),
 	updateBlockContent: (a) => a.updateBlockContent(1, 'twox\n', 'authored', 3, 4),
 	completeLineOnType: (a) => a.completeLineOnType(1, 3),
+	replaceRaw: (a) => a.replaceRaw(1, 'twox\n'),
 	replaceBlock: (a) =>
 		a.replaceBlock(1, [paragraphNode('', 'new', '\n')], undefined, { snapshotOffset: 0 })
 };

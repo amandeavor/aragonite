@@ -222,28 +222,6 @@ export async function commitLeafTextAt(
 	});
 }
 
-/**
- * A command's rewrite of the block at `path` in the document's line ending, its own undo entry
- * whatever typing came before; the caret moves to the block's start only when new blocks land.
- */
-export async function replaceBlockRaw(
-	root: EditorRoot,
-	path: readonly number[],
-	raw: string
-): Promise<void> {
-	const scope = createPathScope(root, docPathFrom(path.slice(0, -1)));
-	const index = path[path.length - 1];
-	if (!scope || !scope.children()[index]) return;
-	const target = scope.target();
-	const lineEnding = 'lineEnding' in target ? target.lineEnding : documentLineEnding(target);
-	const write = legalizeWrite(target, index, withLineEnding(raw, lineEnding), 'literal');
-	await commitLeafText(scope, index, write, {
-		snapshotOffset: 0,
-		caret: 0,
-		landing: (landed) => (landed.replaced ? unlessFocusMoved(landed) : null)
-	});
-}
-
 /** Each edit resolves to whether bytes landed. */
 export interface BlockEditCore {
 	split(i: number, offset: number): Promise<boolean>;
@@ -257,6 +235,7 @@ export interface BlockEditCore {
 		metadata: Record<string, unknown>,
 		options?: { caret?: BlockCaret }
 	): Promise<boolean>;
+	replaceRaw(i: number, raw: string): Promise<boolean>;
 	/** Resolves to how many blocks landed in the position, or null when nothing was written. */
 	replaceBlock(
 		i: number,
@@ -492,6 +471,19 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 					return caret ? scope.at(i, caret.path, caret.offset) : null;
 				}
 			});
+		},
+
+		async replaceRaw(i, raw) {
+			if (!scope.children()[i]) return false;
+			const target = scope.target();
+			const lineEnding = 'lineEnding' in target ? target.lineEnding : documentLineEnding(target);
+			const write = legalizeWrite(target, i, withLineEnding(raw, lineEnding), 'literal');
+			const landed = await commitLeafText(scope, i, write, {
+				snapshotOffset: 0,
+				caret: 0,
+				landing: (written) => (written.replaced ? unlessFocusMoved(written) : null)
+			});
+			return landed.wrote;
 		},
 
 		async replaceBlock(i, given, focus, options) {

@@ -16,7 +16,11 @@ import type { NodeView } from '../../core/node-views';
 import type { AmbientPrefix, BlockComponent, ContainerBlockComponent } from '../../block-component';
 import { getBlockKindDescriptor } from '../../schema/block-kind-descriptor';
 import { expandContainerPatch, isCollapsedContainer } from '../../schema/reserved-chrome';
-import type { KindCommandTarget } from '../../schema/block-commands';
+import {
+	blockCommandTarget,
+	type BlockCommandWrites,
+	type KindCommandTarget
+} from '../../schema/block-commands';
 import { commandForKey } from '../../schema/commands';
 import { isReadingMode, type PresentationMode } from '../../presentation-mode';
 import { devWarn } from '../../dev-warn';
@@ -245,20 +249,14 @@ export function composeCollapseGates(
 /** The kind-command target a plugin container hands to `dispatchKindCommand`. It has no
  *  `runCommand`, since a plugin container owns no built-in kind commands. */
 export function buildContainerKindTarget(
-	deps: Pick<ContainerBlockDeps, 'getNode' | 'commandHooks'>,
-	updateOwnMetadata: ContainerBlock['updateOwnMetadata']
+	deps: Pick<ContainerBlockDeps, 'getNode' | 'getIndex' | 'commandHooks'>,
+	parentBlockEdit: BlockCommandWrites
 ): KindCommandTarget {
 	return {
 		get kind() {
 			return deps.getNode().kind;
 		},
-		getCommandContext: () => ({
-			node: deps.getNode(),
-			updateMetadata: (patch) => {
-				void updateOwnMetadata(patch);
-			},
-			hooks: deps.commandHooks?.()
-		})
+		getCommandContext: () => blockCommandTarget(deps, parentBlockEdit)
 	};
 }
 
@@ -398,7 +396,7 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 		await parentBlockEdit.updateBlockMetadata(deps.getIndex(), patch, options);
 	};
 
-	const kindTarget = buildContainerKindTarget(deps, updateOwnMetadata);
+	const kindTarget = buildContainerKindTarget(deps, parentBlockEdit);
 	// Focused as a whole, the block is the one a reorder chord moves; a key bubbling from an
 	// inner leaf was that leaf's to move.
 	const wholeBlockTarget: KindCommandTarget = {

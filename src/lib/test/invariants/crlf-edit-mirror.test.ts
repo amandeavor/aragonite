@@ -27,7 +27,6 @@ import { ensureEditableContainers } from '#lib/schema/opened-reading.js';
 import { buildExitReplacement } from '../../tree-operations/list/exit-replacement';
 import { parseReplacement } from '../../tree-operations/paste/replacement-parse';
 import { slotReaderAt } from '../../tree-operations/list/task-paragraph';
-import { replaceBlockRaw } from '../../editor-actions/block-edit-core';
 import { createBlockEditActions } from '../../editor-actions/block-edit';
 import { fixtureReading, topLevelStore } from '../harness/fixture-grammar';
 import {
@@ -374,8 +373,8 @@ function pasteRoutes(): EditGesture[] {
 			name: 'the block menu replacing a code block with the clipboard',
 			source: 'first\n\n```\ncode\n```\n',
 			apply: async (doc) => {
-				const { deps, controller } = makeTopHarness(doc);
-				await replaceBlockRaw({ deps, controller }, [1], 'x\ny\n');
+				const { deps, actions } = makeTopHarness(doc);
+				await actions.replaceRaw(1, 'x\ny\n');
 				return serialize(deps.doc);
 			}
 		}
