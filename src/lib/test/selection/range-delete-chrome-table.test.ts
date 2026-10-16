@@ -78,7 +78,7 @@ describe('chrome wall × table branch: table endpoint inside the container', () 
 		const snapshotTitle = doc.children[1].children![0];
 		const sharing = createSharingState();
 		sharing.markSnapshotTaken();
-		deleteRange(doc, point([0], 2), cellPoint([1, 1], 1), { sharing: sharing });
+		deleteRange(doc, point([0], 2), cellPoint([1, 1], 1), { sharing });
 		expect(snapshotTitle.raw).toBe('Title\n');
 	});
 });
@@ -105,7 +105,7 @@ describe('chrome wall × table branch: table endpoint outside the container', ()
 
 		const sharing = createSharingState();
 		sharing.markSnapshotTaken();
-		const { newDoc } = deleteRange(doc, cellPoint([0], 2), point([1, 0], 3), { sharing: sharing });
+		const { newDoc } = deleteRange(doc, cellPoint([0], 2), point([1, 0], 3), { sharing });
 
 		expect(newDoc.children[1].children![0].raw).toBe('le\n');
 		expect(snapshotTitle.raw).toBe('Title\n');

@@ -21,7 +21,7 @@ function del(
 	gesture: RemovalGesture = 'keyless'
 ) {
 	const doc: Document = parse(source);
-	const result = deleteRange(doc, start, end, { gesture: gesture });
+	const result = deleteRange(doc, start, end, { gesture });
 	return { doc, caret: result.caret(result.newDoc) };
 }
 

@@ -144,7 +144,7 @@ describe('chrome wall: rangeDelete post-states', () => {
 
 		const sharing = createSharingState();
 		sharing.markSnapshotTaken();
-		deleteRange(doc, point([0], 2), point([1, 1], 2), { sharing: sharing });
+		deleteRange(doc, point([0], 2), point([1, 1], 2), { sharing });
 
 		expect(snapshotTitle.raw).toBe('Title\n');
 	});
