@@ -51,15 +51,17 @@ import {
 } from './node-primitives';
 import { ensureEditableContainers } from '../schema/opened-reading';
 import {
-	absorbWindowSeams,
-	focusTargetInReplacement,
 	releaseWrapPeel,
 	restoreSeparatorAfterBlank,
 	restoreSeparatorOnFill,
 	settleSeparatorOnBlank,
-	widenForTailMint,
-	type TrackedPosition
+	widenForTailMint
 } from './settle';
+import {
+	absorbWindowSeams,
+	focusTargetInReplacement,
+	type TrackedPosition
+} from './neighbour-merge';
 
 // ── Making written bytes legal ──
 

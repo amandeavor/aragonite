@@ -1473,9 +1473,10 @@ fixes its separators through one route (`settleSeparator` in the commit steps,
 `spliceChildrenSettled` under the path-addressed entries), and the allowlist names each exemption
 with its reason (`node-ops.ts`, `content-write.ts`, `node-primitives.ts`, `chain-rebuild.ts`,
 `reorder.ts`, the item moves under `list/`, paste replacements, and three sites a splice window
-can't infer, such as the gap-caret insert). Inside `settle.ts`, every blank-line write goes through
-`writeSeparator` or `writeWrapSlot`, which drop the owner's child spans first, and the fix-ups take
-a `BodyParent`, so none loses track of whose fence lines it's reading.
+can't infer, such as the gap-caret insert). Every blank-line write the fix-ups make goes through
+`tree-operations/separator-writes.ts` (`writeSeparator` or `writeWrapSlot`), which drops the
+owner's child spans first, and the fix-ups take a `BodyParent`, so none loses track of whose
+fence lines it's reading.
 `lint/separator-write-doors.test.ts`.
 
 **G4.43 · Split-landing parity.** Every file naming `splitNode` reads `secondHalfIndex` at least
@@ -1600,9 +1601,9 @@ source, another plugin's published subpath, the copyable test support, a relativ
 library code, or an npm package. A deep `#lib` import names something the testing entry point is
 missing; each allowlist entry names it, and a dead entry fails. `lint/bundled-plugin-test-boundary.test.ts`.
 
-**G4.64 · The tree-ops layering.** `node-primitives.ts`, `unshare.ts`, `settle.ts`,
-`content-write.ts`, `stored-as.ts`, `leaf-range.ts`, `node-ops.ts` and `chain-rebuild.ts` import only
-downward, in that order. An import cycle passes every behavior test and `svelte-check`, so only a
+**G4.64 · The tree-ops layering.** `node-primitives.ts`, `unshare.ts`, `separator-writes.ts`,
+`neighbour-merge.ts`, `settle.ts`, `content-write.ts`, `stored-as.ts`, `leaf-range.ts`,
+`node-ops.ts` and `chain-rebuild.ts` import only downward, in that order. An import cycle passes every behavior test and `svelte-check`, so only a
 source scan holds it. `lint/tree-op-ladder.test.ts`.
 
 **G4.65 · Delimiter auto-pair parity.** Every editable prose surface (G4.44's set) routes its

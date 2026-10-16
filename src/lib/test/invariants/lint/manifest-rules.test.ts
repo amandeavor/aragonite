@@ -295,7 +295,7 @@ const PLAIN_READS: Record<string, string> = {
 		'hands on: reads the clipboard’s own blocks to pick the paste strategy, which a childless container steers; the routes that land them fill in at the splice',
 	'src/lib/tree-operations/reorder.ts':
 		'probe: asks whether two neighbours still read as a pair, and installs nothing',
-	'src/lib/tree-operations/settle.ts':
+	'src/lib/tree-operations/neighbour-merge.ts':
 		'installs after backfill: merges a window of whole sibling blocks by how their joined bytes read, comparing block counts on the plain read',
 	'src/lib/tree-operations/list/list-builders.ts':
 		'hands on: a split item’s halves are read at the slot and land through list absorb and list break-out, which fill in at the splice',
@@ -685,13 +685,13 @@ const OBLIGATIONS: FileRule[] = [
 		reaches: Object.keys(PLAIN_READS).filter((path) => BACKFILLS_HERE.test(PLAIN_READS[path])),
 		hits: [
 			at(
-				SOURCE_DIR.treeOperations + 'settle.ts',
+				SOURCE_DIR.treeOperations + 'neighbour-merge.ts',
 				"const read = readBlocks(bytes, { grammar, scope: 'fragment' });"
 			)
 		],
 		misses: [
 			at(
-				SOURCE_DIR.treeOperations + 'settle.ts',
+				SOURCE_DIR.treeOperations + 'neighbour-merge.ts',
 				'for (const block of blocks) ensureEditableContainers(block, ending);'
 			)
 		]

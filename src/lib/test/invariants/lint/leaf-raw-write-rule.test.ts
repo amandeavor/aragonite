@@ -62,7 +62,7 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		count: 3,
 		why: 'the split re-attaches the blank line that parse stripped (GH #97); both branches of `joinIntoLeaf` land bytes that already crossed `legalizeWrite` and a fragment reparse (GH #54)'
 	},
-	'src/lib/tree-operations/settle.ts': {
+	'src/lib/tree-operations/neighbour-merge.ts': {
 		count: 1,
 		why: 'the join absorb re-attaches the blank run its own reparse stripped (GH #61)'
 	},

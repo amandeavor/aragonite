@@ -16,7 +16,7 @@ import type { CstNode } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import type { StructuralChange } from '../tree-operations/structural-change';
 import type { SharingState } from '../tree-operations/sharing';
-import type { TrackedPosition } from '../tree-operations/settle';
+import type { TrackedPosition } from '../tree-operations/neighbour-merge';
 import type { LegalWrite, WriteTarget } from '../tree-operations/content-write';
 import type { Reading } from '../schema/reading';
 import type { DocumentStamps } from './commit/document-stamp';
