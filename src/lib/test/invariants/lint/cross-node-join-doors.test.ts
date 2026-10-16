@@ -43,6 +43,8 @@ const NON_JOIN_CONCATENATIONS: Record<string, string> = {
 		'the first-slot reader gives back the spaces a marker line takes from the bytes it was handed: one write’s bytes, re-split',
 	'src/lib/schema/child-spans.ts':
 		"a container splicing ONE child's region back into its own raw: both surrounding operands are bytes that container already emitted",
+	'src/lib/schema/strip-rebuild.ts':
+		'a quote or list item writing its rewritten lines between the head and tail lines it kept: both kept operands are bytes that container already emitted',
 	'src/lib/tree-operations/paste/container-match.ts':
 		'a paste INSERTS between the target’s own halves; its delete half, the one place a cut can strand a run, is `preDelete`, cut by `replaceRangeInLeaf` before the container routes run',
 	'src/lib/selection/cross-block/range-replace.ts':
