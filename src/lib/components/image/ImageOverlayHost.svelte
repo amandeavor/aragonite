@@ -9,7 +9,10 @@
 		type EditorServices
 	} from '../../editor-keys';
 	import type { EditorEvents } from '../../editor-events';
-	import { installWidgetRangePainter } from '../../selection/widget-range-paint';
+	import {
+		installWidgetSelectionPainter,
+		type WidgetSelectionPainter
+	} from '../../selection/widget-selection-paint';
 	import ImageProperties from './ImageProperties.svelte';
 	import ImageResizeHandles from './ImageResizeHandles.svelte';
 	import { createImageEditCommitter } from './image-edit-commit';
@@ -85,52 +88,63 @@
 		return lastPopover;
 	});
 
+	// Selecting an image stays available in reading mode; the overlay is a set of editing controls,
+	// so reading mode never mounts it, and the image wears the selection wash instead of its ring.
+	const overlayShown = $derived(
+		selection.widget !== null &&
+			reading.mode() !== 'reading' &&
+			!!imageEdit.getSelectedImageFields()?.widgetEl &&
+			popover !== null
+	);
+
 	$effect(() => {
 		void selection.widget; // re-run + reposition when the selected widget changes
 		return imageEdit.syncOverlayToWidget(() => imageOverlayEl ?? null);
 	});
 
+	let widgetPainter: WidgetSelectionPainter | null = null;
 	$effect(() => {
 		const root = getEditorEl();
 		if (!root) return;
-		installWidgetRangePainter({
+		widgetPainter = installWidgetSelectionPainter({
 			editorRoot: root,
 			getSelectionIsCustomRendered: () => selection.isCustomRendered,
-			getWidgetIsSelected: () => selection.widget !== null,
+			getHeldWidget: () => selection.widget,
+			getHeldWidgetDrawnElsewhere: () => overlayShown,
 			lifetime
 		});
 	});
+	// A re-render rebuilds the widget's element without the class, and fires no `selectionchange`.
+	$effect(() => {
+		void [selection.widget, overlayShown, getContentVersion()];
+		untrack(() => widgetPainter?.repaint());
+	});
 </script>
 
-<!-- Selecting an image stays available in reading mode; the overlay is a set of
-	editing controls, so reading mode never mounts it. -->
-{#if selection.widget && reading.mode() !== 'reading'}
-	{@const ctx = imageEdit.getSelectedImageFields()}
-	{#if ctx?.widgetEl && popover}
-		<div bind:this={imageOverlayEl} class="md-image-overlay" data-image-overlay>
-			{#if !cropping}
-				<ImageResizeHandles
-					getWidgetEl={() => imageEdit.getSelectedImageFields()?.widgetEl ?? null}
-					editorContentWidth={imageEdit.getEditorContentWidth()}
-					editorEvents={events}
-					onCommit={imageEdit.commitImageResize}
-				/>
-			{/if}
-			{#key `${popover.target.paragraphPath.join(',')}@${popover.target.sourceStart}`}
-				<ImageProperties
-					target={popover.target}
-					fields={popover.fields}
-					getWidgetEl={() => imageEdit.getSelectedImageFields()?.widgetEl ?? null}
-					buildBytes={imageEdit.buildEditBytes}
-					onCommit={imageEdit.commitImageEdit}
-					onRemove={imageEdit.removeImage}
-					onDismiss={imageEdit.dismissImagePopover}
-					maxFrameWidth={imageEdit.getEditorContentWidth}
-					{menuPresence}
-					{caretWriter}
-					bind:cropping
-				/>
-			{/key}
-		</div>
-	{/if}
+{#if overlayShown && popover}
+	<div bind:this={imageOverlayEl} class="md-image-overlay" data-image-overlay>
+		{#if !cropping}
+			<ImageResizeHandles
+				getWidgetEl={() => imageEdit.getSelectedImageFields()?.widgetEl ?? null}
+				editorContentWidth={imageEdit.getEditorContentWidth()}
+				editorEvents={events}
+				onCommit={imageEdit.commitImageResize}
+			/>
+		{/if}
+		{#key `${popover.target.paragraphPath.join(',')}@${popover.target.sourceStart}`}
+			<ImageProperties
+				target={popover.target}
+				fields={popover.fields}
+				getWidgetEl={() => imageEdit.getSelectedImageFields()?.widgetEl ?? null}
+				buildBytes={imageEdit.buildEditBytes}
+				onCommit={imageEdit.commitImageEdit}
+				onRemove={imageEdit.removeImage}
+				onDismiss={imageEdit.dismissImagePopover}
+				maxFrameWidth={imageEdit.getEditorContentWidth}
+				{menuPresence}
+				{caretWriter}
+				bind:cropping
+			/>
+		{/key}
+	</div>
 {/if}

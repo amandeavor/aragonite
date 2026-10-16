@@ -39,6 +39,12 @@ export function widgetSourceRange(el: Element): { start: number; end: number } |
 	return { start, end };
 }
 
+/** The inline-widget element whose source starts at `start`, or null. The only place this
+ *  selector is written: a mistyped copy would fail silently as a null `querySelector`. */
+export function widgetElByStart(el: HTMLElement, start: number): HTMLElement | null {
+	return el.querySelector<HTMLElement>(`[data-inline-widget][data-source-start="${start}"]`);
+}
+
 /**
  * Props an inline widget's view gets. The editor mounts a new view when the widget's source
  * changes, so `source` never shifts under one, and sends `update` with the new `inline` when typing

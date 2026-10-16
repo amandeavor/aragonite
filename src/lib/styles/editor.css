@@ -288,7 +288,7 @@
 	user-select: none;
 }
 
-/* Positioning context for the ::after selection tint and ::before snap caret. */
+/* Positioning context for the selection tint. */
 :where(.editor) [data-inline-widget] {
 	position: relative;
 }
@@ -394,15 +394,28 @@
 	content: '⚠ image failed to load';
 }
 
-/* The tint paints over the widget through ::after: `background-color` on the span
+/* The tint paints over the widget through a pseudo-element: `background-color` on the span
    itself is hidden by the opaque <img> child (display:block, max-width:100%). */
-:where(.editor) [data-inline-widget].md-widget-selected::after {
+:where(.editor) [data-inline-widget].md-widget-selected::after,
+:where(.editor) .md-br-widget.md-widget-selected::before {
 	content: '';
 	position: absolute;
 	inset: 0;
 	background-color: var(--selection-overlay-bg, rgba(100, 150, 255, 0.3));
 	border-radius: 2px;
 	pointer-events: none;
+}
+
+/* A line break has no box to tint, so it shows as a narrow block at the end of the line it breaks,
+   as in a word processor. `::before` comes before the <br>, so it sits on that line. */
+:where(.editor) .md-br-widget.md-widget-selected::before {
+	inset: 0 auto auto 0;
+	width: 0.5em;
+	height: 100%;
+}
+
+:where(.editor) .md-br-widget.md-widget-selected::after {
+	content: none;
 }
 
 /* The tint is the widget's selection paint: the browser's own `::selection` on the text inside it

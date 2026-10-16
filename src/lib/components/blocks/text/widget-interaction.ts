@@ -15,7 +15,8 @@ import type { SelectionState } from '../../../selection/selection-state.svelte';
 import {
 	getInlineWidgetEditing,
 	isCharacterLikeWidget,
-	widgetActivates
+	widgetActivates,
+	widgetElByStart
 } from '../../../core/inline/inline-widgets';
 import { isVerticallyTransparentNode } from '../../../core/inline/transparency';
 import { trimTrailingLineEnding } from '../../../core/lines';
@@ -39,7 +40,6 @@ import {
 	findLastEdgeWidget,
 	rawHasNoTextBefore,
 	rawHasNoTextAfter,
-	widgetElByStart,
 	widgetNodeIn,
 	widgetsIn
 } from './widget-adjacency';

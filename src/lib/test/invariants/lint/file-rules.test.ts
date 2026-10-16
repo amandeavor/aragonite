@@ -462,6 +462,26 @@ const RULES: FileRule[] = [
 		misses: ['isolateUndoEntry(write: () => void): void;', 'isolateUndoEntry: (write) => {']
 	},
 	{
+		id: 'G4.201 one painter puts the selection wash on a widget',
+		matches: /(['"`])md-widget-selected\1|\bclass:md-widget-selected\b/,
+		allowed: {
+			'src/lib/selection/widget-selection-paint.ts':
+				'the one painter: the widget held selected whole, else the widgets a browser range overlaps'
+		},
+		reason:
+			'a second place writing the selection wash paints by its own idea of what is selected, and a widget shape it forgets shows nothing while the next key replaces it: let `installWidgetSelectionPainter` paint it',
+		hits: [
+			"el.classList.add('md-widget-selected');",
+			'const SELECTED = "md-widget-selected";',
+			'<span class:md-widget-selected={held}></span>'
+		],
+		misses: [
+			"page.locator('.md-widget-selected');",
+			'// paints `md-widget-selected` here\nconst a = 1;',
+			':global(.md-widget-selected) { outline: none; }'
+		]
+	},
+	{
 		id: 'every dev-only check reads the build flag through env.ts',
 		matches: /from\s*['"]esm-env['"]/,
 		allowed: {

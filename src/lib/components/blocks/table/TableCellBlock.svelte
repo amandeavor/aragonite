@@ -61,8 +61,7 @@
 	import { createEdgeStep } from '../text/edge-step';
 	import { createTypedPlacement } from '../text/edge-seat';
 	import { resolvedInlineContent } from '../../../core/inline/inline-cache';
-	import { widgetElByStart } from '../text/widget-adjacency';
-	import { getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
+	import { getInlineWidgetEditing, widgetElByStart } from '../../../core/inline/inline-widgets';
 
 	type ExitDirection = 'up' | 'down';
 

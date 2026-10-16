@@ -1187,6 +1187,7 @@ unguarded.
 | G4.194 | A block reaches the clipboard steps and its inline paste only through its editable surface   | L       |
 | G4.195 | A paragraph's or a table cell's command takes its own undo step in one place                 | L       |
 | G4.200 | Whether a block hides markers at the caret, with the screen it reads, is asked in one place  | L       |
+| G4.201 | One painter puts the selection tint on an inline widget                                      | L       |
 
 ### The entries
 
@@ -2266,6 +2267,12 @@ apply where the block hides markers at the caret, and they need the screen it hi
 `caret/widget-offset.ts :: hidingScreenOf` answers both at once. `lint/edge-rule-guards.test.ts`
 fails any other file that calls `screenVisibilityOf`, except the dev check that compares it with
 the stylesheet.
+
+**G4.201 · One painter tints a selected widget.** A widget selected whole, or one a browser range runs
+across, wears the selection tint, so a key never replaces something the user couldn't see was
+selected. `selection/widget-selection-paint.ts` decides which widgets wear it for every shape at
+once (the image, a live `<br>`, a plugin widget). `lint/file-rules.test.ts` fails the
+`md-widget-selected` class written anywhere else.
 
 ## Accessibility
 
