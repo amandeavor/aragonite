@@ -50,6 +50,15 @@ describe('block-opener registry', () => {
 		expect(lineInterruptsParagraph('@@ quiet')).toBe(false);
 	});
 
+	// Miss: only the global read was checked after a late registration, never an editor's own view.
+	it("an editor's grammar sees an opener registered after its first read", () => {
+		const grammar = createGrammarView(() => true);
+		testLeaf(HEAD, { opener: opener(20, () => true) });
+		expect(priorities(grammar.orderedOpeners())).toEqual([20]);
+		testLeaf(FENCE, { opener: opener(10, () => true) });
+		expect(priorities(grammar.orderedOpeners())).toEqual([10, 20]);
+	});
+
 	it('re-evaluates interrupts after a later registration (cache invalidation)', () => {
 		testLeaf(HEAD, { opener: opener(20, (t) => t.startsWith('@#')) });
 		expect(lineInterruptsParagraph('@> quote')).toBe(false);
