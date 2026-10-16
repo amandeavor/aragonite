@@ -48,6 +48,7 @@ import {
 } from './node-primitives';
 import { ensureEditableContainers } from '../schema/opened-reading';
 import {
+	joinListsMadeBeside,
 	releaseWrapPeel,
 	restoreSeparatorAfterBlank,
 	restoreSeparatorOnFill,
@@ -167,16 +168,20 @@ function writeAndSettleContent(
 	grammar: GrammarView,
 	sharing: SharingState
 ): SettledContent {
-	const wasBlank = isBlankParagraph(parent.children[blockIndex]);
-	const indentMoved = leadingIndent(parent.children[blockIndex].raw) !== leadingIndent(text);
+	// Copied, since an in-place write swaps the node's metadata and children for the new reading's.
+	const before = { ...parent.children[blockIndex] };
+	const wasBlank = isBlankParagraph(before);
+	const indentMoved = leadingIndent(before.raw) !== leadingIndent(text);
 	const change = writeParsedContent(parent, blockIndex, text, grammar);
 	const lastWritten = lastMintedIndex(change, blockIndex);
+	const written = lastWritten - blockIndex + 1;
 	// One blank line served both sides: it separated this block from the one above and stood in
 	// as the separator of the block beneath it. Filling it gives each side its own.
 	if (wasBlank && !isBlankParagraph(parent.children[blockIndex])) {
 		restoreSeparatorOnFill(parent, blockIndex, sharing);
 		restoreSeparatorAfterBlank(parent, followerIndexAfter(change, blockIndex), sharing);
 		releaseWrapPeel(parent, lastWritten);
+		joinListsMadeBeside(parent, blockIndex, written, [before], sharing);
 		return settleWriteSeams(parent, blockIndex, blockIndex, lastWritten, change, sharing, grammar);
 	}
 	// The reverse transition: the block is the separating line now, so the run it joins gives
@@ -208,6 +213,7 @@ function writeAndSettleContent(
 			grammar
 		);
 	}
+	joinListsMadeBeside(parent, blockIndex, written, [before], sharing);
 	return settleWriteSeams(parent, blockIndex, blockIndex, lastWritten, change, sharing, grammar);
 }
 

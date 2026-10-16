@@ -16,6 +16,7 @@ import { assertInvariant } from '../assert';
 import { checkStructuralDescriptor } from '../invariants/structural-descriptor';
 import type { SharingState } from './sharing';
 import { lacksSublistSeparator } from './list/sublist-separator';
+import { itemsShareList } from './list/ordered-markers';
 import { spliceChildren } from './children';
 import { applyStructuralChangeToIdsRefs, type StructuralChange } from './structural-change';
 import { asBody, bodyUnder, type BodyParent, type BodyParentArg } from './node-primitives';
@@ -94,6 +95,39 @@ export function restoreSeparatorAfterBlank(
 	if (isBlankParagraph(node) && (children[index + 1]?.leadingTrivia ?? '') !== '') return;
 	mintSeparator(body, index, sharing);
 }
+
+/** A list one block's fill or rewrite made, `added` blocks from `at`, joins a same-type list across
+ *  the blank line at either edge where the block it replaced didn't; the neighbour merge follows. */
+export function joinListsMadeBeside(
+	body: BodyParent,
+	at: number,
+	added: number,
+	removed: readonly NodeView[],
+	sharing: SharingState
+): void {
+	const [replaced] = removed;
+	if (removed.length !== 1 || added < 1) return;
+	// A fill may write several blocks; a text line rewritten into several keeps them apart, as a paste
+	// after text does.
+	if (added > 1 && !isBlankParagraph(replaced)) return;
+	const { children } = body;
+	const top = children[at];
+	const above = at > bodyStartIndex(body) ? children[at - 1] : undefined;
+	const joinsAbove = continuesList(above, top) && !continuesList(above, replaced);
+	if (top.leadingTrivia !== '' && joinsAbove) writeSeparator(body, at, '', sharing);
+	const last = at + added - 1;
+	const below = children[last + 1];
+	const joinsBelow = continuesList(children[last], below) && !continuesList(replaced, below);
+	if (below && below.leadingTrivia !== '' && joinsBelow) {
+		writeSeparator(body, last + 1, '', sharing);
+	}
+}
+
+/** Whether two lists read as one once nothing parts them, by their facing items. */
+const continuesList = (upper: NodeView | undefined, lower: NodeView | undefined): boolean =>
+	upper?.kind === 'list' &&
+	lower?.kind === 'list' &&
+	itemsShareList(upper.children?.at(-1), lower.children?.[0]);
 
 /**
  * A block turned blank joins a run that, with its follower, must carry exactly one separating line;
@@ -264,6 +298,7 @@ function settleSplicedWindow(
 	} else {
 		settleSeparatorOnBlank(body, at + Math.max(added - 1, 0), sharing);
 	}
+	joinListsMadeBeside(body, at, added, removed, sharing);
 	settleEmptyMarkerLists(body, at, added, sharing);
 	dropWrapOfEmptiedBody(body);
 	// Unconditional, and only here: a delete window at the tail names no surviving block, and
