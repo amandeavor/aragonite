@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { installWidgetRangePainter } from '../../selection/widget-range-paint';
+import { installWidgetSelectionPainter } from '../../selection/widget-selection-paint';
+import type { WidgetTarget } from '../../selection/primitives';
 
-describe('installWidgetRangePainter', () => {
+describe('installWidgetSelectionPainter', () => {
 	let editorRoot: HTMLElement;
 	let para: HTMLElement;
 	let leadText: Text;
@@ -15,19 +16,24 @@ describe('installWidgetRangePainter', () => {
 	beforeEach(() => {
 		editorRoot = document.createElement('div');
 		para = document.createElement('p');
+		para.setAttribute('data-block-path', '[0]');
 		leadText = document.createTextNode('lead ');
 		widgetA = document.createElement('span');
 		widgetA.setAttribute('data-image-widget', '');
 		widgetA.setAttribute('data-inline-widget', '');
 		widgetA.setAttribute('contenteditable', 'false');
+		widgetA.setAttribute('data-source-start', '5');
 		midText = document.createTextNode(' mid ');
 		widgetB = document.createElement('span');
 		widgetB.setAttribute('data-image-widget', '');
 		widgetB.setAttribute('data-inline-widget', '');
 		widgetB.setAttribute('contenteditable', 'false');
+		widgetB.setAttribute('data-source-start', '12');
 		trailText = document.createTextNode(' trail');
 
-		para.append(leadText, widgetA, midText, widgetB, trailText);
+		const content = document.createElement('div');
+		content.append(leadText, widgetA, midText, widgetB, trailText);
+		para.appendChild(content);
 		editorRoot.appendChild(para);
 		document.body.appendChild(editorRoot);
 
@@ -39,14 +45,25 @@ describe('installWidgetRangePainter', () => {
 		editorRoot.remove();
 	});
 
-	function install(opts?: { isCustomRendered?: boolean; isWidgetSelected?: boolean }): void {
-		installWidgetRangePainter({
+	interface Reads {
+		customRendered: boolean;
+		held: WidgetTarget | null;
+		drawnElsewhere: boolean;
+	}
+
+	function install(reads: Partial<Reads> = {}) {
+		const state: Reads = { customRendered: false, held: null, drawnElsewhere: false, ...reads };
+		const painter = installWidgetSelectionPainter({
 			editorRoot,
-			getSelectionIsCustomRendered: () => opts?.isCustomRendered ?? false,
-			getWidgetIsSelected: () => opts?.isWidgetSelected ?? false,
+			getSelectionIsCustomRendered: () => state.customRendered,
+			getHeldWidget: () => state.held,
+			getHeldWidgetDrawnElsewhere: () => state.drawnElsewhere,
 			lifetime: abort.signal
 		});
+		return { state, repaint: painter.repaint };
 	}
+
+	const HELD_B: WidgetTarget = { paragraphPath: [0], sourceStart: 12, preSelectOffset: 12 };
 
 	function setRange(startNode: Node, startOffset: number, endNode: Node, endOffset: number): void {
 		const sel = window.getSelection()!;
@@ -60,7 +77,6 @@ describe('installWidgetRangePainter', () => {
 
 	it('adds md-widget-selected only to widgets the range intersects', () => {
 		install();
-		// Range spans lead-text into mid-text — covers widgetA, not widgetB.
 		setRange(leadText, 0, midText, 2);
 		expect(widgetA.classList.contains('md-widget-selected')).toBe(true);
 		expect(widgetB.classList.contains('md-widget-selected')).toBe(false);
@@ -78,42 +94,55 @@ describe('installWidgetRangePainter', () => {
 		expect(widgetA.classList.contains('md-widget-selected')).toBe(false);
 	});
 
-	it('clears classes when isCustomRendered is true (overlay owns painting)', () => {
-		let isCustomRendered = false;
-		installWidgetRangePainter({
-			editorRoot,
-			getSelectionIsCustomRendered: () => isCustomRendered,
-			getWidgetIsSelected: () => false,
-			lifetime: abort.signal
-		});
+	it('clears classes while the cross-block overlay draws the range', () => {
+		const { state } = install();
 
 		setRange(leadText, 0, trailText, 6);
 		expect(widgetA.classList.contains('md-widget-selected')).toBe(true);
 		expect(widgetB.classList.contains('md-widget-selected')).toBe(true);
 
-		isCustomRendered = true;
+		state.customRendered = true;
 		document.dispatchEvent(new Event('selectionchange'));
 
 		expect(widgetA.classList.contains('md-widget-selected')).toBe(false);
 		expect(widgetB.classList.contains('md-widget-selected')).toBe(false);
 	});
 
-	it('clears classes when a widget is selected (popover owns the visual)', () => {
-		let isWidgetSelected = false;
-		installWidgetRangePainter({
-			editorRoot,
-			getSelectionIsCustomRendered: () => false,
-			getWidgetIsSelected: () => isWidgetSelected,
-			lifetime: abort.signal
-		});
-
+	it('paints the widget held selected whole, and only that one, on repaint', () => {
+		const { state, repaint } = install();
 		setRange(leadText, 0, midText, 2);
 		expect(widgetA.classList.contains('md-widget-selected')).toBe(true);
 
-		isWidgetSelected = true;
-		document.dispatchEvent(new Event('selectionchange'));
-
+		state.held = HELD_B;
+		repaint();
 		expect(widgetA.classList.contains('md-widget-selected')).toBe(false);
+		expect(widgetB.classList.contains('md-widget-selected')).toBe(true);
+
+		state.held = null;
+		window.getSelection()!.removeAllRanges();
+		repaint();
+		expect(widgetB.classList.contains('md-widget-selected')).toBe(false);
+	});
+
+	it('paints a held widget again once a re-render rebuilt its element', () => {
+		const { repaint } = install({ held: HELD_B });
+		repaint();
+		const rebuilt = widgetB.cloneNode(true) as HTMLElement;
+		rebuilt.classList.remove('md-widget-selected');
+		widgetB.replaceWith(rebuilt);
+
+		repaint();
+		expect(rebuilt.classList.contains('md-widget-selected')).toBe(true);
+	});
+
+	it('leaves the held widget to the view that draws it', () => {
+		const { state, repaint } = install({ held: HELD_B, drawnElsewhere: true });
+		repaint();
+		expect(widgetB.classList.contains('md-widget-selected')).toBe(false);
+
+		state.drawnElsewhere = false;
+		repaint();
+		expect(widgetB.classList.contains('md-widget-selected')).toBe(true);
 	});
 
 	it('ignores selections outside the editor root', () => {
@@ -138,7 +167,7 @@ describe('installWidgetRangePainter', () => {
 		abort.abort();
 		expect(widgetA.classList.contains('md-widget-selected')).toBe(false);
 
-		// Subsequent selectionchange is a no-op.
+		// The listener is gone, so a later selectionchange paints nothing.
 		setRange(midText, 0, trailText, 4);
 		expect(widgetB.classList.contains('md-widget-selected')).toBe(false);
 	});
