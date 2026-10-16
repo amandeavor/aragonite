@@ -20,8 +20,7 @@ import type { InsideCloserView } from '../../../caret/inside-closer';
 import {
 	landableRawBounds,
 	markerPrefixOf,
-	revealsNoMarkers,
-	screenVisibilityOf,
+	hidingScreenOf,
 	type CaretWriter
 } from '../../../caret/widget-offset';
 import { recordIslandKeyScan } from '../../../perf/instruments';
@@ -217,14 +216,15 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		caret: number,
 		direction: DeleteDirection
 	): EdgeDeletion | null {
-		if (!revealsNoMarkers(el)) return null;
+		const screen = hidingScreenOf(el);
+		if (!screen) return null;
 		return resolveEdgeDeletion({
 			display: display(),
 			asWritten: (text) => withOwnEnding(deps.node, text),
 			content: getContentRange(deps.node),
 			caret,
 			direction,
-			screen: screenVisibilityOf(el),
+			screen,
 			inlines: inlinesOf(deps.node),
 			store: deps.storedAs()
 		});

@@ -29,6 +29,8 @@ export interface PerfSnapshot {
 	formatCoverageReads: number;
 	/** Renders of inline content read back for what the screen shows: what a hidden edge costs. */
 	screenReads: number;
+	/** Reads of a block's hidden marker runs for its edge rules: one per key press, not per question. */
+	markerRunReads: number;
 	undoLiveBytes: number;
 	undoEntryCount: number;
 	blockRenderCount: number;
@@ -82,6 +84,7 @@ function emptySnapshot(): PerfSnapshot {
 		inlineComputeCount: 0,
 		formatCoverageReads: 0,
 		screenReads: 0,
+		markerRunReads: 0,
 		undoLiveBytes: 0,
 		undoEntryCount: 0,
 		blockRenderCount: 0,
@@ -186,6 +189,11 @@ export function recordFormatCoverageRead(): void {
 export function recordScreenRead(): void {
 	if (!enabled) return;
 	counters.screenReads++;
+}
+
+export function recordMarkerRunRead(): void {
+	if (!enabled) return;
+	counters.markerRunReads++;
 }
 
 export function setUndoGauge(liveBytes: number, entryCount: number): void {

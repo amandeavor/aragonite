@@ -4,7 +4,7 @@
 // screen position. Miss-analysis: every edge row placed the caret at one raw offset, so none saw the
 // answer change with the side of a hidden run the browser put the caret on.
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { seatOffsetsAt, typingOffset } from '#lib/components/blocks/text/edge-seat.js';
+import { hiddenEdges } from '#lib/components/blocks/text/edge-seat.js';
 import { parseInline } from '#lib/core/inline/index.js';
 import { screenVisibility } from '#lib/core/inline/visibility.js';
 import type { EdgeAffinity } from '#lib/caret/edge-affinity.js';
@@ -28,16 +28,12 @@ function caretIn(line: string): { source: string; caret: number } {
  *  per offset, so two normalisations that disagree show up as two different strings. */
 function lettersAt(line: string, record: EdgeAffinity | null): string[] {
 	const { source, caret } = caretIn(line);
-	const inlines = parseInline(source, 0, source.length);
-	const reading = fixtureReading();
+	const edges = hiddenEdges(parseInline(source, 0, source.length), source, LIVE, fixtureReading());
 	// A never-extend edge lists only its outside offset, so the caret's own is added.
-	const position = new Set([
-		caret,
-		...seatOffsetsAt(caret, inlines, source, LIVE, reading.grammar)
-	]);
+	const position = new Set([caret, ...edges.seatOffsets(caret)]);
 	expect(position.size, 'the caret sits at a hidden edge').toBeGreaterThan(1);
 	return [...position].map((offset) => {
-		const at = typingOffset(offset, inlines, record, source, LIVE, reading);
+		const at = edges.typingOffset(offset, record);
 		return source.slice(0, at) + 'X' + source.slice(at);
 	});
 }

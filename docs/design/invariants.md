@@ -1179,6 +1179,7 @@ unguarded.
 | G4.189 | A host color read inside the editor carries no fallback, and the root reads the resolved one | L       |
 | G4.194 | A block reaches the clipboard steps and its inline paste only through its editable surface   | L       |
 | G4.195 | A paragraph's or a table cell's command takes its own undo step in one place                 | L       |
+| G4.200 | Whether a block hides markers at the caret, with the screen it reads, is asked in one place  | L       |
 
 ### The entries
 
@@ -2091,7 +2092,7 @@ changes nothing: one that waits on returns `kept`, which the hold runs when the 
 spend.
 
 **G4.150 · One placer for a hidden edge.** Which side of a hidden edge a letter takes is decided
-in `components/blocks/text/edge-seat.ts :: seatAt` alone, from the caret memory's record, and no
+in `components/blocks/text/edge-seat.ts :: hiddenEdges` alone, from the caret memory's record, and no
 other file reads that record or how the caret arrived. `lint/edge-rule-guards.test.ts`.
 
 **G4.151 · One click-side check.** `components/blocks/text/click-side.ts :: clickSide` (a fresh
@@ -2251,6 +2252,11 @@ should undo the command and nothing around it. A paragraph and a table cell both
 through `components/blocks/text/inline-commands.ts :: perform`, which waits for a shown source to be
 written and then isolates the write. `lint/file-rules.test.ts` fails an `isolateUndoEntry` call
 anywhere else but the code block's language field.
+
+**G4.200 · One read of a block's hidden screen.** An edge rule acts only where the block hides
+markers at the caret, and reads the screen it hides them on. Both come from
+`caret/widget-offset.ts :: hidingScreenOf`; `lint/edge-rule-guards.test.ts` fails any other file
+calling `screenVisibilityOf` but the dev check that compares it with the stylesheet.
 
 ## Accessibility
 

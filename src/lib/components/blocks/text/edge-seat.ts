@@ -34,62 +34,139 @@ import type { InsideCloserView } from '../../../caret/inside-closer';
 import type { NodeView } from '../../../core/node-views';
 import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 import { withOwnEnding } from '../editable/surface-write';
-import { revealsNoMarkers, screenVisibilityOf } from '../../../caret/widget-offset';
+import { hidingScreenOf } from '../../../caret/widget-offset';
 import { resolveMarkedInsertion } from './pending-mark-insert';
+import { recordMarkerRunRead } from '../../../perf/instruments';
 
-export interface EdgeSeat {
-	/** Raw offset the byte must be written at. */
-	offset: number;
-	/** The construct whose hidden edge the caret sat at, which need not be the one holding
-	 *  `offset`: a screen position reaches the runs abutting that construct's own. */
-	kind: AnyInlineKind;
+/** One block's hidden marker runs on one screen, read once for every edge question a key press
+ *  asks. `reading` must be the one `inlines` was read with, or a reference link reads as brackets. */
+export interface HiddenEdges {
+	/** Every raw offset the caret's screen position allows: each boundary in a stretch of abutting
+	 *  hidden runs, never an offset inside a run's bytes, which may exclude the caret itself. */
+	seatOffsets(caret: number): readonly number[];
+	/** The raw offset `typed` is written at with `record` on the caret memory: the caret itself
+	 *  where no hidden edge moves it. */
+	typingOffset(caret: number, record: EdgeAffinity | null, typed?: string): number;
+	/** The two stops of the painted box whose border the caret sits at, by side, or null where the
+	 *  caret is at no such border or a stop doesn't take a typed letter. */
+	chipStops(caret: number): { inside: number; outside: number } | null;
+	/** The stop a plain arrow press moves the typing offset to, one past the current one in its
+	 *  direction, or null when the press moves the caret as usual. */
+	edgeStep(
+		caret: number,
+		record: EdgeAffinity | null,
+		direction: 'backward' | 'forward'
+	): number | null;
+	/** The offset a closer byte typed at `caret` types over: the first byte equal to `typed` in the
+	 *  hidden closer of a mark at the caret's screen position, from either raw offset of it. */
+	closerByteAt(caret: number, typed: string): number | null;
+	/** `typed`, inserted at `at`, written where the edge rule puts it, or null where it already
+	 *  lands there. `caret` counts only where it names the same screen position as `at`. */
+	relocate(
+		at: number,
+		typed: string,
+		record: EdgeAffinity | null,
+		caret?: number
+	): PlacedEdit | null;
 }
 
-/** Where `typed` belongs when the caret sits at `caretOffset`, or null to let it land at the caret.
- *  `reading` must be the one `inlines` was read with, or a reference link reads as brackets. */
-export function resolveEdgeSeat(
-	caretOffset: number,
+export function hiddenEdges(
 	inlines: readonly InlineNode[],
-	record: EdgeAffinity | null,
 	raw: string,
 	screen: VisibilityContext,
-	typed: string,
 	reading: Reading
-): EdgeSeat | null {
-	const seat = seatAt(caretOffset, inlines, record, raw, screen, typed, reading);
-	// The DOM-to-offset traversal and Chromium's insertion normalise the same way, so an answer
-	// equal to the caret means ordinary typing already lands there.
-	return seat && seat.offset !== caretOffset ? seat : null;
-}
+): HiddenEdges {
+	const { grammar } = reading;
+	const runs = markerRuns(inlines, raw, screen, grammar);
+	const positionAt = (caret: number): ScreenPosition | null => {
+		const run = runAt(caret, runs);
+		return run && screenPosition(run, runs);
+	};
+	const seatOffsets = (caret: number): readonly number[] => {
+		const position = positionAt(caret);
+		return position ? position.offsets.filter((at) => takesNothingInside(position, at)) : [];
+	};
+	let shownBefore: string | null = null;
 
-/** `typed`, inserted at `at` in `before`, written where the edge resolver puts it, or null where
- *  it already lands there. `caret` counts only where it names the same screen position as `at`. */
-export function relocateInsertion(
-	before: string,
-	at: number,
-	typed: string,
-	inlines: readonly InlineNode[],
-	record: EdgeAffinity | null,
-	screen: VisibilityContext,
-	reading: Reading,
-	caret = at
-): PlacedEdit | null {
-	const samePosition =
-		caret === at || seatOffsetsAt(at, inlines, before, screen, reading.grammar).includes(caret);
-	const from = samePosition ? caret : at;
-	const seat = seatAt(from, inlines, record, before, screen, typed, reading);
-	if (!seat || seat.offset === at) return null;
-	const lo = Math.min(seat.offset, at);
-	const hi = Math.max(seat.offset, at);
-	const crossed = [...inlineDescendants(inlines)].flatMap((node) => {
-		const content = constructContentRange(node);
-		const edge = (offset: number) => offset >= lo && offset <= hi;
-		return content && (edge(content.start) || edge(content.end)) ? [node.kind] : [];
-	});
+	/** The offset the edge rule writes `typed` at, which may be the caret's own; null where the
+	 *  caret is at no hidden edge or no offset there keeps the screen. */
+	function seat(caret: number, record: EdgeAffinity | null, typed: string): number | null {
+		const run = runAt(caret, runs);
+		if (!run || !getInlineConstructPolicy(run.kind)) return null;
+		const content = contentBounds(inlines);
+		// What the user sees, asked of the renderer (G4.33), in the content reading: a placement
+		// only adds bytes, so no reading of it can license dropping one.
+		const shown = (bytes: string, end: number): string =>
+			renderedText(
+				readInline(bytes, content.start, end, reading.resolver, grammar),
+				bytes,
+				CONTENT_VISIBILITY,
+				{ grammar }
+			);
+		const before = (shownBefore ??= shown(raw, content.end));
+		const holds = (offset: number): boolean => {
+			const candidate = raw.slice(0, offset) + typed + raw.slice(offset);
+			return insertsExactly(before, shown(candidate, content.end + typed.length), typed);
+		};
+		const position = screenPosition(run, runs);
+		return candidateOffsets(position, record, caret, raw, inlines).find(holds) ?? null;
+	}
+	const typingOffset = (caret: number, record: EdgeAffinity | null, typed = PROBE_BYTE): number =>
+		seat(caret, record, typed) ?? caret;
+
+	function chipStops(caret: number): { inside: number; outside: number } | null {
+		const boxed = positionAt(caret)?.runs.find(
+			(each) => getInlineConstructPolicy(each.kind)?.edgeAffinity === 'boxed'
+		);
+		if (!boxed) return null;
+		const stops = boxed.leading
+			? { inside: boxed.end, outside: boxed.start }
+			: { inside: boxed.start, outside: boxed.end };
+		const typedAt = (offset: number) => typingOffset(caret, { offset });
+		return typedAt(stops.inside) === stops.inside && typedAt(stops.outside) === stops.outside
+			? stops
+			: null;
+	}
+
 	return {
-		text: before.slice(0, seat.offset) + typed + before.slice(seat.offset),
-		caretAfter: seat.offset + typed.length,
-		crossed
+		seatOffsets,
+		typingOffset,
+		chipStops,
+		edgeStep: (caret, record, direction) => {
+			const stops = chipStops(caret);
+			if (!stops) return null;
+			const current = typingOffset(caret, record);
+			const ordered = [stops.inside, stops.outside].sort((a, b) => a - b);
+			const ahead =
+				direction === 'forward'
+					? ordered.filter((offset) => offset > current)
+					: ordered.filter((offset) => offset < current).reverse();
+			return ahead[0] ?? null;
+		},
+		closerByteAt: (caret, typed) => {
+			for (const each of positionAt(caret)?.runs ?? []) {
+				if (each.leading || !getInlineMarkPolicy(each.kind)) continue;
+				for (let at = each.start; at < each.end; at++) if (raw[at] === typed) return at;
+			}
+			return null;
+		},
+		relocate: (at, typed, record, caret = at) => {
+			const samePosition = caret === at || seatOffsets(at).includes(caret);
+			const offset = seat(samePosition ? caret : at, record, typed);
+			if (offset === null || offset === at) return null;
+			const lo = Math.min(offset, at);
+			const hi = Math.max(offset, at);
+			const crossed = [...inlineDescendants(inlines)].flatMap((node) => {
+				const content = constructContentRange(node);
+				const edge = (each: number) => each >= lo && each <= hi;
+				return content && (edge(content.start) || edge(content.end)) ? [node.kind] : [];
+			});
+			return {
+				text: raw.slice(0, offset) + typed + raw.slice(offset),
+				caretAfter: offset + typed.length,
+				crossed
+			};
+		}
 	};
 }
 
@@ -121,10 +198,6 @@ export interface TypedPlacement {
 }
 
 export function createTypedPlacement(deps: TypedPlacementDeps): TypedPlacement {
-	const hidingScreen = (): VisibilityContext | null => {
-		const el = deps.getEl();
-		return el && revealsNoMarkers(el) ? screenVisibilityOf(el) : null;
-	};
 	// The tree of `text`, which is the block's own unless a held space was lifted out of it.
 	const inlinesOf = (text: string): InlineNode[] => {
 		const node = deps.getNode();
@@ -134,29 +207,27 @@ export function createTypedPlacement(deps: TypedPlacementDeps): TypedPlacement {
 	return {
 		insertion: {
 			place: (before, edit, at, side, caret) => {
-				const screen = hidingScreen();
+				const screen = hidingScreenOf(deps.getEl());
 				if (!screen) return null;
-				const typed = insertedText(before, edit, at);
-				const inlines = inlinesOf(before);
-				return relocateInsertion(before, at, typed, inlines, side, screen, deps.reading, caret);
+				const edges = hiddenEdges(inlinesOf(before), before, screen, deps.reading);
+				return edges.relocate(at, insertedText(before, edit, at), side, caret);
 			},
 			mark: (before, edit, at, marks, side) => {
-				const screen = hidingScreen();
+				const screen = hidingScreenOf(deps.getEl());
 				if (!screen) return null;
 				const inlines = inlinesOf(before);
 				// The marks apply where a letter would land, which Edit link's caret keeps inside the URL.
-				const letter =
+				const seat =
 					deps.insideCloser().at() === at
-						? null
-						: resolveEdgeSeat(at, inlines, side, before, screen, PROBE_BYTE, deps.reading);
+						? at
+						: hiddenEdges(inlines, before, screen, deps.reading).typingOffset(at, side);
 				const typed = insertedText(before, edit, at);
-				const seat = letter?.offset ?? at;
 				const marked = resolveMarkedInsertion(before, seat, typed, marks, inlines, deps.reading);
 				return marked && { text: marked.raw, caretAfter: marked.caret };
 			}
 		},
 		offsetFor: (caret, typed) => {
-			const screen = hidingScreen();
+			const screen = hidingScreenOf(deps.getEl());
 			if (!screen) return caret;
 			// Edit link's caret types inside the URL, which no edge rule would choose.
 			if (deps.insideCloser().at() === caret) return caret;
@@ -164,13 +235,12 @@ export function createTypedPlacement(deps: TypedPlacementDeps): TypedPlacement {
 			// The closer a held space was written past is still the caret's to type over.
 			const inside = deps.heldSpace().at() === caret ? deps.heldSpace().inside() : null;
 			if (inside !== null && node.raw[inside] === typed) return inside;
-			const reading = deps.reading;
-			const inlines = resolvedInlineContent(node, reading);
-			const over = closerByteAt(caret, inlines, node.raw, screen, reading.grammar, typed);
-			if (over !== null) return over;
-			const record = deps.caretMemory.side();
-			const seat = resolveEdgeSeat(caret, inlines, record, node.raw, screen, typed, reading);
-			return seat?.offset ?? caret;
+			const inlines = resolvedInlineContent(node, deps.reading);
+			const edges = hiddenEdges(inlines, node.raw, screen, deps.reading);
+			return (
+				edges.closerByteAt(caret, typed) ??
+				edges.typingOffset(caret, deps.caretMemory.side(), typed)
+			);
 		},
 		passCloser: (from, to) => {
 			const held = deps.heldSpace();
@@ -179,95 +249,6 @@ export function createTypedPlacement(deps: TypedPlacementDeps): TypedPlacement {
 			else deps.caretMemory.noteOutside();
 		}
 	};
-}
-
-/** Every raw offset the caret's screen position allows: each boundary in a stretch of abutting
- *  hidden runs, never an offset inside a run's bytes, which may exclude the caret itself. */
-export function seatOffsetsAt(
-	caretOffset: number,
-	inlines: readonly InlineNode[],
-	raw: string,
-	screen: VisibilityContext,
-	grammar: GrammarView
-): readonly number[] {
-	const runs = markerRuns(inlines, raw, screen, grammar);
-	const run = runAt(caretOffset, runs);
-	if (!run) return [];
-	const position = screenPosition(run, runs);
-	return position.offsets.filter((offset) => takesNothingInside(position, offset));
-}
-
-/** The offsets a plain arrow press stops at, ascending: the two sides of a painted box's border,
- *  each a visible caret position. Fewer than two means the arrow moves the caret. */
-export function edgeStops(
-	caretOffset: number,
-	inlines: readonly InlineNode[],
-	raw: string,
-	screen: VisibilityContext,
-	reading: Reading
-): number[] {
-	const stops = chipStops(caretOffset, inlines, raw, screen, reading);
-	return stops ? [stops.inside, stops.outside].sort((a, b) => a - b) : [];
-}
-
-/** The two stops of the painted box whose border the caret sits at, by side, or null where the
- *  caret is at no such border or a stop doesn't take a typed letter. */
-export function chipStops(
-	caretOffset: number,
-	inlines: readonly InlineNode[],
-	raw: string,
-	screen: VisibilityContext,
-	reading: Reading
-): { inside: number; outside: number } | null {
-	const runs = markerRuns(inlines, raw, screen, reading.grammar);
-	const run = runAt(caretOffset, runs);
-	if (!run) return null;
-	const boxed = screenPosition(run, runs).runs.find(
-		(each) => getInlineConstructPolicy(each.kind)?.edgeAffinity === 'boxed'
-	);
-	if (!boxed) return null;
-	const stops = boxed.leading
-		? { inside: boxed.end, outside: boxed.start }
-		: { inside: boxed.start, outside: boxed.end };
-	const typedAt = (offset: number) =>
-		typingOffset(caretOffset, inlines, { offset }, raw, screen, reading);
-	return typedAt(stops.inside) === stops.inside && typedAt(stops.outside) === stops.outside
-		? stops
-		: null;
-}
-
-/** The raw offset the next byte would be written at with `record` on the caret memory. */
-export function typingOffset(
-	caretOffset: number,
-	inlines: readonly InlineNode[],
-	record: EdgeAffinity | null,
-	raw: string,
-	screen: VisibilityContext,
-	reading: Reading
-): number {
-	const edge = resolveEdgeSeat(caretOffset, inlines, record, raw, screen, PROBE_BYTE, reading);
-	return edge?.offset ?? caretOffset;
-}
-
-/** The stop a plain arrow press moves the typing offset to, one past the current one in its
- *  direction, or null when the press moves the caret as usual. */
-export function edgeStep(
-	caretOffset: number,
-	inlines: readonly InlineNode[],
-	record: EdgeAffinity | null,
-	raw: string,
-	screen: VisibilityContext,
-	reading: Reading,
-	direction: 'backward' | 'forward'
-): number | null {
-	const stops = edgeStops(caretOffset, inlines, raw, screen, reading);
-	if (stops.length < 2) return null;
-	const current = typingOffset(caretOffset, inlines, record, raw, screen, reading);
-	const ahead =
-		direction === 'forward'
-			? stops.filter((offset) => offset > current)
-			: stops.filter((offset) => offset < current).reverse();
-	return ahead[0] ?? null;
 }
 
 /** A byte stands in for whatever the user types next: a letter, which pairs with nothing, so the
@@ -291,63 +272,7 @@ export function constructsCovering(inlines: readonly InlineNode[], at: number): 
 	return chain;
 }
 
-/** The offset a closer byte typed at `caret` types over: the first byte equal to `typed` in the
- *  hidden closer of a mark at the caret's screen position, from either raw offset of it. */
-export function closerByteAt(
-	caret: number,
-	inlines: readonly InlineNode[],
-	raw: string,
-	screen: VisibilityContext,
-	grammar: GrammarView,
-	typed: string
-): number | null {
-	const runs = markerRuns(inlines, raw, screen, grammar);
-	const run = runAt(caret, runs);
-	if (!run) return null;
-	for (const each of screenPosition(run, runs).runs) {
-		if (each.leading || !getInlineMarkPolicy(each.kind)) continue;
-		for (let at = each.start; at < each.end; at++) if (raw[at] === typed) return at;
-	}
-	return null;
-}
-
 // ── Internal ─────────────────────────────────────────────────────────────────
-
-/** The offset the edge rule writes `typed` at for a caret at `caretOffset`, which may be the caret's
- *  own; null where the caret is at no hidden edge or no offset there keeps the screen. */
-function seatAt(
-	caretOffset: number,
-	inlines: readonly InlineNode[],
-	record: EdgeAffinity | null,
-	raw: string,
-	screen: VisibilityContext,
-	typed: string,
-	reading: Reading
-): EdgeSeat | null {
-	const { grammar } = reading;
-	const runs = markerRuns(inlines, raw, screen, grammar);
-	const run = runAt(caretOffset, runs);
-	if (!run || !getInlineConstructPolicy(run.kind)) return null;
-	const content = contentBounds(inlines);
-	// What the user sees, asked of the renderer (G4.33), in the content reading: this only adds
-	// bytes, so no reading of it can license dropping one.
-	const shown = (bytes: string, end: number): string =>
-		renderedText(
-			readInline(bytes, content.start, end, reading.resolver, grammar),
-			bytes,
-			CONTENT_VISIBILITY,
-			{ grammar }
-		);
-	const before = shown(raw, content.end);
-	const holds = (offset: number): boolean => {
-		const candidate = raw.slice(0, offset) + typed + raw.slice(offset);
-		const after = shown(candidate, content.end + typed.length);
-		return insertsExactly(before, after, typed);
-	};
-	const position = screenPosition(run, runs);
-	const offset = candidateOffsets(position, record, caretOffset, raw, inlines).find(holds);
-	return offset === undefined ? null : { offset, kind: run.kind };
-}
 
 interface MarkerRun {
 	start: number;
@@ -474,6 +399,7 @@ function markerRuns(
 	screen: VisibilityContext,
 	grammar: GrammarView
 ): MarkerRun[] {
+	recordMarkerRunRead();
 	const runs: MarkerRun[] = [];
 	for (const node of inlineDescendants(inlines)) {
 		const content = constructContentRange(node) ?? paintedRange(node, raw, screen, grammar);

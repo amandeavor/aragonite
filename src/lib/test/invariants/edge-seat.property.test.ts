@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import fc from 'fast-check';
 import { parseInline } from '../../core/inline';
 import { renderInlineNodes } from '../../core/inline-render';
-import { resolveEdgeSeat, seatOffsetsAt } from '../../components/blocks/text/edge-seat';
+import { hiddenEdges } from '../../components/blocks/text/edge-seat';
 import { MARKER_FAMILY_SELECTOR, screenVisibility } from '../../core/inline/visibility';
 import type { EdgeAffinity } from '../../caret/edge-affinity';
 import { caretPositions, countOnScreen, paintedText } from '#lib/test/harness/painted-text.js';
@@ -84,19 +83,18 @@ function splicesTyped(before: string, after: string): boolean {
 	return after[at] === 'Z' && after.slice(at + 1) === before.slice(at);
 }
 
+const edgesOf = (display: string) =>
+	hiddenEdges(parseInline(display, 0, display.length), display, LIVE, fixtureReading());
+
 /** An offset the caret placement can reach that keeps the screen (`seam`), or undefined where
  *  every reachable one rebinds it (`ambiguous`). */
 function rescueOffset(display: string, caret: number): number | undefined {
 	const painted = paintedText(display);
-	return seatOffsetsAt(
-		caret,
-		parseInline(display, 0, display.length),
-		display,
-		LIVE,
-		defaultGrammarView
-	).find((offset) =>
-		splicesTyped(painted, paintedText(display.slice(0, offset) + 'Z' + display.slice(offset)))
-	);
+	return edgesOf(display)
+		.seatOffsets(caret)
+		.find((offset) =>
+			splicesTyped(painted, paintedText(display.slice(0, offset) + 'Z' + display.slice(offset)))
+		);
 }
 
 /** What gets written: the byte at the offset chosen, or at the caret when the choice declines. */
@@ -105,17 +103,8 @@ function typeThroughSeat(
 	caret: number,
 	affinity: EdgeAffinity | null
 ): { after: string; relocated: boolean } {
-	const seat = resolveEdgeSeat(
-		caret,
-		parseInline(display, 0, display.length),
-		affinity,
-		display,
-		LIVE,
-		'Z',
-		fixtureReading()
-	);
-	const at = seat?.offset ?? caret;
-	return { after: display.slice(0, at) + 'Z' + display.slice(at), relocated: seat !== null };
+	const at = edgesOf(display).typingOffset(caret, affinity, 'Z');
+	return { after: display.slice(0, at) + 'Z' + display.slice(at), relocated: at !== caret };
 }
 
 describe('the typing caret position over generated inline fixtures', () => {

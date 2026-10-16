@@ -8,9 +8,9 @@
 import type { InlineNode } from '../../../core/nodes';
 import type { CaretMemory } from '../../../caret/caret-memory';
 import { chipArrivalKey, edgeStepDirection } from '../../../caret/edge-affinity';
-import { revealsNoMarkers, screenVisibilityOf } from '../../../caret/widget-offset';
+import { hidingScreenOf } from '../../../caret/widget-offset';
 import type { Reading } from '../../../schema/reading';
-import { chipStops, edgeStep, seatOffsetsAt } from './edge-seat';
+import { hiddenEdges, type HiddenEdges } from './edge-seat';
 
 export interface EdgeStepDeps {
 	getEl: () => HTMLElement | null;
@@ -37,33 +37,11 @@ export interface EdgeStep {
 }
 
 export function createEdgeStep(deps: EdgeStepDeps): EdgeStep {
-	/** The block's element where its screen hides markers at the caret: elsewhere every delimiter
-	 *  is a byte on screen, which the arrow and a typed closer already step over. */
-	function hidingEl(): HTMLElement | null {
-		const el = deps.getEl();
-		return el && !deps.isReading() && revealsNoMarkers(el) ? el : null;
-	}
-
-	function hiddenRunAt(caret: number): boolean {
-		const el = hidingEl();
-		if (!el) return false;
-		const screen = screenVisibilityOf(el);
-		const offsets = seatOffsetsAt(
-			caret,
-			deps.getInlines(),
-			deps.getRaw(),
-			screen,
-			deps.reading.grammar
-		);
-		return offsets.length > 0;
-	}
-
-	/** The chip stops at `at`, where it is a chip's border in a block that hides markers. */
-	function stopsAt(at: number | null): { inside: number; outside: number } | null {
-		const el = hidingEl();
-		if (!el || at === null) return null;
-		const screen = screenVisibilityOf(el);
-		return chipStops(at, deps.getInlines(), deps.getRaw(), screen, deps.reading);
+	/** The block's hidden runs where its screen hides markers at the caret: elsewhere every
+	 *  delimiter is a byte on screen, which the arrow and a typed closer already step over. */
+	function edgesNow(): HiddenEdges | null {
+		const screen = deps.isReading() ? null : hidingScreenOf(deps.getEl());
+		return screen && hiddenEdges(deps.getInlines(), deps.getRaw(), screen, deps.reading);
 	}
 
 	/** Where ArrowLeft or End will land the caret, in raw offsets: one character left, or the end
@@ -82,18 +60,12 @@ export function createEdgeStep(deps: EdgeStepDeps): EdgeStep {
 
 	function step(e: KeyboardEvent): boolean {
 		const caret = deps.getCaret();
-		const el = hidingEl();
 		const direction = edgeStepDirection(e);
-		if (direction !== null && el && caret !== null) {
-			const target = edgeStep(
-				caret,
-				deps.getInlines(),
-				deps.caretMemory.side(),
-				deps.getRaw(),
-				screenVisibilityOf(el),
-				deps.reading,
-				direction
-			);
+		const at = caret === null ? null : landing(e, caret);
+		// Only an arrow or End asks the edge anything, so a typed key reads no runs.
+		const edges = caret !== null && (direction !== null || at !== null) ? edgesNow() : null;
+		if (direction !== null && edges && caret !== null) {
+			const target = edges.edgeStep(caret, deps.caretMemory.side(), direction);
 			if (target !== null) {
 				deps.caretMemory.pin(target);
 				return true;
@@ -101,16 +73,17 @@ export function createEdgeStep(deps: EdgeStepDeps): EdgeStep {
 		}
 		// ArrowLeft arrives at a chip's edge from its right-hand side, and End lands past a chip
 		// ending the line: both mean the right-hand stop, decided here so no paint shows the other.
-		const stops = caret === null ? null : stopsAt(landing(e, caret));
+		const stops = edges && at !== null ? edges.chipStops(at) : null;
 		deps.caretMemory.pinOnArrival(e, stops && Math.max(stops.inside, stops.outside));
 		return false;
 	}
 
 	return {
 		step,
-		hiddenRunAt,
+		hiddenRunAt: (caret) => (edgesNow()?.seatOffsets(caret).length ?? 0) > 0,
 		pinChipSide: (side) => {
-			const stops = stopsAt(deps.getCaret());
+			const caret = deps.getCaret();
+			const stops = caret === null ? null : edgesNow()?.chipStops(caret);
 			if (stops) deps.caretMemory.pin(stops[side]);
 		}
 	};
