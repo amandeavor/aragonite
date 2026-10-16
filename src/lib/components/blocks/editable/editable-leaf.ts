@@ -5,23 +5,16 @@
  * synchronously during initialisation. `plugin-guide/editable-content.md` § The editable leaf.
  */
 
-import { getContext, onDestroy } from 'svelte';
+import { onDestroy } from 'svelte';
 import { createAttachmentKey } from 'svelte/attachments';
 import type { BlockEditActions } from '../../../action-contracts';
 import type { EditableLeafBlockApi, StickyColumnDirection } from '../../../block-component';
 import type { NodeView } from '../../../core/node-views';
-import {
-	EDITOR_POLICIES_KEY,
-	EDITOR_SERVICES_KEY,
-	type EditorPolicies,
-	type EditorServices
-} from '../../../editor-keys';
 import { asRawOffset } from '../../../caret/coordinate-spaces';
 import { createSurfaceBackend } from './surface-backend';
 import { handleSharedKeydown } from '../../../selection/shared-keydown';
 import {
 	createEditableSurface,
-	createClipboardHandlers,
 	consumePendingRestore,
 	REMOVED_IN_PLACE,
 	type EditableSurfaceAttributes
@@ -214,16 +207,14 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		caretMemory,
 		caretWriter,
 		selection,
-		getDoc,
 		getBlockElByPath,
 		getEditorRoot,
-		events: editorEvents,
 		reading,
 		commands
 	} = wiring.deps;
 	const { pluginEditor } = commands;
-	const { inlineMenuCombobox, drafts, presses } = getContext<EditorServices>(EDITOR_SERVICES_KEY);
-	const { theme: getTheme, onPasteImage } = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
+	const { inlineMenuCombobox, drafts, presses } = wiring.services;
+	const { theme: getTheme } = wiring.policies;
 	const getPresentationMode = reading.mode;
 	const getEditor = (): EditorContext | undefined =>
 		componentPluginEditor(pluginEditor, deps.getNode().kind);
@@ -572,15 +563,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		if (el) spliceSourceText(el, range.start, range.end, '');
 	}
 
-	const clipboard = createClipboardHandlers({
-		caretMemory,
-		selection,
-		getDoc,
-		crossBlock,
-		isReadOnly: isReading,
-		caret: editableSurface.caret,
-		events: editorEvents,
-		onPasteImage,
+	const clipboard = editableSurface.clipboard({
 		rangeArm: { copy: copyRange, remove: removeRange },
 		pasteTail: (pastedText, { range }) => {
 			const el = deps.getEl();

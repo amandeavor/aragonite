@@ -31,7 +31,7 @@ import {
 	type RevealFoldReason
 } from '../../../debug/interaction-trace';
 import { assertInvariant } from '../../../assert';
-import type { RevealFold } from '../editable/editable-surface';
+import type { RevealFold } from '../editable/surface-clipboard';
 import { hasModifier, isPlainTypingKey, surfaceHoldsRange } from './click-snap-guard';
 import { caretIsInTextContent } from '../../../caret/text-seat';
 import {

@@ -425,6 +425,25 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
+		id: 'G4.194 a block reaches the clipboard steps and the inline paste through its surface',
+		matches: /(?<!function\s)\b(?:createClipboardHandlers|pasteDispatch)\s*\(/,
+		allowed: {
+			'src/lib/components/blocks/editable/editable-surface.ts':
+				'`clipboard`: the surface fills in the editor-wide half for every block',
+			'src/lib/components/blocks/editable/surface-clipboard.ts':
+				'`pasteIntoBlock`: the one paste into a block’s own text, which the surface’s `pasteInline` calls',
+			'src/lib/selection/cross-block/range-replace.ts':
+				'a paste over a range across blocks, which lands where the range’s delete left the caret'
+		},
+		reason:
+			'a block that builds its own clipboard or dispatches its own paste copies the editor-wide fields and the caret park, and a copy drifts: go through `editableSurface.clipboard` and `pasteInline`',
+		hits: ['const c = createClipboardHandlers({ rangeArm });', 'await pasteDispatch(input, ctx);'],
+		misses: [
+			'export function createClipboardHandlers(deps) {}',
+			'export async function pasteDispatch(\n\tinput,'
+		]
+	},
+	{
 		id: 'every dev-only check reads the build flag through env.ts',
 		matches: /from\s*['"]esm-env['"]/,
 		allowed: {

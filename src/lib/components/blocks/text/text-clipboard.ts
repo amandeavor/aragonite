@@ -1,27 +1,15 @@
 /**
- * Clipboard handler bodies for TextEditableBlock; the component keeps the
- * oncopy/oncut/onpaste bindings.
+ * The clipboard of a block whose text takes inline constructs, a paragraph's or a table cell's: a
+ * selected widget, then the block's own range, on the surface's shared steps. The component keeps
+ * the oncopy/oncut/onpaste bindings.
  */
 
-import type { BlockEditActions } from '../../../action-contracts';
 import type { NodeView } from '../../../core/node-views';
-import type { DocumentGetter } from '../../../editor-keys';
-import type { PasteImageHook } from '../../../host-hooks';
-import type { EditorEvents } from '../../../editor-events';
 import type { SurfaceBackend } from '../editable/surface-backend';
-import type { CrossBlockHandlers } from '../../../selection/cross-block/dispatch';
-import type { PasteCommitCoordinator } from '../../../tree-operations/paste/paste-deps';
-import type { PluginActivation } from '../../../schema/plugin-activation';
 import type { SelectionState } from '../../../selection/selection-state.svelte';
-import type { CaretMemory } from '../../../caret/caret-memory';
-import {
-	createClipboardHandlers,
-	type ClipboardCaretIO,
-	type ClipboardHandlers,
-	type RevealFold
-} from '../editable/editable-surface';
+import type { EditableSurface } from '../editable/editable-surface';
+import type { BlockClipboard, ClipboardHandlers, RevealFold } from '../editable/surface-clipboard';
 import type { ClipboardCopy } from '../editable/clipboard-step';
-import { pasteDispatch } from '../../../tree-operations/paste/dispatch';
 import { bytesLeavingLeaf, replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 import { replaceSelectedWidget } from './widget-interaction';
 import { widgetSpanIn, type WidgetRange } from './widget-adjacency';
@@ -33,24 +21,12 @@ export interface TextClipboardDeps {
 	get node(): NodeView;
 	get index(): number;
 	get myPath(): number[];
-	/** Local caret reads go through `cursor`; `caret` is the narrower interface the shared
-	 *  clipboard code borrows, read here only for the caret undo puts back after a cut. */
+	/** Local caret reads go through `cursor`; the surface's `caret` is read only for the caret
+	 *  undo puts back after a cut. */
 	cursor: SurfaceBackend;
-	caret: ClipboardCaretIO;
-	crossBlock: CrossBlockHandlers;
-	events: EditorEvents;
-	onPasteImage: () => PasteImageHook | undefined;
+	surface: Pick<EditableSurface, 'clipboard' | 'pasteInline' | 'caret' | 'blockEdit'>;
 	selection: SelectionState;
-	caretMemory: CaretMemory;
-	blockEdit: BlockEditActions;
-	pasteCoordinator: PasteCommitCoordinator;
-	/** The plugins this instance activated, so an unlisted plugin's paste transform stays out. */
-	activePlugins: PluginActivation;
-	getDoc: DocumentGetter;
 	setPendingCursor: (offset: number | null) => void;
-	/** Reading mode: cut becomes copy, paste does nothing. The events still fire
-	 *  on a non-editable element, so the check lives in the handlers. */
-	isReadOnly: () => boolean;
 	/** Hide a construct's shown source before a clipboard edit, so cut and paste run
 	 *  against a CST that matches the DOM. Null when no source was showing. */
 	foldRevealBeforeMutation: () => RevealFold | null;
@@ -59,11 +35,13 @@ export interface TextClipboardDeps {
 	/** The block's live DOM as raw text, so a copy over an uncommitted edit yields what
 	 *  the user sees rather than a stale slice of `node.raw`. */
 	readRevealedText: () => string;
-	/** How this editor reads its bytes: an unlisted plugin's opener never takes pasted bytes here,
-	 *  and a cut is a join its mode decides the cleanup of (live-mode.md § 4.5). */
+	/** How this editor reads its bytes: which widgets the block holds, and the join rules a cut
+	 *  takes (live-mode.md § 4.5). */
 	get reading(): Reading;
 	/** Where the block's bytes are stored, read when a cut writes. */
 	storedAs: () => StoredAs;
+	/** A paste step the block takes before any other: a table cell fills cells from a pasted grid. */
+	pastePreHook?: BlockClipboard['pastePreHook'];
 }
 
 interface SelectedWidget {
@@ -76,6 +54,9 @@ export interface TextClipboard extends ClipboardHandlers {
 	/** The block's handler for a clipboard event the editor root received: a selected widget clears
 	 *  the browser selection, so the event arrives at `<body>`, past the block's own binding. */
 	claimRootClipboard(event: ClipboardEvent): void;
+	/** Deletes `range` as a cut does, with undo's caret at `undoCaret`; for a menu's cut, which
+	 *  fires no clipboard event of its own. */
+	removeRange(range: RawRange, undoCaret: number): void;
 }
 
 export function createTextClipboard(deps: TextClipboardDeps): TextClipboard {
@@ -102,7 +83,7 @@ export function createTextClipboard(deps: TextClipboardDeps): TextClipboard {
 	// it was before the selection.
 	function removeWidget({ inline, preSelectOffset }: SelectedWidget): Promise<void> {
 		return replaceSelectedWidget(deps, inline, '', (edit) => {
-			const write = deps.blockEdit.updateBlockContent(
+			const write = deps.surface.blockEdit.updateBlockContent(
 				deps.index,
 				edit.raw,
 				'literal',
@@ -127,65 +108,45 @@ export function createTextClipboard(deps: TextClipboardDeps): TextClipboard {
 
 	// A cut is a delete, so it goes through the same join rules: in live mode the range can span
 	// delimiter runs the user never saw, and a plain splice would print them.
-	function removeRange(range: RawRange): void {
+	function removeRange(range: RawRange, undoCaret: number): void {
 		const edit = replaceRangeInLeaf(deps.node, range, '', deps.storedAs());
-		const write = deps.blockEdit.updateBlockContent(
+		const write = deps.surface.blockEdit.updateBlockContent(
 			deps.index,
 			edit.raw,
 			'literal',
-			deps.caret.getPreEditOffset(),
+			undoCaret,
 			edit.caret
 		);
 		if (write.admitted) deps.setPendingCursor(write.caret);
 	}
 
-	const handlers = createClipboardHandlers({
-		caretMemory: deps.caretMemory,
-		selection: deps.selection,
-		getDoc: deps.getDoc,
-		crossBlock: deps.crossBlock,
-		isReadOnly: deps.isReadOnly,
-		caret: deps.caret,
-		events: deps.events,
-		onPasteImage: deps.onPasteImage,
+	const handlers = deps.surface.clipboard({
 		foldReveal: deps.foldRevealBeforeMutation,
 		selectionArms: [{ copy: copyWidget, remove: removeWidget }],
-		rangeArm: { copy: copyRange, remove: removeRange },
-
-		pasteTail: async (pastedText, { range, held }) => {
+		rangeArm: {
+			copy: copyRange,
+			remove: (range: RawRange) => removeRange(range, deps.surface.caret.getPreEditOffset())
+		},
+		pastePreHook: deps.pastePreHook,
+		pasteTail: (pastedText, { range, held }) => {
 			// A selected widget is the selection a paste replaces, through the same route as any.
 			const widget = selectedWidgetOnThisBlock();
 			if (widget !== null) deps.selection.clearWidget();
 			const replaced = widget?.inline ?? (range && range.start < range.end ? range : null);
-
-			const result = await pasteDispatch(
-				{
-					pastedText,
-					targetPath: deps.myPath,
-					// Placed across a hidden edge by `held.spend`, as every insertion is.
-					offset: replaced ? replaced.start : (range?.start ?? 0),
-					preDelete: replaced ? { start: replaced.start, end: replaced.end } : undefined,
-					caretBefore: widget?.preSelectOffset ?? deps.caret.getPreEditOffset(),
-					spend: held.spend
-				},
-				{
-					doc: deps.getDoc(),
-					blockEdit: deps.blockEdit,
-					controller: deps.pasteCoordinator,
-					reading: deps.reading,
-					activePlugins: deps.activePlugins
-				}
-			);
-
-			// Pending, so the caret set and the raw mutation land in one reactive flush.
-			if (result.inlineCaretOffset !== undefined) {
-				deps.setPendingCursor(result.inlineCaretOffset);
-			}
+			return deps.surface.pasteInline({
+				pastedText,
+				// Placed across a hidden edge by `held.spend`, as every insertion is.
+				offset: replaced ? replaced.start : (range?.start ?? 0),
+				preDelete: replaced ? { start: replaced.start, end: replaced.end } : undefined,
+				caretBefore: widget?.preSelectOffset ?? deps.surface.caret.getPreEditOffset(),
+				spend: held.spend
+			});
 		}
 	});
 
 	return {
 		...handlers,
+		removeRange,
 		// Routed to the same handlers a caret-side event reaches, so the reading-mode check, the
 		// source hide and the sticky-column reset come along rather than being repeated here.
 		claimRootClipboard(event) {

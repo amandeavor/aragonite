@@ -606,8 +606,7 @@ const FAMILIES: Family[] = [
 	{
 		name: 'a cut',
 		stores: {
-			'components/blocks/text/text-clipboard.ts': 1,
-			'components/blocks/table/TableCellBlock.svelte': 1
+			'components/blocks/text/text-clipboard.ts': 1
 		},
 		rows: [
 			{ shape: 'a to-do', run: () => withText(TODO, cutX), want: ['# y\n'] },
@@ -623,7 +622,6 @@ const FAMILIES: Family[] = [
 		name: 'the bytes a copy carries',
 		stores: {
 			'components/blocks/text/text-clipboard.ts': 1,
-			'components/blocks/table/TableCellBlock.svelte': 1,
 			'selection/clipboard-text.ts': 1
 		},
 		rows: [

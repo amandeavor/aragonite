@@ -5,15 +5,7 @@
 	import type { DocumentView, NodeView } from '../../../core/node-views';
 	import type { EditorRects } from '../../../editor-rects';
 	import { editTargetAt, enterLinkCardAtCaret } from '../../link-card/link-card-entry';
-	import {
-		EDITOR_DOC_KEY,
-		EDITOR_POLICIES_KEY,
-		EDITOR_SERVICES_KEY,
-		LIST_CONTEXT_KEY,
-		type EditorDoc,
-		type EditorPolicies,
-		type EditorServices
-	} from '../../../editor-keys';
+	import { LIST_CONTEXT_KEY } from '../../../editor-keys';
 	import type { IndexedDecoration } from '../../../decorations/buckets';
 	import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 	import {
@@ -126,13 +118,11 @@
 	const {
 		focusActions,
 		controller,
-		pasteCoordinator,
 		caretMemory,
 		caretWriter,
 		selection,
 		getDoc,
 		getEditorRoot,
-		activePlugins,
 		events: editorEvents,
 		reading
 	} = wiring.deps;
@@ -150,7 +140,7 @@
 		drawnCaret,
 		presses,
 		textMoves
-	} = getContext<EditorServices>(EDITOR_SERVICES_KEY);
+	} = wiring.services;
 	const ownPairs = autoPairs.forBlock();
 
 	const {
@@ -159,10 +149,9 @@
 		imageLoadPolicy,
 		brokenImageUrls: brokenUrlCache,
 		theme: getTheme,
-		onPasteImage,
 		activationClick
-	} = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
-	const { contentVersion: getContentVersion } = getContext<EditorDoc>(EDITOR_DOC_KEY);
+	} = wiring.policies;
+	const { contentVersion: getContentVersion } = wiring.doc;
 	const readOnly = $derived(reading.mode() === 'reading');
 	const combobox = $derived(inlineMenuCombobox(myPath));
 
@@ -355,18 +344,9 @@
 			return myPath;
 		},
 		cursor,
-		caret: editableSurface.caret,
-		crossBlock,
+		surface: editableSurface,
 		selection,
-		caretMemory,
-		blockEdit,
-		pasteCoordinator,
-		activePlugins,
-		getDoc,
-		events: editorEvents,
-		onPasteImage,
 		setPendingCursor: (offset) => setPendingCursorOffset(offset, 'clipboard'),
-		isReadOnly: () => readOnly,
 		foldRevealBeforeMutation: () => widgetInteraction.foldRevealBeforeMutation(),
 		isRevealing: () => widgetInteraction.isRevealing(),
 		readRevealedText: () => readRawText(),

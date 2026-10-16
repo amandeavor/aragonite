@@ -13,20 +13,11 @@
 		type InlineMarkKind
 	} from '../../../schema/inline-construct-policy';
 	import type { NodeView } from '../../../core/node-views';
-	import {
-		EDITOR_DOC_KEY,
-		EDITOR_POLICIES_KEY,
-		EDITOR_SERVICES_KEY,
-		TABLE_CONTEXT_KEY,
-		type EditorDoc,
-		type EditorPolicies,
-		type EditorServices
-	} from '../../../editor-keys';
+	import { TABLE_CONTEXT_KEY } from '../../../editor-keys';
 	import type { AnyInlineKind, TableAlignment } from '../../../core/nodes';
-	import { normalizeLineEndings, trimTrailingLineEnding } from '../../../core/lines';
-	import { pasteDispatch, type PasteDispatchInput } from '../../../tree-operations/paste/dispatch';
+	import { normalizeLineEndings } from '../../../core/lines';
 	import { blockNodeAt } from '../../../tree-operations/node-primitives';
-	import { bytesLeavingLeaf, replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
+	import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 	import { storedAsAt } from '../../../tree-operations/stored-as';
 	import { keepsKindAt } from '../../../core/inline/live-edit/read-back';
 	import { applyLiveRangeEdit } from '../text/live-selection-edit';
@@ -38,19 +29,14 @@
 		rawTextOfNode,
 		containerDomTextLength,
 		landableDomTextBounds,
-		rawSelectionFocus,
-		type RawRange
+		rawSelectionFocus
 	} from '../../../caret/widget-offset';
 	import { asRawOffset, rowMajorCellIndex, type RawOffset } from '../../../caret/coordinate-spaces';
 	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { getCurrentCursorEditorRelativeX } from '../../../caret/sticky-measure';
 	import { handleEdgeStep, handleSharedKeydown } from '../../../selection/shared-keydown';
-	import {
-		createEditableSurface,
-		createClipboardHandlers,
-		consumePendingRestore
-	} from '../editable/editable-surface';
-	import type { ClipboardCopy } from '../editable/clipboard-step';
+	import { createEditableSurface, consumePendingRestore } from '../editable/editable-surface';
+	import { createTextClipboard } from '../text/text-clipboard';
 	import { rangeWrite } from '../editable/surface-write';
 	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import { resetForPointerDown } from '../../../selection/cross-block/pointer';
@@ -119,14 +105,12 @@
 		blockEdit,
 		focusActions,
 		controller,
-		pasteCoordinator,
 		caretMemory,
 		caretWriter,
 		selection,
 		getDoc,
 		getBlockElByPath,
 		getEditorRoot,
-		activePlugins,
 		events: editorEvents,
 		reading
 	} = wiring.deps;
@@ -143,16 +127,10 @@
 		drafts,
 		presses,
 		textMoves
-	} = getContext<EditorServices>(EDITOR_SERVICES_KEY);
+	} = wiring.services;
 	const ownPairs = autoPairs.forBlock();
-	const {
-		theme: getTheme,
-		resolveLinkUrl,
-		onPasteImage,
-		activationClick
-	} = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
-	const { contentVersion: getContentVersion, lifetime: editorLifetime } =
-		getContext<EditorDoc>(EDITOR_DOC_KEY);
+	const { theme: getTheme, resolveLinkUrl, activationClick } = wiring.policies;
+	const { contentVersion: getContentVersion, lifetime: editorLifetime } = wiring.doc;
 	const readOnly = $derived(reading.mode() === 'reading');
 
 	// A shared constant keeps an empty decoration list out of the render key.
@@ -312,8 +290,8 @@
 		completeMarker: () => {},
 		setSnapTarget: () => {},
 		isRevealing: () => widgetInteraction.isRevealing(),
-		// A widget that cannot show its source, reached this way, was reached by an arrow
-		// key, so step the caret over it as contenteditable would.
+		// An arrow steps over a widget that cannot show its source, since in a cell that is the `<br>`
+		// line break or a construct the cell draws as plain source (an image).
 		enterWidget: (widget, fromTrailingEdge) => {
 			if (widgetEditing(widget.kind)?.revealSource) {
 				widgetInteraction.enterWidget(widget, fromTrailingEdge);
@@ -323,8 +301,8 @@
 				});
 			}
 		},
-		// A cell draws no selection outline around a widget, so a drawn widget deletes whole
-		// instead of being selected first; the registered policy is otherwise kept.
+		// One press deletes a drawn widget whole, so a `<br>` goes like the line break it is; a
+		// construct drawn as source keeps its registered policy.
 		widgetEdgePolicy: (widget) => {
 			const registered = widgetEditing(widget.kind);
 			if (!el || registered?.revealSource) return undefined;
@@ -514,6 +492,7 @@
 			applyMenuClipboard,
 			snapCaretToPoint,
 			insertMarkdown: clipboard.insertMarkdown,
+			claimRootClipboard: clipboard.claimRootClipboard,
 			typeText: editableSurface.surface.typeText,
 			afterSelectionRemoved: editableSurface.afterSelectionRemoved
 		} satisfies BlockComponent;
@@ -921,81 +900,32 @@
 		return true;
 	}
 
-	const clipboard = createClipboardHandlers({
-		caretMemory,
-		selection,
-		getDoc,
-		crossBlock,
-		isReadOnly: () => readOnly,
-		caret: editableSurface.caret,
-		events: editorEvents,
-		onPasteImage,
-		foldReveal: () => widgetInteraction.foldRevealBeforeMutation(),
-		pastePreHook: pasteGridHere,
-		rangeArm: {
-			copy: copyCellRange,
-			remove: (range: RawRange) =>
-				deleteCellRange(range.start, range.end, editableSurface.caret.getPreEditOffset())
+	// While a source is shown the DOM holds an edit `node.raw` has not seen, so a copy reads the
+	// cell's live text.
+	const clipboard = createTextClipboard({
+		storedAs,
+		get node() {
+			return node;
 		},
-		pasteTail: async (pastedText, { range, held }) => {
-			if (!el) return;
-			await applyCellPaste(pastedText, range ?? { start: 0, end: 0 }, {
-				caretBefore: editableSurface.caret.getPreEditOffset(),
-				spend: held.spend
-			});
-		}
+		get index() {
+			return index;
+		},
+		get myPath() {
+			return myPath;
+		},
+		cursor,
+		surface: editableSurface,
+		selection,
+		setPendingCursor: parkCursor,
+		foldRevealBeforeMutation: () => widgetInteraction.foldRevealBeforeMutation(),
+		isRevealing: () => widgetInteraction.isRevealing(),
+		readRevealedText: () => readCellText(),
+		get reading() {
+			return reading;
+		},
+		pastePreHook: pasteGridHere
 	});
 	const { onCopy, onCut, onPaste } = clipboard;
-
-	// While a source is shown the DOM holds an edit `node.raw` has not seen; copy never writes, so
-	// it slices the live DOM text rather than hiding it first.
-	function copyCellRange(e: ClipboardEvent): ClipboardCopy<RawRange> {
-		if (!el) return null;
-		const range = cursor.getRawSelection();
-		if (!range || range.start === range.end) return null;
-		const display = widgetInteraction.isRevealing()
-			? readCellText()
-			: trimTrailingLineEnding(node.raw);
-		// What a cut there takes, so a paste gives back what was cut.
-		const carried = bytesLeavingLeaf({ ...node, raw: display }, range, storedAs());
-		e.clipboardData?.setData('text/plain', carried);
-		return { held: range };
-	}
-
-	// ── Shared edit helpers (event handlers and the right-click menu) ────────
-
-	// Through the join rules, since in live mode the delete can strand delimiter runs the user
-	// never saw (live-mode.md § 4.5). The menu's cut records no caret, so undo's defaults to `start`.
-	function deleteCellRange(start: number, end: number, undoCaret = start): void {
-		const cut = replaceRangeInLeaf(node, { start, end }, '', storedAs());
-		const display = trimTrailingLineEnding(cut.raw);
-		const write = blockEdit.updateBlockContent(index, display, 'literal', undoCaret, cut.caret);
-		if (write.admitted) parkCursor(write.caret);
-	}
-
-	async function applyCellPaste(
-		pastedText: string,
-		sel: { start: number; end: number },
-		recorded?: Pick<PasteDispatchInput, 'caretBefore' | 'spend'>
-	): Promise<void> {
-		const result = await pasteDispatch(
-			{
-				pastedText,
-				targetPath: myPath,
-				offset: sel.start,
-				preDelete: sel.start !== sel.end ? { start: sel.start, end: sel.end } : undefined,
-				...recorded
-			},
-			{
-				doc: getDoc(),
-				blockEdit,
-				controller: pasteCoordinator,
-				reading,
-				activePlugins
-			}
-		);
-		if (result.inlineCaretOffset !== undefined) parkCursor(result.inlineCaretOffset);
-	}
 
 	// ── Right-click menu clipboard (no ClipboardEvent) ──────────────────────
 
@@ -1037,7 +967,10 @@
 			const text = normalizeLineEndings(raw);
 			// Over a live range, as a paste event, so it takes the route Ctrl+V does.
 			if (text && selection.isCrossBlock) pasteTextInto(el, text);
-			else if (text) await applyCellPaste(text, sel);
+			else if (text) {
+				const preDelete = sel.start !== sel.end ? sel : undefined;
+				await editableSurface.pasteInline({ pastedText: text, offset: sel.start, preDelete });
+			}
 			return;
 		}
 		if (hasRect) {
@@ -1047,7 +980,8 @@
 		}
 		setSelection(sel.start, sel.end);
 		document.execCommand('copy');
-		if (action === 'cut') deleteCellRange(sel.start, sel.end);
+		// The menu's cut records no caret, so undo's goes to the range's start.
+		if (action === 'cut') clipboard.removeRange(sel, sel.start);
 	}
 
 	// A click past a widget leaves the caret with no text to sit in, so it moves to the

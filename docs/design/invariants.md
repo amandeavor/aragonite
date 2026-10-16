@@ -1165,6 +1165,7 @@ unguarded.
 | G4.187 | Every framework app under `examples/` runs in the adapter suite                              | L       |
 | G4.188 | Every wrapper entry imports in Node with no DOM, as a server render does                     | harness |
 | G4.189 | A host color read inside the editor carries no fallback, and the root reads the resolved one | L       |
+| G4.194 | A block reaches the clipboard steps and its inline paste only through its editable surface   | L       |
 
 ### The entries
 
@@ -2223,6 +2224,14 @@ unresolved. The rules sit in `editor.css` rather than the theme file, so a theme
 replaced wholesale keeps them. `lint/host-color-reads.test.ts` covers the library, the bundled
 plugins and the reference plugins; route pages are the host and read their own tokens however they
 like.
+
+**G4.194 · A block's clipboard comes from its surface.** A block gets its copy, cut and paste
+handlers from `editable-surface.ts :: clipboard`, which fills in the editor's half (the reading-mode
+check, the caret memory, the image hook, the cross-block arm), and pastes into its own text through
+`pasteInline`, which parks the caret where the paste left it. A block that built its own handlers
+or called `pasteDispatch` itself would carry a copy of both, and copies drift.
+`lint/file-rules.test.ts` fails a `createClipboardHandlers` or `pasteDispatch` call anywhere but the
+surface, `surface-clipboard.ts` and the cross-block range replace.
 
 ## Accessibility
 

@@ -10,6 +10,10 @@ import {
 	createTextClipboard,
 	type TextClipboardDeps
 } from '#lib/components/blocks/text/text-clipboard.js';
+import {
+	clipboardSurface,
+	type ClipboardSurfaceParts
+} from '#lib/test/harness/clipboard-surface.js';
 import { selectWidgetWhole } from '#lib/selection/place-caret.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import type { CstNode } from '#lib/core/nodes.js';
@@ -108,7 +112,8 @@ function harness(source: string, sourceStart: number, options: HarnessOptions = 
 			return fixtureReading();
 		},
 		storedAs: () => topLevelStore(node)
-	} as unknown as TextClipboardDeps;
+	} as unknown as TextClipboardDeps & ClipboardSurfaceParts;
+	deps.surface = clipboardSurface(deps);
 
 	return { handlers: createTextClipboard(deps), commits, selection };
 }
@@ -293,7 +298,8 @@ function foldSettleHarness() {
 			return fixtureReading();
 		},
 		storedAs: () => topLevelStore(node)
-	} as unknown as TextClipboardDeps;
+	} as unknown as TextClipboardDeps & ClipboardSurfaceParts;
+	deps.surface = clipboardSurface(deps);
 
 	return { handlers: createTextClipboard(deps), order, releaseWrite };
 }

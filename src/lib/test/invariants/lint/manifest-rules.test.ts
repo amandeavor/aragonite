@@ -49,7 +49,7 @@ const CLIPBOARD_READ_RE =
 /** Each site reading external text, and the name that carries its text to a declared route.
  *  `editor-root/clipboard.ts` forwards the carrier and reads no payload of its own. */
 const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
-	'src/lib/components/blocks/editable/editable-surface.ts': {
+	'src/lib/components/blocks/editable/surface-clipboard.ts': {
 		handoff: 'pasteTail',
 		why: 'the shared paste handler hands the text to the block’s pasteTail, which dispatches through the paste tree-op'
 	},
@@ -62,8 +62,8 @@ const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
 		why: 'the menu paste reads through navigator.clipboard and re-dispatches the text as a paste event on the focused surface, whose handler is the editable-surface route above'
 	},
 	'src/lib/components/blocks/table/TableCellBlock.svelte': {
-		handoff: 'pasteDispatch',
-		why: 'the right-click menu paste has no ClipboardEvent to read, so it reads through navigator.clipboard and calls the paste tree-op directly'
+		handoff: 'pasteInline',
+		why: 'the right-click menu paste has no ClipboardEvent to read, so it reads through navigator.clipboard and hands the text to the surface’s inline paste'
 	},
 	'src/lib/components/paste-image-arm.ts': {
 		handoff: 'handlePaste',
