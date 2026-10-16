@@ -4,13 +4,12 @@
 // Miss-analysis: every mounted-block suite used the internal harness, never the published API.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
-import { type EditorInstance } from '#lib';
+import type { EditorInstance } from '#lib';
 import { Editor } from '#lib/svelte.js';
 import {
 	declarePluginKind,
 	definePlugin,
 	registerBlockKind,
-	registerBlockOpener,
 	simpleLeafClosure,
 	textBlockView,
 	OPENER_PRIORITIES,
@@ -44,6 +43,19 @@ function markerLeafPlugin(view = svelteBlockView(PlainLeafBlock)): EditorPlugin 
 		setup: () => {
 			const kind = declarePluginKind(KIND);
 			registerBlockKind(kind, {
+				opener: {
+					priority: OPENER_PRIORITIES.thematicBreak - 5,
+					interruptsParagraph: false,
+					tryOpen: (ctx) => {
+						const consumed = markerBlockExtent(ctx.lines, ctx.index);
+						if (consumed === 0) return null;
+						const raw = ctx.lines
+							.slice(ctx.index, ctx.index + consumed)
+							.map((l) => l.raw)
+							.join('');
+						return { node: { kind, raw, leadingTrivia: ctx.leadingTrivia }, consumed };
+					}
+				},
 				view,
 				gapEdges: 'none',
 				mergeRole: 'not-mergeable',
@@ -55,19 +67,6 @@ function markerLeafPlugin(view = svelteBlockView(PlainLeafBlock)): EditorPlugin 
 					undo: { mode: 'implemented', via: 'plain mode — every keystroke commits' },
 					simOracle: { mode: 'inherit-default' }
 				})
-			});
-			registerBlockOpener(kind, {
-				priority: OPENER_PRIORITIES.thematicBreak - 5,
-				interruptsParagraph: false,
-				tryOpen: (ctx) => {
-					const consumed = markerBlockExtent(ctx.lines, ctx.index);
-					if (consumed === 0) return null;
-					const raw = ctx.lines
-						.slice(ctx.index, ctx.index + consumed)
-						.map((l) => l.raw)
-						.join('');
-					return { node: { kind, raw, leadingTrivia: ctx.leadingTrivia }, consumed };
-				}
 			});
 		}
 	});

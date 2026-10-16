@@ -1,6 +1,6 @@
 /**
- * Built-in block-kind descriptors and inline-construct policies. Nothing registers on import: the
- * first grammar read, `core/inline/index.ts` and `components/built-in-blocks.ts` call
+ * Built-in block kinds (descriptor and opener) and inline-construct policies. Nothing registers on
+ * import: the first grammar read, `core/inline/index.ts` and `components/built-in-blocks.ts` call
  * `registerBuiltInDescriptors()`, since tree-shaking keeps only a called binding.
  */
 
@@ -11,6 +11,7 @@ import { matchHeading } from '../core/parsers/heading';
 import { containerClosure, type ClosureBlock } from './closure';
 import type { KeyBinding } from './keybindings';
 import { registerBuiltinBlockKind } from './block-kind-descriptor';
+import { BUILT_IN_OPENERS } from '../core/parsers/built-in-openers';
 import {
 	rebuildBlockquoteRaw,
 	rebuildListItemRaw,
@@ -247,6 +248,7 @@ export function registerBuiltInDescriptors(): void {
 		})
 	});
 	registerBuiltinBlockKind('heading', {
+		opener: BUILT_IN_OPENERS.heading,
 		pageRole: 'prose',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -282,6 +284,7 @@ export function registerBuiltInDescriptors(): void {
 		})
 	});
 	registerBuiltinBlockKind('fencedCode', {
+		opener: BUILT_IN_OPENERS.fencedCode,
 		pageRole: 'object',
 		dragLabel: 'Code',
 		estimateHeight: sourceLinesEstimate,
@@ -325,6 +328,7 @@ export function registerBuiltInDescriptors(): void {
 		}
 	});
 	registerBuiltinBlockKind('thematicBreak', {
+		opener: BUILT_IN_OPENERS.thematicBreak,
 		pageRole: 'object',
 		dragLabel: 'Divider',
 		estimateHeight: singleLineEstimate,
@@ -360,6 +364,7 @@ export function registerBuiltInDescriptors(): void {
 		}
 	});
 	registerBuiltinBlockKind('indentedCode', {
+		opener: BUILT_IN_OPENERS.indentedCode,
 		pageRole: 'object',
 		estimateHeight: sourceLinesEstimate,
 		gapEdges: 'none',
@@ -371,6 +376,7 @@ export function registerBuiltInDescriptors(): void {
 		closure: RAW_TEXT_LEAF_CLOSURE
 	});
 	registerBuiltinBlockKind('htmlBlock', {
+		opener: BUILT_IN_OPENERS.htmlBlock,
 		pageRole: 'object',
 		estimateHeight: sourceLinesEstimate,
 		gapEdges: 'none',
@@ -382,6 +388,7 @@ export function registerBuiltInDescriptors(): void {
 		closure: RAW_TEXT_LEAF_CLOSURE
 	});
 	registerBuiltinBlockKind('linkReferenceDefinition', {
+		opener: BUILT_IN_OPENERS.linkReferenceDefinition,
 		pageRole: 'object',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -522,6 +529,7 @@ export function registerBuiltInDescriptors(): void {
 		}
 	});
 	registerBuiltinBlockKind('blockquote', {
+		opener: BUILT_IN_OPENERS.blockquote,
 		pageRole: 'prose',
 		estimateHeight: containerEstimate,
 		gapEdges: 'none',
@@ -556,6 +564,7 @@ export function registerBuiltInDescriptors(): void {
 		})
 	});
 	registerBuiltinBlockKind('list', {
+		opener: BUILT_IN_OPENERS.list,
 		// Its items carry the handles: one on the list would sit over its first item's.
 		pageRole: 'prose',
 		estimateHeight: containerEstimate,

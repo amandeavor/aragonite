@@ -61,6 +61,11 @@ const pairs: Record<IncoherentPairId, () => object> = {
 				middleChildBackspace: 'default-merge'
 			}
 		}
+	}),
+	'context-dependent-opener': () => ({
+		...leaf,
+		contextDependentKind: true,
+		opener: { priority: 9300, tryOpen: () => null, interruptsParagraph: false }
 	})
 };
 

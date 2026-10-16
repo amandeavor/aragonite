@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-	registerBlockOpener,
 	getOrderedOpeners,
 	createGrammarView,
 	lineInterruptsParagraph,
-	listRegisteredOpeners,
 	type BlockOpener
 } from '../../schema/block-openers';
+import { testLeaf } from '#lib/test/harness/test-kinds.js';
 import type { AnyBlockKind } from '../../core/nodes';
 
 // Plugin kinds on top of the built-in openers, which the reset keeps; each case reads back only
@@ -31,55 +30,30 @@ describe('block-opener registry', () => {
 	});
 
 	it('orders openers by ascending priority regardless of registration order', () => {
-		registerBlockOpener(
-			HEAD,
-			opener(20, () => true)
-		);
-		registerBlockOpener(
-			FENCE,
-			opener(10, () => true)
-		);
-		registerBlockOpener(
-			QUOTE,
-			opener(40, () => true)
-		);
-		expect(listRegisteredOpeners().map((e) => e.kind)).toContain(HEAD);
+		testLeaf(HEAD, { opener: opener(20, () => true) });
+		testLeaf(FENCE, { opener: opener(10, () => true) });
+		testLeaf(QUOTE, { opener: opener(40, () => true) });
 		expect(priorities(getOrderedOpeners())).toEqual([10, 20, 40]);
 	});
 
 	it('re-sorts after a later registration (cache invalidation)', () => {
-		registerBlockOpener(
-			HEAD,
-			opener(20, () => true)
-		);
+		testLeaf(HEAD, { opener: opener(20, () => true) });
 		expect(priorities(getOrderedOpeners())).toEqual([20]);
-		registerBlockOpener(
-			FENCE,
-			opener(10, () => true)
-		);
+		testLeaf(FENCE, { opener: opener(10, () => true) });
 		expect(priorities(getOrderedOpeners())).toEqual([10, 20]);
 	});
 
 	it('lineInterruptsParagraph ORs registered predicates and skips `false` entries', () => {
-		registerBlockOpener(
-			HEAD,
-			opener(20, (t) => t.startsWith('@#'))
-		);
-		registerBlockOpener(QUIET, opener(60, false));
+		testLeaf(HEAD, { opener: opener(20, (t) => t.startsWith('@#')) });
+		testLeaf(QUIET, { opener: opener(60, false) });
 		expect(lineInterruptsParagraph('@# h')).toBe(true);
 		expect(lineInterruptsParagraph('@@ quiet')).toBe(false);
 	});
 
 	it('re-evaluates interrupts after a later registration (cache invalidation)', () => {
-		registerBlockOpener(
-			HEAD,
-			opener(20, (t) => t.startsWith('@#'))
-		);
+		testLeaf(HEAD, { opener: opener(20, (t) => t.startsWith('@#')) });
 		expect(lineInterruptsParagraph('@> quote')).toBe(false);
-		registerBlockOpener(
-			QUOTE,
-			opener(40, (t) => t.startsWith('@>'))
-		);
+		testLeaf(QUOTE, { opener: opener(40, (t) => t.startsWith('@>')) });
 		expect(lineInterruptsParagraph('@> quote')).toBe(true);
 	});
 
@@ -87,14 +61,8 @@ describe('block-opener registry', () => {
 	// disturbing the cached global read.
 	describe('enablement filter', () => {
 		beforeEach(() => {
-			registerBlockOpener(
-				HEAD,
-				opener(20, (t) => t.startsWith('@#'))
-			);
-			registerBlockOpener(
-				QUOTE,
-				opener(40, (t) => t.startsWith('@>'))
-			);
+			testLeaf(HEAD, { opener: opener(20, (t) => t.startsWith('@#')) });
+			testLeaf(QUOTE, { opener: opener(40, (t) => t.startsWith('@>')) });
 		});
 
 		it('drops a disabled kind opener from the ordered dispatch', () => {

@@ -15,7 +15,6 @@ import {
 	augmentBlockKind,
 	definePlugin,
 	registerBlockCommand,
-	registerBlockOpener,
 	registerRangeIndent,
 	type EditorPlugin
 } from '#lib/plugin.js';
@@ -39,21 +38,23 @@ function quoteLeafPlugin(): EditorPlugin {
 	return definePlugin({
 		name: KIND,
 		setup: () => {
-			const kind = registerRevealLeafKind(KIND, { view: svelteBlockView(RevealLeafBlock) });
+			const kind = registerRevealLeafKind(KIND, (kind) => ({
+				opener: {
+					priority: 25,
+					interruptsParagraph: false,
+					tryOpen: (ctx) =>
+						ctx.line.text.startsWith('@@ ')
+							? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
+							: null
+				},
+				view: svelteBlockView(RevealLeafBlock)
+			}));
 			const indent = registerBlockCommand(kind, 'quoteLeaf.indent', () => true);
 			augmentBlockKind(kind, { keymap: [{ chord: 'Tab', command: indent }] });
 			registerRangeIndent(kind, indent, (node, range) => ({
 				text: `@@ \t${trimTrailingLineEnding(node.raw).slice(3)}`,
 				selection: { start: range.start + 1, end: range.end + 1 }
 			}));
-			registerBlockOpener(kind, {
-				priority: 25,
-				interruptsParagraph: false,
-				tryOpen: (ctx) =>
-					ctx.line.text.startsWith('@@ ')
-						? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
-						: null
-			});
 		}
 	});
 }

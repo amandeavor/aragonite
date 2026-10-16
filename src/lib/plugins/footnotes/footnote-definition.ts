@@ -17,7 +17,6 @@ import {
 	lineStartsOuterBlock,
 	parseContainerBody,
 	registerBlockKind,
-	registerBlockOpener,
 	setPluginMetadata,
 	splitLines,
 	type BlockOpenerResult,
@@ -150,16 +149,15 @@ export function rebuildFootnoteDefRaw(node: CstNode): void {
 export function registerFootnoteDefinition(view: BlockView): void {
 	const kind = declarePluginKind(FOOTNOTE_DEF_KIND);
 
-	registerBlockOpener(kind, {
-		// Below linkReferenceDefinition so the footnote form matches first, at a priority of
-		// its own so no two bundled plugins share one (G1.10).
-		priority: OPENER_PRIORITIES.linkReferenceDefinition - 4,
-		tryOpen,
-		interruptsParagraph: false
-	});
-
 	registerBlockKind(kind, {
 		view,
+		opener: {
+			// Below linkReferenceDefinition so the footnote form matches first, at a priority of
+			// its own so no two bundled plugins share one (G1.10).
+			priority: OPENER_PRIORITIES.linkReferenceDefinition - 4,
+			tryOpen,
+			interruptsParagraph: false
+		},
 		label: 'Footnote',
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',

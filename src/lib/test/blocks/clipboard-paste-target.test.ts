@@ -15,7 +15,7 @@ import {
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { dispatchKey } from '#lib/test/harness/settle.js';
 import { newestEntryCaret } from '../support/undo-entry';
-import { definePlugin, registerBlockOpener } from '#lib/plugin.js';
+import { definePlugin } from '#lib/plugin.js';
 import { svelteBlockView } from '#lib/svelte.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 import PlainLeafBlock from '../plugins/fixtures/PlainLeafBlock.svelte';
@@ -121,15 +121,17 @@ describe.each(['live', 'source'] as const)(
 const plainLeaf = definePlugin({
 	name: 'paste-plain-leaf',
 	setup: () => {
-		const kind = testLeaf('paste-plain-leaf', { view: svelteBlockView(PlainLeafBlock) });
-		registerBlockOpener(kind, {
-			priority: 25,
-			interruptsParagraph: false,
-			tryOpen: (ctx) =>
-				ctx.line.text.startsWith('@@ ')
-					? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
-					: null
-		});
+		testLeaf('paste-plain-leaf', (kind) => ({
+			opener: {
+				priority: 25,
+				interruptsParagraph: false,
+				tryOpen: (ctx) =>
+					ctx.line.text.startsWith('@@ ')
+						? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
+						: null
+			},
+			view: svelteBlockView(PlainLeafBlock)
+		}));
 	}
 });
 

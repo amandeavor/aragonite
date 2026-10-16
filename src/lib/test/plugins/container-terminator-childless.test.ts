@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
 	getPluginMetadata,
-	registerBlockOpener,
 	setPluginMetadata,
 	OPENER_PRIORITIES,
 	type AnyBlockKind,
@@ -43,29 +42,31 @@ function registerProbeKind(name: 'probe-wide' | 'probe-fixed'): AnyBlockKind {
 		node.raw = `${fence}${name}\n${code}${fence}\n`;
 	};
 
-	const kind = testLeaf(name, { container: { contract: 'opaque', rebuildRaw } });
-	registerBlockOpener(kind, {
-		// The built-in fence matcher accepts `~~~` with any info, so the probe opener runs first.
-		priority: OPENER_PRIORITIES.fencedCode - 5,
-		interruptsParagraph: (line) => OPEN.exec(line)?.[2] === name,
-		tryOpen(ctx) {
-			const opener = OPEN.exec(ctx.line.text);
-			if (opener?.[2] !== name) return null;
-			let i = ctx.index + 1;
-			while (i < ctx.end && !isCloser(ctx.lines[i].text, opener[1].length)) i++;
-			if (i >= ctx.end) return null;
+	const kind = testLeaf(name, (kind) => ({
+		opener: {
+			// The built-in fence matcher accepts `~~~` with any info, so the probe opener runs first.
+			priority: OPENER_PRIORITIES.fencedCode - 5,
+			interruptsParagraph: (line) => OPEN.exec(line)?.[2] === name,
+			tryOpen(ctx) {
+				const opener = OPEN.exec(ctx.line.text);
+				if (opener?.[2] !== name) return null;
+				let i = ctx.index + 1;
+				while (i < ctx.end && !isCloser(ctx.lines[i].text, opener[1].length)) i++;
+				if (i >= ctx.end) return null;
 
-			const node: CstNode = { kind, leadingTrivia: ctx.leadingTrivia, raw: '', children: [] };
-			setPluginMetadata<ProbeMetadata>(node, {
-				code: ctx.lines
-					.slice(ctx.index + 1, i)
-					.map((l) => l.raw)
-					.join('')
-			});
-			rebuildRaw(node);
-			return { node, consumed: i + 1 - ctx.index };
-		}
-	});
+				const node: CstNode = { kind, leadingTrivia: ctx.leadingTrivia, raw: '', children: [] };
+				setPluginMetadata<ProbeMetadata>(node, {
+					code: ctx.lines
+						.slice(ctx.index + 1, i)
+						.map((l) => l.raw)
+						.join('')
+				});
+				rebuildRaw(node);
+				return { node, consumed: i + 1 - ctx.index };
+			}
+		},
+		container: { contract: 'opaque', rebuildRaw }
+	}));
 	return kind;
 }
 

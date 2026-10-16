@@ -8,11 +8,7 @@ import {
 	registerBlockKind,
 	type BlockKindRegistration
 } from '#lib/schema/block-kind-descriptor.js';
-import {
-	registerBlockOpener,
-	lineInterruptsParagraph,
-	type BlockOpener
-} from '#lib/schema/block-openers.js';
+import { lineInterruptsParagraph, type BlockOpener } from '#lib/schema/block-openers.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import { collector } from '#lib/test/harness/violation-collector.js';
 import { testView } from '#lib/test/support/test-view.js';
@@ -39,8 +35,7 @@ describe('lineInterruptsParagraph as a grammar-consumption join', () => {
 	it('drains pending registration checks like getOrderedOpeners', () => {
 		flushPendingRegistrationChecks();
 		const kind = declarePluginKind('interrupt-flushed');
-		registerBlockKind(kind, leaf);
-		registerBlockOpener(kind, opener(9201));
+		registerBlockKind(kind, { ...leaf, opener: opener(9201) });
 		expect(hasPendingRegistrationChecks()).toBe(true);
 
 		lineInterruptsParagraph('# h');
@@ -53,8 +48,7 @@ describe('lineInterruptsParagraph as a grammar-consumption join', () => {
 		lineInterruptsParagraph('# h');
 
 		const kind = declarePluginKind('interrupt-late');
-		registerBlockKind(kind, leaf);
-		registerBlockOpener(kind, opener(9202));
+		registerBlockKind(kind, { ...leaf, opener: opener(9202) });
 
 		const { report, byTag } = collector();
 		flushPendingRegistrationChecks(report);

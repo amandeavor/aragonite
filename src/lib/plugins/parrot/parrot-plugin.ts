@@ -4,7 +4,6 @@ import {
 	declarePluginKind,
 	definePlugin,
 	registerBlockKind,
-	registerBlockOpener,
 	simpleLeafClosure,
 	type BlockView,
 	type CaretTarget,
@@ -34,6 +33,15 @@ function registerParrotBlock(view: BlockView): void {
 
 	registerBlockKind(parrot, {
 		view,
+		opener: {
+			priority: 25,
+			interruptsParagraph: (text) => text.startsWith('%%parrot'),
+			tryOpen(ctx) {
+				if (!ctx.line.text.startsWith('%%parrot')) return null;
+				const node = { kind: parrot, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw };
+				return { node, consumed: 1 };
+			}
+		},
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -46,16 +54,6 @@ function registerParrotBlock(view: BlockView): void {
 			undo: { mode: 'implemented', via: 'render-primary: one commit when the caret leaves' },
 			simOracle: { mode: 'inherit-default' }
 		})
-	});
-
-	registerBlockOpener(parrot, {
-		priority: 25,
-		interruptsParagraph: (text) => text.startsWith('%%parrot'),
-		tryOpen(ctx) {
-			if (!ctx.line.text.startsWith('%%parrot')) return null;
-			const node = { kind: parrot, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw };
-			return { node, consumed: 1 };
-		}
 	});
 }
 

@@ -4,7 +4,8 @@
  * skips the constant and a constant key with no registration are the same defect.
  */
 import { describe, it, expect } from 'vitest';
-import { getOrderedOpeners, listRegisteredOpeners } from '../../schema/block-openers';
+import { getOrderedOpeners } from '../../schema/block-openers';
+import { openerRecords } from '../../schema/block-kind-descriptor';
 import { OPENER_PRIORITIES } from '../../schema/opener-priorities';
 import { isBuiltinBlockKind } from '../../core/nodes';
 
@@ -12,9 +13,9 @@ describe('OPENER_PRIORITIES ↔ registry parity', () => {
 	it('equals the built-in openers the registry holds after registration', () => {
 		getOrderedOpeners();
 		const registered = Object.fromEntries(
-			listRegisteredOpeners()
-				.filter((o) => isBuiltinBlockKind(o.kind))
-				.map((o) => [o.kind, o.priority])
+			openerRecords()
+				.filter((o) => isBuiltinBlockKind(o.key))
+				.map((o) => [o.key, o.value.priority])
 		);
 		expect(registered).toEqual({ ...OPENER_PRIORITIES });
 

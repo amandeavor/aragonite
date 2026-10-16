@@ -8,7 +8,6 @@ import {
 	definePlugin,
 	declarePluginKind,
 	registerBlockKind,
-	registerBlockOpener,
 	registerInsertEntry,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
@@ -30,6 +29,21 @@ export function registerTocBlock(view: BlockView): void {
 	// `leadingTrivia + raw`, so a raw taken verbatim from the line round-trips.
 	registerBlockKind(toc, {
 		view,
+		opener: {
+			// Just below the only built-in that consumes brackets, so `[[toc]]` resolves here
+			// whatever that matcher does.
+			priority: OPENER_PRIORITIES.linkReferenceDefinition - 5,
+			interruptsParagraph: (text) => text === TOC_LINE,
+			tryOpen(ctx) {
+				// Exact line only, so this process-wide opener never misfires on indented or
+				// trailing content in a sibling plugin's document.
+				if (ctx.line.text !== TOC_LINE) return null;
+				return {
+					node: { kind: toc, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw },
+					consumed: 1
+				};
+			}
+		},
 		label: 'Table of contents',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -57,22 +71,6 @@ export function registerTocBlock(view: BlockView): void {
 			},
 			simOracle: { mode: 'implemented', via: 'toc document-prop e2e' }
 		})
-	});
-
-	registerBlockOpener(toc, {
-		// Just below the only built-in that consumes brackets, so `[[toc]]` resolves here
-		// whatever that matcher does.
-		priority: OPENER_PRIORITIES.linkReferenceDefinition - 5,
-		interruptsParagraph: (text) => text === TOC_LINE,
-		tryOpen(ctx) {
-			// Exact line only, so this process-wide opener never misfires on indented or
-			// trailing content in a sibling plugin's document.
-			if (ctx.line.text !== TOC_LINE) return null;
-			return {
-				node: { kind: toc, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw },
-				consumed: 1
-			};
-		}
 	});
 }
 

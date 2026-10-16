@@ -1,14 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import {
-	registerBlockOpener,
-	type BlockOpenerResult,
-	type OpenContext
-} from '../../schema/block-openers';
+import { type BlockOpenerResult, type OpenContext } from '../../schema/block-openers';
 import { declarePluginKind } from '../../schema/plugin-kind';
 import { takeDevWarns } from '../support/warn-gate';
 import type { Document } from '../../core/nodes';
+import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
 // Drives the parser's dev-mode trust checks without a real misbehaving plugin. The kind name is
 // decoupled from the sentinel because kind names may not contain the sentinel's symbols.
@@ -17,12 +14,13 @@ function registerSyntheticOpener(
 	sentinel: string,
 	build: (ctx: OpenContext, kind: ReturnType<typeof declarePluginKind>) => BlockOpenerResult
 ): void {
-	const kind = declarePluginKind(kindName);
-	registerBlockOpener(kind, {
-		priority: 1,
-		interruptsParagraph: false,
-		tryOpen: (ctx) => (ctx.line.text.startsWith(sentinel) ? build(ctx, kind) : null)
-	});
+	testLeaf(kindName, (kind) => ({
+		opener: {
+			priority: 1,
+			interruptsParagraph: false,
+			tryOpen: (ctx) => (ctx.line.text.startsWith(sentinel) ? build(ctx, kind) : null)
+		}
+	}));
 }
 
 describe('parser opener trust guards', () => {

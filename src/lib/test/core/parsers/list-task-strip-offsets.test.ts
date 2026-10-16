@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../../core/parser';
-import { registerBlockOpener, type OpenContext } from '../../../schema/block-openers';
-import { declarePluginKind } from '../../../schema/plugin-kind';
+import type { OpenContext } from '../../../schema/block-openers';
 import type { ParsedLine } from '../../../core/lines';
+import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
 // A strip that rewrites a line's `raw` while spreading its old offsets desyncs the whole
 // stream from its own bytes. The offsets are unobservable through the CST, since parsers
@@ -15,13 +15,14 @@ function offsetPairs(lines: ParsedLine[]): [number, number][] {
 describe('task-checkbox strip recomputes stripped-line offsets', () => {
 	it('hands a task item body a stream whose offsets match its bytes', () => {
 		let taskBody: ParsedLine[] | null = null;
-		const kind = declarePluginKind('offset-probe');
-		registerBlockOpener(kind, {
-			priority: 1, // below every built-in: offered first, stashes, then declines
-			interruptsParagraph: false,
-			tryOpen: (ctx: OpenContext) => {
-				if (ctx.line.text === 'more') taskBody = ctx.lines;
-				return null;
+		testLeaf('offset-probe', {
+			opener: {
+				priority: 1, // below every built-in: offered first, stashes, then declines
+				interruptsParagraph: false,
+				tryOpen: (ctx: OpenContext) => {
+					if (ctx.line.text === 'more') taskBody = ctx.lines;
+					return null;
+				}
 			}
 		});
 

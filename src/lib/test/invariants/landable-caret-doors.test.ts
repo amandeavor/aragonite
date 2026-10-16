@@ -6,7 +6,6 @@ import type { Component } from 'svelte';
 import type { BlockComponent, BlockComponentExports, BlockComponentProps } from '#lib/plugin.js';
 import {
 	definePlugin,
-	registerBlockOpener,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
 	type EditorPlugin
@@ -35,7 +34,22 @@ function markerLinePlugin<P extends Partial<BlockComponentProps> & Record<string
 	return definePlugin({
 		name: kind,
 		setup: () => {
-			const declared = testLeaf(kind, {
+			testLeaf(kind, (declared) => ({
+				opener: {
+					priority: OPENER_PRIORITIES.thematicBreak - 5,
+					interruptsParagraph: false,
+					tryOpen: (ctx) =>
+						ctx.lines[ctx.index].text === marker
+							? {
+									node: {
+										kind: declared,
+										raw: ctx.lines[ctx.index].raw,
+										leadingTrivia: ctx.leadingTrivia
+									},
+									consumed: 1
+								}
+							: null
+				},
 				view: svelteBlockView(component),
 				closure: simpleLeafClosure({
 					focus: { mode: 'implemented', via: 'the fixture owns the caret door under test' },
@@ -43,22 +57,7 @@ function markerLinePlugin<P extends Partial<BlockComponentProps> & Record<string
 					undo: { mode: 'inherit-default' },
 					simOracle: { mode: 'inherit-default' }
 				})
-			});
-			registerBlockOpener(declared, {
-				priority: OPENER_PRIORITIES.thematicBreak - 5,
-				interruptsParagraph: false,
-				tryOpen: (ctx) =>
-					ctx.lines[ctx.index].text === marker
-						? {
-								node: {
-									kind: declared,
-									raw: ctx.lines[ctx.index].raw,
-									leadingTrivia: ctx.leadingTrivia
-								},
-								consumed: 1
-							}
-						: null
-			});
+			}));
 		}
 	});
 }

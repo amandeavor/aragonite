@@ -18,7 +18,6 @@ import {
 	ownTrailingLineEnding,
 	parseContainerBody,
 	registerBlockKind,
-	registerBlockOpener,
 	serializeChildren,
 	setPluginMetadata,
 	type BlockOpenerResult,
@@ -98,16 +97,15 @@ function prefixQuoteLines(body: string): string {
 export function registerGithubAlert(view: BlockView): void {
 	const kind = declarePluginKind(GITHUB_ALERT);
 
-	registerBlockOpener(kind, {
-		// Below blockquote so the alert form matches first, at a priority no other opener
-		// uses, so a bundle installing them all keeps every priority unique (G1.10).
-		priority: OPENER_PRIORITIES.blockquote - 5,
-		tryOpen,
-		interruptsParagraph: (t) => matchAlertMarker(t) !== null
-	});
-
 	registerBlockKind(kind, {
 		view,
+		opener: {
+			// Below blockquote so the alert form matches first, at a priority no other opener
+			// uses, so a bundle installing them all keeps every priority unique (G1.10).
+			priority: OPENER_PRIORITIES.blockquote - 5,
+			tryOpen,
+			interruptsParagraph: (t) => matchAlertMarker(t) !== null
+		},
 		label: 'Alert',
 		// A note reads as part of the text around it, so it shows no drag handle.
 		pageRole: 'prose',

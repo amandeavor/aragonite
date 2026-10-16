@@ -10,6 +10,7 @@ import {
 } from '#lib/schema/block-kind-descriptor.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import { testView } from '#lib/test/support/test-view.js';
+import type { BlockOpener } from '#lib/schema/block-openers.js';
 
 const leaf = {
 	gapEdges: 'none',
@@ -93,6 +94,12 @@ const typePins = (): void => {
 	// @ts-expect-error a title row lives in the container group, never on a leaf
 	registerBlockKind(kind, { ...leaf, reservedChrome: { kind: title } });
 
+	const opener: BlockOpener = { priority: 1, tryOpen: () => null, interruptsParagraph: false };
+	// @ts-expect-error [context-dependent-opener] the container rebuilds the kind, so no line opens it
+	registerBlockKind(kind, { ...leaf, contextDependentKind: true, opener });
+	registerBlockKind(kind, { ...leaf, contextDependentKind: true });
+	registerBlockKind(kind, { ...leaf, opener });
+
 	// An augment could assemble any pair above behind the registration's back, so it takes none.
 	// @ts-expect-error focus is fixed at registration
 	augmentBlockKind(kind, { blockFocus: 'whole-block' });
@@ -100,6 +107,10 @@ const typePins = (): void => {
 	augmentBlockKind(kind, { supportsInline: true });
 	// @ts-expect-error the content start is fixed at registration
 	augmentBlockKind(kind, { contentStart: { range } });
+	// @ts-expect-error the opener is fixed at registration, so no grammar change slips in late
+	augmentBlockKind(kind, { opener });
+	// @ts-expect-error so is whether the kind's container owns its syntax
+	augmentBlockKind(kind, { contextDependentKind: true });
 	// @ts-expect-error the flat content-start Backspace field is gone from the augment too
 	augmentBlockKind(kind, { contentStartBackspace: 'demote-first' });
 	// @ts-expect-error a title row is fixed at registration

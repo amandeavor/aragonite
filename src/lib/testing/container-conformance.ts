@@ -24,12 +24,13 @@ import {
 } from '../editor-actions/unwrap-strategies';
 import type { EditEvent } from '../editor-events';
 import { isDirectiveKind } from '../core/directive/registry';
-import { defaultGrammarView, isBlockOpenerRegistered } from '../schema/block-openers';
+import { defaultGrammarView } from '../schema/block-openers';
 import { kitReading } from './kit-reading';
 import {
 	getBlockKindDescriptor,
 	isGridDescriptor,
-	type BlockKindDescriptor
+	type BlockKindDescriptor,
+	hasOwnOpener
 } from '../schema/block-kind-descriptor';
 import {
 	childHoldingLastLine,
@@ -675,7 +676,7 @@ function assertBodyWrapMatchesParse(kind: AnyBlockKind, descriptor: BlockKindDes
 	// A kind with no recognizer of its own (listItem) is tested where the fixture nests it; a
 	// directive kind's recognizer is the shared `:::`, which the opener registry does not list.
 	const doc = parse(fixture);
-	const opensAtTop = isBlockOpenerRegistered(kind) || isDirectiveKind(kind);
+	const opensAtTop = hasOwnOpener(kind) || isDirectiveKind(kind);
 	const path = subjectPath(doc, kind, 'first', `${kind} conformanceFixture`);
 	assert(
 		!opensAtTop || path.length === 1,

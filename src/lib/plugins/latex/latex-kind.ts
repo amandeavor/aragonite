@@ -13,7 +13,6 @@ import {
 	registerInlineSyntax,
 	registerInlineWidgetKind,
 	registerBlockKind,
-	registerBlockOpener,
 	simpleLeafClosure,
 	fenceRawWrite,
 	fenceShapeOfRaw,
@@ -197,6 +196,23 @@ export function registerMathBlock(view: BlockView): void {
 	// `leadingTrivia + raw`, so a raw built from the exact fence bytes round-trips byte for byte.
 	registerBlockKind(mathBlock, {
 		view,
+		opener: {
+			// `$$` collides with no built-in matcher, so this number only keeps it from tying.
+			priority: OPENER_PRIORITIES.fencedCode + 5,
+			interruptsParagraph: opensMathBlock,
+			readingNotFinal: awaitsMathCloser,
+			tryOpen(ctx) {
+				const closer = mathCloserLine(ctx.lines, ctx.index, ctx.end);
+				// An unclosed fence declines, so its lines read as a paragraph.
+				if (closer === -1) return null;
+				const raw = ctx.lines
+					.slice(ctx.index, closer + 1)
+					.map((line) => line.raw)
+					.join('');
+				const node: CstNode = { kind: mathBlock, leadingTrivia: ctx.leadingTrivia, raw };
+				return { node, consumed: closer + 1 - ctx.index };
+			}
+		},
 		label: 'Math block',
 		// A formula's source makes a poor label on the drag ghost.
 		dragLabel: 'Equation',
@@ -231,24 +247,6 @@ export function registerMathBlock(view: BlockView): void {
 		})
 	});
 
-	registerBlockOpener(mathBlock, {
-		// `$$` collides with no built-in matcher, so this number only keeps it from tying.
-		priority: OPENER_PRIORITIES.fencedCode + 5,
-		interruptsParagraph: opensMathBlock,
-		readingNotFinal: awaitsMathCloser,
-		tryOpen(ctx) {
-			const closer = mathCloserLine(ctx.lines, ctx.index, ctx.end);
-			// An unclosed fence declines, so its lines read as a paragraph.
-			if (closer === -1) return null;
-			const raw = ctx.lines
-				.slice(ctx.index, closer + 1)
-				.map((line) => line.raw)
-				.join('');
-			const node: CstNode = { kind: mathBlock, leadingTrivia: ctx.leadingTrivia, raw };
-			return { node, consumed: closer + 1 - ctx.index };
-		}
-	});
-
 	// The open/close pair needs its lines adjacent, which Enter alone can never type.
 	registerMathBlockCompleter(mathBlock);
 
@@ -267,6 +265,23 @@ export function registerMathFence(view: BlockView): void {
 
 	registerBlockKind(mathFence, {
 		view,
+		opener: {
+			// `fencedCode` accepts every fence, ```math included, so this has to be tried before
+			// it, at a priority of its own just below mermaid's.
+			priority: OPENER_PRIORITIES.fencedCode - 4,
+			interruptsParagraph: (line) => matchMathFence(line) !== null,
+			tryOpen(ctx) {
+				const fence = matchMathFence(ctx.line.text);
+				if (!fence) return null;
+
+				const scan = scanFence(ctx, fence);
+				// An unterminated fence backs out, so the built-in fencedCode takes it as a plain
+				// `math` code block, matching the `$$` block.
+				if (scan.closer === -1) return null;
+				const node: CstNode = { kind: mathFence, leadingTrivia: ctx.leadingTrivia, raw: scan.raw };
+				return { node, consumed: scan.consumed };
+			}
+		},
 		label: 'Math block',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -297,23 +312,5 @@ export function registerMathFence(view: BlockView): void {
 			// by the plugins e2e battery instead.
 			simOracle: { mode: 'inherit-default' }
 		})
-	});
-
-	registerBlockOpener(mathFence, {
-		// `fencedCode` accepts every fence, ```math included, so this has to be tried before
-		// it, at a priority of its own just below mermaid's.
-		priority: OPENER_PRIORITIES.fencedCode - 4,
-		interruptsParagraph: (line) => matchMathFence(line) !== null,
-		tryOpen(ctx) {
-			const fence = matchMathFence(ctx.line.text);
-			if (!fence) return null;
-
-			const scan = scanFence(ctx, fence);
-			// An unterminated fence backs out, so the built-in fencedCode takes it as a plain
-			// `math` code block, matching the `$$` block.
-			if (scan.closer === -1) return null;
-			const node: CstNode = { kind: mathFence, leadingTrivia: ctx.leadingTrivia, raw: scan.raw };
-			return { node, consumed: scan.consumed };
-		}
 	});
 }

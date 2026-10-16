@@ -28,7 +28,7 @@ import {
 } from './edge-policy-fixture';
 import { mountWidgetBlock } from './math-widget-fixture';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
-import { type BlockEditActions } from '#lib/action-contracts.js';
+import type { BlockEditActions } from '#lib/action-contracts.js';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 

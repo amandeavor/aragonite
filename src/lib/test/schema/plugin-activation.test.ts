@@ -5,7 +5,7 @@ import { createRegistryView, kindEnablementFor } from '#lib/schema/registry-view
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { blockViewFor, registerBlockKind } from '#lib/schema/block-kind-descriptor.js';
-import { registerBlockOpener, type BlockOpener } from '#lib/schema/block-openers.js';
+import type { BlockOpener } from '#lib/schema/block-openers.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import {
 	blockContextActionsFor,
@@ -34,8 +34,10 @@ function installKindPlugin(name: string, marker: string): PluginBlockKind {
 		definePlugin({
 			name,
 			setup() {
-				kind = testLeaf(`${name}-block`, { view: stubView });
-				registerBlockOpener(kind, markerOpener(kind, marker));
+				kind = testLeaf(`${name}-block`, (kind) => ({
+					view: stubView,
+					opener: markerOpener(kind, marker)
+				}));
 			}
 		})
 	]);
@@ -101,6 +103,7 @@ describe('one activation rule for every plugin registration', () => {
 			setup() {
 				kind = declarePluginKind('half-block');
 				registerBlockKind(kind, {
+					opener: markerOpener(kind, '@h'),
 					gapEdges: 'none',
 					mergeRole: 'not-mergeable',
 					editable: true,
@@ -108,7 +111,6 @@ describe('one activation rule for every plugin registration', () => {
 					closure: testClosure,
 					view: stubView
 				});
-				registerBlockOpener(kind, markerOpener(kind, '@h'));
 				throw new Error('setup failed halfway');
 			}
 		});

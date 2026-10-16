@@ -25,21 +25,13 @@ export function checkRegistryCompleteness(
 	return null;
 }
 
-/** G1.10: every opener belongs to a registered kind, and no two share a priority. A tie still
- *  dispatches by kind name but is almost always a mistake, so it warns. */
+/** G1.10: no two openers share a priority. A tie still dispatches by kind name but is almost
+ *  always a mistake, so it warns. */
 export function checkOpenerRegistry(
-	entries: readonly { kind: AnyBlockKind; priority: number }[],
-	hasDescriptor: (kind: AnyBlockKind) => boolean
+	entries: readonly { kind: AnyBlockKind; priority: number }[]
 ): InvariantViolation | null {
 	const seen = new Map<number, AnyBlockKind>();
 	for (const { kind, priority } of entries) {
-		if (!hasDescriptor(kind)) {
-			return {
-				code: 'opener-registry',
-				message: `opener registered for "${kind}" but no descriptor exists`,
-				detail: { kind, missing: 'descriptor' }
-			};
-		}
 		const holder = seen.get(priority);
 		if (holder !== undefined) {
 			return {
@@ -278,29 +270,6 @@ function markClashOf(
 	}
 	ranks.set(mark.nestingRank, kind);
 	commands.set(mark.command, kind);
-	return null;
-}
-
-export interface DescriptorFieldEntry {
-	kind: AnyBlockKind;
-	contextDependentKind: boolean;
-	hasOpener: boolean;
-}
-
-/** G1.37: a context-dependent kind registers no opener. The two live in separate registries, so
- *  the registration type can't see the pair; it fails silently until a gesture reaches the kind. */
-export function checkDescriptorFieldCoherence(
-	entries: readonly DescriptorFieldEntry[]
-): InvariantViolation | null {
-	for (const entry of entries) {
-		if (entry.contextDependentKind && entry.hasOpener) {
-			return {
-				code: 'descriptor-field-coherence',
-				message: `kind "${entry.kind}" declares contextDependentKind but registers an opener: the field suppresses the reparse that would re-derive the kind, so a kind the parser can recognize stops re-deriving; drop one`,
-				detail: { kind: entry.kind, fields: ['contextDependentKind', 'opener'] }
-			};
-		}
-	}
 	return null;
 }
 

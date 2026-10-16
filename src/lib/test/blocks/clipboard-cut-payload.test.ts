@@ -15,7 +15,7 @@ import {
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { dispatchKey } from '#lib/test/harness/settle.js';
 import { newestEntryCaret } from '../support/undo-entry';
-import { definePlugin, registerBlockOpener } from '#lib/plugin.js';
+import { definePlugin } from '#lib/plugin.js';
 import { svelteBlockView } from '#lib/svelte.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 import PlainLeafBlock from '../plugins/fixtures/PlainLeafBlock.svelte';
@@ -246,15 +246,17 @@ describe('a cut writes the copy’s payload during its event, then deletes it', 
 const plainLeaf = definePlugin({
 	name: 'cut-plain-leaf',
 	setup: () => {
-		const kind = testLeaf('cut-plain-leaf', { view: svelteBlockView(PlainLeafBlock) });
-		registerBlockOpener(kind, {
-			priority: 25,
-			interruptsParagraph: false,
-			tryOpen: (ctx) =>
-				ctx.line.text.startsWith('@@ ')
-					? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
-					: null
-		});
+		testLeaf('cut-plain-leaf', (kind) => ({
+			opener: {
+				priority: 25,
+				interruptsParagraph: false,
+				tryOpen: (ctx) =>
+					ctx.line.text.startsWith('@@ ')
+						? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
+						: null
+			},
+			view: svelteBlockView(PlainLeafBlock)
+		}));
 	}
 });
 

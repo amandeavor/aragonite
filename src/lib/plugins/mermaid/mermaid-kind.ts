@@ -8,7 +8,6 @@
 import {
 	declarePluginKind,
 	registerBlockKind,
-	registerBlockOpener,
 	registerBlockCommand,
 	setPluginMetadata,
 	getPluginMetadata,
@@ -111,6 +110,37 @@ export function registerMermaidKind(view: BlockView): void {
 
 	registerBlockKind(mermaid, {
 		view,
+		opener: {
+			// `fencedCode` accepts every fence, ```mermaid included, so this has to be tried
+			// before it rather than sit between two built-ins.
+			priority: OPENER_PRIORITIES.fencedCode - 5,
+			interruptsParagraph: (line) => matchMermaidFence(line) !== null,
+			tryOpen(ctx) {
+				const fence = matchMermaidFence(ctx.line.text);
+				if (!fence) return null;
+
+				// Unterminated consumes to end of input, like the built-in fence.
+				const scan = scanFence(ctx, fence);
+				const node: CstNode = {
+					kind: mermaid,
+					leadingTrivia: ctx.leadingTrivia,
+					raw: '',
+					children: []
+				};
+				setPluginMetadata<MermaidMetadata>(node, {
+					code: scan.body,
+					openerIndent: fence.indent,
+					fenceChar: fence.marker,
+					fenceLength: fence.length,
+					infoRaw: fence.infoRaw,
+					openerLineEnding: ctx.line.lineEnding,
+					closerRaw: scan.closer === -1 ? '' : ctx.lines[scan.closer].raw
+				});
+				// Raw comes from the rebuild, so opener and rebuild agree by construction.
+				rebuildMermaidRaw(node);
+				return { node, consumed: scan.consumed };
+			}
+		},
 		label: 'Diagram',
 		dragLabel: 'Diagram',
 		// Backspace from the block below must never merge text into a diagram.
@@ -169,38 +199,6 @@ export function registerMermaidKind(view: BlockView): void {
 				mode: 'implemented',
 				via: 'mermaid decoration/selection overlay e2e under the [invariant:] watcher'
 			}
-		}
-	});
-
-	registerBlockOpener(mermaid, {
-		// `fencedCode` accepts every fence, ```mermaid included, so this has to be tried
-		// before it rather than sit between two built-ins.
-		priority: OPENER_PRIORITIES.fencedCode - 5,
-		interruptsParagraph: (line) => matchMermaidFence(line) !== null,
-		tryOpen(ctx) {
-			const fence = matchMermaidFence(ctx.line.text);
-			if (!fence) return null;
-
-			// Unterminated consumes to end of input, like the built-in fence.
-			const scan = scanFence(ctx, fence);
-			const node: CstNode = {
-				kind: mermaid,
-				leadingTrivia: ctx.leadingTrivia,
-				raw: '',
-				children: []
-			};
-			setPluginMetadata<MermaidMetadata>(node, {
-				code: scan.body,
-				openerIndent: fence.indent,
-				fenceChar: fence.marker,
-				fenceLength: fence.length,
-				infoRaw: fence.infoRaw,
-				openerLineEnding: ctx.line.lineEnding,
-				closerRaw: scan.closer === -1 ? '' : ctx.lines[scan.closer].raw
-			});
-			// Raw comes from the rebuild, so opener and rebuild agree by construction.
-			rebuildMermaidRaw(node);
-			return { node, consumed: scan.consumed };
 		}
 	});
 }

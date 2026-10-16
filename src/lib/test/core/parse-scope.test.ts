@@ -3,22 +3,23 @@
 // composed from it plus `index`/`depth`, so the flag itself stays constant while nesting.
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
-import { registerBlockOpener, type OpenContext } from '../../schema/block-openers';
-import { declarePluginKind } from '../../schema/plugin-kind';
+import type { OpenContext } from '../../schema/block-openers';
 import { activateDirectiveGrammar } from '../../core/directive/activate';
 import { FRONT_MATTER, registerDocumentTopKind } from '../support/position-scoped-kind';
 import { testDirectiveViews } from '#lib/test/support/test-view.js';
+import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
 /** Every context the parser offers, in dispatch order; the probe declines them all. */
 function observeContexts(): OpenContext[] {
 	const seen: OpenContext[] = [];
-	const kind = declarePluginKind('scope-probe');
-	registerBlockOpener(kind, {
-		priority: 0,
-		interruptsParagraph: false,
-		tryOpen: (ctx) => {
-			seen.push(ctx);
-			return null;
+	testLeaf('scope-probe', {
+		opener: {
+			priority: 0,
+			interruptsParagraph: false,
+			tryOpen: (ctx) => {
+				seen.push(ctx);
+				return null;
+			}
 		}
 	});
 	return seen;

@@ -8,11 +8,7 @@ import {
 	getBlockKindDescriptor
 } from '#lib/schema/block-kind-descriptor.js';
 import { asBlockView } from '#lib/schema/block-view.js';
-import {
-	registerBlockOpener,
-	getOrderedOpeners,
-	type BlockOpener
-} from '#lib/schema/block-openers.js';
+import { getOrderedOpeners, type BlockOpener } from '#lib/schema/block-openers.js';
 import { registerBlockCommand, getBlockCommand } from '#lib/schema/block-commands.js';
 import type { AnyCommandId } from '#lib/schema/command-id.js';
 import {
@@ -84,14 +80,15 @@ describe('dev re-registration replaces instead of throwing', () => {
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);
 	});
 
-	it('registerBlockOpener replaces the opener and re-clears the ordered cache', () => {
+	it('registerBlockKind replaces the opener and re-clears the ordered cache', () => {
 		const kind = declarePluginKind('dev-opener');
-		registerBlockKind(kind, registration(true));
-		registerBlockOpener(kind, stubOpener(15));
+		registerBlockKind(kind, { ...registration(true), opener: stubOpener(15) });
 		// Prime the cache so the replace has to invalidate it, not just an empty read.
 		expect(getOrderedOpeners().some((o) => o.priority === 15)).toBe(true);
 		asDevNotTest();
-		expect(() => registerBlockOpener(kind, stubOpener(16))).not.toThrow();
+		expect(() =>
+			registerBlockKind(kind, { ...registration(true), opener: stubOpener(16) })
+		).not.toThrow();
 		expect(getOrderedOpeners().some((o) => o.priority === 16)).toBe(true);
 		expect(getOrderedOpeners().some((o) => o.priority === 15)).toBe(false);
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);

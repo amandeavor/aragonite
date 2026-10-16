@@ -3,9 +3,9 @@ import type { NodeView } from '../core/node-views';
 import { readBlocks } from '../core/parser';
 import { readAsOpened } from '../schema/opened-reading';
 import { concatChildren } from '../core/serializer';
-import { countsCells, getBlockKindDescriptor } from '../schema/block-kind-descriptor';
+import { countsCells, getBlockKindDescriptor, hasOwnOpener } from '../schema/block-kind-descriptor';
 import { reservedChromeKindOf } from '../schema/reserved-chrome';
-import { listRegisteredOpeners, type GrammarView } from '../schema/block-openers';
+import type { GrammarView } from '../schema/block-openers';
 import { isDirectiveKind } from '../core/directive/registry';
 import type { InvariantViolation } from '../assert';
 import { describeMetadataDivergence } from '../core/metadata-parity';
@@ -175,7 +175,7 @@ export function checkOpaqueStaleRaw(
 /** Whether `readBlocks(raw)` can produce this kind: it owns a block opener, or it is a directive
  *  the shared `:::` opener recognizes. */
 function hasStandaloneRecognizer(kind: CstNode['kind']): boolean {
-	return listRegisteredOpeners().some((o) => o.kind === kind) || isDirectiveKind(kind);
+	return hasOwnOpener(kind) || isDirectiveKind(kind);
 }
 
 /** The same check with a reserved title child, whose bytes sit in the opener line: the live tree

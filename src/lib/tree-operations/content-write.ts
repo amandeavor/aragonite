@@ -8,11 +8,7 @@ import type { AnyBlockKind, CstNode, Document } from '../core/nodes';
 import type { DocumentView, NodeView } from '../core/node-views';
 import { isBlankParagraph } from '../core/parser';
 import { escalatedFenceLength, matchFenceOpen } from '../core/parsers/fence-syntax';
-import {
-	blockReadingNotFinal,
-	isBlockOpenerRegistered,
-	type GrammarView
-} from '../schema/block-openers';
+import { blockReadingNotFinal, type GrammarView } from '../schema/block-openers';
 import {
 	lineOpensAs,
 	parseContainerRaw,
@@ -33,7 +29,8 @@ import {
 	mustHoldChild,
 	tryGetBlockKindDescriptor,
 	type WriteContext,
-	type WriteMode
+	type WriteMode,
+	hasOwnOpener
 } from '../schema/block-kind-descriptor';
 import type { SharingState } from './sharing';
 import { resyncChildIds } from './children';
@@ -435,7 +432,7 @@ export function reclassifyContainer(
 ): CstNode | null {
 	const node = parent.children[index];
 	if (!node || !tryGetBlockKindDescriptor(node.kind)?.isContainer) return null;
-	if (!isBlockOpenerRegistered(node.kind)) return null;
+	if (!hasOwnOpener(node.kind)) return null;
 	const filled: CstNode[] = [];
 	const blocks = parseContainerRaw(node.raw, grammar, filled);
 	return replaceWithParse(parent, index, blocks, filled, grammar);
@@ -457,7 +454,7 @@ export function installReading(
 		reading.node.childIds = idsAcrossReread(node.children ?? [], node.childIds, children);
 		return installReplacement(parent, index, reading.node, reading.filled, grammar);
 	}
-	if (!isBlockOpenerRegistered(node.kind)) return null;
+	if (!hasOwnOpener(node.kind)) return null;
 	return replaceWithParse(parent, index, reading.blocks, reading.filled, grammar);
 }
 

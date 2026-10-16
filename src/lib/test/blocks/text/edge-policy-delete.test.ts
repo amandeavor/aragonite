@@ -14,8 +14,8 @@ import {
 	type EdgeDispatchHarness,
 	mountIslandBlock
 } from './edge-policy-fixture';
-import { type CstNode } from '#lib/core/nodes.js';
-import { type EdgeAffinity } from '#lib/caret/edge-affinity.js';
+import type { CstNode } from '#lib/core/nodes.js';
+import type { EdgeAffinity } from '#lib/caret/edge-affinity.js';
 import '#lib/schema/built-in-descriptors.js';
 
 installEdgeDispatchCleanup();

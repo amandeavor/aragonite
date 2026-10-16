@@ -11,11 +11,7 @@ import {
 	type BlockKindRegistration
 } from '#lib/schema/block-kind-descriptor.js';
 import { registerBlockCommand } from '#lib/schema/block-commands.js';
-import {
-	registerBlockOpener,
-	getOrderedOpeners,
-	type BlockOpener
-} from '#lib/schema/block-openers.js';
+import { getOrderedOpeners, type BlockOpener } from '#lib/schema/block-openers.js';
 import { registerChromeLeaf } from '#lib/plugin.js';
 import { __resetSchemaRegistriesForTests } from '#lib/schema/registry-reset.js';
 import { testClosure } from '#lib/test/support/closure.js';
@@ -44,8 +40,9 @@ const leaf: BlockKindRegistration = {
 	closure: testClosure
 };
 
-const withChrome = (title: AnyBlockKind): BlockKindRegistration => ({
+const withChrome = (title: AnyBlockKind, opener?: BlockOpener): BlockKindRegistration => ({
 	...container,
+	opener,
 	container: { ...containerGroup, reservedChrome: { kind: title } }
 });
 
@@ -71,8 +68,7 @@ describe('flushPendingRegistrationChecks', () => {
 		flushPendingRegistrationChecks();
 		getOrderedOpeners();
 		const kind = declarePluginKind('late-kind');
-		registerBlockKind(kind, leaf);
-		registerBlockOpener(kind, opener(101));
+		registerBlockKind(kind, { ...leaf, opener: opener(101) });
 
 		const { report, byTag } = collector();
 		flushPendingRegistrationChecks(report);
@@ -88,8 +84,7 @@ describe('flushPendingRegistrationChecks', () => {
 		// `didFirstFlush` stays false and a late opener must still warn (G1.17).
 		getOrderedOpeners();
 		const kind = declarePluginKind('pre-flush-late');
-		registerBlockKind(kind, leaf);
-		registerBlockOpener(kind, opener(9108));
+		registerBlockKind(kind, { ...leaf, opener: opener(9108) });
 
 		const { report, byTag } = collector();
 		flushPendingRegistrationChecks(report);
@@ -103,8 +98,7 @@ describe('flushPendingRegistrationChecks', () => {
 		const title = declarePluginKind('fwd-title');
 		// Every reference here resolves only once the batch completes, so a check that
 		// fires mid-batch reports a gap that never existed.
-		registerBlockOpener(calloutKind, opener(9102));
-		registerBlockKind(calloutKind, withChrome(title));
+		registerBlockKind(calloutKind, withChrome(title, opener(9102)));
 		registerChromeLeaf(title);
 
 		const { violations, report } = collector();
@@ -115,13 +109,11 @@ describe('flushPendingRegistrationChecks', () => {
 	it('re-checks opener coherence across batches (duplicate priority)', () => {
 		flushPendingRegistrationChecks();
 		const first = declarePluginKind('pri-a');
-		registerBlockKind(first, leaf);
-		registerBlockOpener(first, opener(103));
+		registerBlockKind(first, { ...leaf, opener: opener(103) });
 		flushPendingRegistrationChecks();
 
 		const second = declarePluginKind('pri-b');
-		registerBlockKind(second, leaf);
-		registerBlockOpener(second, opener(103));
+		registerBlockKind(second, { ...leaf, opener: opener(103) });
 
 		const { report, byTag } = collector();
 		flushPendingRegistrationChecks(report);
@@ -132,8 +124,7 @@ describe('flushPendingRegistrationChecks', () => {
 		flushPendingRegistrationChecks();
 		getOrderedOpeners();
 		const kind = declarePluginKind('parse-flushed');
-		registerBlockKind(kind, leaf);
-		registerBlockOpener(kind, opener(104));
+		registerBlockKind(kind, { ...leaf, opener: opener(104) });
 
 		getOrderedOpeners();
 
@@ -147,16 +138,14 @@ describe('flushPendingRegistrationChecks', () => {
 		flushPendingRegistrationChecks();
 		getOrderedOpeners();
 		const stale = declarePluginKind('stale-kind');
-		registerBlockKind(stale, leaf);
-		registerBlockOpener(stale, opener(9105));
+		registerBlockKind(stale, { ...leaf, opener: opener(9105) });
 
 		__resetSchemaRegistriesForTests();
 
 		// Registrations after a reset count as startup again: both flags are cleared, so they queue
 		// nothing and the opener must not warn about being late.
 		const fresh = declarePluginKind('post-reset');
-		registerBlockKind(fresh, leaf);
-		registerBlockOpener(fresh, opener(9106));
+		registerBlockKind(fresh, { ...leaf, opener: opener(9106) });
 		expect(hasPendingRegistrationChecks()).toBe(false);
 
 		const { report, byTag } = collector();
@@ -195,8 +184,7 @@ describe('registry-derived first-flush sweep', () => {
 		const title = declarePluginKind('boot-title');
 		registerChromeLeaf(title);
 		const calloutKind = declarePluginKind('boot-container');
-		registerBlockKind(calloutKind, withChrome(title));
-		registerBlockOpener(calloutKind, opener(9107));
+		registerBlockKind(calloutKind, withChrome(title, opener(9107)));
 
 		const { violations, report } = collector();
 		flushPendingRegistrationChecks(report);
@@ -271,42 +259,5 @@ describe('closure coherence at the flush', () => {
 			kind: 'incoherent-closure',
 			column: 'mergeBackspace'
 		});
-	});
-});
-
-// The predicate is unit-tested in test/invariants/descriptor-field-coherence.test.ts; the
-// opener check is the one the flush alone can supply, since no descriptor field records it.
-describe('descriptor field coherence at the flush', () => {
-	it('flags a context-dependent kind that also registers an opener', () => {
-		const kind = declarePluginKind('ctx-dependent-opener');
-		registerBlockKind(kind, { ...leaf, contextDependentKind: true });
-		registerBlockOpener(kind, opener(9111));
-
-		const { report, byTag } = collector();
-		flushPendingRegistrationChecks(report);
-		expect(byTag('descriptor-field-coherence')).toHaveLength(1);
-		expect(byTag('descriptor-field-coherence')[0].violation.detail).toMatchObject({
-			kind: 'ctx-dependent-opener'
-		});
-	});
-
-	it('joins the opener across batches, so a later opener still enrols its kind', () => {
-		const kind = declarePluginKind('ctx-dependent-later-opener');
-		registerBlockKind(kind, { ...leaf, contextDependentKind: true });
-		flushPendingRegistrationChecks();
-		registerBlockOpener(kind, opener(9112));
-
-		const { report, byTag } = collector();
-		flushPendingRegistrationChecks(report);
-		expect(byTag('descriptor-field-coherence')).toHaveLength(1);
-	});
-
-	it('stays silent for a context-dependent kind with no opener', () => {
-		const kind = declarePluginKind('ctx-dependent-clean');
-		registerBlockKind(kind, { ...leaf, contextDependentKind: true });
-
-		const { report, byTag } = collector();
-		flushPendingRegistrationChecks(report);
-		expect(byTag('descriptor-field-coherence')).toEqual([]);
 	});
 });

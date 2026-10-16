@@ -16,7 +16,6 @@ import {
 	declarePluginInlineKind,
 	isInlineKindDeclared,
 	registerBlockKind,
-	registerBlockOpener,
 	registerBlockCompleter,
 	registerBlockCommand,
 	registerRangeIndent,
@@ -31,7 +30,6 @@ import {
 	registerDirective,
 	isBlockKindDeclared,
 	isBlockKindRegistered,
-	isBlockOpenerRegistered,
 	isBlockCompleterRegistered,
 	isPasteTransformRegistered,
 	isDirectiveRegistered,
@@ -92,12 +90,6 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 				view: textBlockView()
 			}),
 		registered: () => isBlockKindRegistered('probe-block')
-	},
-	{
-		entry: 'registerBlockOpener',
-		register: () =>
-			registerBlockOpener(block, { priority: 0, tryOpen: () => null, interruptsParagraph: false }),
-		registered: () => isBlockOpenerRegistered('probe-block')
 	},
 	{
 		entry: 'registerBlockCompleter',

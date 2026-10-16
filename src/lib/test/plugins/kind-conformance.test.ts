@@ -6,9 +6,9 @@ import { DIRECTIVE_CONTAINER, DIRECTIVE_LEAF } from '#lib/core/directive/kinds.j
 import {
 	augmentBlockKind,
 	getAllRegisteredKinds,
-	getBlockKindDescriptor
+	getBlockKindDescriptor,
+	openerRecords
 } from '#lib/schema/block-kind-descriptor.js';
-import { listRegisteredOpeners } from '#lib/schema/block-openers.js';
 import { checkCopyIsRawByteSlice, runKindConformance } from '#lib/testing.js';
 import { registerMemoBlock, MEMO_BLOCK } from '../../../routes/test/plugins/memo/memo-kind';
 import {
@@ -157,7 +157,8 @@ describe('kind conformance: bundled plugin kinds enroll', () => {
 	it('the co-installed bundle declares distinct opener priorities', () => {
 		for (const { install } of BUNDLED_INSTALLS) install(testView());
 		const kindsByPriority = new Map<number, string[]>();
-		for (const { kind, priority } of listRegisteredOpeners()) {
+		for (const { key: kind, value } of openerRecords()) {
+			const { priority } = value;
 			const kinds = kindsByPriority.get(priority) ?? [];
 			kinds.push(kind);
 			kindsByPriority.set(priority, kinds);

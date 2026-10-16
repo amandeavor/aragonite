@@ -16,7 +16,6 @@ import {
 	augmentBlockKind,
 	definePlugin,
 	registerBlockCommand,
-	registerBlockOpener,
 	type BlockCommandContext,
 	type EditorPlugin
 } from '#lib/plugin.js';
@@ -39,7 +38,17 @@ function verseLeafPlugin(ran: [string, boolean][]): EditorPlugin {
 	return definePlugin({
 		name: KIND,
 		setup: () => {
-			const kind = registerRevealLeafKind(KIND, { view: svelteBlockView(PlainOneLineLeafBlock) });
+			const kind = registerRevealLeafKind(KIND, (kind) => ({
+				opener: {
+					priority: 25,
+					interruptsParagraph: false,
+					tryOpen: (ctx) =>
+						ctx.line.text.startsWith('@@ ')
+							? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
+							: null
+				},
+				view: svelteBlockView(PlainOneLineLeafBlock)
+			}));
 			const removing = registerBlockCommand(kind, 'verseLeaf.break', handler, {
 				overSelection: 'afterRemoval'
 			});
@@ -49,14 +58,6 @@ function verseLeafPlugin(ran: [string, boolean][]): EditorPlugin {
 					{ chord: 'Mod+Shift+Enter', command: removing },
 					{ chord: 'Mod+Shift+L', command: atCaret }
 				]
-			});
-			registerBlockOpener(kind, {
-				priority: 25,
-				interruptsParagraph: false,
-				tryOpen: (ctx) =>
-					ctx.line.text.startsWith('@@ ')
-						? { node: { kind, leadingTrivia: ctx.leadingTrivia, raw: ctx.line.raw }, consumed: 1 }
-						: null
 			});
 		}
 	});

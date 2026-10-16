@@ -11,7 +11,6 @@ import {
 	DIRECTIVE_TEXT,
 	type DirectiveViews
 } from './kinds';
-import { registerDirectiveOpeners } from './container-opener';
 import { declaredPluginInlineKind, isInlineKindDeclared } from '../../schema/plugin-kind';
 import { registerInlineSyntax } from '../inline/scan/plugin-syntax';
 import { recognizeTextDirective } from './text-recognizer';
@@ -23,7 +22,6 @@ export function activateDirectiveGrammar(views: DirectiveViews): void {
 	const alreadyActive = isInlineKindDeclared(DIRECTIVE_TEXT);
 
 	registerDirectiveKinds(views);
-	registerDirectiveOpeners();
 	registerDirectiveTextKind();
 
 	if (!alreadyActive) {

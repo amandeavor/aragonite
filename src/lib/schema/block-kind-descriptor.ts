@@ -18,6 +18,8 @@ import type { HeightEstimateEnv } from './height-estimates';
 import { rejectIncoherentPairs } from './registration-pairs';
 import { isBlockView, type BlockView } from './block-view';
 import type { PluginActivation } from './plugin-activation';
+import type { RegistryRecord } from './plugin-registry';
+import type { BlockOpener } from './block-openers';
 
 /**
  * The Backspace-merge roles (`docs/design/editor.md` § Merge eligibility: roles, not pairs).
@@ -386,6 +388,8 @@ function stripGroupedKeys<T extends object>(fields: T): Omit<T, GroupedKey> {
  *  the registration and augment types and the augment's refusal. `container.` names a group field. */
 export const FIXED_AT_REGISTRATION = [
 	'view',
+	'opener',
+	'contextDependentKind',
 	'blockFocus',
 	'supportsInline',
 	'contentStart',
@@ -429,8 +433,20 @@ interface CaretContainerRegistration extends RegistrationBase {
 	container: ContainerDescriptorGroup;
 }
 
+/**
+ * The parser's way into the kind. A context-dependent kind has none of its own: its container's
+ * `rebuildRaw` owns the syntax, so an opener beside it would never re-derive the kind.
+ */
+type OpenerFacet =
+	| { contextDependentKind: true; opener?: never }
+	| {
+			contextDependentKind?: false;
+			/** How the block parser recognizes the kind; absent for a kind no line opens. */
+			opener?: BlockOpener;
+	  };
+
 /** A built-in kind's registration: its view attaches later, from the component layer. */
-export type BuiltinRegistration = WholeBlockRegistration | CaretBlockRegistration;
+export type BuiltinRegistration = (WholeBlockRegistration | CaretBlockRegistration) & OpenerFacet;
 
 /**
  * The write-side shape `registerBlockKind` accepts: the descriptor fields plus the view that draws
@@ -461,13 +477,17 @@ interface KindEntry {
 	descriptor: BlockKindDescriptor;
 	/** Absent only on a built-in before the component layer attaches its view. */
 	view?: BlockView;
+	opener?: BlockOpener;
 }
+
+let generation = 0;
 
 // The descriptor is never filtered by activation: a kind an editor left out still needs it to
 // degrade. The view is read only through `blockViewFor`, which filters.
 const registry = createBlockKindRegistry<KindEntry>({
 	label: 'registerBlockKind',
-	isBuiltin: isBuiltinBlockKind
+	isBuiltin: isBuiltinBlockKind,
+	onChange: () => generation++
 });
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -509,6 +529,27 @@ export function blockKindOwner(kind: AnyBlockKind): string | null {
 	return registry.ownerOf(kind);
 }
 
+/** Whether the parser can open this kind from a line: a kind with no opener of its own is only
+ *  ever made by its container. */
+export function hasOwnOpener(kind: AnyBlockKind): boolean {
+	return registry.getIgnoringActivation(kind)?.opener !== undefined;
+}
+
+/** Every kind's opener with the plugin it answers to, in registration order, for the parser's
+ *  dispatch order to filter per editor. */
+export function openerRecords(): RegistryRecord<AnyBlockKind, BlockOpener>[] {
+	return registry
+		.records()
+		.flatMap(({ key, value, owner }) =>
+			value.opener ? [{ key, value: value.opener, owner }] : []
+		);
+}
+
+/** Bumps on every registration change, so a cache derived from the openers knows it's stale. */
+export function blockKindGeneration(): number {
+	return generation;
+}
+
 function storeKind(
 	entry: string,
 	kind: AnyBlockKind,
@@ -518,17 +559,18 @@ function storeKind(
 	rejectBlankLabel(entry, kind, 'label', registration.label);
 	rejectBlankLabel(entry, kind, 'dragLabel', registration.dragLabel);
 	rejectIncoherentPairs(kind, registration);
+	const { opener } = registration;
 	const descriptor = normalizeRegistration(registration);
 	if (descriptor.keymap) descriptor.keymap = registeredKeymap(entry, kind, descriptor.keymap);
 	const owner = registry.ownerOf(kind);
 	registry.register(
 		kind,
-		view ? { descriptor, view } : { descriptor },
+		{ descriptor, ...(view ? { view } : {}), ...(opener ? { opener } : {}) },
 		`${entry}: "${kind}" is already registered. Kinds are register-once — ` +
 			`use augmentBlockKind to merge fields into an existing registration.` +
 			(owner ? ` — first declared by plugin '${owner}'` : '')
 	);
-	enqueueRegistrationCheck(kind);
+	enqueueRegistrationCheck(kind, opener ? 'opener' : 'descriptor');
 }
 
 function existingEntry(entry: string, kind: AnyBlockKind): KindEntry {
@@ -565,7 +607,8 @@ function registeredKeymap(entry: string, kind: AnyBlockKind, keymap: KeyBinding[
 // The flat part is stripped and isContainer derived, so each group is the only source of its
 // fields: a widened or stale-keyed registration object cannot leak through.
 function normalizeRegistration(registration: BuiltinRegistration): BlockKindDescriptor {
-	const { container, contentStart, ...rest } = registration;
+	// The opener lives beside the descriptor, never in it.
+	const { container, contentStart, opener: _opener, ...rest } = registration;
 	const flat: BlockKindDescriptor = { ...stripGroupedKeys(rest), isContainer: false };
 	if (contentStart) {
 		flat.getContentRange = contentStart.range;

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { InvariantViolation } from '#lib/assert.js';
 import { parse } from '#lib/core/parser.js';
-import { isBlockKindRegistered } from '#lib/schema/block-kind-descriptor.js';
-import { isBlockOpenerRegistered } from '#lib/schema/block-openers.js';
+import { hasOwnOpener, isBlockKindRegistered } from '#lib/schema/block-kind-descriptor.js';
+import { declaredPluginKind } from '#lib/schema/plugin-kind.js';
 import {
 	flushPendingRegistrationChecks,
 	type RegistrationCheckReport
@@ -28,7 +28,7 @@ describe('directive grammar activation', () => {
 		activateDirectiveGrammar(testDirectiveViews());
 		expect(isBlockKindRegistered(DIRECTIVE_CONTAINER)).toBe(true);
 		expect(isBlockKindRegistered(DIRECTIVE_LEAF)).toBe(true);
-		expect(isBlockOpenerRegistered(DIRECTIVE_CONTAINER)).toBe(true);
+		expect(hasOwnOpener(declaredPluginKind(DIRECTIVE_CONTAINER))).toBe(true);
 	});
 
 	// Activating before the first parse is what keeps the directive opener out of the

@@ -8,19 +8,19 @@ import { createUndoController } from '#lib/editor-actions/commit/undo-controller
 import { createInlineRangeCommit } from '#lib/editor-actions/inline-range-commit.js';
 import { createLinkCardCommitter } from '#lib/components/link-card/link-card-commit.js';
 import { createTextMoves } from '#lib/components/overlays/text-moves.js';
-import { type LinkTarget } from '#lib/components/blocks/text/link-at-point.js';
+import type { LinkTarget } from '#lib/components/blocks/text/link-at-point.js';
 import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { settleEditor } from '#lib/test/harness/settle.js';
-import { type NodeView } from '#lib/core/node-views.js';
+import type { NodeView } from '#lib/core/node-views.js';
 import { createLinkCardState } from '#lib/components/link-card/link-card-state.svelte.js';
 import { enterLinkCardAtCaret } from '#lib/components/link-card/link-card-entry.js';
-import { type CstNode } from '#lib/core/nodes.js';
+import type { CstNode } from '#lib/core/nodes.js';
 import { createTextRender } from '#lib/components/blocks/text/text-render.js';
 import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
 import { makeRenderHarness } from '#lib/test/harness/text-render.js';
-import { type Reading } from '#lib/schema/reading.js';
+import type { Reading } from '#lib/schema/reading.js';
 
 describe('commit', () => {
 	// What the card decides on top of the byte writer: which fields survive a URL edit, and when the

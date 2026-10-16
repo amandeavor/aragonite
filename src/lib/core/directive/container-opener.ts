@@ -5,10 +5,15 @@
  * plugin barrel (`plugin.ts`) pulls in a Svelte component and would cycle.
  */
 
-import { registerBlockOpener, isBlockOpenerRegistered } from '../../schema/block-openers';
+import type { BlockOpener } from '../../schema/block-openers';
 import { OPENER_PRIORITIES } from '../../schema/opener-priorities';
-import { declaredPluginKind } from '../../schema/plugin-kind';
-import { makeBlockNode, setPluginMetadata, type AnyBlockKind, type CstNode } from '../nodes';
+import {
+	makeBlockNode,
+	setPluginMetadata,
+	type AnyBlockKind,
+	type CstNode,
+	type PluginBlockKind
+} from '../nodes';
 import { parseContainerBody, joinRaw } from '../parser';
 import {
 	firstDisplayLine,
@@ -19,20 +24,14 @@ import {
 } from '../lines';
 import { matchDirectiveOpener, isDirectiveCloser } from './grammar';
 import { resolveBlockDirectiveFactory, resolveDirective, type ParsedDirective } from './registry';
-import {
-	DIRECTIVE_BODY_WRAP,
-	DIRECTIVE_CONTAINER,
-	DIRECTIVE_LEAF,
-	type DirectiveContainerMetadata
-} from './kinds';
+import { DIRECTIVE_BODY_WRAP, type DirectiveContainerMetadata } from './kinds';
 
-export function registerDirectiveOpeners(): void {
-	if (isBlockOpenerRegistered(DIRECTIVE_CONTAINER)) return; // idempotent for HMR / re-import
-
-	const container = declaredPluginKind(DIRECTIVE_CONTAINER);
-	const leaf = declaredPluginKind(DIRECTIVE_LEAF);
-
-	registerBlockOpener(container, {
+/** The opener the generic directive container registers with; it opens leaves too. */
+export function directiveContainerOpener(
+	container: PluginBlockKind,
+	leaf: PluginBlockKind
+): BlockOpener {
+	return {
 		// Derived from the built-in priorities, never a bare integer, so renumbering a built-in
 		// moves this with it. A colon fence collides with no built-in matcher; it only needs a gap.
 		priority: OPENER_PRIORITIES.blockquote + 5,
@@ -120,7 +119,7 @@ export function registerDirectiveOpeners(): void {
 			});
 			return { node, consumed: closerIdx + 1 - ctx.index };
 		}
-	});
+	};
 }
 
 // ── Closer indexing ─────────────────────────────────────────────────────────

@@ -11,7 +11,6 @@ import {
 	declarePluginKind,
 	declaredPluginKind,
 	registerBlockKind,
-	registerBlockOpener,
 	registerChromeLeaf,
 	setPluginMetadata,
 	getPluginMetadata,
@@ -195,6 +194,58 @@ export function registerDetailsKind(view: BlockView): void {
 
 	registerBlockKind(details, {
 		view,
+		opener: {
+			// Just below htmlBlock, which would otherwise take `<details>` as a type-6 block.
+			priority: OPENER_PRIORITIES.htmlBlock - 5,
+			// Redundant with htmlBlock's type-6 interrupt, which details wins on re-dispatch; kept
+			// so this opener's paragraph behavior does not depend on that priority order.
+			interruptsParagraph: (line) => OPEN_LINE.test(line),
+			readingNotFinal: awaitsClosingTag,
+			tryOpen(ctx) {
+				const openMatch = ctx.line.text.match(OPEN_LINE);
+				if (!openMatch) return null;
+
+				const summaryIdx = ctx.index + 1;
+				if (summaryIdx >= ctx.end) return null;
+				const summaryMatch = ctx.lines[summaryIdx].text.match(SUMMARY_LINE);
+				if (!summaryMatch) return null;
+
+				const closeIdx = closingTagLine(ctx.lines, summaryIdx + 1, ctx.end);
+				if (closeIdx === -1) return null; // unterminated declines to htmlBlock
+
+				const bodyText = ctx.lines
+					.slice(summaryIdx + 1, closeIdx)
+					.map((l) => l.raw)
+					.join('');
+				// A fresh parse entry, so the body's own line 0 must not read as the document top.
+				const body = parseContainerBody(bodyText, BODY_WRAP, {
+					scope: 'fragment',
+					grammar: ctx.grammar
+				});
+				const raw = ctx.lines
+					.slice(ctx.index, closeIdx + 1)
+					.map((l) => l.raw)
+					.join('');
+
+				const node: CstNode = {
+					kind: details,
+					leadingTrivia: ctx.leadingTrivia,
+					raw,
+					innerPrefix: body.prefix,
+					children: [
+						chromeChild(declaredPluginKind(DETAILS_SUMMARY), summaryMatch[1]),
+						...body.children
+					],
+					innerSuffix: body.suffix
+				};
+				setPluginMetadata<DetailsMetadata>(node, {
+					open: openMatch[1] !== undefined,
+					lineEnding: ctx.line.lineEnding,
+					closerNewline: ctx.lines[closeIdx].lineEnding !== ''
+				});
+				return { node, consumed: closeIdx + 1 - ctx.index };
+			}
+		},
 		label: 'Details',
 		dragLabel: 'Details',
 		mergeRole: 'container',
@@ -239,57 +290,4 @@ export function registerDetailsKind(view: BlockView): void {
 	});
 
 	registerChromeLeaf(detailsSummary, { label: 'Summary', blockClass: 'details-summary' });
-
-	registerBlockOpener(details, {
-		// Just below htmlBlock, which would otherwise take `<details>` as a type-6 block.
-		priority: OPENER_PRIORITIES.htmlBlock - 5,
-		// Redundant with htmlBlock's type-6 interrupt, which details wins on re-dispatch; kept
-		// so this opener's paragraph behavior does not depend on that priority order.
-		interruptsParagraph: (line) => OPEN_LINE.test(line),
-		readingNotFinal: awaitsClosingTag,
-		tryOpen(ctx) {
-			const openMatch = ctx.line.text.match(OPEN_LINE);
-			if (!openMatch) return null;
-
-			const summaryIdx = ctx.index + 1;
-			if (summaryIdx >= ctx.end) return null;
-			const summaryMatch = ctx.lines[summaryIdx].text.match(SUMMARY_LINE);
-			if (!summaryMatch) return null;
-
-			const closeIdx = closingTagLine(ctx.lines, summaryIdx + 1, ctx.end);
-			if (closeIdx === -1) return null; // unterminated declines to htmlBlock
-
-			const bodyText = ctx.lines
-				.slice(summaryIdx + 1, closeIdx)
-				.map((l) => l.raw)
-				.join('');
-			// A fresh parse entry, so the body's own line 0 must not read as the document top.
-			const body = parseContainerBody(bodyText, BODY_WRAP, {
-				scope: 'fragment',
-				grammar: ctx.grammar
-			});
-			const raw = ctx.lines
-				.slice(ctx.index, closeIdx + 1)
-				.map((l) => l.raw)
-				.join('');
-
-			const node: CstNode = {
-				kind: details,
-				leadingTrivia: ctx.leadingTrivia,
-				raw,
-				innerPrefix: body.prefix,
-				children: [
-					chromeChild(declaredPluginKind(DETAILS_SUMMARY), summaryMatch[1]),
-					...body.children
-				],
-				innerSuffix: body.suffix
-			};
-			setPluginMetadata<DetailsMetadata>(node, {
-				open: openMatch[1] !== undefined,
-				lineEnding: ctx.line.lineEnding,
-				closerNewline: ctx.lines[closeIdx].lineEnding !== ''
-			});
-			return { node, consumed: closeIdx + 1 - ctx.index };
-		}
-	});
 }

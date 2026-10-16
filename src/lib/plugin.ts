@@ -96,8 +96,8 @@ export type { BlockView } from './schema/block-view';
 export { textBlockView } from './components/blocks/text/text-block-view';
 export type { BlockComponent, BlockComponentExports, BlockComponentProps } from './block-component';
 
-// ── Parser-opener registry ───────────────────────────────────────────────────
-export { registerBlockOpener } from './schema/block-openers';
+// ── Parser openers ───────────────────────────────────────────────────────────
+// A registration's `opener`: how the block parser recognizes the kind from a line.
 export type { BlockOpener, BlockOpenerResult, OpenContext } from './schema/block-openers';
 // The shared "does this line start a block at the outer level" gate, so a container opener
 // scanning its own extent ends it where cmark-gfm does instead of forking the rule.
@@ -267,7 +267,6 @@ export function computeInlineContent(node: NodeView): InlineNode[] {
 // (HMR / re-import) by guarding on these.
 export { isBlockKindDeclared } from './schema/plugin-kind';
 export { isBlockKindRegistered } from './schema/block-kind-descriptor';
-export { isBlockOpenerRegistered } from './schema/block-openers';
 export { isBlockCompleterRegistered } from './schema/block-completions';
 export { isPasteTransformRegistered } from './tree-operations/paste/paste-transforms';
 export { isLanguageRegistered } from './components/blocks/code/code-languages';

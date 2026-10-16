@@ -70,6 +70,11 @@ describe('fields fixed at registration refuse every augment', () => {
 	};
 	const cases: { field: (typeof FIXED_AT_REGISTRATION)[number]; fields: () => object }[] = [
 		{ field: 'view', fields: () => ({ view: testView() }) },
+		{
+			field: 'opener',
+			fields: () => ({ opener: { priority: 1, tryOpen: () => null, interruptsParagraph: false } })
+		},
+		{ field: 'contextDependentKind', fields: () => ({ contextDependentKind: true }) },
 		{ field: 'blockFocus', fields: () => ({ blockFocus: 'whole-block' }) },
 		{ field: 'supportsInline', fields: () => ({ supportsInline: true }) },
 		{

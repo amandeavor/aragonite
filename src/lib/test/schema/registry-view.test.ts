@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { blockViewFor, getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
 import { testView } from '#lib/test/support/test-view.js';
-import { registerBlockOpener, type BlockOpener } from '#lib/schema/block-openers.js';
+import type { BlockOpener } from '#lib/schema/block-openers.js';
 import { createRegistryView, defaultRegistryView } from '#lib/schema/registry-view.js';
 import type { AnyBlockKind, PluginBlockKind } from '#lib/core/nodes.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
@@ -26,8 +26,7 @@ const lineOpener = (kind: PluginBlockKind): BlockOpener => ({
 });
 
 function registerCallout(): PluginBlockKind {
-	const kind = testLeaf('callout-x', { view: stubView });
-	registerBlockOpener(kind, lineOpener(kind));
+	const kind = testLeaf('callout-x', (kind) => ({ opener: lineOpener(kind), view: stubView }));
 	return kind;
 }
 
