@@ -1,4 +1,5 @@
 import { devWarn } from '../dev-warn';
+import { editorEnv, isDevChecks } from '../env';
 import { isValidPluginName } from './plugin-name';
 import { enrollTestReset } from './registry-reset';
 // Type-only: `editor-events` already imports this module at runtime, so importing a value back
@@ -88,6 +89,7 @@ const failed = new Map<string, unknown>();
 const onEditorSubs = new Map<string, OnEditorCallback[]>();
 
 let installing: string | null = null;
+let coreDepth = 0;
 // Bumped whenever the installed set changes, so a cache filtered by installation can tell it is stale.
 let generation = 0;
 
@@ -195,11 +197,27 @@ export function pluginEditorFor(
 export function registerAsCore(register: () => void): void {
 	const outer = installing;
 	installing = null;
+	coreDepth++;
 	try {
 		register();
 	} finally {
+		coreDepth--;
 		installing = outer;
 	}
+}
+
+/**
+ * Throws in dev for a registration outside any plugin's setup and outside the editor's own
+ * bootstraps: a plugin registers only from `definePlugin`'s setup. A test run is exempt.
+ */
+export function rejectRegistrationOutsideSetup(entry: string): void {
+	if (installing !== null || coreDepth > 0 || !isDevChecks() || editorEnv.isTest) return;
+	throw new Error(
+		`${entry}: called outside a plugin's setup. Register inside definePlugin({ name, setup }) and ` +
+			"install the plugin through the editor's `plugins` prop or installPlugins. A test runner " +
+			'other than Vitest calls configureEditorEnv({ isTest: true }) from ' +
+			'`@voithos-labs/aragonite/testing` first.'
+	);
 }
 
 export function pluginInstallGeneration(): number {

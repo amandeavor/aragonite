@@ -14,7 +14,6 @@ import {
 import {
 	declarePluginKind,
 	declarePluginInlineKind,
-	isInlineKindDeclared,
 	registerBlockKind,
 	registerBlockCompleter,
 	registerBlockCommand,
@@ -28,10 +27,6 @@ import {
 	registerLanguage,
 	registerPasteTransform,
 	registerDirective,
-	isBlockKindDeclared,
-	isBlockKindRegistered,
-	isBlockCompleterRegistered,
-	isPasteTransformRegistered,
 	isDirectiveRegistered,
 	listLanguages,
 	definePlugin,
@@ -52,6 +47,9 @@ import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { isInlineWidget } from '#lib/core/inline/inline-widgets.js';
 import { getInlineRungs } from '#lib/core/inline/scan/plugin-syntax.js';
+import { isBlockKindRegistered } from '#lib/schema/block-kind-descriptor.js';
+import { declaredPluginKind, isInlineKindDeclared } from '#lib/schema/plugin-kind.js';
+import { completeTypedLine } from '#lib/schema/block-completions.js';
 import { collectFiles, importSpecifiers, readSource } from '../invariants/lint/scan-source';
 import { testClosure } from '#lib/test/support/closure.js';
 
@@ -71,7 +69,14 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 			block = declarePluginKind('probe-block');
 			chrome = declarePluginKind('probe-chrome');
 		},
-		registered: () => isBlockKindDeclared('probe-block')
+		registered: () => {
+			try {
+				declaredPluginKind('probe-block');
+				return true;
+			} catch {
+				return false;
+			}
+		}
 	},
 	{
 		entry: 'declarePluginInlineKind',
@@ -93,8 +98,12 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 	},
 	{
 		entry: 'registerBlockCompleter',
-		register: () => registerBlockCompleter(block, { tryComplete: () => null }),
-		registered: () => isBlockCompleterRegistered('probe-block')
+		register: () =>
+			registerBlockCompleter(block, {
+				tryComplete: (line) =>
+					line === '¤probe' ? { lines: ['x', 'y'], caret: { path: [], line: 1, column: 0 } } : null
+			}),
+		registered: () => completeTypedLine('¤probe', defaultGrammarView) !== null
 	},
 	{
 		entry: 'registerBlockCommand',
@@ -157,8 +166,12 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 	},
 	{
 		entry: 'registerPasteTransform',
-		register: () => registerPasteTransform({ name: 'probe-transform', transform: () => null }),
-		registered: () => isPasteTransformRegistered('probe-transform')
+		register: () =>
+			registerPasteTransform({
+				name: 'probe-transform',
+				transform: (text) => (text === 'probe' ? 'probed' : null)
+			}),
+		registered: () => applyPasteTransforms('probe') === 'probed'
 	},
 	{
 		entry: 'registerDirective',

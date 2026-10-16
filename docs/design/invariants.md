@@ -196,72 +196,73 @@ These checks run in three kinds of place:
   the editor root's focus handler (`components/editor-root/focus.ts`), above every caret entry, so a
   consumer's own caret component inherits it.
 
-| ID    | What stays true                                                                            | Codes   |
-| ----- | ------------------------------------------------------------------------------------------ | ------- |
-| G1.1  | A strip container's raw and metadata never go stale against its children and bytes         | A·P·N·D |
-| G1.2  | Every built-in block kind has a descriptor (its view moved up to G3.15)                    | A·P     |
-| G1.3  | _Retired upward_: container-iff-rebuildRaw is now unrepresentable                          | T       |
-| G1.4  | No container publishes the undo-history context key                                        | A·L·N   |
-| G1.5  | Leaf fields on leaves, container fields on containers                                      | A·P·N   |
-| G1.6  | `cloneMetadata` hands back a genuinely independent copy                                    | A·P     |
-| G1.7  | Metadata writes that drive raw go through `updateBlockMetadata`                            | A·N     |
-| G1.8  | `getContentRange` is well-formed for every kind that has one                               | A·P·N   |
-| G1.9  | No mutation writes bytes through a node an undo entry shares                               | T·A·P·N |
-| G1.10 | Opener priorities are unique (an opener's kind always has a descriptor now)                | A·N     |
-| G1.11 | Every keymap chord is unique per kind and names a known command                            | A·N     |
-| G1.12 | An opaque container's raw still reparses to its live children and metadata                 | A·N     |
-| G1.13 | An opaque `rebuildRaw` is deterministic over committed state                               | A·N     |
-| G1.14 | A container declaring `reservedChrome` holds its chrome leaf at child 0                    | A·N     |
-| G1.15 | A plugin opener claims at least one line, and its raw matches the lines it consumed        | A·N     |
-| G1.16 | Every coordinate a commit declares is document-absolute                                    | A·N     |
-| G1.17 | An opener registered after the grammar was read warns                                      | A·N     |
-| G1.18 | A container's `reservedChrome` names a registered chrome kind                              | A·N     |
-| G1.19 | A commit scope's declared path still resolves to its captured node                         | A       |
-| G1.20 | An unshared chain is as deep as the path it was asked for                                  | A       |
-| G1.21 | A column edit's row scopes are the owned table's own children                              | A       |
-| G1.22 | Every index on an unshare path addresses a live child                                      | A       |
-| G1.23 | Decoration sources never run mid-commit                                                    | A       |
-| G1.24 | A kind's closure block agrees with the rest of its descriptor                              | A·N     |
-| G1.25 | Widget-pool acquires happen only inside an open render pass                                | A·N     |
-| G1.26 | A fold implies an active reveal, and an open reveal blocks command mutation                | A·N     |
-| G1.27 | `compositionend` lands only inside a composition the surface opened                        | A·N     |
-| G1.28 | A code block's render and a painted leaf source carry the block's bytes exactly            | A·N     |
-| G1.29 | A selection endpoint's offset means what its own block's coordinate space says             | A·N     |
-| G1.30 | Every registered kind declares a `mergeRole` from the known set                            | A·N     |
-| G1.31 | The inline-construct policy table is coherent and unambiguous                              | A·N     |
-| G1.32 | _Retired upward_: a content-start Backspace with no range no longer compiles               | T       |
-| G1.33 | A block the caret is placed in paints at least one position a caret can land on            | A·N     |
-| G1.34 | _Retired_: a split's landing reads the index `splitNode` returned (G4.43)                  | L       |
-| G1.35 | A slot that holds exactly one node never takes bytes that reparse to several               | A·N     |
-| G1.36 | A structural change fits the arrays it syncs; ids stay in lockstep with children           | A·N     |
-| G1.37 | _Retired upward_: a context-dependent kind with an opener no longer compiles               | T       |
-| G1.38 | A spliced container raw equals what a full rebuild would write                             | A·P·N   |
-| G1.39 | At most one caret the editor draws shows at a time                                         | L       |
-| G1.40 | Every built-in kind declares its page role and its height estimate                         | A·N     |
-| G1.41 | A structural edit keeps the final break as it was (a blank last line keeps its own)        | A·P·N   |
-| G1.42 | A list item's checkbox and blocks are what its reload reads                                | A·N     |
-| G1.43 | Reading a commit's landing moves no caret                                                  | A·N     |
-| G1.44 | The document holds a block, and a commit leaves no container it touched empty              | A·N     |
-| G1.45 | A caret landing's focus scrolls nothing                                                    | A·N     |
-| G1.46 | A caret or range the editor puts down leaves no widget selected whole                      | A·N     |
-| G1.47 | A windowed child measures into its own block list                                          | A·N     |
-| G1.52 | The text `getSource()` serves for an unchanged content version is the document             | A·N     |
-| G1.53 | _Retired_: a stale write is refused quietly at the write gate, with nothing left to assert | none    |
-| G1.54 | A commit's mutation leaves the tree's own top-level array as it found it                   | A·N     |
-| G1.55 | A top-level block an edit wrote reads back, on its own, as the tree it holds               | A·N     |
-| G1.58 | An indent key over a range keeps every word it holds, in order                             | A·N     |
-| G1.61 | A list move keeps the order its text reads in                                              | A·P·N   |
-| G1.71 | A command key over a range runs in the kind of block whose keymap claimed it               | A·N     |
-| G1.75 | No selection endpoint the editor writes sits after an empty block's placeholder `<br>`     | A·N     |
-| G1.76 | The drawn caret sits on its caret until the caret moves                                    | A       |
-| G1.77 | The mark hiding the browser's caret is on exactly the editable the drawn caret draws for   | A       |
-| G1.87 | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
-| G1.90 | A plugin component compiled against another Svelte runtime is named as such in dev         | N       |
-| G1.91 | A live removal keeps the marks on the visible characters it keeps                          | P·N     |
-| G1.94 | One editor per mount target: a second `createEditor` there before `destroy` warns in dev   | A       |
-| G1.96 | A plugin's widget, decoration or row view mounts once, updates in place, is destroyed once | N       |
-| G1.97 | A value a Vue app holds in reactive state reaches the editor unwrapped                     | harness |
-| G1.99 | A styled editor resolves the host colors, from the theme stylesheet or the page            | A       |
+| ID     | What stays true                                                                            | Codes   |
+| ------ | ------------------------------------------------------------------------------------------ | ------- |
+| G1.1   | A strip container's raw and metadata never go stale against its children and bytes         | A·P·N·D |
+| G1.2   | Every built-in block kind has a descriptor (its view moved up to G3.15)                    | A·P     |
+| G1.3   | _Retired upward_: container-iff-rebuildRaw is now unrepresentable                          | T       |
+| G1.4   | No container publishes the undo-history context key                                        | A·L·N   |
+| G1.5   | Leaf fields on leaves, container fields on containers                                      | A·P·N   |
+| G1.6   | `cloneMetadata` hands back a genuinely independent copy                                    | A·P     |
+| G1.7   | Metadata writes that drive raw go through `updateBlockMetadata`                            | A·N     |
+| G1.8   | `getContentRange` is well-formed for every kind that has one                               | A·P·N   |
+| G1.9   | No mutation writes bytes through a node an undo entry shares                               | T·A·P·N |
+| G1.10  | Opener priorities are unique (an opener's kind always has a descriptor now)                | A·N     |
+| G1.11  | Every keymap chord is unique per kind and names a known command                            | A·N     |
+| G1.12  | An opaque container's raw still reparses to its live children and metadata                 | A·N     |
+| G1.13  | An opaque `rebuildRaw` is deterministic over committed state                               | A·N     |
+| G1.14  | A container declaring `reservedChrome` holds its chrome leaf at child 0                    | A·N     |
+| G1.15  | A plugin opener claims at least one line, and its raw matches the lines it consumed        | A·N     |
+| G1.16  | Every coordinate a commit declares is document-absolute                                    | A·N     |
+| G1.17  | An opener registered after the grammar was read warns                                      | A·N     |
+| G1.18  | A container's `reservedChrome` names a registered chrome kind                              | A·N     |
+| G1.19  | A commit scope's declared path still resolves to its captured node                         | A       |
+| G1.20  | An unshared chain is as deep as the path it was asked for                                  | A       |
+| G1.21  | A column edit's row scopes are the owned table's own children                              | A       |
+| G1.22  | Every index on an unshare path addresses a live child                                      | A       |
+| G1.23  | Decoration sources never run mid-commit                                                    | A       |
+| G1.24  | A kind's closure block agrees with the rest of its descriptor                              | A·N     |
+| G1.25  | Widget-pool acquires happen only inside an open render pass                                | A·N     |
+| G1.26  | A fold implies an active reveal, and an open reveal blocks command mutation                | A·N     |
+| G1.27  | `compositionend` lands only inside a composition the surface opened                        | A·N     |
+| G1.28  | A code block's render and a painted leaf source carry the block's bytes exactly            | A·N     |
+| G1.29  | A selection endpoint's offset means what its own block's coordinate space says             | A·N     |
+| G1.30  | Every registered kind declares a `mergeRole` from the known set                            | A·N     |
+| G1.31  | The inline-construct policy table is coherent and unambiguous                              | A·N     |
+| G1.32  | _Retired upward_: a content-start Backspace with no range no longer compiles               | T       |
+| G1.33  | A block the caret is placed in paints at least one position a caret can land on            | A·N     |
+| G1.34  | _Retired_: a split's landing reads the index `splitNode` returned (G4.43)                  | L       |
+| G1.35  | A slot that holds exactly one node never takes bytes that reparse to several               | A·N     |
+| G1.36  | A structural change fits the arrays it syncs; ids stay in lockstep with children           | A·N     |
+| G1.37  | _Retired upward_: a context-dependent kind with an opener no longer compiles               | T       |
+| G1.38  | A spliced container raw equals what a full rebuild would write                             | A·P·N   |
+| G1.39  | At most one caret the editor draws shows at a time                                         | L       |
+| G1.40  | Every built-in kind declares its page role and its height estimate                         | A·N     |
+| G1.41  | A structural edit keeps the final break as it was (a blank last line keeps its own)        | A·P·N   |
+| G1.42  | A list item's checkbox and blocks are what its reload reads                                | A·N     |
+| G1.43  | Reading a commit's landing moves no caret                                                  | A·N     |
+| G1.44  | The document holds a block, and a commit leaves no container it touched empty              | A·N     |
+| G1.45  | A caret landing's focus scrolls nothing                                                    | A·N     |
+| G1.46  | A caret or range the editor puts down leaves no widget selected whole                      | A·N     |
+| G1.47  | A windowed child measures into its own block list                                          | A·N     |
+| G1.52  | The text `getSource()` serves for an unchanged content version is the document             | A·N     |
+| G1.53  | _Retired_: a stale write is refused quietly at the write gate, with nothing left to assert | none    |
+| G1.54  | A commit's mutation leaves the tree's own top-level array as it found it                   | A·N     |
+| G1.55  | A top-level block an edit wrote reads back, on its own, as the tree it holds               | A·N     |
+| G1.58  | An indent key over a range keeps every word it holds, in order                             | A·N     |
+| G1.61  | A list move keeps the order its text reads in                                              | A·P·N   |
+| G1.71  | A command key over a range runs in the kind of block whose keymap claimed it               | A·N     |
+| G1.75  | No selection endpoint the editor writes sits after an empty block's placeholder `<br>`     | A·N     |
+| G1.76  | The drawn caret sits on its caret until the caret moves                                    | A       |
+| G1.77  | The mark hiding the browser's caret is on exactly the editable the drawn caret draws for   | A       |
+| G1.87  | Nothing an editor started before it unmounted writes, reports or reads its tree after      | N       |
+| G1.90  | A plugin component compiled against another Svelte runtime is named as such in dev         | N       |
+| G1.91  | A live removal keeps the marks on the visible characters it keeps                          | P·N     |
+| G1.94  | One editor per mount target: a second `createEditor` there before `destroy` warns in dev   | A       |
+| G1.96  | A plugin's widget, decoration or row view mounts once, updates in place, is destroyed once | N       |
+| G1.97  | A value a Vue app holds in reactive state reaches the editor unwrapped                     | harness |
+| G1.99  | A styled editor resolves the host colors, from the theme stylesheet or the page            | A       |
+| G1.104 | A plugin registers only from its `definePlugin` setup                                      | N       |
 
 ### The entries
 
@@ -782,6 +783,17 @@ find bar painted with none. Once an editor mounts with its own stylesheet applie
 reset makes its root border-box), it checks that `--md-color-bg` resolves on the root, and warns
 `invariant:host-colors-resolve` naming the import when it doesn't. A DOM with no stylesheet (the
 unit suites) is skipped. `invariants/theme-stylesheet.ts`; `e2e/tests/theme-stylesheet.spec.ts`.
+
+**G1.104 · Registered from a setup.** A register or declare call outside any plugin's setup, and
+outside the editor's own bootstraps (`registerAsCore`), throws in a dev build, naming
+`definePlugin` and, for a test on another runner, `configureEditorEnv({ isTest: true })`. A test
+run is exempt and production isn't checked. The check sits in the store every registry is built on
+(`schema/plugin-registry.ts`), behind `schema/plugin-install.ts :: rejectRegistrationOutsideSetup`.
+Since a setup runs once per process, the dev-server replacement of a duplicate applies to the
+editor's own entries only. `test/schema/register-in-setup.test.ts` pins the throw, the test switch
+and the replacement rule, and re-evaluates a plugin module to show the first registration wins;
+`test/schema/dev-server-load.test.ts` loads every entry and installs every bundled plugin under a
+dev server's flags.
 
 ## Group 2: property and regression tested
 

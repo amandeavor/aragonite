@@ -395,20 +395,7 @@ Each part has a defined absence, which is prob the easiest way to remember what 
 
 A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
 
-Who guarantees a registration runs only once depends on where it runs:
-
-- **Inside a plugin unit** (the installable package the next section defines), `setup` runs at most once per process. Write each `register*` call straight; the unit owns the guarantee.
-- **At module scope**, meaning register calls that run when a file is imported, nothing owns the run for you. Guard each call on its probe, the matching is-it-there check: `isBlockKindDeclared`, `isBlockKindRegistered`, `isBlockCompleterRegistered`, `isPasteTransformRegistered`, `isLanguageRegistered`, `isDirectiveRegistered`, and `isInlineKindDeclared` for the inline tier.
-
-```ts
-isBlockKindDeclared('parrot'); // false on a fresh page
-if (!isBlockKindDeclared(PARROT)) registerParrotBlock(svelteBlockView(ParrotBlock));
-isBlockKindDeclared('parrot'); // true, so a second import of this module skips the register
-```
-
-Guard on the probe, never on a module-level `registered` flag: the flag survives `resetPluginPlatformForTests()` and then silently skips the re-registration your next test case needed, which is a fun half hour to spend.
-
-One dev-time softening. Under a dev server a duplicate registration replaces the earlier one with a warning, so hot reload picks up a changed definition (editing a plugin unit's own `definePlugin` still needs a page reload). Production builds and test runs keep the throw.
+Every `register*` and `declare*` call goes inside a plugin unit's `setup` (the next section), which runs at most once per page, so you write each call straight and never check whether it already ran. A call anywhere else, a module's top level say, throws in development with that fix in the message. (A changed plugin module under hot reload needs a page reload, since the first install of a name wins.)
 
 ### The plugin unit
 
@@ -472,7 +459,7 @@ installPlugins([parrot]); // no-op (a fresh parrotPlugin() here would no-op too,
 
 The API is going to freeze, and you deserve to know which half of it has settled already.
 
-- **The registration base, settled.** Kind declaration, kind registration (descriptor, view and opener in one call), typed per-node metadata, and the probes above. The model won't change: which calls exist, that each registers once, what a kind is. The exact shapes those calls take (a descriptor field, what an opener returns) can still change before the freeze, and freeze with everything else at the public release.
+- **The registration base, settled.** Kind declaration, kind registration (descriptor, view and opener in one call), and typed per-node metadata. The model won't change: which calls exist, that each registers once, what a kind is. The exact shapes those calls take (a descriptor field, what an opener returns) can still change before the freeze, and freeze with everything else at the public release.
 - **Pre-freeze, still moving.** Everything else: the plugin unit itself, the authoring tiers (container, editable leaf, inline, directive), the grammar hooks, paste transforms, and the view surfaces (decorations, rects, selection geometry). The [API reference](plugin-api.md) labels each such section _(pre-freeze / unstable)_, and they all freeze at the public release.
 
 After the freeze the version number carries the promise: a breaking change to a frozen surface rides a **major** version, and additive needs ship as **minors**.
@@ -561,3 +548,4 @@ What each mistake does in each build:
 | An opener claims no line (`consumed < 1`) | Warns, naming the kind, and declines the opener                     | Declines the same way, silently; no hang            |
 | An opener's `raw` ≠ the lines it consumed | Parse warns, naming the kind                                        | Silent round-trip break                             |
 | An opener throws                          | Propagates uncaught (parse runs at init and on every edit)          | Same; uncaught                                      |
+| A register call outside a plugin's setup  | Throws, naming `definePlugin`                                       | Runs, unchecked and unsupported                     |

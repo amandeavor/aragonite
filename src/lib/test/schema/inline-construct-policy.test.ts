@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { configureEditorEnv } from '#lib/env.js';
-import { takeDevWarns } from '../support/warn-gate';
 import { INLINE_KIND_TABLE, type AnyInlineKind } from '#lib/core/nodes.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 import {
@@ -167,19 +165,7 @@ describe('registration lifecycle', () => {
 		expect(() => registerInlineConstructPolicy(kind, atomic)).not.toThrow();
 	});
 
-	it('replaces instead of throwing on a dev server', () => {
-		const kind = declarePluginInlineKind('policy-dev');
-		registerInlineConstructPolicy(kind, atomic);
-		configureEditorEnv({ isDev: true, isTest: false });
-		expect(() =>
-			registerInlineConstructPolicy(kind, { ...atomic, revealable: true })
-		).not.toThrow();
-		expect(getInlineConstructPolicy(kind)?.revealable).toBe(true);
-		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);
-	});
-
-	// Registration refuses an invalid row rather than leaving it to the mount warning (G1.31). The
-	// dev server forgives a duplicate, never an invalid row: a re-run would submit the same one.
+	// Registration refuses an invalid row rather than leaving it to the mount warning (G1.31).
 	const claimsCard = (name: string) => () =>
 		registerInlineConstructPolicy(declarePluginInlineKind(name), {
 			...atomic,
@@ -189,11 +175,6 @@ describe('registration lifecycle', () => {
 
 	it('throws on a mark claiming a built-in command id', () => {
 		expect(claimsCard('policy-builtin-command')).toThrow(/link\.openCard/);
-	});
-
-	it('throws on that same claim under the dev valve', () => {
-		configureEditorEnv({ isDev: true, isTest: false });
-		expect(claimsCard('policy-builtin-command-dev')).toThrow(/link\.openCard/);
 	});
 });
 

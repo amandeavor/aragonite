@@ -7,7 +7,6 @@
 import type { AnyBlockKind } from '../core/nodes';
 import type { AnyCommandId } from './command-id';
 import { devWarn } from '../dev-warn';
-import { devReplacesRegistration } from './register-once';
 import { enrollTestReset } from './registry-reset';
 import { createPluginRegistry } from './plugin-registry';
 import { getAllRegisteredKinds, tryGetBlockKindDescriptor } from './block-kind-descriptor';
@@ -319,12 +318,8 @@ export function reservedUiChords(): readonly string[] {
 	return [...RESERVED_UI_CHORDS];
 }
 
-/** The chord's normal form, or a throw when it can't be bound. A dev-server re-evaluation binding
- *  `candidateCommand` to its own chord again replaces the binding rather than colliding. */
-export function assertPluginGlobalChordAvailable(
-	rawChord: string,
-	candidateCommand?: string
-): string {
+/** The chord's normal form, or a throw when it can't be bound. */
+export function assertPluginGlobalChordAvailable(rawChord: string): string {
 	// Thrown before the id is created (`global-commands.ts`), so a rejected registration leaves
 	// no orphaned command.
 	const chord = registeredChord(rawChord, 'registerGlobalCommand');
@@ -338,7 +333,6 @@ export function assertPluginGlobalChordAvailable(
 	const collision =
 		findByChord(GLOBAL_KEYMAP, chord) ?? pluginGlobalKeymap.getIgnoringActivation(chord);
 	if (collision) {
-		if (devReplacesRegistration() && collision.command === candidateCommand) return chord;
 		throw new Error(
 			`plugin global chord "${rawChord}" is already bound to "${collision.command}": global chords are register-once`
 		);
@@ -347,7 +341,7 @@ export function assertPluginGlobalChordAvailable(
 }
 
 export function registerPluginGlobalBinding(binding: KeyBinding): void {
-	const chord = assertPluginGlobalChordAvailable(binding.chord, binding.command);
+	const chord = assertPluginGlobalChordAvailable(binding.chord);
 	// The check above already let a dev re-evaluation of the same command through, so the
 	// registry's own duplicate rule only ever replaces here.
 	pluginGlobalKeymap.register(chord, { ...binding, chord });

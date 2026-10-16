@@ -11,7 +11,6 @@ import {
 	declaredPluginKind,
 	registerBlockKind,
 	registerDirective,
-	isDirectiveRegistered,
 	setPluginMetadata,
 	getPluginMetadata,
 	serializeDirective,
@@ -101,15 +100,10 @@ export function devProbePlugin(): EditorPlugin {
 				}
 			});
 
-			const devprobe = declaredPluginKind(DEVPROBE);
-			// The directive registry survives a schema reset and re-registering a claimed name
-			// throws, so this stays guarded even though the plugin unit owns once-per-process.
-			if (!isDirectiveRegistered('container', DEVPROBE)) {
-				registerDirective('container', DEVPROBE, {
-					kind: devprobe,
-					fromDirective: devprobeFromDirective
-				});
-			}
+			registerDirective('container', DEVPROBE, {
+				kind: declaredPluginKind(DEVPROBE),
+				fromDirective: devprobeFromDirective
+			});
 		}
 	});
 }

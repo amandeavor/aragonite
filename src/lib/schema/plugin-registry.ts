@@ -5,7 +5,11 @@
  * it, except in a kind registry, where a kind a plugin declared takes that plugin instead.
  */
 import type { AnyBlockKind, AnyInlineKind } from '../core/nodes';
-import { currentInstallingPlugin, registerAsCore } from './plugin-install';
+import {
+	currentInstallingPlugin,
+	registerAsCore,
+	rejectRegistrationOutsideSetup
+} from './plugin-install';
 import { resolvesIn, type PluginActivation } from './plugin-activation';
 import { registerOnce } from './register-once';
 import { enrollTestReset } from './registry-reset';
@@ -104,19 +108,24 @@ function buildRegistry<K, V>(
 	const changed = () => options.onChange?.();
 	const owner = (key: K, entry: Entry<V>) => answersTo(key, entry.registrant);
 
+	// The editor's own entries: the reset keeps them, and a dev server's re-evaluation replaces them.
+	const editorOwned = (key: K, entry: Entry<V>) =>
+		entry.core || (entry.registrant === null && options.isBuiltin(key));
+
 	enrollTestReset(() => {
 		for (const [key, entry] of entries) {
-			// The editor's own entries survive; a plugin's never do, whichever plugin it answers to.
-			const builtin = entry.registrant === null && options.isBuiltin(key);
-			if (!entry.core && !builtin) entries.delete(key);
+			if (!editorOwned(key, entry)) entries.delete(key);
 		}
 		changed();
 	});
 
 	const store = (key: K, value: V, conflict: string | undefined, core: boolean) => {
+		if (!core && !options.isBuiltin(key)) rejectRegistrationOutsideSetup(options.label);
 		const registrant = currentInstallingPlugin();
+		const existing = entries.get(key);
 		registerOnce(
-			entries.has(key),
+			existing !== undefined,
+			existing !== undefined && editorOwned(key, existing),
 			() => {
 				entries.set(key, { value, registrant, core });
 				changed();

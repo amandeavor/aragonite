@@ -1,7 +1,7 @@
 /**
- * Register-once: a duplicate is an error, and production and test keep the throw
- * (`docs/design/plugin-contract.md` § The registries: global, register-once). On a dev server the
- * throw would break every route until restart, so there a duplicate replaces the entry and warns.
+ * Register-once: a duplicate is an error (`docs/design/plugin-contract.md` § The registries: global,
+ * register-once). A plugin's setup runs once per process, so only the editor's own entries meet a
+ * duplicate, when a dev server re-evaluates an editor module; there the entry is replaced and warned.
  */
 import { editorEnv } from '../env';
 import { devWarn } from '../dev-warn';
@@ -12,12 +12,17 @@ export function devReplacesRegistration(): boolean {
 }
 
 /**
- * `apply` does the registration and its side effects. It runs both on a first registration and on
- * a dev-server replacement, so re-running a plugin with changed content updates everything again.
+ * `apply` does the registration and its side effects, on a first registration and on a dev-server
+ * replacement alike. `editorOwned` says the existing entry is the editor's, the one kind replaced.
  */
-export function registerOnce(isDuplicate: boolean, apply: () => void, conflict: string): void {
+export function registerOnce(
+	isDuplicate: boolean,
+	editorOwned: boolean,
+	apply: () => void,
+	conflict: string
+): void {
 	if (isDuplicate) {
-		if (devReplacesRegistration()) {
+		if (editorOwned && devReplacesRegistration()) {
 			devWarn('registry', `${conflict}: dev re-registration replaces (HMR/SSR survival)`);
 			apply();
 			return;

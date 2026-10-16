@@ -18,7 +18,6 @@ import {
 	registerBlockCommand,
 	registerChromeLeaf,
 	registerDirective,
-	isDirectiveRegistered,
 	setPluginMetadata,
 	type BlockView,
 	type CstNode,
@@ -88,12 +87,8 @@ export function registerCalloutKind(view: BlockView): void {
 		return true;
 	});
 
-	// Idempotent for HMR: the directive registry survives a schema reset, so
-	// re-registering would throw without the guard.
-	if (!isDirectiveRegistered('container', CALLOUT)) {
-		registerDirective('container', CALLOUT, { kind: callout, fromDirective: calloutFromDirective });
-		registerDirective('container', ASIDE, { kind: callout, fromDirective: calloutFromDirective });
-	}
+	registerDirective('container', CALLOUT, { kind: callout, fromDirective: calloutFromDirective });
+	registerDirective('container', ASIDE, { kind: callout, fromDirective: calloutFromDirective });
 
 	registerBlockKind(callout, {
 		view,

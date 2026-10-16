@@ -36,11 +36,7 @@ export type { PluginBlockKind, AnyBlockKind } from './core/nodes';
 
 // ── Inline authoring API (pre-freeze) ────────────────────────────────────────
 // Declare an inline kind, hook the scanner on a trigger character, register a live widget.
-export {
-	declarePluginInlineKind,
-	declaredPluginInlineKind,
-	isInlineKindDeclared
-} from './schema/plugin-kind';
+export { declarePluginInlineKind, declaredPluginInlineKind } from './schema/plugin-kind';
 export type { PluginInlineKind, InlineNode, ImageFields, ImageSyntaxRewriter } from './core/nodes';
 export { registerInlineSyntax, INLINE_PRIORITIES } from './core/inline/scan/plugin-syntax';
 export type { InlineSyntaxRecognizer, InlineSyntaxOptions } from './core/inline/scan/plugin-syntax';
@@ -261,15 +257,6 @@ export { blockNodeAt } from './tree-operations/node-primitives';
 export function computeInlineContent(node: NodeView): InlineNode[] {
 	return parseLeafInline(node, undefined, defaultGrammarView);
 }
-
-// ── Re-registration checks ─────────────────────────────────────────────────────
-// The register-once registries throw on duplicate; a plugin re-registers safely
-// (HMR / re-import) by guarding on these.
-export { isBlockKindDeclared } from './schema/plugin-kind';
-export { isBlockKindRegistered } from './schema/block-kind-descriptor';
-export { isBlockCompleterRegistered } from './schema/block-completions';
-export { isPasteTransformRegistered } from './tree-operations/paste/paste-transforms';
-export { isLanguageRegistered } from './components/blocks/code/code-languages';
 
 // ── Container-authoring API (pre-freeze) ─────────────────────────────────────
 // The pieces a container plugin shares with the editor; `createContainerBlock` and `BlockList` are

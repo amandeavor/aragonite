@@ -768,10 +768,7 @@ export function clampCellIndex(node: NodeView, cellIdx: number): number {
 	return Math.min(Math.max(cellIdx, 0), Math.max(tableCellCount(node) - 1, 0));
 }
 
-/**
- * Is a kind descriptor registered? `registerBlockKind` throws on a duplicate, so a plugin that
- * may register twice (hot reload, re-import) checks this first. Takes a plain, unbranded name.
- */
+/** Whether a kind is registered, for the editor's own idempotent bootstraps. Takes a plain name. */
 export function isBlockKindRegistered(kind: string): boolean {
 	return registry.has(kind as AnyBlockKind);
 }

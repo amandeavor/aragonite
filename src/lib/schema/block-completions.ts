@@ -76,8 +76,4 @@ export function completeLineOnType(line: string, grammar: GrammarView): Completi
 	return null;
 }
 
-/** Does `kind` already have a completer? A plugin that may register twice checks this first,
- *  so re-installing it never trips the register-once throw. */
-export function isBlockCompleterRegistered(kind: string): boolean {
-	return completers.has(kind as AnyBlockKind);
-}
+
