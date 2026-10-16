@@ -32,7 +32,7 @@ export function mountBreak(presentationMode: PresentationMode = 'source') {
 			focus,
 			history,
 			services: { reorder, selection },
-			policies: { presentationMode: () => presentationMode }
+			mode: () => presentationMode
 		}
 	});
 	const el = mounted.target.querySelector('.thematic-break-block') as HTMLElement;

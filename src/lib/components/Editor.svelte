@@ -837,10 +837,8 @@
 		// Reading mode turns the drag handles off through the prop's own getter.
 		blockDragHandles: () => blockDragHandles && effectiveMode !== 'reading',
 		placeholder: () => placeholderPolicy,
-		presentationMode: reading.mode,
 		theme: () => theme,
 		activationClick,
-		keybindingOverrides: () => overridesMap,
 		onPasteImage: () => onPasteImage,
 		onRunCode: () => onRunCode,
 		codeMenuItems: () => codeMenuItems,

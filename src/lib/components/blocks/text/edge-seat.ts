@@ -190,16 +190,6 @@ export function applyTypedInput(
 	return steps.autoPair(e) || steps.rangeEdit(e);
 }
 
-/** The text a commit's reading added at `at`, or null when that reading is not a plain insertion
- *  there: a composition over a selection is a range edit, which nothing here handles. */
-export function plainInsertionAt(before: string, after: string, at: number): string | null {
-	const length = after.length - before.length;
-	if (length <= 0 || at < 0 || at > before.length) return null;
-	if (after.slice(0, at) !== before.slice(0, at)) return null;
-	if (after.slice(at + length) !== before.slice(at)) return null;
-	return after.slice(at, at + length);
-}
-
 /** Every raw offset the caret's screen position allows: each boundary in a stretch of abutting
  *  hidden runs, never an offset inside a run's bytes, which may exclude the caret itself. */
 export function seatOffsetsAt(

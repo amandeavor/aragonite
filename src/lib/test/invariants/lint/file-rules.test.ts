@@ -1007,7 +1007,7 @@ const RULES: FileRule[] = [
 			'const on = $derived(getDragHandles?.() ?? false);',
 			'const doc = getDocument?.();',
 			'if (path) void navigateTo?.(path);',
-			"const mode = policies.presentationMode() || 'source';"
+			"const mode = reading.mode() || 'source';"
 		],
 		misses: [
 			"const isReading = getPresentationMode() === 'reading';",

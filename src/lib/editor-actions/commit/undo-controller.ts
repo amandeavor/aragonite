@@ -922,7 +922,6 @@ export function createUndoController(
 	}
 
 	return {
-		sharing: deps.sharing,
 		pushUndoSnapshotDebounced: (leafPath, offset, batchKey) => {
 			if (admitsSnapshot(deps)) textBatch.keystroke(leafPath, offset, batchKey);
 		},

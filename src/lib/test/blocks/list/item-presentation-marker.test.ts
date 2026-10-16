@@ -27,7 +27,7 @@ afterEach(async () => {
 });
 
 function markerAttrIn(mode: PresentationMode, source: string): string | null {
-	mounted = mountItem(source, 0, { policies: { presentationMode: () => mode } });
+	mounted = mountItem(source, 0, { mode: () => mode });
 	return mounted.box.getAttribute('data-list-marker');
 }
 

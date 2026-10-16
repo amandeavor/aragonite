@@ -39,7 +39,7 @@ describe('a composition over a selection drawn past a setext heading’s text', 
 		const mounted = mountBlock(TextEditableBlock, {
 			source: 'ab\n==\n',
 			overrides: {
-				policies: { presentationMode: () => 'live' },
+				mode: () => 'live',
 				services: { decorations: noIslands }
 			}
 		});
@@ -61,7 +61,7 @@ describe('a composition over a selection with nothing to clean', () => {
 		const mounted = mountBlock(TextEditableBlock, {
 			source: 'ab\n',
 			overrides: {
-				policies: { presentationMode: () => 'live' },
+				mode: () => 'live',
 				services: { decorations: noIslands }
 			}
 		});

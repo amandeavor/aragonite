@@ -12,9 +12,7 @@ import type { Document } from './core/nodes';
 import type { ImageLoadPolicy } from './core/inline-render';
 import type { UserScrollport } from './windowing/scroll-ancestors';
 import type { ScrollportReader } from './windowing/scrollport';
-import type { PresentationMode } from './presentation-mode';
 import type { ActivationClick, PressTracker } from './activation-click';
-import type { KeybindingOverrideMap } from './schema/keybinding-overrides';
 import type { EditorContext } from './schema/plugin-install';
 import type { RegistryView } from './schema/registry-view';
 import type { Reading } from './schema/reading';
@@ -53,8 +51,6 @@ import type {
 
 // ── Shared value-shape types ─────────────────────────────────────────────────
 
-export type KeybindingOverridesGetter = () => KeybindingOverrideMap;
-export type PresentationModeGetter = () => PresentationMode;
 /** The editor's theme name, as reflected to `data-editor-theme`. An open string:
  *  built-ins are `'dark'`/`'light'`, and a consumer may name its own. */
 export type ThemeGetter = () => string;
@@ -167,14 +163,12 @@ export interface EditorPolicies {
 	/** Read live, so a prop change repaints built blocks: the `placeholder` prop and whether the
 	 *  document is one top-level block, or null while the prop is unset. */
 	placeholder: () => PlaceholderPolicy | null;
-	presentationMode: PresentationModeGetter;
 	/** For a renderer that paints rather than styles: a plugin emitting its own colored
 	 *  markup (a diagram SVG) cannot pick the theme up from CSS, so it needs the name. */
 	theme: ThemeGetter;
 	/** Whether a click follows what it lands on (a link, a widget that goes somewhere): the one
 	 *  answer every such route reads, with the mode and the `linkClick` prop read at the click. */
 	activationClick: ActivationClick;
-	keybindingOverrides: KeybindingOverridesGetter;
 	/** The host's hooks, read at each use so a swapped or added one reaches built blocks.
 	 *  Undefined leaves an image paste on the plain-text path and renders no run or menu button. */
 	onPasteImage: () => PasteImageHook | undefined;

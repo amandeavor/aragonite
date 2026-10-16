@@ -35,7 +35,8 @@ function mountFocused(
 	const compiled = normalizeKeybindingOverrides(keybindings);
 	mounted = mountOpaque({
 		services: { reorder: reorder as unknown as EditorServices['reorder'] },
-		policies: { keybindingOverrides: () => compiled, presentationMode: () => presentationMode }
+		commands: { keybindingOverrides: () => compiled },
+		mode: () => presentationMode
 	});
 	mounted.containerApi.focus(0);
 	flushSync();

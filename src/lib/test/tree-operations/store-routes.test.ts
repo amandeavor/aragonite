@@ -151,7 +151,7 @@ function mountText(place: Place, caretMemory?: CaretMemory): Mounted {
 		source: place.source,
 		path: place.leaf,
 		overrides: {
-			policies: { presentationMode: () => 'live' },
+			mode: () => 'live',
 			services: { decorations: noIslands, ...(caretMemory ? { caretMemory } : {}) }
 		}
 	});
@@ -159,7 +159,7 @@ function mountText(place: Place, caretMemory?: CaretMemory): Mounted {
 	return { el, blockEdit: mounted.blockEdit };
 }
 
-const mountLiveCell = (raw: string): Mounted => mountCell(raw, { presentationMode: () => 'live' });
+const mountLiveCell = (raw: string): Mounted => mountCell(raw, { mode: () => 'live' });
 
 function select(el: HTMLElement, start: number, end = start): void {
 	el.focus();

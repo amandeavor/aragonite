@@ -248,7 +248,6 @@ export const TYPE_EDGES: readonly string[] = [
 	'editor-keys.ts -> editor-rects.ts',
 	'editor-keys.ts -> host-hooks.ts',
 	'editor-keys.ts -> inline-menu',
-	'editor-keys.ts -> presentation-mode.ts',
 	'editor-keys.ts -> schema',
 	'editor-keys.ts -> search',
 	'editor-keys.ts -> selection',

@@ -31,7 +31,7 @@ const SINGLE_LINE = 1.5;
 
 /** Centres on a one-line block's row, else a marker-sized drag anchor, else the box's first
  *  line-height, since a card pads above its first line of text. */
-export function dragHandleAnchorY(host: HTMLElement): number | null {
+function dragHandleAnchorY(host: HTMLElement): number | null {
 	const content = host.querySelector<HTMLElement>(BLOCK_CONTENT_SELECTOR);
 	if (!content) return null;
 	const hostRect = host.getBoundingClientRect();
