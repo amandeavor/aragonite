@@ -11,7 +11,7 @@ import {
 	type EditorPlugin,
 	type InlineNode
 } from '#lib/plugin.js';
-import { svelteInlineWidget } from '#lib/svelte.js';
+import { svelteView } from '#lib/svelte.js';
 import Chip from './Chip.svelte';
 
 export function chipsPlugin(): EditorPlugin {
@@ -27,7 +27,7 @@ export function chipsPlugin(): EditorPlugin {
 			});
 			registerInlineWidgetKind(chip, {
 				isWidget: () => true,
-				view: svelteInlineWidget(Chip),
+				view: svelteView(Chip),
 				editing: { claimsActivationClick: true }
 			});
 		}
