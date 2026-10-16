@@ -248,10 +248,15 @@ describeFileRules(
 	sources
 );
 
-// The container row proves its matcher on the factory modules; this proves it reaches containers.
+// The probes prove both matchers on snippets; these prove each still reads real blocks.
 it('the container sweep finds container components', () => {
 	const containers = sources.filter(
 		(f) => CONTAINER_SEAM_RE.test(f.code) && !CONTAINER_SEAM_MODULES.includes(f.relPath)
 	);
 	expect(containers.length).toBeGreaterThan(0);
+});
+
+it('the forward check finds blocks forwarding a shared helper’s focus', () => {
+	const forwarding = sources.filter((f) => [...f.code.matchAll(FOCUS_FORWARD_RE)].length > 0);
+	expect(forwarding.length).toBeGreaterThan(0);
 });

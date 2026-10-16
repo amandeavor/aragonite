@@ -48,6 +48,8 @@ describeManifests(
 			hits: [`await cdp.send('Input.ime${'Set'}${COMPOSITION}', params);`],
 			misses: [`await cdp.send('Input.insertText', params);`]
 		},
+		// Miss-analysis: each spec wrote its own wait and no scan held them to one, so one waited on
+		// markup. A `goto(variable)` on a page spelled otherwise still gets past the matcher.
 		{
 			id: 'every e2e page navigation waits for the route to hydrate',
 			matches: RAW_GOTO,
@@ -75,6 +77,8 @@ describeManifests(
 			hits: [nav('editor.page', 'reload()'), nav('page', 'goBack()'), nav('second', 'reload()')],
 			misses: ['await reloadReady(page)']
 		},
+		// Miss-analysis: two selection specs stayed green with the harness dropping live mode to
+		// source. An alias of the bridge held across statements still gets past the matcher.
 		{
 			id: 'G4.133 every e2e mode switch through the bridge waits for the mode to apply',
 			matches:
