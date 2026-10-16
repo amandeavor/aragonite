@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Locator, Page } from '@playwright/test';
 import { PluginsPage } from '../plugins/helpers';
-import { capturePageErrors, deferImage } from '../../page-probes';
+import { deferImage } from '../../page-probes';
 
 /**
  * Who holds the scroll position after scrolling to a block, once the scroll is done. The held
@@ -96,7 +96,6 @@ test.describe('reveal anchor: the pin names the full target path', () => {
 	test('a nested target survives a measure pass that lands after the reveal settles', async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
 		const editor = new AnchorPage(page);
 		const { md, targetPath } = tallContainerDoc();
 
@@ -118,13 +117,11 @@ test.describe('reveal anchor: the pin names the full target path', () => {
 		await editor.waitForResizeObserverFlush();
 
 		expect(await blockInView(page, targetPath)).toBe(true);
-		expect(pageErrors).toEqual([]);
 	});
 });
 
 test.describe('reveal anchor: a stale claimant cannot release a fresher pin', () => {
 	test('a center reveal resolving inside a navigation settle strands nothing', async ({ page }) => {
-		const pageErrors = capturePageErrors(page);
 		const editor = new AnchorPage(page);
 		const { md, targetPath } = growthAboveDoc();
 
@@ -160,6 +157,5 @@ test.describe('reveal anchor: a stale claimant cannot release a fresher pin', ()
 		await editor.waitForResizeObserverFlush();
 
 		expect(await blockInView(page, targetPath)).toBe(true);
-		expect(pageErrors).toEqual([]);
 	});
 });

@@ -41,7 +41,6 @@ export const CODE_COPY_LABEL = 'Copy code';
 export const CODE_COPIED_LABEL = 'Code copied';
 export const CODE_MENU_LABEL = 'Code block actions';
 export const CODE_RAIL_LABEL = 'Code block controls';
-export const CODE_LANGUAGE_LIST = 'Code block languages';
 export const SELECTION_TOOLBAR_LABEL = 'Selection formatting';
 
 /** A control's name, not an announcement: the language chip's accessible name. */

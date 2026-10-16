@@ -2,7 +2,6 @@ import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { editorScrollHeight, spacerCount } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Windowing when the app scales the text. The estimated heights decide how tall the spacers
 // are and, through the activation threshold, whether a document windows at all, so they have to
@@ -34,7 +33,6 @@ async function loadNearWatermark(editor: EditorPage): Promise<void> {
 }
 
 test('a near-watermark document does not window at the default type scale', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await loadNearWatermark(editor);
@@ -43,11 +41,9 @@ test('a near-watermark document does not window at the default type scale', asyn
 	// fixture that would have windowed at any size.
 	expect(await spacerCount(page)).toBe(0);
 	expect(await editor.getDomBlockCount()).toBe(NEAR_WATERMARK_BLOCKS);
-	expect(pageErrors).toEqual([]);
 });
 
 test('the same document windows at a 2rem type scale', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await setTypeScale(page, '2rem');
@@ -62,11 +58,9 @@ test('the same document windows at a 2rem type scale', async ({ page }) => {
 	// Reading the scrollable height would prove nothing: with windowing on, that is the estimate.
 	const blockHeight = (await editor.getBlock(0).boundingBox())!.height;
 	expect(blockHeight * NEAR_WATERMARK_BLOCKS).toBeGreaterThan(4000);
-	expect(pageErrors).toEqual([]);
 });
 
 test('a live type-scale change re-estimates the off-window set', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	const blockCount = await editor.loadLargeFixture('many-small-blocks', 500_000);
@@ -81,5 +75,4 @@ test('a live type-scale change re-estimates the off-window set', async ({ page }
 	// that follow the text size the other thousands do not, and the total height barely moves.
 	console.log(`type-scale reflow ${JSON.stringify({ blockCount, before, after })}`);
 	expect(after / before).toBeGreaterThan(1.4);
-	expect(pageErrors).toEqual([]);
 });

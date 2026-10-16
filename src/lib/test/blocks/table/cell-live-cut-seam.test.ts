@@ -24,7 +24,7 @@ afterEach(async () => {
 	document.body.innerHTML = '';
 });
 
-const LIVE = { presentationMode: () => 'live' as const };
+const LIVE = { mode: () => 'live' as const };
 
 function committedCalls(cell: MountedCell): unknown[][] {
 	return vi.mocked(cell.blockEdit.updateBlockContent).mock.calls;

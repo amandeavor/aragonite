@@ -22,7 +22,7 @@ async function focusFence(arrival: 'step' | 'seat'): Promise<void> {
 	const caretMemory = createCaretMemory();
 	if (arrival === 'step') caretMemory.noteKey({ key: 'ArrowRight' }, null);
 	mounted = mountCode(BARE_FENCE, {
-		policies: { presentationMode: () => 'live' },
+		mode: () => 'live',
 		services: { caretMemory }
 	});
 	mounted.el.focus();
@@ -56,7 +56,7 @@ describe('a bare fence taking the caret', () => {
 		);
 		mounted = mountCode(BARE_FENCE, {
 			blockEdit,
-			policies: { presentationMode: () => 'live' }
+			mode: () => 'live'
 		});
 		mounted.el.focus();
 		await settleEditor();

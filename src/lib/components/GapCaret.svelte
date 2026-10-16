@@ -10,15 +10,12 @@
 	import { GAP_CARET_LABEL } from '../a11y-strings';
 	import {
 		EDITOR_DOC_KEY,
-		EDITOR_POLICIES_KEY,
 		EDITOR_SERVICES_KEY,
 		type EditorDoc,
-		type EditorPolicies,
 		type EditorServices
 	} from '../editor-keys';
 	import { runGlobalChord } from '../schema/commands';
 	import { eventToChord } from '../schema/keybindings';
-	import { isReadingMode } from '../presentation-mode';
 	import { createCaretHostInput } from '../editor-actions/caret-host-input';
 
 	let {
@@ -35,13 +32,12 @@
 	// two action bundles above depend on where this list sits.
 	const services = getContext<EditorServices | undefined>(EDITOR_SERVICES_KEY);
 	const selection = services?.selection;
-	const policies = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
 	const editorDoc = getContext<EditorDoc | undefined>(EDITOR_DOC_KEY);
 
 	let gapEl: HTMLElement | undefined = $state();
 	let proxyEl: HTMLElement | undefined = $state();
 
-	const isReading = $derived(isReadingMode(policies.presentationMode));
+	const isReading = $derived(editorDoc?.reading.mode() === 'reading');
 
 	$effect(() => {
 		if (!proxyEl || !gapEl || !services) return;

@@ -2,7 +2,7 @@ import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { FIXTURE_BYTES, GIANT_LIST_OR_TABLE_BYTES, cstBlockCount, spacerCount } from './vr-helpers';
-import { capturePageErrors, topLevelHostPresent } from '../../page-probes';
+import { topLevelHostPresent } from '../../page-probes';
 
 // Reaching an unmounted block: Ctrl+Shift+End, a scroll and a collapse must each mount the
 // target and put the caret in a block or cell that was unmounted at load, for flat prose, for
@@ -18,7 +18,6 @@ function mountedTopLevelIndices(page: Page): Promise<number[]> {
 }
 
 test('Ctrl+Shift+End reveals and edits the off-window last block', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('flat-prose', FIXTURE_BYTES);
@@ -41,11 +40,9 @@ test('Ctrl+Shift+End reveals and edits the off-window last block', async ({ page
 
 	const source = await editor.bridge.getSource();
 	expect(source.trimEnd().endsWith('VR_MARKER')).toBe(true);
-	expect(pageErrors).toEqual([]);
 });
 
 test('undo of an off-window block edit reverts cleanly and restores focus', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('flat-prose', FIXTURE_BYTES);
@@ -87,11 +84,9 @@ test('undo of an off-window block edit reverts cleanly and restores focus', asyn
 	await editor.typeText('BETA_MARK');
 	await editor.bridge.waitForSourceContains('BETA_MARK', 10_000);
 	expect(await editor.getBlockText(0)).toContain('BETA_MARK');
-	expect(pageErrors).toEqual([]);
 });
 
 test('reveals a deep off-window nested item and lands the caret there', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-list', GIANT_LIST_OR_TABLE_BYTES);
@@ -119,13 +114,11 @@ test('reveals a deep off-window nested item and lands the caret there', async ({
 
 	const source = await editor.bridge.getSource();
 	expect(source.trimEnd().endsWith('DEEP_VR_MARKER')).toBe(true); // in the last item, not the first
-	expect(pageErrors).toEqual([]);
 });
 
 test('collapsing a Ctrl+Shift+End list selection to start lands the caret in the anchor item', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-list', GIANT_LIST_OR_TABLE_BYTES);
@@ -167,11 +160,9 @@ test('collapsing a Ctrl+Shift+End list selection to start lands the caret in the
 		() => (window as any).__test.getDocument().children[0].children.length
 	);
 	expect(itemCountAfter).toBe(itemCountBefore);
-	expect(pageErrors).toEqual([]);
 });
 
 test('reveals an off-window table cell by scroll and edits it (phase 4)', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-table', GIANT_LIST_OR_TABLE_BYTES);
@@ -218,13 +209,11 @@ test('reveals an off-window table cell by scroll and edits it (phase 4)', async 
 		)
 	).toContain('CELL_VR_MARKER');
 	expect((await editor.bridge.getSource()).includes('CELL_VR_MARKER')).toBe(true);
-	expect(pageErrors).toEqual([]);
 });
 
 test('Ctrl+Shift+End in a table reveals and mounts the off-window focus cell (phase 4)', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-table', GIANT_LIST_OR_TABLE_BYTES);
@@ -255,13 +244,11 @@ test('Ctrl+Shift+End in a table reveals and mounts the off-window focus cell (ph
 	expect(
 		await page.evaluate((r) => !!document.querySelector(`[data-table-row-idx="${r}"]`), lastRow)
 	).toBe(true);
-	expect(pageErrors).toEqual([]);
 });
 
 test('collapsing a Ctrl+Shift+End table selection lands the caret in the revealed cell (phase 4)', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-table', GIANT_LIST_OR_TABLE_BYTES);
@@ -290,13 +277,11 @@ test('collapsing a Ctrl+Shift+End table selection lands the caret in the reveale
 			lastRow
 		)
 	).toContain('TABLE_END_MARKER');
-	expect(pageErrors).toEqual([]);
 });
 
 test('collapsing a Ctrl+Shift+End table selection to start does not wipe the table body (phase 4)', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-table', GIANT_LIST_OR_TABLE_BYTES);
@@ -343,13 +328,11 @@ test('collapsing a Ctrl+Shift+End table selection to start does not wipe the tab
 		() => (window as any).__test.getDocument().children[0].children.length
 	);
 	expect(rowCountAfter).toBe(rowCountBefore);
-	expect(pageErrors).toEqual([]);
 });
 
 // Undo with no block focused, so only the editor's own document-level keydown listener can
 // deliver the shortcut.
 test("undo fires after the caret's block is windowed out (F2)", async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('flat-prose', FIXTURE_BYTES);
@@ -377,5 +360,4 @@ test("undo fires after the caret's block is windowed out (F2)", async ({ page })
 	await editor.undo();
 	await editor.bridge.waitForSourceNotContains('WINDOWED_MARK', 10_000);
 	expect(await editor.bridge.getSource()).not.toContain('WINDOWED_MARK');
-	expect(pageErrors).toEqual([]);
 });

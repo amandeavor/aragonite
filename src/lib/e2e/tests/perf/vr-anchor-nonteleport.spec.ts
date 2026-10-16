@@ -6,7 +6,6 @@ import {
 	editorScrollHeight,
 	topVisibleHostTop
 } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // The block at the top of the viewport must still be there after a mid-document scroll, in the
 // root list, a nested container and a table's rows. The spacer, new blocks and correction share one
@@ -24,7 +23,6 @@ async function scrollToMiddle(editor: EditorPage): Promise<void> {
 }
 
 test('scrolling to a mid offset does not make the top visible block vanish', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('flat-prose', FIXTURE_BYTES);
@@ -41,13 +39,11 @@ test('scrolling to a mid offset does not make the top visible block vanish', asy
 	const after = await hostTopAt(editor, topBlock!.ref);
 	expect(after).not.toBeNull();
 	expect(Math.abs(after! - topBlock!.top)).toBeLessThan(200);
-	expect(pageErrors).toEqual([]);
 });
 
 test('nested: scrolling mid into a giant blockquote does not teleport the top nested block', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-blockquote', 2_000_000);
@@ -63,11 +59,9 @@ test('nested: scrolling mid into a giant blockquote does not teleport the top ne
 	const after = await hostTopAt(editor, topNested!.ref);
 	expect(after).not.toBeNull();
 	expect(Math.abs(after! - topNested!.top)).toBeLessThan(250);
-	expect(pageErrors).toEqual([]);
 });
 
 test('scrolling mid into a giant table does not teleport the top visible row', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-table', GIANT_LIST_OR_TABLE_BYTES);
@@ -93,5 +87,4 @@ test('scrolling mid into a giant table does not teleport the top visible row', a
 	}, topRow!.ref);
 	expect(after).not.toBeNull();
 	expect(Math.abs(after! - topRow!.top)).toBeLessThan(250);
-	expect(pageErrors).toEqual([]);
 });

@@ -14,8 +14,7 @@ import {
 	INTRA_WORD_UNDERSCORE_CASES
 } from '../../../support/flanking-corpus';
 
-// The §6.2 corpus is single-sourced in test/support/flanking-corpus.ts so this suite and
-// inline-conformance.test.ts run the same cases against different SUTs, never drifting.
+// The §6.2 corpus lives in test/support/flanking-corpus.ts.
 
 const sortedSpans = (nodes: InlineNode[], source: string): string[] =>
 	collectKind(nodes, 'emphasis')

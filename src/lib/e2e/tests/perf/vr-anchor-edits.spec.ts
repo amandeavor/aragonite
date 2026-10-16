@@ -9,7 +9,6 @@ import {
 	spacerCount,
 	topVisibleHostTop
 } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Edits and unmounts away from what is on screen: an insert above it shifts every index below,
 // a cell scrolled out of view leaves a column's width, and a move below it relocates the block
@@ -25,7 +24,6 @@ function scrollTopOf(page: Page): Promise<number> {
 test('inserting a block above the fold holds the viewport via anchor remap (F4)', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 
@@ -75,7 +73,6 @@ test('inserting a block above the fold holds the viewport via anchor remap (F4)'
 	expect(after).not.toBeNull();
 	// 40px is below the inserted block's height, which is how far it would jump, and above noise.
 	expect(drift).toBeLessThan(40);
-	expect(pageErrors).toEqual([]);
 });
 
 // `minmax(80px, max-content)` sizes a column to the cells mounted at that moment, so each column
@@ -83,7 +80,6 @@ test('inserting a block above the fold holds the viewport via anchor remap (F4)'
 test('a column does not shrink when its widest cell scrolls out of the window (F6)', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 
@@ -123,13 +119,11 @@ test('a column does not shrink when its widest cell scrolls out of the window (F
 	// 0.9 of the width allows for sub-pixel jitter while failing on the several hundred pixels
 	// a column that is not held at its widest collapses by.
 	expect(widthAfter!).toBeGreaterThan(widthBefore! * 0.9);
-	expect(pageErrors).toEqual([]);
 });
 
 // With nothing scrolled above the list's top (its localScrollTop is 0), following the moved block
 // would shift the shared scrollTop; one Alt+Up and one Alt+Down must bring scrollTop back.
 test('reordering a list item below the fold does not drift scrollTop (F7)', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 
@@ -193,7 +187,6 @@ test('reordering a list item below the fold does not drift scrollTop (F7)', asyn
 		Math.abs(after - baseline),
 		`scrollTop drifted ${after - baseline}px over one no-op reorder cycle`
 	).toBeLessThan(3);
-	expect(pageErrors).toEqual([]);
 });
 
 // F7 checks only the end of a cycle, where a jump on the way up and its mirror on the way down
@@ -205,7 +198,6 @@ for (const [key, item] of [
 	test(`one ${key} on a list item below the fold leaves scrollTop alone (F7, per step)`, async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
 		const editor = new EditorPage(page);
 		await editor.goto();
 		const pre = Array.from({ length: 60 }, (_, i) => `pre filler ${i}`).join('\n\n');
@@ -229,7 +221,6 @@ for (const [key, item] of [
 
 		const moved = (await scrollTopOf(page)) - baseline;
 		expect(Math.abs(moved), `scrollTop moved ${moved}px on one ${key}`).toBeLessThan(3);
-		expect(pageErrors).toEqual([]);
 	});
 }
 

@@ -29,7 +29,7 @@
 The following scenarios are exercised at the unit-test level (`src/lib/test/core/inline/escapes.test.ts`) rather than via E2E, since they are parser-internal contracts not visible as user-facing DOM behavior:
 
 - The full 32-character escapable punctuation set (parameterized table), and the byte-for-byte
-  round-trip of each escape (`src/lib/test/round-trip.test.ts`).
+  round-trip of each escape (`src/lib/test/invariants/round-trip.property.test.ts`).
 - Cursor offset semantics between `\` and the escaped character (covered indirectly via `findNodeAtOffset` tests in `cursor-mapping.test.ts`).
 - Trailing `\` at end-of-input emitted as text (escape scanner contract).
 - `\` followed by `\n` left as text for the hard-line-break post-pass to handle (`post-process.ts`).

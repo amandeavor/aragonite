@@ -30,7 +30,7 @@ function openMenu(): HTMLButtonElement {
 
 describe('the code rail’s host hooks', () => {
 	it('renders neither the run nor the menu affordance for a host that installed no hook', () => {
-		mounted = mountCode(FENCE, { policies: { presentationMode: () => 'live' } });
+		mounted = mountCode(FENCE, { mode: () => 'live' });
 
 		expect(railButton(CODE_RUN_LABEL)).toBeNull();
 		expect(railButton(CODE_MENU_LABEL)).toBeNull();
@@ -40,7 +40,8 @@ describe('the code rail’s host hooks', () => {
 	it('hands onRunCode the fence body, the info string, its language and the block path', () => {
 		const onRunCode = vi.fn<(request: CodeRunRequest) => void>();
 		mounted = mountCode(FENCE, {
-			policies: { presentationMode: () => 'live', onRunCode: () => onRunCode }
+			mode: () => 'live',
+			policies: { onRunCode: () => onRunCode }
 		});
 
 		railButton(CODE_RUN_LABEL)!.click();
@@ -57,7 +58,8 @@ describe('the code rail’s host hooks', () => {
 	it('consults codeMenuItems on every open, so its items read live state', () => {
 		const codeMenuItems = vi.fn(() => [{ id: 'a', label: 'Attach', run: () => {} }]);
 		mounted = mountCode(FENCE, {
-			policies: { presentationMode: () => 'live', codeMenuItems: () => codeMenuItems }
+			mode: () => 'live',
+			policies: { codeMenuItems: () => codeMenuItems }
 		});
 
 		const menu = openMenu();
@@ -77,7 +79,8 @@ describe('the code rail’s host hooks', () => {
 		const run = vi.fn();
 		const items: CodeMenuItem[] = [{ id: 'export', label: 'Export', run, disabled: true }];
 		mounted = mountCode(FENCE, {
-			policies: { presentationMode: () => 'live', codeMenuItems: () => () => items }
+			mode: () => 'live',
+			policies: { codeMenuItems: () => () => items }
 		});
 		openMenu();
 

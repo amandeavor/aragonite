@@ -71,17 +71,6 @@ export function sharedPrefixLength(a: readonly number[], b: readonly number[]): 
 	return len;
 }
 
-/** Longest shared prefix of two paths. */
-export function lowestCommonAncestor(a: readonly number[], b: readonly number[]): number[] {
-	const result: number[] = [];
-	const len = Math.min(a.length, b.length);
-	for (let i = 0; i < len; i++) {
-		if (a[i] !== b[i]) break;
-		result.push(a[i]);
-	}
-	return result;
-}
-
 // ── Range predicates ───────────────────────────────────────────────────────
 
 /** True if `path` is strictly between `start` and `end` in document order. */

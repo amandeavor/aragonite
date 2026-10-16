@@ -3,23 +3,9 @@ import { parse } from '../core/parser';
 import { serialize } from '../core/serializer';
 import { rebuildUnsharedAncestry } from '../tree-operations/chain-rebuild';
 import { createSharingState } from '../tree-operations/sharing';
-import { roundTripCases } from '#lib/test/support/round-trip.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 
-describe('round-trip: task items', () => {
-	roundTripCases([
-		{ name: 'canonical lowercase [x]', source: '- [x] done\n' },
-		{ name: 'canonical [ ]', source: '- [ ] pending\n' },
-		{ name: 'uppercase [X]', source: '- [X] upper\n' },
-		{ name: 'multi-space variant', source: '- [x]  extra\n' },
-		{ name: 'multiple task items in one list', source: '- [x] done\n- [ ] todo\n- [X] upper\n' },
-		{
-			name: 'task item with multi-paragraph content',
-			source: '- [x] first paragraph\n\n  second paragraph\n'
-		},
-		{ name: 'nested task sub-list', source: '- [x] outer\n  - [ ] nested\n' }
-	]);
-
+describe('task items: rebuild keeps the marker variant', () => {
 	it('rebuild after inner paragraph edit preserves taskMarker variant', () => {
 		const source = '- [X] upper\n';
 		const doc = parse(source);

@@ -342,7 +342,7 @@ describe('stored read cost', () => {
 			doc,
 			path: LEAF,
 			overrides: {
-				policies: { presentationMode: () => 'live' },
+				mode: () => 'live',
 				services: { decorations: noIslands }
 			}
 		});

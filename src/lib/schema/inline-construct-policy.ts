@@ -40,9 +40,7 @@ export interface InlineMarkPolicy {
 
 /** How a hidden edge decides where a letter typed at it goes: with the character before the caret,
  *  at one of two drawn stops either side of a painted box, or never inside the construct. */
-export const EDGE_POLICIES = ['left-sticky', 'boxed', 'never-extend'] as const;
-
-export type EdgePolicy = (typeof EDGE_POLICIES)[number];
+export type EdgePolicy = 'left-sticky' | 'boxed' | 'never-extend';
 
 export interface InlineConstructPolicy {
 	edgeAffinity: EdgePolicy;

@@ -817,7 +817,7 @@ the parser absorbs any input without throwing. `round-trip.property.test.ts`.
 G2.2 block.
 
 **G2.3 · Inline conformance corpus.** The inline parser holds against the conformance corpus.
-`inline-conformance.test.ts`.
+`core/inline/scan/emphasis-flanking.test.ts` and `emphasis-pairing.test.ts`.
 
 **G2.4 · The textContent equation.** `textContent === ambientPrefix + raw` over rendered prose, the
 trailing line ending excluded (`docs/design/inline-parsing.md` § The textContent invariant), run in
@@ -1173,7 +1173,8 @@ unguarded.
 
 **G4.2 · Render path skips the inline cache.** The render path computes inline content via
 `computeInlineContent`, never the caching `getInlineContent` accessor. Perf hygiene, since the cache
-is a non-reactive WeakMap. `lint/render-inlinecontent.test.ts`.
+is a non-reactive WeakMap. Held by G4.32's row in `lint/file-rules.test.ts`, which bans the raw
+accessor everywhere but its own module.
 
 **G4.3 · Container conformance kit.** The kit plus declaration sanity: `unwrapRole` strategies
 resolve, `containerPaste` has the right shape, `rebuildRaw` runs. Built-ins are swept

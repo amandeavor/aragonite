@@ -81,9 +81,7 @@ async function paste(place: Place, text: string, range: { start: number; end: nu
 
 /** `x` typed over `range`: the block's own rewrite, else the edit the browser keeps. */
 async function type(place: Place, text: string, range: { start: number; end: number }) {
-	const mounted = place.inCell
-		? mountCell(text, { presentationMode: () => 'live' })
-		: mountText(place, text);
+	const mounted = place.inCell ? mountCell(text, { mode: () => 'live' }) : mountText(place, text);
 	const { el } = mounted;
 	el.focus();
 	const at = createRangeAtDomTextOffsets(
@@ -116,7 +114,7 @@ function mountText(place: Place, text: string) {
 		source: place.wrap(text),
 		path: place.leaf,
 		overrides: {
-			policies: { presentationMode: () => 'live' },
+			mode: () => 'live',
 			services: { decorations: noIslands }
 		}
 	});

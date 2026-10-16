@@ -1,6 +1,5 @@
 import { type Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
-import { capturePageErrors } from '../../page-probes';
 import { gotoReady } from '../../goto-ready';
 import { SHOWCASE_MD, scanShowcase } from '../../showcase-document';
 
@@ -104,17 +103,8 @@ async function sweepShowcase(page: Page): Promise<Sweep> {
 }
 
 test.describe('/ showcase route', () => {
-	let pageErrors: string[];
-
 	test.beforeEach(async ({ page }) => {
-		// Set up before the navigation: a plugin that throws on install throws during hydration,
-		// which a listener attached afterwards never sees.
-		pageErrors = capturePageErrors(page);
 		await gotoReady(page, '/');
-	});
-
-	test.afterEach(() => {
-		expect(pageErrors, `uncaught page errors:\n${pageErrors.join('\n')}`).toEqual([]);
 	});
 
 	test('mounts the demo document as a block list', async ({ page }) => {

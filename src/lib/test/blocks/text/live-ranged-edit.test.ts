@@ -22,7 +22,7 @@ function mountText(source: string) {
 	const { instance, target, blockEdit } = mountBlock(TextEditableBlock, {
 		source,
 		overrides: {
-			policies: { presentationMode: () => 'live' },
+			mode: () => 'live',
 			services: { decorations: noIslands }
 		}
 	});
@@ -188,7 +188,7 @@ describe('what the branch leaves to the browser', () => {
 
 describe('the table cell takes the same branch', () => {
 	it('a word delete at a collapsed caret crosses the join there too', async () => {
-		cell = mountCell('**bold** tail', { presentationMode: () => 'live' });
+		cell = mountCell('**bold** tail', { mode: () => 'live' });
 		seat(cell.el, 6, 6);
 		const e = await press(cell.el, 'deleteWordBackward', { start: 2, end: 6 });
 

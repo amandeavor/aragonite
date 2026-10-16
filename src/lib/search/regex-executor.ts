@@ -9,7 +9,7 @@ import { execAll, type RawRange } from './matcher';
 
 /** Wall-clock ceiling for one scan: long enough for an honest regex over a large document,
  *  short enough that overrun reads as a stall rather than a freeze. */
-export const REGEX_SCAN_DEADLINE_MS = 2000;
+const REGEX_SCAN_DEADLINE_MS = 2000;
 
 export interface RegexScanRequest {
 	readonly texts: readonly string[];

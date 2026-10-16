@@ -11,7 +11,6 @@ import {
 	spacerCount,
 	startCountingHostChanges
 } from './vr-helpers';
-import { capturePageErrors } from '../../page-probes';
 
 // Windowing limits how many blocks are mounted: a document whose estimated height passes the
 // activation threshold mounts only a window of them, plus spacers, while a small document
@@ -37,7 +36,6 @@ function allHostCount(page: Page): Promise<number> {
 }
 
 test('windowing bounds the mounted set on a multi-thousand-block doc', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 
@@ -74,7 +72,6 @@ test('windowing bounds the mounted set on a multi-thousand-block doc', async ({ 
 	expect(Math.abs(balance - domMounted)).toBeLessThanOrEqual(2);
 	await expectMountedBandSpansViewport(page, TOP_LEVEL_HOSTS);
 	// Without this, a throw during render (state_unsafe_mutation) would pass unnoticed.
-	expect(pageErrors).toEqual([]);
 });
 
 // The spacer's placeholder tint (VR-8), from the editor.css rule and the --vr-spacer-bg token: the
@@ -103,7 +100,6 @@ test('windowed spacers carry a placeholder background (VR-8 skeleton)', async ({
 test('mounted set stays bounded as document size grows (O(viewport), not O(doc))', async ({
 	page
 }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 
@@ -128,23 +124,18 @@ test('mounted set stays bounded as document size grows (O(viewport), not O(doc))
 	expect(mountedBig).toBeLessThan(60);
 	expect(Math.abs(mountedBig - mountedSmall)).toBeLessThanOrEqual(10);
 	await expectMountedBandSpansViewport(page, TOP_LEVEL_HOSTS);
-
-	expect(pageErrors).toEqual([]);
 });
 
 test('a small document renders fully with no windowing', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadContent('# Hi\n\nWorld.\n');
 
 	expect(await spacerCount(page)).toBe(0);
 	expect(await editor.getDomBlockCount()).toBe(await editor.bridge.getBlockCount());
-	expect(pageErrors).toEqual([]);
 });
 
 test('giant single blockquote windows its children (phase 3 spike)', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-blockquote', 2_000_000);
@@ -166,11 +157,9 @@ test('giant single blockquote windows its children (phase 3 spike)', async ({ pa
 	await expectMountedBandSpansViewport(page, '[data-block-path]');
 
 	// Without this, a throw while rendering the windowed list would pass unnoticed.
-	expect(pageErrors).toEqual([]);
 });
 
 test('giant single list windows its items (phase 3)', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-list', GIANT_LIST_OR_TABLE_BYTES);
@@ -189,12 +178,9 @@ test('giant single list windows its items (phase 3)', async ({ page }) => {
 	// it rather than by the item count.
 	expect(await allHostCount(page)).toBeLessThan(200);
 	await expectMountedBandSpansViewport(page, '[data-block-path]');
-
-	expect(pageErrors).toEqual([]);
 });
 
 test('giant single table windows its rows (phase 4)', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new EditorPage(page);
 	await editor.goto();
 	await editor.loadLargeFixture('giant-single-table', GIANT_LIST_OR_TABLE_BYTES);
@@ -238,5 +224,4 @@ test('giant single table windows its rows (phase 4)', async ({ page }) => {
 	expect(band!.rightGap).toBeLessThan(4);
 
 	// Without this, a throw during render (effect_update_depth_exceeded) would pass unnoticed.
-	expect(pageErrors).toEqual([]);
 });

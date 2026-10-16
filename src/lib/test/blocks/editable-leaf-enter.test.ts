@@ -137,7 +137,7 @@ describe('Enter in a plain one-line leaf in reading mode', () => {
 		const kind = registerRevealLeafKind(KIND);
 		const plain = mountBlock(PlainOneLineLeafBlock, {
 			doc: leafDocument(kind, RAW),
-			overrides: { policies: { presentationMode: () => 'reading' } }
+			overrides: { mode: () => 'reading' }
 		});
 		const el = plain.target.querySelector<HTMLElement>('.plain-one-line-source')!;
 		el.focus();

@@ -66,7 +66,7 @@
 	// $derived, so a runtime toggle reaches blocks that mount after it.
 	const dragHandles = $derived(policies.blockDragHandles());
 	// Checked here too, because an image's handle does not go through the drag-handle prop.
-	const isReading = $derived(policies.presentationMode() === 'reading');
+	const isReading = $derived(editorDoc?.reading.mode() === 'reading');
 	// A bare mount has no editor reading: every installed plugin's syntax, no link definitions.
 	const inlineReading = editorDoc?.reading ?? {
 		grammar: registryView.grammar,

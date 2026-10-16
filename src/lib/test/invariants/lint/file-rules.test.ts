@@ -778,15 +778,18 @@ const RULES: FileRule[] = [
 	{
 		id: 'G4.32 one spelling for the inline cache: no consumer reaches for the raw accessor',
 		population: except(SOURCE.inlineCache),
-		matches: /(?<![\w.])getInlineContent\s*\(/,
+		matches: /\bgetInlineContent\b/,
 		allowed: {
 			'src/lib/core/inline/transparency.ts':
 				'the vertical-skip decision, run by path walkers holding no linkRef; its header states the resolver-less answer as its contract'
 		},
 		reason:
 			'a caller dropping the resolver or the signature reads a different cache sub-entry from the one the render filled; go through resolvedInlineContent',
-		hits: ['const x = getInlineContent(node);'],
-		misses: ['cache.getInlineContent(node);', '// getInlineContent(node) would be wrong']
+		hits: [
+			'const x = getInlineContent(node);',
+			"import { getInlineContent as read } from './inline-cache';"
+		],
+		misses: ['// getInlineContent(node) would be wrong', 'const x = resolvedInlineContent(node);']
 	},
 	...surfaceParity(
 		'G4.44 every prose surface resolves native ranged edits through resolveLiveRangeEdit',
@@ -1004,7 +1007,7 @@ const RULES: FileRule[] = [
 			'const on = $derived(getDragHandles?.() ?? false);',
 			'const doc = getDocument?.();',
 			'if (path) void navigateTo?.(path);',
-			"const mode = policies.presentationMode() || 'source';"
+			"const mode = reading.mode() || 'source';"
 		],
 		misses: [
 			"const isReading = getPresentationMode() === 'reading';",

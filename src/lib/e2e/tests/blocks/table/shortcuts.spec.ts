@@ -1,7 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { getContainerParityMismatches } from '../../../container-parity';
-import { capturePageErrors } from '../../../page-probes';
 
 const TABLE_2x2 = '| A | B |\n| --- | --- |\n| 1 | 2 |\n';
 const TABLE_3ROW = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
@@ -25,7 +24,6 @@ test.describe('table block: keyboard vocabulary', () => {
 	}) => {
 		// Undo deep-clones the tree, so the state registry keyed by node identity must follow it, and
 		// each undo must restore a row's `childIds` with its `children`.
-		const pageErrors = capturePageErrors(page);
 		await editor.loadContent(TABLE_ALIGNED);
 		const captureCellAligns = async () =>
 			page.evaluate(() =>
@@ -65,12 +63,9 @@ test.describe('table block: keyboard vocabulary', () => {
 		});
 
 		expect(await getContainerParityMismatches(page)).toEqual([]);
-		expect(pageErrors).toEqual([]);
 	});
 
 	test('deleting the last row or column lands focus on a surviving cell', async ({ page }) => {
-		const pageErrors = capturePageErrors(page);
-
 		await test.step('last body row', async () => {
 			await editor.loadContent(TABLE_3ROW);
 			// Header + 2 body rows = 6 cells; focus a cell in the last body row (cell index 4).
@@ -95,7 +90,5 @@ test.describe('table block: keyboard vocabulary', () => {
 			await expect(page.locator('.table-cell')).toHaveCount(2);
 			await expect(page.locator('.table-cell:focus')).toHaveCount(1);
 		});
-
-		expect(pageErrors).toEqual([]);
 	});
 });

@@ -51,7 +51,7 @@ beforeEach(() => {
 	registerLanguage('rust', stubGrammar, ['rs']);
 	registerLanguage('c', stubGrammar);
 	registerLanguage('cpp', stubGrammar, ['c++']);
-	mounted = mountCode(FENCE, { policies: { presentationMode: () => 'live' } });
+	mounted = mountCode(FENCE, { mode: () => 'live' });
 });
 afterEach(async () => {
 	await mounted.dispose();

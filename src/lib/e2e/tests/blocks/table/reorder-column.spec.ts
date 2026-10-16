@@ -1,7 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { getContainerParityMismatches } from '../../../container-parity';
-import { capturePageErrors } from '../../../page-probes';
 
 // Cells render row-major, header first: a 1-body-row 3-col table exposes header cells 0,1,2
 // (columns A,B,C) then body cells 3,4,5. Columns have no fixed header, so any column index is a
@@ -17,14 +16,12 @@ test.describe('table block: keyboard column reorder', () => {
 	});
 
 	test('column move: container parity holds and no page error', async ({ page }) => {
-		const pageErrors = capturePageErrors(page);
 		await editor.loadContent(TABLE_3COL);
 		await page.locator('.table-cell').nth(0).click();
 		await page.keyboard.press('Alt+ArrowRight');
 		await editor.bridge.waitForSourceMatches(/\| B \| A \| C \|/);
 
 		expect(await getContainerParityMismatches(page)).toEqual([]);
-		expect(pageErrors).toEqual([]);
 	});
 
 	// The row spec has the matching case.

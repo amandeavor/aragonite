@@ -37,7 +37,7 @@ describe('a typed character with the fence lines hidden', () => {
 		{ name: 'a bracket over a body range', data: '(', range: [8, 12], reads: 2 }
 	])('$name reads the fence regions $reads time(s)', ({ data, range: [start, end], reads }) => {
 		mounted = mountCode('```js\nconst x = 1\n```\n', {
-			policies: { presentationMode: () => 'live' }
+			mode: () => 'live'
 		});
 		const range = createRangeAtDomTextOffsets(
 			mounted.el,

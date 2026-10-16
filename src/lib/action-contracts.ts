@@ -264,8 +264,6 @@ export interface CommitContainerStructuralArgs {
  * (editor-actions/deps) adds the two selection-typed members.
  */
 export interface CommitController {
-	/** The editor's structural-sharing counters, for copy-before-write outside a commit. */
-	sharing: SharingState;
 	/** Debounced typing snapshot; `leafPath` is the edited leaf's document-absolute path. */
 	pushUndoSnapshotDebounced(leafPath: number[], offset: number, batchKey?: string | number): void;
 	/** Start the batch's pause timer, once the keystroke's own edit is done. Paired with

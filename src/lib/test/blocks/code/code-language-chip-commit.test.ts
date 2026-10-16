@@ -47,7 +47,7 @@ describe('CodeBlock: the language chip’s commit gate', () => {
 	// The field opens empty with the highlight on the block's own language, so a bare Enter
 	// re-commits `js`, which reads as unchanged and writes nothing, padding and all.
 	it('writes nothing when Enter submits the language the block already has', () => {
-		mounted = mountCode(PADDED, { policies: { presentationMode: () => 'live' } });
+		mounted = mountCode(PADDED, { mode: () => 'live' });
 		const field = openField();
 		expect(field.value).toBe('');
 		expect(mounted.target.querySelector('.code-lang-button')?.textContent).toContain('js');
@@ -58,7 +58,7 @@ describe('CodeBlock: the language chip’s commit gate', () => {
 	});
 
 	it('writes a changed info string, canonicalizing the padding it replaces', () => {
-		mounted = mountCode(PADDED, { policies: { presentationMode: () => 'live' } });
+		mounted = mountCode(PADDED, { mode: () => 'live' });
 		const field = openField();
 		typeInto(field, 'ts');
 
@@ -84,7 +84,7 @@ describe('CodeBlock: bytes the chip’s info string cannot hold', () => {
 			'~~~ts\nconst x = 1\n~~~\n'
 		]
 	])('drops %s from what it writes', (_shape, source, typed, written) => {
-		mounted = mountCode(source, { policies: { presentationMode: () => 'live' } });
+		mounted = mountCode(source, { mode: () => 'live' });
 		const field = openField();
 		typeInto(field, typed);
 
@@ -104,7 +104,7 @@ describe('CodeBlock: the language chip’s undo entry', () => {
 			writesInside.push(commits().length - before);
 		});
 		mounted = mountCode(PADDED, {
-			policies: { presentationMode: () => 'live' },
+			mode: () => 'live',
 			services: { controller }
 		});
 

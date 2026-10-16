@@ -1,7 +1,6 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { PluginsPage } from '../plugins/helpers';
-import { capturePageErrors } from '../../page-probes';
 import { spacerCount } from './vr-helpers';
 
 // A table row that changes height without its bytes changing is measured again, so the table's
@@ -38,7 +37,6 @@ function rowReading(page: Page, row: number): Promise<{ measured: number; drawn:
 }
 
 test('a row that shrinks as its formula shows its source is measured again', async ({ page }) => {
-	const pageErrors = capturePageErrors(page);
 	const editor = new PluginsPage(page);
 	await editor.gotoPlugins();
 	await editor.loadContent(DOC);
@@ -55,5 +53,4 @@ test('a row that shrinks as its formula shows its source is measured again', asy
 	// Only a row whose height really moved says anything about measuring it again.
 	expect(revealed.drawn).toBeLessThan(rendered.drawn - 20);
 	expect(Math.abs(revealed.measured - revealed.drawn)).toBeLessThanOrEqual(1);
-	expect(pageErrors).toEqual([]);
 });

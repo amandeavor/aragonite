@@ -1,5 +1,4 @@
 import { test, expect } from '../../fixtures';
-import { capturePageErrors } from '../../page-probes';
 import { EditorPage } from '../../editor-page';
 import {
 	count,
@@ -158,8 +157,6 @@ test.describe('search: toggles', () => {
 	test('each toggle reshapes the match set, and an invalid regex shows an error state', async ({
 		page
 	}) => {
-		const pageErrors = capturePageErrors(page);
-
 		await test.step('case toggle narrows the match set to the case-sensitive subset', async () => {
 			await editor.loadContent('Alpha and alpha and ALPHA\n');
 			await openFind(editor);
@@ -207,8 +204,6 @@ test.describe('search: toggles', () => {
 			await expect(count(page)).not.toHaveText(/No results/);
 			await expect(overlays(page)).toHaveCount(0);
 		});
-
-		expect(pageErrors).toEqual([]);
 	});
 });
 

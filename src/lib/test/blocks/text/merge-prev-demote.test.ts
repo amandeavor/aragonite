@@ -39,7 +39,7 @@ function mountBlock(source: string, mode: PresentationMode, caret: number) {
 					mode: () => mode
 				})
 			},
-			policies: { presentationMode: () => mode }
+			mode: () => mode
 		})
 	});
 	flushSync();

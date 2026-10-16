@@ -15,7 +15,7 @@ import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 const SOURCE = '```js\nconst x = 1\n```\n';
 
 /** Live mode hides every fence line, so an edit that reaches one clamps to the body. */
-const HIDDEN_FENCE_LINES = { policies: { presentationMode: () => 'live' as const } };
+const HIDDEN_FENCE_LINES = { mode: () => 'live' as const };
 
 let mounted: MountedCode;
 
@@ -197,7 +197,7 @@ describe('CodeBlock: a fence line the mode paints takes the edit', () => {
 	// markers too, so its fence lines show.
 	it('leaves a delete into the closer to the browser in preview-block', async () => {
 		await mounted.dispose();
-		mounted = mountCode(SOURCE, { policies: { presentationMode: () => 'preview-block' } });
+		mounted = mountCode(SOURCE, { mode: () => 'preview-block' });
 		select(12, 20);
 		const e = beforeInput('deleteContentBackward');
 		await settleEditor();
