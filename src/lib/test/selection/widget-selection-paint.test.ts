@@ -159,7 +159,7 @@ describe('installWidgetSelectionPainter', () => {
 		}
 	});
 
-	it('lifetime abort removes the listener and clears classes', () => {
+	it('lifetime abort removes the listener and clears what it painted', () => {
 		install();
 		setRange(leadText, 0, midText, 2);
 		expect(widgetA.classList.contains('md-widget-selected')).toBe(true);
