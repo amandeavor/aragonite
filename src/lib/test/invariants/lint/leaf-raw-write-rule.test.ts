@@ -15,6 +15,7 @@ import {
 	type SourceFile
 } from './scan-source';
 import { SOURCE } from './source-paths';
+import { describeManifests } from './file-rule';
 
 const READERS_HOME = SOURCE.nodePrimitives;
 const CONTENT_WRITE = SOURCE.contentWrite;
@@ -34,13 +35,6 @@ const ESCALATION_SITES: Record<string, string> = {
 		'sizes the fence its metadata body is rebuilt inside — the body is never re-parsed here',
 	'src/lib/plugin.ts': 'the author barrel: a plugin rebuilding its own raw needs the same rule'
 };
-
-function namesInCode(sources: { relPath: string; code: string }[], re: RegExp): string[] {
-	return sources
-		.filter((f) => re.test(f.code))
-		.map((f) => f.relPath)
-		.sort();
-}
 
 // ── The bare write: a byte write that names neither function ─────────────────
 
@@ -153,8 +147,10 @@ const BARE_WRITE_RULE =
 	'(ahead of your own reparse), or add the file to BARE_RAW_WRITE_ALLOWLIST with its count and ' +
 	'the reason its writes cannot reach a kind that declares one';
 
+const sources = collectEditorSources();
+
 describe('every bare raw write is allowed', () => {
-	const writes = bareWrites(collectEditorSources());
+	const writes = bareWrites(sources);
 
 	it('no file outside the allowed set writes a leaf’s raw directly', () => {
 		const unsanctioned = writes
@@ -183,19 +179,29 @@ describe('every bare raw write is allowed', () => {
 	});
 });
 
+describeManifests(
+	[
+		{
+			id: 'the fence rule has one implementation, and only its home names the reconciliation',
+			matches: /\breconcileFenceWrite\b/,
+			declared: { [FENCE_HOME]: 'the fencedCode write rule' },
+			reason: 'the fence write is reconciled in one place; reach it through the kind’s write rule',
+			hits: ['const out = reconcileFenceWrite(input);'],
+			misses: ['const out = reconcileFenceWrites(input);', '// reconcileFenceWrite sizes it']
+		},
+		{
+			id: 'exactly the documented sites name the escalation primitive',
+			matches: /\bescalatedFenceLength\b/,
+			declared: ESCALATION_SITES,
+			reason: 'a new site sizes a fence run over a body: declare why it cannot use the write rule',
+			hits: ['const run = escalatedFenceLength(body, marker, 3);'],
+			misses: ['// escalatedFenceLength sizes the run']
+		}
+	],
+	sources
+);
+
 describe('the fence rule has one implementation', () => {
-	const sources = collectEditorSources();
-
-	it('only its home names the reconciliation', () => {
-		expect(namesInCode(sources, /\breconcileFenceWrite\b/)).toEqual([FENCE_HOME]);
-	});
-
-	it('exactly the documented sites name the escalation primitive', () => {
-		expect(namesInCode(sources, /\bescalatedFenceLength\b/)).toEqual(
-			Object.keys(ESCALATION_SITES).sort()
-		);
-	});
-
 	// The rule reads the block's own fence shape, so it has to live where a headless caller can
 	// reach it: under `components/` it would exist only once the component tree loaded.
 	it('the rule home is in schema, importing no component', () => {

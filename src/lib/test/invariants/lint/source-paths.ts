@@ -133,7 +133,7 @@ export const SOURCE = {
 	unitPluginPlatform: 'src/lib/test/support/plugin-platform.ts',
 	scanTestHelpers: 'src/lib/test/core/inline/scan/scan-test-helpers.ts',
 	revealLeafFixture: 'src/lib/test/blocks/fixtures/RevealLeafBlock.svelte',
-	compositionDriverLint: 'src/lib/e2e/lint/composition-driver.test.ts',
+	e2eDriversLint: 'src/lib/e2e/lint/e2e-drivers.test.ts',
 
 	// ── Demo routes and the consumer example ────────────────────────────────
 	appCss: 'src/app.css',
@@ -278,7 +278,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	unitPluginPlatform: 'Vitest setup: every unit test starts from',
 	scanTestHelpers: 'export function assertTotalCoverage',
 	revealLeafFixture: 'class="reveal-leaf-block"',
-	compositionDriverLint: 'G4.49 e2e composition rides the shared IME driver',
+	e2eDriversLint: 'G4.49 e2e composition rides the shared IME driver',
 
 	// ── Demo routes and the consumer example ────────────────────────────────
 	appCss: 'Page-chrome tokens for the demo routes',
@@ -377,7 +377,7 @@ export const SOURCE_DIR_ANCHORS: Record<keyof typeof SOURCE_DIR, string> = {
 	e2e: 'browser-engine.ts',
 	e2eTests: 'perf',
 	e2ePerfTests: 'attribution.perf.spec.ts',
-	e2eLint: 'composition-driver.test.ts',
+	e2eLint: 'e2e-drivers.test.ts',
 	e2eRequirements: 'block-error-boundary.md',
 	routes: '+layout.svelte',
 	referencePlugins: 'callout',
