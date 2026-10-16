@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { configureEditorEnv } from '#lib/env.js';
 import { takeDevWarns } from '../support/warn-gate';
 import { INLINE_KIND_TABLE, type AnyInlineKind } from '#lib/core/nodes.js';
@@ -11,12 +11,8 @@ import {
 	followEditOf,
 	isRevealableInlineKind,
 	listInlineMarks,
-	registerLiveSplitRebalancer,
-	getLiveSplitRebalancer,
-	__resetLiveSplitRebalancerForTests,
 	type InlineConstructPolicy,
-	type InlineMarkPolicy,
-	type LiveSplitRebalancer
+	type InlineMarkPolicy
 } from '#lib/schema/inline-construct-policy.js';
 import {
 	flushPendingRegistrationChecks,
@@ -32,14 +28,6 @@ const atomic: InlineConstructPolicy = {
 	splitBehavior: 'plain',
 	revealable: false
 };
-
-const rebalancer = (): LiveSplitRebalancer => () => null;
-
-afterEach(() => {
-	// A separate reset: clearing the rows deliberately leaves this function registered, so only
-	// this suite, which tests that function, clears it between cases.
-	__resetLiveSplitRebalancerForTests();
-});
 
 describe('built-in rows', () => {
 	it.each([
@@ -209,42 +197,6 @@ describe('registration lifecycle', () => {
 	});
 });
 
-describe('live split rebalancer slot', () => {
-	// A parse-only startup loads the descriptors and never the component layer, so nothing is
-	// registered there and `splitNode` falls back to cutting the bytes.
-	it('is empty until the editor layer registers into it', () => {
-		expect(getLiveSplitRebalancer()).toBeUndefined();
-	});
-
-	it('reads back the registered function', () => {
-		const fn = rebalancer();
-		registerLiveSplitRebalancer(fn);
-		expect(getLiveSplitRebalancer()).toBe(fn);
-	});
-
-	it('throws on a second registration under test', () => {
-		registerLiveSplitRebalancer(rebalancer());
-		expect(() => registerLiveSplitRebalancer(rebalancer())).toThrow(/already registered/i);
-	});
-
-	it('replaces instead of throwing on a dev server', () => {
-		registerLiveSplitRebalancer(rebalancer());
-		configureEditorEnv({ isDev: true, isTest: false });
-		const second = rebalancer();
-		expect(() => registerLiveSplitRebalancer(second)).not.toThrow();
-		expect(getLiveSplitRebalancer()).toBe(second);
-		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);
-	});
-
-	// Miss-analysis: no test reset and then read this function, which nothing re-adds once cleared.
-	it('survives the plugin-row reset, being a built-in registration', () => {
-		const fn = rebalancer();
-		registerLiveSplitRebalancer(fn);
-		__resetSchemaRegistriesForTests();
-		expect(getLiveSplitRebalancer()).toBe(fn);
-	});
-});
-
 describe('coherence check scope', () => {
 	const incoherent = (name: string) => {
 		const kind = declarePluginInlineKind(name);
@@ -252,8 +204,8 @@ describe('coherence check scope', () => {
 		return kind;
 	};
 
-	// The parser's getOrderedOpeners empties the same queue inside parse-only unit tests, where
-	// the component layer that registers the policy's functions is absent.
+	// The parser's getOrderedOpeners empties the same queue inside parse-only unit tests, where no
+	// editor mounts.
 	it('stays out of the registration flush the parser also drains', () => {
 		incoherent('scope-parser');
 		const { report, byTag } = collector();

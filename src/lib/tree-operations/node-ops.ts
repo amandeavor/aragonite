@@ -8,7 +8,7 @@ import type { CstNode } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import { isBlankParagraph, readBlocks } from '../core/parser';
 import type { GrammarView } from '../schema/block-openers';
-import { getLiveSplitRebalancer, type SplitStores } from '../schema/inline-construct-policy';
+import { rebalanceLiveSplit, type SplitStores } from '../core/inline/live-edit/live-split';
 import type { StoredAs } from '../schema/stored-as';
 import type { Reading } from '../schema/reading';
 import {
@@ -122,7 +122,7 @@ export function splitNode(
 	// Only a block that hides its delimiters rebalances, since a literal half would show runs the
 	// user never saw; the rebalancer declines when its bytes do not parse back.
 	if (reading.hidesDelimitersAtCaret()) {
-		const rebalanced = getLiveSplitRebalancer()?.(node, offset, firstRaw, secondRaw, stores);
+		const rebalanced = rebalanceLiveSplit(node, offset, firstRaw, secondRaw, stores);
 		if (rebalanced) {
 			reopened = true;
 			firstRaw = rebalanced.firstRaw;

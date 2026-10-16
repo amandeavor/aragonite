@@ -1,23 +1,15 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 
 // `rangeDelete`'s live-mode join cleanup, which every cross-block delete, cut, type-over and paste
-// goes through, run with the production cleaner; each pair below differs only in mode.
-
-beforeEach(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-afterEach(() => __resetLiveJoinSeamCleanerForTests());
+// goes through; each pair below differs only in mode.
 
 function deleteRange(
 	source: string,
@@ -90,10 +82,5 @@ describe('a selection that closes a construct against the one below it', () => {
 describe('joins the cleanup has no business touching', () => {
 	it('leaves an ordinary paragraph merge alone', () => {
 		expect(deleteRange('hello world\n\nfoo bar\n', at(0, 6), at(1, 4), 'live')).toBe('hello bar\n');
-	});
-
-	it('a parse-only consumer with no cleaner registered still joins', () => {
-		__resetLiveJoinSeamCleanerForTests();
-		expect(deleteRange('**bold** and *italic*\n', at(0, 4), at(0, 16), 'live')).toBe('**boalic*\n');
 	});
 });

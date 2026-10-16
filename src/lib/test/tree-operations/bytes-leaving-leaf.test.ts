@@ -3,23 +3,15 @@
 // a format run the range cuts through leaves closed at its edges, as the kept half keeps it.
 // Miss-analysis: the drop's tests moved plain words only, so the raw slice it carried never held
 // a delimiter run whose partner stayed behind.
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { blockNodeAt } from '#lib/tree-operations/node-primitives.js';
 import { storedAsAt } from '#lib/tree-operations/stored-as.js';
 import { bytesLeavingLeaf, replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
 import { readBack, shownOf } from '#lib/core/inline/live-edit/read-back.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import type { StoredAs } from '#lib/schema/stored-as.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading } from '../harness/fixture-grammar';
-
-beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
 
 function leaving(
 	source: string,

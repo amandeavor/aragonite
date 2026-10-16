@@ -12,37 +12,33 @@ import {
 	inlineDescendants,
 	isProseKind,
 	readInline
-} from '../../../core/inline';
-import {
-	CONTENT_VISIBILITY,
-	paintsOnlyChrome,
-	renderedText
-} from '../../../core/inline/visibility';
-import { readBack, shownOf } from '../../../core/inline/live-edit/read-back';
+} from '../index';
+import { CONTENT_VISIBILITY, paintsOnlyChrome, renderedText } from '../visibility';
+import { readBack, shownOf } from './read-back';
 import type { StoredAs } from '../../../schema/stored-as';
-import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
-import type { NodeView } from '../../../core/node-views';
-import { isBlankText } from '../../../core/lines';
-import {
-	closeBefore,
-	reopenAfter,
-	type CutConstruct
-} from '../../../core/inline/live-edit/close-reopen';
-import {
-	getInlineConstructPolicy,
-	type LiveSplitRebalancer,
-	type SplitStores
-} from '../../../schema/inline-construct-policy';
+import type { AnyInlineKind, InlineNode } from '../../nodes';
+import type { NodeView } from '../../node-views';
+import { isBlankText, readsAsBlankLine } from '../../lines';
+import { closeBefore, closesAndReopens, reopenAfter, type CutConstruct } from './close-reopen';
+import { getInlineConstructPolicy } from '../../../schema/inline-construct-policy';
 
 // ── The rewrite ──────────────────────────────────────────────────────────────
 
-export const rebalanceLiveSplit: LiveSplitRebalancer = (
-	node,
-	offset,
-	firstRaw,
-	secondRaw,
-	stores
-) => {
+/** Where each half of a split is stored: the first in the block's own slot, the second where the
+ *  split puts it (the next slot, or a new list item's first). */
+export interface SplitStores {
+	first: StoredAs;
+	second: StoredAs;
+}
+
+/** The two halves with the cut's constructs closed and reopened, or null to keep the literal cut. */
+export function rebalanceLiveSplit(
+	node: NodeView,
+	offset: number,
+	firstRaw: string,
+	secondRaw: string,
+	stores: SplitStores
+): { firstRaw: string; secondRaw: string } | null {
 	const { reading } = stores.first;
 	const read = readSplitBytes(node, offset, firstRaw, secondRaw);
 	if (read === null) return null;
@@ -77,7 +73,7 @@ export const rebalanceLiveSplit: LiveSplitRebalancer = (
 		}
 	}
 	return null;
-};
+}
 
 // ── What the caller already decided ──────────────────────────────────────────
 
@@ -150,7 +146,7 @@ export function splittableChainAt(
 		if (!holds(node)) continue;
 		const content = constructContentRange(node);
 		if (!content) return null;
-		if (getInlineConstructPolicy(node.kind)?.splitBehavior !== 'close-and-reopen') return null;
+		if (!closesAndReopens(node.kind)) return null;
 		chain.push({
 			kind: node.kind,
 			start: node.start,
@@ -251,9 +247,9 @@ export function parsesBack(
 	const first = proseHalf(candidate.firstRaw, stores.first);
 	const second = proseHalf(candidate.secondRaw, stores.second);
 	if (first === null || second === null) return false;
-	// Each half must be a block a reparse keeps. Empty is one; whitespace-only is not, since the
-	// document reads those bytes as a blank line and the pair comes back a different shape.
-	if (readsAsBlankLine(first.visible) || readsAsBlankLine(second.visible)) return false;
+	// Each half must be a block a reparse keeps, judged by its bytes: a code span showing one space
+	// is still a code span.
+	if (readsAsBlankLine(candidate.firstRaw) || readsAsBlankLine(candidate.secondRaw)) return false;
 	if (!seam.closed.every((kind) => first.kinds.has(kind))) return false;
 	if (!seam.reopened.every((kind) => second.kinds.has(kind))) return false;
 	// The render check below counts characters while CSS collapses a trailing run to nothing, so
@@ -272,8 +268,6 @@ export function parsesBack(
 	const tail = second.visible + (candidate.droppedTail ?? '');
 	return rest === tail || rest === '\n' + tail || rest === '\r\n' + tail;
 }
-
-const readsAsBlankLine = (visible: string): boolean => visible !== '' && isBlankText(visible);
 
 /** A half read where `store` keeps it: exactly one prose block, or null. */
 function proseHalf(raw: string, store: StoredAs): HalfRead | null {

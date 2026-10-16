@@ -16,6 +16,7 @@ import {
 } from '../core/inline';
 import { readsInParts, shownOfSpan } from '../core/inline/live-edit/read-back';
 import type { ShownSpan } from '../core/inline/live-edit/shown-marks';
+import { closesAndReopens } from '../core/inline/live-edit/close-reopen';
 import {
 	ownTrailingLineEnding,
 	snapToScalarBoundary,
@@ -23,12 +24,11 @@ import {
 	type LineEnding
 } from '../core/lines';
 import {
-	getInlineConstructPolicy,
-	getLiveJoinSeamCleaner,
+	cleanLiveJoinSeam,
 	type CleanedJoin,
 	type JoinEndpoint,
 	type JoinSeam
-} from '../schema/inline-construct-policy';
+} from '../core/inline/live-edit/live-join';
 import type { StoredAs } from '../schema/stored-as';
 import { normalizeOwnRaw } from './node-primitives';
 import { cutBeforeSuffix, joinKeepingSuffix } from './structural-suffix';
@@ -162,7 +162,7 @@ export function cleanJoinedRaw(join: JoinSeam): CleanedJoin {
 		map: (offset: number) => offset
 	};
 	if (!join.store.reading.hidesDelimitersAtCaret()) return literal;
-	return getLiveJoinSeamCleaner()?.(join) ?? literal;
+	return cleanLiveJoinSeam(join) ?? literal;
 }
 
 // ── Text that brings its own runs ────────────────────────────────────────────
@@ -174,7 +174,7 @@ function carriesRuns(text: string, store: StoredAs): boolean {
 	const { resolver, grammar } = store.reading;
 	for (const node of inlineDescendants(readInline(text, 0, text.length, resolver, grammar))) {
 		if (node.kind === 'text' || constructContentRange(node) === null) continue;
-		if (getInlineConstructPolicy(node.kind)?.splitBehavior === 'close-and-reopen') return true;
+		if (closesAndReopens(node.kind)) return true;
 	}
 	return false;
 }

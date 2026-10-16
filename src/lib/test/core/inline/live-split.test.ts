@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import {
-	parsesBack,
-	rebalanceLiveSplit
-} from '#lib/components/blocks/text/live-split-rebalance.js';
+import { parsesBack, rebalanceLiveSplit } from '#lib/core/inline/live-edit/live-split.js';
 import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
 import { getContentRange, parseInline } from '#lib/core/inline/index.js';
 import { CONTENT_VISIBILITY, renderedText } from '#lib/core/inline/visibility.js';
@@ -71,6 +68,13 @@ describe('a cut inside a symmetric pair closes it and reopens it', () => {
 	// declines rather than write a run that swallows the line.
 	it('declines when the reopened fence would abut a backtick', () => {
 		expect(split('`` a`b ``\n', 4)).toBeNull();
+	});
+
+	// Miss-analysis: the blank-half check read what each half shows, and no row cut a code span
+	// beside a space, whose bytes stay a code span when all it shows is that space.
+	it('a half left holding one space of a code span is still a code span', () => {
+		expect(split('` a`\n', 2)).toEqual({ firstRaw: '` `\n', secondRaw: '`a`\n' });
+		expect(split('`a `\n', 2)).toEqual({ firstRaw: '`a`\n', secondRaw: '` `\n' });
 	});
 
 	// A cut on the soft break inside a construct: the split consumes the line ending, and both
@@ -281,8 +285,8 @@ describe('the first half never parses to more than one block', () => {
 	});
 });
 
-// The resolver is passed per call because it is per editor while the registry is process-wide;
-// without it a reference form reads as brackets and the cut leaves a marker on screen.
+// The resolver is passed per call because it is per editor; without it a reference form reads as
+// brackets and the cut leaves a marker on screen.
 describe('a reference form rebalances only when the resolver reaches the join', () => {
 	const DOC = 'Visit [example][site] here\n\n[site]: https://example.com\n';
 

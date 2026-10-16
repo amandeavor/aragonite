@@ -2,20 +2,14 @@
 // A composition over a selection in live mode replaces only the bytes the block paints.
 // Miss-analysis: the composition's range rows drew every selection inside the content, and only
 // the keydown route cut a range back from a hidden setext underline.
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import { mountBlock } from '../../harness/mount-block';
 import { settleEditor } from '../../harness/settle';
 import { noIslands } from '../table/mount-cell';
 
-beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
 // The composition commit reads the mode off the nearest root that names one.
 beforeEach(() => {
 	document.body.dataset.presentation = 'live';
@@ -25,7 +19,6 @@ afterEach(() => {
 	delete document.body.dataset.presentation;
 	window.getSelection()?.removeAllRanges();
 });
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
 
 function select(el: HTMLElement, start: number, end = start): void {
 	el.focus();

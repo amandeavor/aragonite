@@ -11,37 +11,64 @@ import {
 	inlineDescendants,
 	isProseKind,
 	readInline
-} from '../../../core/inline';
-import {
-	CONTENT_VISIBILITY,
-	paintsOnlyChrome,
-	renderedText,
-	visibleRuns
-} from '../../../core/inline/visibility';
-import { readBack, readSource, shownRunsOf } from '../../../core/inline/live-edit/read-back';
+} from '../index';
+import { CONTENT_VISIBILITY, paintsOnlyChrome, renderedText, visibleRuns } from '../visibility';
+import { readBack, readSource, shownRunsOf } from './read-back';
 import {
 	closeBefore,
+	closesAndReopens,
 	markSpelling,
 	reopenAfter,
 	type CutConstruct
-} from '../../../core/inline/live-edit/close-reopen';
-import { marksShown } from '../../../core/inline/live-edit/shown-marks';
-import { isBlankText, trimTrailingLineEnding } from '../../../core/lines';
+} from './close-reopen';
+import { keepsEdgeMarks, marksShown } from './shown-marks';
+import { displayLength, readsAsBlankLine } from '../../lines';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
 import type { GrammarView } from '../../../schema/block-openers';
-import type { RenderInlineOptions } from '../../../core/inline-render';
-import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
-import {
-	getInlineConstructPolicy,
-	type JoinEndpoint,
-	type JoinSeam,
-	type LiveJoinSeamCleaner
-} from '../../../schema/inline-construct-policy';
+import type { RenderInlineOptions } from '../../inline-render';
+import type { InlineNode } from '../../nodes';
+import type { NodeView } from '../../node-views';
+import { getInlineConstructPolicy } from '../../../schema/inline-construct-policy';
 
 // ── The rewrite ──────────────────────────────────────────────────────────────
 
-export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
+/** One side of a join: the block it contributed bytes from and the offset they were cut at. A
+ *  merge cuts at the end of the block's content, a range delete at the selection endpoint. */
+export interface JoinEndpoint {
+	node: NodeView;
+	offset: number;
+}
+
+/** The bytes a join produced, plus where the second side's contribution starts in them. */
+export interface JoinSeam {
+	mergedRaw: string;
+	seam: number;
+	start: JoinEndpoint;
+	end: JoinEndpoint;
+	/** Text the caller will insert at the join after the cleanup, `''` for a plain delete. The
+	 *  cleanup checks it too, since typed text changes what a surviving delimiter pairs against. */
+	typed: string;
+	/** Where the joined bytes will be stored, with the editor's reading: the cleanup reads each
+	 *  candidate back there, a list item's marker line or a cell's text included. */
+	store: StoredAs;
+}
+
+/** The bytes a cleanup wrote and where the two sides now meet in them: the runs it dropped and the
+ *  closers and openers it wrote at the join move the point the caret lands on. */
+export interface CleanedJoin {
+	raw: string;
+	/** Where typed text and the caret go: inside a closed run that grows at its edge. */
+	seam: number;
+	/** Where the second side's bytes start, past every closer and opener written at the join. */
+	seamEnd: number;
+	/** Where an offset of the merged bytes lands in `raw`; a byte the cleanup dropped lands where
+	 *  its run stood, and the join's own offset lands before the runs written there. */
+	map(offset: number): number;
+}
+
+/** The join's bytes with each kept half's format kept, or null to keep the plain concatenation. */
+export function cleanLiveJoinSeam(join: JoinSeam): CleanedJoin | null {
 	const { typed, store } = join;
 	const left = readSide(join.start, 'before', store.reading);
 	const right = readSide(join.end, 'after', store.reading);
@@ -57,13 +84,11 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 	// Keeping each half's format comes first; dropping the runs the cut stranded is the fallback,
 	// least destructive first, where no reading that keeps them shows what the screen showed.
 	const pairs = abuttingPairSpans(join, left, right);
-	const drops = [unpairedSpans(join, left, right), everyDanglingSpan(join, left, right)].map(
-		(dangling): JoinReading => ({
-			edits: [...dangling, ...pairs].map(dropped),
-			typedAt: 0,
-			keeps: false
-		})
-	);
+	const drops = [pairedPrefix(left, right), 0].map((paired): JoinReading => ({
+		edits: [...strandedSpans(join, left, right, paired), ...pairs].map(dropped),
+		typedAt: 0,
+		keeps: false
+	}));
 	const written = distinct(
 		[...keepingReadings(join, left, right), ...drops].map(({ edits, typedAt, keeps }) => {
 			const { raw, map } = withEdits(join.mergedRaw, edits);
@@ -72,33 +97,38 @@ export const cleanLiveJoinSeam: LiveJoinSeamCleaner = (join) => {
 			return { raw, seam: at + typedAt, seamEnd: at + (atJoin?.insert.length ?? 0), map, keeps };
 		})
 	);
-	const reads = written.map(({ raw, seam }) =>
-		lazy(() => readCandidate(raw.slice(0, seam) + typed + raw.slice(seam), store))
-	);
 	// A pair left over nothing also passes the screen check, so among the readings that pass, the
-	// one leaving the fewest such pairs wins (`docs/design/live-mode.md` § 4.1).
-	const floor = lazy(() => Math.min(...reads.map((read) => read()?.residue ?? Infinity)));
+	// first leaving the fewest such pairs wins (`docs/design/live-mode.md` § 4.1).
+	let best: { written: (typeof written)[number]; residue: number } | null = null;
 	let kept: { before: string[]; after: string[] } | null = null;
-	for (const [at, { raw: candidate, seam, seamEnd, map, keeps }] of written.entries()) {
-		const read = reads[at]();
+	for (const candidate of written) {
+		const read = readCandidate(
+			candidate.raw.slice(0, candidate.seam) + typed + candidate.raw.slice(candidate.seam),
+			store
+		);
 		if (read === null || read.visible !== shown) continue;
-		// One leaving no such pair can't lose, so the readings after it go unread.
-		if (read.residue > 0 && read.residue > floor()) continue;
 		// G1.91: a reading that keeps the runs must keep every kept character's marks.
-		if (keeps && !keepsMarks(read.marks, (kept ??= keptMarks(left, right)))) continue;
-		// A candidate that changed nothing is the plain concatenation: refusing says so, and keeps
-		// the caller off a rewrite path it does not need.
-		if (candidate === join.mergedRaw) return null;
-		// The split half's trailing-whitespace rule, applied to the join: a survivor that is only
-		// whitespace draws nothing and reparses as a blank line, not the block that was written.
-		const display = trimTrailingLineEnding(candidate);
-		if (display !== '' && isBlankText(display)) {
-			return { raw: candidate.slice(display.length), seam: 0, seamEnd: 0, map: () => 0 };
+		if (candidate.keeps) {
+			kept ??= keptMarks(left, right);
+			if (!keepsEdgeMarks(read.marks, kept.before, kept.after)) continue;
 		}
-		return { raw: candidate, seam, seamEnd, map };
+		if (best === null || read.residue < best.residue) {
+			best = { written: candidate, residue: read.residue };
+		}
+		// One leaving no such pair can't lose, so the readings after it go unread.
+		if (read.residue === 0) break;
 	}
-	return null;
-};
+	if (best === null) return null;
+	const { raw, seam, seamEnd, map } = best.written;
+	// A candidate that changed nothing is the plain concatenation: refusing says so, and keeps the
+	// caller off a rewrite path it does not need.
+	if (raw === join.mergedRaw) return null;
+	// A survivor of whitespace only draws nothing, and would reload as a blank line.
+	if (readsAsBlankLine(raw)) {
+		return { raw: raw.slice(displayLength(raw)), seam: 0, seamEnd: 0, map: () => 0 };
+	}
+	return { raw, seam, seamEnd, map };
+}
 
 const standsOnSeam = (side: Side): boolean => side.dangling.length > 0 || side.touching.length > 0;
 
@@ -123,6 +153,9 @@ interface Side {
 	 *  trailing closers of the block above, the leading openers of the block below. */
 	touching: CutConstruct[];
 }
+
+/** The bytes a side's constructs index into, all a spelling reads. */
+type SideBytes = Pick<Side, 'raw'>;
 
 /** One endpoint's surviving bytes and the constructs its cut leaves at the join. Null for a
  *  non-prose kind, an offset outside the content, or a cut through a family that cannot reopen. */
@@ -154,7 +187,7 @@ function readSide(endpoint: JoinEndpoint, keep: 'before' | 'after', reading: Rea
 			? c.contentStart <= offset && offset < c.end
 			: c.start < offset && offset <= c.contentEnd
 	);
-	if (dangling.some((c) => !isRejoinable(c.kind))) return null;
+	if (dangling.some((c) => !closesAndReopens(c.kind))) return null;
 
 	return {
 		raw: node.raw,
@@ -200,11 +233,6 @@ function classifyConstructs(inlines: readonly InlineNode[]): {
 const splitsARun = (c: CutConstruct, at: number): boolean =>
 	(at > c.start && at < c.contentStart) || (at > c.contentEnd && at < c.end);
 
-/** Whether the family can be cut and rejoined (`docs/design/live-mode.md` § 4.4). */
-function isRejoinable(kind: AnyInlineKind): boolean {
-	return getInlineConstructPolicy(kind)?.splitBehavior === 'close-and-reopen';
-}
-
 /** The nested chain of closers ending at `cut` (or openers starting there), outermost first:
  *  `**a *b***` cut at its end gives the strong emphasis, then the emphasis. */
 function touchingChain(
@@ -216,7 +244,7 @@ function touchingChain(
 	let at = cut;
 	for (;;) {
 		const link = constructs.find((c) => (keep === 'before' ? c.end === at : c.start === at));
-		if (!link || !isRejoinable(link.kind)) return chain;
+		if (!link || !closesAndReopens(link.kind)) return chain;
 		chain.push(link);
 		at = keep === 'before' ? link.contentEnd : link.contentStart;
 	}
@@ -248,31 +276,37 @@ const closerRun = (c: CutConstruct): Span => ({ start: c.contentEnd, end: c.end 
 
 /** Whether two constructs are written with the same delimiters: the byte-level test for "these
  *  are one construct's two halves", which matching kinds alone cannot make (`__a__` vs `**a**`). */
-const sameDelimiters = (left: Side, lc: CutConstruct, right: Side, rc: CutConstruct): boolean =>
-	sameSpelling(asCut(left, lc), asCut(right, rc));
+const sameDelimiters = (
+	left: SideBytes,
+	lc: CutConstruct,
+	right: SideBytes,
+	rc: CutConstruct
+): boolean => sameSpelling(asCut(left, lc), asCut(right, rc));
 
-/** The runs a truncation stranded that the join does not rejoin: the left's openers and the right's
- *  closers, minus the leading pairs whose kinds line up and so make one construct again. */
-function unpairedSpans(join: { seam: number }, left: Side, right: Side): Span[] {
+/** How many of the two sides' stranded runs, outermost first, make one construct again across the
+ *  join. Exported for the test. */
+export function pairedPrefix(
+	left: SideBytes & Pick<Side, 'dangling'>,
+	right: SideBytes & Pick<Side, 'dangling'>
+): number {
 	let paired = 0;
 	while (
 		paired < left.dangling.length &&
 		paired < right.dangling.length &&
-		left.dangling[paired].kind === right.dangling[paired].kind
+		left.dangling[paired].kind === right.dangling[paired].kind &&
+		sameDelimiters(left, left.dangling[paired], right, right.dangling[paired])
 	) {
 		paired++;
 	}
+	return paired;
+}
+
+/** The runs a truncation stranded past the first `paired`: the left's openers and the right's
+ *  closers. With none paired, every one goes and the joined text stands as plain content. */
+function strandedSpans(join: { seam: number }, left: Side, right: Side, paired: number): Span[] {
 	return [
 		...left.dangling.slice(paired).map(openerRun),
 		...right.dangling.slice(paired).map((c) => rightSpan(join, right, closerRun(c)))
-	];
-}
-
-/** The fallback reading: every stranded run goes, so the joined text stands as plain content. */
-function everyDanglingSpan(join: { seam: number }, left: Side, right: Side): Span[] {
-	return [
-		...left.dangling.map(openerRun),
-		...right.dangling.map((c) => rightSpan(join, right, closerRun(c)))
 	];
 }
 
@@ -340,7 +374,7 @@ interface JoinReading {
 }
 
 /** A construct's delimiters as one reading writes them. */
-type Spelling = (side: Side, c: CutConstruct) => { opener: string; closer: string };
+type Spelling = (side: SideBytes, c: CutConstruct) => { opener: string; closer: string };
 
 const asCut: Spelling = (side, c) => ({
 	opener: side.raw.slice(c.start, c.contentStart),
@@ -521,17 +555,6 @@ function keptMarks(left: Side, right: Side): { before: string[]; after: string[]
 	};
 }
 
-/** Whether the candidate's characters open with the left side's marks and end with the right's. */
-function keepsMarks(
-	marks: readonly string[],
-	kept: { before: string[]; after: string[] }
-): boolean {
-	const { before, after } = kept;
-	if (marks.length < before.length + after.length) return false;
-	const tail = marks.slice(marks.length - after.length);
-	return before.every((mark, i) => marks[i] === mark) && after.every((mark, i) => tail[i] === mark);
-}
-
 // ── Verification ─────────────────────────────────────────────────────────────
 
 /** What the user must still see, read off each side's parse from before the join: reading the
@@ -621,17 +644,4 @@ function countResidue(
 		}
 	}
 	return found;
-}
-
-/** `compute`'s value, computed on the first call. */
-function lazy<T>(compute: () => T): () => T {
-	let done = false;
-	let value: T;
-	return () => {
-		if (!done) {
-			value = compute();
-			done = true;
-		}
-		return value;
-	};
 }

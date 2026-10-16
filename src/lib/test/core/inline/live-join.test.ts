@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { displayLength } from '#lib/core/lines.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
+import { cleanLiveJoinSeam, pairedPrefix } from '#lib/core/inline/live-edit/live-join.js';
 import { topLevelStore } from '../../harness/fixture-grammar';
 
 // The bytes a live-mode join writes. Each case states the plain concatenation a refusal leaves,
@@ -132,6 +132,15 @@ describe('a truncation that strands a delimiter run', () => {
 	// Same kind, different bytes: markdown will not close `__` with `**`, so each half keeps its own.
 	it('keeps both runs apart where the two spellings cannot close each other', () => {
 		expect(deleteBetween('__bold__ x\n', 3, 'y **more**\n', 7)).toBe('__b__**e**\n');
+	});
+
+	// Miss-analysis: the drop reading paired runs by kind, and the screen check threw out what it
+	// wrote, so every join row stayed green with the pairing gone.
+	it('pairs two stranded runs only when they share delimiters', () => {
+		const strong = { kind: 'strong', start: 0, end: 6, contentStart: 2, contentEnd: 4 } as const;
+		const side = (raw: string) => ({ raw, dangling: [strong] });
+		expect(pairedPrefix(side('__ab__'), side('**cd**'))).toBe(0);
+		expect(pairedPrefix(side('__ab__'), side('__cd__'))).toBe(1);
 	});
 
 	// A URL or an escape cannot be cut into halves, so the cleanup does nothing and the caller
@@ -321,6 +330,12 @@ describe('a join that would leave a construct enclosing nothing unwraps it', () 
 	// never aimed at, and dropping it would take more than the user asked for.
 	it('leaves residue the cut did not create', () => {
 		expect(sameBlock('[](url) some text\n', 9, 13)).toBeNull();
+	});
+
+	// Miss-analysis: no case had a reading that leaves fewer empty pairs but shows the wrong text,
+	// so a floor taken over every reading went unseen.
+	it('weighs empty pairs only among the readings that show what the screen showed', () => {
+		expect(typeOver('~~a~~*[](u)***\n', 2, 5, 'X')).toBe('~~X~~*[](u)***\n');
 	});
 });
 

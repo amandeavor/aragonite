@@ -1,13 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-	registerLiveJoinSeamCleaner,
-	registerLiveSplitRebalancer,
-	__resetLiveJoinSeamCleanerForTests,
-	__resetLiveSplitRebalancerForTests
-} from '#lib/schema/inline-construct-policy.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import { rebalanceLiveSplit } from '#lib/components/blocks/text/live-split-rebalance.js';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { freshOrFixedSeed } from '#lib/test/invariants/arbitraries/index.js';
 import { fuzzLiveGestures, judgeGesture, type FuzzStats } from './live-gesture-fuzz';
 import { parse } from '#lib/core/parser.js';
@@ -38,15 +30,8 @@ let stats: FuzzStats;
 
 // The whole sweep runs in this hook, which outlasts the default hook timeout on a busy machine.
 beforeAll(async () => {
-	registerLiveSplitRebalancer(rebalanceLiveSplit);
-	registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
 	stats = await fuzzLiveGestures({ seed: SEED, docs: DOCS, steps: STEPS });
 }, 120_000);
-afterAll(() => {
-	__resetLiveSplitRebalancerForTests();
-	__resetLiveJoinSeamCleanerForTests();
-});
-
 describe('live-mode gestures at hidden edges', () => {
 	it('leaves no divergence the byte-literal counterpart does not already have', () => {
 		const seams = stats.violations.filter((v) => v.category === 'seam');

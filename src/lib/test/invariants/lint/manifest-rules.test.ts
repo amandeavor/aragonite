@@ -185,7 +185,10 @@ const codeOutsideStyleBlocks = (file: SourceFile): string =>
 // ── G4.33 live byte rewrites ─────────────────────────────────────────────────
 
 const ORACLE_HOME = SOURCE.inlineVisibility;
-const SLOT_HOME = SOURCE.inlineConstructPolicy;
+const LIVE_REWRITE_HOMES = [
+	'src/lib/core/inline/live-edit/live-join.ts',
+	'src/lib/core/inline/live-edit/live-split.ts'
+];
 
 /** The modules building live-mode byte candidates, each verifying through the render path. */
 const REWRITE_MODULES: Record<string, string> = {
@@ -193,8 +196,8 @@ const REWRITE_MODULES: Record<string, string> = {
 	'src/lib/components/blocks/text/construct-edge-delete.ts': 'the destructive edge delete',
 	'src/lib/components/blocks/text/edge-seat.ts': 'the typing position at a construct edge',
 	'src/lib/core/inline/link-source-bytes.ts': 'the link byte writer',
-	'src/lib/components/blocks/text/live-join-seam.ts': 'the join cleaner',
-	'src/lib/components/blocks/text/live-split-rebalance.ts': 'the split rebalancer',
+	'src/lib/core/inline/live-edit/live-join.ts': 'the join cleaner',
+	'src/lib/core/inline/live-edit/live-split.ts': 'the split rebalancer',
 	'src/lib/components/blocks/text/pending-mark-insert.ts': 'the pending-mark resolver',
 	'src/lib/core/inline/format-toggle.ts': 'the format toggle',
 	'src/lib/core/inline/live-edit/read-back.ts':
@@ -622,16 +625,16 @@ const MANIFESTS: ManifestRule[] = [
 		misses: ["el.querySelectorAll('.block')", at('x.svelte', "el.querySelectorAll('.md-marker')")]
 	},
 	{
-		id: 'G4.33 the registered rewrite slots have exactly one reader',
-		population: (file) => file.relPath !== SLOT_HOME,
-		matches: /(?<![\w.])(getLiveJoinSeamCleaner|getLiveSplitRebalancer)\s*\(/,
+		id: 'G4.33 the live join and split rewrites each have exactly one caller',
+		population: (file) => !LIVE_REWRITE_HOMES.includes(file.relPath),
+		matches: /(?<![\w.])(cleanLiveJoinSeam|rebalanceLiveSplit)\s*\(/,
 		declared: {
-			'src/lib/tree-operations/leaf-range.ts': 'the one reader of the join slot',
-			'src/lib/tree-operations/node-ops.ts': 'the one reader of the split slot'
+			'src/lib/tree-operations/leaf-range.ts': 'the one caller of the join rewrite',
+			'src/lib/tree-operations/node-ops.ts': 'the one caller of the split rewrite'
 		},
-		reason: 'a second reader of the rewrite slots is a second opinion on what a join cleans',
-		hits: ['getLiveJoinSeamCleaner()?.(join)'],
-		misses: ['// getLiveSplitRebalancer() answers']
+		reason: 'a second caller of a live rewrite is a second opinion on what a join or split writes',
+		hits: ['cleanLiveJoinSeam(join) ?? literal'],
+		misses: ['// rebalanceLiveSplit() answers']
 	},
 	{
 		id: 'G4.33 the files naming preDelete are the declared ones',

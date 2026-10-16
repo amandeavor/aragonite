@@ -2,7 +2,7 @@
 // Miss-analysis: the join's container check read a field the parse result lacks, so it refused
 // every candidate under a list marker; the fuzzer took any refusal as no worse than the literal
 // edit, ran its caret-edge gestures on top-level blocks only, and no unit gave the join a container.
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { installPlugins } from '#lib';
 import { footnotesPlugin } from '#lib/plugins/footnotes/index.js';
 import { parse } from '#lib/core/parser.js';
@@ -18,11 +18,6 @@ import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
 import { resolveEdgeDeletion } from '#lib/components/blocks/text/construct-edge-delete.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import { makeContainerHarness, makeTopHarness } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { fixtureReading } from '../harness/fixture-grammar';
@@ -30,9 +25,7 @@ import { fixtureReading } from '../harness/fixture-grammar';
 // A live cut under a container marker writes the text bytes the same cut writes at the top level,
 // and leaves a tree a reload of those bytes reads back unchanged.
 
-beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
 beforeEach(() => installPlugins([footnotesPlugin()]));
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
 
 const LIVE = fixtureReading({}, 'live');
 

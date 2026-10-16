@@ -1,5 +1,6 @@
 import type { AnyBlockKind, AnyInlineKind, BlockKind } from '../core/nodes';
 import type { InvariantViolation } from '../assert';
+import type { SplitBehavior } from '../schema/inline-construct-policy';
 
 /**
  * The registry checks take every lookup as a parameter, so they stay pure and so this file never
@@ -220,7 +221,7 @@ export interface InlineConstructPolicyEntry {
 	kind: AnyInlineKind;
 	revealable: boolean;
 	autoUnwrapOnEmpty: boolean;
-	splitBehavior: 'close-and-reopen' | 'whole' | 'plain';
+	splitBehavior: SplitBehavior;
 	/** The mark vocabulary, for a kind a format chord addresses. */
 	mark?: { nestingRank: number; command: string };
 }

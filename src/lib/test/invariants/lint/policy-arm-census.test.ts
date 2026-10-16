@@ -35,7 +35,7 @@ const WIDGET_REGISTRY = SOURCE.inlineWidgets;
 
 /** Every function that reads the policy table, the table's own module excluded. */
 const POLICY_READ =
-	/(?<![\w.])(getInlineConstructPolicy|getInlineMarkPolicy|inlineMarkForCommand|followEditOf|isRevealableInlineKind|listInlineConstructPolicies|listInlineMarks|getLiveSplitRebalancer|getLiveJoinSeamCleaner)\s*\(/;
+	/(?<![\w.])(getInlineConstructPolicy|getInlineMarkPolicy|inlineMarkForCommand|followEditOf|isRevealableInlineKind|listInlineConstructPolicies|listInlineMarks)\s*\(/;
 
 const readsPolicyTable = (file: SourceFile): boolean =>
 	file.relPath !== POLICY_TABLE && POLICY_READ.test(file.code);
@@ -80,23 +80,22 @@ const POLICY_ARMS: Record<string, string> = {
 		'what a click follows and how Edit link edits it: followEdit',
 	'src/lib/components/blocks/text/next-byte.ts':
 		'the caret look: the mark column, for which constructs a typed letter would carry',
-	'src/lib/components/blocks/text/live-join-seam.ts':
-		'the join cleaner: splitBehavior, autoUnwrapOnEmpty for a construct the cut emptied, and edgeAffinity for where typed text lands',
-	'src/lib/components/blocks/text/live-split-rebalance.ts': 'the split rebalancer: splitBehavior',
+	'src/lib/core/inline/live-edit/live-join.ts':
+		'the join cleaner: autoUnwrapOnEmpty for a construct the cut emptied, and edgeAffinity for where typed text lands',
+	'src/lib/core/inline/live-edit/live-split.ts':
+		'the split rebalancer: splitBehavior, for a construct a cut takes whole',
 	'src/lib/components/blocks/text/pending-mark-insert.ts':
-		'the pending-mark resolver: edgeAffinity and the mark nesting order',
+		'the pending-mark resolver: the mark nesting order',
 	'src/lib/components/blocks/table/TableCellBlock.svelte':
 		'the cell surface: which mark a format command toggles',
 	'src/lib/core/inline/format-toggle.ts': 'the toggle seam: the mark vocabulary',
 	'src/lib/core/inline/live-edit/close-reopen.ts':
-		'the marker a closed or reopened run is written with: the mark vocabulary',
+		'whether a cut closes and reopens a run: splitBehavior, and the marker it is written with: the mark vocabulary',
 	'src/lib/components/blocks/text/TextEditableBlock.svelte':
 		'the prose surface: the same command lookup',
 	'src/lib/schema/registration-checks.ts': 'the registration-time coherence check over every row',
 	'src/lib/selection/cross-block/format-toggle.ts':
 		'the cross-block arm: which mark a format command toggles',
-	'src/lib/tree-operations/leaf-range.ts': 'the one reader of the registered join slot',
-	'src/lib/tree-operations/node-ops.ts': 'the one reader of the registered split slot',
 	'src/lib/inline-menu/inline-menu-session.ts': 'whether a trigger sits in prose: prose'
 };
 
@@ -160,7 +159,7 @@ const HAND_WRITTEN_ARMS: readonly HandWrittenArm[] = [
 			'which constructs a key takes whole is a per-node fact: `[](u)` is a link with no content range, `![a](u)` an atomic widget with one, so a kind column would swap both answers; the row only says what an unmade URL falls back to'
 	},
 	{
-		path: 'src/lib/components/blocks/text/live-join-seam.ts',
+		path: 'src/lib/core/inline/live-edit/live-join.ts',
 		detection: 'declared',
 		fate: 'outside',
 		reason: 'the same per-node arity, in classifyConstructs, on the same two shapes'
@@ -185,13 +184,6 @@ const HAND_WRITTEN_ARMS: readonly HandWrittenArm[] = [
 		fate: 'deferred',
 		reason:
 			'the no-residue rule is restated at four `arms` entries; single-sourcing it into the table folds into the slots-to-rows move'
-	},
-	{
-		path: POLICY_TABLE,
-		detection: 'declared',
-		fate: 'deferred',
-		reason:
-			'the two rewrite slots hold one global function each rather than per-kind rows; moving them turns a register-once throw into a silent per-row degrade, so it needs the close-and-reopen producer assertion first'
 	},
 	{
 		path: 'src/lib/components/built-in-blocks.ts',
@@ -282,7 +274,9 @@ describe('inline-construct policy branch census', () => {
 	it('the policy matcher sees every entry point and skips a mention in prose', () => {
 		expect(probe(readsPolicyTable, 'const p = getInlineConstructPolicy(node.kind);')).toBe(true);
 		expect(probe(readsPolicyTable, 'if (isRevealableInlineKind(kind)) out.push(node);')).toBe(true);
-		expect(probe(readsPolicyTable, 'getLiveJoinSeamCleaner()?.(join)')).toBe(true);
+		expect(
+			probe(readsPolicyTable, 'for (const { kind } of listInlineMarks()) seen.add(kind);')
+		).toBe(true);
 		expect(probe(readsPolicyTable, '// getInlineConstructPolicy(kind) is the door')).toBe(false);
 		expect(probe(readsPolicyTable, 'const x = myGetInlineConstructPolicy(kind);')).toBe(false);
 	});

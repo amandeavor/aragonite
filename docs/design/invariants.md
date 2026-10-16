@@ -747,10 +747,10 @@ that cuts through a format run closes the run on the half before the cut and reo
 after, so every character it keeps shows in the marks it had. The join rewrite only writes a
 reading that keeps them, checked against each side's own render. Where no spelling of the run can
 close (a closer that would touch a run of its own character), it drops the run instead, and the text
-stays with no marker on screen. `components/blocks/text/live-join-seam.ts :: cleanLiveJoinSeam` ·
+stays with no marker on screen. `core/inline/live-edit/live-join.ts :: cleanLiveJoinSeam` ·
 `test/invariants/live-seam.property.test.ts` and `test/simulation/live-gesture-fuzz.property.test.ts`
 (each kept character's marks, read by `test/harness/live-oracles.ts :: markedChars`, with the drop
-fallback held to a small share), `test/blocks/text/live-join-seam.test.ts`.
+fallback held to a small share), `test/core/inline/live-join.test.ts`.
 
 **G1.94 · One editor per target.** A wrapper that skips `destroy` on unmount stacks a second editor
 in the same element, and React's StrictMode (which mounts every component twice in dev) shows it at

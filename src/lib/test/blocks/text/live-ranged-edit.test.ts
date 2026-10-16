@@ -8,8 +8,6 @@ import { unmount } from 'svelte';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
 import { createRangeAtDomTextOffsets } from '#lib/caret/widget-offset.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import { registerLiveJoinSeamCleaner } from '#lib/schema/inline-construct-policy.js';
 import { makeStubBlockEdit } from '../../harness/editor-actions';
 import { mountCell, noIslands, type MountedCell } from '../table/mount-cell';
 import { settleEditor } from '#lib/test/harness/settle.js';
@@ -70,8 +68,6 @@ const committed = (blockEdit: ReturnType<typeof makeStubBlockEdit>) =>
 
 let mounted: ReturnType<typeof mountText> | null = null;
 let cell: MountedCell | null = null;
-
-registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
 
 afterEach(async () => {
 	if (mounted) await unmount(mounted.instance);

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // The caret-edge dispatch's delete branches: ambient markers, construct edges, setext
 // structure, the first reachable offset, and the step-over deferral.
-import { describe, expect, it, afterAll, beforeAll } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { asRawOffset } from '#lib/caret/coordinate-spaces.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
@@ -14,11 +14,6 @@ import {
 	type EdgeDispatchHarness,
 	mountIslandBlock
 } from './edge-policy-fixture';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import { type CstNode } from '#lib/core/nodes.js';
 import { type EdgeAffinity } from '#lib/caret/edge-affinity.js';
 import '#lib/schema/built-in-descriptors.js';
@@ -385,9 +380,6 @@ describe('deferring to the delete rules', () => {
 	}
 
 	describe('the ambient-marker delete crosses the join', () => {
-		beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-		afterAll(() => __resetLiveJoinSeamCleanerForTests());
-
 		// The selection ends inside `**a b**`, so a literal splice strands the closer and shows it.
 		it('drops the run the cut stranded instead of splicing raw bytes', () => {
 			const s = withAmbientSelection('**a b** c\n', 'live', { start: 0, end: 5 });

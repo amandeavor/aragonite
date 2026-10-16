@@ -3,15 +3,10 @@
 // join, so a delimiter run the cut leaves unpaired must still go through the live-mode cleanup, or
 // it paints as literal `**`; source mode, and a title line's own bytes, stay byte for byte.
 // Miss-analysis: the live-join cases only crossed text-to-text merges, never these branches.
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
 import type { PresentationMode } from '../../presentation-mode';
-import { cleanLiveJoinSeam } from '../../components/blocks/text/live-join-seam';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '../../schema/inline-construct-policy';
 import { rangeDelete } from '../../selection/range-delete';
 import { coverRange, rangeCoverage } from '../../selection/range-coverage';
 import { createSharingState } from '../../tree-operations/sharing';
@@ -21,9 +16,7 @@ import { fixtureReading } from '../harness/fixture-grammar';
 
 beforeEach(() => {
 	registerCalloutForTests();
-	registerLiveJoinSeamCleaner(cleanLiveJoinSeam);
 });
-afterEach(() => __resetLiveJoinSeamCleanerForTests());
 
 function run(source: string, start: SelectionPoint, end: SelectionPoint, mode?: PresentationMode) {
 	const doc = parse(source);

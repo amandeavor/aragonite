@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // A range delete across a setext heading: the start block survives and keeps its own underline
 // under the joined text, and an end block's underline goes with the end block, as the Delete join
 // has it (`tree-operations/setext-join.test.ts`).

@@ -1,20 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { replaceRangeInLeaf } from '#lib/tree-operations/leaf-range.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading, topLevelStore } from '../harness/fixture-grammar';
 
 // A range replaced inside one block: when the join cleans and when the plain splice stands, where
 // typed bytes land, and that it returns the block's whole raw, trailing line ending included.
-
-beforeEach(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-afterEach(() => __resetLiveJoinSeamCleanerForTests());
 
 const blockOf = (source: string) => parse(source, { scope: 'fragment' }).children[0];
 
@@ -75,11 +67,6 @@ describe('what it leaves to the browser’s own edit', () => {
 		expect(editIn('preview-block', MIXED, 9, 21, 'X')).toBeNull();
 		expect(editIn('preview-inline', MIXED, 9, 21, 'X')).toBeNull();
 		expect(editIn(undefined, MIXED, 9, 21, 'X')).toBeNull();
-	});
-
-	it('a live edit with no cleaner registered', () => {
-		__resetLiveJoinSeamCleanerForTests();
-		expect(edit(MIXED, 9, 21, 'X')).toBeNull();
 	});
 });
 

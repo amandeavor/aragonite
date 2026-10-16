@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // An edit's landing inside a container sets the edge record the way one at the top level does: a
 // merge lands on text, where the character before the caret decides, and a split starts fresh.
 // Miss-analysis: the record was set only by the arrow key's own move, and no test read the caret

@@ -3,16 +3,11 @@
 // other cut: a bold word emptied of its only widget leaves no `****` behind.
 // Miss-analysis: the widget and decoration deletes were tested for their undo anchor and caret, always
 // outside a construct, so their literal splice never had a delimiter run beside it.
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
 import { parse } from '#lib/core/parser.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
-import { cleanLiveJoinSeam } from '#lib/components/blocks/text/live-join-seam.js';
-import {
-	registerLiveJoinSeamCleaner,
-	__resetLiveJoinSeamCleanerForTests
-} from '#lib/schema/inline-construct-policy.js';
 import {
 	createTextClipboard,
 	type TextClipboardDeps
@@ -42,8 +37,6 @@ const LIVE = fixtureReading({}, 'live');
 const IMAGE = 'x **![a](b.png)** y\n';
 const IMAGE_RANGE = { start: 4, end: 15 };
 
-beforeAll(() => registerLiveJoinSeamCleaner(cleanLiveJoinSeam));
-afterAll(() => __resetLiveJoinSeamCleanerForTests());
 installEdgeDispatchCleanup();
 
 const storeOf = (source: string) => {
