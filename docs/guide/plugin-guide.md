@@ -395,7 +395,7 @@ Each part has a defined absence, which is prob the easiest way to remember what 
 
 A kind is a definition every editor on the page shares, and it's defined exactly once. Registering the same kind twice **throws**, never silently overrides, whether you collided with a built-in or with another plugin. There's no unregister, and the one way to change a kind you registered is `augmentBlockKind`, which merges extra descriptor fields in. (If you've met the browser's `customElements.define`, it's the same model: one definition for the whole page, not one per document.)
 
-Every `register*` and `declare*` call goes inside a plugin unit's `setup` (the next section), which runs at most once per page, so you write each call straight and never check whether it already ran. A call anywhere else, a module's top level say, throws in development with that fix in the message. (A changed plugin module under hot reload needs a page reload, since the first install of a name wins.)
+Every `register*` and `declare*` call goes inside a plugin unit's `setup` (the next section), which runs at most once per page, so you write each call straight and never check whether it already ran. A call anywhere else, a module's top level say, throws in development with that fix in the message. (Hot reload of a changed plugin module keeps the old definition, with a console warning, since the first install of a name wins. Reload the page to pick up your edit.)
 
 ### The plugin unit
 
