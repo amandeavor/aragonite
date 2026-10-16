@@ -24,6 +24,7 @@ import { tableCellWrite } from './table-cell-raw';
 import { fencedCodeWrite } from './fenced-code-raw';
 import { setextHeadingContentRange, setextHeadingWrite } from './setext-raw';
 import { registerInlineConstructPolicy } from './inline-construct-policy';
+import { registerAsCore } from './plugin-install';
 import { registerBuiltInRangeIndent } from './range-indent-forms';
 import { wrapAsCodeSpan } from '../core/inline/backticks';
 import {
@@ -237,7 +238,12 @@ let registered = false;
 export function registerBuiltInDescriptors(): void {
 	if (registered) return;
 	registered = true;
+	// Built-ins belong to no plugin, even when the first caller runs inside a plugin's setup, so the
+	// test reset keeps them.
+	registerAsCore(registerBuiltIns);
+}
 
+function registerBuiltIns(): void {
 	registerBuiltInInlinePolicies();
 
 	registerBuiltinBlockKind('paragraph', {

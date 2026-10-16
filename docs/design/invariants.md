@@ -2281,9 +2281,10 @@ anywhere else but the code block's language field.
 **G4.197 · Built-ins register on the first grammar read.** The block parser's modules import each
 other in a loop, so a built-in registered at a module's top level runs before its own module has
 finished loading, and a host that imports that module first gets a crash or a grammar with no
-built-ins. So nothing on the loop registers at load: `schema/block-openers.ts` registers the
-built-ins inside the first read of the grammar, under `registerAsCore`, so they belong to no plugin
-even when that read happens inside a plugin's setup and survive the test reset.
+built-ins. So nothing on the loop registers a built-in kind at load: `schema/block-openers.ts`
+registers them inside the first read of the grammar. `registerBuiltInDescriptors` runs under
+`registerAsCore`, so the built-ins belong to no plugin whichever caller gets there first (a plugin's
+setup included) and survive the test reset.
 `test/core/built-in-load-order.test.ts` resets the module graph, imports each module on the loop
 first, and parses one block of every built-in kind; putting a registration back at the top level of
 `core/parser.ts` turns it red with the load-order `ReferenceError`.

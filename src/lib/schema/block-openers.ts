@@ -10,7 +10,7 @@ import { hasPendingRegistrationChecks, markGrammarConsumed } from './registratio
 import { flushPendingRegistrationChecks } from './registration-checks';
 import type { RegistryRecord } from './plugin-registry';
 import { everyInstalledPlugin, resolvesIn, type PluginActivation } from './plugin-activation';
-import { pluginInstallGeneration, registerAsCore } from './plugin-install';
+import { pluginInstallGeneration } from './plugin-install';
 import { onBlockKindChange, openerRecords } from './block-kind-descriptor';
 import { registerBuiltInDescriptors } from './built-in-descriptors';
 
@@ -100,12 +100,12 @@ function consumedRecords(): readonly OpenerRecord[] {
 	return orderedRecords();
 }
 
-// On the first read, whichever module loaded first (G4.197), and as no plugin even inside a setup.
+// On the first read, whichever module loaded first (G4.197).
 function registerBuiltIns(): void {
 	builtInsRegistered = true;
 	// Subscribed here rather than at load, since this module sits on the parser's import loop.
 	onBlockKindChange(() => (orderedRecordsCache = null));
-	registerAsCore(registerBuiltInDescriptors);
+	registerBuiltInDescriptors();
 }
 
 /**

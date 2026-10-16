@@ -74,20 +74,35 @@ describe('built-ins register on the first grammar read', () => {
 		}
 	);
 
-	// The first read can happen inside a plugin's setup; the built-ins it registers still belong to
-	// no plugin, so they outlive the test reset and a setup that throws.
-	it(
-		'keeps the built-ins a plugin setup registered through a reset and a failed setup',
+	// Built-ins first registered inside a plugin's setup, by either route, still belong to no plugin,
+	// so they outlive the test reset and a setup that throws.
+	it.each([
+		[
+			'a grammar read',
+			async () => {
+				const { parse } = await import('#lib/core/parser.js');
+				return () => void parse('# first read\n');
+			}
+		],
+		[
+			'a direct registration',
+			async () => {
+				const { registerBuiltInDescriptors } = await import('#lib/schema/built-in-descriptors.js');
+				return registerBuiltInDescriptors;
+			}
+		]
+	])(
+		'keeps the built-ins that %s registered inside a setup, through a reset and a failed setup',
 		{ timeout: 60_000 },
-		async () => {
+		async (_route, load) => {
 			vi.resetModules();
 			const { definePlugin, installPlugins } = await import('#lib/schema/plugin-install.js');
-			const { parse } = await import('#lib/core/parser.js');
+			const firstRegistration = await load();
 			const reader = definePlugin({
 				name: 'first-reader',
 				setup() {
-					parse('# first read\n');
-					throw new Error('setup fails after the first read');
+					firstRegistration();
+					throw new Error('setup fails after the first registration');
 				}
 			});
 			expect(() => installPlugins([reader])).toThrow(/setup fails/);
