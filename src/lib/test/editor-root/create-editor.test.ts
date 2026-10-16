@@ -4,7 +4,12 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import { createEditor, type CreateEditorOptions, type EditorHandle } from '#lib/index.js';
-import { EDITOR_PROP_TIMING, type EditorOptions, type PropTimings } from '#lib/editor-props.js';
+import {
+	EDITOR_OPTION_SPECS,
+	type EditorOptions,
+	type EditorOptionSpec,
+	type EditorOptionSpecs
+} from '#lib/editor-props.js';
 import { installLayoutStubs } from '#lib/test/harness/mount-editor.svelte.js';
 import { settleEditor, pressKey } from '#lib/test/harness/settle.js';
 import { CODE_RUN_LABEL } from '#lib/a11y-strings.js';
@@ -44,12 +49,16 @@ function headerWithInput(): { header: HTMLElement; input: HTMLInputElement } {
 	return { header, input };
 }
 
-// Never called: the `@ts-expect-error` is the assertion, and `npm run check` fails once it's unused.
+// Never called: each `@ts-expect-error` is an assertion, and `npm run check` fails once it's unused.
 export function compileTimePins(): void {
-	// @ts-expect-error a prop added to EditorOptions without a timing
-	const added: PropTimings<EditorOptions & { header?: unknown; added?: string }> =
-		EDITOR_PROP_TIMING;
-	void added;
+	// @ts-expect-error an option added to EditorOptions without a row
+	const added: EditorOptionSpecs<EditorOptions & { header?: unknown; added?: string }> =
+		EDITOR_OPTION_SPECS;
+	// @ts-expect-error a boolean option whose row doesn't say so
+	const unflagged: EditorOptionSpec<boolean | undefined> = { timing: 'live' };
+	// @ts-expect-error a row calling an option boolean when it isn't
+	const flagged: EditorOptionSpec<string | undefined> = { timing: 'live', boolean: true };
+	void [added, unflagged, flagged];
 }
 
 describe('createEditor', () => {

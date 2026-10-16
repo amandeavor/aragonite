@@ -910,7 +910,7 @@ what the type retired.
 | G3.8  | A reader writing a node's serialized bytes                                           | T     |
 | G3.9  | Forgetting one part of what the caret means without the others                       | T     |
 | G3.10 | A registration pairing fields that can't mean anything together                      | T     |
-| G3.11 | An editor prop with no word on whether it can change after mount                     | T     |
+| G3.11 | An editor option with no word on whether it can change after mount, or is a boolean  | T     |
 | G3.12 | A React wrapper prop that isn't an editor option, or hides one                       | T     |
 | G3.13 | A Vue wrapper prop that isn't an editor option, or a boolean Vue would read as false | T     |
 
@@ -977,12 +977,16 @@ refuses every field on `src/lib/schema/block-kind-descriptor.ts :: FIXED_AT_REGI
 Retired: G1.32 and four of G1.37's five pairs as dev-time checks, and G1.18's not-a-container
 branch.
 
-**G3.11 · Every prop has a timing.** `editor-props.ts :: EDITOR_PROP_TIMING` names each
-prop key `live` (a new value takes effect) or `once` (read at mount, later values ignored), typed
-against `EditorOptions` plus `header`, so a prop added without one doesn't compile.
-`create-editor.ts :: createEditor` reads it to skip the `once` keys on `update`, and the consumer
-guide's Props section lists the same split. `src/lib/test/editor-root/create-editor.test.ts ::
-compileTimePins` holds the `@ts-expect-error`.
+**G3.11 · Every option has a spec.** `editor-props.ts :: EDITOR_OPTION_SPECS` gives each editor
+option, `header` included, a timing (`live`: a new value takes effect; `once`: read at mount, later
+values ignored) and marks the ones typed `boolean`. It's typed against `EditorOptions` plus
+`header`, so a missing row, a row for no option, a boolean without its mark or a mark on anything
+else doesn't compile. `create-editor.ts :: createEditor` reads it to skip the `once` keys on
+`update`, the Vue wrapper declares its props from it (G3.13), and the consumer guide's Props section
+lists the same split. `src/lib/test/editor-root/create-editor.test.ts :: compileTimePins` holds the
+`@ts-expect-error`s. One gap stays open: `Editor.svelte`'s `$props()` destructure is a hand list
+(Svelte takes only a literal pattern there), so a key missing from it, or read at odds with its
+row's timing, still compiles.
 
 **G3.12 · The React props are the editor's options.** `AragoniteProps` in `packages/react` is
 `CreateEditorOptions` with `source` swapped for `value`, plus the props only React has (`value`,
@@ -992,12 +996,13 @@ option takes one of those React names, and the wrapper forwards every prop outsi
 `update`. The wrapper compiles in `npm run package`, so that's the gate here, not `npm run check`.
 
 **G3.13 · The Vue props are the editor's options.** Vue needs every prop named at runtime, so
-`packages/vue/src/aragonite.ts` declares them in one object typed against `AragoniteProps`
-(`CreateEditorOptions` with `source` swapped for `modelValue` and `defaultValue`, and the header a
-slot). A missing or extra key fails to compile, and so does a boolean option declared without
-`default: undefined` (Vue would read it as `false` when absent, overriding the editor's default).
-A second pin fails when an editor option takes a Vue-only name or `class`, `style`, `key` or `ref`.
-`npm run package` compiles it.
+`packages/vue/src/aragonite.ts` declares them from `EDITOR_OPTION_SPECS` (every option but `source`
+and `header`, which arrive as `modelValue` and a slot), with `default: undefined` on each option the
+table marks boolean, since Vue reads an absent `Boolean` prop as `false` and would override the
+editor's default. A type pin fails to compile when the declared keys and `AragoniteProps` differ,
+and a second when an editor option takes a Vue-only name or `class`, `style`, `key` or `ref`.
+`npm run package` compiles it; the adapter suite's `vue.spec.ts` checks an absent boolean keeps the
+editor's default.
 
 ## Group 4: source scans
 

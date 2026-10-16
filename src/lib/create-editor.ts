@@ -1,12 +1,12 @@
 /**
  * The editor mounted into an element, for a host that doesn't compile Svelte (React, Vue, Angular,
- * plain DOM). Props live in one reactive object that `update` writes into, skipping the props
- * `EDITOR_PROP_TIMING` reads at mount only, so a host may pass every option again on each render.
+ * plain DOM). Props live in one reactive object that `update` writes into, skipping the options
+ * `EDITOR_OPTION_SPECS` marks as read at mount, so a host may pass every option again on each render.
  */
 
 import { createRawSnippet, mount, unmount, type Snippet } from 'svelte';
 import Editor from './components/Editor.svelte';
-import { EDITOR_PROP_TIMING, type EditorInstance, type EditorOptions } from './editor-props';
+import { EDITOR_OPTION_SPECS, type EditorInstance, type EditorOptions } from './editor-props';
 import type { EditorProps } from './components/editor-component-props';
 import { createReactiveProps } from './reactive-props';
 import { devWarn } from './dev-warn';
@@ -43,7 +43,7 @@ export function createEditor(target: HTMLElement, options: CreateEditorOptions =
 		...instance,
 		update(next) {
 			for (const key of propKeys(next)) {
-				if (EDITOR_PROP_TIMING[key] === 'once') continue;
+				if (EDITOR_OPTION_SPECS[key].timing === 'once') continue;
 				(props as Record<string, unknown>)[key] = propValue(key, next[key]);
 			}
 		},
@@ -64,7 +64,7 @@ const occupiedTargets = new WeakSet<HTMLElement>();
 // Presence is an own key, so `{ placeholder: undefined }` clears the prop.
 function propKeys(options: Partial<CreateEditorOptions>): (keyof EditorProps)[] {
 	return Object.keys(options).filter((key): key is keyof EditorProps =>
-		Object.hasOwn(EDITOR_PROP_TIMING, key)
+		Object.hasOwn(EDITOR_OPTION_SPECS, key)
 	);
 }
 
