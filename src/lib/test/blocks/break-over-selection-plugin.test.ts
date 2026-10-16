@@ -14,7 +14,7 @@ import {
 import { pressKey, settleEditor } from '#lib/test/harness/settle.js';
 import {
 	augmentBlockKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockCommand,
 	registerBlockOpener,
 	type BlockCommandContext,
@@ -36,12 +36,10 @@ function verseLeafPlugin(ran: [string, boolean][]): EditorPlugin {
 		ran.push([ctx.node.raw, ctx.afterRemoval]);
 		return true;
 	};
-	return definePluginBlock({
+	return definePlugin({
 		name: KIND,
-		kind: KIND,
-		view: svelteBlockView(PlainOneLineLeafBlock),
-		register: () => {
-			const kind = registerRevealLeafKind(KIND);
+		setup: () => {
+			const kind = registerRevealLeafKind(KIND, { view: svelteBlockView(PlainOneLineLeafBlock) });
 			const removing = registerBlockCommand(kind, 'verseLeaf.break', handler, {
 				overSelection: 'afterRemoval'
 			});

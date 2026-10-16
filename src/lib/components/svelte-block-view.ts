@@ -3,7 +3,7 @@
 import type { Component } from 'svelte';
 import type { NodeView } from '../core/node-views';
 import type { BlockComponentExports, BlockComponentProps } from '../block-component';
-import { asBlockView, type BlockView } from '../schema/block-view-registry';
+import { asBlockView, type BlockView } from '../schema/block-view';
 
 export interface SvelteBlockEntry {
 	/** Typed with `BlockComponentExports` so BlockHost's `bind:this` type-checks a component picked

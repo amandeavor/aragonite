@@ -17,21 +17,19 @@ import {
 	joinDisplayLines,
 	ownTrailingLineEnding,
 	parseContainerBody,
-	registerBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	serializeChildren,
 	setPluginMetadata,
 	type BlockOpenerResult,
+	type BlockView,
 	type ContainerBodyWrap,
 	type CstNode,
 	type OpenContext,
 	type ParsedLine
 } from '#lib/plugin.js';
-import { svelteBlockView } from '#lib/svelte.js';
 import { matchAlertMarker, stripQuoteMarker } from './gh-alert';
 import { GITHUB_ALERT, type GithubAlertMetadata } from './kinds';
-import AdmonitionBlock from './AdmonitionBlock.svelte';
 
 /** The `> [!TYPE]` line is the alert's own marker, so a blank line against it separates
  *  rather than becoming a block of its own; nothing closes the alert below. */
@@ -97,7 +95,7 @@ function prefixQuoteLines(body: string): string {
 	);
 }
 
-export function registerGithubAlert(): void {
+export function registerGithubAlert(view: BlockView): void {
 	const kind = declarePluginKind(GITHUB_ALERT);
 
 	registerBlockOpener(kind, {
@@ -109,6 +107,7 @@ export function registerGithubAlert(): void {
 	});
 
 	registerBlockKind(kind, {
+		view,
 		label: 'Alert',
 		// A note reads as part of the text around it, so it shows no drag handle.
 		pageRole: 'prose',
@@ -148,6 +147,4 @@ export function registerGithubAlert(): void {
 			}
 		})
 	});
-
-	registerBlockView(kind, svelteBlockView(AdmonitionBlock));
 }

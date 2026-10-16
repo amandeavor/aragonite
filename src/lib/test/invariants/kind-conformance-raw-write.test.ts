@@ -18,13 +18,14 @@ import { registerMathBlock, MATH_BLOCK, MATH_FENCE } from '#lib/plugins/latex/la
 import { registerMermaidKind, MERMAID } from '#lib/plugins/mermaid/mermaid-kind.js';
 import type { AnyBlockKind } from '#lib/core/nodes.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const rawWriteStatus = (report: KindConformanceReport) =>
 	report.cells.find((c) => c.cell === 'rawWrite')?.status;
 
 beforeEach(() => {
-	registerMathBlock();
-	registerMermaidKind();
+	registerMathBlock(testView());
+	registerMermaidKind(testView());
 });
 
 describe('kind conformance: the raw-write cell', () => {

@@ -3,7 +3,7 @@
 // folds, an undo that empties the block brings the hint back without reopening it.
 import { describe, it, expect, afterEach } from 'vitest';
 import {
-	definePluginBlock,
+	definePlugin,
 	registerBlockOpener,
 	simpleLeafClosure,
 	OPENER_PRIORITIES
@@ -27,12 +27,11 @@ afterEach(destroyMountedEditors);
 const MARKER = '@@';
 
 /** A one-line kind spelled `@@ <body>`, whose body is what follows the marker and its space. */
-const hintRevealPlugin = definePluginBlock({
+const hintRevealPlugin = definePlugin({
 	name: 'hint-reveal',
-	kind: 'hint-reveal',
-	view: svelteBlockView(HintRevealBlock),
-	register: () => {
+	setup: () => {
 		const kind = testLeaf('hint-reveal', {
+			view: svelteBlockView(HintRevealBlock),
 			closure: simpleLeafClosure({
 				focus: { mode: 'implemented', via: 'the render-primary leaf under test' },
 				searchPaint: { mode: 'inherit-default' },

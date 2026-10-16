@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
-import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
-import { getBlockView, isBlockViewRegistered } from '#lib/schema/block-view-registry.js';
+import { blockViewFor, getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
 import { svelteBlockEntry } from '#lib/components/svelte-block-view.js';
 import { registerChromeLeaf } from '#lib/plugin.js';
 import type { KeyBinding } from '#lib/schema/keybindings.js';
@@ -26,7 +25,7 @@ describe('registerChromeLeaf', () => {
 		expect(d.contextDependentKind).toBe(true);
 		expect(d.mergeRole).toBe('not-mergeable');
 		expect(d.keymap?.[0]).toEqual({ chord: 'Enter', command: 'block.split' });
-		expect(isBlockViewRegistered(kind)).toBe(true);
+		expect(blockViewFor(kind, everyInstalledPlugin)).toBeDefined();
 	});
 
 	it('defaults the keymap to descend-on-Enter plus the two merge chords', () => {
@@ -66,7 +65,7 @@ describe('registerChromeLeaf', () => {
 		const kind = declarePluginKind('spec-chrome-leaf');
 		registerChromeLeaf(kind);
 
-		const extraProps = svelteBlockEntry(getBlockView(kind, everyInstalledPlugin)!).extraProps;
+		const extraProps = svelteBlockEntry(blockViewFor(kind, everyInstalledPlugin)!).extraProps;
 		expect(extraProps?.({ kind, leadingTrivia: '', raw: '\n' })).toStrictEqual({
 			blockClass: undefined
 		});

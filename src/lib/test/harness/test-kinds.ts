@@ -12,6 +12,7 @@ import {
 } from '#lib/schema/block-kind-descriptor.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 /** An editable, not-mergeable leaf with no inline content and no gap stops. */
 export function testLeaf(name: string, over: Partial<BlockKindRegistration> = {}): PluginBlockKind {
@@ -22,6 +23,7 @@ export function testLeaf(name: string, over: Partial<BlockKindRegistration> = {}
 		editable: true,
 		supportsInline: false,
 		closure: testClosure,
+		view: testView(),
 		...over
 	});
 	return kind;

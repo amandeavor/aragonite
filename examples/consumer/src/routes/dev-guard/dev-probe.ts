@@ -10,7 +10,6 @@ import {
 	declarePluginKind,
 	declaredPluginKind,
 	registerBlockKind,
-	registerBlockView,
 	registerDirective,
 	isDirectiveRegistered,
 	setPluginMetadata,
@@ -72,6 +71,7 @@ export function devProbePlugin(): EditorPlugin {
 		setup() {
 			activateDirectives();
 			registerBlockKind(declarePluginKind(DEVPROBE), {
+				view: svelteBlockView(DevProbeBlock),
 				mergeRole: 'container',
 				editable: true,
 				gapEdges: 'none',
@@ -110,8 +110,6 @@ export function devProbePlugin(): EditorPlugin {
 					fromDirective: devprobeFromDirective
 				});
 			}
-
-			registerBlockView(devprobe, svelteBlockView(DevProbeBlock));
 		}
 	});
 }

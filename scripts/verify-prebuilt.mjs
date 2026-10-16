@@ -88,6 +88,8 @@ async function sharesOneRegistry(entries) {
 					editable: true,
 					supportsInline: false,
 					conformanceFixture: '%%probe\n',
+					// The prebuilt can't compile a component, so its one view is the text block.
+					view: plugin.textBlockView(),
 					closure: plugin.simpleLeafClosure({
 						focus: { mode: 'implemented', via: 'probe' },
 						searchPaint: { mode: 'implemented', via: 'probe' },

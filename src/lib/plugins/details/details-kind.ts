@@ -23,6 +23,7 @@ import {
 	findFenceCloser,
 	htmlBlockTagLineMatcher,
 	OPENER_PRIORITIES,
+	type BlockView,
 	type ContainerBodyWrap,
 	type CstNode
 } from '#lib/plugin.js';
@@ -188,11 +189,12 @@ export function rebuildDetailsRaw(node: CstNode): void {
 	node.raw = `${opener}${lineEnding}${inner}</details>${closerEnd}`;
 }
 
-export function registerDetailsKind(): void {
+export function registerDetailsKind(view: BlockView): void {
 	const details = declarePluginKind(DETAILS);
 	const detailsSummary = declarePluginKind(DETAILS_SUMMARY);
 
 	registerBlockKind(details, {
+		view,
 		label: 'Details',
 		dragLabel: 'Details',
 		mergeRole: 'container',

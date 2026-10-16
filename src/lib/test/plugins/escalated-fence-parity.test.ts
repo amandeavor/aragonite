@@ -24,6 +24,7 @@ import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import { makeTopHarness, type TopHarness } from '#lib/test/harness/editor-actions.js';
 import { scanCompiled } from '#lib/test/harness/search-replace.js';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // ── A third-party kind following the guide's "Code in metadata" recipe ──────
 
@@ -50,6 +51,7 @@ function registerSketchKind(): void {
 	const sketch = declarePluginKind('sketch');
 	const matchSketch = matchFenceInfo('sketch');
 	registerBlockKind(sketch, {
+		view: testView(),
 		gapEdges: 'before',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -175,7 +177,7 @@ const ROWS: Row[] = [
 describe('an edit after a lengthened fence gives the bytes a reload would (#640)', () => {
 	beforeEach(() => {
 		installPlugins([admonitionsPlugin()]);
-		registerMermaidKind();
+		registerMermaidKind(testView());
 		registerSketchKind();
 	});
 

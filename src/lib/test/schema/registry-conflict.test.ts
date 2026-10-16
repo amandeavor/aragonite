@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import {
+	blockViewFor,
 	registerBlockKind,
 	getBlockKindDescriptor,
 	tryGetBlockKindDescriptor
 } from '#lib/schema/block-kind-descriptor.js';
-import { registerBlockView, getBlockView, asBlockView } from '#lib/schema/block-view-registry.js';
 import {
 	registerBlockOpener,
 	listRegisteredOpeners,
@@ -15,17 +15,17 @@ import { registerCommand, getCommand } from '#lib/schema/commands.js';
 import { __resetSchemaRegistriesForTests } from '#lib/schema/registry-reset.js';
 import { testClosure } from '#lib/test/support/closure.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const minimal = {
 	gapEdges: 'none',
 	mergeRole: 'not-mergeable',
 	editable: true,
 	supportsInline: false,
-	closure: testClosure
+	closure: testClosure,
+	view: testView()
 } as const;
 
-// Guard fires on registry.has before the entry is read, so a stub entry is enough.
-const stubComponent = asBlockView({});
 const stubOpener: BlockOpener = { priority: 999, tryOpen: () => null, interruptsParagraph: false };
 
 describe('schema registries are register-once', () => {
@@ -37,12 +37,6 @@ describe('schema registries are register-once', () => {
 		const kind = declarePluginKind('conflict-kind');
 		registerBlockKind(kind, minimal);
 		expect(() => registerBlockKind(kind, minimal)).toThrow(/already registered/i);
-	});
-
-	it('registerBlockView throws on a duplicate registration', () => {
-		const kind = declarePluginKind('conflict-component');
-		registerBlockView(kind, stubComponent);
-		expect(() => registerBlockView(kind, stubComponent)).toThrow(/already registered/i);
 	});
 
 	it('registerBlockOpener throws on a duplicate registration', () => {
@@ -60,13 +54,12 @@ describe('__resetSchemaRegistriesForTests', () => {
 	it('removes plugin registrations across every registry but keeps built-ins', () => {
 		const kind = declarePluginKind('ephemeral-kind');
 		registerBlockKind(kind, minimal);
-		registerBlockView(kind, stubComponent);
 		registerBlockOpener(kind, stubOpener);
 
 		__resetSchemaRegistriesForTests();
 
 		expect(tryGetBlockKindDescriptor(kind)).toBeUndefined();
-		expect(getBlockView(kind, everyInstalledPlugin)).toBeUndefined();
+		expect(blockViewFor(kind, everyInstalledPlugin)).toBeUndefined();
 		expect(listRegisteredOpeners().some((o) => o.kind === kind)).toBe(false);
 
 		expect(getBlockKindDescriptor('paragraph')).toBeDefined();

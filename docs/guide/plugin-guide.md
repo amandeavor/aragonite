@@ -38,12 +38,12 @@ A **kind** is aragonite's word for a block type. Paragraph is a kind, fenced cod
 
 A block's **raw** is its exact source bytes, markers included. The editor saves a document by joining raws (plus the blank lines kept between blocks) and nothing else, so whatever your plugin writes into that field is exactly what lands in the user's file.
 
-**Declare and describe.** Registering a kind is four calls. The rest of the guide keeps coming back to them, and so will you. Here's each one properly:
+**Declare and describe.** Registering a kind is three calls inside a plugin. The rest of the guide keeps coming back to them, and so will you. Here's each one properly:
 
 - **`declarePluginKind(name)`** creates a new kind and returns it (a name that's already taken throws). Every other call here takes that return value, and the type system won't accept the bare string in its place. A module that didn't create the kind recovers it with `declaredPluginKind(name)`, which throws for an undeclared name (a typo, say) rather than registering against a kind that doesn't exist.
-- **`registerBlockKind(kind, descriptor)`** describes how the kind behaves: does it merge, is it editable, does it host inline content, where can a caret sit beside it, and how it answers every cross-cutting editor system (the `closure` field). A leaf needs only what the sample below fills.
+- **`registerBlockKind(kind, registration)`** describes how the kind behaves and what draws it: does it merge, is it editable, does it host inline content, where can a caret sit beside it, how it answers every cross-cutting editor system (the `closure` field), and its `view`. A view is what draws the block. `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component, and `textBlockView()` hands you the editor's own plain text block. A leaf needs only what the sample below fills.
 - **`registerBlockOpener(kind, opener)`** teaches the parser to recognize the syntax. An **opener** is the part of the parser that spots the line a block starts with: you give it a `priority` (its place in the dispatch order), an `interruptsParagraph` predicate (or `false`, for never), and a `tryOpen` that claims lines or declines. [Teaching the parser](plugin-guide/parser.md#teaching-the-parser) is its full story.
-- **`definePluginBlock({ name, kind, view, register })`** packages the lot as one installable unit: it runs your `register` step, then binds the view to the kind. A view is what draws the block; `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component. It's the one-kind shortcut over the general `definePlugin` ([The plugin unit](#the-plugin-unit)), and takes the same optional `defaults` and `parseOptions`. Its `register` gets no setup context, though, so a plugin that needs per-editor work (`onEditor`) uses `definePlugin`.
+- **`definePlugin({ name, setup })`** packages the lot as one installable unit, and the editor runs your `setup` once per page. [The plugin unit](#the-plugin-unit) has the rest: per-editor options, and `onEditor` for work each editor does.
 
 The first one in action (a kind is a plain string underneath, with a type brand on top):
 
@@ -54,17 +54,18 @@ declaredPluginKind('parot'); // throws: "parot" has not been declared
 declarePluginKind('paragraph'); // throws: "paragraph" is a built-in BlockKind
 ```
 
-And all four together, which is the whole plugin minus its component:
+And all of it together, which is the whole plugin minus its component:
 
 ```ts
 // parrot-plugin.ts
 import {
 	caretOffsetAtPoint,
 	declarePluginKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
+	type BlockView,
 	type CaretTarget,
 	type EditorPlugin
 } from '@voithos-labs/aragonite/plugin';
@@ -87,10 +88,11 @@ function parrotCaretAtPoint(
 	return { path: [], offset: source ? offset : offset + Number(view.dataset.captionStart) };
 }
 
-function registerParrotBlock(): void {
+function registerParrotBlock(view: BlockView): void {
 	const parrot = declarePluginKind(PARROT);
 
 	registerBlockKind(parrot, {
+		view,
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -117,11 +119,9 @@ function registerParrotBlock(): void {
 }
 
 export function parrotPlugin(): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: 'parrot',
-		kind: PARROT,
-		view: svelteBlockView(ParrotBlock),
-		register: registerParrotBlock
+		setup: () => registerParrotBlock(svelteBlockView(ParrotBlock))
 	});
 }
 ```

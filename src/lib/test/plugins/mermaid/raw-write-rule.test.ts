@@ -7,6 +7,7 @@ import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
+import { testView } from '#lib/test/support/test-view.js';
 
 // The mermaid kind declares a raw-write rule that puts back a closing fence a truncating write
 // dropped, so bytes written past the diagram's own editor cannot swallow the blocks below it.
@@ -19,7 +20,7 @@ function write(source: string, raw: string): string {
 }
 
 beforeEach(() => {
-	registerMermaidKind();
+	registerMermaidKind(testView());
 });
 
 describe('a truncating write of a mermaid block gets its closing fence back', () => {

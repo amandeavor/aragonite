@@ -1,4 +1,4 @@
-import { describe, expect, it, afterEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { AnyBlockKind } from '#lib/core/nodes.js';
 import { checkLateOpenerRegistration } from '#lib/invariants/registry.js';
 import {
@@ -19,12 +19,14 @@ import {
 import { registerChromeLeaf } from '#lib/plugin.js';
 import { __resetSchemaRegistriesForTests } from '#lib/schema/registry-reset.js';
 import { testClosure } from '#lib/test/support/closure.js';
-import { allowDevWarns, takeDevWarns } from '#lib/test/support/warn-gate.js';
+import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { collector } from '#lib/test/harness/violation-collector.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const containerGroup = { contract: 'opaque', rebuildRaw: () => {} } as const;
 
 const container: BlockKindRegistration = {
+	view: testView(),
 	gapEdges: 'none',
 	mergeRole: 'container',
 	editable: true,
@@ -34,6 +36,7 @@ const container: BlockKindRegistration = {
 };
 
 const leaf: BlockKindRegistration = {
+	view: testView(),
 	gapEdges: 'none',
 	mergeRole: 'not-mergeable',
 	editable: true,
@@ -51,10 +54,6 @@ const opener = (priority: number): BlockOpener => ({
 	tryOpen: () => null,
 	interruptsParagraph: false
 });
-
-// The unit setup registers built-in descriptors but never components, so every check this file
-// forces reports the missing components; what matters here is what else it finds.
-afterEach(() => allowDevWarns(['invariant:registry-completeness']));
 
 describe('checkLateOpenerRegistration', () => {
 	it('passes while the grammar is unconsumed', () => {
@@ -201,9 +200,7 @@ describe('registry-derived first-flush sweep', () => {
 
 		const { violations, report } = collector();
 		flushPendingRegistrationChecks(report);
-		// Built-in components don't load in the unit-test context (see registry.test.ts), so
-		// the completeness sweep fires on built-ins; every other check must stay silent.
-		expect(violations.filter((v) => v.tag !== 'registry-completeness')).toEqual([]);
+		expect(violations).toEqual([]);
 	});
 });
 
@@ -241,9 +238,8 @@ describe('keymap coherence at the incremental flush', () => {
 // The predicate is unit-tested in test/invariants/reserved-chrome-coherence.test.ts; this case
 // checks that the flush actually runs it (G1.18).
 describe('reservedChrome coherence at the flush', () => {
-	it('flags a chrome kind with no registered component (first-flush sweep)', () => {
-		const title = declarePluginKind('rc-descriptor-only');
-		registerBlockKind(title, { ...leaf, contextDependentKind: true });
+	it('flags a chrome kind that was declared but never registered (first-flush sweep)', () => {
+		const title = declarePluginKind('rc-declared-only');
 		const calloutKind = declarePluginKind('rc-container');
 		registerBlockKind(calloutKind, withChrome(title));
 
@@ -251,8 +247,8 @@ describe('reservedChrome coherence at the flush', () => {
 		flushPendingRegistrationChecks(report);
 		expect(byTag('reserved-chrome-coherence')).toHaveLength(1);
 		expect(byTag('reserved-chrome-coherence')[0].violation.detail).toMatchObject({
-			chromeKind: 'rc-descriptor-only',
-			missing: 'component'
+			chromeKind: 'rc-declared-only',
+			missing: 'descriptor'
 		});
 	});
 });

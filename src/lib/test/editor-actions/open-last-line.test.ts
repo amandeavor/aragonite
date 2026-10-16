@@ -28,6 +28,7 @@ import {
 	pasteContext
 } from '#lib/test/harness/editor-actions.js';
 import { makeHarness, runOp, type Op } from '#lib/test/undo/restoration-ops.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 type Route = (source: string) => Promise<Document>;
 
@@ -302,7 +303,7 @@ describe('a directive container that ends the document', () => {
 			inContainer([1], (bundle) => bundle.blockEdit.splitBlock(0, 2))
 		]
 	])('%s keeps the closer line open', async (_name, source, after, route) => {
-		activateDirectiveGrammar();
+		activateDirectiveGrammar(testDirectiveViews());
 		const doc = await route(source);
 		expect(doc.children[1].kind).toBe(DIRECTIVE_CONTAINER);
 		expect(serialize(doc)).toBe(after);

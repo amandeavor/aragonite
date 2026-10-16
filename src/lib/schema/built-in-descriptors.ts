@@ -10,7 +10,7 @@ import { displayLength } from '../core/lines';
 import { matchHeading } from '../core/parsers/heading';
 import { containerClosure, type ClosureBlock } from './closure';
 import type { KeyBinding } from './keybindings';
-import { registerBlockKind } from './block-kind-descriptor';
+import { registerBuiltinBlockKind } from './block-kind-descriptor';
 import {
 	rebuildBlockquoteRaw,
 	rebuildListItemRaw,
@@ -230,7 +230,7 @@ export function registerBuiltInDescriptors(): void {
 
 	registerBuiltInInlinePolicies();
 
-	registerBlockKind('paragraph', {
+	registerBuiltinBlockKind('paragraph', {
 		pageRole: 'prose',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -246,7 +246,7 @@ export function registerBuiltInDescriptors(): void {
 			reorderVia: 'Alt+Arrow block.move keymap; resolveReorderUnit'
 		})
 	});
-	registerBlockKind('heading', {
+	registerBuiltinBlockKind('heading', {
 		pageRole: 'prose',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -264,7 +264,7 @@ export function registerBuiltInDescriptors(): void {
 			searchPaintVia: 'content-range raw scanned; marks (marker prefix skipped)'
 		})
 	});
-	registerBlockKind('setextHeading', {
+	registerBuiltinBlockKind('setextHeading', {
 		pageRole: 'prose',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -281,7 +281,7 @@ export function registerBuiltInDescriptors(): void {
 			searchPaintVia: 'content-range raw scanned; marks (underline line skipped)'
 		})
 	});
-	registerBlockKind('fencedCode', {
+	registerBuiltinBlockKind('fencedCode', {
 		pageRole: 'object',
 		dragLabel: 'Code',
 		estimateHeight: sourceLinesEstimate,
@@ -324,7 +324,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation under the loaded-ops oracles' }
 		}
 	});
-	registerBlockKind('thematicBreak', {
+	registerBuiltinBlockKind('thematicBreak', {
 		pageRole: 'object',
 		dragLabel: 'Divider',
 		estimateHeight: singleLineEstimate,
@@ -359,7 +359,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation under the loaded-ops oracles' }
 		}
 	});
-	registerBlockKind('indentedCode', {
+	registerBuiltinBlockKind('indentedCode', {
 		pageRole: 'object',
 		estimateHeight: sourceLinesEstimate,
 		gapEdges: 'none',
@@ -370,7 +370,7 @@ export function registerBuiltInDescriptors(): void {
 		conformanceFixture: '    indented code\n',
 		closure: RAW_TEXT_LEAF_CLOSURE
 	});
-	registerBlockKind('htmlBlock', {
+	registerBuiltinBlockKind('htmlBlock', {
 		pageRole: 'object',
 		estimateHeight: sourceLinesEstimate,
 		gapEdges: 'none',
@@ -381,7 +381,7 @@ export function registerBuiltInDescriptors(): void {
 		conformanceFixture: '<div>\nhtml\n</div>\n',
 		closure: RAW_TEXT_LEAF_CLOSURE
 	});
-	registerBlockKind('linkReferenceDefinition', {
+	registerBuiltinBlockKind('linkReferenceDefinition', {
 		pageRole: 'object',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -392,7 +392,7 @@ export function registerBuiltInDescriptors(): void {
 		conformanceFixture: '[id]: /url "title"\n',
 		closure: RAW_TEXT_LEAF_CLOSURE
 	});
-	registerBlockKind('table', {
+	registerBuiltinBlockKind('table', {
 		pageRole: 'object',
 		estimateHeight: containerEstimate,
 		mergeRole: 'not-mergeable',
@@ -430,7 +430,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation drives table cell edits' }
 		}
 	});
-	registerBlockKind('tableRow', {
+	registerBuiltinBlockKind('tableRow', {
 		pageRole: 'object',
 		estimateHeight: containerEstimate,
 		gapEdges: 'none',
@@ -460,7 +460,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation (table edits)' }
 		}
 	});
-	registerBlockKind('tableCell', {
+	registerBuiltinBlockKind('tableCell', {
 		pageRole: 'prose',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -501,7 +501,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation (table cell edits)' }
 		}
 	});
-	registerBlockKind('unrecognized', {
+	registerBuiltinBlockKind('unrecognized', {
 		pageRole: 'object',
 		estimateHeight: proseEstimate,
 		gapEdges: 'none',
@@ -521,7 +521,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'inherit-default' }
 		}
 	});
-	registerBlockKind('blockquote', {
+	registerBuiltinBlockKind('blockquote', {
 		pageRole: 'prose',
 		estimateHeight: containerEstimate,
 		gapEdges: 'none',
@@ -555,7 +555,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation (nested blockquote edits)' }
 		})
 	});
-	registerBlockKind('list', {
+	registerBuiltinBlockKind('list', {
 		// Its items carry the handles: one on the list would sit over its first item's.
 		pageRole: 'prose',
 		estimateHeight: containerEstimate,
@@ -594,7 +594,7 @@ export function registerBuiltInDescriptors(): void {
 			simOracle: { mode: 'implemented', via: 'note-taking simulation (list edits)' }
 		})
 	});
-	registerBlockKind('listItem', {
+	registerBuiltinBlockKind('listItem', {
 		pageRole: 'object',
 		estimateHeight: containerEstimate,
 		gapEdges: 'none',

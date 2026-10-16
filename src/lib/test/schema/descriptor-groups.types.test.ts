@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import {
+	attachBuiltinViews,
 	augmentBlockKind,
 	getBlockKindDescriptor,
 	registerBlockKind,
+	registerBuiltinBlockKind,
 	type BlockKindRegistration
 } from '#lib/schema/block-kind-descriptor.js';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const leaf = {
 	gapEdges: 'none',
 	mergeRole: 'not-mergeable',
 	editable: true,
 	supportsInline: false,
-	closure: testClosure
+	closure: testClosure,
+	view: testView()
 } as const;
 
 const group = { contract: 'opaque', rebuildRaw: () => {} } as const;
@@ -120,6 +124,24 @@ const typePins = (): void => {
 };
 void typePins;
 
+// ── Compile-time pins (G3.15) ───────────────────────────────────────────────
+// A kind and the view that draws it are one registration, so a kind with no view can't be written.
+const viewPins = (): void => {
+	const kind = declarePluginKind('view-pin');
+	const { view, ...viewless } = leaf;
+
+	// @ts-expect-error a plugin kind registers with its view
+	registerBlockKind(kind, viewless);
+	// @ts-expect-error the viewless route is for built-ins, whose views attach from the component layer
+	registerBuiltinBlockKind(kind, viewless);
+	registerBuiltinBlockKind('paragraph', viewless);
+	// @ts-expect-error the view is fixed at registration
+	augmentBlockKind(kind, { view });
+	// @ts-expect-error every standalone built-in gets a view, so a table missing one doesn't compile
+	attachBuiltinViews({ paragraph: view });
+};
+void viewPins;
+
 // ── Normalization into the flat read shape ─────────────────────────────────
 
 describe('registerBlockKind flattens the descriptor groups', () => {
@@ -171,7 +193,10 @@ describe('registerBlockKind flattens the descriptor groups', () => {
 	// the only source; the cast stands in for a JS caller.
 	it('drops a flat content range that arrives outside the group', () => {
 		const kind = declarePluginKind('groups-widened');
-		registerBlockKind(kind, getBlockKindDescriptor('heading') as BlockKindRegistration);
+		registerBlockKind(kind, {
+			...getBlockKindDescriptor('heading'),
+			view: testView()
+		} as BlockKindRegistration);
 
 		const d = getBlockKindDescriptor(kind);
 		expect(d.getContentRange).toBeUndefined();

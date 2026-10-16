@@ -12,7 +12,7 @@ import {
 import { pressKey } from '#lib/test/harness/settle.js';
 import {
 	augmentBlockKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockCommand,
 	registerBlockOpener,
 	type BlockCommandContext,
@@ -35,12 +35,10 @@ function pinLeafPlugin(ran: (text: string) => void): EditorPlugin {
 		ran(ctx.node.raw);
 		return true;
 	};
-	return definePluginBlock({
+	return definePlugin({
 		name: KIND,
-		kind: KIND,
-		view: svelteBlockView(RevealLeafBlock),
-		register: () => {
-			const kind = registerRevealLeafKind(KIND);
+		setup: () => {
+			const kind = registerRevealLeafKind(KIND, { view: svelteBlockView(RevealLeafBlock) });
 			const options = { overRange: 'afterRemoval' } as const;
 			const enter = registerBlockCommand(kind, 'pinLeaf.enter', handler, options);
 			const mark = registerBlockCommand(kind, 'pinLeaf.mark', handler, options);

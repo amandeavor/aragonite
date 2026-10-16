@@ -11,6 +11,7 @@ import {
 	isInlineKindDeclared
 } from '../../schema/plugin-kind';
 import { registerBlockKind, isBlockKindRegistered } from '../../schema/block-kind-descriptor';
+import type { BlockView } from '../../schema/block-view';
 import { containerClosure } from '../../schema/closure';
 import type { KeyBinding } from '../../schema/keybindings';
 import { getPluginMetadata, type CstNode, type InlineNode } from '../nodes';
@@ -42,10 +43,17 @@ export interface DirectiveContainerMetadata {
 	lineEnding: string;
 }
 
-export function registerDirectiveKinds(): void {
+/** What draws the two generic directive kinds; core can't import components, so they arrive here. */
+export interface DirectiveViews {
+	container: BlockView;
+	leaf: BlockView;
+}
+
+export function registerDirectiveKinds(views: DirectiveViews): void {
 	if (isBlockKindRegistered(DIRECTIVE_CONTAINER)) return; // idempotent for HMR / re-import
 
 	registerBlockKind(declarePluginKind(DIRECTIVE_CONTAINER), {
+		view: views.container,
 		label: 'Directive',
 		mergeRole: 'container',
 		editable: true,
@@ -75,6 +83,7 @@ export function registerDirectiveKinds(): void {
 	});
 
 	registerBlockKind(declarePluginKind(DIRECTIVE_LEAF), {
+		view: views.leaf,
 		label: 'Directive',
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',

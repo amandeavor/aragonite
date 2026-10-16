@@ -15,7 +15,7 @@ import {
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { dispatchKey } from '#lib/test/harness/settle.js';
 import { newestEntryCaret } from '../support/undo-entry';
-import { definePluginBlock, registerBlockOpener } from '#lib/plugin.js';
+import { definePlugin, registerBlockOpener } from '#lib/plugin.js';
 import { svelteBlockView } from '#lib/svelte.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 import PlainLeafBlock from '../plugins/fixtures/PlainLeafBlock.svelte';
@@ -118,12 +118,10 @@ describe.each(['live', 'source'] as const)(
 );
 
 /** A plain-mode editable leaf whose block is one `@@ ` line; it commits each edit as it lands. */
-const plainLeaf = definePluginBlock({
+const plainLeaf = definePlugin({
 	name: 'paste-plain-leaf',
-	kind: 'paste-plain-leaf',
-	view: svelteBlockView(PlainLeafBlock),
-	register: () => {
-		const kind = testLeaf('paste-plain-leaf');
+	setup: () => {
+		const kind = testLeaf('paste-plain-leaf', { view: svelteBlockView(PlainLeafBlock) });
 		registerBlockOpener(kind, {
 			priority: 25,
 			interruptsParagraph: false,

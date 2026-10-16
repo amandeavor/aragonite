@@ -12,6 +12,7 @@ import { settled } from '#lib/test/harness/settle-funnel.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // A table takes any line straight below its rows that opens no other block, so a block an edit
 // turns into text right under a table gets a blank line between, and stays the block it is.
@@ -95,7 +96,7 @@ describe('a block turned into text right under a table keeps a blank line', () =
 // Miss-analysis: every case above used a one-line built-in opener in the default grammar.
 describe('the blank line a follower takes depends on the editor’s grammar', () => {
 	beforeEach(() => {
-		registerMathBlock();
+		registerMathBlock(testView());
 	});
 
 	it('a `$$` block that closes below ends the table, so it takes none', () => {

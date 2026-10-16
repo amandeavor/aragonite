@@ -7,6 +7,7 @@ import { registerBlockOpener, type OpenContext } from '../../schema/block-opener
 import { declarePluginKind } from '../../schema/plugin-kind';
 import { activateDirectiveGrammar } from '../../core/directive/activate';
 import { FRONT_MATTER, registerDocumentTopKind } from '../support/position-scoped-kind';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 /** Every context the parser offers, in dispatch order; the probe declines them all. */
 function observeContexts(): OpenContext[] {
@@ -54,7 +55,7 @@ describe('parse scope', () => {
 		{
 			label: 'directive container',
 			source: ':::note\nbody\n:::\n',
-			activate: activateDirectiveGrammar
+			activate: () => activateDirectiveGrammar(testDirectiveViews())
 		}
 	];
 

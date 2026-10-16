@@ -8,16 +8,10 @@ import type { SplitBehavior } from '../schema/inline-construct-policy';
  * it back would close a cycle.
  */
 
-/** `listItem` renders inside its parent `ListBlock`, never through a `BlockHost` lookup, so it is
- *  the one kind with no component-registry entry. */
-const NO_STANDALONE_COMPONENT: ReadonlySet<BlockKind> = new Set(['listItem']);
-
-/** G1.2: every BlockKind resolves to a descriptor, and to a component unless it renders inside a
- *  parent. Returns the first gap. */
+/** G1.2: every BlockKind resolves to a descriptor. Returns the first gap. */
 export function checkRegistryCompleteness(
 	kinds: readonly BlockKind[],
-	hasDescriptor: (kind: BlockKind) => boolean,
-	hasComponent: (kind: BlockKind) => boolean
+	hasDescriptor: (kind: BlockKind) => boolean
 ): InvariantViolation | null {
 	for (const kind of kinds) {
 		if (!hasDescriptor(kind)) {
@@ -25,13 +19,6 @@ export function checkRegistryCompleteness(
 				code: 'registry-incomplete',
 				message: `kind "${kind}" has no registered descriptor`,
 				detail: { kind, missing: 'descriptor' }
-			};
-		}
-		if (!NO_STANDALONE_COMPONENT.has(kind) && !hasComponent(kind)) {
-			return {
-				code: 'registry-incomplete',
-				message: `kind "${kind}" has no registered component`,
-				detail: { kind, missing: 'component' }
 			};
 		}
 	}
@@ -121,12 +108,11 @@ export interface ReservedChromeCoherenceEntry {
 	reservedChromeKind?: AnyBlockKind;
 }
 
-/** G1.18: the title-row kind a container's `reservedChrome` names has a descriptor and a
- *  component. G1.14 checks the child itself on every commit. */
+/** G1.18: the title-row kind a container's `reservedChrome` names is registered, which brings its
+ *  view with it. G1.14 checks the child itself on every commit. */
 export function checkReservedChromeCoherence(
 	entries: readonly ReservedChromeCoherenceEntry[],
-	hasDescriptor: (kind: AnyBlockKind) => boolean,
-	hasComponent: (kind: AnyBlockKind) => boolean
+	hasDescriptor: (kind: AnyBlockKind) => boolean
 ): InvariantViolation | null {
 	for (const { kind, reservedChromeKind } of entries) {
 		if (reservedChromeKind === undefined) continue;
@@ -135,13 +121,6 @@ export function checkReservedChromeCoherence(
 				code: 'reserved-chrome-coherence',
 				message: `reservedChrome kind "${reservedChromeKind}" (declared by "${kind}") has no registered descriptor`,
 				detail: { kind, chromeKind: reservedChromeKind, missing: 'descriptor' }
-			};
-		}
-		if (!hasComponent(reservedChromeKind)) {
-			return {
-				code: 'reserved-chrome-coherence',
-				message: `reservedChrome kind "${reservedChromeKind}" (declared by "${kind}") has no registered component`,
-				detail: { kind, chromeKind: reservedChromeKind, missing: 'component' }
 			};
 		}
 	}

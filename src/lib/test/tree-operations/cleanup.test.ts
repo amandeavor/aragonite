@@ -6,6 +6,7 @@ import { cascadeCleanupEmptyAncestors } from '../../tree-operations/cleanup';
 import { createSharingState, type SharingState } from '../../tree-operations/sharing';
 import type { CstNode, Document } from '../../core/nodes';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 function para(raw: string): CstNode {
 	return { kind: 'paragraph', leadingTrivia: '', raw };
@@ -85,7 +86,7 @@ describe('cascadeCleanupEmptyAncestors', () => {
 	});
 
 	it('spares a whole-block kind and a leaf, which hold no child by design', () => {
-		registerMermaidKind();
+		registerMermaidKind(testView());
 		const diagram = parse('```mermaid\ngraph TD\n```\n').children[0];
 		expect(diagram.kind).toBe('mermaid');
 		const leaf = { ...para('x\n'), children: [] } as CstNode;

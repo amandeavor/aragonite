@@ -7,6 +7,7 @@ import { registerCalloutKind } from '../../../routes/test/plugins/callout/callou
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { makeCommitScopeStub, parseLeaf as leaf } from '#lib/test/harness/editor-actions.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 function focusSpy() {
 	const calls: number[] = [];
@@ -251,7 +252,7 @@ describe('block-edit core: thematicBreak focus-then-delete', () => {
 // Miss-analysis: the wrap fix-up tests passed the container node, never the commit view's shape.
 describe('block-edit core: wrap-owner threading', () => {
 	beforeEach(() => {
-		registerCalloutKind();
+		registerCalloutKind(testView());
 	});
 
 	it('deleteInterior hands the owner to the settle, so the wrap absorbs the freed line', async () => {

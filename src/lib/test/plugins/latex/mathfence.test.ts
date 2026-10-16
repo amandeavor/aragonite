@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { parse, serialize } from '#lib';
 import { roundTripCases } from '#lib/test/support/round-trip.js';
 import { registerMathFence, MATH_FENCE } from '#lib/plugins/latex/latex-kind.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // GitHub's third math form: a fence whose info string starts with `math`. Registered below
 // `fencedCode`, which would otherwise take every fence.
 
 describe('math fence claims and declines', () => {
 	beforeEach(() => {
-		registerMathFence();
+		registerMathFence(testView());
 	});
 
 	it('claims a ```math fence as a childless source-holding leaf', () => {
@@ -64,7 +65,7 @@ describe('math fence claims and declines', () => {
 // mermaid does not, becoming a plain `math` code block with identical bytes.
 describe('unterminated math fence declines to fencedCode', () => {
 	beforeEach(() => {
-		registerMathFence();
+		registerMathFence(testView());
 	});
 
 	const unterminated = ['```math\nx^2\nno closer', 'text\n```math\nx^2\n', '```math\n'];
@@ -81,7 +82,7 @@ describe('unterminated math fence declines to fencedCode', () => {
 // CRLF threading: the closer line and its ending survive verbatim through raw.
 describe('math fence round-trip', () => {
 	beforeEach(() => {
-		registerMathFence();
+		registerMathFence(testView());
 	});
 
 	roundTripCases([

@@ -9,12 +9,13 @@ import {
 	registerBlockKind,
 	registerBlockCommand,
 	registerBlockOpener,
-	simpleLeafClosure
+	simpleLeafClosure,
+	type BlockView
 } from '#lib/plugin.js';
 
 export const MEMO_BLOCK = 'memo';
 
-export function registerMemoBlock(): void {
+export function registerMemoBlock(view: BlockView): void {
 	const memo = declarePluginKind(MEMO_BLOCK);
 
 	// Harness-only commands, dispatched the way an editable leaf's registered commands are:
@@ -28,6 +29,7 @@ export function registerMemoBlock(): void {
 	});
 
 	registerBlockKind(memo, {
+		view,
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
 		editable: true,

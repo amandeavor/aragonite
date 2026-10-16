@@ -5,7 +5,6 @@ import { mount, unmount, flushSync } from 'svelte';
 import BlockList from '#lib/components/BlockList.svelte';
 import type { BlockComponent } from '#lib/block-component.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
-import { registerBlockView } from '#lib/schema/block-view-registry.js';
 import { svelteBlockView } from '#lib/components/svelte-block-view.js';
 import { refSlotsOver } from '#lib/block-lists/child-refs.js';
 import { editorMountContext } from '../harness/mount-context';
@@ -21,12 +20,9 @@ beforeAll(installEditorDomStubsForTests);
  *  other, which is the only thing the list reads. */
 function recordingKind(name: string, supportsInline: boolean) {
 	const kind = testLeaf(name, {
+		view: svelteBlockView(RecordingBlock, () => ({})),
 		supportsInline
 	});
-	registerBlockView(
-		kind,
-		svelteBlockView(RecordingBlock, () => ({}))
-	);
 	return kind;
 }
 

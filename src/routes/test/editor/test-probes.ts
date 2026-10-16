@@ -8,7 +8,7 @@ import { parseConverges } from '#lib/testing/parse-convergence.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { spliceChildren } from '#lib/tree-operations/children.js';
 import { getStateForNode } from '#lib/block-lists/state-registry.js';
-import type { BlockKind, CstNode, Document } from '#lib/core/nodes.js';
+import type { BlockKind, CstNode, Document, PluginBlockKind } from '#lib/core/nodes.js';
 import type { GapCaretPosition } from '#lib/selection/gap-caret.js';
 import type { EditorSelection } from '#lib/selection/primitives.js';
 import type { DecorationSource, DecorationSourceHandle } from '#lib/decorations/types.js';
@@ -19,8 +19,10 @@ import {
 	registerBlockKind,
 	tryGetBlockKindDescriptor
 } from '#lib/schema/block-kind-descriptor.js';
-import { registerBlockView } from '#lib/schema/block-view-registry.js';
 import { svelteBlockView } from '#lib/components/svelte-block-view.js';
+import { textBlockView } from '#lib/components/blocks/text/text-block-view.js';
+import { declarePluginKind } from '#lib/schema/plugin-kind.js';
+import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import type { HarnessSource } from './harness-source.svelte';
 import {
 	isPasteTransformRegistered,
@@ -76,6 +78,35 @@ const HARNESS_PROBE_CLOSURE: ClosureBlock = {
 	clipboard: { mode: 'not-supported', reason: 'harness probe — not clipboard-tested' },
 	simOracle: { mode: 'not-supported', reason: 'harness probe — drives the fallback path only' }
 };
+
+let orphanKind: PluginBlockKind | undefined;
+
+// The plugin installs once per page, and a failed install can't be retried, so the kind is kept.
+function installOrphanKind(): PluginBlockKind {
+	try {
+		installPlugins([
+			definePlugin({
+				name: 'orphan-probe',
+				setup() {
+					orphanKind = declarePluginKind('orphanTest');
+					registerBlockKind(orphanKind, {
+						gapEdges: 'none',
+						mergeRole: 'not-mergeable',
+						editable: true,
+						supportsInline: false,
+						closure: HARNESS_PROBE_CLOSURE,
+						view: textBlockView()
+					});
+					throw new Error('orphan-probe: setup fails on purpose');
+				}
+			})
+		]);
+	} catch {
+		// The failed setup is the point: it leaves the kind registered under a plugin that never
+		// installed.
+	}
+	return orphanKind!;
+}
 
 export interface TestProbeDeps {
 	editor: EditorInstance;
@@ -451,19 +482,10 @@ export function installTestProbes({
 		},
 		getConformanceEntries: (): ConformanceSweepEntry[] =>
 			collectConformanceEntries(editor.__test.getGrammar()),
-		// A kind with no registered component reaches BlockHost's visible-raw fallback; it stays
-		// outside ALL_BLOCK_KINDS so the startup completeness check is unaffected.
+		// A kind whose plugin's setup threw resolves no view in any editor, so it reaches BlockHost's
+		// visible-raw fallback, the way a broken plugin's blocks do.
 		makeBlockOrphan: (index: number): void => {
-			const kind = 'orphanTest' as BlockKind;
-			if (!tryGetBlockKindDescriptor(kind)) {
-				registerBlockKind(kind, {
-					gapEdges: 'none',
-					mergeRole: 'not-mergeable',
-					editable: true,
-					supportsInline: false,
-					closure: HARNESS_PROBE_CLOSURE
-				});
-			}
+			const kind = orphanKind ?? installOrphanKind();
 			const doc = editor.__test.getDocument();
 			const node = doc.children[index] as CstNode | undefined;
 			if (!node) return;
@@ -480,11 +502,11 @@ export function installTestProbes({
 					mergeRole: 'not-mergeable',
 					editable: false,
 					supportsInline: false,
-					closure: HARNESS_PROBE_CLOSURE
+					closure: HARNESS_PROBE_CLOSURE,
+					// A throwing stub isn't a full BlockComponent, but it throws before any
+					// method is read.
+					view: svelteBlockView(ThrowOnRenderBlock as never)
 				});
-				// A throwing stub isn't a full BlockComponent, but it throws before any
-				// method is read.
-				registerBlockView(kind, svelteBlockView(ThrowOnRenderBlock as never));
 			}
 			const doc = editor.__test.getDocument();
 			const node = doc.children[index] as CstNode | undefined;

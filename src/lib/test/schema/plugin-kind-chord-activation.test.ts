@@ -7,6 +7,7 @@ import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { collectReservedChords } from '#lib/schema/reserved-chords.js';
 import { testClosure } from '#lib/test/support/closure.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 const CHORD = 'Mod+Shift+8';
 
@@ -18,6 +19,7 @@ function installKeymapPlugin(name: string): void {
 			setup() {
 				const kind = declarePluginKind(`${name}Block`);
 				registerBlockKind(kind, {
+					view: testView(),
 					gapEdges: 'none',
 					mergeRole: 'not-mergeable',
 					editable: true,

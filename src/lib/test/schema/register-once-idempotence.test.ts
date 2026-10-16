@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { configureEditorEnv } from '#lib/env.js';
 import { takeDevWarns } from '../support/warn-gate';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
-import { registerBlockKind, getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
-import { registerBlockView, getBlockView, asBlockView } from '#lib/schema/block-view-registry.js';
+import {
+	blockViewFor,
+	registerBlockKind,
+	getBlockKindDescriptor
+} from '#lib/schema/block-kind-descriptor.js';
+import { asBlockView } from '#lib/schema/block-view.js';
 import {
 	registerBlockOpener,
 	getOrderedOpeners,
@@ -19,16 +23,17 @@ import {
 import { testClosure } from '#lib/test/support/closure.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 
-const registration = (editable: boolean) =>
+const stubView = (tag: string) => asBlockView({ tag });
+const registration = (editable: boolean, view = stubView('view')) =>
 	({
 		mergeRole: 'not-mergeable',
 		editable,
 		supportsInline: false,
 		gapEdges: 'none',
-		closure: testClosure
+		closure: testClosure,
+		view
 	}) as const;
 
-const stubComponent = (tag: string) => asBlockView({ tag });
 const stubOpener = (priority: number): BlockOpener => ({
 	priority,
 	tryOpen: () => null,
@@ -37,7 +42,7 @@ const stubOpener = (priority: number): BlockOpener => ({
 const recognizer = (): InlineSyntaxRecognizer => () => null;
 
 // The registries that soften on a dev server must still throw under test. registry-conflict.test.ts
-// covers the three block registries; this suite covers inline syntax and kind declaring.
+// covers the block registries; this suite covers inline syntax and kind declaring.
 describe('register-once still throws on duplicate under test', () => {
 	it('registerInlineSyntax throws on a duplicate trigger', () => {
 		registerInlineSyntax('¬', recognizer());
@@ -68,23 +73,14 @@ describe('dev re-registration replaces instead of throwing', () => {
 		configureEditorEnv({ isDev: true, isTest: false });
 	}
 
-	it('registerBlockKind replaces the descriptor', () => {
+	it('registerBlockKind replaces the descriptor and the view', () => {
 		const kind = declarePluginKind('dev-kind');
-		registerBlockKind(kind, registration(true));
+		const second = stubView('second');
+		registerBlockKind(kind, registration(true, stubView('first')));
 		asDevNotTest();
-		expect(() => registerBlockKind(kind, registration(false))).not.toThrow();
+		expect(() => registerBlockKind(kind, registration(false, second))).not.toThrow();
 		expect(getBlockKindDescriptor(kind).editable).toBe(false);
-		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);
-	});
-
-	it('registerBlockView replaces the entry', () => {
-		const kind = declarePluginKind('dev-component');
-		const first = stubComponent('first');
-		const second = stubComponent('second');
-		registerBlockView(kind, first);
-		asDevNotTest();
-		expect(() => registerBlockView(kind, second)).not.toThrow();
-		expect(getBlockView(kind, everyInstalledPlugin)).toBe(second);
+		expect(blockViewFor(kind, everyInstalledPlugin)).toBe(second);
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['registry']);
 	});
 

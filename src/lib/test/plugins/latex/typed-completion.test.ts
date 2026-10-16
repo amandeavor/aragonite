@@ -5,6 +5,7 @@ import { planEnterCompletion } from '#lib/editor-actions/enter-completion.js';
 import { completeTypedLine } from '#lib/schema/block-completions.js';
 import { registerMathBlock, MATH_BLOCK } from '#lib/plugins/latex/latex-kind.js';
 import { tryCompleteMathBlock } from '#lib/plugins/latex/math-completion.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // The `$$` completer's line test, the bytes it answers with, and what the editor does with them;
 // the registry is tested in test/schema, the checks around it in test/editor-actions.
@@ -41,7 +42,7 @@ describe('block math Enter completer: the bytes it answers', () => {
 	// The answer is only worth anything if the bytes parse back as the block it describes:
 	// the round-trip invariant, on the completer's own output.
 	it('answers bytes that parse to one math block and serialize back unchanged', () => {
-		registerMathBlock();
+		registerMathBlock(testView());
 		const source = tryCompleteMathBlock('$$')!
 			.lines.map((l) => l + '\n')
 			.join('');
@@ -57,7 +58,7 @@ describe('block math Enter completer: registration', () => {
 	// is an ordinary split.
 	it('claims nothing until the kind is registered', () => {
 		expect(completeTypedLine('$$', defaultGrammarView)).toBeNull();
-		registerMathBlock();
+		registerMathBlock(testView());
 		expect(completeTypedLine('$$', defaultGrammarView)?.lines).toEqual(['$$', '', '$$']);
 	});
 });
@@ -69,7 +70,7 @@ describe('block math Enter completion: what the join plans', () => {
 		['$$\n', '$$\n\n$$\n', 3],
 		['$$\r\n', '$$\r\n\r\n$$\r\n', 4]
 	])('mints %j as %j with the caret at %i', (typed, minted, offset) => {
-		registerMathBlock();
+		registerMathBlock(testView());
 		const plan = planEnterCompletion(parse(typed).children[0], 2, defaultGrammarView, '\n')!;
 		expect(plan.replacement.map((c) => c.kind)).toEqual([MATH_BLOCK]);
 		expect(plan.replacement[0].raw).toBe(minted);
@@ -79,7 +80,7 @@ describe('block math Enter completion: what the join plans', () => {
 	// The check belongs to the editor, not the completer: a caret short of the line's end
 	// is a split.
 	it('declines a caret that is not at the end of the typed fence', () => {
-		registerMathBlock();
+		registerMathBlock(testView());
 		expect(planEnterCompletion(parse('$$\n').children[0], 1, defaultGrammarView, '\n')).toBeNull();
 	});
 });

@@ -13,7 +13,7 @@ import {
 import { pressKey } from '#lib/test/harness/settle.js';
 import {
 	augmentBlockKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockCommand,
 	registerBlockOpener,
 	registerRangeIndent,
@@ -36,12 +36,10 @@ const KIND = 'quote-leaf';
 
 /** An `@@ ` line whose indent command puts a tab after its marker, at a caret or over a range. */
 function quoteLeafPlugin(): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: KIND,
-		kind: KIND,
-		view: svelteBlockView(RevealLeafBlock),
-		register: () => {
-			const kind = registerRevealLeafKind(KIND);
+		setup: () => {
+			const kind = registerRevealLeafKind(KIND, { view: svelteBlockView(RevealLeafBlock) });
 			const indent = registerBlockCommand(kind, 'quoteLeaf.indent', () => true);
 			augmentBlockKind(kind, { keymap: [{ chord: 'Tab', command: indent }] });
 			registerRangeIndent(kind, indent, (node, range) => ({

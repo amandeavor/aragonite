@@ -7,13 +7,12 @@
 import {
 	definePlugin,
 	declarePluginKind,
-	declaredPluginKind,
 	registerBlockKind,
 	registerBlockOpener,
-	registerBlockView,
 	registerInsertEntry,
 	simpleLeafClosure,
 	OPENER_PRIORITIES,
+	type BlockView,
 	type EditorPlugin
 } from '#lib/plugin.js';
 import { svelteBlockView } from '#lib/svelte.js';
@@ -24,12 +23,13 @@ export const TOC_BLOCK = 'toc';
 
 const TOC_LINE = '[[toc]]';
 
-export function registerTocBlock(): void {
+export function registerTocBlock(view: BlockView): void {
 	const toc = declarePluginKind(TOC_BLOCK);
 
 	// A block that holds its own source, like `fencedCode`: `serialize` re-emits
 	// `leadingTrivia + raw`, so a raw taken verbatim from the line round-trips.
 	registerBlockKind(toc, {
+		view,
 		label: 'Table of contents',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -95,8 +95,7 @@ export function tocPlugin(options?: TocOptions): EditorPlugin {
 			return isMaxHeadingLevel(maxDepth) ? { maxDepth } : {};
 		},
 		setup() {
-			registerTocBlock();
-			registerBlockView(declaredPluginKind(TOC_BLOCK), svelteBlockView(TocBlock));
+			registerTocBlock(svelteBlockView(TocBlock));
 			registerInsertEntry({
 				id: 'toc',
 				label: 'Table of contents',

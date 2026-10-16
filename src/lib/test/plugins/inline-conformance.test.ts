@@ -15,6 +15,7 @@ import { emojiPlugin, EMOJI_KIND } from '#lib/plugins/emoji/index.js';
 import { footnotesPlugin, FOOTNOTE_REF_KIND } from '#lib/plugins/footnotes/index.js';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
 import { MATH_INLINE } from '#lib/plugins/latex/latex-kind.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 const MINTS_ONLY_ITS_OWN_KIND =
 	'the rung mints only its own inline kind, which the scan leaves unstamped by design — ' +
@@ -92,7 +93,7 @@ describe('every bundled inline syntax handler passes the conformance kit', () =>
 		// Emoji before the directive activation on purpose: that order is what leaves the
 		// directive recognizer unregistered, making its `registration` cell a live check.
 		installPlugins([emojiPlugin(), footnotesPlugin(), latexPlugin()]);
-		activateDirectiveGrammar();
+		activateDirectiveGrammar(testDirectiveViews());
 	});
 
 	it.each([
@@ -119,7 +120,7 @@ describe('every bundled inline syntax handler passes the conformance kit', () =>
 describe('the enrolled inline syntax handlers execute the cells their shape owns', () => {
 	beforeEach(() => {
 		installPlugins([emojiPlugin(), footnotesPlugin(), latexPlugin()]);
-		activateDirectiveGrammar();
+		activateDirectiveGrammar(testDirectiveViews());
 	});
 
 	const cellOf = async (profile: InlineConformanceProfile, cell: string) =>

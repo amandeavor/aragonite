@@ -1,4 +1,10 @@
-import { isBuiltinBlockKind, metadataOf, type AnyBlockKind, type CstNode } from '../core/nodes';
+import {
+	isBuiltinBlockKind,
+	metadataOf,
+	type AnyBlockKind,
+	type BlockKind,
+	type CstNode
+} from '../core/nodes';
 import type { DocumentView, NodeView } from '../core/node-views';
 import type { LineEnding } from '../core/lines';
 import type { ContainerBodyWrap } from '../core/parser';
@@ -10,6 +16,8 @@ import type { ClosureBlock } from './closure';
 import { registeredChord, type KeyBinding } from './keybindings';
 import type { HeightEstimateEnv } from './height-estimates';
 import { rejectIncoherentPairs } from './registration-pairs';
+import { isBlockView, type BlockView } from './block-view';
+import type { PluginActivation } from './plugin-activation';
 
 /**
  * The Backspace-merge roles (`docs/design/editor.md` § Merge eligibility: roles, not pairs).
@@ -374,11 +382,10 @@ function stripGroupedKeys<T extends object>(fields: T): Omit<T, GroupedKey> {
 	return stripped as Omit<T, GroupedKey>;
 }
 
-/**
- * The fields another field constrains, so only a registration sets them. One list drives the
- * registration and augment types and the augment's runtime refusal; `container.` names a group field.
- */
+/** Fields only a registration sets (the view, and fields another field constrains); the list drives
+ *  the registration and augment types and the augment's refusal. `container.` names a group field. */
 export const FIXED_AT_REGISTRATION = [
+	'view',
 	'blockFocus',
 	'supportsInline',
 	'contentStart',
@@ -422,11 +429,17 @@ interface CaretContainerRegistration extends RegistrationBase {
 	container: ContainerDescriptorGroup;
 }
 
+/** A built-in kind's registration: its view attaches later, from the component layer. */
+export type BuiltinRegistration = WholeBlockRegistration | CaretBlockRegistration;
+
 /**
- * The write-side shape `registerBlockKind` accepts. `isContainer` is derived
- * (`container !== undefined`), never declared.
+ * The write-side shape `registerBlockKind` accepts: the descriptor fields plus the view that draws
+ * the kind. `isContainer` is derived (`container !== undefined`), never declared.
  */
-export type BlockKindRegistration = WholeBlockRegistration | CaretBlockRegistration;
+export type BlockKindRegistration = BuiltinRegistration & { view: BlockView };
+
+/** Every built-in kind BlockHost can mount; a list item renders inside its list. */
+export type StandaloneBuiltinKind = Exclude<BlockKind, 'listItem'>;
 
 /**
  * The augment shape: top-level fields replace; a partial `container` group merges into the
@@ -441,8 +454,15 @@ export type BlockKindAugmentation = Partial<RegistrationBase> & {
 
 // ── Registry ────────────────────────────────────────────────────────────────
 
-// Never filtered by activation: a kind an editor left out still needs its descriptor to degrade.
-const registry = createBlockKindRegistry<BlockKindDescriptor>({
+interface KindEntry {
+	descriptor: BlockKindDescriptor;
+	/** Absent only on a built-in before the component layer attaches its view. */
+	view?: BlockView;
+}
+
+// The descriptor is never filtered by activation: a kind an editor left out still needs it to
+// degrade. The view is read only through `blockViewFor`, which filters.
+const registry = createBlockKindRegistry<KindEntry>({
 	label: 'registerBlockKind',
 	isBuiltin: isBuiltinBlockKind
 });
@@ -450,21 +470,72 @@ const registry = createBlockKindRegistry<BlockKindDescriptor>({
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export function registerBlockKind(kind: AnyBlockKind, registration: BlockKindRegistration): void {
-	rejectBlankLabel('registerBlockKind', kind, 'label', registration.label);
-	rejectBlankLabel('registerBlockKind', kind, 'dragLabel', registration.dragLabel);
+	const { view, ...fields } = registration;
+	if (!isBlockView(view)) {
+		throw new TypeError(
+			`registerBlockKind: "${kind}" needs a view, such as \`svelteBlockView(Component)\` from ` +
+				'`@voithos-labs/aragonite/svelte`, or `textBlockView()`'
+		);
+	}
+	storeKind('registerBlockKind', kind, fields, view);
+}
+
+/** `registerBlockKind` for a built-in, whose view `attachBuiltinViews` adds from the component
+ *  layer, so headless parsing never loads a component. */
+export function registerBuiltinBlockKind(kind: BlockKind, registration: BuiltinRegistration): void {
+	storeKind('registerBuiltinBlockKind', kind, registration, undefined);
+}
+
+/** Give every standalone built-in its view; the table type makes a missing one a compile error. */
+export function attachBuiltinViews(views: Record<StandaloneBuiltinKind, BlockView>): void {
+	for (const [kind, view] of Object.entries(views) as [StandaloneBuiltinKind, BlockView][]) {
+		registry.update(kind, { ...existingEntry('attachBuiltinViews', kind), view });
+	}
+}
+
+/** The kind's view where `activation` resolves the plugin that owns the kind. */
+export function blockViewFor(
+	kind: AnyBlockKind,
+	activation: PluginActivation
+): BlockView | undefined {
+	return registry.get(kind, activation)?.view;
+}
+
+/** The plugin a kind answers to: the one that declared it, else the one that registered it. */
+export function blockKindOwner(kind: AnyBlockKind): string | null {
+	return registry.ownerOf(kind);
+}
+
+function storeKind(
+	entry: string,
+	kind: AnyBlockKind,
+	registration: BuiltinRegistration,
+	view: BlockView | undefined
+): void {
+	rejectBlankLabel(entry, kind, 'label', registration.label);
+	rejectBlankLabel(entry, kind, 'dragLabel', registration.dragLabel);
 	rejectIncoherentPairs(kind, registration);
 	const descriptor = normalizeRegistration(registration);
-	if (descriptor.keymap)
-		descriptor.keymap = registeredKeymap('registerBlockKind', kind, descriptor.keymap);
+	if (descriptor.keymap) descriptor.keymap = registeredKeymap(entry, kind, descriptor.keymap);
 	const owner = registry.ownerOf(kind);
 	registry.register(
 		kind,
-		descriptor,
-		`registerBlockKind: "${kind}" is already registered. Kinds are register-once — ` +
+		view ? { descriptor, view } : { descriptor },
+		`${entry}: "${kind}" is already registered. Kinds are register-once — ` +
 			`use augmentBlockKind to merge fields into an existing registration.` +
 			(owner ? ` — first declared by plugin '${owner}'` : '')
 	);
 	enqueueRegistrationCheck(kind);
+}
+
+function existingEntry(entry: string, kind: AnyBlockKind): KindEntry {
+	const existing = registry.getIgnoringActivation(kind);
+	if (!existing) {
+		throw new Error(
+			`${entry}: cannot augment "${kind}"; no base descriptor. Call registerBlockKind first.`
+		);
+	}
+	return existing;
 }
 
 // A blank label would render as an empty `aria-label`, leaving the block's textbox unnamed.
@@ -490,7 +561,7 @@ function registeredKeymap(entry: string, kind: AnyBlockKind, keymap: KeyBinding[
 
 // The flat part is stripped and isContainer derived, so each group is the only source of its
 // fields: a widened or stale-keyed registration object cannot leak through.
-function normalizeRegistration(registration: BlockKindRegistration): BlockKindDescriptor {
+function normalizeRegistration(registration: BuiltinRegistration): BlockKindDescriptor {
 	const { container, contentStart, ...rest } = registration;
 	const flat: BlockKindDescriptor = { ...stripGroupedKeys(rest), isContainer: false };
 	if (contentStart) {
@@ -535,20 +606,15 @@ function mergeBlockKindFields(
 	kind: AnyBlockKind,
 	fields: BlockKindAugmentation
 ): void {
-	const existing = registry.getIgnoringActivation(kind);
-	if (!existing) {
-		throw new Error(
-			`${entry}: cannot augment "${kind}"; no base descriptor. Call registerBlockKind first.`
-		);
-	}
+	const existing = existingEntry(entry, kind);
 	rejectFixedFields(entry, kind, fields);
 	rejectBlankLabel(entry, kind, 'label', fields.label);
 	rejectBlankLabel(entry, kind, 'dragLabel', fields.dragLabel);
 	const { container, ...rest } = fields;
-	const next: BlockKindDescriptor = { ...existing, ...stripGroupedKeys(rest) };
+	const next: BlockKindDescriptor = { ...existing.descriptor, ...stripGroupedKeys(rest) };
 	if (rest.keymap) next.keymap = registeredKeymap(entry, kind, rest.keymap);
 	if (container) {
-		if (!existing.isContainer) {
+		if (!existing.descriptor.isContainer) {
 			throw new Error(
 				`${entry}: cannot augment "${kind}" with container fields; it was registered as a leaf`
 			);
@@ -556,13 +622,14 @@ function mergeBlockKindFields(
 		// Merge, never unset: skipping undefined keeps an explicitly-undefined group field from
 		// breaking the contract/rebuild pairing.
 		const { contract, ...group } = container;
-		next.containerContract = contract ?? existing.containerContract;
+		next.containerContract = contract ?? existing.descriptor.containerContract;
 		Object.assign(
 			next,
 			Object.fromEntries(Object.entries(group).filter(([, value]) => value !== undefined))
 		);
 	}
-	registry.update(kind, next);
+	// The entry keeps its view: a built-in's augment runs after the view attaches.
+	registry.update(kind, { ...existing, descriptor: next });
 	enqueueRegistrationCheck(kind);
 }
 
@@ -599,7 +666,7 @@ export function augmentBuiltin(kind: AnyBlockKind, fields: BlockKindAugmentation
 }
 
 export function getBlockKindDescriptor(kind: AnyBlockKind): BlockKindDescriptor {
-	const d = registry.getIgnoringActivation(kind);
+	const d = registry.getIgnoringActivation(kind)?.descriptor;
 	if (!d) {
 		throw new Error(
 			`getBlockKindDescriptor: no descriptor registered for kind "${kind}". ` +
@@ -610,7 +677,7 @@ export function getBlockKindDescriptor(kind: AnyBlockKind): BlockKindDescriptor 
 }
 
 export function tryGetBlockKindDescriptor(kind: AnyBlockKind): BlockKindDescriptor | undefined {
-	return registry.getIgnoringActivation(kind);
+	return registry.getIgnoringActivation(kind)?.descriptor;
 }
 
 /** Whether a kind declares the grid contract: a table and its rows, or a plugin's equivalent. A

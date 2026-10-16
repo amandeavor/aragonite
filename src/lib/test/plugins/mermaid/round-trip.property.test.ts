@@ -4,6 +4,7 @@ import { freshOrFixedSeed } from '../../invariants/arbitraries';
 import { parse, serialize, type CstNode } from '#lib';
 import { getPluginMetadata } from '#lib/plugin.js';
 import { registerMermaidKind, type MermaidMetadata } from '#lib/plugins/mermaid/mermaid-kind.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Awkward fence shapes for serialize(parse(src)) === src, run in both install states so
 // uninstall safety comes out by construction. Pure byte identity, so even a code line that
@@ -74,7 +75,7 @@ beforeAll(() => {
 
 describe('mermaid round-trip property: plugin installed', () => {
 	beforeEach(() => {
-		registerMermaidKind();
+		registerMermaidKind(testView());
 	});
 
 	it('serialize(parse(s)) === s over generated fence shapes', () => {

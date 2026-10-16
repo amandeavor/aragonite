@@ -9,35 +9,22 @@ describe('checkReservedChromeCoherence (G1.18)', () => {
 	it('fires when the chrome kind has no descriptor', () => {
 		const violation = checkReservedChromeCoherence(
 			[{ kind: kind('callout'), reservedChromeKind: kind('calloutTitle') }],
-			has([]),
-			has(['calloutTitle'])
+			has([])
 		);
 		expect(violation?.code).toBe('reserved-chrome-coherence');
 		expect(violation?.detail).toMatchObject({ chromeKind: 'calloutTitle', missing: 'descriptor' });
 	});
 
-	it('fires when the chrome kind has a descriptor but no component', () => {
-		const violation = checkReservedChromeCoherence(
-			[{ kind: kind('callout'), reservedChromeKind: kind('calloutTitle') }],
-			has(['calloutTitle']),
-			has([])
-		);
-		expect(violation?.detail).toMatchObject({ chromeKind: 'calloutTitle', missing: 'component' });
-	});
-
-	it('passes when the chrome kind resolves to both', () => {
+	it('passes when the chrome kind is registered', () => {
 		expect(
 			checkReservedChromeCoherence(
 				[{ kind: kind('callout'), reservedChromeKind: kind('calloutTitle') }],
-				has(['calloutTitle']),
 				has(['calloutTitle'])
 			)
 		).toBeNull();
 	});
 
 	it('skips entries that declare no reservedChrome', () => {
-		expect(
-			checkReservedChromeCoherence([{ kind: kind('paragraph') }], has([]), has([]))
-		).toBeNull();
+		expect(checkReservedChromeCoherence([{ kind: kind('paragraph') }], has([]))).toBeNull();
 	});
 });

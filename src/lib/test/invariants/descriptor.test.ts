@@ -4,6 +4,7 @@ import { parse } from '../../core/parser';
 import type { CstNode } from '../../core/nodes';
 import { declaredPluginKind } from '../../schema/plugin-kind';
 import { DIRECTIVE_LEAF, registerDirectiveKinds } from '../../core/directive/kinds';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 function leaf(source: string): CstNode {
 	return parse(source).children[0];
@@ -49,7 +50,7 @@ describe('checkContentRange (G1.8)', () => {
 // The directive leaf has a content range without inline support, and the split clamp reads it.
 describe('checkContentRange (G1.8) covers a non-prose kind that declares a content range', () => {
 	beforeEach(() => {
-		registerDirectiveKinds();
+		registerDirectiveKinds(testDirectiveViews());
 	});
 
 	const directiveLeaf = (): CstNode => ({

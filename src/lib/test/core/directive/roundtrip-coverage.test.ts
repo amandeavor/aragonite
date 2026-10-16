@@ -15,12 +15,13 @@ import {
 import { registerDirective, type ParsedDirective } from '#lib/core/directive/registry.js';
 import { arbGfmDoc, freshOrFixedSeed } from '../../invariants/arbitraries';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 let NOTE: PluginBlockKind;
 let WARNING: PluginBlockKind;
 
 beforeEach(() => {
-	activateDirectiveGrammar();
+	activateDirectiveGrammar(testDirectiveViews());
 	NOTE = declarePluginKind('directiveNoteProbe');
 	WARNING = declarePluginKind('directiveWarningProbe');
 });

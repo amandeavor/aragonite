@@ -8,6 +8,7 @@ import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { initDocument } from '#lib/components/editor-root/document-swap.js';
 import { describeShapeDivergence } from '#lib/core/shape-divergence.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Backspace-at-start-of-list-item merge semantics. The worked examples mirror the table
 // in e2e/requirements/blocks/list/backspace/m1-merge.md.
@@ -209,7 +210,7 @@ describe('mergeListItemIntoPrevious', () => {
 // the summary child as opaque.
 describe('mergeListItemIntoPrevious: collapsed container as previous leaf', () => {
 	beforeEach(() => {
-		registerDetailsKind();
+		registerDetailsKind(testView());
 	});
 
 	it('previous item ends in a collapsed <details>: returns null without mutating', () => {

@@ -2,10 +2,11 @@
 import {
 	caretOffsetAtPoint,
 	declarePluginKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
+	type BlockView,
 	type CaretTarget,
 	type EditorPlugin
 } from '#lib/plugin.js';
@@ -28,10 +29,11 @@ function parrotCaretAtPoint(
 	return { path: [], offset: source ? offset : offset + Number(view.dataset.captionStart) };
 }
 
-function registerParrotBlock(): void {
+function registerParrotBlock(view: BlockView): void {
 	const parrot = declarePluginKind(PARROT);
 
 	registerBlockKind(parrot, {
+		view,
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
 		editable: true,
@@ -58,10 +60,8 @@ function registerParrotBlock(): void {
 }
 
 export function parrotPlugin(): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: 'parrot',
-		kind: PARROT,
-		view: svelteBlockView(ParrotBlock),
-		register: registerParrotBlock
+		setup: () => registerParrotBlock(svelteBlockView(ParrotBlock))
 	});
 }

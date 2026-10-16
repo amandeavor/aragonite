@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { parse, serialize } from '#lib';
 import { getPluginMetadata } from '#lib/plugin.js';
 import { registerDetailsKind, rebuildDetailsRaw } from '#lib/plugins/details/details-kind.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // A canonical open details with a titled summary and a blank-line-wrapped body.
 const OPEN_SRC = '<details open>\n<summary>Title</summary>\n\nBody\n\n</details>\n';
 const CLOSED_SRC = '<details>\n<summary>Title</summary>\n\nBody\n\n</details>\n';
 
 describe('details kind round-trip', () => {
-	beforeEach(registerDetailsKind);
+	beforeEach(() => registerDetailsKind(testView()));
 
 	it('round-trips an open details byte-for-byte', () => {
 		expect(serialize(parse(OPEN_SRC))).toBe(OPEN_SRC);
@@ -93,7 +94,7 @@ describe('details kind round-trip', () => {
 // `<details>` interrupts an open paragraph, as htmlBlock does, so the same text opens a details
 // in either position, while any other `<details …>` spelling falls through to htmlBlock in both.
 describe('details opener paragraph-interrupt parity', () => {
-	beforeEach(registerDetailsKind);
+	beforeEach(() => registerDetailsKind(testView()));
 
 	it('claims a details directly after a paragraph', () => {
 		const src = 'Above\n<details>\n<summary>T</summary>\n\nBody\n\n</details>\n';
@@ -115,7 +116,7 @@ describe('details opener paragraph-interrupt parity', () => {
 // `rebuildRaw` runs when the children change, and a stale or nondeterministic rebuild leaves raw
 // disagreeing with them, so the inverse and its determinism are asserted (G1.12, G1.13).
 describe('details rebuildRaw is the opener inverse', () => {
-	beforeEach(registerDetailsKind);
+	beforeEach(() => registerDetailsKind(testView()));
 
 	it('reproduces the parsed raw, including the blank-line body wrap', () => {
 		const details = parse(OPEN_SRC).children[0];

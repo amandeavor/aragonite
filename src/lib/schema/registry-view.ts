@@ -5,8 +5,9 @@
  * and `syntax` a switched-off syntax. The descriptor is never filtered: a disabled kind needs it.
  */
 import { isBuiltinBlockKind, type AnyBlockKind } from '../core/nodes';
-import { getBlockView, type BlockView } from './block-view-registry';
+import type { BlockView } from './block-view';
 import {
+	blockViewFor,
 	getBlockKindDescriptor,
 	tryGetBlockKindDescriptor,
 	type BlockKindDescriptor
@@ -64,7 +65,7 @@ export function createRegistryView(opts?: {
 	const opens: KindEnablement = (kind) =>
 		enabled(kind) && (indentedCode || kind !== 'indentedCode');
 	return {
-		blockView: (kind) => (enabled(kind) ? getBlockView(kind, activation) : undefined),
+		blockView: (kind) => (enabled(kind) ? blockViewFor(kind, activation) : undefined),
 		descriptor: (kind) => getBlockKindDescriptor(kind),
 		tryDescriptor: (kind) => tryGetBlockKindDescriptor(kind),
 		grammar: createGrammarView(opens, { setextHeading, activation })
@@ -75,7 +76,7 @@ const everyInstalledKind = kindEnablementFor(everyInstalledPlugin);
 
 export const defaultRegistryView: RegistryView = {
 	blockView: (kind) =>
-		everyInstalledKind(kind) ? getBlockView(kind, everyInstalledPlugin) : undefined,
+		everyInstalledKind(kind) ? blockViewFor(kind, everyInstalledPlugin) : undefined,
 	descriptor: (kind) => getBlockKindDescriptor(kind),
 	tryDescriptor: (kind) => tryGetBlockKindDescriptor(kind),
 	grammar: defaultGrammarView

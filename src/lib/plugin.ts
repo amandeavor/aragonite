@@ -29,8 +29,6 @@ export type { InsertMarkdownOptions } from './editor-props';
 // The names every presentation-mode read reports, the `data-presentation` attribute included.
 export type { PresentationMode } from './presentation-mode';
 export type { ClickInput } from './activation-click';
-// The single-block shortcut: one kind, one component, one register step.
-export { definePluginBlock } from './schema/define-plugin-block';
 
 // ── Kind declaration ─────────────────────────────────────────────────────────
 export { declarePluginKind, declaredPluginKind } from './schema/plugin-kind';
@@ -60,8 +58,8 @@ export type {
 export type { PluginView, PluginViewHandle } from './plugin-view';
 
 // ── Block-kind descriptor registry ───────────────────────────────────────────
-// `BlockKindRegistration` is the shape you register; fields that only mean something together
-// are declared together, so an incoherent pair fails to compile.
+// `BlockKindRegistration` is the shape you register, the view that draws the kind included; fields
+// that only mean something together are declared together, so an incoherent pair fails to compile.
 export { registerBlockKind, augmentBlockKind } from './schema/block-kind-descriptor';
 export type {
 	BlockKindRegistration,
@@ -90,9 +88,9 @@ export type {
 export { simpleLeafClosure, containerClosure } from './schema/closure';
 
 // ── Block views ──────────────────────────────────────────────────────────────
-// What draws a kind. `BlockView` is opaque: `svelteBlockView` on `/svelte` makes one.
-export { registerBlockView } from './schema/block-view-registry';
-export type { BlockView } from './schema/block-view-registry';
+// What draws a kind, the registration's `view`. `BlockView` is opaque: `svelteBlockView` on
+// `/svelte` makes one from a component.
+export type { BlockView } from './schema/block-view';
 // The editor's plain editable text block, for a kind drawn as plain text and for a host that
 // doesn't compile Svelte; `blockClass` lands on its element.
 export { textBlockView } from './components/blocks/text/text-block-view';
@@ -269,7 +267,6 @@ export function computeInlineContent(node: NodeView): InlineNode[] {
 // (HMR / re-import) by guarding on these.
 export { isBlockKindDeclared } from './schema/plugin-kind';
 export { isBlockKindRegistered } from './schema/block-kind-descriptor';
-export { isBlockViewRegistered } from './schema/block-view-registry';
 export { isBlockOpenerRegistered } from './schema/block-openers';
 export { isBlockCompleterRegistered } from './schema/block-completions';
 export { isPasteTransformRegistered } from './tree-operations/paste/paste-transforms';

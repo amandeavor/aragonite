@@ -9,6 +9,7 @@ import {
 } from '#lib/schema/registration-checks.js';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
 import { DIRECTIVE_CONTAINER, DIRECTIVE_LEAF } from '#lib/core/directive/kinds.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 // Activation is call-based, so the reset before each case lets the opener register both before and
 // after the first parse.
@@ -24,7 +25,7 @@ function collectRegistrationTags(): string[] {
 
 describe('directive grammar activation', () => {
 	it('registers the generic kinds and the shared opener when called', () => {
-		activateDirectiveGrammar();
+		activateDirectiveGrammar(testDirectiveViews());
 		expect(isBlockKindRegistered(DIRECTIVE_CONTAINER)).toBe(true);
 		expect(isBlockKindRegistered(DIRECTIVE_LEAF)).toBe(true);
 		expect(isBlockOpenerRegistered(DIRECTIVE_CONTAINER)).toBe(true);
@@ -33,7 +34,7 @@ describe('directive grammar activation', () => {
 	// Activating before the first parse is what keeps the directive opener out of the
 	// late-opener dev warning (G1.17).
 	it('emits no late-opener warn when activated before a parse consumes the grammar', () => {
-		activateDirectiveGrammar();
+		activateDirectiveGrammar(testDirectiveViews());
 		parse(':::x\ny\n:::\n');
 		expect(collectRegistrationTags()).not.toContain('late-opener-registration');
 	});
@@ -43,7 +44,7 @@ describe('directive grammar activation', () => {
 	it('warns when activated after a parse has already consumed the grammar', () => {
 		flushPendingRegistrationChecks(() => {}); // bootstrap flush → didFirstFlush latch
 		parse('plain paragraph\n'); // consumes the grammar (markGrammarConsumed)
-		activateDirectiveGrammar();
+		activateDirectiveGrammar(testDirectiveViews());
 		expect(collectRegistrationTags()).toContain('late-opener-registration');
 	});
 });

@@ -17,9 +17,10 @@ import {
 	makeStubFocus
 } from '#lib/test/harness/editor-actions.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 beforeEach(() => {
-	registerDetailsKind();
+	registerDetailsKind(testView());
 });
 
 /** The container at body index `inner` of the details block, whose parent is the details body. */

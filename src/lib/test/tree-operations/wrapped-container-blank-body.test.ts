@@ -12,6 +12,7 @@ import type { CstNode } from '#lib/core/nodes.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { fixtureGrammar } from '#lib/test/harness/fixture-grammar.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { testDirectiveViews, testView } from '#lib/test/support/test-view.js';
 
 // Emptying every body block of a fenced container leaves a blank run that is the whole body, and
 // the reload strips a line into both `innerPrefix` and `innerSuffix`, so the run carries two lines.
@@ -35,7 +36,7 @@ function emptyBodyChild(container: CstNode, at: number): void {
 
 describe('a blank run that is the whole wrapped body', () => {
 	beforeEach(() => {
-		registerCalloutKind();
+		registerCalloutKind(testView());
 	});
 
 	// Through the real write: emptying a paragraph is kind-stable, so both writes take the
@@ -95,7 +96,7 @@ describe('a blank run that is the whole wrapped body', () => {
 // A blockquote's body opens at the container's own first line, so nothing is stripped and a
 // whole-blank body needs no fence line at all.
 describe('a blank run that is the whole unwrapped body', () => {
-	beforeEach(activateDirectiveGrammar);
+	beforeEach(() => activateDirectiveGrammar(testDirectiveViews()));
 
 	it('takes no wrap line: a blockquote strips nothing', () => {
 		const doc = parse('> a\n>\n> b\n');

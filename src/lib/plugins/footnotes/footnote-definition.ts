@@ -16,17 +16,15 @@ import {
 	isWhitespaceChar,
 	lineStartsOuterBlock,
 	parseContainerBody,
-	registerBlockView,
 	registerBlockKind,
 	registerBlockOpener,
 	setPluginMetadata,
 	splitLines,
 	type BlockOpenerResult,
+	type BlockView,
 	type CstNode,
 	type OpenContext
 } from '#lib/plugin.js';
-import { svelteBlockView } from '#lib/svelte.js';
-import FootnoteDefinition from './FootnoteDefinition.svelte';
 import { FOOTNOTE_DEF_KIND } from './constants';
 
 export interface FootnoteDefMetadata {
@@ -149,7 +147,7 @@ export function rebuildFootnoteDefRaw(node: CstNode): void {
 	node.raw = raw === '' ? marker : raw;
 }
 
-export function registerFootnoteDefinition(): void {
+export function registerFootnoteDefinition(view: BlockView): void {
 	const kind = declarePluginKind(FOOTNOTE_DEF_KIND);
 
 	registerBlockOpener(kind, {
@@ -161,6 +159,7 @@ export function registerFootnoteDefinition(): void {
 	});
 
 	registerBlockKind(kind, {
+		view,
 		label: 'Footnote',
 		gapEdges: 'none',
 		mergeRole: 'not-mergeable',
@@ -197,6 +196,4 @@ export function registerFootnoteDefinition(): void {
 			simOracle: { mode: 'inherit-default' }
 		})
 	});
-
-	registerBlockView(kind, svelteBlockView(FootnoteDefinition));
 }

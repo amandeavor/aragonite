@@ -2,6 +2,7 @@ import { beforeEach, describe, it, expect } from 'vitest';
 import { installPlugins, parse, serialize } from '#lib';
 import { registerTocBlock, tocPlugin, TOC_BLOCK } from '#lib/plugins/toc/toc-plugin.js';
 import { roundTripCases } from '#lib/test/support/round-trip.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // Recognition starts only once the opener registers: with no plugin loaded `[[toc]]` is an
 // ordinary paragraph, byte-identical to plain GFM.
@@ -16,7 +17,7 @@ describe('toc is dormant until registered', () => {
 // The opener takes only the exact line `[[toc]]`; indentation or trailing content stays a
 // paragraph, which keeps the opener out of every other plugin's documents.
 describe('toc recognition', () => {
-	beforeEach(registerTocBlock);
+	beforeEach(() => registerTocBlock(testView()));
 
 	const recognition: Array<[string, string, boolean]> = [
 		['exact line', '[[toc]]\n', true],
@@ -55,7 +56,7 @@ describe('toc recognition', () => {
 // Serialize re-emits `leadingTrivia + raw`, so a `raw` taken verbatim from the line round-trips;
 // the declined rows prove the shapes the opener does not take keep their bytes too.
 describe('toc round-trip', () => {
-	beforeEach(registerTocBlock);
+	beforeEach(() => registerTocBlock(testView()));
 
 	roundTripCases([
 		'[[toc]]\n',

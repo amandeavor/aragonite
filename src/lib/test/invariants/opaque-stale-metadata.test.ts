@@ -8,10 +8,11 @@ import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
 import { registerMermaidKind, type MermaidMetadata } from '#lib/plugins/mermaid/mermaid-kind.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 beforeEach(() => {
 	installPlugins([admonitionsPlugin()]);
-	registerMermaidKind();
+	registerMermaidKind(testView());
 });
 
 describe('the opaque stale-raw check compares metadata with the reparse (#640)', () => {

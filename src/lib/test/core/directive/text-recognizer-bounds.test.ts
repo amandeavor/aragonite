@@ -7,10 +7,11 @@ import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
 import { DIRECTIVE_TEXT } from '#lib/core/directive/kinds.js';
 import { expectBoundedGrowth, measureScanGrowth } from '../../harness/scan-growth';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 let kind: PluginInlineKind;
 beforeEach(() => {
-	activateDirectiveGrammar();
+	activateDirectiveGrammar(testDirectiveViews());
 	kind = declaredPluginInlineKind(DIRECTIVE_TEXT);
 });
 const scan = (raw: string) => parseInline(raw, 0, raw.length);

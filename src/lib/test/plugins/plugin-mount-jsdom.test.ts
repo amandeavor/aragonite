@@ -8,7 +8,7 @@ import { type EditorInstance } from '#lib';
 import { Editor } from '#lib/svelte.js';
 import {
 	declarePluginKind,
-	definePluginBlock,
+	definePlugin,
 	registerBlockKind,
 	registerBlockOpener,
 	simpleLeafClosure,
@@ -39,13 +39,12 @@ function markerBlockExtent(lines: readonly ParsedLine[], index: number): number 
 }
 
 function markerLeafPlugin(view = svelteBlockView(PlainLeafBlock)): EditorPlugin {
-	return definePluginBlock({
+	return definePlugin({
 		name: 'jsdommountplugin',
-		kind: KIND,
-		view,
-		register: () => {
+		setup: () => {
 			const kind = declarePluginKind(KIND);
 			registerBlockKind(kind, {
+				view,
 				gapEdges: 'none',
 				mergeRole: 'not-mergeable',
 				editable: true,

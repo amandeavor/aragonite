@@ -7,6 +7,7 @@ import { registerMermaidKind, MERMAID } from '#lib/plugins/mermaid/mermaid-kind.
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // A fence a plugin opener takes needs the same terminator the built-in one does. Both bundled
 // fence kinds are here because they read an unterminated fence oppositely (mermaid takes it,
@@ -15,8 +16,8 @@ import { createSharingState } from '#lib/tree-operations/sharing.js';
 
 describe('a typed plugin fence closes over an empty body (GH #180)', () => {
 	beforeEach(() => {
-		registerMermaidKind();
-		registerMathFence();
+		registerMermaidKind(testView());
+		registerMathFence(testView());
 	});
 
 	it('```mermaid leaves one diagram and the neighbours standing', () => {

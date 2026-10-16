@@ -20,6 +20,7 @@ import {
 	registerDirective,
 	isDirectiveRegistered,
 	setPluginMetadata,
+	type BlockView,
 	type CstNode,
 	type ParsedDirective
 } from '#lib/plugin.js';
@@ -72,7 +73,7 @@ export const rebuildCalloutRaw = createDirectiveRebuild<CalloutMetadata>(
 	(meta) => meta?.calloutType ?? CALLOUT
 );
 
-export function registerCalloutKind(): void {
+export function registerCalloutKind(view: BlockView): void {
 	// The shared directive grammar must be live before the callout names resolve.
 	// Idempotent, so it re-runs cleanly after a schema reset.
 	activateDirectives();
@@ -95,6 +96,7 @@ export function registerCalloutKind(): void {
 	}
 
 	registerBlockKind(callout, {
+		view,
 		gapEdges: 'none',
 		mergeRole: 'container',
 		editable: true,

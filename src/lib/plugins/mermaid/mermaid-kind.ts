@@ -18,6 +18,7 @@ import {
 	fenceShapeOfRaw,
 	scanFence,
 	OPENER_PRIORITIES,
+	type BlockView,
 	type CstNode
 } from '#lib/plugin.js';
 
@@ -90,7 +91,7 @@ export interface MermaidUiHooks {
 
 // ── Registration ─────────────────────────────────────────────────────────────
 
-export function registerMermaidKind(): void {
+export function registerMermaidKind(view: BlockView): void {
 	const mermaid = declarePluginKind(MERMAID);
 
 	// No default key binding: the button is how you edit, and this command exists so a
@@ -109,6 +110,7 @@ export function registerMermaidKind(): void {
 	});
 
 	registerBlockKind(mermaid, {
+		view,
 		label: 'Diagram',
 		dragLabel: 'Diagram',
 		// Backspace from the block below must never merge text into a diagram.

@@ -6,6 +6,7 @@ import { collapseCrossBlock } from '../../selection/keyboard-extend';
 import { restoreLandingOver } from '../harness/restore-landing';
 import { registerDetailsKind } from '../../plugins/details/details-kind';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { testView } from '#lib/test/support/test-view.js';
 
 // [0] 2-column table (header + 2 body rows = 6 cells), [1] paragraph.
 const doc = parse('| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n\ntail\n');
@@ -77,7 +78,7 @@ describe('collapseCrossBlock over an intra-table rectangle', () => {
 // closed details to reach a hidden endpoint never ran.
 describe('collapseCrossBlock past a closed details', () => {
 	it('lands on the title row and mounts nothing inside the hidden body', async () => {
-		registerDetailsKind();
+		registerDetailsKind(testView());
 		const closed = parse('Above\n\n<details>\n<summary>Sum</summary>\n\nHidden\n\n</details>\n');
 		const selection = createSelectionState({ getDoc: () => closed });
 		const { landing, revealed } = restoreLandingOver(closed, selection);

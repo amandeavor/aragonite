@@ -37,7 +37,6 @@ import {
 	isKnownMergeRole,
 	type BlockKindDescriptor
 } from './block-kind-descriptor';
-import { isBlockViewRegistered } from './block-view-registry';
 import { listRegisteredOpeners } from './block-openers';
 import { isBuiltinCommandId } from './commands';
 import { isPluginCommandId } from './command-id';
@@ -50,8 +49,6 @@ export type RegistrationCheckReport = (tag: string, check: () => InvariantViolat
 
 const hasDescriptor = (kind: AnyBlockKind): boolean =>
 	tryGetBlockKindDescriptor(kind) !== undefined;
-
-const hasView = (kind: AnyBlockKind): boolean => isBlockViewRegistered(kind);
 
 const keymapEntries = (kinds: readonly AnyBlockKind[]) =>
 	kinds.map((kind) => ({ kind, keymap: tryGetBlockKindDescriptor(kind)?.keymap }));
@@ -138,16 +135,16 @@ export function flushPendingRegistrationChecks(
 	if (!work) return;
 	if (work.firstFlush) {
 		report('registry-completeness', () =>
-			checkRegistryCompleteness(ALL_BLOCK_KINDS, hasDescriptor, hasView)
+			checkRegistryCompleteness(ALL_BLOCK_KINDS, hasDescriptor)
 		);
 	}
 	// The first run covers every registered kind, plugin kinds included; the completeness check
-	// alone stays on built-ins, since a plugin kind's component may register later.
+	// stays on built-ins, the one closed set.
 	const kinds = work.firstFlush ? getAllRegisteredKinds() : work.kinds;
 	report('opener-registry', () => checkOpenerRegistry(listRegisteredOpeners(), hasDescriptor));
 	report('keymap-coherence', () => checkKeymapCoherence(keymapEntries(kinds), isKnownCommandId));
 	report('reserved-chrome-coherence', () =>
-		checkReservedChromeCoherence(reservedChromeEntries(kinds), hasDescriptor, hasView)
+		checkReservedChromeCoherence(reservedChromeEntries(kinds), hasDescriptor)
 	);
 	report('closure-coherence', () => checkClosureCoherence(closureEntries(kinds)));
 	report('descriptor-field-coherence', () =>

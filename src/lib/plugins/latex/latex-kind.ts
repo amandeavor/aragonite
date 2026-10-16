@@ -23,6 +23,7 @@ import {
 	trimTrailingLineEnding,
 	ownTrailingLineEnding,
 	trailingLineEnding,
+	type BlockView,
 	type CaretTarget,
 	type PluginInlineKind,
 	type InlineNode,
@@ -188,12 +189,14 @@ function mathText(raw: string): string {
 
 // ── Block `$$…$$` display math ─────────────────────────────────────────────────
 
-export function registerMathBlock(): void {
+/** `view` draws both the `$$` block and the ```math fence, which this registers too. */
+export function registerMathBlock(view: BlockView): void {
 	const mathBlock = declarePluginKind(MATH_BLOCK);
 
 	// A block that holds its own source, like `fencedCode`: `serialize` re-emits
 	// `leadingTrivia + raw`, so a raw built from the exact fence bytes round-trips byte for byte.
 	registerBlockKind(mathBlock, {
+		view,
 		label: 'Math block',
 		// A formula's source makes a poor label on the drag ghost.
 		dragLabel: 'Equation',
@@ -250,7 +253,7 @@ export function registerMathBlock(): void {
 	registerMathBlockCompleter(mathBlock);
 
 	// Registered together so one install adds both forms, as admonitions and alerts do.
-	registerMathFence();
+	registerMathFence(view);
 }
 
 // ── Fenced ```math display math ─────────────────────────────────────────────────
@@ -259,10 +262,11 @@ export function registerMathBlock(): void {
 
 const matchMathFence = matchFenceInfo('math');
 
-export function registerMathFence(): void {
+export function registerMathFence(view: BlockView): void {
 	const mathFence = declarePluginKind(MATH_FENCE);
 
 	registerBlockKind(mathFence, {
+		view,
 		label: 'Math block',
 		mergeRole: 'not-mergeable',
 		editable: true,
