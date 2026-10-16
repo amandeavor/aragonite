@@ -54,9 +54,7 @@ When you want the document on disk, call `getSource()` and write it.
 	const source = '# Hello\n';
 </script>
 
-<div class="aragonite-editor-theme" data-editor-theme="light">
-	<Editor bind:this={editor} {source} theme="light" />
-</div>
+<Editor bind:this={editor} {source} theme="light" />
 <button onclick={() => save(editor.getSource())}>Save</button>
 ```
 
@@ -64,7 +62,7 @@ A few things in the above example snippet are decently important; you might want
 
 1. **`source` seeds the document at mount**, and a later write loads the new text ([Loading another document](#loading-another-document) has the one Svelte catch). It's not a two way bound: the editor never writes back into it, so the document you read is always `getSource()`.
 2. **`bind:this` is how you talk to a mounted editor.** For example, you might want to use important read functions like `getSource()` and `getSelection()`, or important write functions like `setSelection()` and `runCommand()`. [The instance surface](#the-instance-surface) covers all of it.
-3. **`theme` should match your page.** The editor paints no background of its own. Its text takes your page's color (unless the wrapper hands it the built-in one, more on that below), and everything it does paint (menus, the find bar, toolbars, code block fills) uses `theme`'s colors. A fresh app's page is white, hence `light`; on a dark page write `dark` in both spots, or nothing, dark being the default. The wrapper is optional: its `aragonite-editor-theme` class hands the built-in colors and font to the editor's text and to anything of yours inside it, in the mode its `data-editor-theme` names. [Theming](#theming) has how to customize the rest.
+3. **`theme` should match your page.** The editor paints no background of its own. Its text takes your page's color, and everything it does paint (menus, the find bar, toolbars, code block fills) uses `theme`'s colors. A fresh app's page is white, hence `light`; on a dark page write `dark`, or nothing, dark being the default. Want the built-in colors and font around the editor too? Wrap it in a `div` with the `aragonite-editor-theme` class and the same `data-editor-theme`, which hands them to the editor's text and to anything of yours inside it. [Theming](#theming) has how to customize the rest.
 
 Two more that aren't in the snippet but bite early: plugins install once, app-wide, but each editor only runs the ones its own `plugins` prop lists ([Plugins](#plugins)); and `editor.__test.*` is internal and will move, so don't build on it.
 
