@@ -784,11 +784,11 @@ reset makes its root border-box), it checks that `--md-color-bg` resolves on the
 `invariant:host-colors-resolve` naming the import when it doesn't. A DOM with no stylesheet (the
 unit suites) is skipped. `invariants/theme-stylesheet.ts`; `e2e/tests/theme-stylesheet.spec.ts`.
 
-**G1.106 · A kept table edge loses whole rows.** A range that starts or ends inside a table and
-runs past it removes the table's rows from the start's on, or up to the end's, never part of a
-row. `selection/range-coverage.ts :: coverRange` snaps both endpoints to a row's bounds, and
-`rangeCoverage` warns `invariant:kept-table-edge` on a run that splits a row, which only an endpoint
-skipping the snap could hand it. `test/selection/range-coverage.test.ts`.
+**G1.106 · A kept table edge loses whole rows.** A selection that starts or ends inside a table
+and runs past it deletes whole rows of that table, never part of one. `coverRange` in
+`selection/range-coverage.ts` snaps both ends to a row's edge first. If a run that splits a row
+still shows up (only an end that skipped the snap could hand one over), `rangeCoverage` warns
+`invariant:kept-table-edge`. `test/selection/range-coverage.test.ts`.
 
 ## Group 2: property and regression tested
 
@@ -2261,10 +2261,11 @@ through `components/blocks/text/inline-commands.ts :: perform`, which waits for 
 written and then isolates the write. `lint/file-rules.test.ts` fails an `isolateUndoEntry` call
 anywhere else but the code block's language field.
 
-**G4.200 · One read of a block's hidden screen.** An edge rule acts only where the block hides
-markers at the caret, and reads the screen it hides them on. Both come from
-`caret/widget-offset.ts :: hidingScreenOf`; `lint/edge-rule-guards.test.ts` fails any other file
-calling `screenVisibilityOf` but the dev check that compares it with the stylesheet.
+**G4.200 · One read of a block's hidden screen.** The rules for a construct's hidden edge only
+apply where the block hides markers at the caret, and they need the screen it hides them on.
+`caret/widget-offset.ts :: hidingScreenOf` answers both at once. `lint/edge-rule-guards.test.ts`
+fails any other file that calls `screenVisibilityOf`, except the dev check that compares it with
+the stylesheet.
 
 ## Accessibility
 
