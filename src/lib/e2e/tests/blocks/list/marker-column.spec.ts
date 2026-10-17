@@ -112,6 +112,35 @@ test.describe('the marker fits inside its column', () => {
 	}
 });
 
+test.describe('an item paints its own marker, not its parent item’s', () => {
+	const NESTED = [
+		{ shape: 'ordered in a bullet', md: '- outer\n  1. inner\n', kind: 'ordered' },
+		{ shape: 'to-do in a bullet', md: '- outer\n  - [ ] inner\n', kind: 'task' },
+		{ shape: 'bullet in an ordered', md: '1. outer\n   - inner\n', kind: 'bullet' }
+	] as const;
+	for (const mode of ['live', 'reading'] as const) {
+		for (const { shape, md, kind } of NESTED) {
+			test(`${shape}, ${mode}`, async ({ page }) => {
+				await openIn(page, mode, md);
+				const paint = await page.evaluate((k) => {
+					const item = document.querySelector(
+						`.editor .list-item-block .list-item-block[data-list-marker='${k}']`
+					);
+					const marker = item!.querySelector<HTMLElement>('.md-marker[contenteditable="false"]')!;
+					const box = marker.querySelector('.md-marker-box')!;
+					return {
+						bullet: getComputedStyle(box, '::before').content,
+						bytes: getComputedStyle(marker).visibility
+					};
+				}, kind);
+				// A bullet paints `•` over its hidden `- `; a number or a box paints no bullet beside it.
+				if (kind === 'bullet') expect(paint).toEqual({ bullet: '"•"', bytes: 'hidden' });
+				else expect(paint.bullet).toMatch(/^(none|normal)$/);
+			});
+		}
+	}
+});
+
 test.describe('a heading item starts its text in the same column as a paragraph item', () => {
 	for (const mode of ['source', 'live', 'reading'] as const) {
 		for (const [shape, first, second] of [

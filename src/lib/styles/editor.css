@@ -790,14 +790,19 @@
 	opacity: 1;
 }
 
-/* `- ` hides and a rendered bullet paints in its place, the way a blockquote's border does. */
+/* `- ` hides and a rendered bullet paints in its place, the way a blockquote's border does. The
+   steps down to the item's own marker are children, so a nested item keeps its own kind's paint. */
 :where(.editor):is(
 		[data-presentation='reading'],
 		[data-presentation^='preview-'],
 		[data-presentation='live']
 	)
 	.list-item-block[data-list-marker='bullet']
-	.md-marker[contenteditable='false']
+	> :where(.list-item-content)
+	> :where(.block-list)
+	> :where(.block-host)
+	> :where(.text-editable-block)
+	> .md-marker[contenteditable='false']
 	> .md-marker-box::before {
 	content: '•';
 	visibility: visible;
@@ -811,7 +816,11 @@
 		[data-presentation='live']
 	)
 	.list-item-block[data-list-marker='ordered']
-	.md-marker[contenteditable='false'] {
+	> :where(.list-item-content)
+	> :where(.block-list)
+	> :where(.block-host)
+	> :where(.text-editable-block)
+	> .md-marker[contenteditable='false'] {
 	visibility: visible;
 }
 
