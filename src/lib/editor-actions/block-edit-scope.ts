@@ -4,7 +4,8 @@
  * made; the core hands over local indices only, and a dev-mode check covers JS callers.
  */
 
-import type { OpDescriptor } from '../schema/operations';
+import type { OpDescriptor, OperationKind } from '../schema/operations';
+import { emitCommitError } from '../editor-events';
 import type {
 	CommitLanding,
 	ContainerEditActions,
@@ -98,6 +99,8 @@ export interface CommitScope {
 	at(i: number, subPath: readonly number[], offset: number): CaretPosition;
 	/** Put the caret at `pos` through the editor's caret landing, for an edit with no commit. */
 	land(pos: CaretPosition): Promise<LandingOutcome>;
+	/** Report a write to child `i` that was refused before its commit to the `error` event. */
+	reportCommitError(error: unknown, op: OperationKind, i: number): void;
 }
 
 // ── Top-level adapter ────────────────────────────────────────────────────────
@@ -151,7 +154,8 @@ export function createTopLevelScope(
 			typing.typeInLeaf(docPathFrom([i]), preEditOffset, deps.blockIds[i], work),
 		writeInPlace: (i, write, caret) => typing.writeLeafInPlace(docPathFrom([i]), write, caret),
 		at: (i, subPath, offset) => ({ path: docPathFrom([i, ...subPath]), offset }),
-		land: (pos) => deps.caretLanding.land(pos)
+		land: (pos) => deps.caretLanding.land(pos),
+		reportCommitError: (error, op, i) => emitCommitError(deps.events, { error, op, path: [i] })
 	};
 }
 
@@ -262,6 +266,8 @@ function containerScope(parts: ContainerParts): CommitScope {
 		at: (i, subPath, offset) => ({ path: docPathFrom([...parts.path(), i, ...subPath]), offset }),
 		// Through the editor root rather than this list's refs: a write that changed this
 		// container's kind replaced its component, and its refs with it.
-		land: (pos) => parts.containerEdit.land(pos)
+		land: (pos) => parts.containerEdit.land(pos),
+		reportCommitError: (error, op, i) =>
+			parts.containerEdit.reportCommitError(error, op, extendDocPath(parts.path(), i))
 	};
 }

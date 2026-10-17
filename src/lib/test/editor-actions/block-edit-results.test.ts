@@ -14,7 +14,7 @@ import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
 import { footnotesPlugin } from '#lib/plugins/footnotes/index.js';
 import { makeContainerHarness, makeNestedHarness, makeTopHarness } from '../harness/editor-actions';
 import { fixtureReading } from '../harness/fixture-grammar';
-import { allowDevWarns, drainDevWarns } from '../support/warn-gate';
+import { drainDevWarns } from '../support/warn-gate';
 
 type Edit = (actions: BlockEditActions) => Promise<boolean>;
 
@@ -33,9 +33,12 @@ beforeEach(() => {
 	installPlugins([twoBox]);
 });
 
-/** One call per member, each a real write on the second of two paragraphs; the marker's space has
- *  a fixture of its own, below. */
-const WRITES: Record<Exclude<keyof BlockEditActions, 'completeMarker'>, Edit> = {
+/** One call per member, each a real write on the second of two paragraphs; the marker's space and
+ *  the metadata write have fixtures of their own, below. */
+const WRITES: Record<
+	Exclude<keyof BlockEditActions, 'completeMarker' | 'updateBlockMetadata'>,
+	Edit
+> = {
 	splitBlock: (a) => a.splitBlock(1, 1),
 	descendToBody: (a) => a.descendToBody(1),
 	insertParagraph: (a) => a.insertParagraph(2, 'new'),
@@ -44,7 +47,7 @@ const WRITES: Record<Exclude<keyof BlockEditActions, 'completeMarker'>, Edit> = 
 	deleteBlock: (a) => a.deleteBlock(1, 'keyless'),
 	updateBlockContent: (a) => a.updateBlockContent(1, 'twox\n', 'authored', 3, 4),
 	completeLineOnType: (a) => a.completeLineOnType(1, 3),
-	updateBlockMetadata: (a) => a.updateBlockMetadata(1, { note: 1 }),
+	replaceRaw: (a) => a.replaceRaw(1, 'twox\n'),
 	replaceBlock: (a) =>
 		a.replaceBlock(1, [paragraphNode('', 'new', '\n')], undefined, { snapshotOffset: 0 })
 };
@@ -55,6 +58,18 @@ const LEVELS = {
 } as const;
 
 type Level = keyof typeof LEVELS;
+
+// A metadata write needs a container whose rebuild writes the field into its bytes; a leaf refuses.
+const METADATA_WRITES: Record<Level, { source: string; write: Edit }> = {
+	'the document root': {
+		source: 'one\n\n> [!NOTE]\n> two\n',
+		write: (a) => a.updateBlockMetadata(1, { alertType: 'TIP' })
+	},
+	'a container': {
+		source: '- [ ] one\n- [ ] two\n',
+		write: (a) => a.updateBlockMetadata(1, { taskChecked: true, taskMarker: '[x] ' })
+	}
+};
 
 const undos = (deps: EditorActionsDeps) => deps.undoManager.getStacks().undo.length;
 
@@ -79,12 +94,23 @@ describe.each(Object.keys(LEVELS) as Level[])('every block edit at %s', (level) 
 		async (member) => {
 			const h = actionsAt(level, source);
 			expect(await WRITES[member](h.actions)).toBe(true);
-			// An undo entry, not the bytes: a metadata write can leave the bytes as they were.
 			expect(h.entries()).toBe(1);
-			// The metadata write stores a field no reload gives a paragraph.
-			if (member === 'updateBlockMetadata') allowDevWarns(['invariant:reads-back']);
 		}
 	);
+
+	it('updateBlockMetadata resolves true when it writes, false when reading mode refuses it', async () => {
+		installPlugins([admonitionsPlugin()]);
+		const { source: metadataSource, write } = METADATA_WRITES[level];
+		const h = actionsAt(level, metadataSource);
+		expect(await write(h.actions)).toBe(true);
+		expect(h.entries()).toBe(1);
+		expect(h.bytes()).not.toBe(metadataSource);
+
+		const reading = actionsAt(level, metadataSource, 'reading');
+		expect(await write(reading.actions)).toBe(false);
+		expect(reading.bytes()).toBe(metadataSource);
+		drainDevWarns();
+	});
 
 	it.each(Object.keys(WRITES) as (keyof typeof WRITES)[])(
 		'%s resolves false when reading mode refuses it',

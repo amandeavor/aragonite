@@ -70,6 +70,7 @@ import type { RevealPolicy } from '../selection/caret-landing';
 import type { RemovalGesture } from '../selection/caret-target';
 import { admitsWrite } from './commit/reading-write-gate';
 import { refusedWrite, withStoredCaret } from './stored-caret';
+import { assertInvariant } from '../assert';
 
 /** What both merge directions do when the neighbour cannot merge; `dir` names its side. */
 async function handleIneligibleNeighbor(
@@ -221,28 +222,6 @@ export async function commitLeafTextAt(
 	});
 }
 
-/**
- * A command's rewrite of the block at `path` in the document's line ending, its own undo entry
- * whatever typing came before; the caret moves to the block's start only when new blocks land.
- */
-export async function replaceBlockRaw(
-	root: EditorRoot,
-	path: readonly number[],
-	raw: string
-): Promise<void> {
-	const scope = createPathScope(root, docPathFrom(path.slice(0, -1)));
-	const index = path[path.length - 1];
-	if (!scope || !scope.children()[index]) return;
-	const target = scope.target();
-	const lineEnding = 'lineEnding' in target ? target.lineEnding : documentLineEnding(target);
-	const write = legalizeWrite(target, index, withLineEnding(raw, lineEnding), 'literal');
-	await commitLeafText(scope, index, write, {
-		snapshotOffset: 0,
-		caret: 0,
-		landing: (landed) => (landed.replaced ? unlessFocusMoved(landed) : null)
-	});
-}
-
 /** Each edit resolves to whether bytes landed. */
 export interface BlockEditCore {
 	split(i: number, offset: number): Promise<boolean>;
@@ -256,6 +235,7 @@ export interface BlockEditCore {
 		metadata: Record<string, unknown>,
 		options?: { caret?: BlockCaret }
 	): Promise<boolean>;
+	replaceRaw(i: number, raw: string, caret?: number): Promise<boolean>;
 	/** Resolves to how many blocks landed in the position, or null when nothing was written. */
 	replaceBlock(
 		i: number,
@@ -295,6 +275,32 @@ function landedFocus(
 	if (!atTaskStart) return { ...focus, replacementIndex: index };
 	const moved = atTaskStart.caretAt(index, focus.offset);
 	return { replacementIndex: moved.index, offset: moved.offset };
+}
+
+/** A leaf's metadata is what its opener reads from its bytes, so a metadata write there could not
+ *  survive a reload; it is refused, in every build, before anything is written (G1.110). */
+function refuseLeafMetadata(scope: CommitScope, i: number, kind: string): void {
+	const message =
+		`updateBlockMetadata wrote nothing: '${kind}' is a leaf, whose metadata comes from its ` +
+		"bytes. A leaf's command rewrites them with replaceRaw.";
+	assertInvariant('metadata-without-rebuild', () => ({
+		code: 'metadata-without-rebuild',
+		message
+	}));
+	scope.reportCommitError(new Error(`aragonite: ${message}`), 'metadataUpdate', i);
+}
+
+/** Where an offset in `before` sits in `after`: on the same text when it is outside the span the
+ *  rewrite changed, else at the end of what replaced that span. */
+function offsetThroughRewrite(before: string, after: string, offset: number): number {
+	const shorter = Math.min(before.length, after.length);
+	let head = 0;
+	while (head < shorter && before[head] === after[head]) head++;
+	let tail = 0;
+	while (tail < shorter - head && before.at(-1 - tail) === after.at(-1 - tail)) tail++;
+	if (offset <= head) return offset;
+	if (offset >= before.length - tail) return offset + after.length - before.length;
+	return after.length - tail;
 }
 
 export function createBlockEditCore(scope: CommitScope): BlockEditCore {
@@ -446,6 +452,10 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 			if (i < 0 || i >= children.length) return false;
 			const fields = Object.keys(metadata);
 			if (fields.length === 0) return false;
+			if (!getBlockKindDescriptor(children[i].kind).isContainer) {
+				refuseLeafMetadata(scope, i, children[i].kind);
+				return false;
+			}
 			// `mutate` returns noop, so the stale-raw check needs the changed node named; the copy
 			// exists only after unshareChild, so the commit reads this array after mutate.
 			const touchedNodes: CstNode[] = [];
@@ -474,6 +484,24 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 					return caret ? scope.at(i, caret.path, caret.offset) : null;
 				}
 			});
+		},
+
+		async replaceRaw(i, raw, caret) {
+			const node = scope.children()[i];
+			if (!node) return false;
+			const target = scope.target();
+			const lineEnding = 'lineEnding' in target ? target.lineEnding : documentLineEnding(target);
+			const text = withLineEnding(raw, lineEnding);
+			const write = legalizeWrite(target, i, text, 'literal');
+			const kept = caret === undefined ? undefined : offsetThroughRewrite(node.raw, text, caret);
+			// With no caret to keep, only a block that became new blocks takes one, at its start.
+			const landed = await commitLeafText(scope, i, write, {
+				snapshotOffset: caret ?? 0,
+				caret: kept === undefined ? 0 : write.storedOffset(kept),
+				landing: (written) =>
+					kept !== undefined || written.replaced ? unlessFocusMoved(written) : null
+			});
+			return landed.wrote;
 		},
 
 		async replaceBlock(i, given, focus, options) {

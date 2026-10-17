@@ -44,7 +44,8 @@ function harness(opts: { mode?: PresentationMode; editsLink?: boolean } = {}) {
 
 	let menu: BlockMenuModel | null = null;
 	const blockEdit = {
-		deleteBlock: vi.fn(async () => true)
+		deleteBlock: vi.fn(async () => true),
+		replaceRaw: vi.fn(async () => true)
 	};
 	const placeCaretAtPoint = vi.fn(() => true);
 	const insertMarkdown = vi.fn(async () => true);
@@ -61,7 +62,6 @@ function harness(opts: { mode?: PresentationMode; editsLink?: boolean } = {}) {
 		getDoc: () => doc,
 		isHostChrome: (node) => !!node && header.contains(node),
 		blockEdit,
-		replaceRaw: vi.fn(async () => {}),
 		placeCaretAtPoint,
 		insertMarkdown,
 		insertCatalogue: () => insertCatalogue(everyInstalledPlugin),

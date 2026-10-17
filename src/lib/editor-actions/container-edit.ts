@@ -7,6 +7,7 @@
 
 import type { ContainerEditActions } from '../action-contracts';
 import { documentLineEnding } from '../core/lines';
+import { emitCommitError } from '../editor-events';
 import type { EditorActionsDeps, UndoController } from './deps';
 import { createLeafTyping } from './leaf-write';
 import { survivorAfterRemoval } from '../selection/caret-target';
@@ -23,6 +24,7 @@ export function createContainerEditActions(
 		writeLeafInPlace,
 		land: (pos) => deps.caretLanding.land(pos),
 		survivorAfterRemoval: (removedPath, gesture) =>
-			survivorAfterRemoval(deps.doc, removedPath, gesture)
+			survivorAfterRemoval(deps.doc, removedPath, gesture),
+		reportCommitError: (error, op, path) => emitCommitError(deps.events, { error, op, path })
 	};
 }

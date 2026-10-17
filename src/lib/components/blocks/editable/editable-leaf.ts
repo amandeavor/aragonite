@@ -7,7 +7,6 @@
 
 import { onDestroy, tick } from 'svelte';
 import { createAttachmentKey } from 'svelte/attachments';
-import type { BlockEditActions } from '../../../action-contracts';
 import type { EditableLeafBlockApi, StickyColumnDirection } from '../../../block-component';
 import type { NodeView } from '../../../core/node-views';
 import { asRawOffset } from '../../../caret/coordinate-spaces';
@@ -39,7 +38,7 @@ import { traceRevealOpen, traceRevealFold } from '../../../debug/interaction-tra
 import { isBlankText, trimTrailingLineEnding, type LineEnding } from '../../../core/lines';
 import type { PresentationMode } from '../../../presentation-mode';
 import { tryGetBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
-import { type BlockCommandTarget, type CommandRun } from '../../../schema/block-commands';
+import { blockCommandTarget, type CommandRun } from '../../../schema/block-commands';
 import type { EditorContext } from '../../../schema/plugin-install';
 import { componentPluginEditor, componentPluginOptions } from '../../../schema/block-kind-plugin';
 import { createTextBatch } from '../../../editor-actions/commit/text-batch';
@@ -175,19 +174,6 @@ export interface EditableLeaf {
 	/** Commit edited source as one undo entry, fire and forget; the parse decides update / kind
 	 *  change / structural split. */
 	commitSource(edited: string): void;
-}
-
-/** What a plugin block command runs against on a leaf, read through `deps` at dispatch so a
- *  node swap is seen; the leaf's counterpart of `buildContainerKindTarget`. */
-export function buildLeafCommandContext(
-	deps: Pick<LeafDepsBase, 'getNode' | 'getIndex' | 'commandHooks'>,
-	blockEdit: Pick<BlockEditActions, 'updateBlockMetadata'>
-): BlockCommandTarget {
-	return {
-		node: deps.getNode(),
-		updateMetadata: (patch) => void blockEdit.updateBlockMetadata(deps.getIndex(), patch),
-		hooks: deps.commandHooks?.()
-	};
 }
 
 export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
@@ -406,7 +392,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		})();
 	}
 
-	const getCommandContext = () => buildLeafCommandContext(deps, blockEdit);
+	const getCommandContext = () => blockCommandTarget(deps, blockEdit, backend.getRaw);
 
 	// ── View sync ──────────────────────────────────────────────────────────────
 

@@ -44,9 +44,7 @@ export interface RootMenusDeps {
 	get mode(): PresentationMode;
 	getDoc: DocumentGetter;
 	isHostChrome(node: Node | null): boolean;
-	blockEdit: Pick<BlockEditActions, 'deleteBlock'>;
-	/** Rewrite top-level block `index` as one undo entry, apart from any typing before it. */
-	replaceRaw(index: number, raw: string): Promise<void>;
+	blockEdit: Pick<BlockEditActions, 'deleteBlock' | 'replaceRaw'>;
 	/** Where a click on empty space puts the caret, so a right-click on prose acts at the
 	 *  pointer. */
 	placeCaretAtPoint(x: number, y: number): boolean;
@@ -163,7 +161,9 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 				deleteBlock: async () => {
 					await deps.blockEdit.deleteBlock(index, 'keyless');
 				},
-				replaceRaw: (raw: string) => deps.replaceRaw(index, raw),
+				replaceRaw: async (raw: string) => {
+					await deps.blockEdit.replaceRaw(index, raw);
+				},
 				transformPaste: (text) => applyPasteTransforms(text, deps.activation),
 				lineEnding: documentLineEnding(deps.getDoc())
 			},

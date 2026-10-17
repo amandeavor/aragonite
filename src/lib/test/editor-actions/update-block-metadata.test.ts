@@ -1,15 +1,16 @@
-import { afterEach, describe, it, expect, vi } from 'vitest';
-import { allowDevWarns } from '#lib/test/support/warn-gate.js';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { installPlugins, parse, serialize } from '#lib';
+import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
+import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { createHistoryActions } from '#lib/editor-actions/commit/history.js';
+import { configureEditorEnv } from '#lib/env.js';
+import type { EditorError } from '#lib/editor-events.js';
 import {
 	makeNestedHarness,
 	makeNode,
 	makeTopHarness,
 	mountEveryBlock
 } from '#lib/test/harness/editor-actions.js';
-
-// The fixtures patch fields onto nodes a reload would read without them.
-afterEach(() => allowDevWarns(['invariant:reads-back']));
 
 // rebuildListItemRaw no-ops without `children`, so raw-assertion cases need a child.
 function makeTaskListItem(text: string, taskMarker: string): any {
@@ -25,56 +26,67 @@ function makeTaskListItem(text: string, taskMarker: string): any {
 	};
 }
 
+// The patch a checkbox toggle commits, which the list item's rebuild writes into its bytes.
+const CHECK = { taskChecked: true, taskMarker: '[x] ' };
+
 // ── Top-level scope ───────────────────────────────────────────────────────────
+
+// A top-level container whose rebuild writes its metadata into its bytes.
+const ALERT = '> [!NOTE]\n> body\n';
+const TIP = { alertType: 'TIP' };
+
+beforeEach(() => {
+	installPlugins([admonitionsPlugin()]);
+});
 
 describe('updateBlockMetadata', () => {
 	it('merges patch into node.metadata and emits one metadataUpdate event', async () => {
-		const node = makeNode('paragraph', 'hello\n', { taskChecked: false });
-		const { deps, events, actions } = makeTopHarness([node]);
+		const { doc, events, actions } = makeTopHarness(parse(ALERT).children);
+		const node = doc.children[0];
 
 		const editHandler = vi.fn();
 		events.on('edit', editHandler);
 
-		await actions.updateBlockMetadata(0, { taskChecked: true });
+		await actions.updateBlockMetadata(0, TIP);
 
 		// Copy before write: the pre-edit node stays untouched for the snapshot sharing it.
-		expect(deps.doc.children[0].metadata).toEqual({ taskChecked: true });
-		expect(node.metadata).toEqual({ taskChecked: false });
+		expect(doc.children[0].metadata).toMatchObject(TIP);
+		expect(node.metadata).toMatchObject({ alertType: 'NOTE' });
+		expect(serialize(doc)).toBe('> [!TIP]\n> body\n');
 		expect(editHandler).toHaveBeenCalledTimes(1);
 		const evt = editHandler.mock.calls[0][0];
 		expect(evt.op).toBe('metadataUpdate');
 		expect(evt.path).toEqual([0]);
-		expect(evt.detail.fields).toEqual(['taskChecked']);
+		expect(evt.detail.fields).toEqual(['alertType']);
 	});
 
 	it('pushes exactly one undo snapshot, and undo/redo flip metadata back and forth', async () => {
-		const node = makeNode('paragraph', 'hello\n', { taskChecked: false });
-		const { deps, controller, actions } = makeTopHarness([node]);
+		const { deps, controller, actions } = makeTopHarness(parse(ALERT).children);
 		const history = createHistoryActions(deps, controller);
 
-		await actions.updateBlockMetadata(0, { taskChecked: true });
+		await actions.updateBlockMetadata(0, TIP);
 
 		const stacks = deps.undoManager.getStacks();
 		expect(stacks.undo).toHaveLength(1);
-		expect(stacks.undo[0].snapshot.children[0].metadata).toEqual({ taskChecked: false });
+		expect(stacks.undo[0].snapshot.children[0].metadata).toMatchObject({ alertType: 'NOTE' });
 
 		await history.requestUndo();
-		expect(deps.doc.children[0].metadata).toEqual({ taskChecked: false });
+		expect(serialize(deps.doc)).toBe(ALERT);
 
 		await history.requestRedo();
-		expect(deps.doc.children[0].metadata).toEqual({ taskChecked: true });
+		expect(deps.doc.children[0].metadata).toMatchObject(TIP);
 	});
 
 	it('empty patch: no snapshot, no event, metadata unchanged', async () => {
-		const node = makeNode('paragraph', 'hello\n', { taskChecked: false });
-		const { deps, events, actions } = makeTopHarness([node]);
+		const { deps, events, actions } = makeTopHarness(parse(ALERT).children);
+		const node = deps.doc.children[0];
 
 		const editHandler = vi.fn();
 		events.on('edit', editHandler);
 
 		await actions.updateBlockMetadata(0, {});
 
-		expect(node.metadata).toEqual({ taskChecked: false });
+		expect(deps.doc.children[0]).toBe(node);
 		expect(editHandler).not.toHaveBeenCalled();
 		expect(deps.undoManager.getStacks().undo).toHaveLength(0);
 	});
@@ -82,11 +94,10 @@ describe('updateBlockMetadata', () => {
 	// A `noop` commit leaves the dev-mode stale-raw check unable to infer the touched node, so
 	// the top-level scope must name it or the write goes unchecked (G1.1, G1.12, G1.13).
 	it('names the resynced node for the dev check (parity with the container scope)', async () => {
-		const node = makeNode('paragraph', 'hello\n', { taskChecked: false });
-		const { deps, controller, actions } = makeTopHarness([node]);
+		const { deps, controller, actions } = makeTopHarness(parse(ALERT).children);
 		const spy = vi.spyOn(controller, 'commitStructural');
 
-		await actions.updateBlockMetadata(0, { taskChecked: true });
+		await actions.updateBlockMetadata(0, TIP);
 
 		const args = spy.mock.calls[0][0];
 		expect(args.touchedNodes).toBeDefined();
@@ -94,8 +105,7 @@ describe('updateBlockMetadata', () => {
 	});
 
 	it('lands no caret when the patch is empty (no commit runs)', async () => {
-		const node = makeNode('paragraph', 'hello\n', { taskChecked: false });
-		const { deps, actions, landings } = makeTopHarness([node]);
+		const { deps, actions, landings } = makeTopHarness(parse(ALERT).children);
 		mountEveryBlock(deps);
 
 		await actions.updateBlockMetadata(0, {}, { caret: { path: [], offset: 0 } });
@@ -104,58 +114,13 @@ describe('updateBlockMetadata', () => {
 	});
 
 	it('shallow-merge preserves untouched fields', async () => {
-		// A switch to `node.metadata = metadata` (no spread) fails here. The fixture is a
-		// registered leaf kind: any kind works for the merge check, and the dev check validates it.
-		const node = makeNode('paragraph', 'hello\n', {
-			marker: '- ',
-			taskItem: true,
-			taskChecked: false
-		});
-		const { deps, actions } = makeTopHarness([node]);
+		// A switch to `node.metadata = metadata` (no spread) fails here.
+		const { deps, actions } = makeTopHarness(parse(ALERT).children);
+		const untouched = { ...deps.doc.children[0].metadata };
 
-		await actions.updateBlockMetadata(0, { taskChecked: true });
+		await actions.updateBlockMetadata(0, TIP);
 
-		expect(deps.doc.children[0].metadata).toEqual({
-			marker: '- ',
-			taskItem: true,
-			taskChecked: true
-		});
-	});
-
-	it('multi-field patch updates taskChecked and taskMarker atomically', async () => {
-		const node = makeTaskListItem('pending', '[ ] ');
-		const { deps, events, actions } = makeTopHarness([node]);
-
-		const editHandler = vi.fn();
-		events.on('edit', editHandler);
-
-		await actions.updateBlockMetadata(0, { taskChecked: true, taskMarker: '[x] ' });
-
-		expect(deps.doc.children[0].metadata).toMatchObject({
-			taskItem: true,
-			taskChecked: true,
-			taskMarker: '[x] '
-		});
-		expect(deps.doc.children[0].raw).toBe('- [x] pending\n');
-		expect(editHandler).toHaveBeenCalledTimes(1);
-		const evt = editHandler.mock.calls[0][0];
-		expect(evt.op).toBe('metadataUpdate');
-		expect(evt.detail.fields).toEqual(expect.arrayContaining(['taskChecked', 'taskMarker']));
-	});
-
-	it('undo after multi-field task patch restores both fields', async () => {
-		const node = makeTaskListItem('pending', '[ ] ');
-		const { deps, controller, actions } = makeTopHarness([node]);
-		const history = createHistoryActions(deps, controller);
-
-		await actions.updateBlockMetadata(0, { taskChecked: true, taskMarker: '[x] ' });
-		await history.requestUndo();
-
-		expect(deps.doc.children[0].metadata).toMatchObject({
-			taskChecked: false,
-			taskMarker: '[ ] '
-		});
-		expect(deps.doc.children[0].raw).toBe('- [ ] pending\n');
+		expect(deps.doc.children[0].metadata).toEqual({ ...untouched, ...TIP });
 	});
 });
 
@@ -163,7 +128,7 @@ describe('updateBlockMetadata', () => {
 
 const CONTAINERS = {
 	blockquote: () => ({
-		inner: makeNode('paragraph', 'hello\n', { marker: '- ', taskItem: true, taskChecked: false }),
+		inner: makeNode('paragraph', 'hello\n'),
 		kind: 'blockquote',
 		raw: '> hello\n',
 		metadata: { quoteDepth: 1 }
@@ -176,10 +141,7 @@ const CONTAINERS = {
 	})
 } as const;
 
-function makeContainerSetup(
-	containerIndex: number,
-	container: keyof typeof CONTAINERS = 'blockquote'
-) {
+function makeContainerSetup(containerIndex: number, container: keyof typeof CONTAINERS = 'list') {
 	const spec = CONTAINERS[container]();
 	const containerNode: any = {
 		kind: spec.kind,
@@ -193,12 +155,15 @@ function makeContainerSetup(
 	const padNode = makeNode('paragraph', 'pad\n', {});
 	const docNodes = Array.from({ length: containerIndex }, () => padNode).concat([containerNode]);
 
-	const { deps, events, bundle } = makeNestedHarness(docNodes, { index: containerIndex });
+	const { deps, events, bundle, controller } = makeNestedHarness(docNodes, {
+		index: containerIndex
+	});
 
 	return {
 		bundle,
 		deps,
 		events,
+		controller,
 		liveInner: () => deps.doc.children[containerIndex].children![0],
 		liveContainer: () => deps.doc.children[containerIndex]
 	};
@@ -212,15 +177,15 @@ describe('updateBlockMetadata: container scope', () => {
 		const editHandler = vi.fn();
 		events.on('edit', editHandler);
 
-		await bundle.blockEdit.updateBlockMetadata(0, { taskChecked: true });
+		await bundle.blockEdit.updateBlockMetadata(0, CHECK);
 
-		expect(liveInner().metadata).toMatchObject({ taskChecked: true });
+		expect(liveInner().metadata).toMatchObject(CHECK);
 
 		expect(editHandler).toHaveBeenCalledTimes(1);
 		const evt = editHandler.mock.calls[0][0];
 		expect(evt.op).toBe('metadataUpdate');
 		expect(evt.path).toEqual([containerIndex, 0]);
-		expect(evt.detail.fields).toEqual(['taskChecked']);
+		expect(evt.detail.fields).toEqual(['taskChecked', 'taskMarker']);
 	});
 
 	it('empty patch: early-returns with no commitContainer call and no snapshot', async () => {
@@ -239,9 +204,20 @@ describe('updateBlockMetadata: container scope', () => {
 	it('shallow-merge preserves untouched fields', async () => {
 		const { bundle, liveInner } = makeContainerSetup(1);
 
-		await bundle.blockEdit.updateBlockMetadata(0, { taskChecked: true });
+		await bundle.blockEdit.updateBlockMetadata(0, CHECK);
 
-		expect(liveInner().metadata).toEqual({ marker: '- ', taskItem: true, taskChecked: true });
+		expect(liveInner().metadata).toEqual({ marker: '- ', taskItem: true, ...CHECK });
+	});
+
+	it('undo after a task patch restores both fields and the bytes', async () => {
+		const { bundle, deps, controller, liveInner, liveContainer } = makeContainerSetup(1);
+		const history = createHistoryActions(deps, controller);
+
+		await bundle.blockEdit.updateBlockMetadata(0, CHECK);
+		await history.requestUndo();
+
+		expect(liveInner().metadata).toMatchObject({ taskChecked: false, taskMarker: '[ ] ' });
+		expect(liveContainer().raw).toBe('- [ ] pending\n');
 	});
 
 	it('task taskMarker patch rebuilds inner listItem raw and parent list raw', async () => {
@@ -249,7 +225,7 @@ describe('updateBlockMetadata: container scope', () => {
 		// list's own raw stays stale.
 		const { bundle, liveInner, liveContainer } = makeContainerSetup(1, 'list');
 
-		await bundle.blockEdit.updateBlockMetadata(0, { taskChecked: true, taskMarker: '[x] ' });
+		await bundle.blockEdit.updateBlockMetadata(0, CHECK);
 
 		expect(liveInner().raw).toBe('- [x] pending\n');
 		expect(liveContainer().raw).toBe('- [x] pending\n');
@@ -277,5 +253,65 @@ describe('updateBlockMetadata with a caret', () => {
 		await h.actions.updateBlockMetadata(1, { quoteDepth: 1 });
 
 		expect(h.landings).toEqual([]);
+	});
+});
+
+// ── A leaf refuses ───────────────────────────────────────────────────────────
+
+// A leaf refuses a metadata write (G1.110). Miss-analysis: fixtures wrote invented fields onto
+// paragraphs and allowed the read-back warning, so nothing held a leaf's metadata to its bytes.
+const LEAF_SCOPES = {
+	'the top level': () => {
+		const h = makeTopHarness('pad\n\nhello\n');
+		return { ...h, write: () => h.actions.updateBlockMetadata(1, { tagged: true }), path: [1] };
+	},
+	'a container': () => {
+		const h = makeContainerSetup(1, 'blockquote');
+		return {
+			...h,
+			write: () => h.bundle.blockEdit.updateBlockMetadata(0, { tagged: true }),
+			path: [1, 0]
+		};
+	}
+};
+
+describe('updateBlockMetadata on a leaf', () => {
+	for (const [scope, setup] of Object.entries(LEAF_SCOPES)) {
+		it(`writes nothing at ${scope}, warns in dev naming the kind, and reports an error`, async () => {
+			const h = setup();
+			const before = serialize(h.deps.doc);
+			const errors: EditorError[] = [];
+			const edits = vi.fn();
+			h.events.on('error', (e) => errors.push(e));
+			h.events.on('edit', edits);
+
+			expect(await h.write()).toBe(false);
+
+			expect(serialize(h.deps.doc)).toBe(before);
+			expect(h.deps.undoManager.getStacks().undo).toHaveLength(0);
+			expect(edits).not.toHaveBeenCalled();
+			const warns = takeDevWarns();
+			expect(warns.map((w) => w.tag)).toEqual(['invariant:metadata-without-rebuild']);
+			expect(warns[0].message).toContain("'paragraph'");
+			expect(warns[0].message).toContain('replaceRaw');
+			expect(errors).toHaveLength(1);
+			expect(errors[0]).toMatchObject({
+				origin: 'commit',
+				context: { op: 'metadataUpdate', path: h.path }
+			});
+			expect(String(errors[0].error)).toContain('replaceRaw');
+		});
+	}
+
+	it('still reports the error in production, with no dev warning', async () => {
+		configureEditorEnv({ isDev: false, isTest: false });
+		const h = LEAF_SCOPES['the top level']();
+		const errors: EditorError[] = [];
+		h.events.on('error', (e) => errors.push(e));
+
+		expect(await h.write()).toBe(false);
+
+		expect(takeDevWarns()).toEqual([]);
+		expect(errors.map((e) => e.origin)).toEqual(['commit']);
 	});
 });

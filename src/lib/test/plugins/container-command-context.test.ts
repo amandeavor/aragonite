@@ -32,9 +32,11 @@ function bindKindChord(
 	};
 }
 
+const blockWrites = () => ({ updateBlockMetadata: vi.fn(), replaceRaw: vi.fn() });
+
 describe('plugin container kind-command target', () => {
-	it("routes a registered command's updateMetadata to the container's updateOwnMetadata", () => {
-		const updateOwnMetadata = vi.fn();
+	it("routes a registered command's updateMetadata to the parent's metadata write", () => {
+		const writes = blockWrites();
 		const handler = vi.fn((ctx: { updateMetadata(patch: Record<string, unknown>): void }) => {
 			ctx.updateMetadata({ calloutType: 'warning' });
 			return true;
@@ -45,12 +47,12 @@ describe('plugin container kind-command target', () => {
 
 		const handled = dispatchKindCommand(
 			'Mod+Shift+K',
-			buildContainerKindTarget({ getNode: () => node }, updateOwnMetadata),
+			buildContainerKindTarget({ getNode: () => node, getIndex: () => 2 }, writes),
 			commandContextWith(overrides)
 		);
 
 		expect(handled).toBe(true);
-		expect(updateOwnMetadata).toHaveBeenCalledWith({ calloutType: 'warning' });
+		expect(writes.updateBlockMetadata).toHaveBeenCalledWith(2, { calloutType: 'warning' });
 		// The command context carries the live container node, not a snapshot.
 		expect(handler.mock.calls[0][0]).toMatchObject({ node });
 	});
@@ -67,7 +69,10 @@ describe('plugin container kind-command target', () => {
 
 		const handled = dispatchKindCommand(
 			'Mod+Shift+K',
-			buildContainerKindTarget({ getNode: () => node, commandHooks: () => hooks }, vi.fn()),
+			buildContainerKindTarget(
+				{ getNode: () => node, getIndex: () => 0, commandHooks: () => hooks },
+				blockWrites()
+			),
 			commandContextWith(overrides)
 		);
 
@@ -84,7 +89,7 @@ describe('plugin container kind-command target', () => {
 
 		dispatchKindCommand(
 			'Mod+Shift+K',
-			buildContainerKindTarget({ getNode: () => node }, vi.fn()),
+			buildContainerKindTarget({ getNode: () => node, getIndex: () => 0 }, blockWrites()),
 			commandContextWith(overrides)
 		);
 
@@ -93,7 +98,10 @@ describe('plugin container kind-command target', () => {
 
 	it('reads getNode() live so a node swap is observed, never snapshotted (thunks, never values)', () => {
 		let node = noteNode();
-		const target = buildContainerKindTarget({ getNode: () => node }, vi.fn());
+		const target = buildContainerKindTarget(
+			{ getNode: () => node, getIndex: () => 0 },
+			blockWrites()
+		);
 
 		expect(target.kind).toBe(note);
 

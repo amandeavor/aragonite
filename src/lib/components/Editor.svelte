@@ -141,7 +141,6 @@
 	import { createInlineMenuState } from '../inline-menu/inline-menu-state.svelte';
 	import type { InlineMenuRegistry } from '../inline-menu/types';
 	import { createInlineRangeCommit } from '../editor-actions/inline-range-commit';
-	import { replaceBlockRaw } from '../editor-actions/block-edit-core';
 	import { createLinkCardState } from './link-card/link-card-state.svelte';
 	import { runStartupInvariantChecks } from '../invariants/install';
 	import { assertInvariant } from '../assert';
@@ -921,8 +920,6 @@
 		getDoc,
 		isHostChrome,
 		blockEdit,
-		replaceRaw: (index, raw) =>
-			replaceBlockRaw({ deps: editorActionsDeps, controller }, [index], raw),
 		placeCaretAtPoint,
 		insertMarkdown,
 		insertCatalogue: getInsertCatalogue,

@@ -84,7 +84,7 @@ export function registerAdmonitions(view: BlockView, options?: AdmonitionsOption
 		}
 	}
 
-	// `updateMetadata` is the only supported commit path: patch, rebuildRaw, one undoable edit.
+	// A container's metadata patch: `rebuildRaw` writes it into the bytes as one undoable edit.
 	const cycleKind = registerBlockCommand(admonition, 'admonition.cycleKind', (ctx) => {
 		const meta = getPluginMetadata<AdmonitionMetadata>(ctx.node);
 		const dir = ctx.arg === 'prev' ? -1 : 1;

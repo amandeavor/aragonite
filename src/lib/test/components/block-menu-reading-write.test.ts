@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root/menus.js';
 import { registerDefaultContextActions } from '#lib/components/menu/default-context-actions.js';
 import { serialize } from '#lib/core/serializer.js';
-import { replaceBlockRaw } from '#lib/editor-actions/block-edit-core.js';
 import { READING_WRITE_TAG } from '#lib/editor-actions/commit/reading-write-gate.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
@@ -45,8 +44,6 @@ async function removeFenceAfterSwitchToReading() {
 		getDoc: () => editor.doc,
 		isHostChrome: () => false,
 		blockEdit: editor.actions,
-		replaceRaw: (index, raw) =>
-			replaceBlockRaw({ deps: editor.deps, controller: editor.controller }, [index], raw),
 		placeCaretAtPoint: () => true,
 		insertMarkdown: async () => true,
 		insertCatalogue: () => [],

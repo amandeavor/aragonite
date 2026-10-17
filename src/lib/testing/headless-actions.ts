@@ -85,6 +85,7 @@ export function stubBlockEdit(): BlockEditActions {
 		completeLineOnType: wroteNothing,
 		completeMarker: wroteNothing,
 		updateBlockMetadata: wroteNothing,
+		replaceRaw: wroteNothing,
 		replaceBlock: wroteNothing
 	};
 }

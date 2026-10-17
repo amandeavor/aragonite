@@ -199,7 +199,8 @@ export function makeCommitScopeStub(
 			if (!target || !block) return 'unresolvable';
 			block.focus(target.offset);
 			return 'placed';
-		}
+		},
+		reportCommitError: vi.fn()
 	};
 	return { scope, commits, children };
 }
@@ -307,7 +308,8 @@ export function makeStubContainerEdit(): ContainerEditActions {
 		typeInLeaf: vi.fn((_path, _offset, _key, work) => work()),
 		writeLeafInPlace: vi.fn(() => ({ wrote: false as const })),
 		land: vi.fn(async () => 'placed' as const),
-		survivorAfterRemoval: vi.fn(() => null)
+		survivorAfterRemoval: vi.fn(() => null),
+		reportCommitError: vi.fn()
 	};
 }
 

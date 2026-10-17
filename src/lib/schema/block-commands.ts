@@ -34,10 +34,14 @@ import { isReadingMode, type PresentationMode } from '../presentation-mode';
 import type { MarkActivation } from '../decorations/mark-activation';
 
 export interface BlockCommandContext extends CommandRun {
-	/** A read-only view of the node; metadata edits go through `updateMetadata`. */
+	/** A read-only view of the node; a command changes it through one of the writes below. */
 	node: NodeView;
 	arg: unknown;
+	/** A container's metadata patch, which its `rebuildRaw` writes into the bytes. A leaf's
+	 *  metadata comes from its bytes, so on a leaf this writes nothing and reports an error. */
 	updateMetadata(patch: Record<string, unknown>): void;
+	/** Rewrite the block's bytes as one undo entry; the parse derives its kind and metadata. */
+	replaceRaw(raw: string): void;
 	/**
 	 * The mounted component's view-state hooks, cast by the plugin to its own type. `undefined`
 	 * when no component is mounted, and a handler must then decline cleanly.
@@ -70,6 +74,27 @@ export interface BlockCommandOptions {
 
 /** What the focused block supplies; the dispatch adds the argument and the editor context. */
 export type BlockCommandTarget = Omit<BlockCommandContext, 'arg' | 'editor' | 'afterRemoval'>;
+
+/** The writes of the list holding a block, which its command context reaches at its index. */
+export interface BlockCommandWrites {
+	updateBlockMetadata(index: number, patch: Record<string, unknown>): Promise<boolean>;
+	replaceRaw(index: number, raw: string, caret?: number): Promise<boolean>;
+}
+
+/** The command target a leaf and a container both hand the dispatch, read live so a node swap is
+ *  seen; `getCaret` is a leaf's caret in its bytes, which `replaceRaw` keeps on its text. */
+export function blockCommandTarget(
+	block: { getNode(): NodeView; getIndex(): number; commandHooks?: () => unknown },
+	writes: BlockCommandWrites,
+	getCaret?: () => number | null
+): BlockCommandTarget {
+	return {
+		node: block.getNode(),
+		updateMetadata: (patch) => void writes.updateBlockMetadata(block.getIndex(), patch),
+		replaceRaw: (raw) => void writes.replaceRaw(block.getIndex(), raw, getCaret?.() ?? undefined),
+		hooks: block.commandHooks?.()
+	};
+}
 
 interface RegisteredBlockCommand {
 	handler: BlockCommandHandler;
@@ -322,11 +347,16 @@ function runAtCaret(
 ): boolean {
 	switch (resolved.tier) {
 		case 'minted': {
-			const { owner, handler, context, target } = resolved;
-			const editor = pluginEditorFor(ctx.pluginEditor, owner);
-			return runPluginCommand(owner, { kind: target.kind, command: id }, ctx.onCommandError, () =>
-				handler({ ...context, editor, arg, afterRemoval: run.afterRemoval })
-			);
+			const { target } = resolved;
+			if (!target.afterSourceCommit) return runMinted(resolved, id, arg, ctx, run);
+			// Resolved again once a shown source is written, so the handler reads those bytes. A
+			// handler that runs later has already had the key, whatever it answers.
+			let answer = true;
+			target.afterSourceCommit(() => {
+				const written = resolveBlockLocalCommand(id, target, ctx.activation);
+				answer = written.tier === 'minted' && runMinted(written, id, arg, ctx, run);
+			});
+			return answer;
 		}
 		case 'builtin':
 			return resolved.target.runCommand?.(id, arg, run) ?? false;
@@ -344,6 +374,21 @@ function runAtCaret(
 		case 'unlisted':
 			return false;
 	}
+}
+
+/** A plugin's handler under its own editor context, a throw caught and reported. */
+function runMinted(
+	resolved: Extract<BlockLocalResolution, { tier: 'minted' }>,
+	id: AnyCommandId,
+	arg: unknown,
+	ctx: CommandDispatchContext,
+	run: CommandRun
+): boolean {
+	const { owner, handler, context, target } = resolved;
+	const editor = pluginEditorFor(ctx.pluginEditor, owner);
+	return runPluginCommand(owner, { kind: target.kind, command: id }, ctx.onCommandError, () =>
+		handler({ ...context, editor, arg, afterRemoval: run.afterRemoval })
+	);
 }
 
 /** `ranged` travels with the block-level answer because a selection no handler reads is not the

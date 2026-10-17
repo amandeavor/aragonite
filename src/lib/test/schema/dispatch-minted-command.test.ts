@@ -25,6 +25,7 @@ afterEach(() => {
 describe('leaf-path dispatch of a created block command', () => {
 	it('runs the handler with the target context + binding arg when a context is supplied', () => {
 		const updateMetadata = vi.fn();
+		const replaceRaw = vi.fn();
 		const handler = vi.fn(() => true);
 		const id = registerBlockCommand('paragraph', 'demo.tag', handler);
 		const overrides = normalizeKeybindingOverrides([
@@ -35,13 +36,84 @@ describe('leaf-path dispatch of a created block command', () => {
 
 		const handled = dispatchKeyCommand(
 			'Mod+Shift+K',
-			{ kind: 'paragraph', runCommand, getCommandContext: () => ({ node, updateMetadata }) },
+			{
+				kind: 'paragraph',
+				runCommand,
+				getCommandContext: () => ({ node, updateMetadata, replaceRaw })
+			},
 			commandContextWith(overrides)
 		);
 
 		expect(handled).toBe(true);
-		expect(handler).toHaveBeenCalledWith({ node, updateMetadata, arg: 7, afterRemoval: false });
+		expect(handler).toHaveBeenCalledWith({
+			node,
+			updateMetadata,
+			replaceRaw,
+			arg: 7,
+			afterRemoval: false
+		});
 		expect(runCommand).not.toHaveBeenCalled();
+	});
+});
+
+// A plugin command runs once a shown source is written. Miss-analysis: only block moves waited, and
+// no row ran a plugin command over an open source, so a rewrite from stale bytes went unseen.
+describe('a plugin command over a shown source', () => {
+	const tagCommand = () =>
+		registerBlockCommand('paragraph', 'demo.tag', (ctx) => {
+			ctx.replaceRaw(`${ctx.node.raw}!`);
+			return true;
+		});
+
+	it('runs after the source is written, against the node that write left', () => {
+		const id = tagCommand();
+		const overrides = normalizeKeybindingOverrides([
+			{ chord: 'Mod+Shift+K', command: id, kind: 'paragraph' }
+		]);
+		let node = { ...nodeOf('paragraph'), raw: 'tex' };
+		let written: (() => void) | undefined;
+		const replaceRaw = vi.fn();
+
+		const handled = dispatchKeyCommand(
+			'Mod+Shift+K',
+			{
+				kind: 'paragraph',
+				runCommand: () => false,
+				getCommandContext: () => ({ node, updateMetadata: () => {}, replaceRaw }),
+				afterSourceCommit: (run) => (written = run)
+			},
+			commandContextWith(overrides)
+		);
+
+		expect(handled).toBe(true);
+		expect(replaceRaw).not.toHaveBeenCalled();
+		node = { ...node, raw: 'text' };
+		written!();
+		expect(replaceRaw).toHaveBeenCalledWith('text!');
+	});
+
+	it("answers with the handler's own result when no source is shown", () => {
+		const id = registerBlockCommand('paragraph', 'demo.decline', () => false);
+		const overrides = normalizeKeybindingOverrides([
+			{ chord: 'Mod+Shift+K', command: id, kind: 'paragraph' }
+		]);
+
+		const handled = dispatchKeyCommand(
+			'Mod+Shift+K',
+			{
+				kind: 'paragraph',
+				runCommand: () => false,
+				getCommandContext: () => ({
+					node: nodeOf('paragraph'),
+					updateMetadata: () => {},
+					replaceRaw: () => {}
+				}),
+				afterSourceCommit: (run) => run()
+			},
+			commandContextWith(overrides)
+		);
+
+		expect(handled).toBe(false);
 	});
 });
 
@@ -64,7 +136,7 @@ describe('a throwing plugin handler is contained at the command dispatch', () =>
 			{
 				kind: 'paragraph',
 				runCommand: () => false,
-				getCommandContext: () => ({ node, updateMetadata: () => {} })
+				getCommandContext: () => ({ node, updateMetadata: () => {}, replaceRaw: () => {} })
 			},
 			commandContextWith(overrides, { onCommandError: (r) => reports.push(r) })
 		);
@@ -89,7 +161,7 @@ describe('a throwing plugin handler is contained at the command dispatch', () =>
 			{
 				kind: 'listItem',
 				runCommand: () => false,
-				getCommandContext: () => ({ node, updateMetadata: () => {} })
+				getCommandContext: () => ({ node, updateMetadata: () => {}, replaceRaw: () => {} })
 			},
 			commandContextWith(overrides, { onCommandError: (r) => reports.push(r) })
 		);

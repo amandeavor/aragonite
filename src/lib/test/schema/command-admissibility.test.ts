@@ -25,7 +25,8 @@ const mintedSurface = (): KindCommandTarget => ({
 	...surface(),
 	getCommandContext: () => ({
 		node: { kind: 'paragraph', leadingTrivia: '', raw: '' } as unknown as NodeView,
-		updateMetadata: () => {}
+		updateMetadata: () => {},
+		replaceRaw: () => {}
 	})
 });
 
