@@ -92,6 +92,8 @@ describe('a leaf command that rewrites its bytes', () => {
 		await editor.settle();
 
 		expect(editor.source()).toBe('%%! new\n\nnext\n');
+		// The source hid before the write, so the rewrite has no caret to put back into it.
+		expect(editor.target.querySelector('.reveal-leaf-source')).toBeNull();
 	});
 });
 
