@@ -630,30 +630,27 @@
 	color: var(--syntax-list, currentColor);
 }
 
-/* Registered as lengths so each resolves where it is declared: the body text's `ch` at the editor
-   root, and a block's hanging indent on that block, which its marker then reads unchanged. */
-@property --md-body-ch {
-	syntax: '<length>';
-	inherits: true;
-	initial-value: 8px;
-}
-
+/* Registered as a length so it resolves in the block's own font, and its marker reads it unchanged. */
 @property --md-prefix-indent {
 	syntax: '<length>';
 	inherits: true;
 	initial-value: 0px;
 }
 
-:where(.editor) {
-	--md-body-ch: 1ch;
+/* A container's leading marker takes its line's size, and where it renders, the line's weight
+   too, so a heading item's number reads as part of the heading. */
+:where(.editor):is(
+		[data-presentation='reading'],
+		[data-presentation^='preview-'],
+		[data-presentation='live']
+	)
+	.text-editable-block
+	> .md-marker[contenteditable='false'] {
+	font-weight: inherit;
 }
 
-/* A container's leading marker fills the hanging indent whatever its glyphs measure, so the first
-   line's text starts where wrapped lines do; body-size, so a heading item matches a paragraph's. */
-:where(.editor) .text-editable-block > .md-marker[contenteditable='false'] {
-	font-size: var(--editor-font-size, 1rem);
-}
-
+/* The marker fills the hanging indent whatever its glyphs measure, so the first line's text starts
+   where wrapped lines do. */
 :where(.editor) .text-editable-block > .md-marker[contenteditable='false'] > .md-marker-box {
 	display: inline-block;
 	width: var(--md-prefix-indent);
@@ -822,6 +819,21 @@
 	> :where(.text-editable-block)
 	> .md-marker[contenteditable='false'] {
 	visibility: visible;
+}
+
+/* The drawn box is a control, not text, so it keeps the editor's body size in any line. */
+:where(.editor):is(
+		[data-presentation='reading'],
+		[data-presentation^='preview-'],
+		[data-presentation='live']
+	)
+	.list-item-block[data-list-marker='task']
+	> :where(.list-item-content)
+	> :where(.block-list)
+	> :where(.block-host)
+	> :where(.text-editable-block)
+	> .md-marker[contenteditable='false'] {
+	font-size: var(--editor-font-size, 1rem);
 }
 
 /* GitHub task lists: the `- ` collapses, keeping its bytes for the offset traversal, and the

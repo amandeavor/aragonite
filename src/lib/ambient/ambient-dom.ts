@@ -10,10 +10,10 @@ import { devWarn } from '../dev-warn';
 /** The box inside the marker prefix span that editor.css sizes to the hanging indent. */
 export const MARKER_BOX_CLASS = 'md-marker-box';
 
-/** The hanging indent a prefix needs when it declares none: one body-text `ch` per character, the
- *  width its bytes take in a monospace face. */
+/** The hanging indent a prefix needs when it declares none: one `ch` of its line's font per
+ *  character, the width its bytes take in a monospace face. */
 export function defaultPrefixIndent(text: string): string {
-	return `calc(${text.length} * var(--md-body-ch, 1ch))`;
+	return `calc(${text.length} * 1ch)`;
 }
 
 export function buildAmbientSpan(prefix: AmbientPrefix): HTMLSpanElement {

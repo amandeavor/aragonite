@@ -1,16 +1,16 @@
 # Feature: the list marker's column
 
-A list item draws its marker (`-`, `1.`, a checkbox) in a column of its own, and the item's text starts at that column's right edge on every line. The column is sized in the editor's body text, so a paragraph item and a heading item in one list start their text at the same place. The marker sits beside the item's first line, whatever that line holds.
+A list item draws its marker (`-`, `1.`, a checkbox) in a column of its own, and the item's text starts at that column's right edge on every line. The marker takes the size of the line it labels, and its column is sized in that line's font, so a heading item's number reads as part of the heading. The marker sits beside the item's first line, whatever that line holds.
 
 ## Happy paths
 
 - A bullet, ordered (`1.`, `9.`, `10.`, `100.`), unchecked or checked task item whose text runs onto a second line (a hard break): the second line's text starts where the first line's text starts, within half a pixel, in source, live, reading and block preview modes
 - A long ordered or bullet item that soft-wraps: the wrapped line starts under the first line's text, in source and live modes
-- An ordered or bullet list of a paragraph item and a long heading item: the heading's wrapped line starts where the paragraph item's text starts, in source, live and reading modes, the heading's marker drawn at body size
+- A long heading item (`1.`, `10.`, `100.`, `-`): its wrapped line starts where its first line's text starts, and its marker draws at the heading's size, in source, live and reading modes, and at the heading's weight where markers render (source mode draws every marker at plain weight)
 
 ## Edge cases
 
-- A bullet, ordered (`1.` to `100.`) or to-do item in source mode, and an ordered item in live mode: the marker text the mode paints ends before the item's text starts, so a wider marker widens its column instead of running under the text
+- A bullet, ordered (`1.` to `100.`) or to-do item in source mode, an ordered item in live mode, and an ordered heading item (`1.` to `100.`) in both: the marker text the mode paints ends before the item's text starts, so a wider marker widens its column instead of running under the text
 - A nested ordered or to-do item inside a bullet item, or a nested bullet inside an ordered item: the nested item paints only its own marker (no `•` beside its number or box, no `- ` bytes beside its bullet), in live and reading modes
   - Miss-analysis: every presentation row ran on a flat list, and the marker rules reached any marker under an item of their kind, so the outer item's paint leaked onto nested items of another kind.
 - An item whose first line is a picture (`1. ![pic](x)`): the marker's top sits at the picture's top, not at its bottom, in source, live and reading modes

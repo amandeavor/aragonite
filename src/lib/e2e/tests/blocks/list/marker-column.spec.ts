@@ -90,7 +90,10 @@ test.describe('wrapped text lines up under the first line', () => {
 // numbers have glyphs to measure there.
 const FIT_ROWS = [
 	...MARKERS.map((marker) => ({ marker, mode: 'source' as const })),
-	...['1. ', '9. ', '10. ', '100. '].map((marker) => ({ marker, mode: 'live' as const }))
+	...['1. ', '9. ', '10. ', '100. '].map((marker) => ({ marker, mode: 'live' as const })),
+	...['1. # ', '10. # ', '100. # '].flatMap((marker) =>
+		(['source', 'live'] as const).map((mode) => ({ marker, mode }))
+	)
 ];
 
 test.describe('the marker fits inside its column', () => {
@@ -148,21 +151,32 @@ test.describe('an item paints its own marker, not its parent item’s', () => {
 	}
 });
 
-test.describe('a heading item starts its text in the same column as a paragraph item', () => {
+test.describe('a heading item draws its marker as part of the heading', () => {
 	for (const mode of ['source', 'live', 'reading'] as const) {
-		for (const [shape, first, second] of [
-			['ordered', '1. ', '2. '],
-			['bullet', '- ', '- ']
-		] as const) {
-			test(`${shape}, ${mode}`, async ({ page }) => {
-				await openIn(page, mode, `${first}alpha\n${second}# ${LONG}\n`);
-				await expect(page.locator('.heading-1')).toHaveCount(1);
-				const paragraph = await blockGeometry(page, [0, 0, 0]);
-				const heading = await blockGeometry(page, [0, 1, 0]);
-				expect(heading.lines.length).toBeGreaterThan(1);
-				expect(Math.abs(heading.lines[1].left - paragraph.lines[0].left)).toBeLessThanOrEqual(
-					HALF_PIXEL
+		for (const marker of ['1. ', '10. ', '100. ', '- ']) {
+			test(`\`${marker.trim()}\` heading item, ${mode}`, async ({ page }) => {
+				await openIn(
+					page,
+					mode,
+					`${marker}# ${LONG}
+`
 				);
+				await expect(page.locator('.heading-1')).toHaveCount(1);
+				const { lines } = await blockGeometry(page, [0, 0, 0]);
+				expect(lines.length).toBeGreaterThan(1);
+				expect(Math.abs(lines[1].left - lines[0].left)).toBeLessThanOrEqual(HALF_PIXEL);
+				const font = await page.evaluate(() => {
+					const heading = document.querySelector<HTMLElement>('.editor .heading-1')!;
+					const marker = heading.querySelector(':scope > .md-marker[contenteditable="false"]')!;
+					const [h, m] = [getComputedStyle(heading), getComputedStyle(marker)];
+					return {
+						heading: { size: h.fontSize, weight: h.fontWeight },
+						marker: { size: m.fontSize, weight: m.fontWeight }
+					};
+				});
+				expect(font.marker.size).toBe(font.heading.size);
+				// Source mode draws every marker as plain-weight syntax, the heading's own `#` included.
+				if (mode !== 'source') expect(font.marker.weight).toBe(font.heading.weight);
 			});
 		}
 	}
