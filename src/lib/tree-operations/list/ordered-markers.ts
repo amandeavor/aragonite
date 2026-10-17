@@ -25,8 +25,8 @@ export function readOrderedSuffix(list: NodeView): string {
 	return marker.replace(/^\d+/, '') || '. ';
 }
 
-/** Whether GFM reads `lower` on in `upper`'s list once nothing parts the two items: the same
- *  ordered-ness and the same bullet character or delimiter. A task item is a bullet item. */
+/** Whether GFM reads `lower` as continuing `upper`'s list once nothing parts the two items: the
+ *  same bullet character, or the same ordered delimiter. A task item is a bullet item. */
 export function itemsShareList(upper: NodeView | undefined, lower: NodeView | undefined): boolean {
 	const a = markerOf(upper);
 	const b = markerOf(lower);

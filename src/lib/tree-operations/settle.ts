@@ -96,8 +96,8 @@ export function restoreSeparatorAfterBlank(
 	mintSeparator(body, index, sharing);
 }
 
-/** A list one block's fill or rewrite made, `added` blocks from `at`, joins a same-type list across
- *  the blank line at either edge where the block it replaced didn't; the neighbour merge follows. */
+/** Drops the blank line between a list an edit made from one block and a same-type list beside it,
+ *  so the merge reads them as one; a side the replaced block already continued keeps its line. */
 export function joinListsMadeBeside(
 	body: BodyParent,
 	at: number,

@@ -3,7 +3,8 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 
 // A new line made beside a to-do list and filled with a to-do joins the list, whichever gesture
-// fills it: the bytes lose the blank line, a reload reads one list, and one Ctrl+Z parts them.
+// fills it: the bytes lose the blank line, a reload reads one list, and the undo entry that wrote
+// the join brings the blank line back.
 // Requirements: `e2e/requirements/blocks/list/fill-joins-list.md`.
 
 const LIST = '- [ ] fold laundry\n- [ ] move email\n';
