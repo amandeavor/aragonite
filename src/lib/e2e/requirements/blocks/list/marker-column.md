@@ -10,7 +10,7 @@ A list item draws its marker (`-`, `1.`, a checkbox) in a column of its own, and
 
 ## Edge cases
 
-- A bullet, ordered (`1.` to `100.`) or to-do item: the marker text the mode paints ends before the item's text starts, in source and live modes, so a wider marker widens its column instead of running under the text
+- A bullet, ordered (`1.` to `100.`) or to-do item in source mode, and an ordered item in live mode: the marker text the mode paints ends before the item's text starts, so a wider marker widens its column instead of running under the text
 - A nested ordered or to-do item inside a bullet item, or a nested bullet inside an ordered item: the nested item paints only its own marker (no `•` beside its number or box, no `- ` bytes beside its bullet), in live and reading modes
   - Miss-analysis: every presentation row ran on a flat list, and the marker rules reached any marker under an item of their kind, so the outer item's paint leaked onto nested items of another kind.
 - An item whose first line is a picture (`1. ![pic](x)`): the marker's top sits at the picture's top, not at its bottom, in source, live and reading modes

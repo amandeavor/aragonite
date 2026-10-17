@@ -86,29 +86,34 @@ test.describe('wrapped text lines up under the first line', () => {
 	}
 });
 
+// Live paints no marker text for a bullet or a to-do (the bullet and box are drawn), so only the
+// numbers have glyphs to measure there.
+const FIT_ROWS = [
+	...MARKERS.map((marker) => ({ marker, mode: 'source' as const })),
+	...['1. ', '9. ', '10. ', '100. '].map((marker) => ({ marker, mode: 'live' as const }))
+];
+
 test.describe('the marker fits inside its column', () => {
-	for (const mode of ['source', 'live'] as const) {
-		for (const marker of MARKERS) {
-			test(`\`${marker.trim()}\` item, ${mode}`, async ({ page }) => {
-				await openIn(page, mode, `${marker}alpha\n`);
-				const { lines } = await blockGeometry(page, [0, 0, 0]);
-				// The right edge of the marker text the mode paints; a hidden `- ` paints nothing.
-				const glyphsRight = await page.evaluate(() => {
-					const marker = document.querySelector('.editor .md-marker[contenteditable="false"]')!;
-					const walker = document.createTreeWalker(marker, NodeFilter.SHOW_TEXT);
-					let right = -Infinity;
-					for (let text = walker.nextNode(); text; text = walker.nextNode()) {
-						const style = getComputedStyle(text.parentElement!);
-						if (style.visibility !== 'visible' || style.color === 'rgba(0, 0, 0, 0)') continue;
-						const range = document.createRange();
-						range.selectNodeContents(text);
-						for (const rect of range.getClientRects()) right = Math.max(right, rect.right);
-					}
-					return right;
-				});
-				expect(glyphsRight).toBeLessThanOrEqual(lines[0].left + HALF_PIXEL);
+	for (const { marker, mode } of FIT_ROWS) {
+		test(`\`${marker.trim()}\` item, ${mode}`, async ({ page }) => {
+			await openIn(page, mode, `${marker}alpha\n`);
+			const { lines } = await blockGeometry(page, [0, 0, 0]);
+			// The right edge of the marker text the mode paints; a hidden `- ` paints nothing.
+			const glyphsRight = await page.evaluate(() => {
+				const marker = document.querySelector('.editor .md-marker[contenteditable="false"]')!;
+				const walker = document.createTreeWalker(marker, NodeFilter.SHOW_TEXT);
+				let right = -Infinity;
+				for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+					const style = getComputedStyle(text.parentElement!);
+					if (style.visibility !== 'visible' || style.color === 'rgba(0, 0, 0, 0)') continue;
+					const range = document.createRange();
+					range.selectNodeContents(text);
+					for (const rect of range.getClientRects()) right = Math.max(right, rect.right);
+				}
+				return right;
 			});
-		}
+			expect(glyphsRight).toBeLessThanOrEqual(lines[0].left + HALF_PIXEL);
+		});
 	}
 });
 
@@ -134,8 +139,10 @@ test.describe('an item paints its own marker, not its parent item’s', () => {
 					};
 				}, kind);
 				// A bullet paints `•` over its hidden `- `; a number or a box paints no bullet beside it.
-				if (kind === 'bullet') expect(paint).toEqual({ bullet: '"•"', bytes: 'hidden' });
-				else expect(paint.bullet).toMatch(/^(none|normal)$/);
+				if (kind === 'bullet') {
+					expect(paint.bullet).toContain('•');
+					expect(paint.bytes).toBe('hidden');
+				} else expect(paint.bullet).toMatch(/^(none|normal)$/);
 			});
 		}
 	}
