@@ -1,10 +1,10 @@
-# Feature: a presentation-mode flip collapses an open source reveal
+# Feature: a presentation-mode flip closes an open source reveal
 
-A mode switch counts as a blur. An inline source reveal holds the block's live
-bytes in temporary DOM the CST has never seen, and the switch's re-render
-replaces those children, so the switch has to go through the one place a blur
-commits them, on every switch and not only the one into reading. Otherwise the
-reveal's edit is discarded where a blur would have committed it.
+A mode switch counts as a blur. Keys typed into an inline widget's shown source
+are written as they land, so by the time a switch arrives the document already
+holds the edit. The switch closes the shown source, on every switch and not only
+the one into reading, and the widget renders again in the new mode with the bytes
+unchanged.
 
 Driven on `/test/plugins?seed=math`, whose `$…$` kind declares `revealSource`;
 the switch is the host writing the `presentationMode` prop, which is the
@@ -18,14 +18,17 @@ there to commit.
 
 ## Happy paths
 
-- an edit typed into a revealed source is committed by a switch to live, and the
-  document holds the edited bytes afterwards
-- the same holds switching into reading, the branch that already carried a blur
+- an edit typed into a revealed source is in the document before the switch; a
+  switch into reading closes the source, the formula renders, and the bytes are
+  the edited ones
+- a switch to live keeps the edited bytes too, and the caret it carries across
+  sits inside the formula, so the source opens again there, as any restored
+  caret inside a widget that can show its source does
 
 ## Edge cases
 
-- a reveal opened but not edited commits nothing across a switch: the bytes are
-  byte-identical afterwards
+- a reveal opened but not edited moves no byte across a switch, and the formula
+  renders again
 
 ## User interactions
 
