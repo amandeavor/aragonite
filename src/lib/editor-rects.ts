@@ -46,6 +46,8 @@ export function createEditorRects(deps: {
 	/** Put a caret at a raw offset in `path` through the caret landing, as a navigation. Injected
 	 *  because this file owns geometry, not the selection model. */
 	landCaretAt: (path: number[], offset: number) => Promise<boolean>;
+	/** The editor's one measure of a collapsed caret, injected as `landCaretAt` is. */
+	caretRectAt: (root: ParentNode, node: Node, offset: number) => DOMRect | null;
 }): EditorRects {
 	return {
 		blockRect(path) {
@@ -67,7 +69,12 @@ export function createEditorRects(deps: {
 			// A caret in the host's header snippet is inside the root but is not a document
 			// caret; reporting it would float caret-following controls over the host's field.
 			if (deps.isHostChrome(range.commonAncestorContainer)) return null;
-			return range.getBoundingClientRect();
+			if (!range.collapsed) return range.getBoundingClientRect();
+			const block = range.startContainer.parentElement?.closest<HTMLElement>('[data-block-path]');
+			return (
+				deps.caretRectAt(block ?? root, range.startContainer, range.startOffset) ??
+				range.getBoundingClientRect()
+			);
 		},
 		async reveal(path) {
 			await deps.revealPath(path);

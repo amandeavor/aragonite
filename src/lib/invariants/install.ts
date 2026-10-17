@@ -30,6 +30,9 @@ import { checkReadsBack } from './reads-back';
 import { isDevChecks } from '../env';
 import { perfEnabled } from '../perf/instruments';
 import { checkTopLevelUntouched } from './top-level-untouched';
+import { checkLineEndingPairsKept, type LineEndingCounts } from './line-ending-pairs';
+import { lineEndingCounts } from '../core/line-ending-pairs';
+import { concatChildren } from '../core/serializer';
 
 /** Checks only the nodes a commit touched. Call it after the commit's `rebuildRaw`, so a strip
  *  container's raw is that rebuild's output. */
@@ -71,6 +74,29 @@ export function assertCommitPaths(
 export function assertUndoTopIntegrity(entry: SnapshotEntry | undefined): void {
 	if (!entry) return;
 	assertInvariant('snapshot-integrity', () => checkSnapshotIntegrity(entry));
+}
+
+/** G1.117 for a commit, after its mutation: `before` is {@link documentLineEndings} read before
+ *  it, null when the checks are off. */
+export function assertLineEndingPairsKept(doc: Document, before: LineEndingCounts | null): void {
+	if (!before) return;
+	assertInvariant('line-ending-pairs', () =>
+		checkLineEndingPairsKept(before, documentLineEndings(doc)!)
+	);
+}
+
+/** G1.117 for a keystroke written in place: the leaf's bytes before and after. */
+export function assertLeafLineEndingPairsKept(before: string, after: string): void {
+	assertInvariant('line-ending-pairs', () =>
+		checkLineEndingPairsKept(lineEndingCounts(before), lineEndingCounts(after))
+	);
+}
+
+/** The document's line-ending counts for G1.117; null outside dev and under the perf instruments,
+ *  since it reads the whole document. */
+export function documentLineEndings(doc: Document): LineEndingCounts | null {
+	if (!isDevChecks() || perfEnabled()) return null;
+	return lineEndingCounts(doc.prefix + concatChildren(doc.children) + doc.suffix);
 }
 
 /** G1.41, after every structural commit publishes: `wasOpen` is `endsOpen` read before it mutated. */

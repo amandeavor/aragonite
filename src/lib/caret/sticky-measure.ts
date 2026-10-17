@@ -20,8 +20,7 @@ import {
 	widgetSpanContainingOffset
 } from './widget-offset';
 import {
-	firstUsefulRect,
-	lineAfterEnding,
+	caretRectAt,
 	movingEnd,
 	neighbourCaretRect,
 	sameLineTolerance,
@@ -33,7 +32,8 @@ export function getCurrentCursorEditorRelativeX(el: HTMLElement): EditorX | null
 	if (!sel || sel.rangeCount === 0) return null;
 	const range = movingEnd(sel);
 
-	const rect = firstUsefulRect(range) ?? neighbourCaretRect(range);
+	const rect =
+		caretRectAt(el, range.startContainer, range.startOffset) ?? neighbourCaretRect(range);
 	const viewportX = asViewportX(rect ? rect.left : el.getBoundingClientRect().left);
 	return toEditorX(viewportX, editorLeftOf(el));
 }
@@ -52,20 +52,9 @@ export function caretBoxAt(container: HTMLElement, offset: DomTextOffset): Caret
 	const landing = findDomTextLanding(container, offset);
 	if (!landing) return null;
 	const pos = landing.position;
-	const range = document.createRange();
-	try {
-		range.setStart(pos.node, pos.offset);
-	} catch {
-		return null;
-	}
-	range.collapse(true);
-	// A caret after a final line ending sits on the empty line below it.
-	const after =
-		pos.node instanceof Text && pos.offset === pos.node.length
-			? lineAfterEnding(pos.node, container)
-			: null;
-	const measured = after ?? firstUsefulRect(range);
-	const rect = measured ?? neighbourCaretRect(range);
+	const measured = caretRectAt(container, pos.node, pos.offset);
+	const rect =
+		measured ?? neighbourCaretRect({ startContainer: pos.node, startOffset: pos.offset });
 	if (!rect) return null;
 	return {
 		offset: landing.inTextAtTarget ? offset : domTextOffsetAtNode(container, pos.node, pos.offset),

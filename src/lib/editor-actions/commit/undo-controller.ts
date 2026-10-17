@@ -31,7 +31,9 @@ import {
 	assertCommittedNodes,
 	assertKeepsABlock,
 	assertLastLineKept,
+	assertLineEndingPairsKept,
 	assertReadsBack,
+	documentLineEndings,
 	assertUndoTopIntegrity
 } from '../../invariants/install';
 import {
@@ -292,6 +294,7 @@ export function createUndoController(
 			pushCommitSnapshot(args.snapshot.path, args.snapshot.offset);
 			lastCommitEntry = deps.undoManager.peekUndo() ?? null;
 			const wasOpen = endsOpen(deps.doc);
+			const endings = documentLineEndings(deps.doc);
 			const changed = args.mutate(wasOpen);
 			if (args.discardIfNoop && !changed) {
 				// The mutation ran but no scope changed: unwind as a throw would.
@@ -301,6 +304,7 @@ export function createUndoController(
 				const written = args.written();
 				assertCommittedNodes(written.nodes, deps.reading.grammar);
 				assertLastLineKept(deps.doc, wasOpen);
+				assertLineEndingPairsKept(deps.doc, endings);
 				assertKeepsABlock(deps.doc, written.nodes);
 				assertReadsBack(written.tops, deps.reading.grammar);
 			}

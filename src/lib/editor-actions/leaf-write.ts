@@ -8,7 +8,7 @@ import type { ContainerEditActions, InPlaceResult, Relanding } from '../action-c
 import type { CstNode } from '../core/nodes';
 import { documentLineEnding } from '../core/lines';
 import { assertInvariant } from '../assert';
-import { assertReadsBack } from '../invariants/install';
+import { assertLeafLineEndingPairsKept, assertReadsBack } from '../invariants/install';
 import { docPathFrom } from '../caret/coordinate-spaces';
 import { caretTargetFor } from '../selection/caret-target';
 import type { CaretPosition } from '../selection/primitives';
@@ -98,6 +98,7 @@ export function createLeafTyping(deps: EditorActionsDeps, controller: UndoContro
 				// Raw written outside a commit reaches the view once Svelte re-reads doc.children.
 				deps.doc.children = [...deps.doc.children];
 			}
+			assertLeafLineEndingPairsKept(leafPreviousRaw, write.text);
 			// The content version bumps after the tree write, and the `edit` after that, in the
 			// order a commit uses; the trial reparse kept the leaf's kind, which `input` promises.
 			deps.bumpContentVersion();

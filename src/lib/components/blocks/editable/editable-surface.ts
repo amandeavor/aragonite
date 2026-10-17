@@ -57,6 +57,7 @@ import {
 	trimTrailingLineEnding,
 	type LineEnding
 } from '../../../core/lines';
+import { keepLineEndingPairs } from '../../../core/line-ending-pairs';
 import { getContentRange, sameLineSuffix } from '../../../core/inline';
 import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
@@ -604,8 +605,11 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		deps.caretMemory.noteTyping();
 		const el = deps.getEl();
 		if (deps.getComposing() || !el) return unwritten();
-		const text = deps.readText();
-		const savedOffset = deps.backend.getRaw() ?? 0;
+		const { text, caret: savedOffset } = keepLineEndingPairs(
+			trimTrailingLineEnding(deps.getNode().raw),
+			deps.readText(),
+			deps.backend.getRaw() ?? 0
+		);
 		// A block that draws its delimiters keeps the reading verbatim, and so does a run composed
 		// where a record waits, which is that record's insertion.
 		const rewritten =

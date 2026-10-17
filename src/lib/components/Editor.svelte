@@ -24,6 +24,7 @@
 	import { createCaretMemory } from '../caret/caret-memory';
 	import { createCaretWriter } from '../caret/widget-offset';
 	import { createDrawnCaret } from '../caret/drawn-caret.svelte';
+	import { caretRectAt } from '../caret/visual-lines';
 	import { docPathFrom } from '../caret/coordinate-spaces';
 	import { createAutoPairRecord } from './blocks/text/auto-pair-record';
 	import { createScrollOwner } from '../windowing/scroll-owner';
@@ -629,7 +630,8 @@
 		scroll: scrollOwner,
 		isCrossBlock: () => selectionState.isCrossBlock,
 		isHostChrome,
-		landCaretAt: navigateCaret
+		landCaretAt: navigateCaret,
+		caretRectAt
 	});
 
 	const editorId = mintEditorId();

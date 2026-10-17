@@ -5,7 +5,7 @@
  * code chip's edge). Reads only; the target decides what to draw from these.
  */
 
-import { firstUsefulRect, neighbourCaretRect, type CaretRect } from './visual-lines';
+import { caretRectAt, charRect, neighbourCaretRect, type CaretRect } from './visual-lines';
 import { isAtomicInlineWidget, isBlockLineText } from './widget-offset';
 import type { ClientCaretBox, HostBox, WidgetEdgeBox } from './drawn-caret-target';
 
@@ -64,7 +64,7 @@ export function widgetEdgeBox(widget: HTMLElement, side: 'before' | 'after'): Wi
 export function measureCaret(surface: HTMLElement, range: Range): CaretMeasure | null {
 	const host = caretHost(surface);
 	if (!host) return null;
-	const own = firstUsefulRect(range);
+	const own = caretRectAt(surface, range.startContainer, range.startOffset);
 	const caret = own ?? neighbourCaretRect(range);
 	return {
 		host,
@@ -142,11 +142,7 @@ function nearestLetter(
 }
 
 function letterBox(letter: { node: Text; at: number } | null): DOMRect | null {
-	if (!letter) return null;
-	const range = document.createRange();
-	range.setStart(letter.node, letter.at);
-	range.setEnd(letter.node, letter.at + 1);
-	return firstUsefulRect(range);
+	return letter && charRect(letter.node, letter.at);
 }
 
 // The caret at a code chip's first or last letter, or in the text just outside the chip.
