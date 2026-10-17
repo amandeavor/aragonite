@@ -559,9 +559,9 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// A keydown that writes for itself fires no beforeinput, so the caret is read here too.
 	const onKeyDown = withKeydownVerdict(async (e) => {
 		endsDroppedComposition(e);
-		// The read-back can't tell this Backspace's lone `\r` from a Delete's, so it starts outside.
+		// A Backspace from inside a CRLF pair reads back as a Delete's, so the caret moves before it.
 		const el = deps.getEl();
-		if (e.key === 'Backspace' && el) deps.caretWriter.leaveLineEndingPair(el);
+		if (e.key === 'Backspace' && !e.isComposing && el) deps.caretWriter.leaveLineEndingPair(el);
 		if (!e.isComposing) recordPreEditOffset();
 		await deps.handleKeydown(e);
 	});
