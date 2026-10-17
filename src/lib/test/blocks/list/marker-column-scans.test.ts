@@ -129,7 +129,7 @@ describe('the list’s marker column', () => {
 		expect(reads).toBe(0);
 	});
 
-	it('narrows again when an undo takes back a to-do, from counts the edit left alone', async () => {
+	it('comes back when an undo takes back a to-do, from counts the edit left alone', async () => {
 		const editor = mountEditor({ source: '- a\n- [ ] b\n', presentationMode: 'live' });
 		await tick();
 		const before = columnOf(editor);
