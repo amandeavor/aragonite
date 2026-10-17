@@ -69,15 +69,21 @@
 	);
 	let bounds = $derived(sliceWindow((node.children ?? []).length, win));
 
-	// Tracks the ids and the in-place marker edits, not the items, so it runs when items come, go,
-	// move or change their marker, never on a keystroke in their text.
+	// Scans the items when they come, go or move, or a marker changes in place; an undo snapshot
+	// hands the list a fresh copy of the same ids, which keeps the column it has.
 	let markerEdits = $state(0);
+	let scanned: { ids: string[]; edits: number; drawsBoxes: boolean; column: string } | null = null;
 	const column = $derived.by(() => {
 		const ids = listState.innerBlockIds;
-		for (let i = 0; i < ids.length; i++) void ids[i];
-		void markerEdits;
+		let sameIds = scanned?.ids.length === ids.length;
+		for (let i = 0; i < ids.length; i++) if (ids[i] !== scanned?.ids[i]) sameIds = false;
 		const drawsBoxes = hidesMarkers(reading.mode());
-		return untrack(() => markerColumn(node.children ?? [], drawsBoxes));
+		if (sameIds && scanned?.edits === markerEdits && scanned.drawsBoxes === drawsBoxes) {
+			return scanned.column;
+		}
+		const next = untrack(() => markerColumn(node.children ?? [], drawsBoxes));
+		scanned = { ids: ids.slice(), edits: markerEdits, drawsBoxes, column: next };
+		return next;
 	});
 
 	const childList: ChildList = {
