@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { mergeIntoPrevDeepLeaf, mergeWithNext } from '../../tree-operations';
+import { mergeWithNext } from '../../tree-operations';
 import { describeConvergence } from '../harness/parse-converged';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { mergePrevSettled } from '#lib/test/harness/settle-funnel.js';
 
 // A join into a setext heading lands the text on the title line, above the underline: joined past
 // it, `======next` reparses as paragraph text and the heading's structure comes into view.
@@ -18,12 +19,7 @@ const joins = {
 	},
 	'Backspace (the backward join)': (source: string) => {
 		const doc = parse(source);
-		const joinOffset = mergeIntoPrevDeepLeaf(
-			doc,
-			1,
-			createSharingState(),
-			fixtureReading()
-		)?.joinOffset;
+		const joinOffset = mergePrevSettled(doc, 1, createSharingState(), fixtureReading())?.joinOffset;
 		return { doc, joinOffset };
 	}
 };

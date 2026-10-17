@@ -1,12 +1,10 @@
 import type { CstNode } from '../core/nodes';
-import { isBlankParagraph, readBlocks } from '../core/parser';
+import { readBlocks } from '../core/parser';
 import { lineEndingAt, ownTrailingLineEnding } from '../core/lines';
 import type { SharingState } from './sharing';
 import { ensureUnsharedChild } from './unshare';
 import { endWindowLines } from './open-tail';
 import type { BodyParent } from './node-primitives';
-import { settleSeparatorOnBlank, widenForTailMint } from './settle';
-import { absorbWindowSeams, type SettledSplice } from './neighbour-merge';
 import type { StructuralChange } from './structural-change';
 import { devWarn } from '../dev-warn';
 import type { GrammarView } from '../schema/block-openers';
@@ -39,10 +37,14 @@ export function reorderChildren(children: CstNode[], from: number, to: number): 
 	return { op: 'replace', at: lo, count, newCount: count, idMap };
 }
 
-/**
- * Reorder a body's children, each separator staying with its position rather than its node. The
- * children must be an owned array; the result's `landing` counts any merge the move set off.
- */
+/** A move before the commit's fix-up: its change, and where the moved block stands. */
+export interface Reordered {
+	change: StructuralChange;
+	landing: number;
+}
+
+/** Reorder an owned children array, each separator staying with its position rather than its
+ *  node. The commit's fix-up, told it was a move, settles the joins the rotation left. */
 export function reorderChildrenWithTrivia(
 	body: BodyParent,
 	from: number,
@@ -50,7 +52,7 @@ export function reorderChildrenWithTrivia(
 	sharing: SharingState,
 	/** The editor's grammar, in which the checks below reread each pair of moved blocks. */
 	grammar: GrammarView
-): SettledSplice {
+): Reordered {
 	const children = body.children;
 	if (from === to) return { change: { op: 'noop' }, landing: to };
 	if (isReorderOutOfBounds(from, to, children.length)) {
@@ -77,15 +79,7 @@ export function reorderChildrenWithTrivia(
 	for (let at = lo; at <= hi + 1; at++) {
 		if (at !== vacated || !flushAround) separateSeam(children, at, sharing, grammar);
 	}
-	// A blank block moved by position can hold a line its follower holds too; the run needs
-	// exactly one, and none at the body head, where the reload reads each as a block.
-	const beforeMint = children.length;
-	for (let at = lo; at <= hi; at++) {
-		if (isBlankParagraph(children[at])) settleSeparatorOnBlank(body, at, sharing);
-	}
-	// A blank block moved to the tail can turn the body's trailing line into a block of its own.
-	const widened = widenForTailMint(change, beforeMint, children.length);
-	return absorbWindowSeams(body, lo, hi - lo + 1, to, widened, grammar, sharing);
+	return { change, landing: to };
 }
 
 /**

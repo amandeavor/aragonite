@@ -15,8 +15,8 @@ import { docPathFrom } from '../../caret/coordinate-spaces';
 import { assignIds } from '../../block-id';
 import { replaceRefs } from '../../block-lists/child-refs';
 import { documentBody, nodeAt } from '../../tree-operations/node-primitives';
-import { settleSeparator } from '../../tree-operations/settle';
-import { endWindowLines, keepOpenTail } from '../../tree-operations/open-tail';
+import { settleEdit, type EditKind, type SettledEdit } from '../../tree-operations/settle';
+import { keepOpenTail } from '../../tree-operations/open-tail';
 import { keepOneBlock } from '../../tree-operations/keep-one-block';
 import { ensureUnsharedPath, rebuildOwnedContainer } from '../../tree-operations/unshare';
 import type { SharingState } from '../../tree-operations/sharing';
@@ -46,6 +46,7 @@ import {
 } from '../../tree-operations/structural-change';
 import type { BlockListState } from '../../block-lists/block-list-state.svelte';
 import { assertIdsInLockstep, assertTopLevelUntouched } from '../../invariants/install';
+import { checkSettledOnce, startCommitSettles } from '../../invariants/settle-once';
 import { dropChildSpans } from '../../schema/child-spans';
 import { perfEnabled } from '../../perf/instruments';
 
@@ -123,7 +124,7 @@ export function createStructuralCommit(
 			entry: 'commitStructural',
 			scopes: [getDocScope()],
 			snapshot: args.snapshot,
-			mutate: ([doc]) => [args.mutate(doc.children)],
+			mutate: ([doc]) => [args.mutate(doc.children, doc)],
 			op: args.op,
 			landing: args.landing,
 			reveal: args.reveal,
@@ -169,6 +170,9 @@ export function createStructuralCommit(
 		/** The bytes before mutate; without them `serialize()` emits a half-applied document. None at
 		 *  the document, whose rollback is its saved array, so a commit there costs no per-block copy. */
 		savedRaws: SavedRaw[];
+		/** What the mutation said it did beyond its splice, and the fix-up's result once it ran. */
+		edit: EditKind;
+		settled: SettledEdit | null;
 	}
 
 	interface SavedRaw {
@@ -240,7 +244,7 @@ export function createStructuralCommit(
 		// Off the tree's `$state` proxy, where every index a splice shifts is a tracked write.
 		const children = isDoc ? [...topLevelBefore] : owned.children!;
 		const lineEnding = documentLineEnding(deps.doc);
-		return {
+		const prepared: PreparedScope = {
 			target: s,
 			isDoc,
 			chain,
@@ -262,6 +266,10 @@ export function createStructuralCommit(
 							: null
 					);
 					rebuildOwnedContainer(node);
+				},
+				describeEdit: (edit) => {
+					prepared.edit = { ...prepared.edit, ...edit };
+					return () => prepared.settled;
 				}
 			},
 			ids,
@@ -270,8 +278,11 @@ export function createStructuralCommit(
 			savedChildIds,
 			savedStateIds,
 			savedStateRefs,
-			savedRaws
+			savedRaws,
+			edit: {},
+			settled: null
 		};
+		return prepared;
 	}
 
 	/**
@@ -317,7 +328,7 @@ export function createStructuralCommit(
 	async function commitScopes<const S extends readonly MultiScopeTarget[]>(
 		args: ScopedCommitArgs<S>
 	): Promise<boolean> {
-		const { scopes, snapshot, mutate, op, discardIfNoop, trackCaret } = args;
+		const { scopes, snapshot, mutate, op, discardIfNoop, trackCaret, fixesUpOwnWrites } = args;
 		const prepared: PreparedScope[] = [];
 		// Top-level blocks a container scope copied into the tree's own array, with what stood there.
 		const replacedSlots: [index: number, node: CstNode][] = [];
@@ -335,6 +346,7 @@ export function createStructuralCommit(
 			entry: args.entry,
 			snapshot,
 			mutate: (wasOpen) => {
+				startCommitSettles();
 				for (const s of scopes) assertScopeIdentity(s);
 				if (scopes.slice(1).some(isDocScope)) {
 					throw new Error('commitMultiScope: the document scope goes first');
@@ -364,19 +376,21 @@ export function createStructuralCommit(
 					);
 				}
 				for (let i = 0; i < prepared.length; i++) {
-					endWindowLines(prepared[i].view.body, changeList[i], deps.sharing, deps.reading.grammar);
-				}
-				for (let i = 0; i < prepared.length; i++) {
+					const p = prepared[i];
+					const reportsEdit = () => changeList[i].op !== 'noop' || Object.keys(p.edit).length > 0;
+					assertInvariant('settle-once', () =>
+						fixesUpOwnWrites ? null : checkSettledOnce(p.view.body.children, reportsEdit())
+					);
 					// `savedChildren` is the scope's array from before the mutation, so the blank-line
 					// fix-up reads which blocks were blank off it.
-					changeList[i] = settleSeparator(
-						prepared[i].view.body,
-						prepared[i].savedChildren ?? [],
-						changeList[i],
+					p.settled = settleEdit(
+						p.view.body,
+						{ change: changeList[i], before: p.savedChildren ?? [], ...p.edit },
 						deps.reading.grammar,
 						deps.sharing,
 						trackCaret?.[i]
 					);
+					changeList[i] = p.settled.change;
 					// Before the tail step, which reads the block now last; the empty paragraph is blank, so
 					// that step leaves its line ending as it is.
 					if (prepared[i].isDoc) {

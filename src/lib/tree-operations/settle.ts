@@ -1,8 +1,8 @@
 /**
- * Recomputes the blank-line separators an edit left stale, has `neighbour-merge.ts` merge the
- * neighbours that would re-read as one block, and deletes a block on top of both
- * (`docs/design/syntax-tree.md` § Blank lines). Each takes the body with its owner, whose fence
- * lines and title decide where a separator may sit, and writes through `separator-writes.ts`.
+ * The fix-up after an edit: recomputes the blank-line separators it left stale and has
+ * `neighbour-merge.ts` merge the neighbours that would re-read as one block
+ * (`docs/design/syntax-tree.md` § Blank lines). An edit splices and writes; `settleEdit` is the
+ * one place its body is fixed up, and the body's owner decides where a separator may sit.
  */
 
 import type { CstNode, Document } from '../core/nodes';
@@ -11,9 +11,12 @@ import { isBlankParagraph, type ContainerBodyWrap } from '../core/parser';
 import { ownTrailingLineEnding, type LineEnding } from '../core/lines';
 import { devWarn } from '../dev-warn';
 import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
-import type { GrammarView } from '../schema/block-openers';
+import { blockReadingNotFinal, type GrammarView } from '../schema/block-openers';
+import { recordSettlePass } from '../perf/instruments';
 import { assertInvariant } from '../assert';
 import { checkStructuralDescriptor } from '../invariants/structural-descriptor';
+import { noteBodySettled } from '../invariants/settle-once';
+import { endWindowLines } from './open-tail';
 import type { SharingState } from './sharing';
 import { lacksSublistSeparator } from './list/sublist-separator';
 import { itemsShareList } from './list/ordered-markers';
@@ -84,11 +87,7 @@ export function restoreSeparatorOnFill(
  * The separator the block below a consumed blank line takes back, skipped for a blank block whose
  * follower already holds one, since the two share it (G2.13).
  */
-export function restoreSeparatorAfterBlank(
-	body: BodyParent,
-	index: number,
-	sharing: SharingState
-): void {
+function restoreSeparatorAfterBlank(body: BodyParent, index: number, sharing: SharingState): void {
 	const { children } = body;
 	const node = children[index];
 	if (!node || node.leadingTrivia !== '') return;
@@ -98,7 +97,7 @@ export function restoreSeparatorAfterBlank(
 
 /** Drops the blank line between a list an edit made from one block and a same-type list beside it,
  *  so the merge reads them as one; a side the replaced block already continued keeps its line. */
-export function joinListsMadeBeside(
+function joinListsMadeBeside(
 	body: BodyParent,
 	at: number,
 	added: number,
@@ -213,7 +212,7 @@ function dropWrapOfEmptiedBody(body: BodyParent): void {
  * A tail block that stops being blank gives back the `innerSuffix` line {@link
  * settleSeparatorOnBlank} lent it, or the container emits a line nobody typed.
  */
-export function releaseWrapPeel(body: BodyParent, index: number): void {
+function releaseWrapPeel(body: BodyParent, index: number): void {
 	const { children } = body;
 	if (children.length === 0 || !body.owner?.innerSuffix) return;
 	if (!bodyWrapOf(body)?.beforeCloserLine) return;
@@ -267,6 +266,269 @@ function tailSuffixSlotOf(body: BodyParent): { read: () => string; clear: () => 
 		read: () => owner.innerSuffix ?? '',
 		clear: () => writeWrapSlot(body, 'innerSuffix', '')
 	};
+}
+
+// ── The one fix-up ──
+
+/** A content write at `index`: the block as it stood before, and the bytes written into it. */
+export interface WrittenSlot {
+	index: number;
+	previous: NodeView;
+	text: string;
+}
+
+/** What an edit did to one body, which is everything {@link settleEdit} reads. */
+export interface BodyEdit {
+	/** The positions the edit spliced. */
+	change: StructuralChange;
+	/** The body's children before the edit: which removed blocks were blank, and what each left. */
+	before: readonly CstNode[];
+	/** A content write. */
+	written?: WrittenSlot;
+	/** A move, which carries each separator with its position rather than its node; `to` is where
+	 *  the moved block stands before the fix-up merges anything. */
+	moved?: { to: number };
+	/** A block removed by `deleteNode`, on its own or after a join wrote it into the block above. */
+	removed?: true;
+}
+
+/** What an edit did beyond its splice, which a mutation reports to the commit that settles it. */
+export type EditKind = Pick<BodyEdit, 'written' | 'moved' | 'removed'>;
+
+/** A content write once its neighbours were fixed up: its change widened by every merge, and where
+ *  the written text starts inside that change's window (nonzero once a merge above absorbed it). */
+export interface SettledContent {
+	change: StructuralChange;
+	textStart: number;
+}
+
+/** {@link settleEdit}'s result: the edit's change widened by the fix-up, the write's own result,
+ *  and where a moved block stands once the move's merges ran. */
+export interface SettledEdit {
+	change: StructuralChange;
+	written: SettledContent | null;
+	moved: number | null;
+}
+
+/** The one fix-up a commit runs over each body it wrote: what the edit's kind asks first, then
+ *  every block it placed ends its line, then the separators around its window are recomputed. */
+export function settleEdit(
+	body: BodyParent,
+	edit: BodyEdit,
+	grammar: GrammarView,
+	sharing: SharingState,
+	tracked?: TrackedPosition
+): SettledEdit {
+	recordSettlePass();
+	const head = settleEditHead(body, edit, grammar, sharing, tracked);
+	endWindowLines(body, head.change, sharing, grammar);
+	const change = settleSplice(body, edit.before, head.change, grammar, sharing, tracked);
+	return { ...head, change };
+}
+
+/** A content write's fix-up, for a write no commit settles: the keystroke written in place, the
+ *  trial before it, and a write into a body below the commit's scope. */
+export function settleContentWrite(
+	body: BodyParent,
+	slot: WrittenSlot,
+	change: StructuralChange,
+	grammar: GrammarView,
+	sharing: SharingState
+): SettledContent {
+	recordSettlePass();
+	noteBodySettled(body.children);
+	return settleWrittenSlot(body, slot, change, grammar, sharing);
+}
+
+function settleEditHead(
+	body: BodyParent,
+	edit: BodyEdit,
+	grammar: GrammarView,
+	sharing: SharingState,
+	tracked: TrackedPosition | undefined
+): SettledEdit {
+	const { change, written, moved } = edit;
+	const none: SettledEdit = { change, written: null, moved: null };
+	if (edit.removed && change.op === 'delete') {
+		return { ...none, change: settleRemoval(body, edit.before, change, grammar, sharing, tracked) };
+	}
+	if (written) {
+		const settled = settleWrittenSlot(body, written, change, grammar, sharing);
+		return { ...none, change: settled.change, written: settled };
+	}
+	if (moved) return { ...none, ...settleMove(body, change, moved.to, grammar, sharing) };
+	return none;
+}
+
+/** The block before the removed one sits beside a new follower, and a join that rewrote its bytes
+ *  can equally have stopped it interrupting the block above, so both its edges are asked. */
+function settleRemoval(
+	body: BodyParent,
+	before: readonly CstNode[],
+	change: StructuralChange & { op: 'delete' },
+	grammar: GrammarView,
+	sharing: SharingState,
+	tracked: TrackedPosition | undefined
+): StructuralChange {
+	const { at } = change;
+	handDownVacatedSeparator(body, at, before[at]?.leadingTrivia ?? '', sharing);
+	clearRedundantSeparator(body, at, sharing);
+	const survivor = Math.max(at - 1, 0);
+	const span = at - survivor;
+	return absorbWindowSeams(body, survivor, span, at, change, grammar, sharing, tracked).change;
+}
+
+/** A blank block moved by position can hold a line its follower holds too, so each blank block in
+ *  the rotated window gets its run recounted before the moved window's joins are asked. */
+function settleMove(
+	body: BodyParent,
+	change: StructuralChange,
+	to: number,
+	grammar: GrammarView,
+	sharing: SharingState
+): { change: StructuralChange; moved: number } {
+	const window = splicedWindow(change);
+	if (!window) return { change, moved: to };
+	const { children } = body;
+	const lo = window.at;
+	const hi = window.at + window.added - 1;
+	const beforeMint = children.length;
+	for (let at = lo; at <= hi; at++) {
+		if (isBlankParagraph(children[at])) settleSeparatorOnBlank(body, at, sharing);
+	}
+	// A blank block moved to the tail can turn the body's trailing line into a block of its own.
+	const widened = widenForTailMint(change, beforeMint, children.length);
+	const settled = absorbWindowSeams(body, lo, hi - lo + 1, to, widened, grammar, sharing);
+	return { change: settled.change, moved: settled.landing };
+}
+
+// ── A content write's joins ──
+
+/** The write's blank transitions, then its joins, reporting where the written text ended up. */
+function settleWrittenSlot(
+	body: BodyParent,
+	slot: WrittenSlot,
+	change: StructuralChange,
+	grammar: GrammarView,
+	sharing: SharingState
+): SettledContent {
+	const { index, previous } = slot;
+	const { children } = body;
+	const wasBlank = isBlankParagraph(previous);
+	const indentMoved = leadingIndent(previous.raw) !== leadingIndent(slot.text);
+	const lastWritten = lastMintedIndex(change, index);
+	const written = lastWritten - index + 1;
+	// One blank line served both sides: it separated this block from the one above and stood in
+	// as the separator of the block beneath it. Filling it gives each side its own.
+	if (wasBlank && !isBlankParagraph(children[index])) {
+		restoreSeparatorOnFill(body, index, sharing);
+		restoreSeparatorAfterBlank(body, followerIndexAfter(change, index), sharing);
+		releaseWrapPeel(body, lastWritten);
+		joinListsMadeBeside(body, index, written, [previous], sharing);
+		return settleWriteSeams(body, index, index, lastWritten, change, sharing, grammar);
+	}
+	// The reverse transition: the block is the separating line now, so the run it joins gives
+	// back the second one. The last block created is the one that meets the follower.
+	if (!wasBlank && isBlankParagraph(children[lastWritten])) {
+		const settled = children.length;
+		settleSeparatorOnBlank(body, lastWritten, sharing);
+		const widened = widenForTailMint(change, settled, children.length);
+		return settleWriteSeams(body, index, index, lastWritten, widened, sharing, grammar);
+	}
+	// Same-kind typing asks the join above only when it's flush, the block above's reading isn't
+	// final, the indent moved, or a blank line stays blank (editor.md § 8).
+	if (
+		change.op === 'noop' &&
+		!wasBlank &&
+		!indentMoved &&
+		!flushAbove(children, index) &&
+		!unfinishedAbove(children, index, grammar)
+	) {
+		// The join below is asked whatever parts it: an HTML block left open reads on past blank lines.
+		if (index + 1 >= children.length) return { change, textStart: 0 };
+		return settleWriteSeams(body, index, index + 1, lastWritten, change, sharing, grammar);
+	}
+	joinListsMadeBeside(body, index, written, [previous], sharing);
+	return settleWriteSeams(body, index, index, lastWritten, change, sharing, grammar);
+}
+
+const leadingIndent = (text: string): string => /^[ \t]*/.exec(text)![0];
+
+/** Whether no blank line parts the block from the one above it; a first child has none above. */
+const flushAbove = (children: readonly CstNode[], index: number): boolean =>
+	index > 0 && children[index].leadingTrivia === '';
+
+/** Whether the nearest block above may still read differently (an unclosed `$$`), which a closer
+ *  written below can complete across blank lines. */
+function unfinishedAbove(
+	children: readonly CstNode[],
+	index: number,
+	grammar: GrammarView
+): boolean {
+	let above = index - 1;
+	while (above >= 0 && isBlankParagraph(children[above])) above--;
+	return above >= 0 && blockReadingNotFinal(children[above].raw, grammar);
+}
+
+/**
+ * Merge across the joins from the one above `firstJoin` to the one below the last written block,
+ * and report where the written text ended up once a merge above put bytes in front of it.
+ */
+function settleWriteSeams(
+	body: BodyParent,
+	index: number,
+	firstJoin: number,
+	lastWritten: number,
+	change: StructuralChange,
+	sharing: SharingState,
+	grammar: GrammarView
+): SettledContent {
+	const tracked: TrackedPosition = { index, offset: 0 };
+	const settled = absorbWindowSeams(
+		body,
+		firstJoin,
+		lastWritten - firstJoin + 1,
+		index,
+		change,
+		grammar,
+		sharing,
+		tracked,
+		// One written block lets a join beside it be refused on a single line of the neighbour.
+		lastWritten === index ? index : undefined
+	);
+	return {
+		change: settled.change,
+		textStart: textOffsetInWindow(body.children, settled.change, tracked)
+	};
+}
+
+/**
+ * The tracked position as an offset in the window's committed text, the space every caret
+ * placement measures in, where the head block's own leading blank lines are outside the window.
+ */
+function textOffsetInWindow(
+	children: readonly CstNode[],
+	change: StructuralChange,
+	tracked: TrackedPosition
+): number {
+	const at = change.op === 'noop' ? tracked.index : change.at;
+	let pos = 0;
+	for (let i = at; i < tracked.index; i++) {
+		pos += (i === at ? 0 : children[i].leadingTrivia.length) + children[i].raw.length;
+	}
+	const ownTrivia = tracked.index > at ? children[tracked.index].leadingTrivia.length : 0;
+	return pos + ownTrivia + tracked.offset;
+}
+
+/** Where the filled block's follower ended up: a multi-block reparse pushes it down. */
+function followerIndexAfter(change: StructuralChange, index: number): number {
+	return change.op === 'replace' ? change.at + change.newCount : index + 1;
+}
+
+/** The last block the write left in the position: a multi-block reparse creates blocks past
+ *  the first. */
+function lastMintedIndex(change: StructuralChange, index: number): number {
+	return change.op === 'replace' ? change.at + change.newCount - 1 : index;
 }
 
 // ── Settling a spliced window ──
@@ -342,8 +604,7 @@ function settleEmptyMarkerLists(
 	}
 }
 
-/** The block that takes the vacated position inherits its separator when it has none of its own
- *  ({@link deleteNode}'s rule). */
+/** The block that takes the vacated position inherits its separator when it has none of its own. */
 function handDownVacatedSeparator(
 	body: BodyParent,
 	at: number,
@@ -355,11 +616,9 @@ function handDownVacatedSeparator(
 	writeSeparator(body, at, vacated, sharing);
 }
 
-/**
- * The commit's entry point: recompute the separators around `change`'s window against `before`,
- * the children before the mutation. A node that survives inside the window counts as kept.
- */
-export function settleSeparator(
+/** The splice pass: recompute the separators around `change`'s window against `before`, the
+ *  children before the edit. A node that survives inside the window counts as kept. */
+function settleSplice(
 	body: BodyParent,
 	before: readonly CstNode[],
 	change: StructuralChange,
@@ -410,8 +669,8 @@ function splicedWindow(
 }
 
 /**
- * {@link settleSeparator} for a splice outside a commit scope, into a container found by walking
- * the live tree; the owner's `childIds` stay in step.
+ * The splice pass for a splice outside a commit scope, into a container found by walking the live
+ * tree; the owner's `childIds` stay in step.
  */
 export function spliceChildrenSettled(
 	parent: CstNode | Document,
@@ -440,12 +699,13 @@ export function spliceChildrenSettled(
 		grammar,
 		sharing
 	);
+	recordSettlePass();
 	const ids = (parent as CstNode).childIds;
 	if (ids) applyStructuralChangeToIdsRefs(settled, ids, new Array(ids.length));
 }
 
 /** The tail line that became a block, reported inside the caller's one contiguous window. */
-export function widenForTailMint(
+function widenForTailMint(
 	change: StructuralChange,
 	before: number,
 	after: number
@@ -489,41 +749,12 @@ function absorbWrapPrefix(body: BodyParent, bodyStart: number, index: number, fr
 
 // ── Delete ──
 
-/** Remove the node at `blockIndex`, leaving its successor separated once and no more. A whole
- *  document reads as its own body. */
-export function deleteNode(
-	parent: BodyParentArg,
-	blockIndex: number,
-	grammar: GrammarView,
-	sharing: SharingState,
-	tracked?: TrackedPosition
-): StructuralChange {
+/** Remove the node at `blockIndex`; the fix-up that leaves its successor separated once is the
+ *  commit's. A whole document reads as its own body. */
+export function deleteNode(parent: BodyParentArg, blockIndex: number): StructuralChange {
 	const body = asBody(parent);
-	const { children } = body;
-	if (blockIndex < 0 || blockIndex >= children.length) return { op: 'noop' };
-
-	const deleted = children[blockIndex];
-	const successor = children[blockIndex + 1];
-	// The successor inherits the deleted separator only when it has none of its own:
-	// concatenating both leaves behind a blank line the delete should have taken.
-	if (successor && successor.leadingTrivia === '' && deleted.leadingTrivia !== '') {
-		writeSeparator(body, blockIndex + 1, deleted.leadingTrivia, sharing);
-	}
-
+	if (blockIndex < 0 || blockIndex >= body.children.length) return { op: 'noop' };
 	retireChildSpans(body);
-	children.splice(blockIndex, 1);
-	clearRedundantSeparator(body, blockIndex, sharing);
-	// Both of the survivor's edges: the delete puts it beside a new follower, and a merge that
-	// rewrote its bytes can equally have stopped it interrupting the block above.
-	const survivor = Math.max(blockIndex - 1, 0);
-	return absorbWindowSeams(
-		body,
-		survivor,
-		blockIndex - survivor,
-		blockIndex,
-		{ op: 'delete', at: blockIndex, count: 1 },
-		grammar,
-		sharing,
-		tracked
-	).change;
+	body.children.splice(blockIndex, 1);
+	return { op: 'delete', at: blockIndex, count: 1 };
 }

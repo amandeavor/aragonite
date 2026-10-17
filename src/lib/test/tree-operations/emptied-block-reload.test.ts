@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { deleteNode } from '#lib/tree-operations/settle.js';
 import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { splitNode } from '#lib/tree-operations/node-ops.js';
 import { trailingLineEnding } from '#lib/core/lines.js';
@@ -10,6 +9,7 @@ import type { Document } from '#lib/core/nodes.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { deleteSettled } from '#lib/test/harness/settle-funnel.js';
 
 // A block that turns blank joins the blank run around it, and the run carries exactly the one
 // separating line its reload produces; the reverse of `typed-blank-lines-reload.test.ts`.
@@ -183,7 +183,7 @@ describe('emptying a block beside indentation-delimited content', () => {
 	it('materializes the trailing blank line on the delete entry point too', () => {
 		const doc = parse('1.   # **b**\n\nmid\n\n     code\n\t\n\n```\n```\n');
 
-		deleteNode(doc, 1, defaultGrammarView, createSharingState());
+		deleteSettled(doc, 1, defaultGrammarView, createSharingState());
 
 		expect(serialize(doc)).toBe('1.   # **b**\n\n     code\n\t\n\n```\n```\n');
 		expectParseConverged(doc);

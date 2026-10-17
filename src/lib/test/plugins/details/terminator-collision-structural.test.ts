@@ -2,12 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { parse, serialize } from '#lib';
 import { checkOpaqueStaleRaw } from '#lib/invariants/node-shape.js';
 import { rebuildDetailsRaw, registerDetailsKind } from '#lib/plugins/details/details-kind.js';
-import { mergeIntoPrevDeepLeaf, mergeWithNext, splitNode } from '#lib/tree-operations/node-ops.js';
+import { mergeWithNext, splitNode } from '#lib/tree-operations/node-ops.js';
 import { rangeDelete } from '#lib/selection/range-delete.js';
 import { coverRange, rangeCoverage } from '#lib/selection/range-coverage.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { fixtureReading, fixtureGrammar } from '../../harness/fixture-grammar';
 import { testView } from '#lib/test/support/test-view.js';
+import { mergePrevSettled } from '#lib/test/harness/settle-funnel.js';
 
 // The structural paths into the same `</details>` escape: they write the body themselves,
 // with no per-block commit to apply the rule.
@@ -103,7 +104,7 @@ describe('details terminator escape at the cross-block entry points', () => {
 });
 
 // Miss-analysis: no join test ran inside a details body, where the body rule applies.
-type BodyParent = Parameters<typeof mergeIntoPrevDeepLeaf>[0];
+type BodyParent = Parameters<typeof mergePrevSettled>[0];
 
 describe('details terminator escape at the join entry points', () => {
 	const SPLIT_TAG = '<details>\n<summary>T</summary>\n\n</det\n\nails>\n\n</details>\n';
@@ -119,8 +120,7 @@ describe('details terminator escape at the join entry points', () => {
 	it.each([
 		[
 			'Backspace',
-			(parent: BodyParent) =>
-				mergeIntoPrevDeepLeaf(parent, 2, createSharingState(), fixtureReading())
+			(parent: BodyParent) => mergePrevSettled(parent, 2, createSharingState(), fixtureReading())
 		],
 		[
 			'Delete',

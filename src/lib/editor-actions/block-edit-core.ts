@@ -40,6 +40,7 @@ import {
 	type StructuralChange
 } from '../tree-operations/structural-change';
 import { spliceMany } from '../tree-operations/splice-many';
+import type { TrackedPosition } from '../tree-operations/neighbour-merge';
 import type { TaskStartLanding } from '../tree-operations/list/reconcile-task';
 import { isMergeEligible, isBlockEditable } from '../schema/merge-rules';
 import { getBlockKindDescriptor } from '../schema/block-kind-descriptor';
@@ -56,7 +57,7 @@ import type {
 import {
 	legalizeWrite,
 	settledCaretPosition,
-	updateNodeContent,
+	writeNodeContent,
 	type LegalWrite,
 	type SettledContent
 } from '../tree-operations/content-write';
@@ -65,7 +66,7 @@ import type { EditorRoot } from './deps';
 import { docPathFrom, extendDocPath } from '../caret/coordinate-spaces';
 import { mergedElseNext, mergedElsePrevious } from './merge-fallback';
 import { previewContentReparse, unlessFocusMoved } from './replacement-focus';
-import type { Landing } from '../selection/primitives';
+import type { CaretPosition, Landing } from '../selection/primitives';
 import type { RevealPolicy } from '../selection/caret-landing';
 import type { RemovalGesture } from '../selection/caret-target';
 import { admitsWrite } from './commit/reading-write-gate';
@@ -94,7 +95,10 @@ async function handleIneligibleNeighbor(
 		snapshot: { index: i, offset: dir < 0 ? 0 : CURSOR_END },
 		eventTarget: neighbor,
 		op: { kind: 'delete' },
-		mutate: (view) => performDelete(view.body, neighbor, view.reading.grammar, view.sharing),
+		mutate: (view) => {
+			view.describeEdit({ removed: true });
+			return performDelete(view.body, neighbor);
+		},
 		// The block the key was pressed in, which a delete above has moved up to `neighbor`.
 		landing: () => scope.at(dir < 0 ? neighbor : i, [], dir < 0 ? CURSOR_START : CURSOR_END),
 		discardIfNoop: true
@@ -157,10 +161,11 @@ export async function commitLeafText(
 		reveal?: RevealPolicy;
 	}
 ): Promise<LeafWriteResult> {
-	let settled: SettledContent = { change: { op: 'noop' }, textStart: 0 };
+	let readSettled = (): SettledContent | null => null;
 	let landed: LeafWriteLanded | null = null;
 	// Read after the commit: the list's fix-up can move the written block.
 	const readLanded = (): LeafWriteLanded => {
+		const settled = readSettled() ?? { change: { op: 'noop' }, textStart: 0 };
 		const { change } = settled;
 		const at = settledCaretPosition(settled, index, opts.caret, scope.children());
 		const replaced = change.op === 'replace';
@@ -184,10 +189,18 @@ export async function commitLeafText(
 		touchedNodes,
 		mutate: (view) => {
 			view.unshareChild(index);
-			settled = updateNodeContent(view.body, index, write, view.reading.grammar, view.sharing);
+			const { change, written } = writeNodeContent(
+				view.body,
+				index,
+				write,
+				view.reading.grammar,
+				view.sharing
+			);
+			const settled = view.describeEdit({ written });
+			readSettled = () => settled()?.written ?? null;
 			touchedNodes.push(view.body.children[index]);
-			stampStructuralChange(view.body.children, settled.change, view.sharing);
-			return settled.change;
+			stampStructuralChange(view.body.children, change, view.sharing);
+			return change;
 		},
 		landing: () => {
 			landed ??= readLanded();
@@ -385,22 +398,26 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 			if (!isMergeEligible(prevKind, currKind)) return handleIneligibleNeighbor(scope, i, -1);
 
 			let mergeResult: ReturnType<typeof mergeIntoPrevDeepLeaf> = null;
+			const tracked: TrackedPosition = { index: -1, offset: 0 };
+			const joinedAt = (): CaretPosition | null => {
+				if (!mergeResult) return null;
+				const join = mergeResult.landing(scope.children());
+				return scope.at(join.index, join.targetPath, join.joinOffset);
+			};
 			return scope.commit({
 				snapshot: { index: i, offset: 0 },
 				eventTarget: i,
 				op: { kind: 'merge', detail: { direction: 'prev' } },
 				mutate: (view) => {
-					mergeResult = mergeIntoPrevDeepLeaf(view.body, i, view.sharing, view.reading);
-					return mergeResult?.change ?? { op: 'noop' };
+					mergeResult = mergeIntoPrevDeepLeaf(view.body, i, view.sharing, view.reading, tracked);
+					if (!mergeResult) return { op: 'noop' };
+					view.describeEdit({ removed: true });
+					return mergeResult.change;
 				},
+				trackCaret: tracked,
 				// The primitive's answer, since the fix-up after the delete can merge the joined
 				// block into the one above it.
-				landing: () =>
-					mergedElsePrevious(
-						mergeResult &&
-							scope.at(mergeResult.index, mergeResult.targetPath, mergeResult.joinOffset),
-						extendDocPath(scope.path, i - 1)
-					),
+				landing: () => mergedElsePrevious(joinedAt(), extendDocPath(scope.path, i - 1)),
 				// A merge with no target changes nothing; discard the undo entry, and the landing
 				// still moves the caret.
 				discardIfNoop: true
@@ -441,7 +458,10 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 				snapshot: { index: i, offset: 0 },
 				eventTarget: i,
 				op: { kind: 'delete' },
-				mutate: (view) => performDelete(view.body, i, view.reading.grammar, view.sharing),
+				mutate: (view) => {
+					view.describeEdit({ removed: true });
+					return performDelete(view.body, i);
+				},
 				landing: () => scope.survivor(i, gesture),
 				discardIfNoop: true
 			});

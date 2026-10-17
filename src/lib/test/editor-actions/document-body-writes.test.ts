@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { serialize } from '#lib/core/serializer.js';
 import { displayLength } from '#lib/core/lines.js';
 import { asDocPath } from '#lib/selection/path-math.js';
-import { updateNodeContent } from '#lib/tree-operations/content-write.js';
+import { writeNodeContent } from '#lib/tree-operations/content-write.js';
 import { ensureUnsharedChild } from '#lib/tree-operations/unshare.js';
 import { stampStructuralChange } from '#lib/tree-operations/structural-change.js';
 import { makeTopHarness, type TopHarness } from '#lib/test/harness/editor-actions.js';
@@ -89,7 +89,8 @@ describe('the document scope of a multi-scope commit', () => {
 			mutate: ([scope]) => {
 				ensureUnsharedChild(scope, 1, scope.sharing);
 				const grammar = h.deps.reading.grammar;
-				const { change } = updateNodeContent(scope.body, 1, '\n', grammar, scope.sharing);
+				const { change, written } = writeNodeContent(scope.body, 1, '\n', grammar, scope.sharing);
+				scope.describeEdit({ written });
 				stampStructuralChange(scope.children, change, scope.sharing);
 				return [change];
 			},

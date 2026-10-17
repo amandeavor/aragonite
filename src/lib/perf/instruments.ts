@@ -61,6 +61,8 @@ export interface PerfSnapshot {
 	/** Checks of whether a change moved the focused block past a neighbour, which only a rebuilt
 	 *  height table pays for. */
 	neighbourPasses: number;
+	/** Blank-line and neighbour fix-up passes run over a body after an edit. */
+	settlePasses: number;
 }
 
 let enabled = false;
@@ -104,7 +106,8 @@ function emptySnapshot(): PerfSnapshot {
 		islandRebuilds: 0,
 		islandKeyScans: 0,
 		heightTableBuilds: [],
-		neighbourPasses: 0
+		neighbourPasses: 0,
+		settlePasses: 0
 	};
 }
 
@@ -235,6 +238,11 @@ export function recordHeightTableBuild(path: readonly number[], width: number): 
 export function recordNeighbourPass(): void {
 	if (!enabled) return;
 	counters.neighbourPasses++;
+}
+
+export function recordSettlePass(): void {
+	if (!enabled) return;
+	counters.settlePasses++;
 }
 
 export function incMountedBlocks(): void {

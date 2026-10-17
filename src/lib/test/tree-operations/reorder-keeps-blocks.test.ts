@@ -3,10 +3,10 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { reorderChildrenWithTrivia } from '../../tree-operations/reorder';
 import { documentBody } from '../../tree-operations/node-primitives';
 import { createSharingState } from '../../tree-operations/sharing';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { reorderSettled } from '#lib/test/harness/settle-funnel.js';
 
 // Blocks a paragraph can continue into and blocks it can't, with doubled blank lines, since an
 // extra blank line is a node that doesn't travel with the block below it.
@@ -44,13 +44,7 @@ describe('a reorder separates only the joins that need it', () => {
 		const doc = parse(DOC);
 		const before = doc.children.length;
 		// A fence and a quote: neither can be continued into, so neither needs a separator.
-		reorderChildrenWithTrivia(
-			documentBody(doc),
-			fence,
-			quote,
-			createSharingState(),
-			defaultGrammarView
-		);
+		reorderSettled(documentBody(doc), fence, quote, createSharingState(), defaultGrammarView);
 		expect(doc.children.length).toBe(before);
 		// A separator lands in the next block's leading trivia, where only the bytes show it.
 		expect(serialize(doc).length).toBe(DOC.length);

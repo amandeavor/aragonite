@@ -41,7 +41,8 @@ async function deleteEmptyItem(
 		state,
 		snapshot: { path: extendDocPath(deps.path, itemIndex), offset: 0 },
 		mutate: (scope) => {
-			const change = performDelete(scope.body, itemIndex, deps.reading.grammar, scope.sharing);
+			scope.describeEdit({ removed: true });
+			const change = performDelete(scope.body, itemIndex);
 			renumberOrderedList(scope.node, itemIndex, scope.sharing);
 			return change;
 		},

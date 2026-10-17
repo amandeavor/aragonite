@@ -5,7 +5,6 @@ import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import {
 	cascadeCleanupEmptyAncestors,
-	mergeIntoPrevDeepLeaf,
 	splitNode,
 	updateNodeContent
 } from '#lib/tree-operations/index.js';
@@ -16,6 +15,7 @@ import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { makeTopHarness } from '#lib/test/harness/editor-actions.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { mergePrevSettled } from '#lib/test/harness/settle-funnel.js';
 
 // A write reads its neighbours in the editor's grammar, so a paragraph that comes to sit over
 // `---` in an editor without setext headings stays a paragraph over a divider.
@@ -62,7 +62,7 @@ describe('a split, join or delete beside a switched-off syntax', () => {
 			name: 'Backspace joining a heading into the paragraph above `---`',
 			source: 'a\n# h\n---\n',
 			run: (doc) =>
-				mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading({ grammar: off })),
+				mergePrevSettled(doc, 1, createSharingState(), fixtureReading({ grammar: off })),
 			kinds: ['paragraph', 'thematicBreak']
 		},
 		{

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { deleteNode, mergeWithNext, splitNode, updateNodeContent } from '../../tree-operations';
+import { mergeWithNext, splitNode, updateNodeContent } from '../../tree-operations';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
-import { settled } from '#lib/test/harness/settle-funnel.js';
+import { settled, deleteSettled } from '#lib/test/harness/settle-funnel.js';
 import type { SettledContent } from '#lib/tree-operations/content-write.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { fixtureReading } from '../harness/fixture-grammar';
@@ -31,7 +31,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 		const doc = parse('- > ---\n      code\n\n# t\n\n    code\n');
 		expect(doc.children.map((c) => c.kind)).toEqual(['list', 'heading', 'indentedCode']);
 
-		const change = deleteNode(doc, 1, defaultGrammarView, createSharingState());
+		const change = deleteSettled(doc, 1, defaultGrammarView, createSharingState());
 
 		expect(doc.children).toHaveLength(1);
 		expect(serialize(doc)).toBe('- > ---\n      code\n\n    code\n');
@@ -50,7 +50,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 			'fencedCode'
 		]);
 
-		const change = deleteNode(doc, 2, defaultGrammarView, createSharingState());
+		const change = deleteSettled(doc, 2, defaultGrammarView, createSharingState());
 
 		expect(doc.children.map((c) => c.kind)).toEqual(['list', 'fencedCode']);
 		expect(describeConvergence(doc)).toBeNull();
@@ -62,7 +62,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 		const doc = parse('- ```\n  ```\n\n\n---\n\n\n    code\n\n[ref]: https://example.com\n');
 		expect(doc.children).toHaveLength(6);
 
-		const change = deleteNode(doc, 2, defaultGrammarView, createSharingState());
+		const change = deleteSettled(doc, 2, defaultGrammarView, createSharingState());
 
 		expect(doc.children.map((c) => c.kind)).toEqual(['list', 'linkReferenceDefinition']);
 		expect(describeConvergence(doc)).toBeNull();
@@ -76,7 +76,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 		const list = doc.children[0];
 		const parent = { children: list.children!, owner: list };
 
-		const change = deleteNode(parent as never, 1, defaultGrammarView, createSharingState());
+		const change = deleteSettled(parent as never, 1, defaultGrammarView, createSharingState());
 
 		expect(list.children!.map((c) => c.kind)).toEqual(['listItem', 'listItem']);
 		expect(list.children!.map((c) => c.raw)).toEqual(['1. First\n', '3. Third\n']);
@@ -96,7 +96,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 			'indentedCode'
 		]);
 
-		const change = deleteNode(doc, 2, defaultGrammarView, createSharingState());
+		const change = deleteSettled(doc, 2, defaultGrammarView, createSharingState());
 
 		expect(doc.children.map((c) => c.kind)).toEqual([
 			'heading',
@@ -181,7 +181,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 		(_label, source, layout) => {
 			const doc = parse(source);
 
-			settled(doc, (body) => deleteNode(body, 1, defaultGrammarView, createSharingState()));
+			deleteSettled(doc, 1);
 
 			expect(serialize(doc)).toBe(source.replace(/^para\n[^\n]*\n/, 'para\n'));
 			expect(doc.children.map((c) => [c.kind, c.leadingTrivia, c.raw])).toEqual(layout);
@@ -192,7 +192,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 	it('a delete between separated paragraphs stays a plain delete', () => {
 		const doc = parse('a\n\nb\n\nc\n');
 
-		const change = deleteNode(doc, 1, defaultGrammarView, createSharingState());
+		const change = deleteSettled(doc, 1, defaultGrammarView, createSharingState());
 
 		expect(doc.children.map((c) => c.raw)).toEqual(['a\n', 'c\n']);
 		expect(change).toEqual({ op: 'delete', at: 1, count: 1 });
@@ -204,7 +204,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 	it('a delete bringing an indented separator under a list moves it into the item', () => {
 		const doc = parse('- a\n  \n---\n  \n> q\n');
 
-		settled(doc, (body) => deleteNode(body, 1, defaultGrammarView, createSharingState()));
+		deleteSettled(doc, 1);
 
 		expect(serialize(doc)).toBe('- a\n  \n  \n> q\n');
 		expect(describeConvergence(doc)).toBeNull();

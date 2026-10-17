@@ -377,10 +377,10 @@ Undo snapshots share the live tree's nodes. So a container commit hands its `mut
 
 ```ts
 // wrong: `node` (the component prop) may still be shared with an undo entry
-mutate: (scope) => deleteNode(node, index, scope.sharing);
+mutate: (scope) => deleteNode({ children: node.children!, owner: node, lineEnding }, index);
 
 // right: the scope view is yours to mutate
-mutate: (scope) => deleteNode(scope.node, index, scope.sharing);
+mutate: (scope) => deleteNode(scope.body, index);
 ```
 
 A whole commit, from the table inserting a row:

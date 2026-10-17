@@ -45,21 +45,41 @@ const TRIVIA_WRITERS: Record<string, string> = {
 
 /** Files that may name one of those functions directly rather than the shared one. */
 const HAND_SETTLE_CALLERS: Record<string, string> = {
-	'src/lib/tree-operations/settle.ts': 'defines them, and the funnel entries beside them',
-	'src/lib/tree-operations/reorder.ts':
-		'a rotation reseats blank lines by position, so each reseated run is asked the one-line rule',
-	'src/lib/tree-operations/content-write.ts':
-		'the content write’s blank transitions and its list join settle by hand, ahead of the merge',
+	'src/lib/tree-operations/settle.ts': 'defines them, and `settleEdit`, the one fix-up beside them',
 	'src/lib/tree-operations/index.ts': 're-exports the two the gap-caret mint still needs',
 	'src/lib/tree-operations/list/sublist-separator.ts': 'defines the empty-marker sublist door',
 	'src/lib/tree-operations/chain-rebuild.ts':
 		'the chain rebuild is where a list rebuilt down to an empty marker becomes visible',
 	'src/lib/editor-actions/block-edit-core.ts':
-		'the gap-caret paragraph is a block of its own on both sides, which a splice window cannot say',
+		'the gap-caret paragraph is a block of its own on both sides, which a splice window cannot say: the displaced follower’s line is the join rule’s placed row, and the dropped double is the blank-run count',
 	'src/lib/tree-operations/list/item-moves.ts':
 		'the nesting move settles the sublist it creates, and a lift the blocks it carries in',
 	'src/lib/selection/range-delete.ts':
 		'its same-block arm writes bytes rather than splicing, so it settles as the content door does'
+};
+
+/** G4.208: the commit's one fix-up and the write's own fix-up, each named only by its callers. */
+const FIX_UP_CALLERS: Record<string, string> = {
+	'src/lib/tree-operations/settle.ts': 'defines both, and the write’s is the head of the commit’s',
+	'src/lib/editor-actions/commit/structural-commit.ts':
+		'the commit, once over each body it wrote, after the mutation reports what it did',
+	'src/lib/tree-operations/content-write.ts':
+		'`updateNodeContent`, for a write no commit settles: in place, the trial, a body below a scope'
+};
+
+/** The content write with no fix-up, which only a mutation whose commit settles it may run. */
+const UNSETTLED_WRITE_CALLERS: Record<string, string> = {
+	'src/lib/tree-operations/content-write.ts': 'defines it',
+	'src/lib/editor-actions/block-edit-core.ts':
+		'`commitLeafText`, which reports the write so its commit settles it once'
+};
+
+/** The commits whose mutation fixes up its own writes, so the settle-once check skips them. */
+const OWN_FIX_UP_COMMITS: Record<string, string> = {
+	'src/lib/action-contracts.ts': 'declares the field',
+	'src/lib/editor-actions/commit/structural-commit.ts': 'reads it',
+	'src/lib/selection/cross-block/format-toggle.ts':
+		'a format toggle writes several leaves at any depth and rebuilds their chains inside its mutation, so it settles each write there'
 };
 
 const writesTrivia = /\.leadingTrivia\s*\+?=(?!=)/;
@@ -93,6 +113,36 @@ describeManifests(
 				"import { dropDoubledSeparator } from '../tree-operations';"
 			],
 			misses: ['// dropDoubledSeparator is the run-level twin']
+		},
+		{
+			id: 'G4.208 the fix-up after an edit is run by the commit or the write no commit settles',
+			matches: /(?<![\w'"])(settleEdit|settleContentWrite)\b/,
+			declared: FIX_UP_CALLERS,
+			reason:
+				'a file runs the fix-up itself: report the edit to the commit (`describeEdit`), or write through `updateNodeContent` where no commit settles the body',
+			hits: [
+				'settleEdit(body, { change, before }, grammar, sharing);',
+				"import { settleContentWrite } from '../tree-operations/settle';"
+			],
+			misses: ['// settleEdit runs once per body', 'const settleEditLater = 1;']
+		},
+		{
+			id: 'G4.208 a write with no fix-up runs only where its commit settles it',
+			matches: /(?<![\w'"])writeNodeContent\b/,
+			declared: UNSETTLED_WRITE_CALLERS,
+			reason:
+				'the write leaves its body unsettled: report it with `describeEdit` inside a commit, or use `updateNodeContent`',
+			hits: ['const { change, written } = writeNodeContent(body, i, write, grammar, sharing);'],
+			misses: ['// writeNodeContent leaves the fix-up to the commit']
+		},
+		{
+			id: 'G4.208 a commit skips the settle-once check only where its mutation fixes up its own writes',
+			matches: /(?<![\w'"])fixesUpOwnWrites\b/,
+			declared: OWN_FIX_UP_COMMITS,
+			reason:
+				'a commit claims its mutation fixes up its own writes, which lets the commit settle those bodies twice: report the writes instead, or declare why it can’t',
+			hits: ['landing: () => restored,\n\tfixesUpOwnWrites: true'],
+			misses: ['// fixesUpOwnWrites is the format toggle’s']
 		}
 	],
 	collectEditorSources()

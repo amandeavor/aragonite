@@ -125,7 +125,8 @@ async function toggleFormatOverRange(
 			detail: { length: startBlockLength(doc, start, plan), crossBlock: true },
 			eventPath: docPathFrom(start.path)
 		},
-		landing: () => restored
+		landing: () => restored,
+		fixesUpOwnWrites: true
 	});
 }
 

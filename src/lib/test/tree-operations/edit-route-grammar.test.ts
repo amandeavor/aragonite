@@ -7,7 +7,6 @@ import { createRegistryView } from '#lib/schema/registry-view.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { registerBlockCompleter } from '#lib/schema/block-completions.js';
 import { mergeWithNext } from '#lib/tree-operations/index.js';
-import { reorderChildrenWithTrivia } from '#lib/tree-operations/reorder.js';
 import { documentBody } from '#lib/tree-operations/node-primitives.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { planEnterCompletion } from '#lib/editor-actions/enter-completion.js';
@@ -16,6 +15,7 @@ import { describeConvergence } from '../harness/parse-converged';
 import { runPasteDispatch, makePasteCommit } from '../harness/editor-actions';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { deleteRange } from '../harness/range-delete';
+import { reorderSettled } from '#lib/test/harness/settle-funnel.js';
 
 const noIndentedCode = createRegistryView({ syntax: { indentedCode: false } }).grammar;
 const read = (source: string) => parse(source, { grammar: noIndentedCode });
@@ -40,7 +40,7 @@ describe('an edit route reparses in the editor grammar', () => {
 	// global grammar reads that pair as prose then code and refuses the separator.
 	it('a reorder that lands an indented paragraph under prose separates the two', () => {
 		const doc = read('prose\n# h\n\n    moved\n');
-		reorderChildrenWithTrivia(documentBody(doc), 2, 1, createSharingState(), noIndentedCode);
+		reorderSettled(documentBody(doc), 2, 1, createSharingState(), noIndentedCode);
 		expect(kindsOf(doc.children)).toEqual(['paragraph', 'paragraph', 'heading']);
 		expect(describeConvergence(doc, noIndentedCode)).toBeNull();
 	});

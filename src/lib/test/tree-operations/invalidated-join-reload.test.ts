@@ -3,7 +3,6 @@ import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { absorbWindowSeams } from '#lib/tree-operations/neighbour-merge.js';
 import { updateNodeContent } from '#lib/tree-operations/content-write.js';
-import { reorderChildrenWithTrivia } from '#lib/tree-operations/reorder.js';
 import { documentBody } from '#lib/tree-operations/node-primitives.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { ensureUnsharedPath } from '#lib/tree-operations/unshare.js';
@@ -14,6 +13,7 @@ import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { fixtureGrammar } from '#lib/test/harness/fixture-grammar.js';
+import { reorderSettled } from '#lib/test/harness/settle-funnel.js';
 
 // A mutation can break a join that was already correct (a demoted heading, a reorder that pulls an
 // interrupter out), so the neighbour merge brings the siblings to the reading their reload gives.
@@ -110,13 +110,7 @@ describe('a reorder settles the joins the move disturbed (GH #21)', () => {
 	it('folds the pair an interrupter moved out from between', () => {
 		const doc = parse('a\n# h\nb\n');
 
-		const result = reorderChildrenWithTrivia(
-			documentBody(doc),
-			1,
-			2,
-			sharing(),
-			defaultGrammarView
-		);
+		const result = reorderSettled(documentBody(doc), 1, 2, sharing(), defaultGrammarView);
 
 		expect(serialize(doc)).toBe('a\nb\n# h\n');
 		expect(describeConvergence(doc)).toBeNull();
@@ -138,13 +132,7 @@ describe('a reorder settles the joins the move disturbed (GH #21)', () => {
 	it('folds the pair the move left below the window', () => {
 		const doc = parse('a\n# h\nb\n');
 
-		const result = reorderChildrenWithTrivia(
-			documentBody(doc),
-			1,
-			0,
-			sharing(),
-			defaultGrammarView
-		);
+		const result = reorderSettled(documentBody(doc), 1, 0, sharing(), defaultGrammarView);
 
 		expect(serialize(doc)).toBe('# h\na\nb\n');
 		expect(describeConvergence(doc)).toBeNull();
@@ -155,13 +143,7 @@ describe('a reorder settles the joins the move disturbed (GH #21)', () => {
 	it('stays a plain permutation where every join holds', () => {
 		const doc = parse('a\n\nb\n\nc\n');
 
-		const result = reorderChildrenWithTrivia(
-			documentBody(doc),
-			0,
-			2,
-			sharing(),
-			defaultGrammarView
-		);
+		const result = reorderSettled(documentBody(doc), 0, 2, sharing(), defaultGrammarView);
 
 		expect(serialize(doc)).toBe('b\n\nc\n\na\n');
 		expect(result.change).toEqual({
@@ -182,7 +164,7 @@ describe('a reorder settles the joins the move disturbed (GH #21)', () => {
 		const items = doc.children[0].children!;
 
 		const body = { children: items, owner: doc.children[0], lineEnding: '\n' as const };
-		const result = reorderChildrenWithTrivia(body, 1, 2, sharing(), defaultGrammarView);
+		const result = reorderSettled(body, 1, 2, sharing(), defaultGrammarView);
 
 		expect(items.map((c) => c.raw)).toEqual(['- a\n', '- b\n', '- # h\n']);
 		expect(result.landing).toBe(2);

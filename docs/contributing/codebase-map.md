@@ -122,7 +122,7 @@ A few of the words the repo coined survive in symbol names (`HeightOracle`,
 | Walking the inline tree                                                        | `src/lib/core/inline/walk.ts` :: `inlineDescendants`, and over the rendered DOM `src/lib/caret/dom-walk.ts` :: `domDescendants`                                                                                                                                                                                                                                                        | Every walk over an inline tree or its DOM is a loop, not recursion: nesting depth is up to the input, so a call per level can overflow the stack. A source scan holds this                                                                                                                                                                                                                                                                                   | `docs/design/invariants.md` (G4.56)                                                                         |
 | A construct's syntax, read and written back                                    | link parts in `src/lib/core/inline/link-destination.ts`, written back by `src/lib/core/inline/destination-bytes.ts`; headings in `src/lib/core/parsers/heading.ts` :: `matchHeading`; table rows split by `src/lib/core/parsers/table-line.ts` :: `rowCellSpans`, and written by `src/lib/core/parsers/table-line.ts` :: `tableRowLine`                                                | One grammar per construct, with its writer beside it. Import the module: a second regex for the same syntax drifts, and the editor then writes bytes its own parser reads differently                                                                                                                                                                                                                                                                        | `docs/design/inline-parsing.md` § One grammar per construct, `docs/design/syntax-tree.md` § 5. GFM coverage |
 | Structure past a block's text (setext underline, closing `#`s)                 | `src/lib/core/inline/index.ts` :: `structuralSuffix`; a cut through `src/lib/tree-operations/structural-suffix.ts` :: `cutKeepingStructure`, a join through `joinKeepingSuffix`                                                                                                                                                                                                        | The structure stays with the block's text. A split, paste, join or hard break that carries it to the next line strands it there                                                                                                                                                                                                                                                                                                                              | `docs/design/editor.md` § 8                                                                                 |
-| Blank lines and separators                                                     | `src/lib/tree-operations/settle.ts` :: `settleSeparator` and `spliceChildrenSettled`                                                                                                                                                                                                                                                                                                   | Don't assign `leadingTrivia` at a splice site; splice through one of these (§ Blank lines and separators, below)                                                                                                                                                                                                                                                                                                                                             | `docs/design/syntax-tree.md` § Blank lines                                                                  |
+| Blank lines and separators                                                     | `src/lib/tree-operations/settle.ts` :: `settleEdit` and `spliceChildrenSettled`                                                                                                                                                                                                                                                                                                        | Don't assign `leadingTrivia` at a splice site; splice through one of these (§ Blank lines and separators, below)                                                                                                                                                                                                                                                                                                                                             | `docs/design/syntax-tree.md` § Blank lines                                                                  |
 | Whether text is blank, and Markdown whitespace                                 | `src/lib/core/lines.ts` :: `isBlankText` and `isWhitespaceChar`                                                                                                                                                                                                                                                                                                                        | Don't ask `trim()` or JS `\s`: both treat a non-breaking space as whitespace, and GFM counts it as a character. A lint test fails either                                                                                                                                                                                                                                                                                                                     | `docs/design/syntax-tree.md` § 5. GFM coverage                                                              |
 | Where the caret ends up after neighbours merge                                 | `src/lib/tree-operations/container-offsets.ts` :: `leafAtRawOffset`, over `src/lib/tree-operations/neighbour-merge.ts` :: `TrackedPosition`                                                                                                                                                                                                                                            | A caret that has to survive the fix-up is tracked as an offset into the merged block and mapped to a leaf here, so a paste, a join and typing all end up the same way                                                                                                                                                                                                                                                                                        | `docs/design/selection.md` § Clipboard                                                                      |
 
@@ -262,18 +262,26 @@ The helpers live at the head of `src/lib/tree-operations/settle.ts` (`clearRedun
 (`src/lib/tree-operations/node-primitives.ts` :: `BodyParent`), the children plus the container
 that owns them, since that container's fence lines decide where a blank line may sit.
 
-Almost nothing calls them by hand. A splice settles through one of two entries: `settleSeparator`,
-which the commit runs over every scope's change, and `spliceChildrenSettled`, which the
-path-addressed helpers in `src/lib/tree-operations/path-mutate.ts` and
-`src/lib/tree-operations/cleanup.ts` splice through. The callers that still carry it by hand, each
-saying why at the site:
+Almost nothing calls them by hand. An edit splices and writes, and the fix-up after it
+(recomputing the blank lines, merging neighbours that now read as one block) lives in
+`src/lib/tree-operations/settle.ts` :: `settleEdit`. Three ways in:
+
+- **A commit**, which runs `settleEdit` once over each list it wrote. A mutation that did more than
+  splice tells it so through its scope view's `describeEdit` (a content write, a move, a block
+  removed by `deleteNode`), since each of those asks a step of its own first. Inside a commit a
+  content write goes through `writeNodeContent` and gets reported, never `updateNodeContent`, or
+  the body gets fixed up twice (G1.112 catches that in dev).
+- **`updateNodeContent`** in `src/lib/tree-operations/content-write.ts`, the content write plus
+  the write's own part of the fix-up, for a write no commit settles: the keystroke written in
+  place, its trial reparse, a write into a body below the commit's scope.
+- **`spliceChildrenSettled`**, which the path-addressed helpers in
+  `src/lib/tree-operations/path-mutate.ts` and `src/lib/tree-operations/cleanup.ts` splice through.
+
+The callers that still carry a helper by hand, each saying why at the site:
 
 - `insertParagraph` in `src/lib/editor-actions/block-edit-core.ts` (the gap caret, the trailing
   insert row, insert-below, a character typed on a block focused whole);
-- the content entry's own branches in `updateNodeContent`;
-- a range delete inside one block, in `src/lib/selection/range-delete.ts`;
-- the reorder in `src/lib/tree-operations/reorder.ts` :: `reorderChildrenWithTrivia`, which moves
-  blank lines by position and asks `settleSeparatorOnBlank` for each one it moved.
+- a range delete inside one block, in `src/lib/selection/range-delete.ts`.
 
 One helper sits outside them: `src/lib/tree-operations/list/sublist-separator.ts` ::
 `settleSublistSeparator` gives a list right under a paragraph, whose first item's line is empty,
@@ -281,18 +289,19 @@ the blank line that keeps its marker from reading as a setext underline. The ite
 chain rebuild and the splice settle all ask it.
 
 The document's last line, the one line allowed no line ending, has its own file,
-`src/lib/tree-operations/open-tail.ts`. The commit calls `endWindowLines` before it repairs the
-blank lines around the edit, and `keepOpenTail` once the containers rebuild. An edit never writes
-that ending itself.
+`src/lib/tree-operations/open-tail.ts`. `settleEdit` calls `endWindowLines` before it recomputes
+the blank lines around the edit, and the commit calls `keepOpenTail` once the containers rebuild.
+An edit never writes that ending itself.
 
 **When a join reads differently.** Some joins reload as fewer blocks than were there (a list newly
 above indented code, a heading demoted into the paragraph under it, a paragraph put right above
 its own `===` underline). The tree then converges to what a reload would read, and
 `docs/design/editor.md` § 8 says why. `src/lib/tree-operations/neighbour-merge.ts` :: `absorbSeamReading`
-answers one join, and everything that disturbs one asks it: `splitNode` directly; `deleteNode`,
-`updateNodeContent`, both splice entries and `reorderChildrenWithTrivia` through
-`absorbWindowSeams`, which checks both edges of a splice. Since the block above may end up holding
-the written text, the content entry reports where it went, and the caret follows
+answers one join, and everything that disturbs one asks it: `splitNode` directly (a list item's
+split moves the second half out of every window the commit settles), and `settleEdit`,
+`updateNodeContent` and `spliceChildrenSettled` through `absorbWindowSeams`, which checks both
+edges of a splice. Since the block above may end up holding the written text, the write's fix-up
+reports where it went, and the caret follows
 `src/lib/tree-operations/content-write.ts` :: `settledCaretPosition`. Before it asks, the content
 entry closes any construct the write itself left open (`closeWrittenConstruct` in the same file),
 so a half-typed construct doesn't swallow the lines below it.

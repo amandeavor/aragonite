@@ -89,7 +89,7 @@ const IMPORTS_BARE_PRIMITIVE =
 /** The commit entries that fix up the neighbours afterwards, plus the two fix-up functions
  *  themselves; a leading dot is the norm, since they are reached on a controller or a scope. */
 const REACHES_SETTLE =
-	/\b(commitStructural|commitMultiScope|commitContainer|settleSeparator|spliceChildrenSettled)\s*\(|\.\s*commit\s*\(/;
+	/\b(commitStructural|commitMultiScope|commitContainer|settleEdit|spliceChildrenSettled)\s*\(|\.\s*commit\s*\(/;
 
 const BARE_PRIMITIVE_CALLERS: Record<string, string> = {
 	'src/lib/editor-actions/block-edit-core.ts':

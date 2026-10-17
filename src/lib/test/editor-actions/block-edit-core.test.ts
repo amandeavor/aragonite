@@ -258,7 +258,10 @@ describe('block-edit core: wrap-owner threading', () => {
 	it('deleteInterior hands the owner to the settle, so the wrap absorbs the freed line', async () => {
 		const doc = parse(':::callout\nA\n\nB\n:::\n');
 		const callout = doc.children[0];
-		const { scope, children } = makeCommitScopeStub(callout.children!, { owner: callout });
+		const { scope, children } = makeCommitScopeStub(callout.children!, {
+			owner: callout,
+			settle: true
+		});
 
 		await createBlockEditCore(scope).deleteInterior(1, 'keyless');
 

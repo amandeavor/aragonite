@@ -21,6 +21,7 @@ import {
 	type LineEnding
 } from '../core/lines';
 import { devWarn } from '../dev-warn';
+import { recordSettlePass } from '../perf/instruments';
 import { assignChildIdsDeep } from '../block-id';
 import { findMergeTarget } from '../schema/merge-rules';
 import { rebuildAncestryRaw } from '../schema/container-raw';
@@ -162,9 +163,10 @@ export function splitNode(
 	nodes[nodes.length - 1].raw += second.suffix;
 	const splitTail = blockIndex === parent.children.length - 1;
 	parent.children.splice(blockIndex, 1, ...nodes);
-	// The merge window starts at the join, since a wider one would reach back into the spliced
-	// set; at the tail the document's trailing blank line is left to the separator fix-up.
+	// Asked here, not at the commit, which loses sight of this join once a list item's split moves the
+	// second half into a new item; at the tail the trailing blank line is the commit's.
 	const seamLeft = blockIndex + nodes.length - 1;
+	if (!splitTail) recordSettlePass();
 	const eaten = splitTail
 		? 0
 		: absorbSeamReading(asBody(parent), seamLeft, seamLeft, grammar, sharing).eaten;
@@ -280,13 +282,18 @@ export interface MergeResult {
 }
 
 /** Where the join landed: the block at `index` in the parent, and the leaf at `targetPath` below
- *  it (empty when that block is the leaf). The index is `blockIndex - 1` unless the fix-up after
- *  the delete merged that block into the one above it. */
-export interface MergeIntoPrevResult {
+ *  it (empty when that block is the leaf). */
+export interface JoinLanding {
 	index: number;
 	targetPath: number[];
 	joinOffset: number;
+}
+
+/** A join the commit still fixes up as a removal: the delete it reports, and where the join lands,
+ *  read off the committed children since the fix-up can merge the survivor upward. */
+export interface MergeIntoPrevResult {
 	change: StructuralChange;
+	landing(children: readonly NodeView[]): JoinLanding;
 }
 
 /** Join `absorbed`'s text onto the end of the leaf at `path`, leaving `absorbed` for the caller to
@@ -334,15 +341,14 @@ export function joinIntoLeaf(
 	return { joinOffset: legal.storedOffset(seam) };
 }
 
-/**
- * Merge `curr` into `prev`'s deepest prose leaf, writing into the leaf so it keeps its component
- * and IME state. Null when no leaf can take it, so the caller moves focus instead.
- */
+/** Merge `curr` into `prev`'s deepest prose leaf, which keeps its component and IME state; null
+ *  when no leaf can take it. `tracked`, the commit's caret position, is set to the join. */
 export function mergeIntoPrevDeepLeaf(
 	parent: BodyParentArg,
 	blockIndex: number,
 	sharing: SharingState,
-	reading: Reading
+	reading: Reading,
+	tracked: TrackedPosition
 ): MergeIntoPrevResult | null {
 	if (blockIndex <= 0 || blockIndex >= parent.children.length) return null;
 
@@ -357,23 +363,24 @@ export function mergeIntoPrevDeepLeaf(
 	const { joinOffset } = merged;
 	const joined: JoinLanding = { index: blockIndex - 1, targetPath: mergeTarget.path, joinOffset };
 	const at = rawOffsetOfLeaf(parent.children[blockIndex - 1], mergeTarget.path, joinOffset);
-	const tracked = at === null ? undefined : { index: blockIndex - 1, offset: at };
-	const change = deleteNode(parent, blockIndex, reading.grammar, sharing, tracked);
-	return { ...landingAfterFixUp(parent, joined, at, tracked), change };
+	if (at !== null) Object.assign(tracked, { index: blockIndex - 1, offset: at });
+	return {
+		change: deleteNode(parent, blockIndex),
+		landing: (children) =>
+			landingAfterFixUp(children, joined, at, at === null ? undefined : tracked)
+	};
 }
 
-type JoinLanding = Omit<MergeIntoPrevResult, 'change'>;
-
-/** Where the join sits once the delete's fix-up has run: where it was, unless a merge of
- *  neighbours moved its bytes, and then the leaf now holding them. */
+/** Where the join sits once the fix-up has run: where it was, unless a merge of neighbours moved
+ *  its bytes, and then the leaf now holding them. */
 function landingAfterFixUp(
-	parent: BodyParentArg,
+	children: readonly NodeView[],
 	joined: JoinLanding,
 	at: number | null,
 	tracked: TrackedPosition | undefined
 ): JoinLanding {
 	if (!tracked || (tracked.index === joined.index && tracked.offset === at)) return joined;
-	const leaf = leafAtRawOffset(parent.children[tracked.index], tracked.offset);
+	const leaf = leafAtRawOffset(children[tracked.index], tracked.offset);
 	return leaf
 		? { index: tracked.index, targetPath: leaf.path, joinOffset: leaf.offset }
 		: { index: tracked.index, targetPath: [], joinOffset: CURSOR_END };

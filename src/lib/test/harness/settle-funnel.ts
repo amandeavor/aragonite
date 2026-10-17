@@ -1,31 +1,157 @@
 /**
- * The two steps every top-level structural commit runs, for suites driving the primitives
- * directly: the write against the document body, then the commit's recompute of the separators
- * and the document's trailing line. A test calling the write alone proves nothing about the
- * recompute.
+ * The steps every structural commit runs, for suites driving the primitives directly: the edit
+ * against a body, then the commit's one fix-up (`settleEdit`), and at the document the step that
+ * keeps an open last line open. No primitive fixes up its own body, so the edit alone proves nothing.
  */
 
 import type { CstNode, Document } from '#lib/core/nodes.js';
-import { documentBody, type BodyParent } from '#lib/tree-operations/node-primitives.js';
-import { settleSeparator } from '#lib/tree-operations/settle.js';
+import {
+	asBody,
+	type BodyParent,
+	type BodyParentArg
+} from '#lib/tree-operations/node-primitives.js';
+import {
+	deleteNode,
+	settleEdit,
+	type BodyEdit,
+	type EditKind,
+	type SettledEdit
+} from '#lib/tree-operations/settle.js';
+import {
+	mergeIntoPrevDeepLeaf,
+	splitNode,
+	type JoinLanding,
+	type MergeIntoPrevResult,
+	type SplitResult
+} from '#lib/tree-operations/node-ops.js';
+import { reorderChildrenWithTrivia } from '#lib/tree-operations/reorder.js';
+import { endsOpen, keepOpenTail } from '#lib/tree-operations/open-tail.js';
+import type { TrackedPosition } from '#lib/tree-operations/neighbour-merge.js';
 import type { StructuralChange } from '#lib/tree-operations/structural-change.js';
 import type { GrammarView } from '#lib/schema/block-openers.js';
+import type { Reading } from '#lib/schema/reading.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
-import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { createSharingState, type SharingState } from '#lib/tree-operations/sharing.js';
 
-/** Runs `mutate` over the body parent, recomputes the separators around it, returns the change.
- *  `grammar` is the editor's, which the recompute reads blocks with. */
+/** What a test's edit reports: its change, plus what it did beyond the splice. */
+export type ReportedEdit = StructuralChange | ({ change: StructuralChange } & EditKind);
+
+/** The commit's steps after `edit` ran over `parent`'s body: a document also gets its open last
+ *  line kept as it was. */
+function commitSteps(
+	parent: BodyParentArg,
+	edit: (body: BodyParent) => Omit<BodyEdit, 'before'>,
+	grammar: GrammarView,
+	sharing: SharingState,
+	tracked?: TrackedPosition
+): SettledEdit {
+	const doc = 'owner' in parent ? null : parent;
+	const body = asBody(parent);
+	const wasOpen = doc ? endsOpen(doc) : false;
+	const before: CstNode[] = [...body.children];
+	const settled = settleEdit(body, { ...edit(body), before }, grammar, sharing, tracked);
+	if (doc) keepOpenTail(doc, wasOpen, sharing, grammar);
+	return settled;
+}
+
+/** Runs `edit` over `parent`'s body and the commit's steps after it; returns the settled change. */
+export function settledIn(
+	parent: BodyParentArg,
+	edit: (body: BodyParent) => ReportedEdit,
+	grammar: GrammarView = defaultGrammarView,
+	sharing: SharingState = createSharingState(),
+	tracked?: TrackedPosition
+): StructuralChange {
+	const report = (body: BodyParent) => {
+		const reported = edit(body);
+		return 'op' in reported ? { change: reported } : reported;
+	};
+	return commitSteps(parent, report, grammar, sharing, tracked).change;
+}
+
+/** {@link settledIn} over a document. `grammar` is the editor's, which the fix-up reads blocks
+ *  with. */
 export function settled(
 	doc: Document,
-	mutate: (parent: BodyParent) => StructuralChange,
+	mutate: (parent: BodyParent) => ReportedEdit,
 	grammar: GrammarView = defaultGrammarView
 ): StructuralChange {
-	const before: CstNode[] = [...doc.children];
-	return settleSeparator(
-		documentBody(doc),
-		before,
-		mutate(documentBody(doc)),
-		grammar,
-		createSharingState()
+	return settledIn(doc, mutate, grammar);
+}
+
+/** `deleteNode` and its fix-up. */
+export function deleteSettled(
+	parent: BodyParentArg,
+	index: number,
+	grammar: GrammarView = defaultGrammarView,
+	sharing: SharingState = createSharingState()
+): StructuralChange {
+	const removal = (body: BodyParent) => ({
+		change: deleteNode(body, index),
+		removed: true as const
+	});
+	return settledIn(parent, removal, grammar, sharing);
+}
+
+/** `splitNode` and its fix-up, with the split's own result over the settled change. */
+export function splitSettled(
+	parent: BodyParentArg,
+	index: number,
+	offset: number,
+	sharing: SharingState,
+	reading: Reading
+): SplitResult {
+	let split: SplitResult | undefined;
+	const change = settledIn(
+		parent,
+		(body) => (split = splitNode(body, index, offset, sharing, reading)).change,
+		reading.grammar,
+		sharing
 	);
+	return { ...split!, change };
+}
+
+/** `mergeIntoPrevDeepLeaf` and its fix-up: where the join landed, and the settled change. */
+export function mergePrevSettled(
+	parent: BodyParentArg,
+	index: number,
+	sharing: SharingState,
+	reading: Reading
+): (JoinLanding & { change: StructuralChange }) | null {
+	const tracked: TrackedPosition = { index: -1, offset: 0 };
+	let merged: MergeIntoPrevResult | null = null;
+	const { change } = commitSteps(
+		parent,
+		(body) => {
+			merged = mergeIntoPrevDeepLeaf(body, index, sharing, reading, tracked);
+			return merged ? { change: merged.change, removed: true } : { change: { op: 'noop' } };
+		},
+		reading.grammar,
+		sharing,
+		tracked
+	);
+	const result = merged as MergeIntoPrevResult | null;
+	return result && { ...result.landing(asBody(parent).children), change };
+}
+
+/** `reorderChildrenWithTrivia` and its fix-up: the settled change and where the moved block is. */
+export function reorderSettled(
+	body: BodyParent,
+	from: number,
+	to: number,
+	sharing: SharingState,
+	grammar: GrammarView
+): { change: StructuralChange; landing: number } {
+	let landing = to;
+	const settled = commitSteps(
+		body,
+		() => {
+			const reordered = reorderChildrenWithTrivia(body, from, to, sharing, grammar);
+			landing = reordered.landing;
+			return { change: reordered.change, moved: { to: landing } };
+		},
+		grammar,
+		sharing
+	);
+	return { change: settled.change, landing: settled.moved ?? landing };
 }

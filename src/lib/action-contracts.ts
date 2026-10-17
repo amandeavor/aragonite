@@ -10,6 +10,7 @@ import type { StructuralChange } from './tree-operations/structural-change';
 import type { TrackedPosition } from './tree-operations/neighbour-merge';
 import type { SharingState } from './tree-operations/sharing';
 import type { BodyParent } from './tree-operations/node-primitives';
+import type { EditKind, SettledEdit } from './tree-operations/settle';
 import type { BlockComponent, FocusPosition } from './block-component';
 import type { OperationDetailMap, OperationKind, ScopedOpDescriptor } from './schema/operations';
 import type { WriteMode } from './schema/block-kind-descriptor';
@@ -183,6 +184,9 @@ export interface ContainerScope {
 	/** Rebuilds `node`'s raw as the commit does, for a node the commit won't rebuild whose bytes
 	 *  the mutation reads before it returns; never the scope, which the commit rebuilds once. */
 	rebuild(node: CstNode): void;
+	/** Tells the commit's fix-up what the mutation did beyond its splice (a content write, a move, a
+	 *  removal); the reader returns the fix-up's result for this list once the commit has run. */
+	describeEdit(edit: EditKind): () => SettledEdit | null;
 }
 
 // ── Multi-scope commit ──────────────────────────────────────────────────────
@@ -223,11 +227,14 @@ export interface CommitMultiScopeArgs<
 	/** Caret positions each list's fix-up updates in place, parallel to `scopes`, since a collapsing
 	 *  container moves the bytes under them; the landing reads them back off the same objects. */
 	trackCaret?: readonly (TrackedPosition | undefined)[];
+	/** The mutation fixes up each leaf it writes itself, at any depth, before the commit's own pass
+	 *  runs over the same lists: a format toggle's several writes. The settle-once check skips it. */
+	fixesUpOwnWrites?: true;
 }
 
 export interface CommitStructuralArgs {
 	snapshot: CommitSnapshotArg;
-	mutate: (children: CstNode[]) => StructuralChange;
+	mutate: (children: CstNode[], scope: ContainerScope) => StructuralChange;
 	op?: ScopedOpDescriptor;
 	landing?: CommitLanding;
 	reveal?: RevealPolicy;

@@ -265,6 +265,7 @@ These checks run in three kinds of place:
 | G1.104 | A plugin registers only from its `definePlugin` setup                                      | N       |
 | G1.106 | A range delete takes whole rows from a table it keeps an edge of                           | A·N     |
 | G1.110 | A metadata write to a leaf is refused, since a leaf's metadata comes from its bytes        | A·N     |
+| G1.112 | A commit fixes up each list it wrote once                                                  | A·N     |
 
 ### The entries
 
@@ -569,7 +570,7 @@ child holds a block's last line is the kind's `lastLineChild` (read through
 `schema/container-raw.ts :: childHoldingLastLine`; an answer past the children warns
 `last-line-child-range`), and whether that line is blank is
 `tree-operations/open-tail.ts :: holdsBlankLastLine`. The commit owns the rule in two steps,
-`tree-operations/open-tail.ts :: endWindowLines` before the separator fix-up and
+`tree-operations/open-tail.ts :: endWindowLines` inside the commit's fix-up, before the separators, and
 `tree-operations/open-tail.ts :: keepOpenTail` after the containers rebuild, and no edit writes the
 tail by hand (G4.74). A move (`tree-operations/reorder.ts`) still calls `endWindowLines` itself,
 since it checks its own joins before the commit's fix-up runs.
@@ -810,6 +811,16 @@ refuses any kind that isn't a container before it writes: no bytes, no undo entr
 A dev build warns `invariant:metadata-without-rebuild` naming the kind, and every build reports an
 `error` event (`origin: 'commit'`) whose message points at `replaceRaw`, the bytes write a leaf's
 command uses instead. `test/editor-actions/update-block-metadata.test.ts`.
+
+**G1.112 · One fix-up per list.** A commit runs its fix-up (`tree-operations/settle.ts ::
+settleEdit`) once over each list it wrote, so a mutation inside it writes content with
+`writeNodeContent` and reports the write through its scope's `describeEdit`, leaving the fix-up to
+the commit. A mutation that fixes up a list itself with `updateNodeContent` and then reports a change
+there gets the fix-up twice, and a dev build warns `invariant:settle-once` (the record lives in
+`invariants/settle-once.ts`; production never touches it). The format toggle over several blocks
+still fixes up its own writes, at any depth and before its own chain rebuilds, so its commit says
+`fixesUpOwnWrites` and the check skips it (G4.208 pins that list). `test/invariants/settle-once.test.ts`,
+and `test/perf/settle-passes.test.ts` counts the passes each gesture runs.
 
 ## Group 2: property and regression tested
 
@@ -1224,6 +1235,7 @@ unguarded.
 | G4.200 | Whether a block hides markers at the caret, with the screen it reads, is asked in one place  | L       |
 | G4.201 | One painter puts the selection tint on an inline widget                                      | L       |
 | G4.207 | Shipped CSS keeps `color-mix` and container queries behind `@supports`                       | L       |
+| G4.208 | The fix-up after an edit is run by the commit or by the one write no commit follows          | L       |
 
 ### The entries
 
@@ -1507,8 +1519,8 @@ The one file whose subject is `devWarn`'s console output is allowlisted.
 `lint/suite-file-rules.test.ts`.
 
 **G4.42 · Separator-write sites.** No module writes a sibling's `leadingTrivia` by hand. A splice
-fixes its separators through one route (`settleSeparator` in the commit steps,
-`spliceChildrenSettled` under the path-addressed entries), and the allowlist names each exemption
+fixes its separators through one route (`settleEdit` in the commit steps, `updateNodeContent` for a
+write no commit follows, `spliceChildrenSettled` under the path-addressed entries), and the allowlist names each exemption
 with its reason (`node-ops.ts`, `content-write.ts`, `node-primitives.ts`, `chain-rebuild.ts`,
 `reorder.ts`, the item moves under `list/`, paste replacements, and three sites a splice window
 can't infer, such as the gap-caret insert). Every blank-line write the fix-ups make goes through
@@ -1715,8 +1727,9 @@ copy. `lint/file-rules.test.ts`.
 `src/lib/editor-actions/leaf-write.ts` :: `writeLeafInPlace`. Each step of the write has a short list
 of files allowed to name it (an aliased import counts):
 
-- the content write itself (`updateNodeContent`): those two, the keystroke's trial reparse, the
-  container-matching paste and the format toggle over several blocks
+- the content write with its fix-up (`updateNodeContent`): the in-place write, the keystroke's
+  trial reparse, the container-matching paste and the format toggle over several blocks; the
+  commit uses the write alone and fixes it up itself (G4.208)
 - a write in place that skips the reparse (`writeOwnRaw`, `installOwnRaw`): table cells and find
   and replace's private copy
 - the document as an owner-less body (`documentBody`), plus the trial reparse's throwaway copy
@@ -2329,6 +2342,12 @@ queries or container units, and a rule it can't parse loses its whole declaratio
 an `@supports` block after a plain fallback, as the selection tints in `editor-theme.css` do.
 `lint/safari-floor-css.test.ts` reads every shipped stylesheet and component `<style>` block and
 names the `path:line` of any use outside one.
+
+**G4.208 · Who runs the fix-up.** Three rows hold the names to their callers: `settleEdit` and
+`settleContentWrite` to `settle.ts`, the commit and `updateNodeContent`; `writeNodeContent`, the
+content write with no fix-up, to `commitLeafText`, whose commit fixes it up; and `fixesUpOwnWrites`
+to the format toggle, the one commit G1.112 skips. A new caller of either is a second fix-up in the
+making. `lint/separator-write-doors.test.ts`.
 
 ## Accessibility
 
