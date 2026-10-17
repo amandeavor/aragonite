@@ -802,10 +802,14 @@
 
 	function onBeforeInput(e: InputEvent): void {
 		if (typedInput(e)) return;
-		// An `insertLineBreak` from a soft keyboard or IME got past `onKeyDown`: consume it, since
-		// Shift+Enter is what makes a hard break.
+		// A soft keyboard's line break, with no keydown, is the Shift+Enter command; the browser's
+		// own would put a bare newline in the DOM.
 		if (e.inputType === 'insertLineBreak') {
 			e.preventDefault();
+			// Input, not a key, so it asks for the selection's removal itself.
+			editableSurface.afterSelectionRemoved((afterRemoval) =>
+				runCommand('block.hardBreak', undefined, { afterRemoval })
+			);
 			return;
 		}
 	}

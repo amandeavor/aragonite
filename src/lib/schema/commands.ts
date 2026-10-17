@@ -43,6 +43,7 @@ export const BLOCK_COMMAND_IDS = [
 	'link.openCard',
 	'heading.cycle',
 	'code.newline',
+	'code.softBreak',
 	'code.indent',
 	'code.dedent',
 	'code.backspace',
@@ -51,6 +52,7 @@ export const BLOCK_COMMAND_IDS = [
 	'list.unindent',
 	'list.toggleTask',
 	'cell.enter',
+	'cell.lineBreak',
 	'cell.tab',
 	'cell.shiftTab',
 	// Bound on `tableCell` (the block that holds the caret) but named for their subject: each takes
@@ -90,7 +92,9 @@ export const AFTER_RANGE_REMOVAL_COMMAND_IDS: ReadonlySet<AnyCommandId> = new Se
 	'block.hardBreak',
 	'heading.cycle',
 	'code.newline',
+	'code.softBreak',
 	'cell.enter',
+	'cell.lineBreak',
 	'chrome.descendToBody'
 ]);
 
@@ -101,7 +105,9 @@ export const AFTER_RANGE_REMOVAL_COMMAND_IDS: ReadonlySet<AnyCommandId> = new Se
 export const AFTER_SELECTION_REMOVAL_COMMAND_IDS: ReadonlySet<AnyCommandId> = new Set<CommandId>([
 	'block.split',
 	'block.hardBreak',
-	'code.newline'
+	'code.newline',
+	'code.softBreak',
+	'cell.lineBreak'
 ]);
 
 /** Built-in commands that move the block or row holding the caret rather than the caret. */

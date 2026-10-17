@@ -570,6 +570,9 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		};
 	}
 
+	// The Enter keydown whose handler is still running, which decides that key's break itself.
+	let enterKeydown: KeyboardEvent | null = null;
+
 	// A keydown that writes for itself fires no beforeinput, so the caret is read here too.
 	const onKeyDown = withKeydownVerdict(async (e) => {
 		endsDroppedComposition(e);
@@ -577,8 +580,20 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		const el = deps.getEl();
 		if (e.key === 'Backspace' && !e.isComposing && el) deps.caretWriter.leaveLineEndingPair(el);
 		if (!e.isComposing) recordPreEditOffset();
-		await deps.handleKeydown(e);
+		if (e.key === 'Enter' && !e.isComposing) enterKeydown = e;
+		try {
+			await deps.handleKeydown(e);
+		} finally {
+			if (enterKeydown === e) enterKeydown = null;
+		}
 	});
+
+	/** A break input that arrives while its Enter's handler still runs is that key's default, which
+	 *  the handler replaces, so it writes nothing (Playwright's Firefox fires it before the await). */
+	function isEnterDefault(e: InputEvent): boolean {
+		const isBreak = e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph';
+		return isBreak && enterKeydown !== null;
+	}
 
 	// Synchronous to the block's handler: the block's `preventDefault` only counts inside this
 	// listener's microtask checkpoint.
@@ -587,6 +602,10 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		adoptsComposition(e);
 		// A drop's text lands at the pointer, not at the caret a chord promised its marks to.
 		if (e.inputType === 'insertFromDrop') pendingMarks.end();
+		if (isEnterDefault(e)) {
+			e.preventDefault();
+			return;
+		}
 		if (!e.isComposing) recordPreEditOffset();
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);

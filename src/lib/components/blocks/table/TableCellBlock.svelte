@@ -378,6 +378,7 @@
 			return () =>
 				void tableContext[axisCommand.action](axisCommand.axis === 'row' ? rowIdx : colIdx);
 		}
+		if (id === 'cell.lineBreak') return writeLineBreak;
 		if (id !== 'cell.enter' && id !== 'cell.tab' && id !== 'cell.shiftTab') return null;
 		const plan = cellKeydownPlan(
 			{
@@ -554,7 +555,8 @@
 			kind: node.kind,
 			runCommand,
 			getPath: () => myPath,
-			afterSourceCommit
+			afterSourceCommit,
+			afterSelectionRemoved: editableSurface.afterSelectionRemoved
 		};
 		if (wiring.dispatchChord(e, target)) return;
 
@@ -678,24 +680,20 @@
 		else tableContext.exitDownward(x);
 	}
 
-	async function onBeforeInput(e: InputEvent): Promise<void> {
+	function onBeforeInput(e: InputEvent): void {
 		if (typedInput(e)) return;
+		// A soft keyboard's line break, with no keydown, is the Shift+Enter command.
 		if (e.inputType === 'insertLineBreak') {
-			// GFM cells can't carry raw newlines, so a line break is a literal `<br>`,
-			// which the inline-HTML pipeline renders as a live widget.
 			e.preventDefault();
-			if (!el) return;
-			// Both reads below happen after the source is hidden: the committed text is what
-			// the offset they splice must be measured against.
-			const fold = widgetInteraction.foldRevealBeforeMutation();
-			if (fold) await fold.settled;
-			// A line break arrives as input, not as a command, so it asks for the removal itself.
-			editableSurface.afterSelectionRemoved(writeLineBreak);
+			// Input, not a key, so it asks for the removal itself.
+			editableSurface.afterSelectionRemoved(() => runCommand('cell.lineBreak'));
 			return;
 		}
 	}
 
-	function writeLineBreak(): boolean {
+	/** GFM cells can't carry raw newlines, so a line break is a literal `<br>`, which the inline-HTML
+	 *  pipeline renders as a live widget. */
+	function writeLineBreak(): void {
 		const offset = cursor.getRaw() ?? 0;
 		const text = readCellText();
 		const inserted = '<br>';
@@ -706,7 +704,6 @@
 			mode: 'authored',
 			source: 'cell-line-break'
 		});
-		return true;
 	}
 
 	function onPointerDown(e: PointerEvent): void {

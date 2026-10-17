@@ -61,6 +61,8 @@ const WEBKIT_LANE = [
 	'text-editing/enter-at-block-start.spec.ts',
 	'text-editing/enter-at-soft-break.spec.ts',
 	'text-editing/crlf-line-end.spec.ts',
+	'text-editing/shift-enter-surfaces.spec.ts',
+	'text-editing/break-over-selection.spec.ts',
 	'clipboard/paste-crlf-document.spec.ts',
 	'sticky-column/code-block-entry.spec.ts',
 	'sticky-column/line-start-entry.spec.ts',

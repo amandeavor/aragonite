@@ -958,6 +958,7 @@ Right-clicking any cell opens the table's action menu: "Edit link" first when yo
 | Split a block                       | `Enter` (in a code block, inserts a newline)                                    |
 | Leave a code block                  | `Enter` on its empty last line (typing the closing fence there does the same)   |
 | Hard line break                     | `Shift+Enter`                                                                   |
+| Code line break, no indent          | `Shift+Enter`                                                                   |
 | Merge into the block before / after | `Backspace` / `Delete` (at the block's start / end)                             |
 | Indent / outdent a list item        | `Tab` / `Shift+Tab`                                                             |
 | Check / uncheck a task item         | `Mod+Enter`                                                                     |
@@ -976,6 +977,7 @@ Right-clicking any cell opens the table's action menu: "Edit link" first when yo
 | **Tables**                          |                                                                                 |
 | Move between cells                  | `Tab` / `Shift+Tab`, arrow keys                                                 |
 | Next row (or add one)               | `Enter` (from the last cell, appends a row)                                     |
+| Line break in a cell                | `Shift+Enter` (writes a `<br>`)                                                 |
 | Insert row below / above            | `Mod+Enter` / `Mod+Shift+Enter`                                                 |
 | Insert column right / left          | `Alt+Shift+→` / `Alt+Shift+←`                                                   |
 | Delete row                          | `Mod+Shift+Backspace`                                                           |
