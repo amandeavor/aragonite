@@ -97,7 +97,7 @@ The widgets it measures are every widget the block draws, a picture inside a lin
 
 The snap does nothing when the browser already put the caret in visible text, or when the surface holds a range (the second and third clicks of a run are a word or block selection, `src/lib/selection/multi-click.ts`, not a caret).
 
-The same click also moves a caret that landed inside the container's marker prefix (the `- ` in front of a list item) back into the content. And while a widget is selected whole, a caret the browser puts in its block is dropped, so the document has no caret until a key places one or a press lands elsewhere (`docs/design/selection.md`).
+The same click also moves a caret that landed inside the container's marker prefix (the `[^label]: ` in front of a footnote definition's text) back into the content. And while a widget is selected whole, a caret the browser puts in its block is dropped, so the document has no caret until a key places one or a press lands elsewhere (`docs/design/selection.md`).
 
 That's the caret placed. Now the keyboard.
 

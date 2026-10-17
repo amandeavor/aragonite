@@ -608,9 +608,9 @@ focus, type a marker character and assert on _where it appeared_.
 container next to its `SelectionOverlay` sibling, and `getBlock(i)` skips the overlay. Write
 tests against the helpers; reach for raw selectors only when adding a new one.
 
-**Marker prefixes count toward block text.** Headings and list items render their markers as
-dimmed spans inside the contenteditable, and `getBlockText(i)` returns the full text including
-the marker (the `'# Hello'` above).
+**Markers count toward block text.** A heading renders its markers as dimmed spans inside the
+contenteditable, a list item draws its marker in a cell beside it, and `getBlockText(i)` returns
+the full text, markers included (the `'# Hello'` above).
 
 **Geometry reads against an image widget need a decode barrier.** An `<img>` that hasn't decoded
 lays out 0x0, so a rect read too early is degenerate, and a click computed from it lands _inside_

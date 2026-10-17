@@ -147,7 +147,7 @@ export interface BlockComponentProps {
 	node: NodeView;
 	index: number;
 	myPath: number[];
-	/** Container-contributed read-only prefix rendered before the block's own raw (a list item's `- `). */
+	/** Container-contributed read-only prefix rendered before the block's own raw (a footnote's `[^label]: `). */
 	ambientPrefix: AmbientPrefix;
 	/** The root document, readonly by type; changing it is the commit path's business. */
 	document?: DocumentView;
