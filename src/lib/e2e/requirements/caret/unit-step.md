@@ -20,6 +20,10 @@ edge and leaves the source unchanged.
 
 - Shift+ArrowRight from the near edge selects the whole span; Shift+ArrowLeft takes it back to a caret
 - ArrowRight to the far edge, then Shift+ArrowLeft: the selection runs back across the whole span
+- `abc\r\nAfter\r\n`, End (where WebKit and Firefox park the caret between `\r` and `\n`), then
+  Shift+ArrowRight: the selection runs from 3 to 5, and End then ArrowRight lands at 5
+  - Miss-analysis: every row placed its caret through the editor, before the pair, so none kept
+    an anchor the browser had parked inside one
 
 ## Miss-analysis
 

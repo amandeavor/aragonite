@@ -132,3 +132,19 @@ for (const span of CASES) {
 		});
 	});
 }
+
+test.describe('one press crosses a CRLF pair from a caret the browser parked', () => {
+	test('End, then Shift+ArrowRight, selects the pair from the line end', async ({ page }) => {
+		const editor = await editorWith(page, 'abc\r\nAfter\r\n');
+		await editor.focusBlockAtPath([0], 0);
+		// WebKit and Firefox park the caret between the `\r` and the `\n` here.
+		await page.keyboard.press('End');
+		await page.keyboard.press('Shift+ArrowRight');
+		const paths = await editor.bridge.getSelectionPaths();
+		expect([paths?.anchor.offset, paths?.focus.offset]).toEqual([3, 5]);
+		await page.keyboard.press('ArrowLeft');
+		await page.keyboard.press('End');
+		await page.keyboard.press('ArrowRight');
+		expect((await editor.bridge.getSelectionPaths())?.focus.offset).toBe(5);
+	});
+});

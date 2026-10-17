@@ -874,6 +874,8 @@ caret parked between `\r` and `\n` to before the pair (G1.117), but a caret the 
 itself would still edit inside it in WebKit and Firefox. The arrow keys cross a pair in one press
 and write the caret past it (`selection/shared-keydown.ts :: handleSharedKeydown`), so every
 selection write in the caret writer checks both endpoints and warns on one between the halves.
+A Shift+Arrow from a caret the browser parked there keeps its anchor before the pair, where the
+read puts it (`caret/widget-offset.ts :: extendSelectionToRaw`).
 Predicate `invariants/line-ending-pairs.ts :: checkCaretOutsideLineEndingPair` ·
 `test/invariants/line-ending-pairs.test.ts`.
 

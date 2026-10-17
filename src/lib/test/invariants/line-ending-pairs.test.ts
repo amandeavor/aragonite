@@ -67,3 +67,20 @@ describe('G1.119 no caret the editor writes sits inside a CRLF pair', () => {
 		el.remove();
 	});
 });
+
+describe('the caret writer extends from an anchor parked inside a CRLF pair', () => {
+	it('keeps the anchor before the pair, where the read puts it', () => {
+		const el = document.createElement('div');
+		el.setAttribute('contenteditable', 'true');
+		el.textContent = 'abc\r\nAfter';
+		document.body.appendChild(el);
+		const text = el.firstChild as Text;
+		window.getSelection()!.collapse(text, 4);
+		takeDevWarns();
+		testCaretWriter.extendSelectionToRaw(el, 5);
+		const sel = window.getSelection()!;
+		expect([sel.anchorOffset, sel.focusOffset]).toEqual([3, 5]);
+		expect(takeDevWarns()).toEqual([]);
+		el.remove();
+	});
+});
