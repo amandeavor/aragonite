@@ -52,9 +52,8 @@ describeManifests(
 			hits: [`await cdp.send('Input.ime${'Set'}${COMPOSITION}', params);`],
 			misses: [`await cdp.send('Input.insertText', params);`]
 		},
-		// Miss-analysis: specs called the page clipboard and pressed the paste chord themselves, and
-		// WebKit, where neither reaches the editor, was the first engine to run them. A chord built
-		// from a variable modifier (`${mod}+v`) still gets past the matcher.
+		// Miss-analysis: specs drove the page clipboard and the paste chord themselves, unseen until
+		// WebKit ran them. A chord built from a variable modifier (`${mod}+v`) still gets past.
 		{
 			id: 'G4.212 e2e clipboard access rides the shared clipboard helper',
 			matches: /\bnavigator\s*\??\.\s*clipboard\b/,
