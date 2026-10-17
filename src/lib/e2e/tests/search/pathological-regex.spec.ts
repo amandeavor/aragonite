@@ -48,9 +48,14 @@ test.describe('search: a pathological regex query', () => {
 			await expect(findInput(page)).toHaveValue(PATHOLOGICAL_QUERY);
 		});
 
-		await test.step('the deadline overrun reports a too-slow state and paints nothing', async () => {
-			await expect(count(page)).toHaveText('Regex too slow', { timeout: 8000 });
-			await expect(count(page)).toHaveClass(/error/);
+		await test.step('the scan ends in a reported state and paints nothing', async () => {
+			// V8 backtracks until the deadline ends the scan; WebKit's engine gives up and finds no match.
+			await expect(count(page)).toHaveText(/^\s*(?:Regex too slow|No results)\s*$/, {
+				timeout: 8000
+			});
+			if ((await count(page).innerText()).includes('too slow')) {
+				await expect(count(page)).toHaveClass(/error/);
+			}
 			await expect(overlays(page)).toHaveCount(0);
 		});
 

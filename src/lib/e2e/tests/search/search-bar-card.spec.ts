@@ -21,8 +21,11 @@ test.describe('search bar card: layout', () => {
 		await findInput(page).fill('(');
 		await expect(count(page)).toHaveClass(/error/);
 		expect(await barHeight(page)).toBe(oneLine);
-		// The message is cut short on the card, so its full text has to stay reachable.
-		await expect(count(page)).toHaveAttribute('title', /Unterminated group/);
+		// The message is cut short on the card, so its full text has to stay reachable. Each engine
+		// words its regex errors its own way, so the check is that the title carries the whole of it.
+		const message = (await count(page).textContent())?.trim() ?? '';
+		expect(message).not.toBe('');
+		await expect(count(page)).toHaveAttribute('title', message);
 	});
 });
 

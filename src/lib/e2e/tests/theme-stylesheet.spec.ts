@@ -83,9 +83,12 @@ test.describe('a theme stylesheet replaced wholesale', () => {
 		await page.addStyleTag({ content: REPLACEMENT_SHEET });
 		await remount(page);
 		expect(await computed(page, '.editor', 'color')).toBe('rgb(200, 210, 220)');
-		expect(await computed(page, '.editor', 'scrollbar-color')).toBe(
-			'rgb(60, 70, 80) rgba(0, 0, 0, 0)'
-		);
+		// An engine without `scrollbar-color` (WebKit) draws its own scrollbar, so there is nothing to read.
+		if (await page.evaluate(() => CSS.supports('scrollbar-color', 'red blue'))) {
+			expect(await computed(page, '.editor', 'scrollbar-color')).toBe(
+				'rgb(60, 70, 80) rgba(0, 0, 0, 0)'
+			);
+		}
 		await page.locator('.editor [contenteditable="true"]').first().click();
 		await page.keyboard.press('ControlOrMeta+f');
 		await expect(page.getByRole('textbox', { name: 'Find' })).toBeVisible();
