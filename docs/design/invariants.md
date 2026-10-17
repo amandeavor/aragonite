@@ -269,6 +269,7 @@ These checks run in three kinds of place:
 | G1.112 | A content write inside a commit leaves its fix-up to the commit                            | A·N     |
 | G1.113 | A list item's drawn marker is its own opening bytes                                        | A·P     |
 | G1.115 | A caret restored inside a widget that can show its source opens the source at that byte    | A·N     |
+| G1.118 | A list's marker-width counts are what a recount of its items gives                         | A·N     |
 
 ### The entries
 
@@ -852,6 +853,14 @@ show (an emoji, an image), whose caret goes to the far edge. Predicate
 `invariants/widget-caret-landing.ts :: checkWidgetCaretLanding` ·
 `test/invariants/widget-caret-landing.test.ts`; G4.211 holds the e2e rows to every kind.
 
+**G1.118 · A list's marker counts match its items** (`list-marker-widths`). The list node keeps how
+many items open with a marker of each width, for the marker column (G4.215), and the parse and
+the list's rebuild are the only writers. At the same moments as G1.55 and under its size limit,
+dev recounts every list in the blocks the edit wrote and fails one whose counts are absent or
+differ, which a route that changes items without rebuilding the list would leave. Predicate
+`invariants/list-marker-widths.ts :: checkListMarkerWidths` ·
+`test/invariants/list-marker-widths.test.ts`.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -1269,6 +1278,7 @@ unguarded.
 | G4.209 | A list item draws its marker in its own cell, never through a child's prefix                 | L       |
 | G4.211 | Every widget kind that shows its source has a row in the typed-opener e2e spec               | L       |
 | G4.212 | E2E clipboard access and pastes ride the shared clipboard helper                             | L       |
+| G4.215 | A list's marker column reads no item of its own at load or on a key                          | harness |
 
 ### The entries
 
@@ -2402,6 +2412,14 @@ paste chord itself only works where the real clipboard answers the page, which W
 so both fail the scan outside `e2e/clipboard-arm.ts`. The helper is where each engine's clipboard
 lives: the system clipboard in Chromium, an in-page store the `page` fixture installs in WebKit.
 `e2e/lint/e2e-drivers.test.ts`.
+
+**G4.215 · The marker column costs what changed.** The column is sized from the marker-width counts
+the list node holds, which the parse fills and the list's rebuild keeps (G1.118 holds them to a
+recount). In a list of four hundred items, mounting reads no item for the column; each key (the
+first, a paused one, one in a burst, a marker typed in place, Enter) reads at most the item it
+rewrote beyond the items its rebuild already joined in full; and an undo reads none, since the
+entry's list carries its counts. `test/blocks/list/marker-column-scans.test.ts` on the
+`listMarkerReads` and `joinedChildReads` counters.
 
 ## Accessibility
 
