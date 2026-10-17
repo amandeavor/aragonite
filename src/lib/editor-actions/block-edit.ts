@@ -39,7 +39,7 @@ export function createBlockEditActions(
 		deleteBlock: (blockIndex, gesture) => core.deleteInterior(blockIndex, gesture),
 		updateBlockMetadata: (blockIndex, metadata, options) =>
 			core.updateBlockMetadata(blockIndex, metadata, options),
-		replaceRaw: (blockIndex, raw) => core.replaceRaw(blockIndex, raw),
+		replaceRaw: (blockIndex, raw, caret) => core.replaceRaw(blockIndex, raw, caret),
 		replaceBlock: async (blockIndex, replacement, focus, options) =>
 			(await core.replaceBlock(blockIndex, replacement, focus, options)) !== null,
 

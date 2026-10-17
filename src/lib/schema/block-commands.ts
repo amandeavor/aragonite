@@ -78,19 +78,20 @@ export type BlockCommandTarget = Omit<BlockCommandContext, 'arg' | 'editor' | 'a
 /** The writes of the list holding a block, which its command context reaches at its index. */
 export interface BlockCommandWrites {
 	updateBlockMetadata(index: number, patch: Record<string, unknown>): Promise<boolean>;
-	replaceRaw(index: number, raw: string): Promise<boolean>;
+	replaceRaw(index: number, raw: string, caret?: number): Promise<boolean>;
 }
 
-/** The command target a leaf and a container both hand the dispatch, read through getters at
- *  dispatch so a node swap is seen. */
+/** The command target a leaf and a container both hand the dispatch, read live so a node swap is
+ *  seen; `getCaret` is a leaf's caret in its bytes, which `replaceRaw` keeps on its text. */
 export function blockCommandTarget(
 	block: { getNode(): NodeView; getIndex(): number; commandHooks?: () => unknown },
-	writes: BlockCommandWrites
+	writes: BlockCommandWrites,
+	getCaret?: () => number | null
 ): BlockCommandTarget {
 	return {
 		node: block.getNode(),
 		updateMetadata: (patch) => void writes.updateBlockMetadata(block.getIndex(), patch),
-		replaceRaw: (raw) => void writes.replaceRaw(block.getIndex(), raw),
+		replaceRaw: (raw) => void writes.replaceRaw(block.getIndex(), raw, getCaret?.() ?? undefined),
 		hooks: block.commandHooks?.()
 	};
 }

@@ -23,6 +23,9 @@ kind (commands `memo.tag` on `Mod+Shift+K`, which rewrites `%%` to `%%!`, and `m
 
 - Typing in the memo, then pressing the chord, then one undo: the typed text stays and only the
   tag goes, since the command is its own undo entry.
+- Pressing the chord with the caret mid-text, then typing: the typed letter lands where the caret
+  was, since the rewrite keeps the text before it. Miss-analysis: the rows read only the bytes, so
+  a caret thrown to the block's start went unseen.
 
 ## Error cases
 

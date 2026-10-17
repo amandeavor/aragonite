@@ -50,6 +50,19 @@ test.describe('plugin block commands on the editable-leaf level: the %% memo kin
 		expect(await memoTagged(page)).toBeUndefined();
 	});
 
+	test('the caret stays on the text it was in, so the next letter lands there', async ({
+		page
+	}) => {
+		await editor.memo.click();
+		await page.keyboard.press('End');
+		await page.keyboard.press('ArrowLeft');
+
+		await page.keyboard.press('ControlOrMeta+Shift+K');
+		await editor.bridge.waitForSourceContains('%%! memo tex');
+		await page.keyboard.type('!');
+		await editor.bridge.waitForSourceContains('%%! memo tex!t');
+	});
+
 	test('a throwing handler is contained: one origin:command error, no uncaught pageerror', async ({
 		page
 	}) => {

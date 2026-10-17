@@ -37,7 +37,8 @@ import type { EditorContext } from '../../schema/plugin-install';
 import { componentPluginEditor } from '../../schema/block-kind-plugin';
 import type { WindowResult } from '../../windowing/block-window.svelte';
 import type { RefSlots } from '../../block-lists/child-refs';
-import type { ChildList } from '../../block-lists/child-list';
+import { componentAt, type ChildList } from '../../block-lists/child-list';
+import { findBlockPathForElement } from '../../selection/path-lookup';
 import { useContainerWindowing } from '../../windowing/use-container-windowing.svelte';
 import { createContainerExitOverrides } from '../container-exit-overrides';
 import { delegateMoveFocus } from '../focus/focus-dispatch';
@@ -407,6 +408,18 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 		getPath: deps.getPath
 	};
 
+	// A key from a block inside runs once that block's shown source is written, so a command that
+	// rewrites this container's bytes keeps the edit.
+	const bubbledTarget = (e: KeyboardEvent): KindCommandTarget => ({
+		...kindTarget,
+		afterSourceCommit: (run) => {
+			const from = findBlockPathForElement(e.target instanceof Element ? e.target : null);
+			const inner = from && componentAt(childList, from.slice(deps.getPath().length));
+			if (inner?.afterSourceCommit) inner.afterSourceCommit(run);
+			else run();
+		}
+	});
+
 	const commandOf = (e: KeyboardEvent) => commandForKey(e, deps.getNode().kind, commands);
 
 	const handleKeydown = (e: KeyboardEvent): void => {
@@ -415,7 +428,7 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 		// Only when this block itself holds focus: a chord bubbling from an inner leaf already
 		// met the global chords there, and running it here would fire it twice.
 		if (ownsFocus && dispatchWholeBlockGlobalChord(e, deps.getNode().kind, commands)) return;
-		const target = ownsFocus ? wholeBlockTarget : kindTarget;
+		const target = ownsFocus ? wholeBlockTarget : bubbledTarget(e);
 		const range = ownsFocus ? null : { selection, getDoc };
 		if (dispatchContainerChord(e, target, commands, range)) return;
 		if (ownsFocus) handleWholeBlockKeydown(e);

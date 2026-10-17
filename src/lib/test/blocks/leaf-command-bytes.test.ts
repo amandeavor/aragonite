@@ -13,6 +13,10 @@ import {
 import { pressKey } from '#lib/test/harness/settle.js';
 import { blockNodeAt } from '#lib/tree-operations/node-primitives.js';
 import type { EditorTestSurface } from '#lib/components/editor-root/test-surface.js';
+import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
+import { ADMONITION } from '#lib/plugins/admonitions/kinds.js';
+import { definePlugin, registerBlockCommand, type PluginBlockKind } from '#lib/plugin.js';
+import type { PluginCommandId } from '#lib/schema/command-id.js';
 import { TAG_KEY, tagLeafPlugin } from './fixtures/tag-leaf';
 
 beforeEach(() => {
@@ -50,6 +54,26 @@ describe('a leaf command that rewrites its bytes', () => {
 		});
 	}
 
+	// Miss-analysis: the rows above read only the bytes, so a caret thrown to the block's start
+	// by the rewrite went unseen.
+	for (const scope of SCOPES) {
+		it(`keeps the caret on the text it was in ${scope.name}`, async () => {
+			const editor = mountEditor<EditorTestSurface>({
+				source: scope.source,
+				plugins: [tagLeafPlugin()]
+			});
+			await editor.settle();
+			const surface = surfaceAt(editor, scope.path);
+			placeCaret(surface, 6); // `%% me|mo`
+
+			await pressKey(surface, TAG_KEY);
+			await editor.settle();
+
+			const caret = { path: scope.path, offset: 7 }; // `%%! me|mo`
+			expect(editor.instance.getSelection()).toEqual({ anchor: caret, focus: caret });
+		});
+	}
+
 	// The handler reads the leaf's bytes, so it runs once the open source is written.
 	it('keeps an edit in a shown source, writing it before the command', async () => {
 		const editor = mountEditor<EditorTestSurface>({
@@ -68,5 +92,40 @@ describe('a leaf command that rewrites its bytes', () => {
 		await editor.settle();
 
 		expect(editor.source()).toBe('%%! new\n\nnext\n');
+	});
+});
+
+// Miss-analysis: only a leaf's own command waited for its shown source, and no row pressed a
+// container's command from a block inside it, so the container's rewrite dropped the edit.
+describe('a container command over a shown source inside it', () => {
+	const REWRITE = 'probe.rewriteNote' as PluginCommandId;
+	const rewriteNote = definePlugin({
+		name: 'rewrite-note',
+		setup: () => {
+			registerBlockCommand(ADMONITION as PluginBlockKind, REWRITE, (ctx) => {
+				ctx.replaceRaw(ctx.node.raw.replace(':::note', ':::tip'));
+				return true;
+			});
+		}
+	});
+
+	it('writes the inner edit before the command rewrites the container', async () => {
+		const editor = mountEditor<EditorTestSurface>({
+			source: ':::note Heads up\n\n%% old\n\n:::\n',
+			plugins: [admonitionsPlugin(), tagLeafPlugin('reveal'), rewriteNote],
+			keybindings: [{ chord: 'Mod+Shift+L', command: REWRITE, kind: ADMONITION as PluginBlockKind }]
+		});
+		await editor.settle();
+		editor.instance.__test.getBlockComponent([0, 1])?.focus?.(3);
+		await editor.settle();
+		const source = editor.target.querySelector<HTMLElement>('.reveal-leaf-source');
+		expect(source, 'the leaf source is not showing').not.toBeNull();
+		source!.textContent = '%% new';
+
+		await pressKey(source!, { key: 'L', ctrlKey: true, shiftKey: true });
+		await editor.settle();
+		await editor.settle();
+
+		expect(editor.source()).toBe(':::tip Heads up\n\n%% new\n\n:::\n');
 	});
 });

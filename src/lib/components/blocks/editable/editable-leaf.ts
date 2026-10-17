@@ -392,7 +392,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		})();
 	}
 
-	const getCommandContext = () => blockCommandTarget(deps, blockEdit);
+	const getCommandContext = () => blockCommandTarget(deps, blockEdit, backend.getRaw);
 
 	// ── View sync ──────────────────────────────────────────────────────────────
 

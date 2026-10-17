@@ -27,7 +27,7 @@ const tag = registerBlockCommand(memo, 'memo.tag', (ctx) => {
 });
 ```
 
-Call `updateMetadata` on a leaf and it writes nothing: a dev build warns, and every build reports an `error` event (`origin: 'commit'`) naming `replaceRaw`. One more thing, if your leaf shows its source while focused: press a command's key mid-edit and the command runs once that edit is written, so `ctx.node` holds what the user typed. The key counts as handled then, even if your handler returns `false`.
+Call `updateMetadata` on a leaf and it writes nothing: a dev build warns, and every build reports an `error` event (`origin: 'commit'`) naming `replaceRaw`. One more thing, for a block that shows its source while focused (your leaf, or a block inside your container): press a command's key mid-edit and the command runs once that edit is written, so `ctx.node` holds what the user typed. The key counts as handled then, even if your handler returns `false`.
 
 A block command's chord fires in two places, the ones that hand it a `BlockCommandContext` (the focused node plus the writes that change it):
 

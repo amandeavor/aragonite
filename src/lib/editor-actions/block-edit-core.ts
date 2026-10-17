@@ -235,7 +235,7 @@ export interface BlockEditCore {
 		metadata: Record<string, unknown>,
 		options?: { caret?: BlockCaret }
 	): Promise<boolean>;
-	replaceRaw(i: number, raw: string): Promise<boolean>;
+	replaceRaw(i: number, raw: string, caret?: number): Promise<boolean>;
 	/** Resolves to how many blocks landed in the position, or null when nothing was written. */
 	replaceBlock(
 		i: number,
@@ -288,6 +288,19 @@ function refuseLeafMetadata(scope: CommitScope, i: number, kind: string): void {
 		message
 	}));
 	scope.reportCommitError(new Error(`aragonite: ${message}`), 'metadataUpdate', i);
+}
+
+/** Where an offset in `before` sits in `after`: on the same text when it is outside the span the
+ *  rewrite changed, else at the end of what replaced that span. */
+function offsetThroughRewrite(before: string, after: string, offset: number): number {
+	const shorter = Math.min(before.length, after.length);
+	let head = 0;
+	while (head < shorter && before[head] === after[head]) head++;
+	let tail = 0;
+	while (tail < shorter - head && before.at(-1 - tail) === after.at(-1 - tail)) tail++;
+	if (offset <= head) return offset;
+	if (offset >= before.length - tail) return offset + after.length - before.length;
+	return after.length - tail;
 }
 
 export function createBlockEditCore(scope: CommitScope): BlockEditCore {
@@ -473,15 +486,20 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 			});
 		},
 
-		async replaceRaw(i, raw) {
-			if (!scope.children()[i]) return false;
+		async replaceRaw(i, raw, caret) {
+			const node = scope.children()[i];
+			if (!node) return false;
 			const target = scope.target();
 			const lineEnding = 'lineEnding' in target ? target.lineEnding : documentLineEnding(target);
-			const write = legalizeWrite(target, i, withLineEnding(raw, lineEnding), 'literal');
+			const text = withLineEnding(raw, lineEnding);
+			const write = legalizeWrite(target, i, text, 'literal');
+			const kept = caret === undefined ? undefined : offsetThroughRewrite(node.raw, text, caret);
+			// With no caret to keep, only a block that became new blocks takes one, at its start.
 			const landed = await commitLeafText(scope, i, write, {
-				snapshotOffset: 0,
-				caret: 0,
-				landing: (written) => (written.replaced ? unlessFocusMoved(written) : null)
+				snapshotOffset: caret ?? 0,
+				caret: kept === undefined ? 0 : write.storedOffset(kept),
+				landing: (written) =>
+					kept !== undefined || written.replaced ? unlessFocusMoved(written) : null
 			});
 			return landed.wrote;
 		},

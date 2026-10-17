@@ -68,7 +68,21 @@ describe('the block command target a leaf and a container share', () => {
 		ctx.updateMetadata({ code: 'x' });
 		ctx.replaceRaw('%%! x');
 		expect(updateBlockMetadata).toHaveBeenCalledWith(3, { code: 'x' });
-		expect(replaceRaw).toHaveBeenCalledWith(3, '%%! x');
+		expect(replaceRaw).toHaveBeenCalledWith(3, '%%! x', undefined);
+	});
+
+	it("hands replaceRaw the leaf's caret as it is when the write runs", () => {
+		const replaceRaw = vi.fn();
+		let caret: number | null = 2;
+		const ctx = blockCommandTarget(
+			{ getNode: () => leafNode(), getIndex: () => 0 },
+			{ updateBlockMetadata: vi.fn(), replaceRaw },
+			() => caret
+		);
+		caret = 5;
+
+		ctx.replaceRaw('%%! x');
+		expect(replaceRaw).toHaveBeenCalledWith(0, '%%! x', 5);
 	});
 
 	it('threads commandHooks so a handler reaches the component; absent → undefined', () => {
