@@ -20,6 +20,8 @@ Where the caret is on text, the text joins the block there. Every row runs in so
   - a math block, with latex installed
   - a diagram, with mermaid installed
   - a list item opening with a fenced code block: the paragraph goes before the list
+- A quote holding a one-row table and a heading under it. The same click and Shift+Down, and each
+  gesture puts its text in a paragraph inside the quote, where the table was.
 - A fenced code block or a rule, then two one-row tables. Click the first table's cell and press
   Shift+Down, so the range takes both tables and the caret falls back on the end of the block
   above. Each gesture puts its text in a paragraph after that block, never after its closing fence

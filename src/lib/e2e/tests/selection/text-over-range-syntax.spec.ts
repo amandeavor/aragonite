@@ -80,6 +80,13 @@ const ROWS: Row[] = [
 		landed: { path: [0], kind: 'paragraph' },
 		kept: { path: [1, 0, 0], kind: 'fencedCode' }
 	},
+	{
+		name: 'a heading below, both inside a quote',
+		source: '> | c |\n> | - |\n>\n> # Head\n',
+		after: (text) => `> ${text}\n>\n> # Head\n`,
+		landed: { path: [0, 0], kind: 'paragraph' },
+		kept: { path: [0, 1], kind: 'heading' }
+	},
 	above('a code block', '```js\nbody\n```', 'fencedCode'),
 	above('a rule', '---', 'thematicBreak'),
 	joins('paragraph', 'plain', (text) => `${text}plain`, { path: [0], kind: 'paragraph' }),
