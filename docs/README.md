@@ -28,7 +28,7 @@ One spec per subsystem, for anyone changing the editor's insides. Start with `ed
 | [`design/live-mode.md`](design/live-mode.md)                 | The fully rendered mode that stays editable: the rules for editing around markers nobody can see                         |
 | [`design/caret-placement.md`](design/caret-placement.md)     | How a click becomes a caret, and what the caret does on the next key: nine stages, one file each                         |
 | [`design/selection.md`](design/selection.md)                 | Selecting across blocks, the caret the editor draws, the caret between two blocks, find and replace, copy, cut and paste |
-| [`design/invariants.md`](design/invariants.md)               | The rules that would cost someone their file, each numbered and each with a check that fails when it breaks              |
+| [`design/invariants.md`](design/invariants.md)               | Every rule the repo checks with code, numbered, and where each is checked                                                |
 | [`design/plugin-contract.md`](design/plugin-contract.md)     | What the plugin API promises: the shapes already settled, the ones still moving before 1.0, what was left out            |
 | [`design/performance.md`](design/performance.md)             | Why typing cost does not grow with document size, the exceptions, and the checks that enforce the numbers                |
 
