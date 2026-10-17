@@ -270,6 +270,7 @@ These checks run in three kinds of place:
 | G1.113 | A list item's drawn marker is its own opening bytes                                        | A·P     |
 | G1.115 | A caret restored inside a widget that can show its source opens the source at that byte    | A·N     |
 | G1.117 | A write never splits a CRLF pair into a lone `\r` or a lone `\n`                           | A·N     |
+| G1.119 | No caret the editor writes sits between a CRLF pair's `\r` and `\n`                        | A·N     |
 
 ### The entries
 
@@ -868,6 +869,14 @@ check. Predicate
 `invariants/line-ending-pairs.ts :: checkLineEndingPairsKept` ·
 `test/invariants/line-ending-pairs.test.ts`.
 
+**G1.119 · No caret inside a CRLF pair** (`caret-in-line-ending-pair`). The read rounds a native
+caret parked between `\r` and `\n` to before the pair (G1.117), but a caret the editor writes there
+itself would still edit inside it in WebKit and Firefox. The arrow keys cross a pair in one press
+and write the caret past it (`selection/shared-keydown.ts :: handleSharedKeydown`), so every
+selection write in the caret writer checks both endpoints and warns on one between the halves.
+Predicate `invariants/line-ending-pairs.ts :: checkCaretOutsideLineEndingPair` ·
+`test/invariants/line-ending-pairs.test.ts`.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -1286,6 +1295,7 @@ unguarded.
 | G4.211 | Every widget kind that shows its source has a row in the typed-opener e2e spec               | L       |
 | G4.212 | E2E clipboard access and pastes ride the shared clipboard helper                             | L       |
 | G4.214 | A caret's box is measured in one place, `caretRectAt`                                        | L       |
+| G4.216 | Every built-in kind that binds Enter binds Shift+Enter too                                   | L       |
 
 ### The entries
 
@@ -2428,6 +2438,17 @@ into view, the drop caret and `rects.caretRect()`. The scan fails a Range measur
 outside a short allowlist of spans that are never collapsed. A caret the writer puts at a line's
 start lands in the next line's text for the same reason
 (`caret/widget-offset.ts :: findDomTextLanding`). `lint/file-rules.test.ts`.
+
+**G4.216 · Shift+Enter is a key binding wherever Enter is.** Engines don't agree on the input a
+Shift+Enter sends (Playwright's WebKit sends `insertParagraph`, Chromium and Firefox
+`insertLineBreak`), so a surface that waits for the input loses the key in one of them. A built-in
+kind whose keymap binds Enter binds Shift+Enter too, and the keydown decides it: a hard break in
+prose, `code.softBreak` in a code block, `cell.lineBreak` (a `<br>`) in a table cell. Each block's
+`insertLineBreak` branch, for a soft keyboard that sends no keydown, runs that same command, and
+one arriving while the Enter keydown's handler still runs writes nothing
+(`components/blocks/editable/editable-surface.ts`). A plugin kind isn't held to it: a plugin surface
+with no Shift+Enter binding gets whatever its own keydown and input handlers do with the key,
+which for the editable leaf is the same as Enter. `lint/shift-enter-bindings.test.ts`.
 
 ## Accessibility
 
