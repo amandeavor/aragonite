@@ -43,10 +43,14 @@ export function applyCollapsedCaret(
 }
 
 // A restore's caret; the restore's reveal policy decides the scroll.
-function restoreCollapsedCaret(target: RestoreTarget, point: SelectionPoint): boolean {
+function restoreCollapsedCaret(
+	target: RestoreTarget,
+	point: SelectionPoint,
+	place: (blockEl: HTMLElement) => void
+): boolean {
 	const blockEl = target.getBlockElByPath(point.path);
 	if (!blockEl) return false;
-	if (!target.landCaret(point)) applyCollapsedCaret(target.caretWriter, blockEl, point);
+	place(blockEl);
 	blockEl.focus({ preventScroll: true });
 	return true;
 }
@@ -178,7 +182,10 @@ function placeRestoredSelection(selection: EditorSelection, target: RestoreTarge
 
 	if (route === 'collapsed') {
 		selectionState.clear();
-		return restoreCollapsedCaret(target, target.caretAt(selection.anchor));
+		const caret = target.caretAt(selection.anchor);
+		return restoreCollapsedCaret(target, caret, (blockEl) => {
+			if (!target.landCaret(caret)) applyCollapsedCaret(writer, blockEl, caret);
+		});
 	}
 
 	if (route === 'whole-block') {
@@ -205,8 +212,11 @@ function placeRestoredSelection(selection: EditorSelection, target: RestoreTarge
 	// and key events a target, since Chromium otherwise routes paste to <body>.
 	selectionState.enterCrossBlock(selection.anchor, selection.focus);
 	// The stored focus, which normalization may have turned into a cell index.
-	const focus = selectionState.focus ?? selection.focus;
-	if (restoreCollapsedCaret(target, target.caretAt(focus))) {
+	const focus = target.caretAt(selectionState.focus ?? selection.focus);
+	// That caret is an event target under the painted range, so no source opens around it.
+	if (
+		restoreCollapsedCaret(target, focus, (blockEl) => applyCollapsedCaret(writer, blockEl, focus))
+	) {
 		return true;
 	}
 	writer.clear();

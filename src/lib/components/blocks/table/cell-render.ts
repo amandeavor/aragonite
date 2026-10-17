@@ -78,7 +78,9 @@ export interface CellRender {
 
 export function createCellRender(deps: CellRenderDeps): CellRender {
 	let lastRenderedKey = '';
-	let renderedWidgets: InlineNode[] = [];
+	// Flattened on first read, since an ordinary keystroke's render never asks.
+	let rendered: { content: InlineNode[]; raw: string } | null = null;
+	let widgets: InlineNode[] | null = null;
 	const widgetPool = createViewWidgetPool({
 		reportError: deps.reportRenderError,
 		getTheme: deps.getTheme,
@@ -151,7 +153,8 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 			})
 		);
 		washShownSource(el, shown);
-		renderedWidgets = widgetsAmong(content, node.raw, deps.reading.grammar);
+		rendered = { content, raw: node.raw };
+		widgets = null;
 		islandViews = applyIslandDecorations(el, node.raw, islands, {
 			contentLength: contentLengthOf(node),
 			mountWidget: (spec, dec, target) =>
@@ -179,7 +182,10 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 
 	return {
 		render,
-		renderedWidgets: () => renderedWidgets,
+		renderedWidgets: () =>
+			(widgets ??= rendered
+				? widgetsAmong(rendered.content, rendered.raw, deps.reading.grammar)
+				: []),
 		dispose: () => {
 			destroyIslands();
 			widgetPool.dispose();

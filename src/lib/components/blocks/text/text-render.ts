@@ -138,7 +138,9 @@ export function renderKeySegmentDiff(prev: string, next: string): string {
 
 export function createTextRender(deps: TextRenderDeps): TextRender {
 	let lastRenderedKey = '';
-	let renderedWidgets: InlineNode[] = [];
+	// Flattened on first read, since an ordinary keystroke's render never asks.
+	let rendered: { content: InlineNode[]; raw: string } | null = null;
+	let widgets: InlineNode[] | null = null;
 	const widgetPool = createViewWidgetPool({
 		reportError: deps.reportRenderError,
 		getTheme: deps.getTheme,
@@ -313,7 +315,8 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 			destroyIslands();
 			el.replaceChildren(buildInlineDOM(content, pendingBreaks, shown));
 			washShownSource(el, shown);
-			renderedWidgets = widgetsAmong(content, node.raw, deps.reading.grammar);
+			rendered = { content, raw: node.raw };
+			widgets = null;
 			islandViews = applyIslandDecorations(el, node.raw, islands, {
 				contentLength: contentLengthOf(node),
 				mountWidget: (spec, dec, target) =>
@@ -330,7 +333,8 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 			// An empty pass clears any widget stranded by a prose-to-non-prose kind change in
 			// place, which reuses this same component instance.
 			washShownSource(el, null);
-			renderedWidgets = [];
+			rendered = null;
+			widgets = null;
 			widgetPool.beginPass();
 			destroyIslands();
 			widgetPool.sweep();
@@ -360,7 +364,10 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 
 	return {
 		render,
-		renderedWidgets: () => renderedWidgets,
+		renderedWidgets: () =>
+			(widgets ??= rendered
+				? widgetsAmong(rendered.content, rendered.raw, deps.reading.grammar)
+				: []),
 		dispose: () => {
 			destroyIslands();
 			widgetPool.dispose();

@@ -129,6 +129,8 @@ test.describe('a caret typed into a widget that can show its source', () => {
 				expect(await editor.bridge.getBlockKind(0)).toBe('heading');
 				expect(await editor.bridge.getSource()).toBe(`${hashes} few words here\n\nOther\n`);
 				expect(await caret(editor)).toEqual({ path: [0], offset: hashes.length + 1 });
+				// The block changed kind, so the source it showed closed with it.
+				expect(await washedRanges(editor)).toBe(0);
 				expect(await capturedErrors(page)).toEqual([]);
 			});
 		}

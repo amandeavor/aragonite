@@ -22,8 +22,10 @@ function sourceHighlight(): Highlight | null {
 
 /** Tints `range` of the block `el` draws, replacing its previous tint; null clears it. */
 export function washShownSource(el: HTMLElement, range: RawRange | null): void {
-	const highlight = sourceHighlight();
 	const previous = washes.get(el);
+	// Every render of every block passes here, and almost none shows a source.
+	if (!range && !previous) return;
+	const highlight = sourceHighlight();
 	if (previous) {
 		highlight?.delete(previous);
 		washes.delete(el);
