@@ -148,7 +148,6 @@
 	let drawnText: string | undefined;
 	function drawMarker(cell: HTMLElement): void {
 		void markerText;
-		void presentationMarkerKind;
 		untrack(() => {
 			assertInvariant('item-marker-bytes', () => checkItemMarkerBytes(node.raw, markerText));
 			if (drawnText !== undefined && drawnText !== markerText) onMarkerChange?.();
