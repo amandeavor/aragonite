@@ -240,4 +240,29 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		expect(await widgetsIn(editor, 0)).toBe(0);
 		expect(await capturedErrors(page)).toEqual([]);
 	});
+
+	test('tags in a table cell: setSelection, undo and redo inside a tag open its source', async ({
+		page
+	}) => {
+		const editor = new PluginsPage(page);
+		await open(editor, 'tags', 'Other\n\n| A | B |\n| --- | --- |\n| #few | ok |\n', 'source');
+		await editor.focusBlock(0, 0);
+		await editor.focusBlockAtPath([1, 1, 0], 2);
+		expect((await caret(editor))?.offset).toBe(2);
+		expect(await widgetsIn(editor, 1)).toBe(0);
+
+		await page.keyboard.type('ab');
+		expect(await editor.bridge.getSource()).toContain('| #fabew | ok |');
+		// The tag ends the cell's text, so End stays inside the source; Escape leaves it.
+		await page.keyboard.press('Escape');
+		await expect.poll(() => widgetsIn(editor, 1)).toBe(1);
+
+		await editor.undo();
+		expect(await editor.bridge.getSource()).toContain('| #few | ok |');
+		expect((await caret(editor))?.offset).toBe(2);
+		expect(await widgetsIn(editor, 1)).toBe(0);
+		await editor.redo();
+		expect(await editor.bridge.getSource()).toContain('| #fabew | ok |');
+		expect(await capturedErrors(page)).toEqual([]);
+	});
 });

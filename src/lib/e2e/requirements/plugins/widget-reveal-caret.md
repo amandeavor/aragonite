@@ -35,6 +35,8 @@ value for value), the footnote reference, the harness wikilink and the inline di
 
 - In a table cell, `#` typed at the start of `few` leaves the caret at 1 with the source shown, as
   in a paragraph.
+- In a table cell holding `#few`, `setSelection` to raw 2 opens the tag's source there; a burst
+  typed in it undoes with the caret back at 2 and the source shown, and redo puts the bytes back.
 
 ## Error cases
 

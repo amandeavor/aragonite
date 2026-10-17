@@ -57,6 +57,7 @@
 	import type { IndexedDecoration } from '../../../decorations/buckets';
 	import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 	import { createWidgetInteraction } from '../text/widget-interaction';
+	import type { LandsRestoredCaret } from '../../../selection/restored-caret';
 	import { createEdgePolicyDispatch } from '../text/edge-policy-dispatch';
 	import { createEdgeStep } from '../text/edge-step';
 	import { createTypedPlacement } from '../text/edge-seat';
@@ -426,8 +427,9 @@
 			insertMarkdown: clipboard.insertMarkdown,
 			claimRootClipboard: clipboard.claimRootClipboard,
 			typeText: editableSurface.surface.typeText,
-			afterSelectionRemoved: editableSurface.afterSelectionRemoved
-		} satisfies BlockComponent;
+			afterSelectionRemoved: editableSurface.afterSelectionRemoved,
+			landRestoredCaret: (offset: number) => widgetInteraction.restoreCaret(offset, 'reachable')
+		} satisfies BlockComponent & LandsRestoredCaret;
 		return publishRefSlot(slots, index, self, el);
 	});
 
