@@ -21,10 +21,8 @@ through a real CDP composition.
   - both cells of a table row, drawn from the first cell into the second, so the caret starts in
     the second. The removal empties both cells and the text lands in the first one, where typing
     over the same cells puts it.
-  - a one-row table's cell down into the rule below it. A range that holds a table's only row
-    takes the whole table, so the caret lands on the rule, which has no text of its own. The
-    composition runs in the rule's hidden input and the commit puts `漢` in a new paragraph after
-    the rule, the same as typing a key on a selected rule.
+- A range whose removal leaves the caret on a block's syntax (a rule, a fence, a heading's `#`)
+  composes in a new paragraph where the range was; `text-over-range-syntax.md` holds those rows.
 
 ## Edge cases
 
@@ -35,5 +33,3 @@ through a real CDP composition.
   unseen.
 - Miss-analysis: the only composition row over a range drew it downward, so the caret sat in the
   block the removal keeps, and no row composed over a range whose removal took the caret's block.
-- Miss-analysis, for the rule: every kept block in these rows had text, so no row landed the caret
-  on a block that composes in a hidden input, which wrote a paragraph per composed run.

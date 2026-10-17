@@ -210,7 +210,6 @@ export function createContainerBlockComponent(
 			walkInto(offset, (child, at) => child.focus(at))
 		),
 		parkCaret,
-		...(deps.inputProxy ? { typeText: deps.inputProxy.typeText } : {}),
 		getCursorOffset() {
 			const focusEl = deps.getFocusEl?.();
 			if (focusEl) return holdsWholeBlockFocus(focusEl, deps.inputProxy?.el()) ? 0 : null;

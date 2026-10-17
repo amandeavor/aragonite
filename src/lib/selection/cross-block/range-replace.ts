@@ -16,7 +16,7 @@ import { rangeDelete, removeHeldWhole, type RangeDeleteResult } from '../range-d
 import { coverRange, rangeCoverage, type RangeCoverage } from '../range-coverage';
 import { commitGridLineDelete } from '../range-delete-table-coverage';
 import type { RemovalGesture } from '../caret-target';
-import { landingKind, removalLanding, type RangeRemoval } from '../removal-landing';
+import { emptiedPlace, landingKind, removalLanding, type RangeRemoval } from '../removal-landing';
 import { pathsEqual } from '../path-math';
 import { trackChildIds, type StructuralChange } from '../../tree-operations/structural-change';
 import {
@@ -36,6 +36,7 @@ import { docPathFrom } from '../../caret/coordinate-spaces';
 import { getStateForNode } from '../../block-lists/state-registry';
 import { emitClipboardError } from '../../editor-events';
 import { assertInvariant } from '../../assert';
+import { devWarn } from '../../dev-warn';
 import { isDevChecks } from '../../env';
 import { checkCommandLanding } from '../../invariants/command-key-landing';
 
@@ -50,7 +51,7 @@ export type RangeInsertion =
 	| { kind: 'composition' }
 	| { kind: 'command'; chord: string };
 
-/** `refused`: reading mode, or a document a `source` swap replaced. */
+/** `refused`: reading mode, a document a `source` swap replaced, or a paragraph that couldn't open. */
 export type RangeReplaceOutcome = 'written' | 'nothing' | 'refused';
 
 export type CrossBlockMutationContext = Pick<
@@ -144,6 +145,11 @@ async function replaceInStep(
 		removeRange(ctx, coverage, removal, insertion)
 	);
 	if (!removed.wrote) return 'nothing';
+	const place =
+		family !== 'structural' && removed.caret
+			? emptiedPlace(ctx.getDoc(), coverage, removal, removed.caret)
+			: null;
+	if (place) return insertInEmptiedPlace(ctx, coverage, insertion, place, removalCaret);
 
 	const at = removed.caret;
 	if (insertion.kind === 'command') {
@@ -158,16 +164,27 @@ async function replaceInStep(
 		await runCommandAt(ctx, path, insertion.chord);
 		return 'written';
 	}
+	return insertAtCaret(ctx, coverage, insertion, at, removalCaret);
+}
+
+/** The insertion at `at`, where the removal, or the paragraph opened after it, left the caret. */
+async function insertAtCaret(
+	ctx: CrossBlockMutationContext,
+	coverage: RangeCoverage,
+	insertion: RangeInsertion,
+	at: SelectionPoint | null,
+	caretLanding: HeldLanding | null
+): Promise<RangeReplaceOutcome> {
 	const typed =
 		insertion.kind === 'text' && at
-			? await typedByBlock(ctx, at, insertion.text, removalCaret)
+			? await typedByBlock(ctx, at, insertion.text, caretLanding)
 			: null;
 	if (typed) return typed;
 	const text = insertion.kind === 'text' || insertion.kind === 'paste' ? insertion.text : '';
 	const [, insertionLanding] = await ctx.controller.holdLandings(() =>
 		insertAt(ctx, at, insertion, text)
 	);
-	await (insertionLanding ?? removalCaret)?.place();
+	await (insertionLanding ?? caretLanding)?.place();
 	if (text && !at && insertion.kind === 'paste') {
 		// Consumed with nowhere to go: an imported image isn't on the clipboard, so say so.
 		emitClipboardError(ctx.events, {
@@ -176,6 +193,26 @@ async function replaceInStep(
 		});
 	}
 	return 'written';
+}
+
+/** The insertion in an empty paragraph opened where the range was, at `place`. A paragraph that
+ *  can't open drops the text, since the removal's caret sits on a block's syntax. */
+async function insertInEmptiedPlace(
+	ctx: CrossBlockMutationContext,
+	coverage: RangeCoverage,
+	insertion: RangeInsertion,
+	place: number[],
+	removalCaret: HeldLanding | null
+): Promise<RangeReplaceOutcome> {
+	const [opened, landing] = await ctx.controller.holdLandings(() =>
+		ctx.pasteCoordinator.insertParagraph(place, '')
+	);
+	if (opened) return insertAtCaret(ctx, coverage, insertion, { path: place, offset: 0 }, landing);
+	devWarn('range-replace', 'no paragraph opened where the range was, so the text was dropped', {
+		place
+	});
+	await removalCaret?.place();
+	return 'refused';
 }
 
 /** Keyed gestures name themselves in reading mode's dev warning; a cut or a paste is refused

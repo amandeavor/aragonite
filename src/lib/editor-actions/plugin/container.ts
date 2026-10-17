@@ -331,7 +331,7 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 				getFocusEl: wholeBlockSurface,
 				isReading: () => isReadingMode(getPresentationMode),
 				getLabel: () => blockAccessibleName(deps.getNode()),
-				mint: (text) => parentBlockEdit.insertParagraph(deps.getIndex() + 1, text)
+				mint: (text) => void parentBlockEdit.insertParagraph(deps.getIndex() + 1, text)
 			})
 		: undefined;
 
