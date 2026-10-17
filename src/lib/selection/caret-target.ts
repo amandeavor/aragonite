@@ -103,6 +103,16 @@ export function survivorWhereRangeResumes(
 	return survivorBeside(doc, removedPath, true);
 }
 
+/** `removedPath`, or its nearest ancestor's position when the removal emptied the parent and took
+ *  it too (the path then resolves to nothing, or to a childless neighbour or the new empty block). */
+export function liveSlot(doc: DocumentView, removedPath: readonly number[]): number[] | null {
+	let slot = [...removedPath];
+	while (slot.length > 1 && !nodeAt(doc, slot.slice(0, -1))?.children?.length) {
+		slot = slot.slice(0, -1);
+	}
+	return slot.length > 0 ? slot : null;
+}
+
 // ── Internal ────────────────────────────────────────────────────────────────
 
 function survivorBeside(
@@ -117,14 +127,4 @@ function survivorBeside(
 	const atEnd = previous && { path: docPathFrom(previous), offset: CURSOR_END };
 	const atStart = next && { path: docPathFrom(next), offset: CURSOR_START };
 	return neighbourBeside<CaretPosition>(forward, atEnd, atStart);
-}
-
-/** `removedPath`, or its nearest ancestor's position when the removal emptied the parent and took
- *  it too (the path then resolves to nothing, or to a childless neighbour or the new empty block). */
-function liveSlot(doc: DocumentView, removedPath: readonly number[]): number[] | null {
-	let slot = [...removedPath];
-	while (slot.length > 1 && !nodeAt(doc, slot.slice(0, -1))?.children?.length) {
-		slot = slot.slice(0, -1);
-	}
-	return slot.length > 0 ? slot : null;
 }

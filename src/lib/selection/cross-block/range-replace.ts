@@ -16,7 +16,7 @@ import { rangeDelete, removeHeldWhole, type RangeDeleteResult } from '../range-d
 import { coverRange, rangeCoverage, type RangeCoverage } from '../range-coverage';
 import { commitGridLineDelete } from '../range-delete-table-coverage';
 import type { RemovalGesture } from '../caret-target';
-import { landingKind, removalLanding, type RangeRemoval } from '../removal-landing';
+import { emptiedPlace, landingKind, removalLanding, type RangeRemoval } from '../removal-landing';
 import { pathsEqual } from '../path-math';
 import { trackChildIds, type StructuralChange } from '../../tree-operations/structural-change';
 import {
@@ -144,6 +144,10 @@ async function replaceInStep(
 		removeRange(ctx, coverage, removal, insertion)
 	);
 	if (!removed.wrote) return 'nothing';
+	if (family !== 'structural' && removed.caret) {
+		const opened = await openEmptiedPlace(ctx, coverage, removal, removed.caret);
+		if (opened) return insertAtCaret(ctx, coverage, insertion, opened.caret, opened.landing);
+	}
 
 	const at = removed.caret;
 	if (insertion.kind === 'command') {
@@ -158,16 +162,27 @@ async function replaceInStep(
 		await runCommandAt(ctx, path, insertion.chord);
 		return 'written';
 	}
+	return insertAtCaret(ctx, coverage, insertion, at, removalCaret);
+}
+
+/** The insertion at `at`, where the removal, or the paragraph opened after it, left the caret. */
+async function insertAtCaret(
+	ctx: CrossBlockMutationContext,
+	coverage: RangeCoverage,
+	insertion: RangeInsertion,
+	at: SelectionPoint | null,
+	caretLanding: HeldLanding | null
+): Promise<RangeReplaceOutcome> {
 	const typed =
 		insertion.kind === 'text' && at
-			? await typedByBlock(ctx, at, insertion.text, removalCaret)
+			? await typedByBlock(ctx, at, insertion.text, caretLanding)
 			: null;
 	if (typed) return typed;
 	const text = insertion.kind === 'text' || insertion.kind === 'paste' ? insertion.text : '';
 	const [, insertionLanding] = await ctx.controller.holdLandings(() =>
 		insertAt(ctx, at, insertion, text)
 	);
-	await (insertionLanding ?? removalCaret)?.place();
+	await (insertionLanding ?? caretLanding)?.place();
 	if (text && !at && insertion.kind === 'paste') {
 		// Consumed with nowhere to go: an imported image isn't on the clipboard, so say so.
 		emitClipboardError(ctx.events, {
@@ -176,6 +191,22 @@ async function replaceInStep(
 		});
 	}
 	return 'written';
+}
+
+/** An empty paragraph where the range was, when the removal's caret sits on a block's syntax,
+ *  so text over the range never writes into a fence, a heading's `#` or a rule. */
+async function openEmptiedPlace(
+	ctx: CrossBlockMutationContext,
+	coverage: RangeCoverage,
+	removal: RangeRemoval,
+	caret: SelectionPoint
+): Promise<{ caret: SelectionPoint; landing: HeldLanding | null } | null> {
+	const place = emptiedPlace(ctx.getDoc(), coverage, removal, caret);
+	if (!place) return null;
+	const [opened, landing] = await ctx.controller.holdLandings(() =>
+		ctx.pasteCoordinator.insertParagraph(place, '')
+	);
+	return opened ? { caret: { path: place, offset: 0 }, landing } : null;
 }
 
 /** Keyed gestures name themselves in reading mode's dev warning; a cut or a paste is refused

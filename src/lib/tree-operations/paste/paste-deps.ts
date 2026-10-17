@@ -35,4 +35,7 @@ export interface PasteCommitCoordinator {
 		focus: ReplaceFocus,
 		opts: { source: ReplaceSource; trailingBlank?: boolean; snapshotOffset: number }
 	): Promise<number | null>;
+	/** Create a paragraph holding `text` before the child `boundaryPath` names, or after the last
+	 *  child when it names one past the end, as one commit at that list; caret after the text. */
+	insertParagraph(boundaryPath: number[], text: string): Promise<boolean>;
 }

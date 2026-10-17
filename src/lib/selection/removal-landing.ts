@@ -7,8 +7,10 @@
 import type { AnyBlockKind } from '../core/nodes';
 import type { DocumentView } from '../core/node-views';
 import type { RangeCoverage } from './range-coverage';
-import { neighbourBeside, pointsForward, type RemovalGesture } from './caret-target';
+import type { SelectionPoint } from './primitives';
+import { liveSlot, neighbourBeside, pointsForward, type RemovalGesture } from './caret-target';
 import { blockNodeAt } from '../tree-operations/node-primitives';
+import { getContentRange, isProseKind } from '../core/inline';
 import { firstCaretLeafFrom, previousCaretPath } from './path-lookup';
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -63,7 +65,28 @@ export function landingKind(
 	}
 }
 
+/** The place the range emptied, where text over it opens a paragraph: when the range took the
+ *  block it started in and `caret`, the removal's, sits on a block's syntax rather than its text. */
+export function emptiedPlace(
+	committed: DocumentView,
+	coverage: RangeCoverage,
+	removal: RangeRemoval,
+	caret: SelectionPoint
+): number[] | null {
+	const landing = removalLanding(coverage, removal);
+	if (landing.at !== 'resume' && landing.at !== 'beside') return null;
+	return holdsText(committed, caret) ? null : liveSlot(committed, landing.root);
+}
+
 // ── Internal ───────────────────────────────────────────────────────────────
+
+/** Whether text written at `point` reads as its block's text: a prose block, inside its content. */
+function holdsText(doc: DocumentView, point: SelectionPoint): boolean {
+	const leaf = blockNodeAt(doc, point.path);
+	if (!leaf) return true;
+	const content = getContentRange(leaf);
+	return isProseKind(leaf.kind) && point.offset >= content.start && point.offset <= content.end;
+}
 
 function kindAt(doc: DocumentView, path: readonly number[]): AnyBlockKind {
 	return blockNodeAt(doc, [...path])?.kind ?? 'paragraph';

@@ -30,6 +30,14 @@ export function createPasteCoordinator(
 				focus,
 				opts
 			);
+		},
+		async insertParagraph(boundaryPath, text) {
+			const scope = createPathScope(root, docPathFrom(boundaryPath.slice(0, -1)));
+			if (!scope) return false;
+			return createBlockEditCore(scope).insertParagraph(
+				boundaryPath[boundaryPath.length - 1],
+				text
+			);
 		}
 	};
 	return coordinator;

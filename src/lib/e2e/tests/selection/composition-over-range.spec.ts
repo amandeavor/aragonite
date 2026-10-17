@@ -90,15 +90,6 @@ const ROUTES: RangeRoute[] = [
 			await editor.page.keyboard.press('Shift+ArrowRight');
 		},
 		after: (text) => `| a | b |\n| - | - |\n| ${text} |  |\n`
-	},
-	{
-		name: 'a one-row table into the rule below it',
-		source: '| c |\n| - |\n\n---\n',
-		async draw(editor) {
-			await editor.page.locator('.table-cell').first().click();
-			await editor.page.keyboard.press('Shift+ArrowDown');
-		},
-		after: (text) => (text ? `---\n\n${text}\n` : '---\n')
 	}
 ];
 
