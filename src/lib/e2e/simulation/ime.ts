@@ -41,6 +41,9 @@ async function cdpIme(page: Page): Promise<ImeDriver> {
 	};
 }
 
+// Far more turns than the longest chain of ticks the editor awaits inside a listener.
+const MICROTASK_CHECKPOINT_TURNS = 1000;
+
 /**
  * WebKit's branch writes the composed text into the DOM the way an IME does and fires the editor's
  * events around it: it proves the commit path runs, not the event order.
@@ -51,16 +54,19 @@ function handFiredIme(page: Page): ImeDriver {
 	async function openWindow(): Promise<void> {
 		if (open) return;
 		open = true;
-		await page.evaluate(() => {
+		await page.evaluate(async (turns) => {
 			const el = document.activeElement as HTMLElement;
 			el.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true, data: '' }));
+			// The browser drains the microtask queue before it writes, so the editor's listener work
+			// lands first; a long run of awaits does the same with no task able to run in between.
+			for (let i = 0; i < turns; i++) await Promise.resolve();
 			// The composed text replaces the selection, as the browser's own composition does.
 			const range = window.getSelection()!.getRangeAt(0);
 			range.deleteContents();
 			const run = document.createTextNode('');
 			range.insertNode(run);
 			(window as any).__imeRun = run;
-		});
+		}, MICROTASK_CHECKPOINT_TURNS);
 	}
 
 	async function write(text: string, end: boolean): Promise<void> {
