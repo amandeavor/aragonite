@@ -19,10 +19,8 @@ import {
 } from '#lib/tree-operations/settle.js';
 import {
 	mergeIntoPrevDeepLeaf,
-	splitNode,
 	type JoinLanding,
-	type MergeIntoPrevResult,
-	type SplitResult
+	type MergeIntoPrevResult
 } from '#lib/tree-operations/node-ops.js';
 import { reorderChildrenWithTrivia } from '#lib/tree-operations/reorder.js';
 import { endsOpen, keepOpenTail } from '#lib/tree-operations/open-tail.js';
@@ -91,24 +89,6 @@ export function deleteSettled(
 		removed: true as const
 	});
 	return settledIn(parent, removal, grammar, sharing);
-}
-
-/** `splitNode` and its fix-up, with the split's own result over the settled change. */
-export function splitSettled(
-	parent: BodyParentArg,
-	index: number,
-	offset: number,
-	sharing: SharingState,
-	reading: Reading
-): SplitResult {
-	let split: SplitResult | undefined;
-	const change = settledIn(
-		parent,
-		(body) => (split = splitNode(body, index, offset, sharing, reading)).change,
-		reading.grammar,
-		sharing
-	);
-	return { ...split!, change };
 }
 
 /** `mergeIntoPrevDeepLeaf` and its fix-up: where the join landed, and the settled change. */
