@@ -36,6 +36,7 @@ import { docPathFrom } from '../../caret/coordinate-spaces';
 import { getStateForNode } from '../../block-lists/state-registry';
 import { emitClipboardError } from '../../editor-events';
 import { assertInvariant } from '../../assert';
+import { devWarn } from '../../dev-warn';
 import { isDevChecks } from '../../env';
 import { checkCommandLanding } from '../../invariants/command-key-landing';
 
@@ -144,10 +145,11 @@ async function replaceInStep(
 		removeRange(ctx, coverage, removal, insertion)
 	);
 	if (!removed.wrote) return 'nothing';
-	if (family !== 'structural' && removed.caret) {
-		const opened = await openEmptiedPlace(ctx, coverage, removal, removed.caret);
-		if (opened) return insertAtCaret(ctx, coverage, insertion, opened.caret, opened.landing);
-	}
+	const place =
+		family !== 'structural' && removed.caret
+			? emptiedPlace(ctx.getDoc(), coverage, removal, removed.caret)
+			: null;
+	if (place) return insertInEmptiedPlace(ctx, coverage, insertion, place, removalCaret);
 
 	const at = removed.caret;
 	if (insertion.kind === 'command') {
@@ -193,20 +195,24 @@ async function insertAtCaret(
 	return 'written';
 }
 
-/** An empty paragraph where the range was, when the removal's caret sits on a block's syntax,
- *  so text over the range never writes into a fence, a heading's `#` or a rule. */
-async function openEmptiedPlace(
+/** The insertion in an empty paragraph opened where the range was, at `place`. A paragraph that
+ *  can't open drops the text, since the removal's caret sits on a block's syntax. */
+async function insertInEmptiedPlace(
 	ctx: CrossBlockMutationContext,
 	coverage: RangeCoverage,
-	removal: RangeRemoval,
-	caret: SelectionPoint
-): Promise<{ caret: SelectionPoint; landing: HeldLanding | null } | null> {
-	const place = emptiedPlace(ctx.getDoc(), coverage, removal, caret);
-	if (!place) return null;
+	insertion: RangeInsertion,
+	place: number[],
+	removalCaret: HeldLanding | null
+): Promise<RangeReplaceOutcome> {
 	const [opened, landing] = await ctx.controller.holdLandings(() =>
 		ctx.pasteCoordinator.insertParagraph(place, '')
 	);
-	return opened ? { caret: { path: place, offset: 0 }, landing } : null;
+	if (opened) return insertAtCaret(ctx, coverage, insertion, { path: place, offset: 0 }, landing);
+	devWarn('range-replace', 'no paragraph opened where the range was, so the text was dropped', {
+		place
+	});
+	await removalCaret?.place();
+	return 'refused';
 }
 
 /** Keyed gestures name themselves in reading mode's dev warning; a cut or a paste is refused
