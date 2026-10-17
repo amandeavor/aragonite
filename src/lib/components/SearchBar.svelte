@@ -358,8 +358,14 @@
 	}
 	.search-tog.on,
 	.search-tog.on:hover {
-		background: color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+		background: rgba(128, 128, 128, 0.2);
 		color: var(--color-text-primary);
+	}
+	@supports (color: color-mix(in srgb, red, blue)) {
+		.search-tog.on,
+		.search-tog.on:hover {
+			background: color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+		}
 	}
 
 	/* Forced colors drop every fill and shadow, which is all a pressed toggle and the focus ring

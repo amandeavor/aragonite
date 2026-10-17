@@ -1223,6 +1223,7 @@ unguarded.
 | G4.197 | A parse finds every built-in kind whichever module a host imports first                      | harness |
 | G4.200 | Whether a block hides markers at the caret, with the screen it reads, is asked in one place  | L       |
 | G4.201 | One painter puts the selection tint on an inline widget                                      | L       |
+| G4.207 | Shipped CSS keeps `color-mix` and container queries behind `@supports`                       | L       |
 
 ### The entries
 
@@ -2321,6 +2322,12 @@ across, wears the selection tint, so a key never replaces something the user cou
 selected. `selection/widget-selection-paint.ts` decides which widgets wear it for every shape at
 once (the image, a live `<br>`, a plugin widget). `lint/file-rules.test.ts` fails the
 `md-widget-selected` class written anywhere else.
+
+**G4.207 · Newer CSS stays behind `@supports`.** Safari 15 can't parse `color-mix`, container
+queries or container units, and a rule it can't parse loses its whole declaration. Each use sits in
+an `@supports` block after a plain fallback, as the selection tints in `editor-theme.css` do.
+`lint/safari-floor-css.test.ts` reads every shipped stylesheet and component `<style>` block and
+names the `path:line` of any use outside one.
 
 ## Accessibility
 
