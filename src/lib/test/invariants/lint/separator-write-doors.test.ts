@@ -49,7 +49,7 @@ const HAND_SETTLE_CALLERS: Record<string, string> = {
 	'src/lib/tree-operations/reorder.ts':
 		'a rotation reseats blank lines by position, so each reseated run is asked the one-line rule',
 	'src/lib/tree-operations/content-write.ts':
-		'the content door’s two blank transitions settle by hand, ahead of the seam ask',
+		'the content write’s blank transitions and its list join settle by hand, ahead of the merge',
 	'src/lib/tree-operations/index.ts': 're-exports the two the gap-caret mint still needs',
 	'src/lib/tree-operations/list/sublist-separator.ts': 'defines the empty-marker sublist door',
 	'src/lib/tree-operations/chain-rebuild.ts':
@@ -65,7 +65,7 @@ const HAND_SETTLE_CALLERS: Record<string, string> = {
 const writesTrivia = /\.leadingTrivia\s*\+?=(?!=)/;
 
 const namesHandSettle =
-	/(?<![\w'"])(clearRedundantSeparator|dropDoubledSeparator|restoreSeparatorOnFill|restoreSeparatorAfterBlank|settleSeparatorOnBlank|settleSublistSeparator)\b/;
+	/(?<![\w'"])(clearRedundantSeparator|dropDoubledSeparator|restoreSeparatorOnFill|restoreSeparatorAfterBlank|settleSeparatorOnBlank|settleSublistSeparator|joinListsMadeBeside)\b/;
 
 describeManifests(
 	[

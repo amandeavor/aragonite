@@ -1,4 +1,4 @@
-/** Ordered-list marker bookkeeping: reads, renumbering, and matching item style to a list. */
+/** List marker bookkeeping: reads, renumbering, and matching item style to a list. */
 
 import type { CstNode } from '../../core/nodes';
 import type { NodeView } from '../../core/node-views';
@@ -24,6 +24,18 @@ export function readOrderedSuffix(list: NodeView): string {
 	const marker = metadataOf(first, 'listItem')?.marker ?? '1. ';
 	return marker.replace(/^\d+/, '') || '. ';
 }
+
+/** Whether GFM reads `lower` as continuing `upper`'s list once nothing parts the two items: the
+ *  same bullet character, or the same ordered delimiter. A task item is a bullet item. */
+export function itemsShareList(upper: NodeView | undefined, lower: NodeView | undefined): boolean {
+	const a = markerOf(upper);
+	const b = markerOf(lower);
+	const ordered = (marker: string) => /^\d/.test(marker);
+	return a !== '' && b !== '' && ordered(a) === ordered(b) && a.at(-1) === b.at(-1);
+}
+
+const markerOf = (item: NodeView | undefined): string =>
+	item ? (metadataOf(item, 'listItem')?.marker ?? '').trimEnd() : '';
 
 // ── Renumbering ──────────────────────────────────────────────────────────────
 
