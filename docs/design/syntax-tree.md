@@ -102,6 +102,7 @@ The fields, by category:
 | `innerSuffix`          | containers                                                    | Whitespace inside the container, after its last child.                                                                                                                                                                                                |
 | `childIds`             | containers                                                    | Stable per-child IDs for keyed rendering (so Svelte reuses each child's component by ID, not by position). Carried on the node, so undo restores them with `children`.                                                                                |
 | `childSpans`           | containers                                                    | Where each child's bytes sit inside the container's own `raw`, so rewriting one child re-emits one region. Derived; dropped whenever the children change shape.                                                                                       |
+| `markerWidths`         | lists                                                         | How many items open with a marker of each width, which sizes the list's marker column without reading every item. Derived; the parse fills it and the list's rebuild keeps it.                                                                        |
 | `ownerEpoch`           | every node                                                    | Whether an undo snapshot still shares this node, so a write copies it first. See `editor.md` § Undo / redo.                                                                                                                                           |
 
 `innerPrefix` is the one field you won't see on a built-in. With the bundled admonitions plugin installed:
@@ -118,7 +119,7 @@ parse(':::note My title\n\nbody\n:::\n').children[0];
 // }
 ```
 
-`childIds`, `childSpans` and `ownerEpoch` are editor bookkeeping, not facts about the source. They play no part in the round trip, and if all you do is parse, you can ignore them. The split even has a type: code outside the tree-editing layers holds node views (`core/node-views.ts`) whose serialized fields are readonly while the bookkeeping stays writable.
+`childIds`, `childSpans`, `markerWidths` and `ownerEpoch` are editor bookkeeping, not facts about the source. They play no part in the round trip, and if all you do is parse, you can ignore them. The split even has a type: code outside the tree-editing layers holds node views (`core/node-views.ts`) whose serialized fields are readonly while the bookkeeping stays writable.
 
 **Inline content is not a node field.** Prose kinds get an inline tree (§ 4), but it's computed from `raw` when something reads it, and never stored on the node (`editor.md` § Reactive state plumbing says why).
 

@@ -857,8 +857,9 @@ show (an emoji, an image), whose caret goes to the far edge. Predicate
 many items open with a marker of each width, for the marker column (G4.215), and the parse and
 the list's rebuild are the only writers. At the same moments as G1.55 and under its size limit,
 dev recounts every list in the blocks the edit wrote and fails one whose counts are absent or
-differ, which a route that changes items without rebuilding the list would leave. Predicate
-`invariants/list-marker-widths.ts :: checkListMarkerWidths` ·
+differ, which a route that changes items without rebuilding the list would leave. A commit that
+fails puts the counts back with the bytes it saved (`test/editor-actions/commit/commit-rollback-bytes.test.ts`).
+Predicate `invariants/list-marker-widths.ts :: checkListMarkerWidths` ·
 `test/invariants/list-marker-widths.test.ts`.
 
 ## Group 2: property and regression tested
@@ -1029,7 +1030,7 @@ arithmetic is a type error. Retired: offset-space mixing; `charOffsetOf`'s read-
 to the runtime backstop.
 
 **G3.8 · Bytes-readonly node views.** `core/node-views.ts :: NodeView` and `DocumentView`:
-serialized bytes deep-readonly, the `childIds`/`childSpans`/`ownerEpoch` bookkeeping writable. This
+serialized bytes deep-readonly, the `childIds`/`childSpans`/`markerWidths`/`ownerEpoch` bookkeeping writable. This
 is G1.9 as a type: readers hold views, constructors and writers keep `CstNode`, and copying the path
 (`tree-operations/unshare.ts`) is the only way back to mutable (G4.13 scans for the casts). Retired:
 reader-side byte writes.
@@ -2418,7 +2419,8 @@ the list node holds, which the parse fills and the list's rebuild keeps (G1.118 
 recount). In a list of four hundred items, mounting reads no item for the column; each key (the
 first, a paused one, one in a burst, a marker typed in place, Enter) reads at most the item it
 rewrote beyond the items its rebuild already joined in full; and an undo reads none, since the
-entry's list carries its counts. `test/blocks/list/marker-column-scans.test.ts` on the
+entry's list carries its counts, which no later edit changes in place.
+`test/blocks/list/marker-column-scans.test.ts` on the
 `listMarkerReads` and `joinedChildReads` counters.
 
 ## Accessibility

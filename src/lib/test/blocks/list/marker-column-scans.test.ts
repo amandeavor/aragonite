@@ -129,6 +129,24 @@ describe('the list’s marker column', () => {
 		expect(reads).toBe(0);
 	});
 
+	it('narrows again when an undo takes back a to-do, from counts the edit left alone', async () => {
+		const editor = mountEditor({ source: '- a\n- [ ] b\n', presentationMode: 'live' });
+		await tick();
+		const before = columnOf(editor);
+		// After a first key, which joins every item once, the undo entry and the edited list share
+		// the counts the to-do replaces.
+		await typeInItem(editor, 0, 'a!');
+		await typeInItem(editor, 0, '[ ] a!');
+		const widened = columnOf(editor);
+
+		await pressKeyAt(editor, [0, 0, 0], 0, { key: 'z', ctrlKey: true });
+		await editor.settle();
+
+		expect(editor.source()).toBe('- a\n- [ ] b\n');
+		expect(widened).not.toBe(before);
+		expect(columnOf(editor)).toBe(before);
+	});
+
 	it('widens when an item with a wider marker comes', async () => {
 		const editor = mountEditor({ source: '8. a\n9. b\n', presentationMode: 'live' });
 		await tick();
