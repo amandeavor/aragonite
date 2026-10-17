@@ -462,18 +462,25 @@ other project, and a save into `src/` mid-run triggers an SSR reload whose compo
 re-registration turns the run red for a reason the product never had.
 
 The clipboard and IME helpers branch on the engine behind the same signatures, so a spec never
-needs to know which one it got. On WebKit the clipboard goes through a dispatched clipboard event
-carrying a `DataTransfer` (its real clipboard is out of reach of the paste chord), and the IME
-driver hand-fires the composition sequence, since WebKit has no CDP session. That hand-fired
-sequence is the one exemption a source scan (G4.49 in `invariants.md`) grants, and no spec may
-copy it. So the lane can't check event order or the real paste chord; both stay pinned in
-Chromium.
+needs to know which one it got. Every clipboard touch goes through them: `editor.seedClipboard`,
+`editor.paste()` and `editor.readClipboard` (or `createClipboardArm(page)` from
+`e2e/clipboard-arm.ts` when there's no `EditorPage`). A spec that presses the paste chord or calls
+`navigator.clipboard` itself fails a source scan (G4.212 in `invariants.md`).
+
+On WebKit the real clipboard is out of reach of both, so the `page` fixture puts an in-page store
+behind `navigator.clipboard` and the copy and cut events, and a paste is a dispatched clipboard
+event carrying what the store holds. The IME driver hand-fires the composition sequence there,
+since WebKit has no CDP session, and lets the page's microtasks drain after `compositionstart`
+the way a browser does before it writes the composed text. That hand-fired sequence is the one
+exemption another scan (G4.49) grants, and no spec may copy it. So the lane can't check event
+order or the real paste chord; both stay pinned in Chromium.
 
 **What a green run doesn't tell you.** Playwright's WebKit build isn't Safari and isn't a
 WKWebView, just the closest available proxy, and nothing in this repo runs on Apple hardware yet.
 Nor does it say anything about an embedding host (a desktop app's webview, say): clipboard
-retargeting, the host's own accelerator keys and image-src scheme policy are the host's
-decisions, so that class of bug is found by a real host or by a user.
+retargeting, a webview that refuses `navigator.clipboard` (the in-page store answers every call),
+the host's own accelerator keys and image-src scheme policy are the host's decisions, so that
+class of bug is found by a real host or by a user.
 
 ### Requirements pair one-to-one with specs
 
@@ -626,11 +633,11 @@ full-suite flake, since dev-server latency decides whether the image beat your r
 composing gate, the end path, offset capture), use the unit harness:
 `test/harness/editable-surface.ts` drives the real surface skeleton with synthetic event calls,
 simulating the IME's writes by assigning `el.textContent` before firing the end. For browser
-event order and full wiring, drive real sequences in e2e via CDP:
-`page.context().newCDPSession(page)`, then `Input.imeSetComposition` per update and
-`Input.insertText` to commit; see `tests/ime-composition.spec.ts`. Mid-composition there's no
-source change to settle on; settle on the composed text arriving in the focused element's DOM
-instead.
+event order and full wiring, drive real sequences in e2e through `attachIme`
+(`e2e/simulation/ime.ts`): `compose` per update, then `commit`. In Chromium that's CDP's
+`Input.imeSetComposition` and `Input.insertText`; see `tests/ime-composition.spec.ts`. `compose`
+already waits for the composed text to show up in the focused element's DOM, since there's no
+source change mid-composition to wait on.
 
 ## The conformance differ
 
