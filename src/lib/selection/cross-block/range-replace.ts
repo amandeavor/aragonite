@@ -51,7 +51,7 @@ export type RangeInsertion =
 	| { kind: 'composition' }
 	| { kind: 'command'; chord: string };
 
-/** `refused`: reading mode, or a document a `source` swap replaced. */
+/** `refused`: reading mode, a document a `source` swap replaced, or a paragraph that couldn't open. */
 export type RangeReplaceOutcome = 'written' | 'nothing' | 'refused';
 
 export type CrossBlockMutationContext = Pick<
