@@ -5,6 +5,8 @@
  */
 
 import type { CstNode } from '../nodes';
+import { recordListMarkerReads } from '../../perf/instruments';
+import type { NodeView } from '../node-views';
 import { indentColumns, remapStrippedLines, stripIndentColumns, type ParsedLine } from '../lines';
 import { joinRaw, isBlankLine, parseBlocks } from '../parser';
 import { FIRST_LINE, INNER_LINE, opensOuterBlock, type LineCodec } from '../strip-lines';
@@ -150,6 +152,7 @@ export function parseList(
 	const firstMatch = matchListItem(lines[startIndex].text)!;
 	const ordered = firstMatch.ordered;
 	const items: CstNode[] = [];
+	const widths = markerWidthTally();
 	let i = startIndex;
 
 	while (i < endIndex) {
@@ -199,6 +202,7 @@ export function parseList(
 		// A leading `[ ] ` is the task marker, and the rest of its line starts the item's paragraph
 		// (GFM task lists).
 		const shape = readItemShape(lines[itemStartIndex].text)!;
+		widths.add(shape);
 		const itemLines = listItemLines(shape);
 		const strippedLines = remapStrippedLines(
 			lines.slice(itemStartIndex, i),
@@ -237,6 +241,7 @@ export function parseList(
 			leadingTrivia,
 			raw,
 			metadata: { ordered },
+			markerWidths: widths.counts(),
 			innerPrefix: '',
 			children: items,
 			innerSuffix: ''
@@ -252,4 +257,101 @@ function wouldKeepParagraphOpen(strippedText: string): boolean {
 	if (matchListItem(strippedText)) return false;
 	if (lineInterruptsParagraph(strippedText)) return false;
 	return true;
+}
+
+// ── Marker widths ────────────────────────────────────────────────────────────
+
+/**
+ * How many of a list's items open with a marker of each width: plain items at `2 * width`, to-dos
+ * (marker and box together) at `2 * width + 1`, no trailing zeros. What its marker column is sized
+ * from; the parse stores it on the list node and the list's rebuild keeps it, so no key rereads
+ * the items. Never written in place: an undo entry may hold the array.
+ */
+export type MarkerWidths = Uint32Array;
+
+/** The counts over `items`, one read of each item's first line. */
+export function markerWidthCounts(items: readonly Pick<NodeView, 'raw'>[]): MarkerWidths {
+	const tally = markerWidthTally();
+	// Indexed: the items may be a `$state` proxy, where an iterator pays a trap per step.
+	for (let i = 0; i < items.length; i++) tally.add(readItemShape(items[i].raw));
+	return tally.counts();
+}
+
+/** The same counts taken one item at a time, for a pass that already reads every item's shape.
+ *  An item's whole `raw` reads as its first line: the match is anchored and stops at its end. */
+export function markerWidthTally(): {
+	add(shape: ItemLineShape | null): void;
+	counts(): MarkerWidths;
+} {
+	const counts: number[] = [];
+	return {
+		add(shape) {
+			const slot = slotOf(shape);
+			if (slot !== null) bump(counts, slot, 1);
+		},
+		counts: () => packed(counts)
+	};
+}
+
+/** `counts` once one item's bytes went from `previousRaw` to `raw`: a fresh array when a width
+ *  moved, `counts` itself when none did. */
+export function countsAfterRewrite(
+	counts: MarkerWidths,
+	previousRaw: string,
+	raw: string
+): MarkerWidths {
+	const before = slotOf(readItemShape(previousRaw));
+	const after = slotOf(readItemShape(raw));
+	if (before === after) return counts;
+	const next = Array.from(counts);
+	if (before !== null) bump(next, before, -1);
+	if (after !== null) bump(next, after, 1);
+	return packed(next);
+}
+
+export function sameMarkerWidths(a: MarkerWidths, b: MarkerWidths): boolean {
+	return a.length === b.length && a.every((n, i) => n === b[i]);
+}
+
+/** A list's counts, recounted from its items when no parse or rebuild stored them (a node built
+ *  past the types); the list's next rebuild stores them. */
+export function markerWidthsOf(list: NodeView): MarkerWidths {
+	if (list.markerWidths) return list.markerWidths;
+	const items = list.children ?? [];
+	recordListMarkerReads(items.length);
+	return markerWidthCounts(items);
+}
+
+/** The widest plain marker and the widest to-do opener, in characters, and whether any to-do. */
+export function widestMarkers(counts: MarkerWidths): {
+	plain: number;
+	task: number;
+	anyTask: boolean;
+} {
+	let plain = 0;
+	let task = 0;
+	for (let slot = 0; slot < counts.length; slot++) {
+		if (counts[slot] === 0) continue;
+		if (slot % 2 === 0) plain = slot / 2;
+		else task = (slot - 1) / 2;
+	}
+	return { plain, task, anyTask: task > 0 };
+}
+
+function slotOf(shape: ItemLineShape | null): number | null {
+	if (!shape) return null;
+	const task = shape.taskMarker !== null;
+	return 2 * (shape.marker.length + (shape.taskMarker?.length ?? 0)) + (task ? 1 : 0);
+}
+
+function bump(counts: number[], slot: number, by: number): void {
+	while (counts.length <= slot) counts.push(0);
+	counts[slot] += by;
+}
+
+/** No trailing zeros, so the counts a rebuild keeps equal the ones a parse of the same bytes gives. */
+function packed(counts: number[]): MarkerWidths {
+	let end = counts.length;
+	while (end > 0 && counts[end - 1] === 0) end--;
+	return Uint32Array.from(counts.slice(0, end));
 }

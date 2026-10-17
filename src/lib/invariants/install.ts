@@ -26,7 +26,8 @@ import { checkChildSpansLockstep, checkIdsChildrenLockstep } from './structural-
 import { checkSnapshotIntegrity, type SnapshotEntry } from './snapshot-integrity';
 import { checkLastLineKept } from './open-tail';
 import { checkKeepsABlock } from './keeps-a-block';
-import { checkReadsBack } from './reads-back';
+import { checkReadsBack, READ_BACK_LIMIT } from './reads-back';
+import { checkListMarkerWidths } from './list-marker-widths';
 import { isDevChecks } from '../env';
 import { perfEnabled } from '../perf/instruments';
 import { checkTopLevelUntouched } from './top-level-untouched';
@@ -83,6 +84,16 @@ export function assertLastLineKept(doc: Document, wasOpen: boolean): void {
 export function assertReadsBack(tops: readonly CstNode[], grammar: GrammarView): void {
 	if (!isDevChecks() || perfEnabled()) return;
 	for (const top of tops) assertInvariant('reads-back', () => checkReadsBack(top, grammar));
+}
+
+/** G1.118, at the same moments as G1.55 and under the same size limit: each list in `tops` keeps
+ *  the marker-width counts its items give. */
+export function assertListMarkerWidths(tops: readonly CstNode[]): void {
+	if (!isDevChecks() || perfEnabled()) return;
+	for (const top of tops) {
+		if (top.raw.length > READ_BACK_LIMIT) continue;
+		assertInvariant('list-marker-widths', () => checkListMarkerWidths(top));
+	}
 }
 
 /** G1.44, after every structural commit publishes: `touched` is what the commit wrote. */

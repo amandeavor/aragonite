@@ -216,6 +216,8 @@ function takeReread(node: CstNode, reread: CstNode): void {
 	node.innerPrefix = reread.innerPrefix;
 	node.innerSuffix = reread.innerSuffix;
 	node.childSpans = undefined;
+	// Checked first: an unconditional write would add the field to every container re-read.
+	if (node.markerWidths || reread.markerWidths) node.markerWidths = reread.markerWidths;
 	assignChildIdsDeep(node);
 }
 

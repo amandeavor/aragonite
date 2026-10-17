@@ -32,6 +32,7 @@ import {
 	assertKeepsABlock,
 	assertLastLineKept,
 	assertReadsBack,
+	assertListMarkerWidths,
 	assertUndoTopIntegrity
 } from '../../invariants/install';
 import {
@@ -303,6 +304,7 @@ export function createUndoController(
 				assertLastLineKept(deps.doc, wasOpen);
 				assertKeepsABlock(deps.doc, written.nodes);
 				assertReadsBack(written.tops, deps.reading.grammar);
+				assertListMarkerWidths(written.tops);
 			}
 			if (!discarded && isDevChecks()) {
 				// A missed copy before write corrupts the newest undo entry, so the commit catches it
