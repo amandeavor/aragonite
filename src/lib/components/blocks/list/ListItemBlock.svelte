@@ -229,7 +229,11 @@
 			slots={listState.refSlots}
 			parentPath={myPath}
 			window={windowing.window}
-			ambientPrefixForFirst={buildTaskItemAmbient(metadataOf(node, 'listItem'), toggleTask)}
+			ambientPrefixForFirst={buildTaskItemAmbient(
+				metadataOf(node, 'listItem'),
+				toggleTask,
+				presentationMarkerKind === 'task'
+			)}
 		/>
 	</div>
 	<!-- The item paints its own selection box: it renders no BlockHost, so a range that

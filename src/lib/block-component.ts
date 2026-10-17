@@ -129,7 +129,8 @@ export type AmbientPrefix =
 			interactive?: AmbientInteractiveRange[];
 			/**
 			 * The hanging indent the rendered prefix needs, when its painted width is not its text
-			 * width (a task item's `- [ ] ` paints as one box). Defaults to one `ch` per character.
+			 * width (a task item's `- [ ] ` paints as one box). Defaults to one `ch` of the line's
+			 * font per character. The marker draws exactly this wide, at its line's size.
 			 */
 			indent?: string;
 	  };

@@ -6,7 +6,7 @@
 
 import { domDescendants } from './dom-walk';
 import { FALLBACK_LINE_HEIGHT } from '../windowing/typography-estimates';
-import { caretAnchorAfter, isHiddenMarkerText } from './widget-offset';
+import { caretAnchorAfter, isBlockLineText } from './widget-offset';
 
 // Fraction of a line height within which the cursor Y counts as the boundary line; under one
 // line, so sub/superscript or inline-image jitter doesn't read as a different line.
@@ -249,5 +249,5 @@ function measurableText(node: Node, container: HTMLElement | null, fromEnd: bool
 
 function isMeasurableText(text: Text, container: HTMLElement | null): boolean {
 	if ((text.textContent?.length ?? 0) === 0) return false;
-	return container === null || !isHiddenMarkerText(text, container);
+	return container === null || isBlockLineText(text, container);
 }

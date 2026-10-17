@@ -1,8 +1,9 @@
 /**
  * The editor module owns its CSS (G4.6): app.css holds no editor-owned rules or tokens, every
  * editor-owned token read is declared in editor-theme.css (a resolved host color in editor.css
- * alone), every radius read carries a fallback, and no read falls outside the two families (an
- * off-family typo like `--text-muted` can never be declared).
+ * alone, an `@property` registration counting as its own), every radius read carries a fallback,
+ * and no read falls outside the two families (an off-family typo like `--text-muted` can never be
+ * declared).
  */
 import { describe, it, expect } from 'vitest';
 import { collectEditorSources, readSource } from './scan-source';
@@ -33,6 +34,10 @@ const EDITOR_CSS_SURFACES: ReadonlyArray<{ rel: string; text: string }> = [
 
 const RESOLVED_HOST_COLOR = /^--md-(?:color-[a-z0-9-]+|page-text)$/;
 const declares = (css: string, token: string) => new RegExp(`${token}\\s*:`).test(css);
+// A property editor.css registers with `@property` carries its own initial value, and is layout the
+// editor computes rather than a theme token.
+const registers = (css: string, token: string) =>
+	new RegExp(`@property\\s+${token}\\s*\\{`).test(css);
 
 describe('G4.6 CSS ownership: every editor-owned token read is declared in its own file', () => {
 	const read = new Set<string>();
@@ -46,15 +51,22 @@ describe('G4.6 CSS ownership: every editor-owned token read is declared in its o
 	const structural = readSource(SOURCE.editorCss).code;
 
 	it('every owned token read has a declaration', () => {
-		const missing = owned.filter((tok) =>
-			RESOLVED_HOST_COLOR.test(tok) ? !declares(structural, tok) : !declares(theme, tok)
-		);
+		const missing = owned
+			.filter((tok) => !registers(structural, tok))
+			.filter((tok) =>
+				RESOLVED_HOST_COLOR.test(tok) ? !declares(structural, tok) : !declares(theme, tok)
+			);
 		expect(missing, `tokens read but not declared where they belong: ${missing}`).toEqual([]);
 	});
 
 	it('editor-theme.css declares no resolved host color', () => {
 		const misplaced = owned.filter((tok) => RESOLVED_HOST_COLOR.test(tok) && declares(theme, tok));
 		expect(misplaced, `resolved host colors declared in the theme: ${misplaced}`).toEqual([]);
+	});
+
+	it('editor-theme.css declares no property editor.css registers', () => {
+		const misplaced = owned.filter((tok) => registers(structural, tok) && declares(theme, tok));
+		expect(misplaced, `registered layout properties in the theme: ${misplaced}`).toEqual([]);
 	});
 
 	it('the scan reaches the resolved host colors', () => {

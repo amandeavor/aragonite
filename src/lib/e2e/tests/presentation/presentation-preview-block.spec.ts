@@ -87,7 +87,8 @@ test.describe('preview-block: markers by focus', () => {
 
 		// The focused item's rendered bullet is suppressed, so there is no doubled `- •`, while
 		// the sibling still paints one; this guards the order the two `::before` rules resolve in.
-		const before = (el: Element) => getComputedStyle(el, '::before').content;
+		const before = (el: Element) =>
+			getComputedStyle(el.querySelector('.md-marker-box')!, '::before').content;
 		expect(await firstAmbient.evaluate(before)).not.toContain('•');
 		expect(await secondAmbient.evaluate(before)).toContain('•');
 	});

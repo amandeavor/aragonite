@@ -17,7 +17,7 @@ test.describe('list/blockquote layout for image-bearing paragraphs', () => {
 		await editor.goto();
 	});
 
-	test('list-item marker bottom-aligns with the image (Obsidian-style)', async ({ page }) => {
+	test('list-item marker top-aligns with the image', async ({ page }) => {
 		await editor.loadContent(LIST_IMAGE_DOC);
 		await waitForFirstImageLoaded(page);
 
@@ -28,9 +28,7 @@ test.describe('list/blockquote layout for image-bearing paragraphs', () => {
 		const imageBox = await image.boundingBox();
 		if (!markerBox || !imageBox) throw new Error('layout boxes missing');
 
-		expect(
-			Math.abs(markerBox.y + markerBox.height - (imageBox.y + imageBox.height))
-		).toBeLessThanOrEqual(12);
+		expect(Math.abs(markerBox.y - imageBox.y)).toBeLessThanOrEqual(12);
 	});
 
 	test('image-only list item has no large trailing slack below the image', async ({ page }) => {
@@ -48,7 +46,7 @@ test.describe('list/blockquote layout for image-bearing paragraphs', () => {
 	});
 
 	// The widget sits one level deeper per wrapping construct, past a child-combinator `:has(> …)`;
-	// the wrapper's markers keep a trailing line box, hence the looser tolerance.
+	// the wrapper's opening markers keep a line box above the picture, hence the looser tolerance.
 	for (const [shape, doc] of Object.entries(WRAPPED_LIST_IMAGE_DOCS)) {
 		test(`${shape}-wrapped list image keeps the ambient marker pinned`, async ({ page }) => {
 			await editor.loadContent(doc);
@@ -62,9 +60,7 @@ test.describe('list/blockquote layout for image-bearing paragraphs', () => {
 			// Laid out as a marker at all, not merely near: under an inline-block `<a>` the marker
 			// and image land close anyway, so geometry alone cannot tell the link shape apart.
 			expect(await marker.evaluate((el) => getComputedStyle(el).position)).toBe('absolute');
-			expect(
-				Math.abs(markerBox.y + markerBox.height - (imageBox.y + imageBox.height))
-			).toBeLessThanOrEqual(45);
+			expect(Math.abs(markerBox.y - imageBox.y)).toBeLessThanOrEqual(45);
 		});
 	}
 
@@ -82,7 +78,7 @@ test.describe('list/blockquote layout for image-bearing paragraphs', () => {
 		expect(imageBox.x - outerBox.x).toBeGreaterThanOrEqual(12);
 	});
 
-	// The rule pinning the list item's `- ` marker to the bottom left must not reach every
+	// The rule pinning the list item's `- ` marker to the top left must not reach every
 	// `.md-marker` direct child, or these inline markers stack on that `-`.
 	test('inline emphasis markers in a list-item image paragraph stay in normal flow', async ({
 		page
