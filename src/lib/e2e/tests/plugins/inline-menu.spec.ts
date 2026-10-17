@@ -271,7 +271,7 @@ test.describe('inline menus', () => {
 			// query and the session ends there; the Enter that follows is the candidate window's.
 			await ime.compose('か');
 			await expect(menu(editor)).toHaveCount(0);
-			await editor.page.keyboard.press('Enter');
+			await ime.press('Enter');
 			await ime.commit('か');
 
 			await editor.bridge.waitForSourceContains('Type here #か');

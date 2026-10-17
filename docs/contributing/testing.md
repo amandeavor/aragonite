@@ -637,7 +637,9 @@ event order and full wiring, drive real sequences in e2e through `attachIme`
 (`e2e/simulation/ime.ts`): `compose` per update, then `commit`. In Chromium that's CDP's
 `Input.imeSetComposition` and `Input.insertText`; see `tests/ime-composition.spec.ts`. `compose`
 already waits for the composed text to show up in the focused element's DOM, since there's no
-source change mid-composition to wait on.
+source change mid-composition to wait on. A key pressed while the composition's still open goes
+through `ime.press(key)`: WebKit's real keydown doesn't know about the hand-fired composition, so
+it'd arrive saying `isComposing: false` and the editor would end the composition early.
 
 ## The conformance differ
 

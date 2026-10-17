@@ -107,7 +107,7 @@ test.describe('IME composition', () => {
 		const ime = await attachIme(page);
 
 		await ime.compose('かん');
-		await page.keyboard.press('Backspace');
+		await ime.press('Backspace');
 		await ime.commit('漢');
 
 		await expect.poll(() => editor.bridge.getSource()).toBe('hello漢\n');
@@ -287,20 +287,28 @@ test.describe('a composition Chromium drops', () => {
 		});
 	}
 
-	for (const sequence of SEQUENCES) {
-		test(`${sequence.name}: the block saves what it shows and keeps saving`, async ({ page }) => {
-			const editor = new EditorPage(page);
-			await editor.goto();
-			await caretAfterBreak(editor);
-			const ime = await attachIme(page);
+	test.describe('committed after the drop', () => {
+		// The key rows above end the composition with a plain key on any engine; these need the drop.
+		test.skip(
+			({ browserName }) => browserName !== 'chromium',
+			'the drop is Chromium’s own; the hand-fired IME composes where Chromium drops'
+		);
 
-			for (const update of sequence.updates) await ime.compose(update);
-			await ime.commit(sequence.commit);
-			const shown = await editor.getBlockText(1);
-			await expect.poll(() => editor.bridge.getSource()).toBe(`hello\n\n${shown}\n`);
+		for (const sequence of SEQUENCES) {
+			test(`${sequence.name}: the block saves what it shows and keeps saving`, async ({ page }) => {
+				const editor = new EditorPage(page);
+				await editor.goto();
+				await caretAfterBreak(editor);
+				const ime = await attachIme(page);
 
-			await page.keyboard.type('x');
-			await expect.poll(() => editor.bridge.getSource()).toBe(`hello\n\n${shown}x\n`);
-		});
-	}
+				for (const update of sequence.updates) await ime.compose(update);
+				await ime.commit(sequence.commit);
+				const shown = await editor.getBlockText(1);
+				await expect.poll(() => editor.bridge.getSource()).toBe(`hello\n\n${shown}\n`);
+
+				await page.keyboard.type('x');
+				await expect.poll(() => editor.bridge.getSource()).toBe(`hello\n\n${shown}x\n`);
+			});
+		}
+	});
 });
