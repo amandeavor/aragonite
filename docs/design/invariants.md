@@ -1248,9 +1248,10 @@ fake timers or `vi.waitFor`, never by flushing a macrotask.
 
 **G4.6 · CSS ownership.** `app.css` holds no editor rules or tokens; every editor-owned token read
 is declared in `editor-theme.css`, except the resolved host colors (`--md-color-*`,
-`--md-page-text`), which only `editor.css` declares; every radius read carries a fallback; and
-host-chrome defaults sit behind the opt-in theme class alone (G4.6d), with `editor.css` declaring a
-host color only where the root's children re-expose the resolved one. The bundled and reference
+`--md-page-text`), which only `editor.css` declares, and the lengths `editor.css` registers with
+`@property` (the list marker's column), which carry their own initial value; every radius read
+carries a fallback; and host-chrome defaults sit behind the opt-in theme class alone (G4.6d), with
+`editor.css` declaring a host color only where the root's children re-expose the resolved one. The bundled and reference
 plugins follow the same rule and may also read tokens they declare. `lint/css-ownership.test.ts`
 (editor), `lint/plugin-css-ownership.test.ts` (plugins).
 

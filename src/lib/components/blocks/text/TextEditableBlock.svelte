@@ -2,6 +2,7 @@
 	import { getContext, onDestroy, untrack } from 'svelte';
 	import { CURSOR_START, type AmbientPrefix, type BlockComponent } from '../../../block-component';
 	import { ambientHoldsTaskBox } from '../list/task-checkbox';
+	import { defaultPrefixIndent } from '../../../ambient/ambient-dom';
 	import type { DocumentView, NodeView } from '../../../core/node-views';
 	import type { EditorRects } from '../../../editor-rects';
 	import { LIST_CONTEXT_KEY } from '../../../editor-keys';
@@ -98,11 +99,11 @@
 	const ambientPrefixText = $derived(
 		typeof ambientPrefix === 'string' ? ambientPrefix : ambientPrefix.text
 	);
-	// The hanging indent is how wide the prefix draws: its text width by default, or what a
-	// prefix that draws itself, such as the task checkbox, declares.
+	// The hanging indent the prefix's marker fills (editor.css): what a prefix that draws itself,
+	// such as the task checkbox, declares, or its text's default.
 	const ambientIndent = $derived(
 		(typeof ambientPrefix === 'string' ? undefined : ambientPrefix.indent) ??
-			`${ambientPrefixText.length}ch`
+			defaultPrefixIndent(ambientPrefixText)
 	);
 
 	const wiring = wireSurfaceContexts();
@@ -906,8 +907,9 @@
 	contenteditable={readOnly ? 'false' : 'true'}
 	aria-readonly={readOnly ? 'true' : undefined}
 	{...editableSurface.attributes(combobox)}
-	style:text-indent={ambientPrefixText ? `calc(-1 * ${ambientIndent})` : null}
-	style:padding-left={ambientPrefixText ? ambientIndent : null}
+	style:--md-prefix-indent={ambientPrefixText ? ambientIndent : null}
+	style:text-indent={ambientPrefixText ? 'calc(-1 * var(--md-prefix-indent))' : null}
+	style:padding-left={ambientPrefixText ? 'var(--md-prefix-indent)' : null}
 	oninput={onInput}
 	onkeydown={editableSurface.onKeyDown}
 	onbeforeinput={editableSurface.onBeforeInput}

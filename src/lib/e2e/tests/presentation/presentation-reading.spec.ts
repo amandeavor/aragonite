@@ -57,7 +57,7 @@ test.describe('reading mode: markers', () => {
 		const bulletAmbient = page.locator(`[data-list-marker='bullet'] ${ambient}`).first();
 		await expect(bulletAmbient).toBeHidden();
 		const bulletContent = await bulletAmbient.evaluate(
-			(el) => getComputedStyle(el, '::before').content
+			(el) => getComputedStyle(el.querySelector('.md-marker-box')!, '::before').content
 		);
 		expect(bulletContent).toContain('•');
 		await expect(page.locator(`[data-list-marker='task'] .task-checkbox`).first()).toBeVisible();

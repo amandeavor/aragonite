@@ -125,9 +125,9 @@
 	--md-unresolved-image-bg: rgba(192, 57, 43, 0.08);
 	--md-raw-html-color: #8f8f89;
 	--md-marker-hover-bg: rgba(128, 128, 128, 0.15);
-	/* The hanging indent a task item reserves for its marker: the width the visible `- [ ] `
-	   draws, which editor.css overrides where the box is drawn instead. */
-	--md-task-indent: 2.1em;
+	/* The hanging indent a task item reserves where its box is drawn, in body text so a heading
+	   to-do's column matches a paragraph's. */
+	--md-task-indent: calc(2.1 * var(--editor-font-size, 1rem));
 	--md-reorder-indicator: var(--md-color-selection);
 	/* The name a typed kind change leaves on its block, and how long it stays before it fades. */
 	--md-kind-cue-color: var(--md-color-ui-muted);

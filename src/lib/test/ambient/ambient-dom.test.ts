@@ -1,7 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import { buildAmbientSpan } from '../../ambient/ambient-dom';
+import { buildAmbientSpan, MARKER_BOX_CLASS } from '../../ambient/ambient-dom';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+
+/** The box inside the marker that holds its text and ranges. */
+function boxOf(span: HTMLElement): HTMLElement {
+	expect(span.children.length).toBe(1);
+	const box = span.children[0] as HTMLElement;
+	expect(box.className).toBe(MARKER_BOX_CLASS);
+	return box;
+}
 
 describe('buildAmbientSpan', () => {
 	it('string input produces a single text-only span', () => {
@@ -9,13 +17,13 @@ describe('buildAmbientSpan', () => {
 		expect(span.className).toBe('md-marker');
 		expect(span.getAttribute('contenteditable')).toBe('false');
 		expect(span.textContent).toBe('- ');
-		expect(span.children.length).toBe(0);
+		expect(boxOf(span).children.length).toBe(0);
 	});
 
 	it('object input with no interactive ranges matches string behavior', () => {
 		const span = buildAmbientSpan({ text: '- ' });
 		expect(span.textContent).toBe('- ');
-		expect(span.children.length).toBe(0);
+		expect(boxOf(span).children.length).toBe(0);
 	});
 
 	it('object input wraps interactive ranges in nested spans', () => {
@@ -34,9 +42,9 @@ describe('buildAmbientSpan', () => {
 			]
 		});
 		expect(span.textContent).toBe('- [x] ');
-		expect(span.children.length).toBe(1);
+		expect(boxOf(span).children.length).toBe(1);
 
-		const inner = span.children[0] as HTMLElement;
+		const inner = boxOf(span).children[0] as HTMLElement;
 		expect(inner.className).toBe('task-checkbox');
 		expect(inner.getAttribute('role')).toBe('checkbox');
 		expect(inner.getAttribute('aria-checked')).toBe('true');
@@ -49,7 +57,7 @@ describe('buildAmbientSpan', () => {
 			text: '- [x] ',
 			interactive: [{ start: 2, end: 5, className: 'task-checkbox', onClick }]
 		});
-		const inner = span.children[0] as HTMLElement;
+		const inner = boxOf(span).children[0] as HTMLElement;
 		inner.click();
 		expect(onClick).toHaveBeenCalledOnce();
 	});
@@ -72,7 +80,7 @@ describe('buildAmbientSpan', () => {
 				}
 			]
 		});
-		const inner = span.children[0] as HTMLElement;
+		const inner = boxOf(span).children[0] as HTMLElement;
 		expect(inner.getAttribute('role')).toBe('link');
 		expect(inner.getAttribute('aria-label')).toBe('Back to reference a');
 		expect(inner.tabIndex).toBe(0);
@@ -91,7 +99,7 @@ describe('buildAmbientSpan', () => {
 			text: '[^a]: ',
 			interactive: [{ start: 0, end: 4, className: 'back', onClick: () => {} }]
 		});
-		const inner = span.children[0] as HTMLElement;
+		const inner = boxOf(span).children[0] as HTMLElement;
 		expect(inner.hasAttribute('tabindex')).toBe(false);
 		const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
 		inner.dispatchEvent(event);
@@ -103,11 +111,11 @@ describe('buildAmbientSpan', () => {
 			text: 'abXcd',
 			interactive: [{ start: 2, end: 3, className: 'mark', onClick: () => {} }]
 		});
-		expect(span.childNodes.length).toBe(3);
-		expect(span.childNodes[0].textContent).toBe('ab');
-		expect((span.childNodes[1] as HTMLElement).tagName).toBe('SPAN');
-		expect(span.childNodes[1].textContent).toBe('X');
-		expect(span.childNodes[2].textContent).toBe('cd');
+		expect(boxOf(span).childNodes.length).toBe(3);
+		expect(boxOf(span).childNodes[0].textContent).toBe('ab');
+		expect((boxOf(span).childNodes[1] as HTMLElement).tagName).toBe('SPAN');
+		expect(boxOf(span).childNodes[1].textContent).toBe('X');
+		expect(boxOf(span).childNodes[2].textContent).toBe('cd');
 	});
 });
 

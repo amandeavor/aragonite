@@ -472,7 +472,7 @@ A container's `ambientPrefix` (the read-only marker a container lends its first 
 - **Inert:** return a string, the list item's `- `. (The blockquote passes no prefix at all; its `> ` markers render as border-only chrome.)
 - **Interactive:** return the object form: `text` plus one or more ranges, each a character span, a class name and a click handler, plus optionally a role and ARIA state, an accessible name, a tab stop, and an Enter/Space handler.
 
-Keep the component thin: a pure `buildXAmbient(metadata, onAction)` helper beside it, called from the prefix getter. The task checkbox is the shipped example, and the list item hands it to its `BlockList` as `ambientPrefixForFirst={buildTaskItemAmbient(metadataOf(node, 'listItem'), toggleTask)}`:
+Keep the component thin: a pure `buildXAmbient(metadata, onAction)` helper beside it, called from the prefix getter. The task checkbox is the shipped example, and the list item hands it to its `BlockList` as `ambientPrefixForFirst={buildTaskItemAmbient(metadataOf(node, 'listItem'), toggleTask, presentationMarkerKind === 'task')}` (the last argument says whether the mode draws the box, which sets how wide the marker's column is):
 
 ```ts
 // components/blocks/list/task-checkbox.ts

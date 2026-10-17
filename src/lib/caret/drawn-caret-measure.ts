@@ -6,7 +6,7 @@
  */
 
 import { firstUsefulRect, neighbourCaretRect, type CaretRect } from './visual-lines';
-import { isAtomicInlineWidget, isHiddenMarkerText } from './widget-offset';
+import { isAtomicInlineWidget, isBlockLineText } from './widget-offset';
 import type { ClientCaretBox, HostBox, WidgetEdgeBox } from './drawn-caret-target';
 
 export interface CaretMeasure {
@@ -117,8 +117,8 @@ function atSoftWrap(range: Range, surface: HTMLElement): boolean {
 	return first !== null && next !== null && next.top >= first.bottom - 1;
 }
 
-/** The nearest letter on one side of `at`, across text nodes inside `surface`, past spaces and the
- *  hidden marker text that paints nothing. */
+/** The nearest letter on one side of `at`, across the text nodes `surface` lays out as lines, past
+ *  spaces. */
 function nearestLetter(
 	start: Text,
 	at: number,
@@ -130,7 +130,7 @@ function nearestLetter(
 	let node: Text | null = start;
 	let i = forward ? at : at - 1;
 	while (node) {
-		if (!isHiddenMarkerText(node, surface)) {
+		if (isBlockLineText(node, surface)) {
 			for (; i >= 0 && i < node.data.length; i += forward ? 1 : -1) {
 				if (!WRAP_SPACE.includes(node.data[i])) return { node, at: i };
 			}

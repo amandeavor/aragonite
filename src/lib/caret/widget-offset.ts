@@ -603,6 +603,13 @@ export function isHiddenMarkerText(node: Node, container: HTMLElement): boolean 
 	return false;
 }
 
+/** Whether `node` is text the block lays out as its own lines: not hidden marker text, and not in
+ *  the marker prefix, which sits in the hanging indent beside whatever line comes first. */
+export function isBlockLineText(node: Node, container: HTMLElement): boolean {
+	if (isHiddenMarkerText(node, container)) return false;
+	return !markerPrefixOf(container)?.contains(node);
+}
+
 /** The element form of {@link isHiddenMarkerText}, for a walk that treats such a span as opaque
  *  instead of descending into it. */
 export function isHiddenMarkerRoot(el: Element, container: HTMLElement): boolean {

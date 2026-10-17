@@ -2,9 +2,8 @@ import type { AmbientPrefix } from '../../../block-component';
 import type { ListItemMetadata } from '../../../core/nodes';
 import { devWarn } from '../../../dev-warn';
 
-/** Matches the `.task-checkbox` width and gap in editor.css, which sets `--md-task-indent` to
- *  follow the drawn marker in each mode; the fallback is the width source mode draws. */
-export const TASK_HANGING_INDENT = 'var(--md-task-indent, 2.1em)';
+/** The box's width and gap in editor.css plus the trailing space, at the body size the marker draws. */
+export const TASK_BOX_INDENT = 'var(--md-task-indent, calc(2.1 * var(--editor-font-size, 1rem)))';
 
 function isTaskMarkerChecked(taskMarker: string): boolean {
 	const c = taskMarker[1];
@@ -16,9 +15,12 @@ export function ambientHoldsTaskBox(prefix: AmbientPrefix): boolean {
 	return typeof prefix !== 'string' && !!prefix.interactive?.some((r) => r.role === 'checkbox');
 }
 
+/** `drawsBox` is whether the mode draws the box in place of the `[ ]` bytes; where it shows the
+ *  bytes, they take the default column. */
 export function buildTaskItemAmbient(
 	metadata: ListItemMetadata | undefined,
-	onToggle: () => void
+	onToggle: () => void,
+	drawsBox: boolean
 ): AmbientPrefix {
 	const listMarker = metadata?.marker ?? '- ';
 
@@ -53,7 +55,6 @@ export function buildTaskItemAmbient(
 			// GitHub draws the box at the margin, not indented under a bullet that is not there.
 			{ start: 0, end: boxStart, className: 'task-list-marker', onClick: () => {} }
 		],
-		// The drawn box (editor.css): its width, the gap, and the marker's trailing space.
-		indent: TASK_HANGING_INDENT
+		indent: drawsBox ? TASK_BOX_INDENT : undefined
 	};
 }
