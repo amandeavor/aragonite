@@ -269,6 +269,7 @@ These checks run in three kinds of place:
 | G1.112 | A content write inside a commit leaves its fix-up to the commit                            | A·N     |
 | G1.113 | A list item's drawn marker is its own opening bytes                                        | A·P     |
 | G1.115 | A caret restored inside a widget that can show its source opens the source at that byte    | A·N     |
+| G1.117 | A write never splits a CRLF pair into a lone `\r` or a lone `\n`                           | A·N     |
 
 ### The entries
 
@@ -852,6 +853,19 @@ show (an emoji, an image), whose caret goes to the far edge. Predicate
 `invariants/widget-caret-landing.ts :: checkWidgetCaretLanding` ·
 `test/invariants/widget-caret-landing.test.ts`; G4.211 holds the e2e rows to every kind.
 
+**G1.117 · A CRLF pair stays whole** (`line-ending-pairs`). WebKit and Firefox stop a caret between
+a line's `\r` and its `\n`, and delete one of the two on its own. The DOM-to-raw read rounds a
+position inside a pair to before it (`caret/widget-offset.ts :: domTextOffsetAtNode`), and the
+input read-back edits the pair as one character
+(`core/line-ending-pairs.ts :: keepLineEndingPairs`). The check backs both up, and catches any
+other write too (a tree op, a plugin's rule): it compares the line-ending counts before and after
+each commit and each keystroke written in place, and warns when a pair went missing while a lone
+`\r` or `\n` turned up. Leaving the `\r` out of the DOM would make a split impossible to write, but
+every read-back and offset walk counts on the DOM's text being the block's bytes, so this stays a
+check. Predicate
+`invariants/line-ending-pairs.ts :: checkLineEndingPairsKept` ·
+`test/invariants/line-ending-pairs.test.ts`.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -1269,6 +1283,7 @@ unguarded.
 | G4.209 | A list item draws its marker in its own cell, never through a child's prefix                 | L       |
 | G4.211 | Every widget kind that shows its source has a row in the typed-opener e2e spec               | L       |
 | G4.212 | E2E clipboard access and pastes ride the shared clipboard helper                             | L       |
+| G4.214 | A caret's box is measured in one place, `caretRectAt`                                        | L       |
 
 ### The entries
 
@@ -2402,6 +2417,15 @@ paste chord itself only works where the real clipboard answers the page, which W
 so both fail the scan outside `e2e/clipboard-arm.ts`. The helper is where each engine's clipboard
 lives: the system clipboard in Chromium, an in-page store the `page` fixture installs in WebKit.
 `e2e/lint/e2e-drivers.test.ts`.
+
+**G4.214 · One measure of a caret.** WebKit and Firefox measure a collapsed range right after a `\n`
+on the line that `\n` ends, which puts every line start on the line above.
+`caret/visual-lines.ts :: caretRectAt` measures the next character instead, and every caret box
+goes through it: the column search, the edge-line check, the sticky x, the drawn caret, the scroll
+into view, the drop caret and `rects.caretRect()`. The scan fails a Range measured anywhere else
+outside a short allowlist of spans that are never collapsed. A caret the writer puts at a line's
+start lands in the next line's text for the same reason
+(`caret/widget-offset.ts :: findDomTextLanding`). `lint/file-rules.test.ts`.
 
 ## Accessibility
 
