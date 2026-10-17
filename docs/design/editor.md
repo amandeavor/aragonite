@@ -338,7 +338,7 @@ The tree is the document-level truth. Inside one block, while you're typing, the
 
 ### Reading the DOM back
 
-On `input`, the block reads its own DOM content back as raw text, writes it to `node.raw`, and re-parses to refresh metadata and inline content; if the kind changed, it re-renders with the new component. What it never does is reconstruct that text from parsed structure (§ 1's rule, one level down). Each surface supplies its own reader: code blocks and plain editable leaves can read `textContent` directly, while a prose block reads through a raw-aware DOM walk, since its atomic widgets and its container's ambient prefix (the read-only marker a container lends its first child, a list's `- `) both put `textContent` out of step with `raw`. Why, and the walk itself, is [`inline-parsing.md`](inline-parsing.md) § 2.
+On `input`, the block reads its own DOM content back as raw text, writes it to `node.raw`, and re-parses to refresh metadata and inline content; if the kind changed, it re-renders with the new component. What it never does is reconstruct that text from parsed structure (§ 1's rule, one level down). Each surface supplies its own reader: code blocks and plain editable leaves can read `textContent` directly, while a prose block reads through a raw-aware DOM walk, since its atomic widgets and its container's ambient prefix (the read-only marker a container lends its first child, a footnote definition's `[^label]: `) both put `textContent` out of step with `raw`. Why, and the walk itself, is [`inline-parsing.md`](inline-parsing.md) § 2.
 
 The common case (no kind change) needs no DOM patching, since the browser's update and the tree agree; prose blocks rebuild their styled span tree from `raw` on every input, and offsets map unchanged.
 
@@ -645,16 +645,20 @@ The ancestor rebuild every keystroke and commit goes through (`src/lib/tree-oper
 
 ### Ambient markers
 
-A container may lend a read-only prefix to its first prose child's rendered content: the ambient prefix from § 6, carried by the `ambientPrefix` prop. Today that's the list item's `- ` / `1. ` marker and the bundled footnote definition's `[^label]: `. (The blockquote lends none; its `> ` markers are border-only chrome.) The prop is a union:
+A list item draws its own marker (`- `, `1. `, a to-do's box) in a cell beside its content, in `src/lib/components/blocks/list/ListItemBlock.svelte`. The cell is built from the item's bytes, so it shows up whatever block the item opens with (a code block, a table, another list), and source mode shows every byte of it. The item's later blocks start at its text column, and so do a nested list's markers. A press on the cell puts the caret at the start of the item's text; a press on a to-do's box checks it and puts the caret there too.
+
+Every item of a list gets the same column, as wide as the list's widest marker, so `9.` and `10.` start their text in the same place. `src/lib/components/blocks/list/marker-column.ts :: markerColumn` reads the markers off the tree, so an item scrolled out of a windowed list still counts, and it runs when items come, go, move or change their marker, never on a keystroke in their text. A marker wider than the column (a heading item's, drawn at the heading's size) just widens its own cell.
+
+Other containers can lend a read-only prefix to their first prose child's rendered content instead: the ambient prefix from § 6, carried by the `ambientPrefix` prop. The bundled footnote definition's `[^label]: ` is the one that does today. (The blockquote lends none; its `> ` markers are border-only chrome.) The prop is a union:
 
 ```ts
 type AmbientPrefix =
 	| string
 	| { text: string; interactive?: AmbientInteractiveRange[]; indent?: string };
-// indent: the hanging indent, for a prefix whose painted width isn't its text's (a task item's `- [ ] ` paints as one box)
+// indent: the hanging indent, for a prefix whose painted width isn't its text's
 ```
 
-A plain string is an inert marker. The object form carries `text` plus interactive ranges, each a character span with a class, optional ARIA (a role, a name, a tab stop), a click handler, and an optional Enter/Space handler, which lets a marker embed a clickable element (task checkboxes, a footnote's way back) without fragmenting the text contract, since the offset translation still sees one contiguous string. One render helper consumes both shapes, so consumers never branch on the variant. `ambient/` builds the marker DOM, and `caret/widget-offset.ts` reads the prefix back when it counts caret offsets; the `textContent` invariant itself is in [`inline-parsing.md`](inline-parsing.md) § The textContent invariant.
+A plain string is an inert marker. The object form carries `text` plus interactive ranges, each a character span with a class, optional ARIA (a role, a name, a tab stop), a click handler, and an optional Enter/Space handler, which lets a marker embed a clickable element (a footnote's way back) without fragmenting the text contract, since the offset translation still sees one contiguous string. One render helper consumes both shapes, so consumers never branch on the variant, and a list item's cell is built by that same helper from the same shape (that's where a to-do's box gets its role and its click). `ambient/` builds the marker DOM, and `caret/widget-offset.ts` reads the prefix back when it counts caret offsets; the `textContent` invariant itself is in [`inline-parsing.md`](inline-parsing.md) § The textContent invariant.
 
 The caret never sits inside the prefix: a click on it lands right after it, and so does Home on the prefix's own line.
 

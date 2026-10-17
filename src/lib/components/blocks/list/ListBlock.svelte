@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext, setContext } from 'svelte';
+	import { getContext, setContext, untrack } from 'svelte';
 	import type { ListContext } from '../../../action-contracts';
 	import type { NodeView } from '../../../core/node-views';
 	import { EDITOR_SERVICES_KEY, LIST_CONTEXT_KEY, type EditorServices } from '../../../editor-keys';
@@ -11,6 +11,8 @@
 	import { createContainerActions } from '../../../editor-actions/nested/container-actions';
 	import { createContainerBlockComponent } from '../../../editor-actions/container-block-component';
 	import ListItemBlock from './ListItemBlock.svelte';
+	import { markerColumn } from './marker-column';
+	import { hidesMarkers } from '../../../presentation-mode';
 	import type { ChildList } from '../../../block-lists/child-list';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
@@ -67,6 +69,17 @@
 	);
 	let bounds = $derived(sliceWindow((node.children ?? []).length, win));
 
+	// Tracks the ids and the in-place marker edits, not the items, so it runs when items come, go,
+	// move or change their marker, never on a keystroke in their text.
+	let markerEdits = $state(0);
+	const column = $derived.by(() => {
+		const ids = listState.innerBlockIds;
+		for (let i = 0; i < ids.length; i++) void ids[i];
+		void markerEdits;
+		const drawsBoxes = hidesMarkers(reading.mode());
+		return untrack(() => markerColumn(node.children ?? [], drawsBoxes));
+	});
+
 	const childList: ChildList = {
 		count: () => node.children?.length ?? 0,
 		refs: listState.refSlots,
@@ -90,7 +103,7 @@
 </script>
 
 <!-- The items reorder among themselves, which the drag reads off this mark. -->
-<div class="list-block" data-reorder-scope bind:this={boxEl}>
+<div class="list-block" data-reorder-scope style:--md-list-column={column} bind:this={boxEl}>
 	{#if win.active}
 		<div class="vr-spacer" style="height: {win.topSpacerPx}px"></div>
 	{/if}
@@ -105,6 +118,7 @@
 			myPath={[...myPath, absoluteIndex]}
 			itemCount={(node.children ?? []).length}
 			slots={listState.refSlots}
+			onMarkerChange={() => markerEdits++}
 		/>
 	{/each}
 	{#if win.active}

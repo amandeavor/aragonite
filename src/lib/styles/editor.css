@@ -673,6 +673,13 @@
 	align-self: flex-start;
 }
 
+/* Registered as a length so `1ch` resolves in the list's own font, and every item reads that width. */
+@property --md-list-column {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0px;
+}
+
 /* Registered as a length so it resolves in the block's own font, and its marker reads it unchanged. */
 @property --md-prefix-indent {
 	syntax: '<length>';
@@ -872,7 +879,7 @@
 	> .md-marker
 	> .md-marker-box {
 	display: inline-block;
-	width: var(--md-task-indent, calc(2.1 * var(--editor-font-size, 1rem)));
+	width: var(--md-task-indent);
 }
 
 /* GitHub task lists: the `- ` collapses, keeping its bytes for the offset traversal, and the

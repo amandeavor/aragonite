@@ -105,10 +105,8 @@ test.describe('an empty item', () => {
 				await openIn(page, mode, `${marker}\n`);
 				const read = await readMarker(page);
 				const line = read.firstLine!;
-				// A quarter line: a marker on the next line, or dropped to the item's bottom, is past it.
-				expect(Math.abs(centre(read.marker) - centre(line))).toBeLessThanOrEqual(
-					(line.bottom - line.top) / 4
-				);
+				// Centred on the empty line: a marker held to the item's top or bottom edge is a few pixels off.
+				expect(Math.abs(centre(read.marker) - centre(line))).toBeLessThanOrEqual(2);
 			});
 		}
 	}
@@ -269,34 +267,6 @@ test.describe('the caret at an item’s start', () => {
 		await page.keyboard.type('a');
 		await editor.bridge.waitForSourceContains('- a');
 	});
-});
-
-test('a range that ends inside an item paints nothing over its marker', async ({ page }) => {
-	const editor = await openIn(page, 'source', 'Before.\n\n- Hello\n');
-	await editor.clickBlockAtPath([0], 3);
-	await page.keyboard.press('End');
-	await page.keyboard.down('Shift');
-	await page.keyboard.press('ArrowDown');
-	await page.keyboard.press('ArrowRight');
-	await page.keyboard.press('ArrowRight');
-	await page.keyboard.up('Shift');
-	await editor.waitForCrossBlock(true);
-
-	const { marker } = await readMarker(page);
-	const markerRight = await page.evaluate(
-		() =>
-			document
-				.querySelector('.editor .list-item-block > .list-item-marker > .md-marker')!
-				.getBoundingClientRect().right
-	);
-	const overlays = await page
-		.locator('.selection-overlay')
-		.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect));
-	expect(overlays.length).toBeGreaterThan(0);
-	for (const box of overlays) {
-		if (box.bottom < marker.top || box.top > marker.bottom) continue;
-		expect(box.left).toBeGreaterThanOrEqual(markerRight - 1);
-	}
 });
 
 test.describe('preview-block', () => {

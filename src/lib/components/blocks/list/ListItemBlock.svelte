@@ -14,7 +14,7 @@
 	} from '../../../editor-keys';
 	import { headingLevel, metadataOf } from '../../../core/nodes';
 	import { shownKind } from '../../../core/parsers/heading';
-	import { buildAmbientSpan, defaultPrefixIndent } from '../../../ambient/ambient-dom';
+	import { buildAmbientSpan } from '../../../ambient/ambient-dom';
 	import { assertInvariant } from '../../../assert';
 	import { checkItemMarkerBytes } from '../../../invariants/item-marker-bytes';
 	import { hidesMarkers } from '../../../presentation-mode';
@@ -43,7 +43,8 @@
 		id,
 		myPath = [],
 		itemCount,
-		slots
+		slots,
+		onMarkerChange
 	}: {
 		node: NodeView;
 		index: number;
@@ -52,6 +53,8 @@
 		/** How many items the enclosing list holds; a lone item has no sibling to reorder past. */
 		itemCount: number;
 		slots?: RefSlots<BlockComponent>;
+		/** Called when the item's marker bytes change in place, so the list can resize its column. */
+		onMarkerChange?: () => void;
 	} = $props();
 
 	const { selection, caretWriter, decorations, events, commands } =
@@ -138,24 +141,18 @@
 		if (toggleTask()) containerApi.focus(0);
 	}
 
-	const markerPrefix = $derived(
-		buildTaskItemAmbient(
-			metadataOf(node, 'listItem'),
-			toggleFromBox,
-			presentationMarkerKind === 'task'
-		)
-	);
-	// Strings, so the marker is rebuilt only when its bytes or its box change, not on every edit.
+	const markerPrefix = $derived(buildTaskItemAmbient(metadataOf(node, 'listItem'), toggleFromBox));
+	// A string, so the marker is rebuilt only when its bytes or its box change, not on every edit.
 	const markerText = $derived(typeof markerPrefix === 'string' ? markerPrefix : markerPrefix.text);
-	const markerColumn = $derived(
-		(typeof markerPrefix !== 'string' && markerPrefix.indent) || defaultPrefixIndent(markerText)
-	);
 
+	let drawnText: string | undefined;
 	function drawMarker(cell: HTMLElement): void {
 		void markerText;
 		void presentationMarkerKind;
 		untrack(() => {
 			assertInvariant('item-marker-bytes', () => checkItemMarkerBytes(node.raw, markerText));
+			if (drawnText !== undefined && drawnText !== markerText) onMarkerChange?.();
+			drawnText = markerText;
 			cell.replaceChildren(buildAmbientSpan(markerPrefix));
 		});
 	}
@@ -260,12 +257,7 @@
 	data-list-marker={presentationMarkerKind}
 	bind:this={boxEl}
 >
-	<span
-		class="list-item-marker"
-		data-heading={firstHeadingLevel}
-		style:min-width={markerColumn}
-		{@attach drawMarker}
-	></span>
+	<span class="list-item-marker" data-heading={firstHeadingLevel} {@attach drawMarker}></span>
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="list-item-content" onkeydown={handleKeydown} bind:this={contentEl}>
 		<BlockList
@@ -296,6 +288,7 @@
 	/* Unselectable, as the drag handle is: a range never starts or ends inside the marker. */
 	.list-item-marker {
 		flex: none;
+		min-width: var(--md-list-column);
 		white-space: pre;
 		user-select: none;
 	}

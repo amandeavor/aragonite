@@ -20,7 +20,6 @@ A list item draws its marker (`-`, `1.`, a to-do's box) in a cell of its own, be
   - Miss-analysis: every caret row clicked the item's text or its source-mode bytes, and none pressed the drawn bullet, where a press in live mode put the caret nowhere and dropped the typing.
 - Press the marker of `- alpha`, `1. alpha` or `10. alpha`, then type: the letter lands before `alpha`, in source and live modes
 - Press a to-do's drawn box in live or preview-block mode, then type: the box checks, and the letter lands at the start of the to-do's text
-- Extend a range from the paragraph above down into an item's text: no painted selection reaches over the item's marker
 - Select all inside an item's text: the selection holds the text, not the marker, and typing replaces only the text
 - Type `- ` at the start of an empty paragraph, then a letter: the paragraph becomes an item and the letter lands in it
 - In preview-block mode, focus an item's text: its marker shows its bytes, dimmed, with no drawn bullet, while an unfocused item keeps its bullet

@@ -16,7 +16,7 @@ import {
 const PARAMS = { numRuns: 300, seed: freshOrFixedSeed(113113) } as const;
 
 function drawnMarker(item: CstNode): string {
-	const prefix = buildTaskItemAmbient(metadataOf(item, 'listItem'), () => {}, false);
+	const prefix = buildTaskItemAmbient(metadataOf(item, 'listItem'), () => {});
 	return typeof prefix === 'string' ? prefix : prefix.text;
 }
 

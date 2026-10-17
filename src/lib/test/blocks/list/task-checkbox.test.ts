@@ -1,8 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-	buildTaskItemAmbient,
-	TASK_BOX_INDENT
-} from '#lib/components/blocks/list/task-checkbox.js';
+import { buildTaskItemAmbient } from '#lib/components/blocks/list/task-checkbox.js';
 import type { ListItemMetadata } from '#lib/core/nodes.js';
 import { takeDevWarns } from '../../support/warn-gate';
 
@@ -22,12 +19,12 @@ function taskMeta(overrides: Partial<ListItemMetadata> = {}): ListItemMetadata {
 
 describe('buildTaskItemAmbient', () => {
 	it('returns the plain marker string for a non-task item', () => {
-		const result = buildTaskItemAmbient(plainListMeta(), vi.fn(), true);
+		const result = buildTaskItemAmbient(plainListMeta(), vi.fn());
 		expect(result).toBe('- ');
 	});
 
 	it('falls back to "- " when metadata is absent', () => {
-		const result = buildTaskItemAmbient(undefined, vi.fn(), true);
+		const result = buildTaskItemAmbient(undefined, vi.fn());
 		expect(result).toBe('- ');
 	});
 
@@ -35,8 +32,7 @@ describe('buildTaskItemAmbient', () => {
 		const onToggle = vi.fn();
 		const result = buildTaskItemAmbient(
 			taskMeta({ taskChecked: true, taskMarker: '[x] ' }),
-			onToggle,
-			true
+			onToggle
 		);
 		expect(result).toEqual({
 			text: '- [x] ',
@@ -51,19 +47,12 @@ describe('buildTaskItemAmbient', () => {
 					onClick: onToggle
 				},
 				{ start: 0, end: 2, className: 'task-list-marker', onClick: expect.any(Function) }
-			],
-			indent: TASK_BOX_INDENT
+			]
 		});
 	});
 
-	it('leaves the column to the bytes where the mode shows them instead of a box', () => {
-		const result = buildTaskItemAmbient(taskMeta(), vi.fn(), false);
-		if (typeof result === 'string') throw new Error('expected object');
-		expect(result.indent).toBeUndefined();
-	});
-
 	it('keeps non-canonical [X] in text and keeps box width at 3', () => {
-		const result = buildTaskItemAmbient(taskMeta({ taskMarker: '[X] ' }), vi.fn(), true);
+		const result = buildTaskItemAmbient(taskMeta({ taskMarker: '[X] ' }), vi.fn());
 		expect(typeof result).toBe('object');
 		if (typeof result === 'string') return;
 		expect(result.text).toBe('- [X] ');
@@ -76,8 +65,7 @@ describe('buildTaskItemAmbient', () => {
 	it('degrades to plain marker when taskItem flag and taskMarker disagree', () => {
 		const result = buildTaskItemAmbient(
 			{ marker: '- ', taskItem: true, taskChecked: false, taskMarker: null },
-			vi.fn(),
-			true
+			vi.fn()
 		);
 		expect(result).toBe('- ');
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['ListItemBlock']);
@@ -86,8 +74,7 @@ describe('buildTaskItemAmbient', () => {
 	it('preserves a non-default list marker (e.g. ordered "1. ")', () => {
 		const result = buildTaskItemAmbient(
 			taskMeta({ marker: '1. ', taskMarker: '[x] ', taskChecked: true }),
-			vi.fn(),
-			true
+			vi.fn()
 		);
 		if (typeof result === 'string') throw new Error('expected object');
 		expect(result.text).toBe('1. [x] ');
@@ -100,7 +87,7 @@ describe('buildTaskItemAmbient', () => {
 		['[ ] ', false],
 		['[X] ', true]
 	])('derives ariaChecked from the marker %s', (taskMarker, expected) => {
-		const result = buildTaskItemAmbient(taskMeta({ taskMarker }), vi.fn(), true);
+		const result = buildTaskItemAmbient(taskMeta({ taskMarker }), vi.fn());
 		if (typeof result === 'string') throw new Error('expected object');
 		expect(result.interactive?.[0].ariaChecked).toBe(expected);
 	});
@@ -110,8 +97,7 @@ describe('buildTaskItemAmbient', () => {
 	it('ignores a stale taskChecked when the marker says checked', () => {
 		const result = buildTaskItemAmbient(
 			taskMeta({ taskMarker: '[x] ', taskChecked: false }),
-			vi.fn(),
-			true
+			vi.fn()
 		);
 		if (typeof result === 'string') throw new Error('expected object');
 		expect(result.interactive?.[0].ariaChecked).toBe(true);
@@ -120,8 +106,7 @@ describe('buildTaskItemAmbient', () => {
 	it('ignores a stale taskChecked when the marker says unchecked', () => {
 		const result = buildTaskItemAmbient(
 			taskMeta({ taskMarker: '[ ] ', taskChecked: true }),
-			vi.fn(),
-			true
+			vi.fn()
 		);
 		if (typeof result === 'string') throw new Error('expected object');
 		expect(result.interactive?.[0].ariaChecked).toBe(false);
