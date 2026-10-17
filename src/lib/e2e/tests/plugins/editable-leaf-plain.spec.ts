@@ -103,14 +103,7 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 	}) => {
 		await editor.memo.click();
 		await page.keyboard.press('End');
-		await page.evaluate(async () => {
-			await navigator.clipboard.write([
-				new ClipboardItem({
-					'text/plain': new Blob(['a\nb'], { type: 'text/plain' }),
-					'text/html': new Blob(['<b>a</b><br><i>b</i>'], { type: 'text/html' })
-				})
-			]);
-		});
+		await editor.seedClipboard({ 'text/plain': 'a\nb', 'text/html': '<b>a</b><br><i>b</i>' });
 		await editor.paste();
 
 		// The text/plain payload lands verbatim, its newline splitting off a paragraph; without the

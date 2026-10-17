@@ -30,8 +30,8 @@ test.describe('a hard break where markers are hidden', () => {
 		await clickBlockSettled(ep, 0);
 		await page.keyboard.press('End');
 		await page.keyboard.press('Enter');
-		await page.evaluate(() => navigator.clipboard.writeText('one  \ntwo\n'));
-		await page.keyboard.press('ControlOrMeta+v');
+		await ep.seedClipboard('one  \ntwo\n');
+		await ep.paste();
 		await ep.bridge.waitForSourceContains('one  \ntwo');
 
 		expect(await drawnGlyphs(page)).toBe(0);

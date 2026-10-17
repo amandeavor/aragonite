@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures';
 import { type Page } from '@playwright/test';
 import { gotoReady } from '../goto-ready';
+import { createClipboardArm } from '../clipboard-arm';
 
 // Two editors over one seed, one with `syntax={{ indentedCode: false, setextHeading: false }}`.
 // Requirements: `e2e/requirements/syntax-prop.md`.
@@ -106,10 +107,11 @@ test.describe('the syntax prop switches a syntax off in one editor', () => {
 	test('`Plan` over `---` pasted is text and a divider in one editor, a heading in the other', async ({
 		page
 	}) => {
+		const clipboard = createClipboardArm(page);
 		for (const pane of ['off', 'on'] as const) {
 			await openLineUnderFirst(page, pane);
-			await page.evaluate(() => navigator.clipboard.writeText('Plan\n---\n'));
-			await page.keyboard.press('ControlOrMeta+v');
+			await clipboard.seed('Plan\n---\n');
+			await clipboard.paste();
 		}
 
 		expect(await sourceOf(page, 'off')).toBe('Loaded\n\nPlan\n---\n\n\tcode\n\nPlan\n---\n');

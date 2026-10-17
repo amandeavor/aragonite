@@ -85,16 +85,7 @@ test.describe('table block: clipboard out', () => {
 		await editor.waitForCrossBlock(true);
 		await page.keyboard.press('ControlOrMeta+c');
 		await expect
-			.poll(() =>
-				page.evaluate(async () => {
-					const items = await navigator.clipboard.read();
-					for (const item of items) {
-						if (!item.types.includes('text/html')) continue;
-						return (await item.getType('text/html')).text();
-					}
-					return null;
-				})
-			)
+			.poll(() => editor.readClipboard('text/html'))
 			.toContain('<tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr>');
 	});
 
@@ -117,16 +108,7 @@ test.describe('table block: clipboard out', () => {
 		await page.keyboard.press('ControlOrMeta+c');
 		await expect.poll(() => editor.readClipboard()).toBe('| B |\n| :---: |\n| 2 |\n');
 		await expect
-			.poll(() =>
-				page.evaluate(async () => {
-					const items = await navigator.clipboard.read();
-					for (const item of items) {
-						if (!item.types.includes('text/html')) continue;
-						return (await item.getType('text/html')).text();
-					}
-					return null;
-				})
-			)
+			.poll(() => editor.readClipboard('text/html'))
 			.toContain('<tr><td>B</td></tr><tr><td>2</td></tr>');
 	});
 });

@@ -1,9 +1,9 @@
 /**
  * An e2e spec drives the browser through the shared helpers, each of which waits for what a raw
- * call skips: composition through the IME driver (G4.49), navigation through `gotoReady` and
- * `reloadReady`, and a mode switch through a helper that waits for the mode (G4.133). Runs with
- * the other e2e lints, outside `test:editor:invariants`. Probe text is spelled in pieces, since
- * this file is scanned too.
+ * call skips: composition through the IME driver (G4.49), the clipboard through its helper
+ * (G4.212), navigation through `gotoReady` and `reloadReady`, and a mode switch through a helper
+ * that waits for the mode (G4.133). Runs with the other e2e lints, outside
+ * `test:editor:invariants`. Probe text is spelled in pieces, since this file is scanned too.
  */
 import { it, expect } from 'vitest';
 import { collectFiles, readSource } from '../../test/invariants/lint/scan-source';
@@ -12,11 +12,15 @@ import { describeManifests } from '../../test/invariants/lint/file-rule';
 const files = collectFiles('src/lib/e2e', { extensions: ['.ts'] }).map(readSource);
 
 const IME_DRIVER = 'src/lib/e2e/simulation/ime.ts';
+const CLIPBOARD_HELPER = 'src/lib/e2e/clipboard-arm.ts';
 const NAVIGATION_HELPER = 'src/lib/e2e/goto-ready.ts';
 const BRIDGE_HOME = 'src/lib/e2e/editor-page.ts';
 const CONTROL_HOME = 'src/lib/e2e/mode-switch.ts';
 
 const COMPOSITION = 'Composition';
+const clip = 'navigator.' + 'clipboard';
+const press = (chord: string) => `await page.keyboard.press('${chord}');`;
+const pasteChord = (modifiers: string, key = 'v') => press(`${modifiers}+${key}`);
 const nav = (receiver: string, call: string) => `await ${receiver}.${call}`;
 const bridge = '(window as any).__' + 'test';
 const setter = 'setPresentation' + 'Mode';
@@ -47,6 +51,33 @@ describeManifests(
 			reason: `Chromium composes through the CDP branch of ${IME_DRIVER}`,
 			hits: [`await cdp.send('Input.ime${'Set'}${COMPOSITION}', params);`],
 			misses: [`await cdp.send('Input.insertText', params);`]
+		},
+		// Miss-analysis: specs called the page clipboard and pressed the paste chord themselves, and
+		// WebKit, where neither reaches the editor, was the first engine to run them.
+		{
+			id: 'G4.212 e2e clipboard access rides the shared clipboard helper',
+			matches: /\bnavigator\s*\.\s*clipboard\b/,
+			declared: { [CLIPBOARD_HELPER]: 'both branches, and the read a spec can hold' },
+			reason: `seed, read and paste through the clipboard helper (${CLIPBOARD_HELPER}): WebKit refuses a page's own clipboard calls`,
+			hits: [
+				`await page.evaluate(() => ${clip}.writeText('x'));`,
+				`const items = await ${clip}.read();`,
+				`${clip}.readText = () => held;`
+			],
+			misses: ["await editor.seedClipboard('x');", "await editor.readClipboard('text/html');"]
+		},
+		{
+			id: 'G4.212 e2e pastes ride the shared clipboard helper',
+			matches: /['"`](?:ControlOrMeta|Control|Meta)\+(?:Shift\+)?(?:v|V|KeyV)['"`]/,
+			declared: { [CLIPBOARD_HELPER]: 'the Chromium branch, which pastes through the keystroke' },
+			reason: `paste with editor.paste() or the clipboard helper (${CLIPBOARD_HELPER}): WebKit's paste keystroke can't read what a spec seeds`,
+			hits: [
+				pasteChord('ControlOrMeta'),
+				pasteChord('ControlOrMeta', 'KeyV'),
+				pasteChord('Control+Shift', 'V'),
+				`ctx.page.keyboard.press("Meta+${'v'}")`
+			],
+			misses: [press('ControlOrMeta+c'), press('ControlOrMeta+x'), "await page.keyboard.type('v');"]
 		},
 		// Miss-analysis: each spec wrote its own wait and no scan held them to one, so one waited on
 		// markup. A `goto(variable)` on a page spelled otherwise still gets past the matcher.

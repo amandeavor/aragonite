@@ -113,7 +113,7 @@ test.describe('trailing insert row and the block menu', () => {
 	}) => {
 		await editor.loadContent('first\n\n```\ncode\n```\n');
 		// One line with no ending: the row adds the document's own.
-		await page.evaluate(() => navigator.clipboard.writeText('replaced'));
+		await editor.seedClipboard('replaced');
 		// The end of the code line, in the fence's own bytes: `\`\`\`\ncode`.
 		await editor.focusBlockAtPath([1], 8);
 		// Frozen, so the typing burst is still open when the menu row runs.
@@ -150,7 +150,7 @@ test.describe('trailing insert row and the block menu', () => {
 	for (const { name, doc, clipboard, after } of replaceEndings) {
 		test(`Replace with clipboard writes the document's line ending: ${name}`, async ({ page }) => {
 			await editor.loadContent(doc);
-			await page.evaluate((text) => navigator.clipboard.writeText(text), clipboard);
+			await editor.seedClipboard(clipboard);
 			await page.locator('[data-block-kind="fencedCode"]').first().click({ button: 'right' });
 			const menu = page.getByRole('menu', { name: 'Block actions' });
 			await menu.getByRole('menuitem', { name: 'Replace with clipboard' }).click();
