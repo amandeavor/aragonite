@@ -24,6 +24,11 @@ const CALLS: Record<keyof CaretWriter, (writer: CaretWriter, el: HTMLElement) =>
 		range.selectNodeContents(el);
 		writer.selectDomRange(range);
 	},
+	leaveLineEndingPair: (writer, el) => {
+		el.textContent = 'ab\r\ncd';
+		window.getSelection()!.collapse(el.firstChild, 3);
+		writer.leaveLineEndingPair(el);
+	},
 	clear: (writer) => writer.clear()
 };
 
@@ -48,6 +53,7 @@ describe('every caret writer method requests one paint', () => {
 		const text = paragraph('hello').firstChild!;
 		const pastTheEnd = { startContainer: text, startOffset: 99, endContainer: text, endOffset: 99 };
 		expect(writer.selectDomRange(pastTheEnd as unknown as Range)).toBe(false);
+		expect(writer.leaveLineEndingPair(text.parentElement!)).toBe(false);
 		expect(requests).toBe(0);
 	});
 });

@@ -128,6 +128,8 @@ A block's own editable element doesn't call it by hand for typing, though. The i
 - the caret goes back only when `keepsCaret` says so
 - a typed write gets the kind cue and the on-type completion (a lone `$$`), and nothing else does
 
+The input read-back fixes one thing before it gets there. WebKit and Firefox let a caret stop between a CRLF line's `\r` and `\n`, and delete one of the two on its own, so `src/lib/components/blocks/editable/editable-surface.ts` passes what the browser wrote through `src/lib/core/line-ending-pairs.ts` :: `keepLineEndingPairs`, which edits the pair as one character the way Chromium does. A new route that reads native edits back needs the same call (G1.117 warns when a pair gets split anyway).
+
 A few commands (the format toggle, a cut inside one block) still call `updateBlockContent` themselves and keep the line ending through `withOwnEnding` from the same file. A paste inside one block goes through the paste dispatch instead (`docs/design/selection.md` § The paste pipeline).
 
 § 8 says who provides these bundles, and § 9 says what a local index means inside a container.

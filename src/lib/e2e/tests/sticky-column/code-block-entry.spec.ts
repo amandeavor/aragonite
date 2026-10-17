@@ -102,6 +102,16 @@ test.describe('sticky column: code block entry symmetry', () => {
 		}
 	});
 
+	test('ArrowDown at column 0 lands at the body’s start', async () => {
+		await editor.loadContent(SINGLE_BODY_LINE);
+		await editor.page.locator('[contenteditable="true"]').nth(0).click();
+		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press('ArrowDown');
+		await editor.waitForRenderFlush();
+		// The body starts past "```\n".
+		expect((await editor.bridge.getSelectionPaths())?.focus).toEqual({ path: [1], offset: 4 });
+	});
+
 	test('landing body offset (not just X) matches from both directions', async () => {
 		// A 2px X-match could still hide a one-offset discrepancy; compare byte positions instead.
 		await editor.loadContent(SINGLE_BODY_LINE);

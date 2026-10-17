@@ -8,6 +8,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createEditorRects } from '../editor-rects';
 import type { PlaceOptions } from '../windowing/scroll-owner';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
+import { caretRectAt } from '../caret/visual-lines';
 
 installEditorDomStubsForTests();
 
@@ -34,6 +35,7 @@ function makeRects(over: Partial<Parameters<typeof createEditorRects>[0]> = {}) 
 		isCrossBlock: () => false,
 		isHostChrome: () => false,
 		landCaretAt,
+		caretRectAt,
 		...over
 	});
 	return { rects, order, place, landCaretAt };

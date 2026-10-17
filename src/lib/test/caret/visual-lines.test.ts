@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-	getRangeTop,
+	caretRectAt,
 	getCharRangeTop,
 	findFirstTextNode,
 	findLastTextNode,
@@ -93,25 +93,59 @@ function rectListOf(rect: DOMRect | null): DOMRectList {
 	} as unknown as DOMRectList;
 }
 
-describe('getRangeTop', () => {
+describe('caretRectAt', () => {
 	const originalRects = Range.prototype.getClientRects;
 	const originalBox = Range.prototype.getBoundingClientRect;
 	afterEach(() => {
 		Range.prototype.getClientRects = originalRects;
 		Range.prototype.getBoundingClientRect = originalBox;
+		document.body.replaceChildren();
 	});
 
 	it('returns null when there are no positive-height rects', () => {
 		Range.prototype.getClientRects = () => rectListOf(null);
 		Range.prototype.getBoundingClientRect = () => rectAt(0, 0);
-		const range = document.createRange();
-		expect(getRangeTop(range)).toBeNull();
+		const text = document.createTextNode('ab');
+		document.body.append(text);
+		expect(caretRectAt(document.body, text, 1)).toBeNull();
 	});
 
 	it('returns the top of the first positive-height client rect', () => {
 		Range.prototype.getClientRects = () => rectListOf(rectAt(42));
-		const range = document.createRange();
-		expect(getRangeTop(range)).toBe(42);
+		const text = document.createTextNode('ab');
+		document.body.append(text);
+		expect(caretRectAt(document.body, text, 1)?.top).toBe(42);
+	});
+
+	// Miss-analysis: every caret measured here sat mid-line, and Chromium measures a caret right
+	// after a `\n` on the line below, where WebKit and Firefox put it on the line the `\n` ends.
+	describe('a caret right after a `\\n` measures on the line below', () => {
+		/** As WebKit and Firefox measure: a collapsed range reads the line of the character before
+		 *  it, so one right after a `\n` reads the line that `\n` ends. */
+		function stubEngine(lineOf: (node: Node, offset: number) => number): void {
+			Range.prototype.getClientRects = function (this: Range): DOMRectList {
+				const at = this.collapsed ? this.startOffset - 1 : this.startOffset;
+				return rectListOf(rectAt(lineOf(this.startContainer, Math.max(0, at))));
+			};
+		}
+
+		it('mid-node, the next character’s line', () => {
+			const text = document.createTextNode('abc\nxyz');
+			document.body.append(text);
+			stubEngine((_node, at) => (at > 3 ? 40 : 0));
+			expect(caretRectAt(document.body, text, 4)?.top).toBe(40);
+			expect(caretRectAt(document.body, text, 4)?.width).toBe(0);
+			expect(caretRectAt(document.body, text, 2)?.top).toBe(0);
+		});
+
+		it('at a node’s end, the next text’s first character', () => {
+			const fence = document.createElement('span');
+			fence.append(document.createTextNode('```js\n'));
+			const body = document.createTextNode('bbbb');
+			document.body.append(fence, body);
+			stubEngine((node) => (node === body ? 40 : 0));
+			expect(caretRectAt(document.body, fence.firstChild!, 6)?.top).toBe(40);
+		});
 	});
 });
 

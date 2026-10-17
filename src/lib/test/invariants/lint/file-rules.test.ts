@@ -498,6 +498,27 @@ const RULES: FileRule[] = [
 		misses: ['// ambientPrefixForFirst goes to text only\nconst a = 1;', 'const ambientPrefix = 1;']
 	},
 	{
+		id: 'G4.214 a caret’s box is measured in one place',
+		matches:
+			/(?:\b\w*[rR]ange\??|\bgetRangeAt\([^)]*\))\.get(?:ClientRects|BoundingClientRect)\s*\(/,
+		allowed: {
+			'src/lib/caret/visual-lines.ts':
+				'`caretRectAt`, the one measure of a caret, and the character and line boxes it reads',
+			'src/lib/components/overlays/rects.ts': 'the boxes of a span between two offsets',
+			'src/lib/components/blocks/text/widget-interaction.ts':
+				'a shown source’s whole box, for a double-click’s hit test',
+			'src/lib/editor-rects.ts': 'a selection’s box; a collapsed one goes through `caretRectAt`'
+		},
+		reason:
+			'WebKit and Firefox measure a caret right after a `\\n` on the line the `\\n` ends, so a caret measured anywhere else reads the wrong line at every line start: call `caretRectAt`, or `charRect` for one character',
+		hits: [
+			'const rects = range.getClientRects();',
+			'return sel.getRangeAt(0).getBoundingClientRect();',
+			'const box = probeRange?.getBoundingClientRect();'
+		],
+		misses: ['const box = el.getBoundingClientRect();', 'const rects = block.getClientRects();']
+	},
+	{
 		id: 'every dev-only check reads the build flag through env.ts',
 		matches: /from\s*['"]esm-env['"]/,
 		allowed: {

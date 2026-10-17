@@ -12,14 +12,31 @@ import { caretAnchorAfter, isBlockLineText } from './widget-offset';
 // line, so sub/superscript or inline-image jitter doesn't read as a different line.
 const SAME_LINE_TOLERANCE = 0.8;
 
-/** The first rect that can position a caret: the leading client rect when it has real
- *  height, else the bounding rect. `widthTolerant` also accepts a zero-height rect with width. */
-export function firstUsefulRect(range: Range, widthTolerant = true): DOMRect | null {
-	const rects = range.getClientRects();
-	if (rects.length > 0 && rects[0].height > 0) return rects[0] as DOMRect;
-	const br = range.getBoundingClientRect();
-	if (br.height > 0 || (widthTolerant && br.width > 0)) return br;
-	return null;
+/** The box a collapsed caret at `(node, offset)` in `root` sits in. Right after a `\n` that is the
+ *  next line's start, where WebKit and Firefox measure the line the `\n` ends instead. */
+export function caretRectAt(root: ParentNode, node: Node, offset: number): DOMRect | null {
+	if (node instanceof Text && offset > 0 && node.data[offset - 1] === '\n') {
+		const below = offset < node.length ? charRect(node, offset) : nextLineStartAfter(node, root);
+		if (below) return new DOMRect(below.left, below.top, 0, below.height);
+	}
+	const range = document.createRange();
+	try {
+		range.setStart(node, offset);
+	} catch {
+		return null;
+	}
+	range.collapse(true);
+	// A collapsed range has no width, so a box with width and no height is not a caret's.
+	return firstUsefulRect(range, false);
+}
+
+/** The box of the one character at `at` in `text`, null past its end or where it paints nothing. */
+export function charRect(text: Text, at: number): DOMRect | null {
+	if (at < 0 || at >= text.length) return null;
+	const range = document.createRange();
+	range.setStart(text, at);
+	range.setEnd(text, at + 1);
+	return firstUsefulRect(range);
 }
 
 /** Where the caret is for a vertical move: the caret itself, or a selection's focus, the end a
@@ -29,10 +46,6 @@ export function movingEnd(sel: Selection): Range {
 	const range = document.createRange();
 	range.setStart(sel.focusNode, sel.focusOffset);
 	return range;
-}
-
-export function getRangeTop(range: Range): number | null {
-	return firstUsefulRect(range, false)?.top ?? null;
 }
 
 /** The box a caret sits in: what the line comparisons and the sticky column both read of it. */
@@ -45,7 +58,9 @@ export interface CaretRect {
 
 /** The box a caret with no rect of its own borrows: the widget it precedes, else the one it follows.
  *  Null off an element-level position, or when the neighbour measures to nothing. */
-export function neighbourCaretRect(range: Range): CaretRect | null {
+export function neighbourCaretRect(
+	range: Pick<Range, 'startContainer' | 'startOffset'>
+): CaretRect | null {
 	const container = range.startContainer;
 	if (container.nodeType !== Node.ELEMENT_NODE) return null;
 	const children = container.childNodes;
@@ -121,16 +136,6 @@ export interface CaretBounds {
 	end: number;
 }
 
-/** The box of the empty line after `text`'s final line ending, which the caret anchor after it
- *  paints; null where none follows. The line ending itself measures on the line it ends. */
-export function lineAfterEnding(text: Text, root: ParentNode): DOMRect | null {
-	const anchor = text.data.endsWith('\n') ? caretAnchorAfter(text, root) : null;
-	if (!anchor) return null;
-	const range = document.createRange();
-	range.selectNode(anchor);
-	return firstUsefulRect(range);
-}
-
 /** True if the caret, or a selection's moving end, sits on `el`'s first visual line. The fallback
  *  offset answers with no live range, which Chromium drops beside a widget. */
 export function isAtFirstVisualLine(
@@ -160,15 +165,42 @@ export function isAtLastVisualLine(
 		boundaryTop: () => {
 			const lastText = findLastTextNode(el);
 			if (!lastText) return collapsedContentsTop(el, false);
-			const top =
-				lineAfterEnding(lastText, el)?.top ??
-				getCharRangeTop(lastText, lastText.textContent!.length, true);
+			const below = lastText.data.endsWith('\n') ? nextLineStartAfter(lastText, el) : null;
+			const top = below?.top ?? getCharRangeTop(lastText, lastText.length, true);
 			return top ?? collapsedContentsTop(el, false);
 		}
 	});
 }
 
 // ── Internal ────────────────────────────────────────────────────────────────
+
+/** The first rect that can position a caret: the leading client rect when it has real
+ *  height, else the bounding rect. `widthTolerant` also accepts a zero-height rect with width. */
+function firstUsefulRect(range: Range, widthTolerant = true): DOMRect | null {
+	const rects = range.getClientRects();
+	if (rects.length > 0 && rects[0].height > 0) return rects[0] as DOMRect;
+	const br = range.getBoundingClientRect();
+	if (br.height > 0 || (widthTolerant && br.width > 0)) return br;
+	return null;
+}
+
+/** The start of the line after `text`'s final `\n`: the caret anchor that opens an empty line
+ *  there, else the first character of the next text `root` lays out as a line. */
+function nextLineStartAfter(text: Text, root: ParentNode): DOMRect | null {
+	const anchor = caretAnchorAfter(text, root);
+	if (anchor) {
+		const range = document.createRange();
+		range.selectNode(anchor);
+		return firstUsefulRect(range);
+	}
+	const walker = document.createTreeWalker(root as Node, NodeFilter.SHOW_TEXT);
+	walker.currentNode = text;
+	const container = containerOf(root as Node);
+	for (let next = walker.nextNode(); next; next = walker.nextNode()) {
+		if (isMeasurableText(next as Text, container)) return charRect(next as Text, 0);
+	}
+	return null;
+}
 
 /** The shared skeleton of the two edge predicates: `fallback` answers where geometry cannot, and
  *  `boundaryTop` measures the edge line each side's own way. */
@@ -183,7 +215,8 @@ function isAtEdgeVisualLine(
 
 	const cursorRange = movingEnd(sel);
 	const tolerance = sameLineTolerance(el);
-	const cursorTop = getRangeTop(cursorRange);
+	const cursorTop =
+		caretRectAt(el, cursorRange.startContainer, cursorRange.startOffset)?.top ?? null;
 
 	if (cursorTop === null) {
 		// A caret beside an atomic widget sits at an element-level position and measures to no rect
@@ -231,7 +264,7 @@ function caretRectOf(rect: DOMRect, fromEnd: boolean): CaretRect | null {
 function collapsedContentsTop(el: HTMLElement, toStart: boolean): number | null {
 	const range = contentsRange(el);
 	range.collapse(toStart);
-	return getRangeTop(range);
+	return firstUsefulRect(range, false)?.top ?? null;
 }
 
 /** Deciding whether text is a hidden marker needs the walk container; a bare text-node root has none. */

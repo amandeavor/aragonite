@@ -12,6 +12,7 @@ import {
 	type PresentationMode
 } from '../presentation-mode';
 import { widgetSourceRange } from '../core/inline/inline-widgets';
+import { splitsLineEndingPair } from '../core/line-ending-pairs';
 import {
 	familyHidesText,
 	familyPaintsAlone,
@@ -153,6 +154,9 @@ export interface CaretWriter {
 	selectSurfaceContent(el: HTMLElement): boolean;
 	/** The nodes `range` already spans, as a node-level writer holds them (a widget whole). */
 	selectDomRange(range: Range): boolean;
+	/** Moves a caret WebKit or Firefox parked between a CRLF pair's `\r` and `\n` in `el` to before
+	 *  the pair, where the editor reads it, so a native delete starts there too. */
+	leaveLineEndingPair(el: HTMLElement): boolean;
 	/** Drops the native selection: a gap caret, a widget or a whole-block range holds none. */
 	clear(): void;
 }
@@ -206,6 +210,14 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 				{ node: range.startContainer, offset: range.startOffset },
 				{ node: range.endContainer, offset: range.endOffset }
 			);
+		},
+		leaveLineEndingPair(el) {
+			const sel = window.getSelection();
+			const node = sel?.isCollapsed ? sel.focusNode : null;
+			if (!(node instanceof Text) || !el.contains(node)) return false;
+			if (!splitsLineEndingPair(node.data, sel!.focusOffset)) return false;
+			const before = { node, offset: sel!.focusOffset - 1 };
+			return writeSelection(before, before);
 		},
 		clear() {
 			const sel = window.getSelection();
@@ -290,8 +302,8 @@ export const CONTENT_EMPTY_ATTR = 'data-content-empty';
  *  once so the two sides cannot drift. */
 export const CONSTRUCT_REVEAL_CLASS = 'md-construct-reveal';
 
-/** The DOM-walk offset of a live `(node, offset)` position. One inside an atomic widget snaps to its
- *  boundary; one outside the container reads as the walk's end, so check containment first. */
+/** The DOM-walk offset of a live `(node, offset)` position: one inside a widget or a CRLF pair reads
+ *  at its edge, and one outside the container as the walk's end, so check containment first. */
 export function domTextOffsetAtNode(
 	container: HTMLElement,
 	node: Node,
@@ -301,29 +313,56 @@ export function domTextOffsetAtNode(
 	// position reads as the end of the walk instead.
 	const boundary = container.contains(node) ? positionBoundary(node, offset) : null;
 	const mode = markerHidingMode(container);
+	const segments = walkSegments(container, mode);
 	let total = 0;
-	for (const seg of walkSegments(container, mode)) {
+	let byteBefore = '';
+	for (const seg of segments) {
 		const segNode = seg.kind === 'text' ? seg.node : seg.el;
 		if (seg.kind === 'widget' && seg.el.contains(node)) {
 			return asDomTextOffset(offset === 0 ? seg.start : seg.start + seg.len);
 		}
 		if (segNode === node) {
 			const at = seg.start + offset;
+			if (seg.kind !== 'text') return asDomTextOffset(at);
 			// A run of hidden marker text is opaque like a widget: every position inside it paints
 			// at one pixel, so the walk reports whichever boundary the position leans toward.
-			if (seg.kind === 'text' && seg.hiddenRoot !== null) {
+			if (seg.hiddenRoot !== null) {
 				return snapOutOfRun(container, at, offset === 0 ? 'before' : 'after', mode);
 			}
-			return asDomTextOffset(at);
+			const data = seg.node.textContent ?? '';
+			const before = offset > 0 ? data[offset - 1] : byteBefore;
+			const after = offset < data.length ? data[offset] : firstTextByte(segments);
+			return outsideLineEndingPair(at, before, after);
 		}
 		// An element-level position resolves to a segment's start, which can sit inside a merged
 		// hidden run just like a text position; it leans backward, so it snaps that way.
 		if (boundary && startsAtOrAfter(segNode, boundary)) {
-			return snapOutOfRun(container, seg.start, 'before', mode);
+			const snapped = snapOutOfRun(container, seg.start, 'before', mode);
+			if (snapped !== seg.start || seg.kind !== 'text') return snapped;
+			const after = seg.len > 0 ? seg.node.textContent![0] : firstTextByte(segments);
+			return outsideLineEndingPair(seg.start, byteBefore, after);
 		}
+		if (seg.kind === 'widget') byteBefore = '';
+		else if (seg.len > 0) byteBefore = seg.node.textContent![seg.len - 1];
 		total = seg.start + seg.len;
 	}
 	return asDomTextOffset(total);
+}
+
+/** WebKit and Firefox let a caret stop between a `\r` and its `\n`, where Chromium never does: such
+ *  a position reads as the line's end, before the pair, so no edit splits it. */
+function outsideLineEndingPair(at: number, before: string, after: string): DomTextOffset {
+	return asDomTextOffset(before === '\r' && after === '\n' ? at - 1 : at);
+}
+
+/** The first byte of the walk's next non-empty text, or '' at a widget or the walk's end. */
+function firstTextByte(rest: Iterator<WalkSegment>): string {
+	for (let next = rest.next(); !next.done; next = rest.next()) {
+		const seg = next.value;
+		if (seg.kind === 'widget') return '';
+		if (seg.len > 0) return seg.node.textContent![0];
+	}
+	return '';
 }
 
 export interface DomPosition {
@@ -427,14 +466,28 @@ function landingIgnoringPendingBreak(
 		return { position: positionAfterPrefix(container, prefix), inTextAtTarget: false };
 	}
 	let last: DomPosition | null = null;
+	// A text node ending in a line break at the target: the next text's start, if it starts there.
+	let endsLine: Text | null = null;
 	for (const seg of landingSegments(container, markerHidingMode(container))) {
 		if (seg.kind === 'text') {
-			if (seg.start + seg.len >= target) {
+			if (endsLine && seg.len === 0) continue;
+			if (endsLine && seg.start === target) {
+				return { position: { node: seg.node, offset: 0 }, inTextAtTarget: true };
+			}
+			if (endsLine) break;
+			const end = seg.start + seg.len;
+			// WebKit and Firefox draw a caret after a node's final `\n` on the line it ends.
+			if (end === target && seg.len > 0 && (seg.node as Text).data.endsWith('\n')) {
+				endsLine = seg.node as Text;
+				continue;
+			}
+			if (end >= target) {
 				return { position: { node: seg.node, offset: target - seg.start }, inTextAtTarget: true };
 			}
 			last = { node: seg.node, offset: seg.len };
 			continue;
 		}
+		if (endsLine) break;
 		// The caret cannot sit inside an opaque span: a target at its edge lands beside it, one
 		// inside lands past it (a widget that can show its source opens before this write).
 		if (seg.start === target) {
@@ -449,6 +502,9 @@ function landingIgnoringPendingBreak(
 			return { position: after, inTextAtTarget: false };
 		}
 		last = after;
+	}
+	if (endsLine) {
+		return { position: { node: endsLine, offset: endsLine.length }, inTextAtTarget: true };
 	}
 	if (prefix && last && prefix.contains(last.node)) last = positionAfterPrefix(container, prefix);
 	return last && { position: last, inTextAtTarget: false };

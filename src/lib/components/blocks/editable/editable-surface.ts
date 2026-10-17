@@ -57,6 +57,7 @@ import {
 	trimTrailingLineEnding,
 	type LineEnding
 } from '../../../core/lines';
+import { keepLineEndingPairs } from '../../../core/line-ending-pairs';
 import { getContentRange, sameLineSuffix } from '../../../core/inline';
 import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
@@ -558,6 +559,9 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// A keydown that writes for itself fires no beforeinput, so the caret is read here too.
 	const onKeyDown = withKeydownVerdict(async (e) => {
 		endsDroppedComposition(e);
+		// A Backspace from inside a CRLF pair reads back as a Delete's, so the caret moves before it.
+		const el = deps.getEl();
+		if (e.key === 'Backspace' && !e.isComposing && el) deps.caretWriter.leaveLineEndingPair(el);
 		if (!e.isComposing) recordPreEditOffset();
 		await deps.handleKeydown(e);
 	});
@@ -604,8 +608,11 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		deps.caretMemory.noteTyping();
 		const el = deps.getEl();
 		if (deps.getComposing() || !el) return unwritten();
-		const text = deps.readText();
-		const savedOffset = deps.backend.getRaw() ?? 0;
+		const { text, caret: savedOffset } = keepLineEndingPairs(
+			trimTrailingLineEnding(deps.getNode().raw),
+			deps.readText(),
+			deps.backend.getRaw() ?? 0
+		);
 		// A block that draws its delimiters keeps the reading verbatim, and so does a run composed
 		// where a record waits, which is that record's insertion.
 		const rewritten =
