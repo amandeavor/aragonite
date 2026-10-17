@@ -223,7 +223,7 @@ The machinery, for when you're inside it:
 - Don't mock or spy your way around it. A `vi.mock` of `#lib/dev-warn.js` deletes the emitter,
   and a `console.warn` spy sees nothing (the sink took the line) while a spy that swallows the
   call hides the Svelte warnings too. Either one blinds the gate for that whole file, so a source
-  scan (G4.41 in `invariants.md`) fails on both.
+  scan (G4.41 in `invariants/scans.md`) fails on both.
 
 ## E2E tests (Playwright)
 
@@ -465,7 +465,7 @@ The clipboard and IME helpers branch on the engine behind the same signatures, s
 needs to know which one it got. Every clipboard touch goes through them: `editor.seedClipboard`,
 `editor.paste()` and `editor.readClipboard` (or `createClipboardArm(page)` from
 `e2e/clipboard-arm.ts` when there's no `EditorPage`). A spec that presses the paste chord or calls
-`navigator.clipboard` itself fails a source scan (G4.212 in `invariants.md`).
+`navigator.clipboard` itself fails a source scan (G4.212 in `invariants/scans.md`).
 
 On WebKit the real clipboard is out of reach of both, so the `page` fixture puts an in-page store
 behind `navigator.clipboard` and the copy and cut events, and a paste is a dispatched clipboard
