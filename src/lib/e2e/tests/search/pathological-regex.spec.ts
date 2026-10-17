@@ -32,7 +32,8 @@ test.describe('search: a pathological regex query', () => {
 	// One query pays the scan deadline once: the editor stays live while it runs, the overrun reads
 	// as a state, and a cheap query after it searches again.
 	test('the scan stays off the main thread, ends in a reported state, and recovers', async ({
-		page
+		page,
+		browserName
 	}) => {
 		const startedAt = Date.now();
 
@@ -50,10 +51,10 @@ test.describe('search: a pathological regex query', () => {
 
 		await test.step('the scan ends in a reported state and paints nothing', async () => {
 			// V8 backtracks until the deadline ends the scan; WebKit's engine gives up and finds no match.
-			await expect(count(page)).toHaveText(/^\s*(?:Regex too slow|No results)\s*$/, {
-				timeout: 8000
-			});
-			if ((await count(page).innerText()).includes('too slow')) {
+			if (browserName === 'webkit') {
+				await expect(count(page)).toHaveText(/^\s*No results\s*$/, { timeout: 8000 });
+			} else {
+				await expect(count(page)).toHaveText('Regex too slow', { timeout: 8000 });
 				await expect(count(page)).toHaveClass(/error/);
 			}
 			await expect(overlays(page)).toHaveCount(0);
