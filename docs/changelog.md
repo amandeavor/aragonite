@@ -8,7 +8,8 @@ A word on the numbers. Everything before 0.10.1 was a working number: the label 
 
 ## [0.11](changelog/0.11.md)
 
-- [0.11.0](changelog/0.11.md#0110-marks-you-can-hover-and-reach-from-the-keyboard): a caret that looks like the browser's again, and mark decorations that report a hover and answer a keyboard command
+- [0.11.1](changelog/0.11.md#0111-to-do-rows-that-join-their-list): a new to-do row joins the list beside it
+- [0.11.0](changelog/0.11.md#0110-react-and-vue-no-svelte-required-and-a-caret-like-the-browsers): React and Vue packages, no Svelte required in your app, and a caret that looks like the browser's again
 
 ## [0.10](changelog/0.10.md)
 
