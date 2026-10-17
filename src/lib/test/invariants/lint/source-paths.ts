@@ -294,7 +294,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	calloutReferenceKind: 'export const CALLOUT',
 	memoReferenceBlock: 'class="memo-block"',
 	consumerPluginProbe: 'export const _probe',
-	consumerQuickstartRoute: "'That is not dead which can eternal lie,\\n",
+	consumerQuickstartRoute: "'> That is not dead which can eternal lie,\\n",
 
 	// ── Build config ────────────────────────────────────────────────────────
 	viteConfig: 'optimizeDeps:',

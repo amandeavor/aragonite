@@ -52,7 +52,7 @@ When you want the document on disk, call `getSource()` and write it.
 
 	let editor;
 	const source =
-		'That is not dead which can eternal lie,\nAnd with strange aeons even death may die.\n';
+		'> That is not dead which can eternal lie,\n> And with strange aeons even death may die.\n';
 </script>
 
 <Editor bind:this={editor} {source} theme="light" />
@@ -124,7 +124,7 @@ import '@voithos-labs/aragonite/style.css';
 import '@voithos-labs/aragonite/styles/editor-theme.css';
 
 function Note() {
-	const [text, setText] = useState('That is not dead which can eternal lie,\nAnd with strange aeons even death may die.\n');
+	const [text, setText] = useState('> That is not dead which can eternal lie,\n> And with strange aeons even death may die.\n');
 	const editor = useRef<EditorHandle>(null);
 
 	return (
@@ -164,7 +164,7 @@ import { Aragonite, type AragoniteInstance } from '@voithos-labs/aragonite-vue';
 import '@voithos-labs/aragonite/style.css';
 import '@voithos-labs/aragonite/styles/editor-theme.css';
 
-const text = ref('That is not dead which can eternal lie,\nAnd with strange aeons even death may die.\n');
+const text = ref('> That is not dead which can eternal lie,\n> And with strange aeons even death may die.\n');
 const editor = ref<AragoniteInstance | null>(null);
 </script>
 
