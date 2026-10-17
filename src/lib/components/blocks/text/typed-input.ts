@@ -31,7 +31,7 @@ export interface TypedInputDeps {
 	reading: Reading;
 	ownPairs: BlockAutoPairs;
 	writeText: (write: TextWrite) => unknown;
-	/** The bytes the caret counts into, the DOM text while a construct's source is showing. */
+	/** The bytes the caret counts into. */
 	text: () => string;
 	/** The part of `text` that is the block's content, past any marker of its own. */
 	content: () => ContentRange;

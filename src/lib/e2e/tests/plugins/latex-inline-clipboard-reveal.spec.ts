@@ -2,11 +2,9 @@ import { test, expect } from '../../fixtures';
 import { PluginsPage } from './helpers';
 
 /**
- * A clipboard edit while an inline formula's source is open must commit that source into the CST
- * first. Without it, a paste splices into the stale raw at an offset derived from the DOM, the
- * re-render wipes the edit on screen, and a flag left set drops every later keystroke. This drives
- * the real gesture plus a fired paste to prove the committed source carries the edit and that
- * typing survives the paste.
+ * A clipboard edit while an inline formula's source is open: a paste closes the source first and
+ * keeps both the typed edit and the typing after it; a copy closes nothing.
+ * Requirements: e2e/requirements/plugins/latex-inline-clipboard-reveal.md.
  */
 
 class MathClipboardPage extends PluginsPage {
@@ -49,20 +47,17 @@ test.describe('inline math: clipboard during an active source reveal', () => {
 		await editor.gotoMath();
 	});
 
-	test('paste folds the reveal first, keeping the revealed edit and later typing alive', async ({
+	test('paste closes the source first, keeping the typed edit and later typing', async ({
 		page
 	}) => {
 		await editor.revealAtTrailingEdge();
 
-		// Two characters edit the open source; onInput is suppressed, so nothing is in the CST.
 		await page.keyboard.type('QQ');
 
 		await editor.pastePlainText('P');
 
-		// Closing the source committed `QQ` to the CST, so the paste splices into current bytes.
 		await editor.bridge.waitForSourceContains('QQ');
 
-		// Typing works again: closing the source cleared the flag.
 		await page.keyboard.type('Z');
 		await editor.bridge.waitForSourceContains('Z');
 

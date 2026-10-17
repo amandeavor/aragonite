@@ -18,8 +18,8 @@ the cell's typing path, which escapes it, so it can never split the row on repar
 
 ## User interactions
 
-- typing a `|` into a revealed formula escapes it to `\|`, so the row keeps its column
-  count; `getSource()` round-trips byte-for-byte
+- typing a `|` then a letter into a revealed formula escapes the pipe to `\|` and puts the letter
+  after it, so the row keeps its column count; `getSource()` round-trips byte-for-byte
 - a burst typed into a revealed source is one undo entry, so a single Ctrl+Z reverts the
   whole edit
 - Escape closes the source and keeps the edit
