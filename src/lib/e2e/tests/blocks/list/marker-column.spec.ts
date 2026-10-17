@@ -86,6 +86,32 @@ test.describe('wrapped text lines up under the first line', () => {
 	}
 });
 
+test.describe('the marker fits inside its column', () => {
+	for (const mode of ['source', 'live'] as const) {
+		for (const marker of MARKERS) {
+			test(`\`${marker.trim()}\` item, ${mode}`, async ({ page }) => {
+				await openIn(page, mode, `${marker}alpha\n`);
+				const { lines } = await blockGeometry(page, [0, 0, 0]);
+				// The right edge of the marker text the mode paints; a hidden `- ` paints nothing.
+				const glyphsRight = await page.evaluate(() => {
+					const marker = document.querySelector('.editor .md-marker[contenteditable="false"]')!;
+					const walker = document.createTreeWalker(marker, NodeFilter.SHOW_TEXT);
+					let right = -Infinity;
+					for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+						const style = getComputedStyle(text.parentElement!);
+						if (style.visibility !== 'visible' || style.color === 'rgba(0, 0, 0, 0)') continue;
+						const range = document.createRange();
+						range.selectNodeContents(text);
+						for (const rect of range.getClientRects()) right = Math.max(right, rect.right);
+					}
+					return right;
+				});
+				expect(glyphsRight).toBeLessThanOrEqual(lines[0].left + HALF_PIXEL);
+			});
+		}
+	}
+});
+
 test.describe('a heading item starts its text in the same column as a paragraph item', () => {
 	for (const mode of ['source', 'live', 'reading'] as const) {
 		for (const [shape, first, second] of [

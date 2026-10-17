@@ -10,6 +10,7 @@ A list item draws its marker (`-`, `1.`, a checkbox) in a column of its own, and
 
 ## Edge cases
 
+- A bullet, ordered (`1.` to `100.`) or to-do item: the marker text the mode paints ends before the item's text starts, in source and live modes, so a wider marker widens its column instead of running under the text
 - An item whose first line is a picture (`1. ![pic](x)`): the marker's top sits at the picture's top, not at its bottom, in source, live and reading modes
 - A picture with a caption after it (`1. ![pic](x) caption`): the marker sits at the picture's top, not on the caption line below it
 - Text first, a picture later in the same paragraph (`1. lead ![pic](x)`): the marker sits on the text line, not at the picture's bottom
