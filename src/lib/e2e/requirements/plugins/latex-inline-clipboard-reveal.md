@@ -2,8 +2,8 @@
 
 A cut or a paste fired while an inline-math widget is showing its editable `$…$` source closes
 that source first, then runs against the rendered block. Keys typed into the source are written as
-they land, so the tree already agrees with the screen; what closing guards is the caret, which a
-paste would otherwise read off a source the re-render is about to replace.
+they land, so the bytes a paste splices into are already current. The paste reads where it goes
+before the close, and its caret lands after what it pasted.
 
 Copy is the other half of the same rule: it must never change anything, so it closes nothing and
 copies the bytes the user selected, the typed edit included.
