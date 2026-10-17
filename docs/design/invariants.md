@@ -1565,8 +1565,9 @@ host, so outside the perf projects every wall-clock budget goes through the grow
 N-vs-4N ratio (`measureScanGrowth`) cancels the machine. The allowlist carries a reason per file.
 `lint/suite-file-rules.test.ts`.
 
-**G4.49 · The shared IME driver.** A spec that builds a `CompositionEvent` or an
-`insertCompositionText` input event by hand tests a browser no user has, so it fails the scan. The
+**G4.49 · The shared IME driver.** A spec that builds a `CompositionEvent`, an
+`insertCompositionText` input event or a key event saying `isComposing: true` by hand tests a
+browser no user has, so it fails the scan. The
 driver file is the one exemption (WebKit has no CDP session), pinned exactly, so a widened exemption
 and a deleted WebKit branch each fail. `e2e/lint/e2e-drivers.test.ts`.
 
