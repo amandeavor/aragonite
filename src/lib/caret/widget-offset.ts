@@ -12,6 +12,7 @@ import {
 	type PresentationMode
 } from '../presentation-mode';
 import { widgetSourceRange } from '../core/inline/inline-widgets';
+import { splitsLineEndingPair } from '../core/line-ending-pairs';
 import {
 	familyHidesText,
 	familyPaintsAlone,
@@ -153,6 +154,9 @@ export interface CaretWriter {
 	selectSurfaceContent(el: HTMLElement): boolean;
 	/** The nodes `range` already spans, as a node-level writer holds them (a widget whole). */
 	selectDomRange(range: Range): boolean;
+	/** Moves a caret WebKit or Firefox parked between a CRLF pair's `\r` and `\n` in `el` to before
+	 *  the pair, where the editor reads it, so a native delete starts there too. */
+	leaveLineEndingPair(el: HTMLElement): boolean;
 	/** Drops the native selection: a gap caret, a widget or a whole-block range holds none. */
 	clear(): void;
 }
@@ -206,6 +210,14 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 				{ node: range.startContainer, offset: range.startOffset },
 				{ node: range.endContainer, offset: range.endOffset }
 			);
+		},
+		leaveLineEndingPair(el) {
+			const sel = window.getSelection();
+			const node = sel?.isCollapsed ? sel.focusNode : null;
+			if (!(node instanceof Text) || !el.contains(node)) return false;
+			if (!splitsLineEndingPair(node.data, sel!.focusOffset)) return false;
+			const before = { node, offset: sel!.focusOffset - 1 };
+			return writeSelection(before, before);
 		},
 		clear() {
 			const sel = window.getSelection();

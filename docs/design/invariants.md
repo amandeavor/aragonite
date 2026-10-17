@@ -857,7 +857,9 @@ show (an emoji, an image), whose caret goes to the far edge. Predicate
 a line's `\r` and its `\n`, and delete one of the two on its own. The DOM-to-raw read rounds a
 position inside a pair to before it (`caret/widget-offset.ts :: domTextOffsetAtNode`), and the
 input read-back edits the pair as one character
-(`core/line-ending-pairs.ts :: keepLineEndingPairs`). The check backs both up, and catches any
+(`core/line-ending-pairs.ts :: keepLineEndingPairs`). A Backspace from inside a pair reads back as
+the same bytes as a Delete before it, so the surface's keydown moves that caret before the pair
+first (`caret/widget-offset.ts :: leaveLineEndingPair`). The check backs all three up, and catches any
 other write too (a tree op, a plugin's rule): it compares the line-ending counts before and after
 each commit and each keystroke written in place, and warns when a pair went missing while a lone
 `\r` or `\n` turned up. Leaving the `\r` out of the DOM would make a split impossible to write, but

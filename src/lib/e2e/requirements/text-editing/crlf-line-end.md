@@ -18,9 +18,16 @@ and the source is compared with its line endings spelled out.
 - `abc\r\nAfter\r\n`, caret at the start, Shift+End, type `Z`: `Z\r\nAfter\r\n`, the pair kept
 - the same text, End, Delete: `abcAfter\r\n`, the pair deleted whole
 - the same text, ArrowDown, Home, Backspace: `abcAfter\r\n`, the pair deleted whole
+- the same text, End, Backspace: `ab\r\nAfter\r\n`, the letter before the pair deleted, the pair
+  kept
+- a code block with the body `abc\r\nxyz`, caret in the first body line, End, Backspace: the body
+  reads `ab\r\nxyz`
 
 ## Miss-analysis
 
 - GH #744: every typing and deletion spec ran in Chromium, which never stops a caret inside a CRLF
   pair or deletes half of one, and no other engine gated, so the engine census was the first run
   to type at a CRLF line end in WebKit or Firefox.
+- End, Backspace joined the two lines in WebKit and Firefox: the rows deleted at a line end only
+  with Delete, whose read-back is the same bytes as a Backspace from inside the pair, so no row
+  asked which of the two the user pressed.

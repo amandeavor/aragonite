@@ -72,6 +72,24 @@ test.describe('text editing, a CRLF line end', () => {
 				await expectSource(editor, 'abcAfter\r\n');
 			});
 
+			test('Backspace at the line end takes the letter before the pair', async ({ page }) => {
+				await editor.loadContent(PARAGRAPH);
+				await editor.focusBlockStart(0);
+				await page.keyboard.press('End');
+				await page.keyboard.press('Backspace');
+				await expectSource(editor, 'ab\r\nAfter\r\n');
+			});
+
+			test('Backspace at a code body line end takes the letter before the pair', async ({
+				page
+			}) => {
+				await editor.loadContent(CODE);
+				await editor.focusBlockAtPath([0], 5);
+				await page.keyboard.press('End');
+				await page.keyboard.press('Backspace');
+				await expectSource(editor, '```\r\nab\r\nxyz\r\n```\r\n');
+			});
+
 			test('Backspace at the next line start takes the whole pair', async ({ page }) => {
 				await editor.loadContent(PARAGRAPH);
 				await editor.focusBlockStart(0);
