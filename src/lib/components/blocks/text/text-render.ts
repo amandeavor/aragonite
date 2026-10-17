@@ -31,8 +31,7 @@ import {
 	BLOCK_SUFFIX_ATTR,
 	CONTENT_EMPTY_ATTR,
 	createCaretAnchor,
-	holdsOnlyMarkerChrome,
-	type CaretWriter
+	holdsOnlyMarkerChrome
 } from '../../../caret/widget-offset';
 import { captureFocusedCaret } from '../../../caret/focused-caret';
 import type { IndexedDecoration } from '../../../decorations/buckets';
@@ -91,8 +90,9 @@ export interface TextRenderDeps {
 	/** A widget that throws while mounting reports to the editor's `error` event, and still falls
 	 *  back to its raw source. */
 	reportRenderError: (error: unknown) => void;
-	/** The editor's caret writer, which puts a carried caret back after a rebuild. */
-	caretWriter: CaretWriter;
+	/** Puts a caret carried across a rebuild back where an edit's caret would land, so one the
+	 *  rebuild closed a widget around opens that widget's source. */
+	restoreCaret: (raw: RawOffset) => void;
 }
 
 export interface TextRender {
@@ -242,8 +242,8 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		return raw;
 	}
 
-	function restoreCaret(el: HTMLElement, raw: RawOffset): void {
-		deps.caretWriter.placeCaretAtRaw(el, raw, { clamp: 'exact' });
+	function restoreCaret(raw: RawOffset): void {
+		deps.restoreCaret(raw);
 		traceCursorRestore(raw);
 	}
 
@@ -332,7 +332,7 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		ensureBr(el);
 		// This attribute decides which spans the caret can land in, so it is set first.
 		el.toggleAttribute(CONTENT_EMPTY_ATTR, holdsOnlyMarkerChrome(el));
-		if (carriedCaret !== null) restoreCaret(el, carriedCaret);
+		if (carriedCaret !== null) restoreCaret(carriedCaret);
 	}
 
 	return {

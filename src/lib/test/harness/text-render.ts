@@ -52,7 +52,7 @@ export function makeRenderHarness(
 	let policy: ImageLoadPolicy = overrides.imageLoadPolicy ?? 'auto';
 	let version = 0;
 	const deps: TextRenderDeps = {
-		caretWriter: testCaretWriter,
+		restoreCaret: (raw) => void testCaretWriter.placeCaretAtRaw(el, raw, { clamp: 'exact' }),
 		get el() {
 			return el;
 		},

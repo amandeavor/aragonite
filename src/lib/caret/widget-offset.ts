@@ -435,8 +435,8 @@ function landingIgnoringPendingBreak(
 			last = { node: seg.node, offset: seg.len };
 			continue;
 		}
-		// The caret cannot sit inside an opaque span, so a target at either boundary resolves to
-		// the position beside it; the walk offset is unchanged, only its DOM spelling differs.
+		// The caret cannot sit inside an opaque span: a target at its edge lands beside it, one
+		// inside lands past it (a widget that can show its source opens before this write).
 		if (seg.start === target) {
 			const before = positionBeside(seg.first, 'before');
 			if (before) return { position: before, inTextAtTarget: false };

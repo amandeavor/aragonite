@@ -60,7 +60,6 @@
 		rawSelectionFocus,
 		caretOnPendingBreakLine
 	} from '../../../caret/widget-offset';
-	import { asRawOffset } from '../../../caret/coordinate-spaces';
 	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { type CommandId } from '../../../schema/commands';
 	import type { CommandRun } from '../../../schema/block-commands';
@@ -215,6 +214,7 @@
 		getEl: () => el ?? null,
 		isInputSuppressed: () => revealing,
 		backend: cursor,
+		landCaret: (offset, clamp) => widgetInteraction.restoreCaret(offset, clamp),
 		getNode: () => node,
 		getMyPath: () => myPath,
 		getIndex: () => index,
@@ -446,7 +446,7 @@
 		brokenUrlCache,
 		reportRenderError: (error) =>
 			editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } }),
-		caretWriter
+		restoreCaret: (raw) => widgetInteraction.restoreCaret(raw, 'exact')
 	});
 
 	$effect(() => () => textRender.dispose());
@@ -678,10 +678,9 @@
 		if (pendingCursorOffset !== null) {
 			// Restored only while this block has focus: a commit on blur also sets a pending offset,
 			// and restoring it would pull the selection back. Cleared either way.
-			const applied = consumePendingRestore(el ?? null, pendingCursorOffset, (offset) => {
-				if (!widgetInteraction.revealInterior(offset))
-					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
-			});
+			const applied = consumePendingRestore(el ?? null, pendingCursorOffset, (offset) =>
+				widgetInteraction.restoreCaret(offset, 'exact')
+			);
 			tracePendingCursorConsume(pendingCursorOffset, applied);
 			pendingCursorOffset = null;
 		}

@@ -266,6 +266,7 @@ These checks run in three kinds of place:
 | G1.106 | A range delete takes whole rows from a table it keeps an edge of                           | A·N     |
 | G1.110 | A metadata write to a leaf is refused, since a leaf's metadata comes from its bytes        | A·N     |
 | G1.112 | A content write inside a commit leaves its fix-up to the commit                            | A·N     |
+| G1.115 | A caret restored inside a widget that can show its source opens the source at that byte    | A·N     |
 
 ### The entries
 
@@ -824,6 +825,18 @@ writes, at any depth and before its own chain rebuilds, so its commit says `fixe
 the check skips it (G4.208 pins that list). `test/invariants/settle-once.test.ts`, and
 `test/perf/settle-passes.test.ts` counts the passes each gesture runs.
 
+**G1.115 · A caret inside a source-showing widget stays put** (`widget-caret-landing`). An edit or
+an arrival that puts the caret strictly inside a widget whose kind sets `revealSource` (a `#` typed
+in front of `few` closes a tag around it) opens that widget's source with the caret at its byte.
+The offset walk can't put a caret inside a widget it can't enter, so without the reveal the caret
+would land past it and the next key would type after the tag. Both prose blocks put every such
+caret down through `widget-interaction.ts :: restoreCaret`: the restore after an edit, the caret a
+rebuild carries, and an arrival through `parkCaret`. After a caret it didn't reveal for, the check
+reads the caret back, and a caret that moved off its byte must sit at a widget with no source to
+show (an emoji, an image), whose caret goes to the far edge. Predicate
+`invariants/widget-caret-landing.ts :: checkWidgetCaretLanding` ·
+`test/invariants/widget-caret-landing.test.ts`; G4.211 holds the e2e rows to every kind.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -1072,9 +1085,9 @@ check can't see: a pattern anywhere in the tree, or a published table drifting f
 backs it.
 
 Scans over the library live in `test/invariants/lint/` and ride `npm run test:editor:invariants`.
-Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133) and **don't** ride
-that script; run them with `npx vitest run src/lib/e2e/lint/` (same in bash and PowerShell), and
-`npm test` runs both.
+Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133, G4.211) and
+**don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in bash and
+PowerShell), and `npm test` runs both.
 
 This is the catalogued set, not the whole of `test/invariants/lint/`: a scan holding one module's
 local rule gets a file without a G-number, so read the directory too before assuming a rule is
@@ -1238,6 +1251,7 @@ unguarded.
 | G4.201 | One painter puts the selection tint on an inline widget                                      | L       |
 | G4.207 | Shipped CSS keeps `color-mix` and container queries behind `@supports`                       | L       |
 | G4.208 | The fix-up after an edit is run by the commit or by the one write no commit follows          | L       |
+| G4.211 | Every widget kind that shows its source has a row in the typed-opener e2e spec               | L       |
 
 ### The entries
 
@@ -2351,6 +2365,14 @@ step of its own (`writeNodeContent`, `deleteNode`, the join and the move) to the
 report that kind through `describeEdit`, since the commit skips a step nobody reported; and
 `fixesUpOwnWrites` to the format toggle, the one commit G1.112 skips. A new caller of any of them
 is a fix-up doubled or dropped in the making. `lint/separator-write-doors.test.ts`.
+
+**G4.211 · Every source-showing kind gets the caret rows.**
+`e2e/tests/plugins/widget-reveal-caret.spec.ts` types each kind's opening byte in front of a body
+that completes it, in source and live mode, and expects the caret one past the byte with the source
+shown (G1.115 is the runtime half). The scan
+lists every file that registers `revealSource: true` and fails when one has no row there, or, for a
+kind with a content span (inline math), when the spec it names is gone.
+`e2e/lint/reveal-kinds-covered.test.ts`.
 
 ## Accessibility
 

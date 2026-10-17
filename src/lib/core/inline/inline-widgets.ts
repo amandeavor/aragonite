@@ -88,9 +88,11 @@ export const ON_EDGE_POLICIES = ['select', 'step-over'] as const;
  * stepping over it like a character.
  */
 export interface InlineWidgetEditingPolicy {
+	/** Show the widget's source for editing when the caret enters it, or when an edit leaves the
+	 *  caret inside it (a `#` typed before `tag`). Without it, such a caret lands past the widget. */
 	revealSource?: boolean;
-	/** The editable content's offsets in the source span (`$x$` gives `{ start: 1, end: 2 }`),
-	 *  bounding the caret; a click with no mapped point lands at `end`. Absent: the start edge. */
+	/** Where the caret may sit in the source (`$x$` gives `{ start: 1, end: 2 }`); a click with no
+	 *  mapped point lands at `end`. Absent: anywhere in it, and such a click lands at the start. */
 	revealContentSpan?: (source: string) => { start: number; end: number } | null;
 	/** The `source` offset under a click, so the caret goes where the user clicked; only the kind
 	 *  can map its render (KaTeX glyphs) back to bytes. Null keeps the fallback. */

@@ -118,6 +118,17 @@ test.describe('in-body tags as mark decorations', () => {
 		expect(sizes.tagLine).toBe(sizes.prose);
 	});
 
+	test('# then Space before existing words makes a heading at once', async () => {
+		await editor.loadContent('few words here\n\nOther\n');
+		await editor.focusBlockStart(0);
+		await editor.page.keyboard.press('Shift+Digit3');
+		await editor.page.keyboard.press('Space');
+
+		expect(await editor.bridge.getBlockKind(0)).toBe('heading');
+		expect(await editor.bridge.getSource()).toBe('# few words here\n\nOther\n');
+		expect((await editor.bridge.getSelectionPaths())?.focus).toEqual({ path: [0], offset: 2 });
+	});
+
 	test('an edit earlier in the line moves the chip with the text', async () => {
 		const before = await chip(editor, 'project').boundingBox();
 		await editor.focusBlockStart(0);

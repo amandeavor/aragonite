@@ -79,6 +79,7 @@ import {
 	revealsNoMarkers,
 	rawOffsetAt,
 	walkOffsetOfRaw,
+	type CaretClamp,
 	type CaretWriter,
 	type RawRange
 } from '../../../caret/widget-offset';
@@ -163,9 +164,12 @@ export interface EditableSurfaceDeps {
 	/** What an offset handed to `focus` or `parkCaret` becomes before it lands. It receives the
 	 *  `CURSOR_START`, `CURSOR_END` and `CURSOR_EXACT_START` values as they are. */
 	clampLanding?: (offset: number) => number;
-	/** True while an ephemeral edit (inline-math source reveal) owns the DOM: the block
+	/** True while an ephemeral edit (a widget's shown source) owns the DOM: the block
 	 *  commits on exit, so keyboard input and IME compositionend both skip the commit. */
 	isInputSuppressed?: () => boolean;
+	/** Where `focus` and `parkCaret` put a caret once clamped: a prose block opens the source of a
+	 *  widget the offset falls strictly inside, a block with no inline widgets writes it. */
+	landCaret: (offset: number, clamp: CaretClamp) => void;
 
 	// ── Live block state (functions, never captured values) ───────────────────
 	getNode: () => NodeView;
@@ -392,7 +396,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			return;
 		}
 		const requested = landed === CURSOR_START ? 0 : Math.max(0, landed);
-		deps.backend.setRaw(asRawOffset(requested), { clamp: 'reachable' });
+		deps.landCaret(requested, 'reachable');
 	}
 
 	const focus = placeCaret(deps.selection, deps.caretWriter, parkCaret);

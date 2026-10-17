@@ -21,7 +21,12 @@ import {
 import { isVerticallyTransparentNode } from '../../../core/inline/transparency';
 import { trimTrailingLineEnding } from '../../../core/lines';
 import { asRawOffset } from '../../../caret/coordinate-spaces';
-import { rawOffsetAt, rawSelectionFocus, type CaretWriter } from '../../../caret/widget-offset';
+import {
+	rawOffsetAt,
+	rawSelectionFocus,
+	type CaretClamp,
+	type CaretWriter
+} from '../../../caret/widget-offset';
 import { createSourceReveal, type SourceReveal } from '../../../caret/reveal-source';
 import { nearestWidgetEdgeSeat, type WidgetEdgeCandidate } from '../../../caret/widget-edge-snap';
 import type { CaretMemory } from '../../../caret/caret-memory';
@@ -32,6 +37,7 @@ import {
 	type RevealFoldReason
 } from '../../../debug/interaction-trace';
 import { assertInvariant } from '../../../assert';
+import { checkWidgetCaretLanding } from '../../../invariants/widget-caret-landing';
 import type { RevealFold } from '../editable/surface-clipboard';
 import { hasModifier, isPlainTypingKey, surfaceHoldsRange } from './click-snap-guard';
 import { caretIsInTextContent } from '../../../caret/text-seat';
@@ -128,9 +134,9 @@ export interface WidgetInteraction {
 	/** Move a click that landed outside any text node to the nearest widget edge, or open the
 	 *  source of a widget it hit. */
 	snapClickToWidgetEdge(clickX: number | null, clickY: number | null, press?: WidgetPress): void;
-	/** A caret restored strictly inside a widget that can show its source, such as a formula
-	 *  that just closed around it, opens that source there instead of being pushed past it. */
-	revealInterior(offset: number): boolean;
+	/** Put an edit's or an arrival's caret at `offset`. Strictly inside a widget that can show its
+	 *  source (a typed `#` before a word) that source opens there; inside any other, it lands past. */
+	restoreCaret(offset: number, clamp: CaretClamp): void;
 	/** A widget is currently showing its editable `$…$` source. */
 	isRevealing(): boolean;
 	/** Escape, which cancels back to the rendered form, while a source is shown. Enter is
@@ -807,18 +813,40 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		}
 	}
 
-	// Only where the kind names a content span and the caret is inside it: a hard break is two
-	// bytes with a caret position between them and nothing to edit there.
-	function revealInterior(offset: number): boolean {
+	// The fold's own parked caret is left where it is: it lies inside the construct just hidden.
+	function restoreCaret(offset: number, clamp: CaretClamp): void {
 		const parkedByFold = foldParkedCaret === offset;
 		foldParkedCaret = null;
-		if (parkedByFold || revealState) return false;
+		if (!parkedByFold && revealInterior(offset)) return;
+		deps.cursor.setRaw(asRawOffset(offset), { clamp });
+		if (parkedByFold) return;
+		assertInvariant('widget-caret-landing', () =>
+			checkWidgetCaretLanding(
+				offset,
+				deps.cursor.getRaw(),
+				widgetsOf().map((w) => ({
+					start: w.start,
+					end: w.end,
+					kind: w.kind,
+					showsSource: !isReading() && widgetEditing(w.kind)?.revealSource === true
+				}))
+			)
+		);
+	}
+
+	// A kind with no content span edits its whole source. Inside a span only: a formula's caret
+	// stays between its delimiters.
+	function revealInterior(offset: number): boolean {
+		if (revealState || isReading()) return false;
 		const widget = widgetsOf().find((w) => w.start < offset && offset < w.end);
 		if (!widget) return false;
 		const editing = widgetEditing(widget.kind);
-		if (!editing?.revealSource || !editing.revealContentSpan) return false;
+		if (!editing?.revealSource) return false;
+		const source = deps.node.raw.slice(widget.start, widget.end);
 		const at = offset - widget.start;
-		const span = editing.revealContentSpan(deps.node.raw.slice(widget.start, widget.end));
+		const span = editing.revealContentSpan
+			? editing.revealContentSpan(source)
+			: { start: 0, end: source.length };
 		if (!span || at < span.start || at > span.end) return false;
 		void startReveal(widget, offset, at);
 		return true;
@@ -938,7 +966,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		handleSelectedWidgetKeydown,
 		handleShiftArrowIntoWidget,
 		enterWidget,
-		revealInterior,
+		restoreCaret,
 		enterEdgeWidget,
 		snapClickToWidgetEdge,
 		isRevealing,

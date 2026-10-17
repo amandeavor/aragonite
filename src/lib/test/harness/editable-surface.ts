@@ -66,16 +66,19 @@ export function makeSurface(
 		}
 	};
 
+	const backend = {
+		getRaw: () => asRawOffset(caret),
+		setRaw: (offset: RawOffset, placement: { clamp: CaretClamp }) => {
+			writer.setRaw(offset, placement);
+			const sel = window.getSelection();
+			seats.push(sel?.focusNode ? rawOffsetAt(el, sel.focusNode, sel.focusOffset) : offset);
+		}
+	};
 	const deps = {
 		getEl: () => el,
-		backend: {
-			getRaw: () => asRawOffset(caret),
-			setRaw: (offset: RawOffset, placement: { clamp: CaretClamp }) => {
-				writer.setRaw(offset, placement);
-				const sel = window.getSelection();
-				seats.push(sel?.focusNode ? rawOffsetAt(el, sel.focusNode, sel.focusOffset) : offset);
-			}
-		},
+		backend,
+		landCaret: (offset: number, clamp: CaretClamp) =>
+			backend.setRaw(asRawOffset(offset), { clamp }),
 		getNode: options.getNode ?? (() => ({ kind: 'paragraph', leadingTrivia: '', raw: '' })),
 		getMyPath: () => [0],
 		getIndex: () => 0,

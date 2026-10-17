@@ -13,11 +13,7 @@ import { computeInlineContent, contentLengthOf } from '../../../core/inline';
 import { renderInlineNodes } from '../../../core/inline-render';
 import { trimTrailingLineEnding } from '../../../core/lines';
 import { captureFocusedCaret } from '../../../caret/focused-caret';
-import {
-	CONTENT_EMPTY_ATTR,
-	holdsOnlyMarkerChrome,
-	type CaretWriter
-} from '../../../caret/widget-offset';
+import { CONTENT_EMPTY_ATTR, holdsOnlyMarkerChrome } from '../../../caret/widget-offset';
 import type { IndexedDecoration } from '../../../decorations/buckets';
 import {
 	applyIslandDecorations,
@@ -56,8 +52,9 @@ export interface CellRenderDeps {
 	/** A widget that throws while mounting reports to the editor's `error` event, and still falls
 	 *  back to its raw source. */
 	reportRenderError: (error: unknown) => void;
-	/** The editor's caret writer, which puts the caret back after a rebuild. */
-	caretWriter: CaretWriter;
+	/** Puts a caret carried across a rebuild back where an edit's caret would land, so one the
+	 *  rebuild closed a widget around opens that widget's source. */
+	restoreCaret: (raw: number) => void;
 }
 
 export interface CellRender {
@@ -158,7 +155,7 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		// nothing; the attribute is set before the restore, which uses the same traversal.
 		el.toggleAttribute(CONTENT_EMPTY_ATTR, holdsOnlyMarkerChrome(el));
 
-		if (caret !== null) deps.caretWriter.placeCaretAtRaw(el, caret, { clamp: 'exact' });
+		if (caret !== null) deps.restoreCaret(caret);
 	}
 
 	return {

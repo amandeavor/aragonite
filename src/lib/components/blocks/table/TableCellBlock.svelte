@@ -182,6 +182,7 @@
 		...wiring.deps,
 		getEl: () => el ?? null,
 		isInputSuppressed: () => revealing,
+		landCaret: (offset, clamp) => widgetInteraction.restoreCaret(offset, clamp),
 		backend: cursor,
 		getNode: () => node,
 		getMyPath: () => myPath,
@@ -459,7 +460,7 @@
 		},
 		reportRenderError: (error) =>
 			editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } }),
-		caretWriter
+		restoreCaret: (raw) => widgetInteraction.restoreCaret(raw, 'exact')
 	});
 
 	$effect(() => {
@@ -469,10 +470,9 @@
 			carryCaret: pendingCursorOffset === null
 		});
 		if (pendingCursorOffset !== null) {
-			consumePendingRestore(el, pendingCursorOffset, (offset) => {
-				if (!widgetInteraction.revealInterior(offset))
-					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
-			});
+			consumePendingRestore(el, pendingCursorOffset, (offset) =>
+				widgetInteraction.restoreCaret(offset, 'exact')
+			);
 			pendingCursorOffset = null;
 		}
 	});

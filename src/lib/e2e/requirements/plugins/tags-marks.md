@@ -33,6 +33,8 @@ the host's job, since the overlay takes no hits while it stays non-interactive.
 
 - A tag opening a line stays a paragraph, painted at paragraph size, exactly as it is under the
   widget model.
+- `#` then Space typed before existing words makes a heading at once, with the caret after the
+  space: the mark moves no caret, so the line reads `# few words here` as it is typed.
 
 ## Error cases
 

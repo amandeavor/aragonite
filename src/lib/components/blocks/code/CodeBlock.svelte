@@ -84,6 +84,7 @@
 		...wiring.deps,
 		getEl: () => el ?? null,
 		backend,
+		landCaret: (offset, clamp) => backend.setRaw(asRawOffset(offset), { clamp }),
 		// A caret arriving from outside lands on the body in every mode, by a column or a placed
 		// offset; only a click or an arrow inside the block reaches a fence line the mode paints.
 		columnWindow: () => bodyWindow(node),
