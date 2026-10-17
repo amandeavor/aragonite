@@ -1,34 +1,17 @@
 # Editor invariants
 
-Most rules in a codebase are preferences. A handful of the ones here will cost somebody their file,
-and this doc is the list of that second kind.
+Most rules in a codebase live in someone's head and get enforced at code review, if anyone
+remembers. The ones in this doc are checked by code instead: break one and something fails, a dev
+warning, a test, the compiler or a lint. There are a couple hundred, from "a write never splits a
+`\r\n` line ending" to "a comment stays within two lines", and each has a number like G1.55.
 
-Three examples. A container's raw never disagrees with its children. A block's DOM text equals its
-ambient prefix plus its raw bytes. Every block kind has a descriptor. Break one of those and nothing
-shouts at you. The damage shows up three layers downstream, in a component that did nothing wrong,
-hours after the commit that caused it, and by then good luck.
+The ones that matter most would otherwise fail quietly. Let a list's stored text drift from its
+items and nothing complains; the damage shows up three layers later, in a component that did nothing
+wrong, hours after the commit that caused it, and by then good luck. So each rule gets a place where
+it's checked and something that fails loudly, so you see it, and locally, at the code that broke it
+rather than the poor code that noticed.
 
-So every rule of that kind gets a **G-number**, a place where it's checked, and something that fails
-when it breaks. The aim is that a violation fails **loudly** (you see it) and **locally** (at the
-code that broke it, not the poor code that noticed).
-
-Before anything else, the words the catalog leans on, each glossed once here (if you know them, skip
-ahead):
-
-- **raw**: a node's verbatim source bytes, markers included.
-- **kind**: the string on a node that says what block it is.
-- **descriptor**: the per-kind metadata record: how the kind merges, edits, renders.
-- **opener**: the part of the parser that recognizes the syntax a block starts with.
-- **chrome**: the parts of a block that are furniture rather than content (a title row, a table
-  border).
-- **ambient prefix**: the read-only marker a container lends its first child (a footnote definition's
-  `[^label]: `).
-- **scope**: one block list and its children; the unit of addressing and windowing.
-- **path**: the child indices from the document root down to a block.
-- **spine**: the chain of parents from the root down to the edited node.
-- **settle**: the pass that re-derives the blank-line separators between blocks after a splice.
-
-Everything rarer is glossed where it first shows up. The map:
+The map:
 
 - [The enforcement ladder](#the-enforcement-ladder): the three strengths a rule can be held at, and
   why prose is the last resort.
@@ -45,6 +28,26 @@ Everything rarer is glossed where it first shows up. The map:
   build.
 - [Group 4: source scans](#group-4-source-scans): rules enforced by reading the source text itself.
 - [Accessibility](#accessibility): the WCAG target and the gate that holds it.
+
+<details>
+<summary>Words the catalog leans on (if you know them, skip this)</summary>
+
+- **raw**: a node's verbatim source bytes, markers included.
+- **kind**: the string on a node that says what block it is.
+- **descriptor**: the per-kind metadata record: how the kind merges, edits, renders.
+- **opener**: the part of the parser that recognizes the syntax a block starts with.
+- **chrome**: the parts of a block that are furniture rather than content (a title row, a table
+  border).
+- **ambient prefix**: the read-only marker a container lends its first child (a footnote definition's
+  `[^label]: `).
+- **scope**: one block list and its children; the unit of addressing and windowing.
+- **path**: the child indices from the document root down to a block.
+- **spine**: the chain of parents from the root down to the edited node.
+- **settle**: the pass that re-derives the blank-line separators between blocks after a splice.
+
+Everything rarer is glossed where it first shows up.
+
+</details>
 
 ## The enforcement ladder
 
