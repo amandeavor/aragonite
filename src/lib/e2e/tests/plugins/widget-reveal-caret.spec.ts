@@ -231,6 +231,59 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
+	test('tags: Backspace that joins `#` to the next block keeps the caret at the join', async ({
+		page
+	}) => {
+		const editor = new PluginsPage(page);
+		await open(editor, 'tags', 'tag #\n\nfew words\n', 'source');
+		await editor.focusBlock(1, 0);
+		await page.keyboard.press('Backspace');
+
+		expect(await editor.bridge.getSource()).toBe('tag #few words\n');
+		expect(await caret(editor)).toEqual({ path: [0], offset: 5 });
+		expect(await widgetsIn(editor, 0)).toBe(0);
+		await page.keyboard.type('Z');
+		expect(await editor.bridge.getSource()).toBe('tag #Zfew words\n');
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+
+	test('tags: a paste inside a shown source leaves the caret after the pasted text', async ({
+		page
+	}) => {
+		const editor = new PluginsPage(page);
+		await open(editor, 'tags', '#few words here\n\nOther\n', 'source');
+		await editor.focusBlock(1, 0);
+		await editor.focusBlock(0, 2);
+		await editor.seedClipboard('Q');
+		await editor.paste();
+
+		await editor.bridge.waitForSourceContains('#fQew');
+		expect(await caret(editor)).toEqual({ path: [0], offset: 3 });
+		await page.keyboard.type('Z');
+		expect(await editor.bridge.getSource()).toBe('#fQZew words here\n\nOther\n');
+		expect(await widgetsIn(editor, 0)).toBe(0);
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+
+	test('math: a menu trigger typed inside a shown source opens no inline menu', async ({
+		page
+	}) => {
+		const editor = new PluginsPage(page);
+		// The seed's `@` source opens a list after a space anywhere in prose.
+		await open(editor, 'inline-menu', 'Sum $x$ tail\n\nNext\n', 'source');
+		await clickWidgetEnd(page.locator("[data-block-path='[0]'] [data-inline-widget]"));
+		await expect.poll(() => widgetsIn(editor, 0)).toBe(0);
+		// `$ x$` is not math, so the `@` after its space sits in text the source still shows.
+		await page.keyboard.press('ArrowLeft');
+		await page.keyboard.press('Space');
+		await page.keyboard.type('@');
+
+		expect(await editor.bridge.getSource()).toBe('Sum $ @x$ tail\n\nNext\n');
+		expect(await washedRanges(editor)).toBe(1);
+		await expect(page.locator('[data-inline-menu]')).toHaveCount(0);
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+
 	test('tags in a table cell: # keeps the caret one past it, source shown', async ({ page }) => {
 		const editor = new PluginsPage(page);
 		await open(editor, 'tags', '| A | B |\n| --- | --- |\n| few | ok |\n', 'source');

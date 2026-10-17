@@ -16,6 +16,7 @@ import { captureFocusedCaret } from '../../../caret/focused-caret';
 import {
 	CONTENT_EMPTY_ATTR,
 	holdsOnlyMarkerChrome,
+	type CaretWriter,
 	type RawRange
 } from '../../../caret/widget-offset';
 import { washShownSource } from '../text/source-wash';
@@ -58,9 +59,9 @@ export interface CellRenderDeps {
 	/** A widget that throws while mounting reports to the editor's `error` event, and still falls
 	 *  back to its raw source. */
 	reportRenderError: (error: unknown) => void;
-	/** Puts a caret carried across a rebuild back where an edit's caret would land, so one the
-	 *  rebuild closed a widget around opens that widget's source. */
-	restoreCaret: (raw: number) => void;
+	/** The editor's caret writer, which puts a carried caret back after a rebuild. A carried caret
+	 *  predates the edit that caused the rebuild, so it opens no widget's source. */
+	caretWriter: CaretWriter;
 	/** The range drawn as a widget's shown source, read in the render pass so opening or closing
 	 *  it re-renders the cell. */
 	shownSource: () => RawRange | null;
@@ -177,7 +178,7 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		// nothing; the attribute is set before the restore, which uses the same traversal.
 		el.toggleAttribute(CONTENT_EMPTY_ATTR, holdsOnlyMarkerChrome(el));
 
-		if (caret !== null) deps.restoreCaret(caret);
+		if (caret !== null) deps.caretWriter.placeCaretAtRaw(el, caret, { clamp: 'exact' });
 	}
 
 	return {

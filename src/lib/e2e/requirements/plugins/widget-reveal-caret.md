@@ -30,6 +30,14 @@ value for value), the footnote reference, the harness wikilink and the inline di
   began, with the source shown, and redo puts the bytes back.
 - The editor's `setSelection` to raw 2 inside `#few` puts the caret at 2 with the source shown, the
   same route undo and redo restore their caret through.
+- Backspace at the start of `few words`, below a block ending `tag #`, joins them into `#few`: the
+  caret stays at the join, inside the tag with its source shown, and the next letter types there.
+- A paste inside a shown tag source leaves the caret after the pasted text, so the next letter
+  follows it. Miss-analysis: the clipboard rows pasted at a formula's edge, where the caret a
+  rebuild carries never falls inside a widget, so none saw that caret open the source at its old
+  offset and swallow the paste's own.
+- A menu trigger typed inside a shown source opens no inline menu, even where the bytes have
+  stopped reading as the widget (`$ @x$`).
 
 ## User interactions
 

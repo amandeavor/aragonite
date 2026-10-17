@@ -832,10 +832,12 @@ an arrival that puts the caret strictly inside a widget whose kind sets `revealS
 in front of `few` closes a tag around it) opens that widget's source with the caret at its byte.
 The offset walk can't put a caret inside a widget it can't enter, so without the reveal the caret
 would land past it and the next key would type after the tag. Both prose blocks put every such
-caret down through `widget-interaction.ts :: restoreCaret`: the restore after an edit, the caret a
-rebuild carries, an arrival through `parkCaret`, and a restored selection (undo, redo,
-`setSelection`), which the caret landing hands to the block or the table cell through
-`selection/restored-caret.ts`. After a caret it didn't reveal for, the check
+caret down through `widget-interaction.ts :: restoreCaret`: the restore after an edit, an arrival
+through `parkCaret` (a Backspace that joins `tag #` to `few`), and a restored selection (undo,
+redo, `setSelection`), which the caret landing hands to the block or the table cell through
+`selection/restored-caret.ts`. The caret a rebuild carries isn't one of them: it predates the edit
+that caused the rebuild, so it goes back where it was and opens nothing. After a caret it didn't
+reveal for, the check
 reads the caret back, and a caret that moved off its byte must sit at a widget with no source to
 show (an emoji, an image), whose caret goes to the far edge. Predicate
 `invariants/widget-caret-landing.ts :: checkWidgetCaretLanding` ·
@@ -2330,8 +2332,8 @@ surface, `surface-clipboard.ts` and the cross-block range replace.
 
 **G4.195 · One place makes a command its own undo step.** A command isn't typing, so one Ctrl+Z
 should undo the command and nothing around it. A paragraph and a table cell both run their commands
-through `components/blocks/text/inline-commands.ts :: perform`, which waits for a shown source to be
-written and then isolates the write. `lint/file-rules.test.ts` fails an `isolateUndoEntry` call
+through `components/blocks/text/inline-commands.ts :: perform`, which waits for a shown source to
+close and then isolates the write. `lint/file-rules.test.ts` fails an `isolateUndoEntry` call
 anywhere else but the code block's language field.
 
 **G4.197 · Built-ins register on the first grammar read.** The block parser's modules import each

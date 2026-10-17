@@ -438,7 +438,7 @@
 		brokenUrlCache,
 		reportRenderError: (error) =>
 			editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } }),
-		restoreCaret: (raw) => widgetInteraction.restoreCaret(raw, 'exact'),
+		caretWriter,
 		shownSource: () => shownSource.rangeIn(myPath, node)
 	});
 

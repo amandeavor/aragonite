@@ -45,7 +45,7 @@ function mountCell(raw: string) {
 	let theme = $state('light');
 	const render = createCellRender({
 		shownSource: () => null,
-		restoreCaret: (raw) => void testCaretWriter.placeCaretAtRaw(el, raw, { clamp: 'exact' }),
+		caretWriter: testCaretWriter,
 		get el() {
 			return el;
 		},

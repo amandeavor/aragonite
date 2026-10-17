@@ -651,8 +651,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 	function restoreCaret(offset: number, clamp: CaretClamp): void {
 		const parkedByFold = foldParkedCaret === offset;
 		foldParkedCaret = null;
-		// The source opening places its own caret once drawn; the one a rebuild carries meanwhile
-		// predates it.
+		// A source still opening places its own caret once drawn.
 		if (showing?.settling) return;
 		if (showing) {
 			if (deps.shownSource.holds(deps.myPath, deps.node, offset)) {

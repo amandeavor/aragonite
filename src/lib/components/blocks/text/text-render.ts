@@ -32,6 +32,7 @@ import {
 	CONTENT_EMPTY_ATTR,
 	createCaretAnchor,
 	holdsOnlyMarkerChrome,
+	type CaretWriter,
 	type RawRange
 } from '../../../caret/widget-offset';
 import { washShownSource } from './source-wash';
@@ -93,9 +94,9 @@ export interface TextRenderDeps {
 	/** A widget that throws while mounting reports to the editor's `error` event, and still falls
 	 *  back to its raw source. */
 	reportRenderError: (error: unknown) => void;
-	/** Puts a caret carried across a rebuild back where an edit's caret would land, so one the
-	 *  rebuild closed a widget around opens that widget's source. */
-	restoreCaret: (raw: RawOffset) => void;
+	/** The editor's caret writer, which puts a carried caret back after a rebuild. A carried caret
+	 *  predates the edit that caused the rebuild, so it opens no widget's source. */
+	caretWriter: CaretWriter;
 	/** The range drawn as a widget's shown source, read in the render pass so opening or closing
 	 *  it re-renders the block. */
 	shownSource: () => RawRange | null;
@@ -261,8 +262,8 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		return raw;
 	}
 
-	function restoreCaret(raw: RawOffset): void {
-		deps.restoreCaret(raw);
+	function restoreCaret(el: HTMLElement, raw: RawOffset): void {
+		deps.caretWriter.placeCaretAtRaw(el, raw, { clamp: 'exact' });
 		traceCursorRestore(raw);
 	}
 
@@ -359,7 +360,7 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		ensureBr(el);
 		// This attribute decides which spans the caret can land in, so it is set first.
 		el.toggleAttribute(CONTENT_EMPTY_ATTR, holdsOnlyMarkerChrome(el));
-		if (carriedCaret !== null) restoreCaret(carriedCaret);
+		if (carriedCaret !== null) restoreCaret(el, carriedCaret);
 	}
 
 	return {
