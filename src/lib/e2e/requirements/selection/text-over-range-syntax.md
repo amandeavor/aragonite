@@ -4,7 +4,7 @@ When a range takes the block it started in (a table held whole, say), the caret 
 sits in the block beside the range. If that caret is on the block's syntax rather than its text
 (a fence, a heading's `#`, a rule, an HTML tag), text typed, pasted or composed over the range
 goes in a new paragraph where the range was: before a block below it, after a block above it.
-Where the caret is on text, the text joins the block there.
+Where the caret is on text, the text joins the block there. Every row runs in source and live mode.
 
 ## Happy paths
 

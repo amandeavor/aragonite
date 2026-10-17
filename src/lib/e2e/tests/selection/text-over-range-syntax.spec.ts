@@ -118,33 +118,39 @@ async function kindAt(editor: EditorPage, path: number[]): Promise<string | unde
 	}, path);
 }
 
-for (const row of ROWS) {
-	for (const gesture of GESTURES) {
-		test(`${row.name}: ${gesture} over the range lands where the range was`, async ({ page }) => {
-			test.fixme(row.fixme?.[gesture] !== undefined, row.fixme?.[gesture]);
-			const editor = row.plugin ? new PluginsPage(page) : new EditorPage(page);
-			if (editor instanceof PluginsPage) await editor.gotoPlugins(row.plugin);
-			else await editor.goto();
-			await editor.loadContent(row.source);
-			await page.locator('.table-cell').first().click();
-			await page.keyboard.press('Shift+ArrowDown');
-			await editor.waitForCrossBlock(true);
-			const range = await editor.bridge.getSelection();
+// Live mode hides the heading's `#` and the fence lines, so the caret the IME composes at differs.
+for (const mode of ['source', 'live'] as const) {
+	for (const row of ROWS) {
+		for (const gesture of GESTURES) {
+			test(`${row.name} (${mode}): ${gesture} over the range lands where the range was`, async ({
+				page
+			}) => {
+				test.fixme(row.fixme?.[gesture] !== undefined, row.fixme?.[gesture]);
+				const editor = row.plugin ? new PluginsPage(page) : new EditorPage(page);
+				if (editor instanceof PluginsPage) await editor.gotoPlugins(row.plugin);
+				else await editor.goto();
+				await editor.setPresentationMode(mode);
+				await editor.loadContent(row.source);
+				await page.locator('.table-cell').first().click();
+				await page.keyboard.press('Shift+ArrowDown');
+				await editor.waitForCrossBlock(true);
+				const range = await editor.bridge.getSelection();
 
-			await apply(editor, gesture);
-			const text = TEXT[gesture];
-			await expect.poll(() => editor.bridge.getSource()).toBe(row.after(text));
-			expect(await kindAt(editor, row.landed.path)).toBe(row.landed.kind);
-			expect(await kindAt(editor, row.kept.path)).toBe(row.kept.kind);
-			const caret = { path: row.landed.path, offset: text.length };
-			expect(await editor.bridge.getSelection()).toEqual({ anchor: caret, focus: caret });
+				await apply(editor, gesture);
+				const text = TEXT[gesture];
+				await expect.poll(() => editor.bridge.getSource()).toBe(row.after(text));
+				expect(await kindAt(editor, row.landed.path)).toBe(row.landed.kind);
+				expect(await kindAt(editor, row.kept.path)).toBe(row.kept.kind);
+				const caret = { path: row.landed.path, offset: text.length };
+				expect(await editor.bridge.getSelection()).toEqual({ anchor: caret, focus: caret });
 
-			// The removal, the opened paragraph and the text are one undo entry.
-			await editor.undo();
-			await editor.bridge.waitForSourceEquals(row.source);
-			await editor.waitForCrossBlock(true);
-			expect(await editor.bridge.getSelection()).toEqual(range);
-		});
+				// The removal, the opened paragraph and the text are one undo entry.
+				await editor.undo();
+				await editor.bridge.waitForSourceEquals(row.source);
+				await editor.waitForCrossBlock(true);
+				expect(await editor.bridge.getSelection()).toEqual(range);
+			});
+		}
 	}
 }
 
