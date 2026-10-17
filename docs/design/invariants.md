@@ -831,7 +831,8 @@ in front of `few` closes a tag around it) opens that widget's source with the ca
 The offset walk can't put a caret inside a widget it can't enter, so without the reveal the caret
 would land past it and the next key would type after the tag. Both prose blocks put every such
 caret down through `widget-interaction.ts :: restoreCaret`: the restore after an edit, the caret a
-rebuild carries, and an arrival through `parkCaret`. After a caret it didn't reveal for, the check
+rebuild carries, an arrival through `parkCaret`, and a restored selection (undo, redo,
+`setSelection`), which the caret landing hands to the block through `selection/restored-caret.ts`. After a caret it didn't reveal for, the check
 reads the caret back, and a caret that moved off its byte must sit at a widget with no source to
 show (an emoji, an image), whose caret goes to the far edge. Predicate
 `invariants/widget-caret-landing.ts :: checkWidgetCaretLanding` ·

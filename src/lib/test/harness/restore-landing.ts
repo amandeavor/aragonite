@@ -24,7 +24,8 @@ export function restoreTarget(
 		selectionState,
 		getBlockElByPath,
 		caretAt: (point) => selectionState.cellLandingFor(point),
-		getEditorRoot: () => null
+		getEditorRoot: () => null,
+		landCaret: () => false
 	};
 }
 

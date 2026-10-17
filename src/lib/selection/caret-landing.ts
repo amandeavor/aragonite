@@ -13,7 +13,8 @@ import type { ScrollOwner } from '../windowing/scroll-owner';
 import type { BlockElLookup } from '../caret/block-el-lookup';
 import { isDevChecks } from '../env';
 import { checkLandingFocusScrollsNothing } from '../invariants/landing-focus-scroll';
-import { descendTo, type ChildList } from '../block-lists/child-list';
+import { componentAt, descendTo, type ChildList } from '../block-lists/child-list';
+import { landsRestoredCaret } from './restored-caret';
 import { caretTargetFor } from './caret-target';
 import { applySelectionToDom } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';
@@ -200,7 +201,13 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 						getBlockElByPath: deps.getBlockElByPath,
 						caretAt,
 						getEditorRoot: deps.getEditorRoot,
-						caretWriter: deps.caretWriter
+						caretWriter: deps.caretWriter,
+						landCaret: (point) => {
+							const component = componentAt(deps.root, point.path);
+							if (!component || !landsRestoredCaret(component)) return false;
+							component.landRestoredCaret(point.offset);
+							return true;
+						}
 					}
 				)
 			);

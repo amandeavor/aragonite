@@ -125,6 +125,18 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
+	test("tags: the editor's setSelection inside a tag opens its source there", async ({ page }) => {
+		const editor = new PluginsPage(page);
+		await open(editor, 'tags', '#few words here\n\nOther\n', 'source');
+		await editor.focusBlock(1, 0);
+		await editor.focusBlock(0, 2);
+
+		expect(await caret(editor)).toEqual({ path: [0], offset: 2 });
+		await editor.waitForRenderFlush();
+		expect(await widgetsIn(editor, 0)).toBe(0);
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+
 	test('tags in a table cell: # keeps the caret one past it, source shown', async ({ page }) => {
 		const editor = new PluginsPage(page);
 		await open(editor, 'tags', '| A | B |\n| --- | --- |\n| few | ok |\n', 'source');

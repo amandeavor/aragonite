@@ -37,6 +37,7 @@
 	import { createTypedInput } from './typed-input';
 	import { createTextRender } from './text-render';
 	import { createWidgetInteraction } from './widget-interaction';
+	import type { LandsRestoredCaret } from '../../../selection/restored-caret';
 	import { createEdgePolicyDispatch } from './edge-policy-dispatch';
 	import { createEdgeStep } from './edge-step';
 	import { createTypedPlacement } from './edge-seat';
@@ -634,6 +635,10 @@
 
 	export const afterSourceCommit = commands.afterSourceCommit;
 	export const isCommandActive = commands.isCommandActive;
+	export function landRestoredCaret(offset: number): void {
+		widgetInteraction.restoreCaret(offset, 'reachable');
+	}
+	void ({ landRestoredCaret } satisfies LandsRestoredCaret);
 
 	void ({
 		editable,

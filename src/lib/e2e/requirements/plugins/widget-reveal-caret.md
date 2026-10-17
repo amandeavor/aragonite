@@ -17,6 +17,8 @@ inline directive.
 
 - Backspace on the space of `# few words here` turns the heading back into a paragraph opening
   with the tag `#few`: the caret stays at 1, inside the tag, with its source shown.
+- The editor's `setSelection` to raw 2 inside `#few` puts the caret at 2 with the source shown, the
+  same route undo and redo restore their caret through.
 
 ## User interactions
 

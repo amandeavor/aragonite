@@ -46,7 +46,7 @@ export function applyCollapsedCaret(
 function restoreCollapsedCaret(target: RestoreTarget, point: SelectionPoint): boolean {
 	const blockEl = target.getBlockElByPath(point.path);
 	if (!blockEl) return false;
-	applyCollapsedCaret(target.caretWriter, blockEl, point);
+	if (!target.landCaret(point)) applyCollapsedCaret(target.caretWriter, blockEl, point);
 	blockEl.focus({ preventScroll: true });
 	return true;
 }
@@ -149,6 +149,9 @@ export interface RestoreTarget {
 	/** Takes focus for a block held whole, which has no text for a caret, as a drag leaves it. */
 	getEditorRoot: () => HTMLElement | null;
 	caretWriter: CaretWriter;
+	/** Puts a caret down through its block's own landing, which opens the source of a widget the
+	 *  offset falls inside; false where the block has none, leaving it to the caret write. */
+	landCaret: (point: SelectionPoint) => boolean;
 }
 
 /** Restores an `EditorSelection` to the DOM in one `SelectionState` batch, so the single
