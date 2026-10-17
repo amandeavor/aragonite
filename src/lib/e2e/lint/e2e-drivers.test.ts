@@ -53,16 +53,18 @@ describeManifests(
 			misses: [`await cdp.send('Input.insertText', params);`]
 		},
 		// Miss-analysis: specs called the page clipboard and pressed the paste chord themselves, and
-		// WebKit, where neither reaches the editor, was the first engine to run them.
+		// WebKit, where neither reaches the editor, was the first engine to run them. A chord built
+		// from a variable modifier (`${mod}+v`) still gets past the matcher.
 		{
 			id: 'G4.212 e2e clipboard access rides the shared clipboard helper',
-			matches: /\bnavigator\s*\.\s*clipboard\b/,
+			matches: /\bnavigator\s*\??\.\s*clipboard\b/,
 			declared: { [CLIPBOARD_HELPER]: 'both branches, and the read a spec can hold' },
 			reason: `seed, read and paste through the clipboard helper (${CLIPBOARD_HELPER}): WebKit refuses a page's own clipboard calls`,
 			hits: [
 				`await page.evaluate(() => ${clip}.writeText('x'));`,
 				`const items = await ${clip}.read();`,
-				`${clip}.readText = () => held;`
+				`${clip}.readText = () => held;`,
+				`await navigator?.${'clipboard'}.readText();`
 			],
 			misses: ["await editor.seedClipboard('x');", "await editor.readClipboard('text/html');"]
 		},
