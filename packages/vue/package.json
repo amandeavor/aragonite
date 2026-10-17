@@ -1,11 +1,17 @@
 {
 	"name": "@voithos-labs/aragonite-vue",
 	"version": "0.11.1",
-	"description": "Vue component for the aragonite Markdown editor",
+	"description": "vue component for the cute svelte-based markdown editor lib",
 	"keywords": [
 		"editor",
+		"framework-agnostic",
+		"rich-text",
+		"wysiwyg",
 		"markdown",
-		"vue"
+		"svelte",
+		"react",
+		"vue",
+		"typescript"
 	],
 	"homepage": "https://aragonite.dev",
 	"bugs": {

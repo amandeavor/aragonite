@@ -1,12 +1,10 @@
 # @voithos-labs/aragonite-vue
 
-[aragonite](https://github.com/voithos-labs/aragonite), the Markdown block editor, as a Vue component. You hand it Markdown, edit it as styled blocks with the markers dimmed, and read plain Markdown back, no in-between format.
-
-Works with Vue 3.3 and newer, Nuxt included.
+Aragonite as a vue component; works with vue 3.3+, nuxt included. What is aragonite? Read the short (your mileage may vary) [readme](https://github.com/voithos-labs/aragonite/blob/main/README.md), or try it out at [aragonite.dev](https://aragonite.dev).
 
 ## Install
 
-The component sits on the core package and releases with it, at the exact same version, so install both:
+Install the core package and this component:
 
 ```bash
 npm install @voithos-labs/aragonite @voithos-labs/aragonite-vue
@@ -21,7 +19,7 @@ import { Aragonite, type AragoniteInstance } from '@voithos-labs/aragonite-vue';
 import '@voithos-labs/aragonite/style.css';
 import '@voithos-labs/aragonite/styles/editor-theme.css';
 
-const text = ref('# Grocery list\n\n- eggs\n- more eggs\n');
+const text = ref('That is not dead which can eternal lie,\nAnd with strange aeons even death may die.\n');
 const editor = ref<AragoniteInstance | null>(null);
 </script>
 
@@ -32,16 +30,16 @@ const editor = ref<AragoniteInstance | null>(null);
 </template>
 ```
 
-- `v-model` keeps the document in your state, or pass `default-value` and skip the binding.
-- Every other prop is an editor option (`theme`, `presentation-mode`, `plugins`, and the rest), kebab-case or not.
-- The `header` slot shows above the first block.
-- A template ref holds `handle`, the editor's handle (`getSource()`, `runCommand()`, `getEvents()`, ...), `null` until it mounts.
-- In Nuxt it works as is, no `<ClientOnly>`; list the two stylesheets in `nuxt.config`'s `css` array.
+Relevant (or irrelevant, fuck if i know) details:
+
+- Rather not bind? Pass `default-value` instead of `v-model` and the editor keeps the document itself.
+- Every other prop is an editor option (`theme`, `plugins`, ...), and the ref's `handle` gets you `getSource()`, `runCommand()` and friends once it mounts.
+- Nuxt: no `<ClientOnly>` needed, it renders on the server just fine. Put the two stylesheets in `nuxt.config`'s `css` array instead of importing them.
 
 ## More
 
-The [consumer guide](https://github.com/voithos-labs/aragonite/blob/main/docs/guide/consumer-guide.md#vue) has the rest: every prop, the handle's methods, events, theming, and which plugins run outside a Svelte app. It also ships in `node_modules/@voithos-labs/aragonite/docs/guide/`, matching the version you installed.
+The [consumer guide](https://github.com/voithos-labs/aragonite/blob/main/docs/guide/consumer-guide.md#vue) has the rest: props, handle's methods, events, theming, etc. etc.
 
 ## License
 
-[MPL-2.0](LICENSE)
+Aragonite is free software, released under [MPL-2.0](./LICENSE): use it, study it, fork it, embed it in whatever you're building, closed source included. The one string attached: if you change aragonite's own files, you share those changes under the same license.
