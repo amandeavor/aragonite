@@ -1,7 +1,8 @@
 /**
  * The steps every structural commit runs, for suites driving the primitives directly: the edit
  * against a body, then the commit's one fix-up (`settleEdit`), and at the document the step that
- * keeps an open last line open. No primitive fixes up its own body, so the edit alone proves nothing.
+ * keeps an open last line open. The primitives leave their fix-up to the commit, so the edit alone
+ * proves little.
  */
 
 import type { CstNode, Document } from '#lib/core/nodes.js';

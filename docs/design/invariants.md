@@ -265,7 +265,7 @@ These checks run in three kinds of place:
 | G1.104 | A plugin registers only from its `definePlugin` setup                                      | N       |
 | G1.106 | A range delete takes whole rows from a table it keeps an edge of                           | A·N     |
 | G1.110 | A metadata write to a leaf is refused, since a leaf's metadata comes from its bytes        | A·N     |
-| G1.112 | A commit fixes up each list it wrote once                                                  | A·N     |
+| G1.112 | A content write inside a commit leaves its fix-up to the commit                            | A·N     |
 
 ### The entries
 
@@ -815,12 +815,14 @@ command uses instead. `test/editor-actions/update-block-metadata.test.ts`.
 **G1.112 · One fix-up per list.** A commit runs its fix-up (`tree-operations/settle.ts ::
 settleEdit`) once over each list it wrote, so a mutation inside it writes content with
 `writeNodeContent` and reports the write through its scope's `describeEdit`, leaving the fix-up to
-the commit. A mutation that fixes up a list itself with `updateNodeContent` and then reports a change
-there gets the fix-up twice, and a dev build warns `invariant:settle-once` (the record lives in
-`invariants/settle-once.ts`; production never touches it). The format toggle over several blocks
-still fixes up its own writes, at any depth and before its own chain rebuilds, so its commit says
-`fixesUpOwnWrites` and the check skips it (G4.208 pins that list). `test/invariants/settle-once.test.ts`,
-and `test/perf/settle-passes.test.ts` counts the passes each gesture runs.
+the commit. A mutation that fixes up a list itself with `updateNodeContent` and then reports a
+change there gets the fix-up twice, and a dev build warns `invariant:settle-once` (the record lives
+in `invariants/settle-once.ts`; production never touches it). The check sees only that write: the
+two edits that still call a separator helper by hand (codebase-map § Blank lines and separators) fix
+up their list a second time, unseen. The format toggle over several blocks still fixes up its own
+writes, at any depth and before its own chain rebuilds, so its commit says `fixesUpOwnWrites` and
+the check skips it (G4.208 pins that list). `test/invariants/settle-once.test.ts`, and
+`test/perf/settle-passes.test.ts` counts the passes each gesture runs.
 
 ## Group 2: property and regression tested
 
@@ -2344,10 +2346,11 @@ an `@supports` block after a plain fallback, as the selection tints in `editor-t
 names the `path:line` of any use outside one.
 
 **G4.208 · Who runs the fix-up.** Three rows hold the names to their callers: `settleEdit` and
-`settleContentWrite` to `settle.ts`, the commit and `updateNodeContent`; `writeNodeContent`, the
-content write with no fix-up, to `commitLeafText`, whose commit fixes it up; and `fixesUpOwnWrites`
-to the format toggle, the one commit G1.112 skips. A new caller of either is a second fix-up in the
-making. `lint/separator-write-doors.test.ts`.
+`settleContentWrite` to `settle.ts`, the commit and `updateNodeContent`; the ops whose fix-up runs a
+step of its own (`writeNodeContent`, `deleteNode`, the join and the move) to the mutations that
+report that kind through `describeEdit`, since the commit skips a step nobody reported; and
+`fixesUpOwnWrites` to the format toggle, the one commit G1.112 skips. A new caller of any of them
+is a fix-up doubled or dropped in the making. `lint/separator-write-doors.test.ts`.
 
 ## Accessibility
 

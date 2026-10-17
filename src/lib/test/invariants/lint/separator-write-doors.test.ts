@@ -67,11 +67,18 @@ const FIX_UP_CALLERS: Record<string, string> = {
 		'`updateNodeContent`, for a write no commit settles: in place, the trial, a body below a scope'
 };
 
-/** The content write with no fix-up, which only a mutation whose commit settles it may run. */
-const UNSETTLED_WRITE_CALLERS: Record<string, string> = {
-	'src/lib/tree-operations/content-write.ts': 'defines it',
+/** The ops whose fix-up runs a step of its own (a content write, a removal, a move), named only
+ *  where the mutation reports that kind through `describeEdit`; unreported, the step is skipped. */
+const KIND_REPORTING_CALLERS: Record<string, string> = {
+	'src/lib/tree-operations/content-write.ts': 'defines `writeNodeContent`',
+	'src/lib/tree-operations/settle.ts': 'defines `deleteNode`',
+	'src/lib/tree-operations/node-ops.ts': 'defines the join, whose delete its caller reports',
+	'src/lib/tree-operations/reorder.ts': 'defines the move',
+	'src/lib/tree-operations/index.ts': 're-exports the delete and the join',
 	'src/lib/editor-actions/block-edit-core.ts':
-		'`commitLeafText`, which reports the write so its commit settles it once'
+		'`commitLeafText` reports `written`; the delete, the join and the neighbour delete report `removed`',
+	'src/lib/editor-actions/unwrap-strategies.ts': 'the emptied item’s delete reports `removed`',
+	'src/lib/editor-actions/reorder-action.ts': 'both moves report `moved`'
 };
 
 /** The commits whose mutation fixes up its own writes, so the settle-once check skips them. */
@@ -127,13 +134,18 @@ describeManifests(
 			misses: ['// settleEdit runs once per body', 'const settleEditLater = 1;']
 		},
 		{
-			id: 'G4.208 a write with no fix-up runs only where its commit settles it',
-			matches: /(?<![\w'"])writeNodeContent\b/,
-			declared: UNSETTLED_WRITE_CALLERS,
+			id: 'G4.208 an op whose fix-up runs a step of its own is called where its kind is reported',
+			matches:
+				/(?<![\w'"])(writeNodeContent|deleteNode|mergeIntoPrevDeepLeaf|reorderChildrenWithTrivia)\b/,
+			declared: KIND_REPORTING_CALLERS,
 			reason:
-				'the write leaves its body unsettled: report it with `describeEdit` inside a commit, or use `updateNodeContent`',
-			hits: ['const { change, written } = writeNodeContent(body, i, write, grammar, sharing);'],
-			misses: ['// writeNodeContent leaves the fix-up to the commit']
+				'the commit runs this op’s own fix-up step only when told: report it through `describeEdit` (`written`, `removed` or `moved`) and declare the file, or write through `updateNodeContent` where no commit settles the body',
+			hits: [
+				'const { change, written } = writeNodeContent(body, i, write, grammar, sharing);',
+				"import { deleteNode as performDelete } from '../tree-operations';",
+				'const moved = reorderChildrenWithTrivia(scope.body, from, to, sharing, grammar);'
+			],
+			misses: ['// writeNodeContent leaves the fix-up to the commit', 'const deleteNodeLater = 1;']
 		},
 		{
 			id: 'G4.208 a commit skips the settle-once check only where its mutation fixes up its own writes',
