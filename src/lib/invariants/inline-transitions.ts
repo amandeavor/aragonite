@@ -5,7 +5,7 @@
  */
 import type { InvariantViolation } from '../assert';
 
-export type PoolBracketAction = 'acquire' | 'beginPass' | 'sweep';
+export type PoolBracketAction = 'acquire' | 'retain' | 'beginPass' | 'sweep';
 
 /** G1.25: every pool change happens between `beginPass` and `sweep`; outside that bracket a
  *  lookup by key alone cannot tell two byte-identical widgets apart. */
@@ -22,11 +22,10 @@ export function checkPoolBracket(
 			: null;
 	}
 	if (passOpen) return null;
-	return action === 'acquire'
+	return action === 'acquire' || action === 'retain'
 		? {
 				code: 'acquire-outside-bracket',
-				message:
-					'acquire outside a beginPass/sweep bracket: adoption is only meaningful inside a rebuild pass'
+				message: `${action} outside a beginPass/sweep bracket: adoption is only meaningful inside a rebuild pass`
 			}
 		: {
 				code: 'sweep-outside-bracket',

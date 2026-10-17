@@ -18,16 +18,22 @@ async function waitForWidgetCount(page: Page, expected: number, timeout = 5000):
 	);
 }
 
+/** Whether any block tints a shown widget source, read off the CSS highlight it paints. */
+async function showsSource(ctx: SimContext): Promise<boolean> {
+	return ctx.page.evaluate(() => (CSS.highlights.get('md-inline-reveal')?.size ?? 0) > 0);
+}
+
 /**
- * Walking the caret out commits an open formula; Enter splits the block instead
+ * Walking the caret out closes an open formula; Enter splits the block instead
  * (`latex-inline-reveal-commands`), so every edit here leaves by the caret.
  */
-export async function escapeRevealToCommit(ctx: SimContext, before: string): Promise<void> {
+export async function leaveRevealedSource(ctx: SimContext): Promise<void> {
 	for (let i = 0; i < 40; i++) {
 		await ctx.page.keyboard.press('ArrowRight');
-		if ((await ctx.editor.bridge.getSource()) !== before) return;
+		await ctx.editor.waitForRenderFlush();
+		if (!(await showsSource(ctx))) return;
 	}
-	throw new Error(`[${ctx.label}] the revealed source never committed on a caret escape`);
+	throw new Error(`[${ctx.label}] the revealed source never closed on a caret escape`);
 }
 
 async function blockRaw(ctx: SimContext, index: number): Promise<string> {
@@ -88,7 +94,7 @@ export async function insertBlockMath(
 	tracker.resync(await editor.bridge.getSource());
 }
 
-/** Click to open, edit, commit; waits for the widget to close back to its rendered form. */
+/** Click to open, edit, leave; waits for the widget to draw again. */
 export async function editInlineMath(ctx: SimContext, text: string): Promise<void> {
 	const { page, editor, tracker } = ctx;
 	const before = await editor.bridge.getSource();
@@ -99,9 +105,9 @@ export async function editInlineMath(ctx: SimContext, text: string): Promise<voi
 	await waitForWidgetCount(page, widgetCount - 1); // the clicked widget opened to its source
 	await editor.waitForRenderFlush();
 	await page.keyboard.type(text);
-	await escapeRevealToCommit(ctx, before);
+	await leaveRevealedSource(ctx);
 
-	await waitForWidgetCount(page, widgetCount); // the commit rendered the widget again
+	await waitForWidgetCount(page, widgetCount); // leaving rendered the widget again
 	await editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
 	await editor.waitForRenderFlush();
 	tracker.resync(await editor.bridge.getSource());
@@ -190,8 +196,8 @@ export async function walkThroughInlineMath(ctx: SimContext, blockIndex: number)
 }
 
 /**
- * Enters with the caret and commits by stepping out, unlike `editInlineMath`'s click and blur;
- * the edit lives in the DOM alone until the commit, so `getSource()` must hold while it is open.
+ * Enters with the caret and leaves by stepping out, unlike `editInlineMath`'s click; each key in
+ * the open formula is written as it lands, so `getSource()` holds the insert while it is open.
  */
 export async function backspaceRevealEditInlineMath(
 	ctx: SimContext,
@@ -207,22 +213,16 @@ export async function backspaceRevealEditInlineMath(
 	await waitForWidgetCount(page, widgetCount - 1);
 
 	await page.keyboard.press('ArrowLeft');
-	// An open formula holds its keystrokes out of the tree, so the editor's recorded decision
-	// about each key is what orders the byte check proving nothing leaked into the source.
-	await editor.typeDeclined(insert);
-	if ((await editor.bridge.getSource()) !== before) {
-		throw new Error(
-			`[${ctx.label}] reveal edit committed before escape.\n` +
-				`EXPECTED (ephemeral): ${JSON.stringify(before)}\n` +
-				`ACTUAL:               ${JSON.stringify(await editor.bridge.getSource())}`
-		);
+	await page.keyboard.type(insert);
+	await editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
+	if (!(await showsSource(ctx))) {
+		throw new Error(`[${ctx.label}] the open formula closed under a key typed into it`);
 	}
 
 	for (let i = 0; i < 4 && (await page.locator(INLINE_WIDGET).count()) < widgetCount; i++) {
 		await page.keyboard.press('ArrowRight');
 	}
 	await waitForWidgetCount(page, widgetCount);
-	await editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
 	await editor.waitForRenderFlush();
 	tracker.resync(await editor.bridge.getSource());
 }

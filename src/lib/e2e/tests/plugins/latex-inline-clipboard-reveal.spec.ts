@@ -74,10 +74,9 @@ test.describe('inline math: clipboard during an active source reveal', () => {
 		expect(source).toContain('$x^2$');
 	});
 
-	test('copy reads the revealed live-DOM edit and never folds the reveal', async ({ page }) => {
+	test('copy reads the edit in the shown source and keeps the source open', async ({ page }) => {
 		await editor.revealAtTrailingEdge();
 
-		// Edit the open source; onInput is suppressed, so the edit is in the DOM only.
 		await page.keyboard.type('QQ');
 
 		// Select the edit; both endpoints stay inside the source node, so the copy never closes it.
@@ -88,15 +87,10 @@ test.describe('inline math: clipboard during an active source reveal', () => {
 		await editor.waitForClipboardWrite();
 
 		const clip = await editor.readClipboard();
-		// The clipboard holds exactly what the user selected and sees, the live DOM text, not the
-		// stale raw slice, which never held the uncommitted `QQ`.
 		expect(clip).toBe('QQ');
 
-		// Copy never edits: the source stays open, with the widget still swapped out…
+		// Copy never edits: the source stays open, and the document holds what was typed.
 		await expect(editor.mathWidget).toHaveCount(0);
-		// …and the document is untouched, since `QQ` never reached the CST.
-		const source = await editor.bridge.getSource();
-		expect(source).not.toContain('QQ');
-		expect(source).toContain('$x^2$');
+		expect(await editor.bridge.getSource()).toContain('$x^2$QQ');
 	});
 });

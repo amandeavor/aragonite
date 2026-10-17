@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-// When a shown source is hidden again, through the real `createWidgetInteraction` over two math
-// widgets (commit and undo rules are `widget-reveal-commit.test.ts`). A caret leaving the source
-// within the block hides it, and a click on a second widget hides the first and shows the second
+// When a shown source closes, through the real `createWidgetInteraction` over two math
+// widgets (the close rules are `widget-reveal-commit.test.ts`). A caret leaving the source
+// within the block closes it, and a click on a second widget closes the first and opens the second
 // as one sequence.
 import { recordingWrite } from '#lib/test/harness/editor-actions.js';
 import { describe, it, expect } from 'vitest';
@@ -45,7 +45,6 @@ function mountTwoMathBlock() {
 			{ node, el },
 			{
 				caretWriter: testCaretWriter,
-				cursor: new Proxy({}, { get: trap }),
 				blockEdit: {
 					updateBlockContent: recordingWrite(({ index, raw, before, after }) =>
 						commits.push([index, raw, before, after])
@@ -55,7 +54,6 @@ function mountTwoMathBlock() {
 				setPendingCursor: (offset: number | null) => {
 					pendingCursors.push(offset);
 				},
-				setRevealing: () => {},
 				isCrossBlock: () => crossBlock,
 				getPendingClickPoint: () => pendingClickPoint
 			}

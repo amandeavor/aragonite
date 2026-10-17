@@ -78,7 +78,7 @@ test.describe('table cell: inline math reveal-to-edit', () => {
 		expect(await editor.bridge.getSource()).toBe(SEED);
 	});
 
-	test('Escape discards the source edit and restores the rendered widget', async ({ page }) => {
+	test('Escape closes the source and keeps the edit', async ({ page }) => {
 		await revealWidget(editor.mathWidget);
 		await page.keyboard.press('Home');
 		await page.keyboard.press('ArrowRight');
@@ -86,7 +86,7 @@ test.describe('table cell: inline math reveal-to-edit', () => {
 		await page.keyboard.press('Escape');
 
 		await expect(editor.mathWidget).toHaveCount(1);
-		expect(await editor.bridge.getSource()).toBe(SEED);
+		expect(await editor.bridge.getSource()).toBe(SEED.replace('$x^2$', '$yx^2$'));
 	});
 
 	test('Backspace at the cell trailing edge reveals the math, never deletes it', async ({

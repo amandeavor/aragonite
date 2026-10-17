@@ -7,6 +7,7 @@ import { isInlineWidget, flattenInlineWidgets } from '../../../core/inline/inlin
 import { resolvedInlineContent, type InlineReading } from '../../../core/inline/inline-cache';
 import { blockNodeAt } from '../../../tree-operations/node-primitives';
 import type { Reading } from '../../../schema/reading';
+import type { GrammarView } from '../../../schema/block-openers';
 import type { WidgetTarget } from '../../../selection/primitives';
 
 export interface WidgetRange {
@@ -25,7 +26,12 @@ export type CaretDirection = 'forward' | 'backward';
 /** Every widget `node` renders, nested ones included (a link or emphasis around an image hides it
  *  from the top-level inline list). Every reader of the widget at a byte asks here. */
 export function widgetsIn(node: NodeView, reading: InlineReading): InlineNode[] {
-	return flattenInlineWidgets(resolvedInlineContent(node, reading), node.raw, reading.grammar);
+	return widgetsAmong(resolvedInlineContent(node, reading), node.raw, reading.grammar);
+}
+
+/** {@link widgetsIn} over an inline list already parsed, as the render path holds one. */
+export function widgetsAmong(nodes: InlineNode[], raw: string, grammar: GrammarView): InlineNode[] {
+	return flattenInlineWidgets(nodes, raw, grammar);
 }
 
 /** The widget among `widgets` the caret sits against, or null. At a boundary two widgets share,

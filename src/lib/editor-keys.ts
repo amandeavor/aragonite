@@ -7,6 +7,7 @@
 
 import type { MenuPresence } from './components/menu/menu-presence.svelte';
 import type { DraftRegistry } from './components/draft-registry';
+import type { ShownSourceState } from './components/blocks/text/shown-source.svelte';
 import type { DocumentStamps } from './editor-actions/commit/document-stamp';
 import type { Document } from './core/nodes';
 import type { ImageLoadPolicy } from './core/inline-render';
@@ -141,6 +142,8 @@ export interface EditorServices {
 	menuPresence: MenuPresence;
 	/** Edits held outside the document until they commit; a swap drops them (`draft-registry.ts`). */
 	drafts: DraftRegistry;
+	/** The one inline widget showing its source in this editor, which its block draws as bytes. */
+	shownSource: ShownSourceState;
 	/** Which document each write was made for; `BlockHost` stamps its block's write handles. */
 	stamps: DocumentStamps;
 	/** The label a typed kind change leaves on its block for a moment (`kind-cue.svelte.ts`). */

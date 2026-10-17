@@ -3,9 +3,9 @@
 The `:` recognizer marks a `:name[label]{attrs}` span as a `directiveText` inline node, rendered
 as a widget the caret cannot enter (`[data-inline-widget]`, `.directive-text-widget`,
 `contenteditable` false) that carries its raw span in `data-source-*` and counts as 0 characters
-in the offset traversal. Focusing the widget shows its source as editable text; blurring it or
-pressing Enter commits the edit and re-renders, the same way inline math does. Showing the
-source changes nothing in the tree: only a real edit and its commit change the source.
+in the offset traversal. Focusing the widget shows its source as editable text; a key typed there is written as it lands,
+and blurring or leaving it draws the widget again, the same way inline math does. Showing the
+source changes nothing in the tree: only a typed edit changes the source.
 
 ## Happy paths
 
@@ -22,5 +22,5 @@ source changes nothing in the tree: only a real edit and its commit change the s
 
 ## Edge cases
 
-- Escape after editing the shown source: the edit is discarded and the original widget is rebuilt from the untouched raw text, so the source is unchanged.
+- Escape after editing the shown source: the source closes and the widget draws again with the edit, which is already in the document.
 - A `:abbr[HTML]{` part-way through typing briefly turns back into literal text until `}` closes it. That comes from the shared inline-widget code and is covered by the decline table in `text-recognizer.test.ts`, so it is not an e2e scenario here. It is written down so that this kind's appear-and-disappear behavior while typing, the same as inline math's, stays documented.

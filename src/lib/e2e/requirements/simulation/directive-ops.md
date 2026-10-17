@@ -29,8 +29,7 @@ corruption checks.
 - typing `:name[label]` in a prose block promotes the span to an atomic text widget
   at render time; the caret stays in the host paragraph so editing continues
 - clicking the widget shows its source, an edit is typed into the label, and clicking
-  onto another block commits it: the document carries the edit only after the commit,
-  never while the temporary revealed DOM is showing
+  onto another block closes it: the document carries the edit as it is typed
 - typing `::name info` at column 0 on an empty line promotes the paragraph to a
   directive leaf mid-typing; the trailing characters land in the leaf, not in the
   paragraph it was promoted from
@@ -52,7 +51,7 @@ corruption checks.
 - every edit lands mid-document, never the end-of-document append the expectation
   tracker predicts, so each gesture that triggers a promotion, a widget swap, or a
   reparse waits for a signal it can observe and re-reads the state it actually got
-- undo across the paste, across the reveal then commit, and across the body edit each
+- undo across the paste, across the label edit, and across the body edit each
   restore the prior source
 
 ## User interactions

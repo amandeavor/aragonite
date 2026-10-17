@@ -38,6 +38,9 @@ export interface WidgetPool {
 	/** Adopts the oldest unadopted instance for the key, else builds one; call only inside a
 	 *  beginPass/sweep bracket. Identical sources share a key, so a caller holding one restores it. */
 	acquire(kind: AnyInlineKind, inline: InlineNode, source: string): HTMLElement | null;
+	/** Keeps the oldest unadopted instance for the key through the pass without drawing it, so a
+	 *  widget whose source is shown comes back as the same instance when it closes unedited. */
+	retain(kind: AnyInlineKind, source: string): void;
 	/** Open a rebuild pass: un-adopt every instance so this pass re-earns them. */
 	beginPass(): void;
 	/** Close a rebuild pass: destroy every instance not adopted in it. */
@@ -111,6 +114,12 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 		return adapter.element(handle);
 	}
 
+	function retain(kind: AnyInlineKind, source: string): void {
+		assertInvariant('pool-bracket', () => checkPoolBracket(passOpen, 'retain'));
+		const kept = buckets.get(`${kind} ${source}`)?.find((entry) => !entry.adopted);
+		if (kept) kept.adopted = true;
+	}
+
 	function sweep(): void {
 		assertInvariant('pool-bracket', () => checkPoolBracket(passOpen, 'sweep'));
 		passOpen = false;
@@ -140,7 +149,7 @@ export function createWidgetPool<H>(adapter: WidgetPoolAdapter<H>): WidgetPool {
 		buckets.clear();
 	}
 
-	return { acquire, beginPass, sweep, dispose };
+	return { acquire, retain, beginPass, sweep, dispose };
 }
 
 // ── View adapter ────────────────────────────────────────────────────────────────

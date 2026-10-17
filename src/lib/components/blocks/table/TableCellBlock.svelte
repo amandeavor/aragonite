@@ -114,7 +114,7 @@
 		rects,
 		decorations: decorationEngine,
 		rangeCoverage,
-		drafts,
+		shownSource,
 		presses,
 		textMoves
 	} = wiring.services;
@@ -138,9 +138,6 @@
 	});
 
 	let composing = $state(false);
-	// A widget's shown source lives only in the DOM, so `onInput` skips the per-keystroke CST
-	// commit and the cell commits once when it is hidden, as TextEditableBlock does.
-	let revealing = $state(false);
 	let pendingCursorOffset = $state<number | null>(null);
 
 	// The only writer of `pendingCursorOffset` besides the render's clear. The offset counts
@@ -181,7 +178,7 @@
 	const editableSurface = createEditableSurface({
 		...wiring.deps,
 		getEl: () => el ?? null,
-		isInputSuppressed: () => revealing,
+		showsSource: () => widgetInteraction.isRevealing(),
 		landCaret: (offset, clamp) => widgetInteraction.restoreCaret(offset, clamp),
 		backend: cursor,
 		getNode: () => node,
@@ -237,13 +234,10 @@
 		focusActions,
 		setSnapTarget: () => {},
 		setPendingCursor: parkCursor,
-		readRawText: () => readCellText(),
 		activationClick,
-		setRevealing: (value) => {
-			revealing = value;
-		},
 		isCrossBlock: () => selection.isCrossBlock,
-		drafts,
+		shownSource,
+		renderedWidgets: () => cellRender.renderedWidgets(),
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
 		textMoves,
@@ -460,7 +454,8 @@
 		},
 		reportRenderError: (error) =>
 			editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } }),
-		restoreCaret: (raw) => widgetInteraction.restoreCaret(raw, 'exact')
+		restoreCaret: (raw) => widgetInteraction.restoreCaret(raw, 'exact'),
+		shownSource: () => shownSource.rangeIn(myPath, node)
 	});
 
 	$effect(() => {
@@ -538,8 +533,8 @@
 		// The source-showing and selection handlers run before the plan, which would otherwise
 		// read an ArrowUp or ArrowDown inside a shown source as cell navigation.
 		if ((await widgetInteraction.handleRevealingKeydown(e)) || editableSurface.isDetached()) return;
-		// Enter is a cell's exception: prose splits, a cell moves a row, and moving would
-		// carry the uncommitted edit out of the cell that owns it. Commit and stay put.
+		// Enter is a cell's exception: prose splits, a cell moves a row, and inside a shown source
+		// Enter only leaves it, so the caret stays in the cell.
 		if (widgetInteraction.isRevealing() && e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
 			e.preventDefault();
 			widgetInteraction.foldRevealBeforeMutation();
@@ -804,8 +799,6 @@
 		selection,
 		setPendingCursor: parkCursor,
 		foldRevealBeforeMutation: () => widgetInteraction.foldRevealBeforeMutation(),
-		isRevealing: () => widgetInteraction.isRevealing(),
-		readRevealedText: () => readCellText(),
 		get reading() {
 			return reading;
 		},

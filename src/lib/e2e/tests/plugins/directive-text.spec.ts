@@ -133,15 +133,14 @@ test.describe('plugin inline directive: caret-entry / click reveal-source editin
 		await editor.bridge.waitForSourceNotContains('XHTML');
 	});
 
-	test('Escape discards the source edit and restores the rendered widget', async ({ page }) => {
+	test('Escape closes the source and keeps the edit', async ({ page }) => {
 		await editor.revealByClick();
 		for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('X');
-		// Escape renders the widget again from the untouched raw, discarding the edit.
+		// The typed byte is already in the document, so Escape only draws the widget again.
 		await page.keyboard.press('Escape');
 
 		await expect(editor.widget).toHaveCount(1);
-		expect(await editor.bridge.getSource()).toContain('see :abbr[HTML] here');
-		expect(await editor.bridge.getSource()).not.toContain('XHTML');
+		expect(await editor.bridge.getSource()).toContain('see :abbr[XHTML] here');
 	});
 });

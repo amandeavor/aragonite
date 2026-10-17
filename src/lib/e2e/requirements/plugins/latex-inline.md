@@ -4,13 +4,12 @@ Inline `$…$` math renders as a KaTeX widget the caret cannot enter. Focusing i
 or by moving the caret sideways against its edge, shows the editable `$…$` source in place, so
 the caret never sits in an invisible widget-selected state. The full set of caret-entry gestures
 (arrow, backspace and delete, at both edges, inside a block and across blocks, plus the contrast
-with an image, which selects) lives in `latex-inline-caret-entry.md`. The edit lives in DOM the
-tree has not seen, with no commit per keystroke (design axis A2, "re-render on commit, not
-keystroke"), and it re-renders when it commits, on blur or when the caret walks out of the
-source. Enter is not a commit gesture: it is the block's split key, and the command dispatch
-commits the shown source before splitting (`latex-inline-reveal-commands.md`). Escape discards
-the edit and brings the rendered widget back. The caret lands in the source across that swap,
-and at the math's trailing edge across the re-render on commit (flagship axis A1). IME
+with an image, which selects) lives in `latex-inline-caret-entry.md`. Each key typed in the source
+is written as it lands, and the formula renders again when the source closes, on blur, when the
+caret walks out of it, or on Escape, which keeps the edit. Enter is the block's split key, and the
+command dispatch closes the shown source before splitting (`latex-inline-reveal-commands.md`). The
+caret lands in the source as it opens, and keeps its place across the re-render when the caret
+leaves (flagship axis A1). IME
 composition while the source is being edited is the spec's named highest risk, driven through
 the suite's shared CDP driver so the events are the browser's own.
 
@@ -32,11 +31,10 @@ text lining up under it on line 2, to test where a click lands.
 - the caret lands where the click did, inside the delimiters
   (`latex-inline-click-caret.md` owns where it lands): a character typed after a click at the
   formula's tail continues the formula, neither at a block edge nor past the closer
-- after the commit the caret sits at the math's trailing edge: a character typed then appears
-  immediately after the re-rendered math, because the caret's own position as it leaves does not
-  survive the commit but the widget's trailing edge does
-- Escape after editing: the rendered widget comes back carrying the original source and the
-  serialized source is byte-identical to the seed, so the edit is discarded
+- after End leaves the source the caret stays at the line's end: a character typed then ends the
+  line, past the re-rendered math
+- Escape after editing: the rendered widget comes back carrying the edit, which the document
+  already holds
 - double-click inside a source that is already open (`$alpha beta gamma$`): the word under the
   pointer is taken, not the whole token, because the whole-token rule belongs to the double-click
   that opened it
@@ -48,10 +46,10 @@ text lining up under it on line 2, to test where a click lands.
 - click on real text on another visual line that lines up under the widget: the caret lands in
   that text and the widget stays rendered, because the hit test is a point inside a rect, both x
   and y, not x alone
-- after a commit caused by blurring away, with focus moved to another block, the selection stays
+- after a close caused by blurring away, with focus moved to another block, the selection stays
   in the block that took focus: the math block just blurred does not pull the caret back
 - a cross-block selection swept down from the caret in the shown source, with its anchor staying
-  inside that source, survives a blur without closing it: the commit backs off on a cross-block
+  inside that source, survives a blur without closing it: the close backs off on a cross-block
   selection rather than closing the widget out from under the anchor. The source block is one
   visual line, so the sweep is two Shift+ArrowDown presses, the first extending to the end of
   the line inside the block, which keeps the source shown, and the second crossing the boundary
@@ -61,8 +59,8 @@ text lining up under it on line 2, to test where a click lands.
 - a real mouse click on the widget; real Home, End, ArrowRight, Escape and typing, with no
   programmatic selection or caret placement
 - real CDP IME composition (a genuine compositionstart, update and compositionend) into the
-  shown source commits nothing per keystroke; the composed math commits only when focus leaves
-  the block
+  shown source writes the composed text at once, the source staying open around it; focus
+  leaving the block renders the formula again
 
 ## Miss-analysis
 
@@ -73,5 +71,5 @@ text lining up under it on line 2, to test where a click lands.
 
 ## Error cases
 
-- the `[invariant:…]` console watcher stays silent across showing the source, editing, committing,
-  canceling, and the IME path
+- the `[invariant:…]` console watcher stays silent across showing the source, editing, closing,
+  Escape, and the IME path

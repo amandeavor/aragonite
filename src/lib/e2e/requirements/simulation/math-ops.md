@@ -16,7 +16,7 @@ after every move, with a fixed seed so runs repeat.
 - inserting inline `$…$` at the caret in a prose block recognises and mounts the
   widget at render time; the host paragraph keeps the caret so editing continues
 - clicking the rendered widget shows its editable source, an edit is typed in, and
-  Enter re-renders KaTeX and saves the edit as one undo entry
+  walking the caret out re-renders KaTeX; the typed burst is one undo entry
 - promoting an empty line to a `$$…$$` block focuses the new block, and clicking away
   collapses it to the rendered display
 - editing the block through its revealed source and clicking away commits one undo
@@ -31,11 +31,10 @@ after every move, with a fixed seed so runs repeat.
   byte-identical after the round trip
 - Backspace at the trailing edge of a reveal-capable widget opens the reveal
   rather than deleting the widget
-- an edit typed into a revealed widget lives only in the DOM until it commits: the
-  CST holds unchanged while the source is shown
-- moving the caret out past the trailing edge commits that edit (the
-  commit-on-escape path, distinct from the click-then-Enter-or-blur commit); the
-  insert lands inside the fence, not as loose text after the widget
+- an edit typed into a revealed widget is written as it lands: the CST holds the
+  insert while the source is shown, and the source stays open under it
+- moving the caret out past the trailing edge closes the source; the insert stays
+  inside the fence, not as loose text after the widget
 - deleting text on either side of a surviving widget round-trips, so a widget with a
   nonzero interior keeps its bytes; deleting the widget itself by extending the
   selection over it removes its bytes in one entry

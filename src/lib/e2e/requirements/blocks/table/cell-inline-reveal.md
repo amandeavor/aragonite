@@ -2,10 +2,9 @@
 
 A cell uses the same `createWidgetInteraction` and caret-edge dispatch
 the prose block uses, so an inline math widget in a cell reveals its `$…$` source
-for editing, commits on Enter or on focus leaving as one undo entry, and cancels on Escape.
-One thing is specific to cells: every commit from a reveal or an edge re-escapes pipes the
-way the typing path does, so a `|` typed into a revealed formula can never split the row on
-reparse. Scenarios run on `/test/plugins?seed=mathtable`
+for editing, writes each key as it lands, and draws the widget again on Enter, on focus
+leaving or on Escape. One thing is specific to cells: a `|` typed into a revealed formula takes
+the cell's typing path, which escapes it, so it can never split the row on reparse. Scenarios run on `/test/plugins?seed=mathtable`
 (`| Formula | Note |\n| --- | --- |\n| $x^2$ | ok |\n\nAfter\n`).
 
 ## Happy paths
@@ -19,8 +18,8 @@ reparse. Scenarios run on `/test/plugins?seed=mathtable`
 
 ## User interactions
 
-- typing a `|` into a revealed formula and committing escapes it to `\|`, so the
-  row keeps its column count; `getSource()` round-trips byte-for-byte
-- focus leaving the cell with source revealed commits the edit as one undo entry, so
-  a single Ctrl+Z reverts the whole edit
-- Escape discards the source edit and restores the rendered widget, source unchanged
+- typing a `|` into a revealed formula escapes it to `\|`, so the row keeps its column
+  count; `getSource()` round-trips byte-for-byte
+- a burst typed into a revealed source is one undo entry, so a single Ctrl+Z reverts the
+  whole edit
+- Escape closes the source and keeps the edit

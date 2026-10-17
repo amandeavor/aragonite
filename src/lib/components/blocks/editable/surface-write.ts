@@ -57,6 +57,8 @@ export interface SurfaceWriteDeps {
 	/** Takes what the caret memory keeps for this block's next insertion (pending marks, a pending
 	 *  break), with what the block does to an insertion. */
 	holdInsertion(): HeldInsertion;
+	/** True while a widget's source is shown, where a typed write completes no line. */
+	showsSource?: () => boolean;
 }
 
 export function createSurfaceWrite(deps: SurfaceWriteDeps): (write: TextWrite) => ContentWrite {
@@ -94,9 +96,11 @@ export function createSurfaceWrite(deps: SurfaceWriteDeps): (write: TextWrite) =
 			deps.requestCaret(written.caret, { source: write.source });
 		}
 		if (!typed) return written;
-		const landed = written.then(
-			async (wrote) => (await deps.blockEdit.completeLineOnType(index, written.caret)) || wrote
-		);
+		const landed = deps.showsSource?.()
+			? written
+			: written.then(
+					async (wrote) => (await deps.blockEdit.completeLineOnType(index, written.caret)) || wrote
+				);
 		void deps.kindCue.afterTypedWrite(landed, deps.getPath(), before);
 		return withStoredCaret(landed, written.caret, written.storedOffset, written.keepsCaret);
 	};

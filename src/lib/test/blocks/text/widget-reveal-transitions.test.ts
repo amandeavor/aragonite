@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // The shown-source guard fires through real code, on a second entry before the first finishes
-// and on the source-length check at the DOM swap (G1.26). Legal show-then-commit and cancel cycles
+// and on the source-length check where the source opens (G1.26). Legal open-then-close cycles
 // stay silent, since a guard that fires wrongly floods the console every e2e spec watches.
 import { recordingWrite } from '#lib/test/harness/editor-actions.js';
 import { describe, it, expect } from 'vitest';
@@ -27,7 +27,6 @@ function mountEdgeMathBlock() {
 			{
 				blockEdit: { updateBlockContent: recordingWrite() },
 				setPendingCursor: () => {},
-				setRevealing: () => {},
 				isCrossBlock: () => false
 			}
 		)
@@ -49,7 +48,7 @@ describe('reveal transitions: settle-window re-entry (G1.26)', () => {
 		expect(fires[0].details).toBe('start-during-settle');
 	});
 
-	it('a full reveal → fold-commit cycle stays silent', async () => {
+	it('a full reveal → close-before-edit cycle stays silent', async () => {
 		const { interaction } = mountEdgeMathBlock();
 		interaction.enterEdgeWidget('start');
 		await settleEditor();
@@ -61,7 +60,7 @@ describe('reveal transitions: settle-window re-entry (G1.26)', () => {
 		expect(takeDevWarns()).toEqual([]);
 	});
 
-	it('a full reveal → Escape-cancel cycle stays silent', async () => {
+	it('a full reveal → Escape cycle stays silent', async () => {
 		const { interaction } = mountEdgeMathBlock();
 		interaction.enterEdgeWidget('start');
 		await settleEditor();

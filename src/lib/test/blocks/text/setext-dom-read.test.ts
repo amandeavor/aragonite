@@ -75,7 +75,7 @@ describe.each(MODES)('%s mode: erasing a setext title drops its underline', (mod
 	});
 });
 
-describe('a widget source shown in a setext heading closes with the underline', () => {
+describe('a widget source shown in a setext heading keeps the underline', () => {
 	installMathInline();
 
 	function mountMathHeading() {
@@ -93,14 +93,14 @@ describe('a widget source shown in a setext heading closes with the underline', 
 		return { instance, blockEdit, el };
 	}
 
-	it('an edited source writes the underline back', async () => {
+	it('a key typed in the source writes the underline back', async () => {
 		const { instance, blockEdit, el } = mountMathHeading();
 		expect(instance.enterEdgeWidget('start')).toBe(true);
 		await settleEditor();
 		const source = Array.from(el.childNodes).find((c) => c.nodeType === Node.TEXT_NODE);
 		source!.textContent = '$y$';
-
-		instance.runCommand('block.split');
+		window.getSelection()!.collapse(source!, 2);
+		el.dispatchEvent(new InputEvent('input', { bubbles: true }));
 		await settleEditor();
 
 		expect(blockEdit.updateBlockContent).toHaveBeenCalledWith(

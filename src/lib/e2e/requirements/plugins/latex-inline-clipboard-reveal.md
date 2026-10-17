@@ -1,29 +1,23 @@
 # Feature: inline-math clipboard during an active source reveal
 
-A cut or a paste fired while an inline-math widget is showing its editable `$…$` source has to
-commit that source into the tree first, then run against a tree that agrees with the screen, the
-same way keydown and IME already hold back the per-keystroke commit while the source is shown.
-Without that, the clipboard handler splices into the stale `node.raw` at an offset taken from
-the DOM, and the re-render after the paste wipes the text node holding the shown source while
-the flag saying it is shown stays stuck, silently dropping everything typed after that until
-blur.
+A cut or a paste fired while an inline-math widget is showing its editable `$…$` source closes
+that source first, then runs against the rendered block. Keys typed into the source are written as
+they land, so the tree already agrees with the screen; what closing guards is the caret, which a
+paste would otherwise read off a source the re-render is about to replace.
 
-Copy is the other half of the same rule: it must never change anything, so it commits nothing,
-but a selection over the shown edit, which is not in the tree yet, has to copy the live DOM text
-rather than the stale slice of raw.
+Copy is the other half of the same rule: it must never change anything, so it closes nothing and
+copies the bytes the user selected, the typed edit included.
 
 ## Happy paths
 
 - show, type, paste: enter the math source, type two characters, paste one. The serialized
   source carries the shown edit and the pasted character, with the math delimiters intact.
 - show, type, copy: enter the math source, type two characters, select the edit and copy. The
-  clipboard carries the live DOM text, the source stays open, and the document is untouched,
-  since the edit never reached the tree.
+  clipboard carries the typed text, the source stays open, and the document holds the edit.
 
 ## Edge cases
 
-- typing survives the paste: a character typed after the paste reaches the tree, because
-  committing the shown source cleared the flag and input is no longer held back.
+- typing survives the paste: a character typed after the paste reaches the tree.
 
 ## User interactions
 
@@ -32,5 +26,5 @@ rather than the stale slice of raw.
 
 ## Error cases
 
-- the regression this guards: without committing first, the shown edit is lost and typing after
-  the paste is dropped, so the serialized source contains neither.
+- the regression this guards: a paste that lands inside a source the re-render replaces drops
+  the edit or the typing after it, so the serialized source would be missing one of them.

@@ -26,8 +26,8 @@ export async function insertTextDirective(
 	tracker.resync(await editor.bridge.getSource());
 }
 
-/** The source shows in both states, so the widget count is the one sign it opened; the edit stays
- *  out of the tree until blur, so a source wait before the commit would race the DOM. */
+/** The source shows in both states, so the widget count is the one sign it opened; each key in it
+ *  is written as it lands, and the blur draws the widget again. */
 export async function revealEditTextDirective(
 	ctx: SimContext,
 	stepIn: number,

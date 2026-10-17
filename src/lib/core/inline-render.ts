@@ -38,6 +38,10 @@ export interface RenderInlineOptions extends WidgetBuildOptions {
 	/** Write each construct's raw range onto its marker spans as data attributes, for the
 	 *  preview-inline reveal. Off by default, so the DOM stays byte-identical elsewhere. */
 	tagConstructMarkers?: boolean;
+	/** The raw range of a shown widget source: a widget overlapping it draws as its bytes. */
+	shownSource?: { start: number; end: number };
+	/** Keeps the pooled instance of a widget drawn as its source alive for when it draws again. */
+	retainViewWidget?: (node: InlineNode, raw: string) => void;
 }
 
 // ── Marker helpers ──────────────────────────────────────────────────────────
@@ -286,6 +290,10 @@ function appendImageSource(
 
 // ── Main renderer ────────────────────────────────────────────────────────────
 
+function overlapsShownSource(node: InlineNode, shown?: { start: number; end: number }): boolean {
+	return shown !== undefined && node.start < shown.end && node.end > shown.start;
+}
+
 /** Returns a frame for the node's children; the driver owns the descent, off the call stack. */
 function renderNode(
 	node: InlineNode,
@@ -366,6 +374,11 @@ function renderNode(
 		case 'entityReference':
 		case 'rawHtml':
 		default:
+			if (overlapsShownSource(node, opts.shownSource)) {
+				opts.retainViewWidget?.(node, raw);
+				container.appendChild(document.createTextNode(raw.slice(node.start, node.end)));
+				return null;
+			}
 			// An invisible entity renders no widget and keeps its literal-source span, as does any
 			// kind the registry does not own, so every byte round-trips.
 			container.appendChild(

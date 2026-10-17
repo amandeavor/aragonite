@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures';
 import type { PresentationMode } from '../../../presentation-mode';
-import { PluginsPage, capturedErrors } from './helpers';
+import { PluginsPage, capturedErrors, clickWidgetEnd } from './helpers';
 
 /**
  * Typing a widget's opening byte in front of its body, for every widget kind that can show its
@@ -72,6 +72,11 @@ function widgetsIn(editor: PluginsPage, index: number): Promise<number> {
 	);
 }
 
+/** How many shown sources carry the tint, read off the CSS highlight the block paints. */
+function washedRanges(editor: PluginsPage): Promise<number> {
+	return editor.page.evaluate(() => CSS.highlights.get('md-inline-reveal')?.size ?? 0);
+}
+
 async function open(
 	editor: PluginsPage,
 	seed: string | undefined,
@@ -109,6 +114,88 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		}
 	}
 
+	for (const mode of MODES) {
+		for (const hashes of ['#', '##', '###']) {
+			test(`tags (${mode}): ${hashes} then Space before words makes a heading at once`, async ({
+				page
+			}) => {
+				const editor = new PluginsPage(page);
+				await open(editor, 'tags', 'few words here\n\nOther\n', mode);
+				await editor.focusBlock(0, 0);
+				for (let i = 0; i < hashes.length; i++) await page.keyboard.press('Shift+Digit3');
+				await page.keyboard.press('Space');
+
+				// No End, no click: the heading forms on the Space, not when the source closes.
+				expect(await editor.bridge.getBlockKind(0)).toBe('heading');
+				expect(await editor.bridge.getSource()).toBe(`${hashes} few words here\n\nOther\n`);
+				expect(await caret(editor)).toEqual({ path: [0], offset: hashes.length + 1 });
+				expect(await capturedErrors(page)).toEqual([]);
+			});
+		}
+	}
+
+	test('tags: a Space after a mid-line tag keeps the paragraph and the source open', async ({
+		page
+	}) => {
+		const editor = new PluginsPage(page);
+		await open(editor, 'tags', 'text few words\n\nOther\n', 'source');
+		await editor.focusBlock(0, 5);
+		await page.keyboard.press('Shift+Digit3');
+		await page.keyboard.press('Space');
+
+		expect(await editor.bridge.getSource()).toBe('text # few words\n\nOther\n');
+		expect(await editor.bridge.getBlockKind(0)).toBe('paragraph');
+		expect(await caret(editor)).toEqual({ path: [0], offset: 7 });
+		// The source stays shown over `# few` until the caret leaves it.
+		expect(await washedRanges(editor)).toBe(1);
+		await page.keyboard.press('End');
+		await expect.poll(() => washedRanges(editor)).toBe(0);
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+
+	test('tags: undo and redo put the caret back inside a tag with its source shown', async ({
+		page
+	}) => {
+		const editor = new PluginsPage(page);
+		await open(editor, 'tags', '#few words here\n\nOther\n', 'source');
+		await editor.focusBlock(0, 2);
+		await page.keyboard.type('ab');
+		expect(await editor.bridge.getSource()).toBe('#fabew words here\n\nOther\n');
+		await page.keyboard.press('End');
+
+		await editor.undo();
+		expect(await editor.bridge.getSource()).toBe('#few words here\n\nOther\n');
+		expect(await caret(editor)).toEqual({ path: [0], offset: 2 });
+		expect(await widgetsIn(editor, 0)).toBe(0);
+		await editor.redo();
+		expect(await editor.bridge.getSource()).toBe('#fabew words here\n\nOther\n');
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+
+	test('math (live): a formula typed through a state that is not math keeps its source shown', async ({
+		page
+	}) => {
+		const editor = new PluginsPage(page);
+		await open(editor, 'math', 'Sum $x$ tail\n\nNext\n', 'live');
+		await clickWidgetEnd(page.locator("[data-block-path='[0]'] [data-inline-widget]"));
+		await expect.poll(() => widgetsIn(editor, 0)).toBe(0);
+
+		// `$x $` is not math, so nothing would draw it as a formula: the source stays as it was.
+		await page.keyboard.press('Space');
+		expect(await editor.bridge.getSource()).toBe('Sum $x $ tail\n\nNext\n');
+		expect(await widgetsIn(editor, 0)).toBe(0);
+		expect(await washedRanges(editor)).toBe(1);
+		await page.keyboard.type('y');
+		expect(await editor.bridge.getSource()).toBe('Sum $x y$ tail\n\nNext\n');
+		expect(await widgetsIn(editor, 0)).toBe(0);
+		expect(await washedRanges(editor)).toBe(1);
+
+		await page.keyboard.press('End');
+		await expect.poll(() => widgetsIn(editor, 0)).toBe(1);
+		expect(await washedRanges(editor)).toBe(0);
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+
 	test('tags: Backspace that turns a heading back into a tag keeps the caret inside it', async ({
 		page
 	}) => {
@@ -122,6 +209,11 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		expect(await caret(editor)).toEqual({ path: [0], offset: 1 });
 		await editor.waitForRenderFlush();
 		expect(await widgetsIn(editor, 0)).toBe(0);
+
+		// Undo with the source still shown puts the caret back where the Backspace began.
+		await editor.undo();
+		expect(await editor.bridge.getSource()).toBe('# few words here\n\nOther\n');
+		expect(await caret(editor)).toEqual({ path: [0], offset: 2 });
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 

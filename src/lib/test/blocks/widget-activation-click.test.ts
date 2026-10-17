@@ -89,7 +89,6 @@ function mountInteraction(kind: string, linkClick: LinkClick, mode: Presentation
 				reading,
 				activationClick: bindActivationClick(reading.mode, () => linkClick, createPressTracker()),
 				setPendingCursor: () => {},
-				setRevealing: () => {},
 				isCrossBlock: () => false,
 				getPendingClickPoint: () => null
 			}

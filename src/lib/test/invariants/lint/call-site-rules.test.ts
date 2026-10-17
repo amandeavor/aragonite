@@ -121,9 +121,7 @@ const RULES: CallSiteRule[] = [
 			'src/lib/components/blocks/text/text-clipboard.ts :: removeWidget':
 				'a cut of a selected widget, moving with the other clipboard edits',
 			'src/lib/components/blocks/text/text-clipboard.ts :: removeRange':
-				'a cut in a text block or a table cell, moving with the other clipboard edits',
-			'src/lib/components/blocks/text/widget-interaction.ts :: commitReveal':
-				'an inline widget’s shown source, moving with the fold that closes it'
+				'a cut in a text block or a table cell, moving with the other clipboard edits'
 		},
 		reason:
 			'`surface-write.ts :: writeText` records the caret from before the gesture as undo’s, keeps the block’s line ending and puts the caret back; a direct write picks its own undo caret',

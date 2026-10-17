@@ -8,7 +8,7 @@ the selection leaves it, not only when focus leaves the block.
 ## Happy paths
 
 - Show eq1 by clicking it, then click prose elsewhere in the same paragraph: eq1 re-renders with no `$…$` left on screen, the tree is untouched, and the caret lands at the click point, so a typed character goes in there rather than at the widget's trailing edge.
-- Show eq1, then click eq2: one gesture that closes and opens in order. eq1 re-renders, eq2's source opens ready for typing at the point clicked, its tail, inside the closing `$`, and the tree holds both originals.
+- Show eq1, then click eq2: one gesture that closes and opens in order. eq1 re-renders, eq2's source opens ready for typing at the point clicked, its tail, inside the closing `$`, and the tree holds eq1 as it was and eq2 with the typed byte.
 
 ## Edge cases
 

@@ -430,16 +430,16 @@ one that isn't open. Outside a bracket, byte-identical duplicate widgets can't b
 Predicate `checkPoolBracket` (`inline-transitions.ts`) · run in `components/blocks/widget-portal.ts` ·
 `inline-transitions.test.ts`, `test/blocks/widget-portal-bracket.test.ts`.
 
-**G1.26 · Reveal transition legality.** A reveal swaps a rendered inline construct for its editable
-source in temporary DOM, and the fold swaps it back, committing or discarding what was typed. **No
-fold without a reveal**: `commitReveal`, `cancelReveal` and `foldRevealNoEdit` run only with an
-active reveal, so a fire is a caller that skipped its pre-guard. **No mutation with a reveal**
-(`command-during-reveal`): a block's command dispatch never mutates while a reveal is open, since
-the reveal holds bytes the CST hasn't seen; a fire is a command entry path that skipped the fold.
+**G1.26 · Reveal transition legality.** A reveal draws an inline widget as its editable source, and
+a close draws the widget again; what was typed in between was written as it landed. **No close
+without a reveal**: `closeShownSource` runs only with a source shown, so a fire is a caller that
+skipped its pre-guard. **No mutation with a reveal** (`command-during-reveal`): a block's command
+dispatch never mutates while a reveal is open, so it acts on the rendered block; a fire is a command
+entry path that skipped the close.
 `startReveal` is also never re-entered inside the reveal's own microtask-long settle window, and the
 source-length precondition holds at reveal entry. Legal bails (blur with no reveal, a blur during a
 cross-block selection that keeps the source shown, entry while one is active) stay silent. Inline
-closures in `components/blocks/text/widget-interaction.ts` (the fold halves) and
+closures in `components/blocks/text/widget-interaction.ts` (the close halves) and
 `components/blocks/text/inline-commands.ts :: perform` (the mutation half), plus
 `checkRevealSourceLength` (`inline-transitions.ts`) at `caret/reveal-source.ts` ·
 `test/blocks/text/widget-reveal-transitions.test.ts`.
@@ -767,8 +767,10 @@ and an inline menu row are each a `PluginView`, mounted through `plugin-view.ts 
 into an element the editor made. A view mounts once, takes new props through `update` (a widget
 typing moved, a decoration in the same place, a row turning active), and is destroyed once. A throw
 at any of the three is reported once, the view is never called again, and the slot draws its
-fallback. A pooled widget or a badge mounts no new view while it stays put; a decoration widget is
-drawn afresh with its block, so a throwing one reports once per rebuild.
+fallback. A pooled widget or a badge mounts no new view while it stays put, and a pooled widget
+whose source is shown stays alive undrawn, so it comes back as the same view when the source closes
+unedited; a decoration widget is drawn afresh with its block, so a throwing one reports once per
+rebuild.
 `plugins/view/lifecycle.test.ts` (a DOM view and a Svelte one) and `plugins/view/failure.test.ts`
 run every slot; G4.186 holds new routes to the wrapper.
 

@@ -145,9 +145,9 @@ test.describe('latex acceptance axes', () => {
 		);
 	});
 
-	// A1 for an inline formula: after showing the source and committing, a typed character lands past
-	// the widget, and the block below does not move vertically.
-	test('A1: inline reveal→edit→commit preserves the caret with no vertical shift', async ({
+	// A1 for an inline formula: after showing the source, editing it and leaving it, the caret is
+	// where the key that left put it, and the block below does not move vertically.
+	test('A1: inline reveal→edit→leave preserves the caret with no vertical shift', async ({
 		page
 	}) => {
 		await editor.loadContent(INLINE_MATH);
@@ -159,15 +159,14 @@ test.describe('latex acceptance axes', () => {
 		await clickWidgetEnd(editor.inlineWidget);
 		await expect(editor.inlineWidget).toHaveCount(0);
 		await page.keyboard.type('z');
-		// Moving the caret out is what commits; Enter splits the block instead.
+		// Moving the caret out closes the source; Enter splits the block instead.
 		await page.keyboard.press('End');
 		await expect(editor.inlineWidget).toHaveCount(1);
 
-		// The commit left the caret at the widget's trailing edge, so the next character lands
-		// right after it, showing the caret survived the re-render.
+		// End's caret survives the widget drawing again, so the next character ends the line.
 		await page.keyboard.type('!');
-		await editor.bridge.waitForSourceContains('$x^2z$! after');
-		expect(await editor.bridge.getSource()).toContain('Before $x^2z$! after');
+		await editor.bridge.waitForSourceContains('after!');
+		expect(await editor.bridge.getSource()).toContain('Before $x^2z$ after!');
 
 		const nextTopAfter = (await editor.getBlock(1).boundingBox())?.y ?? NaN;
 		expect(Math.abs(nextTopAfter - nextTopBefore)).toBeLessThanOrEqual(GEOMETRY_TOLERANCE);
