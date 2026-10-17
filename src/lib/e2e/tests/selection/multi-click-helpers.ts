@@ -54,13 +54,15 @@ export async function gutterLeftOf(page: Page, needle: string): Promise<Point> {
 	return pointInGap(host(run.path.slice(0, -1)), editable, 'left', run.top + run.height / 2);
 }
 
-/** The center of the `- ` marker the container draws inside the editable holding `needle`: a
- *  widget inside the editable element, not part of its text. */
+/** The center of the `- ` marker beside the editable holding `needle`, which its list item draws
+ *  in a cell of its own. */
 export async function markerCenterOf(page: Page, needle: string): Promise<Point> {
 	const run = await textRunRect(page, needle);
 	const at = await page.evaluate((path) => {
 		const block = document.querySelector(`[data-block-path='${JSON.stringify(path)}']`);
-		const marker = block?.querySelector('.md-marker[contenteditable="false"]');
+		const marker = block
+			?.closest('.list-item-block')
+			?.querySelector(':scope > .list-item-marker > .md-marker');
 		const b = marker?.getBoundingClientRect();
 		return b ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : null;
 	}, run.path);

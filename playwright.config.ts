@@ -65,6 +65,7 @@ const WEBKIT_LANE = [
 	'selection/dead-space-click.spec.ts',
 	'selection/gap-caret-arrival.spec.ts',
 	'selection/widget-selected-paint.spec.ts',
+	'blocks/list/item-marker.spec.ts',
 	'caret/**/*.spec.ts',
 	'webkit/**/*.spec.ts'
 ];

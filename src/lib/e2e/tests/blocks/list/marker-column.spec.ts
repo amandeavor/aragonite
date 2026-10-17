@@ -20,7 +20,7 @@ interface BlockGeometry {
 }
 
 /** Reads the lines the editor paints for the block at `path` (through its own offset mapping),
- *  the container's leading marker beside them, and the block's first picture. */
+ *  the marker of the item the block opens, and the block's first picture. */
 function blockGeometry(page: Page, path: number[]): Promise<BlockGeometry> {
 	return page.evaluate((at) => {
 		const bridge = (window as any).__test;
@@ -42,7 +42,9 @@ function blockGeometry(page: Page, path: number[]): Promise<BlockGeometry> {
 		const top = (el: Element | null) => (el ? { top: el.getBoundingClientRect().top } : null);
 		return {
 			lines,
-			marker: top(block.querySelector(':scope > .md-marker[contenteditable="false"]')),
+			marker: top(
+				host!.closest('.list-item-block')!.querySelector(':scope > .list-item-marker > .md-marker')
+			),
 			image: top(block.querySelector('[data-image-widget] img')),
 			lineHeight
 		};
@@ -167,7 +169,9 @@ test.describe('a heading item draws its marker as part of the heading', () => {
 				expect(Math.abs(lines[1].left - lines[0].left)).toBeLessThanOrEqual(HALF_PIXEL);
 				const font = await page.evaluate(() => {
 					const heading = document.querySelector<HTMLElement>('.editor .heading-1')!;
-					const marker = heading.querySelector(':scope > .md-marker[contenteditable="false"]')!;
+					const marker = heading
+						.closest('.list-item-block')!
+						.querySelector(':scope > .list-item-marker > .md-marker')!;
 					const [h, m] = [getComputedStyle(heading), getComputedStyle(marker)];
 					return {
 						heading: { size: h.fontSize, weight: h.fontWeight },

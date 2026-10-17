@@ -52,14 +52,14 @@ test.describe('list/blockquote layout for image-bearing paragraphs', () => {
 			await editor.loadContent(doc);
 			await waitForFirstImageLoaded(page);
 
-			const marker = page.locator('.md-marker[contenteditable="false"]').first();
-			const markerBox = await marker.boundingBox();
+			const cell = page.locator('.list-item-block > .list-item-marker').first();
+			const markerBox = await cell.boundingBox();
 			const imageBox = await page.locator('[data-image-widget] img').first().boundingBox();
 			if (!markerBox || !imageBox) throw new Error('layout boxes missing');
 
-			// Laid out as a marker at all, not merely near: under an inline-block `<a>` the marker
-			// and image land close anyway, so geometry alone cannot tell the link shape apart.
-			expect(await marker.evaluate((el) => getComputedStyle(el).position)).toBe('absolute');
+			// Held at the top by the picture rule, not merely near: under an inline-block `<a>` the
+			// marker and image land close anyway, so geometry alone cannot tell the link shape apart.
+			expect(await cell.evaluate((el) => getComputedStyle(el).alignSelf)).toBe('flex-start');
 			expect(Math.abs(markerBox.y - imageBox.y)).toBeLessThanOrEqual(45);
 		});
 	}
@@ -78,8 +78,8 @@ test.describe('list/blockquote layout for image-bearing paragraphs', () => {
 		expect(imageBox.x - outerBox.x).toBeGreaterThanOrEqual(12);
 	});
 
-	// The rule pinning the list item's `- ` marker to the top left must not reach every
-	// `.md-marker` direct child, or these inline markers stack on that `-`.
+	// The rule holding the list item's `- ` marker at the picture's top must not reach the inline
+	// markers in the paragraph, or they leave its flow.
 	test('inline emphasis markers in a list-item image paragraph stay in normal flow', async ({
 		page
 	}) => {

@@ -74,12 +74,9 @@ test.describe('preview-block: markers by focus', () => {
 	});
 
 	test('containment: the focused list item shows its marker, siblings stay rendered', async () => {
-		const firstAmbient = ep.page.locator(
-			`[data-block-path='[3,0,0]'] .md-marker[contenteditable='false']`
-		);
-		const secondAmbient = ep.page.locator(
-			`[data-block-path='[3,1,0]'] .md-marker[contenteditable='false']`
-		);
+		const items = ep.page.locator(`[data-block-path='[3]'] .list-item-block`);
+		const firstAmbient = items.nth(0).locator(':scope > .list-item-marker > .md-marker');
+		const secondAmbient = items.nth(1).locator(':scope > .list-item-marker > .md-marker');
 		// Focus the first item's paragraph.
 		await ep.clickBlockAtPath([3, 0, 0], 0);
 		await expect(firstAmbient).toBeVisible(); // its `- ` reads as source

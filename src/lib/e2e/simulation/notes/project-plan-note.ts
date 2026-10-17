@@ -75,8 +75,6 @@ export const PROJECT_PLAN_NOTE: NoteFixture = {
 		await g.resizeImage('left', 2);
 		await g.checkpoint('image', 'image');
 
-		// The checkbox renders on the item's paragraph, and only the list and the item
-		// paragraphs carry a data-block-path, so the path stops at the paragraph.
 		await g.toggleTask([7, 0, 0]);
 		await g.toggleTaskByKeyboard([7, 1, 0]);
 	},

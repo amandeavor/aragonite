@@ -309,8 +309,8 @@ export class Gestures {
 		return nestQuote(this.ctx, text);
 	}
 
-	toggleTask(listItemPath: number[]): Promise<void> {
-		return toggleTask(this.ctx, listItemPath);
+	toggleTask(itemTextPath: number[]): Promise<void> {
+		return toggleTask(this.ctx, itemTextPath);
 	}
 
 	/** Types `# ` at the start of a list item's paragraph and undoes once; the undo must restore

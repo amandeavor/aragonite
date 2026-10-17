@@ -482,6 +482,22 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
+		id: 'G4.209 a list item draws its marker in its own cell, never through a child’s prefix',
+		matches: /\bambientPrefixForFirst\b/,
+		allowed: {
+			'src/lib/components/BlockList.svelte':
+				'hands a plugin container’s prefix to its first text child',
+			'src/lib/editor-actions/plugin/container.ts': 'offers a plugin container’s declared prefix'
+		},
+		reason:
+			'a prefix handed to a child paints only on a text block, so an item opening with any other block draws no marker and hides its bytes; a list item draws its marker in its own cell (`ListItemBlock`)',
+		hits: [
+			'ambientPrefixForFirst={buildTaskItemAmbient(meta, toggle, drawsBox)}',
+			'get ambientPrefixForFirst() {'
+		],
+		misses: ['// ambientPrefixForFirst goes to text only\nconst a = 1;', 'const ambientPrefix = 1;']
+	},
+	{
 		id: 'every dev-only check reads the build flag through env.ts',
 		matches: /from\s*['"]esm-env['"]/,
 		allowed: {

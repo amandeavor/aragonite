@@ -71,6 +71,14 @@
 	   colour here draws the outline and the dividers beside revealed backticks. */
 	--md-inline-code-bg: rgba(0, 0, 0, 0.22);
 	--md-inline-code-border: transparent;
+	/* The heading scale, relative to the body text; a list item's marker reads it too, to match. */
+	--md-heading-1-size: 2em;
+	--md-heading-2-size: 1.5em;
+	--md-heading-3-size: 1.25em;
+	--md-heading-4-size: 1.1em;
+	--md-heading-5-size: 1em;
+	--md-heading-6-size: 0.9em;
+	--md-heading-weight: bold;
 
 	/* Markdown syntax override points, neutral so the default rendering adds no palette of its own;
 	   most chain to a host-chrome token that holds the light and dark split. */

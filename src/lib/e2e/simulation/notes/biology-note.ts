@@ -74,8 +74,6 @@ export const BIOLOGY_NOTE: NoteFixture = {
 		await g.resizeImage('right', 2);
 		await g.checkpoint('image-resized', 'image');
 
-		// The nearest ancestor of the checkbox with a path is the item's paragraph, not the list
-		// item: only the list and the item paragraphs carry a data-block-path.
 		await g.toggleTask([7, 0, 0]);
 		await g.toggleTaskByKeyboard([7, 1, 0]);
 

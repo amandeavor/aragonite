@@ -21,7 +21,8 @@ ahead):
 - **opener**: the part of the parser that recognizes the syntax a block starts with.
 - **chrome**: the parts of a block that are furniture rather than content (a title row, a table
   border).
-- **ambient prefix**: the read-only marker a container lends its first child (a list's `- `).
+- **ambient prefix**: the read-only marker a container lends its first child (a footnote definition's
+  `[^label]: `).
 - **scope**: one block list and its children; the unit of addressing and windowing.
 - **path**: the child indices from the document root down to a block.
 - **spine**: the chain of parents from the root down to the edited node.
@@ -266,6 +267,7 @@ These checks run in three kinds of place:
 | G1.106 | A range delete takes whole rows from a table it keeps an edge of                           | A·N     |
 | G1.110 | A metadata write to a leaf is refused, since a leaf's metadata comes from its bytes        | A·N     |
 | G1.112 | A content write inside a commit leaves its fix-up to the commit                            | A·N     |
+| G1.113 | A list item's drawn marker is its own opening bytes                                        | A·P     |
 
 ### The entries
 
@@ -824,6 +826,14 @@ writes, at any depth and before its own chain rebuilds, so its commit says `fixe
 the check skips it (G4.208 pins that list). `test/invariants/settle-once.test.ts`, and
 `test/perf/settle-passes.test.ts` counts the passes each gesture runs.
 
+**G1.113 · The marker is the item's bytes.** A list item draws its marker in a cell of its own,
+built from its metadata, and source mode shows that cell as the item's first bytes. So the text it
+draws has to be what the item's raw opens with, past the up to three spaces of indent. A rewrite
+that moves the metadata without the bytes would show a marker the file doesn't hold. The item
+checks it each time it builds the cell (`invariants/item-marker-bytes.ts`), and a dev build warns
+`invariant:item-marker-bytes`. `test/invariants/item-marker-bytes.test.ts` runs the check over
+generated documents too.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -1238,6 +1248,7 @@ unguarded.
 | G4.201 | One painter puts the selection tint on an inline widget                                      | L       |
 | G4.207 | Shipped CSS keeps `color-mix` and container queries behind `@supports`                       | L       |
 | G4.208 | The fix-up after an edit is run by the commit or by the one write no commit follows          | L       |
+| G4.209 | A list item draws its marker in its own cell, never through a child's prefix                 | L       |
 
 ### The entries
 
@@ -2351,6 +2362,11 @@ step of its own (`writeNodeContent`, `deleteNode`, the join and the move) to the
 report that kind through `describeEdit`, since the commit skips a step nobody reported; and
 `fixesUpOwnWrites` to the format toggle, the one commit G1.112 skips. A new caller of any of them
 is a fix-up doubled or dropped in the making. `lint/separator-write-doors.test.ts`.
+
+**G4.209 · The list item's marker stays in its cell.** A prefix handed to a child block paints only
+on text, so an item that opened with a code block, a table or another list once drew no marker and
+hid its bytes. `ambientPrefixForFirst` is named only where a plugin container offers its prefix
+and where `BlockList` hands it on. `lint/file-rules.test.ts`.
 
 ## Accessibility
 

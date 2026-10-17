@@ -81,14 +81,14 @@ test('live mode: keys at the end of the text', async ({ page }) => {
 test('live mode: emptying the text', async ({ page }) => {
 	const ep = await enterPresentationMode(page, 'live', DOC);
 
-	await test.step('inside a list item, Backspace over the last character, then a key, writes the key as the heading text', async () => {
+	await test.step('inside a list item, Backspace over the last character leaves an empty paragraph, as at the top level', async () => {
 		await nextRow(ep, '- # H #\n- b\n');
 		await ep.focusBlockAtPath([0, 0, 0], 1);
 		await page.keyboard.press('End');
 		await page.keyboard.press('Backspace');
-		await ep.bridge.waitForSourceEquals('- #  #\n- b\n');
+		await ep.bridge.waitForSourceEquals('- \n- b\n');
 		await ep.typeSlowly('k');
-		await ep.bridge.waitForSourceEquals('- # k #\n- b\n');
+		await ep.bridge.waitForSourceEquals('- k\n- b\n');
 	});
 
 	// Focused and empty, the heading paints both markers, so End goes past the run as in source.

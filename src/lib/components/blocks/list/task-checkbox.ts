@@ -1,5 +1,6 @@
 import type { AmbientPrefix } from '../../../block-component';
-import type { ListItemMetadata } from '../../../core/nodes';
+import { metadataOf, type ListItemMetadata } from '../../../core/nodes';
+import type { NodeView } from '../../../core/node-views';
 import { devWarn } from '../../../dev-warn';
 
 /** The box's width and gap in editor.css plus the trailing space, at the body size the marker draws. */
@@ -10,9 +11,9 @@ function isTaskMarkerChecked(taskMarker: string): boolean {
 	return c === 'x' || c === 'X';
 }
 
-/** Whether a block's container marker prefix draws a task box, making the block the to-do's text. */
-export function ambientHoldsTaskBox(prefix: AmbientPrefix): boolean {
-	return typeof prefix !== 'string' && !!prefix.interactive?.some((r) => r.role === 'checkbox');
+/** Whether the block at `index` inside `parent` is a to-do's own text, the line its box labels. */
+export function isTaskItemText(parent: NodeView | null, index: number): boolean {
+	return index === 0 && parent?.kind === 'listItem' && !!metadataOf(parent, 'listItem').taskItem;
 }
 
 /** `drawsBox` is whether the mode draws the box in place of the `[ ]` bytes; where it shows the

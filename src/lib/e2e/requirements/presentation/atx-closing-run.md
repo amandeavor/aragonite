@@ -49,8 +49,9 @@ nothing past their text, so no scenario saw the run drawn, and then written, on 
 Miss-analysis: every preview-block scenario left the caret where Shift+Enter put it, so none
 typed with the caret inside a run the page shows.
 
-- live mode, inside a list item: Backspace over the text's last character keeps both markers
-  (`- #  #`), and the next key writes the heading's text between them (`- # k #`)
+- live mode, inside a list item: Backspace over the text's last character leaves an empty
+  paragraph, as it does at the top level (`- `), and the next key writes a plain paragraph
+  (`- k`); the item's marker sits outside the heading's line, so nothing keeps the hidden `#`s
 - live mode: End in an empty heading with a closing run (`#  #`), then a key: the focused heading
   paints both markers, so the key goes past the run (`#  #k`), as in source mode
 - live mode: selecting the whole text and typing a space leaves a paragraph holding the space,
