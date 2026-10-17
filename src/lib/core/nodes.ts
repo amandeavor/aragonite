@@ -199,6 +199,7 @@ interface LeafBlockNodeBase extends BlockNodeBase {
 	innerSuffix?: undefined;
 	childIds?: undefined;
 	childSpans?: undefined;
+	markerWidths?: undefined;
 }
 
 /** A container may be briefly childless mid-edit (G1.5), so every structural field stays optional;
@@ -209,6 +210,8 @@ interface ContainerBlockNodeBase extends BlockNodeBase {
 	innerSuffix?: string;
 	childIds?: string[];
 	childSpans?: Uint32Array;
+	/** A list's items per marker width, its column's size (`core/parsers/list.ts :: MarkerWidths`). */
+	markerWidths?: Uint32Array;
 }
 
 export interface ParagraphNode extends LeafBlockNodeBase {
@@ -286,6 +289,7 @@ export interface PluginBlockNode extends BlockNodeBase {
 	innerSuffix?: string;
 	childIds?: string[];
 	childSpans?: Uint32Array;
+	markerWidths?: Uint32Array;
 }
 
 /** A genuine discriminated union: `switch (node.kind)` narrows `node.metadata` with no cast. */

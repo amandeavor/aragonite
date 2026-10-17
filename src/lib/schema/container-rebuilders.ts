@@ -11,8 +11,17 @@ import { makeBlockNode, metadataOf } from '../core/nodes';
 import { generateBlockId } from '../block-id';
 import type { NodeView } from '../core/node-views';
 import { assertInvariant } from '../assert';
+import { recordListMarkerReads } from '../perf/instruments';
 import { quoteLines } from '../core/parsers/blockquote';
-import { listItemLines, readItemShape } from '../core/parsers/list';
+import {
+	countsAfterRewrite,
+	listItemLines,
+	markerWidthCounts,
+	markerWidthTally,
+	readItemShape,
+	sameMarkerWidths,
+	type MarkerWidths
+} from '../core/parsers/list';
 import {
 	firstDisplayLine,
 	firstLineEnding,
@@ -72,7 +81,19 @@ export function rebuildListItemRaw(
 
 export function rebuildListRaw(node: CstNode, changed?: ChildRawChange): void {
 	if (!node.children) return;
-	rebuildConcatRaw(node, changed);
+	const tally = markerWidthTally();
+	const spliced = rebuildConcatRaw(node, changed, (item) => tally.add(readItemShape(item.raw)));
+	const kept = node.markerWidths;
+	// A rewrite of one child's region moves that item's count; a full rebuild counted every item,
+	// and a list with no counts yet takes one count of its items.
+	let counts: MarkerWidths;
+	if (!spliced) counts = tally.counts();
+	else if (kept && changed) {
+		counts = countsAfterRewrite(kept, changed.previousRaw, node.children[changed.index].raw);
+	} else counts = markerWidthCounts(node.children);
+	recordListMarkerReads(spliced && kept ? 1 : node.children.length);
+	// A fresh array, never one changed in place: an undo entry may hold the one it replaces.
+	if (!kept || !sameMarkerWidths(counts, kept)) node.markerWidths = counts;
 }
 
 // ── Table ────────────────────────────────────────────────────────────────────

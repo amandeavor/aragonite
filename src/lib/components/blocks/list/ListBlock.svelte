@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { getContext, setContext, untrack } from 'svelte';
+	import { getContext, setContext } from 'svelte';
 	import type { ListContext } from '../../../action-contracts';
 	import type { NodeView } from '../../../core/node-views';
+	import { markerWidthsOf } from '../../../core/parsers/list';
 	import { EDITOR_SERVICES_KEY, LIST_CONTEXT_KEY, type EditorServices } from '../../../editor-keys';
 	import { createListContext } from '../../../editor-actions/list-context';
 	import { createListOverrides } from '../../../editor-actions/list-overrides';
@@ -69,22 +70,7 @@
 	);
 	let bounds = $derived(sliceWindow((node.children ?? []).length, win));
 
-	// Scans the items when they come, go or move, or a marker changes in place; an undo snapshot
-	// hands the list a fresh copy of the same ids, which keeps the column it has.
-	let markerEdits = $state(0);
-	let scanned: { ids: string[]; edits: number; drawsBoxes: boolean; column: string } | null = null;
-	const column = $derived.by(() => {
-		const ids = listState.innerBlockIds;
-		let sameIds = scanned?.ids.length === ids.length;
-		for (let i = 0; i < ids.length; i++) if (ids[i] !== scanned?.ids[i]) sameIds = false;
-		const drawsBoxes = hidesMarkers(reading.mode());
-		if (sameIds && scanned?.edits === markerEdits && scanned.drawsBoxes === drawsBoxes) {
-			return scanned.column;
-		}
-		const next = untrack(() => markerColumn(node.children ?? [], drawsBoxes));
-		scanned = { ids: ids.slice(), edits: markerEdits, drawsBoxes, column: next };
-		return next;
-	});
+	const column = $derived(markerColumn(markerWidthsOf(node), hidesMarkers(reading.mode())));
 
 	const childList: ChildList = {
 		count: () => node.children?.length ?? 0,
@@ -124,7 +110,6 @@
 			myPath={[...myPath, absoluteIndex]}
 			itemCount={(node.children ?? []).length}
 			slots={listState.refSlots}
-			onMarkerChange={() => markerEdits++}
 		/>
 	{/each}
 	{#if win.active}

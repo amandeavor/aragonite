@@ -270,6 +270,7 @@ These checks run in three kinds of place:
 | G1.113 | A list item's drawn marker is its own opening bytes                                        | A·P     |
 | G1.115 | A caret restored inside a widget that can show its source opens the source at that byte    | A·N     |
 | G1.117 | A write never splits a CRLF pair into a lone `\r` or a lone `\n`                           | A·N     |
+| G1.118 | A list's marker-width counts are what a recount of its items gives                         | A·N     |
 
 ### The entries
 
@@ -868,6 +869,15 @@ check. Predicate
 `invariants/line-ending-pairs.ts :: checkLineEndingPairsKept` ·
 `test/invariants/line-ending-pairs.test.ts`.
 
+**G1.118 · A list's marker counts match its items** (`list-marker-widths`). The list node keeps how
+many items open with a marker of each width, for the marker column (G4.215), and the parse and
+the list's rebuild are the only writers. At the same moments as G1.55 and under its size limit,
+dev recounts every list in the blocks the edit wrote and fails one whose counts are absent or
+differ, which a route that changes items without rebuilding the list would leave. A commit that
+fails puts the counts back with the bytes it saved (`test/editor-actions/commit/commit-rollback-bytes.test.ts`).
+Predicate `invariants/list-marker-widths.ts :: checkListMarkerWidths` ·
+`test/invariants/list-marker-widths.test.ts`.
+
 ## Group 2: property and regression tested
 
 No runtime check sees these; the test suite is the whole enforcement. Test files live under
@@ -1036,7 +1046,7 @@ arithmetic is a type error. Retired: offset-space mixing; `charOffsetOf`'s read-
 to the runtime backstop.
 
 **G3.8 · Bytes-readonly node views.** `core/node-views.ts :: NodeView` and `DocumentView`:
-serialized bytes deep-readonly, the `childIds`/`childSpans`/`ownerEpoch` bookkeeping writable. This
+serialized bytes deep-readonly, the `childIds`/`childSpans`/`markerWidths`/`ownerEpoch` bookkeeping writable. This
 is G1.9 as a type: readers hold views, constructors and writers keep `CstNode`, and copying the path
 (`tree-operations/unshare.ts`) is the only way back to mutable (G4.13 scans for the casts). Retired:
 reader-side byte writes.
@@ -1286,6 +1296,7 @@ unguarded.
 | G4.211 | Every widget kind that shows its source has a row in the typed-opener e2e spec               | L       |
 | G4.212 | E2E clipboard access and pastes ride the shared clipboard helper                             | L       |
 | G4.214 | A caret's box is measured in one place, `caretRectAt`                                        | L       |
+| G4.215 | A list's marker column reads no item of its own at load or on a key                          | harness |
 
 ### The entries
 
@@ -2428,6 +2439,15 @@ into view, the drop caret and `rects.caretRect()`. The scan fails a Range measur
 outside a short allowlist of spans that are never collapsed. A caret the writer puts at a line's
 start lands in the next line's text for the same reason
 (`caret/widget-offset.ts :: findDomTextLanding`). `lint/file-rules.test.ts`.
+
+**G4.215 · The marker column costs what changed.** The column is sized from the marker-width counts
+the list node holds, which the parse fills and the list's rebuild keeps (G1.118 holds them to a
+recount). In a list of four hundred items, mounting reads no item for the column; each key (the
+first, a paused one, one in a burst, a marker typed in place, Enter) reads at most the item it
+rewrote beyond the items its rebuild already joined in full; and an undo reads none, since the
+entry's list carries its counts, which no later edit changes in place.
+`test/blocks/list/marker-column-scans.test.ts` on the
+`listMarkerReads` and `joinedChildReads` counters.
 
 ## Accessibility
 

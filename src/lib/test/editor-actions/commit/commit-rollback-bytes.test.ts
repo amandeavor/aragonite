@@ -15,6 +15,7 @@ import { augmentBuiltin, tryGetBlockKindDescriptor } from '#lib/schema/block-kin
 import { makeBlockListState, makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
 import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 import { makeListItem } from '#lib/test/harness/list-fixtures.js';
+import { checkListMarkerWidths } from '#lib/invariants/list-marker-widths.js';
 
 // The scope fixtures are hand-built, not parser output: the stale-raw and read-back checks read
 // them as stale, and the one-block check reads their childless list items as emptied.
@@ -111,6 +112,8 @@ describe('commit sequence: byte rollback across the chain rebuild', () => {
 		).rejects.toThrow('plugin rebuildRaw blew up');
 
 		expect(collectRaws(deps.doc.children)).toEqual(rawsBefore);
+		// The inner list's rebuild counted the added item's marker before the throw.
+		expect(checkListMarkerWidths(deps.doc.children[0])).toBeNull();
 	});
 
 	// The saved bytes span each scope's whole ancestor chain while the rebuild loop skips

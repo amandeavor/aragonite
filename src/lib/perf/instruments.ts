@@ -19,6 +19,10 @@ export interface PerfSnapshot {
 	openerLineReads: number;
 	/** Lines a quote or list item rebuild read through its line syntax, each reading counted. */
 	stripLinesRead: number;
+	/** Children a list's full rebuild joined, one pass over its items. */
+	joinedChildReads: number;
+	/** List items whose marker the marker-width counts read, the column's own cost. */
+	listMarkerReads: number;
 	parseCount: number;
 	parseMsTotal: number;
 	parseBlockCount: number;
@@ -79,6 +83,8 @@ function emptySnapshot(): PerfSnapshot {
 		containerReparseBytes: 0,
 		openerLineReads: 0,
 		stripLinesRead: 0,
+		joinedChildReads: 0,
+		listMarkerReads: 0,
 		parseCount: 0,
 		parseMsTotal: 0,
 		parseBlockCount: 0,
@@ -169,6 +175,16 @@ export function recordOpenerLineRead(): void {
 export function recordStripLinesRead(lines: number): void {
 	if (!enabled) return;
 	counters.stripLinesRead += lines;
+}
+
+export function recordJoinedChildReads(children: number): void {
+	if (!enabled) return;
+	counters.joinedChildReads += children;
+}
+
+export function recordListMarkerReads(items: number): void {
+	if (!enabled) return;
+	counters.listMarkerReads += items;
 }
 
 export function recordParse(ms: number, blockCount: number, bytes: number): void {
