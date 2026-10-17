@@ -3,6 +3,8 @@
  * Per-kind parsers live in parsers/; this file holds dispatch and shared utilities only.
  */
 
+/*! @voithos-labs/aragonite | MPL-2.0 */
+
 import { isDevChecks } from '../env';
 import type { CstNode, Document } from './nodes';
 import { isBlankLine, isBlankText, splitLines, type ParsedLine } from './lines';
