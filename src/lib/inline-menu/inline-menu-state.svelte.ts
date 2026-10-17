@@ -59,6 +59,9 @@ export interface InlineMenuStateDeps {
 	ownerOfNewSource: () => EditorContext;
 	/** A pick waiting on its commit is a draft of the note it was made in. */
 	drafts: Pick<DraftRegistry, 'open'>;
+	/** Whether `offset` in the leaf at `path` sits inside an inline widget's shown source, where
+	 *  the bytes are a construct being edited and no trigger opens a list. */
+	showsSource: (path: readonly number[], leaf: NodeView, offset: number) => boolean;
 }
 
 export interface InlineMenuState {
@@ -271,7 +274,7 @@ export function createInlineMenuState(deps: InlineMenuStateDeps): InlineMenuStat
 		}
 		heldBack = false;
 		const opening = findOpening(sources.values(), caret.leaf.raw, caret.offset, from);
-		if (!opening) return;
+		if (!opening || deps.showsSource(caret.path, caret.leaf, opening.start)) return;
 		const inline = resolvedInlineContent(caret.leaf, deps.reading);
 		if (!isProseOffset(inline, opening.start, deps.reading.grammar)) return;
 		if (isUnclosedDestination(caret.leaf.raw, opening.start)) return;

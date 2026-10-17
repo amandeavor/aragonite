@@ -57,6 +57,7 @@
 	import type { IndexedDecoration } from '../../../decorations/buckets';
 	import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 	import { createWidgetInteraction } from '../text/widget-interaction';
+	import type { LandsRestoredCaret } from '../../../selection/restored-caret';
 	import { createEdgePolicyDispatch } from '../text/edge-policy-dispatch';
 	import { createEdgeStep } from '../text/edge-step';
 	import { createTypedPlacement } from '../text/edge-seat';
@@ -114,7 +115,7 @@
 		rects,
 		decorations: decorationEngine,
 		rangeCoverage,
-		drafts,
+		shownSource,
 		presses,
 		textMoves
 	} = wiring.services;
@@ -138,9 +139,6 @@
 	});
 
 	let composing = $state(false);
-	// A widget's shown source lives only in the DOM, so `onInput` skips the per-keystroke CST
-	// commit and the cell commits once when it is hidden, as TextEditableBlock does.
-	let revealing = $state(false);
 	let pendingCursorOffset = $state<number | null>(null);
 
 	// The only writer of `pendingCursorOffset` besides the render's clear. The offset counts
@@ -181,7 +179,8 @@
 	const editableSurface = createEditableSurface({
 		...wiring.deps,
 		getEl: () => el ?? null,
-		isInputSuppressed: () => revealing,
+		showsSource: () => widgetInteraction.isRevealing(),
+		landCaret: (offset, clamp) => widgetInteraction.restoreCaret(offset, clamp),
 		backend: cursor,
 		getNode: () => node,
 		getMyPath: () => myPath,
@@ -236,13 +235,10 @@
 		focusActions,
 		setSnapTarget: () => {},
 		setPendingCursor: parkCursor,
-		readRawText: () => readCellText(),
 		activationClick,
-		setRevealing: (value) => {
-			revealing = value;
-		},
 		isCrossBlock: () => selection.isCrossBlock,
-		drafts,
+		shownSource,
+		renderedWidgets: () => cellRender.renderedWidgets(),
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
 		textMoves,
@@ -431,8 +427,9 @@
 			insertMarkdown: clipboard.insertMarkdown,
 			claimRootClipboard: clipboard.claimRootClipboard,
 			typeText: editableSurface.surface.typeText,
-			afterSelectionRemoved: editableSurface.afterSelectionRemoved
-		} satisfies BlockComponent;
+			afterSelectionRemoved: editableSurface.afterSelectionRemoved,
+			landRestoredCaret: (offset: number) => widgetInteraction.restoreCaret(offset, 'reachable')
+		} satisfies BlockComponent & LandsRestoredCaret;
 		return publishRefSlot(slots, index, self, el);
 	});
 
@@ -459,7 +456,8 @@
 		},
 		reportRenderError: (error) =>
 			editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } }),
-		caretWriter
+		caretWriter,
+		shownSource: () => shownSource.rangeIn(myPath, node)
 	});
 
 	$effect(() => {
@@ -469,10 +467,9 @@
 			carryCaret: pendingCursorOffset === null
 		});
 		if (pendingCursorOffset !== null) {
-			consumePendingRestore(el, pendingCursorOffset, (offset) => {
-				if (!widgetInteraction.revealInterior(offset))
-					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
-			});
+			consumePendingRestore(el, pendingCursorOffset, (offset) =>
+				widgetInteraction.restoreCaret(offset, 'exact')
+			);
 			pendingCursorOffset = null;
 		}
 	});
@@ -538,8 +535,8 @@
 		// The source-showing and selection handlers run before the plan, which would otherwise
 		// read an ArrowUp or ArrowDown inside a shown source as cell navigation.
 		if ((await widgetInteraction.handleRevealingKeydown(e)) || editableSurface.isDetached()) return;
-		// Enter is a cell's exception: prose splits, a cell moves a row, and moving would
-		// carry the uncommitted edit out of the cell that owns it. Commit and stay put.
+		// Enter is a cell's exception: prose splits, a cell moves a row, and inside a shown source
+		// Enter only leaves it, so the caret stays in the cell.
 		if (widgetInteraction.isRevealing() && e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
 			e.preventDefault();
 			widgetInteraction.foldRevealBeforeMutation();
@@ -804,8 +801,6 @@
 		selection,
 		setPendingCursor: parkCursor,
 		foldRevealBeforeMutation: () => widgetInteraction.foldRevealBeforeMutation(),
-		isRevealing: () => widgetInteraction.isRevealing(),
-		readRevealedText: () => readCellText(),
 		get reading() {
 			return reading;
 		},

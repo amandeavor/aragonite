@@ -1,5 +1,5 @@
 import type { Gestures } from '../gestures';
-import { clickInlineWidget, escapeRevealToCommit } from './math';
+import { clickInlineWidget, leaveRevealedSource } from './math';
 import { pointInGap } from '../../text-runs';
 import {
 	type SimContext,
@@ -125,15 +125,16 @@ export async function rangeInterrupt(
 		gapBoundary
 	});
 
-	if (spec.consumes === 'reveal-escape' || spec.consumes === 'reveal-blur') {
+	if (spec.consumes === 'reveal-blur') {
 		// A block showing its source takes the character into the DOM without committing it, so
 		// the editor's recorded decision about the key orders the byte check below.
 		await ctx.editor.typeDeclined(char);
 		await assertRevealEphemeral(ctx, gesture, before);
-		if (spec.consumes === 'reveal-blur') await commitRevealByBlur(ctx, before, landing);
-		else await escapeRevealToCommit(ctx, before);
+		await commitRevealByBlur(ctx, before, landing);
 	} else {
 		await ctx.editor.typeSlowly(char);
+		// An inline widget's shown source writes the key as it lands; leaving draws it again.
+		if (spec.consumes === 'reveal-escape') await leaveRevealedSource(ctx);
 	}
 	await settleTypedSource(ctx, predicted);
 
@@ -545,8 +546,8 @@ function predict(args: PredictArgs): string {
 			const end = span.end - (before.slice(span.start, span.end).match(/\n+$/)?.[0].length ?? 0);
 			return splice(before, span.start, end, char);
 		}
-		// A shown source only delays when the key's bytes appear, not where, so the three caret cases
-		// share one splice.
+		// A shown source changes at most when the key's bytes appear, not where, so the three caret
+		// cases share one splice.
 		case 'caret':
 		case 'reveal-escape':
 		case 'reveal-blur': {

@@ -23,8 +23,8 @@ session asserts the structure is intact rather than the numbers.
   instant it is typed and only the widget count says it mounted
 - moving the caret into a collapsed reference shows its raw source, and clicking away
   collapses it again: a view-only toggle that moves no byte across the round trip
-- revealing a reference, inserting into its label, and committing with Enter rewrites the
-  source only after the commit, never while the temporary revealed DOM is showing
+- revealing a reference and inserting into its label rewrites the source as each key lands,
+  and leaving the reference draws it again
 - entering `[^label]: body` over a whole prose paragraph forms a footnote-def strip container
   with one paragraph child on the reparse. It is typed per character, which takes the line
   through a temporary inline reference widget: the `[^label]` prefix mounts one on its
@@ -61,7 +61,7 @@ session asserts the structure is intact rather than the numbers.
   for the mounted container rather than for a substring
 - the reveal is a real caret entry (an arrow key into the widget's leading edge); the
   collapse is a real click onto another block; the label edit steps into the label with
-  arrow keys, types, and commits with Enter
+  arrow keys, types, and leaves by a click onto another block
 - the body split clicks into the body child, jumps to its end, and presses Enter; the body
   edit clicks the target child and types; the exit is a real Home + Backspace at the body
   start

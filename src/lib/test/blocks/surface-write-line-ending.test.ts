@@ -121,7 +121,7 @@ const ROUTES: Array<[string, OwnTextRoute]> = [
 		}
 	],
 	[
-		"an inline widget's source, on blur",
+		"an inline widget's shown source",
 		{
 			props: withMath({ source: 'a\n\n$x$', presentationMode: 'live' }),
 			drive: async (editor) => {
@@ -133,8 +133,8 @@ const ROUTES: Array<[string, OwnTextRoute]> = [
 				);
 				expect(shown, 'the widget source is not showing').toBeDefined();
 				shown!.textContent = shown!.textContent!.replace('$x$', '$y$');
-				await editor.settle();
-				surface.dispatchEvent(new FocusEvent('blur'));
+				window.getSelection()!.collapse(shown!, 2);
+				surface.dispatchEvent(new InputEvent('input', { bubbles: true }));
 			},
 			expected: 'a\n\n$y$'
 		}

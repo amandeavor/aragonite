@@ -268,6 +268,7 @@ These checks run in three kinds of place:
 | G1.110 | A metadata write to a leaf is refused, since a leaf's metadata comes from its bytes        | A·N     |
 | G1.112 | A content write inside a commit leaves its fix-up to the commit                            | A·N     |
 | G1.113 | A list item's drawn marker is its own opening bytes                                        | A·P     |
+| G1.115 | A caret restored inside a widget that can show its source opens the source at that byte    | A·N     |
 
 ### The entries
 
@@ -431,16 +432,16 @@ one that isn't open. Outside a bracket, byte-identical duplicate widgets can't b
 Predicate `checkPoolBracket` (`inline-transitions.ts`) · run in `components/blocks/widget-portal.ts` ·
 `inline-transitions.test.ts`, `test/blocks/widget-portal-bracket.test.ts`.
 
-**G1.26 · Reveal transition legality.** A reveal swaps a rendered inline construct for its editable
-source in temporary DOM, and the fold swaps it back, committing or discarding what was typed. **No
-fold without a reveal**: `commitReveal`, `cancelReveal` and `foldRevealNoEdit` run only with an
-active reveal, so a fire is a caller that skipped its pre-guard. **No mutation with a reveal**
-(`command-during-reveal`): a block's command dispatch never mutates while a reveal is open, since
-the reveal holds bytes the CST hasn't seen; a fire is a command entry path that skipped the fold.
+**G1.26 · Reveal transition legality.** A reveal draws an inline widget as its editable source, and
+a close draws the widget again; what was typed in between was written as it landed. **No close
+without a reveal**: `closeShownSource` runs only with a source shown, so a fire is a caller that
+skipped its pre-guard. **No mutation with a reveal** (`command-during-reveal`): a block's command
+dispatch never mutates while a reveal is open, so it acts on the rendered block; a fire is a command
+entry path that skipped the close.
 `startReveal` is also never re-entered inside the reveal's own microtask-long settle window, and the
 source-length precondition holds at reveal entry. Legal bails (blur with no reveal, a blur during a
 cross-block selection that keeps the source shown, entry while one is active) stay silent. Inline
-closures in `components/blocks/text/widget-interaction.ts` (the fold halves) and
+closures in `components/blocks/text/widget-interaction.ts` (the close halves) and
 `components/blocks/text/inline-commands.ts :: perform` (the mutation half), plus
 `checkRevealSourceLength` (`inline-transitions.ts`) at `caret/reveal-source.ts` ·
 `test/blocks/text/widget-reveal-transitions.test.ts`.
@@ -768,8 +769,10 @@ and an inline menu row are each a `PluginView`, mounted through `plugin-view.ts 
 into an element the editor made. A view mounts once, takes new props through `update` (a widget
 typing moved, a decoration in the same place, a row turning active), and is destroyed once. A throw
 at any of the three is reported once, the view is never called again, and the slot draws its
-fallback. A pooled widget or a badge mounts no new view while it stays put; a decoration widget is
-drawn afresh with its block, so a throwing one reports once per rebuild.
+fallback. A pooled widget or a badge mounts no new view while it stays put, and a pooled widget
+whose source is shown stays alive undrawn, so it comes back as the same view when the source closes
+unedited; a decoration widget is drawn afresh with its block, so a throwing one reports once per
+rebuild.
 `plugins/view/lifecycle.test.ts` (a DOM view and a Svelte one) and `plugins/view/failure.test.ts`
 run every slot; G4.186 holds new routes to the wrapper.
 
@@ -833,6 +836,21 @@ that moves the metadata without the bytes would show a marker the file doesn't h
 checks it each time it builds the cell (`invariants/item-marker-bytes.ts`), and a dev build warns
 `invariant:item-marker-bytes`. `test/invariants/item-marker-bytes.test.ts` runs the check over
 generated documents too.
+
+**G1.115 · A caret inside a source-showing widget stays put** (`widget-caret-landing`). An edit or
+an arrival that puts the caret strictly inside a widget whose kind sets `revealSource` (a `#` typed
+in front of `few` closes a tag around it) opens that widget's source with the caret at its byte.
+The offset walk can't put a caret inside a widget it can't enter, so without the reveal the caret
+would land past it and the next key would type after the tag. Both prose blocks put every such
+caret down through `widget-interaction.ts :: restoreCaret`: the restore after an edit, an arrival
+through `parkCaret` (a Backspace that joins `tag #` to `few`), and a restored selection (undo,
+redo, `setSelection`), which the caret landing hands to the block or the table cell through
+`selection/restored-caret.ts`. The caret a rebuild carries isn't one of them: it predates the edit
+that caused the rebuild, so it goes back where it was and opens nothing. After a caret it didn't
+reveal for, the check reads the caret back, and a caret that moved off its byte must sit at a widget with no source to
+show (an emoji, an image), whose caret goes to the far edge. Predicate
+`invariants/widget-caret-landing.ts :: checkWidgetCaretLanding` ·
+`test/invariants/widget-caret-landing.test.ts`; G4.211 holds the e2e rows to every kind.
 
 ## Group 2: property and regression tested
 
@@ -1082,9 +1100,9 @@ check can't see: a pattern anywhere in the tree, or a published table drifting f
 backs it.
 
 Scans over the library live in `test/invariants/lint/` and ride `npm run test:editor:invariants`.
-Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133, G4.212) and **don't** ride
-that script; run them with `npx vitest run src/lib/e2e/lint/` (same in bash and PowerShell), and
-`npm test` runs both.
+Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133, G4.211,
+G4.212) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
+bash and PowerShell), and `npm test` runs both.
 
 This is the catalogued set, not the whole of `test/invariants/lint/`: a scan holding one module's
 local rule gets a file without a G-number, so read the directory too before assuming a rule is
@@ -1249,6 +1267,7 @@ unguarded.
 | G4.207 | Shipped CSS keeps `color-mix` and container queries behind `@supports`                       | L       |
 | G4.208 | The fix-up after an edit is run by the commit or by the one write no commit follows          | L       |
 | G4.209 | A list item draws its marker in its own cell, never through a child's prefix                 | L       |
+| G4.211 | Every widget kind that shows its source has a row in the typed-opener e2e spec               | L       |
 | G4.212 | E2E clipboard access and pastes ride the shared clipboard helper                             | L       |
 
 ### The entries
@@ -2325,8 +2344,8 @@ surface, `surface-clipboard.ts` and the cross-block range replace.
 
 **G4.195 · One place makes a command its own undo step.** A command isn't typing, so one Ctrl+Z
 should undo the command and nothing around it. A paragraph and a table cell both run their commands
-through `components/blocks/text/inline-commands.ts :: perform`, which waits for a shown source to be
-written and then isolates the write. `lint/file-rules.test.ts` fails an `isolateUndoEntry` call
+through `components/blocks/text/inline-commands.ts :: perform`, which waits for a shown source to
+close and then isolates the write. `lint/file-rules.test.ts` fails an `isolateUndoEntry` call
 anywhere else but the code block's language field.
 
 **G4.197 · Built-ins register on the first grammar read.** The block parser's modules import each
@@ -2369,6 +2388,13 @@ is a fix-up doubled or dropped in the making. `lint/separator-write-doors.test.t
 on text, so an item that opened with a code block, a table or another list once drew no marker and
 hid its bytes. `ambientPrefixForFirst` is named only where a plugin container offers its prefix
 and where `BlockList` hands it on. `lint/file-rules.test.ts`.
+
+**G4.211 · Every source-showing kind gets the caret rows.**
+`e2e/tests/plugins/widget-reveal-caret.spec.ts` types each kind's opening byte in front of a body
+that completes it, in source and live mode, and expects the caret one past the byte with the source
+shown (G1.115 is the runtime half). The scan lists every file that registers `revealSource: true` and fails when one has no row there, or, for a
+kind with a content span (inline math), when the spec it names is gone.
+`e2e/lint/reveal-kinds-covered.test.ts`.
 
 **G4.212 · The shared clipboard helper.** A spec that calls `navigator.clipboard` or presses the
 paste chord itself only works where the real clipboard answers the page, which WebKit's doesn't,

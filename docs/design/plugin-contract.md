@@ -646,7 +646,7 @@ _Legend: ✓ closed (defined + covered) · n/a structurally absent · ◐ partia
 13. **n/a Search paint.** A block decoration adds no text; class, attrs, and badge carry nothing the document scan can match.
 14. **✓ Simulation (block).** The same session badges a block, reorders it, and asserts the treatment follows the bytes to the new path (and back on undo), with the corruption checks run again after the move.
 
-Table cells match prose: **inline-widget reveal-to-edit** and **widget and replace decoration rendering + edit** run in a cell through the same code paths. The one cell-specific rule: every reveal or caret-edge commit re-escapes pipes and drops the prose trailing newline, so an edit can never split the row on reparse.
+Table cells match prose: **inline-widget reveal-to-edit** and **widget and replace decoration rendering + edit** run in a cell through the same code paths. The one cell-specific rule: every write a cell makes, a key typed into a shown source included, re-escapes pipes and drops the prose trailing newline, so an edit can never split the row on reparse.
 
 ## The boundary, and who gets which type
 

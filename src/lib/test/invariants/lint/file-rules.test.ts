@@ -690,10 +690,8 @@ const RULES: FileRule[] = [
 				'plugin-leaf surface: zero-prefix DOM-text mutations brand raw offsets in place',
 			'src/lib/components/blocks/code/CodeBlock.svelte':
 				'code surface: zero-prefix DOM-text mutations brand raw offsets in place',
-			'src/lib/components/blocks/text/TextEditableBlock.svelte':
-				'pending-caret restore holds a plain number field',
 			'src/lib/components/blocks/table/TableCellBlock.svelte':
-				'zero-prefix cell: pending-caret restore + focus-offset walk read brand across the identity',
+				'zero-prefix cell: a widget edge offset brands across the identity',
 			'src/lib/components/blocks/table/TableBlock.svelte':
 				'table sticky-X exit re-enters the editor column state',
 			'src/lib/components/blocks/text/widget-interaction.ts':

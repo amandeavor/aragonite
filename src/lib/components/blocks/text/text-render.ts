@@ -32,8 +32,11 @@ import {
 	CONTENT_EMPTY_ATTR,
 	createCaretAnchor,
 	holdsOnlyMarkerChrome,
-	type CaretWriter
+	type CaretWriter,
+	type RawRange
 } from '../../../caret/widget-offset';
+import { washShownSource } from './source-wash';
+import { widgetsAmong } from './widget-adjacency';
 import { captureFocusedCaret } from '../../../caret/focused-caret';
 import type { IndexedDecoration } from '../../../decorations/buckets';
 import {
@@ -91,14 +94,20 @@ export interface TextRenderDeps {
 	/** A widget that throws while mounting reports to the editor's `error` event, and still falls
 	 *  back to its raw source. */
 	reportRenderError: (error: unknown) => void;
-	/** The editor's caret writer, which puts a carried caret back after a rebuild. */
+	/** The editor's caret writer, which puts a carried caret back after a rebuild. A carried caret
+	 *  predates the edit that caused the rebuild, so it opens no widget's source. */
 	caretWriter: CaretWriter;
+	/** The range drawn as a widget's shown source, read in the render pass so opening or closing
+	 *  it re-renders the block. */
+	shownSource: () => RawRange | null;
 }
 
 export interface TextRender {
 	/** Rebuild the block's children, skipped on an unchanged render key unless `forceRebuild` (a
 	 *  pending cursor restore). `carryCaret` re-anchors the caret; the edit path passes false. */
 	render(opts?: { forceRebuild?: boolean; carryCaret?: boolean }): void;
+	/** The inline widgets the last render drew, read without the inline cache. */
+	renderedWidgets(): InlineNode[];
 	/** Destroy every pooled widget instance, called when the block unmounts. */
 	dispose(): void;
 }
@@ -112,6 +121,7 @@ const RENDER_KEY_SEGMENTS = [
 	'mode',
 	'kind',
 	'pendingBreak',
+	'shownSource',
 	'islands'
 ] as const;
 
@@ -129,6 +139,9 @@ export function renderKeySegmentDiff(prev: string, next: string): string {
 
 export function createTextRender(deps: TextRenderDeps): TextRender {
 	let lastRenderedKey = '';
+	// Flattened on first read, since an ordinary keystroke's render never asks.
+	let rendered: { content: InlineNode[]; raw: string } | null = null;
+	let widgets: InlineNode[] | null = null;
 	const widgetPool = createViewWidgetPool({
 		reportError: deps.reportRenderError,
 		getTheme: deps.getTheme,
@@ -165,7 +178,11 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 
 	// The render path computes inline content on the pure path, never the caching
 	// accessor: the cache is non-reactive and would skip render-relevant changes (G4.2).
-	function buildInlineDOM(content: InlineNode[], pendingBreaks: number): DocumentFragment {
+	function buildInlineDOM(
+		content: InlineNode[],
+		pendingBreaks: number,
+		shown: RawRange | null
+	): DocumentFragment {
 		const node = deps.node;
 		const frag = document.createDocumentFragment();
 		if (deps.ambientPrefixText) {
@@ -190,7 +207,10 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 				reportWidgetError: deps.reportRenderError,
 				grammar: deps.reading.grammar,
 				tagConstructMarkers: tagsConstructMarkers(deps.reading.mode()),
-				pendingBreaks
+				pendingBreaks,
+				shownSource: shown ?? undefined,
+				retainViewWidget: (widget, raw) =>
+					widgetPool.retain(widget.kind, raw.slice(widget.start, widget.end))
 			})
 		);
 		// The bytes past the content (a setext underline, a heading's closing run) are block markers
@@ -265,9 +285,11 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		const modeKeyPart = mode === 'source' ? '' : mode;
 		const islands = deps.islands;
 		const pendingBreaks = deps.pendingBreakLines();
+		const shown = deps.shownSource();
+		const shownKeyPart = shown ? `${shown.start}-${shown.end}` : '';
 		// The kind is part of the key: two prose kinds can share a raw once the registry gains an
 		// opener for bytes already in the document.
-		const renderKey = `${deps.ambientPrefixText}\0${node.raw}\0${refKeyPart}\0${imgKeyPart}\0${modeKeyPart}\0${node.kind}\0${pendingBreaks || ''}${islandRenderKeyPart(islands)}`;
+		const renderKey = `${deps.ambientPrefixText}\0${node.raw}\0${refKeyPart}\0${imgKeyPart}\0${modeKeyPart}\0${node.kind}\0${pendingBreaks || ''}\0${shownKeyPart}${islandRenderKeyPart(islands)}`;
 		const forceRebuild = opts?.forceRebuild ?? false;
 		const carryCaret = opts?.carryCaret ?? true;
 		let carriedCaret: RawOffset | null = null;
@@ -292,7 +314,10 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 			// previous DOM held and this build did not reuse. Decoration widgets are not pooled.
 			widgetPool.beginPass();
 			destroyIslands();
-			el.replaceChildren(buildInlineDOM(content, pendingBreaks));
+			el.replaceChildren(buildInlineDOM(content, pendingBreaks, shown));
+			washShownSource(el, shown);
+			rendered = { content, raw: node.raw };
+			widgets = null;
 			islandViews = applyIslandDecorations(el, node.raw, islands, {
 				contentLength: contentLengthOf(node),
 				mountWidget: (spec, dec, target) =>
@@ -308,6 +333,9 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 		} else {
 			// An empty pass clears any widget stranded by a prose-to-non-prose kind change in
 			// place, which reuses this same component instance.
+			washShownSource(el, null);
+			rendered = null;
+			widgets = null;
 			widgetPool.beginPass();
 			destroyIslands();
 			widgetPool.sweep();
@@ -337,6 +365,10 @@ export function createTextRender(deps: TextRenderDeps): TextRender {
 
 	return {
 		render,
+		renderedWidgets: () =>
+			(widgets ??= rendered
+				? widgetsAmong(rendered.content, rendered.raw, deps.reading.grammar)
+				: []),
 		dispose: () => {
 			destroyIslands();
 			widgetPool.dispose();

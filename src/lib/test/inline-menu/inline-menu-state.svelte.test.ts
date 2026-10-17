@@ -74,6 +74,7 @@ function harness(
 				? null
 				: { anchor: { path: [block], offset: caret }, focus: { path: [block], offset: caret } },
 		getMode: () => mode,
+		showsSource: () => false,
 		events,
 		editorId: 'editor-test',
 		reading,
@@ -748,6 +749,7 @@ describe('a table cell', () => {
 				focus: { path: CELL, offset: caret }
 			}),
 			getMode: () => 'source',
+			showsSource: () => false,
 			events,
 			editorId: 'editor-cell',
 			reading: fixtureReading(),

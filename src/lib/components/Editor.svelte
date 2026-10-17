@@ -44,6 +44,7 @@
 	import BlockMenu from './menu/BlockMenu.svelte';
 	import { createMenuPresence } from './menu/menu-presence.svelte';
 	import { createDraftRegistry } from './draft-registry';
+	import { createShownSourceState } from './blocks/text/shown-source.svelte';
 	import { createDocumentStamps } from '../editor-actions/commit/document-stamp';
 	import type { EditorSelection } from '../selection/primitives';
 	import { widgetSpanAt } from './blocks/text/widget-adjacency';
@@ -386,6 +387,7 @@
 	});
 	// Apart from the menus, so a shown source fires no `menuChange`.
 	const drafts = createDraftRegistry(stamps);
+	const shownSource = createShownSourceState();
 	// Emits on open/close transitions only, so a subscriber's first event is a real menu.
 	let menuWasOpen = false;
 	$effect(() => {
@@ -647,7 +649,8 @@
 		undoStep: (path, offset, run) => controller.undoStep({ path: docPathFrom(path), offset }, run),
 		// A source added outside any plugin's `onEditor` is the editor's own: the base context.
 		ownerOfNewSource: () => pluginContexts.attaching() ?? pluginContexts.get('')!,
-		drafts
+		drafts,
+		showsSource: shownSource.holds
 	});
 	const inlineMenus: InlineMenuRegistry = inlineMenu.registry;
 	$effect(() => () => inlineMenu.dispose());
@@ -816,6 +819,7 @@
 		commands,
 		menuPresence,
 		drafts,
+		shownSource,
 		stamps,
 		kindCue,
 		textMoves

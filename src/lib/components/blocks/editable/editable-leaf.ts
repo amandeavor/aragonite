@@ -232,6 +232,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		// render-primary edits are ephemeral (one commit on blur); plain commits per keystroke.
 		isInputSuppressed: () => mode === 'render-primary',
 		backend,
+		landCaret: (offset, clamp) => backend.setRaw(asRawOffset(offset), { clamp }),
 		getNode: deps.getNode,
 		getMyPath: deps.getPath,
 		getIndex: deps.getIndex,

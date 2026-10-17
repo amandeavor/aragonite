@@ -418,7 +418,10 @@ const MANIFESTS: ManifestRule[] = [
 			'src/lib/caret/widget-offset.ts': 'defines it',
 			'src/lib/decorations/island-dom.ts':
 				'inserts and replaces decoration widgets in a built fragment',
-			'src/lib/selection/selection-drop.ts': "measures the drop caret's rect"
+			'src/lib/selection/selection-drop.ts': "measures the drop caret's rect",
+			'src/lib/components/blocks/text/source-wash.ts': 'tints a shown widget source',
+			'src/lib/components/blocks/text/widget-interaction.ts':
+				'measures a shown source for the double-click that selects it'
 		},
 		reason:
 			'a range from raw offsets is for measuring or decorating; a caret goes through the editor’s caret writer',

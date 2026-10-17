@@ -48,6 +48,7 @@ function mount(raw: string, reading?: Reading, resolveLinkUrl: ResolveLinkUrl = 
 	let node = makeCell(raw);
 	let islands: Island[] = [];
 	const render = createCellRender({
+		shownSource: () => null,
 		caretWriter: testCaretWriter,
 		get el() {
 			return el;

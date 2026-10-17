@@ -27,14 +27,9 @@ export interface TextClipboardDeps {
 	surface: Pick<EditableSurface, 'clipboard' | 'pasteInline' | 'caret' | 'blockEdit'>;
 	selection: SelectionState;
 	setPendingCursor: (offset: number | null) => void;
-	/** Hide a construct's shown source before a clipboard edit, so cut and paste run
-	 *  against a CST that matches the DOM. Null when no source was showing. */
+	/** Close a widget's shown source before a cut or paste, so it lands in the rendered block.
+	 *  Null when no source was showing. */
 	foldRevealBeforeMutation: () => RevealFold | null;
-	/** True while an inline widget on this block is showing its source. */
-	isRevealing: () => boolean;
-	/** The block's live DOM as raw text, so a copy over an uncommitted edit yields what
-	 *  the user sees rather than a stale slice of `node.raw`. */
-	readRevealedText: () => string;
 	/** How this editor reads its bytes: which widgets the block holds, and the join rules a cut
 	 *  takes (live-mode.md § 4.5). */
 	get reading(): Reading;
@@ -92,13 +87,11 @@ export function createTextClipboard(deps: TextClipboardDeps): TextClipboard {
 		});
 	}
 
-	// A source showing covers uncommitted DOM, so the copy reads the live text and never hides it
-	// (that writes); it carries what a cut takes, so a paste gives back what was cut.
+	// The copy carries what a cut takes, so a paste gives back what was cut.
 	function copyRange(e: ClipboardEvent): ClipboardCopy<RawRange> {
 		const range = deps.cursor.getRawSelection();
 		if (!range || range.start === range.end) return null;
-		const text = deps.isRevealing() ? deps.readRevealedText() : deps.node.raw;
-		const carried = bytesLeavingLeaf({ ...deps.node, raw: text }, range, deps.storedAs());
+		const carried = bytesLeavingLeaf(deps.node, range, deps.storedAs());
 		e.clipboardData?.setData('text/plain', carried);
 		return { held: range };
 	}

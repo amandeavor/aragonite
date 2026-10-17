@@ -170,10 +170,8 @@ export async function revealFootnoteReference(
 	tracker.resync(after);
 }
 
-/**
- * The show-edit-commit behaviour shared with inline math: the edit stays out of the tree until
- * the commit, so a source wait before the blur would race the DOM.
- */
+/** The show-edit-leave behaviour shared with inline math: each key is written as it lands, and a
+ *  click onto another block draws the reference again. */
 export async function editFootnoteLabel(
 	ctx: SimContext,
 	refIndex: number,
@@ -189,7 +187,7 @@ export async function editFootnoteLabel(
 	await page.keyboard.press('ArrowRight'); // past `[`
 	await page.keyboard.press('ArrowRight'); // past `^` — now at the label start
 	await page.keyboard.type(text);
-	await blurToCommit(ctx, blurBlockIndex, before);
+	await blurToClose(ctx, blurBlockIndex, before);
 
 	await editor.waitForRenderFlush();
 	tracker.resync(await editor.bridge.getSource());
@@ -212,7 +210,7 @@ export async function deleteFootnoteReference(
 	await editor.focusBlockAtPath(island.blockPath, island.start);
 	await page.keyboard.press('Delete'); // opens it, deletes nothing
 	await page.keyboard.press('Delete'); // remove the opening `[`
-	await blurToCommit(ctx, blurBlockIndex, before); // commits, leaving plain text
+	await blurToClose(ctx, blurBlockIndex, before); // closes, leaving plain text
 	await waitForNodeCount(ctx, REF, refsBefore - 1);
 	await editor.waitForRenderFlush();
 	tracker.resync(await editor.bridge.getSource());
@@ -221,14 +219,10 @@ export async function deleteFootnoteReference(
 // ── Internal ────────────────────────────────────────────────────────────────
 
 /**
- * Blur commits wherever the widget sits: Enter splits the block, and a reference at a block's
- * edge has nowhere beside it for the caret to step out to.
+ * A blur closes the source wherever the widget sits: Enter splits the block, and a reference at a
+ * block's edge has nowhere beside it for the caret to step out to.
  */
-async function blurToCommit(
-	ctx: SimContext,
-	blurBlockIndex: number,
-	before: string
-): Promise<void> {
+async function blurToClose(ctx: SimContext, blurBlockIndex: number, before: string): Promise<void> {
 	await ctx.editor.clickBlock(blurBlockIndex);
 	await ctx.editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
 }

@@ -2,11 +2,9 @@ import { test, expect } from '../../fixtures';
 import { PluginsPage } from './helpers';
 
 /**
- * A clipboard edit while an inline formula's source is open must commit that source into the CST
- * first. Without it, a paste splices into the stale raw at an offset derived from the DOM, the
- * re-render wipes the edit on screen, and a flag left set drops every later keystroke. This drives
- * the real gesture plus a fired paste to prove the committed source carries the edit and that
- * typing survives the paste.
+ * A clipboard edit while an inline formula's source is open: a paste closes the source first and
+ * keeps both the typed edit and the typing after it; a copy closes nothing.
+ * Requirements: e2e/requirements/plugins/latex-inline-clipboard-reveal.md.
  */
 
 class MathClipboardPage extends PluginsPage {
@@ -49,20 +47,17 @@ test.describe('inline math: clipboard during an active source reveal', () => {
 		await editor.gotoMath();
 	});
 
-	test('paste folds the reveal first, keeping the revealed edit and later typing alive', async ({
+	test('paste closes the source first, keeping the typed edit and later typing', async ({
 		page
 	}) => {
 		await editor.revealAtTrailingEdge();
 
-		// Two characters edit the open source; onInput is suppressed, so nothing is in the CST.
 		await page.keyboard.type('QQ');
 
 		await editor.pastePlainText('P');
 
-		// Closing the source committed `QQ` to the CST, so the paste splices into current bytes.
 		await editor.bridge.waitForSourceContains('QQ');
 
-		// Typing works again: closing the source cleared the flag.
 		await page.keyboard.type('Z');
 		await editor.bridge.waitForSourceContains('Z');
 
@@ -74,10 +69,9 @@ test.describe('inline math: clipboard during an active source reveal', () => {
 		expect(source).toContain('$x^2$');
 	});
 
-	test('copy reads the revealed live-DOM edit and never folds the reveal', async ({ page }) => {
+	test('copy reads the edit in the shown source and keeps the source open', async ({ page }) => {
 		await editor.revealAtTrailingEdge();
 
-		// Edit the open source; onInput is suppressed, so the edit is in the DOM only.
 		await page.keyboard.type('QQ');
 
 		// Select the edit; both endpoints stay inside the source node, so the copy never closes it.
@@ -88,15 +82,10 @@ test.describe('inline math: clipboard during an active source reveal', () => {
 		await editor.waitForClipboardWrite();
 
 		const clip = await editor.readClipboard();
-		// The clipboard holds exactly what the user selected and sees, the live DOM text, not the
-		// stale raw slice, which never held the uncommitted `QQ`.
 		expect(clip).toBe('QQ');
 
-		// Copy never edits: the source stays open, with the widget still swapped out…
+		// Copy never edits: the source stays open, and the document holds what was typed.
 		await expect(editor.mathWidget).toHaveCount(0);
-		// …and the document is untouched, since `QQ` never reached the CST.
-		const source = await editor.bridge.getSource();
-		expect(source).not.toContain('QQ');
-		expect(source).toContain('$x^2$');
+		expect(await editor.bridge.getSource()).toContain('$x^2$QQ');
 	});
 });

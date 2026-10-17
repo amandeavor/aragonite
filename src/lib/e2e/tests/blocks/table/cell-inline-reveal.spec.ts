@@ -5,9 +5,9 @@ import { CellMathPage } from './helpers';
 /**
  * Showing an inline `$…$` formula's source to edit it, inside a table cell
  * (`requirements/blocks/table/cell-inline-reveal.md`). A cell runs the same `widgetInteraction`
- * and caret-edge dispatch as a prose block, so clicking a cell's math shows its source, Enter or
- * blur commits, Escape cancels. Only in a cell: a `|` typed into a shown formula is escaped on
- * commit, so it can never split the row on reparse.
+ * and caret-edge dispatch as a prose block, so clicking a cell's math shows its source, keys write
+ * as they land, and Enter, blur or Escape draw the widget again. Only in a cell: a `|` typed into a
+ * shown formula is escaped as it is written, so it can never split the row on reparse.
  */
 
 const SEED = '| Formula | Note |\n| --- | --- |\n| $x^2$ | ok |\n\nAfter\n';
@@ -44,30 +44,28 @@ test.describe('table cell: inline math reveal-to-edit', () => {
 		expect(await roundTripStable(page)).toBe(true);
 	});
 
-	test('a pipe typed into the revealed formula escapes on commit: the row never splits', async ({
-		page
-	}) => {
+	test('a pipe typed into the revealed formula escapes: the row never splits', async ({ page }) => {
 		await revealWidget(editor.mathWidget);
 		await page.keyboard.press('Home'); // back to the cell start, wherever the press put the caret
 		await page.keyboard.press('ArrowRight'); // past the opening `$`
-		await page.keyboard.type('|');
+		// The `y` lands after the escape, so the caret counts the `\` the write added.
+		await page.keyboard.type('|y');
 		await page.keyboard.press('Enter');
 
 		await expect(editor.mathWidget).toHaveCount(1);
-		// The bare `|` committed as `\|`, so the two-column body row survives reparse
-		// (an unescaped `|` would add a third column and mangle the whole table).
+		// An unescaped `|` would add a third column and mangle the whole table.
 		expect(await editor.bridge.getSource()).toBe(
-			'| Formula | Note |\n| --- | --- |\n| $\\|x^2$ | ok |\n\nAfter\n'
+			'| Formula | Note |\n| --- | --- |\n| $\\|yx^2$ | ok |\n\nAfter\n'
 		);
 		expect(await roundTripStable(page)).toBe(true);
 	});
 
-	test('blur commits the edit as one undo entry', async ({ page }) => {
+	test('an edit closed by blur undoes as one entry', async ({ page }) => {
 		await revealWidget(editor.mathWidget);
 		await page.keyboard.press('Home');
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('y');
-		// Focusing the trailing paragraph commits the shown source on blur.
+		// Focusing the trailing paragraph closes the shown source.
 		await editor.getBlock(1).click();
 		await editor.bridge.waitForSourceContains('$yx^2$');
 		await expect(editor.mathWidget).toHaveCount(1);
@@ -78,7 +76,7 @@ test.describe('table cell: inline math reveal-to-edit', () => {
 		expect(await editor.bridge.getSource()).toBe(SEED);
 	});
 
-	test('Escape discards the source edit and restores the rendered widget', async ({ page }) => {
+	test('Escape closes the source and keeps the edit', async ({ page }) => {
 		await revealWidget(editor.mathWidget);
 		await page.keyboard.press('Home');
 		await page.keyboard.press('ArrowRight');
@@ -86,7 +84,7 @@ test.describe('table cell: inline math reveal-to-edit', () => {
 		await page.keyboard.press('Escape');
 
 		await expect(editor.mathWidget).toHaveCount(1);
-		expect(await editor.bridge.getSource()).toBe(SEED);
+		expect(await editor.bridge.getSource()).toBe(SEED.replace('$x^2$', '$yx^2$'));
 	});
 
 	test('Backspace at the cell trailing edge reveals the math, never deletes it', async ({

@@ -4,7 +4,7 @@ import { textRunCenter, textRunRect } from '../../text-runs';
 import { attachIme } from '../../simulation/ime';
 
 /**
- * Inline `$…$` math: select it, its editable source opens, committing re-renders it (design §
+ * Inline `$…$` math: select it, its editable source opens, closing it re-renders it (design §
  * "Inline edit UX", axis A1). The swap and the re-render are driven by real mouse and keyboard
  * only, with no programmatic selection, because the caret surviving the re-render is exactly what
  * the unit tests cannot prove. The widget is `.math-inline-widget`, KaTeX output is `.katex`, and
@@ -110,8 +110,8 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 		// Clicked at the formula's end, so the caret sits inside the closing `$` and typing
 		// continues the formula.
 		await page.keyboard.type('y');
-		// End carries the caret out of the source, which is what commits an edited one. Enter does
-		// not commit; it is the block's split key (latex-inline-reveal-commands).
+		// End carries the caret out of the source, which closes it. Enter does not close; it is the
+		// block's split key (latex-inline-reveal-commands).
 		await page.keyboard.press('End');
 
 		await expect(editor.mathWidget).toHaveCount(1);
@@ -122,9 +122,7 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 		expect(await roundTripStable(page)).toBe(true);
 	});
 
-	test('the reveal caret lands in the source and the commit lands it at the trailing edge', async ({
-		page
-	}) => {
+	test('the reveal caret lands in the source and keeps the key that left it', async ({ page }) => {
 		await editor.revealAtFormulaEnd();
 		// A character typed right after the source opens lands where the click did, inside the
 		// closing `$`: not at a block edge, where a lost caret would drop it, and not past it.
@@ -135,49 +133,46 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 
 		await page.keyboard.press('End');
 		await expect(editor.mathWidget).toHaveCount(1);
-		// The End position does not survive the commit, but the widget's trailing edge does, so the
-		// next character lands right after the re-rendered widget.
+		// End's caret survives the widget drawing again, so the next character ends the line.
 		await page.keyboard.type('!');
-		await editor.bridge.waitForSourceContains('$x^2z$!');
-		expect(await editor.bridge.getSource()).toContain('Before $x^2z$! after');
+		await editor.bridge.waitForSourceContains('after!');
+		expect(await editor.bridge.getSource()).toContain('Before $x^2z$ after!');
 	});
 
-	test('Escape discards the source edit and restores the rendered widget', async ({ page }) => {
+	test('Escape closes the source and keeps the edit', async ({ page }) => {
 		await editor.revealByClick();
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('y');
-		// Escape renders the widget again from the untouched raw, discarding the edit.
+		// The typed byte is already in the document, so Escape only draws the widget again.
 		await page.keyboard.press('Escape');
 
 		await expect(editor.mathWidget).toHaveCount(1);
 		await expect(editor.mathWidget.locator('.katex')).toHaveCount(1);
-		expect(await editor.bridge.getSource()).toContain('Before $x^2$ after');
-		expect(await editor.bridge.getSource()).not.toContain('$yx^2$');
+		expect(await editor.bridge.getSource()).toContain('Before $x^2y$ after');
 	});
 
-	test('IME composition in the revealed source commits only on blur', async ({ page }) => {
+	test('IME composition in the revealed source writes its bytes at once', async ({ page }) => {
 		await editor.revealAtFormulaEnd();
 		const ime = await attachIme(page);
 		await ime.compose('yy');
 		await ime.commit('yy');
 
-		// The composition is not committed: nothing has reached the CST yet.
-		await editor.waitForRenderFlush();
-		expect(await editor.bridge.getSource()).toContain('Before $x^2$ after');
-
-		// Focus leaves the block, so the composed source commits and re-renders.
-		await editor.getBlock(1).click();
+		// The composed bytes take the ordinary write, and the source stays open around them.
 		await editor.bridge.waitForSourceContains('$x^2yy$');
+		await expect(editor.mathWidget).toHaveCount(0);
+
+		// Focus leaves the block, so the source closes and the formula draws again.
+		await editor.getBlock(1).click();
 		await expect(editor.mathWidget).toHaveCount(1);
 		expect(await editor.bridge.getSource()).toContain('Before $x^2yy$ after');
 
-		// The commit on blur must not pull the caret back: focus moved to the next block, so the
+		// Closing on blur must not pull the caret back: focus moved to the next block, so the
 		// selection stays there and the math block just blurred never takes it.
 		await editor.waitForRenderFlush();
 		expect(await editor.selectionInMathBlock()).toBe(false);
 	});
 
-	test('committing a revealed widget with no edit keeps the prior undo entry reachable', async ({
+	test('closing a revealed widget with no edit keeps the prior undo entry reachable', async ({
 		page
 	}) => {
 		// A real edit in the sibling paragraph: the entry the next Ctrl+Z must reach.
@@ -187,7 +182,7 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 		await editor.bridge.waitForSourceContains('NextABC');
 		await editor.waitForUndoBatchFlush();
 
-		// Open the formula and commit with no edit. A commit that changed nothing would still push
+		// Open the formula and close it with no edit. A write that changed nothing would still push
 		// an undo entry, and this Ctrl+Z would undo that instead of the ABC edit.
 		await editor.revealByClick();
 		await page.keyboard.press('End');

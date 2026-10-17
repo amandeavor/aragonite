@@ -49,13 +49,16 @@ function paste(target: EventTarget, text: string): void {
 const cell = (editor: Editor, index: number) =>
 	editor.target.querySelectorAll<HTMLElement>('.table-cell')[index];
 
-/** Edits the shown inline `$x$` source in the DOM, as typing into it does. */
+/** Edits the shown inline `$x$` source, as typing into it does. */
 async function editShownSource(editor: Editor, surface: HTMLElement, edited: string) {
 	const source = Array.from(surface.childNodes).find(
 		(c): c is Text => c.nodeType === Node.TEXT_NODE && c.textContent?.includes('$x$') === true
 	);
 	expect(source, 'the widget source is not showing').toBeDefined();
 	source!.textContent = source!.textContent!.replace('$x$', edited);
+	// The edit takes the block's ordinary write, as a typed key in the shown source does.
+	window.getSelection()!.collapse(source!, source!.textContent!.indexOf(edited) + edited.length);
+	surface.dispatchEvent(new InputEvent('input', { bubbles: true }));
 	await editor.settle();
 }
 

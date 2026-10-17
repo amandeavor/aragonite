@@ -43,10 +43,14 @@ export function applyCollapsedCaret(
 }
 
 // A restore's caret; the restore's reveal policy decides the scroll.
-function restoreCollapsedCaret(target: RestoreTarget, point: SelectionPoint): boolean {
+function restoreCollapsedCaret(
+	target: RestoreTarget,
+	point: SelectionPoint,
+	place: (blockEl: HTMLElement) => void
+): boolean {
 	const blockEl = target.getBlockElByPath(point.path);
 	if (!blockEl) return false;
-	applyCollapsedCaret(target.caretWriter, blockEl, point);
+	place(blockEl);
 	blockEl.focus({ preventScroll: true });
 	return true;
 }
@@ -149,6 +153,9 @@ export interface RestoreTarget {
 	/** Takes focus for a block held whole, which has no text for a caret, as a drag leaves it. */
 	getEditorRoot: () => HTMLElement | null;
 	caretWriter: CaretWriter;
+	/** Puts a caret down through its block's own landing, which opens the source of a widget the
+	 *  offset falls inside; false where the block has none, leaving it to the caret write. */
+	landCaret: (point: SelectionPoint) => boolean;
 }
 
 /** Restores an `EditorSelection` to the DOM in one `SelectionState` batch, so the single
@@ -175,7 +182,10 @@ function placeRestoredSelection(selection: EditorSelection, target: RestoreTarge
 
 	if (route === 'collapsed') {
 		selectionState.clear();
-		return restoreCollapsedCaret(target, target.caretAt(selection.anchor));
+		const caret = target.caretAt(selection.anchor);
+		return restoreCollapsedCaret(target, caret, (blockEl) => {
+			if (!target.landCaret(caret)) applyCollapsedCaret(writer, blockEl, caret);
+		});
 	}
 
 	if (route === 'whole-block') {
@@ -202,8 +212,11 @@ function placeRestoredSelection(selection: EditorSelection, target: RestoreTarge
 	// and key events a target, since Chromium otherwise routes paste to <body>.
 	selectionState.enterCrossBlock(selection.anchor, selection.focus);
 	// The stored focus, which normalization may have turned into a cell index.
-	const focus = selectionState.focus ?? selection.focus;
-	if (restoreCollapsedCaret(target, target.caretAt(focus))) {
+	const focus = target.caretAt(selectionState.focus ?? selection.focus);
+	// That caret is an event target under the painted range, so no source opens around it.
+	if (
+		restoreCollapsedCaret(target, focus, (blockEl) => applyCollapsedCaret(writer, blockEl, focus))
+	) {
 		return true;
 	}
 	writer.clear();

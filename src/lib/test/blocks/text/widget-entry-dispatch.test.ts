@@ -39,7 +39,6 @@ function mount(source: string, widgetKind: string) {
 				blockEdit: { updateBlockContent: recordingWrite() },
 				focusActions: new Proxy({}, { get: () => () => {} }),
 				setPendingCursor: () => {},
-				setRevealing: () => {},
 				isCrossBlock: () => false
 			}
 		)

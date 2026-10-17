@@ -37,6 +37,7 @@
 	import { createTypedInput } from './typed-input';
 	import { createTextRender } from './text-render';
 	import { createWidgetInteraction } from './widget-interaction';
+	import type { LandsRestoredCaret } from '../../../selection/restored-caret';
 	import { createEdgePolicyDispatch } from './edge-policy-dispatch';
 	import { createEdgeStep } from './edge-step';
 	import { createTypedPlacement } from './edge-seat';
@@ -60,7 +61,6 @@
 		rawSelectionFocus,
 		caretOnPendingBreakLine
 	} from '../../../caret/widget-offset';
-	import { asRawOffset } from '../../../caret/coordinate-spaces';
 	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { type CommandId } from '../../../schema/commands';
 	import type { CommandRun } from '../../../schema/block-commands';
@@ -128,7 +128,7 @@
 		linkCard,
 		inlineMenuCombobox,
 		decorations: decorationEngine,
-		drafts,
+		shownSource,
 		drawnCaret,
 		presses,
 		textMoves
@@ -151,9 +151,6 @@
 	const NO_ISLANDS: IndexedDecoration<WidgetDecoration | ReplaceDecoration>[] = [];
 	let el: HTMLDivElement | undefined = $state();
 	let composing = $state(false);
-	// A widget's shown source lives only in the DOM, so `onInput` and IME `compositionend`
-	// skip the per-keystroke CST commit and the block commits once when it is hidden.
-	let revealing = $state(false);
 	/** Cursor offset to restore after the next $effect render. Null = don't touch cursor. */
 	let pendingCursorOffset = $state<number | null>(null);
 	// The drawn caret holds the widget edge a click meant under this block's own key, which survives
@@ -213,8 +210,9 @@
 	const editableSurface = createEditableSurface({
 		...wiring.deps,
 		getEl: () => el ?? null,
-		isInputSuppressed: () => revealing,
+		showsSource: () => widgetInteraction.isRevealing(),
 		backend: cursor,
+		landCaret: (offset, clamp) => widgetInteraction.restoreCaret(offset, clamp),
 		getNode: () => node,
 		getMyPath: () => myPath,
 		getIndex: () => index,
@@ -283,12 +281,9 @@
 		focusActions,
 		setSnapTarget: holdWidgetEdge,
 		setPendingCursor: (offset) => setPendingCursorOffset(offset, 'widget'),
-		readRawText: () => readRawText(),
-		setRevealing: (value) => {
-			revealing = value;
-		},
 		isCrossBlock: () => selection.isCrossBlock,
-		drafts,
+		shownSource,
+		renderedWidgets: () => textRender.renderedWidgets(),
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
 		textMoves,
@@ -317,8 +312,6 @@
 		selection,
 		setPendingCursor: (offset) => setPendingCursorOffset(offset, 'clipboard'),
 		foldRevealBeforeMutation: () => widgetInteraction.foldRevealBeforeMutation(),
-		isRevealing: () => widgetInteraction.isRevealing(),
-		readRevealedText: () => readRawText(),
 		get reading() {
 			return reading;
 		}
@@ -359,8 +352,7 @@
 		reading,
 		ownPairs,
 		writeText,
-		// While a source is shown the caret counts into the DOM text.
-		text: () => (widgetInteraction.isRevealing() ? readRawText() : getDisplayText()),
+		text: () => getDisplayText(),
 		content: () => getContentRange(node),
 		completesLine
 	});
@@ -446,7 +438,8 @@
 		brokenUrlCache,
 		reportRenderError: (error) =>
 			editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } }),
-		caretWriter
+		caretWriter,
+		shownSource: () => shownSource.rangeIn(myPath, node)
 	});
 
 	$effect(() => () => textRender.dispose());
@@ -480,10 +473,7 @@
 		widgetInteraction.snapClickToWidgetEdge(clientX, clientY);
 	}
 
-	/** The length the caret counts against: the DOM's while a source is shown, since the CST has
-	 *  not seen that edit. */
 	function caretReach(): number {
-		if (widgetInteraction.isRevealing()) return readRawText().length;
 		return getDisplayText().length;
 	}
 
@@ -634,6 +624,10 @@
 
 	export const afterSourceCommit = commands.afterSourceCommit;
 	export const isCommandActive = commands.isCommandActive;
+	export function landRestoredCaret(offset: number): void {
+		widgetInteraction.restoreCaret(offset, 'reachable');
+	}
+	void ({ landRestoredCaret } satisfies LandsRestoredCaret);
 
 	void ({
 		editable,
@@ -678,10 +672,9 @@
 		if (pendingCursorOffset !== null) {
 			// Restored only while this block has focus: a commit on blur also sets a pending offset,
 			// and restoring it would pull the selection back. Cleared either way.
-			const applied = consumePendingRestore(el ?? null, pendingCursorOffset, (offset) => {
-				if (!widgetInteraction.revealInterior(offset))
-					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
-			});
+			const applied = consumePendingRestore(el ?? null, pendingCursorOffset, (offset) =>
+				widgetInteraction.restoreCaret(offset, 'exact')
+			);
 			tracePendingCursorConsume(pendingCursorOffset, applied);
 			pendingCursorOffset = null;
 		}
