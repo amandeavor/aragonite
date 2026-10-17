@@ -194,6 +194,7 @@
 		getFocusOffset: () => getRawFocusOffset(),
 		getTextLen: () => (el ? containerDomTextLength(el) : 0),
 		stepEdge: edgeStep.step,
+		inlineUnits: () => edgeDispatch.inlineUnits,
 		readText: () => readCellText(),
 		placement: typedPlacement,
 		getInlines: () => resolvedInlineContent(node, reading),
@@ -544,7 +545,6 @@
 		}
 		if ((await widgetInteraction.handleSelectedWidgetKeydown(e)) || editableSurface.isDetached())
 			return;
-		if (widgetInteraction.handleShiftArrowIntoWidget(e)) return;
 
 		const caretBeforeKey = cursor.getRaw() ?? 0;
 

@@ -69,20 +69,6 @@ test.describe('decoded-entity atomic widget', () => {
 		expect(await editor.bridge.getSource()).toContain('a&copy;b');
 	});
 
-	test('a plain arrow steps the caret across the glyph in one press, both directions', async ({
-		page
-	}) => {
-		await editor.loadContent('a&copy;b\n');
-		await expect(glyph(page)).toHaveText('©');
-		await editor.focusBlockStart(0);
-		await page.keyboard.press('ArrowRight'); // into 'a' → leading edge of the entity
-		expect(await caretRaw(page)).toBe(1);
-		await page.keyboard.press('ArrowRight'); // steps over the whole glyph
-		expect(await caretRaw(page)).toBe(7);
-		await page.keyboard.press('ArrowLeft'); // steps back over it
-		expect(await caretRaw(page)).toBe(1);
-	});
-
 	test('adjacent entities with no cushioning text step over one glyph per press', async ({
 		page
 	}) => {

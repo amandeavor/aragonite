@@ -15,9 +15,8 @@ The widget edits the way a decoded entity does: `deleteGranularity: 'atomic'`,
 
 ## User interactions
 
-- Arrow steps over: with the caret at the reference's leading edge, one ArrowRight moves the
-  caret across the whole widget as if it were a single character, so a character typed next
-  lands immediately after the closing colon.
+- Arrow steps over: one press crosses the whole widget each way, with or without Shift
+  (`caret/unit-step.md`).
 - Backspace deletes it whole: with the caret at the reference's trailing edge, one Backspace
   removes the entire `:smile:` reference rather than one byte, and a single undo restores it, so
   the delete is one commit and one undo entry.

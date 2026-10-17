@@ -54,7 +54,8 @@ function makeCtx(over: {
 		history: {} as SharedKeydownContext['history'],
 		focus: {} as SharedKeydownContext['focus'],
 		getDoc: () => doc,
-		scrollOwner: { place: () => ({ scroll: async () => true }) }
+		scrollOwner: { place: () => ({ scroll: async () => true }) },
+		caretUnits: { beside: () => null, crossed: () => {} }
 	};
 }
 

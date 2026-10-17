@@ -1,8 +1,14 @@
-// G1.117: a write never turns a CRLF pair into a lone `\r` or a lone `\n`.
+// @vitest-environment jsdom
+// G1.117: a write never turns a CRLF pair into a lone `\r` or a lone `\n`. G1.119: no caret the
+// editor writes sits inside one.
 // Miss-analysis: no check compared a document's line endings across a write, so a split pair
 // reached the bytes silently.
 import { describe, it, expect } from 'vitest';
-import { checkLineEndingPairsKept } from '../../invariants/line-ending-pairs';
+import {
+	checkCaretOutsideLineEndingPair,
+	checkLineEndingPairsKept
+} from '../../invariants/line-ending-pairs';
+import { testCaretWriter } from '../harness/caret-writer';
 import { lineEndingCounts } from '../../core/line-ending-pairs';
 import { serialize } from '../../core/serializer';
 import { makeTopHarness } from '../harness/editor-actions';
@@ -32,5 +38,32 @@ describe('G1.117 a write keeps every CRLF pair whole', () => {
 		await h.actions.updateBlockContent(0, 'abc\rZ\nAfter', 'authored', 4, 5);
 		expect(serialize(h.deps.doc)).toContain('\rZ\n');
 		expect(takeDevWarns().map((w) => w.tag)).toContain('invariant:line-ending-pairs');
+	});
+});
+
+describe('G1.119 no caret the editor writes sits inside a CRLF pair', () => {
+	it('names an endpoint between the halves, passes one on either side', () => {
+		const text = document.createTextNode('abc\r\nAfter');
+		expect(checkCaretOutsideLineEndingPair({ node: text, offset: 4 })?.code).toBe(
+			'caret-in-line-ending-pair'
+		);
+		for (const offset of [3, 5]) {
+			expect(checkCaretOutsideLineEndingPair({ node: text, offset })).toBeNull();
+		}
+	});
+
+	it('fires from the caret writer', () => {
+		const el = document.createElement('div');
+		el.textContent = 'abc\r\nAfter';
+		document.body.appendChild(el);
+		takeDevWarns();
+		testCaretWriter.selectDomRange({
+			startContainer: el.firstChild!,
+			startOffset: 4,
+			endContainer: el.firstChild!,
+			endOffset: 4
+		} as unknown as Range);
+		expect(takeDevWarns().map((w) => w.tag)).toContain('invariant:caret-in-line-ending-pair');
+		el.remove();
 	});
 });

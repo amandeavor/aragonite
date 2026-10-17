@@ -33,7 +33,8 @@ import {
 	type EdgeDeletion
 } from './construct-edge-delete';
 import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
-import { widgetAtCursor, widgetsIn } from './widget-adjacency';
+import { widgetAtCursor, widgetsIn, type WidgetAtCursor } from './widget-adjacency';
+import type { CaretUnitSource } from '../../../selection/shared-keydown';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
 import { rangeWrite, withOwnEnding, type TextWrite } from '../editable/surface-write';
@@ -43,7 +44,7 @@ import { rangeWrite, withOwnEnding, type TextWrite } from '../editable/surface-w
 export type EdgePolicy = Pick<InlineWidgetEditingPolicy, 'onEdge' | 'deleteGranularity'>;
 
 const REPLACE_ISLAND_POLICY: EdgePolicy = {
-	onEdge: 'select',
+	onEdge: 'step-over',
 	deleteGranularity: 'select-then-delete'
 };
 const WIDGET_ISLAND_POLICY: EdgePolicy = { onEdge: 'step-over' };
@@ -113,6 +114,9 @@ export interface EdgePolicyDispatch {
 	/** The order `handleKeydown` walks, ids and reasons only. The order is what the rule fixes
 	 *  (G4.12), so it is readable here rather than something a test has to re-derive. */
 	readonly arms: readonly { id: string; reason: string }[];
+	/** The widgets and replace decorations a horizontal arrow crosses whole, for the shared
+	 *  keydown, which decides that step before any arm here runs. */
+	readonly inlineUnits: CaretUnitSource;
 }
 
 /** One family of gestures, listed in the order the families outrank each other. A family is not a
@@ -171,6 +175,13 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			if (arm.claims(e, caretOffset)) return arm.cut !== true;
 		}
 		return false;
+	}
+
+	/** The kind's registered policy, unless this block draws the widget on its own terms. */
+	function widgetPolicy(widget: InlineNode | WidgetAtCursor): EdgePolicy | undefined {
+		return (
+			deps.widgetEdgePolicy?.(widget) ?? getInlineWidgetEditing(widget.kind, deps.reading.grammar)
+		);
 	}
 
 	function inlinesOf(node: NodeView): InlineNode[] {
@@ -277,12 +288,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			plainEdgeKey && !widgetAt.atRight && (e.key === 'ArrowRight' || e.key === 'Delete');
 		if (enterFromRight || enterFromLeft) {
 			const isDestructive = e.key === 'Backspace' || e.key === 'Delete';
-			const policy =
-				deps.widgetEdgePolicy?.(widgetAt) ??
-				getInlineWidgetEditing(widgetAt.kind, deps.reading.grammar);
-			// A step-over widget reads as one character to navigation, so the browser carries the
-			// caret across; a destructive key still runs the atomic-delete branch below.
-			if (!isDestructive && policy?.onEdge === 'step-over') return false;
+			const policy = widgetPolicy(widgetAt);
 			e.preventDefault();
 			deps.setSnapTarget(null);
 			if (isDestructive && policy?.deleteGranularity === 'atomic' && !deps.isReading()) {
@@ -356,7 +362,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			if (selection) {
 				const selected = islands.find(
 					(i) =>
-						islandPolicy(i).onEdge === 'select' &&
+						islandPolicy(i).deleteGranularity === 'select-then-delete' &&
 						i.start === selection.start &&
 						i.end === selection.end
 				);
@@ -379,7 +385,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			const wantTrailingEdge = e.key === 'Backspace';
 			const target = islands.find(
 				(i) =>
-					islandPolicy(i).onEdge === 'select' &&
+					islandPolicy(i).deleteGranularity === 'select-then-delete' &&
 					(wantTrailingEdge ? i.end === caretOffset : i.start === caretOffset)
 			);
 			if (target) {
@@ -389,11 +395,9 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			}
 		}
 
-		// A step-over widget is transparent to the real byte beside it; at a true block
-		// boundary there is none, so fall through and let the block merge run.
-		const widget = islands.find(
-			(i) => islandPolicy(i).onEdge === 'step-over' && i.start === caretOffset
-		);
+		// A widget decoration stands in for no bytes, so it is transparent to the real byte beside
+		// it; at a true block boundary there is none, so fall through and let the block merge run.
+		const widget = islands.find((i) => i.start === i.end && i.start === caretOffset);
 		if (!widget) return false;
 		const direction: DeleteDirection | null =
 			e.key === 'Backspace' && caretOffset > 0
@@ -420,6 +424,35 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		}
 		return false;
 	}
+
+	// ── Spans an arrow crosses whole ─────────────────────────────────────────
+
+	/** Whether `offset` sits against or inside `span` on the side `direction` names; a zero-width
+	 *  span holds no offset, since the caret crosses onto the real byte beside it. */
+	function sideHolds(span: { start: number; end: number }, offset: number, forward: boolean) {
+		return forward
+			? span.start <= offset && offset < span.end
+			: span.start < offset && offset <= span.end;
+	}
+
+	const inlineUnits: CaretUnitSource = {
+		beside(offset, direction, extending) {
+			// A shown source is editable text again, which the browser's arrows walk.
+			if (deps.isRevealing()) return null;
+			const forward = direction === 'forward';
+			for (const widget of widgetsIn(deps.node, deps.reading)) {
+				if (!sideHolds(widget, offset, forward)) continue;
+				// A plain arrow enters a widget that selects or shows its source, in the arm below.
+				const crosses = extending || widgetPolicy(widget)?.onEdge === 'step-over';
+				return crosses ? { start: widget.start, end: widget.end } : null;
+			}
+			if (!deps.hasIslands()) return null;
+			const el = deps.getEl();
+			const island = el && islandsInDom(el).find((i) => sideHolds(i, offset, forward));
+			return island ? { start: island.start, end: island.end } : null;
+		},
+		crossed: () => deps.setSnapTarget(null)
+	};
 
 	// ── Container marker prefix overlap ────────────────────────────────────────
 
@@ -493,5 +526,5 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		return true;
 	}
 
-	return { handleKeydown, arms };
+	return { handleKeydown, arms, inlineUnits };
 }

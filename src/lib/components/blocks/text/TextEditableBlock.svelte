@@ -225,6 +225,7 @@
 		getFocusOffset: () => (el ? rawSelectionFocus(el) : null),
 		getTextLen: () => caretReach(),
 		stepEdge: edgeStep.step,
+		inlineUnits: () => edgeDispatch.inlineUnits,
 		readText: () => readRawText(),
 		compositionSeat,
 		placement: typedPlacement,
@@ -780,10 +781,6 @@
 		// ArrowLeft branch would read offset 0.
 		if ((await widgetInteraction.handleSelectedWidgetKeydown(e)) || editableSurface.isDetached())
 			return;
-
-		// The browser default, with `user-select: none` on the widget, collapses the selection
-		// instead of stepping past it.
-		if (widgetInteraction.handleShiftArrowIntoWidget(e)) return;
 
 		if ((await handleSharedKeydown(e, sharedCtx)) || editableSurface.isDetached()) return;
 

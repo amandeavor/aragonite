@@ -29,9 +29,8 @@ The behavior contract:
 
 ## Happy paths
 
-- ArrowRight from before a replace island lands the caret past the whole hidden range (offset ===
-  island end); ArrowLeft from after it lands before the range (offset === island start). Source
-  unchanged, island never selected.
+- One arrow press crosses a replace island each way, with or without Shift, never selecting it:
+  `caret/unit-step.md`.
 - Backspace against a replace island's trailing edge selects it whole (island tinted, source
   unchanged); a second Backspace deletes the whole hidden range in one commit.
 - Delete against a replace island's leading edge selects it whole; a second Delete deletes the

@@ -23,7 +23,6 @@ import { asRawOffset } from '../../../caret/coordinate-spaces';
 import {
 	rawOffsetAt,
 	rawRangeToDomRange,
-	rawSelectionFocus,
 	type CaretClamp,
 	type CaretWriter,
 	type RawRange
@@ -117,8 +116,6 @@ export interface WidgetInteraction {
 	/** Keydown while a widget is selected. Every key is consumed in that state, so a
 	 *  true return must not fall through to the shared pipeline. */
 	handleSelectedWidgetKeydown(e: KeyboardEvent): Promise<boolean>;
-	/** Shift+Arrow into a widget; extends the browser selection to the far boundary. */
-	handleShiftArrowIntoWidget(e: KeyboardEvent): boolean;
 	/** Enter a widget at a caret edge: show its source or select it, as the kind's policy
 	 *  says. The caret-edge dispatch decides which edge and calls this. */
 	enterWidget(
@@ -614,20 +611,6 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		return true;
 	}
 
-	function handleShiftArrowIntoWidget(e: KeyboardEvent): boolean {
-		// While a source is shown the CST still reports an atomic widget, but the DOM holds
-		// editable text: let the browser's selection run over it, not past a widget that is gone.
-		if (showing) return false;
-		const el = deps.getEl();
-		if (!el) return false;
-		if (!e.shiftKey || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return false;
-		const widgetExt = widgetExtensionTarget(e.key);
-		if (widgetExt === null) return false;
-		e.preventDefault();
-		extendSelectionToRaw(widgetExt);
-		return true;
-	}
-
 	// The one place the show-source-or-select choice is made. `fromTrailingEdge` sets both where
 	// the caret goes in the source and the undo anchor.
 	function enterWidget(
@@ -784,31 +767,9 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		return characterLike(kind) || widgetEditing(kind)?.revealSource === true;
 	}
 
-	function widgetExtensionTarget(key: 'ArrowRight' | 'ArrowLeft'): number | null {
-		const el = deps.getEl();
-		if (!el) return null;
-		const focus = rawSelectionFocus(el);
-		if (focus === null) return null;
-		for (const inline of widgetsOf()) {
-			if (key === 'ArrowRight' && focus >= inline.start && focus < inline.end) {
-				return inline.end;
-			}
-			if (key === 'ArrowLeft' && focus > inline.start && focus <= inline.end) {
-				return inline.start;
-			}
-		}
-		return null;
-	}
-
-	function extendSelectionToRaw(rawOffset: number): void {
-		const el = deps.getEl();
-		if (el) deps.caretWriter.extendSelectionToRaw(el, rawOffset);
-	}
-
 	return {
 		isVerticallyTransparent,
 		handleSelectedWidgetKeydown,
-		handleShiftArrowIntoWidget,
 		enterWidget,
 		restoreCaret,
 		enterEdgeWidget,

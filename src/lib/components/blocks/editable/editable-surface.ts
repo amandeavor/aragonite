@@ -57,7 +57,7 @@ import {
 	trimTrailingLineEnding,
 	type LineEnding
 } from '../../../core/lines';
-import { keepLineEndingPairs } from '../../../core/line-ending-pairs';
+import { keepLineEndingPairs, lineEndingPairBeside } from '../../../core/line-ending-pairs';
 import { getContentRange, sameLineSuffix } from '../../../core/inline';
 import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
@@ -84,7 +84,7 @@ import {
 	type CaretWriter,
 	type RawRange
 } from '../../../caret/widget-offset';
-import type { SharedKeydownContext } from '../../../selection/shared-keydown';
+import type { CaretUnitSource, SharedKeydownContext } from '../../../selection/shared-keydown';
 import {
 	isInteractionTraceEnabled,
 	traceCompositionEnd,
@@ -232,6 +232,9 @@ export interface EditableSurfaceDeps {
 	/** A surface that hides inline markers crosses each hidden edge in a press of its own
 	 *  (`text/edge-step.ts`); absent where no inline construct renders. */
 	stepEdge?: SharedKeydownContext['stepEdge'];
+	/** The inline spans a horizontal arrow crosses whole (widgets, replace decorations), read at
+	 *  the key; absent where no inline widget renders. A CRLF pair is the surface's own. */
+	inlineUnits?: () => CaretUnitSource;
 
 	// ── Input handling (per block) ────────────────────────────────────────────
 	/** Read the current DOM content as the block's displayed text, for the input commit. */
@@ -364,12 +367,23 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		events: deps.events
 	});
 
+	const caretUnits: CaretUnitSource = {
+		beside: (offset, direction, extending) =>
+			deps.inlineUnits?.().beside(offset, direction, extending) ??
+			// Most blocks hold no `\r`, so the DOM read stays off their arrows.
+			(deps.getNode().raw.includes('\r')
+				? lineEndingPairBeside(deps.readText(), offset, direction)
+				: null),
+		crossed: () => deps.inlineUnits?.().crossed()
+	};
+
 	const sharedCtx: SharedKeydownContext = {
 		getEl: () => deps.getEl(),
 		getCursorOffset: () => deps.backend.getRaw(),
 		getFocusOffset: deps.getFocusOffset,
 		getTextLen: deps.getTextLen,
 		stepEdge: deps.stepEdge,
+		caretUnits,
 		getMyPath: deps.getMyPath,
 		getIndex: deps.getIndex,
 		crossBlock,

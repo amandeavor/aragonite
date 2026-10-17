@@ -52,6 +52,22 @@ export interface SharedKeydownContext extends LandableBoundsContext {
 	/** A plain horizontal arrow at a hidden construct edge: true when the press moved which side
 	 *  of the edge the caret means instead of moving the caret (live-mode.md § 4.2). */
 	stepEdge?(e: KeyboardEvent): boolean;
+	/** The spans in this block a caret can't stop inside, which a horizontal arrow crosses whole. */
+	caretUnits: CaretUnitSource;
+}
+
+/** A raw `[start, end)` a caret can't stop inside: a widget, a replace decoration, a CRLF pair. */
+export interface CaretUnit {
+	start: number;
+	end: number;
+}
+
+export interface CaretUnitSource {
+	/** The span `offset` sits against or inside, on the side `direction` names. A plain arrow
+	 *  crosses only the spans that read as one character; `extending`, every span. */
+	beside(offset: number, direction: 'forward' | 'backward', extending: boolean): CaretUnit | null;
+	/** Called once a press crossed a span: the widget edge a click held stops naming the caret. */
+	crossed(): void;
 }
 
 /** True when the event was fully handled; the caller must skip its block-specific branches. */
@@ -78,6 +94,9 @@ export async function handleSharedKeydown(
 		e.preventDefault();
 		return false;
 	}
+
+	// After the key note, so the press still resets the sticky column as any horizontal step does.
+	if (handleUnitStep(e, ctx, el)) return true;
 
 	// ── Arrow boundary navigation ─────────────────────────────────────────
 	const index = ctx.getIndex();
@@ -212,6 +231,29 @@ export function handleEdgeStep(
 
 // A table cell asks ahead of its navigation plan as well as here, so each event is read once.
 const edgeStepByEvent = new WeakMap<KeyboardEvent, boolean>();
+
+/** A horizontal arrow beside a span the caret can't stop inside lands at its far edge in one press,
+ *  decided here because WebKit and Firefox step natively into or past one. True if claimed. */
+function handleUnitStep(e: KeyboardEvent, ctx: SharedKeydownContext, el: HTMLElement): boolean {
+	if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return false;
+	if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing || ctx.selection.isCrossBlock) {
+		return false;
+	}
+	const extending = e.shiftKey;
+	// A plain arrow over a range collapses it, which is the browser's.
+	if (!extending && window.getSelection()?.isCollapsed === false) return false;
+	const offset = extending ? ctx.getFocusOffset() : ctx.getCursorOffset();
+	if (offset === null) return false;
+	const direction = e.key === 'ArrowRight' ? 'forward' : 'backward';
+	const unit = ctx.caretUnits.beside(offset, direction, extending);
+	if (!unit) return false;
+	e.preventDefault();
+	const target = direction === 'forward' ? unit.end : unit.start;
+	if (extending) ctx.caretWriter.extendSelectionToRaw(el, target);
+	else ctx.caretWriter.placeCaretAtRaw(el, target, { clamp: 'exact' });
+	ctx.caretUnits.crossed();
+	return true;
+}
 
 // ── Block bounds ───────────────────────────────────────────────────────────
 

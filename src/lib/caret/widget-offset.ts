@@ -12,7 +12,7 @@ import {
 	type PresentationMode
 } from '../presentation-mode';
 import { widgetSourceRange } from '../core/inline/inline-widgets';
-import { splitsLineEndingPair } from '../core/line-ending-pairs';
+import { isLineEndingPair, splitsLineEndingPair } from '../core/line-ending-pairs';
 import {
 	familyHidesText,
 	familyPaintsAlone,
@@ -35,6 +35,7 @@ import { domDescendants } from './dom-walk';
 import { placeholderBreakOf } from './placeholder-break';
 import { assertInvariant } from '../assert';
 import { checkCaretBeforeBreak } from '../invariants/caret-before-break';
+import { checkCaretOutsideLineEndingPair } from '../invariants/line-ending-pairs';
 
 // ── Raw offsets and the caret ────────────────────────────────────────────────
 
@@ -166,6 +167,10 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 		assertInvariant(
 			'caret-before-break',
 			() => checkCaretBeforeBreak(anchor) ?? checkCaretBeforeBreak(focus)
+		);
+		assertInvariant(
+			'caret-in-line-ending-pair',
+			() => checkCaretOutsideLineEndingPair(anchor) ?? checkCaretOutsideLineEndingPair(focus)
 		);
 		const sel = window.getSelection();
 		if (!sel) return false;
@@ -352,7 +357,7 @@ export function domTextOffsetAtNode(
 /** WebKit and Firefox let a caret stop between a `\r` and its `\n`, where Chromium never does: such
  *  a position reads as the line's end, before the pair, so no edit splits it. */
 function outsideLineEndingPair(at: number, before: string, after: string): DomTextOffset {
-	return asDomTextOffset(before === '\r' && after === '\n' ? at - 1 : at);
+	return asDomTextOffset(isLineEndingPair(before, after) ? at - 1 : at);
 }
 
 /** The first byte of the walk's next non-empty text, or '' at a widget or the walk's end. */

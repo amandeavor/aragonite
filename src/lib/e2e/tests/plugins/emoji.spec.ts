@@ -42,17 +42,6 @@ test.describe('plugin inline emoji shortcodes', () => {
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
-	test('a plain arrow steps the caret over the whole widget like a character', async ({ page }) => {
-		// Five ArrowRights reach the widget's leading edge past "Mood ", and the sixth crosses all
-		// seven bytes, so a character typed next lands right after the closing colon.
-		await editor.focusBlockStart(0);
-		for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
-		await editor.typeText('X');
-		await editor.bridge.waitForSourceContains(':smile:X');
-		expect(await editor.bridge.getSource()).toContain('Mood :smile:X today');
-		expect(await capturedErrors(page)).toEqual([]);
-	});
-
 	test('a caret-adjacent Backspace deletes the whole reference in one press and one undo', async ({
 		page
 	}) => {

@@ -73,7 +73,8 @@ function makeEnv(source: string, offset: number | null, mode?: string): Env {
 			history: {} as SharedKeydownContext['history'],
 			focus: { moveFocus } as unknown as SharedKeydownContext['focus'],
 			getDoc: () => doc,
-			scrollOwner: { place: () => ({ scroll: async () => true }) }
+			scrollOwner: { place: () => ({ scroll: async () => true }) },
+			caretUnits: { beside: () => null, crossed: () => {} }
 		}
 	};
 }
