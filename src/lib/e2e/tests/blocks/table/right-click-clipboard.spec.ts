@@ -1,7 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { dragBetweenCells } from './helpers';
-import { holdClipboardRead, releaseClipboardRead } from '../../../page-probes';
+import { holdClipboardRead, releaseClipboardRead } from '../../../clipboard-arm';
 
 // Cells render row-major: 0=A 1=B (header) · 2="hello" 3="world" (body row).
 const TABLE = '| A | B |\n| --- | --- |\n| hello | world |\n';
@@ -222,7 +222,7 @@ test.describe('table block: cell menu Paste over a live range', () => {
 	for (const [name, select] of RANGES) {
 		test(`over ${name} it ends as Ctrl+V does, the range gone`, async ({ page }) => {
 			await selectOver(select);
-			await page.keyboard.press('ControlOrMeta+v');
+			await editor.paste();
 			await editor.waitForCrossBlock(false);
 			await editor.waitForRenderFlush();
 			const pasted = await editor.bridge.getSource();

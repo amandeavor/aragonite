@@ -91,7 +91,7 @@ test.describe('table block: clipboard cut', () => {
 		await editor.seedClipboard('P');
 		await dragBetweenCells(page, 3, 5);
 		await editor.waitForCrossBlock(true);
-		await page.keyboard.press('ControlOrMeta+v');
+		await editor.paste();
 
 		await editor.bridge.waitForSourceContains('| P |  |  |');
 		await expect(page.locator('.table-cell')).toHaveCount(9);

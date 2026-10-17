@@ -2,34 +2,70 @@ import { type Page } from '@playwright/test';
 import { isWebKit } from './browser-engine';
 
 /**
- * How a spec's bytes reach the editor's clipboard handlers. Chromium uses the real system
- * clipboard behind the context's permission grants. WebKit's `writeText` lands in a clipboard the
- * synthetic paste keystroke cannot read, so on WebKit the bytes ride a dispatched event's
- * `clipboardData`, and a copy is recorded from the event the editor writes into.
+ * How a spec's bytes reach the editor's clipboard handlers, the one clipboard every spec and sim
+ * goes through (G4.212). Chromium uses the real system clipboard behind the context's permission
+ * grants. WebKit's real clipboard is out of reach of the paste keystroke and refuses page reads, so
+ * there `installClipboard` puts an in-page store behind `navigator.clipboard` and the copy events.
  */
 export interface ClipboardArm {
-	/** Page-side setup, before the first navigation. */
-	install(): Promise<void>;
-	seed(text: string): Promise<void>;
-	read(): Promise<string>;
+	seed(data: ClipboardPayload): Promise<void>;
+	/** The clipboard's text of one type, or '' when the clipboard holds none. */
+	read(type?: ClipboardType): Promise<string>;
 	paste(): Promise<void>;
 	waitForContains(expected: string, timeout: number): Promise<void>;
 }
 
+export type ClipboardType = 'text/plain' | 'text/html';
+/** Plain text, or one string per type for a paste that carries HTML beside the text. */
+export type ClipboardPayload = string | Partial<Record<ClipboardType, string>>;
+
 export function createClipboardArm(page: Page): ClipboardArm {
-	return isWebKit(page) ? eventClipboard(page) : systemClipboard(page);
+	return isWebKit(page) ? storeClipboard(page) : systemClipboard(page);
 }
 
-// ── The two branches ────────────────────────────────────────────────────────
+/** Page-side setup before the first navigation; the `page` fixture runs it for every spec. */
+export async function installClipboard(page: Page): Promise<void> {
+	if (isWebKit(page)) await page.addInitScript(installClipboardStore);
+}
+
+/** Make the page's next clipboard read wait until `releaseClipboardRead`, so a spec can swap the
+ *  document while a paste is still reading, with no timing in the spec. */
+export async function holdClipboardRead(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		navigator.clipboard.readText = () =>
+			new Promise<string>((resolve) => ((window as any).__releaseClipboardRead = resolve));
+	});
+}
+
+/** Resolve the held clipboard read with `text`. */
+export async function releaseClipboardRead(page: Page, text: string): Promise<void> {
+	await page.evaluate((t) => (window as any).__releaseClipboardRead(t), text);
+}
+
+// ── Chromium: the system clipboard ──────────────────────────────────────────
 
 function systemClipboard(page: Page): ClipboardArm {
 	return {
-		async install(): Promise<void> {},
-		async seed(text: string): Promise<void> {
-			await page.evaluate((t) => navigator.clipboard.writeText(t), text);
+		async seed(data: ClipboardPayload): Promise<void> {
+			if (typeof data === 'string') {
+				await page.evaluate((t) => navigator.clipboard.writeText(t), data);
+				return;
+			}
+			await page.evaluate(async (entries) => {
+				const blobs = Object.fromEntries(
+					Object.entries(entries).map(([type, text]) => [type, new Blob([text], { type })])
+				);
+				await navigator.clipboard.write([new ClipboardItem(blobs)]);
+			}, data);
 		},
-		read(): Promise<string> {
-			return page.evaluate(() => navigator.clipboard.readText());
+		read(type: ClipboardType = 'text/plain'): Promise<string> {
+			if (type === 'text/plain') return page.evaluate(() => navigator.clipboard.readText());
+			return page.evaluate(async (t) => {
+				for (const item of await navigator.clipboard.read()) {
+					if (item.types.includes(t)) return (await item.getType(t)).text();
+				}
+				return '';
+			}, type);
 		},
 		async paste(): Promise<void> {
 			await page.keyboard.press('ControlOrMeta+v');
@@ -44,34 +80,74 @@ function systemClipboard(page: Page): ClipboardArm {
 	};
 }
 
-function eventClipboard(page: Page): ClipboardArm {
-	let installed = false;
+// ── WebKit: the in-page store ───────────────────────────────────────────────
+
+type Store = Record<string, string>;
+
+/** Runs in the page: `__e2eClipboard` holds one string per type, and every route reads and
+ *  writes it, the editor's `navigator.clipboard` calls and its copy and cut events alike. */
+function installClipboardStore(): void {
+	const w = window as unknown as { __e2eClipboard: Store };
+	w.__e2eClipboard = {};
+	const clipboard = {
+		readText: async () => w.__e2eClipboard['text/plain'] ?? '',
+		writeText: async (text: string) => {
+			w.__e2eClipboard = { 'text/plain': String(text) };
+		},
+		write: async (items: ClipboardItem[]) => {
+			const next: Store = {};
+			for (const item of items) {
+				for (const type of item.types) next[type] = await (await item.getType(type)).text();
+			}
+			w.__e2eClipboard = next;
+		},
+		read: async () => {
+			const entries = Object.entries(w.__e2eClipboard);
+			if (entries.length === 0) return [];
+			const blobs = entries.map(([type, text]) => [type, new Blob([text], { type })]);
+			return [new ClipboardItem(Object.fromEntries(blobs))];
+		}
+	};
+	Object.defineProperty(navigator, 'clipboard', { value: clipboard, configurable: true });
+
+	// Window bubble runs after every handler in the document, so the editor has written first.
+	const record = (e: ClipboardEvent) => {
+		if (e.defaultPrevented) {
+			const data = e.clipboardData;
+			w.__e2eClipboard = Object.fromEntries((data?.types ?? []).map((t) => [t, data!.getData(t)]));
+			return;
+		}
+		// An event nobody prevented copies the selection after the listeners, as the browser does.
+		const field = document.activeElement;
+		const text =
+			field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement
+				? field.value.slice(field.selectionStart ?? 0, field.selectionEnd ?? 0)
+				: (window.getSelection()?.toString() ?? '');
+		w.__e2eClipboard = { 'text/plain': text };
+	};
+	window.addEventListener('copy', record);
+	window.addEventListener('cut', record);
+}
+
+function storeClipboard(page: Page): ClipboardArm {
 	return {
-		async install(): Promise<void> {
-			if (installed) return;
-			installed = true;
-			await page.addInitScript(() => {
-				(window as any).__e2eClipboard = '';
-				// Bubble phase, so the editor's own handler has written into `clipboardData` first.
-				const record = (e: ClipboardEvent) => {
-					(window as any).__e2eClipboard = e.clipboardData?.getData('text/plain') ?? '';
-				};
-				document.addEventListener('copy', record);
-				document.addEventListener('cut', record);
-			});
+		async seed(data: ClipboardPayload): Promise<void> {
+			const store: Store = typeof data === 'string' ? { 'text/plain': data } : { ...data };
+			await page.evaluate((s) => {
+				(window as unknown as { __e2eClipboard: Store }).__e2eClipboard = s;
+			}, store);
 		},
-		async seed(text: string): Promise<void> {
-			await page.evaluate((t) => {
-				(window as any).__e2eClipboard = t;
-			}, text);
-		},
-		read(): Promise<string> {
-			return page.evaluate(() => ((window as any).__e2eClipboard as string) ?? '');
+		read(type: ClipboardType = 'text/plain'): Promise<string> {
+			return page.evaluate(
+				(t) => (window as unknown as { __e2eClipboard?: Store }).__e2eClipboard?.[t] ?? '',
+				type
+			);
 		},
 		async paste(): Promise<void> {
 			await page.evaluate(() => {
 				const data = new DataTransfer();
-				data.setData('text/plain', ((window as any).__e2eClipboard as string) ?? '');
+				const store = (window as unknown as { __e2eClipboard?: Store }).__e2eClipboard ?? {};
+				for (const [type, text] of Object.entries(store)) data.setData(type, text);
 				const target = (document.activeElement ?? document.body) as HTMLElement;
 				target.dispatchEvent(
 					new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
@@ -80,7 +156,10 @@ function eventClipboard(page: Page): ClipboardArm {
 		},
 		async waitForContains(expected: string, timeout: number): Promise<void> {
 			await page.waitForFunction(
-				(e) => (((window as any).__e2eClipboard as string) ?? '').includes(e),
+				(e) =>
+					(
+						(window as unknown as { __e2eClipboard?: Store }).__e2eClipboard?.['text/plain'] ?? ''
+					).includes(e),
 				expected,
 				{ timeout, polling: 32 }
 			);

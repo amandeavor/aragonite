@@ -1,4 +1,5 @@
 import { type Locator, type Page } from '@playwright/test';
+import { isWebKit } from '../../../browser-engine';
 
 // Shared image-widget reads for the image block e2e specs.
 
@@ -71,13 +72,17 @@ export async function pointOffImageLine(
  *  keystroke: the range is gone, and the `selectionchange` it fires has been handled. */
 export async function dropNativeCaret(page: Page): Promise<void> {
 	await page.evaluate(
-		() =>
+		(firesEvent) =>
 			new Promise<void>((resolve) => {
 				const sel = window.getSelection();
 				if (!sel || sel.rangeCount === 0) return resolve();
-				document.addEventListener('selectionchange', () => resolve(), { once: true });
+				// WebKit fires no `selectionchange` for the removal, so there is no handler to wait for.
+				if (firesEvent)
+					document.addEventListener('selectionchange', () => resolve(), { once: true });
 				sel.removeAllRanges();
-			})
+				if (!firesEvent) resolve();
+			}),
+		!isWebKit(page)
 	);
 	await page.evaluate(() =>
 		(window as unknown as { __test: { drainTick(): Promise<void> } }).__test.drainTick()

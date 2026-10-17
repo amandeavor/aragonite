@@ -1072,7 +1072,7 @@ check can't see: a pattern anywhere in the tree, or a published table drifting f
 backs it.
 
 Scans over the library live in `test/invariants/lint/` and ride `npm run test:editor:invariants`.
-Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133) and **don't** ride
+Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133, G4.212) and **don't** ride
 that script; run them with `npx vitest run src/lib/e2e/lint/` (same in bash and PowerShell), and
 `npm test` runs both.
 
@@ -1238,6 +1238,7 @@ unguarded.
 | G4.201 | One painter puts the selection tint on an inline widget                                      | L       |
 | G4.207 | Shipped CSS keeps `color-mix` and container queries behind `@supports`                       | L       |
 | G4.208 | The fix-up after an edit is run by the commit or by the one write no commit follows          | L       |
+| G4.212 | E2E clipboard access and pastes ride the shared clipboard helper                             | L       |
 
 ### The entries
 
@@ -1564,8 +1565,9 @@ host, so outside the perf projects every wall-clock budget goes through the grow
 N-vs-4N ratio (`measureScanGrowth`) cancels the machine. The allowlist carries a reason per file.
 `lint/suite-file-rules.test.ts`.
 
-**G4.49 · The shared IME driver.** A spec that builds a `CompositionEvent` or an
-`insertCompositionText` input event by hand tests a browser no user has, so it fails the scan. The
+**G4.49 · The shared IME driver.** A spec that builds a `CompositionEvent`, an
+`insertCompositionText` input event or a key event saying `isComposing: true` by hand tests a
+browser no user has, so it fails the scan. The
 driver file is the one exemption (WebKit has no CDP session), pinned exactly, so a widened exemption
 and a deleted WebKit branch each fail. `e2e/lint/e2e-drivers.test.ts`.
 
@@ -2351,6 +2353,12 @@ step of its own (`writeNodeContent`, `deleteNode`, the join and the move) to the
 report that kind through `describeEdit`, since the commit skips a step nobody reported; and
 `fixesUpOwnWrites` to the format toggle, the one commit G1.112 skips. A new caller of any of them
 is a fix-up doubled or dropped in the making. `lint/separator-write-doors.test.ts`.
+
+**G4.212 · The shared clipboard helper.** A spec that calls `navigator.clipboard` or presses the
+paste chord itself only works where the real clipboard answers the page, which WebKit's doesn't,
+so both fail the scan outside `e2e/clipboard-arm.ts`. The helper is where each engine's clipboard
+lives: the system clipboard in Chromium, an in-page store the `page` fixture installs in WebKit.
+`e2e/lint/e2e-drivers.test.ts`.
 
 ## Accessibility
 

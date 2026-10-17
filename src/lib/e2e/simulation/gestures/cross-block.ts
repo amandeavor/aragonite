@@ -101,7 +101,7 @@ export function typeOverSelection(ctx: SimContext, text: string): Promise<void> 
 }
 
 export function pasteOverSelection(ctx: SimContext): Promise<void> {
-	return destroyThenSweep(ctx, () => ctx.page.keyboard.press('ControlOrMeta+v'), 'paste-over');
+	return destroyThenSweep(ctx, () => ctx.editor.paste(), 'paste-over');
 }
 
 /** The range goes as the composition starts, and the IME composes in the block the removal kept,

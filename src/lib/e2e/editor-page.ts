@@ -1,6 +1,11 @@
 import type { Page, Locator } from '@playwright/test';
 import { EditorBridge } from './editor-bridge';
-import { createClipboardArm, type ClipboardArm } from './clipboard-arm';
+import {
+	createClipboardArm,
+	type ClipboardArm,
+	type ClipboardPayload,
+	type ClipboardType
+} from './clipboard-arm';
 import { generateFixture, type FixtureShape } from '../test/perf/fixtures/generate';
 import { BLOCK_CONTENT_LOCATOR_SELECTOR } from '../caret/block-content-selector';
 import { PAST_TYPING_PAUSE_MS } from './page-probes';
@@ -27,7 +32,6 @@ export class EditorPage {
 	// ── Navigation ──────────────────────────────────────────────────────
 
 	async goto(query: '' | `?${string}` = '') {
-		await this.clipboard.install();
 		await gotoReady(this.page, `/test/editor${query}`);
 		// The route starts an unknown mode in source, where most live scenarios pass as well.
 		const mode = new URLSearchParams(query).get('presentationMode');
@@ -207,12 +211,12 @@ export class EditorPage {
 		await this.clipboard.paste();
 	}
 
-	async seedClipboard(text: string): Promise<void> {
-		await this.clipboard.seed(text);
+	async seedClipboard(data: ClipboardPayload): Promise<void> {
+		await this.clipboard.seed(data);
 	}
 
-	async readClipboard(): Promise<string> {
-		return this.clipboard.read();
+	async readClipboard(type?: ClipboardType): Promise<string> {
+		return this.clipboard.read(type);
 	}
 
 	// ── Drag & Shift+Click ──────────────────────────────────────────────

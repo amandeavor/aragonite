@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
-import { holdClipboardRead, releaseClipboardRead } from '../page-probes';
+import { holdClipboardRead, releaseClipboardRead } from '../clipboard-arm';
 
 test.describe('source prop change', () => {
 	let editor: EditorPage;

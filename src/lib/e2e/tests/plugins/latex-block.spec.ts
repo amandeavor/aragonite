@@ -118,14 +118,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 	}) => {
 		await editor.revealByClick();
 		await page.keyboard.press('End');
-		await page.evaluate(async () => {
-			await navigator.clipboard.write([
-				new ClipboardItem({
-					'text/plain': new Blob([' plain'], { type: 'text/plain' }),
-					'text/html': new Blob(['<b>BOLD</b>'], { type: 'text/html' })
-				})
-			]);
-		});
+		await editor.seedClipboard({ 'text/plain': ' plain', 'text/html': '<b>BOLD</b>' });
 		await editor.paste();
 
 		// The uncommitted source edit takes the text/plain payload, not the HTML markup: without

@@ -37,7 +37,7 @@ export async function copySelection(ctx: SimContext): Promise<void> {
 }
 
 export async function pasteHere(ctx: SimContext): Promise<void> {
-	await mutateThenResync(ctx, () => ctx.page.keyboard.press('ControlOrMeta+v'));
+	await mutateThenResync(ctx, () => ctx.editor.paste());
 }
 
 // ── Inline format ───────────────────────────────────────────────────────────

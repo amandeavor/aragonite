@@ -1,9 +1,9 @@
 /**
  * An e2e spec drives the browser through the shared helpers, each of which waits for what a raw
- * call skips: composition through the IME driver (G4.49), navigation through `gotoReady` and
- * `reloadReady`, and a mode switch through a helper that waits for the mode (G4.133). Runs with
- * the other e2e lints, outside `test:editor:invariants`. Probe text is spelled in pieces, since
- * this file is scanned too.
+ * call skips: composition through the IME driver (G4.49), the clipboard through its helper
+ * (G4.212), navigation through `gotoReady` and `reloadReady`, and a mode switch through a helper
+ * that waits for the mode (G4.133). Runs with the other e2e lints, outside
+ * `test:editor:invariants`. Probe text is spelled in pieces, since this file is scanned too.
  */
 import { it, expect } from 'vitest';
 import { collectFiles, readSource } from '../../test/invariants/lint/scan-source';
@@ -12,11 +12,16 @@ import { describeManifests } from '../../test/invariants/lint/file-rule';
 const files = collectFiles('src/lib/e2e', { extensions: ['.ts'] }).map(readSource);
 
 const IME_DRIVER = 'src/lib/e2e/simulation/ime.ts';
+const CLIPBOARD_HELPER = 'src/lib/e2e/clipboard-arm.ts';
 const NAVIGATION_HELPER = 'src/lib/e2e/goto-ready.ts';
 const BRIDGE_HOME = 'src/lib/e2e/editor-page.ts';
 const CONTROL_HOME = 'src/lib/e2e/mode-switch.ts';
 
 const COMPOSITION = 'Composition';
+const COMPOSING = 'Composing';
+const clip = 'navigator.' + 'clipboard';
+const press = (chord: string) => `await page.keyboard.press('${chord}');`;
+const pasteChord = (modifiers: string, key = 'v') => press(`${modifiers}+${key}`);
 const nav = (receiver: string, call: string) => `await ${receiver}.${call}`;
 const bridge = '(window as any).__' + 'test';
 const setter = 'setPresentation' + 'Mode';
@@ -29,16 +34,24 @@ describeManifests(
 	[
 		{
 			id: 'G4.49 e2e composition rides the shared IME driver, the only file building the events',
-			// Both ways around the driver: the event itself, and the input event carrying its bytes.
-			matches: new RegExp(`new\\s+${COMPOSITION}Event\\s*\\(|insert${COMPOSITION}Text`),
+			// Every way around the driver: the event itself, the input event carrying its bytes, and a
+			// key event claiming to sit inside a composition.
+			matches: new RegExp(
+				`new\\s+${COMPOSITION}Event\\s*\\(|insert${COMPOSITION}Text|is${COMPOSING}\\s*:\\s*true`
+			),
 			declared: { [IME_DRIVER]: 'the WebKit branch: WebKit has no CDP to compose through' },
 			reason:
 				'drive the composition through attachIme (e2e/simulation/ime.ts): a synthetic event skips the browser composition window',
 			hits: [
 				`new ${COMPOSITION}Event('compositionstart')`,
-				`{ inputType: 'insert${COMPOSITION}Text' }`
+				`{ inputType: 'insert${COMPOSITION}Text' }`,
+				`new KeyboardEvent('keydown', { key: 'Enter', is${COMPOSING}: true })`
 			],
-			misses: ['await ime.compose("か");']
+			misses: [
+				'await ime.compose("か");',
+				"await ime.press('Enter');",
+				`e.is${COMPOSING} === false`
+			]
 		},
 		{
 			id: 'G4.49 the CDP branch is where Chromium composition lives',
@@ -47,6 +60,41 @@ describeManifests(
 			reason: `Chromium composes through the CDP branch of ${IME_DRIVER}`,
 			hits: [`await cdp.send('Input.ime${'Set'}${COMPOSITION}', params);`],
 			misses: [`await cdp.send('Input.insertText', params);`]
+		},
+		// Miss-analysis: specs drove the page clipboard and the paste chord themselves, unseen until
+		// WebKit ran them. A chord joined from strings (`mod + '+v'`) still gets past.
+		{
+			id: 'G4.212 e2e clipboard access rides the shared clipboard helper',
+			matches: /\bnavigator\s*\??\.\s*clipboard\b/,
+			declared: { [CLIPBOARD_HELPER]: 'both branches, and the read a spec can hold' },
+			reason: `seed, read and paste through the clipboard helper (${CLIPBOARD_HELPER}): WebKit refuses a page's own clipboard calls`,
+			hits: [
+				`await page.evaluate(() => ${clip}.writeText('x'));`,
+				`const items = await ${clip}.read();`,
+				`${clip}.readText = () => held;`,
+				`await navigator?.${'clipboard'}.readText();`
+			],
+			misses: ["await editor.seedClipboard('x');", "await editor.readClipboard('text/html');"]
+		},
+		{
+			id: 'G4.212 e2e pastes ride the shared clipboard helper',
+			// The closing brace is a template whose modifier is a variable.
+			matches: /(?:['"`](?:ControlOrMeta|Control|Meta)|\})\+(?:Shift\+)?(?:v|V|KeyV)['"`]/,
+			declared: { [CLIPBOARD_HELPER]: 'the Chromium branch, which pastes through the keystroke' },
+			reason: `paste with editor.paste() or the clipboard helper (${CLIPBOARD_HELPER}): WebKit's paste keystroke can't read what a spec seeds`,
+			hits: [
+				pasteChord('ControlOrMeta'),
+				pasteChord('ControlOrMeta', 'KeyV'),
+				pasteChord('Control+Shift', 'V'),
+				`ctx.page.keyboard.press("Meta+${'v'}")`,
+				'await page.keyboard.press(`${mod}' + '+v`);'
+			],
+			misses: [
+				press('ControlOrMeta+c'),
+				press('ControlOrMeta+x'),
+				"await page.keyboard.type('v');",
+				'`${prefix}' + '+value`'
+			]
 		},
 		// Miss-analysis: each spec wrote its own wait and no scan held them to one, so one waited on
 		// markup. A `goto(variable)` on a page spelled otherwise still gets past the matcher.

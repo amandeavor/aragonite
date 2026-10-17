@@ -17,7 +17,7 @@ test.describe('edit events per paste op', () => {
 			await editor.seedClipboard('one\n\ntwo\n');
 
 			const count = await countEditEvents(editor, async () => {
-				await editor.page.keyboard.press('ControlOrMeta+KeyV');
+				await editor.paste();
 				await editor.bridge.waitForSourceContains('two');
 			});
 
@@ -34,7 +34,7 @@ test.describe('edit events per paste op', () => {
 			await editor.seedClipboard('- one\n- two\n');
 
 			const count = await countEditEvents(editor, async () => {
-				await editor.page.keyboard.press('ControlOrMeta+KeyV');
+				await editor.paste();
 				await editor.bridge.waitForSourceContains('- two');
 			});
 
@@ -53,7 +53,7 @@ test.describe('edit events per paste op', () => {
 			await editor.seedClipboard('- x\n- y\n');
 
 			const count = await countEditEvents(editor, async () => {
-				await editor.page.keyboard.press('ControlOrMeta+KeyV');
+				await editor.paste();
 				await editor.bridge.waitForSourceWith((s, b) => s !== b && s.includes('y'), before);
 			});
 

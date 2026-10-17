@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { gotoReady } from '../../goto-ready';
+import { createClipboardArm } from '../../clipboard-arm';
 
 type Pane = 'listing' | 'notListing';
 
@@ -175,8 +176,9 @@ test.describe('activation scopes the chord and the paste grammar', () => {
 		await body.click();
 		await page.keyboard.press('End');
 
-		await page.evaluate(() => navigator.clipboard.writeText('%%parrot dance\n'));
-		await page.keyboard.press('ControlOrMeta+v');
+		const clipboard = createClipboardArm(page);
+		await clipboard.seed('%%parrot dance\n');
+		await clipboard.paste();
 
 		await expect(body).toHaveText(/%%parrot dance/);
 		await expect(pane.locator('[data-block-kind="parrot"]')).toHaveCount(0);
