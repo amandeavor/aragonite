@@ -136,6 +136,18 @@ describe('the caret after a join', () => {
 		await h.actions.updateBlockContent(1, '- [ ] start\n', 'authored', 0, 11);
 		expect(h.landings.at(-1)).toMatchObject({ leafPath: [1, 0, 0], offset: 'start'.length });
 	});
+
+	it('lands in the new item when the typed marker folds the line into the list above', async () => {
+		const h = atRoot('- [ ] fold\n\n\nafter\n');
+		await ROUTES['typing the marker key by key'].write(h.actions, 1);
+		expect(h.landings.at(-1)).toMatchObject({ leafPath: [0, 1, 0], offset: 0 });
+	});
+
+	it('lands in the new item when a paragraph with text turns into an item of the list above', async () => {
+		const h = atRoot('- [ ] fold\n\nbuy milk\n');
+		await h.actions.updateBlockContent(1, '- buy milk\n', 'authored', 0, 2);
+		expect(h.landings.at(-1)).toMatchObject({ leafPath: [0, 1, 0], offset: 0 });
+	});
 });
 
 describe('one undo after a join', () => {
@@ -179,12 +191,35 @@ describe('which lines join and which stay apart', () => {
 		expect(h.bytes()).toBe('- [ ] fold\n- buy milk\n');
 	});
 
-	it('stays apart when the list rewritten was already a list of that type', async () => {
-		const h = atRoot('- a\n\n- c\n');
-		await h.actions.replaceBlock(0, parse('- a\n- b\n').children, undefined, {
-			snapshotOffset: 0
-		});
-		expect(h.bytes()).toBe('- a\n- b\n\n- c\n');
+	it.each([
+		['below it', '- a\n\n- c\n', 0, '- a\n- b\n\n- c\n'],
+		['above it', '- c\n\n- a\n', 1, '- c\n\n- a\n- b\n']
+	])(
+		'stays apart when the list rewritten was already a list of the type %s',
+		async (_label, source, index, expected) => {
+			const h = atRoot(source);
+			await h.actions.replaceBlock(index, parse('- a\n- b\n').children, undefined, {
+				snapshotOffset: 0
+			});
+			expect(h.bytes()).toBe(expected);
+		}
+	);
+
+	it('joins when a write changes a list to the type of the list above it', async () => {
+		const h = atRoot('- c\n\n 1. a\n');
+		await h.actions.updateBlockContent(1, '- a\n', 'authored', 0, 3);
+		expect(h.bytes()).toBe('- c\n- a\n');
+	});
+
+	// The commit settles again after the write's own pass, and that second pass must not join the
+	// merged list to a list the edit never touched.
+	it.each([
+		['above', '- [ ] a\n\n- [ ] b\n\n\nafter\n', 2, '- [ ] a\n\n- [ ] b\n- \n\nafter\n'],
+		['below', 'intro\n\n\n- [ ] b\n\n- [ ] c\n', 1, 'intro\n\n- \n- [ ] b\n\n- [ ] c\n']
+	])('keeps an untouched list %s the joined one apart', async (_label, source, index, expected) => {
+		const h = atRoot(source);
+		await ROUTES['typing the marker key by key'].write(h.actions, index);
+		expect(h.bytes()).toBe(expected);
 	});
 
 	it('stays apart when a paste puts a list after the text on a line', async () => {
