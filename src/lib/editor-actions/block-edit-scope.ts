@@ -9,6 +9,7 @@ import { emitCommitError } from '../editor-events';
 import type {
 	CommitLanding,
 	ContainerEditActions,
+	ContainerScope,
 	InPlaceResult,
 	MultiScopeTarget
 } from '../action-contracts';
@@ -45,6 +46,8 @@ export interface MutationView {
 	readonly reading: Reading;
 	/** Copy the child at `i` out of the undo snapshot before an in-place write; returns the copy. */
 	unshareChild(i: number): CstNode;
+	/** Tells the commit's fix-up what the mutation did beyond its splice; see `ContainerScope`. */
+	describeEdit: ContainerScope['describeEdit'];
 }
 
 export interface ScopeCommitArgs {
@@ -135,12 +138,13 @@ export function createTopLevelScope(
 		}): Promise<boolean> {
 			return controller.commitStructural({
 				snapshot: { path: asDocPath([snapshot.index]), offset: snapshot.offset },
-				mutate: (children) =>
+				mutate: (children, docScope) =>
 					mutate({
 						body: documentBody(deps.doc, children),
 						sharing: deps.sharing,
 						reading: deps.reading,
-						unshareChild: (i) => ensureUnsharedPath({ children }, [i], deps.sharing)[0]
+						unshareChild: (i) => ensureUnsharedPath({ children }, [i], deps.sharing)[0],
+						describeEdit: docScope.describeEdit
 					}),
 				op: { ...op, eventPath: asDocPath([eventTarget]) },
 				landing,
@@ -245,7 +249,8 @@ function containerScope(parts: ContainerParts): CommitScope {
 						body: view.body,
 						sharing: view.sharing,
 						reading: parts.reading(),
-						unshareChild: (i) => ensureUnsharedChild(view.node, i, view.sharing)
+						unshareChild: (i) => ensureUnsharedChild(view.node, i, view.sharing),
+						describeEdit: view.describeEdit
 					}),
 				op: { ...op, eventPath: extendDocPath(parts.path(), eventTarget) },
 				landing,

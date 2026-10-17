@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import type { Document } from '../../core/nodes';
-import { mergeIntoPrevDeepLeaf, mergeWithNext } from '../../tree-operations';
+import { mergeWithNext } from '../../tree-operations';
 import { applyStructuralChangeToIdsRefs } from '../../tree-operations/structural-change';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { settled } from '../harness/settle-funnel';
 import { expectParseConverged } from '../harness/parse-converged';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { mergePrevSettled } from '#lib/test/harness/settle-funnel.js';
 
 // The two joins production reaches, Delete's forward one and Backspace's backward one, both
 // writing into the surviving block through `joinIntoLeaf`.
@@ -14,7 +15,7 @@ import { createSharingState } from '#lib/tree-operations/sharing.js';
 describe('mergeIntoPrevDeepLeaf', () => {
 	it('merges two paragraphs into one (strips internal line break)', () => {
 		const doc = parse('Hello\n\nWorld\n');
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading());
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading());
 		expect(doc.children).toHaveLength(1);
 		expect(doc.children[0].kind).toBe('paragraph');
 		expect(doc.children[0].raw).toBe('HelloWorld\n');
@@ -23,7 +24,7 @@ describe('mergeIntoPrevDeepLeaf', () => {
 	it('preserves the first block ID and removes the second', () => {
 		const doc = parse('Hello\n\nWorld\n');
 		const ids = ['keep-me', 'remove-me'];
-		const result = mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading());
+		const result = mergePrevSettled(doc, 1, createSharingState(), fixtureReading());
 		expect(result?.change).toEqual({ op: 'delete', at: 1, count: 1 });
 		applyStructuralChangeToIdsRefs(result!.change, ids, [undefined, undefined]);
 		expect(ids).toEqual(['keep-me']);
@@ -31,14 +32,14 @@ describe('mergeIntoPrevDeepLeaf', () => {
 
 	it('preserves leading blank lines of the first block', () => {
 		const doc = parse('A\n\nB\n\nC\n');
-		mergeIntoPrevDeepLeaf(doc, 2, createSharingState(), fixtureReading());
+		mergePrevSettled(doc, 2, createSharingState(), fixtureReading());
 		expect(doc.children[1].leadingTrivia).toBe('\n');
 	});
 
 	it('declines at index 0 and past the tail, leaving the tree alone', () => {
 		const doc = parse('Hello\n\nWorld\n');
-		expect(mergeIntoPrevDeepLeaf(doc, 0, createSharingState(), fixtureReading())).toBeNull();
-		expect(mergeIntoPrevDeepLeaf(doc, 5, createSharingState(), fixtureReading())).toBeNull();
+		expect(mergePrevSettled(doc, 0, createSharingState(), fixtureReading())).toBeNull();
+		expect(mergePrevSettled(doc, 5, createSharingState(), fixtureReading())).toBeNull();
 		expect(doc.children).toHaveLength(2);
 	});
 
@@ -50,7 +51,7 @@ describe('mergeIntoPrevDeepLeaf', () => {
 			{ kind: 'paragraph', leadingTrivia: '', raw: '## ' },
 			{ kind: 'paragraph', leadingTrivia: '', raw: 'Title\n' }
 		];
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading());
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading());
 		expect(doc.children[0].kind).toBe('heading');
 		expect(doc.children[0].raw).toBe('## Title\n');
 	});
@@ -61,7 +62,7 @@ describe('mergeIntoPrevDeepLeaf', () => {
 			{ kind: 'heading', leadingTrivia: '', raw: '## Hello\n', metadata: { level: 2 } },
 			{ kind: 'paragraph', leadingTrivia: '', raw: ' World\n' }
 		];
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading());
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading());
 		expect(doc.children).toHaveLength(1);
 		expect(doc.children[0].kind).toBe('heading');
 		expect(doc.children[0].raw).toBe('## Hello World\n');
@@ -152,7 +153,7 @@ describe('a join into a document with no final line ending', () => {
 	it.each([
 		[
 			'Backspace',
-			(doc: Document) => void mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading())
+			(doc: Document) => void mergePrevSettled(doc, 1, createSharingState(), fixtureReading())
 		],
 		[
 			'Delete',

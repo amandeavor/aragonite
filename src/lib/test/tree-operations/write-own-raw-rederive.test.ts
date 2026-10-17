@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { mergeIntoPrevDeepLeaf } from '../../tree-operations';
 import { writeOwnRaw } from '../../tree-operations/node-primitives';
 import { documentLineEnding } from '../../core/lines';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { mergePrevSettled } from '#lib/test/harness/settle-funnel.js';
 
 // The in-place write re-derives kind and parse-owned metadata from its bytes whether or not its own
 // rule rewrote them, and the deep-leaf merge reparses what it absorbs.
@@ -38,7 +38,7 @@ describe('mergeIntoPrevDeepLeaf re-derives what the absorbed bytes parse as (GH 
 		const doc = parse('\n# h\n');
 		expect(doc.children.map((c) => c.kind)).toEqual(['paragraph', 'heading']);
 
-		const result = mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading());
+		const result = mergePrevSettled(doc, 1, createSharingState(), fixtureReading());
 
 		expect(result).not.toBeNull();
 		expect(doc.children).toHaveLength(1);
@@ -52,7 +52,7 @@ describe('mergeIntoPrevDeepLeaf re-derives what the absorbed bytes parse as (GH 
 		const doc = parse('one\n\ntwo\n');
 		const target = doc.children[0];
 
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading());
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading());
 
 		expect(doc.children[0]).toBe(target);
 		expect(doc.children[0].raw).toBe('onetwo\n');

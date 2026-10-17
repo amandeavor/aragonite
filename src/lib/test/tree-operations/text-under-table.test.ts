@@ -3,12 +3,12 @@ import { createRegistryView } from '#lib/schema/registry-view.js';
 import { registerMathBlock } from '#lib/plugins/latex/latex-kind.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { deleteNode, spliceChildrenSettled } from '#lib/tree-operations/settle.js';
+import { spliceChildrenSettled } from '#lib/tree-operations/settle.js';
 import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { plainQuote } from '#lib/tree-operations/blockquote.js';
 import { liftFirstChild } from '#lib/tree-operations/container-lift.js';
 import { describeConvergence, layoutOf } from '#lib/test/harness/parse-converged.js';
-import { settled } from '#lib/test/harness/settle-funnel.js';
+import { settled, deleteSettled } from '#lib/test/harness/settle-funnel.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
@@ -64,7 +64,7 @@ describe('a block turned into text right under a table keeps a blank line', () =
 	])('a delete of the block between (%s)', (_, table, eol) => {
 		const doc = parse(`${table}---${eol}next${eol}`);
 
-		settled(doc, (body) => deleteNode(body, 1, defaultGrammarView, createSharingState()));
+		deleteSettled(doc, 1);
 
 		expect(serialize(doc)).toBe(`${table}${eol}next${eol}`);
 		expect(describeConvergence(doc)).toBeNull();
@@ -85,7 +85,7 @@ describe('a block turned into text right under a table keeps a blank line', () =
 	it('a block that ends the table on its own takes no blank line', () => {
 		const doc = parse(`${T}---\n# h\n`);
 
-		settled(doc, (body) => deleteNode(body, 1, defaultGrammarView, createSharingState()));
+		deleteSettled(doc, 1);
 
 		expect(serialize(doc)).toBe(`${T}# h\n`);
 		expect(describeConvergence(doc)).toBeNull();
@@ -102,7 +102,7 @@ describe('the blank line a follower takes depends on the editor’s grammar', ()
 	it('a `$$` block that closes below ends the table, so it takes none', () => {
 		const doc = parse(`${T}---\n$$\nx\n$$\n`);
 
-		settled(doc, (body) => deleteNode(body, 1, defaultGrammarView, createSharingState()));
+		deleteSettled(doc, 1);
 
 		expect(serialize(doc)).toBe(`${T}$$\nx\n$$\n`);
 		expect(doc.children.map((c) => c.kind)).toEqual(['table', 'mathBlock']);
@@ -113,7 +113,7 @@ describe('the blank line a follower takes depends on the editor’s grammar', ()
 		const off = createRegistryView({ syntax: { indentedCode: false } }).grammar;
 		const doc = parse(`${T}---\n    code\n`, { grammar: off });
 
-		settled(doc, (body) => deleteNode(body, 1, defaultGrammarView, createSharingState()), off);
+		deleteSettled(doc, 1, off);
 
 		expect(serialize(doc)).toBe(`${T}\n    code\n`);
 		expect(describeConvergence(doc, off)).toBeNull();

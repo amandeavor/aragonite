@@ -280,7 +280,7 @@ One exception, on purpose: when the new last line is blank, it keeps its break, 
 - take the separator back off a list an edit made next to a list of the same type
 - hand one back to the run when a block turns blank
 
-Every splice that changes what sits above a block goes through them. A primitive that writes its own trivia, like `splitNode`'s separator or `deleteNode` handing a deleted block's separator down, still runs them afterwards.
+An edit splices and writes, and the commit then runs one fix-up over each list it wrote, `settleEdit`, which calls these helpers around the edit's window. A few edits still call one themselves (the gap-caret insert, a range delete inside one block, and the list moves that leave an empty-marker sublist), and `docs/contributing/codebase-map.md` § Blank lines and separators says why for each. A write, a move or a removal tells the commit what it did first, since each asks a step of its own before the separators get recomputed (a removed block's separator going to the block that takes its place, for one). A write that no commit follows, like the keystroke written in place, runs the write's part of that fix-up itself.
 
 Three separators have nothing to re-derive from, so the edits that need them write them on purpose:
 

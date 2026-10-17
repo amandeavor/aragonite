@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import { mergeIntoPrevDeepLeaf, mergeWithNext } from '#lib/tree-operations/index.js';
+import { mergeWithNext } from '#lib/tree-operations/index.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { mergePrevSettled } from '#lib/test/harness/settle-funnel.js';
 
 // Both merge primitives, Backspace's deep-leaf write and Delete's reparse write, each in live mode
 // and with no mode, which keeps the bytes as typed.
@@ -39,14 +40,13 @@ describe('each merge primitive drops the join pair in live', () => {
 		expect(
 			merged(
 				'live',
-				(doc) =>
-					void mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading({}, 'live'))
+				(doc) => void mergePrevSettled(doc, 1, createSharingState(), fixtureReading({}, 'live'))
 			)
 		).toBe(REJOINED);
 		expect(
 			merged(
 				undefined,
-				(doc) => void mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading())
+				(doc) => void mergePrevSettled(doc, 1, createSharingState(), fixtureReading())
 			)
 		).toBe(RESIDUE);
 	});
@@ -57,7 +57,7 @@ describe('the join offset the caret rides moves with the runs the cleanup droppe
 	// would put the caret two characters into the text below.
 	it('reports the join in the bytes that were actually written', () => {
 		const doc = parse(SPLIT_BOLD);
-		const result = mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading({}, 'live'));
+		const result = mergePrevSettled(doc, 1, createSharingState(), fixtureReading({}, 'live'));
 		expect(result?.joinOffset).toBe(9);
 		expect(doc.children[0].raw.slice(0, result!.joinOffset)).toBe('Some **bo');
 	});
@@ -76,13 +76,13 @@ describe('the join offset the caret rides moves with the runs the cleanup droppe
 describe('a merge with nothing on its join', () => {
 	it('joins two plain paragraphs unchanged', () => {
 		const doc = parse('abc\n\ndef\n');
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading({}, 'live'));
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading({}, 'live'));
 		expect(doc.children[0].raw).toBe('abcdef\n');
 	});
 
 	it('keeps the line ending the target block was written with', () => {
 		const doc = parse('Some **bo**\r\n\r\n**ld** text\r\n');
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading({}, 'live'));
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading({}, 'live'));
 		expect(doc.children[0].raw).toBe('Some **bold** text\r\n');
 	});
 });

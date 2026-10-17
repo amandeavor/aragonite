@@ -6,9 +6,8 @@
 
 import type { AnyBlockKind, CstNode, Document } from '../core/nodes';
 import type { DocumentView, NodeView } from '../core/node-views';
-import { isBlankParagraph } from '../core/parser';
 import { escalatedFenceLength, matchFenceOpen } from '../core/parsers/fence-syntax';
-import { blockReadingNotFinal, type GrammarView } from '../schema/block-openers';
+import type { GrammarView } from '../schema/block-openers';
 import {
 	lineOpensAs,
 	parseContainerRaw,
@@ -47,19 +46,10 @@ import {
 	type NodeParent
 } from './node-primitives';
 import { ensureEditableContainers } from '../schema/opened-reading';
-import {
-	joinListsMadeBeside,
-	releaseWrapPeel,
-	restoreSeparatorAfterBlank,
-	restoreSeparatorOnFill,
-	settleSeparatorOnBlank,
-	widenForTailMint
-} from './settle';
-import {
-	absorbWindowSeams,
-	focusTargetInReplacement,
-	type TrackedPosition
-} from './neighbour-merge';
+import { settleContentWrite, type SettledContent, type WrittenSlot } from './settle';
+import { focusTargetInReplacement } from './neighbour-merge';
+
+export type { SettledContent, WrittenSlot };
 
 // ── Making written bytes legal ──
 
@@ -133,17 +123,34 @@ export function droppedOpenLines(
 
 // ── Update Content ──
 
-/** What a content write produced once its neighbours were fixed up: its change widened by every
- *  merge, and the offset the written text starts at inside that change's window (nonzero once a
- *  merge above absorbed it). */
-export interface SettledContent {
+/** A content write before its fix-up: the change the reparse made, and what was written where. */
+export interface UnsettledWrite {
 	change: StructuralChange;
-	textStart: number;
+	written: WrittenSlot;
 }
 
 /**
- * Write and reparse the block; only a same-kind single-block edit writes in place, so typing keeps
- * the node's identity. A plain string is made legal here; a {@link LegalWrite} already is.
+ * Write and reparse the block, leaving its fix-up to the commit that reports `written`; only a
+ * same-kind single-block edit writes in place, so typing keeps the node's identity.
+ */
+export function writeNodeContent(
+	parent: BodyParentArg,
+	blockIndex: number,
+	text: string | LegalWrite,
+	grammar: GrammarView,
+	sharing: SharingState
+): UnsettledWrite {
+	const body = asBody(parent);
+	const legal = legalText(body, blockIndex, text);
+	// Reconciled before the container's raw rebuild writes the list item's marker.
+	return writeKeepingTaskMarker(body.owner, body.children, blockIndex, sharing, () =>
+		writeLegal(body, blockIndex, legal, grammar)
+	);
+}
+
+/**
+ * {@link writeNodeContent} plus its fix-up, for a write no commit settles: the keystroke written in
+ * place, the trial before it, and a body below a commit's scope. A plain string is made legal here.
  */
 export function updateNodeContent(
 	parent: BodyParentArg,
@@ -153,147 +160,26 @@ export function updateNodeContent(
 	sharing: SharingState
 ): SettledContent {
 	const body = asBody(parent);
-	const legal =
-		typeof text === 'string' ? legalizeWrite(body, blockIndex, text, 'literal').text : text.text;
-	// Reconciled before the container's raw rebuild writes the list item's marker.
-	return writeKeepingTaskMarker(body.owner, body.children, blockIndex, sharing, () =>
-		writeAndSettleContent(body, blockIndex, legal, grammar, sharing)
-	);
+	const legal = legalText(body, blockIndex, text);
+	return writeKeepingTaskMarker(body.owner, body.children, blockIndex, sharing, () => {
+		const { change, written } = writeLegal(body, blockIndex, legal, grammar);
+		return settleContentWrite(body, written, change, grammar, sharing);
+	});
 }
 
-function writeAndSettleContent(
+const legalText = (body: BodyParent, index: number, text: string | LegalWrite): string =>
+	typeof text === 'string' ? legalizeWrite(body, index, text, 'literal').text : text.text;
+
+function writeLegal(
 	parent: BodyParent,
 	blockIndex: number,
 	text: string,
-	grammar: GrammarView,
-	sharing: SharingState
-): SettledContent {
+	grammar: GrammarView
+): UnsettledWrite {
 	// Copied, since an in-place write swaps the node's metadata and children for the new reading's.
-	const before = { ...parent.children[blockIndex] };
-	const wasBlank = isBlankParagraph(before);
-	const indentMoved = leadingIndent(before.raw) !== leadingIndent(text);
+	const previous = { ...parent.children[blockIndex] };
 	const change = writeParsedContent(parent, blockIndex, text, grammar);
-	const lastWritten = lastMintedIndex(change, blockIndex);
-	const written = lastWritten - blockIndex + 1;
-	// One blank line served both sides: it separated this block from the one above and stood in
-	// as the separator of the block beneath it. Filling it gives each side its own.
-	if (wasBlank && !isBlankParagraph(parent.children[blockIndex])) {
-		restoreSeparatorOnFill(parent, blockIndex, sharing);
-		restoreSeparatorAfterBlank(parent, followerIndexAfter(change, blockIndex), sharing);
-		releaseWrapPeel(parent, lastWritten);
-		joinListsMadeBeside(parent, blockIndex, written, [before], sharing);
-		return settleWriteSeams(parent, blockIndex, blockIndex, lastWritten, change, sharing, grammar);
-	}
-	// The reverse transition: the block is the separating line now, so the run it joins gives
-	// back the second one. The last block created is the one that meets the follower.
-	if (!wasBlank && isBlankParagraph(parent.children[lastWritten])) {
-		const settled = parent.children.length;
-		settleSeparatorOnBlank(parent, lastWritten, sharing);
-		const widened = widenForTailMint(change, settled, parent.children.length);
-		return settleWriteSeams(parent, blockIndex, blockIndex, lastWritten, widened, sharing, grammar);
-	}
-	// Same-kind typing asks the join above only when it's flush, the block above's reading isn't
-	// final, the indent moved, or a blank line stays blank (editor.md § 8).
-	if (
-		change.op === 'noop' &&
-		!wasBlank &&
-		!indentMoved &&
-		!flushAbove(parent.children, blockIndex) &&
-		!unfinishedAbove(parent.children, blockIndex, grammar)
-	) {
-		// The join below is asked whatever parts it: an HTML block left open reads on past blank lines.
-		if (blockIndex + 1 >= parent.children.length) return { change, textStart: 0 };
-		return settleWriteSeams(
-			parent,
-			blockIndex,
-			blockIndex + 1,
-			lastWritten,
-			change,
-			sharing,
-			grammar
-		);
-	}
-	joinListsMadeBeside(parent, blockIndex, written, [before], sharing);
-	return settleWriteSeams(parent, blockIndex, blockIndex, lastWritten, change, sharing, grammar);
-}
-
-const leadingIndent = (text: string): string => /^[ \t]*/.exec(text)![0];
-
-/** Whether no blank line parts the block from the one above it; a first child has none above. */
-const flushAbove = (children: readonly CstNode[], index: number): boolean =>
-	index > 0 && children[index].leadingTrivia === '';
-
-/** Whether the nearest block above may still read differently (an unclosed `$$`), which a closer
- *  written below can complete across blank lines. */
-function unfinishedAbove(
-	children: readonly CstNode[],
-	index: number,
-	grammar: GrammarView
-): boolean {
-	let above = index - 1;
-	while (above >= 0 && isBlankParagraph(children[above])) above--;
-	return above >= 0 && blockReadingNotFinal(children[above].raw, grammar);
-}
-
-/**
- * Merge across the joins from the one above `firstJoin` to the one below the last written block,
- * and report where the written text ended up once a merge above put bytes in front of it.
- */
-function settleWriteSeams(
-	parent: BodyParent,
-	blockIndex: number,
-	firstJoin: number,
-	lastWritten: number,
-	change: StructuralChange,
-	sharing: SharingState,
-	grammar: GrammarView
-): SettledContent {
-	const tracked: TrackedPosition = { index: blockIndex, offset: 0 };
-	const settled = absorbWindowSeams(
-		parent,
-		firstJoin,
-		lastWritten - firstJoin + 1,
-		blockIndex,
-		change,
-		grammar,
-		sharing,
-		tracked,
-		// One written block lets a join beside it be refused on a single line of the neighbour.
-		lastWritten === blockIndex ? blockIndex : undefined
-	);
-	return {
-		change: settled.change,
-		textStart: textOffsetInWindow(parent.children, settled.change, tracked)
-	};
-}
-
-/**
- * The tracked position as an offset in the window's committed text, the space every caret
- * placement measures in, where the head block's own leading blank lines are outside the window.
- */
-function textOffsetInWindow(
-	children: readonly CstNode[],
-	change: StructuralChange,
-	tracked: TrackedPosition
-): number {
-	const at = change.op === 'noop' ? tracked.index : change.at;
-	let pos = 0;
-	for (let i = at; i < tracked.index; i++) {
-		pos += (i === at ? 0 : children[i].leadingTrivia.length) + children[i].raw.length;
-	}
-	const ownTrivia = tracked.index > at ? children[tracked.index].leadingTrivia.length : 0;
-	return pos + ownTrivia + tracked.offset;
-}
-
-/** Where the filled block's follower ended up: a multi-block reparse pushes it down. */
-function followerIndexAfter(change: StructuralChange, blockIndex: number): number {
-	return change.op === 'replace' ? change.at + change.newCount : blockIndex + 1;
-}
-
-/** The last block the write left in the position: a multi-block reparse creates blocks past
- *  the first. */
-function lastMintedIndex(change: StructuralChange, blockIndex: number): number {
-	return change.op === 'replace' ? change.at + change.newCount - 1 : blockIndex;
+	return { change, written: { index: blockIndex, previous, text } };
 }
 
 /**
@@ -503,7 +389,7 @@ function installReplacement(
 	return parent.children[index];
 }
 
-/** Where a caret at `offset` in the written text ends up after {@link updateNodeContent}'s merges:
+/** Where a caret at `offset` in the written text ends up after the write's merges:
  *  the block holding it and its offset there, counting what a merge above put in front. */
 export function settledCaretPosition(
 	settled: SettledContent,

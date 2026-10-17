@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import { splitNode, mergeIntoPrevDeepLeaf } from '#lib/tree-operations/index.js';
+import { splitNode } from '#lib/tree-operations/index.js';
 import { expectParseConverged } from '#lib/test/harness/parse-converged.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { mergePrevSettled } from '#lib/test/harness/settle-funnel.js';
 
 // Live mode sends `splitNode` through the split rebalancer, and every other mode cuts the bytes as
 // typed.
@@ -92,14 +93,14 @@ describe('Backspace merging the halves back', () => {
 	it('restores the original bytes with no residue between the runs', () => {
 		const doc = parse('Some **bold** text\n');
 		splitNode(doc, 0, 9, createSharingState(), fixtureReading({}, 'live'));
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading({}, 'live'));
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading({}, 'live'));
 		expect(doc.children[0].raw).toBe('Some **bold** text\n');
 	});
 
 	it('a merged split link is one link again', () => {
 		const doc = parse('Visit [example](https://example.com) here\n');
 		splitNode(doc, 0, 11, createSharingState(), fixtureReading({}, 'live'));
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading({}, 'live'));
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading({}, 'live'));
 		expect(doc.children[0].raw).toBe('Visit [example](https://example.com) here\n');
 	});
 
@@ -107,7 +108,7 @@ describe('Backspace merging the halves back', () => {
 	it('is not a defect of the byte-literal split, which round-trips', () => {
 		const doc = parse('Some **bold** text\n');
 		splitNode(doc, 0, 9, createSharingState(), fixtureReading());
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading());
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading());
 		expect(doc.children[0].raw).toBe('Some **bold** text\n');
 	});
 
@@ -116,7 +117,7 @@ describe('Backspace merging the halves back', () => {
 	it('a modeless merge keeps the halves byte-literal', () => {
 		const doc = parse('Some **bold** text\n');
 		splitNode(doc, 0, 9, createSharingState(), fixtureReading({}, 'live'));
-		mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading());
+		mergePrevSettled(doc, 1, createSharingState(), fixtureReading());
 		expect(doc.children[0].raw).toBe('Some **bo****ld** text\n');
 	});
 });

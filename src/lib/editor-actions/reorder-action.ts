@@ -7,6 +7,7 @@
 import { CURSOR_START } from '../block-component';
 import { movedBlockToPosition } from '../a11y-strings';
 import { reorderChildrenWithTrivia } from '../tree-operations/reorder';
+import type { SettledEdit } from '../tree-operations/settle';
 import { resolveReorderUnit, type ReorderUnit } from '../tree-operations/reorder-unit';
 import { blockNodeAt, documentBody, nodeAt } from '../tree-operations/node-primitives';
 import { renumberOrderedList } from '../tree-operations/list/ordered-markers';
@@ -36,9 +37,12 @@ export function createReorderAction(
 		focusAfter: boolean
 	): Promise<boolean> {
 		let landedAt = to;
+		let settled = (): SettledEdit | null => null;
+		// Where the moved block stands once the commit's fix-up merged anything around it.
+		const movedTo = () => settled()?.moved ?? landedAt;
 		// The caret moves with the block, so a block moved off screen scrolls back into view.
 		const landing = (parentPath: readonly number[]) => () =>
-			focusAfter ? { path: extendDocPath(parentPath, landedAt), offset: CURSOR_START } : null;
+			focusAfter ? { path: extendDocPath(parentPath, movedTo()), offset: CURSOR_START } : null;
 
 		if (unit.scope === 'document') {
 			return controller.commitStructural({
@@ -48,19 +52,20 @@ export function createReorderAction(
 					detail: { from: unit.index, to },
 					eventPath: docPathFrom([unit.index])
 				},
-				mutate: (children) => {
-					const settled = reorderChildrenWithTrivia(
+				mutate: (children, docScope) => {
+					const moved = reorderChildrenWithTrivia(
 						documentBody(deps.doc, children),
 						unit.index,
 						to,
 						deps.sharing,
 						deps.reading.grammar
 					);
-					landedAt = settled.landing;
-					return settled.change;
+					landedAt = moved.landing;
+					settled = docScope.describeEdit({ moved: { to: landedAt } });
+					return moved.change;
 				},
 				landing: landing([]),
-				announce: () => movedBlockToPosition(landedAt + 1, deps.doc.children.length)
+				announce: () => movedBlockToPosition(movedTo() + 1, deps.doc.children.length)
 			});
 		}
 
@@ -79,27 +84,28 @@ export function createReorderAction(
 				eventPath: docPathFrom(unit.parentPath)
 			},
 			mutate: (scope) => {
-				const settled = reorderChildrenWithTrivia(
+				const moved = reorderChildrenWithTrivia(
 					scope.body,
 					unit.index,
 					to,
 					scope.sharing,
 					deps.reading.grammar
 				);
-				landedAt = settled.landing;
+				landedAt = moved.landing;
+				settled = scope.describeEdit({ moved: { to: landedAt } });
 				if (unit.renumberMarkers) {
 					// Ordered markers depend on position, so this copies each item whose marker it
 					// rewrites; the commit's rebuild then concatenates the fresh raws.
 					renumberOrderedList(scope.node, 0, scope.sharing);
 				}
-				return settled.change;
+				return moved.change;
 			},
 			landing: landing(unit.parentPath),
 			// Re-resolved, not `parent`: the commit's copy-before-write replaced that node, so the
 			// one resolved above still holds the pre-move children.
 			announce: () =>
 				movedBlockToPosition(
-					landedAt + 1,
+					movedTo() + 1,
 					blockNodeAt(deps.doc, unit.parentPath)?.children?.length ?? 0
 				)
 		});

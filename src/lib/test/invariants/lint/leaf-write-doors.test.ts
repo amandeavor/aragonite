@@ -43,8 +43,6 @@ const RULES: FileRule[] = [
 		allowed: {
 			[CONTENT_WRITE]: 'defines it',
 			[TREE_OPS_BARREL]: BARREL_REASON,
-			[BLOCK_EDIT_CORE]:
-				'`commitLeafText`, the commit every depth and every path-held writer shares',
 			[LEAF_WRITE]: '`writeLeafInPlace`, the keystroke written in place at every depth',
 			'src/lib/editor-actions/replacement-focus.ts':
 				'the keystroke’s trial reparse, on a copy that is never installed',
@@ -54,7 +52,7 @@ const RULES: FileRule[] = [
 				'a format toggle’s writes over several blocks, inside the toggle’s own commit'
 		},
 		reason:
-			'a leaf’s new text is written by `commitLeafText` or the in-place keystroke write; call one of them rather than the content write',
+			'a leaf’s new text is written by `commitLeafText` or the in-place keystroke write; call one of them rather than the content write, which fixes up its own body and so must stay out of a commit that settles that body again',
 		hits: [
 			'const settled = updateNodeContent(body, i, write, grammar, sharing);',
 			"import { updateNodeContent as writeContent } from '../tree-operations';",
@@ -152,9 +150,7 @@ const RULES: FileRule[] = [
 		matches: (file) => !/\bwriteKeepingTaskMarker\s*\(/.test(file.code),
 		reason: 'a writer the census counts as keeping the task marker has to run its write inside it',
 		reaches: Object.keys(MARKER_WRAPPED),
-		hits: [
-			{ relPath: CONTENT_WRITE, code: 'writeAndSettleContent(parent, i, legal, grammar, sharing);' }
-		],
+		hits: [{ relPath: CONTENT_WRITE, code: 'writeLegal(body, i, legal, grammar);' }],
 		misses: [
 			{
 				relPath: CONTENT_WRITE,

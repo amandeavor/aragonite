@@ -2,13 +2,14 @@ import { describe, it, expect } from 'vitest';
 import type { Document } from '#lib/core/nodes.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { mergeIntoPrevDeepLeaf, mergeWithNext } from '#lib/tree-operations/index.js';
+import { mergeWithNext } from '#lib/tree-operations/index.js';
 import { mergeListItemIntoPrevious } from '#lib/tree-operations/list/unwrap-merge.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import type { BodyParent } from '#lib/tree-operations/node-primitives.js';
 import { expectParseConverged } from '#lib/test/harness/parse-converged.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { documentLineEnding } from '#lib/core/lines.js';
+import { mergePrevSettled } from '#lib/test/harness/settle-funnel.js';
 
 // Miss-analysis: GH #166, the shape property's gestures included no merge, so none was reloaded.
 
@@ -44,7 +45,7 @@ describe('a join whose bytes read as several blocks is refused, not truncated', 
 	it('declines the backward join rather than writing a leaf its own reload disagrees with', () => {
 		const doc = parse(HEADING_OVER_TWO_LINES);
 
-		expect(mergeIntoPrevDeepLeaf(doc, 1, createSharingState(), fixtureReading())).toBeNull();
+		expect(mergePrevSettled(doc, 1, createSharingState(), fixtureReading())).toBeNull();
 
 		expect(serialize(doc)).toBe(HEADING_OVER_TWO_LINES);
 		expect(doc.children).toHaveLength(2);
@@ -62,9 +63,7 @@ describe('a join whose bytes read as several blocks is refused, not truncated', 
 		expectParseConverged(forward.doc);
 
 		const backward = quotedBody();
-		expect(
-			mergeIntoPrevDeepLeaf(backward.body, 1, createSharingState(), fixtureReading())
-		).toBeNull();
+		expect(mergePrevSettled(backward.body, 1, createSharingState(), fixtureReading())).toBeNull();
 		expect(backward.body.children).toHaveLength(2);
 		expectParseConverged(backward.doc);
 	});
@@ -80,9 +79,7 @@ describe('a join whose bytes stay one block still merges', () => {
 		expect(serialize(forward)).toBe('alphabeta\n');
 
 		const backward = parse('alpha\n\nbeta\n');
-		expect(
-			mergeIntoPrevDeepLeaf(backward, 1, createSharingState(), fixtureReading())
-		).not.toBeNull();
+		expect(mergePrevSettled(backward, 1, createSharingState(), fixtureReading())).not.toBeNull();
 		expect(serialize(backward)).toBe('alphabeta\n');
 	});
 });
@@ -100,7 +97,7 @@ describe('a refused join copies nothing', () => {
 		const quote = doc.children[0];
 		const heading = quote.children![0];
 
-		expect(mergeIntoPrevDeepLeaf(doc, 1, snapshotSharing(), fixtureReading())).toBeNull();
+		expect(mergePrevSettled(doc, 1, snapshotSharing(), fixtureReading())).toBeNull();
 
 		expect(doc.children[0]).toBe(quote);
 		expect(quote.children![0]).toBe(heading);
