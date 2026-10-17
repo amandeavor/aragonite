@@ -1,6 +1,6 @@
 # Feature: the list marker's column
 
-A list item draws its marker (`-`, `1.`, a checkbox) in a column of its own, and the item's text starts at that column's right edge on every line. The marker takes the size of the line it labels, and its column is sized in that line's font, so a heading item's number reads as part of the heading. The marker sits beside the item's first line, whatever that line holds.
+A list item draws its marker (`-`, `1.`, a checkbox) in a column of its own, and the item's text starts at that column's right edge on every line. Every item of a list shares one column, as wide as the list's widest marker. The marker takes the size of the line it labels, so a heading item's number reads as part of the heading, and a marker wider than the column widens its own item's. The marker sits beside the item's first line, whatever that line holds.
 
 ## Happy paths
 
@@ -25,3 +25,9 @@ A list item draws its marker (`-`, `1.`, a checkbox) in a column of its own, and
 ## Miss-analysis
 
 - The hanging indent was one `ch` per marker character while the marker paints in a proportional face, so the first line's text started where the glyphs ended and the wrapped lines started at the indent, up to 15px apart. No list test measured geometry; they checked bytes and metadata, and the one layout row for pictures pinned the marker to the picture's bottom.
+
+## One column per list
+
+- A list's items start their text in one column, as wide as its widest marker, within half a pixel: `8.` to `10.`, `99.` and `100.`, a bullet beside a to-do, in source, live and reading modes
+- Type `[ ] ` at the start of a bullet item's text: the item becomes a to-do and every item of the list moves to the wider column, in source and live modes
+  - Miss-analysis: each item sized its own column from its own marker, and every geometry row measured one item's lines against each other, never two items.

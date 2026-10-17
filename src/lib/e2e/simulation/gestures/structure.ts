@@ -259,13 +259,13 @@ export async function nestQuote(ctx: SimContext, text: string): Promise<void> {
 	tracker.resync(await editor.bridge.getSource());
 }
 
-/**
- * The selector also matches checkboxes in nested lists, but the item's own renders on its first
- * child paragraph, ahead of them in the DOM, which is why this takes `.first()`.
- */
-export async function toggleTask(ctx: SimContext, listItemPath: number[]): Promise<void> {
-	const pathAttr = JSON.stringify(listItemPath);
-	const checkbox = ctx.page.locator(`[data-block-path='${pathAttr}'] .task-checkbox`).first();
+/** Presses the box of the to-do whose text is the paragraph at `itemTextPath`; the box sits in
+ *  the item's marker cell, beside that paragraph. */
+export async function toggleTask(ctx: SimContext, itemTextPath: number[]): Promise<void> {
+	const checkbox = ctx.page
+		.locator(`[data-block-path='${JSON.stringify(itemTextPath)}']`)
+		.locator('xpath=ancestor::div[contains(@class, "list-item-block")][1]')
+		.locator(':scope > .list-item-marker .task-checkbox');
 	await actThenResync(ctx, () => checkbox.click());
 }
 

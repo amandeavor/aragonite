@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext, onDestroy, untrack } from 'svelte';
 	import { CURSOR_START, type AmbientPrefix, type BlockComponent } from '../../../block-component';
-	import { ambientHoldsTaskBox } from '../list/task-checkbox';
+	import { isTaskItemText } from '../list/task-checkbox';
 	import { defaultPrefixIndent } from '../../../ambient/ambient-dom';
 	import type { DocumentView, NodeView } from '../../../core/node-views';
 	import type { EditorRects } from '../../../editor-rects';
@@ -592,7 +592,7 @@
 						if (!cycled) return;
 						// Text after a task box is the to-do's own text, so a written `# ` would stay
 						// text there; replacing the block makes the heading and gives the box up.
-						if (ambientHoldsTaskBox(ambientPrefix)) {
+						if (isTaskItemText(blockNodeAt(getDoc(), myPath.slice(0, -1)), index)) {
 							const heading = readAsOpened(cycled.newRaw, { grammar, scope: 'fragment' }).children;
 							const focus = { replacementIndex: 0, offset: cycled.caretOffset };
 							void blockEdit.replaceBlock(index, heading, focus, { snapshotOffset: offset });
@@ -935,30 +935,30 @@
 	}
 
 	.text-editable-block.heading-1 {
-		font-size: 2em;
-		font-weight: bold;
+		font-size: var(--md-heading-1-size);
+		font-weight: var(--md-heading-weight);
 		line-height: 1.2;
 	}
 	.text-editable-block.heading-2 {
-		font-size: 1.5em;
-		font-weight: bold;
+		font-size: var(--md-heading-2-size);
+		font-weight: var(--md-heading-weight);
 		line-height: 1.3;
 	}
 	.text-editable-block.heading-3 {
-		font-size: 1.25em;
-		font-weight: bold;
+		font-size: var(--md-heading-3-size);
+		font-weight: var(--md-heading-weight);
 	}
 	.text-editable-block.heading-4 {
-		font-size: 1.1em;
-		font-weight: bold;
+		font-size: var(--md-heading-4-size);
+		font-weight: var(--md-heading-weight);
 	}
 	.text-editable-block.heading-5 {
-		font-size: 1em;
-		font-weight: bold;
+		font-size: var(--md-heading-5-size);
+		font-weight: var(--md-heading-weight);
 	}
 	.text-editable-block.heading-6 {
-		font-size: 0.9em;
-		font-weight: bold;
+		font-size: var(--md-heading-6-size);
+		font-weight: var(--md-heading-weight);
 	}
 
 	.text-editable-block.raw-block {

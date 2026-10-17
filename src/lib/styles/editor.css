@@ -185,15 +185,13 @@
 	user-select: none;
 }
 
-/* A list item's box is a flex row; with a badge it stacks its children instead, so the badge
-   sits above the marker and the text, as a block host's badge does, and moves neither. */
+/* A list item's box is a flex row; a badge takes a row of its own above the marker and the
+   text, as a block host's badge does, and moves neither. */
 :where(.editor) .list-item-block:has(> .decoration-badge) {
-	flex-direction: column;
+	flex-wrap: wrap;
 }
-/* Set per child: the item's own align-items would tie with a rule on the box. */
-:where(.editor) .list-item-block:has(> .decoration-badge) > .decoration-badge,
-:where(.editor) .list-item-block:has(> .decoration-badge) > .list-item-content {
-	align-self: stretch;
+:where(.editor) .list-item-block > .decoration-badge {
+	flex-basis: 100%;
 }
 
 /* An empty block's hint (the `placeholder` prop) paints where typing starts, out of the flow so
@@ -630,6 +628,58 @@
 	color: var(--syntax-list, currentColor);
 }
 
+/* A list item's marker is dimmed syntax at plain weight; it takes a heading's size when the item
+   opens with one, and where markers render, the heading's weight too. */
+:where(.editor) .list-item-marker > .md-marker {
+	opacity: var(--syntax-marker-dim, 0.65);
+	font-weight: normal;
+	font-style: normal;
+}
+:where(.editor) .list-item-marker[data-heading='1'] {
+	font-size: var(--md-heading-1-size);
+}
+:where(.editor) .list-item-marker[data-heading='2'] {
+	font-size: var(--md-heading-2-size);
+}
+:where(.editor) .list-item-marker[data-heading='3'] {
+	font-size: var(--md-heading-3-size);
+}
+:where(.editor) .list-item-marker[data-heading='4'] {
+	font-size: var(--md-heading-4-size);
+}
+:where(.editor) .list-item-marker[data-heading='5'] {
+	font-size: var(--md-heading-5-size);
+}
+:where(.editor) .list-item-marker[data-heading='6'] {
+	font-size: var(--md-heading-6-size);
+}
+:where(.editor):is(
+		[data-presentation='reading'],
+		[data-presentation^='preview-'],
+		[data-presentation='live']
+	)
+	.list-item-marker[data-heading]
+	> .md-marker {
+	font-weight: var(--md-heading-weight);
+}
+
+/* A picture's baseline is its bottom edge, so an item that opens with one puts its marker at the
+   top instead. */
+:where(.editor)
+	.list-item-block:has(
+		> .list-item-content > .block-list > .block-host:first-child .md-image-widget
+	)
+	> .list-item-marker {
+	align-self: flex-start;
+}
+
+/* Registered as a length so `1ch` resolves in the list's own font, and every item reads that width. */
+@property --md-list-column {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0px;
+}
+
 /* Registered as a length so it resolves in the block's own font, and its marker reads it unchanged. */
 @property --md-prefix-indent {
 	syntax: '<length>';
@@ -795,15 +845,15 @@
 		[data-presentation='live']
 	)
 	.list-item-block[data-list-marker='bullet']
-	> :where(.list-item-content)
-	> :where(.block-list)
-	> :where(.block-host)
-	> :where(.text-editable-block)
-	> .md-marker[contenteditable='false']
+	> .list-item-marker
+	> .md-marker
 	> .md-marker-box::before {
 	content: '•';
 	visibility: visible;
 	color: var(--syntax-list, currentColor);
+	/* Painted over the hidden `-`, so the cell is as wide as the bytes it stands for. */
+	position: absolute;
+	left: 0;
 }
 
 /* The marker text is itself the rendered number (`1. `), so it stays visible and undimmed. */
@@ -813,27 +863,23 @@
 		[data-presentation='live']
 	)
 	.list-item-block[data-list-marker='ordered']
-	> :where(.list-item-content)
-	> :where(.block-list)
-	> :where(.block-host)
-	> :where(.text-editable-block)
-	> .md-marker[contenteditable='false'] {
+	> .list-item-marker
+	> .md-marker {
 	visibility: visible;
 }
 
-/* The drawn box is a control, not text, so it keeps the editor's body size in any line. */
+/* The drawn box and its gap fill the to-do's column exactly, whatever the trailing space measures. */
 :where(.editor):is(
 		[data-presentation='reading'],
 		[data-presentation^='preview-'],
 		[data-presentation='live']
 	)
 	.list-item-block[data-list-marker='task']
-	> :where(.list-item-content)
-	> :where(.block-list)
-	> :where(.block-host)
-	> :where(.text-editable-block)
-	> .md-marker[contenteditable='false'] {
-	font-size: var(--editor-font-size, 1rem);
+	> .list-item-marker
+	> .md-marker
+	> .md-marker-box {
+	display: inline-block;
+	width: var(--md-task-indent);
 }
 
 /* GitHub task lists: the `- ` collapses, keeping its bytes for the offset traversal, and the
@@ -1022,6 +1068,21 @@
 :where(.editor)[data-presentation='preview-block']
 	.block-host[data-focused]
 	.md-marker[contenteditable='false']
+	> .md-marker-box::before {
+	content: none;
+}
+/* A list item's marker sits beside its first block, so it shows while that block has focus. */
+:where(.editor)[data-presentation='preview-block']
+	.list-item-block:has(> .list-item-content > .block-list > .block-host:first-child[data-focused])
+	> .list-item-marker
+	> .md-marker {
+	visibility: visible;
+	opacity: var(--syntax-marker-dim, 0.65);
+}
+:where(.editor)[data-presentation='preview-block']
+	.list-item-block:has(> .list-item-content > .block-list > .block-host:first-child[data-focused])
+	> .list-item-marker
+	> .md-marker
 	> .md-marker-box::before {
 	content: none;
 }

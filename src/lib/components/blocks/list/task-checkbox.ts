@@ -1,26 +1,21 @@
 import type { AmbientPrefix } from '../../../block-component';
-import type { ListItemMetadata } from '../../../core/nodes';
+import { metadataOf, type ListItemMetadata } from '../../../core/nodes';
+import type { NodeView } from '../../../core/node-views';
 import { devWarn } from '../../../dev-warn';
-
-/** The box's width and gap in editor.css plus the trailing space, at the body size the marker draws. */
-export const TASK_BOX_INDENT = 'var(--md-task-indent, calc(2.1 * var(--editor-font-size, 1rem)))';
 
 function isTaskMarkerChecked(taskMarker: string): boolean {
 	const c = taskMarker[1];
 	return c === 'x' || c === 'X';
 }
 
-/** Whether a block's container marker prefix draws a task box, making the block the to-do's text. */
-export function ambientHoldsTaskBox(prefix: AmbientPrefix): boolean {
-	return typeof prefix !== 'string' && !!prefix.interactive?.some((r) => r.role === 'checkbox');
+/** Whether the block at `index` inside `parent` is a to-do's own text, the line its box labels. */
+export function isTaskItemText(parent: NodeView | null, index: number): boolean {
+	return index === 0 && parent?.kind === 'listItem' && !!metadataOf(parent, 'listItem').taskItem;
 }
 
-/** `drawsBox` is whether the mode draws the box in place of the `[ ]` bytes; where it shows the
- *  bytes, they take the default column. */
 export function buildTaskItemAmbient(
 	metadata: ListItemMetadata | undefined,
-	onToggle: () => void,
-	drawsBox: boolean
+	onToggle: () => void
 ): AmbientPrefix {
 	const listMarker = metadata?.marker ?? '- ';
 
@@ -54,7 +49,6 @@ export function buildTaskItemAmbient(
 			// The list marker gets a span of its own so the rendered modes can collapse it:
 			// GitHub draws the box at the margin, not indented under a bullet that is not there.
 			{ start: 0, end: boxStart, className: 'task-list-marker', onClick: () => {} }
-		],
-		indent: drawsBox ? TASK_BOX_INDENT : undefined
+		]
 	};
 }

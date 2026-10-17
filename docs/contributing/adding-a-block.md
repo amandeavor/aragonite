@@ -43,7 +43,7 @@ Pick the closest reference and read it fully before you start. It'll answer more
 - `components/blocks/`: the reference components.
 - `schema/`: the registries you'll touch.
 - `editor-actions/`, `block-lists/` and `windowing/`: the primitives a container builds on.
-- `ambient/`: the DOM for the dimmed marker a container lends its first child (a list item's `- `).
+- `ambient/`: the DOM for a container's dimmed marker, lent to its first child (a footnote definition's `[^label]: `) or drawn in a list item's own cell.
 - `caret/`: caret geometry, offsets across that marker included (`caret/widget-offset.ts`).
 
 ## Registration
@@ -467,12 +467,12 @@ Copy from `ListBlock.svelte` (direct-each) or `TableBlock.svelte` (row windowing
 
 ### Interactive ambient markers
 
-A container's `ambientPrefix` (the read-only marker a container lends its first child, like a list's `- `) is either inert text, the default, or carries interactive character ranges, meaning clickable regions inside the read-only prefix. The shape is `AmbientPrefix` in `src/lib/block-component.ts`, and the contract is `docs/design/editor.md` § Ambient markers.
+A container's `ambientPrefix` (the read-only marker a container lends its first child, like a footnote definition's `[^label]: `) is either inert text, the default, or carries interactive character ranges, meaning clickable regions inside the read-only prefix. The shape is `AmbientPrefix` in `src/lib/block-component.ts`, and the contract is `docs/design/editor.md` § Ambient markers.
 
-- **Inert:** return a string, the list item's `- `. (The blockquote passes no prefix at all; its `> ` markers render as border-only chrome.)
+- **Inert:** return a string, the way a plain list item's marker is `- `. (The blockquote passes no prefix at all; its `> ` markers render as border-only chrome.)
 - **Interactive:** return the object form: `text` plus one or more ranges, each a character span, a class name and a click handler, plus optionally a role and ARIA state, an accessible name, a tab stop, and an Enter/Space handler.
 
-Keep the component thin: a pure `buildXAmbient(metadata, onAction)` helper beside it, called from the prefix getter. The task checkbox is the shipped example, and the list item hands it to its `BlockList` as `ambientPrefixForFirst={buildTaskItemAmbient(metadataOf(node, 'listItem'), toggleTask, presentationMarkerKind === 'task')}` (the last argument says whether the mode draws the box, which sets how wide the marker's column is):
+Keep the component thin: a pure `buildXAmbient(metadata, onAction)` helper beside it, called from the prefix getter. The task checkbox is the shipped example. The list item draws it in its own marker cell, with `buildAmbientSpan(buildTaskItemAmbient(metadataOf(node, 'listItem'), toggleFromBox))`:
 
 ```ts
 // components/blocks/list/task-checkbox.ts

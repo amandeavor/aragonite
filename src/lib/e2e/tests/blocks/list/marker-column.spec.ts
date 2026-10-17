@@ -20,7 +20,7 @@ interface BlockGeometry {
 }
 
 /** Reads the lines the editor paints for the block at `path` (through its own offset mapping),
- *  the container's leading marker beside them, and the block's first picture. */
+ *  the marker of the item the block opens, and the block's first picture. */
 function blockGeometry(page: Page, path: number[]): Promise<BlockGeometry> {
 	return page.evaluate((at) => {
 		const bridge = (window as any).__test;
@@ -42,7 +42,9 @@ function blockGeometry(page: Page, path: number[]): Promise<BlockGeometry> {
 		const top = (el: Element | null) => (el ? { top: el.getBoundingClientRect().top } : null);
 		return {
 			lines,
-			marker: top(block.querySelector(':scope > .md-marker[contenteditable="false"]')),
+			marker: top(
+				host!.closest('.list-item-block')!.querySelector(':scope > .list-item-marker > .md-marker')
+			),
 			image: top(block.querySelector('[data-image-widget] img')),
 			lineHeight
 		};
@@ -167,7 +169,9 @@ test.describe('a heading item draws its marker as part of the heading', () => {
 				expect(Math.abs(lines[1].left - lines[0].left)).toBeLessThanOrEqual(HALF_PIXEL);
 				const font = await page.evaluate(() => {
 					const heading = document.querySelector<HTMLElement>('.editor .heading-1')!;
-					const marker = heading.querySelector(':scope > .md-marker[contenteditable="false"]')!;
+					const marker = heading
+						.closest('.list-item-block')!
+						.querySelector(':scope > .list-item-marker > .md-marker')!;
 					const [h, m] = [getComputedStyle(heading), getComputedStyle(marker)];
 					return {
 						heading: { size: h.fontSize, weight: h.fontWeight },
@@ -220,5 +224,50 @@ test.describe('the marker column holds no caret', () => {
 				await editor.bridge.waitForSourceEquals(`${marker}z\n`);
 			});
 		}
+	}
+});
+
+/** Where each top-level item's text column starts, item by item. */
+const textColumns = (page: Page): Promise<number[]> =>
+	page.evaluate(() =>
+		[...document.querySelectorAll('.editor .list-block > .list-item-block')]
+			.filter((item) => !item.parentElement!.closest('.list-item-block'))
+			.map(
+				(item) => item.querySelector(':scope > .list-item-content')!.getBoundingClientRect().left
+			)
+	);
+
+const spread = (lefts: number[]) => Math.max(...lefts) - Math.min(...lefts);
+
+test.describe('one marker column per list', () => {
+	const LISTS = {
+		'`9.` and `10.`': '8. a\n9. b\n10. c\n',
+		'`99.` and `100.`': '99. a\n100. b\n',
+		'a bullet beside a to-do': '- a\n- [ ] b\n- c\n'
+	};
+	for (const mode of ['source', 'live', 'reading'] as const) {
+		for (const [shape, md] of Object.entries(LISTS)) {
+			test(`${shape} start their text in one column, ${mode}`, async ({ page }) => {
+				await openIn(page, mode, md);
+				const lefts = await textColumns(page);
+				expect(lefts.length).toBeGreaterThan(1);
+				expect(spread(lefts)).toBeLessThanOrEqual(HALF_PIXEL);
+			});
+		}
+	}
+
+	for (const mode of ['source', 'live'] as const) {
+		test(`an item typed into a to-do widens the whole list's column, ${mode}`, async ({ page }) => {
+			await openIn(page, mode, '- a\n- b\n- c\n');
+			const editor = new EditorPage(page);
+			const before = await textColumns(page);
+			await editor.clickBlockAtPath([0, 1, 0], 0);
+			await page.keyboard.type('[ ] ');
+			await editor.bridge.waitForSourceEquals('- a\n- [ ] b\n- c\n');
+			await expect
+				.poll(async () => spread(await textColumns(page)))
+				.toBeLessThanOrEqual(HALF_PIXEL);
+			expect((await textColumns(page))[0]).toBeGreaterThan(before[0]);
+		});
 	}
 });

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext, setContext } from 'svelte';
+	import { getContext, setContext, untrack } from 'svelte';
 	import type { ListContext } from '../../../action-contracts';
 	import type { NodeView } from '../../../core/node-views';
 	import { EDITOR_SERVICES_KEY, LIST_CONTEXT_KEY, type EditorServices } from '../../../editor-keys';
@@ -11,6 +11,8 @@
 	import { createContainerActions } from '../../../editor-actions/nested/container-actions';
 	import { createContainerBlockComponent } from '../../../editor-actions/container-block-component';
 	import ListItemBlock from './ListItemBlock.svelte';
+	import { markerColumn } from './marker-column';
+	import { hidesMarkers } from '../../../presentation-mode';
 	import type { ChildList } from '../../../block-lists/child-list';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
@@ -67,6 +69,23 @@
 	);
 	let bounds = $derived(sliceWindow((node.children ?? []).length, win));
 
+	// Scans the items when they come, go or move, or a marker changes in place; an undo snapshot
+	// hands the list a fresh copy of the same ids, which keeps the column it has.
+	let markerEdits = $state(0);
+	let scanned: { ids: string[]; edits: number; drawsBoxes: boolean; column: string } | null = null;
+	const column = $derived.by(() => {
+		const ids = listState.innerBlockIds;
+		let sameIds = scanned?.ids.length === ids.length;
+		for (let i = 0; i < ids.length; i++) if (ids[i] !== scanned?.ids[i]) sameIds = false;
+		const drawsBoxes = hidesMarkers(reading.mode());
+		if (sameIds && scanned?.edits === markerEdits && scanned.drawsBoxes === drawsBoxes) {
+			return scanned.column;
+		}
+		const next = untrack(() => markerColumn(node.children ?? [], drawsBoxes));
+		scanned = { ids: ids.slice(), edits: markerEdits, drawsBoxes, column: next };
+		return next;
+	});
+
 	const childList: ChildList = {
 		count: () => node.children?.length ?? 0,
 		refs: listState.refSlots,
@@ -90,7 +109,7 @@
 </script>
 
 <!-- The items reorder among themselves, which the drag reads off this mark. -->
-<div class="list-block" data-reorder-scope bind:this={boxEl}>
+<div class="list-block" data-reorder-scope style:--md-list-column={column} bind:this={boxEl}>
 	{#if win.active}
 		<div class="vr-spacer" style="height: {win.topSpacerPx}px"></div>
 	{/if}
@@ -105,6 +124,7 @@
 			myPath={[...myPath, absoluteIndex]}
 			itemCount={(node.children ?? []).length}
 			slots={listState.refSlots}
+			onMarkerChange={() => markerEdits++}
 		/>
 	{/each}
 	{#if win.active}

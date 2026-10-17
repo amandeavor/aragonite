@@ -30,7 +30,7 @@ Rebuilding the whole span tree per keystroke sounds wasteful, but it means there
 Reading `raw` back from the DOM is the step with a trap in it. **A prose block's `textContent` is not its `raw`**, for two independent reasons:
 
 - **Atomic widgets contribute zero characters to `textContent`.** An image or an inline formula renders as a `contenteditable="false"` span whose bytes live on `data-source-*` attributes, not in any text node.
-- **The ambient prefix contributes characters that aren't in `raw` at all.** A list item lends its `- ` marker to its first prose child's rendered content, so `textContent === ambientPrefix + raw`, give or take the trailing line ending (§ The textContent invariant has the exact form).
+- **The ambient prefix contributes characters that aren't in `raw` at all.** A footnote definition lends its `[^label]: ` marker to its first prose child's rendered content, so `textContent === ambientPrefix + raw`, give or take the trailing line ending (§ The textContent invariant has the exact form).
 
 The first one, with the entity widget (a decoded `&copy;` renders as one atomic glyph):
 
@@ -218,7 +218,7 @@ Hard line breaks use `\n` text nodes rather than `<br>`, because text nodes give
 textContent === ambientPrefix + raw     (minus the trailing line ending)
 ```
 
-where `ambientPrefix` is the read-only string a parent container lends its first prose child (a list item's `- `). Atomic widgets are the one exception, by design: they render as `[data-inline-widget]` `contenteditable="false"` elements with no `textContent`, carrying their bytes on `data-source-start` / `data-source-end` (the `&copy;` span above is one).
+where `ambientPrefix` is the read-only string a parent container lends its first prose child (a footnote definition's `[^label]: `; a list item draws its marker in a cell of its own, outside the text, so its blocks have none). Atomic widgets are the one exception, by design: they render as `[data-inline-widget]` `contenteditable="false"` elements with no `textContent`, carrying their bytes on `data-source-start` / `data-source-end` (the `&copy;` span above is one).
 
 `[data-inline-widget]` is the generic marker the cursor walker, the selection painter, and the raw reader all key off, regardless of widget kind. Registering a new widget kind needs no plumbing in any of them.
 

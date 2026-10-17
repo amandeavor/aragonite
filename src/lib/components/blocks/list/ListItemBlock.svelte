@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext, setContext } from 'svelte';
+	import { getContext, setContext, untrack } from 'svelte';
 	import type { ListContext } from '../../../action-contracts';
 	import type { BlockComponent } from '../../../block-component';
 	import type { NodeView } from '../../../core/node-views';
@@ -12,7 +12,11 @@
 		type EditorPolicies,
 		type EditorServices
 	} from '../../../editor-keys';
-	import { metadataOf } from '../../../core/nodes';
+	import { headingLevel, metadataOf } from '../../../core/nodes';
+	import { shownKind } from '../../../core/parsers/heading';
+	import { buildAmbientSpan } from '../../../ambient/ambient-dom';
+	import { assertInvariant } from '../../../assert';
+	import { checkItemMarkerBytes } from '../../../invariants/item-marker-bytes';
 	import { hidesMarkers } from '../../../presentation-mode';
 	import { useContainerWindowing } from '../../../windowing/use-container-windowing.svelte';
 	import { useMeasuredChild } from '../../../windowing/use-measured-child.svelte';
@@ -39,7 +43,8 @@
 		id,
 		myPath = [],
 		itemCount,
-		slots
+		slots,
+		onMarkerChange
 	}: {
 		node: NodeView;
 		index: number;
@@ -48,6 +53,8 @@
 		/** How many items the enclosing list holds; a lone item has no sibling to reorder past. */
 		itemCount: number;
 		slots?: RefSlots<BlockComponent>;
+		/** Called when the item's marker bytes change in place, so the list can resize its column. */
+		onMarkerChange?: () => void;
 	} = $props();
 
 	const { selection, caretWriter, decorations, events, commands } =
@@ -128,6 +135,34 @@
 		});
 		return true;
 	}
+
+	// The box sits outside the text, so a press on it puts the caret back in the to-do's text.
+	function toggleFromBox(): void {
+		if (toggleTask()) containerApi.focus(0);
+	}
+
+	const markerPrefix = $derived(buildTaskItemAmbient(metadataOf(node, 'listItem'), toggleFromBox));
+	// A string, so the marker is rebuilt only when its bytes or its box change, not on every edit.
+	const markerText = $derived(typeof markerPrefix === 'string' ? markerPrefix : markerPrefix.text);
+
+	let drawnText: string | undefined;
+	function drawMarker(cell: HTMLElement): void {
+		void markerText;
+		untrack(() => {
+			assertInvariant('item-marker-bytes', () => checkItemMarkerBytes(node.raw, markerText));
+			if (drawnText !== undefined && drawnText !== markerText) onMarkerChange?.();
+			drawnText = markerText;
+			cell.replaceChildren(buildAmbientSpan(markerPrefix));
+		});
+	}
+
+	// A heading's marker takes the heading's size, which editor.css reads off this level.
+	const firstHeadingLevel = $derived.by(() => {
+		const first = node.children?.[0];
+		return first && shownKind(first) !== 'paragraph'
+			? (headingLevel(first) ?? undefined)
+			: undefined;
+	});
 
 	const taskCheckedAttr = $derived.by(() => {
 		const meta = metadataOf(node, 'listItem');
@@ -221,6 +256,7 @@
 	data-list-marker={presentationMarkerKind}
 	bind:this={boxEl}
 >
+	<span class="list-item-marker" data-heading={firstHeadingLevel} {@attach drawMarker}></span>
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="list-item-content" onkeydown={handleKeydown} bind:this={contentEl}>
 		<BlockList
@@ -229,11 +265,6 @@
 			slots={listState.refSlots}
 			parentPath={myPath}
 			window={windowing.window}
-			ambientPrefixForFirst={buildTaskItemAmbient(
-				metadataOf(node, 'listItem'),
-				toggleTask,
-				presentationMarkerKind === 'task'
-			)}
 		/>
 	</div>
 	<!-- The item paints its own selection box: it renders no BlockHost, so a range that
@@ -250,7 +281,19 @@
 	.list-item-block {
 		position: relative;
 		display: flex;
-		align-items: flex-start;
+		align-items: baseline;
+	}
+
+	/* Unselectable, as the drag handle is: a range never starts or ends inside the marker. */
+	.list-item-marker {
+		flex: none;
+		min-width: var(--md-list-column);
+		white-space: pre;
+		user-select: none;
+	}
+
+	.list-item-marker :global(.md-marker-box) {
+		position: relative;
 	}
 
 	/* Showing it on hover is the shared `.handle-host` rule in BlockHost; it shows
@@ -259,10 +302,6 @@
 	.list-item-content {
 		flex: 1;
 		min-width: 0;
-	}
-
-	.list-item-content :global(.list-block) {
-		padding-left: 1em;
 	}
 
 	:global(.task-checkbox) {
