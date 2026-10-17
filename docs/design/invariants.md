@@ -2392,8 +2392,9 @@ and where `BlockList` hands it on. `lint/file-rules.test.ts`.
 **G4.211 · Every source-showing kind gets the caret rows.**
 `e2e/tests/plugins/widget-reveal-caret.spec.ts` types each kind's opening byte in front of a body
 that completes it, in source and live mode, and expects the caret one past the byte with the source
-shown (G1.115 is the runtime half). The scan lists every file that registers `revealSource: true` and fails when one has no row there, or, for a
-kind with a content span (inline math), when the spec it names is gone.
+shown (G1.115 is the runtime half). The scan lists every file that registers `revealSource: true`
+and fails when one has no row there, or, for a kind with a content span (inline math), when the
+spec it names is gone.
 `e2e/lint/reveal-kinds-covered.test.ts`.
 
 **G4.212 · The shared clipboard helper.** A spec that calls `navigator.clipboard` or presses the
