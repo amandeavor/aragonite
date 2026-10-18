@@ -9,6 +9,7 @@ import type { NodeView } from '../../core/node-views';
 import { pictureImageCount } from '../../core/inline/picture';
 import type { InlineReading } from '../../core/inline/inline-cache';
 import { EVERY_KIND, registerBuiltinBlockContextActions } from '../../schema/context-actions';
+import { copyBlockToClipboard } from '../../editor-actions/system-clipboard';
 
 /** The noun the menu uses for a block: its kind's name mid-sentence, and "image" or "images"
  *  for a paragraph holding nothing but images. */
@@ -30,7 +31,9 @@ export function registerDefaultContextActions(): void {
 			id: 'block.copy',
 			label: `Copy ${noun}`,
 			icon: 'copy',
-			run: () => navigator.clipboard.writeText(node.raw)
+			run: async () => {
+				await copyBlockToClipboard(node.raw);
+			}
 		},
 		{
 			id: 'block.replace',

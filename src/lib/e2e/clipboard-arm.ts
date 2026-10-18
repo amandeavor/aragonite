@@ -58,6 +58,14 @@ export function menuAtClipboardRead(page: Page): Promise<boolean | undefined> {
 	return page.evaluate(() => (window as any).__menuAtClipboardRead);
 }
 
+/** Make every clipboard write the page tries fail, as a webview without clipboard access does. */
+export async function refuseClipboardWrites(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		navigator.clipboard.writeText = () =>
+			Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'));
+	});
+}
+
 // ── Chromium: the system clipboard ──────────────────────────────────────────
 
 function systemClipboard(page: Page): ClipboardArm {

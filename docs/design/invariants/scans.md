@@ -181,6 +181,7 @@ unguarded.
 | G4.216 | Every built-in kind that binds Enter binds Shift+Enter too                                   | L       |
 | G4.218 | A catalog entry holds at most six lines                                                      | L       |
 | G4.219 | No popover closes on focus leaving; every focus-loss listener serves a listed need           | L       |
+| G4.220 | A clipboard write outside a copy event goes through the system clipboard writer              | L       |
 
 ### The entries
 
@@ -1227,3 +1228,10 @@ waiting on its opener's `focusout` just stays open. Popovers close through `menu
 (G4.67) instead, and every `focusout` or `blur` listener left in the library is listed with the
 focus need it serves (a shown source committing, say). A new one joins the list with its reason, or
 moves its close onto `track`. `lint/focus-loss-listeners.test.ts`.
+
+**G4.220 · One clipboard writer.** A write to the system clipboard outside a copy event (the block
+menu's Copy, whole-block Mod+C, the code block's Copy button) goes through
+`editor-actions/system-clipboard.ts`, where a refused write resolves false. A webview without
+clipboard access refuses it, and a call with no catch is an unhandled rejection. A whole block
+copies through `copyBlockToClipboard`, so every route writes the same text.
+`lint/clipboard-writes.test.ts`.

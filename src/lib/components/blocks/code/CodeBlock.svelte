@@ -48,6 +48,7 @@
 	import { isInlineFormatCommand } from '../../../schema/built-in-descriptors';
 	import { nodeAt, emptyParagraph } from '../../../tree-operations';
 	import { type CommandId } from '../../../schema/commands';
+	import { writeClipboardText } from '../../../editor-actions/system-clipboard';
 
 	const ELECTRIC_INDENT_UNIT = '\t';
 
@@ -269,16 +270,8 @@
 		};
 	}
 
-	async function copyBody(): Promise<boolean> {
-		try {
-			await navigator.clipboard.writeText(bodyText());
-			return true;
-		} catch {
-			// A denied or absent clipboard is the host's business, not an editor error: the
-			// affordance simply reports nothing copied.
-			return false;
-		}
-	}
+	// A refused write reports nothing copied.
+	const copyBody = (): Promise<boolean> => writeClipboardText(bodyText());
 
 	// What the language chip writes: the opener's info string, through the surface's write so the
 	// fence rule runs over it, kept apart so no typing on either side joins its undo entry.

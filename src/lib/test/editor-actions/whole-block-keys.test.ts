@@ -274,7 +274,8 @@ describe('handleWholeBlockKeys: Mod+C / Mod+X clipboard', () => {
 		await Promise.resolve();
 		await Promise.resolve();
 		expect(deleteBlock).not.toHaveBeenCalled();
-		expect(takeDevWarns().map((w) => w.tag)).toEqual(['container-block']);
+		// A refused write is the host's clipboard policy, not an editor fault.
+		expect(takeDevWarns()).toEqual([]);
 	});
 
 	it('leaves Mod+Shift+C and Alt+C untouched (not a copy chord)', () => {
