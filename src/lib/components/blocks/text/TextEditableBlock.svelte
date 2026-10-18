@@ -225,6 +225,7 @@
 		getFocusOffset: () => (el ? rawSelectionFocus(el) : null),
 		getTextLen: () => caretReach(),
 		stepEdge: edgeStep.step,
+		inlineUnits: () => edgeDispatch.inlineUnits,
 		readText: () => readRawText(),
 		compositionSeat,
 		placement: typedPlacement,
@@ -781,10 +782,6 @@
 		if ((await widgetInteraction.handleSelectedWidgetKeydown(e)) || editableSurface.isDetached())
 			return;
 
-		// The browser default, with `user-select: none` on the widget, collapses the selection
-		// instead of stepping past it.
-		if (widgetInteraction.handleShiftArrowIntoWidget(e)) return;
-
 		if ((await handleSharedKeydown(e, sharedCtx)) || editableSurface.isDetached()) return;
 
 		// Every caret-edge construct goes through this one dispatch, keeping contenteditable
@@ -805,10 +802,15 @@
 
 	function onBeforeInput(e: InputEvent): void {
 		if (typedInput(e)) return;
-		// An `insertLineBreak` from a soft keyboard or IME got past `onKeyDown`: consume it, since
-		// Shift+Enter is what makes a hard break.
+		// A soft keyboard's line break, with no keydown, is the Shift+Enter command; the browser's
+		// own would put a bare newline in the DOM, and one mid-composition writes nothing.
 		if (e.inputType === 'insertLineBreak') {
 			e.preventDefault();
+			if (composing || e.isComposing) return;
+			// Input, not a key, so it asks for the selection's removal itself.
+			editableSurface.afterSelectionRemoved((afterRemoval) =>
+				runCommand('block.hardBreak', undefined, { afterRemoval })
+			);
 			return;
 		}
 	}

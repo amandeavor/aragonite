@@ -140,6 +140,7 @@ const ROW_TARGETS: Record<string, { kind: AnyBlockKind; commands: CommandId[] }>
 	'Cycle heading level': { kind: 'paragraph', commands: ['heading.cycle'] },
 	'Split a block': { kind: 'paragraph', commands: ['block.split'] },
 	'Hard line break': { kind: 'paragraph', commands: ['block.hardBreak'] },
+	'Code line break, no indent': { kind: 'fencedCode', commands: ['code.softBreak'] },
 	'Merge into the block before / after': {
 		kind: 'paragraph',
 		commands: ['block.mergePrev', 'block.mergeNext']
@@ -166,6 +167,7 @@ const ROW_TARGETS: Record<string, { kind: AnyBlockKind; commands: CommandId[] }>
 	'Move block up / down': { kind: 'paragraph', commands: ['block.moveUp', 'block.moveDown'] },
 	'Move between cells': { kind: 'tableCell', commands: ['cell.tab', 'cell.shiftTab'] },
 	'Next row (or add one)': { kind: 'tableCell', commands: ['cell.enter'] },
+	'Line break in a cell': { kind: 'tableCell', commands: ['cell.lineBreak'] },
 	'Insert row below / above': {
 		kind: 'tableCell',
 		commands: ['table.insertRowBelow', 'table.insertRowAbove']

@@ -150,26 +150,11 @@ describe('edge dispatch: an atomic kind deletes whole on one press', () => {
 	});
 });
 
-// ── Entity widget: the shipped step-over + atomic consumer ───────────────────
+// ── Entity widget: the shipped atomic consumer ───────────────────────────────
 
-describe('edge dispatch: entityReference steps over and deletes atomically', () => {
+describe('edge dispatch: entityReference deletes atomically', () => {
 	// `a&copy;b` renders © as an atomic widget spanning raw [1,7). Nothing is overridden
 	// here, so this covers the built-in entity policy the registry ships.
-	for (const [label, keyName, offsetSide] of [
-		['ArrowLeft at the trailing edge', 'ArrowLeft', 'end'],
-		['ArrowRight at the leading edge', 'ArrowRight', 'start']
-	] as const) {
-		it(`${label} declines so native steps the caret over the glyph, no select`, () => {
-			const b = mount('a&copy;b', 'entityReference');
-			const offset = asRawOffset(offsetSide === 'end' ? b.widget.end : b.widget.start);
-			// A false return leaves the arrow to contenteditable, which carries the caret
-			// across the contenteditable=false widget in one key.
-			expect(b.dispatch.handleKeydown(key(keyName), offset)).toBe(false);
-			expect(b.selection.widget).toBeNull();
-			expect(b.commits).toHaveLength(0);
-		});
-	}
-
 	it('Backspace at the trailing edge removes the whole entity in one commit', () => {
 		const b = mount('a&copy;b', 'entityReference');
 		expect(b.dispatch.handleKeydown(key('Backspace'), asRawOffset(b.widget.end))).toBe(true);

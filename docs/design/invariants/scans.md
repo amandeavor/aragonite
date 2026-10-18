@@ -178,6 +178,7 @@ unguarded.
 | G4.212 | E2E clipboard access and pastes ride the shared clipboard helper                             | L       |
 | G4.214 | A caret's box is measured in one place, `caretRectAt`                                        | L       |
 | G4.215 | A list's marker column reads no item of its own at load or on a key                          | harness |
+| G4.216 | Every built-in kind that binds Enter binds Shift+Enter too                                   | L       |
 | G4.218 | A catalog entry holds at most six lines                                                      | L       |
 
 ### The entries
@@ -476,8 +477,8 @@ N-vs-4N ratio (`measureScanGrowth`) cancels the machine. The allowlist carries a
 **G4.49 · The shared IME driver.** A spec that builds a `CompositionEvent`, an
 `insertCompositionText` input event or a key event saying `isComposing: true` by hand tests a
 browser no user has, so it fails the scan. The
-driver file is the one exemption (WebKit has no CDP session), pinned exactly, so a widened exemption
-and a deleted WebKit branch each fail. `e2e/lint/e2e-drivers.test.ts`.
+driver file is the one exemption (only Chromium has a CDP session), pinned exactly, so a widened
+exemption and a deleted hand-fired branch each fail. `e2e/lint/e2e-drivers.test.ts`.
 
 **G4.50 · Cross-block-range classification.** Every block command id is range-declined, has a
 cross-block branch, or is recorded range-safe with its reason; the decline is what stops a command
@@ -1205,6 +1206,13 @@ marker-width counts, which the parse fills and the list's rebuild keeps (G1.118)
 hundred items, mounting reads no item for the column, each key (first, paused, in a burst, a marker
 typed in place, Enter) reads at most the item it rewrote past those its rebuild joined, and an undo
 reads none. `marker-column-scans.test.ts`, on the `listMarkerReads` and `joinedChildReads` counters.
+
+**G4.216 · Shift+Enter is a binding wherever Enter is.** Engines send different inputs for
+Shift+Enter, so a built-in kind that binds Enter binds Shift+Enter and the keydown decides it; a
+soft keyboard's keydown-less `insertLineBreak` runs the same command, and one arriving during the
+Enter keydown's handler writes nothing (`components/blocks/editable/editable-surface.ts`). Plugin
+kinds aren't held to it: a plugin surface without the binding gets what its own handlers do (for
+the editable leaf, what Enter does). `lint/shift-enter-bindings.test.ts`.
 
 **G4.218 · Catalog entries stay short.** An entry in the four group files (from its `**G<n>.<m> ·`
 paragraph to the next entry or heading, lists included) holds at most six text lines and 600

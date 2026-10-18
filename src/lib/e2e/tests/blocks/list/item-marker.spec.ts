@@ -2,7 +2,6 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { attachIme } from '../../../simulation/ime';
-import { isWebKit } from '../../../browser-engine';
 import type { PresentationMode } from '../../../../presentation-mode';
 
 // Requirements: `e2e/requirements/blocks/list/item-marker.md`.
@@ -138,7 +137,6 @@ test.describe('an empty item', () => {
 			test(`IME composes at the start of an empty \`${marker.trim()}\` item, ${mode}`, async ({
 				page
 			}) => {
-				test.skip(isWebKit(page), 'the IME driver is Chromium-only');
 				const editor = await openIn(page, mode, `${marker}\n`);
 				await editor.focusBlockAtPath([0, 0, 0], 0);
 				const ime = await attachIme(page);

@@ -1,6 +1,10 @@
 // Miss-analysis: every input read-back test ran in Chromium, which edits `\r\n` as one character.
 import { describe, it, expect } from 'vitest';
-import { keepLineEndingPairs, lineEndingCounts } from '../../core/line-ending-pairs';
+import {
+	keepLineEndingPairs,
+	lineEndingCounts,
+	lineEndingPairBeside
+} from '../../core/line-ending-pairs';
 
 const LINE = 'abc\r\nAfter';
 
@@ -98,5 +102,18 @@ describe('keepLineEndingPairs: a native edit never splits a CRLF pair', () => {
 describe('lineEndingCounts', () => {
 	it('counts pairs, lone `\\r` and lone `\\n` apart', () => {
 		expect(lineEndingCounts('a\r\nb\rc\n\r\n\r')).toEqual({ pairs: 2, loneCr: 2, loneLf: 1 });
+	});
+});
+
+describe('lineEndingPairBeside', () => {
+	it('names the pair on the side the key moves toward, and nothing else', () => {
+		// `abc\r\nAfter`: the pair at [3, 5).
+		expect(lineEndingPairBeside(LINE, 3, 'forward')).toEqual({ start: 3, end: 5 });
+		expect(lineEndingPairBeside(LINE, 5, 'backward')).toEqual({ start: 3, end: 5 });
+		expect(lineEndingPairBeside(LINE, 5, 'forward')).toBeNull();
+		expect(lineEndingPairBeside(LINE, 3, 'backward')).toBeNull();
+		expect(lineEndingPairBeside('abc\nAfter', 3, 'forward')).toBeNull();
+		expect(lineEndingPairBeside('\r\n', 0, 'forward')).toEqual({ start: 0, end: 2 });
+		expect(lineEndingPairBeside('\r\n', 0, 'backward')).toBeNull();
 	});
 });

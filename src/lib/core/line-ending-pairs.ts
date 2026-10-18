@@ -4,9 +4,24 @@
  * {@link keepLineEndingPairs} before it becomes bytes.
  */
 
+/** Whether `before` and `after`, the bytes on either side of a position, are a CRLF pair. */
+export function isLineEndingPair(before: string | undefined, after: string | undefined): boolean {
+	return before === '\r' && after === '\n';
+}
+
 /** Whether `offset` sits between a `\r` and the `\n` after it. */
 export function splitsLineEndingPair(text: string, offset: number): boolean {
-	return text[offset - 1] === '\r' && text[offset] === '\n';
+	return isLineEndingPair(text[offset - 1], text[offset]);
+}
+
+/** The CRLF pair `offset` sits against on the side `direction` names, as `[start, end)`. */
+export function lineEndingPairBeside(
+	text: string,
+	offset: number,
+	direction: 'forward' | 'backward'
+): { start: number; end: number } | null {
+	const start = direction === 'forward' ? offset : offset - 2;
+	return splitsLineEndingPair(text, start + 1) ? { start, end: start + 2 } : null;
 }
 
 /** `after`, read back from a native edit of `before`, with each pair it cut kept whole; `caret`, in

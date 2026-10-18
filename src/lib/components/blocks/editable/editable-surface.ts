@@ -57,7 +57,7 @@ import {
 	trimTrailingLineEnding,
 	type LineEnding
 } from '../../../core/lines';
-import { keepLineEndingPairs } from '../../../core/line-ending-pairs';
+import { keepLineEndingPairs, lineEndingPairBeside } from '../../../core/line-ending-pairs';
 import { getContentRange, sameLineSuffix } from '../../../core/inline';
 import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
@@ -84,7 +84,7 @@ import {
 	type CaretWriter,
 	type RawRange
 } from '../../../caret/widget-offset';
-import type { SharedKeydownContext } from '../../../selection/shared-keydown';
+import type { CaretUnitSource, SharedKeydownContext } from '../../../selection/shared-keydown';
 import {
 	isInteractionTraceEnabled,
 	traceCompositionEnd,
@@ -232,6 +232,9 @@ export interface EditableSurfaceDeps {
 	/** A surface that hides inline markers crosses each hidden edge in a press of its own
 	 *  (`text/edge-step.ts`); absent where no inline construct renders. */
 	stepEdge?: SharedKeydownContext['stepEdge'];
+	/** The inline spans a horizontal arrow crosses whole (widgets, replace decorations), read at
+	 *  the key; absent where no inline widget renders. A CRLF pair is the surface's own. */
+	inlineUnits?: () => CaretUnitSource;
 
 	// ── Input handling (per block) ────────────────────────────────────────────
 	/** Read the current DOM content as the block's displayed text, for the input commit. */
@@ -364,12 +367,23 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		events: deps.events
 	});
 
+	const caretUnits: CaretUnitSource = {
+		beside: (offset, direction, extending) =>
+			deps.inlineUnits?.().beside(offset, direction, extending) ??
+			// Most blocks hold no `\r`, so the DOM read stays off their arrows.
+			(deps.getNode().raw.includes('\r')
+				? lineEndingPairBeside(deps.readText(), offset, direction)
+				: null),
+		crossed: () => deps.inlineUnits?.().crossed()
+	};
+
 	const sharedCtx: SharedKeydownContext = {
 		getEl: () => deps.getEl(),
 		getCursorOffset: () => deps.backend.getRaw(),
 		getFocusOffset: deps.getFocusOffset,
 		getTextLen: deps.getTextLen,
 		stepEdge: deps.stepEdge,
+		caretUnits,
 		getMyPath: deps.getMyPath,
 		getIndex: deps.getIndex,
 		crossBlock,
@@ -556,6 +570,9 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		};
 	}
 
+	// The Enter keydown whose handler is still running, which decides that key's break itself.
+	let enterKeydown: KeyboardEvent | null = null;
+
 	// A keydown that writes for itself fires no beforeinput, so the caret is read here too.
 	const onKeyDown = withKeydownVerdict(async (e) => {
 		endsDroppedComposition(e);
@@ -563,8 +580,20 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		const el = deps.getEl();
 		if (e.key === 'Backspace' && !e.isComposing && el) deps.caretWriter.leaveLineEndingPair(el);
 		if (!e.isComposing) recordPreEditOffset();
-		await deps.handleKeydown(e);
+		if (e.key === 'Enter' && !e.isComposing) enterKeydown = e;
+		try {
+			await deps.handleKeydown(e);
+		} finally {
+			if (enterKeydown === e) enterKeydown = null;
+		}
 	});
+
+	/** A break input that arrives while its Enter's handler still runs is that key's default, which
+	 *  the handler replaces, so it writes nothing (Playwright's Firefox fires it before the await). */
+	function isEnterDefault(e: InputEvent): boolean {
+		const isBreak = e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph';
+		return isBreak && enterKeydown !== null;
+	}
 
 	// Synchronous to the block's handler: the block's `preventDefault` only counts inside this
 	// listener's microtask checkpoint.
@@ -573,6 +602,10 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		adoptsComposition(e);
 		// A drop's text lands at the pointer, not at the caret a chord promised its marks to.
 		if (e.inputType === 'insertFromDrop') pendingMarks.end();
+		if (isEnterDefault(e)) {
+			e.preventDefault();
+			return;
+		}
 		if (!e.isComposing) recordPreEditOffset();
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);

@@ -83,17 +83,6 @@ test.describe('code block keyboard: beyond parity', () => {
 		expect(xIndex).toBeLessThanOrEqual(25);
 	});
 
-	test('Shift+Enter inserts \\n, not <br>', async ({ page }) => {
-		await editor.loadContent('```\nfirst line\n```\n');
-		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
-		await page.keyboard.press('Shift+Enter');
-		await editor.typeText('second line');
-		await editor.bridge.waitForSourceContains('first line\nsecond line');
-
-		expect(await editor.getBlock(0).locator('br').count()).toBe(0);
-	});
-
 	for (const [key, source, keyed, typed] of [
 		['Tab', '```\nabc\n```\n', '```\nab\tc\n```\n', '```\nabXc\n```\n'],
 		['Shift+Tab', '```\n\tabc\n```\n', '```\nabc\n```\n', '```\n\tabXc\n```\n']

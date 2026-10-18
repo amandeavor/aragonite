@@ -346,12 +346,12 @@
 
 	function onBeforeInput(e: InputEvent): void {
 		if (guardFenceRangedEdit(e)) return;
-		// Soft break: Shift+Enter, and mobile/IME insertLineBreak without a keydown.
-		// Gated on !composing so an IME emitting it mid-composition does not sync.
+		// A soft keyboard's line break, with no keydown, is the Shift+Enter command; an IME emitting
+		// one mid-composition writes nothing.
 		if (e.inputType === 'insertLineBreak' && !composing && el) {
 			e.preventDefault();
-			// Input, not a command, so it asks for the selection's removal itself.
-			editableSurface.afterSelectionRemoved(() => writeLineBreak('soft'));
+			// Input, not a key, so it asks for the selection's removal itself.
+			editableSurface.afterSelectionRemoved(() => runCommand('code.softBreak'));
 			return;
 		}
 		if (composing || e.inputType !== 'insertText' || !el) return;
@@ -498,6 +498,8 @@
 			switch (id) {
 				case 'code.newline':
 					return codeNewline(run);
+				case 'code.softBreak':
+					return writeLineBreak('soft');
 				case 'code.indent':
 					shiftSelection('indent');
 					return true;

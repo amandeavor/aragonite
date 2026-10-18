@@ -39,7 +39,9 @@ describeManifests(
 			matches: new RegExp(
 				`new\\s+${COMPOSITION}Event\\s*\\(|insert${COMPOSITION}Text|is${COMPOSING}\\s*:\\s*true`
 			),
-			declared: { [IME_DRIVER]: 'the WebKit branch: WebKit has no CDP to compose through' },
+			declared: {
+				[IME_DRIVER]: 'the branch for WebKit and Firefox, which have no CDP to compose through'
+			},
 			reason:
 				'drive the composition through attachIme (e2e/simulation/ime.ts): a synthetic event skips the browser composition window',
 			hits: [

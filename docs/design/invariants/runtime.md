@@ -89,6 +89,7 @@ These checks run in three kinds of place:
 | G1.115 | A caret restored inside a widget that can show its source opens the source at that byte    | A·N     |
 | G1.117 | A write never splits a CRLF pair into a lone `\r` or a lone `\n`                           | A·N     |
 | G1.118 | A list's marker-width counts are what a recount of its items gives                         | A·N     |
+| G1.119 | No caret the editor writes sits between a CRLF pair's `\r` and `\n`                        | A·N     |
 
 ### The entries
 
@@ -535,3 +536,9 @@ the list's rebuild write them. At G1.55's moments and size limit, dev recounts e
 blocks an edit wrote and fails absent or wrong counts, the trace of a route that changes items
 without rebuilding the list. A failed commit restores them with its bytes
 (`commit-rollback-bytes.test.ts`). `checkListMarkerWidths` · `list-marker-widths.test.ts`.
+
+**G1.119 · No caret inside a CRLF pair** (`caret-in-line-ending-pair`). A caret written between
+`\r` and `\n` would edit inside the pair in WebKit and Firefox, so every selection write checks both
+endpoints. Arrows cross a pair in one press (`handleUnitStep`), and a Shift+Arrow moves an anchor
+the browser parked inside one to before it (`extendSelectionToRaw`).
+`checkCaretOutsideLineEndingPair` · `line-ending-pairs.test.ts`.

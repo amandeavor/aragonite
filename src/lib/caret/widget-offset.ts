@@ -12,7 +12,7 @@ import {
 	type PresentationMode
 } from '../presentation-mode';
 import { widgetSourceRange } from '../core/inline/inline-widgets';
-import { splitsLineEndingPair } from '../core/line-ending-pairs';
+import { isLineEndingPair, splitsLineEndingPair } from '../core/line-ending-pairs';
 import {
 	familyHidesText,
 	familyPaintsAlone,
@@ -35,6 +35,7 @@ import { domDescendants } from './dom-walk';
 import { placeholderBreakOf } from './placeholder-break';
 import { assertInvariant } from '../assert';
 import { checkCaretBeforeBreak } from '../invariants/caret-before-break';
+import { checkCaretOutsideLineEndingPair } from '../invariants/line-ending-pairs';
 
 // ── Raw offsets and the caret ────────────────────────────────────────────────
 
@@ -147,7 +148,8 @@ export interface CaretWriter {
 	/** Raw `[anchor, focus]` in `el`, backward when the focus comes first; an endpoint at raw 0
 	 *  behind a marker prefix lands after the span, as a caret does. */
 	selectRawRange(el: HTMLElement, anchor: number, focus: number): boolean;
-	/** Moves the live selection's focus to raw `raw` in `el`, keeping its anchor. */
+	/** Moves the live selection's focus to raw `raw` in `el`, keeping its anchor (one inside a CRLF
+	 *  pair moves before it). */
 	extendSelectionToRaw(el: HTMLElement, raw: number): boolean;
 	/** `el`'s content past its marker prefix and short of a hidden structural suffix (the first
 	 *  Ctrl+A, a triple click). With no content, from raw 0's caret to a placeholder `<br>`. */
@@ -166,6 +168,10 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 		assertInvariant(
 			'caret-before-break',
 			() => checkCaretBeforeBreak(anchor) ?? checkCaretBeforeBreak(focus)
+		);
+		assertInvariant(
+			'caret-in-line-ending-pair',
+			() => checkCaretOutsideLineEndingPair(anchor) ?? checkCaretOutsideLineEndingPair(focus)
 		);
 		const sel = window.getSelection();
 		if (!sel) return false;
@@ -192,10 +198,12 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 		extendSelectionToRaw(el, raw) {
 			const sel = window.getSelection();
 			if (!sel || sel.rangeCount === 0 || sel.anchorNode === null) return false;
-			return writeSelection(
-				{ node: sel.anchorNode, offset: sel.anchorOffset },
-				caretPointAtRaw(el, raw)
-			);
+			const anchor = { node: sel.anchorNode, offset: sel.anchorOffset };
+			// An anchor the browser parked inside a CRLF pair reads as before it, and is kept there.
+			if (anchor.node instanceof Text && splitsLineEndingPair(anchor.node.data, anchor.offset)) {
+				anchor.offset--;
+			}
+			return writeSelection(anchor, caretPointAtRaw(el, raw));
 		},
 		selectSurfaceContent(el) {
 			const suffix = hiddenSuffixLength(el);
@@ -352,7 +360,7 @@ export function domTextOffsetAtNode(
 /** WebKit and Firefox let a caret stop between a `\r` and its `\n`, where Chromium never does: such
  *  a position reads as the line's end, before the pair, so no edit splits it. */
 function outsideLineEndingPair(at: number, before: string, after: string): DomTextOffset {
-	return asDomTextOffset(before === '\r' && after === '\n' ? at - 1 : at);
+	return asDomTextOffset(isLineEndingPair(before, after) ? at - 1 : at);
 }
 
 /** The first byte of the walk's next non-empty text, or '' at a widget or the walk's end. */
