@@ -13,7 +13,7 @@
 		IMAGE_REMOVE
 	} from '../../a11y-strings';
 	import MenuIcon from '../menu/MenuIcon.svelte';
-	import type { MenuPresence } from '../menu/menu-presence.svelte';
+	import type { MenuCloseCause, MenuPresence } from '../menu/menu-presence.svelte';
 	import type { CaretWriter } from '../../caret/widget-offset';
 	import { DEFAULT_CROP, applyCropToWidget, panCrop, zoomCrop, type Size } from './image-crop';
 
@@ -131,11 +131,14 @@
 		if (e.key === 'Enter') {
 			e.preventDefault();
 			closeField(true);
-		} else if (e.key === 'Escape') {
-			e.preventDefault();
-			e.stopPropagation();
-			closeField(false);
 		}
+	}
+
+	// Escape drops the draft and a swap lands after the new document is in, so neither saves it;
+	// every other close does. A press in the document is the image selection's to judge.
+	function dismissField(cause: MenuCloseCause): boolean {
+		closeField(cause !== 'escape-key' && cause !== 'document-swap');
+		return true;
 	}
 
 	// ── Crop ───────────────────────────────────────────────────────────────────
@@ -426,14 +429,13 @@
 			<MenuIcon name="trash" />
 		</button>
 	{/if}
-	<!-- A mode change saves the draft, as every close but Escape does; a swap drops it, since the
-		new document is already in place. -->
 	{#if fieldOpen}
 		<label
 			class="md-image-field"
 			{@attach keepFieldOnScreen}
-			{@attach menuPresence.track((cause) => closeField(cause === 'mode-change'), {
-				edits: true
+			{@attach menuPresence.track(dismissField, {
+				edits: true,
+				inside: () => [rootEl, getWidgetEl()?.closest('.editor')]
 			})}
 		>
 			<span class="md-image-field-label">Alt</span>

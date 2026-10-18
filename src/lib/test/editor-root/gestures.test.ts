@@ -346,3 +346,38 @@ describe('editor-root gestures: the click priority order', () => {
 		expect(h.selection.isCrossBlock).toBe(false);
 	});
 });
+
+// Miss-analysis: the readers were tested against a stubbed record, so nothing pinned which presses
+// write it or what clears it.
+describe('editor-root gestures: the right-click press record', () => {
+	/** A press made on no range, after which the browser selects text under the pointer. */
+	function pressThenSelect(init: MouseEventInit) {
+		const h = harness();
+		h.mouseDown(h.editable, init);
+		const range = document.createRange();
+		range.selectNodeContents(h.nearest.firstElementChild!);
+		window.getSelection()!.addRange(range);
+		return h;
+	}
+
+	it.each([
+		['the right button', { button: 2 }],
+		['Control with the primary button', { button: 0, ctrlKey: true }]
+	])('%s records that the press landed on no range', (_, init) => {
+		const h = pressThenSelect(init);
+		expect(h.gestures.rangeAtContextPress(h.root)).toBe(false);
+	});
+
+	it.each([
+		['a plain primary press', (h: ReturnType<typeof harness>) => h.mouseDown(h.editable)],
+		[
+			'a key',
+			(h: ReturnType<typeof harness>) =>
+				h.root.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true }))
+		]
+	])('%s after it hands the next menu to the live selection', (_, after) => {
+		const h = pressThenSelect({ button: 2 });
+		after(h);
+		expect(h.gestures.rangeAtContextPress(h.root)).toBe(true);
+	});
+});

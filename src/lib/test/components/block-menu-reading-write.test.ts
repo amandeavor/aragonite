@@ -45,6 +45,7 @@ async function removeFenceAfterSwitchToReading() {
 		isHostChrome: () => false,
 		blockEdit: editor.actions,
 		placeCaretAtPoint: () => true,
+		rangeAtContextPress: () => false,
 		insertMarkdown: async () => true,
 		insertCatalogue: () => [],
 		activation: everyInstalledPlugin,

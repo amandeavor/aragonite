@@ -71,6 +71,16 @@
 		onPick(entry.id);
 	}
 
+	// The menu presence closes both on a press outside and on Escape, which the menu takes.
+	function dismiss(): boolean {
+		onClose();
+		return true;
+	}
+	function dismissFlyout(): boolean {
+		flyout = null;
+		return true;
+	}
+
 	// Positioned like the table's menu: follows the content, clamped once when first sized.
 	// svelte-ignore state_referenced_locally
 	let at = $state({ x, y });
@@ -103,10 +113,6 @@
 	// Keys are read at the document in the capture phase: the block with the caret keeps focus,
 	// and the menu answers first while it is open. Anything it ignores reaches the editor.
 	$effect(() => {
-		const onPointerDown = (e: PointerEvent) => {
-			if (menuEl && e.target instanceof Node && menuEl.contains(e.target)) return;
-			onClose();
-		};
 		// Keys the menu takes stop here: the block with the caret would otherwise get the same
 		// keystroke (an Enter splitting the block the menu is about to insert into).
 		const claim = (e: KeyboardEvent) => {
@@ -118,11 +124,6 @@
 			const open = flyout;
 			const children = open ? (items[open.row].children ?? []) : [];
 			switch (e.key) {
-				case 'Escape':
-					claim(e);
-					if (open) flyout = null;
-					else onClose();
-					return;
 				case 'ArrowDown':
 				case 'ArrowUp': {
 					claim(e);
@@ -151,12 +152,8 @@
 					return;
 			}
 		};
-		document.addEventListener('pointerdown', onPointerDown, true);
 		document.addEventListener('keydown', onKeyDown, true);
-		return () => {
-			document.removeEventListener('pointerdown', onPointerDown, true);
-			document.removeEventListener('keydown', onKeyDown, true);
-		};
+		return () => document.removeEventListener('keydown', onKeyDown, true);
 	});
 </script>
 
@@ -165,7 +162,7 @@
 	class="md-menu block-menu"
 	role="menu"
 	aria-label={label}
-	{@attach menuPresence.track(() => onClose(), { edits: true })}
+	{@attach menuPresence.track(dismiss, { edits: true })}
 	style:left="{left}px"
 	style:top="{top}px"
 >
@@ -203,7 +200,7 @@
 						class="md-menu block-menu block-menu-flyout"
 						role="menu"
 						{@attach keepFlyoutOnScreen}
-						{@attach menuPresence.track(() => (flyout = null), { edits: true })}
+						{@attach menuPresence.track(dismissFlyout, { edits: true, inside: () => [menuEl] })}
 					>
 						{#each item.children as child, j (child.id)}
 							<button

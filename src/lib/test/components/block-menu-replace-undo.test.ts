@@ -50,6 +50,7 @@ async function typeThenRewrite() {
 		isHostChrome: () => false,
 		blockEdit: editor.actions,
 		placeCaretAtPoint: () => true,
+		rangeAtContextPress: () => false,
 		insertMarkdown: async () => true,
 		insertCatalogue: () => [],
 		activation: everyInstalledPlugin,

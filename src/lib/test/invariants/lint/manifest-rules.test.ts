@@ -44,7 +44,7 @@ const TRANSFORMS_CALL = /(?<!function\s)\bapplyPasteTransforms\s*\(/;
 /** Pulling a payload off a clipboard or a drop, keyed on the read and the carrier type rather
  *  than a receiver's name; `!.` tolerated, since that is how a new route is most often written. */
 const CLIPBOARD_READ_RE =
-	/[!?]?\.\s*getData\s*\(|[!?]?\.\s*files\b|\bDataTransfer\b|clipboard\s*[!?]?\s*\.\s*read(?:Text)?\s*\(/;
+	/[!?]?\.\s*getData\s*\(|[!?]?\.\s*files\b|\bDataTransfer\b|clipboard\s*[!?]?\s*\.\s*read(?:Text)?\s*\(|\breadClipboardText\s*\(/;
 
 /** Each site reading external text, and the name that carries its text to a declared route.
  *  `editor-root/clipboard.ts` forwards the carrier and reads no payload of its own. */
@@ -52,6 +52,10 @@ const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
 	'src/lib/components/blocks/editable/surface-clipboard.ts': {
 		handoff: 'pasteTail',
 		why: 'the shared paste handler hands the text to the block’s pasteTail, which dispatches through the paste tree-op'
+	},
+	'src/lib/editor-actions/system-clipboard.ts': {
+		handoff: 'return await navigator.clipboard.readText()',
+		why: 'the one reader of the system clipboard outside a paste event; it returns the text to the read sites below, each carrying its own handoff'
 	},
 	'src/lib/components/menu/default-context-actions.ts': {
 		handoff: 'transformPaste',
@@ -528,7 +532,8 @@ const MANIFESTS: ManifestRule[] = [
 			"e.dataTransfer?.getData('text/plain')",
 			"e.clipboardData!.getData('text/plain')",
 			'await navigator.clipboard!.readText()',
-			'const items = await navigator.clipboard.read();'
+			'const items = await navigator.clipboard.read();',
+			'const text = await readClipboardText();'
 		],
 		// `deps.readText()` is `el.textContent`, not a clipboard read.
 		misses: ['const text = deps.readText();']

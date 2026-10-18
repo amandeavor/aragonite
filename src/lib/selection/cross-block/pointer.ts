@@ -163,21 +163,37 @@ function armPaddingPress(
 	return { offset, placed: () => placed };
 }
 
-/** A right-click places a collapsed caret where a primary click would, before a menu reads it.
- *  Bound in the capture phase at the editor root, so it runs ahead of every block's own menu. */
+/** A right-click places a collapsed caret where a primary click would, unless its press landed on
+ *  a range. Bound in the root's capture phase, so it runs before any menu reads the caret. */
 export function placeContextPress(
 	selection: SelectionState,
 	writer: CaretWriter,
-	e: MouseEvent
+	e: MouseEvent,
+	rangeAtPress: boolean
 ): void {
 	if (e.button !== 2 || selection.isCrossBlock) return;
 	const surface = editingHostOf(e.target);
 	if (!surface || !isInPaddingRow(surface, e.clientX, e.clientY)) return;
 	// A right-click inside a range keeps it for the menu, as the browser does.
-	if (!(window.getSelection()?.isCollapsed ?? true)) return;
+	if (rangeAtPress) return;
 	const offset = offsetFromViewportPoint(surface, e.clientX, e.clientY);
 	const path = findBlockPathForElement(surface);
 	if (offset !== null && path) applyCollapsedCaret(writer, surface, { path, offset });
+}
+
+/** Whether the browser holds a selected range that starts inside `root`. */
+export function nativeRangeIn(root: HTMLElement): boolean {
+	const native = window.getSelection();
+	return !!native && !native.isCollapsed && root.contains(native.anchorNode);
+}
+
+/** Whether the browser's selected range inside `root` covers the viewport point. */
+export function rangeCoversPoint(root: HTMLElement, x: number, y: number): boolean {
+	const native = window.getSelection();
+	if (!native || native.rangeCount === 0 || !nativeRangeIn(root)) return false;
+	return Array.from(native.getRangeAt(0).getClientRects()).some(
+		(r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+	);
 }
 
 function editingHostOf(target: EventTarget | null): HTMLElement | null {

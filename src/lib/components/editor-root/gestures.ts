@@ -11,7 +11,12 @@ import type { CaretLanding } from '../../selection/caret-landing';
 import type { UserScrollport } from '../../windowing/scroll-ancestors';
 import type { DocumentGetter } from '../../editor-keys';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
-import { placeContextPress, resetForPointerDown } from '../../selection/cross-block/pointer';
+import {
+	nativeRangeIn,
+	placeContextPress,
+	rangeCoversPoint,
+	resetForPointerDown
+} from '../../selection/cross-block/pointer';
 import { createDeadSpaceCaret } from '../../selection/dead-space-caret';
 import { installDragListener } from '../../selection/drag-pointer';
 import { installMultiClickSelect } from '../../selection/multi-click';
@@ -59,6 +64,9 @@ export interface RootGestures {
 	install(root: HTMLElement): () => void;
 	/** Where a click on empty space puts the caret, for a point the caller chose to answer. */
 	placeCaretAtPoint(root: HTMLElement, x: number, y: number): boolean;
+	/** Whether a context menu's press landed on a selected range (Safari selects the word under a
+	 *  right-click before `contextmenu`); a menu the keyboard opened asks of the live selection. */
+	rangeAtContextPress(root: HTMLElement): boolean;
 }
 
 // Empty space and a block's non-editable parts (a rendered equation, a diagram, a whole-block
@@ -131,6 +139,10 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		const active = document.activeElement;
 		if (active instanceof HTMLElement && root.contains(active) && active !== root) active.blur();
 	}
+
+	// The selection at the latest secondary press (a right button, or Control with the left on a
+	// Mac); a key in between means the next menu is the keyboard's.
+	let contextPress: { range: boolean } | null = null;
 
 	function install(root: HTMLElement): () => void {
 		// Per install: rebinding the root starts with no click in progress.
@@ -238,10 +250,14 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 			}),
 			onRoot(root, 'pointerdown', startMarginDrag),
 			onRoot(root, 'mousedown', handleMouseDown),
+			onRoot<MouseEvent>(root, 'mousedown', (e) => (contextPress = notePress(root, e)), {
+				capture: true
+			}),
+			onRoot(root, 'keydown', () => (contextPress = null), { capture: true }),
 			onRoot<MouseEvent>(
 				root,
 				'contextmenu',
-				(e) => placeContextPress(deps.selection, deps.caretWriter, e),
+				(e) => placeContextPress(deps.selection, deps.caretWriter, e, rangeAtContextPress(root)),
 				{
 					capture: true
 				}
@@ -249,8 +265,22 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		);
 	}
 
+	function notePress(root: HTMLElement, e: MouseEvent): { range: boolean } | null {
+		if (!(e.button === 2 || (e.button === 0 && e.ctrlKey))) return null;
+		// A range across blocks is painted by the editor, so the browser's rectangles don't show it.
+		const range = deps.selection.isCrossBlock
+			? nativeRangeIn(root)
+			: rangeCoversPoint(root, e.clientX, e.clientY);
+		return { range };
+	}
+
+	function rangeAtContextPress(root: HTMLElement): boolean {
+		return contextPress?.range ?? nativeRangeIn(root);
+	}
+
 	return {
 		install,
-		placeCaretAtPoint: (root, x, y) => deadSpaceCaret.placeAtPoint(root, x, y)
+		placeCaretAtPoint: (root, x, y) => deadSpaceCaret.placeAtPoint(root, x, y),
+		rangeAtContextPress
 	};
 }

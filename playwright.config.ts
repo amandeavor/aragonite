@@ -66,6 +66,7 @@ const WEBKIT_LANE = [
 	'text-editing/shift-enter-surfaces.spec.ts',
 	'text-editing/break-over-selection.spec.ts',
 	'clipboard/paste-crlf-document.spec.ts',
+	'clipboard/block-copy-routes.spec.ts',
 	'sticky-column/code-block-entry.spec.ts',
 	'sticky-column/line-start-entry.spec.ts',
 	'selection/pointer.spec.ts',
@@ -74,6 +75,9 @@ const WEBKIT_LANE = [
 	'selection/gap-caret-arrival.spec.ts',
 	'selection/widget-selected-paint.spec.ts',
 	'blocks/list/item-marker.spec.ts',
+	'blocks/code/menu-change.spec.ts',
+	'popover-close.spec.ts',
+	'context-menu-press-selection.spec.ts',
 	'caret/**/*.spec.ts',
 	'webkit/**/*.spec.ts'
 ];

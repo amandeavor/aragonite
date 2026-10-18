@@ -1,8 +1,9 @@
 <script lang="ts">
 	/**
 	 * The editor's own formatting popover over a selection: a row of marks, then labelled rows
-	 * for what acts on the whole selection. Built only on the public API a host's toolbar would
-	 * use (`selectionChange`, the rect API, `runCommand`), so the consumer-guide recipe matches it.
+	 * for what acts on the whole selection. Built on the public API a host's toolbar would use
+	 * (`selectionChange`, the rect API, `runCommand`), so the consumer-guide recipe matches it; only
+	 * the heading flyout's close goes through the editor's menu presence.
 	 */
 	import type { EditorInstance } from '../../editor-props';
 	import type { EditorSelection } from '../../selection/primitives';
@@ -14,6 +15,7 @@
 	import { runClipboardAction } from './clipboard-actions';
 	import MenuIcon from './MenuIcon.svelte';
 	import type { MenuIconName } from '../../menu-icons';
+	import type { MenuPresence } from './menu-presence.svelte';
 
 	type ToolbarEditor = Pick<
 		EditorInstance,
@@ -57,7 +59,12 @@
 	const BUTTONS = [...MARKS, ...ROWS, { command: TURN_INTO_COMMAND }];
 	const BAR_GAP = 6;
 
-	let { editor, root }: { editor: ToolbarEditor; root: HTMLElement | undefined } = $props();
+	let {
+		editor,
+		root,
+		menuPresence
+	}: { editor: ToolbarEditor; root: HTMLElement | undefined; menuPresence: MenuPresence } =
+		$props();
 
 	let turnIntoOpen = $state(false);
 	let blockKind = $state<string | null>(null);
@@ -223,6 +230,16 @@
 		return { x: last.right + BAR_GAP, y: last.bottom + BAR_GAP, flipY: first.top };
 	}
 
+	// A click opens and never toggles, since a pointer's click lands after its hover opened it.
+	function openFlyout(): void {
+		turnIntoOpen = true;
+	}
+	// Escape and a press outside the bar close the flyout; the bar stays over the selection.
+	function closeFlyout(): boolean {
+		turnIntoOpen = false;
+		return true;
+	}
+
 	// The command id, not a made-up keystroke: a host rebind moves the shortcut and leaves the
 	// button. A refused run means what the bar assumed has changed, so the bar hides.
 	function fire(command: string, arg?: unknown): void {
@@ -273,14 +290,22 @@
 					aria-haspopup="menu"
 					aria-expanded={turnIntoOpen}
 					onmousedown={(e) => e.preventDefault()}
-					onclick={() => (turnIntoOpen = !turnIntoOpen)}
+					onclick={openFlyout}
 				>
 					<span class="md-menu-icon"><MenuIcon name="heading" size={14} /></span>
 					<span class="selection-toolbar-label">Set heading</span>
 					<span class="md-menu-icon"><MenuIcon name="chevron-right" size={13} /></span>
 				</button>
 				{#if turnIntoOpen}
-					<div class="md-menu selection-toolbar-flyout" role="menu" {@attach keepFlyoutOnScreen}>
+					<div
+						class="md-menu selection-toolbar-flyout"
+						role="menu"
+						{@attach keepFlyoutOnScreen}
+						{@attach menuPresence.trackUncounted(closeFlyout, {
+							edits: true,
+							inside: () => [barEl]
+						})}
+					>
 						{#each TURN_INTO as option (option.level)}
 							{@const chosen = option.level === 0 ? blockKind === 'paragraph' : false}
 							<button

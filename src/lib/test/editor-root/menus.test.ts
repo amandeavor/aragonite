@@ -27,7 +27,10 @@ function hostAt(path: number[]): HTMLElement {
 	return host;
 }
 
-function harness(opts: { mode?: PresentationMode; editsLink?: boolean } = {}) {
+/** `rangeAtPress` stands in for the record of the right button's press; absent, the live selection. */
+function harness(
+	opts: { mode?: PresentationMode; editsLink?: boolean; rangeAtPress?: boolean } = {}
+) {
 	const root = document.createElement('div');
 	const header = document.createElement('div');
 	const headerField = document.createElement('p');
@@ -63,6 +66,7 @@ function harness(opts: { mode?: PresentationMode; editsLink?: boolean } = {}) {
 		isHostChrome: (node) => !!node && header.contains(node),
 		blockEdit,
 		placeCaretAtPoint,
+		rangeAtContextPress: () => opts.rangeAtPress ?? !(window.getSelection()?.isCollapsed ?? true),
 		insertMarkdown,
 		insertCatalogue: () => insertCatalogue(everyInstalledPlugin),
 		activation: everyInstalledPlugin,
@@ -161,6 +165,36 @@ describe('editor-root menus: the right-click', () => {
 		h.rightClick(h.prose.firstElementChild!);
 		expect(h.placeCaretAtPoint).not.toHaveBeenCalled();
 		expect(h.ids()).not.toContain('insert');
+	});
+
+	// Miss-analysis: every right-click row read the selection at contextmenu, and no browser the
+	// suite drives selects under a right-click the way Safari does.
+	it('a press made on no range opens block actions over the word the browser then selected', () => {
+		const h = harness({ rangeAtPress: false });
+		selectInside(h.fence.firstElementChild!);
+		h.rightClick(h.fence.firstElementChild!);
+		expect(h.menu()?.label).toBe(BLOCK_ACTIONS_LABEL);
+		expect(h.ids()).toContain('block.remove');
+		// The caret replaces the word, which would otherwise linger under the block's actions.
+		expect(h.placeCaretAtPoint).toHaveBeenCalledWith(30, 40);
+	});
+
+	it.each([
+		['keeps a word the browser selected under the pointer', true],
+		['places the caret over a range that lies elsewhere', false]
+	])('the same press on prose %s, and offers the flyout', (_, covers) => {
+		const h = harness({ rangeAtPress: false });
+		selectInside(h.prose.firstElementChild!);
+		const rects = covers ? [new DOMRect(0, 0, 100, 100)] : [];
+		const original = Range.prototype.getClientRects;
+		Range.prototype.getClientRects = () => rects as unknown as DOMRectList;
+		try {
+			h.rightClick(h.prose.firstElementChild!);
+		} finally {
+			Range.prototype.getClientRects = original;
+		}
+		expect(h.placeCaretAtPoint).toHaveBeenCalledTimes(covers ? 0 : 1);
+		expect(h.ids()).toContain('insert');
 	});
 
 	it('a nested block gets the clipboard rows without the insert flyout', () => {

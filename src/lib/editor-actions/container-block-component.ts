@@ -19,7 +19,8 @@ import {
 } from '../schema/block-commands';
 import type { Reading } from '../schema/reading';
 import { eventToChord, isCharacterKey } from '../schema/keybindings';
-import { displayLength, trimTrailingLineEnding } from '../core/lines';
+import { displayLength } from '../core/lines';
+import { copyBlockToClipboard } from './system-clipboard';
 import { isVerticallyTransparentNode } from '../core/inline/transparency';
 import type { CaretMemory } from '../caret/caret-memory';
 import type { AnyCommandId } from '../schema/command-id';
@@ -32,7 +33,6 @@ import {
 	holdsWholeBlockFocus,
 	type WholeBlockInputProxy
 } from './whole-block-focus-surface';
-import { devWarn } from '../dev-warn';
 
 /** Undo, redo and plugin-global chords for a block focused as a whole, which neither an inner leaf
  *  nor the editor root runs. Consumed in reading mode too, or the browser runs its own undo. */
@@ -131,14 +131,9 @@ export function handleWholeBlockKeys(e: KeyboardEvent, deps: WholeBlockKeyDeps):
 }
 
 // Copy is a read, so it is never blocked; cut's delete is blocked in reading mode and only
-// runs once the clipboard write resolves, so a rejected write leaves the block in place.
+// runs once the clipboard write lands, so a refused write leaves the block in place.
 async function copyFocusedWholeBlock(deps: WholeBlockKeyDeps, cut: boolean): Promise<void> {
-	try {
-		await navigator.clipboard.writeText(trimTrailingLineEnding(deps.getRaw()));
-	} catch (err) {
-		devWarn('container-block', 'whole-block clipboard write rejected', err);
-		return;
-	}
+	if (!(await copyBlockToClipboard(deps.getRaw()))) return;
 	if (cut && !deps.isReading()) void deps.blockEdit.deleteBlock(deps.getIndex(), 'cut');
 }
 

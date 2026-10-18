@@ -26,6 +26,7 @@ import { blockNoun } from '../menu/default-context-actions';
 import { isProseLeaf } from '../../schema/page-role';
 import type { Reading } from '../../schema/reading';
 import { readBlockPath } from '../../selection/path-lookup';
+import { nativeRangeIn, rangeCoversPoint } from '../../selection/cross-block/pointer';
 import { documentLineEnding } from '../../core/lines';
 import { stampWrites, type DocumentStamps } from '../../editor-actions/commit/document-stamp';
 
@@ -48,6 +49,8 @@ export interface RootMenusDeps {
 	/** Where a click on empty space puts the caret, so a right-click on prose acts at the
 	 *  pointer. */
 	placeCaretAtPoint(x: number, y: number): boolean;
+	/** Whether the right button's press landed on a selected range, which picks the menu. */
+	rangeAtContextPress(): boolean;
 	/** The public insert entry point; a flyout row inserts `below` the block the caret is in. */
 	insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean>;
 	/** The insert entries this editor lists, read fresh per menu. */
@@ -203,17 +206,21 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		const path = readBlockPath(host);
 		if (!host || !path) return;
 		const point = { x: e.clientX, y: e.clientY };
-		const native = window.getSelection();
-		const selected = !!native && !native.isCollapsed && root.contains(native.anchorNode);
+		const selected = deps.rangeAtContextPress();
 		// A nested block (a fence inside a list item) gets the clipboard rows.
 		const node = path.length === 1 ? deps.getDoc().children[path[0]] : undefined;
 		const prose = !!node && isProseLeaf(node, deps.reading);
+		// What Safari selected under the pointer stays for the clipboard rows to act on, as a native
+		// right-click's does; anything else, and anything under a block's actions, the caret replaces.
 		if (selected || !node || prose) {
-			if (!selected) deps.placeCaretAtPoint(e.clientX, e.clientY);
+			if (!selected && !rangeCoversPoint(root, e.clientX, e.clientY)) {
+				deps.placeCaretAtPoint(e.clientX, e.clientY);
+			}
 			// Top-level prose is where a sibling block makes sense.
 			openClipboardMenu(point, host, !selected && prose);
 			return;
 		}
+		if (nativeRangeIn(root)) deps.placeCaretAtPoint(e.clientX, e.clientY);
 		openBlockActions(point, host, path, node);
 	}
 
