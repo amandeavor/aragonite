@@ -48,7 +48,7 @@ test.describe('/ showcase report a bug', () => {
 		expect(url.searchParams.get('where')).toMatch(
 			/^\d+\.\d+\.\d+, (Chrome|Firefox|Safari) [\d.]+ on \w+, live mode$/
 		);
-		// The demo document alone outgrows a link, so the recording rides the clipboard.
+		// The recording rides the clipboard, never the link.
 		expect(url.searchParams.get('recording')).toContain('on your clipboard');
 		await expect(page.getByTestId('report-card')).toContainText('on your');
 
@@ -75,7 +75,7 @@ test.describe('/ showcase report a bug', () => {
 		const card = page.getByTestId('report-card');
 		await expect(card).toContainText('kept the recording off your clipboard');
 		await card.getByRole('button', { name: 'Copy recording' }).click();
-		await expect(card).toContainText("it's on your");
+		await expect(card).toContainText('the recording is on your clipboard');
 		expect(await createClipboardArm(page).read()).toContain('aragonite-input-recording/1');
 	});
 });

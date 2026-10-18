@@ -11,7 +11,7 @@
 	let { editor, mode }: { editor: EditorInstance | undefined; mode: string } = $props();
 
 	let phase = $state<'idle' | 'asking' | 'recording' | 'sent'>('idle');
-	let carrier = $state<'url' | 'clipboard' | 'download'>('url');
+	let carrier = $state<'clipboard' | 'download'>('clipboard');
 	let copyFailed = $state(false);
 	let attachment = '';
 	let handle: InputRecordingHandle | null = null;
@@ -85,12 +85,11 @@
 	<div class="report-card" role="dialog" aria-label="Report a bug" data-testid="report-card">
 		<p>
 			Press start, do the thing that broke, then press stop. GitHub opens a new bug report in
-			another tab with a recording of what you did attached, for you to read and submit.
+			another tab, and a recording of what you did goes on your clipboard to paste into it.
 		</p>
 		<p>
 			<strong>The recording includes everything you type and the whole document's text</strong>, and
-			an issue you submit is public. The link that opens GitHub can carry the recording, but nothing
-			is filed until you submit.
+			an issue you submit is public. Nothing reaches GitHub until you paste it and submit.
 		</p>
 		<div class="report-actions">
 			<button type="button" class="report-start" onclick={start}>Start recording</button>
@@ -100,11 +99,9 @@
 {:else if phase === 'sent'}
 	<div class="report-card" role="status" data-testid="report-card">
 		<p>
-			{#if carrier === 'url'}
-				GitHub opened in a new tab with the recording filled in. Add what happened and submit.
-			{:else if carrier === 'clipboard' && !copyFailed}
-				GitHub opened in a new tab. The recording was too long for the link, so it's on your
-				clipboard: paste it into the form's Recording box.
+			{#if carrier === 'clipboard' && !copyFailed}
+				GitHub opened in a new tab and the recording is on your clipboard: paste it into the form's
+				Recording box, add what happened, and submit.
 			{:else if carrier === 'clipboard'}
 				GitHub opened in a new tab, but the browser kept the recording off your clipboard. Copy it
 				here, then paste it into the form's Recording box.

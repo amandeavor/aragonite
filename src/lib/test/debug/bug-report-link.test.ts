@@ -1,14 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import {
-	MAX_BODY_RECORDING,
-	MAX_URL_LENGTH,
-	bugReport,
-	describeWhere
-} from '../../../routes/bug-report';
+import { MAX_BODY_RECORDING, bugReport, describeWhere } from '../../../routes/bug-report';
 import { INPUT_RECORDING_FORMAT, type InputRecording } from '#lib/debug/input-recording.js';
 
-// Miss-analysis: new module; the e2e row only sees the clipboard branch, since the showcase's own
-// document never fits a link.
+// Miss-analysis: new module; the e2e row covers only the clipboard path.
 
 function recordingOf(source: string): InputRecording {
 	return {
@@ -31,25 +25,18 @@ function recordingOf(source: string): InputRecording {
 const recordingField = (url: string) => new URL(url).searchParams.get('recording') ?? '';
 
 describe('bugReport', () => {
-	it('fills the bug form, recording fenced, when the link stays short', () => {
-		const report = bugReport(recordingOf('hi\n'), '0.11.1, Chrome 141 on Windows, live mode');
+	it('fills the where field and puts even a short recording on the clipboard, never the link', () => {
+		const report = bugReport(recordingOf('secret\n'), '0.11.1, Chrome 141 on Windows, live mode');
 		const url = new URL(report.url);
-		expect(report.carrier).toBe('url');
+		expect(report.carrier).toBe('clipboard');
 		expect(url.origin + url.pathname).toBe('https://github.com/voithos-labs/aragonite/issues/new');
 		expect(url.searchParams.get('template')).toBe('bug.yml');
 		expect(url.searchParams.get('where')).toBe('0.11.1, Chrome 141 on Windows, live mode');
-		expect(JSON.parse(recordingField(report.url).replace(/^```json\n|\n```$/g, ''))).toEqual(
-			recordingOf('hi\n')
-		);
-		expect(report.url.length).toBeLessThanOrEqual(MAX_URL_LENGTH);
-	});
-
-	it('moves a recording too long for the link onto the clipboard, fenced', () => {
-		const report = bugReport(recordingOf('x'.repeat(MAX_URL_LENGTH)), 'w');
-		expect(report.carrier).toBe('clipboard');
-		expect(report.url.length).toBeLessThanOrEqual(MAX_URL_LENGTH);
 		expect(recordingField(report.url)).toContain('on your clipboard');
-		expect(report.attachment.startsWith('```json\n{')).toBe(true);
+		expect(report.url).not.toContain('secret');
+		expect(JSON.parse(report.attachment.replace(/^```json\n|\n```$/g, ''))).toEqual(
+			recordingOf('secret\n')
+		);
 	});
 
 	it('downloads one too long for an issue body', () => {
