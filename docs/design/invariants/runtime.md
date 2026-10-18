@@ -238,12 +238,12 @@ one that isn't open. Outside a bracket, byte-identical duplicate widgets can't b
 Predicate `checkPoolBracket` (`inline-transitions.ts`) · run in `components/blocks/widget-portal.ts` ·
 `inline-transitions.test.ts`, `test/blocks/widget-portal-bracket.test.ts`.
 
-**G1.26 · Reveal transition legality.** A reveal swaps an inline widget for its editable source; a
-close swaps back. No close without a reveal (`closeShownSource`; a fire is a caller skipping its
-pre-guard), no command mutating during one (`command-during-reveal`; a command path skipped the
-close), no `startReveal` re-entry in its own microtask, and the source length holds at entry. A blur
-with no reveal, or in a cross-block selection, is silent. `widget-interaction.ts`,
-`inline-commands.ts`, `caret/reveal-source.ts` · `widget-reveal-transitions.test.ts`.
+**G1.26 · Reveal transition legality.** A reveal swaps an inline widget for its source; a close
+swaps back. A close needs a reveal (`closeShownSource`): a fire is a caller that skipped its
+pre-guard. A command can't mutate during one (`command-during-reveal`): a fire is a command path
+that skipped the close. `startReveal` isn't re-entered in its own microtask, and the source length
+holds at entry. A blur with no reveal or in a cross-block range is silent. `widget-interaction.ts`,
+`inline-commands.ts`, `reveal-source.ts` · `widget-reveal-transitions.test.ts`.
 
 **G1.27 · Composition window.** `compositionend` lands only inside a composition the surface
 opened, at its start or, when a range across blocks was live at the start, at its first composed
@@ -333,20 +333,11 @@ gets the defaults without deciding to. Predicate `checkBuiltinPresentationFacts`
 bootstrap · `test/invariants/builtin-presentation-facts.test.ts`.
 
 **G1.41 · The open last line** (`last-line-kept`). Only the document's last line may lack a line
-ending, and a structural edit leaves that as it found it, unless the new last line is blank
-(dropping its break drops the line; `holdsBlankLastLine`). `lastLineChild` names the child holding
-it (past the end warns `last-line-child-range`). The commit owns the rule (`open-tail.ts`:
-`endWindowLines` before the separators, `keepOpenTail` after the rebuild), and no edit writes the
-tail by hand (G4.74); a move (`reorder.ts`) calls `endWindowLines` itself to check its joins.
-
-After every structural commit the check fails three shapes: an open file that gained a break on a
-line with text, a closed file that lost its break, and a line with no ending right above the last
-line at any depth (two lines that read as one on reload). Where a container's own bytes hold its
-last line (a quote's closing `>`, a directive's closing `:::`), it reads the children above that
-line through `schema/container-raw.ts :: lineChildren`. Predicate
-`invariants/open-tail.ts :: checkLastLineKept` · both commit branches in
-`editor-actions/commit/undo-controller.ts` · `test/invariants/last-line-kept.test.ts`,
-`test/editor-actions/open-last-line.test.ts`, `open-last-line.property.test.ts`.
+ending, and a structural edit keeps that as it found it unless the new last line is blank. The check
+fails an open file that gained a break on a text line, a closed one that lost it, and an unended
+line above the last at any depth. `lastLineChild` names the child holding a kind's last line. The
+commit owns the rule (`open-tail.ts`); no edit writes the tail by hand (G4.74). `checkLastLineKept`
+· `last-line-kept.test.ts`, `open-last-line.test.ts`, `open-last-line.property.test.ts`.
 
 **G1.42 · A list item's checkbox and blocks say what its reload reads** (`task-marker-slot`). The
 checkbox is item metadata, but a write changes the block behind it, so both must match a reload: a

@@ -1,7 +1,8 @@
 /**
- * G4.218: an invariant catalog entry (a paragraph opening `**G<n>.<m> ·` in a group file under
- * `docs/design/invariants/`) holds at most six lines and 600 characters, so it carries the rule,
- * its why and its files rather than the mechanism. The baseline only shrinks.
+ * G4.218: an invariant catalog entry (from a paragraph opening `**G<n>.<m> ·` in a group file under
+ * `docs/design/invariants/` to the next entry or heading) holds at most six text lines and 600
+ * characters, so it carries the rule, its why and its files rather than the mechanism. The
+ * baseline only shrinks.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -14,7 +15,13 @@ const MAX_LINES = 6;
 const MAX_CHARS = 600;
 
 /** Entries allowed past the budget, keyed `file:G-number`, each with why it needs the room. */
-const BASELINE: Record<string, string> = {};
+const BASELINE: Record<string, string> = {
+	'docs/design/invariants/runtime.md:G1.9':
+		'holds two contracts, the aliasing rule and the commit rollback, which has no id of its own',
+	'docs/design/invariants/scans.md:G4.36': 'four file lists, each a case a caret writer must know',
+	'docs/design/invariants/scans.md:G4.75': 'seven write steps, each with its own allowed files',
+	'docs/design/invariants/scans.md:G4.131': 'three syntax modules, each with its own row and tests'
+};
 
 interface CatalogEntry {
 	file: string;
@@ -23,17 +30,21 @@ interface CatalogEntry {
 	chars: number;
 }
 
+const ENTRY_START = /^\*\*(G\d+\.\d+) ·/;
+
 function catalogEntries(file: string, markdown: string): CatalogEntry[] {
 	const lines = markdown.split(/\r?\n/);
 	const entries: CatalogEntry[] = [];
 	for (let i = 0; i < lines.length; i++) {
-		const id = /^\*\*(G\d+\.\d+) ·/.exec(lines[i])?.[1];
+		const id = ENTRY_START.exec(lines[i])?.[1];
 		if (!id) continue;
-		let end = i;
-		while (end < lines.length && lines[end].trim() !== '') end++;
-		const paragraph = lines.slice(i, end);
-		entries.push({ file, id, lines: paragraph.length, chars: paragraph.join(' ').length });
-		i = end;
+		let end = i + 1;
+		while (end < lines.length && !ENTRY_START.test(lines[end]) && !lines[end].startsWith('#')) {
+			end++;
+		}
+		const text = lines.slice(i, end).filter((line) => line.trim() !== '');
+		entries.push({ file, id, lines: text.length, chars: text.join(' ').length });
+		i = end - 1;
 	}
 	return entries;
 }
@@ -66,8 +77,8 @@ describe('G4.218 an invariant catalog entry stays within six lines', () => {
 
 	// ── Reader self-tests ───────────────────────────────────────────────────
 
-	const entry = (n: number, width = 10) =>
-		['**G9.1 · Name.**', ...Array.from({ length: n - 1 }, () => 'x'.repeat(width))].join('\n');
+	const entry = (n: number, width = 10, id = 'G9.1') =>
+		[`**${id} · Name.**`, ...Array.from({ length: n - 1 }, () => 'x'.repeat(width))].join('\n');
 	const sizes = (markdown: string) =>
 		catalogEntries('f.md', markdown).map((e) => [e.id, e.lines, isOver(e)]);
 
@@ -81,8 +92,15 @@ describe('G4.218 an invariant catalog entry stays within six lines', () => {
 		expect(sizes(entry(6, 130))).toEqual([['G9.1', 6, true]]);
 	});
 
-	it('a blank line ends the entry, and CRLF counts the same', () => {
-		expect(sizes(`${entry(3)}\n\n- a list\n- after it`)).toEqual([['G9.1', 3, false]]);
+	it('a later paragraph or list counts, up to the next entry or heading', () => {
+		const split = `${entry(4)}\n\n- a\n- b\n\nc\n\n${entry(2, 10, 'G9.2')}\n\n## Next\n\nd`;
+		expect(sizes(split)).toEqual([
+			['G9.1', 7, true],
+			['G9.2', 2, false]
+		]);
+	});
+
+	it('CRLF counts the same as LF', () => {
 		expect(sizes(entry(7).replace(/\n/g, '\r\n'))).toEqual([['G9.1', 7, true]]);
 	});
 

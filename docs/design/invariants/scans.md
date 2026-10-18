@@ -650,19 +650,12 @@ naming `cleanJoinedRaw`, and follows the text a file hands a leaf (a `.raw =`, a
 argument) to its value: text from more than one source is a join, so its file names the cleanup or
 says why not (a paste between one leaf's own halves). `lint/cross-node-join-doors.test.ts`.
 
-**G4.77 · One way to belong to no plugin.** `src/lib/schema/plugin-install.ts` :: `registerAsCore`
-runs registrations as if no plugin were installing. Its callers:
-
-- `src/lib/components/editor-built-ins.ts` :: `registerEditorBuiltIns`, the editor's own bootstrap,
-  which the test reset keeps
-- a registry's `registerCore`, for a built-in key the registry can't recognize itself (a code
-  language, a context-menu row), also kept by the reset
-- `activateDirectives`, around the directive grammar, which the reset drops
-- `registerBuiltInDescriptors`, and the editor modules that register at load (the built-in global
-  commands, the default paste surfaces, the table's Enter completer, the core inline widgets)
-
-The scan matches the bare name, so an aliased import is caught at its import line.
-`lint/file-rules.test.ts`.
+**G4.77 · One way to belong to no plugin.** `registerAsCore` (`schema/plugin-install.ts`) runs
+registrations as if no plugin were installing. Its callers are the editor's bootstrap
+(`registerEditorBuiltIns`) and a registry's `registerCore` for a key it can't recognize itself, both
+kept by the test reset; `activateDirectives`, which the reset drops; and
+`registerBuiltInDescriptors` with the modules that register at load. The scan matches the bare name,
+so an aliased import is caught at its import line. `lint/file-rules.test.ts`.
 
 **G4.78 · The editor's built-ins come in one way.** `registerBuiltInBlocks`,
 `bootstrapCodeLanguages` and `registerDefaultContextActions` are called only from
@@ -1213,9 +1206,9 @@ hundred items, mounting reads no item for the column, each key (first, paused, i
 typed in place, Enter) reads at most the item it rewrote past those its rebuild joined, and an undo
 reads none. `marker-column-scans.test.ts`, on the `listMarkerReads` and `joinedChildReads` counters.
 
-**G4.218 · Catalog entries stay short.** An entry in the four group files (a paragraph opening
-`**G<n>.<m> ·`) holds at most six lines and 600 characters: the rule, why it holds, what to do when
-it fires or when you add to it, and its files. Mechanism buries the rule, so it goes in the guard's
-failure message or a code comment. An entry that genuinely needs more (several cases a reader must
-know) goes in the scan's baseline with its reason, and the baseline only shrinks.
+**G4.218 · Catalog entries stay short.** An entry in the four group files (from its `**G<n>.<m> ·`
+paragraph to the next entry or heading, lists included) holds at most six text lines and 600
+characters: the rule, why it holds, what to do when it fires, and its files. Mechanism buries the
+rule, so it goes in the guard's failure message or a code comment. An entry with several cases a
+reader must know goes in the scan's baseline with its reason, and the baseline only shrinks.
 `lint/catalog-entry-budget.test.ts`.

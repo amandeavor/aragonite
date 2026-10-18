@@ -70,20 +70,12 @@ calls `forget`, which drops all three. There's no method that forgets one alone,
 column and leaving the side behind doesn't compile. Retired: G4.31's reset half and G2.10's
 capture-without-reset pairing.
 
-**G3.10 · Coherent registration pairs.** A `BlockKindRegistration` is focused as one unit
-(`blockFocus: 'whole-block'`, so `supportsInline: false`, no `contentStart`, no title row) or
-entered by the caret: a leaf, or a container, which declares no inline content since its children
-hold the text. A content range and its Backspace behavior register together as `contentStart`, a
-container with a title row declares only its middle-child unwrap, and a `contextDependentKind: true`
-kind takes no `opener` (its container skips that reparse). `augmentBlockKind` takes none of these.
-
-A cast or a plain JavaScript plugin never meets the types, so both calls throw at runtime too:
-`registerBlockKind` checks each pair against
-`src/lib/schema/registration-pairs.ts :: INCOHERENT_REGISTRATION_PAIRS`, and `augmentBlockKind`
-refuses every field on `src/lib/schema/block-kind-descriptor.ts :: FIXED_AT_REGISTRATION`.
-`src/lib/test/schema/descriptor-groups.types.test.ts` holds one `@ts-expect-error` per pair, and
-`src/lib/test/schema/registration-pairs.test.ts` fails when a table row and its pin don't match.
-Retired: G1.32 and G1.37 as dev-time checks, and G1.18's not-a-container branch.
+**G3.10 · Coherent registration pairs.** A `BlockKindRegistration` with `blockFocus: 'whole-block'`
+takes no inline content, `contentStart` or title row; any other is a leaf or a container whose
+children hold the text. `contentStart` pairs a content range with its Backspace, a title-row
+container declares only its middle-child unwrap, and a `contextDependentKind` takes no `opener`.
+Plain JS meets runtime throws (`INCOHERENT_REGISTRATION_PAIRS`, `FIXED_AT_REGISTRATION`).
+`descriptor-groups.types.test.ts` pins each pair, `registration-pairs.test.ts` the table.
 
 **G3.11 · Every option has a spec.** `EDITOR_OPTION_SPECS` gives each editor option, `header`
 included, a timing (`live`, or `once`: read at mount) and marks the booleans; typed against
