@@ -167,8 +167,12 @@ export function startInputRecording(
 					open?.opener === 'keydown' && !sawInput && open.events.every(isModifierKeydown);
 				return onlyModifiers ? null : 'keydown';
 			}
-			case 'compositionstart':
-				return open?.opener === 'keydown' && !sawInput ? null : 'compositionstart';
+			case 'compositionstart': {
+				// Only the IME's own keydown starts a composition; any other key was a step of its own.
+				const imeKey = open?.events.findLast((e) => e.type === 'keydown');
+				const opened = imeKey?.keyCode === 229 || imeKey?.key === 'Process';
+				return open?.opener === 'keydown' && !sawInput && opened ? null : 'compositionstart';
+			}
 			case 'beforeinput': {
 				if (composing || open?.opener === 'paste' || open?.opener === 'drop') return null;
 				const keyed = open?.opener === 'keydown' || open?.opener === 'beforeinput';

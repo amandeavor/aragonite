@@ -123,6 +123,16 @@ describe('step boundaries', () => {
 		).toEqual(['text', 'rewrite', 'composition', 'key']);
 	});
 
+	it('opens a composition of its own after a key the editor handled at keydown', () => {
+		expect(
+			families((el) => {
+				key(el, 'keydown', { key: 'Backspace' });
+				el.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+				el.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: 'x' }));
+			})
+		).toEqual(['key', 'composition']);
+	});
+
 	it("chains each step's bytes to the next, with the splice between", () => {
 		const { editable, deps, write } = fixture();
 		const handle = startInputRecording(deps, { includeText: true });
