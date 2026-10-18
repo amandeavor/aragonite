@@ -121,7 +121,7 @@ describe('augment merges a partial container group', () => {
 
 	it('adds a group field while preserving the rest of the group', () => {
 		const { kind, rebuildRaw } = registerContainer('aug-partial');
-		const reorderChildren = { renumberMarkers: true } as const;
+		const reorderChildren = {};
 		augmentBlockKind(kind, { container: { reorderChildren } });
 
 		const d = tryGetBlockKindDescriptor(kind)!;

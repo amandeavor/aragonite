@@ -58,17 +58,11 @@ export interface UnwrapRole {
 }
 
 /**
- * A container whose direct children reorder among themselves (Alt+Arrow, the drag handle). The
- * reorder resolves its unit at the nearest ancestor declaring this; absent means the children
- * are not independently reorderable, and the container declines the reorder at its boundary.
+ * A container whose direct children reorder among themselves (Alt+Arrow, the drag handle),
+ * declared as `{}`. The reorder resolves its unit at the nearest ancestor declaring this; absent
+ * means the children don't reorder, and the container declines the reorder at its boundary.
  */
-export interface ReorderChildrenRole {
-	/**
-	 * Direct children carry position-dependent markers needing a renumber after a permutation
-	 * (ordered-list numbering). Absent = position-independent, so `rebuildRaw` alone re-emits.
-	 */
-	renumberMarkers?: true;
-}
+export type ReorderChildrenRole = Record<string, never>;
 
 /**
  * A caret position in a kind's own addressing: the child path `focusByPath` follows (empty for a
@@ -762,7 +756,7 @@ export function countsCells(
 
 /**
  * How many cells a table's index space holds, the exclusive upper bound on any row-major cell
- * index. `node` must be a table block; the metadata read is unchecked, so other kinds give NaN.
+ * index. `node` must be a table block.
  */
 export function tableCellCount(node: NodeView): number {
 	return (node.children?.length ?? 0) * metadataOf(node, 'table').columnCount;

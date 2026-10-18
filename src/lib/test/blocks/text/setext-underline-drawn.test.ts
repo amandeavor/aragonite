@@ -18,6 +18,16 @@ import { landableRawBounds } from '#lib/caret/widget-offset.js';
 beforeAll(installLayoutStubs);
 afterEach(destroyMountedEditors);
 
+// Miss-analysis: no test checked a setext heading's class, so it read the level through the ATX
+// heading's metadata, which only happens to share the `level` field.
+it.each([
+	['Plan\n===\n', 'heading-1'],
+	['Plan\n---\n', 'heading-2']
+])('the setext heading %j draws with %s', (source, headingClass) => {
+	const mounted = mountEditor({ source });
+	expect(surfaceAt(mounted, [0]).classList.contains(headingClass)).toBe(true);
+});
+
 describe('the underline is on the page', () => {
 	it.each(['source', 'live'] as const)('%s mode draws it as a marker after the title', (mode) => {
 		const mounted = mountEditor({ source: 'Plan\n===\n', presentationMode: mode });

@@ -79,7 +79,8 @@ A node's **kind** is the string on it that says what block it is (`'heading'`, `
 ```ts
 const h = parse('## Title\n').children[0];
 isBuiltinBlockNode(h); // true
-metadataOf(h, 'heading'); // { level: 2 }: the typed read, without narrowing first
+metadataOf(h, 'heading'); // { level: 2 }: the typed read, for a node you know is a heading
+metadataIfKind(h, 'list'); // undefined: the read for a node that might be another kind
 headingLevel(h); // 2
 makeBlockNode({ kind: 'paragraph', leadingTrivia: '', raw: 'x\n' });
 // { kind: 'paragraph', leadingTrivia: '', raw: 'x\n' }

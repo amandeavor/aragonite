@@ -59,14 +59,34 @@ it('a renumber from index 0 keeps the first item’s number as the list’s star
 	expect(list.children!.map((item) => item.raw)).toEqual(['8. a\n', '9. b\n']);
 });
 
-// Miss-analysis: every deleteNode fixture's owner was a list or the document, never a container
+// Miss-analysis: every renumber fixture's owner was a list or the document, never a container
 // whose own metadata happens to carry an `ordered` field.
-describe('deleteNode renumbers only an ordered list', () => {
-	it('leaves a plugin container whose metadata says ordered as it was', () => {
-		const quote = parse('> a\n>\n> b\n>\n> c\n').children[0];
-		setPluginMetadata(quote, { ordered: true });
-		const kept = quote.children!.slice(1).map((child) => child.raw);
-		deleteNode(bodyUnder(quote, '\n'), 0, createSharingState());
-		expect(quote.children!.map((child) => child.raw)).toEqual(kept);
-	});
+describe('a renumber touches only an ordered list', () => {
+	const sharing = createSharingState;
+	it.each([
+		{
+			route: 'deleteNode',
+			removed: 1,
+			edit: (q: CstNode) => deleteNode(bodyUnder(q, '\n'), 0, sharing())
+		},
+		{
+			route: 'renumberOrderedList',
+			removed: 0,
+			edit: (q: CstNode) => renumberOrderedList(q, 1, sharing())
+		},
+		{
+			route: 'renumberOrderedListFrom',
+			removed: 0,
+			edit: (q: CstNode) => renumberOrderedListFrom(q, 1, sharing())
+		}
+	])(
+		'$route leaves a plugin container whose metadata says ordered as it was',
+		({ removed, edit }) => {
+			const quote = parse('> a\n>\n> b\n>\n> c\n').children[0];
+			setPluginMetadata(quote, { ordered: true });
+			const before = quote.children!.map((child) => child.raw);
+			edit(quote);
+			expect(quote.children!.map((child) => child.raw)).toEqual(before.slice(removed));
+		}
+	);
 });
