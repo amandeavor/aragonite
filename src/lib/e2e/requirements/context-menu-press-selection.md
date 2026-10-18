@@ -21,7 +21,8 @@ since Playwright's WebKit selects nothing on a right-click.
 ## Edge cases
 
 - A press outside text selected elsewhere opens the block actions of the block under it, whether
-  Safari then selects a word there or the browser leaves the old selection where it was.
+  Safari then selects a word there or the browser collapses the old selection first, as Chromium
+  and WebKit do on a plain page.
 - Every menu Paste route (prose Paste, Paste as plain text, Replace with clipboard, the cell's
   Paste) reads the clipboard only once its menu has left the page, so Safari's own Paste prompt
   never draws over an open menu.
@@ -33,6 +34,3 @@ since Playwright's WebKit selects nothing on a right-click.
   under a right-click.
 - The Paste prompt drew over the menu because each pick closed its menu by a state write and read
   the clipboard before the page updated; no row looked at the page when the read began.
-- A right-click outside an existing selection opened that selection's clipboard rows, since the
-  menu asked whether any range existed rather than whether the press landed on it; every
-  right-click row pressed inside the range it had selected.
