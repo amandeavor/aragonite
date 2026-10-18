@@ -87,6 +87,8 @@ export function startInputRecording(
 	let lastSource = deps.getSource();
 	let lastHash = hashSource(lastSource);
 	let lastTime = performance.now();
+	// The source when the open step began, which its splice is measured against.
+	let previousSource = lastSource;
 	let current: OpenStep | null = null;
 	let composing = false;
 	let result: InputRecording | null = null;
@@ -108,7 +110,6 @@ export function startInputRecording(
 		return { version, hash: lastHash, selection: deps.getSelection(), source: lastSource };
 	}
 
-	let previousSource = lastSource;
 	function closeStep(): void {
 		if (!current) return;
 		const now = snapshot();
@@ -124,7 +125,6 @@ export function startInputRecording(
 			},
 			events: current.events
 		});
-		previousSource = now.source;
 		current = null;
 	}
 
