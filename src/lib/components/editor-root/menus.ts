@@ -26,7 +26,7 @@ import { blockNoun } from '../menu/default-context-actions';
 import { isProseLeaf } from '../../schema/page-role';
 import type { Reading } from '../../schema/reading';
 import { readBlockPath } from '../../selection/path-lookup';
-import { rangeCoversPoint } from '../../selection/cross-block/pointer';
+import { nativeRangeIn, rangeCoversPoint } from '../../selection/cross-block/pointer';
 import { documentLineEnding } from '../../core/lines';
 import { stampWrites, type DocumentStamps } from '../../editor-actions/commit/document-stamp';
 
@@ -207,13 +207,11 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		if (!host || !path) return;
 		const point = { x: e.clientX, y: e.clientY };
 		const selected = deps.rangeAtContextPress();
-		// What Safari selected under the pointer stays for the clipboard rows to act on, as a native
-		// right-click's does; anything else, and anything under a block's actions, the caret replaces.
-		const native = window.getSelection();
-		const live = !!native && !native.isCollapsed && root.contains(native.anchorNode);
 		// A nested block (a fence inside a list item) gets the clipboard rows.
 		const node = path.length === 1 ? deps.getDoc().children[path[0]] : undefined;
 		const prose = !!node && isProseLeaf(node, deps.reading);
+		// What Safari selected under the pointer stays for the clipboard rows to act on, as a native
+		// right-click's does; anything else, and anything under a block's actions, the caret replaces.
 		if (selected || !node || prose) {
 			if (!selected && !rangeCoversPoint(root, e.clientX, e.clientY)) {
 				deps.placeCaretAtPoint(e.clientX, e.clientY);
@@ -222,7 +220,7 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 			openClipboardMenu(point, host, !selected && prose);
 			return;
 		}
-		if (live) deps.placeCaretAtPoint(e.clientX, e.clientY);
+		if (nativeRangeIn(root)) deps.placeCaretAtPoint(e.clientX, e.clientY);
 		openBlockActions(point, host, path, node);
 	}
 

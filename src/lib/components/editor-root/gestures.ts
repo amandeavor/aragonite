@@ -12,6 +12,7 @@ import type { UserScrollport } from '../../windowing/scroll-ancestors';
 import type { DocumentGetter } from '../../editor-keys';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
 import {
+	nativeRangeIn,
 	placeContextPress,
 	rangeCoversPoint,
 	resetForPointerDown
@@ -143,11 +144,6 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 	// Mac); a key in between means the next menu is the keyboard's.
 	let contextPress: { range: boolean } | null = null;
 
-	function rangeIn(root: HTMLElement): boolean {
-		const native = window.getSelection();
-		return !!native && !native.isCollapsed && root.contains(native.anchorNode);
-	}
-
 	function install(root: HTMLElement): () => void {
 		// Per install: rebinding the root starts with no click in progress.
 		let marginDrag = false;
@@ -273,13 +269,13 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		if (!(e.button === 2 || (e.button === 0 && e.ctrlKey))) return null;
 		// A range across blocks is painted by the editor, so the browser's rectangles don't show it.
 		const range = deps.selection.isCrossBlock
-			? rangeIn(root)
+			? nativeRangeIn(root)
 			: rangeCoversPoint(root, e.clientX, e.clientY);
 		return { range };
 	}
 
 	function rangeAtContextPress(root: HTMLElement): boolean {
-		return contextPress?.range ?? rangeIn(root);
+		return contextPress?.range ?? nativeRangeIn(root);
 	}
 
 	return {
