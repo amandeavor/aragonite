@@ -1415,6 +1415,7 @@
 				getEvents
 			}}
 			root={editorEl}
+			{menuPresence}
 		/>
 	{/if}
 	<ImageOverlayHost

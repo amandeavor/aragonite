@@ -181,6 +181,28 @@ test.describe('every popover closes without its opener holding focus', () => {
 	});
 });
 
+// Miss-analysis: the toolbar's flyout was left out as hover chrome, and every toolbar row opened it
+// by hover alone, so no row clicked the button the hover had just opened it under.
+test("the toolbar's heading flyout stays open under a click, and Escape closes it alone", async ({
+	page
+}) => {
+	const editor = new EditorPage(page);
+	await editor.goto('?presentationMode=live');
+	await editor.loadContent('select some words\n\nother text\n');
+	await editor.focusBlock(0, 0);
+	for (let i = 0; i < 6; i++) await page.keyboard.press('Shift+ArrowRight');
+	const setHeading = page.locator('[data-testid="toolbar-set-heading"]');
+	const flyout = page.locator('.selection-toolbar-flyout');
+	await setHeading.hover();
+	await expect(flyout).toBeVisible();
+	await setHeading.click();
+	await expect(flyout).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(flyout).toHaveCount(0);
+	await expect(page.locator('[data-testid="selection-toolbar"]')).toBeVisible();
+	expect(await page.evaluate(() => window.getSelection()!.toString())).toBe('select');
+});
+
 test.describe('the link card beside a live caret', () => {
 	test('one Escape closes the card and the source shown under the caret', async ({ page }) => {
 		const editor = new PluginsPage(page);

@@ -132,6 +132,22 @@ describe('closing from outside the menu', () => {
 		expect(menu.causes).toEqual(['escape-key']);
 	});
 
+	it('an uncounted popover closes the same way but never reads open', () => {
+		const presence = presenceIn(false);
+		const el = document.body.appendChild(document.createElement('div'));
+		const causes: MenuCloseCause[] = [];
+		const detach = presence.trackUncounted((cause) => {
+			causes.push(cause);
+			return true;
+		})(el) as () => void;
+
+		expect(presence.isOpen).toBe(false);
+		expect(escape().defaultPrevented).toBe(true);
+		press(document.body);
+		expect(causes).toEqual(['escape-key', 'outside-press']);
+		detach();
+	});
+
 	it('an Escape the menu does not take still reaches the page; a composing one closes nothing', () => {
 		const menu = mountMenu(presenceIn(false), undefined, false);
 		const reached = vi.fn();

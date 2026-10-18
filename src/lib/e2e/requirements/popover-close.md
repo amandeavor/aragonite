@@ -17,6 +17,8 @@ when either arrives; the rows run under Chromium and in the WebKit lane.
 - Escape with the block menu's flyout open closes the flyout and leaves the menu open.
 - With the code block's overflow menu opened from the keyboard, Shift+Tab out of the gutter closes
   it.
+- The selection toolbar's heading flyout, opened by hovering "Set heading", stays open under the
+  click that follows the hover; Escape then closes the flyout and leaves the bar and the selection.
 - A link card opened beside a live caret, with the caret walked into a formula that shows its
   source: one Escape closes the card and the shown source both, since a card not holding focus
   leaves the key to the document.
@@ -28,3 +30,6 @@ when either arrives; the rows run under Chromium and in the WebKit lane.
   focuses a clicked button, so no row ever closed a popover with focus on the page body.
 - Moving the overflow menu's close onto the menu presence dropped its close on Shift+Tab out of the
   gutter; no row drove the menu from the keyboard.
+- The toolbar's heading flyout toggled shut under the click that follows its hover, and Escape
+  never reached it; it was left out of the close as hover chrome, and every toolbar row opened it
+  by hover alone.

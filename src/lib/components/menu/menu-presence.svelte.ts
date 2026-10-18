@@ -32,6 +32,9 @@ export interface MenuPresence {
 	readonly isOpen: boolean;
 	/** Attach to a menu's root element with the menu's own close. */
 	track(close: MenuClose, opts?: MenuTrackOptions): Attachment;
+	/** As `track`, for a popover that hangs off chrome which itself steps aside on `menuChange`:
+	 *  it closes the same way but never reads as an open menu. */
+	trackUncounted(close: MenuClose, opts?: MenuTrackOptions): Attachment;
 	/** Close every open menu: a document swap and a mode change call it. */
 	closeAll(cause: MenuCloseCause): void;
 }
@@ -93,32 +96,35 @@ export function createMenuPresence(deps: MenuPresenceDeps): MenuPresence {
 		document.removeEventListener('keydown', onKeyDown, true);
 	}
 
+	function attach(close: MenuClose, opts: MenuTrackOptions | undefined, counted: boolean) {
+		return (el: Element) => {
+			const menu: OpenMenu = { close, el, inside: opts?.inside };
+			// Untracked, or the attachment would depend on the count it writes and rerun forever.
+			untrack(() => {
+				if (open.length === 0) listen();
+				open.push(menu);
+				if (counted) count++;
+				if (opts?.edits && deps.isReading()) {
+					devWarn(MENU_OPENED_IN_READING, 'a menu whose rows write opened in reading mode');
+					// The mode is what rules the menu out, as when one changes under it.
+					closeMenu(menu, 'mode-change');
+				}
+			});
+			return () =>
+				untrack(() => {
+					open.splice(open.indexOf(menu), 1);
+					if (counted) count--;
+					if (open.length === 0) unlisten();
+				});
+		};
+	}
+
 	return {
 		get isOpen() {
 			return count > 0;
 		},
-		track(close, opts) {
-			return (el) => {
-				const menu: OpenMenu = { close, el, inside: opts?.inside };
-				// Untracked, or the attachment would depend on the count it writes and rerun forever.
-				untrack(() => {
-					if (open.length === 0) listen();
-					open.push(menu);
-					count++;
-					if (opts?.edits && deps.isReading()) {
-						devWarn(MENU_OPENED_IN_READING, 'a menu whose rows write opened in reading mode');
-						// The mode is what rules the menu out, as when one changes under it.
-						closeMenu(menu, 'mode-change');
-					}
-				});
-				return () =>
-					untrack(() => {
-						open.splice(open.indexOf(menu), 1);
-						count--;
-						if (open.length === 0) unlisten();
-					});
-			};
-		},
+		track: (close, opts) => attach(close, opts, true),
+		trackUncounted: (close, opts) => attach(close, opts, false),
 		closeAll(cause) {
 			untrack(() => {
 				for (const menu of [...open]) closeMenu(menu, cause);
