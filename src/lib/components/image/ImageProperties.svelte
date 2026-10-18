@@ -135,7 +135,7 @@
 	}
 
 	// Escape drops the draft and a swap lands after the new document is in, so neither saves it;
-	// every other close does.
+	// every other close does. A press in the document is the image selection's to judge.
 	function dismissField(cause: MenuCloseCause): boolean {
 		closeField(cause !== 'escape-key' && cause !== 'document-swap');
 		return true;
@@ -435,7 +435,7 @@
 			{@attach keepFieldOnScreen}
 			{@attach menuPresence.track(dismissField, {
 				edits: true,
-				inside: () => [rootEl, getWidgetEl()]
+				inside: () => [rootEl, getWidgetEl()?.closest('.editor')]
 			})}
 		>
 			<span class="md-image-field-label">Alt</span>
