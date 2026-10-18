@@ -18,8 +18,8 @@ export interface BugReport {
 	url: string;
 	/** Where the recording went when it didn't fit in the URL. */
 	carrier: 'url' | 'clipboard' | 'download';
-	/** The fenced recording, for the clipboard or the downloaded file. */
-	fenced: string;
+	/** The recording as it goes on the clipboard (fenced) or into the downloaded file (bare JSON). */
+	attachment: string;
 }
 
 export function bugReport(recording: InputRecording, where: string): BugReport {
@@ -28,18 +28,18 @@ export function bugReport(recording: InputRecording, where: string): BugReport {
 	const link = (field: string) =>
 		`${NEW_BUG_URL}?${new URLSearchParams({ template: 'bug.yml', where, recording: field })}`;
 	const inline = link(fenced);
-	if (inline.length <= MAX_URL_LENGTH) return { url: inline, carrier: 'url', fenced };
+	if (inline.length <= MAX_URL_LENGTH) return { url: inline, carrier: 'url', attachment: fenced };
 	if (fenced.length <= MAX_BODY_RECORDING) {
 		return {
 			url: link('The recording is on your clipboard: paste it here.'),
 			carrier: 'clipboard',
-			fenced
+			attachment: fenced
 		};
 	}
 	return {
 		url: link('The recording downloaded as a .json file: drag it into this box.'),
 		carrier: 'download',
-		fenced: json
+		attachment: json
 	};
 }
 

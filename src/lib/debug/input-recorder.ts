@@ -36,8 +36,6 @@ export interface InputRecorderDeps {
 export interface InputRecordingOptions {
 	/** Keep typed characters, key codes, event data, clipboard and DOM text. Off by default. */
 	includeText?: boolean;
-	/** A label for where the input comes from, copied into `env.inputMethod`. */
-	inputMethod?: string;
 }
 
 export interface InputRecordingHandle {
@@ -81,11 +79,14 @@ export function startInputRecording(
 	options: InputRecordingOptions = {}
 ): InputRecordingHandle {
 	const includeText = options.includeText ?? false;
+	// Without text, a hash anyone can recompute would give back each typed character by guessing.
+	const salt = includeText ? '' : Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
+	const hash = (source: string) => hashSource(salt + source);
 	const controller = new AbortController();
 	const steps: RecordedStep[] = [];
 	let lastVersion = deps.contentVersion();
 	let lastSource = deps.getSource();
-	let lastHash = hashSource(lastSource);
+	let lastHash = hash(lastSource);
 	let lastTime = performance.now();
 	// The source when the open step began, which its splice is measured against.
 	let previousSource = lastSource;
@@ -105,7 +106,7 @@ export function startInputRecording(
 		if (version !== lastVersion) {
 			lastVersion = version;
 			lastSource = deps.getSource();
-			lastHash = hashSource(lastSource);
+			lastHash = hash(lastSource);
 		}
 		return { version, hash: lastHash, selection: deps.getSelection(), source: lastSource };
 	}
@@ -114,6 +115,7 @@ export function startInputRecording(
 		if (!current) return;
 		const now = snapshot();
 		current.events.forEach((event, i) => (event.verdict = current!.live[i].defaultPrevented));
+		const [from, to, inserted] = spliceBetween(previousSource, now.source);
 		steps.push({
 			family: classifyStep(current.opener, current.events),
 			before: current.before,
@@ -121,7 +123,7 @@ export function startInputRecording(
 				version: now.version,
 				hash: now.hash,
 				selection: now.selection,
-				splice: spliceBetween(previousSource, now.source, includeText)
+				splice: [from, to, keepText(inserted)]
 			},
 			events: current.events
 		});
@@ -206,18 +208,14 @@ export function startInputRecording(
 			trusted: event.isTrusted
 		};
 		lastTime = now;
-		if (typeof KeyboardEvent !== 'undefined' && event instanceof KeyboardEvent) {
-			Object.assign(rec, describeKey(event, includeText));
-		}
-		if (typeof InputEvent !== 'undefined' && event instanceof InputEvent) {
+		if (event instanceof KeyboardEvent) Object.assign(rec, describeKey(event, includeText));
+		if (event instanceof InputEvent) {
 			rec.inputType = event.inputType;
 			rec.isComposing = event.isComposing;
 			rec.data = keepText(event.data);
 			if (event.type === 'beforeinput') rec.targetRanges = targetRanges(event);
 		}
-		if (typeof CompositionEvent !== 'undefined' && event instanceof CompositionEvent) {
-			rec.data = keepText(event.data);
-		}
+		if (event instanceof CompositionEvent) rec.data = keepText(event.data);
 		if (event.type === 'paste' || event.type === 'drop') {
 			rec.clipboard = transferContents(event as ClipboardEvent & DragEvent);
 		}
@@ -226,8 +224,10 @@ export function startInputRecording(
 		}
 		if (DOM_READ_EVENTS.has(event.type) || event.type === 'selectionchange') {
 			const surface = editableOf(event.target) ?? editableOf(document.getSelection()?.anchorNode);
+			// A selection change moves no text, so only the input events carry it.
+			const withText = includeText && surface && event.type !== 'selectionchange';
 			rec.dom = {
-				...(includeText && surface ? { text: surface.textContent ?? '' } : {}),
+				...(withText ? { text: surface.textContent ?? '' } : {}),
 				sel: surface ? selectionTextOffsets(surface) : null
 			};
 		}
@@ -291,7 +291,6 @@ export function startInputRecording(
 						brands: ua.brands.map((b) => `${b.brand} ${b.version}`)
 					}
 				: null,
-			inputMethod: options.inputMethod ?? 'unspecified',
 			pointer,
 			viewport: [innerWidth, innerHeight],
 			dpr: devicePixelRatio
@@ -334,11 +333,14 @@ function describeKey(event: KeyboardEvent, includeText: boolean): Partial<Record
 		(event.metaKey ? 'M' : '') +
 		(event.altKey ? 'A' : '') +
 		(event.shiftKey ? 'S' : '');
-	// A Ctrl or Cmd chord types nothing, so its key is no more private than a named key.
-	const keep = includeText || isNamedKey(event.key) || event.ctrlKey || event.metaKey;
+	// A Ctrl or Cmd chord types nothing, but AltGr reports itself as Ctrl+Alt and does type.
+	const chord = (event.ctrlKey || event.metaKey) && !event.altKey;
+	// A named key's code and keyCode still spell the letter under an IME's `Process` or a dead key.
+	const keepCode = includeText || chord;
 	return {
-		...(keep ? { key: event.key, code: event.code } : {}),
-		...(keep || event.keyCode === 229 ? { keyCode: event.keyCode } : {}),
+		...(keepCode || isNamedKey(event.key) ? { key: event.key } : {}),
+		...(keepCode ? { code: event.code } : {}),
+		...(keepCode || event.keyCode === 229 ? { keyCode: event.keyCode } : {}),
 		mods,
 		repeat: event.repeat,
 		isComposing: event.isComposing

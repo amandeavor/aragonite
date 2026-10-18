@@ -1,15 +1,19 @@
 /**
  * The checked-in input recordings and the rule each one follows: the e2e spec replays it, or it
  * says it's only for reading (`diagnosticOnly`). The replay spec and the recordings lint (G4.213)
- * both read this list, so a recording can't sit in the folder run by neither.
+ * both read this list, so a recording can't sit in the folder run by neither. The checks a replay
+ * needs (the hash chain, the key to press, the events to reproduce) live here too.
  */
 import { readFileSync } from 'node:fs';
 import { collectFiles } from '../test/invariants/lint/scan-source';
 import {
-	chainBreaks,
-	pressedKeydown,
+	hashSource,
+	isModifierKeydown,
 	readInputRecording,
 	type InputRecording,
+	type RecordedEvent,
+	type RecordedStep,
+	type Splice,
 	type StepFamily
 } from '../debug/input-recording';
 
@@ -62,3 +66,54 @@ export function replayProblems(recording: InputRecording): string[] {
 	}
 	return problems;
 }
+
+// ── Checking a recording ────────────────────────────────────────────────────
+
+/** Every way the recording fails to chain (a `before` that isn't the previous `after`, a splice
+ *  that doesn't rebuild its hash, a step `expected` misses); empty when it holds together. */
+export function chainBreaks(recording: InputRecording): string[] {
+	const breaks: string[] = [];
+	let hash = recording.initial.hash;
+	let source = recording.text ? recording.initial.source : undefined;
+	recording.steps.forEach((step, i) => {
+		if (step.before.hash !== hash) breaks.push(`step ${i}: before.hash is not the previous hash`);
+		if (source !== undefined) {
+			source = applySplice(source, step.after.splice);
+			if (hashSource(source) !== step.after.hash) {
+				breaks.push(`step ${i}: the splice does not rebuild after.hash`);
+			}
+		}
+		hash = step.after.hash;
+	});
+	if (recording.expected.length !== recording.steps.length) {
+		breaks.push(
+			`expected has ${recording.expected.length} entries for ${recording.steps.length} steps`
+		);
+	}
+	return breaks;
+}
+
+function applySplice(source: string, [from, to, insert]: Splice): string {
+	if (typeof insert !== 'string') throw new Error('a splice without text cannot be applied');
+	return source.slice(0, from) + insert + source.slice(to);
+}
+
+/** The keydown a replay presses: the step's last one that isn't a modifier or an IME's 229. */
+export function pressedKeydown(step: RecordedStep): RecordedEvent | undefined {
+	return step.events.findLast(
+		(e) => e.type === 'keydown' && !isModifierKeydown(e) && e.keyCode !== 229
+	);
+}
+
+/**
+ * The part of a step's events a faithful replay reproduces: types, input types and which ones the
+ * browser didn't mark trusted. Key-ups, pointer events and selection changes vary by driver.
+ */
+export function eventSignature(step: RecordedStep): string[] {
+	return step.events
+		.filter((e) => !IGNORED_IN_SIGNATURE.has(e.type))
+		.filter((e) => !(step.family === 'text' && e.type === 'keydown' && e.keyCode === 229))
+		.map((e) => e.type + (e.inputType ? `:${e.inputType}` : '') + (e.trusted ? '' : '!untrusted'));
+}
+
+const IGNORED_IN_SIGNATURE = new Set(['keyup', 'pointerdown', 'pointerup', 'selectionchange']);

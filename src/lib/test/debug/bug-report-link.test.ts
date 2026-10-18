@@ -18,7 +18,6 @@ function recordingOf(source: string): InputRecording {
 		env: {
 			userAgent: '',
 			uaData: null,
-			inputMethod: 'human',
 			pointer: 'fine',
 			viewport: [0, 0],
 			dpr: 1
@@ -50,14 +49,14 @@ describe('bugReport', () => {
 		expect(report.carrier).toBe('clipboard');
 		expect(report.url.length).toBeLessThanOrEqual(MAX_URL_LENGTH);
 		expect(recordingField(report.url)).toContain('on your clipboard');
-		expect(report.fenced.startsWith('```json\n{')).toBe(true);
+		expect(report.attachment.startsWith('```json\n{')).toBe(true);
 	});
 
 	it('downloads one too long for an issue body', () => {
 		const report = bugReport(recordingOf('x'.repeat(MAX_BODY_RECORDING)), 'w');
 		expect(report.carrier).toBe('download');
 		expect(recordingField(report.url)).toContain('drag it into this box');
-		expect(JSON.parse(report.fenced).format).toBe(INPUT_RECORDING_FORMAT);
+		expect(JSON.parse(report.attachment).format).toBe(INPUT_RECORDING_FORMAT);
 	});
 });
 

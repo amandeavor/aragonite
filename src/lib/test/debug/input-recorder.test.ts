@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { startInputRecording, type InputRecorderDeps } from '#lib/debug/input-recorder.js';
-import type { InputRecording } from '#lib/debug/input-recording.js';
+import { hashSource, type InputRecording } from '#lib/debug/input-recording.js';
 
 // Miss-analysis: new module; these rows pin its privacy rule, its step boundaries and its
 // listener lifetime, none of which a replay through the editor would notice breaking.
@@ -74,6 +74,32 @@ describe('a recording without text', () => {
 		// Named keys and lengths stay, so the recording still says what happened.
 		expect(json).toContain('"key":"Enter"');
 		expect(json).toContain('"text/plain":14');
+	});
+
+	// Miss-analysis: the privacy row typed only an unchorded letter, so AltGr's Ctrl+Alt and an
+	// IME keydown's physical code, both of which spell typed text, never reached it.
+	it('drops a character typed through AltGr and the physical key under an IME keydown', () => {
+		const { editable, deps } = fixture();
+		const handle = startInputRecording(deps);
+		key(editable, 'keydown', { key: 'ł', code: 'KeyL', keyCode: 76, ctrlKey: true, altKey: true });
+		key(editable, 'keydown', { key: 'Process', code: 'KeyK', keyCode: 229 });
+		const json = JSON.stringify(handle.stop());
+
+		for (const text of ['ł', 'KeyL', ':76', 'KeyK']) expect(json).not.toContain(text);
+		expect(json).toContain('"key":"Process"');
+	});
+
+	// Miss-analysis: the privacy row searched the file for the document's words, never for a hash
+	// a reader can recompute from a guessed document.
+	it('leaves no hash a guessed document and a typed character would reproduce', () => {
+		const { editable, deps, write } = fixture();
+		const handle = startInputRecording(deps);
+		key(editable, 'keydown', { key: 'q' });
+		write('Dear diaryq, the launch code is 0451\n');
+		const json = JSON.stringify(handle.stop());
+
+		expect(json).not.toContain(hashSource(SECRET_DOC));
+		expect(json).not.toContain(hashSource('Dear diaryq, the launch code is 0451\n'));
 	});
 
 	it('keeps all of it with includeText', () => {

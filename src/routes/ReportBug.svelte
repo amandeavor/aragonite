@@ -13,12 +13,11 @@
 	let phase = $state<'idle' | 'asking' | 'recording' | 'sent'>('idle');
 	let carrier = $state<'url' | 'clipboard' | 'download'>('url');
 	let copyFailed = $state(false);
-	let fenced = '';
+	let attachment = '';
 	let handle: InputRecordingHandle | null = null;
 
 	function start() {
-		handle =
-			editor?.getDiagnostics().recordInput({ includeText: true, inputMethod: 'human' }) ?? null;
+		handle = editor?.getDiagnostics().recordInput({ includeText: true }) ?? null;
 		phase = handle ? 'recording' : 'idle';
 	}
 
@@ -36,17 +35,17 @@
 		);
 		const report = bugReport(recording, where);
 		carrier = report.carrier;
-		fenced = report.fenced;
+		attachment = report.attachment;
 		copyFailed = false;
 		if (report.carrier === 'clipboard') copy();
-		if (report.carrier === 'download') download(recording, report.fenced);
+		if (report.carrier === 'download') download(recording, report.attachment);
 		window.open(report.url, '_blank', 'noopener');
 		phase = 'sent';
 	}
 
 	// A copy refused as the new tab took focus works from a click of its own on this page.
 	function copy() {
-		navigator.clipboard.writeText(fenced).then(
+		navigator.clipboard.writeText(attachment).then(
 			() => (copyFailed = false),
 			() => (copyFailed = true)
 		);
@@ -90,7 +89,8 @@
 		</p>
 		<p>
 			<strong>The recording includes everything you type and the whole document's text</strong>, and
-			an issue you submit is public. Nothing leaves this page until you submit it.
+			an issue you submit is public. The link that opens GitHub can carry the recording, but nothing
+			is filed until you submit.
 		</p>
 		<div class="report-actions">
 			<button type="button" class="report-start" onclick={start}>Start recording</button>

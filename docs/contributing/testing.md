@@ -579,9 +579,8 @@ means the driver did.
 To add one:
 
 1. Record it on a small document you made up, with text included (the panel's **include text**
-   box, or `window.__test.startInputRecording({ includeText: true, inputMethod: 'playwright-cdp' })`
-   on `/test/editor`). A user's report gets re-recorded on a cut-down document first, since the file
-   holds every character.
+   box, or `window.__test.startInputRecording({ includeText: true })` on `/test/editor`). A user's
+   report gets re-recorded on a cut-down document first, since the file holds every character.
 2. Save it as `src/lib/e2e/recordings/<what-it-does>.json` and run
    `npx playwright test --project=e2e-recordings -g <what-it-does>`.
 3. For a bug, change the broken step's `expected` entry (and every one after it) to what should
@@ -597,13 +596,12 @@ with an `engines` list. `src/lib/e2e/lint/recordings.test.ts` (G4.213) fails on 
 neither replayed nor marked, or whose steps don't chain.
 
 When the editor changes what a recorded step should leave on purpose, re-bless it. That rewrites
-`expected` alone, from the replay, so the file's diff is the review:
+`expected` alone, from the replay, so the file's diff is the review (same command in bash and
+PowerShell):
 
 ```sh
 node scripts/run-with-env.mjs RECORDINGS_BLESS=1 -- npx playwright test --project=e2e-recordings -g <name>
 ```
-
-That works in bash and PowerShell alike.
 
 ### Patterns and gotchas
 

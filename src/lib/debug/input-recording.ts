@@ -1,8 +1,8 @@
 /**
  * The input recording format and the pure work over it: the step classifier, the source hash,
- * the splices that chain one step's bytes to the next, the reader and the comparison a replay
- * runs. No DOM and no Svelte, so the e2e replayer can import it in Node. Field reference:
- * `docs/guide/consumer-guide.md` § Recording input.
+ * the splices that chain one step's bytes to the next, and the reader. No DOM and no Svelte, so
+ * the e2e replayer can import it in Node. Field reference: `docs/guide/consumer-guide.md`
+ * § Recording input.
  */
 
 import type { EditorSelection } from '../selection/primitives';
@@ -42,7 +42,7 @@ export interface RecordedEvent {
 	/** Milliseconds since the previous event, or since the recording started. */
 	dt: number;
 	trusted: boolean;
-	/** Named keys always; a printable key only with text, or under Ctrl or Cmd. */
+	/** Named keys always; a printable key, and any `code`, only with text or under Ctrl or Cmd. */
 	key?: string;
 	code?: string;
 	keyCode?: number;
@@ -75,8 +75,8 @@ export interface ExpectedState {
 export interface RecordingEnvironment {
 	userAgent: string;
 	uaData: { platform: string; mobile: boolean; brands: string[] } | null;
-	/** Where the input came from, as the caller labelled it (`playwright-cdp`, `gboard`, ...). */
-	inputMethod: string;
+	/** Where the input came from (`playwright-cdp`, `gboard`, ...), if whoever saved it says. */
+	inputMethod?: string;
 	pointer: 'fine' | 'coarse' | 'none';
 	viewport: [number, number];
 	dpr: number;
@@ -88,6 +88,7 @@ export interface InputRecording {
 	/** Whether typed characters, key codes, event data, clipboard and DOM text were kept. */
 	text: boolean;
 	env: RecordingEnvironment;
+	/** Every hash is salted per recording without text, so it compares only within the file. */
 	initial: { source?: string; hash: string; selection: EditorSelection | null };
 	/** What happened. Never rewritten once recorded. */
 	steps: RecordedStep[];
@@ -120,13 +121,6 @@ const MODIFIER_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'C
 
 export function isModifierKeydown(event: RecordedEvent): boolean {
 	return event.type === 'keydown' && event.key !== undefined && MODIFIER_KEYS.has(event.key);
-}
-
-/** The keydown a replay presses: the step's last one that isn't a modifier or an IME's 229. */
-export function pressedKeydown(step: RecordedStep): RecordedEvent | undefined {
-	return step.events.findLast(
-		(e) => e.type === 'keydown' && !isModifierKeydown(e) && e.keyCode !== 229
-	);
 }
 
 export function classifyStep(opener: string, events: readonly RecordedEvent[]): StepFamily {
@@ -165,7 +159,7 @@ export function hashSource(source: string): string {
 }
 
 /** The one replacement that turns `before` into `after`: common prefix and suffix trimmed. */
-export function spliceBetween(before: string, after: string, includeText: boolean): Splice {
+export function spliceBetween(before: string, after: string): [number, number, string] {
 	let start = 0;
 	const limit = Math.min(before.length, after.length);
 	while (start < limit && before.charCodeAt(start) === after.charCodeAt(start)) start++;
@@ -176,71 +170,5 @@ export function spliceBetween(before: string, after: string, includeText: boolea
 	) {
 		tail++;
 	}
-	const inserted = after.slice(start, after.length - tail);
-	return [start, before.length - tail, includeText ? inserted : inserted.length];
+	return [start, before.length - tail, after.slice(start, after.length - tail)];
 }
-
-export function applySplice(source: string, [from, to, insert]: Splice): string {
-	if (typeof insert !== 'string') throw new Error('a splice without text cannot be applied');
-	return source.slice(0, from) + insert + source.slice(to);
-}
-
-/** Every way the recording fails to chain (a `before` that isn't the previous `after`, a splice
- *  that doesn't rebuild its hash, a step `expected` misses); empty when it holds together. */
-export function chainBreaks(recording: InputRecording): string[] {
-	const breaks: string[] = [];
-	let hash = recording.initial.hash;
-	let source = recording.text ? recording.initial.source : undefined;
-	recording.steps.forEach((step, i) => {
-		if (step.before.hash !== hash) breaks.push(`step ${i}: before.hash is not the previous hash`);
-		if (source !== undefined) {
-			source = applySplice(source, step.after.splice);
-			if (hashSource(source) !== step.after.hash) {
-				breaks.push(`step ${i}: the splice does not rebuild after.hash`);
-			}
-		}
-		hash = step.after.hash;
-	});
-	if (recording.expected.length !== recording.steps.length) {
-		breaks.push(
-			`expected has ${recording.expected.length} entries for ${recording.steps.length} steps`
-		);
-	}
-	return breaks;
-}
-
-// ── Comparing a replay ──────────────────────────────────────────────────────
-
-export function sameSelection(a: EditorSelection | null, b: EditorSelection | null): boolean {
-	return JSON.stringify(selectionKey(a)) === JSON.stringify(selectionKey(b));
-}
-
-function selectionKey(sel: EditorSelection | null) {
-	if (!sel) return null;
-	const point = (p: EditorSelection['anchor']) => [p.path, p.offset, !!p.cellCoordinate];
-	return [point(sel.anchor), point(sel.focus)];
-}
-
-/** Whether the replayed bytes and selection are what the step should leave. */
-export function matchesExpected(
-	expected: ExpectedState,
-	actual: { source: string; selection: EditorSelection | null }
-): boolean {
-	return (
-		hashSource(actual.source) === expected.hash &&
-		sameSelection(expected.selection, actual.selection)
-	);
-}
-
-/**
- * The part of a step's events a faithful replay reproduces: types, input types and which ones the
- * browser didn't mark trusted. Key-ups, pointer events and selection changes vary by driver.
- */
-export function eventSignature(step: RecordedStep): string[] {
-	return step.events
-		.filter((e) => !IGNORED_IN_SIGNATURE.has(e.type))
-		.filter((e) => !(step.family === 'text' && e.type === 'keydown' && e.keyCode === 229))
-		.map((e) => e.type + (e.inputType ? `:${e.inputType}` : '') + (e.trusted ? '' : '!untrusted'));
-}
-
-const IGNORED_IN_SIGNATURE = new Set(['keyup', 'pointerdown', 'pointerup', 'selectionchange']);

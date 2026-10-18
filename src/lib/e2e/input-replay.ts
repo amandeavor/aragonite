@@ -6,7 +6,8 @@
 import type { Page } from '@playwright/test';
 import type { EditorPage } from './editor-page';
 import { attachIme } from './simulation/ime';
-import { pressedKeydown, type ExpectedState, type RecordedStep } from '../debug/input-recording';
+import type { ExpectedState, RecordedStep } from '../debug/input-recording';
+import { pressedKeydown } from './recording-fixtures';
 import type { EditorSelection } from '../selection/primitives';
 
 export async function replayStep(editor: EditorPage, step: RecordedStep): Promise<void> {

@@ -2,9 +2,8 @@ import { writeFileSync } from 'node:fs';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { reachesExpected, replayStep } from '../../input-replay';
-import { enginesOf, recordingFixtures } from '../../recording-fixtures';
+import { enginesOf, eventSignature, recordingFixtures } from '../../recording-fixtures';
 import {
-	eventSignature,
 	spliceBetween,
 	type ExpectedState,
 	type InputRecording
@@ -38,7 +37,7 @@ for (const { name, file, recording } of recordingFixtures()) {
 			if (!arrived && !BLESS) {
 				// The first divergence fails: every later step would only cascade from it.
 				const recorded = JSON.stringify(step.after.splice);
-				const replayed = JSON.stringify(spliceBetween(source, now.source, true));
+				const replayed = JSON.stringify(spliceBetween(source, now.source));
 				expect(
 					{ hash: now.hash, selection: now.selection },
 					`step ${i} (${step.family}) left other bytes or another selection than expected; recorded splice ${recorded}, replay ${replayed}`

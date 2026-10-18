@@ -38,7 +38,7 @@ export function createPanelRecorder(getEditor: () => EditorInstance | undefined)
 		start(includeText: boolean) {
 			const diagnostics = getEditor()?.getDiagnostics();
 			if (!diagnostics) return;
-			handle = diagnostics.recordInput({ includeText, inputMethod: 'human' });
+			handle = diagnostics.recordInput({ includeText });
 			last = null;
 			status = '';
 		},

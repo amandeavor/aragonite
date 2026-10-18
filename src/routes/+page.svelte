@@ -220,7 +220,7 @@
 		border: 1px solid var(--color-border, #3e3e3b);
 		border-radius: 8px;
 	}
-	/* Reached into children, so the report button its own component draws looks like the rest. */
+	/* Global, so the report button `ReportBug.svelte` draws matches the other header toggles. */
 	.showcase-mode,
 	.showcase-header :global(.showcase-toggle) {
 		font-family: inherit;
