@@ -44,17 +44,16 @@ export function bumpOrderedMarker(marker: string): string {
 	return marker.replace(/^(\d+)/, (_, n) => String(Number(n) + 1));
 }
 
-/**
- * Renumber an ordered list's items from `fromIndex`, keeping marker suffixes. Each item's metadata
- * and raw is written, so each is copied out of the undo snapshot first.
- */
+/** Renumber an ordered list's items from `fromIndex` on. The first item keeps its number, the
+ *  list's start; an edit that moves, removes or creates it calls `renumberOrderedListFrom`. */
 export function renumberOrderedList(list: CstNode, fromIndex: number, sharing: SharingState): void {
 	if (!list.children) return;
 	if (!metadataOf(list, 'list')?.ordered) return;
-	for (let j = fromIndex; j < list.children.length; j++) {
+	// Each item's metadata and raw is written, so `ensureUnsharedChild` copies it out of the undo
+	// snapshot first.
+	for (let j = Math.max(fromIndex, 1); j < list.children.length; j++) {
 		const item = ensureUnsharedChild(list, j, sharing);
-		const prevNum =
-			j > 0 ? parseInt(metadataOf(list.children[j - 1], 'listItem').marker, 10) || 0 : 0;
+		const prevNum = parseInt(metadataOf(list.children[j - 1], 'listItem').marker, 10) || 0;
 		const meta = metadataOf(item, 'listItem');
 		const suffix = meta.marker.replace(/^\d+/, '');
 		meta.marker = String(prevNum + 1) + suffix;
@@ -62,13 +61,14 @@ export function renumberOrderedList(list: CstNode, fromIndex: number, sharing: S
 	}
 }
 
-/** Renumber an ordered list starting at `base`, keeping marker suffixes. */
-export function renumberOrderedListFrom(list: CstNode, base: number, sharing: SharingState): void {
+/** Renumber a whole ordered list from `start`, keeping marker suffixes. A caller reads `start`
+ *  before its edit when that edit moves or removes the first item. */
+export function renumberOrderedListFrom(list: CstNode, start: number, sharing: SharingState): void {
 	if (!metadataOf(list, 'list')?.ordered) return;
 	if (!list.children || list.children.length === 0) return;
 	const first = ensureUnsharedChild(list, 0, sharing);
 	const meta = metadataOf(first, 'listItem');
-	meta.marker = String(base) + (meta.marker.replace(/^\d+/, '') || '. ');
+	meta.marker = String(start) + (meta.marker.replace(/^\d+/, '') || '. ');
 	rebuildListItemRaw(first);
 	renumberOrderedList(list, 1, sharing);
 }

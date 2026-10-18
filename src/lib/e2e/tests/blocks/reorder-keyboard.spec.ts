@@ -51,6 +51,18 @@ test.describe('keyboard reorder', () => {
 		});
 	}
 
+	for (const { item, expected } of [
+		{ item: 2, expected: '8. a\n9. c\n10. b\n' },
+		{ item: 1, expected: '8. b\n9. a\n10. c\n' }
+	]) {
+		test(`Alt+ArrowUp on item ${item} keeps a list that starts at 8 starting at 8`, async () => {
+			await editor.loadContent('8. a\n9. b\n10. c\n');
+			await editor.focusBlockAtPath([0, item, 0], 1);
+			await editor.page.keyboard.press('Alt+ArrowUp');
+			await editor.bridge.waitForSourceEquals(expected);
+		});
+	}
+
 	test('Alt+ArrowUp moves a blockquote child up; single undo restores', async () => {
 		await editor.loadContent('> a\n>\n> b\n');
 		await editor.page.locator('[contenteditable="true"]', { hasText: 'b' }).click();

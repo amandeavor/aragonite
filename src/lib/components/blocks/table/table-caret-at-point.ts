@@ -1,12 +1,13 @@
 /**
  * Table's `caretTargetAtPoint`: the cell a point puts a caret in, as a `[rowIdx, colIdx]` path
- * plus an offset inside the cell. Nearest, not exact, which is the difference from
- * `tableDragHitTest` beside it. A point clamped into the table's box can sit in a gutter, a
- * padding gap or a windowing spacer and must still land a caret, where an exact hit refuses.
+ * plus the cell's offset nearest the point, so a point left of a cell lands before its text.
+ * Nearest, not exact, which is the difference from `tableDragHitTest` beside it: a point in a
+ * gutter, a padding gap or a windowing spacer must still land a caret.
  */
 
 import { CURSOR_END } from '../../../block-component';
 import type { CaretTarget } from '../../../schema/block-kind-descriptor';
+import { caretOffsetAtPoint } from '../../../caret/point-offset';
 import { mountedRowEls, rowCellEls } from './cell-pointer';
 
 export function tableCaretAtPoint(
@@ -17,21 +18,24 @@ export function tableCaretAtPoint(
 	const tableEl = blockEl.querySelector(':scope > [role="table"]') as HTMLElement | null;
 	if (!tableEl) return null;
 
-	let nearest: number[] | null = null;
+	let nearest: { path: number[]; cell: HTMLElement } | null = null;
 	let smallestDistance = Infinity;
 	for (const rowEl of mountedRowEls(tableEl)) {
 		// The absolute row index: under row windowing the first mounted row is not row 0.
 		const rowIdx = Number(rowEl.getAttribute('data-table-row-idx'));
 		if (Number.isNaN(rowIdx)) continue;
-		rowCellEls(rowEl).forEach((cell, colIdx) => {
+		for (const [colIdx, cell] of rowCellEls(rowEl).entries()) {
 			const distance = squaredDistanceToBox(cell.getBoundingClientRect(), clientX, clientY);
 			if (distance < smallestDistance) {
 				smallestDistance = distance;
-				nearest = [rowIdx, colIdx];
+				nearest = { path: [rowIdx, colIdx], cell };
 			}
-		});
+		}
 	}
-	return nearest === null ? null : { path: nearest, offset: CURSOR_END };
+	if (nearest === null) return null;
+	const { path, cell } = nearest;
+	// An empty cell holds no text to measure, and its end is its only offset.
+	return { path, offset: caretOffsetAtPoint(cell, clientX, clientY) ?? CURSOR_END };
 }
 
 // Squared: only the ordering is read, and ties keep the first (lowest row, then column).
