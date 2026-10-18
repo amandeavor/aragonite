@@ -10,7 +10,7 @@ import { reorderChildrenWithTrivia } from '../tree-operations/reorder';
 import type { SettledEdit } from '../tree-operations/settle';
 import { resolveReorderUnit, type ReorderUnit } from '../tree-operations/reorder-unit';
 import { blockNodeAt, documentBody, nodeAt } from '../tree-operations/node-primitives';
-import { renumberOrderedList } from '../tree-operations/list/ordered-markers';
+import { orderedBaseOf, renumberOrderedListFrom } from '../tree-operations/list/ordered-markers';
 import { expectStateForNode } from '../block-lists/state-registry';
 import { readCurrentSelection } from '../selection/native-bridge';
 import { extendDocPath, docPathFrom } from '../caret/coordinate-spaces';
@@ -84,6 +84,8 @@ export function createReorderAction(
 				eventPath: docPathFrom(unit.parentPath)
 			},
 			mutate: (scope) => {
+				// Read before the move, which can take the first item and its number elsewhere.
+				const start = orderedBaseOf(scope.node.children?.[0]);
 				const moved = reorderChildrenWithTrivia(
 					scope.body,
 					unit.index,
@@ -96,7 +98,7 @@ export function createReorderAction(
 				if (unit.renumberMarkers) {
 					// Ordered markers depend on position, so this copies each item whose marker it
 					// rewrites; the commit's rebuild then concatenates the fresh raws.
-					renumberOrderedList(scope.node, 0, scope.sharing);
+					renumberOrderedListFrom(scope.node, start, scope.sharing);
 				}
 				return moved.change;
 			},
