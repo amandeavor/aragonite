@@ -197,7 +197,7 @@ export function liftNestedItem(
 					);
 					promotedAt -= outerCount - outerScope.children.length;
 
-					if (nestedScope.children.length > 0) renumberOrderedList(nestedScope.node, 0, sharing);
+					if (nestedScope.children.length > 0) renumberOrderedList(nestedScope.node, 1, sharing);
 					renumberOrderedList(outerScope.node, promotedAt, sharing);
 
 					return ledgers.map((ledger) => {

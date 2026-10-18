@@ -3,6 +3,7 @@ import { parse } from '#lib/core/parser.js';
 import {
 	orderedBaseOf,
 	readOrderedSuffix,
+	renumberOrderedList,
 	renumberOrderedListFrom
 } from '#lib/tree-operations/list/ordered-markers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
@@ -46,4 +47,12 @@ describe('a renumber rewrites the number and only the lines the new width leaves
 		renumberOrderedListFrom(list, base, createSharingState());
 		expect(list.children![0].raw).toBe(after);
 	});
+});
+
+// Miss-analysis: every caller passed an index past 0 or a list starting at 1, so a renumber that
+// reset item 0 to 1 went unasked.
+it('a renumber from index 0 keeps the first item’s number as the list’s start', () => {
+	const list = parse('8. a\n3. b\n').children[0];
+	renumberOrderedList(list, 0, createSharingState());
+	expect(list.children!.map((item) => item.raw)).toEqual(['8. a\n', '9. b\n']);
 });
