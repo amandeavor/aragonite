@@ -214,6 +214,9 @@
 		top: 0;
 		right: 0;
 		height: 100vh;
+		/* A phone is narrower than the panel's minimum width, and a clipped panel hides its buttons. */
+		max-width: 100vw;
+		box-sizing: border-box;
 		background: var(--color-bg-elevated, #2a2c33);
 		color: var(--color-text-secondary, #d6d9e0);
 		border-left: 1px solid var(--color-border, #3d4047);
