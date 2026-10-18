@@ -88,7 +88,7 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		file: 'components/link-card/LinkCard.svelte',
 		chords: ['Shift+Tab'],
 		keys: ['Enter', 'Tab'],
-		note: "Backwards step of the open card's focus trap. The chord that opens the card is swallowed there too, resolved through the keymap like everywhere else. Escape is the menu presence’s, which also closes a card the document still holds the caret for."
+		note: "Backwards step of the open card's focus trap. The chord that opens the card is swallowed there too, resolved through the keymap like everywhere else. Escape is the menu presence's, which also closes a card the document still holds the caret for."
 	},
 	{
 		file: 'components/menu/BlockMenu.svelte',
