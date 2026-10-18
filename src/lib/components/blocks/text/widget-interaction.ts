@@ -735,11 +735,10 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		else if (side) deps.pinChipSide(side === 'chip-inside' ? 'inside' : 'outside');
 		const seat = nearestWidgetEdgeSeat(measuredWidgets(el), clickX, clickY);
 		if (seat === null) return;
-		// A click beside a widget leaves a visible caret alone, unless a widget separates it from the
-		// edge clicked (Firefox puts a click past a run in the text before it); a click on one can't.
-		if (!seat.inside && caretIsInTextContent(el, live) && !widgetSeparates(el, live, seat.offset)) {
-			return;
-		}
+		// A click beside a widget leaves a visible caret alone, unless a widget on the click's line
+		// separates the two (Firefox puts a click past a run in the text before it); one on it can't.
+		const separated = seat.onRow && widgetSeparates(el, live, seat.offset);
+		if (!seat.inside && caretIsInTextContent(el, live) && !separated) return;
 		el.focus();
 		deps.cursor.setRaw(asRawOffset(seat.offset), { clamp: 'reachable' });
 		// `setRaw` may have landed in a trailing text node, where the browser draws a caret.

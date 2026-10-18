@@ -63,4 +63,13 @@ describe('a click beside a run of widgets', () => {
 		b.interaction.snapClickToWidgetEdge(84, 5);
 		expect(b.snapped).toEqual([]);
 	});
+
+	// Miss-analysis: both rows clicked on the run's own line, so none saw a click on the line below
+	// reach back up to the run.
+	it('leaves a text caret clicked on a line the run isn’t on', () => {
+		const b = mountRun();
+		caretInText(b.el.firstChild!, 0);
+		b.interaction.snapClickToWidgetEdge(84, 25);
+		expect(b.snapped).toEqual([]);
+	});
 });
