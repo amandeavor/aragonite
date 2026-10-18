@@ -2,8 +2,8 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { textRunCenter, textRunStart } from '../../text-runs';
-
-type Point = { x: number; y: number };
+import { multiClick } from '../../multi-click';
+import { dragSelection } from '../../selection-drag';
 
 // Erasing a setext heading's title takes its underline with it: an underline under nothing would
 // show up as a block of its own (`requirements/text-editing/erase-setext-title.md`).
@@ -90,7 +90,7 @@ const ERASES: {
 		name: 'the whole title dragged to the start of the next line',
 		erase: async (_ep, page) => {
 			const title = await textRunCenter(page, 'Plan');
-			await page.mouse.dblclick(title.x, title.y);
+			await multiClick(page, title, 2);
 			await dragSelection(page, title, await textRunStart(page, 'next'));
 		},
 		source: '\nPlannext\n',
@@ -99,16 +99,6 @@ const ERASES: {
 		caretOffset: 4
 	}
 ];
-
-/** Drags the selected text to `to`: the browser's own selection drag. */
-async function dragSelection(page: Page, from: Point, to: Point): Promise<void> {
-	await page.mouse.move(from.x, from.y);
-	await page.mouse.down();
-	await page.mouse.move(from.x + 4, from.y, { steps: 2 });
-	await page.mouse.move(to.x, to.y, { steps: 12 });
-	await page.mouse.move(to.x + 1, to.y, { steps: 2 });
-	await page.mouse.up();
-}
 
 for (const mode of ['source', 'live'] as const) {
 	test.describe(`${mode} mode: erasing a setext title`, () => {

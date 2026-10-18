@@ -4,10 +4,10 @@ import {
 	editorSelection,
 	gutterLeftOf,
 	markerCenterOf,
-	multiClickDrag,
 	nativeSelectionText,
 	pastLineEnd
 } from './multi-click-helpers';
+import { multiClick, multiClickDrag, multiClickHold } from '../../multi-click';
 import { textRunCenter } from '../../text-runs';
 import { nextRow } from '../presentation/helpers';
 
@@ -29,7 +29,7 @@ test.describe('multi-click: the block inline syntax handler and drags', () => {
 		await test.step('a triple-click selects the paragraph it lands in', async () => {
 			await nextRow(editor, THREE);
 			const at = await textRunCenter(page, 'para');
-			await page.mouse.click(at.x, at.y, { clickCount: 3 });
+			await multiClick(page, at, 3);
 			await expect.poll(() => nativeSelectionText(page)).toBe('second para here');
 		});
 
@@ -38,7 +38,7 @@ test.describe('multi-click: the block inline syntax handler and drags', () => {
 		await test.step('a triple-click past the end of a line still selects the paragraph', async () => {
 			await nextRow(editor, THREE);
 			const at = await pastLineEnd(page, 'gamma');
-			await page.mouse.click(at.x, at.y, { clickCount: 3 });
+			await multiClick(page, at, 3);
 			await expect.poll(() => nativeSelectionText(page)).toBe('alpha beta gamma');
 			await page.waitForTimeout(150);
 			await expect.poll(() => nativeSelectionText(page)).toBe('alpha beta gamma');
@@ -47,14 +47,14 @@ test.describe('multi-click: the block inline syntax handler and drags', () => {
 		await test.step("a triple-click in a quote's gutter selects the quoted paragraph", async () => {
 			await nextRow(editor, 'alpha beta gamma\n\n> quoted words here\n');
 			const at = await gutterLeftOf(page, 'quoted');
-			await page.mouse.click(at.x, at.y, { clickCount: 3 });
+			await multiClick(page, at, 3);
 			await expect.poll(() => nativeSelectionText(page)).toBe('quoted words here');
 		});
 
 		await test.step("a double-click on a list item's marker takes the word beside it", async () => {
 			await nextRow(editor, '- item one here\n- item two\n');
 			const at = await markerCenterOf(page, 'item one');
-			await page.mouse.dblclick(at.x, at.y);
+			await multiClick(page, at, 2);
 			await expect.poll(() => nativeSelectionText(page)).toBe('item');
 		});
 	});
@@ -156,15 +156,12 @@ test.describe('multi-click: the block inline syntax handler and drags', () => {
 		const beta = await textRunCenter(page, 'beta');
 		const para = await textRunCenter(page, 'para');
 		const gamma = await textRunCenter(page, 'gamma');
-		await page.mouse.move(beta.x, beta.y);
-		await page.mouse.down();
-		await page.mouse.up();
-		await page.mouse.down({ clickCount: 2 });
+		const held = await multiClickHold(page, beta, 2);
 		await page.mouse.move(para.x, para.y, { steps: 6 });
 		await expect(editor.editorContainer).toHaveAttribute('data-cross-block');
 		await page.mouse.move(gamma.x, gamma.y, { steps: 6 });
 		await expect(editor.editorContainer).not.toHaveAttribute('data-cross-block');
-		await page.mouse.up({ clickCount: 2 });
+		await held.release();
 		await expect.poll(() => nativeSelectionText(page)).toBe('beta gamma');
 	});
 });

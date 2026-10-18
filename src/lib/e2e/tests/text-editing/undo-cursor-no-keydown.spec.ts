@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { attachIme } from '../../simulation/ime';
+import { insertText } from '../../insert-text';
 
 // Text that arrives with no keydown before it (an IME commit, dictation, a soft keyboard):
 // undoing it puts the caret back where the text went in, as it does for typed keys.
@@ -26,7 +27,7 @@ test.describe('undo cursor anchoring without a keydown', () => {
 		await editor.loadContent('abc tail\n');
 		await editor.focusBlock(0, 3);
 		// `insertText` fires beforeinput and input with no keydown, which is the point here.
-		await page.keyboard.insertText('xyz');
+		await insertText(page, 'xyz');
 		await editor.bridge.waitForSourceContains('abcxyz tail');
 		await editor.waitForUndoBatchFlush();
 		await editor.undo();
@@ -54,7 +55,7 @@ test.describe('undo cursor anchoring without a keydown', () => {
 		await page.locator('.table-cell').first().click();
 		await page.keyboard.press('Home');
 		for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
-		await page.keyboard.insertText('xyz');
+		await insertText(page, 'xyz');
 		await editor.bridge.waitForSourceContains('abcxyz tail');
 		await editor.waitForUndoBatchFlush();
 		await editor.undo();

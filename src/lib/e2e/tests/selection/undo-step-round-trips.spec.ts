@@ -4,6 +4,8 @@ import { EditorPage } from '../../editor-page';
 import { PluginsPage } from '../plugins/helpers';
 import { textRunCenter, textRunStart } from '../../text-runs';
 import { findInput, openReplace, replaceInput, typeQuery } from '../search/helpers';
+import { multiClick } from '../../multi-click';
+import { dragSelection } from '../../selection-drag';
 
 // Each gesture that takes several commits: one Ctrl+Z back to the exact bytes and selection from
 // before it, one Ctrl+Shift+Z forward to the exact bytes and selection after it.
@@ -94,16 +96,9 @@ test.describe('undo steps: one gesture, one round trip', () => {
 	test('a word dropped into another paragraph', async ({ page }) => {
 		await editor.loadContent('alpha beta gamma\n\nsecond para here\n');
 		const at = await textRunCenter(page, 'beta');
-		await page.mouse.dblclick(at.x, at.y);
+		await multiClick(page, at, 2);
 		const to = await textRunStart(page, 'second para here');
-		await roundTrip(editor, async () => {
-			await page.mouse.move(at.x, at.y);
-			await page.mouse.down();
-			await page.mouse.move(at.x + 4, at.y, { steps: 2 });
-			await page.mouse.move(to.x, to.y, { steps: 12 });
-			await page.mouse.move(to.x + 1, to.y, { steps: 2 });
-			await page.mouse.up();
-		});
+		await roundTrip(editor, () => dragSelection(page, at, to));
 	});
 
 	test('replace-all', async ({ page }) => {

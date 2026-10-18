@@ -1,9 +1,9 @@
 /**
- * An e2e spec drives the browser through the shared helpers, each of which waits for what a raw
- * call skips: composition through the IME driver (G4.49), the clipboard through its helper
- * (G4.212), navigation through `gotoReady` and `reloadReady`, and a mode switch through a helper
- * that waits for the mode (G4.133). Runs with the other e2e lints, outside
- * `test:editor:invariants`. Probe text is spelled in pieces, since this file is scanned too.
+ * An e2e spec drives the browser through the shared helpers, each of which waits for or supplies
+ * what a raw call skips: composition through the IME driver (G4.49), the clipboard through its
+ * helper (G4.212), navigation through `gotoReady` and `reloadReady`, a mode switch through a helper
+ * that waits for the mode (G4.133), and click runs and keyless text through their Firefox helpers.
+ * Runs with the other e2e lints; probe text is spelled in pieces, since this file is scanned too.
  */
 import { it, expect } from 'vitest';
 import { collectFiles, readSource } from '../../test/invariants/lint/scan-source';
@@ -16,6 +16,8 @@ const CLIPBOARD_HELPER = 'src/lib/e2e/clipboard-arm.ts';
 const NAVIGATION_HELPER = 'src/lib/e2e/goto-ready.ts';
 const BRIDGE_HOME = 'src/lib/e2e/editor-page.ts';
 const CONTROL_HOME = 'src/lib/e2e/mode-switch.ts';
+const MULTI_CLICK_HELPER = 'src/lib/e2e/multi-click.ts';
+const INSERT_TEXT_HELPER = 'src/lib/e2e/insert-text.ts';
 
 const COMPOSITION = 'Composition';
 const COMPOSING = 'Composing';
@@ -25,6 +27,9 @@ const pasteChord = (modifiers: string, key = 'v') => press(`${modifiers}+${key}`
 const nav = (receiver: string, call: string) => `await ${receiver}.${call}`;
 const bridge = '(window as any).__' + 'test';
 const setter = 'setPresentation' + 'Mode';
+const dbl = 'dbl' + 'click';
+const count = 'click' + 'Count';
+const insert = 'insert' + 'Text';
 
 // No page object here has a reload or history method, and `EditorPage.goto` takes a query, not a route.
 const RAW_GOTO = /(?<![\w$])page\s*\.\s*goto\s*\(|\.\s*goto\s*\(\s*['"`](?:\/|https?:)/;
@@ -126,6 +131,35 @@ describeManifests(
 			reason: `reload with reloadReady (${NAVIGATION_HELPER}): a raw reload can act before hydration`,
 			hits: [nav('editor.page', 'reload()'), nav('page', 'goBack()'), nav('second', 'reload()')],
 			misses: ['await reloadReady(page)']
+		},
+		// Miss-analysis: specs made click runs with the driver's click count, which Firefox over BiDi
+		// drops, unseen until real Firefox ran them. A count spelled through a variable still gets past.
+		{
+			id: 'every e2e double or triple click rides the shared multi-click helper',
+			matches: /\.\s*dblclick\s*\(|\bclickCount\b/,
+			declared: { [MULTI_CLICK_HELPER]: "the driver's click count, or on Firefox the written one" },
+			reason: `click a run with multiClick (${MULTI_CLICK_HELPER}): Firefox over BiDi drops the click count`,
+			hits: [
+				`await page.mouse.${dbl}(at.x, at.y);`,
+				`await widget.${dbl}();`,
+				`await page.mouse.click(x, y, { ${count}: 3 });`,
+				`await page.mouse.down({ ${count} });`
+			],
+			misses: ['await multiClick(page, at, 2);', 'await page.mouse.click(x, y);', `on${dbl}={open}`]
+		},
+		// Miss-analysis: Playwright's Firefox insert fires a bare input no browser sends, and the
+		// specs that typed through it went red only on real Firefox.
+		{
+			id: 'every e2e keyless text insert rides the shared insert helper',
+			matches: /\.\s*keyboard\s*\.\s*insertText\s*\(/,
+			declared: { [INSERT_TEXT_HELPER]: 'the driver insert, or on Firefox the beforeinput first' },
+			reason: `insert keyless text with insertText (${INSERT_TEXT_HELPER}): Firefox over BiDi fakes it with a bare input event`,
+			hits: [
+				`await page.keyboard.${insert}('x');`,
+				`(e) => e.page.keyboard
+	.${insert}(ch)`
+			],
+			misses: [`await ${insert}(page, 'x');`, "await page.keyboard.type('x');"]
 		},
 		// Miss-analysis: two selection specs stayed green with the harness dropping live mode to
 		// source. An alias of the bridge held across statements still gets past the matcher.

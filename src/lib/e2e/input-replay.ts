@@ -9,6 +9,7 @@ import { attachIme } from './simulation/ime';
 import type { ExpectedState, RecordedStep } from '../debug/input-recording';
 import { pressedKeydown } from './recording-fixtures';
 import type { EditorSelection } from '../selection/primitives';
+import { insertText } from './insert-text';
 
 export async function replayStep(editor: EditorPage, step: RecordedStep): Promise<void> {
 	const page = editor.page;
@@ -21,7 +22,7 @@ export async function replayStep(editor: EditorPage, step: RecordedStep): Promis
 			return;
 		case 'text':
 			for (const e of step.events.filter((e) => e.type === 'beforeinput')) {
-				await page.keyboard.insertText(String(e.data ?? ''));
+				await insertText(page, String(e.data ?? ''));
 			}
 			return;
 		case 'paste': {

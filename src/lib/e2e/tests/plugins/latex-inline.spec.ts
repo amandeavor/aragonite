@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { PluginsPage, clickWidgetEnd, revealWidget, roundTripStable } from './helpers';
 import { textRunCenter, textRunRect } from '../../text-runs';
 import { attachIme } from '../../simulation/ime';
+import { multiClick, multiClickElement } from '../../multi-click';
 
 /**
  * Inline `$…$` math: select it, its editable source opens, closing it re-renders it (design §
@@ -65,10 +66,7 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 	// The rule belongs to the one place sources open, not to the footnote widget: the first click
 	// opens it, and the browser's word rule would take `$` from the source as a word of its own.
 	test('a double-click on the rendered math selects the whole revealed token', async ({ page }) => {
-		const box = await editor.mathWidget.boundingBox();
-		if (!box) throw new Error('math widget has no bounding box');
-
-		await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+		await multiClickElement(editor.mathWidget, 2);
 		await editor.waitForRenderFlush();
 
 		await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('$x^2$');
@@ -235,7 +233,7 @@ test.describe('plugin inline math: a double-click inside an open reveal', () => 
 			await editor.revealByClick();
 
 			const word = await textRunCenter(page, 'beta', { path: [0] });
-			await page.mouse.dblclick(word.x, word.y);
+			await multiClick(page, word, 2);
 			await editor.waitForRenderFlush();
 
 			// Trimmed: the browser's word rule takes the trailing space, and what this checks is

@@ -13,6 +13,7 @@ import { gotoReady } from './goto-ready';
 import { pointAtRaw } from './text-runs';
 import { expectPresentationMode } from './mode-switch';
 import type { PresentationMode } from '../presentation-mode';
+import { insertText } from './insert-text';
 
 // Re-exported so a spec's in-`evaluate` block-content lookup uses the one selector definition
 // instead of inlining `:not(.selection-overlay)`.
@@ -185,7 +186,7 @@ export class EditorPage {
 	}
 
 	async typeText(text: string) {
-		await this.page.keyboard.insertText(text);
+		await insertText(this.page, text);
 	}
 
 	/** Each character fires its own keydown/input/keyup cycle, unlike `typeText`. */

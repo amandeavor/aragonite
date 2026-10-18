@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { insertText } from '../../insert-text';
 
 test.describe('inline editing: backslash escapes', () => {
 	let editor: EditorPage;
@@ -89,7 +90,7 @@ test.describe('inline editing: backslash escapes', () => {
 	test('prepending backslash to existing *foo* collapses emphasis', async () => {
 		await editor.loadContent('*foo*\n');
 		await editor.focusBlockAtPath([0], 0);
-		await editor.page.keyboard.insertText('\\');
+		await insertText(editor.page, '\\');
 		await editor.bridge.waitForSourceContains('\\*foo*');
 		const block = editor.getBlock(0);
 		expect(await block.locator('em').count()).toBe(0);

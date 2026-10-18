@@ -10,6 +10,7 @@ import {
 	stepTo
 } from './helpers';
 import { textOutsideMarkers } from '../../text-runs';
+import { insertText } from '../../insert-text';
 
 // What Enter inside a construct writes in live mode: a closed pair above and a reopened one below.
 // The source is the reference, because a hidden delimiter and an absent one look identical on
@@ -59,7 +60,7 @@ test('live mode: Enter inside a construct closes and reopens it', async ({ page 
 		await ep.bridge.waitForSourceContains('**ld** text');
 		await expect.poll(() => focusOffset(ep)).toBe(0);
 
-		await page.keyboard.insertText('X');
+		await insertText(page, 'X');
 		await ep.bridge.waitForSourceContains('X**ld** text');
 		await expect(ep.getBlock(BOLD + 1).locator('strong')).toHaveText('ld', {
 			useInnerText: true

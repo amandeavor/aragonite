@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { PluginsPage, capturedErrors } from './helpers';
+import { multiClickElement } from '../../multi-click';
 
 /**
  * `[[note]]` links as inline widgets in a host whose links follow on a plain click, the limestone
@@ -123,11 +124,8 @@ test.describe('wikilinks that follow on a plain click', () => {
 
 	test('a double-click follows once, on the link and on a Markdown link', async ({ page }) => {
 		const opened = await recordOpens(page);
-		const box = await link(editor).boundingBox();
-		if (!box) throw new Error('no link box');
-
-		await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
-		await markdownLink(editor).dblclick();
+		await multiClickElement(link(editor), 2);
+		await multiClickElement(markdownLink(editor), 2);
 		await editor.waitForRenderFlush();
 
 		expect(await activations(page)).toEqual(['Meeting notes']);

@@ -2,6 +2,7 @@ import { type Locator, type Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { gotoReady } from '../../goto-ready';
 import { MermaidPage } from './mermaid-helpers';
+import { multiClick } from '../../multi-click';
 
 /**
  * A block that swaps to a shorter view at the end of a windowed document costs the reader only the
@@ -136,8 +137,7 @@ const DIAGRAM_DOUBLE_CLICK: Swap = {
 	block: '.mermaid-block',
 	settle: diagramSettle,
 	async run(page, block) {
-		const at = await diagramTop(block);
-		await page.mouse.dblclick(at.x, at.y);
+		await multiClick(page, await diagramTop(block), 2);
 		await expect(block.getByTestId('mermaid-source')).toBeFocused();
 	}
 };

@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { waitForFirstImageLoaded } from './helpers';
+import { multiClickElement } from '../../../multi-click';
 
 // The crop is limestone's cover crop on an inline image: the toolbar's crop button makes the
 // image pannable (drag pans, the wheel zooms) and the tick writes `|WxH@X,Y[,Z]`.
@@ -31,7 +32,7 @@ test.describe('image crop', () => {
 		await expect(page.locator('.md-image-properties')).toBeVisible();
 		await expect(page.locator('.md-image-crop-surface')).toHaveCount(0);
 
-		await widget.dblclick();
+		await multiClickElement(widget, 2);
 		await expect(page.locator('.md-image-crop-surface')).toBeVisible();
 		// A crop is not a text gesture: the double click leaves no range behind.
 		expect(await page.evaluate(() => String(document.getSelection()))).toBe('');
