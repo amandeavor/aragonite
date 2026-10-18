@@ -24,9 +24,32 @@ left edge to resize; the width sticks.
 | Inline tree (focused block) | The inline parse (text, strong, links, and so on) of the prose block the caret is in                                                                              |
 | Operations log              | The last structural operations: how long ago, which op, at which path, plus the op's own detail (`at=5` for a split)                                              |
 | Interaction trace           | A log of what the inline layer did (rebuilds, caret capture and restore, markers revealed and folded, composition). It records only while the section is expanded |
+| Input recording             | Record and Stop buttons for an input recording (every key, input and composition event the editor got), then Send or Download. Off until you press Record         |
 
 **Copy all as text** puts every section on the clipboard as one Markdown snapshot, each section in
 its own fence. Paste it straight into a bug report or an AI conversation.
+
+### Recording a session on a phone
+
+The input recording is how a bug on a device you don't have at your desk gets back to you. It's
+the same file `getDiagnostics().recordInput()` makes (the consumer guide's Recording input section
+has every field). Tick **include text** only for a document you don't mind sharing, since without
+it the file can't be replayed, only read.
+
+The catch on a phone is getting the file off it: the clipboard and the share sheet both want a
+secure origin, and `http://192.168.x.x` isn't one. So **Send** posts the file to the dev server
+instead, which writes it into `recordings-inbox/` (gitignored) at the repo root:
+
+1. Start the dev server on your LAN: `npm run dev -- --host` (same in bash and PowerShell).
+2. Open `http://<your machine's IP>:1420/` on the phone and tap **under the hood** (the panel
+   covers a phone's whole screen, and the recording keeps going while it's closed): Record, close
+   the panel, do the thing, open it again, Stop, Send.
+3. The section says where it saved. Anywhere the route isn't there (a build, the deployed demo),
+   Send downloads the file instead, and **Download** always does.
+
+Over USB, `adb reverse tcp:1420 tcp:1420` makes `localhost` work on Android, which is a secure
+origin, if you'd rather. On `/test/editor` the bridge has `window.__test.startInputRecording(opts)`
+and `window.__test.stopInputRecording()` for a script that wants the same thing.
 
 ### From the console
 

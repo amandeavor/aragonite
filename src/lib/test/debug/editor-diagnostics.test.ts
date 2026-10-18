@@ -1,10 +1,14 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { createEditorDiagnostics } from '#lib/debug/editor-diagnostics.js';
 import { createOperationsLog } from '#lib/debug/operations-log.js';
 
 // Miss-analysis: only the pure report builder had tests; the entry point feeding it needed a mount.
 
-function diagnostics(selection: { path: number[]; offset: number } | null) {
+function diagnostics(
+	selection: { path: number[]; offset: number } | null,
+	root: HTMLElement | null = null
+) {
 	let sourceReads = 0;
 	const log = createOperationsLog();
 	log.record({ op: 'split', path: [0], detail: {} });
@@ -14,7 +18,14 @@ function diagnostics(selection: { path: number[]; offset: number } | null) {
 			sourceReads++;
 			return 'SECRET';
 		},
-		operationsLog: log
+		operationsLog: log,
+		recorder: {
+			root: () => root,
+			contentVersion: () => 0,
+			presentationMode: () => 'source',
+			caret: () => 'auto',
+			rawPoint: () => null
+		}
 	});
 	return { door, reads: () => sourceReads };
 }
@@ -36,5 +47,14 @@ describe('createEditorDiagnostics', () => {
 
 	it('carries the operations log tail', () => {
 		expect(diagnostics(null).door.serializeDiagnostics()).toContain('split');
+	});
+
+	it('stops a recording still running when the editor goes away', () => {
+		const root = document.createElement('div');
+		const d = diagnostics(null, root);
+		const recording = d.door.recordInput();
+		d.door.dispose();
+		root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+		expect(recording.stop().steps).toEqual([]);
 	});
 });

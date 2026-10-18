@@ -350,6 +350,7 @@ Specs are organized by feature area at the top level, and per block inside `test
 | `test:e2e:search`         | Find/replace bar and controller behavior                                                                                                                                                                     |
 | `test:e2e:decorations`    | Decoration engine in the browser: mark / widget / block paint, search as its first client                                                                                                                    |
 | `test:e2e:presentation`   | Presentation modes: reading-mode inertness, block- and inline-granular preview reveal, mid-session mode flips                                                                                                |
+| `test:e2e:recordings`     | Replays of the checked-in input recordings (see [Turning a recording into a test](#turning-a-recording-into-a-test))                                                                                         |
 | `test:e2e:simulation`     | The note-taking simulation sessions (their own section below)                                                                                                                                                |
 | `test:e2e:a11y`           | axe over `.editor`: fails on any violation outside the committed allowlist                                                                                                                                   |
 | `test:e2e:vr`             | Virtual rendering on large fixtures: windowing, reveal, table-row windowing, mounted-count ceiling                                                                                                           |
@@ -563,6 +564,44 @@ toggle with `clickModeToggle(page, mode)` from `src/lib/e2e/mode-switch.ts` (the
 the changelog's buttons take `clickModeButton`). Each one waits until the editor shows the mode.
 A mode that never applied leaves you in source mode, where most live-mode assertions pass anyway,
 so a raw bridge call or toggle click fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
+
+### Turning a recording into a test
+
+An input recording (the file `getDiagnostics().recordInput()` makes, and the debug panel's Input
+recording section, see [`debugging.md`](debugging.md)) can be a regression test as is. Every file in
+`src/lib/e2e/recordings/` gets a test in `src/lib/e2e/tests/recordings/replay.spec.ts`, named after
+the file. It loads the recording's starting document, replays each step through a real input
+(key presses, inserted text, the IME driver, the clipboard helper), and checks the document hash and
+the selection after every step. It also records the replay and checks the events match, so a red
+says which one moved: different bytes means the editor changed, same bytes with different events
+means the driver did.
+
+To add one:
+
+1. Record it on a small document you made up, with text included (the panel's **include text**
+   box, or `window.__test.startInputRecording({ includeText: true })` on `/test/editor`). A user's
+   report gets re-recorded on a cut-down document first, since the file holds every character.
+2. Save it as `src/lib/e2e/recordings/<what-it-does>.json` and run
+   `npx playwright test --project=e2e-recordings -g <what-it-does>`.
+3. For a bug, change the broken step's `expected` entry (and every one after it) to what should
+   have happened, so the test is red until the fix lands. The hash for a document is
+   `window.__test.getSourceHash()` with that document loaded on `/test/editor`.
+
+Only Chromium replays so far, and only the steps it has a real input for: a click (as setup: the
+replay puts back the selection it left), a key or chord, text with no keydown, a composition and a
+paste. Anything else (a soft keyboard rewriting a word, a drop, undo from a menu) can't replay yet,
+so mark that file `"diagnosticOnly": true` and it's kept for reading. A browser joins
+`src/lib/e2e/recording-fixtures.ts :: REPLAYABLE` after one green run, and a recording opts into it
+with an `engines` list. `src/lib/e2e/lint/recordings.test.ts` (G4.213) fails on a recording that's
+neither replayed nor marked, or whose steps don't chain.
+
+When the editor changes what a recorded step should leave on purpose, re-bless it. That rewrites
+`expected` alone, from the replay, so the file's diff is the review (same command in bash and
+PowerShell):
+
+```sh
+node scripts/run-with-env.mjs RECORDINGS_BLESS=1 -- npx playwright test --project=e2e-recordings -g <name>
+```
 
 ### Patterns and gotchas
 

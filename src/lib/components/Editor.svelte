@@ -76,7 +76,7 @@
 	import { createPasteCoordinator } from '../editor-actions/paste-coordinator';
 	import { createOperationsLog } from '../debug/operations-log';
 	import { createEditorDiagnostics } from '../debug/editor-diagnostics';
-	import { readCurrentSelection } from '../selection/native-bridge';
+	import { readCurrentSelection, readDomPoint } from '../selection/native-bridge';
 	import { createCaretRestore, type CaretRestoreDeps } from '../selection/caret-restore';
 	import { createRoundTripRestore } from '../selection/round-trip-restore';
 	import { createCrossBlockHandlers } from '../selection/cross-block/dispatch';
@@ -1286,7 +1286,19 @@
 		return chordIsClaimed(event, reservedChords());
 	}
 
-	const diagnostics = createEditorDiagnostics({ getSelection, getSource, operationsLog });
+	const diagnostics = createEditorDiagnostics({
+		getSelection,
+		getSource,
+		operationsLog,
+		recorder: {
+			root: () => editorEl ?? null,
+			contentVersion: contentVersion.read,
+			presentationMode: () => effectiveMode,
+			caret: () => caret,
+			rawPoint: (node, offset) => (editorEl ? readDomPoint(editorEl, node, offset) : null)
+		}
+	});
+	onDestroy(diagnostics.dispose);
 
 	export function getDiagnostics(): EditorDiagnostics {
 		return diagnostics;

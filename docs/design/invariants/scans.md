@@ -8,7 +8,7 @@ backs it.
 
 Scans over the library live in `test/invariants/lint/` and ride `npm run test:editor:invariants`.
 Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133, G4.211,
-G4.212) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
+G4.212, G4.213) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
 bash and PowerShell), and `npm test` runs both.
 
 This is the catalogued set, not the whole of `test/invariants/lint/`: a scan holding one module's
@@ -158,7 +158,7 @@ unguarded.
 | G4.175 | Every library component compiles in runes mode                                               | L       |
 | G4.178 | Every route that mounts a plugin view falls back and reports when it throws                  | L       |
 | G4.180 | Every top-right hover control on a block moves below the open find bar                       | L       |
-| G4.181 | Every wrapper package carries the core's version and peers the core at exactly that          | L       |
+| G4.181 | Every wrapper package, and the library's version constant, carries the core's version        | L       |
 | G4.183 | An app that doesn't compile Svelte installs no Svelte                                        | harness |
 | G4.184 | The editor's own reset sets everything the demo app's global reset does                      | L       |
 | G4.185 | Only the `/svelte` entry's published types reach a `svelte` import; none reach a stylesheet  | harness |
@@ -176,6 +176,7 @@ unguarded.
 | G4.209 | A list item draws its marker in its own cell, never through a child's prefix                 | L       |
 | G4.211 | Every widget kind that shows its source has a row in the typed-opener e2e spec               | L       |
 | G4.212 | E2E clipboard access and pastes ride the shared clipboard helper                             | L       |
+| G4.213 | Every checked-in input recording is replayed by the e2e spec or marked diagnostic-only       | L       |
 | G4.214 | A caret's box is measured in one place, `caretRectAt`                                        | L       |
 | G4.215 | A list's marker column reads no item of its own at load or on a key                          | harness |
 | G4.216 | Every built-in kind that binds Enter binds Shift+Enter too                                   | L       |
@@ -1085,7 +1086,8 @@ carries `data-corner-control`, so the open find bar moves it below itself when i
 
 **G4.181 · Wrappers release in lockstep.** Each package under `packages/` (the framework wrappers)
 has the root's version and peers `@voithos-labs/aragonite` at exactly that version, so an app can
-only ever install one core next to them. `scripts/check-lockstep.mjs` holds the rule;
+only ever install one core next to them; `src/lib/version.ts`, which an input recording names,
+carries that version too. `scripts/check-lockstep.mjs` holds the rule;
 `npm run release:publish` runs it before publishing every package together, and
 `lint/lockstep-versions.test.ts` runs it on the tree.
 
@@ -1193,6 +1195,12 @@ paste chord itself only works where the real clipboard answers the page, which W
 so both fail the scan outside `e2e/clipboard-arm.ts`. The helper is where each engine's clipboard
 lives: the system clipboard in Chromium, an in-page store the `page` fixture installs in WebKit.
 `e2e/lint/e2e-drivers.test.ts`.
+
+**G4.213 · Every recording runs or says it can't.** A file in `src/lib/e2e/recordings/` that isn't
+`diagnosticOnly` has a test in `e2e-recordings`, holds its text, chains step to step, and has a real
+input for every step in each browser it names (`recording-fixtures.ts :: replayProblems`). Every
+recording's `expected` covers every step. A text-free recording can't be replayed, so it's
+diagnostic-only. `e2e/lint/recordings.test.ts`.
 
 **G4.214 · One measure of a caret.** WebKit and Firefox measure a collapsed range right after a `\n`
 on the line it ends, putting each line start on the line above. `caretRectAt`

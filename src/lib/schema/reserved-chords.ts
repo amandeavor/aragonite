@@ -46,6 +46,12 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		note: 'Escape closes the find bar, and Mod+H picks the replace row as the bar opens (reserved UI chords, enumerated). The modifier read is a refusal: an unchorded character over a live range is written as text, a chorded one goes to the handlers below it.'
 	},
 	{
+		file: 'debug/input-recorder.ts',
+		chords: [],
+		keys: ['Process'],
+		note: 'An input recording copies the modifier flags of every key it records, and reads an IME keydown (`Process`) to group a composition: no keystroke is consumed.'
+	},
+	{
 		file: 'selection/selection-drop.ts',
 		chords: [],
 		keys: [],

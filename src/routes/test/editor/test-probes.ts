@@ -1,7 +1,14 @@
 import { tick } from 'svelte';
-import type { PastedImage, PresentationMode } from '#lib';
+import type {
+	InputRecording,
+	InputRecordingHandle,
+	InputRecordingOptions,
+	PastedImage,
+	PresentationMode
+} from '#lib';
 import type { Editor, EditorProps } from '#lib/svelte.js';
 import { readBlocks } from '#lib/core/parser.js';
+import { hashSource } from '#lib/debug/input-recording.js';
 import type { GrammarView } from '#lib/schema/block-openers.js';
 import { serialize } from '#lib/core/serializer.js';
 import { parseConverges } from '#lib/testing/parse-convergence.js';
@@ -403,6 +410,7 @@ export function installTestProbes({
 	// A reinstall means a new editor instance, and a session still open is subscribed to
 	// the previous instance's events.
 	const remounted = 'the editor remounted while the session was open';
+	let inputRecording: InputRecordingHandle | null = null;
 	editOpProbe.invalidate(remounted);
 	errorProbe.invalidate(remounted);
 	menuProbe.invalidate(remounted);
@@ -702,6 +710,17 @@ export function installTestProbes({
 		// it lives.
 		serializeDiagnostics: (opts?: { includeSource?: boolean }) =>
 			editor.getDiagnostics().serializeDiagnostics(opts),
+		// A page evaluation can't hand back a handle, so the bridge holds the one recording.
+		startInputRecording: (options?: InputRecordingOptions): void => {
+			inputRecording?.stop();
+			inputRecording = editor.getDiagnostics().recordInput(options);
+		},
+		getSourceHash: (): string => hashSource(editor.getSource()),
+		stopInputRecording: (): InputRecording | null => {
+			const recording = inputRecording?.stop() ?? null;
+			inputRecording = null;
+			return recording;
+		},
 		// ── The debug dumps ───────────────────────────────────────────────
 		dumpTree: (opts?: Parameters<typeof dumpTree>[1]) =>
 			dumpTree(editor.__test.getDocument(), opts),

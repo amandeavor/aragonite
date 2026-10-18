@@ -1,6 +1,7 @@
 /**
- * The `getDiagnostics()` entry point: the switches for the interaction trace, and the fenced
- * report (`diagnostics-report.ts`). The document source is left out unless the consumer opts in.
+ * The `getDiagnostics()` entry point: the switches for the interaction trace, the fenced report
+ * (`diagnostics-report.ts`) and input recordings. The document source is left out unless the
+ * consumer opts in. The editor calls `dispose` on teardown, which stops any recording still running.
  */
 
 import type { EditorDiagnostics } from '../editor-props';
@@ -14,6 +15,11 @@ import {
 	isInteractionTraceEnabled
 } from './interaction-trace';
 import type { OperationsLog } from './operations-log';
+import {
+	startInputRecording,
+	type InputRecorderDeps,
+	type InputRecordingHandle
+} from './input-recorder';
 
 export interface EditorDiagnosticsDeps {
 	/** The public snapshot, so it covers the single-block carets the cross-block state never
@@ -21,9 +27,14 @@ export interface EditorDiagnosticsDeps {
 	getSelection(): EditorSelection | null;
 	getSource(): string;
 	operationsLog: OperationsLog;
+	recorder: Omit<InputRecorderDeps, 'getSelection' | 'getSource'>;
 }
 
-export function createEditorDiagnostics(deps: EditorDiagnosticsDeps): EditorDiagnostics {
+export function createEditorDiagnostics(
+	deps: EditorDiagnosticsDeps
+): EditorDiagnostics & { dispose(): void } {
+	const recordings = new Set<InputRecordingHandle>();
+
 	function selectionSummary(): string {
 		const sel = deps.getSelection();
 		if (!sel) return '(no selection)';
@@ -46,6 +57,23 @@ export function createEditorDiagnostics(deps: EditorDiagnosticsDeps): EditorDiag
 				source: includeSource ? deps.getSource() : '',
 				includeSource
 			});
+		},
+		recordInput: (options) => {
+			const handle = startInputRecording(
+				{ ...deps.recorder, getSelection: deps.getSelection, getSource: deps.getSource },
+				options
+			);
+			recordings.add(handle);
+			return {
+				stop() {
+					recordings.delete(handle);
+					return handle.stop();
+				}
+			};
+		},
+		dispose() {
+			for (const handle of recordings) handle.stop();
+			recordings.clear();
 		}
 	};
 }

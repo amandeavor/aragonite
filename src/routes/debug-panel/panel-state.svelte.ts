@@ -1,6 +1,7 @@
 export const PANEL_STORAGE_KEY = 'aragonite.debug-panel.state.v1';
 
-export type SectionKey = 'rawSource' | 'cst' | 'selection' | 'undo' | 'inline' | 'opsLog' | 'trace';
+export type SectionKey =
+	'rawSource' | 'cst' | 'selection' | 'undo' | 'inline' | 'opsLog' | 'trace' | 'recording';
 
 const SECTION_KEYS: SectionKey[] = [
 	'rawSource',
@@ -9,7 +10,8 @@ const SECTION_KEYS: SectionKey[] = [
 	'undo',
 	'inline',
 	'opsLog',
-	'trace'
+	'trace',
+	'recording'
 ];
 
 export interface PanelStateShape {
@@ -33,7 +35,8 @@ export function defaultPanelState(): PanelStateShape {
 			undo: false,
 			inline: false,
 			opsLog: false,
-			trace: false
+			trace: false,
+			recording: false
 		},
 		width: DEFAULT_PANEL_WIDTH
 	};

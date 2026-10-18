@@ -233,7 +233,7 @@ Everything supported is exported from `@voithos-labs/aragonite`, except the Svel
 | **CST utilities**      | `parse` / `serialize` for round-tripping Markdown outside the component (CST: the concrete syntax tree, the parsed form of a document), with `ParseScope` for `parse`'s scope option; `parseInline`, `getContentRange` (and its `ContentRange`), `isProseKind` for inspecting a block's inline content and editable range                                                                                                                                                                                                                                                                      |
 | **Node types**         | `CstNode`, `Document`, the block-kind and inline-node unions, and the per-kind metadata shapes: the vocabulary for reading a parsed document. `NodeView` / `DocumentView` are their read-only forms; every node the editor hands you to read is typed as a view, so writing to one won't compile                                                                                                                                                                                                                                                                                               |
 | **Events**             | `EditorEvents` and the payload types the subscription surface emits                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| **Diagnostics**        | `EditorDiagnostics` (what `getDiagnostics()` returns) and `InteractionTraceEntry`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Diagnostics**        | `EditorDiagnostics` (what `getDiagnostics()` returns), `InteractionTraceEntry`, and the input recording types `InputRecording`, `InputRecordingHandle` and `InputRecordingOptions`                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## Props
 
@@ -1228,6 +1228,60 @@ anchor=[2]@14 focus=[2]@14
 `traceSnapshot()` returns the raw entries if you'd rather format them yourself; `disableTrace()` / `isTraceEnabled()` round out the switch.
 
 **The document is excluded by default.** `serializeDiagnostics()` never includes the source unless you pass `{ includeSource: true }`, because a field report mustn't leak a user's content. Opt in only when the bytes are part of the repro and the user has consented.
+
+### Recording input
+
+The trace says what the editor did. An **input recording** says what the browser handed it: every key, input, composition, paste, drop and pointer event, grouped into steps, with the document's hash and the selection after each one. It's the thing to grab when a bug only happens on one keyboard, one phone, or one IME, since it can be replayed (or at least read) without your user's device.
+
+`recordInput()` starts a recording and hands you a handle; `stop()` ends it and returns plain JSON-ready data.
+
+```ts
+const recording = editor.getDiagnostics().recordInput();
+// ...the user reproduces the bug...
+const file = recording.stop();
+JSON.stringify(file); // attach it to the report
+```
+
+```json
+{
+  "format": "aragonite-input-recording/1",
+  "editor": { "version": "0.11.1", "presentationMode": "source", "caret": "auto" },
+  "text": false,
+  "env": { "userAgent": "Mozilla/5.0 (Linux; Android 15) ...", "uaData": { "platform": "Android", "mobile": true, "brands": ["Chromium 141"] }, "pointer": "coarse", "viewport": [412, 915], "dpr": 2.625 },
+  "initial": { "hash": "1o9ql2f51fh", "selection": null },
+  "steps": [
+    {
+      "family": "text",
+      "before": { "version": 3, "hash": "1o9ql2f51fh", "selection": { "anchor": { "path": [0], "offset": 5 }, "focus": { "path": [0], "offset": 5 } } },
+      "after": { "version": 4, "hash": "1kci6cremz5", "selection": { "anchor": { "path": [0], "offset": 6 }, "focus": { "path": [0], "offset": 6 } }, "splice": [5, 5, 1] },
+      "events": [
+        { "type": "keydown", "dt": 1840, "trusted": true, "keyCode": 229, "mods": "", "repeat": false, "isComposing": false, "verdict": false },
+        { "type": "beforeinput", "dt": 2, "trusted": true, "inputType": "insertText", "isComposing": false, "data": 1, "targetRanges": [{ "raw": [[0], 5, [0], 5], "dom": [5, 5] }], "dom": { "sel": [5, 5] }, "verdict": false }
+      ]
+    }
+  ],
+  "expected": [{ "hash": "1kci6cremz5", "selection": { "anchor": { "path": [0], "offset": 6 }, "focus": { "path": [0], "offset": 6 } } }]
+}
+```
+
+Each recording is its own: a second `recordInput()` runs next to the first, `stop()` twice returns the same data, and unmounting the editor stops whatever's still running. While nothing records, the recorder holds no listeners at all. While one does, it listens on the editor's root, plus `selectionchange` on `document` (the only place the browser fires it), and never touches an event.
+
+**Text is excluded by default**, and here "text" is wider than the document: typed characters, a key's `code` and `keyCode` (they spell what was typed, even under an IME), event `data`, clipboard contents and the editable's DOM text all count. Without text you still get named keys (`Enter`, `ArrowLeft`), Ctrl and Cmd chords, an IME keydown's `keyCode` 229 (it spells nothing), input types, offsets, and lengths where the text would be. The hashes get a secret salt, so they only compare within that one file. That's enough to read what happened, not enough to replay it. `recordInput({ includeText: true })` keeps everything, initial document included, so ask first, same as `includeSource`.
+
+The format is a diagnostics file, not a stable contract before 1.0. `format` names the version, and a reader refuses one it doesn't know. The fields, for when you're reading one:
+
+| Field                      | What it holds                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `editor`                   | The library version, presentation mode and `caret` prop at the time                                                                                                                                                                                                                                                                                                                 |
+| `text`                     | Whether text was kept (see above)                                                                                                                                                                                                                                                                                                                                                   |
+| `env`                      | The user agent, `navigator.userAgentData` where the browser has it (Safari and Firefox don't), whether the main pointer is `fine` or `coarse`, the viewport and the device pixel ratio                                                                                                                                                                                              |
+| `initial`                  | The document's hash and selection when recording started, plus its `source` with text                                                                                                                                                                                                                                                                                               |
+| `steps[].family`           | What the step was: `key`, `text` (inserted with no real keydown, so a soft keyboard or dictation), `rewrite` (any other keyboard-less input, like an autocorrect), `composition`, `paste`, `drop`, `pointer` or `history` (undo or redo with no keydown)                                                                                                                            |
+| `steps[].before`, `.after` | The content version (it goes up on every write), the document's hash and the selection, around the step. One step's `after` is the next one's `before`. `after.splice` is `[from, to, inserted]` against the previous source, with the inserted text's length in place of the text when there's none                                                                                |
+| `steps[].events[]`         | Each event: `type`, `dt` (milliseconds since the previous one), `trusted`, the key fields and `mods` (`C`trl, `M`eta, `A`lt, `S`hift), `inputType` and `data`, `targetRanges` (as block path plus offset, and as offsets into the editable's text), `dom.sel` (the browser's selection in that text), `clipboard` per type, and `verdict` (whether a handler prevented its default) |
+| `expected[]`               | What each step should leave. It starts as a copy of each `after`, and a bug report can edit it to what should have happened                                                                                                                                                                                                                                                         |
+
+A step starts at a keydown (unless only modifiers came before it, so a chord stays one step), at a composition, paste or drop no keydown started, at an input event with no keydown ahead of it, and at a pointer press.
 
 ## Building your own chrome
 
