@@ -22,6 +22,7 @@ import { applyPasteTransforms } from '../../tree-operations/paste/paste-transfor
 import type { InsertEntry } from '../../schema/insert-catalogue';
 import type { MenuEntry } from '../menu/BlockMenu.svelte';
 import { runClipboardAction, type ClipboardAction } from '../menu/clipboard-actions';
+import type { AimedInsert } from './focused-surface';
 import { blockNoun } from '../menu/default-context-actions';
 import { isProseLeaf } from '../../schema/page-role';
 import type { Reading } from '../../schema/reading';
@@ -55,7 +56,7 @@ export interface RootMenusDeps {
 	insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean>;
 	/** An insert at the caret aimed at the block focused now, which a Paste row runs once the
 	 *  clipboard read lands; null with no block focused. */
-	aimInsertAtFocus(): ((md: string) => Promise<boolean>) | null;
+	aimInsertAtFocus(): AimedInsert | null;
 	/** The insert entries this editor lists, read fresh per menu. */
 	insertCatalogue(): readonly InsertEntry[];
 	/** The plugins this editor lists, whose block actions and paste transforms the menu offers. */

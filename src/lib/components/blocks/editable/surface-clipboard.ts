@@ -13,6 +13,7 @@ import type { CaretMemory } from '../../../caret/caret-memory';
 import type { HeldInsertion } from '../../../caret/next-insertion';
 import type { RawRange } from '../../../caret/widget-offset';
 import { normalizeLineEndings } from '../../../core/lines';
+import { escapeMarkdownLiteral } from '../../../tree-operations/paste/markdown-literal';
 import type { SelectionState } from '../../../selection/selection-state.svelte';
 import type { CrossBlockHandlers } from '../../../selection/cross-block/dispatch';
 import { crossBlockClipboardArm } from '../../../selection/cross-block/clipboard';
@@ -76,6 +77,9 @@ export interface SurfaceClipboardContext {
 	onPasteImage: () => PasteImageHook | undefined;
 	/** Ends the run of typing that shares one undo entry, so the next write opens its own. */
 	endTypingBurst: () => void;
+	/** Whether the block's own text reads Markdown; false where a paste lands byte for byte (a
+	 *  code body), which plain text then needs no escape for. */
+	readsMarkdown: () => boolean;
 }
 
 /** The block's half: the selections it owns and how a paste lands in its own text. */
@@ -136,6 +140,8 @@ export interface ClipboardHandlers {
 	/** Insert `md` as pasting it here would, for `EditorInstance.insertMarkdown`. Resolves once
 	 *  the paste lands; false in reading mode or for an empty payload. */
 	insertMarkdown(md: string): Promise<boolean>;
+	/** `insertMarkdown` for plain text: escaped wherever the paste lands as Markdown. */
+	insertPlainText(text: string): Promise<boolean>;
 }
 
 export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHandlers {
@@ -184,7 +190,7 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 		// Read `clipboardData` before the first await, while the event still holds it.
 		const images = imageArm.filesOf(e.clipboardData);
 		if (images.length === 0) {
-			await pasteText(normalizeLineEndings(e.clipboardData?.getData('text/plain') ?? ''));
+			await pasteText(normalizeLineEndings(e.clipboardData?.getData('text/plain') ?? ''), false);
 			return;
 		}
 		const target = readPasteTarget();
@@ -197,32 +203,40 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 		}
 	}
 
-	/** The paste every text payload takes, whatever brought it: a paste event, a menu's Paste, the
-	 *  `insertMarkdown` call. `text` is already LF. */
-	async function pasteText(text: string): Promise<void> {
+	/** The paste every text payload takes, whatever brought it; `text` is already LF. `plain` text
+	 *  is escaped where it lands as Markdown: across blocks, or in a block that reads Markdown. */
+	async function pasteText(text: string, plain: boolean): Promise<void> {
+		const asMarkdown = plain ? escapeMarkdownLiteral(text) : text;
+		const asOwnText = plain && deps.readsMarkdown() ? asMarkdown : text;
 		const target = readPasteTarget();
 		try {
 			await deps.foldReveal?.()?.settled;
-			if (text && deps.pastePreHook && (await deps.pastePreHook(text))) return;
-			if (await deps.crossBlock.handlePaste(null, text)) return;
+			if (text && deps.pastePreHook && (await deps.pastePreHook(asOwnText))) return;
+			if (await deps.crossBlock.handlePaste(null, asMarkdown)) return;
 			deps.caretMemory.forget();
 			// A paste that outlived its block (an unmount mid-insert) has nothing left to land in.
 			if (!text || !deps.caret.getEl()) return;
-			await ownUndoEntry(deps, () => deps.pasteTail(text, target));
+			await ownUndoEntry(deps, () => deps.pasteTail(asOwnText, target));
 		} finally {
 			target.held.finish(true);
 		}
 	}
 
-	async function insertMarkdown(md: string): Promise<boolean> {
+	async function insert(md: string, plain: boolean): Promise<boolean> {
 		if (deps.isReadOnly()) return false;
 		const text = normalizeLineEndings(md);
 		if (!text) return false;
-		await pasteText(text);
+		await pasteText(text, plain);
 		return true;
 	}
 
-	return { onCopy, onCut, onPaste, insertMarkdown };
+	return {
+		onCopy,
+		onCut,
+		onPaste,
+		insertMarkdown: (md) => insert(md, false),
+		insertPlainText: (text) => insert(text, true)
+	};
 }
 
 /** A cut or a paste into the block's text is its own undo entry, apart from the typing on either

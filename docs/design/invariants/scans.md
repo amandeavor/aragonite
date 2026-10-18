@@ -1246,7 +1246,7 @@ prompt over it), and a whole block copies through `copyBlockToClipboard`, so eve
 same text. `lint/system-clipboard-calls.test.ts`.
 
 **G4.221 · Clipboard text the engines agree on.** A paste with no paste event of its own (the
-menus' Paste rows) hands its text to the focused block's `insertMarkdown`, since Firefox empties
-`clipboardData` on a `new ClipboardEvent(...)`. The selection's shown text is read only through
+menus' Paste rows) hands its text to the focused block's `insertMarkdown` or `insertPlainText`,
+since Firefox empties `clipboardData` on a `new ClipboardEvent(...)`. The selection's shown text is read only through
 `shownSelectionText` (`clipboard-step.ts`), which reads LF where Firefox on Windows writes CRLF,
 and nothing for an empty block's placeholder `<br>` selected alone. `lint/file-rules.test.ts`.

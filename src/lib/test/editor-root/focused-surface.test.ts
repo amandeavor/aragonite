@@ -51,16 +51,17 @@ function harness(component: Partial<BlockComponent> = {}, opts: { writes?: boole
 		selection,
 		getDoc: () => doc,
 		getBlockComponent: (path) => {
-			const insertMarkdown = component.insertMarkdown;
+			const logged = (name: string, insert?: (text: string) => boolean | Promise<boolean>) =>
+				insert &&
+				((text: string) => {
+					calls.push(`${name} ${text.trim()} at ${JSON.stringify(path)}`);
+					if (opts.writes !== false) version++;
+					return insert(text);
+				});
 			return {
 				...component,
-				insertMarkdown: insertMarkdown
-					? (md: string) => {
-							calls.push(`insert ${md.trim()} at ${JSON.stringify(path)}`);
-							if (opts.writes !== false) version++;
-							return insertMarkdown(md);
-						}
-					: undefined
+				insertMarkdown: logged('insert', component.insertMarkdown),
+				insertPlainText: logged('plain', component.insertPlainText)
 			} as BlockComponent;
 		},
 		isReading: () => reading,
@@ -125,8 +126,15 @@ describe('editor-root focused surface', () => {
 		h.surface.focus();
 		const insert = h.focused.aimInsertAtFocus()!;
 		h.outside.focus();
-		expect(await insert('- ')).toBe(true);
+		expect(await insert.markdown('- ')).toBe(true);
 		expect(h.calls).toEqual(['insert - at [1]']);
+	});
+
+	it('an aimed plain-text insert reaches the block’s plain-text entry, not its Markdown one', async () => {
+		const h = harness({ insertMarkdown: async () => true, insertPlainText: async () => true });
+		h.surface.focus();
+		expect(await h.focused.aimInsertAtFocus()!.plainText('*a*')).toBe(true);
+		expect(h.calls).toEqual(['plain *a* at [1]']);
 	});
 
 	it('an aimed insert a swap outran writes nothing and never reaches the block', async () => {
@@ -134,7 +142,8 @@ describe('editor-root focused surface', () => {
 		h.surface.focus();
 		const insert = h.focused.aimInsertAtFocus()!;
 		h.stamps.retire();
-		expect(await insert('- ')).toBe(false);
+		expect(await insert.markdown('- ')).toBe(false);
+		expect(await insert.plainText('- ')).toBe(false);
 		expect(h.calls).toEqual([]);
 	});
 

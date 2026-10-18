@@ -1,4 +1,4 @@
-# Feature: the right-click menu's Cut and Copy
+# Feature: the right-click menu's Cut, Copy and Paste as plain text
 
 The right-click menu over a selection offers Cut and Copy, and they do exactly what Ctrl+X and
 Ctrl+C do for that selection. The menu fires the browser's own cut or copy (a scripted
@@ -12,6 +12,9 @@ has to write its payload during the event, before it waits on anything.
 - The same in a code block's body
 - Copy from the same menu, in a paragraph and in a code block: the clipboard holds the selection
   and the document is unchanged
+- Select four characters, right-click, Paste as plain text with `*a* # b` on the clipboard: a
+  paragraph gets `\*a\* # b`, so it reads back as typed; a code block's body gets `*a* # b` as is,
+  top-level and inside a list item
 
 ## Miss-analysis
 
@@ -19,3 +22,5 @@ has to write its payload during the event, before it waits on anything.
   shown source to hide, and by then a scripted cut's data was closed. The cut tests all pressed
   Ctrl+X, where the browser waits for those few awaits before reading the data, and no test drove
   the menu's Cut outside a table cell, whose menu did its own copy and delete.
+- Paste as plain text wrote backslashes into a code block: the menu escaped the text before it
+  knew the target. Its only test pasted into a paragraph, where the escape belongs.

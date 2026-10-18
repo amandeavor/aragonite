@@ -427,6 +427,7 @@
 			applyMenuClipboard,
 			snapCaretToPoint,
 			insertMarkdown: clipboard.insertMarkdown,
+			insertPlainText: clipboard.insertPlainText,
 			claimRootClipboard: clipboard.claimRootClipboard,
 			typeText: editableSurface.surface.typeText,
 			afterSelectionRemoved: editableSurface.afterSelectionRemoved,

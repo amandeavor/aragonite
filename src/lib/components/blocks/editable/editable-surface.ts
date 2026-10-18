@@ -58,7 +58,7 @@ import {
 	type LineEnding
 } from '../../../core/lines';
 import { keepLineEndingPairs, lineEndingPairBeside } from '../../../core/line-ending-pairs';
-import { getContentRange, sameLineSuffix } from '../../../core/inline';
+import { getContentRange, isProseKind, sameLineSuffix } from '../../../core/inline';
 import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
 import type { BlockAutoPairs } from '../text/auto-pair-record';
@@ -739,6 +739,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			events: deps.events,
 			onPasteImage: deps.onPasteImage,
 			endTypingBurst: () => deps.controller.flushDebouncedCheckpoint(),
+			readsMarkdown: () => isProseKind(deps.getNode().kind),
 			...block
 		});
 	}

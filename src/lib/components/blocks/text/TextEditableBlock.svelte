@@ -469,6 +469,7 @@
 
 	export const claimRootClipboard = clipboardHandlers.claimRootClipboard;
 	export const insertMarkdown = clipboardHandlers.insertMarkdown;
+	export const insertPlainText = clipboardHandlers.insertPlainText;
 
 	export function snapCaretToPoint(clientX: number, clientY: number): void {
 		widgetInteraction.snapClickToWidgetEdge(clientX, clientY);
@@ -641,6 +642,7 @@
 		enterEdgeWidget,
 		claimRootClipboard,
 		insertMarkdown,
+		insertPlainText,
 		snapCaretToPoint,
 		runCommand,
 		afterSourceCommit,

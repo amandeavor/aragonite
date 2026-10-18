@@ -83,6 +83,7 @@ describe('step order', () => {
 			events: { on: () => () => {}, emit: () => {} },
 			onPasteImage: () => undefined,
 			endTypingBurst: () => void log.push('end-burst'),
+			readsMarkdown: () => true,
 			rangeArm: arm(log, 'range'),
 			pasteTail: (text) => void log.push(`pasteTail:${text}`),
 			...over
@@ -346,6 +347,47 @@ describe('step order', () => {
 			]);
 		});
 	});
+
+	// Miss-analysis: the menu escaped plain text before it knew the target, and no row pasted it into a block that takes text literally.
+	describe('plain text escapes where it lands as Markdown', () => {
+		/** What each branch was handed for `*a*`: the grid hook, the cross-block range, the tail. */
+		async function landed(over: Partial<ClipboardSurfaceDeps>, crossBlock = false) {
+			const log: string[] = [];
+			const seen: Record<string, string | undefined> = {};
+			const handlers = createClipboardHandlers(
+				deps(log, {
+					pastePreHook: (text) => ((seen.preHook = text), false),
+					crossBlock: {
+						handlePaste: async (_e: ClipboardEvent | null, replacement?: string) => {
+							seen.crossBlock = replacement;
+							return crossBlock;
+						}
+					} as never,
+					pasteTail: (text) => void (seen.tail = text),
+					...over
+				})
+			);
+			return { handlers, seen };
+		}
+
+		it('a block that reads Markdown gets the text escaped on every branch', async () => {
+			const { handlers, seen } = await landed({ readsMarkdown: () => true });
+			expect(await handlers.insertPlainText('*a*')).toBe(true);
+			expect(seen).toEqual({ preHook: '\\*a\\*', crossBlock: '\\*a\\*', tail: '\\*a\\*' });
+		});
+
+		it('a block that takes text literally gets it as is, a range across blocks still escaped', async () => {
+			const { handlers, seen } = await landed({ readsMarkdown: () => false });
+			expect(await handlers.insertPlainText('*a*')).toBe(true);
+			expect(seen).toEqual({ preHook: '*a*', crossBlock: '\\*a\\*', tail: '*a*' });
+		});
+
+		it('insertMarkdown escapes nothing, whatever the block reads', async () => {
+			const { handlers, seen } = await landed({ readsMarkdown: () => true });
+			expect(await handlers.insertMarkdown('*a*')).toBe(true);
+			expect(seen).toEqual({ preHook: '*a*', crossBlock: '*a*', tail: '*a*' });
+		});
+	});
 });
 
 describe('image paste', () => {
@@ -424,6 +466,7 @@ describe('image paste', () => {
 			} as never,
 			onPasteImage: () => onPasteImage,
 			endTypingBurst: () => {},
+			readsMarkdown: () => true,
 			rangeArm: { copy: () => null, remove: () => {} },
 			pasteTail: (text, target) => {
 				inserted.push(text);
