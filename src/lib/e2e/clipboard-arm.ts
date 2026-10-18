@@ -42,6 +42,22 @@ export async function releaseClipboardRead(page: Page, text: string): Promise<vo
 	await page.evaluate((t) => (window as any).__releaseClipboardRead(t), text);
 }
 
+/** Note, at each clipboard read the page makes, whether an editor menu is still on the page: Safari
+ *  draws its Paste prompt over whatever shows then. `menuAtClipboardRead` reads the last answer. */
+export async function watchClipboardRead(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		const read = navigator.clipboard.readText.bind(navigator.clipboard);
+		navigator.clipboard.readText = () => {
+			(window as any).__menuAtClipboardRead = document.querySelector('.md-menu') !== null;
+			return read();
+		};
+	});
+}
+
+export function menuAtClipboardRead(page: Page): Promise<boolean | undefined> {
+	return page.evaluate(() => (window as any).__menuAtClipboardRead);
+}
+
 // ── Chromium: the system clipboard ──────────────────────────────────────────
 
 function systemClipboard(page: Page): ClipboardArm {

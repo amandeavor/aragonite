@@ -392,6 +392,8 @@
 		const { rowIdx, colIdx } = menu.target;
 		const sel = menu.clipboardSel ?? { start: 0, end: 0 };
 		menu = null;
+		// Off the page before a Paste reads the clipboard, or Safari's Paste prompt draws over it.
+		await tick();
 		await cellRefAt(rowIdx, colIdx)?.applyMenuClipboard?.(action, sel);
 	}
 

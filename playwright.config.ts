@@ -75,6 +75,7 @@ const WEBKIT_LANE = [
 	'blocks/list/item-marker.spec.ts',
 	'blocks/code/menu-change.spec.ts',
 	'popover-close.spec.ts',
+	'context-menu-press-selection.spec.ts',
 	'caret/**/*.spec.ts',
 	'webkit/**/*.spec.ts'
 ];

@@ -927,6 +927,7 @@
 		isHostChrome,
 		blockEdit,
 		placeCaretAtPoint,
+		rangeAtContextPress: () => (editorEl ? rootGestures.rangeAtContextPress(editorEl) : false),
 		insertMarkdown,
 		insertCatalogue: getInsertCatalogue,
 		activation: activePlugins,

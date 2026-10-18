@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { tick } from 'svelte';
 import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root/menus.js';
 import { registerDefaultContextActions } from '#lib/components/menu/default-context-actions.js';
 import { BLOCK_ACTIONS_LABEL } from '#lib/a11y-strings.js';
@@ -27,7 +28,10 @@ function hostAt(path: number[]): HTMLElement {
 	return host;
 }
 
-function harness(opts: { mode?: PresentationMode; editsLink?: boolean } = {}) {
+/** `rangeAtPress` stands in for the record of the right button's press; absent, the live selection. */
+function harness(
+	opts: { mode?: PresentationMode; editsLink?: boolean; rangeAtPress?: boolean } = {}
+) {
 	const root = document.createElement('div');
 	const header = document.createElement('div');
 	const headerField = document.createElement('p');
@@ -63,6 +67,7 @@ function harness(opts: { mode?: PresentationMode; editsLink?: boolean } = {}) {
 		isHostChrome: (node) => !!node && header.contains(node),
 		blockEdit,
 		placeCaretAtPoint,
+		rangeAtContextPress: () => opts.rangeAtPress ?? !(window.getSelection()?.isCollapsed ?? true),
 		insertMarkdown,
 		insertCatalogue: () => insertCatalogue(everyInstalledPlugin),
 		activation: everyInstalledPlugin,
@@ -140,10 +145,11 @@ describe('editor-root menus: the right-click', () => {
 		expect(h.menu()!.items[0].disabled).toBe(true);
 		// A flyout pick inserts below the block the press placed the caret in.
 		h.menu()!.pick('bullet');
+		await tick();
 		expect(h.insertMarkdown).toHaveBeenCalledWith('- ', { placement: 'below' });
 	});
 
-	it('over a link, prose leads with Edit link, asked after the caret lands, and runs it', () => {
+	it('over a link, prose leads with Edit link, asked after the caret lands, and runs it', async () => {
 		const h = harness({ editsLink: true });
 		h.rightClick(h.prose.firstElementChild!);
 		expect(h.order).toEqual(['place', 'ask']);
@@ -152,6 +158,9 @@ describe('editor-root menus: the right-click', () => {
 
 		h.menu()!.pick('link.edit');
 		expect(h.menu()).toBeNull();
+		// The row runs once the menu has left the page.
+		expect(h.editLinkAtCaret).not.toHaveBeenCalled();
+		await tick();
 		expect(h.editLinkAtCaret).toHaveBeenCalledOnce();
 	});
 
@@ -161,6 +170,26 @@ describe('editor-root menus: the right-click', () => {
 		h.rightClick(h.prose.firstElementChild!);
 		expect(h.placeCaretAtPoint).not.toHaveBeenCalled();
 		expect(h.ids()).not.toContain('insert');
+	});
+
+	// Miss-analysis: every right-click row read the selection at contextmenu, and no browser the
+	// suite drives selects under a right-click the way Safari does.
+	it('a press made on no range opens block actions over the word the browser then selected', () => {
+		const h = harness({ rangeAtPress: false });
+		selectInside(h.fence.firstElementChild!);
+		h.rightClick(h.fence.firstElementChild!);
+		expect(h.menu()?.label).toBe(BLOCK_ACTIONS_LABEL);
+		expect(h.ids()).toContain('block.remove');
+		// The caret replaces the word, which would otherwise linger under the block's actions.
+		expect(h.placeCaretAtPoint).toHaveBeenCalledWith(30, 40);
+	});
+
+	it('the same press on prose keeps the word for the clipboard rows and offers the flyout', () => {
+		const h = harness({ rangeAtPress: false });
+		selectInside(h.prose.firstElementChild!);
+		h.rightClick(h.prose.firstElementChild!);
+		expect(h.placeCaretAtPoint).not.toHaveBeenCalled();
+		expect(h.ids()).toContain('insert');
 	});
 
 	it('a nested block gets the clipboard rows without the insert flyout', () => {

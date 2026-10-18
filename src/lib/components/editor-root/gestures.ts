@@ -59,6 +59,9 @@ export interface RootGestures {
 	install(root: HTMLElement): () => void;
 	/** Where a click on empty space puts the caret, for a point the caller chose to answer. */
 	placeCaretAtPoint(root: HTMLElement, x: number, y: number): boolean;
+	/** Whether a range was selected when a context menu's press went down (Safari selects the word
+	 *  under a right-click before `contextmenu`); a menu the keyboard opened reads the live one. */
+	rangeAtContextPress(root: HTMLElement): boolean;
 }
 
 // Empty space and a block's non-editable parts (a rendered equation, a diagram, a whole-block
@@ -130,6 +133,15 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 	function blurEditingSurface(root: HTMLElement): void {
 		const active = document.activeElement;
 		if (active instanceof HTMLElement && root.contains(active) && active !== root) active.blur();
+	}
+
+	// The selection at the latest secondary press (a right button, or Control with the left on a
+	// Mac); a key in between means the next menu is the keyboard's.
+	let contextPress: { range: boolean } | null = null;
+
+	function rangeIn(root: HTMLElement): boolean {
+		const native = window.getSelection();
+		return !!native && !native.isCollapsed && root.contains(native.anchorNode);
 	}
 
 	function install(root: HTMLElement): () => void {
@@ -238,10 +250,14 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 			}),
 			onRoot(root, 'pointerdown', startMarginDrag),
 			onRoot(root, 'mousedown', handleMouseDown),
+			onRoot<MouseEvent>(root, 'mousedown', (e) => (contextPress = notePress(root, e)), {
+				capture: true
+			}),
+			onRoot(root, 'keydown', () => (contextPress = null), { capture: true }),
 			onRoot<MouseEvent>(
 				root,
 				'contextmenu',
-				(e) => placeContextPress(deps.selection, deps.caretWriter, e),
+				(e) => placeContextPress(deps.selection, deps.caretWriter, e, rangeAtContextPress(root)),
 				{
 					capture: true
 				}
@@ -249,8 +265,18 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		);
 	}
 
+	function notePress(root: HTMLElement, e: MouseEvent): { range: boolean } | null {
+		const secondary = e.button === 2 || (e.button === 0 && e.ctrlKey);
+		return secondary ? { range: rangeIn(root) } : null;
+	}
+
+	function rangeAtContextPress(root: HTMLElement): boolean {
+		return contextPress?.range ?? rangeIn(root);
+	}
+
 	return {
 		install,
-		placeCaretAtPoint: (root, x, y) => deadSpaceCaret.placeAtPoint(root, x, y)
+		placeCaretAtPoint: (root, x, y) => deadSpaceCaret.placeAtPoint(root, x, y),
+		rangeAtContextPress
 	};
 }

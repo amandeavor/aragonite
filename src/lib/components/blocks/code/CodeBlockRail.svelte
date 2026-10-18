@@ -256,7 +256,8 @@
 	function activateMenuItem(item: CodeMenuItem): void {
 		if (item.disabled) return;
 		closeMenu();
-		item.run();
+		// Off the page before the item runs, so a clipboard read's Safari prompt never covers it.
+		void tick().then(() => item.run());
 	}
 
 	// Escape hands focus back to ⋮ only when a keyboard user had it inside the menu; a pointer
