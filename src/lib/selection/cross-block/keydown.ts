@@ -91,8 +91,7 @@ async function handleCrossBlockActive(
 ): Promise<boolean> {
 	const el = ctx.getEl();
 	if (!el) return false;
-	// Ctrl+C and Ctrl+X have no role: the copy and cut events write the clipboard synchronously,
-	// and Tauri's webview refuses `navigator.clipboard.writeText`.
+	// Ctrl+C and Ctrl+X have no role: the copy and cut events write the clipboard synchronously.
 	const role = rangeKeyRole(e, ctx);
 	if (role === null) return false;
 	e.preventDefault();

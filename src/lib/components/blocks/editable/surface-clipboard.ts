@@ -2,8 +2,8 @@
  * The copy, cut and paste steps every editable block shares, in one order no block can skip or
  * reshuffle. A block reaches them through its surface's `clipboard`, which supplies the editor's
  * half. Paste prevents the default before its first await, or the native paste runs while a shown
- * source hides. Everything goes through the event's synchronous `clipboardData`;
- * `navigator.clipboard` is permission-gated and unreliable in Tauri's webview.
+ * source hides. Everything goes through the event's synchronous `clipboardData`, since desktop
+ * webviews gate `navigator.clipboard` reads behind a permission.
  */
 
 import type { DocumentGetter } from '../../../editor-keys';
