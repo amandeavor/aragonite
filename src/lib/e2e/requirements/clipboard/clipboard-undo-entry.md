@@ -9,12 +9,15 @@ their own. The rule holds wherever the paste comes from (Ctrl+V, a menu's Paste,
 
 - Type `xy` in a paragraph, then Ctrl+V at once: Ctrl+Z removes the pasted text and keeps `xy`
 - The same in a code block's body and in a table cell
-- Ctrl+V in a paragraph, then type `z` at once: Ctrl+Z removes `z` and keeps the paste
+- Ctrl+V in a paragraph, then type `z` at once: Ctrl+Z removes `z` and keeps the paste, a
+  second Ctrl+Z removes the paste, and two redos put back the paste, then the `z`
 - The same in a code block's body and in a table cell
 - Type `xy`, select the `y` with Shift+ArrowLeft, Ctrl+X at once: Ctrl+Z puts the `y` back and
   keeps `xy`, in a paragraph, a code block and a table cell
 - Type `xy` in a paragraph, then right-click it and pick Paste at once: Ctrl+Z removes the pasted
   text and keeps `xy`; the same through a table cell's menu
+- Type `xy`, then paste over a range across two blocks, cut that range, or paste a grid into a
+  table cell, and type `z`: the first Ctrl+Z removes `z`, the second the paste or cut, keeping `xy`
 
 ## Miss-analysis
 

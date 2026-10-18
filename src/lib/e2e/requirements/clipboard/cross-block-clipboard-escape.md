@@ -25,6 +25,8 @@ listens, and without it the whole gesture dies silently.
   host header field mounted inside the editor root (`?header=on`, both its `<input>` and
   its `contenteditable`) and from the find bar's input each yields that field's own
   text, never the document, even with a whole-document range live.
+- An image's alt field holds focus while the image stays selected: copying from it yields the
+  field's text, never the image's Markdown.
 
 ## Miss-analysis
 
