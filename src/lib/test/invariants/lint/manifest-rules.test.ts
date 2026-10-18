@@ -79,6 +79,12 @@ const readSiteRoles = Object.fromEntries(
 	Object.entries(READ_SITE_ROUTES).map(([relPath, route]) => [relPath, route.why])
 );
 
+/** Sites that read a clipboard or drop payload only to report it, never to write it. */
+const REPORT_ONLY_READS: Record<string, string> = {
+	'src/lib/debug/input-recorder.ts':
+		'copies a paste or drop payload (or its length) into an input recording; nothing is written'
+};
+
 // ── G4.45 the bare tree-op primitives ────────────────────────────────────────
 
 /** Keyed on the import rather than the call, so an alias (`splitNode as performSplit`) still
@@ -512,7 +518,7 @@ const MANIFESTS: ManifestRule[] = [
 	{
 		id: 'G4.11 every clipboard or drop read site is a declared route to the transforms',
 		matches: CLIPBOARD_READ_RE,
-		declared: readSiteRoles,
+		declared: { ...readSiteRoles, ...REPORT_ONLY_READS },
 		reason:
 			'a read that reaches parse() without a handoff to a declared route drops every plugin paste transform on that route',
 		hits: [

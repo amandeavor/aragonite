@@ -158,7 +158,7 @@ unguarded.
 | G4.175 | Every library component compiles in runes mode                                               | L       |
 | G4.178 | Every route that mounts a plugin view falls back and reports when it throws                  | L       |
 | G4.180 | Every top-right hover control on a block moves below the open find bar                       | L       |
-| G4.181 | Every wrapper package carries the core's version and peers the core at exactly that          | L       |
+| G4.181 | Every wrapper package, and the library's version constant, carries the core's version        | L       |
 | G4.183 | An app that doesn't compile Svelte installs no Svelte                                        | harness |
 | G4.184 | The editor's own reset sets everything the demo app's global reset does                      | L       |
 | G4.185 | Only the `/svelte` entry's published types reach a `svelte` import; none reach a stylesheet  | harness |
@@ -1085,7 +1085,8 @@ carries `data-corner-control`, so the open find bar moves it below itself when i
 
 **G4.181 · Wrappers release in lockstep.** Each package under `packages/` (the framework wrappers)
 has the root's version and peers `@voithos-labs/aragonite` at exactly that version, so an app can
-only ever install one core next to them. `scripts/check-lockstep.mjs` holds the rule;
+only ever install one core next to them; `src/lib/version.ts`, which an input recording names,
+carries that version too. `scripts/check-lockstep.mjs` holds the rule;
 `npm run release:publish` runs it before publishing every package together, and
 `lint/lockstep-versions.test.ts` runs it on the tree.
 

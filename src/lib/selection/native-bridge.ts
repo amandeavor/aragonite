@@ -10,6 +10,8 @@ import type { BlockComponent } from '../block-component';
 import { assertInvariant } from '../assert';
 import { checkPlacementEndsWidget } from '../invariants/placement-ends-widget';
 import { rawOffsetAt, type CaretWriter } from '../caret/widget-offset';
+import { blockContentElAt } from '../caret/block-el-lookup';
+import { findBlockPathForElement, findCellPathForElement } from './path-lookup';
 
 // ── Read native → SelectionPoint ────────────────────────────────────────────
 
@@ -28,6 +30,16 @@ export function readNativeCaretInBlock(
 	const node = useAnchor ? sel.anchorNode! : range.startContainer;
 	const nodeOffset = useAnchor ? sel.anchorOffset : range.startOffset;
 	return { path: path.slice(), offset: rawOffsetAt(blockEl, node, nodeOffset) };
+}
+
+/** Any live DOM position under `root` as a raw-offset point (a table cell's included); null
+ *  outside every block's content. */
+export function readDomPoint(root: HTMLElement, node: Node, offset: number): SelectionPoint | null {
+	const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element);
+	const path = findCellPathForElement(el) ?? findBlockPathForElement(el);
+	const contentEl = path ? blockContentElAt(root, path) : null;
+	if (!path || !contentEl?.contains(node)) return null;
+	return { path, offset: rawOffsetAt(contentEl, node, offset) };
 }
 
 // ── Apply SelectionPoint → native ───────────────────────────────────────────

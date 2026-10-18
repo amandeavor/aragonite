@@ -2520,6 +2520,10 @@ const DOM_PRESENCE: Record<string, { branches: number; reason: string }> = {
 		reason:
 			'with no media queries (no DOM, or jsdom) there is no pointer to ask, so `auto` leaves the browser’s caret alone'
 	},
+	'src/lib/debug/input-recorder.ts :: environment': {
+		branches: 1,
+		reason: 'with no media queries (jsdom) a recording names its pointer `none`'
+	},
 	'src/lib/testing/mount-dom-stubs.ts :: installEditorDomStubsForTests': {
 		branches: 2,
 		reason: 'with no DOM there is no element or range prototype to fill in'

@@ -1,10 +1,14 @@
 /**
- * Every wrapper package releases with the core (G4.181): `scripts/check-lockstep.mjs` holds the
- * rule, and the publish script runs it before anything ships.
+ * Every wrapper package releases with the core, and the library's version constant names it
+ * (G4.181): `scripts/check-lockstep.mjs` holds the rule, and the publish script runs it first.
  */
 
 import { describe, it, expect } from 'vitest';
-import { lockstepDrift, readManifests } from '../../../../../scripts/check-lockstep.mjs';
+import {
+	libraryVersionDrift,
+	lockstepDrift,
+	readManifests
+} from '../../../../../scripts/check-lockstep.mjs';
 
 const ROOT = { version: '1.2.0' };
 const wrapper = (version: string, peer?: string) => ({
@@ -16,10 +20,15 @@ const wrapper = (version: string, peer?: string) => ({
 
 describe('lockstep versions', () => {
 	it('holds on this tree, which has at least one wrapper', () => {
-		const { root, wrappers } = readManifests();
+		const { root, wrappers, libraryVersion } = readManifests();
 
 		expect(wrappers.length).toBeGreaterThan(0);
 		expect(lockstepDrift(root, wrappers)).toEqual([]);
+		expect(libraryVersionDrift(root, libraryVersion)).toEqual([]);
+	});
+
+	it('reports a version constant left behind by a release', () => {
+		expect(libraryVersionDrift(ROOT, '1.1.0')).toHaveLength(1);
 	});
 
 	it.each([

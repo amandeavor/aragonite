@@ -87,6 +87,7 @@ These checks run in three kinds of place:
 | G1.112 | A content write inside a commit leaves its fix-up to the commit                            | A·N     |
 | G1.113 | A list item's drawn marker is its own opening bytes                                        | A·P     |
 | G1.115 | A caret restored inside a widget that can show its source opens the source at that byte    | A·N     |
+| G1.116 | A stopped input recording holds no listener                                                | A       |
 | G1.117 | A write never splits a CRLF pair into a lone `\r` or a lone `\n`                           | A·N     |
 | G1.118 | A list's marker-width counts are what a recount of its items gives                         | A·N     |
 | G1.119 | No caret the editor writes sits between a CRLF pair's `\r` and `\n`                        | A·N     |
@@ -522,6 +523,12 @@ tag of it) opens its source with the caret at that byte, or the next key types a
 Both prose blocks place such a caret through `restoreCaret` (after an edit, via `parkCaret`, on
 undo, redo or `setSelection`); a rebuild's carried caret predates the edit and opens nothing. One
 off its byte must sit at a sourceless widget. `checkWidgetCaretLanding`; G4.211 covers every kind.
+
+**G1.116 · A stopped recording listens to nothing** (`recorder-listener-after-stop`). An input
+recording's listeners on the editor root and `document` all take one abort signal, which `stop()`
+and the editor's teardown abort, so recording costs nothing once it ends. A listener added without
+the signal would run after the stop; the recorder warns when one does. `debug/input-recorder.ts` ·
+`input-recorder.test.ts`.
 
 **G1.117 · A CRLF pair stays whole** (`line-ending-pairs`). WebKit and Firefox stop a caret between
 a line's `\r` and `\n` and delete one alone. The DOM-to-raw read rounds a position inside a pair to
