@@ -95,11 +95,8 @@ export function createReorderAction(
 				);
 				landedAt = moved.landing;
 				settled = scope.describeEdit({ moved: { to: landedAt } });
-				if (unit.renumberMarkers) {
-					// Ordered markers depend on position, so this copies each item whose marker it
-					// rewrites; the commit's rebuild then concatenates the fresh raws.
-					renumberOrderedListFrom(scope.node, start, scope.sharing);
-				}
+				// Only an ordered list renumbers; any other container keeps its children as moved.
+				renumberOrderedListFrom(scope.node, start, scope.sharing);
 				return moved.change;
 			},
 			landing: landing(unit.parentPath),

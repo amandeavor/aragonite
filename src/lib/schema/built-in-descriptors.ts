@@ -598,7 +598,7 @@ function registerBuiltIns(): void {
 				firstChildBackspace: 'list-item-cascade',
 				middleChildBackspace: 'list-item-cascade'
 			},
-			reorderChildren: { renumberMarkers: true }
+			reorderChildren: {}
 		},
 		conformanceFixture: '- item\n',
 		closure: containerClosure({

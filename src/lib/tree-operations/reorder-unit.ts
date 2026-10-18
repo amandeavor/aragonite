@@ -14,8 +14,6 @@ export interface ReorderUnit {
 	index: number;
 	/** The root reorders structurally; a container reorders through its own commit scope. */
 	scope: 'document' | 'container';
-	/** The parent renumbers position-dependent child markers after the move (ordered list). */
-	renumberMarkers: boolean;
 }
 
 export function resolveReorderUnit(doc: Document, path: number[]): ReorderUnit | null {
@@ -24,21 +22,15 @@ export function resolveReorderUnit(doc: Document, path: number[]): ReorderUnit |
 		// The root is identified structurally, never by kind: a plugin may register 'document'
 		// as a block kind, and such a node is just another container.
 		if (parentPath.length === 0) {
-			return { parentPath, index: path[depth - 1], scope: 'document', renumberMarkers: false };
+			return { parentPath, index: path[depth - 1], scope: 'document' };
 		}
 		const parentKind = nodeAt(doc, parentPath)?.kind;
 		// `!== 'document'` narrows out the root's kind at the type level (nodeAt widens to
 		// include it); at runtime the root is already handled above.
 		if (parentKind && parentKind !== 'document') {
 			const descriptor = tryGetBlockKindDescriptor(parentKind);
-			const reorderChildren = descriptor?.reorderChildren;
-			if (reorderChildren) {
-				return {
-					parentPath,
-					index: path[depth - 1],
-					scope: 'container',
-					renumberMarkers: reorderChildren.renumberMarkers ?? false
-				};
+			if (descriptor?.reorderChildren) {
+				return { parentPath, index: path[depth - 1], scope: 'container' };
 			}
 			if (descriptor?.containerContract === 'opaque') return null;
 		}
