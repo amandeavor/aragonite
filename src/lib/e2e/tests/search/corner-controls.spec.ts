@@ -121,7 +121,7 @@ test.describe('the find bar over a code block scrolling under it', () => {
 		const barTop = () =>
 			page.locator('.search-bar').evaluate((el) => el.getBoundingClientRect().top);
 		const blockTop = () => block.evaluate((el) => el.getBoundingClientRect().top);
-		await page.mouse.wheel(0, (await blockTop()) - (await barTop()));
+		await page.mouse.wheel(0, Math.round((await blockTop()) - (await barTop())));
 		await expect.poll(async () => Math.abs((await blockTop()) - (await barTop()))).toBeLessThan(8);
 		await expect.poll(() => areaUnderBar(rail)).toBe(0);
 	});
