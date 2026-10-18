@@ -59,8 +59,8 @@ interface ImeRun {
 const MICROTASK_CHECKPOINT_TURNS = 1000;
 
 /**
- * The branch for WebKit and Firefox writes the composed text into the DOM the way an IME does and fires the editor's
- * events around it: it proves the commit path runs, not the event order.
+ * The branch for WebKit and Firefox writes the composed text into the DOM the way an IME does and
+ * fires the editor's events around it: it proves the commit path runs, not the event order.
  */
 function handFiredIme(page: Page): ImeDriver {
 	let open = false;

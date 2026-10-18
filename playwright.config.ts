@@ -56,6 +56,7 @@ const PROJECT_DIRS = [
 const WEBKIT_LANE = [
 	'smoke.spec.ts',
 	'source-prop.spec.ts',
+	'entity-widget.spec.ts',
 	'text-editing/edge-cases.spec.ts',
 	'text-editing/forward-delete.spec.ts',
 	'text-editing/enter-at-block-start.spec.ts',
