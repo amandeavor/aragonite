@@ -240,6 +240,27 @@ test.describe('the caret at an item’s start', () => {
 		}
 	}
 
+	// Level with a row, the press picks that row's first cell, and the marker side is its start.
+	const TABLE_ITEM = '- | a | b |\n  | - | - |\n  | 1 | 2 |\n';
+	for (const mode of EDITING_MODES) {
+		for (const { row, cell, expected } of [
+			{ row: 'header', cell: 0, expected: '- | Xa | b |\n  | - | - |\n  | 1 | 2 |\n' },
+			{ row: 'body', cell: 2, expected: '- | a | b |\n  | - | - |\n  | X1 | 2 |\n' }
+		]) {
+			test(`a press on a table item's marker level with its ${row} row lands before the cell's text, ${mode}`, async ({
+				page
+			}) => {
+				const editor = await openIn(page, mode, TABLE_ITEM);
+				const box = await page.locator('.editor .table-cell').nth(cell).boundingBox();
+				const item = await page.locator('.editor .list-item-block').first().boundingBox();
+				if (!box || !item) throw new Error('the table item has no box');
+				await page.mouse.click(item.x + 3, box.y + box.height / 2);
+				await editor.typeSlowly('X');
+				await editor.bridge.waitForSourceEquals(expected);
+			});
+		}
+	}
+
 	for (const mode of ['live', 'preview-block'] as const) {
 		test(`a press on the drawn box checks it and leaves the caret in the to-do, ${mode}`, async ({
 			page

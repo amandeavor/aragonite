@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // Where a point inside a table puts the caret. A dead-space click has already clamped the point
 // into the table's box, so the cases that matter are the ones the drag hit test refuses: the
-// gutter left of the first column, the padding between cells, and past a row's own edges.
+// gutter left of the first column, the padding between cells, and past a row's own edges. The
+// cells are empty, so each lands at its end; the offset inside a cell's text is an e2e row's.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { CURSOR_END } from '../../../block-component';
 import { registerBuiltInBlocks } from '../../../components/built-in-blocks';
