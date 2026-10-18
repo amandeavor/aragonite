@@ -10,6 +10,7 @@ import type { CrossBlockHandlers } from '../../selection/cross-block/dispatch';
 import type { CommandDispatchContext } from '../../schema/block-commands';
 import { isReservedUiChord, runGlobalChord } from '../../schema/commands';
 import { eventToChord, isCharacterKey } from '../../schema/keybindings';
+import { shownSelectionText } from '../blocks/editable/clipboard-step';
 
 export interface EditorRootKeydownDeps {
 	/** Getters, never values: capturing them would freeze the flags at construction time. */
@@ -52,7 +53,7 @@ export function createEditorRootKeydown(deps: EditorRootKeydownDeps): EditorRoot
 			event.preventDefault();
 			// Read before open(), whose focus collapses the selection; the !isOpen check keeps a
 			// repeat Mod+F from overwriting the saved caret.
-			const selected = window.getSelection()?.toString() ?? '';
+			const selected = shownSelectionText();
 			if (!deps.search.isOpen) deps.saveSearchCaret();
 			deps.setReplaceExpanded(chord === 'Mod+H' && deps.canReplace);
 			deps.search.open();

@@ -539,6 +539,23 @@ describe('editor-root keydown: search chord branches', () => {
 		h.press('f', MOD_F);
 		expect(h.search.calls.queries).toEqual(['needle']);
 	});
+
+	// Miss-analysis: the seeding row selected one line, and Firefox on Windows writes a line break as CRLF.
+	it('seeds the query with LF line breaks, whatever the engine wrote', () => {
+		const h = harness();
+		const block = document.createElement('div');
+		block.textContent = 'one\r\ntwo';
+		h.root.append(block);
+		h.root.focus();
+		const range = document.createRange();
+		range.selectNodeContents(block);
+		const selection = window.getSelection();
+		selection?.removeAllRanges();
+		selection?.addRange(range);
+
+		h.press('f', MOD_F);
+		expect(h.search.calls.queries).toEqual(['one\ntwo']);
+	});
 });
 
 // ── Non-vacuity ──────────────────────────────────────────────────────────────

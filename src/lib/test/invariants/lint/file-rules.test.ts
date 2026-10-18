@@ -533,6 +533,24 @@ const RULES: FileRule[] = [
 		misses: ['function onPaste(e: ClipboardEvent): void {}', 'const e = event as ClipboardEvent;']
 	},
 	{
+		id: 'G4.221 the shown text of a selection is read in one place',
+		matches: /(?:\bgetSelection\(\)|\bsel(?:ection)?)\s*[!?]?\.toString\s*\(/,
+		allowed: {
+			[SOURCE.clipboardStep]:
+				'`shownSelectionText`: LF line breaks, and nothing for an empty block’s placeholder `<br>`'
+		},
+		reaches: [SOURCE.clipboardStep],
+		reason:
+			'Firefox on Windows writes a selection’s line breaks as CRLF and an empty block’s placeholder `<br>` as one, so the text read straight off the selection differs by engine: call `shownSelectionText`',
+		hits: [
+			"const text = window.getSelection()?.toString() ?? '';",
+			'return sel.toString();',
+			'document.getSelection()!.toString()',
+			'selection?.toString()'
+		],
+		misses: ['const n = range.toString().length;', 'const s = (5).toString();']
+	},
+	{
 		id: 'every dev-only check reads the build flag through env.ts',
 		matches: /from\s*['"]esm-env['"]/,
 		allowed: {

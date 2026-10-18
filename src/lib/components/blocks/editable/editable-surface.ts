@@ -75,6 +75,7 @@ import {
 	type InlinePaste,
 	pasteIntoBlock
 } from './surface-clipboard';
+import { shownSelectionText } from './clipboard-step';
 import {
 	rawOfWalkOffset,
 	revealsNoMarkers,
@@ -440,10 +441,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	}
 
 	function getSelectedText(): string {
-		if (!deps.getEl()) return '';
-		const sel = window.getSelection();
-		if (!sel || sel.rangeCount === 0) return '';
-		return sel.toString();
+		return deps.getEl() ? shownSelectionText() : '';
 	}
 
 	function setSelection(start: number, end: number): void {
