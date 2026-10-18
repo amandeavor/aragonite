@@ -1,4 +1,5 @@
 import { type Page } from '@playwright/test';
+import { dispatchPaste } from '../../clipboard-arm';
 import { EditorPage } from '../../editor-page';
 
 /**
@@ -52,21 +53,5 @@ export async function pasteFiles(
 	text = '',
 	at: 'focused' | 'body' = 'focused'
 ): Promise<void> {
-	await page.evaluate(
-		({ files, text, at }) => {
-			const target = at === 'body' ? document.body : (document.activeElement as HTMLElement | null);
-			if (!target) throw new Error('image paste: nothing focused to paste into');
-			const data = new DataTransfer();
-			for (const file of files) {
-				data.items.add(
-					new File([new Uint8Array([137, 80, 78, 71])], file.name, { type: file.type })
-				);
-			}
-			if (text) data.setData('text/plain', text);
-			target.dispatchEvent(
-				new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
-			);
-		},
-		{ files, text, at }
-	);
+	await dispatchPaste(page, { files, entries: text ? { 'text/plain': text } : {}, at });
 }

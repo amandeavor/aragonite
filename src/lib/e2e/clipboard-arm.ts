@@ -1,11 +1,12 @@
 import { type Page } from '@playwright/test';
-import { isWebKit } from './browser-engine';
+import { isChromium } from './browser-engine';
 
 /**
  * How a spec's bytes reach the editor's clipboard handlers, the one clipboard every spec and sim
  * goes through (G4.212). Chromium uses the real system clipboard behind the context's permission
- * grants. WebKit's real clipboard is out of reach of the paste keystroke and refuses page reads, so
- * there `installClipboard` puts an in-page store behind `navigator.clipboard` and the copy events.
+ * grants. WebKit's real clipboard is out of reach of the paste keystroke and refuses page reads, and
+ * Firefox refuses a write before a user activation, so there `installClipboard` puts an in-page
+ * store behind `navigator.clipboard` and the copy events.
  */
 export interface ClipboardArm {
 	seed(data: ClipboardPayload): Promise<void>;
@@ -20,12 +21,12 @@ export type ClipboardType = 'text/plain' | 'text/html';
 export type ClipboardPayload = string | Partial<Record<ClipboardType, string>>;
 
 export function createClipboardArm(page: Page): ClipboardArm {
-	return isWebKit(page) ? storeClipboard(page) : systemClipboard(page);
+	return isChromium(page) ? systemClipboard(page) : storeClipboard(page);
 }
 
 /** Page-side setup before the first navigation; the `page` fixture runs it for every spec. */
 export async function installClipboard(page: Page): Promise<void> {
-	if (isWebKit(page)) await page.addInitScript(installClipboardStore);
+	if (!isChromium(page)) await page.addInitScript(installClipboardStore);
 }
 
 /** Make the page's next clipboard read wait until `releaseClipboardRead`, so a spec can swap the
@@ -78,6 +79,43 @@ export async function refuseClipboardWrites(page: Page): Promise<void> {
 	});
 }
 
+// ── A paste event carrying data ─────────────────────────────────────────────
+
+export interface PasteInit {
+	/** One string per type, as `DataTransfer.setData`. */
+	entries?: Partial<Record<ClipboardType, string>>;
+	files?: { name: string; type: string }[];
+	/** The element the event lands on: the focused one, the body, or the first match of a selector. */
+	at?: 'focused' | 'body' | { selector: string };
+	/** Drop the live selection just before dispatch, as the browser does past a widget it cannot enter. */
+	clearSelection?: boolean;
+}
+
+/**
+ * Fire a `paste` carrying `entries` and `files` at the editor's real paste entry. The data is set
+ * on the event after construction because Firefox drops `clipboardData` from the constructor.
+ */
+export async function dispatchPaste(page: Page, init: PasteInit): Promise<void> {
+	await page.evaluate(({ entries = {}, files = [], at = 'focused', clearSelection = false }) => {
+		const target =
+			at === 'focused'
+				? (document.activeElement as HTMLElement | null)
+				: at === 'body'
+					? document.body
+					: document.querySelector<HTMLElement>(at.selector);
+		if (!target) throw new Error('paste: no element to paste into');
+		const data = new DataTransfer();
+		for (const file of files) {
+			data.items.add(new File([new Uint8Array([137, 80, 78, 71])], file.name, { type: file.type }));
+		}
+		for (const [type, text] of Object.entries(entries)) data.setData(type, text);
+		const event = new ClipboardEvent('paste', { bubbles: true, cancelable: true });
+		Object.defineProperty(event, 'clipboardData', { value: data });
+		if (clearSelection) window.getSelection()?.removeAllRanges();
+		target.dispatchEvent(event);
+	}, init);
+}
+
 // ── Chromium: the system clipboard ──────────────────────────────────────────
 
 function systemClipboard(page: Page): ClipboardArm {
@@ -116,7 +154,7 @@ function systemClipboard(page: Page): ClipboardArm {
 	};
 }
 
-// ── WebKit: the in-page store ───────────────────────────────────────────────
+// ── WebKit and Firefox: the in-page store ───────────────────────────────────
 
 type Store = Record<string, string>;
 
@@ -180,15 +218,10 @@ function storeClipboard(page: Page): ClipboardArm {
 			);
 		},
 		async paste(): Promise<void> {
-			await page.evaluate(() => {
-				const data = new DataTransfer();
-				const store = (window as unknown as { __e2eClipboard?: Store }).__e2eClipboard ?? {};
-				for (const [type, text] of Object.entries(store)) data.setData(type, text);
-				const target = (document.activeElement ?? document.body) as HTMLElement;
-				target.dispatchEvent(
-					new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
-				);
-			});
+			const entries = await page.evaluate(
+				() => (window as unknown as { __e2eClipboard?: Store }).__e2eClipboard ?? {}
+			);
+			await dispatchPaste(page, { entries });
 		},
 		async waitForContains(expected: string, timeout: number): Promise<void> {
 			await page.waitForFunction(
