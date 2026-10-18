@@ -38,6 +38,7 @@ function harness(component: Partial<BlockComponent> = {}, opts: { writes?: boole
 	let reading = false;
 	let version = 0;
 	const calls: string[] = [];
+	const stamps = createDocumentStamps();
 	const insertParagraph = vi.fn(async (boundary: number) => {
 		calls.push(`paragraph at ${boundary}`);
 		created.surface.focus();
@@ -70,7 +71,7 @@ function harness(component: Partial<BlockComponent> = {}, opts: { writes?: boole
 			calls.push('join closes');
 		},
 		contentVersion: () => version,
-		stamps: createDocumentStamps()
+		stamps
 	});
 	return {
 		surface,
@@ -80,6 +81,7 @@ function harness(component: Partial<BlockComponent> = {}, opts: { writes?: boole
 		focused,
 		calls,
 		insertParagraph,
+		stamps,
 		setReading: (next: boolean) => (reading = next)
 	};
 }
@@ -125,6 +127,15 @@ describe('editor-root focused surface', () => {
 		h.outside.focus();
 		expect(await insert('- ')).toBe(true);
 		expect(h.calls).toEqual(['insert - at [1]']);
+	});
+
+	it('an aimed insert a swap outran writes nothing and never reaches the block', async () => {
+		const h = harness({ insertMarkdown: async () => true });
+		h.surface.focus();
+		const insert = h.focused.aimInsertAtFocus()!;
+		h.stamps.retire();
+		expect(await insert('- ')).toBe(false);
+		expect(h.calls).toEqual([]);
 	});
 
 	it('insertMarkdown below makes a paragraph and inserts there, both in one undo join', async () => {

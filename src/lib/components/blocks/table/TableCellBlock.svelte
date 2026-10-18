@@ -837,7 +837,7 @@
 			if (!el || !raw) return;
 			// A live range stays as it is; otherwise the paste replaces what the menu was opened on.
 			if (!selection.isCrossBlock) setSelection(sel.start, sel.end);
-			// The paste step Ctrl+V runs: a grid fills cells, a range is replaced, else it lands inline.
+			// The same paste step Ctrl+V runs.
 			await clipboard.insertMarkdown(raw);
 			return;
 		}
