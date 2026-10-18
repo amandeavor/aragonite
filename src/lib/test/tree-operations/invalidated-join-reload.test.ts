@@ -200,30 +200,18 @@ describe('absorbWindowSeams reports disjoint folds as one window', () => {
 	});
 });
 
-// An inner edit can stop a container interrupting, so the rebuild asks the join at its position.
+// A list-scope delete keeps the list's start, so the list still interrupts the paragraph above.
 // Miss-analysis: GH #176, no fuzzer case mutated inside a container and asked about its position.
-describe('a nested delete can stop an ordered list interrupting (GH #176)', () => {
-	it('folds the list into the paragraph it stopped interrupting', async () => {
+describe('a nested delete leaves an ordered list interrupting (GH #176)', () => {
+	it.each([
+		{ item: 0, bytes: 'a\n1. y\n' },
+		{ item: 1, bytes: 'a\n1. x\n' }
+	])('deleting item $item keeps the list standing', async ({ item, bytes }) => {
 		const h = makeNestedHarness('a\n1. x\n2. y\n', { index: 1, listOverrides: true });
 
-		await h.bundle.blockEdit.deleteBlock(0, 'keyless');
+		await h.bundle.blockEdit.deleteBlock(item, 'keyless');
 
-		expect(serialize(h.deps.doc)).toBe('a\n2. y\n');
-		expect(h.deps.doc.children.map((c) => c.kind)).toEqual(['paragraph']);
-		expect(describeConvergence(h.deps.doc)).toBeNull();
-		// The parallel arrays are the grandparent's, which no commit descriptor covers.
-		expect(h.deps.blockIds).toHaveLength(1);
-		expect(h.deps.blockRefs).toHaveLength(1);
-	});
-
-	// The other side of the check: a delete that leaves the list still interrupting merges
-	// nothing, so the paragraph above keeps its own position.
-	it('leaves a list that still starts at 1 standing', async () => {
-		const h = makeNestedHarness('a\n1. x\n2. y\n', { index: 1, listOverrides: true });
-
-		await h.bundle.blockEdit.deleteBlock(1, 'keyless');
-
-		expect(serialize(h.deps.doc)).toBe('a\n1. x\n');
+		expect(serialize(h.deps.doc)).toBe(bytes);
 		expect(h.deps.doc.children.map((c) => c.kind)).toEqual(['paragraph', 'list']);
 		expect(describeConvergence(h.deps.doc)).toBeNull();
 		expect(h.deps.blockIds).toHaveLength(2);

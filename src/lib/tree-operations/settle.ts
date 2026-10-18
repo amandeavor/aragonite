@@ -19,7 +19,7 @@ import { noteBodySettled } from '../invariants/settle-once';
 import { endWindowLines } from './open-tail';
 import type { SharingState } from './sharing';
 import { lacksSublistSeparator } from './list/sublist-separator';
-import { itemsShareList } from './list/ordered-markers';
+import { holdOrderedNumbering, itemsShareList } from './list/ordered-markers';
 import { spliceChildren } from './children';
 import { applyStructuralChangeToIdsRefs, type StructuralChange } from './structural-change';
 import { asBody, bodyUnder, type BodyParent, type BodyParentArg } from './node-primitives';
@@ -749,12 +749,18 @@ function absorbWrapPrefix(body: BodyParent, bodyStart: number, index: number, fr
 
 // ── Delete ──
 
-/** Remove the node at `blockIndex`; the fix-up that leaves its successor separated once is the
- *  commit's. A whole document reads as its own body. */
-export function deleteNode(parent: BodyParentArg, blockIndex: number): StructuralChange {
+/** Remove the node at `blockIndex`, an ordered list's numbers kept consecutive; the fix-up that
+ *  leaves its successor separated once is the commit's. A whole document reads as its own body. */
+export function deleteNode(
+	parent: BodyParentArg,
+	blockIndex: number,
+	sharing: SharingState
+): StructuralChange {
 	const body = asBody(parent);
 	if (blockIndex < 0 || blockIndex >= body.children.length) return { op: 'noop' };
 	retireChildSpans(body);
+	const renumber = body.owner ? holdOrderedNumbering(body.owner) : undefined;
 	body.children.splice(blockIndex, 1);
+	renumber?.(sharing);
 	return { op: 'delete', at: blockIndex, count: 1 };
 }

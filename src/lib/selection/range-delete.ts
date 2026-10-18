@@ -31,7 +31,7 @@ import {
 	applyPlannedDeletion,
 	installSurvivor,
 	planCrossBlockDeletion,
-	rebuildSharedAncestries
+	rebuildAfterDeletion
 } from './range-delete-ceremony';
 import { ensureUnsharedPath } from '../tree-operations/unshare';
 import { rebuildUnsharedAncestry } from '../tree-operations/chain-rebuild';
@@ -187,7 +187,7 @@ function joinedRangeDelete(
 	applyPlannedDeletion(doc, plan, grammar);
 	const shift = installSurvivor(doc, start.path, startBlock, joined.raw, sharing, reading);
 	rebuildUnsharedAncestry(doc, start.path, sharing, null, grammar);
-	rebuildSharedAncestries(doc, plan, sharing, grammar);
+	rebuildAfterDeletion(doc, plan, sharing, grammar);
 
 	// The reparse can turn the survivor into a container (a list marker joined to text), whose own
 	// element holds no caret, so the join point resolves to the leaf that holds it.

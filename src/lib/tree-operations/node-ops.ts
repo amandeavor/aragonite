@@ -365,7 +365,7 @@ export function mergeIntoPrevDeepLeaf(
 	const at = rawOffsetOfLeaf(parent.children[blockIndex - 1], mergeTarget.path, joinOffset);
 	if (at !== null) Object.assign(tracked, { index: blockIndex - 1, offset: at });
 	return {
-		change: deleteNode(parent, blockIndex),
+		change: deleteNode(parent, blockIndex, sharing),
 		landing: (children) =>
 			landingAfterFixUp(children, joined, at, at === null ? undefined : tracked)
 	};

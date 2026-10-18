@@ -23,7 +23,7 @@ import { cellIndexOf } from './primitives';
 import {
 	planCrossBlockDeletion,
 	applyPlannedDeletion,
-	rebuildSharedAncestries,
+	rebuildAfterDeletion,
 	truncateEndInPlace,
 	truncateStartInPlace
 } from './range-delete-ceremony';
@@ -131,7 +131,7 @@ export function tableAwareRangeDelete(
 		const attached = chain ? attachedChainPrefix(doc, chain) : [];
 		if (attached.length > 0) rebuildUnsharedChain(doc, attached, sharing, null, grammar);
 	}
-	rebuildSharedAncestries(doc, plan, sharing, grammar);
+	rebuildAfterDeletion(doc, plan, sharing, grammar);
 
 	const tableRowSplices = [
 		...(startTable && startSplice ? [{ table: startTable, ...startSplice }] : []),

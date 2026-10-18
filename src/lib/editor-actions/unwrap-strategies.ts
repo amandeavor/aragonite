@@ -15,11 +15,6 @@ import {
 	mergeListItemIntoPrevious,
 	isItemUserEmpty
 } from '../tree-operations';
-import {
-	orderedBaseOf,
-	renumberOrderedList,
-	renumberOrderedListFrom
-} from '../tree-operations/list/ordered-markers';
 import type { BlockListState } from '../block-lists/block-list-state.svelte';
 import type { NestedActionsDeps } from './nested/nested-actions';
 import { removeEmptiedContainer } from './nested/emptied-container';
@@ -32,8 +27,8 @@ export interface UnwrapStrategyDeps {
 	state: BlockListState;
 }
 
-/** Drop an empty item and renumber after it; the caret lands at `landAt`, an item of this
- *  list after the delete, at `offset`. */
+/** Drop an empty item; the caret lands at `landAt`, an item of this list after the delete, at
+ *  `offset`. */
 async function deleteEmptyItem(
 	{ deps, state }: UnwrapStrategyDeps,
 	itemIndex: number,
@@ -46,12 +41,7 @@ async function deleteEmptyItem(
 		snapshot: { path: extendDocPath(deps.path, itemIndex), offset: 0 },
 		mutate: (scope) => {
 			scope.describeEdit({ removed: true });
-			// Read before the delete, which can take the first item and the list's start with it.
-			const start = orderedBaseOf(scope.node.children?.[0]);
-			const change = performDelete(scope.body, itemIndex);
-			if (itemIndex === 0) renumberOrderedListFrom(scope.node, start, scope.sharing);
-			else renumberOrderedList(scope.node, itemIndex, scope.sharing);
-			return change;
+			return performDelete(scope.body, itemIndex, scope.sharing);
 		},
 		op: { kind: 'delete', eventPath: extendDocPath(deps.path, itemIndex) },
 		landing: () => ({ path: extendDocPath(deps.path, landAt.item), offset: landAt.offset })

@@ -79,7 +79,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 		const change = deleteSettled(parent as never, 1, defaultGrammarView, createSharingState());
 
 		expect(list.children!.map((c) => c.kind)).toEqual(['listItem', 'listItem']);
-		expect(list.children!.map((c) => c.raw)).toEqual(['1. First\n', '3. Third\n']);
+		expect(list.children!.map((c) => c.raw)).toEqual(['1. First\n', '2. Third\n']);
 		expect(change).toEqual({ op: 'delete', at: 1, count: 1 });
 	});
 

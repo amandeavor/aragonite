@@ -64,7 +64,10 @@ describe('the folded trailing blank materializes when the tail turns blank (GH #
 		expect(doc.children.map((c) => c.raw)).toEqual(['a\n', '\n', 'b\n']);
 		expect(doc.suffix).toBe('\n');
 
-		const change = settled(doc, (body) => ({ change: deleteNode(body, 2), removed: true }));
+		const change = settled(doc, (body) => ({
+			change: deleteNode(body, 2, createSharingState()),
+			removed: true
+		}));
 
 		expect(doc.children).toHaveLength(3);
 		expect(doc.suffix).toBe('');
@@ -77,7 +80,10 @@ describe('the folded trailing blank materializes when the tail turns blank (GH #
 	it('deleting the only block materializes the folded line rather than emptying the tree', () => {
 		const doc = parse('a\n\n');
 
-		const change = settled(doc, (body) => ({ change: deleteNode(body, 0), removed: true }));
+		const change = settled(doc, (body) => ({
+			change: deleteNode(body, 0, createSharingState()),
+			removed: true
+		}));
 
 		expect(doc.children.map((c) => c.raw)).toEqual(['\n']);
 		expect(doc.suffix).toBe('');
@@ -91,7 +97,7 @@ describe('the folded trailing blank materializes when the tail turns blank (GH #
 		const doc = parse('| H |\n| - |\n\n');
 
 		const change = settled(doc, (body) => {
-			deleteNode(body, 0);
+			deleteNode(body, 0, createSharingState());
 			body.children.push(emptyParagraph('', '\n'));
 			return { op: 'replace', at: 0, count: 1, newCount: 1 };
 		});
