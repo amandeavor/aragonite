@@ -16,8 +16,6 @@ const MAX_CHARS = 600;
 
 /** Entries allowed past the budget, keyed `file:G-number`, each with why it needs the room. */
 const BASELINE: Record<string, string> = {
-	'docs/design/invariants/runtime.md:G1.9':
-		'holds two contracts, the aliasing rule and the commit rollback, which has no id of its own',
 	'docs/design/invariants/scans.md:G4.36': 'four file lists, each a case a caret writer must know',
 	'docs/design/invariants/scans.md:G4.75': 'seven write steps, each with its own allowed files',
 	'docs/design/invariants/scans.md:G4.131': 'three syntax modules, each with its own row and tests'

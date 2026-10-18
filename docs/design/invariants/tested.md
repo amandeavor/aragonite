@@ -24,6 +24,7 @@ No runtime check sees these; the test suite is the whole enforcement. Test files
 | G2.14 | A format toggle applies exactly where the active-read says it isn't applied  | N     |
 | G2.15 | A container rebuilt right after a parse writes back the bytes it read        | P·N   |
 | G2.16 | A leaf written its own bytes changes nothing, and a keystroke moves one line | P·N   |
+| G2.17 | A commit that throws leaves the document and the undo stacks as they were    | N     |
 
 ### The entries
 
@@ -103,3 +104,10 @@ document byte for byte as it was, and one letter typed through the keystroke's r
 line of the document and leaves a tree that reloads as itself. Both draw the blank-separated
 corpus and the respelled quotes and lists, and a named row pins the retype of a tab-indented item
 holding a table. `shape-fixed-point.property.test.ts`.
+
+**G2.17 · A throwing commit changes nothing.** A commit mutation that throws publishes no partial
+tree, leaves the undo and redo stacks as they were (`UndoManager.restoreStacks`), puts back each
+scope's children, child ids and the bytes, metadata and list counts it saved, emits
+`error{origin:'commit'}`, then re-throws in dev and swallows in production. A write deeper than a
+scope's direct children stays written; only an internal bug reaches it.
+`commit-rollback.test.ts`, `commit-rollback-bytes.test.ts`.

@@ -135,21 +135,11 @@ range is consumed without asking `supportsInline` first. Predicate `checkContent
 (`descriptor.ts`) · commit primitive · `descriptor.test.ts`.
 
 **G1.9 · Snapshot aliasing.** No mutation writes bytes through a node an undo or redo entry shares;
-moving one within the live tree is fine. Readers and plugins hold bytes-readonly views
-(`core/node-views.ts`, G3.8; G4.13 guards the casts), and a writer copies the path, then re-reads
-the copy through the `$state` tree (`tree-operations/unshare.ts` header). The dev check, for JS that
-skips the types, hashes every node's bytes. `checkSnapshotIntegrity` · commit primitive, undo/redo
-restore · `snapshot-integrity.test.ts`, `undo-restoration.property.test.ts`.
-
-The **commit-rollback companion** lives here too: a commit mutation that throws leaves the undo and
-redo stacks as they were (`UndoManager.restoreStacks`), publishes no partial tree, emits
-`error{origin:'commit'}`, then re-throws in DEV and swallows in production. The commit keeps the
-top-level array it started from, and saves each container scope's children and child-id arrays to
-put back, since a scope copied earlier in the same undo step gets no fresh copy. Open by design: in
-such a scope, a byte write below an owned node's direct children, metadata below them, or a write to
-a top-level block the step already owns stays written after a throw; only an internal bug reaches
-it, and DEV re-throws. `test/editor-actions/commit/commit-rollback.test.ts`,
-`commit-rollback-bytes.test.ts`.
+moving one within the live tree is fine. Readers and plugins hold bytes-readonly views (G3.8; G4.13
+guards the casts), and a writer copies the path, then re-reads the copy through the `$state` tree
+(`tree-operations/unshare.ts` header); the table rebuild alone writes a child's bytes, to a row the
+edit already copied. Dev hashes every node's bytes. `checkSnapshotIntegrity` ·
+`snapshot-integrity.test.ts`, `undo-restoration.property.test.ts`; a throwing commit is G2.17.
 
 **G1.10 · Unique opener priorities.** No two openers share a priority: a tie still dispatches by
 kind name, but it's almost always a mistake. The rule used to say every opener's kind has a
