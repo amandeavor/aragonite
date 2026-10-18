@@ -73,6 +73,23 @@ export function renumberOrderedListFrom(list: CstNode, start: number, sharing: S
 	renumberOrderedList(list, 1, sharing);
 }
 
+/** Reads an ordered list's numbering before items are removed from it, and returns the renumber
+ *  to run after: from the first item the removal shifted, a new first item taking the start. */
+export function holdOrderedNumbering(list: CstNode): (sharing: SharingState) => void {
+	if (!metadataOf(list, 'list')?.ordered || !list.children) return () => {};
+	const before = list.children.slice();
+	const start = orderedBaseOf(before[0]);
+	return (sharing) => {
+		const after = list.children ?? [];
+		if (after.length >= before.length) return;
+		let shifted = 0;
+		while (shifted < after.length && after[shifted] === before[shifted]) shifted++;
+		if (shifted === after.length) return;
+		if (shifted === 0) renumberOrderedListFrom(list, start, sharing);
+		else renumberOrderedList(list, shifted, sharing);
+	};
+}
+
 // ── Style templating ─────────────────────────────────────────────────────────
 
 /**

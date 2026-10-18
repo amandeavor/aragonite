@@ -17,7 +17,7 @@ import { comparePaths, pathsEqual } from './path-math';
 import {
 	planCrossBlockDeletion,
 	applyPlannedDeletion,
-	rebuildSharedAncestries,
+	rebuildAfterDeletion,
 	truncateEndInPlace,
 	truncateStartInPlace
 } from './range-delete-ceremony';
@@ -103,7 +103,7 @@ export function unjoinedRangeDelete(
 	// every touched container re-emits raw (G1.12).
 	if (startChain) rebuildUnsharedChain(doc, startChain, sharing, null, grammar);
 	if (endChain) rebuildUnsharedChain(doc, endChain, sharing, null, grammar);
-	rebuildSharedAncestries(doc, plan, sharing, grammar);
+	rebuildAfterDeletion(doc, plan, sharing, grammar);
 
 	switch (landing.at) {
 		case 'resume':
