@@ -1,5 +1,6 @@
-import { test } from '../../fixtures';
+import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { textRunCenter } from '../../text-runs';
 
 // A cut or a paste inside one block is its own undo entry, apart from the typing on either side.
 // Requirements: `e2e/requirements/clipboard/clipboard-undo-entry.md`.
@@ -59,6 +60,25 @@ test.describe('a cut or paste is its own undo entry', () => {
 			await page.keyboard.press('Shift+ArrowLeft');
 			await page.keyboard.press('ControlOrMeta+x');
 			await editor.bridge.waitForSource((s) => !s.includes('xy'));
+
+			await editor.undo();
+			await editor.bridge.waitForSourceEquals(surface.typed);
+		});
+	}
+
+	// The menus reach the same paste step through `insertMarkdown`, the cell menu through its own.
+	for (const surface of [SURFACES[0], SURFACES[2]]) {
+		test(`a menu Paste right after typing in ${surface.name} undoes alone`, async ({ page }) => {
+			await editor.loadContent(surface.doc);
+			await editor.focusBlockAtPath(surface.path, surface.end);
+			await editor.typeText('xy');
+			await editor.bridge.waitForSourceEquals(surface.typed);
+			const at = await textRunCenter(page, 'abxy');
+			await page.mouse.click(at.x, at.y, { button: 'right' });
+			const paste = page.locator('.md-menu').getByRole('menuitem', { name: 'Paste', exact: true });
+			await expect(paste).toBeVisible();
+			await paste.click();
+			await editor.bridge.waitForSourceContains('PASTE');
 
 			await editor.undo();
 			await editor.bridge.waitForSourceEquals(surface.typed);

@@ -51,8 +51,11 @@ export interface RootMenusDeps {
 	placeCaretAtPoint(x: number, y: number): boolean;
 	/** Whether the right button's press landed on a selected range, which picks the menu. */
 	rangeAtContextPress(): boolean;
-	/** The public insert entry point: Paste inserts at the caret, a flyout row `below` its block. */
+	/** The public insert entry point; a flyout row inserts `below` the block the caret is in. */
 	insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean>;
+	/** An insert at the caret aimed at the block focused now, which a Paste row runs once the
+	 *  clipboard read lands; null with no block focused. */
+	aimInsertAtFocus(): ((md: string) => Promise<boolean>) | null;
 	/** The insert entries this editor lists, read fresh per menu. */
 	insertCatalogue(): readonly InsertEntry[];
 	/** The plugins this editor lists, whose block actions and paste transforms the menu offers. */
@@ -111,9 +114,7 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 
 	function runClipboardRow(id: string): boolean {
 		if (!id.startsWith('clip.')) return false;
-		void runClipboardAction(id.slice('clip.'.length) as ClipboardAction, (text) =>
-			deps.insertMarkdown(text)
-		);
+		void runClipboardAction(id.slice('clip.'.length) as ClipboardAction, deps.aimInsertAtFocus());
 		return true;
 	}
 

@@ -117,6 +117,16 @@ describe('editor-root focused surface', () => {
 		expect(await h.focused.insertMarkdown('- ')).toBe(false);
 	});
 
+	it('an aimed insert lands in the block focused when it was aimed, wherever focus went since', async () => {
+		const h = harness({ insertMarkdown: async () => true });
+		expect(h.focused.aimInsertAtFocus()).toBeNull();
+		h.surface.focus();
+		const insert = h.focused.aimInsertAtFocus()!;
+		h.outside.focus();
+		expect(await insert('- ')).toBe(true);
+		expect(h.calls).toEqual(['insert - at [1]']);
+	});
+
 	it('insertMarkdown below makes a paragraph and inserts there, both in one undo join', async () => {
 		const h = harness({ insertMarkdown: async () => true });
 		h.surface.focus();

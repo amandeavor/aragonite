@@ -929,6 +929,7 @@
 		placeCaretAtPoint,
 		rangeAtContextPress: () => (editorEl ? rootGestures.rangeAtContextPress(editorEl) : false),
 		insertMarkdown,
+		aimInsertAtFocus: () => focusedSurface.aimInsertAtFocus(),
 		insertCatalogue: getInsertCatalogue,
 		activation: activePlugins,
 		reading,

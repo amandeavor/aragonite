@@ -38,6 +38,9 @@ export interface FocusedSurface {
 	/** Routed like a paste event, so the rules live in the block; `below` pastes into a new
 	 *  paragraph after the top-level block. Resolves once the insert has landed. */
 	insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean>;
+	/** `insertMarkdown` at the caret, aimed now at the focused block and document, for an insert
+	 *  that waits on something first (a menu's clipboard read); null with no block to aim at. */
+	aimInsertAtFocus(): ((md: string) => Promise<boolean>) | null;
 }
 
 export function createFocusedSurface(deps: FocusedSurfaceDeps): FocusedSurface {
@@ -50,13 +53,20 @@ export function createFocusedSurface(deps: FocusedSurfaceDeps): FocusedSurface {
 
 	// True only when bytes moved into the document the insert was made for: a block answers for
 	// the paste it handled, and a write the commit refused (reading mode, a swap) moves none.
-	async function insertAtFocus(md: string, madeFor: DocumentStamp): Promise<boolean> {
+	function aimAtFocus(madeFor: DocumentStamp): ((md: string) => Promise<boolean>) | null {
 		const at = path();
-		if (!at || !madeFor.live) return false;
-		const before = deps.contentVersion();
-		const handled = (await deps.getBlockComponent(at)?.insertMarkdown?.(md)) ?? false;
-		return handled && madeFor.live && deps.contentVersion() !== before;
+		const block = at && deps.getBlockComponent(at);
+		if (!block?.insertMarkdown) return null;
+		return async (md) => {
+			if (!madeFor.live) return false;
+			const before = deps.contentVersion();
+			const handled = (await block.insertMarkdown?.(md)) ?? false;
+			return handled && madeFor.live && deps.contentVersion() !== before;
+		};
 	}
+
+	const insertAtFocus = (md: string, madeFor: DocumentStamp): Promise<boolean> =>
+		aimAtFocus(madeFor)?.(md) ?? Promise.resolve(false);
 
 	async function insertBelow(topIndex: number, md: string, madeFor: DocumentStamp) {
 		let inserted = false;
@@ -95,6 +105,7 @@ export function createFocusedSurface(deps: FocusedSurfaceDeps): FocusedSurface {
 				return Promise.resolve(false);
 			}
 			return insertBelow(at[0], md, madeFor);
-		}
+		},
+		aimInsertAtFocus: () => aimAtFocus(deps.stamps.current())
 	};
 }
