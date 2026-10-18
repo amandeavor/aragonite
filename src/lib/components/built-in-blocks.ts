@@ -5,7 +5,7 @@
  */
 
 import type { NodeView } from '../core/node-views';
-import { metadataOf } from '../core/nodes';
+import { headingLevel } from '../core/nodes';
 import { shownKind } from '../core/parsers/heading';
 import type { BlockView } from '../schema/block-view';
 import { svelteBlockView } from '../components/svelte-block-view';
@@ -34,7 +34,7 @@ import { tableDragHitTest } from './blocks/table/table-drag-hit-test';
 
 function headingExtraProps(node: NodeView): Record<string, unknown> {
 	if (shownKind(node) === 'paragraph') return { blockClass: 'paragraph-block' };
-	const level = metadataOf(node, 'heading')?.level ?? 1;
+	const level = headingLevel(node) ?? 1;
 	return { blockClass: `heading-${level}` };
 }
 

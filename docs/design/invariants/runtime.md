@@ -91,6 +91,7 @@ These checks run in three kinds of place:
 | G1.117 | A write never splits a CRLF pair into a lone `\r` or a lone `\n`                           | A·N     |
 | G1.118 | A list's marker-width counts are what a recount of its items gives                         | A·N     |
 | G1.119 | No caret the editor writes sits between a CRLF pair's `\r` and `\n`                        | A·N     |
+| G1.122 | A built-in metadata read names the kind the node is                                        | A·N     |
 
 ### The entries
 
@@ -549,3 +550,10 @@ without rebuilding the list. A failed commit restores them with its bytes
 endpoints. Arrows cross a pair in one press (`handleUnitStep`), and a Shift+Arrow moves an anchor
 the browser parked inside one to before it (`extendSelectionToRaw`).
 `checkCaretOutsideLineEndingPair` · `line-ending-pairs.test.ts`.
+
+**G1.122 · A metadata read names the node's kind** (`metadata-of-kind`). `metadataOf(node, kind)`
+is for a caller that already knows the node is a `kind` (it checked, or found the node where only
+that kind lives), and dev fails when it isn't. A node that might be something else, plugin
+containers included, is read with `metadataIfKind`, which gives undefined there. That's what keeps
+a container whose metadata has an `ordered` field from renumbering like a list.
+`core/nodes.ts` · `plugin-metadata.test.ts`.

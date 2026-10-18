@@ -2,17 +2,18 @@
 
 import type { CstNode } from '../../core/nodes';
 import type { NodeView } from '../../core/node-views';
-import { metadataOf } from '../../core/nodes';
+import { metadataIfKind, metadataOf } from '../../core/nodes';
 import type { SharingState } from '../sharing';
 import { rebuildListItemRaw } from '../../schema/container-rebuilders';
 import { ensureUnsharedChild } from '../unshare';
 
 // ── Marker reads ─────────────────────────────────────────────────────────────
 
-/** Read an item's marker as an integer base, defaulting to 1 for non-numeric markers. */
+/** Read an item's marker as an integer base, defaulting to 1 for a non-numeric marker or a
+ *  block that is not a list item. */
 export function orderedBaseOf(item: NodeView | undefined): number {
 	if (!item) return 1;
-	const marker = metadataOf(item, 'listItem')?.marker ?? '';
+	const marker = metadataIfKind(item, 'listItem')?.marker ?? '';
 	const n = parseInt(marker, 10);
 	return Number.isFinite(n) && n > 0 ? n : 1;
 }
@@ -44,11 +45,11 @@ export function bumpOrderedMarker(marker: string): string {
 	return marker.replace(/^(\d+)/, (_, n) => String(Number(n) + 1));
 }
 
-/** Renumber an ordered list's items from `fromIndex` on. The first item keeps its number, the
- *  list's start; an edit that moves, removes or creates it calls `renumberOrderedListFrom`. */
+/** Renumber an ordered list from `fromIndex` on, any other block left as it is. Item 0 keeps the
+ *  list's start; an edit that moves, removes or creates item 0 calls `renumberOrderedListFrom`. */
 export function renumberOrderedList(list: CstNode, fromIndex: number, sharing: SharingState): void {
 	if (!list.children) return;
-	if (!metadataOf(list, 'list')?.ordered) return;
+	if (!metadataIfKind(list, 'list')?.ordered) return;
 	// Each item's metadata and raw is written, so `ensureUnsharedChild` copies it out of the undo
 	// snapshot first.
 	for (let j = Math.max(fromIndex, 1); j < list.children.length; j++) {
@@ -64,7 +65,7 @@ export function renumberOrderedList(list: CstNode, fromIndex: number, sharing: S
 /** Renumber a whole ordered list from `start`, keeping marker suffixes. A caller reads `start`
  *  before its edit when that edit moves or removes the first item. */
 export function renumberOrderedListFrom(list: CstNode, start: number, sharing: SharingState): void {
-	if (!metadataOf(list, 'list')?.ordered) return;
+	if (!metadataIfKind(list, 'list')?.ordered) return;
 	if (!list.children || list.children.length === 0) return;
 	const first = ensureUnsharedChild(list, 0, sharing);
 	const meta = metadataOf(first, 'listItem');
@@ -76,8 +77,7 @@ export function renumberOrderedListFrom(list: CstNode, start: number, sharing: S
 /** Reads an ordered list's numbering before items are removed from it, and returns the renumber
  *  to run after: from the first item the removal shifted, a new first item taking the start. */
 export function holdOrderedNumbering(list: CstNode): (sharing: SharingState) => void {
-	// A plugin container's metadata can carry its own `ordered` field.
-	if (list.kind !== 'list' || !metadataOf(list, 'list')?.ordered || !list.children) {
+	if (!metadataIfKind(list, 'list')?.ordered || !list.children) {
 		return keepNumbering;
 	}
 	const before = list.children.slice();

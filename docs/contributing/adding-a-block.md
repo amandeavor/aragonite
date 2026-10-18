@@ -192,7 +192,7 @@ const BUILT_IN_VIEWS = {
 
 function headingExtraProps(node: NodeView): Record<string, unknown> {
 	// ...
-	const level = metadataOf(node, 'heading')?.level ?? 1;
+	const level = headingLevel(node) ?? 1;
 	return { blockClass: `heading-${level}` };
 }
 ```

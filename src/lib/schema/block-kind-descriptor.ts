@@ -762,7 +762,7 @@ export function countsCells(
 
 /**
  * How many cells a table's index space holds, the exclusive upper bound on any row-major cell
- * index. `node` must be a table block; the metadata read is unchecked, so other kinds give NaN.
+ * index. `node` must be a table block.
  */
 export function tableCellCount(node: NodeView): number {
 	return (node.children?.length ?? 0) * metadataOf(node, 'table').columnCount;
