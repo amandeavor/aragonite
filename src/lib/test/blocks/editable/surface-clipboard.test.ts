@@ -13,7 +13,8 @@ import type { PastedImage, PasteImageHook } from '../../../host-hooks';
 const mountedEl = document.createElement('div');
 
 describe('step order', () => {
-	// The order of steps `createClipboardHandlers` runs: reading check, each arm, a cut's payload before the hide, paste's `preventDefault` before any await.
+	// The order of steps `createClipboardHandlers` runs: reading check, each arm, a cut's payload
+	// before the hide, paste's `preventDefault` before any await, a text write as its own undo entry.
 
 	interface Recorder {
 		log: string[];
@@ -81,6 +82,7 @@ describe('step order', () => {
 			},
 			events: { on: () => () => {}, emit: () => {} },
 			onPasteImage: () => undefined,
+			endTypingBurst: () => void log.push('end-burst'),
 			rangeArm: arm(log, 'range'),
 			pasteTail: (text) => void log.push(`pasteTail:${text}`),
 			...over
@@ -136,10 +138,18 @@ describe('step order', () => {
 				})
 			).onCut(rec.e);
 			// What a scripted cut can read: everything the dispatch ran before its first await.
-			expect(log).toEqual(['forget', 'record', 'range.copy', 'fold']);
+			expect(log).toEqual(['forget', 'record', 'end-burst', 'range.copy', 'fold']);
 			expect(rec.written()).toBe('range');
 			await cut;
-			expect(log).toEqual(['forget', 'record', 'range.copy', 'fold', 'range.remove:range']);
+			expect(log).toEqual([
+				'forget',
+				'record',
+				'end-burst',
+				'range.copy',
+				'fold',
+				'range.remove:range',
+				'end-burst'
+			]);
 			expect(rec.prevented).toBe(true);
 		});
 
@@ -167,14 +177,21 @@ describe('step order', () => {
 			await createClipboardHandlers(deps(log, { selectionArms: [arm(log, 'widget')] })).onCut(
 				rec.e
 			);
-			expect(log).toEqual(['forget', 'record', 'widget.copy', 'widget.remove:widget']);
+			expect(log).toEqual([
+				'forget',
+				'record',
+				'end-burst',
+				'widget.copy',
+				'widget.remove:widget',
+				'end-burst'
+			]);
 		});
 
 		it('a cut no arm takes writes nothing and removes nothing', async () => {
 			const log: string[] = [];
 			const rec = recorder();
 			await createClipboardHandlers(deps(log, { rangeArm: arm(log, 'range', false) })).onCut(rec.e);
-			expect(log).toEqual(['forget', 'record', 'range.copy']);
+			expect(log).toEqual(['forget', 'record', 'end-burst', 'range.copy', 'end-burst']);
 			expect(rec.written()).toBeNull();
 			expect(rec.prevented).toBe(true);
 		});
@@ -204,7 +221,15 @@ describe('step order', () => {
 					}
 				})
 			).onPaste(rec.e);
-			expect(log).toEqual(['record', 'fold', 'crossblock-paste', 'forget', 'pasteTail:HELLO']);
+			expect(log).toEqual([
+				'record',
+				'fold',
+				'crossblock-paste',
+				'forget',
+				'end-burst',
+				'pasteTail:HELLO',
+				'end-burst'
+			]);
 		});
 
 		it('reading mode prevents and stays inert: no cross-block, no tail', async () => {
@@ -225,7 +250,14 @@ describe('step order', () => {
 			const log: string[] = [];
 			const rec = recorder('one\r\n\r\ntwo\r\n');
 			await createClipboardHandlers(deps(log)).onPaste(rec.e);
-			expect(log).toEqual(['record', 'crossblock-paste', 'forget', 'pasteTail:one\n\ntwo\n']);
+			expect(log).toEqual([
+				'record',
+				'crossblock-paste',
+				'forget',
+				'end-burst',
+				'pasteTail:one\n\ntwo\n',
+				'end-burst'
+			]);
 		});
 
 		it('an empty clipboard normalizes to nothing and never reaches the tail', async () => {
@@ -254,7 +286,15 @@ describe('step order', () => {
 				})
 			);
 			expect(await handlers.insertMarkdown('HELLO')).toBe(true);
-			expect(log).toEqual(['record', 'fold', 'crossblock-paste', 'forget', 'pasteTail:HELLO']);
+			expect(log).toEqual([
+				'record',
+				'fold',
+				'crossblock-paste',
+				'forget',
+				'end-burst',
+				'pasteTail:HELLO',
+				'end-burst'
+			]);
 		});
 
 		it('hands the cross-block dispatch the payload, so a range is replaced rather than re-read', async () => {
@@ -296,7 +336,14 @@ describe('step order', () => {
 			const log: string[] = [];
 			const handlers = createClipboardHandlers(deps(log));
 			expect(await handlers.insertMarkdown('a\r\nb')).toBe(true);
-			expect(log).toEqual(['record', 'crossblock-paste', 'forget', 'pasteTail:a\nb']);
+			expect(log).toEqual([
+				'record',
+				'crossblock-paste',
+				'forget',
+				'end-burst',
+				'pasteTail:a\nb',
+				'end-burst'
+			]);
 		});
 	});
 });
@@ -376,6 +423,7 @@ describe('image paste', () => {
 				emit: (name: string, payload: unknown) => void (name === 'error' && errors.push(payload))
 			} as never,
 			onPasteImage: () => onPasteImage,
+			endTypingBurst: () => {},
 			rangeArm: { copy: () => null, remove: () => {} },
 			pasteTail: (text, target) => {
 				inserted.push(text);

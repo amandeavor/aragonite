@@ -740,6 +740,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			caret,
 			events: deps.events,
 			onPasteImage: deps.onPasteImage,
+			endTypingBurst: () => deps.controller.flushDebouncedCheckpoint(),
 			...block
 		});
 	}

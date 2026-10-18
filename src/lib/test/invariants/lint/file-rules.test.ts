@@ -521,6 +521,18 @@ const RULES: FileRule[] = [
 		misses: ['const box = el.getBoundingClientRect();', 'const rects = block.getClientRects();']
 	},
 	{
+		id: 'G4.221 a paste with no paste event calls the paste step, never a constructed event',
+		matches: /\bnew\s+ClipboardEvent\s*\(/,
+		allowed: {},
+		reason:
+			'Firefox empties `clipboardData` on a constructed `ClipboardEvent`, so a paste dispatched as one pastes nothing: hand the text to the focused block’s `insertMarkdown`',
+		hits: [
+			"el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data }));",
+			"const e = new ClipboardEvent ('copy');"
+		],
+		misses: ['function onPaste(e: ClipboardEvent): void {}', 'const e = event as ClipboardEvent;']
+	},
+	{
 		id: 'every dev-only check reads the build flag through env.ts',
 		matches: /from\s*['"]esm-env['"]/,
 		allowed: {

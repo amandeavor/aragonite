@@ -74,6 +74,8 @@ export interface SurfaceClipboardContext {
 	events: EditorEvents;
 	/** Host image-import hook from the policies context, read at each paste. */
 	onPasteImage: () => PasteImageHook | undefined;
+	/** Ends the run of typing that shares one undo entry, so the next write opens its own. */
+	endTypingBurst: () => void;
 }
 
 /** The block's half: the selections it owns and how a paste lands in its own text. */
@@ -166,7 +168,7 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 		}
 		deps.caretMemory.forget();
 		deps.caret.recordPreEditOffset();
-		return runClipboardCut(e, arms, deps.foldReveal);
+		return ownUndoEntry(deps, () => runClipboardCut(e, arms, deps.foldReveal));
 	}
 
 	/** Undo's caret, the target and what the next insertion spends, all read before the first
@@ -179,15 +181,14 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 	async function onPaste(e: ClipboardEvent): Promise<void> {
 		e.preventDefault();
 		if (deps.isReadOnly()) return;
+		// Read `clipboardData` before the first await, while the event still holds it.
+		const images = imageArm.filesOf(e.clipboardData);
+		if (images.length === 0) {
+			await pasteText(normalizeLineEndings(e.clipboardData?.getData('text/plain') ?? ''));
+			return;
+		}
 		const target = readPasteTarget();
 		try {
-			// Read `clipboardData` before the first await, while the event still holds it.
-			const images = imageArm.filesOf(e.clipboardData);
-			if (images.length === 0) {
-				const text = normalizeLineEndings(e.clipboardData?.getData('text/plain') ?? '');
-				await insertPastedText(text, e, target);
-				return;
-			}
 			await deps.foldReveal?.()?.settled;
 			deps.caretMemory.forget();
 			await pasteImages(deps, imageArm, e, images, target);
@@ -196,36 +197,46 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 		}
 	}
 
-	/** Everything a plain-text paste does, shared by the gesture and the API call; `e` is null
-	 *  when there is no gesture to consume. */
-	async function insertPastedText(
-		text: string,
-		e: ClipboardEvent | null,
-		target: PasteTarget
-	): Promise<void> {
-		await deps.foldReveal?.()?.settled;
-		if (text && deps.pastePreHook && (await deps.pastePreHook(text))) return;
-		if (await deps.crossBlock.handlePaste(e, text)) return;
-		deps.caretMemory.forget();
-		// A paste that outlived its block (an unmount mid-insert) has nothing left to land in.
-		if (!text || !deps.caret.getEl()) return;
-		await deps.pasteTail(text, target);
+	/** The paste every text payload takes, whatever brought it: a paste event, a menu's Paste, the
+	 *  `insertMarkdown` call. `text` is already LF. */
+	async function pasteText(text: string): Promise<void> {
+		const target = readPasteTarget();
+		try {
+			await deps.foldReveal?.()?.settled;
+			if (text && deps.pastePreHook && (await deps.pastePreHook(text))) return;
+			if (await deps.crossBlock.handlePaste(null, text)) return;
+			deps.caretMemory.forget();
+			// A paste that outlived its block (an unmount mid-insert) has nothing left to land in.
+			if (!text || !deps.caret.getEl()) return;
+			await ownUndoEntry(deps, () => deps.pasteTail(text, target));
+		} finally {
+			target.held.finish(true);
+		}
 	}
 
 	async function insertMarkdown(md: string): Promise<boolean> {
 		if (deps.isReadOnly()) return false;
 		const text = normalizeLineEndings(md);
 		if (!text) return false;
-		const target = readPasteTarget();
-		try {
-			await insertPastedText(text, null, target);
-		} finally {
-			target.held.finish(true);
-		}
+		await pasteText(text);
 		return true;
 	}
 
 	return { onCopy, onCut, onPaste, insertMarkdown };
+}
+
+/** A cut or a paste into the block's text is its own undo entry, apart from the typing on either
+ *  side; one into a range or a grid commits apart already. */
+async function ownUndoEntry(
+	deps: Pick<SurfaceClipboardContext, 'endTypingBurst'>,
+	edit: () => void | Promise<void>
+): Promise<void> {
+	deps.endTypingBurst();
+	try {
+		await edit();
+	} finally {
+		deps.endTypingBurst();
+	}
 }
 
 // ── Pasting an image ────────────────────────────────────────────────────────
@@ -253,5 +264,5 @@ async function pasteImages(
 	// Move the caret only if it drifted: placing one collapses the DOM range the block reads its
 	// replaced span from, and this paste would stop replacing the selection.
 	if (deps.caret.getCursorOffset() !== anchor) deps.caret.focus(anchor);
-	await deps.pasteTail(text, target);
+	await ownUndoEntry(deps, () => deps.pasteTail(text, target));
 }

@@ -159,9 +159,7 @@ const RULES: CallSiteRule[] = [
 			'src/lib/components/blocks/editable/editable-leaf.ts :: copyRange':
 				'a plugin leaf’s copy of its own range',
 			'src/lib/selection/cross-block/clipboard.ts :: copyCrossBlock':
-				'the copy of a range across blocks, a cell rectangle included',
-			'src/lib/components/menu/clipboard-actions.ts :: pasteTextInto':
-				'the data a menu’s paste event carries in, not a copy’s payload'
+				'the copy of a range across blocks, a cell rectangle included'
 		},
 		reason:
 			'a payload is written by a `ClipboardArm`’s `copy`, which a cut reuses before anything awaits; written anywhere else, a cut’s payload can differ from the copy’s, or land after a scripted cut’s data has closed',

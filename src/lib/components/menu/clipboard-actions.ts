@@ -1,12 +1,15 @@
 /**
  * The clipboard rows a menu offers: cut and copy through the document's own command, so the
- * editor's copy handlers run as usual, and paste as a paste event on the focused editable,
- * as is or escaped so Markdown syntax arrives as literal text.
+ * editor's copy handlers run as usual, and paste as the clipboard's text handed to the focused
+ * block's paste step, as is or escaped so Markdown syntax arrives as literal text.
  */
 
 import { readClipboardText } from '../../editor-actions/system-clipboard';
 
 export type ClipboardAction = 'cut' | 'copy' | 'paste' | 'paste-plain';
+
+/** The focused block's paste step, the one a keyboard paste runs (`insertMarkdown`). */
+export type PasteText = (text: string) => Promise<unknown>;
 
 /** Markdown-significant bytes, escaped so pasted text reads back exactly as pasted. */
 function escapeMarkdownLiteral(text: string): string {
@@ -16,18 +19,10 @@ function escapeMarkdownLiteral(text: string): string {
 		.replace(/^([ \t]*)(\d+)([.)])/gm, '$1$2\\$3');
 }
 
-/** Dispatch `text` to `surface` as a paste, so the editor's paste pipeline handles it. */
-export function pasteTextInto(surface: HTMLElement, text: string): void {
-	const data = new DataTransfer();
-	data.setData('text/plain', text);
-	surface.dispatchEvent(
-		new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
-	);
-}
-
+/** `paste` is null where the menu offers no Paste row. */
 export async function runClipboardAction(
 	action: ClipboardAction,
-	surface: HTMLElement | null
+	paste: PasteText | null
 ): Promise<void> {
 	switch (action) {
 		case 'cut':
@@ -36,10 +31,10 @@ export async function runClipboardAction(
 			return;
 		case 'paste':
 		case 'paste-plain': {
-			if (!surface) return;
+			if (!paste) return;
 			const text = await readClipboardText();
 			if (!text) return;
-			pasteTextInto(surface, action === 'paste-plain' ? escapeMarkdownLiteral(text) : text);
+			await paste(action === 'paste-plain' ? escapeMarkdownLiteral(text) : text);
 		}
 	}
 }

@@ -130,6 +130,7 @@ function clipboardOver(source: string, start = IMAGE_RANGE.start) {
 		},
 		pasteOffset: (caret: number) => caret,
 		onPasteImage: () => undefined,
+		endTypingBurst: () => {},
 		selection,
 		crossBlock: { handlePaste: async () => false, handleCut: async () => false },
 		caretMemory: stubCaretMemory(),
