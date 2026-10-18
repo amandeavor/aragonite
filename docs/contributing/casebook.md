@@ -49,7 +49,7 @@ view.raw = 'rewritten\n';
 
 Running JS bypasses types, so a dev integrity check backs it up: it fingerprints each undo entry
 when pushed and re-verifies at every commit and restore, which catches the write at the offending
-commit instead of at the undo. **Spec:** `docs/design/invariants.md` (G1.9).
+commit instead of at the undo. **Spec:** `docs/design/invariants/runtime.md` (G1.9).
 ([rule 1](rules.md#the-five-rules))
 
 ## Reactive state crosses module boundaries as getters, never values

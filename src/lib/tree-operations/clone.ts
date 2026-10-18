@@ -37,6 +37,7 @@ export function cloneNode(node: NodeView): CstNode {
 		cloned.children = node.children.map(cloneNode);
 		cloned.innerSuffix = node.innerSuffix;
 		if (node.childIds) cloned.childIds = [...node.childIds];
+		if (node.markerWidths) cloned.markerWidths = node.markerWidths.slice();
 	}
 
 	return cloned;

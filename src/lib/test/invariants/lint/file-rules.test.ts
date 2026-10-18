@@ -1346,8 +1346,6 @@ const RULES: FileRule[] = [
 			'src/lib/editor-actions/list-context.ts': 'gives a new item the next marker',
 			'src/lib/components/blocks/list/ListItemBlock.svelte': 'draws a bullet or a number',
 			'src/lib/components/blocks/list/task-checkbox.ts': 'paints the marker before the checkbox',
-			'src/lib/components/blocks/list/marker-column.ts':
-				'sizes the list’s marker column to its widest marker',
 			'src/lib/debug/dump-tree.ts': 'prints it in the tree dump'
 		},
 		reason:

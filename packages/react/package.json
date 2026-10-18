@@ -1,11 +1,15 @@
 {
 	"name": "@voithos-labs/aragonite-react",
 	"version": "0.11.1",
-	"description": "React component for the aragonite Markdown editor",
+	"description": "react component for aragonite, the cute markdown editor lib",
 	"keywords": [
 		"editor",
+		"framework-agnostic",
+		"rich-text",
+		"wysiwyg",
 		"markdown",
-		"react"
+		"react",
+		"typescript"
 	],
 	"homepage": "https://aragonite.dev",
 	"bugs": {

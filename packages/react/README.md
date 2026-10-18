@@ -1,12 +1,10 @@
 # @voithos-labs/aragonite-react
 
-[aragonite](https://github.com/voithos-labs/aragonite), the Markdown block editor, as a React component. You hand it Markdown, edit it as styled blocks with the markers dimmed, and read plain Markdown back, no in-between format.
-
-Works with React 18 and 19, StrictMode and Next included.
+Aragonite as a react component; works with react 18 and 19, next included. What is aragonite? Read the short (your mileage may vary) [readme](https://github.com/voithos-labs/aragonite/blob/main/README.md), or try it out at [aragonite.dev](https://aragonite.dev).
 
 ## Install
 
-The component sits on the core package and releases with it, at the exact same version, so install both:
+Install the core package and this component:
 
 ```bash
 npm install @voithos-labs/aragonite @voithos-labs/aragonite-react
@@ -21,7 +19,7 @@ import '@voithos-labs/aragonite/style.css';
 import '@voithos-labs/aragonite/styles/editor-theme.css';
 
 function Note() {
-	const [text, setText] = useState('# Grocery list\n\n- eggs\n- more eggs\n');
+	const [text, setText] = useState('> That is not dead which can eternal lie,\n> And with strange aeons even death may die.\n');
 	const editor = useRef<EditorHandle>(null);
 
 	return (
@@ -30,16 +28,16 @@ function Note() {
 }
 ```
 
-- `value` and `onChange` keep the document in your state, or pass `defaultValue` and skip the state.
-- Every other prop is an editor option (`theme`, `presentationMode`, `plugins`, and the rest).
-- `header` takes a React node to show above the first block.
-- The ref holds the editor's handle (`getSource()`, `runCommand()`, `getEvents()`, ...), `null` until it mounts.
-- In Next, import the two stylesheets in your root layout. The component is marked `'use client'`, so a server component can render it.
+Relevant (or irrelevant, fuck if i know) details:
+
+- Rather not hold state? Pass `defaultValue` instead of `value`/`onChange` and the editor keeps the document itself.
+- Every other prop is an editor option (`theme`, `plugins`, `header` for a node above the first block, ...), and the ref gets you the handle (`getSource()`, `runCommand()`, ...) once it mounts.
+- Next: import the two stylesheets in your root layout. The component is already `'use client'`, so a server component can render it.
 
 ## More
 
-The [consumer guide](https://github.com/voithos-labs/aragonite/blob/main/docs/guide/consumer-guide.md#react) has the rest: every prop, the handle's methods, events, theming, and which plugins run outside a Svelte app. It also ships in `node_modules/@voithos-labs/aragonite/docs/guide/`, matching the version you installed.
+The [consumer guide](https://github.com/voithos-labs/aragonite/blob/main/docs/guide/consumer-guide.md#react) has the rest: props, handle's methods, events, theming, etc. etc.
 
 ## License
 
-[MPL-2.0](LICENSE)
+Aragonite is free software, released under [MPL-2.0](./LICENSE): use it, study it, fork it, embed it in whatever you're building, closed source included. The one string attached: if you change aragonite's own files, you share those changes under the same license.

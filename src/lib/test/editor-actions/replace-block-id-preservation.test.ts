@@ -4,9 +4,11 @@ import { makeNestedHarness, makeNode, makeTopHarness } from '#lib/test/harness/e
 import type { CstNode } from '#lib/core/nodes.js';
 import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 
-// The hand-built replacement containers have no rebuilt raw, which the dev-mode stale-raw and
-// read-back checks report.
-afterEach(() => allowDevWarns(['invariant:stale-raw', 'invariant:reads-back']));
+// The hand-built replacement containers have no rebuilt raw or marker counts, which the dev-mode
+// stale-raw, read-back and marker-count checks report.
+afterEach(() =>
+	allowDevWarns(['invariant:stale-raw', 'invariant:reads-back', 'invariant:list-marker-widths'])
+);
 
 // ── Top-level replaceBlock preserves id ──────────────────────────────────────
 

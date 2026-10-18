@@ -179,12 +179,18 @@ export function createStructuralCommit(
 		node: CstNode;
 		raw: string;
 		metadata: CstNode['metadata'];
+		markerWidths: CstNode['markerWidths'];
 	}
 
-	/** The bytes at risk, with the metadata a rebuild re-reads from them: the copied ancestors plus
-	 *  direct children, matching `savedChildren`. */
+	/** The bytes at risk, with the metadata and marker counts a rebuild re-reads from them: the
+	 *  copied ancestors plus direct children, matching `savedChildren`. */
 	function captureScopeRaws(chain: CstNode[], owned: CstNode): SavedRaw[] {
-		const save = (node: CstNode): SavedRaw => ({ node, raw: node.raw, metadata: node.metadata });
+		const save = (node: CstNode): SavedRaw => ({
+			node,
+			raw: node.raw,
+			metadata: node.metadata,
+			markerWidths: node.markerWidths
+		});
 		return [...chain.map(save), ...(owned.children ?? []).map(save)];
 	}
 
@@ -481,11 +487,12 @@ export function createStructuralCommit(
 				for (const p of prepared) {
 					p.owned.children = p.savedChildren;
 					p.owned.childIds = p.savedChildIds;
-					// The chain rebuild rewrote these bytes and the metadata it read from them, and both have
-					// to match the children restored above.
-					for (const { node, raw, metadata } of p.savedRaws) {
+					// The chain rebuild rewrote these bytes and what it read from them, and all of it has to
+					// match the children restored above.
+					for (const { node, raw, metadata, markerWidths } of p.savedRaws) {
 						node.raw = raw;
 						node.metadata = metadata;
+						if (node.markerWidths !== markerWidths) node.markerWidths = markerWidths;
 						dropChildSpans(node);
 					}
 					// Without this, the ids and refs written before the throw keep reflecting it.

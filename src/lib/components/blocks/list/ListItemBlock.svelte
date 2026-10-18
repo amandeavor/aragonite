@@ -43,8 +43,7 @@
 		id,
 		myPath = [],
 		itemCount,
-		slots,
-		onMarkerChange
+		slots
 	}: {
 		node: NodeView;
 		index: number;
@@ -53,8 +52,6 @@
 		/** How many items the enclosing list holds; a lone item has no sibling to reorder past. */
 		itemCount: number;
 		slots?: RefSlots<BlockComponent>;
-		/** Called when the item's marker bytes change in place, so the list can resize its column. */
-		onMarkerChange?: () => void;
 	} = $props();
 
 	const { selection, caretWriter, decorations, events, commands } =
@@ -145,13 +142,10 @@
 	// A string, so the marker is rebuilt only when its bytes or its box change, not on every edit.
 	const markerText = $derived(typeof markerPrefix === 'string' ? markerPrefix : markerPrefix.text);
 
-	let drawnText: string | undefined;
 	function drawMarker(cell: HTMLElement): void {
 		void markerText;
 		untrack(() => {
 			assertInvariant('item-marker-bytes', () => checkItemMarkerBytes(node.raw, markerText));
-			if (drawnText !== undefined && drawnText !== markerText) onMarkerChange?.();
-			drawnText = markerText;
 			cell.replaceChildren(buildAmbientSpan(markerPrefix));
 		});
 	}

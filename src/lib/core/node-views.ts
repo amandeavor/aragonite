@@ -1,16 +1,16 @@
 /**
  * A node shared with an undo snapshot is read-only on its serialized bytes (G1.9), and a view
- * types that: every byte-carrying field is frozen. `childIds`, `childSpans` and `ownerEpoch` are
- * editor bookkeeping, not round-trip bytes, and stay writable. The only casts from a view back to
- * a mutable node are the copy-before-write in `tree-operations/unshare.ts` and the commit
- * sequence's owned views (G4.13); a lint test holds that line everywhere else.
+ * types that: every byte-carrying field is frozen. `childIds`, `childSpans`, `markerWidths` and
+ * `ownerEpoch` are editor bookkeeping, not round-trip bytes, and stay writable. The only casts
+ * from a view back to a mutable node are the copy-before-write in `tree-operations/unshare.ts` and
+ * the commit sequence's owned views (G4.13); a lint test holds that line everywhere else.
  */
 
 import type { CstNode, Document } from './nodes';
 
-// Name-scoped at every recursion depth by design, so these three names are reserved: a future
-// nested field so named would be writable through a view.
-type BytesWritableKey = 'childIds' | 'childSpans' | 'ownerEpoch';
+// Name-scoped at every recursion depth by design, so these names are reserved: a future nested
+// field so named would be writable through a view.
+type BytesWritableKey = 'childIds' | 'childSpans' | 'markerWidths' | 'ownerEpoch';
 
 /** Primitives pass through untouched, so branded string kinds keep their brands. */
 export type BytesView<T> = T extends string | number | boolean | bigint | symbol | null | undefined
