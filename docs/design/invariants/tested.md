@@ -71,16 +71,12 @@ gaps, and every node's kind is in the vocabulary: the built-in kinds plus those 
 declared, so the property also runs with the bundled plugins' inline kinds registered.
 `inline-total-coverage.property.test.ts`.
 
-**G2.12 · Caret placement ends the editor's selection.** A caret placement ends every selection the
-editor owns (a cross-block range, a gap caret, an inline widget selected whole), unless it's an
-extend. The programmatic side is one route: `BlockComponent.focus` ends them itself, and the table
-in `test/selection/selection-claim-table.test.ts` runs every writer over each of the three. The scan
-holds what can't be routed: native caret placement (a click moves the caret by default, so pointer
-entries are declared per file), the park verb's allowlisted callers, and the park verb on every leaf
-that forwards a shared caret entry point (containers publish one `containerApi`, and a
-`createEditableLeaf` leaf its `blockApi`, so they're checked by that publication instead).
-`lint/caret-gesture-range-reset.test.ts`, plus `src/lib/e2e/tests/simulation/range-interrupt-ops.spec.ts`
-(outside this group's root), which drives the same rule through real gestures.
+**G2.12 · Caret placement ends the editor's selection.** A placement that isn't an extend ends every
+selection the editor owns (a cross-block range, a gap caret, a widget selected whole). The
+programmatic route is `BlockComponent.focus`; `selection-claim-table.test.ts` runs every writer over
+all three. The scan holds the rest: native placement (pointer entries declared per file), the park
+verb's allowlisted callers, and the park verb on each leaf forwarding a shared caret entry point.
+`lint/caret-gesture-range-reset.test.ts`; `range-interrupt-ops.spec.ts` uses real gestures.
 
 **G2.13 · Shape fixed point.** An edit on a loaded document leaves a tree whose serialization
 reparses to the same block shape; G2.1 can't see a lost block whose bytes were exact. Two lanes:
@@ -96,13 +92,11 @@ checks coverage, the split over every covering run of the kind. A collapsed care
 set of rules entirely. `format-toggle-ladder.test.ts`.
 
 **G2.15 · A container rebuild keeps its bytes.** Rebuild every container of a freshly parsed
-document, innermost first, and you get the same bytes back, line endings included, so the first edit
-in a container changes only the lines it edits. The generators spell tables, quotes and list items
-every way GFM reads alike (padding, no edge pipes, escaped pipes, lazy lines, tabs, CRLF), and a
-second property writes one cell and checks that only that row's line moved.
-`rebuild-keeps-bytes.property.test.ts`. The row writer reads a cell's text the way the row reader
-does (`core/parsers/table-line.ts :: cellText`), and when it falls back to the plain spelling a dev
-check (`table-row-reads-back`) fails if even that doesn't read back as the cells.
+document, innermost first, and the bytes come back, line endings included, so a first edit changes
+only its lines. The generators spell tables, quotes and list items every way GFM reads alike
+(padding, no edge pipes, escaped pipes, lazy lines, tabs, CRLF); a second property writes one cell
+and checks only its row moved. `rebuild-keeps-bytes.property.test.ts`. The row writer reads cells as
+the reader does (`cellText`); a dev check (`table-row-reads-back`) fails a fallback that misreads.
 
 **G2.16 · An edit moves only its own lines.** Writing a leaf the bytes it already holds leaves the
 document byte for byte as it was, and one letter typed through the keystroke's route changes one
