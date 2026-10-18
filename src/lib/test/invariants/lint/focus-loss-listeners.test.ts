@@ -8,7 +8,7 @@ import { describeFileRules, type FileRule } from './file-rule';
 import { collectEditorSources } from './scan-source';
 
 const FOCUS_LOSS_LISTENER =
-	/\bonfocusout\s*=|\bonblur\s*=|\b(?:addEventListener|onRoot)\s*\([^;]*?['"](?:focusout|blur)['"]/;
+	/\bon(?:focusout|blur)\s*[=:]|\b(?:addEventListener|onRoot)\s*(?:<[^>]*>)?\([^;]*?['"](?:focusout|blur)['"]/;
 
 const FOCUS_LOSS: FileRule = {
 	id: 'G4.219 a focus-loss listener serves a focus need, never a popover close',
@@ -27,6 +27,8 @@ const FOCUS_LOSS: FileRule = {
 			'a shown source commits as its cell loses focus',
 		'src/lib/components/blocks/text/TextEditableBlock.svelte':
 			'a shown source and a pending line break end as the block loses focus',
+		'src/lib/components/blocks/editable/editable-leaf.ts':
+			'a shown source commits as its leaf loses focus',
 		'src/lib/components/editor-root/focus.ts': 'tracks which block holds focus',
 		'src/lib/components/editor-root/listeners.ts':
 			'announces the editor losing focus, and ends a press as the window loses it',
@@ -41,7 +43,9 @@ const FOCUS_LOSS: FileRule = {
 		'<div onfocusout={close}>',
 		'<input onblur={() => (open = false)} />',
 		"root.addEventListener('focusout', onFocusOut);",
-		"onRoot(window, 'blur', reset)"
+		"onRoot(window, 'blur', reset)",
+		"onRoot<FocusEvent>(root, 'focusout', onFocusOut)",
+		'onfocusout: () => close(),'
 	],
 	misses: ["closeShownSource('blur', null);", '<div onfocusin={arm}>', 'el.blur();']
 };
