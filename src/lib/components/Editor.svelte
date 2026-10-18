@@ -1050,14 +1050,16 @@
 	});
 
 	// ── Editor-root clipboard routing ────────────────────────────────────
-	// Copy, cut and paste that Chromium retargets to <body> when the selection has no text position.
+	// Copy, cut and paste that no block handled: an engine aims them at <body> or a block element
+	// when the selection's end has no text position.
 	const rootClipboard = createEditorRootClipboard({
 		selection: selectionState,
 		getDoc,
 		crossBlock: editorCrossBlock,
 		onPasteImage: () => onPasteImage,
 		events,
-		getBlockComponent
+		getBlockComponent,
+		isHostChrome
 	});
 
 	rootEffect((root) => {

@@ -20,6 +20,8 @@
   editor itself, not on a cell) writes the same two formats: the rectangle, not its whole rows.
   - Miss-analysis: every rectangle copy ran with the focus in a cell, whose own copy wrote the
     rectangle, so the editor's copy of the same selection was never read.
+  - Miss-analysis: Firefox aims this copy at the block list rather than the page body, and the
+    editor took only the body's; the suite ran on Chromium alone, which uses the body.
 
 ## User interactions
 
