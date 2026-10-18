@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures';
 import { gotoReady } from '../goto-ready';
-import { createClipboardArm } from '../clipboard-arm';
+import { createClipboardArm, refuseNextClipboardWrite } from '../clipboard-arm';
 
 // The showcase's "report a bug" button. This route has no `window.__test` bridge, so the cases
 // read the rendered page, the tab it opens and the clipboard.
@@ -54,5 +54,24 @@ test.describe('/ showcase report a bug', () => {
 		expect(recording.text).toBe(true);
 		expect(recording.steps.at(-1).after.splice[2]).toBe('q');
 		expect(recording.editor.presentationMode).toBe('live');
+	});
+
+	test('a copy the browser refuses gets a Copy recording button that copies on its own click', async ({
+		page
+	}) => {
+		await page.getByTestId('report-bug').click();
+		await page.getByRole('button', { name: 'Start recording' }).click();
+		await page.locator('[data-block-kind="paragraph"]').first().click();
+		await page.keyboard.type('k');
+		await refuseNextClipboardWrite(page);
+
+		const tab = page.context().waitForEvent('page');
+		await page.getByTestId('report-bug').click();
+		await tab;
+		const card = page.getByTestId('report-card');
+		await expect(card).toContainText('kept the recording off your clipboard');
+		await card.getByRole('button', { name: 'Copy recording' }).click();
+		await expect(card).toContainText("it's on your");
+		expect(await createClipboardArm(page).read()).toContain('aragonite-input-recording/1');
 	});
 });

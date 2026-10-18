@@ -13,6 +13,7 @@
 	let phase = $state<'idle' | 'asking' | 'recording' | 'sent'>('idle');
 	let carrier = $state<'url' | 'clipboard' | 'download'>('url');
 	let copyFailed = $state(false);
+	let fenced = '';
 	let handle: InputRecordingHandle | null = null;
 
 	function start() {
@@ -35,13 +36,20 @@
 		);
 		const report = bugReport(recording, where);
 		carrier = report.carrier;
+		fenced = report.fenced;
 		copyFailed = false;
-		if (report.carrier === 'clipboard') {
-			navigator.clipboard.writeText(report.fenced).catch(() => (copyFailed = true));
-		}
+		if (report.carrier === 'clipboard') copy();
 		if (report.carrier === 'download') download(recording, report.fenced);
 		window.open(report.url, '_blank', 'noopener');
 		phase = 'sent';
+	}
+
+	// A copy refused as the new tab took focus works from a click of its own on this page.
+	function copy() {
+		navigator.clipboard.writeText(fenced).then(
+			() => (copyFailed = false),
+			() => (copyFailed = true)
+		);
 	}
 
 	function download(recording: InputRecording, json: string) {
@@ -98,14 +106,17 @@
 				GitHub opened in a new tab. The recording was too long for the link, so it's on your
 				clipboard: paste it into the form's Recording box.
 			{:else if carrier === 'clipboard'}
-				GitHub opened in a new tab, but the browser wouldn't let the recording onto your clipboard.
-				Record again and it should copy this time.
+				GitHub opened in a new tab, but the browser kept the recording off your clipboard. Copy it
+				here, then paste it into the form's Recording box.
 			{:else}
 				GitHub opened in a new tab. The recording was too long for an issue, so it downloaded as a
 				file: drag it into the form's Recording box.
 			{/if}
 		</p>
 		<div class="report-actions">
+			{#if carrier === 'clipboard' && copyFailed}
+				<button type="button" class="report-start" onclick={copy}>Copy recording</button>
+			{/if}
 			<button type="button" class="report-cancel" onclick={() => (phase = 'idle')}>Close</button>
 		</div>
 	</div>

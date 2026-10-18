@@ -37,6 +37,18 @@ export async function holdClipboardRead(page: Page): Promise<void> {
 	});
 }
 
+/** Make the page's next clipboard write fail, as a browser refuses one once the page lost focus. */
+export async function refuseNextClipboardWrite(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		const clipboard = navigator.clipboard;
+		const real = clipboard.writeText.bind(clipboard);
+		clipboard.writeText = () => {
+			clipboard.writeText = real;
+			return Promise.reject(new DOMException('Document is not focused.', 'NotAllowedError'));
+		};
+	});
+}
+
 /** Resolve the held clipboard read with `text`. */
 export async function releaseClipboardRead(page: Page, text: string): Promise<void> {
 	await page.evaluate((t) => (window as any).__releaseClipboardRead(t), text);

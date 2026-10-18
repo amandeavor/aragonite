@@ -10,6 +10,10 @@ The `/` showcase header's "report a bug" button records the visitor's input and 
 
 - Cancel on the card closes it and records nothing; the button reads "report a bug" again.
 
+## Error cases
+
+- The browser refuses the clipboard write (focus already moved to the new tab): the card says so and offers Copy recording, whose own click puts the recording on the clipboard.
+
 ## Pinned below the browser
 
 - A recording short enough for the link rides the URL itself, and one too long for an issue body downloads as a file instead (`test/debug/bug-report-link.test.ts`).
