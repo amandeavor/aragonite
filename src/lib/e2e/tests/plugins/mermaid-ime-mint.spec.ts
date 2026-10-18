@@ -4,6 +4,7 @@ import { readDoc, waitForDoc } from './helpers';
 import { skipUnlessSupported } from '../../browser-engine';
 import { attachIme } from '../../simulation/ime';
 import { MermaidPage, STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
+import { multiClickElement } from '../../multi-click';
 
 // Requirements: `e2e/requirements/plugins/mermaid-ime-mint.md`.
 
@@ -57,7 +58,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	// The element the plugin declares is replaced on every redraw, which is why the element that
 	// takes focus sits in the frame: anything mounted inside the diagram would be lost here.
 	test('the host survives a redraw and still creates', async ({ page }) => {
-		await editor.viewport.dblclick();
+		await multiClickElement(editor.viewport, 2);
 		await expect(editor.page.getByTestId('mermaid-source')).toBeFocused();
 		await page.keyboard.press('End');
 		await page.keyboard.type('\n\tB --> C[Done]');
@@ -77,7 +78,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	// The redraw hands focus back only for an arrival not from the outer element; a broader hand-off
 	// leaves focus on the diagram, where the next AltGr or composition drops, seen only here.
 	test('focus settles on the host after the redraw, not on the new viewport', async ({ page }) => {
-		await editor.viewport.dblclick();
+		await multiClickElement(editor.viewport, 2);
 		await expect(editor.page.getByTestId('mermaid-source')).toBeFocused();
 		await page.keyboard.press('End');
 		await page.keyboard.type('\n\tB --> C[Done]');
@@ -111,7 +112,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	// typed, since the CDP driver waits on `textContent`, which a textarea lacks.
 	test('the edit textarea keeps its own caret', async ({ page }) => {
 		const before = await editor.bridge.getSource();
-		await editor.viewport.dblclick();
+		await multiClickElement(editor.viewport, 2);
 		const textarea = page.getByTestId('mermaid-source');
 		await expect(textarea).toBeFocused();
 

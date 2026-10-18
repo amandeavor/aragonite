@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { roundTripStable, activeBlockPath } from './helpers';
 import { MermaidPage } from './mermaid-helpers';
 import { wholeBlockInput } from '../../whole-block-input';
+import { multiClickElement } from '../../multi-click';
 
 /**
  * The mermaid reference plugin: a render-first block whose editing the plugin owns
@@ -181,7 +182,7 @@ test.describe('mermaid reference plugin', () => {
 		await expect(editor.firstInputHost).toBeFocused();
 		await expect(editor.textarea).toHaveCount(0);
 
-		await editor.firstViewport.dblclick();
+		await multiClickElement(editor.firstViewport, 2);
 		await expect(editor.textarea).toHaveValue(FIRST_CODE);
 	});
 

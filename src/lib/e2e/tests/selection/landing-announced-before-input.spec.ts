@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { PluginsPage } from '../plugins/helpers';
 import { pointAtRaw } from '../../text-runs';
+import { insertText } from '../../insert-text';
 
 // The order a `selectionChange` subscriber sees: the caret's arrival in a block, then the bytes
 // typed there (`requirements/selection/landing-announced-before-input.md`).
@@ -58,7 +59,7 @@ test.describe('a caret the editor lands is announced before the next input', () 
 
 		for (let i = 0; i < CYCLES; i++) {
 			await editor.page.keyboard.press('Enter');
-			await editor.page.keyboard.insertText(TYPED);
+			await insertText(editor.page, TYPED);
 		}
 		await editor.waitForRenderFlush();
 
@@ -82,7 +83,7 @@ test.describe('a caret the editor lands is announced before the next input', () 
 		];
 		for (let i = 0; i < arrived.length; i++) {
 			await editor.page.keyboard.press('ArrowDown');
-			await editor.page.keyboard.insertText(TYPED);
+			await insertText(editor.page, TYPED);
 		}
 		await editor.waitForRenderFlush();
 
@@ -101,7 +102,7 @@ test.describe('a caret the editor lands is announced before the next input', () 
 
 		const point = await pointAtRaw(editor.page, [0, 2, 0], 3);
 		await editor.page.mouse.click(point.x, point.y);
-		await editor.page.keyboard.insertText(TYPED);
+		await insertText(editor.page, TYPED);
 		await editor.waitForRenderFlush();
 
 		const emissions = await stopCapture(editor);
@@ -126,7 +127,7 @@ test.describe('a caret landing in a plugin leaf with its source hidden', () => {
 		await startCapture(editor);
 
 		await editor.page.keyboard.press('ArrowRight');
-		await editor.page.keyboard.insertText(TYPED);
+		await insertText(editor.page, TYPED);
 		await editor.waitForRenderFlush();
 
 		const emissions = await stopCapture(editor);

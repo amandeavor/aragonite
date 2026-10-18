@@ -10,6 +10,7 @@ import {
 	stepTo
 } from './helpers';
 import { attachIme } from '../../simulation/ime';
+import { insertText } from '../../insert-text';
 
 // A toggle at a collapsed caret in live mode writes no bytes; the next insertion carries the
 // mark. The source is the reference, because live paints no delimiter, so nothing on screen
@@ -351,7 +352,7 @@ test('live mode: a paste or a soft keyboard’s text after Mod+B lands wrapped',
 	await test.step('text with no key behind it', async () => {
 		await atEndOfPlain(ep, page);
 		await bold(page);
-		await page.keyboard.insertText('X');
+		await insertText(page, 'X');
 		await ep.bridge.waitForSourceContains('plain**X**');
 	});
 });

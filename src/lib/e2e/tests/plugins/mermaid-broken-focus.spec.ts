@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { readDoc, waitForDoc, activeBlockPath } from './helpers';
 import { MermaidPage } from './mermaid-helpers';
+import { multiClickElement } from '../../multi-click';
 
 /**
  * Whole-block focus on a broken mermaid fence (requirements/plugins/mermaid-broken-focus.md). The
@@ -105,7 +106,7 @@ test.describe('mermaid broken-fence whole-block focus', () => {
 	});
 
 	test('double-clicking the error card opens edit mode seeded with the broken source', async () => {
-		await editor.surface.dblclick();
+		await multiClickElement(editor.surface, 2);
 		await expect(editor.textarea).toHaveValue(BROKEN_CODE);
 	});
 });

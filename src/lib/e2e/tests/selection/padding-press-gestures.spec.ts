@@ -5,6 +5,7 @@ import { nextRow } from '../presentation/helpers';
 import { attachIme } from '../../simulation/ime';
 import { pointAtRaw, pointInTopPadding, type Point } from '../../text-runs';
 import { skipUnlessSupported } from '../../browser-engine';
+import { multiClick } from '../../multi-click';
 
 // Every other gesture that starts in an editable's top padding still works once the editor places
 // a plain press there itself. Requirements: `e2e/requirements/selection/padding-press-gestures.md`.
@@ -57,9 +58,9 @@ async function paddingAbove(page: Page, target: Target): Promise<{ line: Point; 
 	return { line, padding: await pointInTopPadding(page.locator(target.editable), line.x) };
 }
 
-/** Clicks `clickCount` times at `point` and reports the selection that leaves. */
-async function multiClick(editor: EditorPage, point: Point, clickCount: number) {
-	await editor.page.mouse.click(point.x, point.y, { clickCount });
+/** Clicks `clicks` times at `point` and reports the selection that leaves. */
+async function clickRunSelection(editor: EditorPage, point: Point, clicks: number) {
+	await multiClick(editor.page, point, clicks);
 	await editor.waitForRenderFlush();
 	return editor.bridge.getSelectionPaths();
 }
@@ -75,10 +76,10 @@ for (const target of TARGETS) {
 			await test.step(`a ${name} selects what it does on the line`, async () => {
 				await nextRow(editor, DOC);
 				const { line, padding } = await paddingAbove(page, target);
-				const onLine = await multiClick(editor, line, clicks);
+				const onLine = await clickRunSelection(editor, line, clicks);
 				await editor.focusBlockEnd(0);
 
-				expect(await multiClick(editor, padding, clicks)).toEqual(onLine);
+				expect(await clickRunSelection(editor, padding, clicks)).toEqual(onLine);
 			});
 		}
 

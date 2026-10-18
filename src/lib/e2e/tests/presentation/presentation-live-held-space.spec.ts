@@ -4,6 +4,7 @@ import type { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickBlockSettled, clickEnd, enterPresentationMode, nextRow, stepTo } from './helpers';
 import { attachIme } from '../../simulation/ime';
+import { insertText } from '../../insert-text';
 
 // A space typed at a hidden closer is written past it while the caret still means inside, so the
 // next letter takes it back in. Only the source tells inside from outside, so every row reads it.
@@ -13,7 +14,7 @@ import { attachIme } from '../../simulation/ime';
 /** `text` on a soft keyboard: each character arrives on `beforeinput`, no key behind it. */
 async function softType(ep: EditorPage, page: Page, text: string): Promise<void> {
 	for (const ch of text) {
-		await page.keyboard.insertText(ch);
+		await insertText(page, ch);
 		await ep.waitForRenderFlush();
 	}
 }

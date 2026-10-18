@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { documentCaret } from './helpers';
+import { multiClickElement } from '../../../multi-click';
 
 test.describe('image widget selection', () => {
 	let editor: EditorPage;
@@ -70,7 +71,7 @@ test.describe('image widget selection', () => {
 		test(`a press on ${name} of a selected image leaves no native caret`, async ({ page }) => {
 			await editor.loadContent(IMAGE_PARAGRAPH);
 			const image = page.locator('[data-image-widget]').first();
-			if (opensCrop) await image.dblclick();
+			if (opensCrop) await multiClickElement(image, 2);
 			else await image.click();
 			await page.locator(selector).click();
 			await expect(overlay(page)).toBeVisible();

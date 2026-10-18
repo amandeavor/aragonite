@@ -18,10 +18,10 @@ export function isFirefox(page: Page): boolean {
 
 /** What a gesture needs from the driver or the engine, for specs that must skip where it is missing. */
 export type EngineCapability =
-	'cdp' | 'touch' | 'mediaEmulation' | 'caretScreenshot' | 'contextMenuKey';
+	'cdp' | 'touch' | 'mediaEmulation' | 'caretScreenshot' | 'contextMenuKey' | 'insertWithoutScroll';
 
 /** Firefox over BiDi has no CDP session, no touch emulation, no `emulateMedia` effect, no
- *  ContextMenu key, and never draws its caret into a screenshot. */
+ *  ContextMenu key, never draws its caret into a screenshot, and scrolls to the caret on any insert. */
 export function engineSupports(page: Page, capability: EngineCapability): boolean {
 	return capability === 'cdp' ? isChromium(page) : !isFirefox(page);
 }
@@ -31,7 +31,8 @@ const SKIP_REASONS: Record<EngineCapability, string> = {
 	touch: 'Firefox over BiDi emulates no touch input',
 	mediaEmulation: 'Firefox over BiDi applies no emulated media features',
 	caretScreenshot: 'the Firefox caret never reaches a BiDi screenshot',
-	contextMenuKey: 'Firefox over BiDi has no ContextMenu key'
+	contextMenuKey: 'Firefox over BiDi has no ContextMenu key',
+	insertWithoutScroll: 'Firefox scrolls an off-screen caret into view on every insert, keyed or not'
 };
 
 /** Skip the running test on an engine that lacks `capability`. */

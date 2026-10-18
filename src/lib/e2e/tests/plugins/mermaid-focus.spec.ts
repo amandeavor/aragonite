@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { readDoc, waitForDoc, activeBlockPath, roundTripStable } from './helpers';
 import { MERMAID_FENCE, MermaidPage, STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
+import { multiClickElement } from '../../multi-click';
 
 /**
  * Whole-block focus and the two-step delete for mermaid (requirements/plugins/mermaid-focus.md).
@@ -129,7 +130,7 @@ test.describe('mermaid whole-block focus', () => {
 	test('Backspace inside the edit textarea edits the draft and never deletes the block', async ({
 		page
 	}) => {
-		await editor.viewport.dblclick();
+		await multiClickElement(editor.viewport, 2);
 		await expect(editor.textarea).toBeVisible();
 
 		await page.keyboard.type('X');

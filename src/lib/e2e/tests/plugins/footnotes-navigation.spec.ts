@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { activeBlockPath, blockView, capturedErrors } from './helpers';
 import { FootnotePage, NAV_REFS, navDoc } from './footnotes-helpers';
 import { textRunCenter, widgetCenter } from '../../text-runs';
+import { multiClick } from '../../multi-click';
 
 /**
  * Jumping between a `[^label]` reference and its definition, both ways
@@ -292,8 +293,7 @@ test.describe('footnote reference: double-click takes the whole token', () => {
 			await editor.load(SHORT_DOC);
 			await editor.setPresentationMode(mode);
 
-			const { x, y } = await widgetCenter(editor.refs().nth(0));
-			await page.mouse.dblclick(x, y);
+			await multiClick(page, await widgetCenter(editor.refs().nth(0)), 2);
 			await editor.waitForRenderFlush();
 
 			await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('[^a]');
@@ -312,7 +312,7 @@ test.describe('footnote reference: double-click takes the whole token', () => {
 			await expect(editor.refs()).toHaveCount(0);
 
 			const word = await textRunCenter(page, 'alpha', { path: [0] });
-			await page.mouse.dblclick(word.x, word.y);
+			await multiClick(page, word, 2);
 			await editor.waitForRenderFlush();
 
 			await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('alpha');
