@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { skipUnlessSupported } from '../../browser-engine';
 
 const TABLE = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
 
@@ -24,6 +25,7 @@ test.describe('table action menu: keyboard + announcements', () => {
 	});
 
 	test('the ContextMenu key opens the menu at the focused cell', async ({ page }) => {
+		skipUnlessSupported(page, 'contextMenuKey');
 		await page.locator('.table-cell').nth(2).click();
 		await page.keyboard.press('ContextMenu');
 

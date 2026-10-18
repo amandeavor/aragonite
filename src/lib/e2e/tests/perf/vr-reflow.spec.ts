@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
+import { skipUnlessSupported } from '../../browser-engine';
 import { EditorPage } from '../../editor-page';
 import { FIXTURE_BYTES, GIANT_LIST_OR_TABLE_BYTES, spacerCount } from './vr-helpers';
 
@@ -98,6 +99,7 @@ for (const row of ROWS) {
 	test(`a fling does not force one reflow per mounted ${row.unit} (${row.tag})`, async ({
 		page
 	}) => {
+		skipUnlessSupported(page, 'cdp');
 		const editor = new EditorPage(page);
 		await editor.goto();
 		await row.arrange(page, editor);

@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures';
 import { gotoReady } from '../goto-ready';
+import { skipUnlessSupported } from '../browser-engine';
 
 // The `/changelog` route at phone width, where a header row that could not wrap would push the
 // older release groups, both mode chips and the link past the right edge. Everything else about the
@@ -54,6 +55,7 @@ test.describe('/changelog on a phone', () => {
 	});
 
 	test('a tap on the oldest family chip swaps the document', async ({ page }) => {
+		skipUnlessSupported(page, 'touch');
 		const heading = page.locator('[data-block-kind="heading"]').first();
 		const active = page.locator('.changelog-family.active');
 		await expect(active).not.toHaveAttribute('data-family', OLDEST);
@@ -66,6 +68,7 @@ test.describe('/changelog on a phone', () => {
 	});
 
 	test('every chip and the link clears the thumb minimum', async ({ page }) => {
+		skipUnlessSupported(page, 'touch');
 		// WCAG 2.2 AA (2.5.8), not Apple's 44px: the header carries a chip per release group,
 		// and 44 each would cost the document more rows than the condensed header saves.
 		const sides = await page.locator('.changelog-chip, .changelog-link').evaluateAll((els) =>
@@ -79,6 +82,7 @@ test.describe('/changelog on a phone', () => {
 	});
 
 	test('the open outline entries clear the thumb minimum', async ({ page }) => {
+		skipUnlessSupported(page, 'touch');
 		await page.locator('.details-toggle').tap();
 		const entries = page.locator('.toc-block-item');
 		await expect(entries.first()).toBeVisible();

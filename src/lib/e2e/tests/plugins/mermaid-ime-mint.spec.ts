@@ -1,9 +1,18 @@
+import { type Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { readDoc, waitForDoc } from './helpers';
+import { skipUnlessSupported } from '../../browser-engine';
 import { attachIme } from '../../simulation/ime';
 import { MermaidPage, STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
 
 // Requirements: `e2e/requirements/plugins/mermaid-ime-mint.md`.
+
+/** The shape an AltGr character arrives in: a bare `insertText` on the editing host. */
+async function insertAltGr(page: Page): Promise<void> {
+	skipUnlessSupported(page, 'cdp');
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('Input.insertText', { text: '€' });
+}
 
 class MermaidImePage extends MermaidPage {
 	async focusDiagram(): Promise<void> {
@@ -25,8 +34,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	}) => {
 		await editor.focusDiagram();
 
-		const cdp = await page.context().newCDPSession(page);
-		await cdp.send('Input.insertText', { text: '€' });
+		await insertAltGr(page);
 
 		await waitForDoc(page, (s) => s.rootCount === 4);
 		const doc = await readDoc(page);
@@ -80,8 +88,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 		await editor.waitForRenderFlush();
 
 		await expect(editor.inputHost).toBeFocused();
-		const cdp = await page.context().newCDPSession(page);
-		await cdp.send('Input.insertText', { text: '€' });
+		await insertAltGr(page);
 		await waitForDoc(page, (s) => s.rootCount === 4);
 		expect((await readDoc(page)).texts[2]).toBe('€');
 	});
@@ -95,8 +102,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 		await editor.viewport.click();
 
 		await expect(editor.inputHost).toBeFocused();
-		const cdp = await page.context().newCDPSession(page);
-		await cdp.send('Input.insertText', { text: '€' });
+		await insertAltGr(page);
 		await waitForDoc(page, (s) => s.rootCount === 4);
 		expect((await readDoc(page)).texts[2]).toBe('€');
 	});

@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, activeBlockPath, capturedErrors, roundTripStable } from './helpers';
+import { skipUnlessSupported } from '../../browser-engine';
 
 /**
  * The bundled party parrot (requirements/plugins/parrot.md), the plugin guide's quickstart built:
@@ -349,6 +350,7 @@ test.describe('the bird under reduced motion', () => {
 	test.use({ contextOptions: { reducedMotion: 'reduce' } });
 
 	test('rests on one frame instead of dancing', async ({ page }) => {
+		skipUnlessSupported(page, 'mediaEmulation');
 		const editor = new ParrotPage(page);
 		await editor.gotoSeed();
 

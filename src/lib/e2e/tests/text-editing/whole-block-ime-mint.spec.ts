@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { skipUnlessSupported } from '../../browser-engine';
 import { attachIme } from '../../simulation/ime';
 import { wholeBlockInput } from '../../whole-block-input';
 import { RULE_DOC, focusTheRule, rule } from './whole-block-rule';
@@ -9,6 +10,7 @@ import { RULE_DOC, focusTheRule, rule } from './whole-block-rule';
 /** The shape an AltGr character arrives in: `insertText` on the editing host, with no keydown
  *  branch that would let it through (`e.key` under ctrl+alt). */
 async function insertTextViaCdp(editor: EditorPage, text: string): Promise<void> {
+	skipUnlessSupported(editor.page, 'cdp');
 	const cdp = await editor.page.context().newCDPSession(editor.page);
 	await cdp.send('Input.insertText', { text });
 }

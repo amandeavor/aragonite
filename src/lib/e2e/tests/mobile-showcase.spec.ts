@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures';
 import { gotoReady } from '../goto-ready';
 import { repeatedWordInParagraph } from '../showcase-document';
+import { skipUnlessSupported } from '../browser-engine';
 
 // The `/` showcase at phone width, the only place these defects appear: at the fixed 1280
 // viewport nothing scrolls sideways, falls off an edge, or waits on a hover a touch device
@@ -67,6 +68,7 @@ test.describe('/ showcase on a phone', () => {
 	});
 
 	test('the drag handles show without a hover and answer a tap', async ({ page }) => {
+		skipUnlessSupported(page, 'touch');
 		// On by default: no toggle tap first.
 		const handle = page.locator('.block-drag-handle').first();
 
@@ -78,6 +80,7 @@ test.describe('/ showcase on a phone', () => {
 	});
 
 	test('the controls a thumb has to hit clear 24px', async ({ page }) => {
+		skipUnlessSupported(page, 'touch');
 		// WCAG 2.2 AA (2.5.8), not Apple's 44px: eleven header controls at 44 each would give back
 		// every row the condensed header saves. Buttons and links both, so no tag is missed.
 		const header = await page

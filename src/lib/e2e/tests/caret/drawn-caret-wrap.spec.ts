@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { oneCaretOnTheBrowsersLine } from '../../carets-showing';
 import { textRunRect } from '../../text-runs';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // The drawn caret where a line soft-wraps (requirements/caret/drawn-caret-wrap.md). The range at
 // the offset a line wraps reads the first line's end, whichever line the browser draws on, so
@@ -40,6 +41,7 @@ test.describe('the drawn caret at a soft wrap', () => {
 	});
 
 	test('typing at a wrap: one caret, on the browser’s line', async ({ page }) => {
+		skipUnlessSupported(page, 'caretScreenshot');
 		await editor.focusBlock(0, 0);
 		await page.keyboard.press('End');
 		await page.keyboard.type('x');

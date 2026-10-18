@@ -8,6 +8,7 @@ import {
 	setCaretProp
 } from '../../carets-showing';
 import { textRunEnd, textRunStart } from '../../text-runs';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // The drawn caret against the layout around its editable (requirements/caret/drawn-caret-layout.md):
 // a scroller that clips the caret, a size watch it shares with the block it sits in, and a code
@@ -112,6 +113,7 @@ test.describe('the drawn caret in a code block scrolled sideways', () => {
 	test('a clipped caret scrolled back into view draws again where the browser paints', async ({
 		page
 	}) => {
+		skipUnlessSupported(page, 'caretScreenshot');
 		const over = await parkInLongLine(page);
 		await page.mouse.move(over.x, over.y);
 		await page.mouse.wheel(600, 0);
@@ -374,6 +376,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 	test('inside the chip, off its edges: the bar draws where the browser paints', async ({
 		page
 	}) => {
+		skipUnlessSupported(page, 'caretScreenshot');
 		const editor = await live(page);
 		await editor.focusBlock(0, 'see `co'.length);
 

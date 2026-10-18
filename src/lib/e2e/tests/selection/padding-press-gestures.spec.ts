@@ -4,6 +4,7 @@ import { EditorPage } from '../../editor-page';
 import { nextRow } from '../presentation/helpers';
 import { attachIme } from '../../simulation/ime';
 import { pointAtRaw, pointInTopPadding, type Point } from '../../text-runs';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // Every other gesture that starts in an editable's top padding still works once the editor places
 // a plain press there itself. Requirements: `e2e/requirements/selection/padding-press-gestures.md`.
@@ -148,6 +149,7 @@ test.describe('a tap', () => {
 	test('in the top padding of a code block and a paragraph lands at the column below', async ({
 		page
 	}) => {
+		skipUnlessSupported(page, 'touch');
 		const editor = await open(page);
 
 		for (const target of TARGETS) {
