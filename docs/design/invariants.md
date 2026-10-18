@@ -159,8 +159,8 @@ The catalog is a convention anyone extends, so here's the whole procedure:
    construct the subject, write the guard inline where that machinery runs and let the e2e invariant
    watcher net it.
 5. Add the row to the group's index table and the entry below it. The row is one line a person can
-   read cold; the entry carries where it runs, the predicate, the tests, and whatever nuance will
-   bite the next person.
+   read cold; the entry carries the rule, why it holds, what to do when it fires, where it runs and
+   its tests, in at most six lines (G4.218 counts them).
    The group files are [runtime](invariants/runtime.md), [tested](invariants/tested.md),
    [compile time](invariants/compile-time.md) and [source scans](invariants/scans.md); the row and
    the entry go in the one that matches how the guard is enforced.

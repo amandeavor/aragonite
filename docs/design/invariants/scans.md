@@ -178,6 +178,7 @@ unguarded.
 | G4.212 | E2E clipboard access and pastes ride the shared clipboard helper                             | L       |
 | G4.214 | A caret's box is measured in one place, `caretRectAt`                                        | L       |
 | G4.215 | A list's marker column reads no item of its own at load or on a key                          | harness |
+| G4.218 | A catalog entry holds at most six lines                                                      | L       |
 
 ### The entries
 
@@ -1211,3 +1212,10 @@ marker-width counts, which the parse fills and the list's rebuild keeps (G1.118)
 hundred items, mounting reads no item for the column, each key (first, paused, in a burst, a marker
 typed in place, Enter) reads at most the item it rewrote past those its rebuild joined, and an undo
 reads none. `marker-column-scans.test.ts`, on the `listMarkerReads` and `joinedChildReads` counters.
+
+**G4.218 · Catalog entries stay short.** An entry in the four group files (a paragraph opening
+`**G<n>.<m> ·`) holds at most six lines and 600 characters: the rule, why it holds, what to do when
+it fires or when you add to it, and its files. Mechanism buries the rule, so it goes in the guard's
+failure message or a code comment. An entry that genuinely needs more (several cases a reader must
+know) goes in the scan's baseline with its reason, and the baseline only shrinks.
+`lint/catalog-entry-budget.test.ts`.
