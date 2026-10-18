@@ -63,6 +63,7 @@
 	import { createTypedPlacement } from '../text/edge-seat';
 	import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 	import { getInlineWidgetEditing, widgetElByStart } from '../../../core/inline/inline-widgets';
+	import { readClipboardText } from '../../../editor-actions/system-clipboard';
 
 	type ExitDirection = 'up' | 'down';
 
@@ -832,14 +833,7 @@
 		caretMemory.forget();
 		el.focus({ preventScroll: true });
 		if (action === 'paste') {
-			let raw: string;
-			try {
-				// Fired un-awaited from the menu onclick, so a denied read would surface as
-				// an unhandled rejection; degrade to a no-op.
-				raw = await navigator.clipboard.readText();
-			} catch {
-				return;
-			}
+			const raw = await readClipboardText();
 			// The cell can unmount while the read waits (a delete, a `source` swap).
 			if (!el || !raw) return;
 			// A live range stays as it is; otherwise the paste replaces what the menu was opened on.

@@ -6,7 +6,6 @@
  * stays exactly where it is.
  */
 
-import { tick } from 'svelte';
 import type { BlockEditActions } from '../../action-contracts';
 import { BLOCK_ACTIONS_LABEL } from '../../a11y-strings';
 import type { NodeView } from '../../core/node-views';
@@ -27,6 +26,7 @@ import { blockNoun } from '../menu/default-context-actions';
 import { isProseLeaf } from '../../schema/page-role';
 import type { Reading } from '../../schema/reading';
 import { readBlockPath } from '../../selection/path-lookup';
+import { rangeCoversPoint } from '../../selection/cross-block/pointer';
 import { documentLineEnding } from '../../core/lines';
 import { stampWrites, type DocumentStamps } from '../../editor-actions/commit/document-stamp';
 
@@ -49,7 +49,7 @@ export interface RootMenusDeps {
 	/** Where a click on empty space puts the caret, so a right-click on prose acts at the
 	 *  pointer. */
 	placeCaretAtPoint(x: number, y: number): boolean;
-	/** Whether a range was selected when the right button went down, which picks the menu. */
+	/** Whether the right button's press landed on a selected range, which picks the menu. */
 	rangeAtContextPress(): boolean;
 	/** The public insert entry point; a flyout row inserts `below` the block the caret is in. */
 	insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean>;
@@ -87,13 +87,6 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 			const now = el.getBoundingClientRect();
 			return { x: now.left + dx, y: now.top + dy };
 		};
-	}
-
-	// The menu leaves the page before its row runs: Safari draws its Paste prompt for a clipboard
-	// read over whatever still shows.
-	function closeThen(run: () => void): void {
-		deps.setMenu(null);
-		void tick().then(run);
 	}
 
 	/** Where a paste goes: whatever editable element holds focus inside the root. */
@@ -148,13 +141,13 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 			anchor: anchorOn(anchorEl, point),
 			items: [...editLink, ...clipboardRows(), ...insert],
 			label: BLOCK_ACTIONS_LABEL,
-			pick: (id) =>
-				closeThen(() => {
-					if (id === EDIT_LINK) return deps.editLinkAtCaret();
-					if (runClipboardRow(id)) return;
-					const entry = catalogue.find((e) => e.id === id);
-					if (entry && withInsert) void deps.insertMarkdown(entry.markdown, { placement: 'below' });
-				})
+			pick: (id) => {
+				deps.setMenu(null);
+				if (id === EDIT_LINK) return deps.editLinkAtCaret();
+				if (runClipboardRow(id)) return;
+				const entry = catalogue.find((e) => e.id === id);
+				if (entry && withInsert) void deps.insertMarkdown(entry.markdown, { placement: 'below' });
+			}
 		});
 	}
 
@@ -190,11 +183,11 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 				danger
 			})),
 			label: BLOCK_ACTIONS_LABEL,
-			pick: (id) =>
-				closeThen(() => {
-					const action = actions.find((a: BlockContextAction) => a.id === id);
-					if (action) void action.run(ctx);
-				})
+			pick: (id) => {
+				deps.setMenu(null);
+				const action = actions.find((a: BlockContextAction) => a.id === id);
+				if (action) void action.run(ctx);
+			}
 		});
 	}
 
@@ -215,14 +208,16 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		const point = { x: e.clientX, y: e.clientY };
 		const selected = deps.rangeAtContextPress();
 		// What Safari selected under the pointer stays for the clipboard rows to act on, as a native
-		// right-click's does; under a block's actions it would only linger, so the caret replaces it.
+		// right-click's does; anything else, and anything under a block's actions, the caret replaces.
 		const native = window.getSelection();
 		const live = !!native && !native.isCollapsed && root.contains(native.anchorNode);
 		// A nested block (a fence inside a list item) gets the clipboard rows.
 		const node = path.length === 1 ? deps.getDoc().children[path[0]] : undefined;
 		const prose = !!node && isProseLeaf(node, deps.reading);
 		if (selected || !node || prose) {
-			if (!selected && !live) deps.placeCaretAtPoint(e.clientX, e.clientY);
+			if (!selected && !rangeCoversPoint(root, e.clientX, e.clientY)) {
+				deps.placeCaretAtPoint(e.clientX, e.clientY);
+			}
 			// Top-level prose is where a sibling block makes sense.
 			openClipboardMenu(point, host, !selected && prose);
 			return;

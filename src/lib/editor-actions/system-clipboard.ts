@@ -1,10 +1,22 @@
 /**
- * The editor's writes to the system clipboard outside a copy event, and the text a whole block
- * copies as. A refused write (a webview without clipboard access, a denied permission) is the
- * host's business, so it resolves false and changes nothing.
+ * The editor's reads and writes of the system clipboard outside a copy or paste event, and the text
+ * a whole block copies as. A refused call (a webview without clipboard access, a denied permission,
+ * a dismissed Paste prompt) is the host's business, so it resolves to nothing and changes nothing.
  */
 
+import { tick } from 'svelte';
 import { trimTrailingLineEnding } from '../core/lines';
+
+/** The clipboard's text, or null when the read is refused. It reads once a menu that just closed
+ *  has left the page, since Safari draws its Paste prompt over whatever still shows. */
+export async function readClipboardText(): Promise<string | null> {
+	await tick();
+	try {
+		return await navigator.clipboard.readText();
+	} catch {
+		return null;
+	}
+}
 
 /** Whether `text` reached the clipboard. */
 export async function writeClipboardText(text: string): Promise<boolean> {

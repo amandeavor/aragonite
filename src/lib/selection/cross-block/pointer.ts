@@ -181,6 +181,16 @@ export function placeContextPress(
 	if (offset !== null && path) applyCollapsedCaret(writer, surface, { path, offset });
 }
 
+/** Whether the browser's selected range inside `root` covers the viewport point. */
+export function rangeCoversPoint(root: HTMLElement, x: number, y: number): boolean {
+	const native = window.getSelection();
+	if (!native || native.isCollapsed || native.rangeCount === 0) return false;
+	if (!root.contains(native.anchorNode)) return false;
+	return Array.from(native.getRangeAt(0).getClientRects()).some(
+		(r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+	);
+}
+
 function editingHostOf(target: EventTarget | null): HTMLElement | null {
 	let el = target instanceof HTMLElement && target.isContentEditable ? target : null;
 	while (el?.parentElement?.isContentEditable) el = el.parentElement;

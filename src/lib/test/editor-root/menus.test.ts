@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { tick } from 'svelte';
 import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root/menus.js';
 import { registerDefaultContextActions } from '#lib/components/menu/default-context-actions.js';
 import { BLOCK_ACTIONS_LABEL } from '#lib/a11y-strings.js';
@@ -145,11 +144,10 @@ describe('editor-root menus: the right-click', () => {
 		expect(h.menu()!.items[0].disabled).toBe(true);
 		// A flyout pick inserts below the block the press placed the caret in.
 		h.menu()!.pick('bullet');
-		await tick();
 		expect(h.insertMarkdown).toHaveBeenCalledWith('- ', { placement: 'below' });
 	});
 
-	it('over a link, prose leads with Edit link, asked after the caret lands, and runs it', async () => {
+	it('over a link, prose leads with Edit link, asked after the caret lands, and runs it', () => {
 		const h = harness({ editsLink: true });
 		h.rightClick(h.prose.firstElementChild!);
 		expect(h.order).toEqual(['place', 'ask']);
@@ -158,9 +156,6 @@ describe('editor-root menus: the right-click', () => {
 
 		h.menu()!.pick('link.edit');
 		expect(h.menu()).toBeNull();
-		// The row runs once the menu has left the page.
-		expect(h.editLinkAtCaret).not.toHaveBeenCalled();
-		await tick();
 		expect(h.editLinkAtCaret).toHaveBeenCalledOnce();
 	});
 
@@ -184,11 +179,21 @@ describe('editor-root menus: the right-click', () => {
 		expect(h.placeCaretAtPoint).toHaveBeenCalledWith(30, 40);
 	});
 
-	it('the same press on prose keeps the word for the clipboard rows and offers the flyout', () => {
+	it.each([
+		['keeps a word the browser selected under the pointer', true],
+		['places the caret over a range that lies elsewhere', false]
+	])('the same press on prose %s, and offers the flyout', (_, covers) => {
 		const h = harness({ rangeAtPress: false });
 		selectInside(h.prose.firstElementChild!);
-		h.rightClick(h.prose.firstElementChild!);
-		expect(h.placeCaretAtPoint).not.toHaveBeenCalled();
+		const rects = covers ? [new DOMRect(0, 0, 100, 100)] : [];
+		const original = Range.prototype.getClientRects;
+		Range.prototype.getClientRects = () => rects as unknown as DOMRectList;
+		try {
+			h.rightClick(h.prose.firstElementChild!);
+		} finally {
+			Range.prototype.getClientRects = original;
+		}
+		expect(h.placeCaretAtPoint).toHaveBeenCalledTimes(covers ? 0 : 1);
 		expect(h.ids()).toContain('insert');
 	});
 

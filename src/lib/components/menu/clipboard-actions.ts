@@ -4,6 +4,8 @@
  * as is or escaped so Markdown syntax arrives as literal text.
  */
 
+import { readClipboardText } from '../../editor-actions/system-clipboard';
+
 export type ClipboardAction = 'cut' | 'copy' | 'paste' | 'paste-plain';
 
 /** Markdown-significant bytes, escaped so pasted text reads back exactly as pasted. */
@@ -35,12 +37,7 @@ export async function runClipboardAction(
 		case 'paste':
 		case 'paste-plain': {
 			if (!surface) return;
-			let text: string;
-			try {
-				text = await navigator.clipboard.readText();
-			} catch {
-				return;
-			}
+			const text = await readClipboardText();
 			if (!text) return;
 			pasteTextInto(surface, action === 'paste-plain' ? escapeMarkdownLiteral(text) : text);
 		}

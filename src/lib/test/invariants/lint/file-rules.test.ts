@@ -507,7 +507,9 @@ const RULES: FileRule[] = [
 			'src/lib/components/overlays/rects.ts': 'the boxes of a span between two offsets',
 			'src/lib/components/blocks/text/widget-interaction.ts':
 				'a shown source’s whole box, for a double-click’s hit test',
-			'src/lib/editor-rects.ts': 'a selection’s box; a collapsed one goes through `caretRectAt`'
+			'src/lib/editor-rects.ts': 'a selection’s box; a collapsed one goes through `caretRectAt`',
+			'src/lib/selection/cross-block/pointer.ts':
+				'whether a selected range covers a right-click; a collapsed one is never measured'
 		},
 		reason:
 			'WebKit and Firefox measure a caret right after a `\\n` on the line the `\\n` ends, so a caret measured anywhere else reads the wrong line at every line start: call `caretRectAt`, or `charRect` for one character',

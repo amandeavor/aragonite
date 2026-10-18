@@ -8,7 +8,8 @@ import { textRunCenter } from '../text-runs';
 // Safari selects the word under a right-click before the menu opens; the rows act on the live one.
 // Requirements: `requirements/context-menu-press-selection.md`.
 
-const DOC = 'abcd efgh\n\n---\n\n```\ncode body\n```\n\n| cell | d |\n| --- | --- |\n| e | f |\n';
+const DOC =
+	'abcd efgh\n\n---\n\n```\ncode body\n```\n\n| cell | d |\n| --- | --- |\n| e | f |\n\ntail words\n';
 
 interface Point {
 	x: number;
@@ -50,6 +51,13 @@ async function rightClickWord(editor: EditorPage, word: string, path: number[], 
 		});
 		expect(await editor.page.evaluate(() => window.getSelection()!.toString())).toBe(word);
 	});
+}
+
+/** Select `tail` in the last block, where the selection toolbar it brings covers nothing above. */
+async function selectTail(editor: EditorPage): Promise<void> {
+	await editor.focusBlock(4, 0);
+	for (let i = 0; i < 4; i++) await editor.page.keyboard.press('Shift+ArrowRight');
+	expect(await editor.page.evaluate(() => window.getSelection()!.toString())).toBe('tail');
 }
 
 const menuItem = (page: Page, name: string) =>
@@ -95,6 +103,34 @@ test.describe('the right-click menu reads the selection from the press', () => {
 		await expect(menuItem(page, 'Insert block')).toBeVisible();
 		await expect(menuItem(page, 'Copy')).toBeEnabled();
 		expect(await page.evaluate(() => window.getSelection()!.toString())).toBe('efgh');
+	});
+
+	test('a press outside the text selected elsewhere opens the block actions under it', async ({
+		page
+	}) => {
+		await selectTail(editor);
+		await rightClickWord(editor, 'body', [2], 9);
+		await expect(menuItem(page, 'Copy code block')).toBeVisible();
+	});
+
+	test('a real right-click on code outside a selection opens the block actions', async ({
+		page
+	}) => {
+		await selectTail(editor);
+		const at = await textRunCenter(page, 'body');
+		await page.mouse.click(at.x, at.y, { button: 'right' });
+		await expect(menuItem(page, 'Copy code block')).toBeVisible();
+	});
+
+	test('a real right-click inside a selection keeps it for the clipboard rows', async ({
+		page
+	}) => {
+		await selectTail(editor);
+		const at = await textRunCenter(page, 'tail');
+		await page.mouse.click(at.x, at.y, { button: 'right' });
+		await expect(menuItem(page, 'Cut')).toBeEnabled();
+		await expect(menuItem(page, 'Insert block')).toHaveCount(0);
+		expect(await page.evaluate(() => window.getSelection()!.toString())).toBe('tail');
 	});
 
 	test('a word Safari selects in a cell is what the cell menu acts on', async ({ page }) => {
