@@ -21,6 +21,7 @@
 	import { trackParityDocument } from './parity-documents.svelte';
 	import DebugPanel from './debug-panel/DebugPanel.svelte';
 	import InsertToolbar from './InsertToolbar.svelte';
+	import ReportBug from './ReportBug.svelte';
 	import { createPanelState } from './debug-panel/panel-state.svelte';
 	import { createDebugPanelFeed } from './debug-panel/panel-feed.svelte';
 	import { demoPasteImage, resolveDemoImageUrl } from '../../examples/showcase/image-store';
@@ -125,6 +126,7 @@
 		>
 			under the hood
 		</button>
+		<ReportBug {editor} mode={presentationMode} />
 		<span class="showcase-hint">Mod+F to search</span>
 		<div class="showcase-modes" role="group" aria-label="Presentation mode">
 			{#each PRESENTATION_MODES as mode (mode)}
@@ -218,8 +220,9 @@
 		border: 1px solid var(--color-border, #3e3e3b);
 		border-radius: 8px;
 	}
+	/* Reached into children, so the report button its own component draws looks like the rest. */
 	.showcase-mode,
-	.showcase-toggle {
+	.showcase-header :global(.showcase-toggle) {
 		font-family: inherit;
 		font-size: 0.8rem;
 		padding: 0.1rem 0.55rem;
@@ -232,11 +235,11 @@
 		white-space: nowrap;
 	}
 	.showcase-mode.active,
-	.showcase-toggle.active {
+	.showcase-header :global(.showcase-toggle.active) {
 		color: var(--color-text-primary, #e8e8e5);
 		background: var(--color-ui-faint, rgba(255, 255, 255, 0.07));
 	}
-	.showcase-toggle:disabled {
+	.showcase-header :global(.showcase-toggle:disabled) {
 		opacity: 0.4;
 		cursor: default;
 	}
@@ -284,7 +287,7 @@
 			font-size: 1rem;
 		}
 		.showcase-mode,
-		.showcase-toggle {
+		.showcase-header :global(.showcase-toggle) {
 			font-size: 0.7rem;
 			padding: 0.1rem 0.4rem;
 		}
@@ -301,7 +304,7 @@
 	   cost of header rows. */
 	@media (pointer: coarse) {
 		.showcase-mode,
-		.showcase-toggle,
+		.showcase-header :global(.showcase-toggle),
 		.showcase-link {
 			display: inline-flex;
 			align-items: center;

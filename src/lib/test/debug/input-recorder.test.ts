@@ -123,6 +123,7 @@ describe('step boundaries', () => {
 		).toEqual(['text', 'rewrite', 'composition', 'key']);
 	});
 
+	// Miss-analysis: the boundary rows only composed after an IME keydown; the probe session caught it.
 	it('opens a composition of its own after a key the editor handled at keydown', () => {
 		expect(
 			families((el) => {
