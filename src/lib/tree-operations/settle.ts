@@ -749,7 +749,7 @@ function absorbWrapPrefix(body: BodyParent, bodyStart: number, index: number, fr
 
 // ── Delete ──
 
-/** Remove the node at `blockIndex`, renumbering an ordered list from its start; the fix-up that
+/** Remove the node at `blockIndex`, an ordered list's numbers kept consecutive; the fix-up that
  *  leaves its successor separated once is the commit's. A whole document reads as its own body. */
 export function deleteNode(
 	parent: BodyParentArg,

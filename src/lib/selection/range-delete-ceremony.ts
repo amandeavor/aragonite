@@ -247,8 +247,10 @@ export function rebuildAfterDeletion(
 	grammar: GrammarView
 ): void {
 	const attachedChains = plan.parentChains.map((chain) => attachedChainPrefix(doc, chain));
-	const attached = new Set(attachedChains.flat());
-	for (const [list, renumber] of plan.listNumbering) if (attached.has(list)) renumber(sharing);
+	if (plan.listNumbering.size > 0) {
+		const attached = new Set(attachedChains.flat());
+		for (const [list, renumber] of plan.listNumbering) if (attached.has(list)) renumber(sharing);
+	}
 	for (const chain of attachedChains) {
 		if (chain.length > 0) rebuildUnsharedChain(doc, chain, sharing, null, grammar);
 	}

@@ -7,7 +7,9 @@ import {
 	renumberOrderedListFrom
 } from '#lib/tree-operations/list/ordered-markers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
-import type { CstNode } from '#lib/core/nodes.js';
+import { setPluginMetadata, type CstNode } from '#lib/core/nodes.js';
+import { deleteNode } from '#lib/tree-operations/settle.js';
+import { bodyUnder } from '#lib/tree-operations/node-primitives.js';
 
 describe('ordered-markers reads', () => {
 	it('orderedBaseOf reads numeric prefix; defaults to 1', () => {
@@ -55,4 +57,16 @@ it('a renumber from index 0 keeps the first item’s number as the list’s star
 	const list = parse('8. a\n3. b\n').children[0];
 	renumberOrderedList(list, 0, createSharingState());
 	expect(list.children!.map((item) => item.raw)).toEqual(['8. a\n', '9. b\n']);
+});
+
+// Miss-analysis: every deleteNode fixture's owner was a list or the document, never a container
+// whose own metadata happens to carry an `ordered` field.
+describe('deleteNode renumbers only an ordered list', () => {
+	it('leaves a plugin container whose metadata says ordered as it was', () => {
+		const quote = parse('> a\n>\n> b\n>\n> c\n').children[0];
+		setPluginMetadata(quote, { ordered: true });
+		const kept = quote.children!.slice(1).map((child) => child.raw);
+		deleteNode(bodyUnder(quote, '\n'), 0, createSharingState());
+		expect(quote.children!.map((child) => child.raw)).toEqual(kept);
+	});
 });
