@@ -180,6 +180,7 @@ unguarded.
 | G4.215 | A list's marker column reads no item of its own at load or on a key                          | harness |
 | G4.216 | Every built-in kind that binds Enter binds Shift+Enter too                                   | L       |
 | G4.218 | A catalog entry holds at most six lines                                                      | L       |
+| G4.219 | No popover closes on focus leaving; every focus-loss listener serves a listed need           | L       |
 
 ### The entries
 
@@ -575,12 +576,12 @@ delta calls `Scrollport.scrollBy`, never `setScrollTop(scrollTop() + delta)`: th
 fractional write to a device pixel, and only `scrollBy` carries the lost fraction into the next call.
 `lint/file-rules.test.ts`.
 
-**G4.67 · Menu presence census.** Every open menu is in one registry: it attaches
-`menuPresence.track(close)` to its root, so `menuChange` reads it open and `closeAll` (a document
-swap, a mode change) closes it, keeping a draft on a mode change and dropping it on a swap. Every
-menu element (the shared menu class, a menu, listbox or dialog role) carries that attach or a listed
-reason. A menu whose rows write passes `{ edits: true }`; one mounting in reading mode closes and
-warns `menu-opened-in-reading`. `lint/menu-presence-census.test.ts`, `menu-presence.test.ts`.
+**G4.67 · Menu presence census.** Every open menu attaches `menuPresence.track(close)` to its root,
+so `menuChange` reads it open, and a press outside it, Escape (newest menu first), a document swap or
+a mode change closes it. Every menu element (the shared menu class, a menu, listbox or dialog role)
+carries that attach or a listed reason. A menu whose rows write passes `{ edits: true }`, and one
+mounting in reading mode closes and warns `menu-opened-in-reading`.
+`lint/menu-presence-census.test.ts`, `menu-presence.test.ts`.
 
 **G4.68 · Registry reads take the editor's grammar.** The inline syntax, widget kind, directive and
 completer registries are process-wide, and the editor's grammar leaves out a plugin its `plugins`
@@ -1220,3 +1221,9 @@ characters: the rule, why it holds, what to do when it fires, and its files. Mec
 rule, so it goes in the guard's failure message or a code comment. An entry with several cases a
 reader must know goes in the scan's baseline with its reason, and the baseline only shrinks.
 `lint/catalog-entry-budget.test.ts`.
+
+**G4.219 · Popovers don't close on blur.** Safari never focuses a clicked button, so a popover
+waiting on its opener's `focusout` just stays open. Popovers close through `menuPresence.track`
+(G4.67) instead, and every `focusout` or `blur` listener left in the library is listed with the
+focus need it serves (a shown source committing, say). A new one joins the list with its reason, or
+moves its close onto `track`. `lint/focus-loss-listeners.test.ts`.

@@ -90,6 +90,7 @@ These checks run in three kinds of place:
 | G1.117 | A write never splits a CRLF pair into a lone `\r` or a lone `\n`                           | A·N     |
 | G1.118 | A list's marker-width counts are what a recount of its items gives                         | A·N     |
 | G1.119 | No caret the editor writes sits between a CRLF pair's `\r` and `\n`                        | A·N     |
+| G1.121 | A menu asked to close is gone a tick later                                                 | A·N     |
 
 ### The entries
 
@@ -542,3 +543,8 @@ without rebuilding the list. A failed commit restores them with its bytes
 endpoints. Arrows cross a pair in one press (`handleUnitStep`), and a Shift+Arrow moves an anchor
 the browser parked inside one to before it (`extendSelectionToRaw`).
 `checkCaretOutsideLineEndingPair` · `line-ending-pairs.test.ts`.
+
+**G1.121 · A menu asked to close is gone** (`menu-closes`). Each menu closes through its own
+callback, so one that ignores a cause (an Escape, a press outside) would stay on screen after the
+editor closed it. A tick after the menu presence asks, dev checks the menu unmounted.
+`checkMenuClosed` · `menu-presence.test.ts`.

@@ -10,7 +10,7 @@
 		codeLanguageLabel
 	} from '../../../a11y-strings';
 	import type { CodeMenuItem } from '../../../host-hooks';
-	import type { MenuPresence } from '../../menu/menu-presence.svelte';
+	import type { MenuCloseCause, MenuPresence } from '../../menu/menu-presence.svelte';
 	import type { DraftRegistry } from '../../draft-registry';
 	import type { Draft } from '../../../schema/drafts';
 	import type { PluginActivation } from '../../../schema/plugin-activation';
@@ -187,10 +187,6 @@
 			commit(
 				namesLanguage ? typed : (suggestions[activeIndex] ?? (typed === '' ? language : typed))
 			);
-		} else if (e.key === 'Escape') {
-			e.preventDefault();
-			close();
-			onCancel(true);
 		} else if (e.key === 'ArrowDown') {
 			e.preventDefault();
 			highlightMoved = true;
@@ -213,10 +209,17 @@
 		});
 	}
 
+	// A press outside the gutter and Escape close either popout through the menu presence; the
+	// gutter's own buttons switch between them. Only Escape asks for the caret back.
+	function dismissPicker(cause: MenuCloseCause): boolean {
+		close();
+		onCancel(cause === 'escape-key');
+		return true;
+	}
+
+	// Tabbing out of the field is the one way to leave it that is not a press or Escape.
 	function onFieldBlur(e: FocusEvent): void {
 		if (popout !== 'languages') return;
-		// A pointer moving from the field to its own list is not a dismissal: the list's
-		// mousedown handler commits, and this must not tear the field down before it does.
 		const next = e.relatedTarget;
 		if (next instanceof Node && (railEl?.contains(next) || pickerEl?.contains(next))) return;
 		close();
@@ -231,6 +234,9 @@
 	// showing offers to copy again without a timer (G4.4).
 	function clearCopied(): void {
 		copied = false;
+	}
+	function onRailFocusOut(e: FocusEvent): void {
+		if (!(e.relatedTarget instanceof Node && railEl?.contains(e.relatedTarget))) clearCopied();
 	}
 
 	function closeMenu(): void {
@@ -253,23 +259,13 @@
 		item.run();
 	}
 
-	// Escape is handled on the ⋮ button and the items, where focus sits while the menu is open:
-	// the gutter is a labelled `group`, and a non-interactive role may not carry key handlers.
-	function onMenuKeyDown(e: KeyboardEvent): void {
-		if (e.key !== 'Escape' || popout !== 'menu') return;
-		e.stopPropagation();
-		e.preventDefault();
+	// Escape hands focus back to ⋮ only when a keyboard user had it inside the menu; a pointer
+	// user's focus never left where it was.
+	function dismissMenu(cause: MenuCloseCause): boolean {
+		const hadFocus = menuEl?.contains(document.activeElement) ?? false;
 		closeMenu();
-		menuButtonEl?.focus();
-	}
-
-	// The menu closes when focus leaves the gutter and its menu, judged by containment, so a
-	// click on a disabled item still counts as inside.
-	function onRailFocusOut(e: FocusEvent): void {
-		const next = e.relatedTarget;
-		if (next instanceof Node && (railEl?.contains(next) || menuEl?.contains(next))) return;
-		closeMenu();
-		clearCopied();
+		if (cause === 'escape-key' && hadFocus) menuButtonEl?.focus();
+		return true;
 	}
 
 	// ── Popout placement ──────────────────────────────────────────────────────
@@ -387,7 +383,6 @@
 			aria-haspopup="menu"
 			aria-expanded={popout === 'menu'}
 			onclick={toggleMenu}
-			onkeydown={onMenuKeyDown}
 		>
 			<MenuIcon name="ellipsis-vertical" />
 		</button>
@@ -399,7 +394,7 @@
 		bind:this={pickerEl}
 		class="md-menu code-rail-popout code-lang-picker"
 		style={popoutStyle(popoutAt)}
-		{@attach menuPresence.track(close, { edits: true })}
+		{@attach menuPresence.track(dismissPicker, { edits: true, inside: () => [railEl] })}
 	>
 		<div class="code-lang-search">
 			<MenuIcon name="search" />
@@ -468,7 +463,7 @@
 		role="menu"
 		aria-label={CODE_MENU_LABEL}
 		style={popoutStyle(popoutAt)}
-		{@attach menuPresence.track(closeMenu)}
+		{@attach menuPresence.track(dismissMenu, { inside: () => [railEl] })}
 	>
 		{#each openMenuItems as item (item.id)}
 			<li role="none">
@@ -476,8 +471,7 @@
 					type="button"
 					role="menuitem"
 					disabled={item.disabled}
-					onclick={() => activateMenuItem(item)}
-					onkeydown={onMenuKeyDown}>{item.label}</button
+					onclick={() => activateMenuItem(item)}>{item.label}</button
 				>
 			</li>
 		{/each}

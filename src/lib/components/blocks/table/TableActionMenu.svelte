@@ -16,7 +16,7 @@
 	import MenuIcon from '../../menu/MenuIcon.svelte';
 	import type { MenuIconName } from '../../../menu-icons';
 	import { tick, untrack } from 'svelte';
-	import type { MenuPresence } from '../../menu/menu-presence.svelte';
+	import type { MenuCloseCause, MenuPresence } from '../../menu/menu-presence.svelte';
 
 	// Every entry carries an icon, and the destructive ones take the accent colour, as the host
 	// app's context menus do.
@@ -103,26 +103,18 @@
 		if (menuEl) untrack(() => focusStop(0));
 	});
 
-	$effect(() => {
-		const onPointerDown = (e: PointerEvent) => {
-			if (menuEl && e.target instanceof Node && menuEl.contains(e.target)) return;
-			onclose();
-		};
-		// Document-level so Escape closes even if focus drifted off a stop. Escape restores
-		// focus to the originating cell; an outside click deliberately does not.
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				e.preventDefault();
-				onescape();
-			}
-		};
-		document.addEventListener('pointerdown', onPointerDown, true);
-		document.addEventListener('keydown', onKeyDown, true);
-		return () => {
-			document.removeEventListener('pointerdown', onPointerDown, true);
-			document.removeEventListener('keydown', onKeyDown, true);
-		};
-	});
+	// Escape restores focus to the originating cell, even from inside a flyout; an outside press
+	// deliberately does not.
+	function close(cause: MenuCloseCause): boolean {
+		if (cause === 'escape-key') onescape();
+		else onclose();
+		return true;
+	}
+	function closeFlyout(cause: MenuCloseCause): boolean {
+		if (cause === 'escape-key') return close(cause);
+		openGroup = null;
+		return true;
+	}
 
 	// ── Roving focus (ARIA menu pattern) ────────────────────────────────────
 	//
@@ -258,7 +250,7 @@
 	class="md-menu table-action-menu"
 	role="menu"
 	aria-label={TABLE_ACTIONS}
-	{@attach menuPresence.track(() => onclose(), { edits: true })}
+	{@attach menuPresence.track(close, { edits: true })}
 	tabindex="-1"
 	style:left="{left}px"
 	style:top="{top}px"
@@ -292,7 +284,7 @@
 						role="menu"
 						aria-label={item.label}
 						{@attach keepFlyoutOnScreen}
-						{@attach menuPresence.track(() => (openGroup = null), { edits: true })}
+						{@attach menuPresence.track(closeFlyout, { edits: true, inside: () => [menuEl] })}
 					>
 						{#each item.items as sub, j (j)}
 							{#if sub.kind === 'action' || sub.kind === 'clipboard'}

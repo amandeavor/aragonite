@@ -77,8 +77,6 @@ const NON_CARET_PRESS_FILES: Record<string, string> = {
 		'notes that a button is down so the preview modes paint markers on release; touches no caret',
 	'src/lib/selection/multi-click.ts':
 		'the second and third presses of a click run select the word or the surface under them: a selection gesture whose first press already went through the door',
-	'src/lib/components/blocks/table/TableActionMenu.svelte':
-		'document-capture dismiss-on-outside-press for the menu',
 	'src/lib/components/blocks/table/TableBlock.svelte':
 		'the add-row and add-column strips swallow their press so the cell keeps the caret that pinned them',
 	'src/lib/components/blocks/code/CodeBlockRail.svelte':
@@ -87,9 +85,9 @@ const NON_CARET_PRESS_FILES: Record<string, string> = {
 		'widget selection + overlay placement; the caret stays where it was',
 	'src/lib/components/image/ImageProperties.svelte':
 		'document-capture dismiss-on-outside-press for the properties popover',
+	'src/lib/components/menu/menu-presence.svelte.ts':
+		'closes an open menu on a press outside it; the press places its own caret through the ordinary door',
 	'src/lib/components/image/ImageResizeHandles.svelte': 'starts a resize drag',
-	'src/lib/components/link-card/LinkCardHost.svelte':
-		'document-capture dismiss-on-outside-press for the link card; the press that dismisses places its own caret through the ordinary door',
 	'src/lib/editor-actions/reorder-drag.ts': 'starts a block reorder drag off the handle',
 	'src/lib/plugins/details/DetailsBlock.svelte':
 		'preventDefault on the summary so the disclosure toggle takes no focus',

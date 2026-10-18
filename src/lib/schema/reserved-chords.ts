@@ -88,18 +88,18 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		file: 'components/link-card/LinkCard.svelte',
 		chords: ['Shift+Tab'],
 		keys: ['Enter', 'Tab'],
-		note: "Backwards step of the open card's focus trap. The chord that opens the card is swallowed there too, resolved through the keymap like everywhere else. Escape lives on the host, which must also close a card the document still holds the caret for."
+		note: "Backwards step of the open card's focus trap. The chord that opens the card is swallowed there too, resolved through the keymap like everywhere else. Escape is the menu presence’s, which also closes a card the document still holds the caret for."
 	},
 	{
 		file: 'components/menu/BlockMenu.svelte',
 		chords: [],
-		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Enter', 'Escape'],
-		note: 'The open block menu steps and picks; the modifier read is the guard that leaves every chord to the editor.'
+		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Enter'],
+		note: 'The open block menu steps and picks; the modifier read is the guard that leaves every chord to the editor. Escape is the menu presence’s.'
 	},
 	{
 		file: 'components/blocks/table/TableActionMenu.svelte',
 		chords: ['Shift+Tab'],
-		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'End', 'Escape', 'Home', 'Tab'],
+		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'End', 'Home', 'Tab'],
 		note: "Backwards step of the open menu's focus trap."
 	},
 	{

@@ -73,6 +73,8 @@ const WEBKIT_LANE = [
 	'selection/gap-caret-arrival.spec.ts',
 	'selection/widget-selected-paint.spec.ts',
 	'blocks/list/item-marker.spec.ts',
+	'blocks/code/menu-change.spec.ts',
+	'popover-close.spec.ts',
 	'caret/**/*.spec.ts',
 	'webkit/**/*.spec.ts'
 ];

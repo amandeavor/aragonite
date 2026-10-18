@@ -1445,6 +1445,7 @@
 		{events}
 		{menuPresence}
 		getEditorEl={() => editorEl ?? null}
+		{getBlockElByPath}
 		measureRange={rects.rangeRects}
 	/>
 	<div class="editor-sr-live" role="status" aria-live="polite">{selectionDescription}</div>
