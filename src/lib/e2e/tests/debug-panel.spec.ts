@@ -53,7 +53,7 @@ test.describe('debug panel', () => {
 		await expect(editor.page.locator('.debug-panel')).toBeVisible();
 	});
 
-	test('all seven sections render in document order and CST body is populated', async () => {
+	test('every section renders in document order and CST body is populated', async () => {
 		await editor.page.keyboard.press(TOGGLE_CHORD);
 
 		const titles = await editor.page
@@ -66,7 +66,8 @@ test.describe('debug panel', () => {
 			'Undo stack',
 			'Inline tree (focused block)',
 			'Operations log',
-			'Interaction trace'
+			'Interaction trace',
+			'Input recording'
 		]);
 
 		// The tree section is open by default, so its body must contain block [0].

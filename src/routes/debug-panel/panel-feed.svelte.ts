@@ -14,6 +14,7 @@ import {
 } from '#lib/debug/inspect.js';
 import { interactionTraceSnapshot } from '#lib/debug/interaction-trace.js';
 import { dumpFocusedInlineTree, liveSelectionText } from './panel-sections';
+import { createPanelRecorder } from './panel-recorder.svelte';
 
 type EditorInstance = ReturnType<typeof Editor>;
 
@@ -48,6 +49,7 @@ export function createDebugPanelFeed(getEditor: () => EditorInstance | undefined
 	});
 
 	return {
+		recorder: createPanelRecorder(getEditor),
 		get rawSource() {
 			return liveSource;
 		},
