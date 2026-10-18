@@ -235,8 +235,13 @@
 	function clearCopied(): void {
 		copied = false;
 	}
+	// Tabbing out of the gutter closes its menu too. Focus moving to an ancestor is how WebKit answers
+	// a click on a button, and the menu presence judges that press.
 	function onRailFocusOut(e: FocusEvent): void {
-		if (!(e.relatedTarget instanceof Node && railEl?.contains(e.relatedTarget))) clearCopied();
+		const next = e.relatedTarget instanceof Node ? e.relatedTarget : null;
+		if (next && (railEl?.contains(next) || menuEl?.contains(next))) return;
+		clearCopied();
+		if (next && railEl && !next.contains(railEl)) closeMenu();
 	}
 
 	function closeMenu(): void {

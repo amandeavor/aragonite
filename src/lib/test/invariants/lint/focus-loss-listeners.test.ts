@@ -18,7 +18,7 @@ const FOCUS_LOSS: FileRule = {
 		'src/lib/components/Editor.svelte': 'caret memory forgets as focus leaves the editor',
 		'src/lib/components/GapCaret.svelte': 'the gap caret ends as its hidden input loses focus',
 		'src/lib/components/blocks/code/CodeBlockRail.svelte':
-			'Tab out of the language field cancels it, and the copied label clears as focus leaves',
+			'Tab out of the language field or the gutter closes its popout, and the copied label clears as focus leaves',
 		'src/lib/components/blocks/placeholder-hint.svelte.ts':
 			'the empty-block hint shows on the focused block only',
 		'src/lib/components/blocks/table/TableBlock.svelte':

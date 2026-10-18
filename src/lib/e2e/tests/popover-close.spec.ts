@@ -161,6 +161,18 @@ test.describe('every popover closes without its opener holding focus', () => {
 		});
 	}
 
+	test('Shift+Tab out of the gutter closes the overflow menu', async ({ page }) => {
+		await block(page, 2).hover();
+		await block(page, 2).getByRole('button', { name: 'Code block actions' }).focus();
+		await page.keyboard.press('Enter');
+		await expect(page.locator('.code-rail-menu')).toBeVisible();
+		const inGutter = () =>
+			page.evaluate(() => !!document.activeElement?.closest('.code-rail, .code-rail-menu'));
+		for (let i = 0; i < 6 && (await inGutter()); i++) await page.keyboard.press('Shift+Tab');
+		expect(await inGutter()).toBe(false);
+		await expect(page.locator('.code-rail-menu')).toHaveCount(0);
+	});
+
 	test('Escape closes a flyout before the menu it hangs off', async ({ page }) => {
 		await POPOVERS[1].open(page, editor);
 		await page.keyboard.press('Escape');

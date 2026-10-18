@@ -15,6 +15,8 @@ when either arrives; the rows run under Chromium and in the WebKit lane.
 ## Edge cases
 
 - Escape with the block menu's flyout open closes the flyout and leaves the menu open.
+- With the code block's overflow menu opened from the keyboard, Shift+Tab out of the gutter closes
+  it.
 - A link card opened beside a live caret, with the caret walked into a formula that shows its
   source: one Escape closes the card and the shown source both, since a card not holding focus
   leaves the key to the document.
@@ -24,3 +26,5 @@ when either arrives; the rows run under Chromium and in the WebKit lane.
 - The code block's overflow menu stayed open in Safari (#686) because it closed on the gutter's
   focus leaving and read Escape on the focused button; every menu spec ran in Chromium, which
   focuses a clicked button, so no row ever closed a popover with focus on the page body.
+- Moving the overflow menu's close onto the menu presence dropped its close on Shift+Tab out of the
+  gutter; no row drove the menu from the keyboard.
