@@ -8,6 +8,7 @@ import type {
 } from '#lib';
 import type { Editor, EditorProps } from '#lib/svelte.js';
 import { readBlocks } from '#lib/core/parser.js';
+import { hashSource } from '#lib/debug/input-recording.js';
 import type { GrammarView } from '#lib/schema/block-openers.js';
 import { serialize } from '#lib/core/serializer.js';
 import { parseConverges } from '#lib/testing/parse-convergence.js';
@@ -714,6 +715,7 @@ export function installTestProbes({
 			inputRecording?.stop();
 			inputRecording = editor.getDiagnostics().recordInput(options);
 		},
+		getSourceHash: (): string => hashSource(editor.getSource()),
 		stopInputRecording: (): InputRecording | null => {
 			const recording = inputRecording?.stop() ?? null;
 			inputRecording = null;

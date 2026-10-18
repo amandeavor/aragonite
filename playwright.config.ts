@@ -48,7 +48,8 @@ const PROJECT_DIRS = [
 	'sticky-column',
 	'a11y',
 	'search',
-	'clipboard'
+	'clipboard',
+	'recordings'
 ];
 
 // The second-engine slice, run on every pull request rather than every commit. It carries no known-red

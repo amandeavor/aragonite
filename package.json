@@ -185,6 +185,7 @@
 		"test:e2e:simulation": "playwright test --project=e2e-simulation",
 		"test:e2e:a11y": "playwright test --project=e2e-a11y",
 		"test:e2e:search": "playwright test --project=e2e-search",
+		"test:e2e:recordings": "playwright test --project=e2e-recordings",
 		"test:e2e:vr": "playwright test --project=e2e-vr",
 		"test:e2e:webkit": "node scripts/run-with-env.mjs WEBKIT=1 -- playwright test --project=e2e-webkit",
 		"test:e2e:isolated": "node scripts/run-with-env.mjs E2E_ISOLATED=1 -- playwright test",
