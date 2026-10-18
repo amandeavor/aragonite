@@ -346,7 +346,8 @@ export const SOURCE_DIR = {
 	consumerExample: 'examples/consumer/src/',
 	examples: 'examples/',
 	adapterSuiteTests: 'examples/adapter-suite/tests/',
-	pluginGuidePages: 'docs/guide/plugin-guide/'
+	pluginGuidePages: 'docs/guide/plugin-guide/',
+	invariantCatalog: 'docs/design/invariants/'
 } as const;
 
 /** An entry each directory must hold directly, so a directory entry pointed at a sibling fails. */
@@ -392,5 +393,6 @@ export const SOURCE_DIR_ANCHORS: Record<keyof typeof SOURCE_DIR, string> = {
 	consumerExample: 'plugin-probe.ts',
 	examples: 'consumer',
 	adapterSuiteTests: 'page-contract.spec.ts',
-	pluginGuidePages: 'parrot-frames.md'
+	pluginGuidePages: 'parrot-frames.md',
+	invariantCatalog: 'scans.md'
 };
