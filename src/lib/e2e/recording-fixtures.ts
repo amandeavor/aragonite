@@ -3,7 +3,8 @@
  * says it's only for reading (`diagnosticOnly`). The replay spec and the recordings lint (G4.213)
  * both read this list, so a recording can't sit in the folder run by neither.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { collectFiles } from '../test/invariants/lint/scan-source';
 import {
 	chainBreaks,
 	pressedKeydown,
@@ -27,16 +28,11 @@ export interface RecordingFixture {
 }
 
 export function recordingFixtures(): RecordingFixture[] {
-	return readdirSync(RECORDINGS_DIR)
-		.filter((file) => file.endsWith('.json'))
-		.map((file) => {
-			const full = `${RECORDINGS_DIR}/${file}`;
-			return {
-				name: file.replace(/\.json$/, ''),
-				file: full,
-				recording: readInputRecording(readFileSync(full, 'utf8'))
-			};
-		});
+	return collectFiles(RECORDINGS_DIR, { extensions: ['.json'] }).map((file) => ({
+		name: file.slice(RECORDINGS_DIR.length + 1).replace(/\.json$/, ''),
+		file,
+		recording: readInputRecording(readFileSync(file, 'utf8'))
+	}));
 }
 
 export function enginesOf(recording: InputRecording): string[] {

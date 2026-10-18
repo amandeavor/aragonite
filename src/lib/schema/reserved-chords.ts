@@ -48,8 +48,8 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 	{
 		file: 'debug/input-recorder.ts',
 		chords: [],
-		keys: [],
-		note: 'An input recording copies the modifier flags of every key it records: no keystroke is consumed.'
+		keys: ['Process'],
+		note: 'An input recording copies the modifier flags of every key it records, and reads an IME keydown (`Process`) to group a composition: no keystroke is consumed.'
 	},
 	{
 		file: 'selection/selection-drop.ts',
