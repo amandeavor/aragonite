@@ -95,8 +95,13 @@ export async function handleSharedKeydown(
 		return false;
 	}
 
+	// The moving end, read once for the span step and the boundary check: with Shift the focus, since
+	// a forward range's start is its anchor, which extends across blocks while the focus contracts.
+	const horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+	const stepOffset = !horizontal ? null : e.shiftKey ? ctx.getFocusOffset() : ctx.getCursorOffset();
+
 	// After the key note, so the press still resets the sticky column as any horizontal step does.
-	if (handleUnitStep(e, ctx, el)) return true;
+	if (horizontal && handleUnitStep(e, ctx, el, stepOffset)) return true;
 
 	// ── Arrow boundary navigation ─────────────────────────────────────────
 	const index = ctx.getIndex();
@@ -165,9 +170,7 @@ export async function handleSharedKeydown(
 	}
 
 	if (e.key === 'ArrowLeft') {
-		// Shift+Arrow reads the focus, since `getCursorOffset()` gives the range start: the anchor
-		// of a forward selection, which would extend across blocks while the focus contracts.
-		const offset = e.shiftKey ? (ctx.getFocusOffset() ?? bounds().start) : ctx.getCursorOffset();
+		const offset = e.shiftKey ? (stepOffset ?? bounds().start) : stepOffset;
 		if (offset !== null && offset <= bounds().start) {
 			if (e.shiftKey) {
 				e.preventDefault();
@@ -189,7 +192,7 @@ export async function handleSharedKeydown(
 	}
 
 	if (e.key === 'ArrowRight') {
-		const offset = e.shiftKey ? (ctx.getFocusOffset() ?? bounds().end) : ctx.getCursorOffset();
+		const offset = e.shiftKey ? (stepOffset ?? bounds().end) : stepOffset;
 		if (offset !== null && offset >= bounds().end) {
 			if (e.shiftKey) {
 				e.preventDefault();
@@ -234,15 +237,18 @@ const edgeStepByEvent = new WeakMap<KeyboardEvent, boolean>();
 
 /** A horizontal arrow beside a span the caret can't stop inside lands at its far edge in one press,
  *  decided here because WebKit and Firefox step natively into or past one. True if claimed. */
-function handleUnitStep(e: KeyboardEvent, ctx: SharedKeydownContext, el: HTMLElement): boolean {
-	if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return false;
+function handleUnitStep(
+	e: KeyboardEvent,
+	ctx: SharedKeydownContext,
+	el: HTMLElement,
+	offset: number | null
+): boolean {
 	if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing || ctx.selection.isCrossBlock) {
 		return false;
 	}
 	const extending = e.shiftKey;
 	// A plain arrow over a range collapses it, which is the browser's.
 	if (!extending && window.getSelection()?.isCollapsed === false) return false;
-	const offset = extending ? ctx.getFocusOffset() : ctx.getCursorOffset();
 	if (offset === null) return false;
 	const direction = e.key === 'ArrowRight' ? 'forward' : 'backward';
 	const unit = ctx.caretUnits.beside(offset, direction, extending);

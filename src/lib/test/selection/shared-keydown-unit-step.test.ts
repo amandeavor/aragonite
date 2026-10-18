@@ -132,6 +132,17 @@ describe('handleSharedKeydown: a span the caret cannot stop inside is crossed in
 		}
 	});
 
+	it('reads the caret once for a press it declines, which the boundary check reuses', async () => {
+		for (const shiftKey of [false, true]) {
+			const h = mount();
+			h.select(2);
+			const cursor = vi.spyOn(h.ctx, 'getCursorOffset');
+			const focus = vi.spyOn(h.ctx, 'getFocusOffset');
+			expect(await handleSharedKeydown(press('ArrowRight', { shiftKey }), h.ctx)).toBe(false);
+			expect(cursor.mock.calls.length + focus.mock.calls.length, `shift ${shiftKey}`).toBe(1);
+		}
+	});
+
 	it('leaves a selection across blocks to its own handler', async () => {
 		const h = mount();
 		h.select(1);
