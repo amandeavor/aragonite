@@ -735,13 +735,23 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		else if (side) deps.pinChipSide(side === 'chip-inside' ? 'inside' : 'outside');
 		const seat = nearestWidgetEdgeSeat(measuredWidgets(el), clickX, clickY);
 		if (seat === null) return;
-		// A click beside a widget leaves a visible caret alone; a click on one cannot, since the
-		// browser answers that hit test with a position in the neighbouring text.
-		if (!seat.inside && caretIsInTextContent(el, live)) return;
+		// A click beside a widget leaves a visible caret alone, unless a widget separates it from the
+		// edge clicked (Firefox puts a click past a run in the text before it); a click on one can't.
+		if (!seat.inside && caretIsInTextContent(el, live) && !widgetSeparates(el, live, seat.offset)) {
+			return;
+		}
 		el.focus();
 		deps.cursor.setRaw(asRawOffset(seat.offset), { clamp: 'reachable' });
 		// `setRaw` may have landed in a trailing text node, where the browser draws a caret.
 		if (!caretIsInTextContent(el, window.getSelection())) deps.setSnapTarget(seat.offset);
+	}
+
+	/** Whether a widget lies whole between the live caret and the widget edge a click is nearest. */
+	function widgetSeparates(el: HTMLElement, live: Selection | null, seat: number): boolean {
+		if (!live?.focusNode) return false;
+		const caret = rawOffsetAt(el, live.focusNode, live.focusOffset);
+		const [from, to] = caret < seat ? [caret, seat] : [seat, caret];
+		return widgetsOf().some((widget) => from <= widget.start && widget.end <= to);
 	}
 
 	function* measuredWidgets(

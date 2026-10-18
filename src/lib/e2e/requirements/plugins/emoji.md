@@ -28,6 +28,8 @@ The widget edits the way a decoded entity does: `deleteGranularity: 'atomic'`,
 - Click past a run: with four shortcodes flush against each other at the end of a line, a click
   past the last glyph puts the caret after the last one's bytes, so a typed character lands at
   the end of the line.
+  Miss-analysis: the row ran only in Chromium, which leaves that click outside the text, and real
+  Firefox parks it in the text before the run, which the snap kept as a caret already in text.
 - Click on a glyph: a click on the glyph's left half puts the caret before its bytes and one on
   the right half after them, in either presentation mode. The glyph reads as one character, so
   clicking it picks an edge the way clicking beside it does.

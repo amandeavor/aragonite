@@ -5,3 +5,8 @@ import { type Page } from '@playwright/test';
 export function isWebKit(page: Page): boolean {
 	return page.context().browser()?.browserType().name() === 'webkit';
 }
+
+/** Whether the page runs in Chromium, the one engine with a CDP session. */
+export function isChromium(page: Page): boolean {
+	return page.context().browser()?.browserType().name() === 'chromium';
+}

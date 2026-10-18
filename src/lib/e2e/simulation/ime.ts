@@ -1,10 +1,10 @@
 import { type CDPSession, type Page } from '@playwright/test';
-import { isWebKit } from '../browser-engine';
+import { isChromium } from '../browser-engine';
 
 // The one IME driver, shared by the simulation gestures and the specs. Chromium composes through
 // CDP's `Input.imeSetComposition` and `Input.insertText`, which fire real composition events;
-// WebKit has no CDP, so its branch fires the sequence by hand, the one exception no spec may copy
-// (G4.49). The source does not change mid-composition, so `compose` waits on the DOM.
+// WebKit and Firefox have no CDP, so their branch fires the sequence by hand, the one exception no
+// spec may copy (G4.49). The source does not change mid-composition, so `compose` waits on the DOM.
 
 export interface ImeDriver {
 	/** Sets the text being composed and waits for it to appear in the DOM. */
@@ -18,7 +18,7 @@ export interface ImeDriver {
 }
 
 export async function attachIme(page: Page): Promise<ImeDriver> {
-	return isWebKit(page) ? handFiredIme(page) : cdpIme(page);
+	return isChromium(page) ? cdpIme(page) : handFiredIme(page);
 }
 
 // ── The two branches ────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ interface ImeRun {
 const MICROTASK_CHECKPOINT_TURNS = 1000;
 
 /**
- * WebKit's branch writes the composed text into the DOM the way an IME does and fires the editor's
+ * The branch for WebKit and Firefox writes the composed text into the DOM the way an IME does and fires the editor's
  * events around it: it proves the commit path runs, not the event order.
  */
 function handFiredIme(page: Page): ImeDriver {

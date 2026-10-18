@@ -508,8 +508,8 @@ N-vs-4N ratio (`measureScanGrowth`) cancels the machine. The allowlist carries a
 **G4.49 · The shared IME driver.** A spec that builds a `CompositionEvent`, an
 `insertCompositionText` input event or a key event saying `isComposing: true` by hand tests a
 browser no user has, so it fails the scan. The
-driver file is the one exemption (WebKit has no CDP session), pinned exactly, so a widened exemption
-and a deleted WebKit branch each fail. `e2e/lint/e2e-drivers.test.ts`.
+driver file is the one exemption (only Chromium has a CDP session), pinned exactly, so a widened
+exemption and a deleted hand-fired branch each fail. `e2e/lint/e2e-drivers.test.ts`.
 
 **G4.50 · Cross-block-range classification.** Every block command id is range-declined, has a
 cross-block branch, or is recorded range-safe with its reason; the decline is what stops a command
