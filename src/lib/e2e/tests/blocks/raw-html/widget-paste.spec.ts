@@ -1,4 +1,5 @@
 import { test, expect } from '../../../fixtures';
+import { dispatchPaste } from '../../../clipboard-arm';
 import { EditorPage } from '../../../editor-page';
 
 test.describe('live raw-HTML widget paste-while-selected', () => {
@@ -19,13 +20,7 @@ test.describe('live raw-HTML widget paste-while-selected', () => {
 		await page.keyboard.press('ArrowRight');
 		await expect(page.locator('.md-br-widget')).toHaveCount(1);
 
-		await page.evaluate(() => {
-			const dt = new DataTransfer();
-			dt.setData('text/plain', 'REPLACED');
-			document.activeElement?.dispatchEvent(
-				new ClipboardEvent('paste', { clipboardData: dt, bubbles: true })
-			);
-		});
+		await dispatchPaste(page, { entries: { 'text/plain': 'REPLACED' } });
 
 		await editor.bridge.waitForSourceContains('beforeREPLACEDafter');
 		const src = await editor.bridge.getSource();
@@ -41,13 +36,7 @@ test.describe('live raw-HTML widget paste-while-selected', () => {
 		await page.keyboard.press('ArrowRight');
 		await expect(page.locator('.md-br-widget')).toHaveCount(1);
 
-		await page.evaluate(() => {
-			const dt = new DataTransfer();
-			dt.setData('text/plain', 'REPLACED');
-			document.activeElement?.dispatchEvent(
-				new ClipboardEvent('paste', { clipboardData: dt, bubbles: true })
-			);
-		});
+		await dispatchPaste(page, { entries: { 'text/plain': 'REPLACED' } });
 		await editor.bridge.waitForSourceContains('beforeREPLACEDafter');
 
 		await page.keyboard.press('ControlOrMeta+z');

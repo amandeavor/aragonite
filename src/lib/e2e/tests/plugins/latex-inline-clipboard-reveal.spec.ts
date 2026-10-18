@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage } from './helpers';
+import { dispatchPaste } from '../../clipboard-arm';
 
 /**
  * A clipboard edit while an inline formula's source is open: a paste closes the source first and
@@ -29,13 +30,7 @@ class MathClipboardPage extends PluginsPage {
 
 	/** Fire a real paste event carrying `text` at the focused block. */
 	async pastePlainText(text: string): Promise<void> {
-		await this.page.evaluate((value) => {
-			const dt = new DataTransfer();
-			dt.setData('text/plain', value);
-			document.activeElement?.dispatchEvent(
-				new ClipboardEvent('paste', { clipboardData: dt, bubbles: true })
-			);
-		}, text);
+		await dispatchPaste(this.page, { entries: { 'text/plain': text } });
 	}
 }
 

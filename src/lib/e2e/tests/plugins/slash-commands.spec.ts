@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures';
+import { skipUnlessSupported } from '../../browser-engine';
 import { activeBlockPath, PluginsPage, capturedErrors } from './helpers';
 
 /**
@@ -33,6 +34,7 @@ test.describe('slash commands', () => {
 
 	test.describe('picks', () => {
 		test('Enter right after fast typing on a slowed CPU picks the whole query', async () => {
+			skipUnlessSupported(editor.page, 'cdp');
 			await editor.page.keyboard.press('Enter');
 			await editor.typeText('/');
 			await menu(editor).waitFor({ state: 'visible' });

@@ -4,6 +4,7 @@ import { EditorPage } from '../../editor-page';
 import { gotoReady } from '../../goto-ready';
 import { pointAtRaw, textRunRect, type Point, type TextRunRect } from '../../text-runs';
 import { FIXTURE_BYTES } from '../perf/vr-helpers';
+import { skipUnlessSupported } from '../../browser-engine';
 
 /**
  * Mark hover (requirements/decorations/mark-hover.md). Each source records its `onHover` calls on
@@ -496,6 +497,7 @@ test.describe('mark hover under touch', () => {
 	test.use({ hasTouch: true });
 
 	test('a touch tap on a hover mark places the caret and starts no hover', async ({ page }) => {
+		skipUnlessSupported(page, 'touch');
 		const editor = new EditorPage(page);
 		await editor.goto();
 		await editor.loadContent('hello world\n\nsecond\n');

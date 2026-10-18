@@ -8,6 +8,7 @@ import {
 	setCaretProp
 } from '../../carets-showing';
 import { TABLE_THEN_FENCE, arriveAtBoundary } from '../selection/gap-caret-fixtures';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // The drawn caret on the device pixel grid, and in the color of the text it stands in
 // (requirements/caret/drawn-caret-pixels.md).
@@ -242,6 +243,7 @@ test('at 1x the bar stands in the browserâ€™s own caret column at every letter b
 	page,
 	browserName
 }) => {
+	skipUnlessSupported(page, 'caretScreenshot');
 	test.skip(
 		browserName === 'webkit',
 		'WebKit reports the range in whole pixels, losing the fraction its caret rounds'
@@ -272,6 +274,7 @@ test('on an editable that starts between pixels, the bar stands in the browserâ€
 	page,
 	browserName
 }) => {
+	skipUnlessSupported(page, 'caretScreenshot');
 	test.skip(
 		browserName === 'webkit',
 		'WebKit reports the range in whole pixels, losing the fraction its caret rounds'

@@ -40,10 +40,14 @@ test.describe('/ showcase report a bug', () => {
 
 		const tab = page.context().waitForEvent('page');
 		await page.getByTestId('report-bug').click();
-		const url = new URL((await tab).url());
+		const popup = await tab;
+		await popup.waitForURL(/github\.com\/voithos-labs\/aragonite\/issues\/new/);
+		const url = new URL(popup.url());
 		expect(url.origin + url.pathname).toBe('https://github.com/voithos-labs/aragonite/issues/new');
 		expect(url.searchParams.get('template')).toBe('bug.yml');
-		expect(url.searchParams.get('where')).toMatch(/^\d+\.\d+\.\d+, Chrome \d+ on \w+, live mode$/);
+		expect(url.searchParams.get('where')).toMatch(
+			/^\d+\.\d+\.\d+, (Chrome|Firefox|Safari) [\d.]+ on \w+, live mode$/
+		);
 		// The demo document alone outgrows a link, so the recording rides the clipboard.
 		expect(url.searchParams.get('recording')).toContain('on your clipboard');
 		await expect(page.getByTestId('report-card')).toContainText('on your');

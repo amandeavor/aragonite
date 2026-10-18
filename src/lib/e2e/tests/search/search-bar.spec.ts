@@ -9,6 +9,7 @@ import {
 	replaceInput,
 	typeQuery
 } from './helpers';
+import { skipUnlessSupported } from '../../browser-engine';
 
 test.describe('search: open and close', () => {
 	let editor: EditorPage;
@@ -216,6 +217,7 @@ test.describe('search: forced colors', () => {
 	test('the focused bar shows a highlight edge and a pressed toggle still reads as pressed', async ({
 		page
 	}) => {
+		skipUnlessSupported(page, 'mediaEmulation');
 		const editor = new EditorPage(page);
 		await editor.goto();
 		await page.emulateMedia({ forcedColors: 'active' });

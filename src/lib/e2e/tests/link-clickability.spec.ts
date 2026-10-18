@@ -15,6 +15,7 @@ test.describe('link clickability', () => {
 		const popupPromise = context.waitForEvent('page');
 		await link.click({ modifiers: ['Control'] });
 		const popup = await popupPromise;
+		await popup.waitForURL('https://example.com/');
 		expect(popup.url()).toBe('https://example.com/');
 	});
 
@@ -24,6 +25,7 @@ test.describe('link clickability', () => {
 		const popupPromise = context.waitForEvent('page');
 		await link.click({ modifiers: ['Control'] });
 		const popup = await popupPromise;
+		await popup.waitForURL('https://example.com/');
 		expect(popup.url()).toBe('https://example.com/');
 	});
 

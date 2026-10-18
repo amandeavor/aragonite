@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { dispatchPaste } from '../../../clipboard-arm';
 import { clickPastImageRightEdge, dropNativeCaret, waitForFirstImageLoaded } from './helpers';
 
 const LIST_IMAGE_DOC = '- ![pic|300x200](/test-fixtures/sample.png)\n';
@@ -160,18 +161,10 @@ test.describe('typing and paste after click-snap', () => {
 		await page.mouse.click(ib.x + ib.width + 20, ib.y + ib.height / 2);
 		// Drops the live range the way Chromium's event-loop yield does past a widget the caret
 		// cannot enter, so the paste handler must recover the caret from the snap target.
-		await page.evaluate(() => {
-			window.getSelection()?.removeAllRanges();
-			const dt = new DataTransfer();
-			dt.setData('text/plain', 'PASTED');
-			const ev = new ClipboardEvent('paste', {
-				clipboardData: dt,
-				bubbles: true,
-				cancelable: true
-			});
-			(document.querySelector('[data-image-widget]')?.parentElement as HTMLElement).dispatchEvent(
-				ev
-			);
+		await dispatchPaste(page, {
+			entries: { 'text/plain': 'PASTED' },
+			at: { selector: ':has(> [data-image-widget])' },
+			clearSelection: true
 		});
 		await editor.bridge.waitForSourceContains('PASTED');
 		const src = await editor.bridge.getSource();

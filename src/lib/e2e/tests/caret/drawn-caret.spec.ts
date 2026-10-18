@@ -16,6 +16,7 @@ import { MemoPage } from '../plugins/memo-helpers';
 import { clickPastImageRightEdge, waitForFirstImageLoaded } from '../blocks/image/helpers';
 import { PluginsPage } from '../plugins/helpers';
 import { TABLE_THEN_FENCE, arriveAtBoundary } from '../selection/gap-caret-fixtures';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // The drawn caret against the browser's own (requirements/caret/drawn-caret.md): exactly one caret
 // shows in every row, and where the bar draws, it sits on the browser's caret position.
@@ -230,6 +231,7 @@ test.describe('the drawn caret', () => {
 	});
 
 	test('reduced motion draws a caret that doesn’t blink', async ({ page }) => {
+		skipUnlessSupported(page, 'mediaEmulation');
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await editor.loadContent('hello world\n');
 		await editor.focusBlock(0, 3);
@@ -245,6 +247,7 @@ test.describe('the drawn caret', () => {
 	});
 
 	test('reduced motion draws the widget and gap bars without a blink', async ({ page }) => {
+		skipUnlessSupported(page, 'mediaEmulation');
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		const animation = async () => {
 			const bar = await drawnBar(page);
@@ -268,6 +271,7 @@ test.describe('the drawn caret', () => {
 		test.skip(({ browserName }) => browserName === 'webkit', 'no forced-colors mode in WebKit');
 
 		test('forced colors keep the browser’s caret', async ({ page }) => {
+			skipUnlessSupported(page, 'mediaEmulation');
 			await page.emulateMedia({ forcedColors: 'active' });
 			await editor.loadContent('hello world\n');
 			await editor.focusBlock(0, 3);
@@ -341,6 +345,7 @@ test.describe('the drawn caret', () => {
 		test.use({ hasTouch: true });
 
 		test('keeps the browser’s caret', async ({ page }) => {
+			skipUnlessSupported(page, 'touch');
 			await editor.loadContent('hello world\n');
 			await editor.focusBlock(0, 3);
 			await expect.poll(() => caretsShowing(page)).toEqual(ONE_NATIVE);

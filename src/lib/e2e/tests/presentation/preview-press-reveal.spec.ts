@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { pointAtRaw } from '../../text-runs';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // A mouse press in a preview mode anchors on the character it was aimed at, and the focused block's
 // markers show once the button comes up.
@@ -76,6 +77,7 @@ test.describe('on a touchscreen', () => {
 		test(`${mode}: a tap into an unfocused ${name} lands the caret where it was aimed`, async ({
 			page
 		}) => {
+			skipUnlessSupported(page, 'touch');
 			const editor = new EditorPage(page);
 			await editor.goto(`?presentationMode=${mode}`);
 			await editor.loadContent(DOC);
