@@ -1,10 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createContainerEditActions } from '#lib/editor-actions/container-edit.js';
 import { createHistoryActions } from '#lib/editor-actions/commit/history.js';
-import { createListOverrides } from '#lib/editor-actions/list-overrides.js';
 import { createStandardNestedActions } from '#lib/editor-actions/nested/nested-actions.js';
 import { registerBlockListState } from '#lib/block-lists/state-registry.js';
 import {
@@ -14,50 +13,34 @@ import {
 	makeNestedActionsDeps,
 	makeNestedHarness,
 	makeStubBlockEdit,
-	makeStubFocus,
-	stubBlockComponent
+	makeStubFocus
 } from '#lib/test/harness/editor-actions.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
-import type { BlockComponent } from '#lib/block-component.js';
 
-// A nested delete can stop a list interrupting the paragraph above, so the ancestor fix-up
+// A nested delete can let a container lazily continue into the block below, so the ancestor fix-up
 // merges the two and swallows the container the commit ran in; the caret, the parent's ids and
 // refs, and the undo entry must still come out right.
 // Miss-analysis: container-commit tests asserted the container's own children, never the parent's.
 
-const SOURCE = 'a\n1. x\n2. y\n';
+const SOURCE = '> a\n> # h\ntext\n';
 
 function harness() {
-	const h = makeNestedHarness(SOURCE, { index: 1, listOverrides: true });
-	const focused: number[] = [];
-	const survivor = stubBlockComponent({
-		focus: vi.fn((offset?: number) => focused.push(offset ?? -1))
-	});
-	h.deps.blockRefs[0] = survivor as BlockComponent;
-	// The container's own refs answer too, so a caret aimed at the swallowed container is
-	// visible rather than silently absent.
-	const inner: number[] = [];
-	h.state.innerBlockRefs[0] = stubBlockComponent({
-		focus: vi.fn((o?: number) => inner.push(o ?? -1))
-	});
+	const h = makeNestedHarness(SOURCE, { index: 0 });
 	const errors: unknown[] = [];
 	h.events.on('error', (e) => errors.push(e));
-	return { ...h, focused, inner, errors, history: createHistoryActions(h.deps, h.controller) };
+	return { ...h, errors, history: createHistoryActions(h.deps, h.controller) };
 }
 
 describe('a commit whose ancestry settle ate its own scope', () => {
 	it('lands the caret where the container’s bytes begin in the survivor', async () => {
 		const h = harness();
 
-		await h.bundle.blockEdit.deleteBlock(0, 'keyless');
+		await h.bundle.blockEdit.deleteBlock(1, 'keyless');
 
-		expect(serialize(h.deps.doc)).toBe('a\n2. y\n');
-		// `'a\n'` is what the paragraph put in front of the list's own first byte.
-		expect(h.focused).toEqual([2]);
-		// The swallowed container has no child to focus, so the delete's own caret placement
-		// found nothing, quietly: a collapse is a normal outcome, not something a host must hear.
-		expect(h.inner).toEqual([]);
+		expect(serialize(h.deps.doc)).toBe('> a\ntext\n');
+		expect(h.landings).toMatchObject([{ leafPath: [0, 0], offset: 0 }]);
+		// A collapse is a normal outcome, not something a host must hear.
 		expect(h.errors).toEqual([]);
 	});
 
@@ -110,12 +93,11 @@ describe('a commit whose ancestry settle ate its own scope', () => {
 		expect(h.deps.undoManager.getStacks().undo).toHaveLength(1);
 	});
 
-	// The collapse is the only change on this commit (every scope's change is `noop`), and the
-	// delete asks for a discard when nothing changed.
+	// The delete asks for a discard when nothing changed, so the collapse has to count as a change.
 	it('keeps the undo entry, and undo restores the pre-fold tree', async () => {
 		const h = harness();
 
-		await h.bundle.blockEdit.deleteBlock(0, 'keyless');
+		await h.bundle.blockEdit.deleteBlock(1, 'keyless');
 
 		const stacks = h.deps.undoManager.getStacks();
 		expect(stacks.undo).toHaveLength(1);
@@ -125,7 +107,7 @@ describe('a commit whose ancestry settle ate its own scope', () => {
 
 		expect(takeDevWarns()).toEqual([]);
 		expect(serialize(h.deps.doc)).toBe(SOURCE);
-		expect(h.deps.doc.children.map((c) => c.kind)).toEqual(['paragraph', 'list']);
+		expect(h.deps.doc.children.map((c) => c.kind)).toEqual(['blockquote', 'paragraph']);
 		expect(h.deps.blockIds).toHaveLength(2);
 	});
 });
@@ -147,50 +129,42 @@ describe('a keystroke whose container collapses into its follower', () => {
 });
 
 /** The same cause one level down, where the collapsed array belongs to a container. */
-function quotedListHarness() {
-	const { deps } = makeEditorActionsDeps(parse('> a\n> 1. x\n> 2. y\n'));
+function quotedQuoteHarness() {
+	const { deps } = makeEditorActionsDeps(parse('> > a\n> > # h\n> text\n>\n> tail\n'));
 	const controller = createUndoController(deps);
 	const quote = () => deps.doc.children[0];
-	const getNode = () => quote().children![1];
+	const getNode = () => quote().children![0];
 	const state = makeBlockListState(getNode);
 	registerBlockListState(getNode(), state);
-	const scope = {
-		get index() {
-			return 1;
-		},
-		get node() {
-			return getNode();
-		},
-		get path() {
-			return [0, 1];
-		}
-	};
 	const bundle = createStandardNestedActions(
 		state,
 		makeNestedActionsDeps({
-			index: 1,
+			index: 0,
 			getNode,
-			path: [0, 1],
+			path: [0, 0],
 			parent: {
 				blockEdit: makeStubBlockEdit(),
 				focus: makeStubFocus(),
 				containerEdit: createContainerEditActions(deps, controller)
 			}
-		}),
-		createListOverrides({ scope, parentBlockEdit: makeStubBlockEdit() })
+		})
 	);
 	return { deps, quote, bundle };
 }
 
 describe('a fold whose parent scope is a container, not the document', () => {
 	it('publishes one id per surviving child of the owner', async () => {
-		const h = quotedListHarness();
-		expect(h.quote().children!.map((c) => c.kind)).toEqual(['paragraph', 'list']);
+		const h = quotedQuoteHarness();
+		expect(h.quote().children!.map((c) => c.kind)).toEqual([
+			'blockquote',
+			'paragraph',
+			'paragraph'
+		]);
 
-		await h.bundle.blockEdit.deleteBlock(0, 'keyless');
+		await h.bundle.blockEdit.deleteBlock(1, 'keyless');
 
-		expect(serialize(h.deps.doc)).toBe('> a\n> 2. y\n');
-		expect(h.quote().children!.map((c) => c.kind)).toEqual(['paragraph']);
+		expect(serialize(h.deps.doc)).toBe('> > a\n> text\n>\n> tail\n');
+		expect(h.quote().children!.map((c) => c.kind)).toEqual(['blockquote', 'paragraph']);
 		// An unmounted owner has no ids, which is not an empty list: starting from one would
 		// write one id per changed index instead of one per child, and a wrong length is permanent.
 		expect(h.quote().childIds).toHaveLength(h.quote().children!.length);

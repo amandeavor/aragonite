@@ -76,3 +76,15 @@ describe('deleting the first item keeps the ordered list’s first number', () =
 		expect(serialize(h.deps.doc)).toBe('8. b\n9. c\n');
 	});
 });
+
+describe('deleting an item focused whole keeps the ordered list’s numbers', () => {
+	it.each([
+		{ item: 0, bytes: '8. b\n9. c\n' },
+		{ item: 1, bytes: '8. a\n9. c\n' }
+	])('item $item', async ({ item, bytes }) => {
+		const h = makeNestedHarness('8. a\n9. b\n10. c\n', { index: 0 });
+		expect(await h.bundle.blockEdit.deleteBlock(item, 'Delete')).toBe(true);
+		expectParseConverged(h.deps.doc);
+		expect(serialize(h.deps.doc)).toBe(bytes);
+	});
+});
