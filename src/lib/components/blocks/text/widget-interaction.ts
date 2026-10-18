@@ -737,8 +737,13 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		if (seat === null) return;
 		// A click beside a widget leaves a visible caret alone, unless a widget on the click's line
 		// separates the two (Firefox puts a click past a run in the text before it); one on it can't.
-		const separated = seat.onRow && widgetSeparates(el, live, seat.offset);
-		if (!seat.inside && caretIsInTextContent(el, live) && !separated) return;
+		if (
+			!seat.inside &&
+			caretIsInTextContent(el, live) &&
+			!(seat.onRow && widgetSeparates(el, live, seat.offset))
+		) {
+			return;
+		}
 		el.focus();
 		deps.cursor.setRaw(asRawOffset(seat.offset), { clamp: 'reachable' });
 		// `setRaw` may have landed in a trailing text node, where the browser draws a caret.
