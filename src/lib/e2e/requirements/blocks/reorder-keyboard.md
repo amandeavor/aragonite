@@ -18,6 +18,10 @@ whether or not the drag handles are turned on.
 - Alt+ArrowDown on the first list item moves it down one position.
 - Alt+ArrowDown on item 9 of a ten-item ordered list, and Alt+ArrowUp on item 10, renumber the
   moved item between `9. ` and `10. `; the next typed character lands right after the new marker.
+- Alt+ArrowUp in `8. a / 9. b / 10. c`, on `c` or on `b`: the list still starts at 8
+  (`8. a / 9. c / 10. b`, `8. b / 9. a / 10. c`), the first item's number staying with the list.
+  - Miss-analysis: every ordered fixture started at 1, where a renumber that restarts the list
+    at 1 writes the bytes it read.
 - Alt+ArrowUp on a blockquote child moves it up among the blockquote's children.
 - Alt+ArrowDown on a focused fenced code block moves the whole block below its
   next sibling; a single undo restores the source as it was before the move.
