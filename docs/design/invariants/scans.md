@@ -1249,4 +1249,4 @@ same text. `lint/system-clipboard-calls.test.ts`.
 menus' Paste rows) hands its text to the focused block's `insertMarkdown`, since Firefox empties
 `clipboardData` on a `new ClipboardEvent(...)`. The selection's shown text is read only through
 `shownSelectionText` (`clipboard-step.ts`), which reads LF where Firefox on Windows writes CRLF,
-and nothing for an empty block's placeholder `<br>`. `lint/file-rules.test.ts`.
+and nothing for an empty block's placeholder `<br>` selected alone. `lint/file-rules.test.ts`.

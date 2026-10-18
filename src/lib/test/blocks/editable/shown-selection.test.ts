@@ -55,6 +55,20 @@ describe('the shown text of a selection', () => {
 			expect(read()).toBe('');
 		});
 
+		// Miss-analysis: every placeholder row selected the empty block alone, never a range ending there.
+		it(`${route} keeps the line a range from an earlier block reads into an empty one`, () => {
+			const first = editable('first');
+			const empty = editable('<br>');
+			const range = document.createRange();
+			range.setStart(first.firstChild!, 0);
+			range.setEnd(empty, 1);
+			const selection = window.getSelection()!;
+			selection.removeAllRanges();
+			selection.addRange(range);
+			vi.spyOn(selection, 'toString').mockReturnValue('first\n');
+			expect(read()).toBe('first\n');
+		});
+
 		it(`${route} keeps a break after text, which is no placeholder`, () => {
 			const el = editable('a<br>');
 			select(el, 0, 2, 'a\r\n');

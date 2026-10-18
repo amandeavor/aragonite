@@ -55,17 +55,24 @@ export function writeShownSelection(e: ClipboardEvent): void {
 }
 
 /** The browser's selection string, which leaves out what CSS hides, with LF line breaks (Firefox on
- *  Windows writes CRLF) and without the break an empty block's placeholder `<br>` reads as. */
+ *  Windows writes CRLF), and empty for an empty block's placeholder `<br>` selected alone. */
 export function shownSelectionText(): string {
 	const selection = window.getSelection();
 	if (!selection || selection.rangeCount === 0) return '';
 	const text = normalizeLineEndings(selection.toString());
 	const last = selection.getRangeAt(selection.rangeCount - 1);
-	return endsAfterPlaceholderBreak(last) && text.endsWith('\n') ? text.slice(0, -1) : text;
+	return selectsOnlyPlaceholderBreak(last) && text.endsWith('\n') ? text.slice(0, -1) : text;
 }
 
-function endsAfterPlaceholderBreak(range: Range): boolean {
+// A range from an earlier block keeps its last break: Chromium writes the block boundary there
+// and nothing for the `<br>`, so the two can't be told apart.
+function selectsOnlyPlaceholderBreak(range: Range): boolean {
 	const before = range.endContainer.childNodes[range.endOffset - 1];
 	const parent = before?.parentNode;
-	return before instanceof HTMLBRElement && !!parent && placeholderBreakOf(parent) === before;
+	return (
+		before instanceof HTMLBRElement &&
+		!!parent &&
+		parent.contains(range.startContainer) &&
+		placeholderBreakOf(parent) === before
+	);
 }
