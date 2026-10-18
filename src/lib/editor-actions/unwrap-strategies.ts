@@ -13,10 +13,13 @@ import {
 	plainQuote,
 	sameContainer,
 	mergeListItemIntoPrevious,
-	renumberOrderedList,
 	isItemUserEmpty
 } from '../tree-operations';
-import { orderedBaseOf, renumberOrderedListFrom } from '../tree-operations/list/ordered-markers';
+import {
+	orderedBaseOf,
+	renumberOrderedList,
+	renumberOrderedListFrom
+} from '../tree-operations/list/ordered-markers';
 import type { BlockListState } from '../block-lists/block-list-state.svelte';
 import type { NestedActionsDeps } from './nested/nested-actions';
 import { removeEmptiedContainer } from './nested/emptied-container';
