@@ -93,3 +93,6 @@ leaves the block boundary where it was. A gesture that moves the boundary was th
 The list item row: every split here cut a top-level paragraph, where both halves read the same as
 a fragment, so nothing split inside a list item, where the second half becomes a new item's first
 line and a leading space widens its marker.
+
+Miss-analysis (real Firefox): these scenarios ran on Chromium alone, which never leaves a caret on
+a hidden run's far side, where Firefox's ArrowLeft and a click beside the run do.

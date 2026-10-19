@@ -535,9 +535,10 @@ the signal would run after the stop; the recorder warns when one does. `debug/in
 **G1.117 · A CRLF pair stays whole** (`line-ending-pairs`). WebKit and Firefox stop a caret between
 a line's `\r` and `\n` and delete one alone. The DOM-to-raw read rounds a position inside a pair to
 before it (`domTextOffsetAtNode`), the input read-back edits the pair as one character
-(`keepLineEndingPairs`), and keydown moves a caret inside one before it (`leaveLineEndingPair`). Any
-other write (a tree op, a plugin rule) warns after its commit or in-place keystroke if a pair went
-while a lone `\r` or `\n` came. `checkLineEndingPairsKept` · `line-ending-pairs.test.ts`.
+(`keepLineEndingPairs`), and `selectionchange` and keydown move a caret inside one before it
+(`canonicalizeCaret`). Any other write (a tree op, a plugin rule) warns after its commit or
+in-place keystroke if a pair went while a lone `\r` or `\n` came.
+`checkLineEndingPairsKept` · `line-ending-pairs.test.ts`.
 
 **G1.118 · A list's marker counts match its items** (`list-marker-widths`). The list node counts the
 items opening with a marker of each width, for the marker column (G4.215), and only the parse and

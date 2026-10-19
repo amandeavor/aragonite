@@ -52,3 +52,7 @@ The cell hands its bytes to the same inline renderer a paragraph uses, so these 
 - `*x*`, `**x**`, a code span and `~~x~~` render one `<em>`, `<strong>`, `<code class="inline-code-content">` and `<s>` holding `x`, and the emphasis keeps its dimmed markers (`test/blocks/table/cell-render.test.ts`).
 - `[t](https://example.com)` renders an `<a class="md-link-content">` with that href (`test/blocks/table/cell-render.test.ts`).
 - An image stays its own source text in a cell, never an `<img>` or a widget, with its two markers split from the alt (`test/blocks/table/cell-render.test.ts`).
+
+Miss-analysis (real Firefox): these scenarios ran on Chromium alone, which never leaves a caret
+inside a widget or stops Mod+End short of one; Firefox does both, and drops text typed right before
+a widget that ends the block.
