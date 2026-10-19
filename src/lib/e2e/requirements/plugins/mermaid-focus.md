@@ -49,6 +49,10 @@ paragraph `tail text`, so the block has an editable neighbor on each side.
   did the highlight step
 - Backspace and typing inside the plugin's edit `<textarea>`, opened by double-click, edit the
   draft and never delete the block
+- A press on Reset view leaves the diagram focused: a typed character then creates the paragraph
+  below, and Mod+Z undoes the last edit (miss-analysis: the button took focus in Chromium and
+  Firefox, so typing went nowhere and Firefox's Mod+Z did nothing, and no test pressed a key after a
+  toolbar button)
 
 ## Edge cases
 

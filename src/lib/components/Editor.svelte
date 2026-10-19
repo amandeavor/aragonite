@@ -721,8 +721,8 @@
 		getBlockElByPath
 	});
 
-	// The document caret while the search bar or link card holds focus; one each, so a card
-	// opened over the search bar cannot overwrite the caret the bar restores.
+	// The document caret while the search bar, the link card or an image's alt field holds focus;
+	// one each, so a card opened over the search bar cannot overwrite the caret the bar restores.
 	const caretRestoreDeps: CaretRestoreDeps = {
 		getEditorEl: () => editorEl ?? null,
 		read: () => getSelection(),
@@ -730,6 +730,7 @@
 	};
 	const searchCaret = createCaretRestore(caretRestoreDeps);
 	const linkCardCaret = createCaretRestore(caretRestoreDeps);
+	const imageFieldCaret = createCaretRestore(caretRestoreDeps);
 
 	const searchReplace = createSearchReplace(editorActionsDeps, controller);
 	// Find stays live in reading mode; replace is an edit and does nothing here.
@@ -1446,6 +1447,7 @@
 		getEditorEl={() => editorEl ?? null}
 		lifetime={lifetimeController.signal}
 		{menuPresence}
+		fieldCaret={imageFieldCaret}
 	/>
 	<LinkCardHost
 		card={linkCard}

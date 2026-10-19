@@ -20,6 +20,7 @@
 	import type { MenuPresence } from '../menu/menu-presence.svelte';
 	import { pressLeavesImage } from './image-press';
 	import type { WidgetTarget } from '../../selection/primitives';
+	import type { CaretRestore } from '../../selection/caret-restore';
 
 	// Mounted unconditionally by Editor: the effects below must observe the selected widget
 	// changing, so the overlay's {#if} lives here.
@@ -30,7 +31,8 @@
 		getContentVersion,
 		getEditorEl,
 		lifetime,
-		menuPresence
+		menuPresence,
+		fieldCaret
 	}: {
 		inlineRange: InlineRangeCommit;
 		events: EditorEvents;
@@ -39,6 +41,8 @@
 		getEditorEl: () => HTMLElement | null;
 		menuPresence: MenuPresence;
 		lifetime: AbortSignal;
+		/** Puts focus back on the selected image once its alt field, which borrows it, closes. */
+		fieldCaret: CaretRestore;
 	} = $props();
 
 	let imageOverlayEl: HTMLDivElement | undefined = $state();
@@ -143,6 +147,7 @@
 				maxFrameWidth={imageEdit.getEditorContentWidth}
 				{menuPresence}
 				{caretWriter}
+				{fieldCaret}
 				bind:cropping
 			/>
 		{/key}
