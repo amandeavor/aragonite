@@ -6,6 +6,7 @@ import { pointAtRaw, textRunRect, type Point, type TextRunRect } from '../../tex
 import { FIXTURE_BYTES } from '../perf/vr-helpers';
 import { skipUnlessSupported } from '../../browser-engine';
 import { multiClick } from '../../multi-click';
+import { isMacOS } from '../../platform-keys';
 
 /**
  * Mark hover (requirements/decorations/mark-hover.md). Each source records its `onHover` calls on
@@ -305,10 +306,11 @@ test.describe('mark hover', () => {
 
 		await page.mouse.click(at.x, at.y, { button: 'right' });
 		await expect(page.getByRole('menu', { name: 'Block actions' })).toBeVisible();
-		expect(await page.evaluate(() => (window as any).__test.getSelection()?.focus)).toEqual({
-			path: [0],
-			offset: 3
-		});
+		// macOS selects the word under a right-click, as Safari does, and the menu keeps it.
+		const word = { anchor: { path: [0], offset: 0 }, focus: { path: [0], offset: 5 } };
+		expect(await page.evaluate(() => (window as any).__test.getSelection())).toMatchObject(
+			isMacOS ? word : { focus: { path: [0], offset: 3 } }
+		);
 	});
 
 	test('a hover-only mark shows the text cursor, not a hand', async ({ page }) => {
