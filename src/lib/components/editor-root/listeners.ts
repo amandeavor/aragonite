@@ -140,6 +140,8 @@ export function installSelectionChangeBridge(deps: SelectionChangeBridgeDeps): (
 	return removeAll(
 		onRoot(deps.root, 'compositionstart', () => (composing = true)),
 		onRoot(deps.root, 'compositionend', () => (composing = false)),
+		// A browser can drop a composition with no compositionend; the next plain key shows it ended.
+		onRoot<KeyboardEvent>(deps.root, 'keydown', (e) => (composing &&= e.isComposing)),
 		onRoot(document, 'selectionchange', handler),
 		// The browser reports a click's caret on a later task, which a byte typed straight after
 		// beats. On `document` so the block's own click handling refines the caret first.

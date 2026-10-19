@@ -291,6 +291,14 @@ describe('editor-root listeners: selectionchange bridge', () => {
 			fire();
 			expect(window.getSelection()!.focusNode?.textContent).toBe('2');
 		});
+
+		it('moves again once a plain key shows a dropped composition ended', () => {
+			const b = surfaceBridge();
+			b.surface.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+			b.surface.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+			fire();
+			expect(window.getSelection()!.focusNode).toBe(b.surface);
+		});
 	});
 
 	it('teardown detaches both listeners', () => {
