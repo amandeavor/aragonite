@@ -8,6 +8,7 @@
 import type { NodeView } from '../../../core/node-views';
 import type { StoredAs } from '../../../schema/stored-as';
 import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
+import { readNativeSelection } from '../../../selection/native-bridge';
 
 /** The raw-offset lookups a browser range edit needs from the block. */
 export interface LiveEditCursor {
@@ -58,9 +59,9 @@ function parkedCaretInsertion(
 	store: StoredAs
 ): LiveRangeEdit | null {
 	if (!insert) return null;
-	const selection = window.getSelection();
-	if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return null;
-	const caret = cursor.rawRangeOf(selection.getRangeAt(0))?.start ?? null;
+	const live = readNativeSelection();
+	if (!live?.collapsed) return null;
+	const caret = cursor.rawRangeOf(live.range)?.start ?? null;
 	if (caret === null || engineTarget >= caret) return null;
 	const edit = replaceRangeInLeaf(node, { start: caret, end: caret }, insert, store);
 	return { kind: 'rewrite', range: edit.range, raw: edit.raw, caret: edit.caret };

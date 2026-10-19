@@ -50,12 +50,12 @@
 	import { widgetsIn } from './widget-adjacency';
 	import { widgetElByStart } from '../../../core/inline/inline-widgets';
 	import { caretLandableBounds, handleSharedKeydown } from '../../../selection/shared-keydown';
+	import { rawSelectionIn } from '../../../selection/native-bridge';
 	import { createEditableSurface, consumePendingRestore } from '../editable/editable-surface';
 	import { rangeWrite } from '../editable/surface-write';
 	import type { ContentWrite } from '../../../action-contracts';
 	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import {
-		rawOffsetAt,
 		rawTextOfContent,
 		revealsNoMarkers,
 		rawSelectionFocus,
@@ -702,16 +702,12 @@
 	function clearSnapTargetIfMoved(root: HTMLElement): void {
 		const held = drawnCaret.widgetEdgeFor(widgetEdgeOwner);
 		if (held === null) return;
-		const sel = window.getSelection();
+		const live = rawSelectionIn(root);
 		// With no range there is nothing to compare the edge against, and this function only clears:
 		// the gestures that move the caret elsewhere clear it through their own handlers.
-		if (!sel || sel.rangeCount === 0) return;
-		const range = sel.getRangeAt(0);
-		if (!root.contains(range.startContainer)) {
-			holdWidgetEdge(null);
-			return;
-		}
-		if (rawOffsetAt(root, range.startContainer, range.startOffset) !== held) holdWidgetEdge(null);
+		if (!live) return;
+		// A range starting outside the block reads null, which no held edge equals.
+		if (live.start !== held) holdWidgetEdge(null);
 	}
 
 	/** The drawn caret's bar beside the widget that starts or ends at `offset`. */

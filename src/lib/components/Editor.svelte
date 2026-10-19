@@ -76,7 +76,12 @@
 	import { createPasteCoordinator } from '../editor-actions/paste-coordinator';
 	import { createOperationsLog } from '../debug/operations-log';
 	import { createEditorDiagnostics } from '../debug/editor-diagnostics';
-	import { readCurrentSelection, readDomPoint } from '../selection/native-bridge';
+	import {
+		holdsNativeRange,
+		readCurrentSelection,
+		readDomPoint,
+		readNativeSelection
+	} from '../selection/native-bridge';
 	import { createCaretRestore, type CaretRestoreDeps } from '../selection/caret-restore';
 	import { createRoundTripRestore } from '../selection/round-trip-restore';
 	import { createCrossBlockHandlers } from '../selection/cross-block/dispatch';
@@ -465,10 +470,9 @@
 	// them. Each refuses a cross-block range; a click also refuses a selection, which create needs.
 	const linkCard = createLinkCardState({
 		onOpen: () => linkCardCaret.saveCurrent(),
-		canOpen: () => !selectionState.isCrossBlock && window.getSelection()?.isCollapsed !== false,
+		canOpen: () => !selectionState.isCrossBlock && !holdsNativeRange(),
 		canEnter: () => !selectionState.isCrossBlock,
-		canOpenCreate: () =>
-			!selectionState.isCrossBlock && window.getSelection()?.isCollapsed === false
+		canOpenCreate: () => !selectionState.isCrossBlock && holdsNativeRange()
 	});
 
 	// ── Hidden-run class check ──────────────────────────────────────────
@@ -631,7 +635,8 @@
 		isCrossBlock: () => selectionState.isCrossBlock,
 		isHostChrome,
 		landCaretAt: navigateCaret,
-		caretRectAt
+		caretRectAt,
+		readSelection: readNativeSelection
 	});
 
 	const editorId = mintEditorId();

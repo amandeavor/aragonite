@@ -11,6 +11,7 @@ import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
 import type { NodeView } from '../../../core/node-views';
 import type { SurfaceBackend } from '../editable/surface-backend';
 import { selectWidgetWhole } from '../../../selection/place-caret';
+import { rawSelectionIn } from '../../../selection/native-bridge';
 import type { SelectionState } from '../../../selection/selection-state.svelte';
 import {
 	getInlineWidgetEditing,
@@ -21,8 +22,8 @@ import {
 import { isVerticallyTransparentNode } from '../../../core/inline/transparency';
 import { asRawOffset } from '../../../caret/coordinate-spaces';
 import {
-	rawOffsetAt,
 	rawRangeToDomRange,
+	rawSelectionFocus,
 	type CaretClamp,
 	type CaretWriter,
 	type RawRange
@@ -310,14 +311,9 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 	/** The live selection in raw offsets, when it is a range with both ends inside this block. */
 	function liveRangeInBlock(): { start: number; end: number } | null {
 		const el = deps.getEl();
-		const sel = window.getSelection();
-		if (!el || !sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
-		const range = sel.getRangeAt(0);
-		if (!el.contains(range.startContainer) || !el.contains(range.endContainer)) return null;
-		return {
-			start: rawOffsetAt(el, range.startContainer, range.startOffset),
-			end: rawOffsetAt(el, range.endContainer, range.endOffset)
-		};
+		const live = el && rawSelectionIn(el);
+		if (!live || live.collapsed || live.start === null || live.end === null) return null;
+		return { start: live.start, end: live.end };
 	}
 
 	async function restoreRangeInBlock(span: { start: number; end: number }): Promise<void> {
@@ -334,16 +330,10 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		// The block changed kind under the source, so nothing is shown any more.
 		if (!range) return true;
 		const el = deps.getEl();
-		const sel = window.getSelection();
-		if (!el || !sel || sel.rangeCount === 0) return false;
-		const { anchorNode, focusNode } = sel;
-		if (!anchorNode || !focusNode) return false;
-		if (!el.contains(anchorNode) || !el.contains(focusNode)) return false;
+		const live = el && rawSelectionIn(el);
+		if (!live || live.start === null || live.end === null) return false;
 		const inSource = (o: number) => o >= range.start && o <= range.end;
-		return (
-			!inSource(rawOffsetAt(el, anchorNode, sel.anchorOffset)) &&
-			!inSource(rawOffsetAt(el, focusNode, sel.focusOffset))
-		);
+		return !inSource(live.start) && !inSource(live.end);
 	}
 
 	// The escape is re-checked after a tick: entering a cross-block selection clears the browser
@@ -728,8 +718,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		if (clickCount === 2 && revealOpenedByLastClick && selectRevealedSource(clickX, clickY)) return;
 		// The snap below places a caret, so it does nothing while this block shows a selected
 		// range, which it would collapse; `clampOutOfMarkerPrefix` already holds that rule.
-		const live = window.getSelection();
-		if (surfaceHoldsRange(el, live)) return;
+		if (surfaceHoldsRange(el)) return;
 		const side = clickY === null ? null : clickSide(el, clickX, clickY, press.moved === true);
 		if (side === 'fresh') deps.caretMemory.noteOutside();
 		else if (side) deps.pinChipSide(side === 'chip-inside' ? 'inside' : 'outside');
@@ -739,21 +728,21 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		// separates the two (Firefox puts a click past a run in the text before it); one on it can't.
 		if (
 			!seat.inside &&
-			caretIsInTextContent(el, live) &&
-			!(seat.onRow && widgetSeparates(el, live, seat.offset))
+			caretIsInTextContent(el) &&
+			!(seat.onRow && widgetSeparates(el, seat.offset))
 		) {
 			return;
 		}
 		el.focus();
 		deps.cursor.setRaw(asRawOffset(seat.offset), { clamp: 'reachable' });
 		// `setRaw` may have landed in a trailing text node, where the browser draws a caret.
-		if (!caretIsInTextContent(el, window.getSelection())) deps.setSnapTarget(seat.offset);
+		if (!caretIsInTextContent(el)) deps.setSnapTarget(seat.offset);
 	}
 
 	/** Whether a widget lies whole between the live caret and the widget edge a click is nearest. */
-	function widgetSeparates(el: HTMLElement, live: Selection | null, seat: number): boolean {
-		if (!live?.focusNode) return false;
-		const caret = rawOffsetAt(el, live.focusNode, live.focusOffset);
+	function widgetSeparates(el: HTMLElement, seat: number): boolean {
+		const caret = rawSelectionFocus(el);
+		if (caret === null) return false;
 		const [from, to] = caret < seat ? [caret, seat] : [seat, caret];
 		return widgetsOf().some((widget) => from <= widget.start && widget.end <= to);
 	}

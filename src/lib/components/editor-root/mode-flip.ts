@@ -15,6 +15,7 @@ import type { EditorEvents } from '../../editor-events';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
 import type { PresentationMode } from '../../presentation-mode';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
+import { readNativeSelection } from '../../selection/native-bridge';
 import type { EditorSelection } from '../../selection/primitives';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import type { TextMoves } from '../overlays/text-moves';
@@ -70,15 +71,16 @@ export function createModeFlip(deps: ModeFlipDeps): ModeFlip {
 		if (deps.selection.isCrossBlock || deps.selection.gapCaret) return null;
 		const focused = deps.getSelection()?.focus;
 		if (focused) return { path: focused.path, offset: focused.offset };
-		const sel = window.getSelection();
-		const node = sel?.focusNode;
-		if (!node || !deps.editorEl?.contains(node) || deps.isHostChrome(node)) return null;
+		const focus = readNativeSelection()?.focus;
+		if (!focus || !deps.editorEl?.contains(focus.node) || deps.isHostChrome(focus.node))
+			return null;
+		const { node } = focus;
 		const el = node instanceof Element ? node : node.parentElement;
 		const path = findSurfacePathForElement(el);
 		if (!path) return null;
 		const contentEl = deps.getBlockElByPath(path);
 		if (!contentEl?.contains(node)) return null;
-		const offset = rawOffsetAt(contentEl, node, sel.focusOffset);
+		const offset = rawOffsetAt(contentEl, node, focus.offset);
 		return { path, offset };
 	}
 

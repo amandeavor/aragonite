@@ -9,7 +9,7 @@ The orientation point for the whole design tree. §§ 1-3 orient any task; after
 | [3](#3-data-flow)                             | Data flow                      | how an edit travels from a block to the tree and back to the screen                                   |
 | [4](#4-the-editing-surface)                   | The editing surface            | what a block is made of while you edit it, and how a caret lands in one                               |
 | [5](#5-schema)                                | Schema                         | the per-block-type metadata: how a kind merges, what its keys do, and the registries that hold it     |
-| [6](#6-cst--dom-synchronization)              | CST ↔ DOM synchronization      | how the tree and the browser's editable text stay in agreement while you type                         |
+| [6](#6-cst--dom-synchronization)              | CST ↔ DOM synchronization      | how the tree and the browser's editable text stay in agreement while you type, on every engine        |
 | [7](#7-cst-mutability-and-reactive-state)     | CST mutability, reactive state | who may change the tree, and the three rules that keep Svelte's reactivity honest                     |
 | [8](#8-orchestration)                         | Orchestration                  | split, merge, delete, reorder: every structural edit, and the keys that trigger them                  |
 | [9](#9-containers)                            | Containers                     | blocks that hold other blocks (quotes, lists, tables), and what nesting costs                         |
@@ -395,6 +395,32 @@ The editor crosses a step-over glyph itself. Left to the browser, WebKit's arrow
 - The reveal claims exactly one key of its own, Escape, which closes it and keeps what was typed (Ctrl+Z is the undo). A table cell carries one carve-out at its own keydown: a cell's Enter is a row hop rather than a split, so inside a revealed source it only closes the source and the caret stays in the cell.
 
 To add a widget kind, register it in the inline-widget registry so recognition stays in one place, then give it a `view` that draws into the span the editor makes for it ([`inline-parsing.md`](inline-parsing.md) § Widget render paths).
+
+### Browser engines
+
+aragonite runs on Chromium, Firefox and WebKit, and the three disagree about a lot of small things: where a click puts the caret, what Backspace takes next to a widget, how a selection spells its line breaks. Almost every engine bug so far had the same shape. The editor let a browser default run, or read something the browser owns straight off it, and then trusted the answer. The engines differ mostly in their defaults, so wherever the editor decides for itself, they mostly stop mattering.
+
+So the rule is **decide, don't delegate, and read the browser in one place per kind of thing**. Here's where each kind of browser behaviour comes in, and what fails when a new route skips it:
+
+| Browser behaviour                        | Read or decided in                                                                                                                                 | Held by                                 |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| A key                                    | the keydown handlers, which prevent the default and write through the tree (the intercepted operations above)                                      | the key rows of each block's e2e specs  |
+| The clipboard, outside a clipboard event | `editor-actions/system-clipboard.ts`                                                                                                               | G4.220                                  |
+| A paste with no paste event (menu Paste) | the focused block's `insertMarkdown`, never a constructed `ClipboardEvent`                                                                         | G4.221                                  |
+| A selection's text                       | `components/blocks/editable/clipboard-step.ts` :: `shownSelectionText`                                                                             | G4.221                                  |
+| A popover closing                        | `components/menu/menu-presence.svelte.ts` :: `track`, never focus leaving                                                                          | G4.219, G1.121                          |
+| Where the caret sits                     | `caret/widget-offset.ts` :: `canonicalizeCaret`, on `selectionchange` and the next keydown ([`caret-placement.md`](caret-placement.md) § 2)        | its rows in the caret e2e specs, G1.117 |
+| The selection itself                     | the readers in `selection/native-bridge.ts` (`readNativeSelection`, `rawSelectionIn`, `nativeRangeIn`, `holdsNativeRange`) and `rawSelectionFocus` | G4.222                                  |
+| Which engine this is                     | nowhere: `src/lib` outside `debug/` doesn't ask                                                                                                    | G4.223                                  |
+
+What's still left to the browser is a short list, each for a reason: typing and deleting inside a line (read back on `input`, as above, which is what keeps typing fast), IME composition (the browser owns it outright), caret motion and a click's caret (moved onto the editor's spot afterwards by `canonicalizeCaret`), spellcheck's replacements, and text dropped in from outside the editor. That list is where the next engine bug is most likely to come from, ofc.
+
+When it does, here's the fix, in order:
+
+1. Write the row first, one that runs on all three engines, and watch it fail on the one that broke.
+2. Find the row of the table above the behaviour came in through. If the editor let a default run, the fix is usually to decide it: prevent the default and write through the tree. If it read the browser raw, fix the reader.
+3. Fix it there, the same way for every engine. Never `if (isFirefox)`: G4.223 fails it, and a branch for one engine just hides the rule the other two break next month. Platform is fine (Mac's Cmd is `Mod`, like Ctrl).
+4. No row fits? Then the editor just met a new kind of browser behaviour. Give it one place it's read or decided, plus a scan that fails when a second route shows up, the way G4.220 through G4.222 do.
 
 ## 7. CST mutability and reactive state
 

@@ -6,6 +6,7 @@
 import { tick } from 'svelte';
 import { isModifiedClick, type PressTracker } from '../../activation-click';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
+import { readNativeSelection } from '../../selection/native-bridge';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import type { CaretWriter } from '../../caret/widget-offset';
 import { TEXT_SURFACE_SELECTOR } from '../../caret/block-content-selector';
@@ -119,16 +120,16 @@ export function installSelectionChangeBridge(deps: SelectionChangeBridgeDeps): (
 	// A caret moved mid-composition ends the IME's run.
 	let composing = false;
 	const handler = () => {
-		const sel = window.getSelection();
-		if (!sel || sel.rangeCount === 0) return;
-		const anchorNode = sel.anchorNode;
-		if (!anchorNode || !deps.root.contains(anchorNode)) return;
+		const live = readNativeSelection();
+		if (!live) return;
+		const anchorNode = live.anchor.node;
+		if (!deps.root.contains(anchorNode)) return;
 		// A selection in the host's header is not a document selection: announcing there
 		// reports this editor's own unchanged selection on every header caret move.
 		if (deps.isHostChrome(anchorNode)) return;
 		// The paragraph keeps focus while its widget is selected, and the browser puts a caret at
 		// its start on any mouse input. A drag's range and a caret in a popover field stay.
-		if (sel.isCollapsed && deps.selection.widget !== null && inBlockSurface(anchorNode)) {
+		if (live.collapsed && deps.selection.widget !== null && inBlockSurface(anchorNode)) {
 			deps.caretWriter.clear();
 			return;
 		}

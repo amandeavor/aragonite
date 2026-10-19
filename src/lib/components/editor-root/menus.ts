@@ -27,7 +27,8 @@ import { blockNoun } from '../menu/default-context-actions';
 import { isProseLeaf } from '../../schema/page-role';
 import type { Reading } from '../../schema/reading';
 import { readBlockPath } from '../../selection/path-lookup';
-import { nativeRangeIn, rangeCoversPoint } from '../../selection/cross-block/pointer';
+import { rangeCoversPoint } from '../../selection/cross-block/pointer';
+import { holdsNativeRange, nativeRangeIn } from '../../selection/native-bridge';
 import { documentLineEnding } from '../../core/lines';
 import { stampWrites, type DocumentStamps } from '../../editor-actions/commit/document-stamp';
 
@@ -104,7 +105,7 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 	}
 
 	function clipboardRows(): MenuEntry[] {
-		const selected = !!focusedEditable() && !(window.getSelection()?.isCollapsed ?? true);
+		const selected = !!focusedEditable() && holdsNativeRange();
 		return [
 			{ id: 'clip.cut', label: 'Cut', icon: 'scissors', disabled: !selected },
 			{ id: 'clip.copy', label: 'Copy', icon: 'copy', disabled: !selected },

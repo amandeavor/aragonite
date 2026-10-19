@@ -35,6 +35,7 @@ import {
 import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 import { widgetAtCursor, widgetsIn, type WidgetAtCursor } from './widget-adjacency';
 import type { CaretUnitSource } from '../../../selection/shared-keydown';
+import { readNativeSelection } from '../../../selection/native-bridge';
 import type { Reading } from '../../../schema/reading';
 import type { StoredAs } from '../../../schema/stored-as';
 import { rangeWrite, withOwnEnding, type TextWrite } from '../editable/surface-write';
@@ -307,12 +308,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		// Chromium inserts into a text node natively, but drops printable keys at
 		// element-level positions adjacent to a contenteditable=false widget.
 		const el = deps.getEl();
-		if (
-			el &&
-			!caretIsInTextContent(el, window.getSelection()) &&
-			isPlainTypingKey(e) &&
-			!deps.isReading()
-		) {
+		if (el && !caretIsInTextContent(el) && isPlainTypingKey(e) && !deps.isReading()) {
 			e.preventDefault();
 			deps.setSnapTarget(null);
 			writeTypedByte(caretOffset, e.key, 'widget');
@@ -420,7 +416,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		}
 		// Some browsers drop printable keys at an element-level caret beside a non-editable widget.
 		// Chromium types them, so a unit test, not e2e, covers this branch.
-		if (isTyping && !caretIsInTextContent(el, window.getSelection())) {
+		if (isTyping && !caretIsInTextContent(el)) {
 			e.preventDefault();
 			writeTypedByte(caretOffset, e.key, 'island');
 			return true;
@@ -468,12 +464,11 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		const el = deps.getEl();
 		if (!el) return false;
 		const ambient = markerPrefixOf(el);
-		const sel = window.getSelection();
+		const live = readNativeSelection();
 		const touchesAmbient =
 			!!ambient &&
-			!!sel &&
-			sel.rangeCount > 0 &&
-			(ambient.contains(sel.anchorNode) || ambient.contains(sel.focusNode));
+			!!live &&
+			(ambient.contains(live.anchor.node) || ambient.contains(live.focus.node));
 		if (!touchesAmbient) return false;
 		e.preventDefault();
 		// A selection holding only the marker prefix covers no content byte, so there is nothing

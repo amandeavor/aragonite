@@ -5,7 +5,7 @@ import type { SelectionState } from '../selection-state.svelte';
 import type { CaretMemory } from '../../caret/caret-memory';
 import { handleShiftClick } from '../keyboard-extend';
 import { findBlockPathForElement } from '../path-lookup';
-import { applyCollapsedCaret } from '../native-bridge';
+import { applyCollapsedCaret, nativeRangeIn, readNativeSelection } from '../native-bridge';
 import type { CaretWriter } from '../../caret/widget-offset';
 import { isInPaddingRow, offsetFromViewportPoint } from '../../caret/point-offset';
 import { installDragListener } from '../drag-pointer';
@@ -181,17 +181,11 @@ export function placeContextPress(
 	if (offset !== null && path) applyCollapsedCaret(writer, surface, { path, offset });
 }
 
-/** Whether the browser holds a selected range that starts inside `root`. */
-export function nativeRangeIn(root: HTMLElement): boolean {
-	const native = window.getSelection();
-	return !!native && !native.isCollapsed && root.contains(native.anchorNode);
-}
-
 /** Whether the browser's selected range inside `root` covers the viewport point. */
 export function rangeCoversPoint(root: HTMLElement, x: number, y: number): boolean {
-	const native = window.getSelection();
-	if (!native || native.rangeCount === 0 || !nativeRangeIn(root)) return false;
-	return Array.from(native.getRangeAt(0).getClientRects()).some(
+	const live = readNativeSelection();
+	if (!live || !nativeRangeIn(root)) return false;
+	return Array.from(live.range.getClientRects()).some(
 		(r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
 	);
 }

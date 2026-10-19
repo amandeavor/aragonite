@@ -11,7 +11,7 @@ import type { NodeView } from '../../../core/node-views';
 import { inlineDescendants } from '../../../core/inline';
 import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 import { isRevealableInlineKind } from '../../../schema/inline-construct-policy';
-import { CONSTRUCT_REVEAL_CLASS, rawOffsetAt } from '../../../caret/widget-offset';
+import { CONSTRUCT_REVEAL_CLASS, rawSelectionFocus } from '../../../caret/widget-offset';
 import { caretShownSelector } from '../../../core/inline/visibility';
 import {
 	isInteractionTraceEnabled,
@@ -87,9 +87,7 @@ export function createConstructReveal(deps: ConstructRevealDeps): ConstructRevea
 		// Asked on every key and render, so a block with nothing to show never reads the selection;
 		// a window that lost focus keeps its selection, but nobody is editing there any more.
 		if (!el || shown === null || !el.querySelector(shown) || !document.hasFocus()) return null;
-		const sel = window.getSelection();
-		if (!sel || sel.rangeCount === 0 || !sel.focusNode || !el.contains(sel.focusNode)) return null;
-		return rawOffsetAt(el, sel.focusNode, sel.focusOffset);
+		return rawSelectionFocus(el);
 	}
 
 	function inlines(): InlineNode[] {
