@@ -1266,6 +1266,7 @@ on all three, and a CSS vendor prefix or a platform read (Mac's Cmd) is fine. Ze
 (`editor.md` § Browser engines). `lint/engine-sniffing.test.ts`.
 
 **G4.225 · A drag hears its release first.** Only `selection/pointer-session.ts` listens for
-`pointerup` or `pointercancel` on the window in the capture phase, so every drag resolves its last
-point before anything else reacts to the release. A popover that shows on release (the selection
-toolbar) would otherwise cover the point the drag hit-tests. `lint/file-rules.test.ts`.
+`pointerup` or `pointercancel` on the window, so every drag resolves its last point before anything
+else reacts to the release. Either phase counts, since a scan can't read a capture flag held in a
+variable. A popover that shows on release (the selection toolbar) would otherwise cover the point
+the drag hit-tests. `lint/file-rules.test.ts`.

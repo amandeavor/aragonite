@@ -1,6 +1,6 @@
 /**
  * Pointer drag lifecycle for cross-block selection. Runs on a shared
- * `createPointerDragSession`, whose document-level listeners deliver events even after the
+ * `createPointerDragSession`, whose page-level listeners deliver events even after the
  * pointer leaves the originating block.
  */
 

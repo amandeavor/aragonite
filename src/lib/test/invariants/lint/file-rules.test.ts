@@ -1465,24 +1465,32 @@ const RULES: FileRule[] = [
 	},
 	{
 		id: 'G4.225 the drag session hears a release before anything else on the page',
+		// Any phase counts, since a capture flag held in a variable is invisible to a scan.
 		matches:
-			/\b(?:window|defaultView)\b[^;]*?\.addEventListener\(\s*['"]pointer(?:up|cancel)['"][^;]*?\b(?:true|capture:\s*true)|\bonRoot\(\s*(?:window|[\w.]*defaultView[^,]*),\s*['"]pointer(?:up|cancel)['"][^;]*?capture:\s*true|<svelte:window[^>]*\bonpointer(?:up|cancel)capture\b/,
+			/(?:\b(?:window|defaultView|globalThis|self)\b[^;]*?\.|(?<![\w$.]))addEventListener\(\s*['"]pointer(?:up|cancel)['"]|\b(?:onRoot|on)\(\s*(?:window|globalThis|self|[\w.?]*defaultView[^,]*),\s*['"]pointer(?:up|cancel)['"]|<svelte:window[^>]*\bonpointer(?:up|cancel)/,
 		allowed: {
 			'src/lib/selection/pointer-session.ts': 'the drag session, which resolves the release first'
 		},
 		reason:
-			'a second window-level capture listener for a release can run before the drag session and change the page (show a popover under the pointer) before the drag hit-tests its last point: listen on the document or below',
+			'a window-level release listener can run before the drag session and change the page (show a popover under the pointer) before the drag hit-tests its last point: listen on the document or below',
 		hits: [
 			"window.addEventListener('pointerup', onUp, true);",
+			"window.addEventListener('pointerup', onUp, opts);",
 			"doc.defaultView?.addEventListener('pointercancel', onUp, { capture: true });",
+			"globalThis.addEventListener('pointerup', onUp, true);",
+			"addEventListener('pointerup', onUp, true);",
 			"onRoot(window, 'pointerup', endPress, { capture: true }),",
-			'<svelte:window onpointerupcapture={onUp} />'
+			"on(window, 'pointercancel', endPress);",
+			'<svelte:window onpointerupcapture={onUp} />',
+			'<svelte:window onpointerup={onUp} />'
 		],
 		misses: [
 			"document.addEventListener('pointerup', up, true);",
-			"window.addEventListener('pointerup', onUp);",
+			"root.addEventListener('pointerup', armFrame, on);",
 			"window.removeEventListener('pointerup', onUp, true);",
-			"onRoot(doc, 'pointerup', endPress, { capture: true }),"
+			"window.addEventListener('pointermove', onMove, true);",
+			"onRoot(doc, 'pointerup', endPress, { capture: true }),",
+			"onRoot(doc.defaultView ?? window, 'blur', endPress)"
 		]
 	}
 ];
