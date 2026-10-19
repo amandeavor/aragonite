@@ -15,6 +15,7 @@ removed only when the range covers its whole subtree from outside.
 - the title in the middle: a selection from above the callout into a body child truncates the start where it is, empties the title, and keeps the tail of the body child it ends in, leaving later body children untouched
 - starting in the title and ending outside: the title keeps its head, every body child is deleted, the container survives with only its title, and the block the range ends in keeps its tail where it is
 - the whole subtree covered: a range ending exactly at the container's last byte deletes the container as one unit, and no invariant fires on the detached node
+  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
 - the whole callout covered from inside: a range from the start of the title through the end of the body, covering the whole subtree without crossing the boundary from outside, empties the title and truncates the body to an empty paragraph, because the reserved child holds the title, not a bare paragraph
 - the rule is no wider than it needs to be: a range inside the callout that touches only the body stays on the shared path, so typing over it merges the two body paragraphs exactly as the same gesture does in a blockquote
 

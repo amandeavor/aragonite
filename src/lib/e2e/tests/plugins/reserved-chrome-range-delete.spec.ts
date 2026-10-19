@@ -128,8 +128,10 @@ test.describe('reserved child-0 chrome: rangeDelete wall', () => {
 	});
 
 	test("Gate 4f: a range ending exactly at the container's last byte also deletes it as a unit", async ({
-		page
+		page,
+		browserName
 	}) => {
+		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent(WALL_FIXTURE);
 		await editor.dragFromTo([0], 5, [1, 2], 5);
 		await page.keyboard.press('Delete');

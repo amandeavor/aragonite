@@ -33,7 +33,14 @@ test.describe('the drawn caret at a soft wrap', () => {
 		expect(await oneCaretOnTheBrowsersLine(page)).toBe('native');
 	});
 
-	test('ArrowRight across a wrap: the drawn caret, on the browser’s line', async ({ page }) => {
+	test('ArrowRight across a wrap: the drawn caret, on the browser’s line', async ({
+		page,
+		browserName
+	}) => {
+		test.skip(
+			browserName === 'firefox',
+			'Firefox spends one ArrowRight moving the caret across the wrap at the same offset'
+		);
 		await editor.focusBlock(0, 0);
 		await page.keyboard.press('End');
 		await page.keyboard.press('ArrowRight');

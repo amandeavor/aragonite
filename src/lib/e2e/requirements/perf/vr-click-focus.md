@@ -15,6 +15,7 @@ The fixture is the `/test/plugins` route, which has the LaTeX plugin on, with 30
 - Click on a display formula: its source shows, taller than the render, and `scrollTop` doesn't move (1px tolerance).
 - Click on an inline formula: its source opens in the line, and `scrollTop` doesn't move (1px tolerance).
 - With the display formula's source open, click on the inline formula in the line below it: the display formula closes and shrinks as the inline one opens, and the clicked line stays under the pointer (its top moves under 1px). Holding the top block here instead slides the line up by the shrink, over 100px.
+  (under Firefox the spec marks this one `fixme` against #749, the focusing click scrolling the page)
 
 ## Non-vacuity
 

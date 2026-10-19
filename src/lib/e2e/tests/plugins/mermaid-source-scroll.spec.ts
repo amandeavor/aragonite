@@ -44,7 +44,8 @@ function portGeometry(page: Page): Promise<PortGeometry> {
 }
 
 test.describe('opening a diagram source that runs off the bottom of the screen', () => {
-	test('the page stays where it was', async ({ page }) => {
+	test('the page stays where it was', async ({ page, browserName }) => {
+		test.fixme(browserName === 'firefox', '#749: the focusing click scrolls the page in Firefox');
 		const editor = new MermaidPage(page);
 		await editor.loadDiagram(`${PROSE}\n\n${TALL_DIAGRAM}\n\n${PROSE}\n`);
 		// The diagram's top two thirds of the way down the scroll container, its lower half past

@@ -10,6 +10,7 @@ painted caret (a red caret, found in a screenshot), by line and by x.
 - End on a wrapped line: the browser's own caret, at the wrap
 - Home on the second visual line: the browser's own caret, at the wrap
 - ArrowRight across a wrap: the drawn caret, on the browser's line
+  (skipped under Firefox, which spends one ArrowRight moving the caret across the wrap at the same offset)
 - Typing at a wrap: one caret, on the browser's line
 
 ## Edge cases

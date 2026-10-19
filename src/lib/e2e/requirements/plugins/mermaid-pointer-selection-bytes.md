@@ -9,8 +9,10 @@ than a slice the length of the rendered text.
 
 - Drag from mid-paragraph into the middle of the rendered diagram, then Mod+C: the clipboard
   holds the tail of the paragraph, the blank line, and the diagram's complete fenced markdown.
+  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
 - The same drag followed by Mod+X: what is left of the document is the head of the paragraph
   joined to the block after the diagram, with no piece of the fence left behind.
+  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
 
 ## Edge cases
 

@@ -1,8 +1,11 @@
 name: CI
 on:
+  # Every dev push runs the Linux matrix, so a Linux or engine red shows on the merge that made it.
+  # macOS WebKit is its own workflow, webkit-macos.yml.
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
+    branches: [main, dev]
   workflow_dispatch:
 
 # No job needs to write anything back through GITHUB_TOKEN; actions/cache
@@ -10,26 +13,37 @@ on:
 permissions:
   contents: read
 
-# Cancel superseded PR runs — three pushes to an open PR otherwise run three full
-# matrices. Push runs (main) are NOT cancelled: main's pass/fail record per commit
-# is the thing the branch is protected on.
+# A newer push to a PR or to dev supersedes the run in progress. Main's runs are never cancelled:
+# each main commit keeps its own pass/fail record, the thing the branch is protected on.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Third-party actions are pinned to commit SHAs with the version in a trailing
 # comment: a major tag is mutable, so a repoint silently changes what every job
 # runs. Bump the SHA and the comment together.
 #
-# Parallel jobs: the fast static+unit gate, the sharded Playwright e2e battery,
-# the prod-build perf gate, the external-consumer realism gate (packs the
-# library, installs the tarball into examples/consumer, and runs its
-# SSR-no-crash + hydration smoke), the framework realism gate (the same for the React and Vue
-# wrappers, through the shared adapter suite), and the emoji-table provenance gate.
-# e2e shards run every Playwright project via the dev webServer the playwright
-# config starts (the e2e-perf specs self-skip there unless PERF_GATE/PERF is
-# set; the dedicated perf job is what runs them, against the prod build).
+# Parallel jobs: the static and unit gate, the e2e suite sharded once per browser engine, the
+# prod-build perf gate, the consumer and framework smokes (the packed library installed into
+# example apps), and the emoji-table provenance gate. The Chromium e2e shards run every Playwright
+# project (the perf rows skip themselves there; the perf job runs them against the prod build).
 jobs:
+  # Whether the change touches more than docs; a docs-only one skips the e2e and perf work. A
+  # gating matrix job skips its steps, not itself: skipped whole, it reports one check under its bare
+  # job name, and its required per-shard checks would wait forever.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/ci-code-changed.mjs "$BASE" >> "$GITHUB_OUTPUT"
+
   unit:
     runs-on: ubuntu-latest
     steps:
@@ -61,6 +75,7 @@ jobs:
       - run: npm run test:editor
 
   e2e:
+    needs: changes
     runs-on: ubuntu-latest
     strategy:
       # One red shard must not cancel the others — a full failure map per run
@@ -69,23 +84,80 @@ jobs:
       matrix:
         shard: ['1/4', '2/4', '3/4', '4/4']
     steps:
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: ./.github/actions/e2e-setup
+        with:
+          engine: chromium
+      - if: needs.changes.outputs.code == 'true'
+        run: npx playwright test --shard=${{ matrix.shard }}
+
+  # The same correctness suite in WebKit and Firefox (docs/contributing/testing.md § Browser
+  # engines). A red shows red; until an engine runs clean its checks sit in PENDING_GATE_CONTEXTS
+  # (scripts/branch-protection-contexts.mjs), so they don't block a merge yet.
+  e2e-webkit:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ENGINE: webkit
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/6', '2/6', '3/6', '4/6', '5/6', '6/6']
+    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/e2e-setup
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      # Cache the browser download (~100MB per run); `playwright install` skips
-      # re-downloading a cached build and still installs the OS deps.
-      - run: echo "PLAYWRIGHT_VERSION=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_ENV"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
-      - run: npx playwright install --with-deps chromium
+          engine: webkit
       - run: npx playwright test --shard=${{ matrix.shard }}
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-webkit-${{ strategy.job-index }}
+          path: test-results/ci-summary.json
+
+  e2e-firefox:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ENGINE: firefox
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          [
+            '1/12',
+            '2/12',
+            '3/12',
+            '4/12',
+            '5/12',
+            '6/12',
+            '7/12',
+            '8/12',
+            '9/12',
+            '10/12',
+            '11/12',
+            '12/12'
+          ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/e2e-setup
+        with:
+          engine: firefox
+      # Firefox spends most of a test waiting on the browser rather than the CPU, so the runner's
+      # four cores carry four workers where the other engines keep Playwright's default two.
+      - run: npx playwright test --shard=${{ matrix.shard }} --workers=4
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-firefox-${{ strategy.job-index }}
+          path: test-results/ci-summary.json
 
   perf:
+    needs: changes
     runs-on: ubuntu-latest
     env:
       # Runners measured ~2.2x the calibration machine (runs 29177807039 /
@@ -93,23 +165,18 @@ jobs:
       # unscaled gate stays the tight one.
       PERF_RUNNER_SCALE: '2.5'
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: ./.github/actions/e2e-setup
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: echo "PLAYWRIGHT_VERSION=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_ENV"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
-      - run: npx playwright install --with-deps chromium
+          engine: chromium
       # perf:check builds and previews the app, then gates the keystroke rows against
       # that prod build (the e2e-perf-prod project) — a dev-server run would measure vite
       # transform overhead, not the editor. The report-only rows exclude themselves via
       # their own PERF_GATE skip, so this needs no row filter.
-      - run: npm run perf:check
+      - if: needs.changes.outputs.code == 'true'
+        run: npm run perf:check
 
   consumer-smoke:
     runs-on: ubuntu-latest

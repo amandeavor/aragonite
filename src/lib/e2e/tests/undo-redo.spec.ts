@@ -111,8 +111,10 @@ test.describe('undo brings an off-screen caret into view', () => {
 	});
 
 	test('a gap caret between a table and a fence, scrolled away, comes back into view', async ({
-		page
+		page,
+		browserName
 	}) => {
+		test.fixme(browserName === 'firefox', '#749: the focusing click scrolls the page in Firefox');
 		await editor.loadContent(`${filler(30, 0)}\n${TABLE}\n${FENCE}\n${filler(80, 30)}`);
 		await page.evaluate(() => (window as any).__test.rects.reveal([30]));
 		await editor.waitForRenderFlush();

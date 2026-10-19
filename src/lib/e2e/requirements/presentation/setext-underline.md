@@ -28,6 +28,7 @@ the next key starts the heading's second line above the underline (`Plan\` over 
 - source mode: a click at the middle of the heading lands on the underline's line (the block is
   two lines there), so End then a key writes after the underline (`Plan` over `---s`) and the
   block reads as a paragraph
+  (skipped under Firefox, which puts a click at the exact middle of a two-line block on line one)
 
 ## User interactions
 

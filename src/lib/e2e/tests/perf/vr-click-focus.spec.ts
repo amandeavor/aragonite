@@ -112,8 +112,10 @@ test.describe('a click into a block leaves the scroll position alone', () => {
 	// The one case where holding the clicked block and holding the top block disagree: the block
 	// above shrinks as the click lands, so only holding the clicked one keeps it under the pointer.
 	test('a click below an open display formula keeps the clicked line under the pointer', async ({
-		page
+		page,
+		browserName
 	}) => {
+		test.fixme(browserName === 'firefox', '#749: the focusing click scrolls the page in Firefox');
 		const widget = page.locator('.math-inline-widget');
 		const line = editor.getBlock(PARAGRAPH + 2);
 		await editor.centre(widget);

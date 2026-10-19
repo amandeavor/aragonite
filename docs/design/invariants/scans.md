@@ -274,8 +274,7 @@ Every import-boundary scan (this one, G4.63, G4.64, G4.122) reads specifiers thr
 `src/lib/test/invariants/lint/scan-source.ts :: importSpecifiers`, so an import quoted in a string
 or comment is no edge. `lint/plugin-import-boundary.test.ts`.
 
-**G4.17 · One Playwright project per spec.** No spec file is collected by two Playwright projects
-(the WebKit lane doesn't count). The scan reads what `playwright test --list` reports, so the glob
+**G4.17 · One Playwright project per spec.** No spec file is collected by two Playwright projects. The scan reads what `playwright test --list` reports, so the glob
 depth rules are Playwright's own; a spec no project collects is G4.23's.
 `e2e/lint/project-partition.test.ts`.
 

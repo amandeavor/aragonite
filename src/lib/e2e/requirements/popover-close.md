@@ -3,7 +3,7 @@
 The editor's popovers (the block menu and its flyout, the code block's overflow menu and language
 picker, the table menu, the link card, the image's alt field, the inline menu) close on a press
 outside them and on Escape. Safari never focuses a clicked button, so focus may be on the page body
-when either arrives; the rows run under Chromium and in the WebKit lane.
+when either arrives; the rows run under every engine.
 
 ## Happy paths
 

@@ -516,7 +516,7 @@ describe('G4.23 requirement↔spec lockstep: classifier self-tests', () => {
 			// One copy per project: the report repeats a file under every project that runs it.
 			suites: [
 				loopFile('e2e-top'),
-				loopFile('e2e-webkit'),
+				loopFile('e2e-blocks'),
 				{
 					title: 'nested/twins.spec.ts',
 					suites: ['first', 'second'].map((title) => ({

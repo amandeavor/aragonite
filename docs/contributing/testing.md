@@ -12,7 +12,7 @@ Where to jump:
 - [Unit tests (Vitest)](#unit-tests-vitest): where a file goes, the area scripts, mounting a
   block without the whole editor, and the console-warning gate.
 - [E2E tests (Playwright)](#e2e-tests-playwright): the fixture import rule, the test bridge, the
-  dev server, the area scripts, the plugins route and what's installed on it, the WebKit lane, the
+  dev server, the area scripts, the plugins route and what's installed on it, the browser engines, the
   requirement files, and the gotchas.
 - [The conformance differ](#the-conformance-differ): our inline parser diffed against
   commonmark.js.
@@ -227,7 +227,8 @@ The machinery, for when you're inside it:
 
 ## E2E tests (Playwright)
 
-The editor component driven in real Chromium. No backend needed; it's self-contained.
+The editor component driven in a real browser, Chromium unless you pick another engine
+([Browser engines](#browser-engines)). No backend needed; it's self-contained.
 
 **Every spec imports `test` and `expect` from `src/lib/e2e/fixtures.ts`, never from
 `@playwright/test` directly.** This isn't a style preference, and I will be tedious about it in
@@ -354,7 +355,7 @@ Specs are organized by feature area at the top level, and per block inside `test
 | `test:e2e:simulation`     | The note-taking simulation sessions (their own section below)                                                                                                                                                |
 | `test:e2e:a11y`           | axe over `.editor`: fails on any violation outside the committed allowlist                                                                                                                                   |
 | `test:e2e:vr`             | Virtual rendering on large fixtures: windowing, reveal, table-row windowing, mounted-count ceiling                                                                                                           |
-| `test:e2e:webkit`         | The second-engine lane: a curated slice under the WebKit binary, env-gated; CI runs it on every PR and the release PR can't merge past it (next section)                                                     |
+| `test:e2e:webkit`         | The whole suite in WebKit; `test:e2e:firefox` is the same in Firefox ([Browser engines](#browser-engines))                                                                                                   |
 
 The a11y allowlist and the VR ceilings both fail closed and only shrink. Neither is a perf gate;
 both ride `npm test`.
@@ -420,68 +421,94 @@ sharing one memo registration, the left with the kind switched off through the h
 `__registryEnablement` prop), and `activation/` (two editors in one process, only the first listing
 the parrot and the block badge, for the per-instance activation spec).
 
-### The WebKit lane
+### Browser engines
 
-A second contenteditable implementation, and a check the release can't merge past.
-`npm run test:e2e:webkit` sets `WEBKIT=1`, and that variable is what makes the `e2e-webkit`
-project exist at all, so `npm test` never runs it. CI carries it instead, and you run it by hand
-when you've touched selection, typing or the clipboard.
+Every e2e project runs in Chromium by default, and the `ENGINE` variable swaps the browser under
+all of them at once:
 
-What it runs: a curated slice of the typing, split/merge, selection and round-trip specs
-(`WEBKIT_LANE` in `playwright.config.ts`), plus everything under `tests/webkit/`, which only this
-lane executes.
+- `chromium`, the default, and the only engine `npm test` runs.
+- `firefox`, the Firefox you have installed (not Playwright's patched build), driven over WebDriver
+  BiDi. Set `FIREFOX_PATH` if yours isn't where Firefox installs by default.
+- `webkit`, Playwright's WebKit build.
 
-**In CI it blocks.** `.github/workflows/webkit.yml` runs the lane on every pull request to `main`
-and to `dev`. On the release PR (`dev` to `main`) its `webkit` check is required, same as the
-`ci.yml` jobs (`scripts/apply-branch-protection.mjs` lists them). On a `dev` PR the lane only
-reports, but a red there is still yours: the release PR runs the same lane over the same commits,
-and it won't merge until that's green. A red the day after a Playwright bump, with no editor
-change in sight, is the engine build moving under the same code (the `@playwright/test` version
-pins it). That's a real finding too, either an engine difference to handle or a flake to
-quarantine.
+The perf rows and the docs captures stay Chromium-only, since their numbers and pixels are
+calibrated there. Everything else runs under every engine, and the project names don't change,
+so any area script works under any engine. The commands are the same in bash and PowerShell:
 
-**Quarantining a flake.** A flake is a spec that reads red on some runs of the lane and green on
-others, same code. Since the lane blocks, one of those can hold a release on a coin toss, so it
-comes out of the lane, and only out of the lane:
+```
+npm run test:e2e:firefox
+npm run test:e2e:webkit
+node scripts/run-with-env.mjs ENGINE=webkit -- npm run test:e2e:clipboard
+```
 
-1. File the issue (`severity: watch` while nothing's confirmed) with what was seen and the
-   command that repeats it, which is the same in bash and PowerShell:
+Run them alone and on a quiet tree. They share the dev server with everything else, and a save
+into `src/` mid-run triggers an SSR reload that turns the run red for a reason the product never
+had.
 
-   ```
-   node scripts/run-with-env.mjs WEBKIT=1 -- npx playwright test --project=e2e-webkit selection/pointer.spec.ts --repeat-each 10 --trace on
-   ```
+**In CI.** `ci.yml` runs all three engines' full suites, each sharded, on every pull request to
+`dev` or `main` and on every push to either. A newer push to a PR or to `dev` cancels the run in
+progress; `main`'s runs always finish. A change that only touches docs (`docs/`, any `.md`, the
+issue templates) skips the e2e and perf work. macOS WebKit is its own workflow,
+`webkit-macos.yml`, since macOS runners are scarce: nightly on `dev`, plus every pull request and
+push to `main`.
 
-2. Make the test's first line `test.fixme(browserName === 'webkit', '#<issue>: what it does')`,
-   with `browserName` taken from the test's fixture args. Chromium keeps running the test; the
-   lane reports it as skipped, with the issue number in the reason.
-3. Leave the requirement bullet as it is (the claim still holds under Chromium) and add an
-   indented line under it saying where the skip is, so the two files stay paired (G4.23).
-4. When the issue closes, the `fixme` goes with it.
+A red engine job shows red, always. Whether it blocks a merge is up to branch protection:
+`scripts/branch-protection-contexts.mjs` lists the checks `main` requires, and beside them
+`PENDING_GATE_CONTEXTS`, the engine checks that don't block yet because their engine still has
+reds. A lint makes every check land in exactly one of the two, and `npm run release:publish`
+refuses to publish while the pending list holds anything, so an engine joins the gate before the
+next release at the latest. When one runs clean, move its checks across and re-run
+`scripts/apply-branch-protection.mjs`.
 
-**Running it locally.** Alone, and on a quiet tree: the lane shares the dev server with every
-other project, and a save into `src/` mid-run triggers an SSR reload whose component
-re-registration turns the run red for a reason the product never had.
+To read a red run, open the job summary: it has the pass, fail, flaky and skip counts and every
+failing test, and the job's artifact holds the same rows as `ci-summary.json`. A failure you
+can't match to an open issue is new, and it's yours.
 
-The clipboard and IME helpers branch on the engine behind the same signatures, so a spec never
-needs to know which one it got. Every clipboard touch goes through them: `editor.seedClipboard`,
-`editor.paste()` and `editor.readClipboard` (or `createClipboardArm(page)` from
-`e2e/clipboard-arm.ts` when there's no `EditorPage`). A spec that presses the paste chord or calls
-`navigator.clipboard` itself fails a source scan (G4.212 in `invariants/scans.md`).
+**There's no list of expected failures.** A red on one engine is fixed, or skipped where it can't
+mean anything there:
 
-On WebKit the real clipboard is out of reach of both, so the `page` fixture puts an in-page store
-behind `navigator.clipboard` and the copy and cut events, and a paste is a dispatched clipboard
-event carrying what the store holds. The IME driver hand-fires the composition sequence there,
-since WebKit has no CDP session, and lets the page's microtasks drain after `compositionstart`
-the way a browser does before it writes the composed text. That hand-fired sequence is the one
-exemption another scan (G4.49) grants, and no spec may copy it. So the lane can't check event
-order or the real paste chord; both stay pinned in Chromium.
+- a gesture the driver can't make on that engine (no touch in Firefox, no CDP session outside
+  Chromium) skips through `skipUnlessSupported(page, capability)` in `e2e/browser-engine.ts`,
+  which carries the reason;
+- a behavior where the engines rightly differ (where a click at a line's exact middle lands, say)
+  skips on that engine with `test.skip(browserName === 'firefox', '<what Firefox does instead>')`;
+- a real bug gets an issue and a `test.fixme(browserName === 'firefox', '#<issue>: what it does')`
+  as the test's first line, with `browserName` taken from the test's fixture args. The other
+  engines keep running it.
 
-**What a green run doesn't tell you.** Playwright's WebKit build isn't Safari and isn't a
-WKWebView, just the closest available proxy, and nothing in this repo runs on Apple hardware yet.
-Nor does it say anything about an embedding host (a desktop app's webview, say): clipboard
-retargeting, a webview that refuses `navigator.clipboard` (the in-page store answers every call),
-the host's own accelerator keys and image-src scheme policy are the host's decisions, so that
-class of bug is found by a real host or by a user.
+A flake gets the same `fixme` while its issue is open (`severity: watch` until it's confirmed),
+with the command that repeats it in the issue:
+
+```
+node scripts/run-with-env.mjs ENGINE=webkit -- npx playwright test selection/pointer.spec.ts --repeat-each 10 --trace on
+```
+
+Either way, leave the requirement bullet as it is (the claim still holds on the other engines) and
+add an indented line under it saying where the skip is, so the two files stay paired (G4.23). When
+the issue closes, the `fixme` goes with it.
+
+**Helpers that branch on the engine.** The clipboard and IME helpers keep one signature across
+engines, so a spec never needs to know which one it got. Every clipboard touch goes through them:
+`editor.seedClipboard`, `editor.paste()` and `editor.readClipboard` (or `createClipboardArm(page)`
+from `e2e/clipboard-arm.ts` when there's no `EditorPage`). A spec that presses the paste chord or
+calls `navigator.clipboard` itself fails a source scan (G4.212 in `invariants/scans.md`).
+
+Outside Chromium the real clipboard is out of reach (WebKit refuses the permissions, Firefox
+refuses a write before a user gesture), so the `page` fixture puts an in-page store behind
+`navigator.clipboard` and the copy and cut events, and a paste is a dispatched clipboard event
+carrying what the store holds. The IME driver hand-fires the composition sequence there, since
+only Chromium has a CDP session, and lets the page's microtasks drain after `compositionstart` the
+way a browser does before it writes the composed text. That hand-fired sequence is the one
+exemption another scan (G4.49) grants, and no spec may copy it. So event order and the real paste
+chord stay pinned in Chromium. Firefox over BiDi needs a few more helpers: `e2e/multi-click.ts`
+(BiDi can't send a double click), `e2e/selection-drag.ts` and `e2e/insert-text.ts`.
+
+**What a green run doesn't tell you.** Playwright's WebKit isn't Safari and isn't a WKWebView,
+just the closest proxy there is; the macOS run gets nearer (the platform's key bindings and
+fonts), and that's it. Nor does a green run say anything about an embedding host (a desktop app's
+webview, say): clipboard retargeting, a webview that refuses `navigator.clipboard` (the in-page
+store answers every call), the host's own accelerator keys and image-src scheme policy are the
+host's decisions, so that class of bug is found by a real host or by a user.
 
 ### Requirements pair one-to-one with specs
 
