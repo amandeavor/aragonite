@@ -1,8 +1,8 @@
 /**
- * The shared pointer-drag session every drag builds on: document-level listeners, one move per
+ * The shared pointer-drag session every drag builds on: page-level listeners, one move per
  * animation frame, the pointer-id filter, autoscroll, and a teardown that is safe to run twice.
- * Callers supply the move and end behaviour. The rAF here coalesces pointermove events to one
- * per frame; it is not used to sequence anything (G4.4).
+ * The release resolves the drag at its own point and is heard here first (window, capture phase),
+ * so a popover the release reveals never covers what the drag hit-tests (G4.225).
  */
 
 import { createAutoScroll, type AutoScrollDeps } from './autoscroll';
@@ -16,8 +16,8 @@ export interface PointerDragSessionOptions {
 	/** Coalesced to one call per animation frame with the latest pointer: intermediate positions
 	 *  are dropped, so a consumer must answer the point it gets rather than wait for a better one. */
 	onMove(pointer: PointerPosition): void;
-	/** Runs on pointerup or pointercancel, after the pending move flushes and the session tears
-	 *  down; Escape and a lifetime abort only tear down. */
+	/** Runs on pointerup or pointercancel, after the drag resolves its last point and the session
+	 *  tears down; Escape and a lifetime abort only tear down. */
 	onEnd?(reason: 'up' | 'cancel'): void;
 	/** Caller cleanup, run once on every teardown path (up, cancel, Escape, abort). */
 	onTeardown?(): void;
@@ -38,14 +38,20 @@ export function createPointerDragSession(
 ): { dispose(): void } {
 	const pointerId = down.pointerId;
 	let pending: PointerPosition | null = null;
+	let resolved: PointerPosition | null = null;
 	let rafId: number | null = null;
+
+	function resolve(pointer: PointerPosition): void {
+		resolved = pointer;
+		opts.onMove(pointer);
+	}
 
 	const autoScroll = createAutoScroll({
 		axis: opts.autoScroll.axis,
 		getPointer: () => pending,
 		getTargets: opts.autoScroll.getTargets,
 		onScrolled: () => {
-			if (pending) opts.onMove(pending);
+			if (pending) resolve(pending);
 		}
 	});
 
@@ -55,15 +61,22 @@ export function createPointerDragSession(
 		rafId = requestAnimationFrame(() => {
 			rafId = null;
 			if (!pending) return;
-			opts.onMove(pending);
+			resolve(pending);
 			autoScroll.maybeStart();
 		});
 	}
 
-	// A release before the frame callback runs would otherwise drop the final move; the guard on
-	// a pending frame keeps an already processed move from replaying.
+	// Chromium can deliver the last move after the release, so the release's own point is the
+	// latest; a drag that never moved is a click and resolves nothing.
+	function resolveRelease(e: PointerEvent): void {
+		if (!pending) return;
+		if (resolved && resolved.clientX === e.clientX && resolved.clientY === e.clientY) return;
+		resolve({ clientX: e.clientX, clientY: e.clientY });
+	}
+
+	// A cancel's coordinates are not a point the user chose, so only a move still waiting runs.
 	function flushPendingMove(): void {
-		if (rafId !== null && pending) opts.onMove(pending);
+		if (rafId !== null && pending) resolve(pending);
 	}
 
 	let disposed = false;
@@ -71,8 +84,8 @@ export function createPointerDragSession(
 		if (disposed) return;
 		disposed = true;
 		document.removeEventListener('pointermove', onPointerMove);
-		document.removeEventListener('pointerup', onPointerUp);
-		document.removeEventListener('pointercancel', onPointerCancel);
+		window.removeEventListener('pointerup', onPointerUp, true);
+		window.removeEventListener('pointercancel', onPointerCancel, true);
 		if (opts.escape) document.removeEventListener('keydown', onKeyDown, true);
 		opts.lifetimeSignal?.removeEventListener('abort', onAbort);
 		if (rafId !== null) {
@@ -89,7 +102,7 @@ export function createPointerDragSession(
 	// commit or tear down someone else's gesture.
 	function onPointerUp(e: PointerEvent): void {
 		if (e.pointerId !== pointerId) return;
-		flushPendingMove();
+		resolveRelease(e);
 		dispose();
 		opts.onEnd?.('up');
 	}
@@ -119,8 +132,8 @@ export function createPointerDragSession(
 
 	if (opts.disableUserSelect) document.body.style.userSelect = 'none';
 	document.addEventListener('pointermove', onPointerMove);
-	document.addEventListener('pointerup', onPointerUp);
-	document.addEventListener('pointercancel', onPointerCancel);
+	window.addEventListener('pointerup', onPointerUp, true);
+	window.addEventListener('pointercancel', onPointerCancel, true);
 	if (opts.escape) document.addEventListener('keydown', onKeyDown, true);
 	opts.lifetimeSignal?.addEventListener('abort', onAbort, { once: true });
 

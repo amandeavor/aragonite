@@ -1462,6 +1462,28 @@ const RULES: FileRule[] = [
 			'const dragged = Math.abs(e.clientY - down.y) > SLOP;'
 		],
 		misses: ['if (presses.travelled(e)) return;', 'const dx = Math.abs(width - startWidth);']
+	},
+	{
+		id: 'G4.225 the drag session hears a release before anything else on the page',
+		matches:
+			/\b(?:window|defaultView)\b[^;]*?\.addEventListener\(\s*['"]pointer(?:up|cancel)['"][^;]*?\b(?:true|capture:\s*true)|\bonRoot\(\s*(?:window|[\w.]*defaultView[^,]*),\s*['"]pointer(?:up|cancel)['"][^;]*?capture:\s*true|<svelte:window[^>]*\bonpointer(?:up|cancel)capture\b/,
+		allowed: {
+			'src/lib/selection/pointer-session.ts': 'the drag session, which resolves the release first'
+		},
+		reason:
+			'a second window-level capture listener for a release can run before the drag session and change the page (show a popover under the pointer) before the drag hit-tests its last point: listen on the document or below',
+		hits: [
+			"window.addEventListener('pointerup', onUp, true);",
+			"doc.defaultView?.addEventListener('pointercancel', onUp, { capture: true });",
+			"onRoot(window, 'pointerup', endPress, { capture: true }),",
+			'<svelte:window onpointerupcapture={onUp} />'
+		],
+		misses: [
+			"document.addEventListener('pointerup', up, true);",
+			"window.addEventListener('pointerup', onUp);",
+			"window.removeEventListener('pointerup', onUp, true);",
+			"onRoot(doc, 'pointerup', endPress, { capture: true }),"
+		]
 	}
 ];
 
