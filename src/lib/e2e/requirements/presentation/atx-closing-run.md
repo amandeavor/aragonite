@@ -77,3 +77,6 @@ markers hidden only, so none deleted a shown `# ` on its own.
 ## Error cases
 
 - zero `[invariant:…]` console fires across every scenario (automatic via the shared e2e fixture)
+
+Miss-analysis (real Firefox): the emptying scenarios ran on Chromium alone, whose delete drops the
+hidden `#` span; Firefox keeps it, and the read took whatever the browser left.

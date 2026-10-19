@@ -13,6 +13,7 @@ import {
 } from '../presentation-mode';
 import { widgetSourceRange } from '../core/inline/inline-widgets';
 import { isLineEndingPair, splitsLineEndingPair } from '../core/line-ending-pairs';
+import { isBlankText } from '../core/lines';
 import {
 	familyHidesText,
 	familyPaintsAlone,
@@ -97,28 +98,39 @@ export function rawOfWalkOffset(container: ParentNode, walk: DomTextOffset): Raw
 }
 
 /** The raw bytes `el` shows, its marker prefix left out: what a prose block reads back as its text.
- *  `suffix` is the block's structural suffix as rendered; empty when only that is left. */
+ *  `suffix` is the block's structural suffix as rendered; empty when only hidden markers are left. */
 export function rawTextOfContent(el: HTMLElement, raw: string, suffix: string): string {
 	const prefix = markerPrefixOf(el);
 	let out = '';
-	let holdsMoreThanSuffix = false;
+	let content = '';
+	let hidesPrefix = false;
 	for (const child of Array.from(el.childNodes)) {
 		if (child === prefix) continue;
 		const text = rawTextOfNode(child, raw);
+		if (child instanceof Element && isHiddenBlockPrefix(child, el)) {
+			out += text;
+			hidesPrefix = true;
+			continue;
+		}
 		if (child instanceof Element && child.hasAttribute(BLOCK_SUFFIX_ATTR)) {
 			// A key typed over the whole text lands at the start of the structure span.
 			const typed = text.endsWith(suffix) ? text.slice(0, text.length - suffix.length) : '';
 			out += typed;
-			if (typed) holdsMoreThanSuffix = true;
+			content += typed;
 			if (suffixOutlivesEdit(el, child)) out += text.slice(typed.length);
 			continue;
 		}
 		out += text;
-		if (text) holdsMoreThanSuffix = true;
+		content += text;
 	}
-	// A heading's closing run or a setext underline belongs to the text above it, so a read
-	// holding nothing else is an emptied block.
-	return holdsMoreThanSuffix ? out : '';
+	// A heading's hidden markers belong to its text, so a read holding nothing else is an emptied
+	// block, whichever of them the browser's edit left behind; blank text empties an ATX heading.
+	if (content === '') return '';
+	return hidesPrefix && isBlankText(content) ? content : out;
+}
+
+function isHiddenBlockPrefix(child: Element, el: HTMLElement): boolean {
+	return child.hasAttribute(BLOCK_PREFIX_ATTR) && isHiddenMarkerRoot(child, el);
 }
 
 // A heading's closing run goes with a hidden `#` marker the browser dropped, since the user saw
