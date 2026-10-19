@@ -126,12 +126,12 @@ export function installSurvivor(
 }
 
 /** Truncates the start endpoint in place, after the planned deletion, and returns the caret's
- *  offset. `isChrome` must be read before any splice moved the tree. */
+ *  offset. `isReservedChrome` must be read before any splice moved the tree. */
 export function truncateStartInPlace(
 	doc: Document,
 	start: SelectionPoint,
 	startBlock: CstNode,
-	isChrome: boolean,
+	isReservedChrome: boolean,
 	reading: Reading,
 	sharing: SharingState,
 	tag: string
@@ -139,7 +139,7 @@ export function truncateStartInPlace(
 	const cut = charOffsetOf(start, tag);
 	const ending = documentLineEnding(doc);
 	const lineEnding = trailingLineEnding(startBlock.raw, ending);
-	if (isChrome) {
+	if (isReservedChrome) {
 		startBlock.raw = terminateLine(startBlock.raw.slice(0, cut), lineEnding);
 		return cut;
 	}
@@ -161,13 +161,13 @@ export function truncateEndInPlace(
 	doc: Document,
 	end: SelectionPoint,
 	endBlock: CstNode,
-	isChrome: boolean,
+	isReservedChrome: boolean,
 	reading: Reading,
 	sharing: SharingState,
 	tag: string
 ): CstNode | null {
 	const cut = charOffsetOf(end, tag);
-	if (isChrome) {
+	if (isReservedChrome) {
 		endBlock.raw =
 			endBlock.raw.slice(cut) || trailingLineEnding(endBlock.raw, documentLineEnding(doc));
 		return endBlock;
