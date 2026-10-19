@@ -127,6 +127,28 @@ test.describe('mermaid whole-block focus', () => {
 		await editor.bridge.waitForSourceEquals(original);
 	});
 
+	test('a press on Reset view leaves the diagram focused, taking its keys', async ({ page }) => {
+		const pressReset = async () => {
+			await editor.viewport.click();
+			await expect(editor.inputHost).toBeFocused();
+			await editor.block.hover();
+			await editor.block.getByTestId('mermaid-reset').click();
+		};
+
+		await test.step('a typed character creates the paragraph below', async () => {
+			await pressReset();
+			await page.keyboard.press('x');
+			await waitForDoc(page, (s) => s.rootCount === 4);
+			expect((await readDoc(page)).texts[2]).toBe('x');
+		});
+
+		await test.step('Mod+Z undoes the last edit', async () => {
+			await pressReset();
+			await page.keyboard.press('ControlOrMeta+z');
+			await editor.bridge.waitForSourceEquals(STANDARD_DIAGRAM_DOC);
+		});
+	});
+
 	test('Backspace inside the edit textarea edits the draft and never deletes the block', async ({
 		page
 	}) => {
