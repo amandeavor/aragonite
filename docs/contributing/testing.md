@@ -452,11 +452,17 @@ issue templates) skips the e2e and perf work. macOS WebKit is its own workflow,
 `webkit-macos.yml`, since macOS runners are scarce: nightly on `dev`, plus every pull request and
 push to `main`.
 
-An engine job with `continue-on-error: true` reports without gating. Its job summary carries the
-pass, fail, flaky and skip counts and the failing tests, and its artifact holds the same rows as
-`ci-summary.json`. Once an engine's run is clean, the flag comes off and the job's checks go into
-`scripts/apply-branch-protection.mjs`. A lint holds the two together, so a gating job missing from
-that list (or a list naming a job that doesn't gate) fails `npm run test:editor`.
+A red engine job shows red, always. Whether it blocks a merge is up to branch protection:
+`scripts/branch-protection-contexts.mjs` lists the checks `main` requires, and beside them
+`PENDING_GATE_CONTEXTS`, the engine checks that don't block yet because their engine still has
+reds. A lint makes every check land in exactly one of the two, and `npm run release:publish`
+refuses to publish while the pending list holds anything, so an engine joins the gate before the
+next release at the latest. When one runs clean, move its checks across and re-run
+`scripts/apply-branch-protection.mjs`.
+
+To read a red run, open the job summary: it has the pass, fail, flaky and skip counts and every
+failing test, and the job's artifact holds the same rows as `ci-summary.json`. A failure you
+can't match to an open issue is new, and it's yours.
 
 **There's no list of expected failures.** A red on one engine is fixed, or skipped where it can't
 mean anything there:
@@ -464,6 +470,8 @@ mean anything there:
 - a gesture the driver can't make on that engine (no touch in Firefox, no CDP session outside
   Chromium) skips through `skipUnlessSupported(page, capability)` in `e2e/browser-engine.ts`,
   which carries the reason;
+- a behavior where the engines rightly differ (where a click at a line's exact middle lands, say)
+  skips on that engine with `test.skip(browserName === 'firefox', '<what Firefox does instead>')`;
 - a real bug gets an issue and a `test.fixme(browserName === 'firefox', '#<issue>: what it does')`
   as the test's first line, with `browserName` taken from the test's fixture args. The other
   engines keep running it.

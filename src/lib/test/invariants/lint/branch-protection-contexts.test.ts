@@ -1,25 +1,30 @@
 /**
- * The required status-check contexts in `scripts/apply-branch-protection.mjs` match what the
- * workflows report: ci.yml's gating job ids (a `continue-on-error` job reports without gating),
- * matrix jobs expanded the way GitHub names them, and each declared external against the workflow
- * reporting it. A context nothing reports leaves every PR waiting forever.
+ * The status-check lists in `scripts/branch-protection-contexts.mjs` match what the workflows
+ * report, matrix jobs expanded the way GitHub names them: every ci.yml check is required or pending
+ * its gate, never both and never neither, and no job hides a red behind `continue-on-error`. A
+ * required context nothing reports leaves every PR waiting forever.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { collectFiles, literalSpans, stripComments } from './scan-source';
+import { collectFiles } from './scan-source';
+import {
+	CI_CONTEXTS,
+	EXTERNAL_CONTEXTS,
+	PENDING_GATE_CONTEXTS
+} from '../../../../../scripts/branch-protection-contexts.mjs';
 
 const WORKFLOWS = '.github/workflows';
 const CI = 'ci.yml';
-const SCRIPT = path.resolve('scripts/apply-branch-protection.mjs');
+const APPLY_SCRIPT = path.resolve('scripts/apply-branch-protection.mjs');
 
-// ── ci.yml ───────────────────────────────────────────────────────────────────
+// ── Reading a workflow ───────────────────────────────────────────────────────
 
 const JOB_ID = /^ {2}([A-Za-z0-9_-]+):\s*$/;
 const JOB_NAME = /^ {4}name:\s*(.+?)\s*$/;
 const MATRIX_DIMENSION = /^ {8}([A-Za-z0-9_-]+):\s*\[(.+)\]\s*$/;
 const MATRIX_KEYS_UNPARSED = /^ {8}(include|exclude):/;
-const CONTINUE_ON_ERROR = /^ {4}continue-on-error:\s*(.+?)\s*$/;
+const CONTINUE_ON_ERROR = /^ {4}continue-on-error:/;
 const JOB_IF = /^ {4}if:/;
 
 /** The `jobs:` mapping's own lines, ending at the next top-level key. */
@@ -29,7 +34,26 @@ function jobsBlock(yaml: string): string[] {
 	if (start === -1) return [];
 	const rest = lines.slice(start + 1);
 	const end = rest.findIndex((line) => /^[^\s#]/.test(line));
-	return end === -1 ? rest : rest.slice(0, end);
+	return joinWrappedSequences(end === -1 ? rest : rest.slice(0, end));
+}
+
+/** A matrix list Prettier wrapped onto lines of its own, put back on its key's line. */
+function joinWrappedSequences(lines: string[]): string[] {
+	const out: string[] = [];
+	for (let i = 0; i < lines.length; i++) {
+		if (/^ {8}[A-Za-z0-9_-]+:\s*$/.test(lines[i]) && lines[i + 1]?.trim().startsWith('[')) {
+			let joined = lines[i].trimEnd() + ' ';
+			while (i + 1 < lines.length) {
+				const next = lines[++i].trim();
+				joined += next;
+				if (next.endsWith(']')) break;
+			}
+			out.push(joined.replace(/,\]$/, ']'));
+		} else {
+			out.push(lines[i]);
+		}
+	}
+	return out;
 }
 
 function flowSequence(raw: string): string[] {
@@ -54,10 +78,9 @@ function expand(label: string, dimensions: string[][]): string[] {
 
 interface JobChecks {
 	names: string[];
-	/** False for a `continue-on-error` job, whose red never fails the run. */
-	gates: boolean;
 	/** A matrix job with a job-level `if:`, which reports one bare check when skipped. */
 	skipsWholeMatrix: boolean;
+	continuesOnError: boolean;
 }
 
 /** Each job's check names, matrix jobs expanded. */
@@ -65,12 +88,12 @@ function readJobs(yaml: string): JobChecks[] {
 	const jobs: JobChecks[] = [];
 	let label: string | null = null;
 	let dimensions: string[][] = [];
-	let gates = true;
 	let conditional = false;
+	let continuesOnError = false;
 	const flush = () => {
 		if (label === null) return;
 		const skipsWholeMatrix = conditional && dimensions.length > 0;
-		jobs.push({ names: expand(label, dimensions), gates, skipsWholeMatrix });
+		jobs.push({ names: expand(label, dimensions), skipsWholeMatrix, continuesOnError });
 	};
 	for (const line of jobsBlock(yaml)) {
 		const job = JOB_ID.exec(line);
@@ -78,21 +101,13 @@ function readJobs(yaml: string): JobChecks[] {
 			flush();
 			label = job[1];
 			dimensions = [];
-			gates = true;
 			conditional = false;
+			continuesOnError = false;
 			continue;
 		}
 		if (label === null) continue;
 		if (JOB_IF.test(line)) conditional = true;
-		const continues = CONTINUE_ON_ERROR.exec(line);
-		if (continues) {
-			if (continues[1] !== 'true' && continues[1] !== 'false') {
-				throw new Error(
-					`continue-on-error in job "${label}": this reader reads true or false only`
-				);
-			}
-			gates = continues[1] === 'false';
-		}
+		if (CONTINUE_ON_ERROR.test(line)) continuesOnError = true;
 		const name = JOB_NAME.exec(line);
 		if (name) label = name[1].replace(/^['"]|['"]$/g, '');
 		if (MATRIX_KEYS_UNPARSED.test(line)) {
@@ -110,49 +125,36 @@ export function checkNames(yaml: string): string[] {
 	return readJobs(yaml).flatMap((job) => job.names);
 }
 
-/** Gating matrix jobs a job-level `if:` can skip whole, leaving their shard checks unreported. */
-export function unreportableGates(yaml: string): string[] {
+/** Required matrix jobs a job-level `if:` can skip whole, leaving their shard checks unreported. */
+export function wholeMatrixSkips(yaml: string, required: readonly string[]): string[] {
 	return readJobs(yaml)
-		.filter((job) => job.gates && job.skipsWholeMatrix)
+		.filter((job) => job.skipsWholeMatrix && job.names.some((name) => required.includes(name)))
 		.map((job) => job.names[0]);
 }
 
-/** The check names whose red fails the run, the only ones a protection rule can require. */
-export function gatingCheckNames(yaml: string): string[] {
+/** Jobs whose red the run would report as green. */
+export function redHidingJobs(yaml: string): string[] {
 	return readJobs(yaml)
-		.filter((job) => job.gates)
-		.flatMap((job) => job.names);
+		.filter((job) => job.continuesOnError)
+		.map((job) => job.names[0]);
 }
 
-// ── The protection rule ──────────────────────────────────────────────────────
+// ── Holding the lists to the workflows ───────────────────────────────────────
 
-/** Single-quoted strings in a slice of the script, comments skipped. */
-function quotedStrings(source: string): string[] {
-	const code = stripComments(source, 'script');
-	return literalSpans(code)
-		.filter((span) => code[span.start] === "'")
-		.map((span) => code.slice(span.start + 1, span.end - 1));
+/** Reported checks that neither list names. */
+export function unlistedChecks(
+	reported: readonly string[],
+	...lists: readonly string[][]
+): string[] {
+	return reported.filter((name) => !lists.some((list) => list.includes(name)));
 }
 
-/** The `CI_CONTEXTS` array: the half of the rule ci.yml itself reports. */
-export function ciContexts(script: string): string[] {
-	const array = /const CI_CONTEXTS = \[([^\]]*)\]/.exec(script);
-	if (array === null) throw new Error('apply-branch-protection.mjs declares no CI_CONTEXTS array');
-	return quotedStrings(array[1]);
-}
-
-/** The `EXTERNAL_CONTEXTS` map: workflow file → the checks it is trusted to report. */
-export function externalContexts(script: string): Map<string, string[]> {
-	const block = /const EXTERNAL_CONTEXTS = \{([\s\S]*?)\};/.exec(script);
-	if (block === null) {
-		throw new Error('apply-branch-protection.mjs declares no EXTERNAL_CONTEXTS map');
-	}
-	const declared = new Map<string, string[]>();
-	for (const line of stripComments(block[1], 'script').split('\n')) {
-		const entry = /^\s*'([^']+)':\s*\[([^\]]*)\]/.exec(line);
-		if (entry !== null) declared.set(entry[1], quotedStrings(entry[2]));
-	}
-	return declared;
+/** Listed contexts no workflow reports. */
+export function unreportedContexts(
+	listed: readonly string[],
+	reported: readonly string[]
+): string[] {
+	return listed.filter((name) => !reported.includes(name));
 }
 
 /** Declared externals the named workflow does not report: a missing file, a renamed job. */
@@ -189,27 +191,49 @@ export function undeclaredReporters(
 	return hits;
 }
 
-const workflowChecks = new Map(
-	collectFiles(WORKFLOWS, { extensions: ['.yml'] }).map((file): [string, string[]] => [
+const workflowYaml = new Map(
+	collectFiles(WORKFLOWS, { extensions: ['.yml'] }).map((file): [string, string] => [
 		path.basename(file),
-		checkNames(readFileSync(file, 'utf8'))
+		readFileSync(file, 'utf8')
 	])
 );
+const workflowChecks = new Map(
+	[...workflowYaml].map(([file, yaml]): [string, string[]] => [file, checkNames(yaml)])
+);
 const ci = workflowChecks.get(CI) ?? [];
-const ciGating = gatingCheckNames(readFileSync(path.join(WORKFLOWS, CI), 'utf8'));
-const script = readFileSync(SCRIPT, 'utf8');
-const declaredCi = ciContexts(script);
-const declaredExternal = externalContexts(script);
-const required = [...declaredCi, ...[...declaredExternal.values()].flat()];
+const declaredExternal = new Map<string, string[]>(Object.entries(EXTERNAL_CONTEXTS));
+const required = [...CI_CONTEXTS, ...[...declaredExternal.values()].flat()];
+const pending = [...PENDING_GATE_CONTEXTS];
+const everyReported = [...workflowChecks.values()].flat();
 
 // ── The gate ─────────────────────────────────────────────────────────────────
 
 describe('branch protection ↔ workflow check names', () => {
-	it('requires exactly the checks ci.yml gates on', () => {
+	it('every ci.yml check is required or pending its gate', () => {
+		const unlisted = unlistedChecks(ci, CI_CONTEXTS, pending);
 		expect(
-			[...declaredCi].sort(),
-			`CI_CONTEXTS in ${path.basename(SCRIPT)} and ${CI}'s gating job names have diverged: a context ci.yml never reports blocks every PR forever, a gating job with no context protects nothing, and a continue-on-error job never gates`
-		).toEqual([...ciGating].sort());
+			unlisted,
+			`${CI} reports checks neither CI_CONTEXTS nor PENDING_GATE_CONTEXTS names: ${unlisted.join(', ')}`
+		).toEqual([]);
+		expect(
+			unreportedContexts(CI_CONTEXTS, ci),
+			`CI_CONTEXTS names checks ${CI} never reports, which leaves every PR waiting forever`
+		).toEqual([]);
+	});
+
+	it('a pending check is reported somewhere and required nowhere', () => {
+		expect(
+			unreportedContexts(pending, everyReported),
+			'PENDING_GATE_CONTEXTS names checks no workflow reports'
+		).toEqual([]);
+		expect(pending.filter((name) => required.includes(name))).toEqual([]);
+	});
+
+	it('a workflow with a pending check lists every check it reports', () => {
+		for (const [file, names] of workflowChecks) {
+			if (file === CI || !names.some((name) => pending.includes(name))) continue;
+			expect(unlistedChecks(names, declaredExternal.get(file) ?? [], pending), file).toEqual([]);
+		}
 	});
 
 	it('every declared external is reported by the workflow named for it', () => {
@@ -224,19 +248,26 @@ describe('branch protection ↔ workflow check names', () => {
 		).toEqual([]);
 	});
 
-	it('sends both halves in the payload it applies', () => {
-		const contexts = /contexts:\s*(.+)$/m.exec(script)?.[1] ?? '';
-		expect(
-			contexts,
-			'the readers below hold two declarations the payload has stopped spreading, so a half of the rule would silently go unrequired'
-		).toContain('CI_CONTEXTS');
+	it('applies the required lists and never the pending one', () => {
+		const contexts = /contexts:\s*(.+)$/m.exec(readFileSync(APPLY_SCRIPT, 'utf8'))?.[1] ?? '';
+		expect(contexts).toContain('CI_CONTEXTS');
 		expect(contexts).toContain('EXTERNAL_CONTEXTS');
+		expect(contexts).not.toContain('PENDING_GATE_CONTEXTS');
 	});
 
-	it('no gating matrix job can be skipped whole', () => {
-		const ciYaml = readFileSync(path.join(WORKFLOWS, CI), 'utf8');
+	it('no job hides a red behind continue-on-error', () => {
+		const hiding = [...workflowYaml].flatMap(([file, yaml]) =>
+			redHidingJobs(yaml).map((job) => `${file}: ${job}`)
+		);
 		expect(
-			unreportableGates(ciYaml),
+			hiding,
+			'a continue-on-error job reports red as green; leave its checks out of the required lists instead'
+		).toEqual([]);
+	});
+
+	it('no required matrix job can be skipped whole', () => {
+		expect(
+			wholeMatrixSkips(workflowYaml.get(CI) ?? '', required),
 			'a matrix job skipped by a job-level if reports one check under its bare name, so its required per-shard checks never arrive; condition its steps instead'
 		).toEqual([]);
 	});
@@ -252,54 +283,42 @@ describe('branch protection ↔ workflow check names', () => {
 });
 
 // ── Non-vacuity self-tests ───────────────────────────────────────────────────
-// A reader that parses nothing would pass both directions above on two empty sets.
+// A reader that parses nothing would pass every direction above on empty sets.
 
 describe('branch-protection context readers: self-tests', () => {
 	it('finds the real job set, matrix shards expanded', () => {
-		expect(ci.length).toBeGreaterThan(4);
 		expect(ci).toContain('unit');
 		expect(ci.filter((name) => name.startsWith('e2e '))).toHaveLength(4);
-		expect(declaredCi.length).toBe(ciGating.length);
-		expect(ci.length).toBeGreaterThan(ciGating.length);
-		expect([...declaredExternal.keys()]).toEqual([]);
+		expect(ci.filter((name) => name.startsWith('e2e-firefox ')).length).toBeGreaterThan(1);
+		expect(ci.length).toBe(CI_CONTEXTS.length + pending.filter((n) => ci.includes(n)).length);
 	});
 
-	it('reports a continue-on-error job without counting it as gating', () => {
+	it('names the jobs a red would hide in, and a matrix a job-level if skips whole', () => {
 		const yaml = [
 			'jobs:',
 			'  unit:',
 			'    runs-on: ubuntu-latest',
 			'  engine:',
 			'    continue-on-error: true',
-			'    strategy:',
-			'      matrix:',
-			"        shard: ['1/2', '2/2']",
-			'  pinned:',
-			'    continue-on-error: false'
-		].join('\n');
-		expect(checkNames(yaml)).toEqual(['unit', 'engine (1/2)', 'engine (2/2)', 'pinned']);
-		expect(gatingCheckNames(yaml)).toEqual(['unit', 'pinned']);
-		expect(unreportableGates(yaml)).toEqual([]);
-		const skipped = [
-			'jobs:',
-			'  e2e:',
 			'    if: false',
 			'    strategy:',
 			'      matrix:',
-			'        shard: [1, 2]'
-		];
-		expect(unreportableGates(skipped.join('\n'))).toEqual(['e2e (1)']);
-		const reporting = [...skipped.slice(0, 2), '    continue-on-error: true', ...skipped.slice(2)];
-		expect(unreportableGates(reporting.join('\n'))).toEqual([]);
-		const expression = ['jobs:', '  e2e:', '    continue-on-error: ${{ matrix.x }}'].join('\n');
-		expect(() => checkNames(expression)).toThrow(/true or false only/);
+			"        shard: ['1/2', '2/2']"
+		].join('\n');
+		expect(checkNames(yaml)).toEqual(['unit', 'engine (1/2)', 'engine (2/2)']);
+		expect(redHidingJobs(yaml)).toEqual(['engine (1/2)']);
+		expect(wholeMatrixSkips(yaml, ['engine (2/2)'])).toEqual(['engine (1/2)']);
+		expect(wholeMatrixSkips(yaml, ['unit'])).toEqual([]);
+	});
+
+	it('reads a matrix list Prettier wrapped onto its own lines', () => {
+		const wrapped = ['jobs:', '  e2e:', '    strategy:', '      matrix:', '        shard:'];
+		wrapped.push('          [', "            '1/2',", "            '2/2'", '          ]');
+		expect(checkNames(wrapped.join('\n'))).toEqual(['e2e (1/2)', 'e2e (2/2)']);
 	});
 
 	it('follows a job rename rather than the hand-written list', () => {
-		const renamed = readFileSync(path.join(WORKFLOWS, CI), 'utf8').replace(
-			/^ {2}unit:$/m,
-			'  static:'
-		);
+		const renamed = (workflowYaml.get(CI) ?? '').replace(/^ {2}unit:$/m, '  static:');
 		expect(checkNames(renamed)).toContain('static');
 		expect(checkNames(renamed)).not.toContain('unit');
 	});
@@ -338,16 +357,10 @@ describe('branch-protection context readers: self-tests', () => {
 		expect(() => checkNames(yaml)).toThrow(/include/);
 	});
 
-	it('reads both halves of the rule, comments dropped, and refuses a missing one', () => {
-		expect(
-			ciContexts("const CI_CONTEXTS = [\n\t// a note\n\t'unit',\n\t'e2e (1/4)' // trailing\n]")
-		).toEqual(['unit', 'e2e (1/4)']);
-		expect(() => ciContexts('const protection = {};')).toThrow(/CI_CONTEXTS/);
-		expect(
-			externalContexts("const EXTERNAL_CONTEXTS = {\n\t// why\n\t'cla.yml': ['cla', 'dco']\n};")
-		).toEqual(new Map([['cla.yml', ['cla', 'dco']]]));
-		expect(externalContexts('const EXTERNAL_CONTEXTS = {};')).toEqual(new Map());
-		expect(() => externalContexts('const protection = {};')).toThrow(/EXTERNAL_CONTEXTS/);
+	it('names a reported check no list carries, and a listed one nothing reports', () => {
+		expect(unlistedChecks(['unit', 'e2e (1/2)'], ['unit'], ['e2e (1/2)'])).toEqual([]);
+		expect(unlistedChecks(['unit', 'e2e (1/2)'], ['unit'], [])).toEqual(['e2e (1/2)']);
+		expect(unreportedContexts(['unit', 'gone'], ['unit'])).toEqual(['gone']);
 	});
 
 	it('reds on an external declared for a workflow that does not report it', () => {
