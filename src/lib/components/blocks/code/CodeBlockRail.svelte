@@ -345,9 +345,8 @@
 	const showMenu = $derived(menuItems !== undefined);
 </script>
 
-<!-- `group`, not `toolbar`: these controls belong together, but a toolbar promises
-	arrow-key navigation between them, which this does not implement. A press keeps focus in the
-	block; Tab still reaches each button. -->
+<!-- `group`, not `toolbar`, which would promise arrow keys between the controls. A press keeps
+	focus in the block; Tab still reaches each button. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	bind:this={railEl}
