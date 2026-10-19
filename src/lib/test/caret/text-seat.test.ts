@@ -49,6 +49,14 @@ describe('caretIsInTextContent', () => {
 		expect(caretIsInTextContent(el, sel)).toBe(false);
 	});
 
+	// Miss-analysis: no row put the caret in a widget's own text, where Firefox's End leaves it.
+	it('returns false when caret is in a widget’s own text', () => {
+		widget.textContent = 'x2';
+		const sel = placeCaretAt(widget.firstChild!, 1);
+		widget.dataset.inlineWidget = '';
+		expect(caretIsInTextContent(el, sel)).toBe(false);
+	});
+
 	it('returns false when no selection is present', () => {
 		window.getSelection()?.removeAllRanges();
 		expect(caretIsInTextContent(el, window.getSelection())).toBe(false);

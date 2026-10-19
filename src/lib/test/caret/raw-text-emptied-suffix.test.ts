@@ -66,6 +66,32 @@ describe('reading back a heading whose `#` marker the browser dropped', () => {
 	});
 });
 
+// Miss-analysis: the emptying rows drew the DOM Chromium's delete leaves, which drops the hidden
+// `#` span; Firefox's keeps it.
+describe('reading back a heading whose text went and whose hidden `#` stayed', () => {
+	const RUN = `<span class="md-marker" ${BLOCK_SUFFIX_ATTR}="after-prefix"> #</span>`;
+	const HASH = `<span class="md-marker" ${BLOCK_PREFIX_ATTR}=""># </span>`;
+
+	it('reads an emptied block', () => {
+		expect(rawTextOfContent(live(`${HASH}${RUN}`), '# H #\n', ' #')).toBe('');
+		expect(rawTextOfContent(live(HASH), '# H\n', '')).toBe('');
+	});
+
+	it('reads blank text as the blank, which an ATX heading cannot hold', () => {
+		expect(rawTextOfContent(live(`${HASH} ${RUN}`), '# Hi #\n', ' #')).toBe(' ');
+	});
+
+	// Miss-analysis: the blank row replaced text; none typed a space into a heading already empty.
+	it('keeps a heading that was already empty when a space is typed into it', () => {
+		expect(rawTextOfContent(live(`${HASH} `), '# \n', '')).toBe('#  ');
+		expect(rawTextOfContent(live(`${HASH}  ${RUN}`), '#  #\n', ' #')).toBe('#    #');
+	});
+
+	it('keeps the markers while the text holds anything', () => {
+		expect(rawTextOfContent(live(`${HASH}x${RUN}`), '# Hi #\n', ' #')).toBe('# x #');
+	});
+});
+
 // Miss-analysis: no row drew the typed text inside the structure span, where the browser puts it.
 describe('reading back a key the browser wrote into the structure span', () => {
 	const typedRun = `<span class="md-marker" ${BLOCK_SUFFIX_ATTR}="after-prefix">x #</span>`;

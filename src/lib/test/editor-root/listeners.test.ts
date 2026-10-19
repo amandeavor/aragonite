@@ -9,6 +9,7 @@ import {
 	installSelectionChangeBridge
 } from '#lib/components/editor-root/listeners.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { createCaretWriter } from '#lib/caret/widget-offset.js';
 import { createPressTracker } from '#lib/activation-click.js';
 
 // Teardowns collect here so no test leaks a document-level listener into the next.
@@ -245,6 +246,84 @@ describe('editor-root listeners: selectionchange bridge', () => {
 		caretInside(b.content);
 		fire();
 		expect(window.getSelection()?.rangeCount).toBe(1);
+	});
+
+	// Miss-analysis: every bridge row put the caret where Chromium does; Firefox leaves one inside a
+	// widget, where no key types.
+	describe('a caret the browser left inside a widget', () => {
+		function surfaceBridge() {
+			const root = document.createElement('div');
+			const surface = document.createElement('div');
+			surface.setAttribute('contenteditable', 'true');
+			surface.innerHTML =
+				'Text <span data-inline-widget="" data-source-start="5" data-source-end="10" contenteditable="false">x<sup>2</sup></span>';
+			root.append(surface);
+			document.body.append(root);
+			surface.focus();
+			let emits = 0;
+			teardowns.push(
+				installSelectionChangeBridge({
+					caretWriter: createCaretWriter(() => {}),
+					root,
+					isHostChrome: () => false,
+					announceIfMoved: () => emits++,
+					selection: { widget: null }
+				})
+			);
+			window.getSelection()!.collapse(surface.querySelector('sup')!.firstChild, 1);
+			return { root, surface, emits: () => emits };
+		}
+
+		it('moves to the widget’s edge, then announces', () => {
+			const b = surfaceBridge();
+			fire();
+			const sel = window.getSelection()!;
+			expect({ node: sel.focusNode, offset: sel.focusOffset }).toEqual({
+				node: b.surface,
+				offset: 2
+			});
+			expect(b.emits()).toBe(1);
+		});
+
+		it('stays put during a composition', () => {
+			const b = surfaceBridge();
+			b.surface.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+			fire();
+			expect(window.getSelection()!.focusNode?.textContent).toBe('2');
+		});
+
+		it('moves again once a plain key shows a dropped composition ended', () => {
+			const b = surfaceBridge();
+			b.surface.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+			b.surface.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+			fire();
+			expect(window.getSelection()!.focusNode).toBe(b.surface);
+		});
+	});
+
+	// Miss-analysis: every row focused the block; the editor root takes focus when a block
+	// unmounts or a press lands on chrome, and the walk then counted every block as one.
+	it('stays put while the editor root, not a block, holds focus', () => {
+		const root = document.createElement('div');
+		root.setAttribute('data-presentation', 'live');
+		root.tabIndex = -1;
+		root.innerHTML = '<div contenteditable="true">one</div><div contenteditable="true">two</div>';
+		document.body.append(root);
+		root.focus();
+		teardowns.push(
+			installSelectionChangeBridge({
+				caretWriter: createCaretWriter(() => {}),
+				root,
+				isHostChrome: () => false,
+				announceIfMoved: () => {},
+				selection: { widget: null }
+			})
+		);
+		const two = root.lastElementChild!.firstChild!;
+		window.getSelection()!.collapse(two, 0);
+		fire();
+		const sel = window.getSelection()!;
+		expect([sel.focusNode?.textContent, sel.focusOffset]).toEqual(['two', 0]);
 	});
 
 	it('teardown detaches both listeners', () => {

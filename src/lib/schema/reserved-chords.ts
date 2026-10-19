@@ -133,9 +133,9 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 	},
 	{
 		file: 'components/blocks/text/home-key.ts',
-		chords: ['Shift+Home', 'Mod+Home'],
+		chords: ['Shift+Home'],
 		keys: ['Home'],
-		note: "Taken only behind a marker or a leading widget, on the first line: Shift+Home extends to the text's start, and Mod+Home goes there from any line."
+		note: "Taken only behind a marker or a leading widget, on the first line: Shift+Home extends to the text's start."
 	},
 	{
 		file: 'components/blocks/text/click-snap-guard.ts',
@@ -303,9 +303,16 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 	},
 	{
 		file: 'selection/shared-keydown.ts',
-		chords: ['Shift+ArrowUp', 'Shift+ArrowDown', 'Shift+ArrowLeft', 'Shift+ArrowRight'],
-		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp'],
-		note: 'Extends across a block boundary once the native extend runs out of room.'
+		chords: [
+			'Shift+ArrowUp',
+			'Shift+ArrowDown',
+			'Shift+ArrowLeft',
+			'Shift+ArrowRight',
+			'Mod+Home',
+			'Mod+End'
+		],
+		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'End', 'Home'],
+		note: "Extends across a block boundary once the native extend runs out of room. Mod+Home and Mod+End are taken only where a marker or a widget sits at that end of the text, and land on the text's edge."
 	}
 ];
 

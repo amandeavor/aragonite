@@ -26,16 +26,13 @@ export interface HomeKeyDeps {
 
 /** True when the key was handled here, its default prevented. */
 export function handleHomeKey(e: KeyboardEvent, deps: HomeKeyDeps): boolean {
-	if (e.key !== 'Home' || e.altKey) return false;
+	// Mod+Home is the shared keydown's, which a table cell runs too.
+	if (e.key !== 'Home' || e.altKey || e.ctrlKey || e.metaKey) return false;
 	const el = deps.getEl();
 	if (!el || (markerPrefixOf(el) === null && !landableStartAbutsIsland(el))) return false;
 	const bounds = deps.caretBounds();
-	// Mod+Home goes to the block's start, which is on the first line wherever the caret is.
-	const toBlockStart = e.ctrlKey || e.metaKey;
-	if (!toBlockStart) {
-		const focus = deps.getFocusOffset() ?? bounds.start;
-		if (!isAtFirstVisualLine(el, focus, bounds)) return false;
-	}
+	const focus = deps.getFocusOffset() ?? bounds.start;
+	if (!isAtFirstVisualLine(el, focus, bounds)) return false;
 	e.preventDefault();
 	if (e.shiftKey) deps.caretWriter.extendSelectionToRaw(el, bounds.start);
 	else deps.focusContentStart();
