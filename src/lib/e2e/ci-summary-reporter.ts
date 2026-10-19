@@ -32,7 +32,12 @@ class CiSummaryReporter implements Reporter {
 		const counts = { passed: 0, failed: 0, flaky: 0, skipped: 0, retried: 0 };
 		const failures: Row[] = [];
 		const skipReasons = new Map<string, number>();
+		// Seconds per spec file, what the next shard split is sized from.
+		const fileSeconds = new Map<string, number>();
 		for (const test of tests) {
+			const spent = test.results.reduce((sum, result) => sum + result.duration, 0) / 1000;
+			const spec = specPath(test);
+			fileSeconds.set(spec, (fileSeconds.get(spec) ?? 0) + spent);
 			const outcome = test.outcome();
 			if (outcome === 'expected') counts.passed++;
 			else if (outcome === 'unexpected') counts.failed++;
@@ -51,7 +56,14 @@ class CiSummaryReporter implements Reporter {
 		writeFileSync(
 			file,
 			JSON.stringify(
-				{ engine, shard: this.shard.trim(), counts, failures, skipReasons: [...skipReasons] },
+				{
+					engine,
+					shard: this.shard.trim(),
+					counts,
+					failures,
+					skipReasons: [...skipReasons],
+					fileSeconds: [...fileSeconds].map(([spec, s]) => [spec, Math.round(s)])
+				},
 				null,
 				1
 			)
@@ -86,11 +98,15 @@ function row(test: TestCase): Row {
 	const message = last?.error?.message ?? last?.errors[0]?.message ?? '';
 	return {
 		project: test.parent.project()?.name ?? '',
-		location: `${path.relative('src/lib/e2e/tests', test.location.file).replaceAll('\\', '/')}:${test.location.line}`,
+		location: `${specPath(test)}:${test.location.line}`,
 		title: test.titlePath().slice(3).join(' > '),
 		// The first line only, colour codes stripped, so one failure stays one summary line.
 		error: (stripVTControlCharacters(message).split('\n')[0] ?? '').slice(0, 200)
 	};
+}
+
+function specPath(test: TestCase): string {
+	return path.relative('src/lib/e2e/tests', test.location.file).replaceAll('\\', '/');
 }
 
 function skipReason(test: TestCase): string {

@@ -60,7 +60,12 @@ const ENGINES: Record<string, Project['use']> = {
 	firefox: {
 		browserName: 'firefox',
 		channel: 'moz-firefox',
-		launchOptions: process.env.FIREFOX_PATH ? { executablePath: process.env.FIREFOX_PATH } : {},
+		launchOptions: {
+			executablePath: process.env.FIREFOX_PATH,
+			// Headless Firefox on a Linux runner finds no pointing device, so `(pointer: fine)` and
+			// `(hover: hover)` stop matching; these give it the desktop mouse it has elsewhere.
+			firefoxUserPrefs: { 'ui.primaryPointerCapabilities': 6, 'ui.allPointerCapabilities': 6 }
+		},
 		permissions: []
 	},
 	webkit: { browserName: 'webkit', permissions: [] }
