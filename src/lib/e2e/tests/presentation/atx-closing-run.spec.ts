@@ -100,6 +100,14 @@ test('live mode: emptying the text', async ({ page }) => {
 		await ep.bridge.waitForSourceEquals('#  #k\n\nnext\n');
 	});
 
+	await test.step('spaces typed into an empty heading stay in the heading', async () => {
+		await nextRow(ep, '# \n\nnext\n');
+		await ep.focusBlockAtPath([0], 0);
+		await page.keyboard.press('End');
+		await ep.typeSlowly('  ');
+		await ep.bridge.waitForSourceEquals('#   \n\nnext\n');
+	});
+
 	await test.step('selecting the text and typing a space leaves a paragraph holding the space', async () => {
 		await nextRow(ep, DOC);
 		await ep.focusBlockAtPath([0], 3);

@@ -81,6 +81,12 @@ describe('reading back a heading whose text went and whose hidden `#` stayed', (
 		expect(rawTextOfContent(live(`${HASH} ${RUN}`), '# Hi #\n', ' #')).toBe(' ');
 	});
 
+	// Miss-analysis: the blank row replaced text; none typed a space into a heading already empty.
+	it('keeps a heading that was already empty when a space is typed into it', () => {
+		expect(rawTextOfContent(live(`${HASH} `), '# \n', '')).toBe('#  ');
+		expect(rawTextOfContent(live(`${HASH}  ${RUN}`), '#  #\n', ' #')).toBe('#    #');
+	});
+
 	it('keeps the markers while the text holds anything', () => {
 		expect(rawTextOfContent(live(`${HASH}x${RUN}`), '# Hi #\n', ' #')).toBe('# x #');
 	});

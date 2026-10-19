@@ -13,7 +13,7 @@ import {
 } from '../presentation-mode';
 import { widgetSourceRange } from '../core/inline/inline-widgets';
 import { isLineEndingPair, splitsLineEndingPair } from '../core/line-ending-pairs';
-import { isBlankText } from '../core/lines';
+import { displayLength, isBlankText } from '../core/lines';
 import {
 	familyHidesText,
 	familyPaintsAlone,
@@ -103,13 +103,14 @@ export function rawTextOfContent(el: HTMLElement, raw: string, suffix: string): 
 	const prefix = markerPrefixOf(el);
 	let out = '';
 	let content = '';
-	let hidesPrefix = false;
+	// The hidden `#` marker's length, or null where no hidden marker opens the block.
+	let hiddenPrefix: number | null = null;
 	for (const child of Array.from(el.childNodes)) {
 		if (child === prefix) continue;
 		const text = rawTextOfNode(child, raw);
 		if (child instanceof Element && isHiddenBlockPrefix(child, el)) {
 			out += text;
-			hidesPrefix = true;
+			hiddenPrefix = text.length;
 			continue;
 		}
 		if (child instanceof Element && child.hasAttribute(BLOCK_SUFFIX_ATTR)) {
@@ -124,9 +125,10 @@ export function rawTextOfContent(el: HTMLElement, raw: string, suffix: string): 
 		content += text;
 	}
 	// A heading's hidden markers belong to its text, so a read holding nothing else is an emptied
-	// block, whichever of them the browser's edit left behind; blank text empties an ATX heading.
+	// block, whichever of them the browser left; so is blank text typed over the text.
 	if (content === '') return '';
-	return hidesPrefix && isBlankText(content) ? content : out;
+	if (hiddenPrefix === null || !isBlankText(content)) return out;
+	return isBlankText(raw.slice(hiddenPrefix, displayLength(raw) - suffix.length)) ? out : content;
 }
 
 function isHiddenBlockPrefix(child: Element, el: HTMLElement): boolean {
