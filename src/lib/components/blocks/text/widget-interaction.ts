@@ -41,6 +41,7 @@ import { assertInvariant } from '../../../assert';
 import { checkWidgetCaretLanding } from '../../../invariants/widget-caret-landing';
 import type { RevealFold } from '../editable/surface-clipboard';
 import { hasModifier, isPlainTypingKey, surfaceHoldsRange } from './click-snap-guard';
+import { caretEdgeKey } from '../../../schema/keybindings';
 import { caretIsInTextContent } from '../../../caret/text-seat';
 import {
 	findFirstEdgeWidget,
@@ -159,11 +160,9 @@ export interface WidgetInteraction {
 function caretMoveEdge(key: string): 'start' | 'end' | null {
 	switch (key) {
 		case 'ArrowUp':
-		case 'Home':
 		case 'PageUp':
 			return 'start';
 		case 'ArrowDown':
-		case 'End':
 		case 'PageDown':
 			return 'end';
 		default:
@@ -531,6 +530,23 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 				})
 		});
 		if (consumed) return true;
+		// A line-edge key leaves from the widget's edge on its side; a block or document edge is the
+		// shared keydown's, as it is from a caret.
+		const edge = caretEdgeKey(e);
+		if (edge) {
+			if (edge.to !== 'line') return false;
+			if (edge.extend) {
+				e.preventDefault();
+				return true;
+			}
+			leaveWidget(edge.side === 'start' ? widget.start : widget.end);
+			// The browser moves for Cmd+Arrow on macOS only, so the line edge is placed here.
+			if (edge.arrow) {
+				e.preventDefault();
+				deps.caretWriter.moveFocusToLineEdge(edge.side, false);
+			}
+			return false;
+		}
 		// A modified chord goes on to the keymap dispatch, which owns undo and redo. Arrows stop here:
 		// selecting cleared the browser range, so a later handler would read offset 0.
 		if (hasModifier(e)) {
@@ -559,8 +575,8 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 			}
 			return true;
 		}
-		// A vertical arrow, Home, End and the page keys are shared moves that need a real caret to
-		// read: put one at the edge the key leaves from and decline, so the move runs from there.
+		// A vertical arrow and the page keys are shared moves that need a real caret to read: put one
+		// at the edge the key leaves from and decline, so the move runs from there.
 		const moveEdge = e.shiftKey ? null : caretMoveEdge(e.key);
 		if (moveEdge) {
 			leaveWidget(moveEdge === 'start' ? widget.start : widget.end);

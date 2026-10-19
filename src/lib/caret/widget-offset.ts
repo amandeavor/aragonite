@@ -177,6 +177,9 @@ export interface CaretWriter {
 	/** Writes this writer's own caret in `el` again, where it stands, after something beside it
 	 *  shows or hides: WebKit keeps a caret resolved against the layout it was placed in. */
 	rewriteCaret(el: HTMLElement): boolean;
+	/** Moves the live selection's focus to its visual line's left or right edge, what macOS's
+	 *  Cmd+Arrow does, for an edge site that places the caret where the browser won't. */
+	moveFocusToLineEdge(side: 'start' | 'end', extend: boolean): boolean;
 	/** Drops the native selection: a gap caret, a widget or a whole-block range holds none. */
 	clear(): void;
 }
@@ -254,6 +257,16 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 			// Only the editor's own caret: one the browser left is `canonicalizeCaret`'s to judge.
 			if (!caret || written?.node !== caret.node || written.offset !== caret.offset) return false;
 			return writeSelection(caret, caret);
+		},
+		moveFocusToLineEdge(side, extend) {
+			const sel = window.getSelection();
+			if (!sel || sel.rangeCount === 0 || sel.anchorNode === null) return false;
+			sel.modify(extend ? 'extend' : 'move', side === 'start' ? 'left' : 'right', 'lineboundary');
+			// Written back through the one write, so the landing meets every endpoint check.
+			return writeSelection(
+				{ node: sel.anchorNode, offset: sel.anchorOffset },
+				{ node: sel.focusNode!, offset: sel.focusOffset }
+			);
 		},
 		clear() {
 			const sel = window.getSelection();

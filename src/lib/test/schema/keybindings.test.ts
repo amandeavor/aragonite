@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { eventToChord, normalizeChord } from '#lib/schema/keybindings.js';
+import { caretEdgeKey, eventToChord, normalizeChord } from '#lib/schema/keybindings.js';
 
 function ke(init: Partial<KeyboardEventInit> & { key: string }): KeyboardEvent {
 	return new KeyboardEvent('keydown', init);
@@ -29,5 +29,38 @@ describe('normalizeChord', () => {
 	it('canonicalizes modifier order and key case', () => {
 		expect(normalizeChord('Shift+Mod+z')).toBe('Mod+Shift+Z');
 		expect(normalizeChord('Mod+b')).toBe('Mod+B');
+	});
+});
+
+describe('caretEdgeKey', () => {
+	it.each([
+		['Home', {}, { to: 'line', side: 'start', extend: false, arrow: false }],
+		['End', { shiftKey: true }, { to: 'line', side: 'end', extend: true, arrow: false }],
+		['Home', { ctrlKey: true }, { to: 'block', side: 'start', arrow: false }],
+		['End', { metaKey: true }, { to: 'block', side: 'end', arrow: false }],
+		['End', { ctrlKey: true, shiftKey: true }, { to: 'doc', side: 'end', arrow: false }],
+		['ArrowLeft', { metaKey: true }, { to: 'line', side: 'start', extend: false, arrow: true }],
+		[
+			'ArrowRight',
+			{ metaKey: true, shiftKey: true },
+			{ to: 'line', side: 'end', extend: true, arrow: true }
+		],
+		['ArrowUp', { metaKey: true }, { to: 'block', side: 'start', arrow: true }],
+		['ArrowDown', { metaKey: true, shiftKey: true }, { to: 'doc', side: 'end', arrow: true }]
+	] as const)('reads %s %o as an edge', (key, mods, edge) => {
+		expect(caretEdgeKey(ke({ key, ...mods }))).toEqual(edge);
+	});
+
+	// Ctrl+Arrow is word motion on Windows and Linux, which the folded `Mod` would turn into an edge.
+	it.each([
+		['ArrowLeft', { ctrlKey: true }],
+		['ArrowRight', { ctrlKey: true, shiftKey: true }],
+		['ArrowUp', { ctrlKey: true, metaKey: true }],
+		['ArrowLeft', { metaKey: true, altKey: true }],
+		['ArrowLeft', {}],
+		['Home', { altKey: true }],
+		['PageUp', { metaKey: true }]
+	] as const)('reads %s %o as no edge', (key, mods) => {
+		expect(caretEdgeKey(ke({ key, ...mods }))).toBeNull();
 	});
 });

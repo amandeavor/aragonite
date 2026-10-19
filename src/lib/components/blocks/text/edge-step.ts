@@ -1,14 +1,16 @@
 /**
  * A code chip's border is an arrow stop of its own (live-mode.md § 4.2): at the chip's edge a plain
  * arrow first moves which side of the border the caret means, and only the next press moves the
- * caret. A click and an arrival by ArrowLeft or End name a side too. A mark's edge has no stop: the
- * next letter takes the format of the character before the caret.
+ * caret. A click and an arrival by ArrowLeft or the line-end key name a side too. A mark's edge
+ * has no stop: the next letter takes the format of the character before the caret.
  */
 
 import type { InlineNode } from '../../../core/nodes';
 import type { CaretMemory } from '../../../caret/caret-memory';
+import type { CaretWriter } from '../../../caret/widget-offset';
 import { chipArrivalKey, edgeStepDirection } from '../../../caret/edge-affinity';
 import { hidingScreenOf } from '../../../caret/widget-offset';
+import { caretEdgeKey } from '../../../schema/keybindings';
 import type { Reading } from '../../../schema/reading';
 import { hiddenEdges, type HiddenEdges } from './edge-seat';
 
@@ -24,6 +26,7 @@ export interface EdgeStepDeps {
 	/** The reading `getInlines` was read with, so a reference link reads as one. */
 	reading: Reading;
 	caretMemory: Pick<CaretMemory, 'side' | 'pin' | 'pinOnArrival'>;
+	caretWriter: Pick<CaretWriter, 'moveFocusToLineEdge'>;
 }
 
 export interface EdgeStep {
@@ -44,12 +47,12 @@ export function createEdgeStep(deps: EdgeStepDeps): EdgeStep {
 		return screen && hiddenEdges(deps.getInlines(), deps.getRaw(), screen, deps.reading);
 	}
 
-	/** Where ArrowLeft or End will land the caret, in raw offsets: one character left, or the end
-	 *  of the caret's raw line, which is past a chip ending that line. */
+	/** Where ArrowLeft or the line-end key will land the caret, in raw offsets: one character left,
+	 *  or the end of the caret's raw line, which is past a chip ending that line. */
 	function landing(e: KeyboardEvent, caret: number): number | null {
 		const key = chipArrivalKey(e);
 		const raw = deps.getRaw();
-		if (key === 'End') {
+		if (key === 'lineEnd') {
 			const end = raw.indexOf('\n', caret);
 			return end === -1 ? raw.length : end;
 		}
@@ -62,7 +65,7 @@ export function createEdgeStep(deps: EdgeStepDeps): EdgeStep {
 		const caret = deps.getCaret();
 		const direction = edgeStepDirection(e);
 		const at = caret === null ? null : landing(e, caret);
-		// Only an arrow or End asks the edge anything, so a typed key reads no runs.
+		// Only an arrow or the line-end key asks the edge anything, so a typed key reads no runs.
 		const edges = caret !== null && (direction !== null || at !== null) ? edgesNow() : null;
 		if (direction !== null && edges && caret !== null) {
 			const target = edges.edgeStep(caret, deps.caretMemory.side(), direction);
@@ -71,10 +74,15 @@ export function createEdgeStep(deps: EdgeStepDeps): EdgeStep {
 				return true;
 			}
 		}
-		// ArrowLeft arrives at a chip's edge from its right-hand side, and End lands past a chip
-		// ending the line: both mean the right-hand stop, decided here so no paint shows the other.
+		// ArrowLeft onto a chip from its right, and the line-end key past a chip ending the line, both
+		// mean the right-hand stop, decided here so no paint shows the other.
 		const stops = edges && at !== null ? edges.chipStops(at) : null;
 		deps.caretMemory.pinOnArrival(e, stops && Math.max(stops.inside, stops.outside));
+		// Only macOS moves the caret for Cmd+Right, so the arrival it pinned is placed here.
+		if (stops && chipArrivalKey(e) === 'lineEnd' && caretEdgeKey(e)?.arrow) {
+			e.preventDefault();
+			deps.caretWriter.moveFocusToLineEdge('end', false);
+		}
 		return false;
 	}
 

@@ -181,7 +181,8 @@
 			pendingBreak.at() !== null || cursor.getRawSelection() ? null : cursor.getRaw(),
 		isReading: () => readOnly,
 		reading,
-		caretMemory
+		caretMemory,
+		caretWriter
 	});
 	const typedPlacement = createTypedPlacement({
 		getEl: () => el ?? null,

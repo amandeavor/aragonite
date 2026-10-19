@@ -38,6 +38,12 @@ const CALLS: Record<
 		fresh();
 		writer.rewriteCaret(el);
 	},
+	moveFocusToLineEdge: (writer) => {
+		// jsdom lays out no lines, so the move itself is the browser's; the row counts the write.
+		const sel = window.getSelection()!;
+		if (typeof sel.modify !== 'function') Object.assign(sel, { modify: () => {} });
+		writer.moveFocusToLineEdge('end', false);
+	},
 	clear: (writer) => writer.clear()
 };
 

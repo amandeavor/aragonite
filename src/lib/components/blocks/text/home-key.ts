@@ -1,11 +1,12 @@
 /**
- * Home in a text block whose first line starts behind a marker (`- `, `- [ ] `, `[^1]: `) or a
- * leading widget, where the browser's own line start lands outside the text.
- * Home and Shift+Home go to the start of the caret's line; only on the first line does the editor
- * place that start itself.
+ * The line-start key in a text block whose first line starts behind a marker (`- `, `- [ ] `,
+ * `[^1]: `) or a leading widget, where the browser's own line start lands outside the text. Home
+ * and Cmd+Left (with Shift, extending) go to the line's start; only on the first line does the
+ * editor place that start itself.
  */
 
 import { isAtFirstVisualLine, type CaretBounds } from '../../../caret/visual-lines';
+import { caretEdgeKey } from '../../../schema/keybindings';
 import {
 	landableStartAbutsIsland,
 	markerPrefixOf,
@@ -27,14 +28,15 @@ export interface HomeKeyDeps {
 /** True when the key was handled here, its default prevented. */
 export function handleHomeKey(e: KeyboardEvent, deps: HomeKeyDeps): boolean {
 	// Mod+Home is the shared keydown's, which a table cell runs too.
-	if (e.key !== 'Home' || e.altKey || e.ctrlKey || e.metaKey) return false;
+	const edge = caretEdgeKey(e);
+	if (edge?.to !== 'line' || edge.side !== 'start') return false;
 	const el = deps.getEl();
 	if (!el || (markerPrefixOf(el) === null && !landableStartAbutsIsland(el))) return false;
 	const bounds = deps.caretBounds();
 	const focus = deps.getFocusOffset() ?? bounds.start;
 	if (!isAtFirstVisualLine(el, focus, bounds)) return false;
 	e.preventDefault();
-	if (e.shiftKey) deps.caretWriter.extendSelectionToRaw(el, bounds.start);
+	if (edge.extend) deps.caretWriter.extendSelectionToRaw(el, bounds.start);
 	else deps.focusContentStart();
 	return true;
 }
