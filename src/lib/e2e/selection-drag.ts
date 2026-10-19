@@ -1,12 +1,13 @@
 /**
  * Dragging the page's selection and dropping it, the one way an e2e spec makes that drag. Firefox
- * over WebDriver BiDi starts the native drag but sends no `drop` or `dragend` and pins `dragover`
- * to one point, so there the drag events are fired by hand, each where the browser would fire it.
+ * over WebDriver BiDi sends no `drop` or `dragend` and pins `dragover` to one point, and
+ * Playwright's WebKit on macOS starts no drag at all, so on those two the drag events are fired by
+ * hand, each where the browser would fire it.
  */
 import type { Page } from '@playwright/test';
-import { isFirefox } from './browser-engine';
+import { isFirefox, isWebKit } from './browser-engine';
 import type { Point } from './text-runs';
-import type { COPY_DRAG_MODIFIERS } from './platform-keys';
+import { isMacOS, type COPY_DRAG_MODIFIERS } from './platform-keys';
 
 /** A drag still held over the page. */
 export interface HeldDrag {
@@ -27,7 +28,8 @@ export async function holdSelectionDrag(
 	options: DragOptions = {}
 ): Promise<HeldDrag> {
 	if (options.copyWith) await page.keyboard.down(options.copyWith);
-	const drag = isFirefox(page) ? await firedDrag(page, from, options) : await mouseDrag(page, from);
+	const fired = isFirefox(page) || (isMacOS && isWebKit(page));
+	const drag = fired ? await firedDrag(page, from, options) : await mouseDrag(page, from);
 	await drag.moveTo({ x: from.x + 4, y: from.y }, 2);
 	await drag.moveTo(to, 12);
 	await drag.moveTo({ x: to.x + 1, y: to.y }, 2);

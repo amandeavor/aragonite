@@ -45,6 +45,12 @@ export function extendKey(edge: ExtendEdge): string {
 	return isMacOS ? `Shift+Meta+${MAC_ARROW[edge]}` : `Shift+${KEY[edge]}`;
 }
 
+/** The key that moves a menu's focus to its first or last item: Home and End on every platform (a
+ *  Mac keyboard sends them as Fn+Left and Fn+Right), which the menu reads itself. */
+export function listEdgeKey(edge: 'first' | 'last'): string {
+	return edge === 'first' ? 'Home' : 'End';
+}
+
 /** The modifier that makes an arrow or Backspace step a word: Option on macOS, Ctrl elsewhere. */
 export const WORD_MODIFIER: 'Alt' | 'Control' = isMacOS ? 'Alt' : 'Control';
 

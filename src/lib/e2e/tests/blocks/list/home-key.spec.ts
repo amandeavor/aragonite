@@ -7,7 +7,7 @@ import {
 	focusOffset,
 	landAt
 } from '../../presentation/helpers';
-import { edgeKey, extendKey } from '../../../platform-keys';
+import { edgeKey, extendKey, isMacOS } from '../../../platform-keys';
 
 // Home in a list item goes to the start of the caret's own line, and only the first line stops
 // after the marker. Requirements: `e2e/requirements/blocks/list/home-key.md`.
@@ -77,8 +77,9 @@ for (const mode of ['source', 'live'] as const) {
 
 			await page.keyboard.press(extendKey('lineStart'));
 			await ep.waitForRenderFlush();
-			expect(await anchorOffset(ep)).toBe(5);
-			expect(await focusOffset(ep)).toBe(SECOND_LINE);
+			// A Mac grows a selection's start to its line's start instead, as any Mac text field does.
+			expect(await anchorOffset(ep)).toBe(isMacOS ? 0 : 5);
+			expect(await focusOffset(ep)).toBe(isMacOS ? 13 : SECOND_LINE);
 		});
 
 		await test.step('Home on the line after a hard break lands at that line, and Backspace keeps the item', async () => {

@@ -1,4 +1,5 @@
 import { test, type Page } from '@playwright/test';
+import { isMacOS } from './platform-keys';
 
 /** Which browser is running, for the harness helpers whose path differs by engine (the clipboard,
  *  the IME driver, dropping the native caret). */
@@ -18,12 +19,20 @@ export function isFirefox(page: Page): boolean {
 
 /** What a gesture needs from the driver or the engine, for specs that must skip where it is missing. */
 export type EngineCapability =
-	'cdp' | 'touch' | 'mediaEmulation' | 'caretScreenshot' | 'contextMenuKey' | 'insertWithoutScroll';
+	| 'cdp'
+	| 'touch'
+	| 'mediaEmulation'
+	| 'caretScreenshot'
+	| 'contextMenuKey'
+	| 'insertWithoutScroll'
+	| 'inertBackspace';
 
 /** Firefox over BiDi has no CDP session, no touch emulation, no `emulateMedia` effect, no
- *  ContextMenu key, never draws its caret into a screenshot, and scrolls to the caret on any insert. */
+ *  ContextMenu key, no caret in a screenshot and scrolls on any insert; macOS WebKit's Backspace navigates. */
 export function engineSupports(page: Page, capability: EngineCapability): boolean {
-	return capability === 'cdp' ? isChromium(page) : !isFirefox(page);
+	if (capability === 'cdp') return isChromium(page);
+	if (capability === 'inertBackspace') return !(isMacOS && isWebKit(page));
+	return !isFirefox(page);
 }
 
 const SKIP_REASONS: Record<EngineCapability, string> = {
@@ -32,7 +41,10 @@ const SKIP_REASONS: Record<EngineCapability, string> = {
 	mediaEmulation: 'Firefox over BiDi applies no emulated media features',
 	caretScreenshot: 'the Firefox caret never reaches a BiDi screenshot',
 	contextMenuKey: 'Firefox over BiDi has no ContextMenu key',
-	insertWithoutScroll: 'Firefox scrolls an off-screen caret into view on every insert, keyed or not'
+	insertWithoutScroll:
+		'Firefox scrolls an off-screen caret into view on every insert, keyed or not',
+	inertBackspace:
+		"Playwright's macOS WebKit goes back in history on a Backspace outside an editable, which Safari no longer does"
 };
 
 /** Skip the running test on an engine that lacks `capability`. */
