@@ -19,6 +19,7 @@ An undo puts the caret back where it was, and if that's off screen the editor sc
 - the same with block 5 only just above the viewport, still mounted: its top lands at the viewport's top edge (within 2px). Miss-analysis: every undo test ran in a document that fit on screen, so none saw that an undo only followed its caret because the focus call scrolled on its own
 - type at the end of a paragraph taller than the viewport, scroll so its top sits 100px into the view, Ctrl+Z: the caret's line is on screen. Miss-analysis: every undo row used a short block, where showing the block shows the caret, so a caret deep in a tall block whose top was already on screen stayed below the edge
 - a gap caret between a table and a fence, a paragraph typed there, the page wheeled away until the table leaves the window, Ctrl+Z: the gap caret is back and on screen. Miss-analysis: a pin; the gap's undo ran beside the caret landing rather than through it, so no scroll rule reached it and nothing checked it came back into view
+  (under Firefox the spec marks this one `fixme` against #749, the focusing click scrolling the page)
 
 ## Cross-block (covered in selection/undo.md)
 

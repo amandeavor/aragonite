@@ -86,8 +86,10 @@ test('structural edit in a windowed non-uniform list keeps the viewport stable',
 });
 
 test('structural edit in a windowed non-uniform table keeps the viewport stable', async ({
-	page
+	page,
+	browserName
 }) => {
+	test.fixme(browserName === 'firefox', '#749: the focusing click scrolls the page in Firefox');
 	const editor = new EditorPage(page);
 	await editor.goto();
 

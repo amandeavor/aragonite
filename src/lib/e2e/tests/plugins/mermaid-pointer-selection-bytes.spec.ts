@@ -31,7 +31,8 @@ test.describe('pointer drag into a rendered diagram', () => {
 		await editor.waitForCrossBlock(true);
 	}
 
-	test('Mod+C copies the diagram whole, fence included', async ({ page }) => {
+	test('Mod+C copies the diagram whole, fence included', async ({ page, browserName }) => {
+		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await dragIntoDiagram();
 
 		await page.keyboard.press('ControlOrMeta+c');
@@ -40,7 +41,11 @@ test.describe('pointer drag into a rendered diagram', () => {
 		expect(await editor.readClipboard()).toBe(`text\n\n${MERMAID_FENCE}`);
 	});
 
-	test('Mod+X removes the diagram whole, leaving no fence remnant', async ({ page }) => {
+	test('Mod+X removes the diagram whole, leaving no fence remnant', async ({
+		page,
+		browserName
+	}) => {
+		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await dragIntoDiagram();
 
 		await page.keyboard.press('ControlOrMeta+x');

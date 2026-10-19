@@ -15,6 +15,7 @@ half runs off the bottom edge.
   scroll position is exactly what it was after the click. Miss-analysis: every source-open test
   sat at the document's end, so nothing pinned that the textarea's focus after the kept position
   moves nothing
+  (under Firefox the spec marks this one `fixme` against #749, the focusing click scrolling the page)
 
 ## Edge cases
 

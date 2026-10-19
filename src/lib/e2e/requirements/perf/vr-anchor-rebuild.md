@@ -10,6 +10,7 @@ measurement, starting over changes nothing and the defect is unreachable.
 
 - List-rebuild height persistence: in a windowed non-uniform list, scrolling so off-window items measure in and then making a structural edit that changes the item count (Enter at an item end → +1 item) does not collapse the content height or teleport the viewport. Asserted on `.editor` `scrollHeight` stability and the top in-view nested host's offset.
 - Table-rebuild height persistence: in a windowed non-uniform table, scrolling so off-window rows measure in and then a structural edit that changes the row count (Ctrl+Enter inserts a row) does not collapse the content height or teleport the viewport. Asserted on `.editor` `scrollHeight` stability and the reference row (above the edit) not teleporting.
+  (under Firefox the spec marks this one `fixme` against #749, the focusing click scrolling the page)
 
 ## Edge cases
 

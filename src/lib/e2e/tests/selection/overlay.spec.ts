@@ -84,8 +84,11 @@ test.describe('selection: overlay: edge cases', () => {
 		await expect(page.locator("[data-block-path='[1,0]'] .selection-overlay")).toHaveCount(0);
 		const painted = (await box.boundingBox())!;
 		const row = (await page.locator("[data-block-path='[1,0]']").boundingBox())!;
-		expect(painted.x).toBeLessThanOrEqual(row.x);
-		expect(painted.x + painted.width).toBeGreaterThanOrEqual(row.x + row.width);
+		// Whole pixels: Firefox reports the two boxes' right edges a float fraction apart.
+		expect(Math.round(painted.x)).toBeLessThanOrEqual(Math.round(row.x));
+		expect(Math.round(painted.x + painted.width)).toBeGreaterThanOrEqual(
+			Math.round(row.x + row.width)
+		);
 	});
 });
 

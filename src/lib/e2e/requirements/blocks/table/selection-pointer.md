@@ -6,6 +6,7 @@
 - Shift+click from cell A to cell B in the same table enters cross-block selection.
 - Drag from a cell out of the table into a paragraph below enters cross-block selection.
 - Drag from a paragraph above into a table cell enters cross-block selection.
+  (the collapse-into-the-deep-cell row after such a drag is `fixme` under Firefox and WebKit against #748, a fast drag that ends on a stale endpoint)
 
 ## Edge cases
 

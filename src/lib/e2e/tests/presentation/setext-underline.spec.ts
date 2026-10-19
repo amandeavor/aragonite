@@ -21,7 +21,14 @@ test.describe('the underline on screen', () => {
 
 // The block is two lines in source mode, and a click at its middle lands on the second one, so
 // what the user types there edits the underline and the heading stops being one.
-test('source mode: a click at the block middle lands on the underline line', async ({ page }) => {
+test('source mode: a click at the block middle lands on the underline line', async ({
+	page,
+	browserName
+}) => {
+	test.skip(
+		browserName === 'firefox',
+		'Firefox puts a click at the exact middle of a two-line block on line one'
+	);
 	const ep = await enterPresentationMode(page, 'source', 'Plan\n---\n');
 	await ep.clickBlock(0);
 	await ep.waitForRenderFlush();
