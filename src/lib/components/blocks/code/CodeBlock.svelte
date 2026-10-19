@@ -654,6 +654,7 @@
 		getCursorOffset,
 		focusAtColumn,
 		insertMarkdown,
+		insertPlainText,
 		runCommand,
 		afterSelectionRemoved
 	} satisfies BlockComponent);
@@ -716,6 +717,10 @@
 
 	export function insertMarkdown(md: string): Promise<boolean> {
 		return clipboard.insertMarkdown(md);
+	}
+
+	export function insertPlainText(text: string): Promise<boolean> {
+		return clipboard.insertPlainText(text);
 	}
 </script>
 

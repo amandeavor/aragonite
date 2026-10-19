@@ -58,7 +58,7 @@ import {
 	type LineEnding
 } from '../../../core/lines';
 import { keepLineEndingPairs, lineEndingPairBeside } from '../../../core/line-ending-pairs';
-import { getContentRange, sameLineSuffix } from '../../../core/inline';
+import { getContentRange, isProseKind, sameLineSuffix } from '../../../core/inline';
 import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
 import type { BlockAutoPairs } from '../text/auto-pair-record';
@@ -75,6 +75,7 @@ import {
 	type InlinePaste,
 	pasteIntoBlock
 } from './surface-clipboard';
+import { shownSelectionText } from './clipboard-step';
 import {
 	rawOfWalkOffset,
 	revealsNoMarkers,
@@ -440,10 +441,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	}
 
 	function getSelectedText(): string {
-		if (!deps.getEl()) return '';
-		const sel = window.getSelection();
-		if (!sel || sel.rangeCount === 0) return '';
-		return sel.toString();
+		return deps.getEl() ? shownSelectionText() : '';
 	}
 
 	function setSelection(start: number, end: number): void {
@@ -740,6 +738,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			caret,
 			events: deps.events,
 			onPasteImage: deps.onPasteImage,
+			endTypingBurst: () => deps.controller.flushDebouncedCheckpoint(),
+			readsMarkdown: () => isProseKind(deps.getNode().kind),
 			...block
 		});
 	}

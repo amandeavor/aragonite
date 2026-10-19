@@ -705,7 +705,7 @@ Collapsed, single-block, and cross-block selections all use that one `selection`
 
 **The aliasing contract is bytes-scoped.** A node a snapshot still shares is read-only _on its serialized bytes_: it may move within the tree, since restructuring rewrites no bytes, but any write to its bytes must copy first. The derived inline cache is exempt by construction, living in an external WeakMap and never on the node. This is invariant G1.9 ([`invariants/runtime.md`](invariants/runtime.md)); in dev an integrity check digests each snapshot on push and re-verifies at every commit and restore, so a violating write is caught at the commit that made it, not at the undo that exposes it.
 
-**Triggers.** An entry is pushed before every structural operation and before every cut or paste (a copy writes nothing, so it pushes nothing). Text input is batched: consecutive keystrokes in one block group into a single entry, broken by pauses, focus changes, or structural ops.
+**Triggers.** An entry is pushed before every structural operation and before every cut or paste (a copy writes nothing, so it pushes nothing). Text input is batched: consecutive keystrokes in one block group into a single entry, broken by pauses, focus changes, structural ops, and any cut or paste.
 
 **Where undo puts the caret.** The snapshot's selection path is read live from the focused leaf, so undo lands the caret on the exact leaf that was being typed in, including deep inside nested containers. The offset on that leaf is the one the caller supplies rather than the live (post-edit) one, so the caret goes back to where the edit began:
 

@@ -62,12 +62,12 @@ const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
 		why: 'the block menu’s "Replace with clipboard" reads through navigator.clipboard and runs the editor’s transforms (`BlockActionContext.transformPaste`) before writing the block’s bytes'
 	},
 	'src/lib/components/menu/clipboard-actions.ts': {
-		handoff: 'pasteTextInto',
-		why: 'the menu paste reads through navigator.clipboard and re-dispatches the text as a paste event on the focused surface, whose handler is the editable-surface route above'
+		handoff: 'paste.markdown(text)',
+		why: 'the menu paste reads through navigator.clipboard and hands the text to the focused block’s `insertMarkdown` or `insertPlainText`, the editable-surface route above'
 	},
 	'src/lib/components/blocks/table/TableCellBlock.svelte': {
-		handoff: 'pasteTextInto',
-		why: 'the cell’s right-click menu paste reads through navigator.clipboard and re-dispatches the text as a paste event on the cell, whose handler is the editable-surface route above'
+		handoff: 'clipboard.insertMarkdown(raw)',
+		why: 'the cell’s right-click menu paste reads through navigator.clipboard and hands the text to the cell’s `insertMarkdown`, the editable-surface route above'
 	},
 	'src/lib/components/paste-image-arm.ts': {
 		handoff: 'handlePaste',
@@ -729,7 +729,7 @@ const OBLIGATIONS: FileRule[] = [
 		misses: [
 			at(
 				'src/lib/components/menu/clipboard-actions.ts',
-				'navigator.clipboard.readText(); pasteTextInto(el, text);'
+				'navigator.clipboard.readText(); await paste.markdown(text);'
 			)
 		]
 	},

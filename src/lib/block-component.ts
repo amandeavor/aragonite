@@ -306,6 +306,12 @@ export interface BlockComponent {
 	 */
 	insertMarkdown?(md: string): boolean | Promise<boolean>;
 	/**
+	 * Paste `text` as plain text at this block's caret: escaped where the block reads Markdown, as
+	 * is where it takes text literally (a code body). The block half of the menu's Paste as plain
+	 * text; resolves as `insertMarkdown` does. Omitted by non-editable blocks.
+	 */
+	insertPlainText?(text: string): boolean | Promise<boolean>;
+	/**
 	 * Type `text` at raw `offset` as a keystroke would: the write a typed character makes, with the
 	 * name a new block kind gets and the line an on-type completer finishes. The editor calls it
 	 * for a character typed over a range, once the range is removed. Resolves once it lands.
@@ -355,6 +361,7 @@ export type ContainerBlockComponent = BlockComponent &
  *  the editable leaf alike: each is an entry point a route reaches only through the instance. */
 export const EDITABLE_SURFACE_MEMBERS = [
 	'insertMarkdown',
+	'insertPlainText',
 	'typeText',
 	'afterSelectionRemoved'
 ] as const satisfies readonly (keyof BlockComponent)[];

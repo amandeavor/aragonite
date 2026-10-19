@@ -45,7 +45,6 @@
 	import { tableAxisCommand } from './cell-table-commands';
 	import { cellPoint } from '../../../selection/primitives';
 	import type { ClipboardAction } from './table-menu-model';
-	import { pasteTextInto } from '../../menu/clipboard-actions';
 	import {
 		installCellDragListener,
 		handleCellShiftClick,
@@ -428,6 +427,7 @@
 			applyMenuClipboard,
 			snapCaretToPoint,
 			insertMarkdown: clipboard.insertMarkdown,
+			insertPlainText: clipboard.insertPlainText,
 			claimRootClipboard: clipboard.claimRootClipboard,
 			typeText: editableSurface.surface.typeText,
 			afterSelectionRemoved: editableSurface.afterSelectionRemoved,
@@ -806,7 +806,7 @@
 	});
 	const { onCopy, onCut, onPaste } = clipboard;
 
-	// ── Right-click menu clipboard (no ClipboardEvent) ──────────────────────
+	// ── Right-click menu clipboard ──────────────────────────────────────────
 
 	function getSelectionOffsets(): { start: number; end: number } | null {
 		const range = cursor.getRawSelection();
@@ -838,8 +838,8 @@
 			if (!el || !raw) return;
 			// A live range stays as it is; otherwise the paste replaces what the menu was opened on.
 			if (!selection.isCrossBlock) setSelection(sel.start, sel.end);
-			// As a paste event, so it takes the route Ctrl+V does.
-			pasteTextInto(el, raw);
+			// The same paste step Ctrl+V runs.
+			await clipboard.insertMarkdown(raw);
 			return;
 		}
 		if (!hasRect) setSelection(sel.start, sel.end);

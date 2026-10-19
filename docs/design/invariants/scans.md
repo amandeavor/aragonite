@@ -183,6 +183,7 @@ unguarded.
 | G4.218 | A catalog entry holds at most six lines                                                      | L       |
 | G4.219 | No popover closes on focus leaving; every focus-loss listener serves a listed need           | L       |
 | G4.220 | A clipboard read or write outside a clipboard event goes through `system-clipboard.ts`       | L       |
+| G4.221 | No constructed `ClipboardEvent`; a selection's shown text is read in one place               | L       |
 
 ### The entries
 
@@ -862,8 +863,8 @@ paths. A bracket read gets past it.
 `ClipboardArm`, where that selection lives (shared parts in `clipboard-step.ts`). `runClipboardCut`
 runs the arm's own copy before anything waits, then its removal, so a cut can't write other bytes
 than a copy; there's no cut payload type, and an `async` copy doesn't type-check.
-`lint/call-site-rules.test.ts` fails a `.setData(` outside those copies, `writeShownSelection` (the
-browser's own string: reading mode, an unclaimed copy, code blocks) and the menu's paste event.
+`lint/call-site-rules.test.ts` fails a `.setData(` outside those copies and `writeShownSelection`
+(the browser's own string: reading mode, an unclaimed copy, code blocks).
 
 **G4.116 · The pending break hears a key first.** Shift+Enter at the end of a text block opens a
 line and writes nothing; Backspace and ArrowLeft take it back (`pending-break-keys.ts`). The shared
@@ -1243,3 +1244,9 @@ moves its close onto `track`. `lint/focus-loss-listeners.test.ts`.
 unhandled rejection. A read waits for a closing menu to leave the page (Safari draws its Paste
 prompt over it), and a whole block copies through `copyBlockToClipboard`, so every route writes the
 same text. `lint/system-clipboard-calls.test.ts`.
+
+**G4.221 · Clipboard text the engines agree on.** A paste with no paste event of its own (the
+menus' Paste rows) hands its text to the focused block's `insertMarkdown` or `insertPlainText`,
+since Firefox empties `clipboardData` on a `new ClipboardEvent(...)`. The selection's shown text is read only through
+`shownSelectionText` (`clipboard-step.ts`), which reads LF where Firefox on Windows writes CRLF,
+and nothing for an empty block's placeholder `<br>` selected alone. `lint/file-rules.test.ts`.

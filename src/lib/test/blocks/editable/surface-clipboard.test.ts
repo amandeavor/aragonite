@@ -13,7 +13,8 @@ import type { PastedImage, PasteImageHook } from '../../../host-hooks';
 const mountedEl = document.createElement('div');
 
 describe('step order', () => {
-	// The order of steps `createClipboardHandlers` runs: reading check, each arm, a cut's payload before the hide, paste's `preventDefault` before any await.
+	// The order of steps `createClipboardHandlers` runs: reading check, each arm, a cut's payload
+	// before the hide, paste's `preventDefault` before any await, a text write as its own undo entry.
 
 	interface Recorder {
 		log: string[];
@@ -81,6 +82,8 @@ describe('step order', () => {
 			},
 			events: { on: () => () => {}, emit: () => {} },
 			onPasteImage: () => undefined,
+			endTypingBurst: () => void log.push('end-burst'),
+			readsMarkdown: () => true,
 			rangeArm: arm(log, 'range'),
 			pasteTail: (text) => void log.push(`pasteTail:${text}`),
 			...over
@@ -136,10 +139,18 @@ describe('step order', () => {
 				})
 			).onCut(rec.e);
 			// What a scripted cut can read: everything the dispatch ran before its first await.
-			expect(log).toEqual(['forget', 'record', 'range.copy', 'fold']);
+			expect(log).toEqual(['forget', 'record', 'end-burst', 'range.copy', 'fold']);
 			expect(rec.written()).toBe('range');
 			await cut;
-			expect(log).toEqual(['forget', 'record', 'range.copy', 'fold', 'range.remove:range']);
+			expect(log).toEqual([
+				'forget',
+				'record',
+				'end-burst',
+				'range.copy',
+				'fold',
+				'range.remove:range',
+				'end-burst'
+			]);
 			expect(rec.prevented).toBe(true);
 		});
 
@@ -167,14 +178,21 @@ describe('step order', () => {
 			await createClipboardHandlers(deps(log, { selectionArms: [arm(log, 'widget')] })).onCut(
 				rec.e
 			);
-			expect(log).toEqual(['forget', 'record', 'widget.copy', 'widget.remove:widget']);
+			expect(log).toEqual([
+				'forget',
+				'record',
+				'end-burst',
+				'widget.copy',
+				'widget.remove:widget',
+				'end-burst'
+			]);
 		});
 
 		it('a cut no arm takes writes nothing and removes nothing', async () => {
 			const log: string[] = [];
 			const rec = recorder();
 			await createClipboardHandlers(deps(log, { rangeArm: arm(log, 'range', false) })).onCut(rec.e);
-			expect(log).toEqual(['forget', 'record', 'range.copy']);
+			expect(log).toEqual(['forget', 'record', 'end-burst', 'range.copy', 'end-burst']);
 			expect(rec.written()).toBeNull();
 			expect(rec.prevented).toBe(true);
 		});
@@ -204,7 +222,15 @@ describe('step order', () => {
 					}
 				})
 			).onPaste(rec.e);
-			expect(log).toEqual(['record', 'fold', 'crossblock-paste', 'forget', 'pasteTail:HELLO']);
+			expect(log).toEqual([
+				'record',
+				'fold',
+				'crossblock-paste',
+				'forget',
+				'end-burst',
+				'pasteTail:HELLO',
+				'end-burst'
+			]);
 		});
 
 		it('reading mode prevents and stays inert: no cross-block, no tail', async () => {
@@ -225,7 +251,14 @@ describe('step order', () => {
 			const log: string[] = [];
 			const rec = recorder('one\r\n\r\ntwo\r\n');
 			await createClipboardHandlers(deps(log)).onPaste(rec.e);
-			expect(log).toEqual(['record', 'crossblock-paste', 'forget', 'pasteTail:one\n\ntwo\n']);
+			expect(log).toEqual([
+				'record',
+				'crossblock-paste',
+				'forget',
+				'end-burst',
+				'pasteTail:one\n\ntwo\n',
+				'end-burst'
+			]);
 		});
 
 		it('an empty clipboard normalizes to nothing and never reaches the tail', async () => {
@@ -254,7 +287,15 @@ describe('step order', () => {
 				})
 			);
 			expect(await handlers.insertMarkdown('HELLO')).toBe(true);
-			expect(log).toEqual(['record', 'fold', 'crossblock-paste', 'forget', 'pasteTail:HELLO']);
+			expect(log).toEqual([
+				'record',
+				'fold',
+				'crossblock-paste',
+				'forget',
+				'end-burst',
+				'pasteTail:HELLO',
+				'end-burst'
+			]);
 		});
 
 		it('hands the cross-block dispatch the payload, so a range is replaced rather than re-read', async () => {
@@ -296,7 +337,55 @@ describe('step order', () => {
 			const log: string[] = [];
 			const handlers = createClipboardHandlers(deps(log));
 			expect(await handlers.insertMarkdown('a\r\nb')).toBe(true);
-			expect(log).toEqual(['record', 'crossblock-paste', 'forget', 'pasteTail:a\nb']);
+			expect(log).toEqual([
+				'record',
+				'crossblock-paste',
+				'forget',
+				'end-burst',
+				'pasteTail:a\nb',
+				'end-burst'
+			]);
+		});
+	});
+
+	// Miss-analysis: the menu escaped plain text before it knew the target, and no row pasted it into a block that takes text literally.
+	describe('plain text escapes where it lands as Markdown', () => {
+		/** What each branch was handed for `*a*`: the grid hook, the cross-block range, the tail. */
+		async function landed(over: Partial<ClipboardSurfaceDeps>, crossBlock = false) {
+			const log: string[] = [];
+			const seen: Record<string, string | undefined> = {};
+			const handlers = createClipboardHandlers(
+				deps(log, {
+					pastePreHook: (text) => ((seen.preHook = text), false),
+					crossBlock: {
+						handlePaste: async (_e: ClipboardEvent | null, replacement?: string) => {
+							seen.crossBlock = replacement;
+							return crossBlock;
+						}
+					} as never,
+					pasteTail: (text) => void (seen.tail = text),
+					...over
+				})
+			);
+			return { handlers, seen };
+		}
+
+		it('a block that reads Markdown gets the text escaped on every branch', async () => {
+			const { handlers, seen } = await landed({ readsMarkdown: () => true });
+			expect(await handlers.insertPlainText('*a*')).toBe(true);
+			expect(seen).toEqual({ preHook: '\\*a\\*', crossBlock: '\\*a\\*', tail: '\\*a\\*' });
+		});
+
+		it('a block that takes text literally gets it as is, a range across blocks still escaped', async () => {
+			const { handlers, seen } = await landed({ readsMarkdown: () => false });
+			expect(await handlers.insertPlainText('*a*')).toBe(true);
+			expect(seen).toEqual({ preHook: '*a*', crossBlock: '\\*a\\*', tail: '*a*' });
+		});
+
+		it('insertMarkdown escapes nothing, whatever the block reads', async () => {
+			const { handlers, seen } = await landed({ readsMarkdown: () => true });
+			expect(await handlers.insertMarkdown('*a*')).toBe(true);
+			expect(seen).toEqual({ preHook: '*a*', crossBlock: '*a*', tail: '*a*' });
 		});
 	});
 });
@@ -376,6 +465,8 @@ describe('image paste', () => {
 				emit: (name: string, payload: unknown) => void (name === 'error' && errors.push(payload))
 			} as never,
 			onPasteImage: () => onPasteImage,
+			endTypingBurst: () => {},
+			readsMarkdown: () => true,
 			rangeArm: { copy: () => null, remove: () => {} },
 			pasteTail: (text, target) => {
 				inserted.push(text);

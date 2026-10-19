@@ -34,3 +34,6 @@ since Playwright's WebKit selects nothing on a right-click.
   under a right-click.
 - The Paste prompt drew over the menu because each pick closed its menu by a state write and read
   the clipboard before the page updated; no row looked at the page when the read began.
+- In Firefox the prose Paste, Paste as plain text and cell Paste pasted nothing (#746): each
+  handed its text over as a constructed paste event, whose `clipboardData` Firefox empties. The
+  suite ran on Chromium alone, which keeps it.

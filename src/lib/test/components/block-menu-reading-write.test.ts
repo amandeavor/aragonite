@@ -47,6 +47,7 @@ async function removeFenceAfterSwitchToReading() {
 		placeCaretAtPoint: () => true,
 		rangeAtContextPress: () => false,
 		insertMarkdown: async () => true,
+		aimInsertAtFocus: () => null,
 		insertCatalogue: () => [],
 		activation: everyInstalledPlugin,
 		reading: fixtureReading(),

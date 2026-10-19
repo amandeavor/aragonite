@@ -13,6 +13,7 @@ import type { CaretMemory } from '../../../caret/caret-memory';
 import type { HeldInsertion } from '../../../caret/next-insertion';
 import type { RawRange } from '../../../caret/widget-offset';
 import { normalizeLineEndings } from '../../../core/lines';
+import { escapeMarkdownLiteral } from '../../../tree-operations/paste/markdown-literal';
 import type { SelectionState } from '../../../selection/selection-state.svelte';
 import type { CrossBlockHandlers } from '../../../selection/cross-block/dispatch';
 import { crossBlockClipboardArm } from '../../../selection/cross-block/clipboard';
@@ -74,6 +75,11 @@ export interface SurfaceClipboardContext {
 	events: EditorEvents;
 	/** Host image-import hook from the policies context, read at each paste. */
 	onPasteImage: () => PasteImageHook | undefined;
+	/** Ends the run of typing that shares one undo entry, so the next write opens its own. */
+	endTypingBurst: () => void;
+	/** Whether the block's own text reads Markdown; false where a paste lands byte for byte (a
+	 *  code body), which plain text then needs no escape for. */
+	readsMarkdown: () => boolean;
 }
 
 /** The block's half: the selections it owns and how a paste lands in its own text. */
@@ -134,6 +140,8 @@ export interface ClipboardHandlers {
 	/** Insert `md` as pasting it here would, for `EditorInstance.insertMarkdown`. Resolves once
 	 *  the paste lands; false in reading mode or for an empty payload. */
 	insertMarkdown(md: string): Promise<boolean>;
+	/** `insertMarkdown` for plain text: escaped wherever the paste lands as Markdown. */
+	insertPlainText(text: string): Promise<boolean>;
 }
 
 export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHandlers {
@@ -166,7 +174,7 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 		}
 		deps.caretMemory.forget();
 		deps.caret.recordPreEditOffset();
-		return runClipboardCut(e, arms, deps.foldReveal);
+		return ownUndoEntry(deps, () => runClipboardCut(e, arms, deps.foldReveal));
 	}
 
 	/** Undo's caret, the target and what the next insertion spends, all read before the first
@@ -179,15 +187,14 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 	async function onPaste(e: ClipboardEvent): Promise<void> {
 		e.preventDefault();
 		if (deps.isReadOnly()) return;
+		// Read `clipboardData` before the first await, while the event still holds it.
+		const images = imageArm.filesOf(e.clipboardData);
+		if (images.length === 0) {
+			await pasteText(normalizeLineEndings(e.clipboardData?.getData('text/plain') ?? ''), false);
+			return;
+		}
 		const target = readPasteTarget();
 		try {
-			// Read `clipboardData` before the first await, while the event still holds it.
-			const images = imageArm.filesOf(e.clipboardData);
-			if (images.length === 0) {
-				const text = normalizeLineEndings(e.clipboardData?.getData('text/plain') ?? '');
-				await insertPastedText(text, e, target);
-				return;
-			}
 			await deps.foldReveal?.()?.settled;
 			deps.caretMemory.forget();
 			await pasteImages(deps, imageArm, e, images, target);
@@ -196,36 +203,54 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 		}
 	}
 
-	/** Everything a plain-text paste does, shared by the gesture and the API call; `e` is null
-	 *  when there is no gesture to consume. */
-	async function insertPastedText(
-		text: string,
-		e: ClipboardEvent | null,
-		target: PasteTarget
-	): Promise<void> {
-		await deps.foldReveal?.()?.settled;
-		if (text && deps.pastePreHook && (await deps.pastePreHook(text))) return;
-		if (await deps.crossBlock.handlePaste(e, text)) return;
-		deps.caretMemory.forget();
-		// A paste that outlived its block (an unmount mid-insert) has nothing left to land in.
-		if (!text || !deps.caret.getEl()) return;
-		await deps.pasteTail(text, target);
-	}
-
-	async function insertMarkdown(md: string): Promise<boolean> {
-		if (deps.isReadOnly()) return false;
-		const text = normalizeLineEndings(md);
-		if (!text) return false;
+	/** The paste every text payload takes, whatever brought it; `text` is already LF. `plain` text
+	 *  is escaped where it lands as Markdown: across blocks, or in a block that reads Markdown. */
+	async function pasteText(text: string, plain: boolean): Promise<void> {
+		const asMarkdown = plain ? escapeMarkdownLiteral(text) : text;
+		const asOwnText = plain && deps.readsMarkdown() ? asMarkdown : text;
 		const target = readPasteTarget();
 		try {
-			await insertPastedText(text, null, target);
+			await deps.foldReveal?.()?.settled;
+			if (text && deps.pastePreHook && (await deps.pastePreHook(asOwnText))) return;
+			if (await deps.crossBlock.handlePaste(null, asMarkdown)) return;
+			deps.caretMemory.forget();
+			// A paste that outlived its block (an unmount mid-insert) has nothing left to land in.
+			if (!text || !deps.caret.getEl()) return;
+			await ownUndoEntry(deps, () => deps.pasteTail(asOwnText, target));
 		} finally {
 			target.held.finish(true);
 		}
+	}
+
+	async function insert(md: string, plain: boolean): Promise<boolean> {
+		if (deps.isReadOnly()) return false;
+		const text = normalizeLineEndings(md);
+		if (!text) return false;
+		await pasteText(text, plain);
 		return true;
 	}
 
-	return { onCopy, onCut, onPaste, insertMarkdown };
+	return {
+		onCopy,
+		onCut,
+		onPaste,
+		insertMarkdown: (md) => insert(md, false),
+		insertPlainText: (text) => insert(text, true)
+	};
+}
+
+/** A cut or a paste into the block's text is its own undo entry, apart from the typing on either
+ *  side; one into a range or a grid commits apart already. */
+async function ownUndoEntry(
+	deps: Pick<SurfaceClipboardContext, 'endTypingBurst'>,
+	edit: () => void | Promise<void>
+): Promise<void> {
+	deps.endTypingBurst();
+	try {
+		await edit();
+	} finally {
+		deps.endTypingBurst();
+	}
 }
 
 // ── Pasting an image ────────────────────────────────────────────────────────
@@ -253,5 +278,5 @@ async function pasteImages(
 	// Move the caret only if it drifted: placing one collapses the DOM range the block reads its
 	// replaced span from, and this paste would stop replacing the selection.
 	if (deps.caret.getCursorOffset() !== anchor) deps.caret.focus(anchor);
-	await deps.pasteTail(text, target);
+	await ownUndoEntry(deps, () => deps.pasteTail(text, target));
 }

@@ -777,6 +777,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			return box ? [box.getBoundingClientRect()] : [];
 		},
 		insertMarkdown: clipboard.insertMarkdown,
+		insertPlainText: clipboard.insertPlainText,
 		typeText: surface.typeText,
 		afterSourceCommit,
 		afterSelectionRemoved: editableSurface.afterSelectionRemoved,

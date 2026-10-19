@@ -387,6 +387,20 @@ const ONE_VIEW_WRAPPER: FileRule = {
 	]
 };
 
+// ── G4.221 the selection's shown text ────────────────────────────────────────
+
+const SELECTION_STRING_RE = /(?:\bgetSelection\(\)|\bsel(?:ection)?)\s*[!?]?\.toString\s*\(/;
+const SELECTION_BINDING_RE = /\b(?:const|let|var)\s+(\w+)\s*=\s*(?:\w+\.)?getSelection\(\)/g;
+
+/** A selection's string read inline, through a `sel`-style name, or through any name bound to a
+ *  `getSelection()` result in the same file. */
+function readsSelectionString(file: SourceFile): boolean {
+	if (SELECTION_STRING_RE.test(file.code)) return true;
+	return [...file.code.matchAll(SELECTION_BINDING_RE)].some(([, name]) =>
+		new RegExp(String.raw`\b${name}\s*[!?]?\.toString\s*\(`).test(file.code)
+	);
+}
+
 // ── The rules ────────────────────────────────────────────────────────────────
 
 /** A file the G4.80 population holds, for its probes. */
@@ -519,6 +533,42 @@ const RULES: FileRule[] = [
 			'const box = probeRange?.getBoundingClientRect();'
 		],
 		misses: ['const box = el.getBoundingClientRect();', 'const rects = block.getClientRects();']
+	},
+	{
+		id: 'G4.221 a paste with no paste event calls the paste step, never a constructed event',
+		matches: /\bnew\s+(?:\w+\.)?ClipboardEvent\s*\(/,
+		allowed: {},
+		reason:
+			'Firefox empties `clipboardData` on a constructed `ClipboardEvent`, so a paste dispatched as one pastes nothing: hand the text to the focused block’s `insertMarkdown`',
+		hits: [
+			"el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data }));",
+			"const e = new ClipboardEvent ('copy');",
+			"target.dispatchEvent(new window.ClipboardEvent('paste'));"
+		],
+		misses: ['function onPaste(e: ClipboardEvent): void {}', 'const e = event as ClipboardEvent;']
+	},
+	{
+		id: 'G4.221 the shown text of a selection is read in one place',
+		matches: readsSelectionString,
+		allowed: {
+			[SOURCE.clipboardStep]:
+				'`shownSelectionText`: LF line breaks, and nothing for an empty block’s placeholder `<br>`'
+		},
+		reaches: [SOURCE.clipboardStep],
+		reason:
+			'Firefox on Windows writes a selection’s line breaks as CRLF and an empty block’s placeholder `<br>` as one, so the text read straight off the selection differs by engine: call `shownSelectionText`',
+		hits: [
+			"const text = window.getSelection()?.toString() ?? '';",
+			'return sel.toString();',
+			'document.getSelection()!.toString()',
+			'selection?.toString()',
+			"const live = window.getSelection();\nreturn live?.toString() ?? '';"
+		],
+		misses: [
+			'const n = range.toString().length;',
+			'const s = (5).toString();',
+			'const live = window.getSelection();\nconst n = live?.rangeCount ?? id.toString();'
+		]
 	},
 	{
 		id: 'every dev-only check reads the build flag through env.ts',

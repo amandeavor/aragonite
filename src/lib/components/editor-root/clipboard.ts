@@ -1,11 +1,11 @@
 /**
- * Editor-root clipboard routing: copy, cut and paste for an event that reached no block. A
- * selection whose block holds no text position leaves the native selection empty, so Chromium
- * dispatches at `document.body`, where no per-block listener sees it. The reading-mode checks
- * live in the handlers each route calls into, not here.
+ * Editor-root clipboard routing: copy, cut and paste for a range across blocks or a selected widget
+ * that no block handled. Where the selection's end holds no text position, Chromium dispatches at
+ * `document.body` and Firefox at whatever block element holds it. The reading-mode checks live in
+ * the handlers each route calls into, not here.
  */
 
-import { claimsBodyChord } from '../../active-editor';
+import { claimsBodyChord, isTextEntrySurface } from '../../active-editor';
 import type { BlockComponent } from '../../block-component';
 import type { DocumentGetter } from '../../editor-keys';
 import type { PasteImageHook } from '../../host-hooks';
@@ -25,6 +25,8 @@ export interface EditorRootClipboardDeps {
 	events: EditorEvents;
 	/** The mounted block at `path`, which takes a selected widget's clipboard events. */
 	getBlockComponent(path: number[]): BlockComponent | null;
+	/** Whether `node` is in the host's header, whose fields keep their own clipboard. */
+	isHostChrome(node: Node | null): boolean;
 }
 
 export interface EditorRootClipboard {
@@ -51,18 +53,20 @@ export function createEditorRootClipboard(deps: EditorRootClipboardDeps): Editor
 		crossBlock: deps.crossBlock
 	});
 
-	/** On this root, or on the body with this instance holding the chord; the search input and a
-	 *  header field sit inside the root and keep their own clipboard. */
-	function landedNowhere(root: HTMLElement, target: EventTarget | null): boolean {
-		if (target === root) return true;
-		return (target === null || target === root.ownerDocument.body) && claimsBodyChord(root);
+	/** Inside this root, or on the body with this instance holding the chord; a text field (the
+	 *  search input, a plugin's own editable) and the host's header keep their own clipboard. */
+	function aimedAtRoot(root: HTMLElement, target: EventTarget | null): boolean {
+		if (target === null || target === root.ownerDocument.body) return claimsBodyChord(root);
+		if (!(target instanceof Node) || !root.contains(target)) return false;
+		if (target instanceof Element && isTextEntrySurface(target)) return false;
+		return !deps.isHostChrome(target);
 	}
 
 	/** A block marks an event it handled with `defaultPrevented`. The selection state holds a
 	 *  widget or a range, never both, so their order does not matter. */
 	function targetOf(event: ClipboardEvent, root: HTMLElement): RootClipboardTarget | null {
 		if (event.defaultPrevented) return null;
-		if (!landedNowhere(root, event.target)) return null;
+		if (!aimedAtRoot(root, event.target)) return null;
 		const widget = deps.selection.widget;
 		const block = widget && deps.getBlockComponent(widget.paragraphPath);
 		if (block) return { arm: 'widget', block };

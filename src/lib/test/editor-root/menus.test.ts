@@ -52,6 +52,11 @@ function harness(
 	};
 	const placeCaretAtPoint = vi.fn(() => true);
 	const insertMarkdown = vi.fn(async () => true);
+	const aimedInserts: string[] = [];
+	const aimInsertAtFocus = vi.fn(() => ({
+		markdown: async (md: string) => (aimedInserts.push(md), true),
+		plainText: async (text: string) => (aimedInserts.push(`plain:${text}`), true)
+	}));
 	const order: string[] = [];
 	placeCaretAtPoint.mockImplementation(() => (order.push('place'), true));
 	const editLinkAtCaret = vi.fn();
@@ -68,6 +73,7 @@ function harness(
 		placeCaretAtPoint,
 		rangeAtContextPress: () => opts.rangeAtPress ?? !(window.getSelection()?.isCollapsed ?? true),
 		insertMarkdown,
+		aimInsertAtFocus,
 		insertCatalogue: () => insertCatalogue(everyInstalledPlugin),
 		activation: everyInstalledPlugin,
 		reading: fixtureReading(),
@@ -100,6 +106,8 @@ function harness(
 		blockEdit,
 		placeCaretAtPoint,
 		insertMarkdown,
+		aimInsertAtFocus,
+		aimedInserts,
 		rightClick,
 		ids,
 		order,
@@ -145,6 +153,21 @@ describe('editor-root menus: the right-click', () => {
 		// A flyout pick inserts below the block the press placed the caret in.
 		h.menu()!.pick('bullet');
 		expect(h.insertMarkdown).toHaveBeenCalledWith('- ', { placement: 'below' });
+	});
+
+	it('Paste aims at the focused block as it is picked, then inserts the clipboard text there', async () => {
+		Object.defineProperty(navigator, 'clipboard', {
+			value: { readText: async () => 'pasted' },
+			configurable: true
+		});
+		const h = harness();
+		h.rightClick(h.prose.firstElementChild!);
+		h.menu()!.pick('clip.paste');
+		// Aimed before the clipboard read awaits, so a focus move during it cannot redirect the text.
+		expect(h.aimInsertAtFocus).toHaveBeenCalledOnce();
+		expect(h.aimedInserts).toEqual([]);
+		await vi.waitFor(() => expect(h.aimedInserts).toEqual(['pasted']));
+		expect(h.insertMarkdown).not.toHaveBeenCalled();
 	});
 
 	it('over a link, prose leads with Edit link, asked after the caret lands, and runs it', () => {
