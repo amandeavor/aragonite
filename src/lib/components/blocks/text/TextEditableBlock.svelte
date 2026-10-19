@@ -375,7 +375,8 @@
 		},
 		getEl: () => el ?? null,
 		isCrossBlock: () => selection.isCrossBlock,
-		textMoves
+		textMoves,
+		caretWriter
 	});
 
 	// Every caret-edge key goes through this one dispatch (G4.12); entering a widget stays in

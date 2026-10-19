@@ -256,7 +256,9 @@ function paintedOver(painted: Box[], words: Box): Box[] {
 	return painted.filter((rect) => {
 		const w = Math.min(rect.right, words.right) - Math.max(rect.left, words.left);
 		const h = Math.min(rect.bottom, bottom) - Math.max(rect.top, top);
-		return w > 0.5 && h > 0.5;
+		// WebKit's box for a run starts up to a pixel before the caret x at its first letter
+		// (measured 1.0), and the paint ends at that caret.
+		return w > 1.5 && h > 0.5;
 	});
 }
 

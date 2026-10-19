@@ -68,6 +68,10 @@ function blockBoxes(page: Page): Promise<BlockBox[]> {
 const containerWidth = (page: Page) =>
 	page.locator('.editor').evaluate((el) => el.parentElement!.getBoundingClientRect().width);
 
+/** The editor's own height, which decides whether a classic scrollbar takes width from its blocks. */
+const editorHeight = (page: Page) =>
+	page.locator('.editor').evaluate((el) => el.getBoundingClientRect().height);
+
 async function loadOnNoReset(page: Page, md: string, query = ''): Promise<void> {
 	await gotoReady(page, query ? `/test/no-reset?${query}` : '/test/no-reset');
 	await new EditorPage(page).loadContent(md);
@@ -113,11 +117,13 @@ test.describe('an editor on a page with no CSS reset', () => {
 		await withReset.goto();
 		await withReset.loadContent(SEED);
 		const width = Math.round(await containerWidth(page));
+		const height = Math.round(await editorHeight(page));
 		const expected = await blockBoxes(page);
 
-		await loadOnNoReset(page, SEED, `width=${width}`);
+		await loadOnNoReset(page, SEED, `width=${width}&height=${height}`);
 		// A harness that drifted reads here, before any block is blamed for it.
 		expect(await containerWidth(page)).toBe(width);
+		expect(Math.round(await editorHeight(page))).toBe(height);
 		const actual = await blockBoxes(page);
 
 		expect(actual.map((box) => box.path)).toEqual(expected.map((box) => box.path));

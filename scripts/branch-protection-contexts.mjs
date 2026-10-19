@@ -15,7 +15,9 @@ export const CI_CONTEXTS = [
 	'perf',
 	'consumer-smoke',
 	'adapter-smoke',
-	'emoji-table'
+	'emoji-table',
+	...shards('e2e-webkit', 6),
+	...shards('e2e-firefox', 12)
 ];
 
 /** Checks reported from outside ci.yml that `main` requires, by the workflow that reports them. */
@@ -26,8 +28,4 @@ export const EXTERNAL_CONTEXTS = {};
  * with no fix, skip or fixme. Each one moves to a required list once its engine runs clean, and a
  * release refuses to publish while this list holds anything (`check-release-gates.mjs`).
  */
-export const PENDING_GATE_CONTEXTS = [
-	...shards('e2e-webkit', 6),
-	...shards('e2e-firefox', 12),
-	...shards('e2e-webkit-macos', 5)
-];
+export const PENDING_GATE_CONTEXTS = [...shards('e2e-webkit-macos', 5)];

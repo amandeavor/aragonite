@@ -94,11 +94,9 @@ jobs:
         run: npx playwright test --shard=${{ matrix.shard }}
 
   # The same correctness suite in WebKit and Firefox (docs/contributing/testing.md § Browser
-  # engines). A red shows red; until an engine runs clean its checks sit in PENDING_GATE_CONTEXTS
-  # (scripts/branch-protection-contexts.mjs), so they don't block a merge yet.
+  # engines). Their checks are required, so a docs-only change skips the steps, not the job.
   e2e-webkit:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     env:
       ENGINE: webkit
@@ -107,12 +105,15 @@ jobs:
       matrix:
         shard: ['1/6', '2/6', '3/6', '4/6', '5/6', '6/6']
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/e2e-setup
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: ./.github/actions/e2e-setup
         with:
           engine: webkit
-      - run: npx playwright test --shard=${{ matrix.shard }}
-      - if: always()
+      - if: needs.changes.outputs.code == 'true'
+        run: npx playwright test --shard=${{ matrix.shard }}
+      - if: always() && needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-webkit-${{ strategy.job-index }}
@@ -120,7 +121,6 @@ jobs:
 
   e2e-firefox:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     env:
       ENGINE: firefox
@@ -143,14 +143,17 @@ jobs:
             '12/12'
           ]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/e2e-setup
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: ./.github/actions/e2e-setup
         with:
           engine: firefox
       # Firefox spends most of a test waiting on the browser rather than the CPU, so the runner's
       # four cores carry four workers where the other engines keep Playwright's default two.
-      - run: npx playwright test --shard=${{ matrix.shard }} --workers=4
-      - if: always()
+      - if: needs.changes.outputs.code == 'true'
+        run: npx playwright test --shard=${{ matrix.shard }} --workers=4
+      - if: always() && needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-firefox-${{ strategy.job-index }}

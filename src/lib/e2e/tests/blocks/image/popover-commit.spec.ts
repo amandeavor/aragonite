@@ -219,6 +219,44 @@ test.describe('image popover commit', () => {
 		expect(await undoDepth(page)).toBe(undoLengthBefore);
 	});
 
+	// Each way a crop ends, by key or by press. WebKit leaves a pressed button's focus on the
+	// toolbar; no typing backs the editor's undo with the browser's own.
+	const LOADED = 'text\n\n![cat|200x200](/test-fixtures/sample.png)\n';
+	for (const [finish, writes] of [
+		['the crop applied by Enter', true],
+		['the crop applied by its tick', true],
+		['the crop cancelled by Escape', false],
+		['the crop cancelled by its cross', false]
+	] as const) {
+		test(`after ${finish}, Mod+Z undoes the last edit`, async ({ page }) => {
+			await editor.loadContent(LOADED);
+			await waitForAllImagesLoaded(page);
+			const widget = page.locator('[data-image-widget]').first();
+			const toolbar = page.locator('.md-image-properties');
+			const button = (name: string) => toolbar.getByRole('button', { name, exact: true });
+			const crop = page.locator('.md-image-crop-surface');
+			await widget.click();
+			if (!writes) {
+				// A crop first, so the undo has an entry the finish itself doesn't write.
+				await button('Crop image').click();
+				await page.keyboard.press('Enter');
+				await editor.bridge.waitForSourceMatches(/@50,50\]/);
+				await widget.click();
+			}
+			await button('Crop image').click();
+			await expect(crop).toBeVisible();
+			if (finish.endsWith('Enter')) await page.keyboard.press('Enter');
+			if (finish.endsWith('tick')) await button('Apply crop').click();
+			if (finish.endsWith('Escape')) await page.keyboard.press('Escape');
+			if (finish.endsWith('cross')) await button('Cancel crop').click();
+			await expect(crop).toHaveCount(0);
+			if (writes) await editor.bridge.waitForSourceMatches(/@50,50\]/);
+			else await editor.waitForNoSourceMutation();
+			await editor.undo();
+			await editor.bridge.waitForSourceEquals(LOADED);
+		});
+	}
+
 	// A host shortcut switches the mode with no press, so nothing clicks away from the field first.
 	for (const [from, to] of [
 		['source', 'live'],

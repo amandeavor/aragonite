@@ -23,3 +23,6 @@ The grey box's own padding, inside the text element, is `selection/padding-row-p
   padding, and Chromium on Mac and Linux answers a point above the first line (or below the
   last) with that line's start (or end). The suite only ever ran on Windows before Linux CI,
   so no run saw the other answer.
+- Linux WebKit answers a point in the last line's leading, below its letters but inside its line,
+  with the line's end, so pulling the click one pixel inside the padding was not enough. WebKit
+  never ran on Linux before the CI engine matrix.

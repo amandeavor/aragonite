@@ -30,6 +30,7 @@ body child really does unmount. These checks read behavior: the tree read by pat
 - Backspace below a collapsed details: the merge across the boundary stops at the summary row, the source stays byte-identical, nothing enters the hidden body, the block below stays visible, and the caret lands at the end of the summary, so typing appends after the summary text
 - Backspace below an open details merges normally: the block below joins the last body child at the join point, since the collapsed-container check never fires on an open container
 - cross-block copy ending mid-summary: drag-selecting from the prose above into the middle of the summary and copying builds the closing bytes the selection is missing, so pasting below yields a second `details` carrying the shortened summary and the current open flag
+  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
 - typing the terminator into a body child: typing `</details>` in a body paragraph commits as `&lt;/details>`, so the container survives, the block stays a paragraph, the line still reads `</details>` on screen, and the caret stays in that block
 
 ## User interactions

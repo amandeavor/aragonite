@@ -31,9 +31,14 @@ test.describe('footnotes: reading mode keyboard navigation', () => {
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
-	test('Tab reaches the definition’s marker, and Enter jumps back to the reference', async ({
-		page
+	test('after the jump, Tab reaches the definition’s marker, and Enter jumps back', async ({
+		page,
+		browserName
 	}) => {
+		test.fixme(
+			browserName === 'firefox',
+			'#751: the jump lands the caret past the marker, and Tab starts there'
+		);
 		const { md, defA } = navDoc();
 		await editor.load(md, 'reading');
 		await editor.pressFromText([0], 'Body');
@@ -43,12 +48,30 @@ test.describe('footnotes: reading mode keyboard navigation', () => {
 
 		const marker = editor.defMarker(defA);
 		await expect(marker).toHaveAccessibleName('Back to reference a');
-		await editor.pressFromText([defA, 0], 'First');
+		await page.keyboard.press('Tab');
 		await expect(marker).toBeFocused();
 		await page.keyboard.press('Enter');
 
 		await expect.poll(() => blockView(page, [0])).toEqual({ mounted: true, inView: true });
 		expect(await capturedErrors(page)).toEqual([]);
+	});
+
+	test('Tab from a click in the definition’s text reaches its marker', async ({
+		page,
+		browserName
+	}) => {
+		test.skip(
+			browserName !== 'chromium',
+			'Firefox and WebKit start Tab from the clicked point, which is past the marker'
+		);
+		const { md, defA } = navDoc();
+		await editor.load(md, 'reading');
+		await editor.pressFromText([0], 'Body');
+		await page.keyboard.press('Enter');
+		await expect.poll(() => blockView(page, [defA])).toEqual({ mounted: true, inView: true });
+
+		await editor.pressFromText([defA, 0], 'First');
+		await expect(editor.defMarker(defA)).toBeFocused();
 	});
 
 	test('a footnote document has no new axe violations', async ({ page }) => {

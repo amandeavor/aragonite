@@ -76,20 +76,28 @@ test.describe('/ showcase presentation toggle', () => {
  *  is a sample of a half-rendered document, which the mode change would then be blamed for. */
 const PENDING_RENDER = '.mermaid-loading';
 
-/**
- * The mounted text once nothing is still rendering and two reads agree, so an async renderer
- * finishing between samples is not blamed on the mode change.
- */
+/** The mounted text once nothing is still rendering and two reads agree, each read taking the
+ *  text and the placeholders together, so no diagram's placeholder text passes as settled. */
 async function settledBlockText(page: Page): Promise<Record<string, string>> {
-	let previous = await mountedBlockText(page);
-	for (let attempt = 0; attempt < 200; attempt++) {
-		await page.waitForTimeout(100);
-		const next = await mountedBlockText(page);
-		const pending = await page.locator(PENDING_RENDER).count();
-		if (pending === 0 && JSON.stringify(next) === JSON.stringify(previous)) return next;
-		previous = next;
-	}
-	throw new Error('the showcase document never settled: a block is still rendering');
+	let previous = '';
+	let settled: Record<string, string> = {};
+	await expect
+		.poll(
+			async () => {
+				const sample = await sampleBlocks(page);
+				const key = JSON.stringify(sample.text);
+				const steady = sample.pending === 0 && key === previous;
+				previous = key;
+				settled = sample.text;
+				return steady;
+			},
+			{
+				message: 'the showcase document never settled: a block is still rendering',
+				timeout: 20_000
+			}
+		)
+		.toBe(true);
+	return settled;
 }
 
 /** One block's text, short enough to read in a failure message. */
@@ -97,13 +105,19 @@ const trim = (text: string) =>
 	JSON.stringify(text.length > 80 ? `${text.slice(0, 40)}…${text.slice(-40)}` : text);
 
 /** Text per mounted block, keyed by path: a windowed editor's text is only its mounted part. */
-function mountedBlockText(page: Page): Promise<Record<string, string>> {
-	return page.evaluate(() =>
-		Object.fromEntries(
-			Array.from(document.querySelectorAll('.block-host[data-block-path]')).map((host) => [
-				host.getAttribute('data-block-path') ?? '',
-				host.textContent ?? ''
-			])
-		)
-	);
+async function mountedBlockText(page: Page): Promise<Record<string, string>> {
+	return (await sampleBlocks(page)).text;
+}
+
+/** The mounted text and the count of renderers still working, read in one go. */
+function sampleBlocks(page: Page): Promise<{ text: Record<string, string>; pending: number }> {
+	return page.evaluate((pendingSelector) => {
+		const hosts = Array.from(document.querySelectorAll('.block-host[data-block-path]'));
+		return {
+			text: Object.fromEntries(
+				hosts.map((host) => [host.getAttribute('data-block-path') ?? '', host.textContent ?? ''])
+			),
+			pending: document.querySelectorAll(pendingSelector).length
+		};
+	}, PENDING_RENDER);
 }

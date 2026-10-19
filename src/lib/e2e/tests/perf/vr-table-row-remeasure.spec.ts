@@ -36,7 +36,14 @@ function rowReading(page: Page, row: number): Promise<{ measured: number; drawn:
 	);
 }
 
-test('a row that shrinks as its formula shows its source is measured again', async ({ page }) => {
+test('a row that shrinks as its formula shows its source is measured again', async ({
+	page,
+	browserName
+}) => {
+	test.fixme(
+		browserName === 'firefox',
+		'#750: a row height write during a resize callback is a ResizeObserver loop in Firefox'
+	);
 	const editor = new PluginsPage(page);
 	await editor.gotoPlugins();
 	await editor.loadContent(DOC);

@@ -18,8 +18,8 @@ its container.
   wider than the viewport.
 - Every block in a seed of a heading, a paragraph, a nested list, a code block, a rule, a table and
   a quote has the same left offset, width and height (within a pixel) as on `/test/editor`, once
-  both editors sit in containers of the same width. The seed stays shorter than the route's 70vh
-  editor box: a scrollbar on one side only would narrow every block there.
+  both editors sit in containers of the same width and height (`?width=` and `?height=`): a
+  classic scrollbar on one side only, as Linux Firefox draws, would narrow every block there.
 
 ## Edge cases
 

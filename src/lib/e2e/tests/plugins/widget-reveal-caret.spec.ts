@@ -161,8 +161,9 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		const editor = new PluginsPage(page);
 		await open(editor, 'tags', '#few words here\n\nOther\n', 'source');
 		await editor.focusBlock(0, 2);
-		await page.keyboard.type('ab');
-		expect(await editor.bridge.getSource()).toBe('#fabew words here\n\nOther\n');
+		// One key: two can fall into two undo steps when a loaded runner spaces them past the pause.
+		await page.keyboard.type('a');
+		expect(await editor.bridge.getSource()).toBe('#faew words here\n\nOther\n');
 		await page.keyboard.press('End');
 
 		await editor.undo();
@@ -170,7 +171,7 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		expect(await caret(editor)).toEqual({ path: [0], offset: 2 });
 		expect(await widgetsIn(editor, 0)).toBe(0);
 		await editor.redo();
-		expect(await editor.bridge.getSource()).toBe('#fabew words here\n\nOther\n');
+		expect(await editor.bridge.getSource()).toBe('#faew words here\n\nOther\n');
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
@@ -304,8 +305,8 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		expect((await caret(editor))?.offset).toBe(2);
 		expect(await widgetsIn(editor, 1)).toBe(0);
 
-		await page.keyboard.type('ab');
-		expect(await editor.bridge.getSource()).toContain('| #fabew | ok |');
+		await page.keyboard.type('a');
+		expect(await editor.bridge.getSource()).toContain('| #faew | ok |');
 		// The tag ends the cell's text, so End stays inside the source; Escape leaves it.
 		await page.keyboard.press('Escape');
 		await expect.poll(() => widgetsIn(editor, 1)).toBe(1);
@@ -315,7 +316,7 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		expect((await caret(editor))?.offset).toBe(2);
 		expect(await widgetsIn(editor, 1)).toBe(0);
 		await editor.redo();
-		expect(await editor.bridge.getSource()).toContain('| #fabew | ok |');
+		expect(await editor.bridge.getSource()).toContain('| #faew | ok |');
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 });

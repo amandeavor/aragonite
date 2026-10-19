@@ -32,6 +32,7 @@ describe('createConstructReveal: trigger', () => {
 	let crossBlock: boolean;
 	let reveal: ConstructReveal;
 	let moved: Element[];
+	let rewritten: Element[];
 
 	beforeEach(() => {
 		// jsdom's window never has focus, and a window without it shows nobody's markers.
@@ -39,6 +40,7 @@ describe('createConstructReveal: trigger', () => {
 		node = parse(RAW).children[0];
 		crossBlock = false;
 		moved = [];
+		rewritten = [];
 		harness = makeRenderHarness(node, { mode: 'preview-inline' });
 		el = harness.el;
 		createTextRender(harness.deps).render();
@@ -51,7 +53,8 @@ describe('createConstructReveal: trigger', () => {
 			},
 			getEl: () => el,
 			isCrossBlock: () => crossBlock,
-			textMoves: { movedWithin: (block) => moved.push(block) }
+			textMoves: { movedWithin: (block) => moved.push(block) },
+			caretWriter: { rewriteCaret: (block) => rewritten.push(block) > 0 }
 		});
 	});
 
@@ -94,8 +97,9 @@ describe('createConstructReveal: trigger', () => {
 		}
 	});
 
-	// Miss-analysis: every reveal test read the classes, never that the text they move was reported.
-	it('reports the block’s text moving each time a marker shows or hides, and never otherwise', async () => {
+	// Miss-analysis: every reveal test read the classes, never that the text they move was reported,
+	// nor that WebKit's caret, resolved before the markers showed, was placed again.
+	it('reports the text moving and writes the caret again each time a marker shows or hides, and never otherwise', async () => {
 		setCaret('alpha ', 2);
 		reveal.update();
 		expect(moved).toEqual([]);
@@ -111,6 +115,7 @@ describe('createConstructReveal: trigger', () => {
 		await tick();
 		expect(revealedSpans().length).toBe(0);
 		expect(moved).toEqual([el, el]);
+		expect(rewritten).toEqual([el, el]);
 	});
 
 	it('leaving the construct folds only after the recheck tick survives', async () => {

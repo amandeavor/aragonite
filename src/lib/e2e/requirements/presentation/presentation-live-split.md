@@ -96,3 +96,7 @@ line and a leading space widens its marker.
 
 Miss-analysis (real Firefox): these scenarios ran on Chromium alone, which never leaves a caret on
 a hidden run's far side, where Firefox's ArrowLeft and a click beside the run do.
+
+Miss-analysis (WebKit): WebKit keeps a caret resolved against the layout it was placed in, so after
+Enter the new block's markers showed and `Y` still typed inside the code span. Only Chromium ran
+these rows, which resolves the caret again on every key.

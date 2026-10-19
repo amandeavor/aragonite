@@ -9,8 +9,12 @@ import { findInput, openFind, openReplace, replaceInput } from './helpers';
 // the open find bar moves only the ones it covers below itself.
 
 const host = (page: Page, index: number) => page.locator(`[data-block-path='[${index}]']`);
-// The left edge of the block's first line, clear of the bar on the right.
-const hover = (page: Page, index: number) => host(page, index).hover({ position: { x: 20, y: 8 } });
+// The left edge of the block's first line, clear of the bar on the right. A plain move, since
+// Firefox's `hover` scrolls a block already in view and carries it out from under the bar.
+const hover = async (page: Page, index: number) => {
+	const box = (await host(page, index).boundingBox())!;
+	await page.mouse.move(box.x + 20, box.y + 8);
+};
 
 const areaUnderBar = (control: Locator) =>
 	control.evaluate((el) => {

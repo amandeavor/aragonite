@@ -174,6 +174,9 @@ export interface CaretWriter {
 	/** Moves a collapsed caret the browser left where the editor never puts one (inside a widget,
 	 *  on a hidden run's far side, inside a CRLF pair) to the spot it writes for that pixel. */
 	canonicalizeCaret(el: HTMLElement): boolean;
+	/** Writes this writer's own caret in `el` again, where it stands, after something beside it
+	 *  shows or hides: WebKit keeps a caret resolved against the layout it was placed in. */
+	rewriteCaret(el: HTMLElement): boolean;
 	/** Drops the native selection: a gap caret, a widget or a whole-block range holds none. */
 	clear(): void;
 }
@@ -239,13 +242,18 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 			);
 		},
 		canonicalizeCaret(el) {
-			const sel = window.getSelection();
-			const node = sel?.isCollapsed ? sel.focusNode : null;
-			if (!node || !el.contains(node)) return false;
-			if (written?.node === node && written.offset === sel!.focusOffset) return false;
+			const caret = liveCaretIn(el);
+			if (!caret) return false;
+			if (written?.node === caret.node && written.offset === caret.offset) return false;
 			written = null;
-			const target = canonicalCaretPoint(el, node, sel!.focusOffset);
+			const target = canonicalCaretPoint(el, caret.node, caret.offset);
 			return target !== null && writeSelection(target, target);
+		},
+		rewriteCaret(el) {
+			const caret = liveCaretIn(el);
+			// Only the editor's own caret: one the browser left is `canonicalizeCaret`'s to judge.
+			if (!caret || written?.node !== caret.node || written.offset !== caret.offset) return false;
+			return writeSelection(caret, caret);
 		},
 		clear() {
 			const sel = window.getSelection();
@@ -255,6 +263,13 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 			onWrite();
 		}
 	};
+}
+
+/** The browser's collapsed caret, when it sits inside `el`. */
+function liveCaretIn(el: HTMLElement): DomPosition | null {
+	const sel = window.getSelection();
+	const node = sel?.isCollapsed ? sel.focusNode : null;
+	return node && el.contains(node) ? { node, offset: sel!.focusOffset } : null;
 }
 
 /** A DOM Range over raw `[start, end)` for measuring or decorating; a caret goes through the
