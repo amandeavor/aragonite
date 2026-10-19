@@ -101,7 +101,7 @@ function extendFocusOrRestore(
 	if (!anchor || selection.isCrossBlock || !getBlockElByPath) return;
 	const blockEl = getBlockElByPath(target);
 	if (!blockEl) return;
-	blockEl.focus();
+	blockEl.focus({ preventScroll: true });
 	applySingleBlockRange(
 		writer,
 		blockEl,
@@ -217,7 +217,7 @@ export function selectWholeDocument(
 		selection.collapse();
 		const blockEl = getBlockElByPath?.(first);
 		if (blockEl) {
-			blockEl.focus();
+			blockEl.focus({ preventScroll: true });
 			applySingleBlockRange(writer, blockEl, 0, lastOffset);
 		}
 		return true;

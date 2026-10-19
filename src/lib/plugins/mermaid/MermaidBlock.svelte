@@ -79,7 +79,7 @@
 			rendered = result;
 			if (hadFocus) {
 				await tick();
-				focusSurfaceEl()?.focus();
+				focusSurfaceEl()?.focus({ preventScroll: true });
 			}
 		});
 		return () => {
@@ -233,7 +233,7 @@
 	});
 
 	function refocusBlock(): void {
-		void tick().then(() => focusSurfaceEl()?.focus());
+		void tick().then(() => focusSurfaceEl()?.focus({ preventScroll: true }));
 	}
 
 	function openEdit(): void {
@@ -317,7 +317,7 @@
 	function openFocusView(): void {
 		focusView = true;
 		overlayView.reset();
-		void tick().then(() => overlayEl?.focus());
+		void tick().then(() => overlayEl?.focus({ preventScroll: true }));
 	}
 
 	function closeFocusView(): void {

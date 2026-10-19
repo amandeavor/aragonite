@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { SIMPLE_CONTENT } from '../test-content';
 import { FENCE, LAST_CELL, TABLE, filler } from './selection/gap-caret-fixtures';
+import { clickInPlace } from '../click-in-place';
 
 test.describe('undo and redo', () => {
 	let editor: EditorPage;
@@ -65,7 +66,9 @@ test.describe('undo brings an off-screen caret into view', () => {
 		editor = new EditorPage(page);
 		await editor.goto();
 		await editor.loadContent(LONG + '\n');
-		await editor.page.locator(`[data-block-path='[${BLOCK}]'] [contenteditable="true"]`).click();
+		await clickInPlace(
+			editor.page.locator(`[data-block-path='[${BLOCK}]'] [contenteditable="true"]`)
+		);
 		await editor.page.keyboard.press('End');
 		await editor.typeText('x');
 		await editor.waitForUndoBatchFlush();
@@ -111,14 +114,12 @@ test.describe('undo brings an off-screen caret into view', () => {
 	});
 
 	test('a gap caret between a table and a fence, scrolled away, comes back into view', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName === 'firefox', '#749: the focusing click scrolls the page in Firefox');
 		await editor.loadContent(`${filler(30, 0)}\n${TABLE}\n${FENCE}\n${filler(80, 30)}`);
 		await page.evaluate(() => (window as any).__test.rects.reveal([30]));
 		await editor.waitForRenderFlush();
-		await page.locator('.table-cell').nth(LAST_CELL).click();
+		await clickInPlace(page.locator('.table-cell').nth(LAST_CELL));
 		await page.keyboard.press('ArrowDown');
 		const gap = { parentPath: [], index: 31 };
 		await editor.bridge.waitForGapCaret(gap);
