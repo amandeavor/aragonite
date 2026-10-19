@@ -1,13 +1,14 @@
 /**
  * G4.224: a press on editor chrome takes no focus. Engines differ on where a pressed button puts it,
- * so every `<button>` in a component or a bundled plugin's view sits under a mousedown or pointerdown
- * handler that prevents the default, or its file is listed below as owning focus on purpose
+ * so every button (`<button>` or `role="button"`) in a component or a bundled plugin's view sits under
+ * a mousedown or pointerdown handler that prevents the default, or its file is listed below as owning
+ * focus on purpose
  * (`docs/design/editor.md` § Browser engines).
  */
 
 import { parse } from 'svelte/compiler';
 import { describeFileRules, svelteOnly, under, type FileRule } from './file-rule';
-import { collectEditorSources, walkCode, type SourceFile } from './scan-source';
+import { collectEditorSources, type SourceFile } from './scan-source';
 import { SOURCE, SOURCE_DIR } from './source-paths';
 
 const PRESS_EVENTS = new Set(['mousedown', 'pointerdown']);
@@ -15,28 +16,44 @@ const PRESS_EVENTS = new Set(['mousedown', 'pointerdown']);
 interface Node {
 	type?: string;
 	name?: string;
-	start: number;
-	end: number;
+	data?: string;
 	attributes?: Node[];
 	value?: Node | Node[] | true;
 	expression?: Node;
 	modifiers?: string[];
+	id?: Node;
+	init?: Node;
+	declarations?: Node[];
+	callee?: Node;
+	property?: Node;
 }
 
-/** The source of the function `name` declared in the component's script, or null. */
-function declaredFunction(code: string, name: string): string | null {
-	const at = code.search(new RegExp(`function\\s+${name}\\s*\\(|const\\s+${name}\\s*=`));
-	const open = at < 0 ? -1 : code.indexOf('{', at);
-	if (open < 0) return null;
-	let depth = 0;
-	const close = walkCode(code, open, (ch) => {
-		if (ch === '{') depth++;
-		else if (ch === '}') return --depth === 0;
-	});
-	return code.slice(at, close + 1);
+/** Whether the AST under `value` calls `.preventDefault()`; a comment or a bare mention doesn't count. */
+function callsPreventDefault(value: unknown): boolean {
+	if (value === null || typeof value !== 'object') return false;
+	if (Array.isArray(value)) return value.some(callsPreventDefault);
+	const node = value as Node;
+	if (
+		node.type === 'CallExpression' &&
+		node.callee?.type === 'MemberExpression' &&
+		node.callee.property?.name === 'preventDefault'
+	) {
+		return true;
+	}
+	return Object.values(node).some(callsPreventDefault);
 }
 
-function preventsPress(attribute: Node, code: string): boolean {
+/** The function `name` declared at the top of the component's script, or null. */
+function declaredFunction(script: Node[], name: string): Node | null {
+	for (const statement of script) {
+		if (statement.type === 'FunctionDeclaration' && statement.id?.name === name) return statement;
+		const declarator = statement.declarations?.find((d) => d.id?.name === name);
+		if (declarator?.init) return declarator.init;
+	}
+	return null;
+}
+
+function preventsPress(attribute: Node, script: Node[]): boolean {
 	if (attribute.type === 'OnDirective') {
 		return (
 			PRESS_EVENTS.has(attribute.name ?? '') && !!attribute.modifiers?.includes('preventDefault')
@@ -48,16 +65,22 @@ function preventsPress(attribute: Node, code: string): boolean {
 	const handler = (Array.isArray(attribute.value) ? attribute.value[0] : attribute.value)
 		?.expression;
 	if (!handler) return false;
-	const source =
-		handler.type === 'Identifier'
-			? declaredFunction(code, handler.name ?? '')
-			: code.slice(handler.start, handler.end);
-	return !!source?.includes('preventDefault');
+	return callsPreventDefault(
+		handler.type === 'Identifier' ? declaredFunction(script, handler.name ?? '') : handler
+	);
 }
 
-/** Whether some `<button>` in the markup has no element, itself included, that prevents a press. */
+/** A `<button>`, or any element with a static `role="button"`. */
+function isButton(node: Node): boolean {
+	if (node.name === 'button') return true;
+	const role = node.attributes?.find((a) => a.type === 'Attribute' && a.name === 'role')?.value;
+	return Array.isArray(role) && role.length === 1 && role[0].data === 'button';
+}
+
+/** Whether some button in the markup has no element, itself included, that prevents a press. */
 function buttonTakesFocus(file: SourceFile): boolean {
 	const ast = parse(file.code, { modern: true });
+	const script = (ast.instance?.content.body ?? []) as unknown as Node[];
 	let found = false;
 	const walk = (value: unknown, guarded: boolean): void => {
 		if (found || value === null || typeof value !== 'object') return;
@@ -68,8 +91,8 @@ function buttonTakesFocus(file: SourceFile): boolean {
 		const node = value as Node;
 		let inner = guarded;
 		if (node.type === 'RegularElement') {
-			inner = guarded || (node.attributes ?? []).some((a) => preventsPress(a, file.code));
-			if (node.name === 'button' && !inner) {
+			inner = guarded || (node.attributes ?? []).some((a) => preventsPress(a, script));
+			if (isButton(node) && !inner) {
 				found = true;
 				return;
 			}
@@ -99,6 +122,8 @@ const CHROME_PRESS_FOCUS: FileRule = {
 			'the rail is a tab stop of its own, shown on focus-within, and its menu hands focus back to the ⋮ button',
 		'src/lib/plugins/mermaid/MermaidBlock.svelte':
 			'Edit and Focus move focus on purpose, to the source field and the full-window view',
+		'src/lib/plugins/parrot/ParrotBlock.svelte':
+			'a press on the caption reveals the source and puts the caret on the character pressed',
 		'src/lib/plugins/toc/TocBlock.svelte':
 			'its entries are real buttons for tab order and Enter, and a press moves the caret to the heading'
 	},
@@ -113,7 +138,14 @@ const CHROME_PRESS_FOCUS: FileRule = {
 			'<script>function keep(e) { e.stopPropagation(); }</script><div onmousedown={keep}><button>x</button></div>'
 		),
 		svelteProbe('<button onmousedown={(e) => e.preventDefault()}>a</button><button>b</button>'),
-		svelteProbe('{#if open}<span><button>x</button></span>{/if}')
+		svelteProbe('{#if open}<span><button>x</button></span>{/if}'),
+		svelteProbe(
+			'<script>const keep = (e) => e.stopPropagation();\nfunction other(e) { e.preventDefault(); }</script><div onmousedown={keep}><button>x</button></div>'
+		),
+		svelteProbe(
+			'<script>function keep(e) { /* no preventDefault() here */ e.stopPropagation(); }</script><div onmousedown={keep}><button>x</button></div>'
+		),
+		svelteProbe('<div role="button" tabindex="-1" onclick={go}>x</div>')
 	],
 	misses: [
 		svelteProbe('<button onmousedown={(e) => e.preventDefault()}>x</button>'),

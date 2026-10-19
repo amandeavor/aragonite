@@ -1267,6 +1267,7 @@ on all three, and a CSS vendor prefix or a platform read (Mac's Cmd) is fine. Ze
 
 **G4.224 · A press on chrome keeps focus where it was.** Engines disagree on where a pressed button
 puts focus (the button, an ancestor, nowhere), and focus off the caret's block leaves Mod+Z and
-Escape with no handler. So every `<button>` in a component or a bundled plugin's view sits under a
-mousedown or pointerdown handler that prevents the default, or its file is listed with where it
-gives focus back, and the list only shrinks. `lint/chrome-press-focus.test.ts`.
+Escape with no handler. So every button (a `<button>` or a `role="button"` element) in a component
+or a bundled plugin's view sits under a mousedown or pointerdown handler that calls
+`preventDefault()`, or its file is listed with where it gives focus back, and the list only shrinks.
+`lint/chrome-press-focus.test.ts`.
