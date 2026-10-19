@@ -27,7 +27,8 @@ function readsFor(raw: string, mode: PresentationMode): number {
 		},
 		getEl: () => harness.el,
 		isCrossBlock: () => false,
-		textMoves: { movedWithin: () => {} }
+		textMoves: { movedWithin: () => {} },
+		caretWriter: { rewriteCaret: () => false }
 	});
 	const text = document.createTreeWalker(harness.el, NodeFilter.SHOW_TEXT).nextNode();
 	if (text) placeCaretAt(text as Text, 1);

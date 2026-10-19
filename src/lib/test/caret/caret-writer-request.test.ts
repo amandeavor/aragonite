@@ -13,8 +13,12 @@ function paragraph(text: string): HTMLElement {
 	return el;
 }
 
-/** One call per writer method; typed over every key, so a new method cannot skip its row. */
-const CALLS: Record<keyof CaretWriter, (writer: CaretWriter, el: HTMLElement) => void> = {
+/** One call per writer method; typed over every key, so a new method cannot skip its row. A row
+ *  that needs the writer's own caret first calls `fresh` after placing it, to count only its call. */
+const CALLS: Record<
+	keyof CaretWriter,
+	(writer: CaretWriter, el: HTMLElement, fresh: () => void) => void
+> = {
 	placeCaretAtRaw: (writer, el) => writer.placeCaretAtRaw(el, 2, { clamp: 'exact' }),
 	selectRawRange: (writer, el) => writer.selectRawRange(el, 1, 3),
 	extendSelectionToRaw: (writer, el) => writer.extendSelectionToRaw(el, 4),
@@ -28,6 +32,11 @@ const CALLS: Record<keyof CaretWriter, (writer: CaretWriter, el: HTMLElement) =>
 		el.textContent = 'ab\r\ncd';
 		window.getSelection()!.collapse(el.firstChild, 3);
 		writer.canonicalizeCaret(el);
+	},
+	rewriteCaret: (writer, el, fresh) => {
+		writer.placeCaretAtRaw(el, 2, { clamp: 'exact' });
+		fresh();
+		writer.rewriteCaret(el);
 	},
 	clear: (writer) => writer.clear()
 };
@@ -43,7 +52,7 @@ describe('every caret writer method requests one paint', () => {
 		const writer = createCaretWriter(() => requests++);
 		const el = paragraph('hello');
 		window.getSelection()!.collapse(el.firstChild, 0);
-		call(writer, el);
+		call(writer, el, () => (requests = 0));
 		expect(requests).toBe(1);
 	});
 
@@ -54,6 +63,9 @@ describe('every caret writer method requests one paint', () => {
 		const pastTheEnd = { startContainer: text, startOffset: 99, endContainer: text, endOffset: 99 };
 		expect(writer.selectDomRange(pastTheEnd as unknown as Range)).toBe(false);
 		expect(writer.canonicalizeCaret(text.parentElement!)).toBe(false);
+		// A caret the browser put there, not the writer, is not the writer's to place again.
+		window.getSelection()!.collapse(text, 2);
+		expect(writer.rewriteCaret(text.parentElement!)).toBe(false);
 		expect(requests).toBe(0);
 	});
 });

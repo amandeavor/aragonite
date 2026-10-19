@@ -38,3 +38,9 @@ paint, and never changes in the middle of an IME composition.
 
 - zero `[invariant:…]` console fires across every scenario (automatic via the
   shared e2e fixture)
+
+## Miss-analysis
+
+- Deleting the closing marker took the `a` before it in WebKit: the caret was placed while the
+  marker was still hidden, and WebKit kept that position after the marker showed. Only Chromium
+  ran this file, which resolves the caret again on every key.
