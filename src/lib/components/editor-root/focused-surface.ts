@@ -13,6 +13,7 @@ import type { KindCommandTarget } from '../../schema/block-commands';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import { blockNodeAt } from '../../tree-operations/node-primitives';
+import { escapeMarkdownLiteral } from '../../tree-operations/paste/markdown-literal';
 
 export interface FocusedSurfaceDeps {
 	/** A getter, never a value: the root binds after construction. */
@@ -71,7 +72,13 @@ export function createFocusedSurface(deps: FocusedSurfaceDeps): FocusedSurface {
 		};
 		return {
 			markdown: (md) => land(() => block.insertMarkdown?.(md)),
-			plainText: (text) => land(() => block.insertPlainText?.(text))
+			// A block that never says how it takes text literally gets the prose answer, escaped.
+			plainText: (text) =>
+				land(() =>
+					block.insertPlainText
+						? block.insertPlainText(text)
+						: block.insertMarkdown?.(escapeMarkdownLiteral(text))
+				)
 		};
 	}
 

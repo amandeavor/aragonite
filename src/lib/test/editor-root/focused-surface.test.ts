@@ -137,6 +137,15 @@ describe('editor-root focused surface', () => {
 		expect(h.calls).toEqual(['plain *a* at [1]']);
 	});
 
+	// Miss-analysis: the plain-text entry is optional on a hand-built block, and no row had one
+	// without it.
+	it('a block with no plain-text entry gets the text escaped through its Markdown one', async () => {
+		const h = harness({ insertMarkdown: async () => true });
+		h.surface.focus();
+		expect(await h.focused.aimInsertAtFocus()!.plainText('*a*')).toBe(true);
+		expect(h.calls).toEqual(['insert \\*a\\* at [1]']);
+	});
+
 	it('an aimed insert a swap outran writes nothing and never reaches the block', async () => {
 		const h = harness({ insertMarkdown: async () => true });
 		h.surface.focus();
