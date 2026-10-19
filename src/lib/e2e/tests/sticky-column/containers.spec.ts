@@ -3,6 +3,31 @@ import { EditorPage } from '../../editor-page';
 
 const PIXEL_TOLERANCE = 5;
 
+/** The caret sits on a letter boundary nearest `sourceX`: no boundary beside it is closer. A fixed
+ *  band can't hold this, since a column falling midway between two boundaries may take either. */
+async function expectNearestColumn(editor: EditorPage, sourceX: number): Promise<void> {
+	const xs = await editor.page.evaluate(() => {
+		const sel = window.getSelection()!;
+		const node = sel.focusNode!;
+		const at = sel.focusOffset;
+		const xAt = (offset: number) => {
+			if (!(node instanceof Text) || offset < 0 || offset > node.length) return null;
+			const range = document.createRange();
+			range.setStart(node, offset);
+			return range.getClientRects()[0]?.left ?? null;
+		};
+		return { here: xAt(at), beside: [xAt(at - 1), xAt(at + 1)] };
+	});
+	expect(xs.here, 'the caret sits in text').not.toBeNull();
+	const off = Math.abs(xs.here! - sourceX);
+	for (const x of xs.beside) {
+		if (x !== null)
+			expect(off, `${xs.here} vs ${x} for ${sourceX}`).toBeLessThanOrEqual(
+				Math.abs(x - sourceX) + 0.5
+			);
+	}
+}
+
 test.describe('sticky column: container traversal', () => {
 	let editor: EditorPage;
 
@@ -30,8 +55,7 @@ test.describe('sticky column: container traversal', () => {
 
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.waitForRenderFlush();
-		const afterX = await editor.getCaretPixelX();
-		expect(Math.abs(afterX - sourceX)).toBeLessThan(PIXEL_TOLERANCE);
+		await expectNearestColumn(editor, sourceX);
 	});
 
 	test('through list preserves column', async () => {
@@ -55,8 +79,7 @@ test.describe('sticky column: container traversal', () => {
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.waitForRenderFlush();
 
-		const targetX = await editor.getCaretPixelX();
-		expect(Math.abs(targetX - sourceX)).toBeLessThan(PIXEL_TOLERANCE);
+		await expectNearestColumn(editor, sourceX);
 	});
 });
 
@@ -86,8 +109,7 @@ test.describe('sticky column: transparent blocks', () => {
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.waitForRenderFlush();
 
-		const targetX = await editor.getCaretPixelX();
-		expect(Math.abs(targetX - sourceX)).toBeLessThan(PIXEL_TOLERANCE);
+		await expectNearestColumn(editor, sourceX);
 	});
 });
 

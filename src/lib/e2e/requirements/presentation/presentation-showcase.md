@@ -50,6 +50,10 @@ renders as an inline widget stays rendered, and switching back restores the sour
 
 ## Miss-analysis
 
+A settled sample read the text and the count of diagrams still rendering in two separate calls, so
+a diagram that finished in between passed its "Rendering diagram…" text as settled (seen on a
+loaded CI runner). The general answer: a settle check whose condition and value were read apart.
+
 The first sample was taken the moment the widgets appeared, so a diagram still fetching its
 renderer was compared against the same diagram once it had one, and the mode switch took the
 blame for a render that had simply not finished when the spec looked. The general answer: a

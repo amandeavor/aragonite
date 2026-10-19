@@ -101,7 +101,12 @@
 			<button type="button" class="host-button">A reference button</button>
 		</div>
 	{/if}
-	<div class="editor-box" data-testid="editor-box" style:width={data.width && `${data.width}px`}>
+	<div
+		class="editor-box"
+		data-testid="editor-box"
+		style:width={data.width && `${data.width}px`}
+		style:height={data.height && `${data.height}px`}
+	>
 		<Editor
 			bind:this={editor}
 			source={source.text}

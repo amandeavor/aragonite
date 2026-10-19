@@ -25,7 +25,8 @@ const ONE_DRAWN = { native: false, drawn: 1 };
 const ONE_NATIVE = { native: true, drawn: 0 };
 const NONE = { native: false, drawn: 0 };
 
-/** Within a pixel, the rect a user would see as the same caret. */
+/** Each edge within a pixel, the rect a user would see as the same caret. Edges, not height: the
+ *  bar snaps both ends outward to the device grid, 1.4px taller on Firefox's 25.6px empty line. */
 function expectSameBox(drawn: CaretBox | null, native: CaretBox | null): void {
 	expect(drawn, 'the drawn caret draws').not.toBeNull();
 	expect(native, 'the browser holds a measurable caret').not.toBeNull();
@@ -37,7 +38,12 @@ function expectSameBox(drawn: CaretBox | null, native: CaretBox | null): void {
 		Math.abs(drawn!.top - native!.top),
 		`y ${drawn!.top} vs ${native!.top}`
 	).toBeLessThanOrEqual(1);
-	expect(Math.abs(drawn!.height - native!.height)).toBeLessThanOrEqual(1);
+	const drawnBottom = drawn!.top + drawn!.height;
+	const nativeBottom = native!.top + native!.height;
+	expect(
+		Math.abs(drawnBottom - nativeBottom),
+		`bottom ${drawnBottom} vs ${nativeBottom}`
+	).toBeLessThanOrEqual(1);
 }
 
 /** Exactly one caret shows, and if it is the drawn one, on the browser's caret position. */
