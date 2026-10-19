@@ -889,6 +889,17 @@ export function landableStartAbutsIsland(container: ParentNode): boolean {
 	return false;
 }
 
+/** {@link landableStartAbutsIsland} at the other end: the last caret position abuts an opaque
+ *  widget, which the browser's Mod+End stops short of. */
+export function landableEndAbutsIsland(container: ParentNode): boolean {
+	let island = false;
+	for (const seg of landingSegments(container, markerHidingMode(container))) {
+		if (seg.len === 0 || (seg.kind === 'opaque' && seg.hidden)) continue;
+		island = seg.kind === 'opaque';
+	}
+	return island;
+}
+
 /** Whether `node` sits inside an atomic inline widget under `root`, where a caret is no caret of
  *  the editor's: the browser can leave one there, but no key types into it. */
 export function isInsideAtomicWidget(root: ParentNode, node: Node): boolean {

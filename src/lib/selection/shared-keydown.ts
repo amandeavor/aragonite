@@ -20,7 +20,12 @@ import {
 	scrollFocusBlockIntoView
 } from './keyboard-extend';
 import { getCurrentCursorEditorRelativeX } from '../caret/sticky-measure';
-import { landableRawBounds } from '../caret/widget-offset';
+import {
+	landableEndAbutsIsland,
+	landableRawBounds,
+	landableStartAbutsIsland,
+	markerPrefixOf
+} from '../caret/widget-offset';
 import { isAtFirstVisualLine, isAtLastVisualLine } from '../caret/visual-lines';
 import { endsSelectAllRun, eventToChord } from '../schema/keybindings';
 import { isDefaultGlobalChord } from '../schema/commands';
@@ -94,6 +99,8 @@ export async function handleSharedKeydown(
 		e.preventDefault();
 		return false;
 	}
+
+	if (handleBlockEdgeChord(e, ctx, el)) return true;
 
 	// The moving end, read once for the span step and the boundary check: with Shift the focus, since
 	// a forward range's start is its anchor, which extends across blocks while the focus contracts.
@@ -258,6 +265,28 @@ function handleUnitStep(
 	if (extending) ctx.caretWriter.extendSelectionToRaw(el, target);
 	else ctx.caretWriter.placeCaretAtRaw(el, target, { clamp: 'exact' });
 	ctx.caretUnits.crossed();
+	return true;
+}
+
+/** Mod+Home and Mod+End where a marker or a widget sits at that end of the block's text land on the
+ *  text's edge here: Firefox's own stops short of a widget ending the text. True if claimed. */
+function handleBlockEdgeChord(
+	e: KeyboardEvent,
+	ctx: SharedKeydownContext,
+	el: HTMLElement
+): boolean {
+	if (e.key !== 'Home' && e.key !== 'End') return false;
+	if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || ctx.selection.isCrossBlock) {
+		return false;
+	}
+	const toEnd = e.key === 'End';
+	const guarded = toEnd
+		? landableEndAbutsIsland(el)
+		: markerPrefixOf(el) !== null || landableStartAbutsIsland(el);
+	if (!guarded) return false;
+	e.preventDefault();
+	const bounds = caretLandableBounds(ctx, el);
+	ctx.caretWriter.placeCaretAtRaw(el, toEnd ? bounds.end : bounds.start, { clamp: 'reachable' });
 	return true;
 }
 
