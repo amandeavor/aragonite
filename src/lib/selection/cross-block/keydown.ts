@@ -30,7 +30,7 @@ import {
 import { pathsEqual } from '../path-math';
 import { intraTableRectExtension } from '../table-rect-extend';
 import { cellPoint } from '../primitives';
-import { applySurfaceContentRange } from '../native-bridge';
+import { applySurfaceContentRange, readNativeSelection } from '../native-bridge';
 import { selectInBlock } from '../place-caret';
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -217,9 +217,9 @@ async function handleCrossBlockEntry(
 function takesIdleTab(ctx: CrossBlockDispatchContext, e: KeyboardEvent): boolean {
 	if (!isTabKey(e) || isReadingMode(ctx.reading.mode)) return false;
 	const el = ctx.getEl();
-	const sel = window.getSelection();
-	if (!el || !sel || sel.isCollapsed) return false;
-	if (!el.contains(sel.anchorNode) || !el.contains(sel.focusNode)) return false;
+	const live = readNativeSelection();
+	if (!el || !live || live.collapsed) return false;
+	if (!el.contains(live.anchor.node) || !el.contains(live.focus.node)) return false;
 	return !bindsIndentAt(ctx.getDoc(), ctx.getMyPath(), indentFormsFor(e, ctx.commands));
 }
 

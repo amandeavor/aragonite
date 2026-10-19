@@ -17,6 +17,7 @@ import {
 	type ProbedHit
 } from './nearest-block';
 import { placeGapCaret } from './place-caret';
+import { holdsNativeRange } from './native-bridge';
 import { canGapStop, type GapStopScope } from './gap-caret';
 import { caretOffsetAtPoint } from '../caret/point-offset';
 import type { CaretPosition, SelectionEndpoint } from './primitives';
@@ -182,8 +183,7 @@ export function createDeadSpaceCaret(deps: DeadSpaceCaretDeps): DeadSpaceCaret {
 			if (!pressed || !isDeadSpace(root, event.target)) return false;
 			// A drag that ended in the margin leaves a native range the user just selected. A
 			// cross-block range leaves the native selection empty, so it is ended below instead.
-			const native = root.ownerDocument.defaultView?.getSelection();
-			if (native && native.rangeCount > 0 && !native.isCollapsed) return false;
+			if (holdsNativeRange()) return false;
 
 			return placeAtPoint(root, event.clientX, event.clientY);
 		},

@@ -402,22 +402,22 @@ aragonite runs on Chromium, Firefox and WebKit, and the three disagree about a l
 
 So the rule is **decide, don't delegate, and read the browser in one place per kind of thing**. Here's where each kind of browser behaviour comes in, and what fails when a new route skips it:
 
-| Browser behaviour                        | Read or decided in                                                                                                                                 | Held by                                 |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| A key                                    | the keydown handlers, which prevent the default and write through the tree (the intercepted operations above)                                      | the key rows of each block's e2e specs  |
-| The clipboard, outside a clipboard event | `editor-actions/system-clipboard.ts`                                                                                                               | G4.220                                  |
-| A paste with no paste event (menu Paste) | the focused block's `insertMarkdown`, never a constructed `ClipboardEvent`                                                                         | G4.221                                  |
-| A selection's text                       | `components/blocks/editable/clipboard-step.ts` :: `shownSelectionText`                                                                             | G4.221                                  |
-| A popover closing                        | `components/menu/menu-presence.svelte.ts` :: `track`, never focus leaving                                                                          | G4.219, G1.121                          |
-| Where the caret sits                     | `caret/widget-offset.ts` :: `canonicalizeCaret`, on `selectionchange` and the next keydown ([`caret-placement.md`](caret-placement.md) § 2)        | its rows in the caret e2e specs, G1.117 |
-| The selection itself                     | the readers in `selection/native-bridge.ts` (`readNativeSelection`, `rawSelectionIn`, `nativeRangeIn`, `holdsNativeRange`) and `rawSelectionFocus` | G4.222                                  |
-| Which engine this is                     | nowhere: `src/lib` outside `debug/` doesn't ask                                                                                                    | G4.223                                  |
+| Browser behaviour                        | Read or decided in                                                                                                                                                             | Held by                                 |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| A key                                    | the keydown handlers, which prevent the default and write through the tree (the intercepted operations above)                                                                  | the key rows of each block's e2e specs  |
+| The clipboard, outside a clipboard event | `editor-actions/system-clipboard.ts`                                                                                                                                           | G4.220                                  |
+| A paste with no paste event (menu Paste) | the focused block's `insertMarkdown`, never a constructed `ClipboardEvent`                                                                                                     | G4.221                                  |
+| A selection's text                       | `components/blocks/editable/clipboard-step.ts` :: `shownSelectionText`                                                                                                         | G4.221                                  |
+| A popover closing                        | `components/menu/menu-presence.svelte.ts` :: `track`, never focus leaving                                                                                                      | G4.219, G1.121                          |
+| Where the caret sits                     | `caret/widget-offset.ts` :: `canonicalizeCaret`, on `selectionchange` and the next keydown ([`caret-placement.md`](caret-placement.md) § 2)                                    | its rows in the caret e2e specs, G1.117 |
+| The selection itself                     | the readers in `selection/native-bridge.ts` (`readNativeSelection`, `rawSelectionIn`, `nativeRangeIn`, `holdsNativeRange`) and `caret/widget-offset.ts` :: `rawSelectionFocus` | G4.222                                  |
+| Which engine this is                     | nowhere: `src/lib` outside `debug/` doesn't ask                                                                                                                                | G4.223                                  |
 
 What's still left to the browser is a short list, each for a reason: typing and deleting inside a line (read back on `input`, as above, which is what keeps typing fast), IME composition (the browser owns it outright), caret motion and a click's caret (moved onto the editor's spot afterwards by `canonicalizeCaret`), spellcheck's replacements, and text dropped in from outside the editor. That list is where the next engine bug is most likely to come from, ofc.
 
 When it does, here's the fix, in order:
 
-1. Write the row first, one that runs on all three engines, and watch it fail on the one that broke.
+1. Write the test first, one that runs on all three engines, and watch it fail on the one that broke.
 2. Find the row of the table above the behaviour came in through. If the editor let a default run, the fix is usually to decide it: prevent the default and write through the tree. If it read the browser raw, fix the reader.
 3. Fix it there, the same way for every engine. Never `if (isFirefox)`: G4.223 fails it, and a branch for one engine just hides the rule the other two break next month. Platform is fine (Mac's Cmd is `Mod`, like Ctrl).
 4. No row fits? Then the editor just met a new kind of browser behaviour. Give it one place it's read or decided, plus a scan that fails when a second route shows up, the way G4.220 through G4.222 do.

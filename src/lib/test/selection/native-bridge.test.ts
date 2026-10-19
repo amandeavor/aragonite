@@ -301,6 +301,14 @@ describe('the live selection readers', () => {
 		});
 	});
 
+	it('reads ends held at element offsets as the text around them', () => {
+		const { first, second } = twoBlocks();
+		select(first, 0, first, 1);
+		expect(rawSelectionIn(first)).toEqual({ start: 0, end: 2, collapsed: false });
+		select(first, 1, second, 0);
+		expect(rawSelectionIn(second)).toEqual({ start: null, end: 0, collapsed: false });
+	});
+
 	it('reads a caret as one offset at both ends', () => {
 		const { first, a } = twoBlocks();
 		select(a, 1, a, 1);

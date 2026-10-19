@@ -1254,10 +1254,11 @@ since Firefox empties `clipboardData` on a `new ClipboardEvent(...)`. The select
 and nothing for an empty block's placeholder `<br>` selected alone. `lint/file-rules.test.ts`.
 
 **G4.222 · The selection is read in one place.** Engines differ in what the selection reports (a
-caret inside a widget, an anchor inside a CRLF pair), so a file outside the caret and selection
-modules reads it through `selection/native-bridge.ts` (`readNativeSelection`, `rawSelectionIn`,
-`nativeRangeIn`, `holdsNativeRange`) or `rawSelectionFocus`. The files that read it raw are listed
-with their reason, and the list only shrinks. `lint/native-selection-reads.test.ts`.
+caret inside a widget, an anchor inside a CRLF pair), so every file reads it through
+`selection/native-bridge.ts` (`readNativeSelection`, `rawSelectionIn`, `nativeRangeIn`,
+`holdsNativeRange`) or `rawSelectionFocus`. The raw readers left (`caret/`, which the bridge
+imports, two files the selection layer imports, and G4.221's `shownSelectionText`) are listed with
+their reason, and the list only shrinks. `lint/native-selection-reads.test.ts`.
 
 **G4.223 · No engine sniffing.** `src/lib` outside `debug/` names no engine in script (`isFirefox`,
 a user-agent read, `Edg/`): an engine bug is fixed where the editor reads or decides, the same way

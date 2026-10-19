@@ -1,15 +1,24 @@
 /**
  * G4.222: the browser's selection is read in named modules only, the bridge readers in
- * `selection/native-bridge.ts` and the caret and selection internals below, so an engine quirk in
- * what the selection reports gets fixed in one place (`docs/design/editor.md` § Browser engines).
+ * `selection/native-bridge.ts` and the modules below it that cannot import it, so an engine quirk
+ * in what the selection reports gets fixed in one place (`docs/design/editor.md` § Browser engines).
  */
 
 import { describeFileRules, notUnder, under, type FileRule, type Probe } from './file-rule';
 import { collectEditorSources } from './scan-source';
 import { SOURCE, SOURCE_DIR } from './source-paths';
 
-const NATIVE_SELECTION_READ =
-	/\b(?:window|document|globalThis|defaultView|ownerDocument)\s*[?!]?\.\s*getSelection\s*(?:\?\.)?\s*\(/;
+const RECEIVER = String.raw`\b(?:window|document|globalThis|self|defaultView|ownerDocument)\s*[?!]?`;
+// A call, a bare reference (`.bind`, a stored method), a bracket key, or a destructure off a global.
+const NATIVE_SELECTION_READ = new RegExp(
+	[
+		String.raw`${RECEIVER}\.\s*getSelection\b`,
+		String.raw`${RECEIVER}(?:\?\.)?\s*\[\s*['"\x60]getSelection['"\x60]\s*\]`,
+		String.raw`\{[^{}]*\bgetSelection\b[^{}]*\}\s*=\s*${RECEIVER}`
+	].join('|')
+);
+
+const BELOW_BRIDGE = 'the bridge loads caret/ at runtime, so caret/ cannot import it back';
 
 const inLibrary = (code: string): Probe => ({ relPath: `${SOURCE_DIR.library}probe.ts`, code });
 
@@ -19,19 +28,12 @@ const NATIVE_SELECTION_READS: FileRule = {
 	matches: NATIVE_SELECTION_READ,
 	allowed: {
 		[SOURCE.nativeBridge]: 'the readers every other file calls',
-		'src/lib/caret/widget-offset.ts':
-			'the caret writer, and `rawSelectionFocus`, which the bridge sits on',
-		'src/lib/caret/text-seat.ts': 'whether the live caret sits in visible text',
-		'src/lib/caret/focused-caret.ts': 'the caret a decoration rebuild keeps',
-		'src/lib/caret/drawn-caret.svelte.ts': 'the drawn caret paints where the browser holds one',
-		'src/lib/caret/sticky-measure.ts': "the moving end's column for vertical arrows",
-		'src/lib/caret/visual-lines.ts': "the moving end's line for vertical arrows",
-		'src/lib/selection/caret-landing.ts': "the caret's line box a landing scrolls to",
-		'src/lib/selection/cross-block/keydown.ts': 'Tab over a range inside one block',
-		'src/lib/selection/dead-space-caret.ts':
-			"a margin drag that leaves a range keeps it, read off the root's own window",
-		'src/lib/selection/selection-drop.ts': 'the range a drag carries',
-		'src/lib/selection/widget-selection-paint.ts': 'the widgets a native range covers',
+		'src/lib/caret/widget-offset.ts': `${BELOW_BRIDGE}: the caret writer, and \`rawSelectionFocus\``,
+		'src/lib/caret/text-seat.ts': `${BELOW_BRIDGE}: whether the live caret sits in visible text`,
+		'src/lib/caret/focused-caret.ts': `${BELOW_BRIDGE}: the caret a decoration rebuild keeps`,
+		'src/lib/caret/drawn-caret.svelte.ts': `${BELOW_BRIDGE}: where the browser holds a caret`,
+		'src/lib/caret/sticky-measure.ts': `${BELOW_BRIDGE}: the moving end's column`,
+		'src/lib/caret/visual-lines.ts': `${BELOW_BRIDGE}: the moving end's line`,
 		'src/lib/schema/commands.ts':
 			'a dev warning about a live range; selection imports the schema, so it cannot import back',
 		'src/lib/invariants/landing-value.ts':
@@ -48,14 +50,20 @@ const NATIVE_SELECTION_READS: FileRule = {
 		'const s = document.getSelection();',
 		'root.ownerDocument.defaultView?.getSelection();',
 		'el.ownerDocument!.getSelection()',
-		'if (globalThis.getSelection?.()?.isCollapsed !== false) return;'
+		'if (globalThis.getSelection?.()?.isCollapsed !== false) return;',
+		'const sel = self.getSelection();',
+		'const { getSelection } = window;',
+		'const { getSelection: read } = document;',
+		'const read = window.getSelection.bind(window);',
+		"const sel = window['getSelection']();"
 	].map(inLibrary),
 	misses: [
 		...[
 			'const focus = deps.getSelection()?.focus;',
 			'read: () => getSelection(),',
 			'export function getSelection(): EditorSelection | null {',
-			'const sel = readNativeSelection();'
+			'const sel = readNativeSelection();',
+			'const { getSelection } = deps;'
 		].map(inLibrary),
 		{ relPath: `${SOURCE_DIR.debug}probe.ts`, code: 'const sel = window.getSelection();' }
 	]
