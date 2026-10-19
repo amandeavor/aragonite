@@ -186,6 +186,7 @@ unguarded.
 | G4.221 | No constructed `ClipboardEvent`; a selection's shown text is read in one place               | L       |
 | G4.222 | The browser's selection is read through the bridge readers                                   | L       |
 | G4.223 | The library names no browser engine in code                                                  | L       |
+| G4.226 | An e2e spec presses the platform's own chord for an edge key or a modifier                   | L       |
 | G4.227 | A caret-edge key is read in one place, `caretEdgeKey`                                        | L       |
 
 ### The entries
@@ -1264,6 +1265,12 @@ their reason, and the list only shrinks. `lint/native-selection-reads.test.ts`.
 a user-agent read, `Edg/`): an engine bug is fixed where the editor reads or decides, the same way
 on all three, and a CSS vendor prefix or a platform read (Mac's Cmd) is fine. Zero is the baseline
 (`editor.md` § Browser engines). `lint/engine-sniffing.test.ts`.
+
+**G4.226 · Platform chords in e2e.** On macOS Home and End scroll the page, Ctrl+click is a
+right-click and Ctrl+A goes to the line's start, so a spec presses `edgeKey`, `extendKey`,
+`ControlOrMeta`, `WORD_MODIFIER` or `COPY_DRAG_MODIFIERS` (`e2e/platform-keys.ts`), never a raw
+Home, End, Cmd+Arrow or bare Ctrl. `keyboard-navigation/edge-chords.spec.ts` is the one spec that
+sends both spellings literally. `e2e/lint/e2e-drivers.test.ts`.
 
 **G4.227 · One caret-edge reader.** Home and End, with their modifiers, and macOS's Cmd+Arrow mean
 the same moves, so every site that steps in on one asks `caretEdgeKey` (`schema/keybindings.ts`)

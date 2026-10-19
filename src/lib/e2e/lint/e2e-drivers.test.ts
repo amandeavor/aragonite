@@ -1,9 +1,8 @@
 /**
- * An e2e spec drives the browser through the shared helpers, each of which waits for or supplies
- * what a raw call skips: composition through the IME driver (G4.49), the clipboard through its
- * helper (G4.212), navigation through `gotoReady` and `reloadReady`, a mode switch through a helper
- * that waits for the mode (G4.133), and click runs and keyless text through their Firefox helpers.
- * Runs with the other e2e lints; probe text is spelled in pieces, since this file is scanned too.
+ * An e2e spec drives the browser through the shared helpers, each supplying what a raw call skips:
+ * the IME driver (G4.49), the clipboard helper (G4.212), `gotoReady` and `reloadReady`, the mode
+ * switch that waits (G4.133), the Firefox click-run and insert helpers, and the platform's own key
+ * spelling (G4.226). Probe text is spelled in pieces, since this file is scanned too.
  */
 import { it, expect } from 'vitest';
 import { collectFiles, readSource } from '../../test/invariants/lint/scan-source';
@@ -18,6 +17,8 @@ const BRIDGE_HOME = 'src/lib/e2e/editor-page.ts';
 const CONTROL_HOME = 'src/lib/e2e/mode-switch.ts';
 const MULTI_CLICK_HELPER = 'src/lib/e2e/multi-click.ts';
 const INSERT_TEXT_HELPER = 'src/lib/e2e/insert-text.ts';
+const PLATFORM_KEYS = 'src/lib/e2e/platform-keys.ts';
+const EDGE_CHORDS_SPEC = 'src/lib/e2e/tests/keyboard-navigation/edge-chords.spec.ts';
 
 const COMPOSITION = 'Composition';
 const COMPOSING = 'Composing';
@@ -30,6 +31,9 @@ const setter = 'setPresentation' + 'Mode';
 const dbl = 'dbl' + 'click';
 const count = 'click' + 'Count';
 const insert = 'insert' + 'Text';
+const home = 'Ho' + 'me';
+const end = 'E' + 'nd';
+const ctrl = 'Contr' + 'ol';
 
 // No page object here has a reload or history method, and `EditorPage.goto` takes a query, not a route.
 const RAW_GOTO = /(?<![\w$])page\s*\.\s*goto\s*\(|\.\s*goto\s*\(\s*['"`](?:\/|https?:)/;
@@ -92,7 +96,7 @@ describeManifests(
 			hits: [
 				pasteChord('ControlOrMeta'),
 				pasteChord('ControlOrMeta', 'KeyV'),
-				pasteChord('Control+Shift', 'V'),
+				pasteChord(`${ctrl}+Shift`, 'V'),
 				`ctx.page.keyboard.press("Meta+${'v'}")`,
 				'await page.keyboard.press(`${mod}' + '+v`);'
 			],
@@ -160,6 +164,53 @@ describeManifests(
 	.${insert}(ch)`
 			],
 			misses: [`await ${insert}(page, 'x');`, "await page.keyboard.type('x');"]
+		},
+		// Miss-analysis: specs pressed Home and End, which scroll the page on macOS, and no run on
+		// macOS gated, so 140 files went red there before any spec spelled the platform's chord.
+		{
+			id: 'G4.226 every e2e caret-edge key is the platform-keys chord',
+			matches:
+				/(['"`])(?:(?:[A-Za-z]+\+)*(?:Home|End)|(?:Shift\+)?Meta\+(?:Shift\+)?Arrow(?:Left|Right|Up|Down))\1/,
+			declared: {
+				[PLATFORM_KEYS]: 'edgeKey and extendKey, the one spelling per platform',
+				[EDGE_CHORDS_SPEC]:
+					"sends both platforms' literal chords on every engine, so the Cmd+Arrow reading runs on every Linux push"
+			},
+			reason: `press edgeKey or extendKey (${PLATFORM_KEYS}): on macOS Home and End scroll the page`,
+			hits: [
+				press(end),
+				press(`Shift+${home}`),
+				press(`ControlOrMeta+Shift+${end}`),
+				`const rows = [['${home}', 'abc']];`,
+				`function at(key: '${home}' | 'x') {}`,
+				press(`Meta+Arrow${'Left'}`)
+			],
+			misses: [
+				"await page.keyboard.press(edgeKey('lineEnd'));",
+				`await page.keyboard.type('The ${end}');`,
+				`const name = 'Week${end}';`
+			]
+		},
+		{
+			id: 'G4.226 every e2e chord names the platform modifier, never Ctrl alone',
+			matches: /(['"`])Control(?:\+[^'"`\n]*)?\1/,
+			declared: {
+				[PLATFORM_KEYS]: 'the word and copy modifiers, spelled per platform',
+				'src/lib/e2e/selection-drag.ts':
+					'turns the copy modifier the helper named into the drop event',
+				[EDGE_CHORDS_SPEC]: 'holds Ctrl+Arrow to word motion on Windows and Linux'
+			},
+			reason: `press ControlOrMeta, or WORD_MODIFIER and COPY_DRAG_MODIFIERS (${PLATFORM_KEYS}): on macOS Ctrl+click is a right-click and Ctrl+A goes to the line's start`,
+			hits: [
+				press(`${ctrl}+a`),
+				`await link.click({ modifiers: ['${ctrl}'] });`,
+				`await page.keyboard.down('${ctrl}');`
+			],
+			misses: [
+				press('ControlOrMeta+a'),
+				"await link.click({ modifiers: ['ControlOrMeta'] });",
+				"await page.keyboard.down('ControlOrMeta');"
+			]
 		},
 		// Miss-analysis: two selection specs stayed green with the harness dropping live mode to
 		// source. An alias of the bridge held across statements still gets past the matcher.
