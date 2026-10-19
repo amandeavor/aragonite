@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { pointAtRaw } from '../../text-runs';
 
 /**
  * Selection toolbar (requirements/decorations/selection-toolbar.md): the editor's own
@@ -99,6 +100,38 @@ test.describe('selection toolbar', () => {
 			() => (window as any).__test.rects.blockRect([0]).top as number
 		);
 		expect(bar!.y).toBeGreaterThanOrEqual(blockTop);
+	});
+
+	// Miss-analysis: the cross-block row ended in a paragraph, so the table end's fallback to the
+	// start block, which put the bar over the selected rows, was never placed.
+	test('a cross-block selection ending in a cell hangs the bar off that cell', async ({ page }) => {
+		await editor.loadContent('head\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n');
+		const cells = page.locator('.table-cell');
+		const from = await pointAtRaw(page, [0], 0);
+		const to = (await cells.nth(2).boundingBox())!;
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+		await page.mouse.up();
+		await expect
+			.poll(() => page.evaluate(() => (window as any).__test.getSelection()?.focus))
+			.toEqual({ path: [1], offset: 2, cellCoordinate: true });
+
+		const toolbar = page.locator(TOOLBAR);
+		await expect(toolbar).toBeVisible();
+		const bar = (await toolbar.boundingBox())!;
+		expect(bar.y).toBeGreaterThanOrEqual(to.y + to.height - 1);
+		expect(bar.x).toBeGreaterThanOrEqual(to.x + to.width - 1);
+		// The selected rows stay pressable: no selected cell's centre is under the bar.
+		for (let i = 0; i < 4; i++) {
+			const cell = (await cells.nth(i).boundingBox())!;
+			const onBar = await page.evaluate(
+				({ x, y }) =>
+					!!document.elementFromPoint(x, y)?.closest('[data-testid="selection-toolbar"]'),
+				{ x: cell.x + cell.width / 2, y: cell.y + cell.height / 2 }
+			);
+			expect(onBar, `cell ${i}`).toBe(false);
+		}
 	});
 
 	test('the bold button paints pressed inside bold text and unpressed outside', async ({

@@ -146,8 +146,8 @@ test.describe('selection: a fast drag ends where it was released', () => {
 		});
 	}
 
-	// The selection toolbar shows on release, over the table's first rows when the range ends in
-	// a cell: the release has to resolve before the bar is there.
+	// The selection toolbar shows on release, below and right of the cell the range last reached,
+	// which is where the pointer lets go: the release has to resolve before the bar is there.
 	test('Ctrl+B after a fast drag into a body cell bolds through that row', async ({ page }) => {
 		await editor.loadContent(HEAD_TABLE);
 		const release = await pressAt(page, await pointAtRaw(page, [0], 0));
