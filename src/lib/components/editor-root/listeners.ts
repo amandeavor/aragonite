@@ -8,6 +8,7 @@ import { isModifiedClick, type PressTracker } from '../../activation-click';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import type { CaretWriter } from '../../caret/widget-offset';
+import { TEXT_SURFACE_SELECTOR } from '../../caret/block-content-selector';
 import { BARE_MODIFIER_KEYS } from '../../schema/keybindings';
 
 // ── Listener plumbing ───────────────────────────────────────────────
@@ -131,8 +132,14 @@ export function installSelectionChangeBridge(deps: SelectionChangeBridgeDeps): (
 			deps.caretWriter.clear();
 			return;
 		}
+		// Focus can sit on the editor root or a whole-block proxy, which hold no text to move along.
 		const surface = document.activeElement;
-		if (!composing && surface instanceof HTMLElement && surface.contains(anchorNode)) {
+		if (
+			!composing &&
+			surface instanceof HTMLElement &&
+			surface.matches(TEXT_SURFACE_SELECTOR) &&
+			surface.contains(anchorNode)
+		) {
 			deps.caretWriter.canonicalizeCaret(surface);
 		}
 		deps.announceIfMoved();

@@ -301,6 +301,31 @@ describe('editor-root listeners: selectionchange bridge', () => {
 		});
 	});
 
+	// Miss-analysis: every row focused the block; the editor root takes focus when a block
+	// unmounts or a press lands on chrome, and the walk then counted every block as one.
+	it('stays put while the editor root, not a block, holds focus', () => {
+		const root = document.createElement('div');
+		root.setAttribute('data-presentation', 'live');
+		root.tabIndex = -1;
+		root.innerHTML = '<div contenteditable="true">one</div><div contenteditable="true">two</div>';
+		document.body.append(root);
+		root.focus();
+		teardowns.push(
+			installSelectionChangeBridge({
+				caretWriter: createCaretWriter(() => {}),
+				root,
+				isHostChrome: () => false,
+				announceIfMoved: () => {},
+				selection: { widget: null }
+			})
+		);
+		const two = root.lastElementChild!.firstChild!;
+		window.getSelection()!.collapse(two, 0);
+		fire();
+		const sel = window.getSelection()!;
+		expect([sel.focusNode?.textContent, sel.focusOffset]).toEqual(['two', 0]);
+	});
+
 	it('teardown detaches both listeners', () => {
 		const b = bridge();
 		b.teardown();
