@@ -17,5 +17,5 @@ the language chip) leaves the keyboard where it was, so the block's keys still r
 ## Miss-analysis
 
 - A press on any gutter button left focus on the button in Chromium and Firefox, so typing went
-  nowhere and Firefox's Mod+Z did nothing: the gutter specs drove each button for what it does and
-  never pressed a key after one
+  nowhere, and after the chip closed its picker Firefox's Mod+Z did nothing too: the gutter specs
+  drove each button for what it does and never pressed a key after one
