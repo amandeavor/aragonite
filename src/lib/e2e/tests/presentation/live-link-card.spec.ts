@@ -6,6 +6,7 @@ import { CARD, URL_FIELD, clickLink, editUrl, openCardOn } from './link-card-hel
 import { findInput } from '../search/helpers';
 import { textRunEnd, textRunStart } from '../../text-runs';
 import { freezeInPageClock, deferImage } from '../../page-probes';
+import { clickInPlace } from '../../click-in-place';
 
 // The anchored panel that stands in for the destination live mode hides. The chord's create
 // half lives in `live-link-card-create.spec.ts`, and what it consumes in
@@ -145,7 +146,7 @@ test.describe('live-mode link card', () => {
 		await expect(page.locator(URL_FIELD)).toHaveValue('https://example.com');
 
 		// Enter over the reloaded draft must not put the undone bytes back.
-		await page.locator(URL_FIELD).click();
+		await clickInPlace(page.locator(URL_FIELD));
 		await page.keyboard.press('Enter');
 		// The card's URL field is its own input, outside every editable element.
 		await ep.waitForNoSourceMutation();
@@ -172,7 +173,7 @@ test.describe('live-mode link card', () => {
 	test('remove-link leaves the text the reader was already seeing', async ({ page }) => {
 		await openCardOn(ep, page, 'example');
 
-		await page.getByRole('button', { name: 'Remove link' }).click();
+		await clickInPlace(page.getByRole('button', { name: 'Remove link' }));
 
 		await ep.bridge.waitForSourceContains('Visit example now');
 		expect(await ep.bridge.getSource()).not.toContain('[example]');
@@ -265,7 +266,7 @@ test.describe('live-mode link card', () => {
 		// a blocked scheme resolves to nothing. The card still opens, so the URL can be repaired.
 		const open = page.getByRole('button', { name: 'Open link' });
 		await expect(open).toBeDisabled();
-		await open.click({ force: true });
+		await clickInPlace(open);
 
 		// 200ms, because a popup that never opens leaves no state to wait on.
 		await page.waitForTimeout(200);
@@ -376,7 +377,7 @@ test.describe('live-mode link card', () => {
 
 	test('Tab is trapped once focus is inside the open card', async ({ page }) => {
 		await openCardOn(ep, page, 'example');
-		await page.locator(URL_FIELD).click();
+		await clickInPlace(page.locator(URL_FIELD));
 
 		await page.keyboard.press('Tab');
 		await expect(page.getByRole('button', { name: 'Open link' })).toBeFocused();

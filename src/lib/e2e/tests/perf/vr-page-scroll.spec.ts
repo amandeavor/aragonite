@@ -9,6 +9,7 @@ import {
 	spacerCount,
 	topVisibleBlockInViewport
 } from './vr-helpers';
+import { clickInPlace } from '../../click-in-place';
 
 // The page-scrolled host embedding: `scrollMode="host"` with nothing scrollable between the
 // editor and the document, so the window's own viewport is the scroll container. `/test/flow`
@@ -147,7 +148,7 @@ test('a search jump reveals its match and scrolls the page to it', async ({ page
 	const match = page.locator('.editor [data-block-path="[147]"]');
 	await expect(match).toHaveCount(0);
 
-	await page.locator('.editor [data-block-path="[0]"] [contenteditable]').first().click();
+	await clickInPlace(page.locator('.editor [data-block-path="[0]"] [contenteditable]').first());
 	await page.keyboard.press('ControlOrMeta+f');
 	const find = page.getByRole('textbox', { name: 'Find' });
 	await find.waitFor({ state: 'visible' });
@@ -171,7 +172,7 @@ test('a windowed-out undo target is revealed before the caret lands', async ({ p
 	await gotoPageScroll(page);
 
 	// Type into a block near the top, then scroll far past it so its host unmounts.
-	await page.locator('.editor [data-block-path="[2]"] [contenteditable]').first().click();
+	await clickInPlace(page.locator('.editor [data-block-path="[2]"] [contenteditable]').first());
 	await page.keyboard.type('EDITED');
 	await scrollPageTo(page, 5000);
 	await expect(page.locator('.editor [data-block-path="[2]"]')).toHaveCount(0);

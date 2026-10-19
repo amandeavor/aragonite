@@ -2,6 +2,7 @@
 // show on the editor root: a mode that never applies leaves source, where most assertions pass too.
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { PresentationMode } from '../presentation-mode';
+import { clickInPlace } from './click-in-place';
 
 /** The header checkboxes on `/test/editor` (`/test/plugins` has the reading one). */
 const MODE_TOGGLE_TESTIDS = {
@@ -23,13 +24,13 @@ export async function expectPresentationMode(root: Locator, mode: PresentationMo
 export async function clickModeToggle(page: Page, mode: ToggledMode): Promise<PresentationMode> {
 	const root = page.locator('.editor');
 	const applied = (await root.getAttribute('data-presentation')) === mode ? 'source' : mode;
-	await page.getByTestId(MODE_TOGGLE_TESTIDS[mode]).click();
+	await clickInPlace(page.getByTestId(MODE_TOGGLE_TESTIDS[mode]));
 	await expectPresentationMode(root, applied);
 	return applied;
 }
 
 /** Clicks the showcase's or the changelog's button for `mode`, which sets that mode outright. */
 export async function clickModeButton(page: Page, mode: PresentationMode): Promise<void> {
-	await page.locator(`:is(.showcase-mode, .changelog-mode)[data-mode="${mode}"]`).click();
+	await clickInPlace(page.locator(`:is(.showcase-mode, .changelog-mode)[data-mode="${mode}"]`));
 	await expectPresentationMode(page.locator('.editor'), mode);
 }

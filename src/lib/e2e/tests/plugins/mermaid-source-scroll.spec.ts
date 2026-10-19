@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { MermaidPage } from './mermaid-helpers';
+import { clickInPlace } from '../../click-in-place';
 
 /**
  * Opening a diagram's source in the middle of a document leaves the page where it was
@@ -44,8 +45,7 @@ function portGeometry(page: Page): Promise<PortGeometry> {
 }
 
 test.describe('opening a diagram source that runs off the bottom of the screen', () => {
-	test('the page stays where it was', async ({ page, browserName }) => {
-		test.fixme(browserName === 'firefox', '#749: the focusing click scrolls the page in Firefox');
+	test('the page stays where it was', async ({ page }) => {
 		const editor = new MermaidPage(page);
 		await editor.loadDiagram(`${PROSE}\n\n${TALL_DIAGRAM}\n\n${PROSE}\n`);
 		// The diagram's top two thirds of the way down the scroll container, its lower half past
@@ -66,7 +66,7 @@ test.describe('opening a diagram source that runs off the bottom of the screen',
 		await page.mouse.click(box.x + box.width / 2, box.y + 20);
 		await editor.waitForRenderFlush();
 		const clicked = await portGeometry(page);
-		await page.getByTestId('mermaid-edit').click();
+		await clickInPlace(page.getByTestId('mermaid-edit'));
 		await editor.textarea.waitFor({ state: 'visible' });
 		await expect(editor.textarea).toBeFocused();
 		await editor.waitForRenderFlush();

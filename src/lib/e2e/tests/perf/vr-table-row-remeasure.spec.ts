@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { PluginsPage } from '../plugins/helpers';
 import { spacerCount } from './vr-helpers';
+import { clickInPlace } from '../../click-in-place';
 
 // A table row that changes height without its bytes changing is measured again, so the table's
 // height table holds the row as drawn. Opening a tall formula's source in a cell is the gesture.
@@ -52,7 +53,7 @@ test('a row that shrinks as its formula shows its source is measured again', asy
 	const rendered = await rowReading(page, ROW);
 	expect(rendered.measured).toBeCloseTo(rendered.drawn, 0);
 
-	await page.locator(`[data-table-row-idx='${ROW}'] .math-inline-widget`).click();
+	await clickInPlace(page.locator(`[data-table-row-idx='${ROW}'] .math-inline-widget`));
 	await editor.waitForRenderFlush();
 	await editor.waitForResizeObserverFlush();
 

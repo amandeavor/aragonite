@@ -6,6 +6,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { isFirefox } from './browser-engine';
 import type { Point } from './text-runs';
+import { showInPlace } from './click-in-place';
 
 /** Clicks `clicks` times at one point, each its own press and release. */
 export async function multiClick(page: Page, at: Point, clicks: number): Promise<void> {
@@ -38,7 +39,7 @@ export async function multiClickDrag(
 
 /** Clicks `clicks` times at the centre of `target`, scrolled into view first as a locator click is. */
 export async function multiClickElement(target: Locator, clicks: number): Promise<void> {
-	await target.scrollIntoViewIfNeeded();
+	await showInPlace(target);
 	const box = await target.boundingBox();
 	if (!box) throw new Error('the multi-click target has no box');
 	await multiClick(target.page(), { x: box.x + box.width / 2, y: box.y + box.height / 2 }, clicks);

@@ -3,6 +3,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { clickInPlace } from '../../click-in-place';
 
 const TALL = `p20 ${'tall '.repeat(90)}`.trim();
 const LABELS = Array.from({ length: 40 }, (_, i) => (i === 20 ? TALL : `p${i} split here`));
@@ -46,7 +47,7 @@ test.describe('a keyboard edit mid-screen keeps your place', () => {
 	});
 
 	const clickInto = (page: Page, label: string) =>
-		page.locator('[contenteditable="true"]', { hasText: `${label} split here` }).click();
+		clickInPlace(page.locator('[contenteditable="true"]', { hasText: `${label} split here` }));
 
 	test('Alt+ArrowUp moves the block up past its tall sibling and leaves the page', async ({
 		page
@@ -127,7 +128,7 @@ test.describe('a keyboard edit mid-screen keeps your place', () => {
 		page
 	}) => {
 		// Delete the tall block by keyboard: clear its text, then join the empty line up.
-		await page.locator('[contenteditable="true"]', { hasText: 'p20 tall' }).click();
+		await clickInPlace(page.locator('[contenteditable="true"]', { hasText: 'p20 tall' }));
 		await page.keyboard.press('Control+a');
 		await page.keyboard.press('Backspace');
 		await page.keyboard.press('Backspace');
@@ -186,7 +187,9 @@ test.describe('a reorder inside a container whose top is above the viewport leav
 			);
 			expect(containerTop).toBeLessThan(viewTop);
 
-			await page.locator('[contenteditable="true"]', { hasText: `${moving} split here` }).click();
+			await clickInPlace(
+				page.locator('[contenteditable="true"]', { hasText: `${moving} split here` })
+			);
 			await settle(editor);
 			const scrollTop = await scrollTopOf(page);
 			const moved = await boxOf(page, moving);

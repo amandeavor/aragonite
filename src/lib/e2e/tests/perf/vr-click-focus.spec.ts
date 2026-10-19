@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { PluginsPage, clickWidgetCenter } from '../plugins/helpers';
+import { clickInPlace } from '../../click-in-place';
 
 /**
  * A click into a block leaves the scroll position where it was, whatever the click reveals. The
@@ -79,7 +80,7 @@ test.describe('a click into a block leaves the scroll position alone', () => {
 
 		const box = await paragraph.boundingBox();
 		if (!box) throw new Error('paragraph has no bounding box');
-		await paragraph.click({ position: { x: box.width / 3, y: box.height / 2 } });
+		await clickInPlace(paragraph, { position: { x: box.width / 3, y: box.height / 2 } });
 		await editor.settle();
 
 		expect(Math.abs((await editor.scrollTop()) - before)).toBeLessThanOrEqual(SCROLL_TOLERANCE);
@@ -112,10 +113,8 @@ test.describe('a click into a block leaves the scroll position alone', () => {
 	// The one case where holding the clicked block and holding the top block disagree: the block
 	// above shrinks as the click lands, so only holding the clicked one keeps it under the pointer.
 	test('a click below an open display formula keeps the clicked line under the pointer', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName === 'firefox', '#749: the focusing click scrolls the page in Firefox');
 		const widget = page.locator('.math-inline-widget');
 		const line = editor.getBlock(PARAGRAPH + 2);
 		await editor.centre(widget);

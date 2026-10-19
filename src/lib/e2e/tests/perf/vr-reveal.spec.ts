@@ -3,6 +3,7 @@ import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { FIXTURE_BYTES, GIANT_LIST_OR_TABLE_BYTES, cstBlockCount, spacerCount } from './vr-helpers';
 import { topLevelHostPresent } from '../../page-probes';
+import { clickInPlace } from '../../click-in-place';
 
 // Reaching an unmounted block: Ctrl+Shift+End, a scroll and a collapse must each mount the
 // target and put the caret in a block or cell that was unmounted at load, for flat prose, for
@@ -196,7 +197,7 @@ test('reveals an off-window table cell by scroll and edits it (phase 4)', async 
 	expect(target).not.toBeNull();
 	expect(target!).toBeGreaterThan(initialMaxRow + 10);
 
-	await page.locator(`[data-table-row-idx="${target}"] .table-cell`).first().click();
+	await clickInPlace(page.locator(`[data-table-row-idx="${target}"] .table-cell`).first());
 	await editor.typeText('CELL_VR_MARKER');
 	await editor.bridge.waitForSourceContains('CELL_VR_MARKER', 10_000);
 
@@ -230,7 +231,7 @@ test('Ctrl+Shift+End in a table reveals and mounts the off-window focus cell (ph
 
 	// The focus ends up as a cell position on the table block; an extend that ignores the cell
 	// scrolls to the top of the table and never mounts the last row.
-	await page.locator('[data-table-row-idx="0"] .table-cell').first().click();
+	await clickInPlace(page.locator('[data-table-row-idx="0"] .table-cell').first());
 	await page.keyboard.press('ControlOrMeta+Shift+End');
 	await editor.waitForCrossBlock(true);
 
@@ -262,7 +263,7 @@ test('collapsing a Ctrl+Shift+End table selection lands the caret in the reveale
 		await page.evaluate((r) => !!document.querySelector(`[data-table-row-idx="${r}"]`), lastRow)
 	).toBe(false);
 
-	await page.locator('[data-table-row-idx="0"] .table-cell').first().click();
+	await clickInPlace(page.locator('[data-table-row-idx="0"] .table-cell').first());
 	await page.keyboard.press('ControlOrMeta+Shift+End');
 	await editor.waitForCrossBlock(true);
 	await page.keyboard.press('ArrowRight'); // collapse to the newly mounted end
@@ -300,7 +301,7 @@ test('collapsing a Ctrl+Shift+End table selection to start does not wipe the tab
 
 	// The collapse is async: typing on the keypress alone would race the still-active
 	// selection into a destructive type-replace.
-	await page.locator('[data-table-row-idx="0"] .table-cell').first().click();
+	await clickInPlace(page.locator('[data-table-row-idx="0"] .table-cell').first());
 	await page.keyboard.press('ControlOrMeta+Shift+End');
 	await editor.waitForCrossBlock(true);
 	await page.keyboard.press('ArrowLeft'); // collapse to the start

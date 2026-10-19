@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { openFlyout } from './helpers';
 import { getContainerParityMismatches } from '../../../container-parity';
+import { clickInPlace } from '../../../click-in-place';
 
 // Header + N distinguishable body rows; row k's first cell is `rk`. Tall enough that body rows
 // window out, so once the editor is scrolled to the bottom row 0 is unmounted and a mounted
@@ -43,7 +44,7 @@ test.describe('table block: row moves on a row-windowed table', () => {
 		page
 	}) => {
 		const from = BODY_ROWS - 2;
-		await page.locator(`[data-table-row-idx="${from}"] .table-cell`).first().click();
+		await clickInPlace(page.locator(`[data-table-row-idx="${from}"] .table-cell`).first());
 
 		await page.keyboard.press('Alt+ArrowDown');
 
@@ -64,7 +65,7 @@ test.describe('table block: row moves on a row-windowed table', () => {
 			'Row'
 		);
 
-		await page.getByRole('menuitem', { name: 'Move row up' }).click();
+		await clickInPlace(page.getByRole('menuitem', { name: 'Move row up' }));
 
 		await editor.bridge.waitForSourceMatches(
 			new RegExp(`\\| r${from} \\|[^\\n]*\\n\\| r${from - 1} \\|`)

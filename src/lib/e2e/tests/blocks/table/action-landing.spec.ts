@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { clickInPlace } from '../../../click-in-place';
 
 // Where the caret lands after each table edit, read by typing into it.
 // Requirements: `requirements/blocks/table/action-landing.md`.
@@ -30,7 +31,7 @@ test.describe('table block: the caret after a table edit', () => {
 
 	test('insert row below lands in the new row’s first cell', async ({ page }) => {
 		await editor.loadContent(TABLE_3ROW);
-		await cell(3).click(); // "2": row 1, col 1
+		await clickInPlace(cell(3)); // "2": row 1, col 1
 		await page.keyboard.press('ControlOrMeta+Enter');
 		await typeX();
 		await editor.bridge.waitForSourceContains('| 1 | 2 |\n| x |  |\n| 3 | 4 |');
@@ -38,7 +39,7 @@ test.describe('table block: the caret after a table edit', () => {
 
 	test('insert row above lands in the new row’s first cell', async ({ page }) => {
 		await editor.loadContent(TABLE_3ROW);
-		await cell(5).click(); // "4": row 2, col 1
+		await clickInPlace(cell(5)); // "4": row 2, col 1
 		await page.keyboard.press('ControlOrMeta+Shift+Enter');
 		await typeX();
 		await editor.bridge.waitForSourceContains('| 1 | 2 |\n| x |  |\n| 3 | 4 |');
@@ -46,7 +47,7 @@ test.describe('table block: the caret after a table edit', () => {
 
 	test('insert column right lands in the new column, on the same row', async ({ page }) => {
 		await editor.loadContent(TABLE_3ROW);
-		await cell(4).click(); // "3": row 2, col 0
+		await clickInPlace(cell(4)); // "3": row 2, col 0
 		await page.keyboard.press('Alt+Shift+ArrowRight');
 		await typeX();
 		await editor.bridge.waitForSourceContains('| 3 | x | 4 |');
@@ -54,7 +55,7 @@ test.describe('table block: the caret after a table edit', () => {
 
 	test('move row down lands at the start of the moved cell', async ({ page }) => {
 		await editor.loadContent(TABLE_3ROW);
-		await cell(3).click(); // "2": row 1, col 1
+		await clickInPlace(cell(3)); // "2": row 1, col 1
 		await page.keyboard.press('Alt+ArrowDown');
 		await typeX();
 		await editor.bridge.waitForSourceContains('| 3 | 4 |\n| 1 | x2 |');
@@ -62,7 +63,7 @@ test.describe('table block: the caret after a table edit', () => {
 
 	test('move column right lands at the start of the moved cell', async ({ page }) => {
 		await editor.loadContent(TABLE_3COL);
-		await cell(3).click(); // "1": row 1, col 0
+		await clickInPlace(cell(3)); // "1": row 1, col 0
 		await page.keyboard.press('Alt+ArrowRight');
 		await typeX();
 		await editor.bridge.waitForSourceContains('| 2 | x1 | 3 |');
@@ -70,7 +71,7 @@ test.describe('table block: the caret after a table edit', () => {
 
 	test('delete row lands in the row that took its place, same column', async ({ page }) => {
 		await editor.loadContent(TABLE_3ROW);
-		await cell(3).click(); // "2": row 1, col 1
+		await clickInPlace(cell(3)); // "2": row 1, col 1
 		await page.keyboard.press('ControlOrMeta+Shift+Backspace');
 		await typeX();
 		await editor.bridge.waitForSourceContains('| 3 | x4 |');
@@ -79,7 +80,7 @@ test.describe('table block: the caret after a table edit', () => {
 
 	test('delete column lands in the column that took its place, same row', async ({ page }) => {
 		await editor.loadContent(TABLE_3COL);
-		await cell(4).click(); // "2": row 1, col 1
+		await clickInPlace(cell(4)); // "2": row 1, col 1
 		await page.keyboard.press('Alt+Shift+Backspace');
 		await typeX();
 		await editor.bridge.waitForSourceContains('| 1 | x3 |');
@@ -87,8 +88,8 @@ test.describe('table block: the caret after a table edit', () => {
 
 	test('an alignment from the menu lands back in the cell the menu opened on', async ({ page }) => {
 		await editor.loadContent(TABLE_3ROW);
-		await cell(3).click({ button: 'right' }); // "2": row 1, col 1
-		await page.getByRole('button', { name: 'Right' }).click();
+		await clickInPlace(cell(3), { button: 'right' }); // "2": row 1, col 1
+		await clickInPlace(page.getByRole('button', { name: 'Right' }));
 		await editor.bridge.waitForSourceContains('| --- | ---: |');
 		await expect(page.getByRole('menu')).toHaveCount(0);
 		await typeX();
@@ -97,7 +98,7 @@ test.describe('table block: the caret after a table edit', () => {
 
 	test('a pasted grid lands at the end of its last cell', async () => {
 		await editor.loadContent(TABLE_3ROW);
-		await cell(2).click(); // "1": row 1, col 0
+		await clickInPlace(cell(2)); // "1": row 1, col 0
 		await editor.seedClipboard('p\tq\ns\tt\n');
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('| s | t |');
@@ -114,7 +115,7 @@ test.describe('table block: the caret after a table edit', () => {
 		const lastRow = 39;
 		// The precondition: the row the grid ends on is not rendered when the paste lands.
 		await expect(page.locator(`[data-table-row-idx="${lastRow}"]`)).toHaveCount(0);
-		await cell(0).click(); // "key": row 0, col 0
+		await clickInPlace(cell(0)); // "key": row 0, col 0
 		const grid = Array.from({ length: lastRow + 1 }, (_, r) => `g${r}\th${r}`).join('\n');
 		await editor.seedClipboard(grid + '\n');
 		await editor.paste();
@@ -128,7 +129,9 @@ test.describe('table block: the caret after a table edit', () => {
 	}) => {
 		await page.setViewportSize({ width: 1280, height: 720 });
 		await editor.loadContent(tallTable(300));
-		await page.locator('[data-table-row-idx="2"] .table-cell').nth(1).click({ button: 'right' });
+		await clickInPlace(page.locator('[data-table-row-idx="2"] .table-cell').nth(1), {
+			button: 'right'
+		});
 		await expect(page.getByRole('menu')).toBeVisible();
 		const scrollHeight = await page.evaluate(
 			() => (document.querySelector('.editor') as HTMLElement).scrollHeight

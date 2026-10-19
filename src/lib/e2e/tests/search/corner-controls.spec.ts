@@ -4,6 +4,7 @@ import { EditorPage } from '../../editor-page';
 import { MermaidPage, MERMAID_FENCE } from '../plugins/mermaid-helpers';
 import { BlockMathPage } from '../plugins/latex-reveal-helpers';
 import { findInput, openFind, openReplace, replaceInput } from './helpers';
+import { clickInPlace, hoverInPlace } from '../../click-in-place';
 
 // A block's hover controls in its top-right corner (`requirements/search/corner-controls.md`):
 // the open find bar moves only the ones it covers below itself.
@@ -45,7 +46,7 @@ test.describe('the find bar beside a code block', () => {
 	const expandReplace = async (editor: EditorPage) => {
 		await openFind(editor);
 		await hover(editor.page, TOP);
-		await editor.page.getByRole('button', { name: 'Toggle replace' }).click();
+		await clickInPlace(editor.page.getByRole('button', { name: 'Toggle replace' }));
 		await replaceInput(editor.page).waitFor({ state: 'visible' });
 	};
 
@@ -118,7 +119,7 @@ test.describe('the find bar over a code block scrolling under it', () => {
 		await openFind(editor);
 		const block = host(page, 1);
 		// Inside the block's text, one element, so the scroll brings no new element under the pointer.
-		await block.hover({ position: { x: 40, y: 200 } });
+		await hoverInPlace(block, { position: { x: 40, y: 200 } });
 		const rail = block.locator(':scope > .code-rail');
 		await expect.poll(() => areaUnderBar(rail)).toBe(0);
 
@@ -142,7 +143,7 @@ test.describe('the find bar in a consumer anchor', () => {
 		await hover(page, 0);
 		await expect.poll(() => areaUnderBar(rail)).toBe(0);
 
-		await page.getByTestId('anchor-toggle').click();
+		await clickInPlace(page.getByTestId('anchor-toggle'));
 		await expect(page.locator('.editor .search-bar')).toBeVisible();
 		await hover(page, 0);
 		await expect.poll(() => areaUnderBar(rail)).toBe(0);
