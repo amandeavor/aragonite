@@ -1,7 +1,8 @@
 /**
  * The `beforeinput` steps for typed text that a prose block and a table cell share: the delimiter
  * auto-pair first, since the live range edit writes a delimiter at a collapsed caret as a lone byte,
- * then the range edit. The two blocks differ only in how they read their own text.
+ * then the range edit, then text typed against a widget that ends the block. The two blocks differ
+ * only in how they read their own text.
  */
 
 import type { NodeView } from '../../../core/node-views';
@@ -18,6 +19,7 @@ import { applyDelimiterAutoPair } from './delimiter-autopair';
 import type { TypedPlacement } from './edge-seat';
 import { applyLiveRangeEdit } from './live-selection-edit';
 import type { WidgetInteraction } from './widget-interaction';
+import type { EdgePolicyDispatch } from './edge-policy-dispatch';
 
 export interface TypedInputDeps {
 	get node(): NodeView;
@@ -31,6 +33,8 @@ export interface TypedInputDeps {
 	reading: Reading;
 	ownPairs: BlockAutoPairs;
 	writeText: (write: TextWrite) => unknown;
+	/** The block's caret-edge dispatch, which writes a key the browser drops beside a widget. */
+	edges: Pick<EdgePolicyDispatch, 'typeBeforeClosingWidget'>;
 	/** The bytes the caret counts into. */
 	text: () => string;
 	/** The part of `text` that is the block's content, past any marker of its own. */
@@ -90,5 +94,14 @@ export function createTypedInput(deps: TypedInputDeps): (e: InputEvent) => boole
 				})
 		});
 
-	return (e) => autoPair(e) || rangeEdit(e);
+	// Firefox drops a native insertion right before an inline widget that ends the block.
+	const beforeClosingWidget = (e: InputEvent): boolean => {
+		if (e.inputType !== 'insertText' || e.isComposing || !e.data) return false;
+		const caret = deps.cursor.getRaw();
+		if (caret === null || !deps.edges.typeBeforeClosingWidget(caret, e.data)) return false;
+		e.preventDefault();
+		return true;
+	};
+
+	return (e) => autoPair(e) || rangeEdit(e) || beforeClosingWidget(e);
 }

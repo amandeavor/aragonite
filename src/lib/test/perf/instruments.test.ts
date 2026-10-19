@@ -62,6 +62,8 @@ const EMPTY: PerfSnapshot = {
 	caretLookComputes: 0,
 	caretLookNodeVisits: 0,
 	caretLookOffsetWalks: 0,
+	caretCanonicalSteps: 0,
+	caretCanonicalWalks: 0,
 	caretLookPreviews: 0,
 	caretLookParses: 0,
 	blockRenderPaths: [],

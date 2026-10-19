@@ -360,6 +360,7 @@
 		reading,
 		ownPairs,
 		writeText,
+		edges: edgeDispatch,
 		text: () => readCellText(),
 		content: () => ({ start: 0, end: readCellText().length })
 	});

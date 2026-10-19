@@ -112,9 +112,11 @@ export interface SelectionChangeBridgeDeps {
 	caretWriter: CaretWriter;
 }
 
-/** Announces caret motion the editor did not make (a click, a move within one block), and drops
- *  a caret that appears while an inline widget is selected whole. */
+/** Announces caret motion the editor did not make, after moving a caret the browser left off its
+ *  spot onto it, and drops a caret that appears while an inline widget is selected whole. */
 export function installSelectionChangeBridge(deps: SelectionChangeBridgeDeps): () => void {
+	// A caret moved mid-composition ends the IME's run.
+	let composing = false;
 	const handler = () => {
 		const sel = window.getSelection();
 		if (!sel || sel.rangeCount === 0) return;
@@ -129,9 +131,15 @@ export function installSelectionChangeBridge(deps: SelectionChangeBridgeDeps): (
 			deps.caretWriter.clear();
 			return;
 		}
+		const surface = document.activeElement;
+		if (!composing && surface instanceof HTMLElement && surface.contains(anchorNode)) {
+			deps.caretWriter.canonicalizeCaret(surface);
+		}
 		deps.announceIfMoved();
 	};
 	return removeAll(
+		onRoot(deps.root, 'compositionstart', () => (composing = true)),
+		onRoot(deps.root, 'compositionend', () => (composing = false)),
 		onRoot(document, 'selectionchange', handler),
 		// The browser reports a click's caret on a later task, which a byte typed straight after
 		// beats. On `document` so the block's own click handling refines the caret first.

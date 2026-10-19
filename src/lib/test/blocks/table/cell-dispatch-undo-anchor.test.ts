@@ -41,9 +41,9 @@ describe('a cell dispatch write anchors undo at the exact pre-edit caret', () =>
 	it('undo after a construct-edge delete restores caret and bytes byte-exact', async () => {
 		mounted = mountEditor({ source: GRID, presentationMode: 'live' });
 		const el = cellAt(mounted, 0, 0);
-		// `a\|b **bold**`: caret at the end of the displayed text (13), past the escape and the
-		// hidden closer.
-		placeCaret(el, 13);
+		// `a\|b **bold**`: caret at the end of the displayed text (11), past the escape and before
+		// the hidden closer.
+		placeCaret(el, 11);
 
 		el.dispatchEvent(
 			new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
@@ -51,12 +51,11 @@ describe('a cell dispatch write anchors undo at the exact pre-edit caret', () =>
 		await mounted.settle();
 		// Backspace at the hidden closer takes the content character and keeps the `**` pair.
 		expect(mounted.source()).toBe('| a\\|b **bol** | B |\n| --- | --- |\n| 1 | 2 |\n');
-		// The stored anchor is exactly the caret from before the edit. Asserted on the undo entry
-		// itself, since the restored reading below is the clamped caret, not the anchor.
+		// The stored anchor is exactly the caret from before the edit, asserted on the undo entry.
 		const { undo } = (
 			mounted.instance as unknown as { __test: { getUndoStack(): { undo: UndoEntry[] } } }
 		).__test.getUndoStack();
-		expect(rangeSelectionOf(undo[undo.length - 1]).anchor).toEqual({ path: [0, 0, 0], offset: 13 });
+		expect(rangeSelectionOf(undo[undo.length - 1]).anchor).toEqual({ path: [0, 0, 0], offset: 11 });
 
 		el.dispatchEvent(
 			new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })
@@ -65,8 +64,6 @@ describe('a cell dispatch write anchors undo at the exact pre-edit caret', () =>
 		await tick();
 
 		expect(mounted.source()).toBe(GRID);
-		// 11, not the anchor's 13: the restore is clamped to the last reachable offset, since 13
-		// sits past the hidden closer, and both offsets write the same bytes anyway.
 		expect(caretRawOffset(cellAt(mounted, 0, 0))).toBe(11);
 	});
 });

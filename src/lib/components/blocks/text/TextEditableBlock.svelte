@@ -353,6 +353,9 @@
 		reading,
 		ownPairs,
 		writeText,
+		edges: {
+			typeBeforeClosingWidget: (caret, typed) => edgeDispatch.typeBeforeClosingWidget(caret, typed)
+		},
 		text: () => getDisplayText(),
 		content: () => getContentRange(node),
 		completesLine
