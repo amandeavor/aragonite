@@ -46,10 +46,8 @@ test.describe('reserved child-0 chrome: selection parity', () => {
 	});
 
 	test('Gate 1: pointer drag from the paragraph into the title is cross-block', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent(FIXTURE);
 		await editor.dragFromTo([0], 2, [1, 0], 3);
 		expect(await editor.bridge.isCrossBlockActive()).toBe(true);

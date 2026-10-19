@@ -41,10 +41,8 @@ test.describe('table block: cross-block format toggle', () => {
 	});
 
 	test('a drag into a body cell marks that row and the rows above it, and stops there', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent(`head\n\n${TABLE_2x3}`);
 		// From the paragraph's first character into body row 1, col 1: the snap marks the whole row
 		// and leaves row 2. The start is measured, since the text box's centre lands past "head".

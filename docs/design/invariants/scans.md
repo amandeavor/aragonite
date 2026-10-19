@@ -186,6 +186,8 @@ unguarded.
 | G4.221 | No constructed `ClipboardEvent`; a selection's shown text is read in one place               | L       |
 | G4.222 | The browser's selection is read through the bridge readers                                   | L       |
 | G4.223 | The library names no browser engine in code                                                  | L       |
+| G4.224 | A press on editor chrome takes no focus, unless its file is listed as owning focus           | L       |
+| G4.225 | The drag session is the first listener to hear a release                                     | L       |
 | G4.226 | An e2e spec presses the platform's own chord for an edge key or a modifier                   | L       |
 | G4.227 | A caret-edge key is read in one place, `caretEdgeKey`                                        | L       |
 
@@ -1265,6 +1267,19 @@ their reason, and the list only shrinks. `lint/native-selection-reads.test.ts`.
 a user-agent read, `Edg/`): an engine bug is fixed where the editor reads or decides, the same way
 on all three, and a CSS vendor prefix or a platform read (Mac's Cmd) is fine. Zero is the baseline
 (`editor.md` § Browser engines). `lint/engine-sniffing.test.ts`.
+
+**G4.224 · A press on chrome keeps focus where it was.** Engines disagree on where a pressed button
+puts focus (the button, an ancestor, nowhere), and focus off the caret's block leaves Mod+Z and
+Escape with no handler. So every button (a `<button>` or a `role="button"` element) in a component
+or a bundled plugin's view sits under a mousedown or pointerdown handler that calls
+`preventDefault()`, or its file is listed with where it gives focus back, and the list only shrinks.
+`lint/chrome-press-focus.test.ts`.
+
+**G4.225 · A drag hears its release first.** Only `selection/pointer-session.ts` listens for
+`pointerup` or `pointercancel` on the window, so every drag resolves its last point before anything
+else reacts to the release. Either phase counts, since a scan can't read a capture flag held in a
+variable. A popover that shows on release (the selection toolbar) would otherwise cover the point
+the drag hit-tests. `lint/file-rules.test.ts`.
 
 **G4.226 · Platform chords in e2e.** On macOS Home and End scroll the page, Ctrl+click is a
 right-click and Ctrl+A goes to the line's start, so a spec presses `edgeKey`, `extendKey`,

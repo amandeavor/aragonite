@@ -193,7 +193,8 @@ function scanSettleSites(): { vacuous: SettleSite[]; total: number } {
 				}
 			}
 
-			if (segment.kind === 'beforeEach') ambient = loaded;
+			// A beforeEach that changed the document after its load hands its tests an unknown one.
+			if (segment.kind === 'beforeEach') ambient = stateIsKnown ? loaded : null;
 		}
 	}
 	return { vacuous, total };

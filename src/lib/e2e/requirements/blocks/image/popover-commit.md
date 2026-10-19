@@ -23,11 +23,6 @@ source-mode edit.
 ## Edge cases
 
 - Clicking away with no change to a field does not add an undo entry
-- However a crop ends (applied by Enter or its tick, cancelled by Escape or its cross), Mod+Z then
-  undoes the last edit
-  - Miss-analysis: WebKit leaves a pressed button's focus on the toolbar, where the editor hears no
-    Mod+Z; every undo after a crop ran in Chromium, where the pressed button goes away and focus
-    falls to the page, or after typing, whose native undo WebKit routes to the editor anyway
 - Switching the popover from one image to another never writes the previous popover's local field state onto the new target. Each popover is bound to the image identity (`paragraphPath` + `sourceStart`) at mount; commits go to that captured target whatever the live widget selection is.
 - Pending alt edits commit on image-switch (not just on outside-click), targeting the original image. Escape discards pending edits without committing.
 - A switch between source and live with an alt draft open and no press (a host shortcut, say):

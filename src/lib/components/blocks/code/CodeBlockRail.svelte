@@ -45,8 +45,8 @@
 		autoOpen?: boolean;
 		/** Only Enter or a list pick calls this, and it owns the caret's landing afterwards. */
 		onCommit: (info: string) => void;
-		/** Nothing written. Escape asks for the caret back; a blur must not yank it from
-		 *  wherever the user just clicked, so it does not. */
+		/** Nothing written. Escape and a second press on the chip ask for the caret back; a blur
+		 *  must not yank it from wherever the user just clicked, so it does not. */
 		onCancel: (returnCaret: boolean) => void;
 		/** Absent when the host installed no execution hook, so no run button renders. */
 		onRun?: () => void;
@@ -164,6 +164,16 @@
 		fieldDraft = null;
 	}
 
+	// The press kept focus in the field, which closes with the picker, so the caret goes back.
+	function toggleLanguages(): void {
+		if (popout !== 'languages') {
+			open();
+			return;
+		}
+		close();
+		onCancel(true);
+	}
+
 	function commit(value: string): void {
 		const writable = fieldDraft?.canWrite() ?? true;
 		close();
@@ -236,7 +246,7 @@
 		copied = false;
 	}
 	// Tabbing out of the gutter closes its menu too. Focus moving to an ancestor is how WebKit answers
-	// a click on a button, and the menu presence judges that press.
+	// a press on something unfocusable, and the menu presence judges that press.
 	function onRailFocusOut(e: FocusEvent): void {
 		const next = e.relatedTarget instanceof Node ? e.relatedTarget : null;
 		if (next && (railEl?.contains(next) || menuEl?.contains(next))) return;
@@ -335,8 +345,9 @@
 	const showMenu = $derived(menuItems !== undefined);
 </script>
 
-<!-- `group`, not `toolbar`: these controls belong together, but a toolbar promises
-	arrow-key navigation between them, which this does not implement. -->
+<!-- `group`, not `toolbar`, which would promise arrow keys between the controls. A press keeps
+	focus in the block; Tab still reaches each button. -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	bind:this={railEl}
 	class="code-rail"
@@ -345,6 +356,7 @@
 	role="group"
 	aria-label={CODE_RAIL_LABEL}
 	onfocusout={onRailFocusOut}
+	onmousedown={(e) => e.preventDefault()}
 >
 	<span bind:this={chipEl} class="code-lang-chip">
 		<button
@@ -354,8 +366,7 @@
 			aria-haspopup="listbox"
 			aria-expanded={popout === 'languages'}
 			aria-label={codeLanguageLabel(language)}
-			onclick={() => (popout === 'languages' ? close() : open())}
-			>{language}<MenuIcon name="chevron-down" /></button
+			onclick={toggleLanguages}>{language}<MenuIcon name="chevron-down" /></button
 		>
 	</span>
 
@@ -469,6 +480,7 @@
 		aria-label={CODE_MENU_LABEL}
 		style={popoutStyle(popoutAt)}
 		{@attach menuPresence.track(dismissMenu, { inside: () => [railEl] })}
+		onmousedown={(e) => e.preventDefault()}
 	>
 		{#each openMenuItems as item (item.id)}
 			<li role="none">

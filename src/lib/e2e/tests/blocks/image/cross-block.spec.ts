@@ -39,10 +39,8 @@ test.describe('image cross-block selection', () => {
 
 	// The widget must not swallow its own pointerdown, or no drag can originate from an image.
 	test('drag starting on an image widget into the next block enters cross-block', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent('![cat](/test-fixtures/sample.png)\n\nsecond paragraph\n');
 		const widget = page.locator('[data-image-widget]').first();
 		await widget.waitFor();
