@@ -273,7 +273,9 @@ describe('branch protection ↔ workflow check names', () => {
 
 	it('no required matrix job can be skipped whole', () => {
 		expect(
-			wholeMatrixSkips(workflowYaml.get(CI) ?? '', required),
+			[...workflowYaml].flatMap(([file, yaml]) =>
+				wholeMatrixSkips(yaml, required).map((job) => `${file}: ${job}`)
+			),
 			'a matrix job skipped by a job-level if reports one check under its bare name, so its required per-shard checks never arrive; condition its steps instead'
 		).toEqual([]);
 	});
@@ -331,7 +333,6 @@ describe('branch-protection context readers: self-tests', () => {
 	it('sees a path filter on a trigger, not on a step', () => {
 		expect(filtersPaths('on:\n  push:\n    paths-ignore: [docs/**]\njobs:\n  a:\n')).toBe(true);
 		expect(filtersPaths('on:\n  push:\njobs:\n  a:\n    paths: x\n')).toBe(false);
-		expect(filtersPaths(workflowYaml.get('webkit-macos.yml') ?? '')).toBe(true);
 	});
 
 	it('reads a matrix list Prettier wrapped onto its own lines', () => {

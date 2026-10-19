@@ -1,30 +1,76 @@
 name: WebKit macOS
 # Playwright's WebKit on macOS, the nearest a runner gets to Safari's own key bindings and fonts
 # (docs/contributing/testing.md § Browser engines). macOS runners are few, so it runs nightly on
-# dev and on the way into main, not on every dev push. Its checks don't block a merge until it
-# runs clean (PENDING_GATE_CONTEXTS in scripts/branch-protection-contexts.mjs).
+# dev, skipping a dev that already ran green here, and on every pull request to main.
 on:
   schedule:
     - cron: '17 6 * * *'
-  push:
-    branches: [main]
-    paths-ignore: ['docs/**', '**/*.md', '.github/ISSUE_TEMPLATE/**']
   pull_request:
     branches: [main]
-    paths-ignore: ['docs/**', '**/*.md', '.github/ISSUE_TEMPLATE/**']
   workflow_dispatch:
+    inputs:
+      ref:
+        description: The branch or commit to test
+        default: dev
+      nightly:
+        description: Run as the nightly does, skipping a commit already green and recording a green one
+        type: boolean
+        default: false
+      trace:
+        description: Keep a trace of every failing test
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 # Actions pinned to commit SHAs (a major tag is mutable); bump SHA and comment together.
 jobs:
+  # Which commit to test and whether to. The record of a green nightly is a cache entry keyed on the
+  # commit it tested: a scheduled run's own sha is main's, never the dev commit it checks out.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.target.outputs.sha }}
+      nightly: ${{ steps.target.outputs.nightly }}
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'dev' || inputs.ref || '' }}
+          fetch-depth: 0
+      - id: target
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "nightly=${{ github.event_name == 'schedule' || inputs.nightly == true }}" >> "$GITHUB_OUTPUT"
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci-code-changed.mjs "$BASE" >> "$GITHUB_OUTPUT"
+      - id: green
+        if: steps.target.outputs.nightly == 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .webkit-macos-green
+          key: webkit-macos-green-${{ steps.target.outputs.sha }}
+          lookup-only: true
+      - id: decide
+        run: |
+          run=${{ steps.diff.outputs.code == 'true' && steps.green.outputs.cache-hit != 'true' }}
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          if [ "$run" != true ]; then
+            echo "Skipped: ${{ steps.green.outputs.cache-hit == 'true' && 'this commit already ran green' || 'a docs-only change' }} (${{ steps.target.outputs.sha }})." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # Required by main's branch protection, so a skip skips the steps and every shard still reports.
   e2e-webkit-macos:
-    runs-on: macos-latest
+    needs: gate
+    # A skipped shard holds no macOS runner, which are few.
+    runs-on: ${{ needs.gate.outputs.run == 'true' && 'macos-latest' || 'ubuntu-latest' }}
     env:
       ENGINE: webkit
     strategy:
@@ -32,16 +78,35 @@ jobs:
       matrix:
         shard: ['1/5', '2/5', '3/5', '4/5', '5/5']
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.gate.outputs.run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # A scheduled run starts from main's copy of this file; the nightly tests dev.
-          ref: ${{ github.event_name == 'schedule' && 'dev' || '' }}
-      - uses: ./.github/actions/e2e-setup
+          ref: ${{ github.event_name != 'pull_request' && needs.gate.outputs.sha || '' }}
+      - if: needs.gate.outputs.run == 'true'
+        uses: ./.github/actions/e2e-setup
         with:
           engine: webkit
-      - run: npx playwright test --shard=${{ matrix.shard }}
-      - if: always()
+      - if: needs.gate.outputs.run == 'true'
+        run: npx playwright test --shard=${{ matrix.shard }} ${{ inputs.trace && '--trace=retain-on-failure' || '' }}
+      - if: always() && needs.gate.outputs.run == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-webkit-macos-${{ strategy.job-index }}
           path: test-results/ci-summary.json
+      - if: failure() && inputs.trace && needs.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-webkit-macos-traces-${{ strategy.job-index }}
+          path: test-results/**/trace.zip
+
+  # Every shard passed: the next nightly skips this commit until dev moves.
+  record:
+    needs: [gate, e2e-webkit-macos]
+    if: needs.gate.outputs.run == 'true' && needs.gate.outputs.nightly == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: mkdir .webkit-macos-green && echo "${{ needs.gate.outputs.sha }}" > .webkit-macos-green/sha
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .webkit-macos-green
+          key: webkit-macos-green-${{ needs.gate.outputs.sha }}

@@ -449,8 +449,10 @@ had.
 `dev` or `main` and on every push to either. A newer push to a PR or to `dev` cancels the run in
 progress; `main`'s runs always finish. A change that only touches docs (`docs/`, any `.md`, the
 issue templates) skips the e2e and perf work. macOS WebKit is its own workflow,
-`webkit-macos.yml`, since macOS runners are scarce: nightly on `dev`, plus every pull request and
-push to `main`.
+`webkit-macos.yml`, since macOS runners are scarce: nightly on `dev`, plus every pull request to
+`main`. The nightly skips a `dev` commit that already ran green there (the green run leaves a cache
+entry named after the commit). To try the workflow on a branch, dispatch it with `ref`, and with
+`nightly` to get the skip and the record, or `trace` to keep a trace of every red.
 
 A red engine job shows red, always. Whether it blocks a merge is up to branch protection:
 `scripts/branch-protection-contexts.mjs` lists the checks `main` requires, and beside them
