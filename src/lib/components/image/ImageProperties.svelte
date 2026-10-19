@@ -15,6 +15,7 @@
 	import MenuIcon from '../menu/MenuIcon.svelte';
 	import type { MenuCloseCause, MenuPresence } from '../menu/menu-presence.svelte';
 	import type { CaretWriter } from '../../caret/widget-offset';
+	import type { CaretRestore } from '../../selection/caret-restore';
 	import { DEFAULT_CROP, applyCropToWidget, panCrop, zoomCrop, type Size } from './image-crop';
 
 	let {
@@ -28,6 +29,7 @@
 		maxFrameWidth,
 		menuPresence,
 		caretWriter,
+		fieldCaret,
 		cropping = $bindable(false)
 	}: {
 		target: WidgetTarget;
@@ -47,6 +49,8 @@
 		menuPresence: MenuPresence;
 		/** Drops the native range a double click leaves across the image before a crop. */
 		caretWriter: CaretWriter;
+		/** The alt field borrows focus from the image's paragraph and gives it back through here. */
+		fieldCaret: CaretRestore;
 		cropping?: boolean;
 	} = $props();
 
@@ -117,8 +121,12 @@
 	}
 
 	function toggleField() {
-		if (fieldOpen) closeField(true);
-		else fieldOpen = true;
+		if (fieldOpen) {
+			endField(true);
+		} else {
+			fieldCaret.saveCurrent();
+			fieldOpen = true;
+		}
 	}
 
 	function closeField(commit: boolean) {
@@ -127,17 +135,25 @@
 		fieldOpen = false;
 	}
 
+	// A close from the toolbar or the field's keys hands focus back to the image's paragraph, the
+	// image still selected, where Mod+Z and Escape reach it as after a click on the image.
+	function endField(commit: boolean) {
+		closeField(commit);
+		void fieldCaret.restore();
+	}
+
 	function onFieldKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
 			e.preventDefault();
-			closeField(true);
+			endField(true);
 		}
 	}
 
 	// Escape drops the draft and a swap lands after the new document is in, so neither saves it;
-	// every other close does. A press in the document is the image selection's to judge.
+	// every other close does. A press elsewhere or a mode change leaves focus where it lands.
 	function dismissField(cause: MenuCloseCause): boolean {
-		closeField(cause !== 'escape-key' && cause !== 'document-swap');
+		if (cause === 'escape-key') endField(false);
+		else closeField(cause !== 'document-swap');
 		return true;
 	}
 
@@ -161,7 +177,7 @@
 		const widget = getWidgetEl();
 		const img = widget?.querySelector('img') ?? null;
 		if (!widget || !img || img.naturalWidth === 0) return;
-		if (fieldOpen) closeField(true);
+		if (fieldOpen) endField(true);
 		const box = widget.getBoundingClientRect();
 		frame = { width: box.width, height: box.height };
 		natural = { width: img.naturalWidth, height: img.naturalHeight };
@@ -197,17 +213,9 @@
 		else el.setAttribute('style', style);
 	}
 
-	// WebKit leaves a pressed button's focus on the toolbar, where Mod+Z reaches no undo, so a crop
-	// that ends hands focus to the page, where Chromium's removed button leaves it.
-	function releaseFocus() {
-		const focused = document.activeElement;
-		if (focused instanceof HTMLElement && rootEl?.contains(focused)) focused.blur();
-	}
-
 	function cancelCrop() {
 		restoreSnapshot();
 		cropping = false;
-		releaseFocus();
 	}
 
 	function applyCrop() {
@@ -220,7 +228,6 @@
 		// The commit rebuilds the widget from the bytes; the preview styles go with the replaced DOM.
 		snapshot = null;
 		cropping = false;
-		releaseFocus();
 		seedBytes = buildBytes(target, next);
 		onCommit(target, fields, next);
 	}
@@ -299,8 +306,8 @@
 		return () => document.removeEventListener('dblclick', onDoubleClick);
 	});
 
-	// Escape cancels through the editor's menu closing, which keeps the key from also dismissing
-	// the toolbar when focus sits on it, as it does wherever a clicked button takes no focus.
+	// Escape cancels through the editor's menu closing, which keeps the key from also reaching the
+	// image's paragraph, where it would dismiss the image.
 	function closeCrop(): boolean {
 		cancelCrop();
 		return true;
@@ -349,6 +356,13 @@
 		if (rect.right > window.innerWidth - 8) node.classList.add('flipped');
 	}
 
+	// A press on the toolbar keeps focus on the image's paragraph, whichever element an engine
+	// would focus; only the alt field's input takes it.
+	function keepFocusOffToolbar(e: MouseEvent) {
+		if (!(e.target instanceof Element && e.target.closest('.md-image-field'))) e.preventDefault();
+	}
+
+	// Reached when keyboard focus sits on the toolbar.
 	function onRootKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape' && !fieldOpen && !cropping) {
 			e.preventDefault();
@@ -389,6 +403,7 @@
 	aria-label={IMAGE_PROPERTIES_LABEL}
 	tabindex="-1"
 	onkeydown={onRootKeydown}
+	onmousedown={keepFocusOffToolbar}
 	{@attach keepBesideImage}
 >
 	{#if cropping}

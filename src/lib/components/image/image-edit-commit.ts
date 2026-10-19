@@ -158,12 +158,11 @@ export function createImageEditCommitter(deps: ImageEditCommitterDeps): ImageEdi
 		writeImageEdit(sel, newFields);
 	}
 
-	/** The whole `![...](...)` span goes. The selection clears first, so the undo entry is told
-	 *  the caret the user had before selecting the image rather than reading it. */
+	/** The whole `![...](...)` span goes. The image stays selected until the write has begun, as
+	 *  a Delete on it does, so the undo entry reads the image's caret, not a stray one in its block. */
 	function removeImage(target: WidgetTarget): void {
 		const image = imageAt(target);
 		if (!image) return;
-		selection.clearWidget();
 		void inlineRange.commitInlineRange(
 			target.paragraphPath,
 			image.start,
@@ -171,6 +170,7 @@ export function createImageEditCommitter(deps: ImageEditCommitterDeps): ImageEdi
 			'',
 			target.preSelectOffset
 		);
+		selection.clearWidget();
 	}
 
 	function dismissImagePopover(): void {
