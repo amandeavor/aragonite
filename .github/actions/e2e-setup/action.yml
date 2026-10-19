@@ -1,0 +1,39 @@
+name: e2e setup
+description: Node, the npm install and one engine's browser, ready for `playwright test`.
+inputs:
+  engine:
+    description: chromium, firefox or webkit, as `ENGINE` in playwright.config.ts
+    required: true
+  firefox-version:
+    description: The Firefox release to install when engine is firefox
+    default: '158.0'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 24
+        cache: npm
+    - run: npm ci
+      shell: bash
+    - run: echo "PLAYWRIGHT_VERSION=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_ENV"
+      shell: bash
+    # Caches the browser download (~100MB); `playwright install` skips a cached build and still
+    # installs the OS packages.
+    - if: inputs.engine != 'firefox'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.os == 'macOS' && '~/Library/Caches/ms-playwright' || '~/.cache/ms-playwright' }}
+        key: playwright-${{ inputs.engine }}-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
+    - if: inputs.engine != 'firefox'
+      run: npx playwright install --with-deps ${{ inputs.engine }}
+      shell: bash
+    # Firefox is Mozilla's own release, pinned, not Playwright's patched build: the suite drives the
+    # browser users run. Playwright's Firefox packages are the same OS libraries it needs.
+    - if: inputs.engine == 'firefox'
+      run: |
+        npx playwright install-deps firefox
+        curl -fsSL "https://ftp.mozilla.org/pub/firefox/releases/${{ inputs.firefox-version }}/linux-x86_64/en-US/firefox-${{ inputs.firefox-version }}.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
+        echo "FIREFOX_PATH=$RUNNER_TEMP/firefox/firefox" >> "$GITHUB_ENV"
+        echo "Firefox: $("$RUNNER_TEMP/firefox/firefox" --version)" >> "$GITHUB_STEP_SUMMARY"
+      shell: bash

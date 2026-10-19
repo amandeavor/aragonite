@@ -1,8 +1,8 @@
 /**
  * The required status-check contexts in `scripts/apply-branch-protection.mjs` match what the
- * workflows report: ci.yml's job ids, matrix jobs expanded the way GitHub names them, and each
- * declared external against the workflow reporting it. A context nothing reports leaves every PR
- * waiting forever, and a dropped one leaves a job running while gating nothing.
+ * workflows report: ci.yml's gating job ids (a `continue-on-error` job reports without gating),
+ * matrix jobs expanded the way GitHub names them, and each declared external against the workflow
+ * reporting it. A context nothing reports leaves every PR waiting forever.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -19,6 +19,7 @@ const JOB_ID = /^ {2}([A-Za-z0-9_-]+):\s*$/;
 const JOB_NAME = /^ {4}name:\s*(.+?)\s*$/;
 const MATRIX_DIMENSION = /^ {8}([A-Za-z0-9_-]+):\s*\[(.+)\]\s*$/;
 const MATRIX_KEYS_UNPARSED = /^ {8}(include|exclude):/;
+const CONTINUE_ON_ERROR = /^ {4}continue-on-error:\s*(.+?)\s*$/;
 
 /** The `jobs:` mapping's own lines, ending at the next top-level key. */
 function jobsBlock(yaml: string): string[] {
@@ -50,13 +51,20 @@ function expand(label: string, dimensions: string[][]): string[] {
 	return combinations.map((values) => `${label} (${values.join(', ')})`);
 }
 
-/** Every check name the workflow reports, matrix jobs expanded. */
-export function checkNames(yaml: string): string[] {
-	const names: string[] = [];
+interface JobChecks {
+	names: string[];
+	/** False for a `continue-on-error` job, whose red never fails the run. */
+	gates: boolean;
+}
+
+/** Each job's check names, matrix jobs expanded. */
+function readJobs(yaml: string): JobChecks[] {
+	const jobs: JobChecks[] = [];
 	let label: string | null = null;
 	let dimensions: string[][] = [];
+	let gates = true;
 	const flush = () => {
-		if (label !== null) names.push(...expand(label, dimensions));
+		if (label !== null) jobs.push({ names: expand(label, dimensions), gates });
 	};
 	for (const line of jobsBlock(yaml)) {
 		const job = JOB_ID.exec(line);
@@ -64,9 +72,19 @@ export function checkNames(yaml: string): string[] {
 			flush();
 			label = job[1];
 			dimensions = [];
+			gates = true;
 			continue;
 		}
 		if (label === null) continue;
+		const continues = CONTINUE_ON_ERROR.exec(line);
+		if (continues) {
+			if (continues[1] !== 'true' && continues[1] !== 'false') {
+				throw new Error(
+					`continue-on-error in job "${label}": this reader reads true or false only`
+				);
+			}
+			gates = continues[1] === 'false';
+		}
 		const name = JOB_NAME.exec(line);
 		if (name) label = name[1].replace(/^['"]|['"]$/g, '');
 		if (MATRIX_KEYS_UNPARSED.test(line)) {
@@ -76,7 +94,19 @@ export function checkNames(yaml: string): string[] {
 		if (dimension) dimensions.push(flowSequence(dimension[2]));
 	}
 	flush();
-	return names;
+	return jobs;
+}
+
+/** Every check name the workflow reports. */
+export function checkNames(yaml: string): string[] {
+	return readJobs(yaml).flatMap((job) => job.names);
+}
+
+/** The check names whose red fails the run, the only ones a protection rule can require. */
+export function gatingCheckNames(yaml: string): string[] {
+	return readJobs(yaml)
+		.filter((job) => job.gates)
+		.flatMap((job) => job.names);
 }
 
 // ── The protection rule ──────────────────────────────────────────────────────
@@ -98,7 +128,7 @@ export function ciContexts(script: string): string[] {
 
 /** The `EXTERNAL_CONTEXTS` map: workflow file → the checks it is trusted to report. */
 export function externalContexts(script: string): Map<string, string[]> {
-	const block = /const EXTERNAL_CONTEXTS = \{([\s\S]*?)\n\};/.exec(script);
+	const block = /const EXTERNAL_CONTEXTS = \{([\s\S]*?)\};/.exec(script);
 	if (block === null) {
 		throw new Error('apply-branch-protection.mjs declares no EXTERNAL_CONTEXTS map');
 	}
@@ -151,6 +181,7 @@ const workflowChecks = new Map(
 	])
 );
 const ci = workflowChecks.get(CI) ?? [];
+const ciGating = gatingCheckNames(readFileSync(path.join(WORKFLOWS, CI), 'utf8'));
 const script = readFileSync(SCRIPT, 'utf8');
 const declaredCi = ciContexts(script);
 const declaredExternal = externalContexts(script);
@@ -159,11 +190,11 @@ const required = [...declaredCi, ...[...declaredExternal.values()].flat()];
 // ── The gate ─────────────────────────────────────────────────────────────────
 
 describe('branch protection ↔ workflow check names', () => {
-	it('requires exactly the checks ci.yml reports', () => {
+	it('requires exactly the checks ci.yml gates on', () => {
 		expect(
 			[...declaredCi].sort(),
-			`CI_CONTEXTS in ${path.basename(SCRIPT)} and ${CI}'s job names have diverged: a context ci.yml never reports blocks every PR forever, and a job with no context gates nothing`
-		).toEqual([...ci].sort());
+			`CI_CONTEXTS in ${path.basename(SCRIPT)} and ${CI}'s gating job names have diverged: a context ci.yml never reports blocks every PR forever, a gating job with no context protects nothing, and a continue-on-error job never gates`
+		).toEqual([...ciGating].sort());
 	});
 
 	it('every declared external is reported by the workflow named for it', () => {
@@ -205,9 +236,28 @@ describe('branch-protection context readers: self-tests', () => {
 		expect(ci.length).toBeGreaterThan(4);
 		expect(ci).toContain('unit');
 		expect(ci.filter((name) => name.startsWith('e2e '))).toHaveLength(4);
-		expect(declaredCi.length).toBe(ci.length);
-		expect([...declaredExternal.keys()]).toEqual(['webkit.yml']);
-		expect(declaredExternal.get('webkit.yml')).toEqual(['webkit']);
+		expect(declaredCi.length).toBe(ciGating.length);
+		expect(ci.length).toBeGreaterThan(ciGating.length);
+		expect([...declaredExternal.keys()]).toEqual([]);
+	});
+
+	it('reports a continue-on-error job without counting it as gating', () => {
+		const yaml = [
+			'jobs:',
+			'  unit:',
+			'    runs-on: ubuntu-latest',
+			'  engine:',
+			'    continue-on-error: true',
+			'    strategy:',
+			'      matrix:',
+			"        shard: ['1/2', '2/2']",
+			'  pinned:',
+			'    continue-on-error: false'
+		].join('\n');
+		expect(checkNames(yaml)).toEqual(['unit', 'engine (1/2)', 'engine (2/2)', 'pinned']);
+		expect(gatingCheckNames(yaml)).toEqual(['unit', 'pinned']);
+		const expression = ['jobs:', '  e2e:', '    continue-on-error: ${{ matrix.x }}'].join('\n');
+		expect(() => checkNames(expression)).toThrow(/true or false only/);
 	});
 
 	it('follows a job rename rather than the hand-written list', () => {
@@ -261,6 +311,7 @@ describe('branch-protection context readers: self-tests', () => {
 		expect(
 			externalContexts("const EXTERNAL_CONTEXTS = {\n\t// why\n\t'cla.yml': ['cla', 'dco']\n};")
 		).toEqual(new Map([['cla.yml', ['cla', 'dco']]]));
+		expect(externalContexts('const EXTERNAL_CONTEXTS = {};')).toEqual(new Map());
 		expect(() => externalContexts('const protection = {};')).toThrow(/EXTERNAL_CONTEXTS/);
 	});
 

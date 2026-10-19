@@ -8,7 +8,8 @@ import { execFileSync } from 'node:child_process';
 const REPO = 'voithos-labs/aragonite';
 const BRANCH = 'main';
 
-// Every check ci.yml reports, each matrix job spelled the way GitHub names it.
+// Every check ci.yml gates on, each matrix job spelled the way GitHub names it. An engine job that
+// runs with `continue-on-error` reports without gating, so it joins this list once it gates.
 const CI_CONTEXTS = [
 	'unit',
 	'e2e (1/4)',
@@ -22,11 +23,9 @@ const CI_CONTEXTS = [
 ];
 
 // Checks reported from outside ci.yml, each named against the workflow that reports it so the
-// test can hold the pair. An undeclared workflow reporting a required name is a way past the door.
-const EXTERNAL_CONTEXTS = {
-	// The second-engine lane keeps its own workflow so its browser cache and cancel rule stay its own.
-	'webkit.yml': ['webkit']
-};
+// test can hold the pair; none today. An undeclared workflow reporting a required name would
+// satisfy the rule without ci.yml running.
+const EXTERNAL_CONTEXTS = {};
 
 const protection = {
 	required_status_checks: {

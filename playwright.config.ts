@@ -1,8 +1,8 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, type Project } from '@playwright/test';
 
 declare const process: { env: Record<string, string | undefined> };
 const PROD = !!process.env.PERF_PROD;
-const WEBKIT = !!process.env.WEBKIT;
+const ENGINE = process.env.ENGINE ?? 'chromium';
 // A run that adopts a developer's live harness on the default port serves whatever that
 // tree currently is, so a reviewer's battery moves both servers and reuses neither.
 // `E2E_PORT` picks the isolated server's port, so two isolated batteries on one machine (two
@@ -52,35 +52,25 @@ const PROJECT_DIRS = [
 	'recordings'
 ];
 
-// The second-engine slice, run on every pull request rather than every commit. It carries no known-red
-// backlog, which is what lets the lane fail rather than report: any red is a regression.
-const WEBKIT_LANE = [
-	'smoke.spec.ts',
-	'source-prop.spec.ts',
-	'entity-widget.spec.ts',
-	'text-editing/edge-cases.spec.ts',
-	'text-editing/forward-delete.spec.ts',
-	'text-editing/enter-at-block-start.spec.ts',
-	'text-editing/enter-at-soft-break.spec.ts',
-	'text-editing/crlf-line-end.spec.ts',
-	'text-editing/shift-enter-surfaces.spec.ts',
-	'text-editing/break-over-selection.spec.ts',
-	'clipboard/paste-crlf-document.spec.ts',
-	'clipboard/block-copy-routes.spec.ts',
-	'sticky-column/code-block-entry.spec.ts',
-	'sticky-column/line-start-entry.spec.ts',
-	'selection/pointer.spec.ts',
-	'selection/keyboard/collapse.spec.ts',
-	'selection/dead-space-click.spec.ts',
-	'selection/gap-caret-arrival.spec.ts',
-	'selection/widget-selected-paint.spec.ts',
-	'blocks/list/item-marker.spec.ts',
-	'blocks/code/menu-change.spec.ts',
-	'popover-close.spec.ts',
-	'context-menu-press-selection.spec.ts',
-	'caret/**/*.spec.ts',
-	'webkit/**/*.spec.ts'
-];
+// The browser every project runs in. Firefox is the installed release over WebDriver BiDi, not
+// Playwright's patched build; `FIREFOX_PATH` points at one outside the system path. WebKit throws
+// on the clipboard permissions, and the clipboard arm gives both engines an in-page store instead.
+const ENGINES: Record<string, Project['use']> = {
+	chromium: { browserName: 'chromium', permissions: ['clipboard-read', 'clipboard-write'] },
+	firefox: {
+		browserName: 'firefox',
+		channel: 'moz-firefox',
+		launchOptions: process.env.FIREFOX_PATH ? { executablePath: process.env.FIREFOX_PATH } : {},
+		permissions: []
+	},
+	webkit: { browserName: 'webkit', permissions: [] }
+};
+const engine = ENGINES[ENGINE];
+if (!engine)
+	throw new Error(`ENGINE=${ENGINE}: expected one of ${Object.keys(ENGINES).join(', ')}`);
+// The perf ceilings are calibrated in Chromium and the docs captures are taken there, so the
+// other engines run the correctness projects only.
+const CHROMIUM_ONLY = new Set(['e2e-capture', 'e2e-perf', 'e2e-perf-prod']);
 
 export default defineConfig({
 	testDir: './src/lib/e2e/tests',
@@ -91,13 +81,17 @@ export default defineConfig({
 	use: {
 		baseURL: `http://localhost:${DEV_PORT}`,
 		headless: true,
-		permissions: ['clipboard-read', 'clipboard-write'],
+		...engine,
 		// Pinned, not inherited: specs across several projects assert near-absolute geometry and
 		// would turn red the day Playwright's implicit default moves. Projects may override.
 		viewport: { width: 1280, height: 720 }
 	},
-	// Playwright's own default, kept explicit because the server watcher rides beside it.
-	reporter: [[process.env.CI ? 'dot' : 'list'], ['./src/lib/e2e/server-warn-reporter.ts']],
+	// Playwright's default reporter, the server-warning watcher, and in a GitHub job its summary.
+	reporter: [
+		[process.env.CI ? 'dot' : 'list'],
+		['./src/lib/e2e/server-warn-reporter.ts'],
+		...(process.env.GITHUB_STEP_SUMMARY ? [['./src/lib/e2e/ci-summary-reporter.ts'] as const] : [])
+	],
 	webServer: PROD ? [devServer, prodServer] : devServer,
 	projects: [
 		{
@@ -107,8 +101,7 @@ export default defineConfig({
 				...PROJECT_DIRS.map((dir) => `${dir}/**`),
 				'simulation/**',
 				'perf/**',
-				'capture/**',
-				'webkit/**'
+				'capture/**'
 			]
 		},
 		{
@@ -146,17 +139,6 @@ export default defineConfig({
 			use: { viewport: { width: 1280, height: 900 } }
 		},
 		...PROJECT_DIRS.map((dir) => ({ name: `e2e-${dir}`, testMatch: `${dir}/**/*.spec.ts` })),
-		...(WEBKIT
-			? [
-					{
-						// WebKit throws on the clipboard permissions at CONTEXT creation, so no spec-level
-						// guard can reach them; the lane's clipboard arm rides a dispatched event instead.
-						name: 'e2e-webkit',
-						testMatch: WEBKIT_LANE,
-						use: { browserName: 'webkit' as const, permissions: [] }
-					}
-				]
-			: []),
 		...(PROD
 			? [
 					{
@@ -170,5 +152,5 @@ export default defineConfig({
 					}
 				]
 			: [])
-	]
+	].filter((project) => ENGINE === 'chromium' || !CHROMIUM_ONLY.has(project.name))
 });
