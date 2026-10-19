@@ -13,9 +13,13 @@ jump has to mount its target.
 
 - **Reading mode, reference:** Tab from the referencing paragraph focuses the reference, named
   `Footnote 1`; Enter mounts its definition and brings it into view
-- **Reading mode, the way back:** Tab from the definition's text focuses its marker, named
-  `Back to reference a` after the label it shows; Enter mounts the referencing block and brings it
-  into view
+- **Reading mode, the way back:** right after the jump, Tab focuses the definition's marker,
+  named `Back to reference a` after the label it shows; Enter mounts the referencing block and
+  brings it into view
+  (under Firefox the spec marks this one `fixme` against #751: the jump lands the caret past the
+  marker, and Firefox starts Tab from the caret)
+- **Reading mode, from a click:** Tab from a click in the definition's text focuses its marker
+  (Chromium only: Firefox and WebKit start Tab from the clicked point, past the marker)
 - **Reading mode, axe:** a document holding references and definitions has no new violations
 
 ## Edge cases

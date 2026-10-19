@@ -25,3 +25,4 @@ that resized with its bytes unchanged was never run (issue #546).
 ## Error cases
 
 - no page errors surface during the load or the click
+  (under Firefox the spec marks the row `fixme` against #750: the click reports a ResizeObserver loop)
