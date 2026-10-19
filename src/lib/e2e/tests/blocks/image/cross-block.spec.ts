@@ -55,7 +55,8 @@ test.describe('image cross-block selection', () => {
 			const t = i / 12;
 			await page.mouse.move(start.x + (end.x - start.x) * t, start.y + (end.y - start.y) * t);
 		}
-		expect(await editor.bridge.isCrossBlockActive()).toBe(true);
+		// Moves resolve once a frame, so the last one may still be pending here.
+		await editor.waitForCrossBlock(true);
 		await page.mouse.up();
 	});
 });
