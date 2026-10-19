@@ -1293,7 +1293,13 @@
 	}
 
 	export function claimsChord(event: KeyboardEvent): boolean {
-		return chordIsClaimed(event, reservedChords());
+		const chords = collectReservedChords({
+			searchBar,
+			keybindings: overridesMap,
+			activation: activePlugins,
+			cmdEdgeChords: false
+		});
+		return chordIsClaimed(event, chords);
 	}
 
 	const diagnostics = createEditorDiagnostics({

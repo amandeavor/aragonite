@@ -10,7 +10,7 @@ import { GLOBAL_KEYMAP, kindKeymap, pluginGlobalChords, reservedUiChords } from 
 import type { KeybindingOverrideMap } from './keybinding-overrides';
 import type { PluginActivation } from './plugin-activation';
 import { kindEnablementFor } from './registry-view';
-import { eventToChord } from './keybindings';
+import { caretEdgeKey, eventToChord } from './keybindings';
 
 // ── The hardcoded-chord list ─────────────────────────────────────────────────
 
@@ -306,8 +306,20 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 	}
 ];
 
+/** The edge sites' Cmd+Arrow chords (macOS's Home and End), listed only where Cmd is the command
+ *  key: the chord form folds in Ctrl+Arrow, which is word motion elsewhere. */
+const CMD_EDGE_CHORDS: ReadonlySet<string> = new Set([
+	'Mod+ArrowLeft',
+	'Mod+ArrowRight',
+	'Mod+ArrowUp',
+	'Mod+ArrowDown',
+	'Mod+Shift+ArrowLeft',
+	'Mod+Shift+ArrowUp',
+	'Mod+Shift+ArrowDown'
+]);
+
 const HARDCODED_CHORDS: ReadonlySet<string> = new Set(
-	HARDCODED_CHORD_SITES.flatMap((site) => site.chords)
+	HARDCODED_CHORD_SITES.flatMap((site) => site.chords).filter((c) => !CMD_EDGE_CHORDS.has(c))
 );
 
 // ── Composition ──────────────────────────────────────────────────────────────
@@ -321,6 +333,9 @@ export interface ReservedChordOptions {
 	/** The plugins this instance activated: a chord another editor's plugin bound is not this
 	 *  editor's. */
 	activation: PluginActivation;
+	/** Whether the set holds the Cmd+Arrow edge chords; by default where Cmd is the platform's
+	 *  command key (macOS, iOS), the one platform read here. */
+	cmdEdgeChords?: boolean;
 }
 
 /**
@@ -343,16 +358,22 @@ export function collectReservedChords(options: ReservedChordOptions): ReadonlySe
 	for (const chord of globallyDisabledChords(options.keybindings)) {
 		if (!HARDCODED_CHORDS.has(chord)) claimed.delete(chord);
 	}
+	if (options.cmdEdgeChords ?? cmdIsCommandKey())
+		for (const chord of CMD_EDGE_CHORDS) claimed.add(chord);
 	return claimed;
 }
 
-/**
- * True when `chords` holds this keystroke, under the editor's own normalization: Ctrl and Cmd
- * both become `Mod`, so a consumer never re-derives the platform rule.
- */
+/** True when `chords` holds this keystroke, Ctrl and Cmd both read as `Mod`; a Cmd+Arrow edge
+ *  chord is read off the keystroke, so pass a set built with `cmdEdgeChords: false`. */
 export function chordIsClaimed(event: KeyboardEvent, chords: ReadonlySet<string>): boolean {
 	const chord = eventToChord(event);
-	return chord !== null && chords.has(chord);
+	if (chord === null) return false;
+	return chords.has(chord) || (CMD_EDGE_CHORDS.has(chord) && caretEdgeKey(event)?.arrow === true);
+}
+
+/** Cmd is the command key on Apple platforms, where Cmd+Arrow is Home and End. */
+function cmdIsCommandKey(): boolean {
+	return typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 }
 
 /** Modifier-carrying, so the fixed-order normal form puts something before the key. */

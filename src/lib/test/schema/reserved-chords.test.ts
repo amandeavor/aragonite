@@ -132,3 +132,26 @@ describe('chordIsClaimed: the editor normalization, not the caller', () => {
 		expect(chordIsClaimed(ke({ key: 'b', ctrlKey: true, altKey: true }), set)).toBe(false);
 	});
 });
+
+// Cmd+Arrow is macOS's Home and End, which the edge sites take; the chord form folds Ctrl+Arrow, the
+// word motion of Windows and Linux, into the same `Mod+Arrow`, so a keystroke is read for itself.
+describe('the Cmd+Arrow edge chords', () => {
+	const set = (cmdEdgeChords: boolean) =>
+		collectReservedChords({ searchBar: true, activation: everyInstalledPlugin, cmdEdgeChords });
+
+	it('are listed only where Cmd is the command key', () => {
+		expect(set(true).has('Mod+ArrowLeft')).toBe(true);
+		expect(set(false).has('Mod+ArrowLeft')).toBe(false);
+	});
+
+	it('claim Cmd+Arrow and leave Ctrl+Arrow to the browser', () => {
+		expect(chordIsClaimed(ke({ key: 'ArrowLeft', metaKey: true }), set(false))).toBe(true);
+		expect(chordIsClaimed(ke({ key: 'ArrowUp', metaKey: true, shiftKey: true }), set(false))).toBe(
+			true
+		);
+		expect(chordIsClaimed(ke({ key: 'ArrowLeft', ctrlKey: true }), set(false))).toBe(false);
+		expect(
+			chordIsClaimed(ke({ key: 'ArrowRight', metaKey: true, shiftKey: true }), set(false))
+		).toBe(false);
+	});
+});

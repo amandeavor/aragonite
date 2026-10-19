@@ -1057,6 +1057,8 @@ Every modifier chord this instance consumes, normalized.
 
 The same question for one keystroke, answered with the editor's own normalization, so a host key handler doesn't re-derive the platform rule: Ctrl and Cmd both fold to `Mod` (a macOS `Ctrl+B` and a `Cmd+B` give the same answer), and a CapsLock-uppercased letter matches its lowercase binding.
 
+One exception to the fold: `Cmd+Left`, `Cmd+Right`, `Cmd+Up` and `Cmd+Down` (and `Cmd+Shift+Left`, `Up` and `Down`) are a Mac's Home and End, and the editor takes them where it takes those, while `Ctrl+Arrow` is the browser's word motion on Windows and Linux. So the set holds those `Mod+Arrow` chords only on a Mac, and `claimsChord` claims `Cmd+Arrow` and leaves `Ctrl+Arrow` alone on every platform.
+
 ```ts
 editor.reservedChords();
 // Set { 'Mod+B', 'Mod+I', 'Mod+Shift+X', 'Mod+E', 'Mod+K', 'Mod+Z', 'Mod+Y', 'Mod+Shift+Z', 'Alt+ArrowUp', 'Mod+F', 'Mod+H', ... }
