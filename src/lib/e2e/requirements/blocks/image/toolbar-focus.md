@@ -7,7 +7,7 @@ editor's keys reach it there.
 ## Happy paths
 
 - After each way a sub-mode ends, Mod+Z undoes the last edit and Mod+Shift+Z redoes it:
-  - the Alt field closed by its own button, by Enter, or by Escape
+  - the Alt field closed by its own button, by Enter, by Escape, or by starting a crop
   - the crop applied by Enter or its tick, or cancelled by Escape or its cross
 - After each of those ends, Escape dismisses the image: the toolbar goes, as on a freshly clicked
   image

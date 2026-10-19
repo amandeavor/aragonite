@@ -48,6 +48,16 @@ const ENDS: SubModeEnd[] = [
 		}
 	},
 	{
+		// Untyped, so the field closes with nothing to commit and only its focus hand-back is tested.
+		name: 'the Alt field closed by starting a crop',
+		writes: true,
+		async end(page) {
+			await button(page, 'Alt text').click();
+			await button(page, 'Crop image').click();
+			await page.keyboard.press('Enter');
+		}
+	},
+	{
 		name: 'the crop applied by Enter',
 		writes: true,
 		async end(page) {
