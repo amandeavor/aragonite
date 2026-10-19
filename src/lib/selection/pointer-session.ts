@@ -66,8 +66,8 @@ export function createPointerDragSession(
 		});
 	}
 
-	// Chromium can deliver the last move after the release, so the release's own point is the
-	// latest; a drag that never moved is a click and resolves nothing.
+	// The last move can arrive after the release, so the release's own point is the latest; a
+	// drag that never moved is a click and resolves nothing.
 	function resolveRelease(e: PointerEvent): void {
 		if (!pending) return;
 		if (resolved && resolved.clientX === e.clientX && resolved.clientY === e.clientY) return;

@@ -2,7 +2,7 @@
 
 A drag's selection runs from where the press went down to where the pointer let go, whatever
 order the engine delivers the last events in. Moves are handled once per frame, so a fast hand can
-let go in the same frame as its last move. Chromium can then send that move after the release,
+let go in the same frame as its last move. That move can then arrive after the release,
 and the selection toolbar, which shows on release, can be drawn over the release point before the
 drag reads what's under it. Each row settles the drag at one point for a frame, then moves to
 the release point and lets go in one frame, and checks the selection after the release.

@@ -91,7 +91,7 @@ describe('createPointerDragSession: move coalescing', () => {
 
 		document.dispatchEvent(pointer('pointermove', 1, { clientX: 4, clientY: 0 }));
 		raf.runFrame();
-		// Chromium delivers the last move after the release when both fall in one frame.
+		// A move and release in one frame can arrive release first.
 		document.dispatchEvent(pointer('pointerup', 1, { clientX: 12, clientY: 0 }));
 		expect(seen).toEqual([4, 12]);
 	});
