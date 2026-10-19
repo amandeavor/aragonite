@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { PluginsPage, capturedErrors } from './helpers';
+import { isMacOS } from '../../platform-keys';
 import { multiClickElement } from '../../multi-click';
 
 /**
@@ -162,8 +163,13 @@ test.describe('wikilinks that follow on a plain click', () => {
 	});
 
 	test('Edit link in the right-click menu shows the link source, following nothing', async ({
-		page
+		page,
+		browserName
 	}) => {
+		test.fixme(
+			isMacOS && browserName === 'webkit',
+			'#756: Safari selects the widget under a right-click, and the menu then offers no Edit link'
+		);
 		const box = await link(editor).boundingBox();
 		if (!box) throw new Error('no link box');
 
@@ -189,8 +195,13 @@ test.describe('wikilinks that follow on a plain click', () => {
 	});
 
 	test('Edit link on a link in a table cell shows its source, following nothing', async ({
-		page
+		page,
+		browserName
 	}) => {
+		test.fixme(
+			isMacOS && browserName === 'webkit',
+			'#756: Safari selects the widget under a right-click, and the menu then offers no Edit link'
+		);
 		const cellLink = page.locator('.wikilink[data-target="Cell note"]');
 		const box = await cellLink.boundingBox();
 		if (!box) throw new Error('no cell link box');

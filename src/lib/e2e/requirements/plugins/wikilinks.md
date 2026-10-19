@@ -26,8 +26,12 @@ autolink (`<https://...>`) in block 5.
 - A drag that starts on the link in a table cell shows no source and activates nothing, as in a
   paragraph.
 - Edit link in the right-click menu on the link shows its source, and follows nothing.
+  - Fixme on macOS WebKit against #756: Safari selects the widget under the right-click, and the
+    menu offers no Edit link.
 - Edit link on a Markdown link opens its card with focus in the URL field, and follows nothing.
 - Edit link on a link in a table cell shows its source too, from the table's own menu.
+  - Fixme on macOS WebKit against #756: Safari selects the widget under the right-click, and the
+    menu offers no Edit link.
 - Mod+K with the caret beside the link shows its source.
 - A double-click follows once, on the link and on a Markdown link: the second press of a
   double-click isn't a fresh click on what it lands on.
