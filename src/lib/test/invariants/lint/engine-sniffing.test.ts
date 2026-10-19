@@ -12,7 +12,7 @@ const ENGINE_NAME = /(?<![-\w])(?:firefox|gecko|safari|webkit|chromium)(?![-\w])
 const ENGINE_TEST = /\bis(?:Firefox|Gecko|Safari|WebKit|Webkit|Chrome|Chromium|Blink|Edge|IE)\b/;
 const USER_AGENT_TOKEN = /\b(?:chrome|edg|opr|crios|fxios)\//i;
 const SNIFF_API =
-	/\bnavigator\s*[?!]?\.\s*(?:userAgent|vendor|appVersion)\b|\buserAgentData\b|\bInstallTrigger\b|\bwindow\s*[?!]?\.\s*(?:chrome|safari)\b/;
+	/\buserAgent(?:Data)?\b|\bnavigator\s*[?!]?\.\s*(?:vendor|appVersion)\b|\bInstallTrigger\b|\b(?:window|globalThis|self)\s*[?!]?\.\s*(?:chrome|safari)\b/;
 
 const blank = (text: string): string => text.replace(/[^\n]/g, ' ');
 
@@ -47,6 +47,13 @@ const ENGINE_SNIFFING: FileRule = {
 			'if (isSafari) placeCaret();',
 			'if (isWebKit && !composing) return;',
 			'const isChrome = !!window.chrome;',
+			'const ua = navigator.userAgent;',
+			'const ua = nav.userAgent;',
+			'const { userAgent } = navigator;',
+			'const blinkish = !!window.chrome;',
+			'const blinkish = !!globalThis.chrome;',
+			'if (/Firefox/.test(ua)) return;',
+			"if ('webkit' in probe) return;",
 			"const edge = ua.includes('Edg/');",
 			"if (ua.indexOf('Chrome/') >= 0) return;"
 		].map(inLibrary),
