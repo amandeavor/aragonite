@@ -12,6 +12,10 @@ export const BLOCK_CONTENT_SELECTOR = ':scope > :not(.selection-overlay):not(.de
 export const BLOCK_CONTENT_LOCATOR_SELECTOR =
 	':scope > *:not(.selection-overlay):not(.decoration-overlay):not(.block-drag-handle):not(.decoration-badge):not(.code-rail):not(.md-drawn-caret)';
 
+/** A block's or a cell's editable text, which a whole-block input proxy (a hidden editing host
+ *  inside a block that renders as one unit) is not. */
+export const TEXT_SURFACE_SELECTOR = '[contenteditable="true"]:not([data-whole-block-input])';
+
 /** Marks the element a block's drag handle centres on instead of its first line of text; here
  *  so the container marker-prefix code can set it without importing `components/`. */
 export const DRAG_ANCHOR_ATTR = 'data-drag-anchor';

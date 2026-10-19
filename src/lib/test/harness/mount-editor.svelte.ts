@@ -101,7 +101,8 @@ export function surfaceAt(mounted: MountedEditor, path: number[]): HTMLElement {
 	return el;
 }
 
-/** Put a real caret at `rawOffset` in `el`, through the editor's own caret writer. */
+/** Put a real caret at `rawOffset` in `el`, as the browser would: the editor's own writer didn't
+ *  write it, so a far side or a spot inside a widget moves at the next key. */
 export function placeCaret(el: HTMLElement, rawOffset: number): void {
 	el.focus();
 	if (!testCaretWriter.placeCaretAtRaw(el, rawOffset, { clamp: 'exact' })) {

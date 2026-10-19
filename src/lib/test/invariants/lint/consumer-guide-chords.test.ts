@@ -441,7 +441,8 @@ const UNLISTED_BY_DESIGN: Record<ClaimKey, string> = {
 		SELECTION_PREAMBLE
 	),
 	...unlisted(SHIFT_ARROWS, 'selection/shared-keydown.ts', SELECTION_PREAMBLE),
-	...unlisted(['Shift+Home', 'Mod+Home'], 'components/blocks/text/home-key.ts', CARET_MOTION),
+	...unlisted(['Mod+Home', 'Mod+End'], 'selection/shared-keydown.ts', CARET_MOTION),
+	...unlisted(['Shift+Home'], 'components/blocks/text/home-key.ts', CARET_MOTION),
 	...unlisted(
 		['Shift+ArrowUp', 'Shift+ArrowDown'],
 		'components/blocks/table/TableCellBlock.svelte',

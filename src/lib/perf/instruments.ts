@@ -52,6 +52,9 @@ export interface PerfSnapshot {
 	caretLookNodeVisits: number;
 	/** Reads of the caret's raw offset from the DOM the look made. */
 	caretLookOffsetWalks: number;
+	/** Ancestors the check for a caret the browser left off its spot climbed, and the walks it made. */
+	caretCanonicalSteps: number;
+	caretCanonicalWalks: number;
 	/** Dry runs of the next insertion the look made, and the parses of their results. */
 	caretLookPreviews: number;
 	caretLookParses: number;
@@ -104,6 +107,8 @@ function emptySnapshot(): PerfSnapshot {
 		caretLookComputes: 0,
 		caretLookNodeVisits: 0,
 		caretLookOffsetWalks: 0,
+		caretCanonicalSteps: 0,
+		caretCanonicalWalks: 0,
 		caretLookPreviews: 0,
 		caretLookParses: 0,
 		blockRenderPaths: [],
@@ -305,6 +310,13 @@ export function recordCaretLook(
 		| 'caretLookOffsetWalks'
 		| 'caretLookPreviews'
 		| 'caretLookParses'
+): void {
+	if (!enabled) return;
+	counters[what]++;
+}
+
+export function recordCanonicalCaretCheck(
+	what: 'caretCanonicalSteps' | 'caretCanonicalWalks'
 ): void {
 	if (!enabled) return;
 	counters[what]++;

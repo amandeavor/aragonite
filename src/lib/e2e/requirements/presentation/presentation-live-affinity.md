@@ -51,3 +51,6 @@ caret.
 
 - zero `[invariant:…]` console fires across every scenario (automatic via the
   shared e2e fixture)
+
+Miss-analysis (real Firefox): these scenarios ran on Chromium alone, which never leaves a caret on
+a hidden run's far side, where Firefox's ArrowLeft and a click beside the run do.

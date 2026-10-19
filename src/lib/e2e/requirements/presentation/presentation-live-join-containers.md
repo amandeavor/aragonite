@@ -38,3 +38,6 @@ missing one look the same on screen.
 The join's check read the list marker off a field the parse result doesn't have, so it refused
 every candidate under a marker. Every live join scenario ran in a top-level paragraph, and the
 fuzzer counted any refusal as no worse than the literal edit, so nothing went red.
+
+Miss-analysis (real Firefox): these scenarios ran on Chromium alone, which never leaves a caret on
+a hidden run's far side, where Firefox's ArrowLeft and a click beside the run do.

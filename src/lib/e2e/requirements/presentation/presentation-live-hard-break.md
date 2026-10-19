@@ -28,3 +28,6 @@ rendered view leaves of it, which for trailing spaces was nothing in every mode.
 - From the start of `two`, one ArrowLeft lands the caret at the end of `one` and one ArrowRight
   brings it back: the hidden break is one step.
 - Backspace at the start of `two` removes the break, leaving `onetwo`.
+
+Miss-analysis (real Firefox): these scenarios ran on Chromium alone, which never leaves a caret on
+a hidden run's far side, where Firefox's ArrowLeft and a click beside the run do.

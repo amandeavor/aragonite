@@ -117,6 +117,9 @@ export interface EdgePolicyDispatch {
 	/** The widgets and replace decorations a horizontal arrow crosses whole, for the shared
 	 *  keydown, which decides that step before any arm here runs. */
 	readonly inlineUnits: CaretUnitSource;
+	/** Writes `typed` at `caret` when the caret sits right before a widget that ends the block,
+	 *  where Firefox fires the insertion's `beforeinput` and inserts nothing. True if written. */
+	typeBeforeClosingWidget(caret: number, typed: string): boolean;
 }
 
 /** One family of gestures, listed in the order the families outrank each other. A family is not a
@@ -526,5 +529,14 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		return true;
 	}
 
-	return { handleKeydown, arms, inlineUnits };
+	function typeBeforeClosingWidget(caret: number, typed: string): boolean {
+		if (deps.isRevealing() || deps.isReading() || heldRange()) return false;
+		const end = getContentRange(deps.node).end;
+		const widgets = widgetsIn(deps.node, deps.reading);
+		if (!widgets.some((widget) => widget.start === caret && widget.end === end)) return false;
+		writeTypedByte(caret, typed, 'closing-widget');
+		return true;
+	}
+
+	return { handleKeydown, arms, inlineUnits, typeBeforeClosingWidget };
 }

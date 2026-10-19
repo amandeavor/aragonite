@@ -37,7 +37,6 @@ const DOC = [
 const BOLD = 0;
 const LINK = 1;
 const ESCAPE = 2;
-const HARD_BREAK = 3;
 const LEAD = 4;
 
 /** A fresh copy of the document, the caret at the end of `block`'s line, `Home` or `End`. */
@@ -196,7 +195,10 @@ test('live mode: unstamped marker runs are never typed into', async ({ page }) =
 
 	// `end  \nnext`: the two spaces before the newline are the break's markers.
 	await test.step('a hard break’s trailing spaces survive a byte typed at the line end', async () => {
-		await atLineEdge(ep, page, HARD_BREAK, 'Home');
+		// A click at the block's middle lands on either line by engine, so the click names the second.
+		await nextRow(ep, DOC);
+		await clickWordSettled(ep, page, 'next');
+		await page.keyboard.press('Home');
 		await stepTo(ep, page, 'ArrowLeft', 3);
 
 		await page.keyboard.type('X');

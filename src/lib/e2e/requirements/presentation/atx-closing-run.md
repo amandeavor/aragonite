@@ -70,6 +70,12 @@ Miss-analysis for the last two: the emptied-read rows drew the typed key as its 
 inside the run's span where the browser writes it, and the dropped-marker scenarios ran with the
 markers hidden only, so none deleted a shown `# ` on its own.
 
+- live mode: two spaces typed into an empty heading stay in it (`#   `); only blank text typed
+  over the text empties the heading
+
+Miss-analysis: the blank-text row replaced the text with a space, and no scenario typed a space
+into a heading that was already empty.
+
 ## User interactions
 
 - a placed caret, then End, Backspace, Shift+Home, Shift+Enter, a paste and typed keys
@@ -77,3 +83,6 @@ markers hidden only, so none deleted a shown `# ` on its own.
 ## Error cases
 
 - zero `[invariant:…]` console fires across every scenario (automatic via the shared e2e fixture)
+
+Miss-analysis (real Firefox): the emptying scenarios ran on Chromium alone, whose delete drops the
+hidden `#` span; Firefox keeps it, and the read took whatever the browser left.

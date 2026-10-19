@@ -13,6 +13,7 @@ import {
 } from '../presentation-mode';
 import { widgetSourceRange } from '../core/inline/inline-widgets';
 import { isLineEndingPair, splitsLineEndingPair } from '../core/line-ending-pairs';
+import { displayLength, isBlankText } from '../core/lines';
 import {
 	familyHidesText,
 	familyPaintsAlone,
@@ -36,6 +37,7 @@ import { placeholderBreakOf } from './placeholder-break';
 import { assertInvariant } from '../assert';
 import { checkCaretBeforeBreak } from '../invariants/caret-before-break';
 import { checkCaretOutsideLineEndingPair } from '../invariants/line-ending-pairs';
+import { recordCanonicalCaretCheck } from '../perf/instruments';
 
 // ── Raw offsets and the caret ────────────────────────────────────────────────
 
@@ -96,28 +98,41 @@ export function rawOfWalkOffset(container: ParentNode, walk: DomTextOffset): Raw
 }
 
 /** The raw bytes `el` shows, its marker prefix left out: what a prose block reads back as its text.
- *  `suffix` is the block's structural suffix as rendered; empty when only that is left. */
+ *  `suffix` is the block's structural suffix as rendered; empty when only hidden markers are left. */
 export function rawTextOfContent(el: HTMLElement, raw: string, suffix: string): string {
 	const prefix = markerPrefixOf(el);
 	let out = '';
-	let holdsMoreThanSuffix = false;
+	let content = '';
+	// The hidden `#` marker's length, or null where no hidden marker opens the block.
+	let hiddenPrefix: number | null = null;
 	for (const child of Array.from(el.childNodes)) {
 		if (child === prefix) continue;
 		const text = rawTextOfNode(child, raw);
+		if (child instanceof Element && isHiddenBlockPrefix(child, el)) {
+			out += text;
+			hiddenPrefix = text.length;
+			continue;
+		}
 		if (child instanceof Element && child.hasAttribute(BLOCK_SUFFIX_ATTR)) {
 			// A key typed over the whole text lands at the start of the structure span.
 			const typed = text.endsWith(suffix) ? text.slice(0, text.length - suffix.length) : '';
 			out += typed;
-			if (typed) holdsMoreThanSuffix = true;
+			content += typed;
 			if (suffixOutlivesEdit(el, child)) out += text.slice(typed.length);
 			continue;
 		}
 		out += text;
-		if (text) holdsMoreThanSuffix = true;
+		content += text;
 	}
-	// A heading's closing run or a setext underline belongs to the text above it, so a read
-	// holding nothing else is an emptied block.
-	return holdsMoreThanSuffix ? out : '';
+	// A heading's hidden markers belong to its text, so a read holding nothing else is an emptied
+	// block, whichever of them the browser left; so is blank text typed over the text.
+	if (content === '') return '';
+	if (hiddenPrefix === null || !isBlankText(content)) return out;
+	return isBlankText(raw.slice(hiddenPrefix, displayLength(raw) - suffix.length)) ? out : content;
+}
+
+function isHiddenBlockPrefix(child: Element, el: HTMLElement): boolean {
+	return child.hasAttribute(BLOCK_PREFIX_ATTR) && isHiddenMarkerRoot(child, el);
 }
 
 // A heading's closing run goes with a hidden `#` marker the browser dropped, since the user saw
@@ -156,14 +171,17 @@ export interface CaretWriter {
 	selectSurfaceContent(el: HTMLElement): boolean;
 	/** The nodes `range` already spans, as a node-level writer holds them (a widget whole). */
 	selectDomRange(range: Range): boolean;
-	/** Moves a caret WebKit or Firefox parked between a CRLF pair's `\r` and `\n` in `el` to before
-	 *  the pair, where the editor reads it, so a native delete starts there too. */
-	leaveLineEndingPair(el: HTMLElement): boolean;
+	/** Moves a collapsed caret the browser left where the editor never puts one (inside a widget,
+	 *  on a hidden run's far side, inside a CRLF pair) to the spot it writes for that pixel. */
+	canonicalizeCaret(el: HTMLElement): boolean;
 	/** Drops the native selection: a gap caret, a widget or a whole-block range holds none. */
 	clear(): void;
 }
 
 export function createCaretWriter(onWrite: () => void): CaretWriter {
+	// The editor's own caret stands wherever it put it; only a caret the browser moved is moved.
+	let written: DomPosition | null = null;
+
 	function writeSelection(anchor: DomPosition, focus: DomPosition): boolean {
 		assertInvariant(
 			'caret-before-break',
@@ -180,6 +198,7 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 		} catch {
 			return false;
 		}
+		written = sel.isCollapsed ? { node: sel.focusNode!, offset: sel.focusOffset } : null;
 		onWrite();
 		return true;
 	}
@@ -219,18 +238,20 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 				{ node: range.endContainer, offset: range.endOffset }
 			);
 		},
-		leaveLineEndingPair(el) {
+		canonicalizeCaret(el) {
 			const sel = window.getSelection();
 			const node = sel?.isCollapsed ? sel.focusNode : null;
-			if (!(node instanceof Text) || !el.contains(node)) return false;
-			if (!splitsLineEndingPair(node.data, sel!.focusOffset)) return false;
-			const before = { node, offset: sel!.focusOffset - 1 };
-			return writeSelection(before, before);
+			if (!node || !el.contains(node)) return false;
+			if (written?.node === node && written.offset === sel!.focusOffset) return false;
+			written = null;
+			const target = canonicalCaretPoint(el, node, sel!.focusOffset);
+			return target !== null && writeSelection(target, target);
 		},
 		clear() {
 			const sel = window.getSelection();
 			if (!sel) return;
 			sel.removeAllRanges();
+			written = null;
 			onWrite();
 		}
 	};
@@ -260,6 +281,40 @@ export function rawRangeToDomRange(
 function caretPointAtRaw(el: HTMLElement, raw: number): DomPosition {
 	const pos = findDomTextOffsetTarget(el, walkOffsetOfRaw(el, Math.max(0, raw)));
 	return pos ?? endOfContents(el);
+}
+
+/** The raw offset a browser-left caret at `raw` belongs at: in a mode that never shows a hidden run,
+ *  its far side becomes its near side, the same pixel, when content precedes the run on its line. */
+function canonicalCaretRaw(el: HTMLElement, raw: number): number {
+	const mode = markerHidingMode(el);
+	if (mode === null || !hidesDelimitersAtCaret(mode)) return raw;
+	const walk = walkOffsetOfRaw(el, raw);
+	const near = nearSideOfRunEndingAt(el, walk, mode);
+	return near === walk ? raw : rawOfWalkOffset(el, near);
+}
+
+/** Where the editor would put a collapsed caret the browser left at `(node, offset)`, or null when
+ *  it already sits there. */
+function canonicalCaretPoint(el: HTMLElement, node: Node, offset: number): DomPosition | null {
+	if (!mayBeOffCanonical(el, node, offset)) return null;
+	const target = caretPointAtRaw(el, canonicalCaretRaw(el, rawOffsetAt(el, node, offset)));
+	return target.node === node && target.offset === offset ? null : target;
+}
+
+/** Whether a caret position has a shape the editor never writes. Climbs only as far as `el`: that
+ *  climb is what a caret in plain text pays on every key. */
+function mayBeOffCanonical(el: HTMLElement, node: Node, offset: number): boolean {
+	let inMarker = false;
+	for (let at: Node | null = node; at && at !== el; at = at.parentNode) {
+		recordCanonicalCaretCheck('caretCanonicalSteps');
+		if (isAtomicInlineWidget(at)) return true;
+		if (at instanceof Element && markerFamilyOf(at) !== null) inMarker = true;
+	}
+	if (node instanceof Text) {
+		if (splitsLineEndingPair(node.data, offset)) return true;
+		if (offset > 0 && !inMarker) return false;
+	}
+	return revealsNoMarkers(el);
 }
 
 /** The end of a container's contents, before an empty block's placeholder `<br>`. */
@@ -848,6 +903,26 @@ export function landableStartAbutsIsland(container: ParentNode): boolean {
 	return false;
 }
 
+/** {@link landableStartAbutsIsland} at the other end: the last caret position abuts an opaque
+ *  widget, which the browser's Mod+End stops short of. */
+export function landableEndAbutsIsland(container: ParentNode): boolean {
+	let island = false;
+	for (const seg of landingSegments(container, markerHidingMode(container))) {
+		if (seg.len === 0 || (seg.kind === 'opaque' && seg.hidden)) continue;
+		island = seg.kind === 'opaque';
+	}
+	return island;
+}
+
+/** Whether `node` sits inside an atomic inline widget under `root`, where a caret is no caret of
+ *  the editor's: the browser can leave one there, but no key types into it. */
+export function isInsideAtomicWidget(root: ParentNode, node: Node): boolean {
+	for (let at: Node | null = node; at && at !== root; at = at.parentNode) {
+		if (isAtomicInlineWidget(at)) return true;
+	}
+	return false;
+}
+
 /** Whether `node` is an atomic inline widget's element, which every walk treats as opaque. Checks
  *  the attribute rather than a selector because every walk asks this per node. */
 export function isAtomicInlineWidget(node: Node): boolean {
@@ -925,6 +1000,49 @@ function snapOutOfRun(
 		}
 	}
 	return asDomTextOffset(offset);
+}
+
+/** The start of the hidden run ending at walk offset `at`, when content before it on its line gives
+ *  that start a pixel of its own; `at` otherwise. */
+function nearSideOfRunEndingAt(
+	container: ParentNode,
+	at: DomTextOffset,
+	mode: PresentationMode
+): DomTextOffset {
+	recordCanonicalCaretCheck('caretCanonicalWalks');
+	let before: LandingSegment | null = null;
+	for (const seg of landingSegments(container, mode)) {
+		if (seg.start + seg.len > at) break;
+		if (seg.kind === 'opaque' && seg.hidden && seg.len > 0 && seg.start + seg.len === at) {
+			if (!before || (before.kind === 'opaque' && before.hidden)) return at;
+			const text = before.kind === 'text' ? (before.node.textContent ?? '') : '';
+			const lineStart =
+				before.kind === 'text' && (text.endsWith('\n') || inMarkerPrefix(before.node, container));
+			return lineStart || runEndsOnAnotherLine(container, seg, mode)
+				? at
+				: asDomTextOffset(seg.start);
+		}
+		if (seg.len > 0) before = seg;
+	}
+	return at;
+}
+
+/** Whether a hidden run's far side is on a line of its own: the run holds a line break (a setext
+ *  underline), or a pending hard break's line starts right after it. */
+function runEndsOnAnotherLine(
+	container: ParentNode,
+	run: OpaqueSegment,
+	mode: PresentationMode
+): boolean {
+	const after = positionBeside(run.last, 'after');
+	if (after && isBreakAnchor(nodeAfter(after, container))) return true;
+	for (const seg of walkSegments(container, mode)) {
+		if (seg.start >= run.start + run.len) break;
+		if (seg.kind === 'text' && seg.start >= run.start && seg.node.textContent!.includes('\n')) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /** The DOM position beside a span the caret may not enter. Prefers an adjacent text node, since

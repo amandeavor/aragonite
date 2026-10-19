@@ -44,3 +44,7 @@ cell's render path.
 
 - the watcher for `[invariant:…]` messages and page errors stays silent across reuse, showing a
   source, committing an edit, canceling, and the table-cell path
+
+Miss-analysis (real Firefox): these scenarios ran on Chromium alone, which never leaves a caret
+inside a widget or stops Mod+End short of one; Firefox does both, and drops text typed right before
+a widget that ends the block.
