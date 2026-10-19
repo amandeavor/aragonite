@@ -7,7 +7,7 @@
 
 import type { ContentWrite } from '../../../action-contracts';
 import type { BlockPendingBreak } from '../../../caret/pending-break.svelte';
-import { BARE_MODIFIER_KEYS } from '../../../schema/keybindings';
+import { BARE_MODIFIER_KEYS, caretEdgeKey } from '../../../schema/keybindings';
 import type { TextWrite } from '../editable/surface-write';
 import { hasModifier, isPlainTypingKey } from './click-snap-guard';
 
@@ -43,7 +43,8 @@ export function handlePendingBreakKey(e: KeyboardEvent, deps: PendingBreakKeyDep
 		});
 		return true;
 	}
-	const stepsBack = e.key === 'Backspace' || e.key === 'ArrowLeft';
+	// Cmd+Left is the line-start key, which moves from the open line as Home does.
+	const stepsBack = e.key === 'Backspace' || (e.key === 'ArrowLeft' && caretEdgeKey(e) === null);
 	if (!stepsBack && e.key !== 'Delete') return false;
 	deps.pendingBreak.end();
 	if (!stepsBack || e.shiftKey || hasModifier(e)) return false;

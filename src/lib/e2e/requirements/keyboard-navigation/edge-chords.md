@@ -16,6 +16,8 @@ same way; neither spelling changes what the other does.
   Cmd+Right
 - The line start from a selected image leaves the image and types at the line's start: Home and
   Cmd+Left
+- The line start on the line Shift+Enter opened at a block's end keeps that line, so a typed letter
+  lands on it: Home and Cmd+Left
 - Extending to the document's end from a caret takes every block after it: Mod+Shift+End and
   Cmd+Shift+Down
 

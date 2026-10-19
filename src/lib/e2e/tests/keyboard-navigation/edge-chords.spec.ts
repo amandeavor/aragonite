@@ -91,6 +91,17 @@ const EDGE_ROWS: EdgeRow[] = [
 		outcome: { typed: `Zbefore ${IMAGE} after\n` }
 	},
 	{
+		name: 'the line start on the line Shift+Enter opened keeps that line',
+		doc: 'abc\n',
+		place: async (ep, page) => {
+			await clickEnd(ep, page, 'abc');
+			await page.keyboard.press('Shift+Enter');
+			await ep.waitForRenderFlush();
+		},
+		chords: { key: 'Home', arrow: 'Meta+ArrowLeft' },
+		outcome: { typed: 'abc\\\nZ\n' }
+	},
+	{
 		name: "extending to the document's end takes every block after the caret",
 		doc: 'one\n\ntwo\n',
 		place: (ep, page) => clickEnd(ep, page, 'one'),
