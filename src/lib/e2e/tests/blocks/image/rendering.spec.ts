@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { textRunRect } from '../../../text-runs';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('image rendering', () => {
 	let editor: EditorPage;
@@ -78,7 +79,7 @@ test.describe('image rendering', () => {
 		expect(events[0].classes).toContain('md-image-broken');
 
 		await page.locator('[contenteditable="true"]').first().click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('z');
 		const seen = await page.evaluate(() => {
 			const w = window as unknown as {

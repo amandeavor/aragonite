@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { type SimContext } from '../invariants';
 import { waitForNodeCount } from './node-count';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // Footnote gestures (plugins route, `?seed=footnotes`) for the `[^label]: ` definition block and
 // the `[^label]` reference widget. Each waits for the block to change kind or for the widget to
@@ -26,7 +27,7 @@ export async function typeFootnoteDefinition(
 	const defsBefore = await page.locator(DEF).count();
 
 	await editor.focusBlockStart(targetIndex);
-	await page.keyboard.press('Shift+End');
+	await page.keyboard.press(extendKey('lineEnd'));
 	// The space after the marker is not typed: closing it with `:` completes it to `[^label]: `,
 	// so typing a space here would add a second one.
 	await editor.typeSlowly(`[^${label}]:`);
@@ -88,7 +89,7 @@ export async function footnoteDefinitionExitBackspace(
 	const counts = await containerAndRootCounts(page, defIndex);
 
 	await editor.clickBlockAtPath(bodyPath, 0);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await page.keyboard.press('Backspace');
 	await editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
 	await editor.waitForRenderFlush();

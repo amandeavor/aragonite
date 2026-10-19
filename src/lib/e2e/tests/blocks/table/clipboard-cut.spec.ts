@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { boxesOf, dragBetweenBoxes, dragBetweenCells } from './helpers';
+import { edgeKey } from '../../../platform-keys';
 
 const TABLE_2BODY = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
 const TABLE_ALIGNED = '| A | B | C |\n| :--- | :---: | ---: |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n';
@@ -20,7 +21,7 @@ test.describe('table block: clipboard cut', () => {
 	}) => {
 		await editor.loadContent('| A | B |\n| --- | --- |\n| hello | 2 |\n');
 		await page.locator('.table-cell').nth(2).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowLeft');
 		await page.keyboard.press('ControlOrMeta+x');
 
@@ -104,7 +105,7 @@ test.describe('table block: clipboard cut', () => {
 		await editor.loadContent(source);
 		// Anchor inside cell "1" (row 1, col 0), extend down into the paragraph below.
 		await page.locator('.table-cell').nth(2).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		// Drag rather than Shift+ArrowDown: keyboard entry from inside a cell routes through the
 		// table's keyboard-extend path, which is not what this test is about.
 		const [cell, paragraph] = await boxesOf(

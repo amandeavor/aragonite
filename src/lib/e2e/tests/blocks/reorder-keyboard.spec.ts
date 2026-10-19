@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Reorder finds the block from the caret path and moves it among its siblings. Focus lands at
 // offset 0 of the moved block, so a character typed after the move goes in front of the text,
@@ -95,7 +96,7 @@ test.describe('keyboard reorder', () => {
 	test('Alt+Arrow at a boundary is a no-op and creates no undo entry', async () => {
 		await editor.loadContent('A\n\nB\n');
 		await editor.page.locator('[contenteditable="true"]', { hasText: 'A' }).click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.type('X');
 		await editor.bridge.waitForSourceEquals('XA\n\nB\n');
 

@@ -9,6 +9,7 @@ import {
 	pasteFiles,
 	setResponses
 } from './image-paste-harness';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // The `onPasteImage` host hook where the paste lands inside one block: placement, undo, the
 // cases it declines, and the same behavior on every editable element. Cross-block replacement
@@ -17,7 +18,7 @@ import {
 /** Caret between `A` and `B` of the first paragraph, placed by click + keys. */
 async function caretMidParagraph(editor: EditorPage, page: Page): Promise<void> {
 	await editor.getBlock(0).click();
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await page.keyboard.press('ArrowRight');
 }
 
@@ -50,8 +51,8 @@ test.describe('image paste: host hook installed', () => {
 		await editor.loadContent(PARAGRAPH);
 		await setResponses(page, [{ markdown: '![[shot.png]]' }]);
 		await editor.getBlock(0).click();
-		await page.keyboard.press('Home');
-		await page.keyboard.press('Shift+End');
+		await page.keyboard.press(edgeKey('lineStart'));
+		await page.keyboard.press(extendKey('lineEnd'));
 		await pasteFiles(page, [PNG]);
 
 		await editor.bridge.waitForSourceContains('![[shot.png]]');
@@ -86,7 +87,7 @@ test.describe('image paste: host hook installed', () => {
 		await setResponses(page, [{ markdown: '![[cell.png]]' }]);
 		// nth(2): .table-cell covers the header row too, so the body cells start at 2.
 		await page.locator('.table-cell').nth(2).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await pasteFiles(page, [PNG]);
 
 		await editor.bridge.waitForSourceContains('1![[cell.png]]');
@@ -97,7 +98,7 @@ test.describe('image paste: host hook installed', () => {
 		await editor.loadContent('```\ncode\n```\n');
 		await setResponses(page, [{ markdown: '![[fenced.png]]' }]);
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await pasteFiles(page, [PNG]);
 
 		await editor.bridge.waitForSourceContains('code![[fenced.png]]');

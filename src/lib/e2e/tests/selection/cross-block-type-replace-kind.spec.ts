@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { extendKey } from '../../platform-keys';
 
 /**
  * Typing over a cross-block range works out the surviving leaf's kind again
@@ -28,7 +29,7 @@ test.describe('cross-block type-replace: kind re-derivation', () => {
 		await editor.loadContent('aaa\n\nbbb\n');
 
 		await editor.focusBlockStart(0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.typeSlowly('#');
@@ -51,7 +52,7 @@ test.describe('cross-block type-replace: kind re-derivation', () => {
 		await editor.loadContent('aaa\n\nbbb\n');
 
 		await editor.focusBlockStart(0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.page.keyboard.press('ControlOrMeta+2');

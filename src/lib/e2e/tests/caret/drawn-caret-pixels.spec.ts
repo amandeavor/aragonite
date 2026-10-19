@@ -9,6 +9,7 @@ import {
 } from '../../carets-showing';
 import { TABLE_THEN_FENCE, arriveAtBoundary } from '../selection/gap-caret-fixtures';
 import { skipUnlessSupported } from '../../browser-engine';
+import { edgeKey } from '../../platform-keys';
 
 // The drawn caret on the device pixel grid, and in the color of the text it stands in
 // (requirements/caret/drawn-caret-pixels.md).
@@ -106,7 +107,7 @@ function expectDeviceWidth(actual: number, css: number, dpr: number, what: strin
 /** Puts the caret after the first letter of `word` in the second block, one key at a time. */
 async function caretInWord(editor: EditorPage, line: string, word: string): Promise<void> {
 	await editor.clickBlock(1);
-	await editor.page.keyboard.press('Home');
+	await editor.page.keyboard.press(edgeKey('lineStart'));
 	for (let i = 0; i <= line.indexOf(word); i++) await editor.page.keyboard.press('ArrowRight');
 	await nextFrames(editor.page);
 }
@@ -124,7 +125,7 @@ for (const scale of [1, 1.25, 1.5]) {
 			await editor.loadContent('first\n\nWide mill thrift right hill bravo quiet\n');
 			await page.addStyleTag({ content: OFF_GRID });
 			await editor.clickBlock(1);
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			let offGridCarets = 0;
 			for (let i = 0; i < 12; i++) {
 				await page.keyboard.press('ArrowRight');
@@ -206,7 +207,7 @@ test.describe('the drawn caret’s color', () => {
 				.editor strong { color: rgb(170, 60, 190); }`
 		});
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await nextFrames(page);
 		const heading = await barPixels(page);
 		expect(heading.textColor, 'the heading’s text').toBe('rgb(40, 90, 200)');
@@ -254,7 +255,7 @@ test('at 1x the bar stands in the browser’s own caret column at every letter b
 	const STEPS = 12;
 	const drawn: number[] = [];
 	await editor.clickBlock(1);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	for (let i = 0; i < STEPS; i++) {
 		await page.keyboard.press('ArrowRight');
 		await nextFrames(page);
@@ -262,7 +263,7 @@ test('at 1x the bar stands in the browser’s own caret column at every letter b
 	}
 	const painted: number[] = [];
 	await setCaretProp(page, 'native');
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	for (let i = 0; i < STEPS; i++) {
 		await page.keyboard.press('ArrowRight');
 		painted.push((await browserCaret(page)).left);
@@ -286,7 +287,7 @@ test('on an editable that starts between pixels, the bar stands in the browser�
 	const STEPS = 8;
 	const drawn: number[] = [];
 	await editor.clickBlock(1);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	for (let i = 0; i < STEPS; i++) {
 		await page.keyboard.press('ArrowRight');
 		await nextFrames(page);
@@ -294,7 +295,7 @@ test('on an editable that starts between pixels, the bar stands in the browser�
 	}
 	expect(await oneCaretOnTheBrowsersLine(page)).toBe('drawn');
 	const painted: number[] = [];
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	for (let i = 0; i < STEPS; i++) {
 		await page.keyboard.press('ArrowRight');
 		painted.push((await browserCaret(page)).left);

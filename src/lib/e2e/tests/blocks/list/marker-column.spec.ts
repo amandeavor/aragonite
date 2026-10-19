@@ -3,6 +3,7 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { waitForAllImagesLoaded } from '../image/helpers';
 import type { PresentationMode } from '../../../../presentation-mode';
+import { edgeKey } from '../../../platform-keys';
 
 // Requirements: `e2e/requirements/blocks/list/marker-column.md`.
 
@@ -219,7 +220,7 @@ test.describe('the marker column holds no caret', () => {
 				await openIn(page, mode, `${marker}\n`);
 				const editor = new EditorPage(page);
 				await editor.clickBlockAtPath([0, 0, 0], 0);
-				await page.keyboard.press('End');
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.type('z');
 				await editor.bridge.waitForSourceEquals(`${marker}z\n`);
 			});

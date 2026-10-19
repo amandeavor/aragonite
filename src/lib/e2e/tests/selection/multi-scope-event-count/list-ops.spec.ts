@@ -3,6 +3,7 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { countEditEvents } from './helpers';
 import { nextRow } from '../../presentation/helpers';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('one edit event per structural list op', () => {
 	test('Tab, Shift+Tab, Enter mid-item and Enter at the end each emit exactly one edit event', async ({
@@ -43,7 +44,7 @@ test.describe('one edit event per structural list op', () => {
 			await nextRow(editor, '- HelloWorld\n');
 			const item = editor.page.locator('[contenteditable="true"]', { hasText: 'HelloWorld' });
 			await item.click();
-			await editor.page.keyboard.press('Home');
+			await editor.page.keyboard.press(edgeKey('lineStart'));
 			for (let i = 0; i < 5; i++) await editor.page.keyboard.press('ArrowRight');
 
 			const count = await countEditEvents(editor, async () => {
@@ -58,7 +59,7 @@ test.describe('one edit event per structural list op', () => {
 			await nextRow(editor, '- Alpha\n- Beta\n');
 			const first = editor.page.locator('[contenteditable="true"]', { hasText: 'Alpha' });
 			await first.click();
-			await editor.page.keyboard.press('End');
+			await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 			const count = await countEditEvents(editor, async () => {
 				await editor.page.keyboard.press('Enter');

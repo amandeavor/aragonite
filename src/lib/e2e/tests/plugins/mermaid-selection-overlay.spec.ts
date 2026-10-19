@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage } from './helpers';
 import { STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
+import { extendKey } from '../../platform-keys';
 
 /**
  * The cross-block selection overlay over containers with no children
@@ -66,7 +67,7 @@ test.describe('cross-block selection overlay: childless opaque container', () =>
 	test('a child-bearing opaque container (callout) held whole paints one box', async ({ page }) => {
 		await editor.loadContent(CALLOUT_DOC);
 		await editor.focusBlockStart(0);
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await expect(page.locator(MIDDLE_OVERLAY)).toHaveCount(1);

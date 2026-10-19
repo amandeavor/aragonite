@@ -10,6 +10,7 @@ import {
 	nextRow
 } from './helpers';
 import { textOutsideMarkers } from '../../text-runs';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // A block that ends in a construct ends in a run live paints nothing for, so a cross-block
 // endpoint taken from the raw length sits past it. The paint, the collapse and the type-over
@@ -57,7 +58,7 @@ test('live mode, extending across a construct-ending block', async ({ page }) =>
 	await test.step('the paint stays inside the block that ends in a hidden run', async () => {
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, ENDS_BOLD);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		// One character in, so the range covers the block only in part and measures its text.
 		await page.keyboard.press('ArrowRight');
 		await extendTo(ep, page, 'ArrowDown', [PLAIN], 0);
@@ -77,7 +78,7 @@ test('live mode, extending across a construct-ending block', async ({ page }) =>
 	await test.step('extending backward into it covers the whole block', async () => {
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, PLAIN);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await extendTo(ep, page, 'ArrowLeft', [ENDS_BOLD], RAW_END);
 		expect(await focusOffset(ep)).toBe(RAW_END);
 	});
@@ -87,7 +88,7 @@ test('live mode, extending across a construct-ending block', async ({ page }) =>
 	await test.step('collapsing that extension lands the caret at the content end', async () => {
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, PLAIN);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await extendTo(ep, page, 'ArrowLeft', [ENDS_BOLD], RAW_END);
 
 		await page.keyboard.press('ArrowLeft');
@@ -101,7 +102,7 @@ test('live mode, extending across a construct-ending block', async ({ page }) =>
 	await test.step('typing at the collapsed caret extends the construct', async () => {
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, PLAIN);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await extendTo(ep, page, 'ArrowLeft', [ENDS_BOLD], RAW_END);
 		await page.keyboard.press('ArrowLeft');
 		await ep.waitForRenderFlush();
@@ -114,7 +115,7 @@ test('live mode, extending across a construct-ending block', async ({ page }) =>
 	await test.step('extending backward into a block that begins with a construct reaches its neighbour', async () => {
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, LEADS_BOLD);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		// `**Lead** closes here`: the opening `**` is unpainted, so 2 is the first reachable offset.
 		expect(await focusOffset(ep)).toBe(2);
 		await extendTo(ep, page, 'ArrowLeft', [PLAIN], 15);
@@ -124,7 +125,7 @@ test('live mode, extending across a construct-ending block', async ({ page }) =>
 	await test.step('typing over the extension leaves no delimiter on screen', async () => {
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, ENDS_BOLD);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await extendTo(ep, page, 'ArrowDown', [LEADS_BOLD], 0);
 		await page.keyboard.type('X');
 		await ep.bridge.waitForSourceContains('boldX');
@@ -174,13 +175,13 @@ interface CollapseArm {
 /** Collapse to the range's start: this row's edge has to be the earlier endpoint. */
 async function fromOpenerStart(ep: EditorPage, page: Page): Promise<void> {
 	await clickBlockSettled(ep, OPENER);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await extendTo(ep, page, 'ArrowDown', [OPENER + 1], 0);
 }
 
 async function fromCloserStart(ep: EditorPage, page: Page): Promise<void> {
 	await clickBlockSettled(ep, MIDDLE);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await extendTo(ep, page, 'ArrowLeft', [CLOSER_FIRST], RAW_END_OF_LEAD);
 }
 
@@ -192,7 +193,7 @@ const COLLAPSE_ARMS: CollapseArm[] = [
 		key: 'ArrowRight',
 		extend: async (ep, page) => {
 			await clickBlockSettled(ep, MIDDLE);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await extendTo(ep, page, 'ArrowDown', [OPENER], 0);
 		},
 		expected: '**Zbold** tail'
@@ -204,8 +205,8 @@ const COLLAPSE_ARMS: CollapseArm[] = [
 		key: 'ArrowRight',
 		extend: async (ep, page) => {
 			await clickBlockSettled(ep, MIDDLE);
-			await page.keyboard.press('End');
-			await page.keyboard.press('ControlOrMeta+Shift+End');
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await page.keyboard.press(extendKey('docEnd'));
 			await ep.waitForCrossBlock(true);
 		},
 		expected: 'Ends with **boldZ**'
@@ -244,7 +245,7 @@ test('live mode, collapsing onto a leading construct', async ({ page }) => {
 	await test.step('the prose arrival types inside the construct the block opens with', async () => {
 		await nextRow(ep, '**bold** para\n\nAfter para\n');
 		await clickBlockSettled(ep, 0);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await extendTo(ep, page, 'ArrowDown', [1], 0);
 
 		await page.keyboard.press('ArrowLeft');
@@ -260,7 +261,7 @@ test('live mode, collapsing onto a leading construct', async ({ page }) => {
 	await test.step('the cell arrival types inside the construct it opens with', async () => {
 		await nextRow(ep, CELL_DOC);
 		await clickBlockSettled(ep, 1);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Shift+ArrowLeft');
 		await ep.waitForCrossBlock(true);
 
@@ -280,7 +281,7 @@ test('source mode: the endpoints are the raw ones, so the collapse lands where t
 }) => {
 	const ep = await enterPresentationMode(page, 'source', DOC);
 	await clickBlockSettled(ep, PLAIN);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await extendTo(ep, page, 'ArrowLeft', [ENDS_BOLD], RAW_END);
 	await page.keyboard.press('ArrowLeft');
 	await ep.waitForRenderFlush();

@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage, BLOCK_CONTENT_SELECTOR } from '../../../editor-page';
 import { DEFAULT_CONTENT } from '../../../test-content';
+import { extendKey } from '../../../platform-keys';
 
 test.describe('clipboard: code block boundary and direction', () => {
 	let editor: EditorPage;
@@ -13,7 +14,7 @@ test.describe('clipboard: code block boundary and direction', () => {
 
 	test('Ctrl+Shift+End from inside a code block extends to the final paragraph', async () => {
 		await editor.focusBlockAtPath([9], 0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.page.keyboard.press('ControlOrMeta+c');

@@ -9,6 +9,7 @@ import {
 	releaseImport,
 	setResponses
 } from './image-paste-harness';
+import { edgeKey } from '../../platform-keys';
 
 // The cross-block path owns the delete and the insert as one undo entry and addresses by path,
 // so which element received the event does not change where it lands. See
@@ -126,7 +127,7 @@ test.describe('image paste: cross-block replacement', () => {
 		const MARKDOWN = '![[shot.png]]';
 		const selectOutOfCell = async () => {
 			await page.locator('.table-cell').nth(2).click();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('Shift+ArrowDown');
 			await editor.waitForCrossBlock(true);
 		};

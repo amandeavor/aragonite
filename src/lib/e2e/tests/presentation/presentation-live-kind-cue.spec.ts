@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import type { EditorPage } from '../../editor-page';
 import { clickBlockSettled, enterPresentationMode } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // A keystroke that turns its block into another kind shows the new kind's name at the block's
 // corner for a moment, and a screen reader hears it once, in the modes that hide markers.
@@ -14,7 +15,7 @@ const announcer = (page: Page) => page.locator('.editor-sr-live-kind');
 
 async function atStartOfFirst(ep: EditorPage, page: Page): Promise<void> {
 	await clickBlockSettled(ep, 0);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await ep.waitForRenderFlush();
 }
 

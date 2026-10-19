@@ -1,5 +1,6 @@
 import { expect } from '../../fixtures';
 import { PluginsPage } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Shared page helpers for the latex suites that open a formula's source: the inline widget, in
 // MathRevealPage, used by the commit-first tests and by Enter's block meaning, and the block and
@@ -42,7 +43,7 @@ export class BlockMathPage extends PluginsPage {
 	 *  through `focus(0)` with no mouseup competing for it. */
 	async revealFromBefore(): Promise<void> {
 		await this.getBlock(0).click();
-		await this.page.keyboard.press('End');
+		await this.page.keyboard.press(edgeKey('lineEnd'));
 		await this.page.keyboard.press('ArrowRight');
 		await expect(this.source).toHaveCount(1);
 		await this.waitForRenderFlush();

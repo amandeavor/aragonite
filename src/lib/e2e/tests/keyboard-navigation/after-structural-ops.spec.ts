@@ -2,6 +2,7 @@
 // works after a structural edit shifts the block indices.
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 test.describe('focus traversal after block insertion', () => {
 	let editor: EditorPage;
@@ -45,7 +46,7 @@ test.describe('focus traversal after block insertion', () => {
 		const bqBlock = editor.getBlock(4);
 		const bqEditable = bqBlock.locator('[contenteditable="true"]').last();
 		await bqEditable.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.page.keyboard.press('ArrowDown');
 
@@ -79,7 +80,7 @@ test.describe('focus traversal after block insertion', () => {
 		const listEditables = listBlock.locator('[contenteditable="true"]');
 		const lastItem = listEditables.last();
 		await lastItem.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.page.keyboard.press('ArrowDown');
 
@@ -106,14 +107,14 @@ test.describe('focus traversal after block insertion', () => {
 
 		const itemTwo = editor.page.locator('[contenteditable="true"]', { hasText: 'Item two' });
 		await itemTwo.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^- Item oneItem two$/m);
 
 		const listBlock = editor.getBlock(0);
 		const listEditable = listBlock.locator('[contenteditable="true"]').first();
 		await listEditable.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.page.keyboard.press('ArrowDown');
 
@@ -133,13 +134,13 @@ test.describe('focus traversal after block insertion', () => {
 
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceContains('> quote linetext');
 
 		const bqEditable = editor.getBlock(0).locator('[contenteditable="true"]').first();
 		await bqEditable.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.typeText('Z');

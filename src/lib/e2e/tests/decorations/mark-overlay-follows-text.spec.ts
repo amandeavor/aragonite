@@ -5,6 +5,7 @@ import type { PresentationMode } from '../../../presentation-mode';
 import { textRunEnd, textRunStart } from '../../text-runs';
 import { findInput, openFind, typeQuery } from '../search/helpers';
 import { PluginsPage, clickWidgetCenter } from '../plugins/helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * A mark's overlay moves with its text when hiding or showing markers moves the text without
@@ -109,12 +110,12 @@ test.describe('mark overlay follows its text', () => {
 		const hidden = await helloLeft(page);
 		await expectOverlayOnText(page, 'plain mark');
 
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await editor.waitForRenderFlush();
 		expect(await helloLeft(page), 'entering the bold shows its markers').toBeGreaterThan(hidden);
 		await expectOverlayOnText(page, 'plain mark');
 
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 		expect(await helloLeft(page), 'leaving the bold hides them').toBeCloseTo(hidden, 0);
 		await expectOverlayOnText(page, 'plain mark');

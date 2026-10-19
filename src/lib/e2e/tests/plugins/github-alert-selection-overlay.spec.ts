@@ -3,6 +3,7 @@ import { test, expect } from '../../fixtures';
 import { PluginsPage, dragBetweenPoints } from './helpers';
 import { textRunCenter } from '../../text-runs';
 import { holes, paintedBands, paintedRegion, unpaintedMiddle } from '../selection/painted-region';
+import { extendKey } from '../../platform-keys';
 
 /**
  * A GitHub alert caught in a cross-block selection (requirements/plugins/github-alert-selection-
@@ -44,7 +45,7 @@ test.describe('cross-block selection overlay - a GitHub alert held whole', () =>
 
 	test('the painted box covers the title row, not just the body', async ({ page }) => {
 		await editor.focusBlockStart(0);
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await expect(page.locator(ALERT_OVERLAY)).toHaveCount(1);
@@ -68,7 +69,7 @@ test.describe('cross-block selection overlay - a GitHub alert held whole', () =>
 		page
 	}) => {
 		await editor.focusBlockStart(0);
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await expect(page.locator(ALERT_OVERLAY)).toHaveCount(1);

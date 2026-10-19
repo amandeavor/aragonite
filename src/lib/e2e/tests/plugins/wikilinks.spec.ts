@@ -33,7 +33,7 @@ const activations = (page: Page) =>
 		() => (window as never as { __linkActivations?: string[] }).__linkActivations ?? []
 	);
 
-async function clickLink(editor: PluginsPage, modifier?: 'Control'): Promise<void> {
+async function clickLink(editor: PluginsPage, modifier?: 'ControlOrMeta'): Promise<void> {
 	const box = await link(editor).boundingBox();
 	if (!box) throw new Error('no link box');
 	if (modifier) await editor.page.keyboard.down(modifier);
@@ -64,7 +64,7 @@ test.describe('wikilinks that follow on a plain click', () => {
 	});
 
 	test('a Ctrl-click follows it too', async ({ page }) => {
-		await clickLink(editor, 'Control');
+		await clickLink(editor, 'ControlOrMeta');
 
 		expect(await activations(page)).toEqual(['Meeting notes']);
 		await expect(link(editor)).toHaveCount(1);
@@ -377,9 +377,9 @@ test.describe('autolinks a click follows can be edited', () => {
 		test(`a bare URL in a table cell follows its click, ${host} click host`, async ({ page }) => {
 			const opened = await recordOpens(page);
 			if (host === 'modifier') await page.getByTestId('link-click-toggle').click();
-			if (host === 'modifier') await page.keyboard.down('Control');
+			if (host === 'modifier') await page.keyboard.down('ControlOrMeta');
 			await page.locator('.table-cell a.md-autolink').click();
-			if (host === 'modifier') await page.keyboard.up('Control');
+			if (host === 'modifier') await page.keyboard.up('ControlOrMeta');
 
 			await expect.poll(opened).toEqual(['https://example.org/cell']);
 		});

@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { SIMPLE_CONTENT } from '../test-content';
 import { FENCE, LAST_CELL, TABLE, filler } from './selection/gap-caret-fixtures';
+import { edgeKey } from '../platform-keys';
 
 test.describe('undo and redo', () => {
 	let editor: EditorPage;
@@ -66,7 +67,7 @@ test.describe('undo brings an off-screen caret into view', () => {
 		await editor.goto();
 		await editor.loadContent(LONG + '\n');
 		await editor.page.locator(`[data-block-path='[${BLOCK}]'] [contenteditable="true"]`).click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText('x');
 		await editor.waitForUndoBatchFlush();
 		const box = (await editor.editorContainer.boundingBox())!;

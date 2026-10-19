@@ -3,6 +3,7 @@ import { EditorPage } from '../../../editor-page';
 import { boxesOf, dragBetweenBoxes, dragBetweenCells } from './helpers';
 import { roundTripStable } from '../../plugins/helpers';
 import { pointAtRaw } from '../../../text-runs';
+import { edgeKey, extendKey } from '../../../platform-keys';
 
 const TABLE_2x3 = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
 const TABLE_3x3 = '| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n';
@@ -20,7 +21,7 @@ test.describe('table block: cross-block delete', () => {
 	}) => {
 		await editor.loadContent(`head text\n\n${TABLE_2x3}\ntail text\n`);
 		await editor.focusBlockAtPath([0], 4);
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceNotContains('| --- | --- |');
@@ -35,7 +36,7 @@ test.describe('table block: cross-block delete', () => {
 		const source = `head text\n\n${TABLE_2x3}\ntail text\n`;
 		await editor.loadContent(source);
 		await editor.focusBlockAtPath([0], 4);
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceNotContains('| --- | --- |');
@@ -224,7 +225,7 @@ test.describe('table block: cross-block delete', () => {
 		await editor.loadContent(`Before.\n\n${TABLE_2x3}`);
 		const before = await editor.bridge.getSource();
 		await page.locator('.table-cell').nth(0).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Backspace');
 		expect(await editor.bridge.getSource()).toBe(before);
 		const focusedPath = await page.evaluate(
@@ -242,7 +243,7 @@ test.describe('table block: cross-block delete', () => {
 		// Anchor in the bottom-right cell, then extend into the paragraph below via
 		// the keyboard table-extend path (distinct from pointer drag / Ctrl+Shift+End).
 		await page.locator('.table-cell').nth(5).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Shift+ArrowDown');
 		await editor.waitForCrossBlock(true);
 		await editor.pressDeclined('Backspace');

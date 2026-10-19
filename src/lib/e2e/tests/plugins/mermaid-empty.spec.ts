@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { MermaidPage } from './mermaid-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * An empty mermaid fence (requirements/plugins/mermaid-empty.md): the edit box is all there is to
@@ -33,7 +34,7 @@ test.describe('mermaid empty diagram', () => {
 	}) => {
 		await editor.loadContent('Above\n\ntail\n');
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await page.keyboard.type('```mermaid');
 

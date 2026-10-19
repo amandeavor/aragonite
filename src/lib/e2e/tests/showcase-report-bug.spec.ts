@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures';
 import { gotoReady } from '../goto-ready';
 import { createClipboardArm, refuseNextClipboardWrite } from '../clipboard-arm';
+import { edgeKey } from '../platform-keys';
 
 // The showcase's "report a bug" button. This route has no `window.__test` bridge, so the cases
 // read the rendered page, the tab it opens and the clipboard.
@@ -35,7 +36,7 @@ test.describe('/ showcase report a bug', () => {
 		await expect(page.getByTestId('report-bug')).toContainText('stop and report');
 
 		await page.locator('[data-block-kind="paragraph"]').first().click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('zq');
 
 		const tab = page.context().waitForEvent('page');

@@ -46,12 +46,12 @@ test.describe('link styling + affordance', () => {
 		await expect(autolink).toHaveCSS('cursor', 'text');
 
 		await editor.focusBlockEnd(0);
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await expect(editor.editorContainer).toHaveAttribute('data-mod-active', '');
 		await expect(link).toHaveCSS('cursor', 'pointer');
 		await expect(autolink).toHaveCSS('cursor', 'pointer');
 
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 		await expect(editor.editorContainer).not.toHaveAttribute('data-mod-active', '');
 		await expect(link).toHaveCSS('cursor', 'text');
 		await expect(autolink).toHaveCSS('cursor', 'text');
@@ -77,7 +77,7 @@ test.describe('link styling + affordance', () => {
 		const link = page.locator('a.md-link-content', { hasText: 'Example' });
 
 		await editor.focusBlockEnd(0);
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await expect(editor.editorContainer).toHaveAttribute('data-mod-active', '');
 
 		// The page can lose focus while the modifier is held (an OS shortcut, alt-tab) and the
@@ -88,7 +88,7 @@ test.describe('link styling + affordance', () => {
 		await expect(editor.editorContainer).not.toHaveAttribute('data-mod-active', '');
 		await expect(link).toHaveCSS('cursor', 'text');
 
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 	});
 
 	test('an image wrapped in a link hugs the image, not the full content width', async ({
@@ -151,9 +151,9 @@ test.describe('link styling + affordance', () => {
 
 		// Holding the modifier must not turn the blocked span into a pointer.
 		await editor.focusBlockEnd(0);
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await expect(editor.editorContainer).toHaveAttribute('data-mod-active', '');
 		await expect(blocked).toHaveCSS('cursor', 'text');
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 	});
 });

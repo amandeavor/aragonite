@@ -3,6 +3,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { attachIme } from '../../simulation/ime';
 import { insertText } from '../../insert-text';
+import { edgeKey } from '../../platform-keys';
 
 // Text that arrives with no keydown before it (an IME commit, dictation, a soft keyboard):
 // undoing it puts the caret back where the text went in, as it does for typed keys.
@@ -53,7 +54,7 @@ test.describe('undo cursor anchoring without a keydown', () => {
 	}) => {
 		await editor.loadContent('| abc tail | b |\n| --- | --- |\n| c | d |\n');
 		await page.locator('.table-cell').first().click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
 		await insertText(page, 'xyz');
 		await editor.bridge.waitForSourceContains('abcxyz tail');

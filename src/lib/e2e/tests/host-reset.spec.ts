@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { gotoReady } from '../goto-ready';
+import { edgeKey } from '../platform-keys';
 
 // The editor lays out the same on a page with no CSS reset as on `/test/editor`, which has one,
 // and leaves what a host put inside it on the page's own styles.
@@ -99,7 +100,7 @@ test.describe('an editor on a page with no CSS reset', () => {
 	test('typing at the end of a long line does not scroll the page sideways', async ({ page }) => {
 		await loadOnNoReset(page, LONG_LINE);
 		await page.locator('.editor [contenteditable="true"]').first().click();
-		await page.keyboard.press('ControlOrMeta+End');
+		await page.keyboard.press(edgeKey('blockEnd'));
 		await page.keyboard.type(' and on');
 		await expect(page.locator('.editor')).toContainText('wraps. and on');
 
@@ -163,7 +164,7 @@ test.describe('an editor on a page with no CSS reset', () => {
 		]) {
 			await test.step(`an inline menu ${name}`, async () => {
 				await page.locator('.editor [contenteditable="true"]').first().click();
-				await page.keyboard.press('End');
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.type(` ${trigger}`);
 				const row = `.inline-menu[data-inline-menu="${name}"] .host-button`;
 				await expect(page.locator(row)).toBeVisible();

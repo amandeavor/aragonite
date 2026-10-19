@@ -4,6 +4,7 @@ import { blockCenter } from './multi-click-helpers';
 import { textRunCenter, textRunStart, pointAtRaw } from '../../text-runs';
 import { multiClick } from '../../multi-click';
 import { holdSelectionDrag } from '../../selection-drag';
+import { COPY_DRAG_MODIFIERS } from '../../platform-keys';
 
 // The caret shown while a dragged selection is held over the editor
 // (`requirements/selection/drop-caret.md`). Aim points are a run's first glyph, whose
@@ -157,7 +158,7 @@ test.describe('the caret a held drag shows', () => {
 			page,
 			await textRunCenter(page, 'alpha'),
 			await textRunStart(page, 'beta'),
-			{ copyWith: 'Control' }
+			{ copyWith: COPY_DRAG_MODIFIERS[0] }
 		);
 
 		await expect(page.locator('.drop-caret')).toHaveCount(1);

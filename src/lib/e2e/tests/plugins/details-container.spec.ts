@@ -10,6 +10,7 @@ import {
 	CLOSED_WITH_BELOW,
 	OPEN_WITH_BELOW
 } from './details-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The `<details>` collapsible, the second block with an editable title row. Collapsing clamps the
@@ -274,7 +275,7 @@ test.describe('plugin container: <details> collapsible', () => {
 		// holding the truncated summary and the live open flag.
 		await editor.clickBlock(2);
 		await editor.waitForCrossBlock(false);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('<summary>Sum</summary>');
 

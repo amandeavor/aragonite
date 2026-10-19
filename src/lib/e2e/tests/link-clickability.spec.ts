@@ -13,7 +13,7 @@ test.describe('link clickability', () => {
 		await editor.loadContent('Visit [Example](https://example.com) here.\n');
 		const link = editor.page.locator('a.md-link-content', { hasText: 'Example' });
 		const popupPromise = context.waitForEvent('page');
-		await link.click({ modifiers: ['Control'] });
+		await link.click({ modifiers: ['ControlOrMeta'] });
 		const popup = await popupPromise;
 		await popup.waitForURL('https://example.com/');
 		expect(popup.url()).toBe('https://example.com/');
@@ -23,7 +23,7 @@ test.describe('link clickability', () => {
 		await editor.loadContent('See https://example.com today.\n');
 		const link = editor.page.locator('a.md-autolink', { hasText: 'https://example.com' });
 		const popupPromise = context.waitForEvent('page');
-		await link.click({ modifiers: ['Control'] });
+		await link.click({ modifiers: ['ControlOrMeta'] });
 		const popup = await popupPromise;
 		await popup.waitForURL('https://example.com/');
 		expect(popup.url()).toBe('https://example.com/');
@@ -41,7 +41,7 @@ test.describe('link clickability', () => {
 				return null;
 			}) as typeof window.open;
 		});
-		await link.click({ modifiers: ['Control'] });
+		await link.click({ modifiers: ['ControlOrMeta'] });
 		const calls = await editor.page.evaluate(
 			() => (window as unknown as { __openCalls: string[] }).__openCalls
 		);

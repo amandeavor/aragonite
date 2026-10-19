@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { extendKey } from '../../platform-keys';
 
 const SOURCE = `See [click][go].
 
@@ -42,7 +43,7 @@ test.describe('inline editing: reference render staleness', () => {
 	test('removing the LRD reverts the unedited reference block to plain text', async () => {
 		const lrdLine = '[go]: https://old.com';
 		await editor.focusBlock(1, lrdLine.length);
-		await editor.page.keyboard.press('Shift+Home');
+		await editor.page.keyboard.press(extendKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceNotContains('https://old.com');
 		await editor.waitForRenderFlush();

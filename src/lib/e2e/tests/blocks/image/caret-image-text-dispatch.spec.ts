@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../../editor-page';
 import { waitForFirstImageLoaded } from './helpers';
+import { edgeKey } from '../../../platform-keys';
 
 // The image carries a box and the trailing text several words, so a landing at the image's
 // leading edge and one in the text are different bytes and a good many pixels apart.
@@ -35,7 +36,7 @@ function typedIndexInTrailingText(src: string): number {
 
 async function focusStartOfText1(editor: EditorPage, page: Page): Promise<void> {
 	await page.locator('[contenteditable="true"]').nth(0).click();
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await editor.waitForRenderFlush();
 }
 

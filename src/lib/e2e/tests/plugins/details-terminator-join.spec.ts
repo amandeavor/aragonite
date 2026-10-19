@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { DetailsPage, capturedErrors } from './details-helpers';
 import { readDoc, roundTripStable } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // A join inside a details body that spells `</details>` from two lines must be escaped, or it
 // closes the container on reload. Requirements: details-terminator-join.md.
@@ -19,7 +20,7 @@ test.describe('plugin container: <details> terminator escape on a join', () => {
 
 	test('Backspace at the start of the second line escapes the tag it forms', async ({ page }) => {
 		await page.locator('.details-block [contenteditable="true"]', { hasText: 'ails>' }).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Backspace');
 
 		await editor.bridge.waitForSourceEquals(JOINED);
@@ -30,7 +31,7 @@ test.describe('plugin container: <details> terminator escape on a join', () => {
 
 	test('Delete at the end of the first line escapes the tag it forms', async ({ page }) => {
 		await page.locator('.details-block [contenteditable="true"]', { hasText: '</det' }).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Delete');
 
 		await editor.bridge.waitForSourceEquals(JOINED);

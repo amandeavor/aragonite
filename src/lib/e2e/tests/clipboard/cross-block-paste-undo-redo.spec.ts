@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { extendKey } from '../../platform-keys';
 
 test.describe('cross-block paste over selection: undo / redo', () => {
 	let editor: EditorPage;
@@ -14,7 +15,7 @@ test.describe('cross-block paste over selection: undo / redo', () => {
 		await editor.loadContent(original);
 
 		await editor.focusBlockStart(0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 
 		const pasteMd = 'One\n\nTwo\n';
 		await editor.seedClipboard(pasteMd);
@@ -37,7 +38,7 @@ test.describe('cross-block paste over selection: undo / redo', () => {
 		await editor.loadContent(original);
 
 		await editor.focusBlockStart(0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 
 		await editor.seedClipboard('replacement');
 		await editor.paste();

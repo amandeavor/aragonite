@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import type { EditorPage } from '../../editor-page';
 import { attachIme } from '../../simulation/ime';
 import { clickBlockSettled, clickWordSettled, enterPresentationMode, focusPath } from './helpers';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // Shift+Enter at a block's end opens a line and writes nothing; whatever is inserted next writes
 // the break in front of itself, and anything else drops the line without leaving a byte.
@@ -13,7 +14,7 @@ const MODES = ['source', 'live'] as const;
 /** The block's end, then Shift+Enter `times` over. */
 async function openBreak(ep: EditorPage, page: Page, times = 1): Promise<void> {
 	await clickBlockSettled(ep, 0);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	for (let i = 0; i < times; i++) await page.keyboard.press('Shift+Enter');
 	await ep.waitForRenderFlush();
 }
@@ -41,7 +42,7 @@ for (const mode of MODES) {
 		test('stays a backslash, and the next key types after it', async ({ page }) => {
 			const ep = await enterPresentationMode(page, mode, 'see C:\n');
 			await clickBlockSettled(ep, 0);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await ep.typeSlowly('\\U');
 			await expect.poll(() => ep.bridge.getSource()).toBe('see C:\\U\n');
 		});
@@ -99,7 +100,7 @@ test.describe('live mode: a composed run after a hidden closer', () => {
  *  text is open again, with the caret on it, and the break's bytes went with the `x`. */
 async function emptiedBreak(ep: EditorPage, page: Page): Promise<void> {
 	await clickWordSettled(ep, page, 'def');
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.press('Shift+Enter');
 	await ep.typeSlowly('x');
 	await page.keyboard.press('Backspace');
@@ -173,8 +174,8 @@ for (const mode of MODES) {
 		test('stays open, and the next letter writes the break again', async ({ page }) => {
 			const ep = await enterPresentationMode(page, mode, 'abc\\\nxy\n\nnext\n');
 			await clickWordSettled(ep, page, 'xy');
-			await page.keyboard.press('End');
-			await page.keyboard.press('Shift+Home');
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await page.keyboard.press(extendKey('lineStart'));
 			await page.keyboard.press('ControlOrMeta+x');
 			await expect.poll(() => ep.bridge.getSource()).toBe('abc\n\nnext\n');
 

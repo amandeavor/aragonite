@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { count, openFind, typeQuery } from './helpers';
+import { extendKey } from '../../platform-keys';
 
 // The needle is spread across rows so the active match scrolls into view at the top while deep
 // matching rows start unmounted: search scrolls to the active match only, and the rest must repaint
@@ -132,7 +133,7 @@ test('a cross-block selection repaints over a deep off-window table row after sc
 	// Cross-block select from the intro paragraph to the end of the document, so the
 	// table is the focus endpoint and its cells are part of the selection.
 	await editor.clickBlock(0);
-	await page.keyboard.press('ControlOrMeta+Shift+End');
+	await page.keyboard.press(extendKey('docEnd'));
 	await editor.waitForRenderFlush();
 	expect(await editor.bridge.isCrossBlockSelection()).toBe(true);
 

@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // `editor.insertMarkdown()`: the paste path entered without a clipboard
 // (`requirements/clipboard/insert-markdown-door.md`). Each case asserts the outcome the same
@@ -38,7 +39,7 @@ test.describe('insertMarkdown: programmatic insertion', () => {
 	test('a table over a to-do paragraph takes the checkbox with the paragraph', async () => {
 		await editor.loadContent('- [ ] alpha\n');
 		await editor.focusBlockAtPath([0, 0, 0], 0);
-		await editor.page.keyboard.press('Shift+End');
+		await editor.page.keyboard.press(extendKey('lineEnd'));
 
 		expect(await insert(TABLE)).toBe(true);
 		await editor.bridge.waitForSourceContains('| --- | --- |');
@@ -63,7 +64,7 @@ test.describe('insertMarkdown: programmatic insertion', () => {
 	test('a focused table cell takes the entry point through its published ref slot', async () => {
 		await editor.loadContent(TABLE);
 		await editor.page.locator('.table-cell').nth(3).click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 		expect(await insert('ZZ')).toBe(true);
 		await editor.bridge.waitForSourceContains('| 2ZZ |');

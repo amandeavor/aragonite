@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 const PIXEL_TOLERANCE = 5;
 
@@ -18,7 +19,7 @@ test.describe('sticky column: preserve triggers', () => {
 
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 15; i++) await editor.page.keyboard.press('ArrowRight');
 
 		const sourceX = await editor.getCaretPixelX();

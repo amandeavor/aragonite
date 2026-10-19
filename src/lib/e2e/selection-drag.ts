@@ -6,6 +6,7 @@
 import type { Page } from '@playwright/test';
 import { isFirefox } from './browser-engine';
 import type { Point } from './text-runs';
+import type { COPY_DRAG_MODIFIERS } from './platform-keys';
 
 /** A drag still held over the page. */
 export interface HeldDrag {
@@ -15,7 +16,7 @@ export interface HeldDrag {
 
 export interface DragOptions {
 	/** The key held from before the press until after the release, which makes the drop a copy. */
-	copyWith?: 'Control' | 'Alt';
+	copyWith?: (typeof COPY_DRAG_MODIFIERS)[number];
 }
 
 /** Presses on the selected text at `from`, drags it to `to` and keeps holding it there. */

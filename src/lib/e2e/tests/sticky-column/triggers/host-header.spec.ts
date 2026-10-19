@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 import { test, expect } from '../../../fixtures';
 import { gotoReady } from '../../../goto-ready';
+import { edgeKey } from '../../../platform-keys';
 
 // `/test/host-theme` mounts the editor with a host header inside its root, which is the only
 // place focus can leave the blocks without leaving the editor. Requirements:
@@ -43,7 +44,7 @@ test.describe('sticky column: a trip through the host header', () => {
 	for (const { name, target } of LEAVES) {
 		test(`${name} drops the column an arrow run held`, async ({ page }) => {
 			await page.locator('.editor [contenteditable="true"]').first().click();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('ArrowDown');
 			await page.keyboard.press('ArrowDown');
 

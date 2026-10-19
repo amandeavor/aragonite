@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickModeToggle } from '../../mode-switch';
+import { edgeKey } from '../../platform-keys';
 
 // preview-inline is an editing mode: a construct showing its markers is ordinary source text,
 // so typing commits per keystroke and what is shown survives every rebuild. Rendering lives in
@@ -13,7 +14,7 @@ const DOC = ['# Title', '', 'alpha **beta** gamma'].join('\n');
 // Steps the caret to a fixed raw offset with real keypresses, since a click cannot target
 // hidden marker bytes.
 async function caretToOffset(ep: EditorPage, page: Page, offset: number): Promise<void> {
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	for (let i = 0; i < offset; i++) await page.keyboard.press('ArrowRight');
 	await ep.waitForRenderFlush();
 	expect((await ep.bridge.getSelectionPaths())?.focus.offset).toBe(offset);

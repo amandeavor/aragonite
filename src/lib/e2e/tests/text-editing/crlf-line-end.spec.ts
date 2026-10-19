@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { pointAtRaw } from '../../text-runs';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // A CRLF pair edits as one character at a line end, whatever the engine lets its caret do there.
 // Requirements: e2e/requirements/text-editing/crlf-line-end.md.
@@ -42,7 +43,7 @@ test.describe('text editing, a CRLF line end', () => {
 			test('a letter typed after End goes before the pair', async ({ page }) => {
 				await editor.loadContent(PARAGRAPH);
 				await editor.focusBlockStart(0);
-				await page.keyboard.press('End');
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.press('Z');
 				await expectSource(editor, 'abcZ\r\nAfter\r\n');
 			});
@@ -59,7 +60,7 @@ test.describe('text editing, a CRLF line end', () => {
 			test('a letter typed over Shift+End keeps the pair', async ({ page }) => {
 				await editor.loadContent(PARAGRAPH);
 				await editor.focusBlockStart(0);
-				await page.keyboard.press('Shift+End');
+				await page.keyboard.press(extendKey('lineEnd'));
 				await page.keyboard.press('Z');
 				await expectSource(editor, 'Z\r\nAfter\r\n');
 			});
@@ -67,7 +68,7 @@ test.describe('text editing, a CRLF line end', () => {
 			test('Delete at the line end takes the whole pair', async ({ page }) => {
 				await editor.loadContent(PARAGRAPH);
 				await editor.focusBlockStart(0);
-				await page.keyboard.press('End');
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.press('Delete');
 				await expectSource(editor, 'abcAfter\r\n');
 			});
@@ -75,7 +76,7 @@ test.describe('text editing, a CRLF line end', () => {
 			test('Backspace at the line end takes the letter before the pair', async ({ page }) => {
 				await editor.loadContent(PARAGRAPH);
 				await editor.focusBlockStart(0);
-				await page.keyboard.press('End');
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.press('Backspace');
 				await expectSource(editor, 'ab\r\nAfter\r\n');
 			});
@@ -85,7 +86,7 @@ test.describe('text editing, a CRLF line end', () => {
 			}) => {
 				await editor.loadContent(CODE);
 				await editor.focusBlockAtPath([0], 5);
-				await page.keyboard.press('End');
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.press('Backspace');
 				await expectSource(editor, '```\r\nab\r\nxyz\r\n```\r\n');
 			});
@@ -94,7 +95,7 @@ test.describe('text editing, a CRLF line end', () => {
 				await editor.loadContent(PARAGRAPH);
 				await editor.focusBlockStart(0);
 				await page.keyboard.press('ArrowDown');
-				await page.keyboard.press('Home');
+				await page.keyboard.press(edgeKey('lineStart'));
 				await page.keyboard.press('Backspace');
 				await expectSource(editor, 'abcAfter\r\n');
 			});
@@ -102,7 +103,7 @@ test.describe('text editing, a CRLF line end', () => {
 			test('a letter typed after End in a code body goes before the pair', async ({ page }) => {
 				await editor.loadContent(CODE);
 				await editor.focusBlockAtPath([0], 5);
-				await page.keyboard.press('End');
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.press('Z');
 				await expectSource(editor, '```\r\nabcZ\r\nxyz\r\n```\r\n');
 			});

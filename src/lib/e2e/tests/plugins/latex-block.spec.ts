@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Block `$$…$$` display math, rendered first and showing its source on focus, driven by real mouse
@@ -69,7 +70,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		page
 	}) => {
 		await editor.render.click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Backspace');
 		await editor.getBlock(0).click();
 		await editor.bridge.waitForSourceEquals('Before\n\n$$x^2$$\n\nAfter\n');
@@ -117,7 +118,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.seedClipboard({ 'text/plain': ' plain', 'text/html': '<b>BOLD</b>' });
 		await editor.paste();
 
@@ -173,7 +174,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		expect(await editor.sourceCaretOffset()).toBe(0);
 
 		// End of the single-line source, then one more step exits to the next block.
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(editor.source).toHaveCount(0);
 		await expect(editor.render).toHaveCount(1);
@@ -182,7 +183,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 
 	test('ArrowLeft at the source start folds and moves to the previous block', async ({ page }) => {
 		await editor.revealByClick();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowLeft');
 		await expect(editor.source).toHaveCount(0);
 		await expect(editor.render).toHaveCount(1);
@@ -211,7 +212,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		// Shift+ArrowLeft at the source start extends into the paragraph above.
 		await page.keyboard.press('Shift+ArrowLeft');
 
@@ -238,7 +239,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		await editor.bridge.waitForSourceContains('$$ax^2$$');
 
 		await editor.revealByClick();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('b');
@@ -272,7 +273,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		await editor.bridge.waitForSourceContains('$$ax^2$$');
 
 		await editor.revealByClick();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('b');

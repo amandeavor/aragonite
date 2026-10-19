@@ -3,6 +3,7 @@ import type { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { enterPresentationMode, focusPath } from './helpers';
 import { textRunCenter } from '../../text-runs';
+import { edgeKey } from '../../platform-keys';
 
 // Where the caret ends up when an edit places it rather than a key step. The source is the
 // reference: the caret reports the same offset on either side of a hidden closer, so only the
@@ -33,7 +34,7 @@ async function exitFenceUpward(ep: EditorPage, page: Page, word: string): Promis
 	const point = await textRunCenter(page, word);
 	await page.mouse.click(point.x, point.y);
 	await ep.waitForRenderFlush();
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await ep.waitForRenderFlush();
 	await page.keyboard.press('Backspace');
 	await ep.waitForRenderFlush();

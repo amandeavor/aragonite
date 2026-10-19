@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, roundTripStable, activeBlockPath } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * A plugin's editable leaf taking keystrokes under `live`
@@ -20,7 +21,7 @@ test.describe('plugin editable leaf under live mode: the %% memo kind', () => {
 		await page.keyboard.press('ArrowRight');
 		expect(await activeBlockPath(page)).toEqual([1]);
 
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('!!');
 
 		await editor.bridge.waitForSourceContains('%% memo text!!');

@@ -21,7 +21,7 @@ test.describe('blocked-scheme links are inert', () => {
 		context.on('page', () => {
 			popupFired = true;
 		});
-		await blocked.click({ modifiers: ['Control'] });
+		await blocked.click({ modifiers: ['ControlOrMeta'] });
 		await editor.page.waitForTimeout(200); // checking no popup opens; there is no state to wait on
 		expect(popupFired).toBe(false);
 	});

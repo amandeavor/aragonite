@@ -132,7 +132,7 @@ test.describe('plugin container: footnote definition', () => {
 		await editor.waitForRenderFlush();
 		await editor.focusBlockAtPath([0], 4);
 
-		await page.locator('.footnote-def-marker').click({ modifiers: ['Control'] });
+		await page.locator('.footnote-def-marker').click({ modifiers: ['ControlOrMeta'] });
 		// Read once the click has landed and its frame has painted, not the caret before it.
 		await expect
 			.poll(() =>

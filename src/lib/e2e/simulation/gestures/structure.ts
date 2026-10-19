@@ -6,6 +6,7 @@ import {
 	settleTypedSource
 } from '../invariants';
 import type { CompositionCase } from './ime';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Structural gestures trigger the editor's own behaviour, so none can be predicted character by
@@ -121,7 +122,7 @@ async function insertOnBreakLine(ctx: SimContext, follow: BreakFollow): Promise<
  */
 export async function indent(ctx: SimContext): Promise<void> {
 	await actThenResync(ctx, () => ctx.page.keyboard.press('Tab'));
-	await ctx.page.keyboard.press('End');
+	await ctx.page.keyboard.press(edgeKey('lineEnd'));
 	await ctx.editor.waitForRenderFlush();
 }
 
@@ -175,7 +176,7 @@ export async function indentEmptyItem(ctx: SimContext): Promise<void> {
 		baseline,
 		{ timeout: 5000, polling: 16 }
 	);
-	await ctx.page.keyboard.press('End');
+	await ctx.page.keyboard.press(edgeKey('lineEnd'));
 	await ctx.editor.waitForRenderFlush();
 }
 
@@ -196,7 +197,7 @@ export async function outdentEmptyItem(ctx: SimContext): Promise<void> {
 		baseline,
 		{ timeout: 5000, polling: 16 }
 	);
-	await ctx.page.keyboard.press('End');
+	await ctx.page.keyboard.press(edgeKey('lineEnd'));
 	await ctx.editor.waitForRenderFlush();
 }
 
@@ -296,7 +297,7 @@ export async function kindChangeUndoInListItem(
 	await editor.waitForUndoBatchFlush();
 	await editor.clickBlockAtPath(itemParagraphPath, 0);
 	await assertFocusBlock(ctx, itemParagraphPath);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	// One call, so no round trip between the keys can outlast the typing pause and split the batch.
 	await editor.typeSlowly('# ');
 	await page

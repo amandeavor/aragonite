@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Windows clipboard writes CRLF, so every source read normalizes before comparing.
 const asLf = (src: string) => src.replace(/\r\n/g, '\n');
@@ -17,7 +18,7 @@ test.describe('a multi-block paste at the start of a heading’s text', () => {
 		test(`the heading moves below the pasted blocks whole (${heading})`, async () => {
 			await editor.loadContent(`${heading}\n`);
 			await editor.focusBlockAtPath([0], heading.length);
-			await editor.page.keyboard.press('Home');
+			await editor.page.keyboard.press(edgeKey('lineStart'));
 			await editor.seedClipboard('abc\n\ndef');
 			await editor.paste();
 			await editor.bridge.waitForSourceContains('def');
@@ -30,7 +31,7 @@ test.describe('a multi-block paste at the start of a heading’s text', () => {
 	test('one undo gives the heading back', async () => {
 		await editor.loadContent('# Hi\n');
 		await editor.focusBlockAtPath([0], 4);
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.seedClipboard('abc\n\ndef');
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('def');

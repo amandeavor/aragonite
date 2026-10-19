@@ -4,6 +4,7 @@ import { EditorPage } from '../../editor-page';
 import { textRunCenter, textRunStart } from '../../text-runs';
 import { multiClick } from '../../multi-click';
 import { dragSelection } from '../../selection-drag';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // Erasing a setext heading's title takes its underline with it: an underline under nothing would
 // show up as a block of its own (`requirements/text-editing/erase-setext-title.md`).
@@ -45,7 +46,7 @@ const ERASES: {
 	{
 		name: 'Backspace from the title end',
 		erase: async (_ep, page) => {
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await backspace(page, 4);
 		},
 		source: '\nnext\n',
@@ -55,7 +56,7 @@ const ERASES: {
 	{
 		name: 'a range from the title start into the next block, then Backspace',
 		erase: async (ep, page) => {
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await ep.shiftClickBlock([1], 4);
 			await page.keyboard.press('Backspace');
 		},
@@ -66,8 +67,8 @@ const ERASES: {
 	{
 		name: 'Ctrl+X over the whole title',
 		erase: async (_ep, page) => {
-			await page.keyboard.press('End');
-			await page.keyboard.press('Shift+Home');
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await page.keyboard.press(extendKey('lineStart'));
 			await page.keyboard.press('ControlOrMeta+x');
 		},
 		source: '\nnext\n',
@@ -78,8 +79,8 @@ const ERASES: {
 		name: 'a space pasted over the whole title',
 		erase: async (ep, page) => {
 			await ep.seedClipboard(' ');
-			await page.keyboard.press('End');
-			await page.keyboard.press('Shift+Home');
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await page.keyboard.press(extendKey('lineStart'));
 			await ep.paste();
 		},
 		source: ' \nnext\n',
@@ -121,7 +122,7 @@ for (const mode of ['source', 'live'] as const) {
 		test('the last line of a two-line title leaves a paragraph and no rule', async ({ page }) => {
 			const ep = await open(page, mode, 'Plan\nmore\n---\n');
 			await ep.clickBlockAtPath([0], 7);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await backspace(page, 4);
 
 			await expect.poll(() => kinds(ep)).toEqual(['paragraph']);

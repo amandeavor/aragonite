@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { MathRevealPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Where a click on a rendered `$…$` widget puts the caret
@@ -32,7 +33,7 @@ test.describe('inline math: a click puts the caret where it landed', () => {
 		await expect(editor.mathWidget).toHaveCount(0);
 
 		await editor.page.keyboard.type(byte);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await expect(editor.mathWidget).toHaveCount(1);
 		return editor.bridge.getSource();
 	}

@@ -1,6 +1,7 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
 import { roundTripStable } from '../../../plugins/helpers';
+import { edgeKey } from '../../../../platform-keys';
 
 // The exited source must collapse the empty continuation marker at every nesting depth: ancestor
 // quotes must rebuild too, or their stale raw leaks a stranded `> >` / `> > >` line.
@@ -48,7 +49,7 @@ test.describe('blockquote navigation: exit on empty trailing line', () => {
 		await editor.loadContent('> Outer\n> > Inner\n');
 		const inner = editor.page.locator('[contenteditable="true"]', { hasText: /^Inner$/ });
 		await inner.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForBlockHostCount(5);
 		await pressEnterUntilSourceChanges(editor);
@@ -67,7 +68,7 @@ test.describe('blockquote navigation: exit on empty trailing line', () => {
 		await editor.loadContent('> > > Deep\n');
 		const deep = editor.page.locator('[contenteditable="true"]', { hasText: /^Deep$/ });
 		await deep.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForBlockHostCount(5);
 		await pressEnterUntilSourceChanges(editor);

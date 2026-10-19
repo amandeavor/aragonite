@@ -6,6 +6,7 @@ import {
 	capturedErrors,
 	FIXTURE
 } from './reserved-chrome-helpers';
+import { extendKey } from '../../platform-keys';
 
 /**
  * The `:::callout` callout reserves child 0 as an editable `callout-title` row (see
@@ -31,7 +32,7 @@ test.describe('reserved child-0 chrome: selection parity', () => {
 		// Anchor mid-paragraph, extend to the paragraph's end, then cross the boundary, so the
 		// range covers the end of the paragraph and reaches into the callout.
 		await editor.focusBlock(0, 2);
-		await page.keyboard.press('Shift+End');
+		await page.keyboard.press(extendKey('lineEnd'));
 		await page.keyboard.press('Shift+ArrowDown');
 		await editor.waitForCrossBlock(true);
 
@@ -70,7 +71,7 @@ test.describe('reserved child-0 chrome: selection parity', () => {
 		expect(seed.childTexts[0]).toBe('');
 
 		await editor.focusBlock(0, 2);
-		await page.keyboard.press('Shift+End');
+		await page.keyboard.press(extendKey('lineEnd'));
 		await page.keyboard.press('Shift+ArrowDown');
 		await editor.waitForCrossBlock(true);
 
@@ -87,7 +88,7 @@ test.describe('reserved child-0 chrome: selection parity', () => {
 	}) => {
 		await editor.loadContent(FIXTURE);
 		await editor.focusBlock(0, 2);
-		await page.keyboard.press('Shift+End');
+		await page.keyboard.press(extendKey('lineEnd'));
 		await page.keyboard.press('Shift+ArrowDown');
 		await editor.waitForCrossBlock(true);
 

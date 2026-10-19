@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Where the mode paints a code block's fence lines (source mode, and the preview modes on the
 // focused block), they're editable text, and the fence write rule keeps exactly one opener and
@@ -148,9 +149,9 @@ test.describe('code block: fence lines the mode paints', () => {
 		const editor = await sourceEditor(page);
 		await openFence(editor);
 		await editor.focusBlock(0, BODY_MID);
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('ArrowUp');
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('x');
 
 		await editor.bridge.waitForSourceEquals('```jsx\nconst x = 1\n```\n\nafter\n');

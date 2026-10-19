@@ -2,6 +2,7 @@ import { type Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { capturedErrors } from './helpers';
 import { MemoPage } from './memo-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Block commands a plugin registers on an editable leaf
@@ -38,7 +39,7 @@ test.describe('plugin block commands on the editable-leaf level: the %% memo kin
 
 	test('one undo after typing then the command takes back only the tag', async ({ page }) => {
 		await editor.memo.click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly('!');
 		await editor.bridge.waitForSourceContains('%% memo text!');
 
@@ -54,7 +55,7 @@ test.describe('plugin block commands on the editable-leaf level: the %% memo kin
 		page
 	}) => {
 		await editor.memo.click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowLeft');
 
 		await page.keyboard.press('ControlOrMeta+Shift+K');
@@ -69,7 +70,7 @@ test.describe('plugin block commands on the editable-leaf level: the %% memo kin
 		await page.evaluate(() => (window as any).__test.startErrorCapture());
 
 		await editor.memo.click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+Shift+J');
 
 		await page.waitForFunction(

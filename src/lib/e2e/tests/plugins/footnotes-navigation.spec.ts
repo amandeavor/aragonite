@@ -52,7 +52,7 @@ test.describe('footnote jump: reference to definition', () => {
 		await editor
 			.refs()
 			.nth(0)
-			.click({ modifiers: ['Control'] });
+			.click({ modifiers: ['ControlOrMeta'] });
 
 		// The container holds no caret of its own, so the landing is its body block.
 		await expect.poll(() => activeBlockPath(page)).toEqual([defA, 0]);
@@ -73,7 +73,7 @@ test.describe('footnote jump: reference to definition', () => {
 		await editor
 			.refs()
 			.nth(0)
-			.click({ modifiers: ['Control'] });
+			.click({ modifiers: ['ControlOrMeta'] });
 
 		await expect.poll(() => activeBlockPath(page)).toEqual([defA, 0]);
 		expect(await capturedErrors(page)).toEqual([]);
@@ -85,7 +85,7 @@ test.describe('footnote jump: reference to definition', () => {
 		await editor
 			.refs()
 			.nth(1)
-			.click({ modifiers: ['Control'] });
+			.click({ modifiers: ['ControlOrMeta'] });
 
 		await expect.poll(() => activeBlockPath(page)).toEqual([defB, 0]);
 		expect(await capturedErrors(page)).toEqual([]);
@@ -114,7 +114,7 @@ test.describe('footnote jump: reference to definition', () => {
 		await editor
 			.refs()
 			.nth(2)
-			.click({ modifiers: ['Control'] });
+			.click({ modifiers: ['ControlOrMeta'] });
 		await editor.waitForRenderFlush();
 
 		// Taking the gesture stops the source from showing whether or not the label resolves, so
@@ -143,7 +143,7 @@ test.describe('footnote jump: gesture ownership (navigate, not reveal)', () => {
 		await editor
 			.refs()
 			.nth(0)
-			.click({ modifiers: ['Control'] });
+			.click({ modifiers: ['ControlOrMeta'] });
 
 		await expect.poll(() => activeBlockPath(page)).toEqual([1, 0]);
 		await expect(editor.refs()).toHaveCount(2);
@@ -158,9 +158,9 @@ test.describe('footnote jump: gesture ownership (navigate, not reveal)', () => {
 
 		await page.mouse.move(x, y);
 		await page.mouse.down();
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await page.mouse.up();
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 		await editor.waitForRenderFlush();
 
 		await expect.poll(() => activeBlockPath(page)).toEqual([1, 0]);
@@ -174,10 +174,10 @@ test.describe('footnote jump: gesture ownership (navigate, not reveal)', () => {
 	}) => {
 		const { x, y } = await widgetCenter(editor.refs().nth(0));
 
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await page.mouse.move(x, y);
 		await page.mouse.down();
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 		await page.mouse.up();
 		await editor.waitForRenderFlush();
 
@@ -206,12 +206,12 @@ test.describe('footnote jump: definition back to reference', () => {
 		await editor
 			.refs()
 			.nth(0)
-			.click({ modifiers: ['Control'] });
+			.click({ modifiers: ['ControlOrMeta'] });
 		await expect.poll(() => activeBlockPath(page)).toEqual([defA, 0]);
 		// The reference's own block unmounted on the way down, so the return trip mounts it.
 		await expect(page.locator("[data-block-path='[0]']")).toHaveCount(0);
 
-		await editor.defMarker(defA).click({ modifiers: ['Control'] });
+		await editor.defMarker(defA).click({ modifiers: ['ControlOrMeta'] });
 
 		await expect.poll(() => blockView(page, [0])).toEqual({ mounted: true, inView: true });
 		await expect.poll(() => activeBlockPath(page)).toEqual([0]);
@@ -274,7 +274,7 @@ test.describe('footnote jump: definition back to reference', () => {
 		);
 		await editor.setPresentationMode('source');
 
-		await editor.defMarker(2).click({ modifiers: ['Control'] });
+		await editor.defMarker(2).click({ modifiers: ['ControlOrMeta'] });
 		await editor.waitForRenderFlush();
 
 		// Nothing to jump to, so nothing moves and the caret never leaves the orphan.
@@ -334,7 +334,7 @@ test.describe('footnote jump: from a table cell', () => {
 		await editor
 			.refs()
 			.nth(0)
-			.click({ modifiers: ['Control'] });
+			.click({ modifiers: ['ControlOrMeta'] });
 
 		await expect.poll(() => activeBlockPath(page)).toEqual([1, 0]);
 		await expect(editor.refs()).toHaveCount(1);

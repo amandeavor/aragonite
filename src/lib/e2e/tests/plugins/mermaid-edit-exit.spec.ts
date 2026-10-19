@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { activeBlockPath } from './helpers';
 import { MermaidPage } from './mermaid-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Leaving the diagram's edit box with an arrow at its edge
@@ -33,14 +34,14 @@ test.describe('mermaid edit box: boundary arrow exits', () => {
 	test('an empty diagram’s box releases the caret both ways', async ({ page }) => {
 		await editor.loadContent('Above\n\ntail\n');
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await page.keyboard.type('```mermaid');
 		await expect(editor.textarea).toBeFocused();
 
 		await page.keyboard.press('ArrowUp');
 		expect(await activeBlockPath(page)).toEqual([0]);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('!');
 		expect(await editor.getBlockText(0)).toBe('Above!');
 
@@ -51,7 +52,7 @@ test.describe('mermaid edit box: boundary arrow exits', () => {
 
 		await page.keyboard.press('ArrowDown');
 		expect(await activeBlockPath(page)).toEqual([2]);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('?');
 		expect(await editor.getBlockText(2)).toBe('tail?');
 	});
@@ -60,7 +61,7 @@ test.describe('mermaid edit box: boundary arrow exits', () => {
 		await editor.loadContent(ONE_DIAGRAM);
 		await editor.editDiagram(EDITED_CODE);
 
-		await page.keyboard.press('ControlOrMeta+Home');
+		await page.keyboard.press(edgeKey('blockStart'));
 		await page.keyboard.press('ArrowUp');
 
 		await editor.bridge.waitForSourceEquals(
@@ -74,7 +75,7 @@ test.describe('mermaid edit box: boundary arrow exits', () => {
 		await editor.loadContent(ONE_DIAGRAM);
 		await editor.editDiagram(EDITED_CODE);
 
-		await page.keyboard.press('ControlOrMeta+Home');
+		await page.keyboard.press(edgeKey('blockStart'));
 		await page.keyboard.press('ArrowDown');
 		await page.keyboard.press('ArrowUp');
 
@@ -88,7 +89,7 @@ test.describe('mermaid edit box: boundary arrow exits', () => {
 		await editor.loadContent(ONE_DIAGRAM);
 		await editor.editDiagram(EDITED_CODE);
 
-		await page.keyboard.press('ControlOrMeta+End');
+		await page.keyboard.press(edgeKey('blockEnd'));
 		await page.keyboard.press('ArrowRight');
 		expect(await activeBlockPath(page)).toEqual([2]);
 		await page.keyboard.type('!');
@@ -96,7 +97,7 @@ test.describe('mermaid edit box: boundary arrow exits', () => {
 
 		await editor.block.hover();
 		await editor.block.getByTestId('mermaid-edit').click();
-		await page.keyboard.press('ControlOrMeta+Home');
+		await page.keyboard.press(edgeKey('blockStart'));
 		await page.keyboard.press('ArrowLeft');
 		expect(await activeBlockPath(page)).toEqual([0]);
 	});
@@ -107,7 +108,7 @@ test.describe('mermaid edit box: boundary arrow exits', () => {
 		await editor.loadContent(ONE_DIAGRAM);
 		await editor.editDiagram(EDITED_CODE);
 
-		await page.keyboard.press('ControlOrMeta+Home');
+		await page.keyboard.press(edgeKey('blockStart'));
 		await page.keyboard.press('Shift+ArrowUp');
 
 		await expect(editor.textarea).toBeFocused();

@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 const TABLE_2x2 = '| A | B |\n| --- | --- |\n| 1 | 2 |\n';
 
@@ -30,7 +31,7 @@ test.describe('table block: BlockComponent cursor contract', () => {
 	}) => {
 		// Click the body row's second cell ("2") and place the caret at offset 1, the end.
 		await page.locator('.table-cell').nth(3).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		const surface = await readTableSurface(page);
 		expect(surface.exists).toBe(true);
@@ -45,7 +46,7 @@ test.describe('table block: BlockComponent cursor contract', () => {
 		page
 	}) => {
 		await page.locator('.table-cell').nth(0).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 
 		const surface = await readTableSurface(page);
 		expect(surface.exists).toBe(true);

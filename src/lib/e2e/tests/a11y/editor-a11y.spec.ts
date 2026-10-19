@@ -3,6 +3,7 @@ import { EditorPage } from '../../editor-page';
 import { expectNoNewA11yViolations } from '../../a11y/axe-helper';
 import { DEFAULT_CONTENT } from '../../test-content';
 import { clickModeToggle } from '../../mode-switch';
+import { extendKey } from '../../platform-keys';
 
 test.describe('editor accessibility (axe baseline-ratchet)', () => {
 	let editor: EditorPage;
@@ -51,7 +52,7 @@ test.describe('editor accessibility (axe baseline-ratchet)', () => {
 	}) => {
 		await editor.loadContent('alpha\n\nbeta\n\ngamma\n');
 		await editor.focusBlockStart(0);
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		await editor.waitForRenderFlush();
 		await expect(page.locator('.editor-sr-live')).toContainText('Selected');

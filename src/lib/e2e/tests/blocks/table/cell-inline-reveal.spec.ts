@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { revealWidget, roundTripStable } from '../../plugins/helpers';
 import { CellMathPage } from './helpers';
+import { edgeKey } from '../../../platform-keys';
 
 /**
  * Showing an inline `$…$` formula's source to edit it, inside a table cell
@@ -31,7 +32,7 @@ test.describe('table cell: inline math reveal-to-edit', () => {
 		page
 	}) => {
 		await revealWidget(editor.mathWidget);
-		await page.keyboard.press('Home'); // back to the cell start, wherever the press put the caret
+		await page.keyboard.press(edgeKey('lineStart')); // back to the cell start, wherever the press put the caret
 		await page.keyboard.press('ArrowRight'); // past the opening `$`
 		await page.keyboard.type('y');
 		await page.keyboard.press('Enter');
@@ -46,7 +47,7 @@ test.describe('table cell: inline math reveal-to-edit', () => {
 
 	test('a pipe typed into the revealed formula escapes: the row never splits', async ({ page }) => {
 		await revealWidget(editor.mathWidget);
-		await page.keyboard.press('Home'); // back to the cell start, wherever the press put the caret
+		await page.keyboard.press(edgeKey('lineStart')); // back to the cell start, wherever the press put the caret
 		await page.keyboard.press('ArrowRight'); // past the opening `$`
 		// The `y` lands after the escape, so the caret counts the `\` the write added.
 		await page.keyboard.type('|y');
@@ -62,7 +63,7 @@ test.describe('table cell: inline math reveal-to-edit', () => {
 
 	test('an edit closed by blur undoes as one entry', async ({ page }) => {
 		await revealWidget(editor.mathWidget);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('y');
 		// Focusing the trailing paragraph closes the shown source.
@@ -78,7 +79,7 @@ test.describe('table cell: inline math reveal-to-edit', () => {
 
 	test('Escape closes the source and keeps the edit', async ({ page }) => {
 		await revealWidget(editor.mathWidget);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('y');
 		await page.keyboard.press('Escape');

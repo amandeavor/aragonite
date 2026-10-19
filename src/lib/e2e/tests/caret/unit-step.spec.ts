@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { PluginsPage } from '../plugins/helpers';
 import { addReplaceIsland } from '../../decoration-sources';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * A span the caret can't stop inside is crossed in one press, both ways, with and without Shift
@@ -138,12 +139,12 @@ test.describe('one press crosses a CRLF pair from a caret the browser parked', (
 		const editor = await editorWith(page, 'abc\r\nAfter\r\n');
 		await editor.focusBlockAtPath([0], 0);
 		// WebKit and Firefox park the caret between the `\r` and the `\n` here.
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Shift+ArrowRight');
 		const paths = await editor.bridge.getSelectionPaths();
 		expect([paths?.anchor.offset, paths?.focus.offset]).toEqual([3, 5]);
 		await page.keyboard.press('ArrowLeft');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		expect((await editor.bridge.getSelectionPaths())?.focus.offset).toBe(5);
 	});

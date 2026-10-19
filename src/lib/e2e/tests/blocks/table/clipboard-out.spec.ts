@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { dragBetweenCells } from './helpers';
+import { extendKey } from '../../../platform-keys';
 
 const TABLE_ALIGNED = '| A | B | C |\n| :--- | :---: | ---: |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n';
 
@@ -48,7 +49,7 @@ test.describe('table block: clipboard out', () => {
 	}) => {
 		await editor.loadContent('Before.\n\n| A | B |\n| :--- | :---: |\n| 1 | 2 |\n\nAfter.\n');
 		await editor.focusBlockStart(0);
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		await page.keyboard.press('ControlOrMeta+c');
 		await expect.poll(() => editor.readClipboard()).toContain('Before.');

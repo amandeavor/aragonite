@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { type Locator, type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { gotoFlow, settleFrames, spacerCount } from './vr-helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Flow mode, where the app does the scrolling: several editors inside one scrolling ancestor,
 // plus a pane that clips rather than scrolls. The editor root covers the whole document here,
@@ -83,7 +84,7 @@ test('typing and undo in a host-scroll entry behave as in self mode', async ({ p
 	await gotoFlow(page);
 
 	await entry(page, 'a').locator('[contenteditable]').first().click();
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type('FLOW_MARK');
 	await expect.poll(() => flowSource(page, 'a')).toContain('FLOW_MARK');
 
@@ -253,7 +254,7 @@ test('nested scopes in a host-scroll entry window their children and stay error-
 	// Editing inside a nested list drives the measuring that reports totals up to a parent
 	// height table nothing reads, and a throw during that render fails here.
 	await nested.locator('.list-item-block [contenteditable]').first().click();
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type('NESTED_MARK');
 	await expect.poll(() => flowSource(page, 'nested')).toContain('NESTED_MARK');
 });
@@ -274,7 +275,7 @@ test('two entries in one scroller window independently against the shared port',
 	await entry(page, 'b').scrollIntoViewIfNeeded();
 	await settleFrames(page);
 	await entry(page, 'b').locator('[contenteditable]').first().click();
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type('BETA_MARK');
 	await expect.poll(() => flowSource(page, 'b')).toContain('BETA_MARK');
 

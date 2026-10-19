@@ -8,6 +8,7 @@ import {
 	focusOffset,
 	stepTo
 } from './helpers';
+import { edgeKey, WORD_MODIFIER } from '../../platform-keys';
 
 // What a destructive key takes in live mode, where no delimiter is painted: the content character
 // beside it, the pair that character emptied, or an atomic run whole. The source is the reference,
@@ -71,7 +72,7 @@ test.describe('live mode: a destructive key at a hidden run takes what the reade
 		await clickWordSettled(ep, page, 'brave');
 		await stepTo(ep, page, 'ArrowRight', 16);
 
-		await page.keyboard.press('Control+Backspace');
+		await page.keyboard.press(`${WORD_MODIFIER}+Backspace`);
 		await ep.bridge.waitForSourceContains('Some **big**  text');
 
 		const block = ep.getBlock(TWO_WORD_BOLD);
@@ -96,7 +97,7 @@ test.describe('live mode: a destructive key at a hidden run takes what the reade
 		page
 	}) => {
 		await clickBlockSettled(ep, TINY_BOLD);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await stepTo(ep, page, 'ArrowLeft', 3);
 
 		await page.keyboard.press('Backspace');
@@ -111,7 +112,7 @@ test.describe('live mode: a destructive key at a hidden run takes what the reade
 	// `\*` is one character on screen and two bytes that mean nothing apart.
 	test('Backspace beside an escape takes both of its bytes', async ({ page }) => {
 		await clickBlockSettled(ep, ESCAPE);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await stepTo(ep, page, 'ArrowLeft', 4);
 
 		await page.keyboard.press('Backspace');
@@ -125,7 +126,7 @@ test.describe('live mode: a destructive key at a hidden run takes what the reade
 		page
 	}) => {
 		await clickBlockSettled(ep, LEADING_ESCAPE);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		expect(await focusOffset(ep)).toBe(1);
 
@@ -139,7 +140,7 @@ test.describe('live mode: a destructive key at a hidden run takes what the reade
 	// A hard break's marker run and its line ending are one thing on screen: the line ends.
 	test('Backspace at a hard-broken line’s start takes the break whole', async ({ page }) => {
 		await clickWordSettled(ep, page, 'second');
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 
 		await page.keyboard.press('Backspace');
@@ -154,7 +155,7 @@ test.describe('live mode: the widened cut, and the press with no reading at all'
 	test('deleting the space between two bold words joins them', async ({ page }) => {
 		const ep = await enterMode(page, 'live');
 		await clickBlockSettled(ep, TWO_BOLDS);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		await stepTo(ep, page, 'ArrowRight', 3);
 
@@ -170,7 +171,7 @@ test.describe('live mode: the widened cut, and the press with no reading at all'
 	test('Backspace that could only surface delimiters leaves the bytes alone', async ({ page }) => {
 		const ep = await enterMode(page, 'live');
 		await clickBlockSettled(ep, UNSOUND);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		await stepTo(ep, page, 'ArrowRight', 3);
 		const before = await ep.bridge.getSource();
@@ -187,7 +188,7 @@ test.describe('source mode: the same gesture stays byte-literal', () => {
 	test('Backspace inside a bold pair deletes the delimiter it is against', async ({ page }) => {
 		const ep = await enterMode(page, 'source');
 		await clickBlockSettled(ep, TINY_BOLD);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await stepTo(ep, page, 'ArrowLeft', 5);
 
 		await page.keyboard.press('Backspace');

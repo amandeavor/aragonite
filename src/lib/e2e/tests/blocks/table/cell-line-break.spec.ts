@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 const TABLE_1COL = '| H |\n| :- |\n| Left |\n';
 
@@ -16,7 +17,7 @@ test.describe('table cell Shift+Enter inserts <br>', () => {
 	test('Backspace at the <br> edge removes the whole tag in one press', async ({ page }) => {
 		await editor.loadContent(TABLE_1COL);
 		await page.locator('.table-cell').nth(1).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Shift+Enter');
 		await editor.typeText('Right');
 		await editor.bridge.waitForSourceContains('Left<br>Right');
@@ -34,7 +35,7 @@ test.describe('table cell Shift+Enter inserts <br>', () => {
 	test('the inserted <br> renders as a visible widget, not literal text', async ({ page }) => {
 		await editor.loadContent(TABLE_1COL);
 		await page.locator('.table-cell').nth(1).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Shift+Enter');
 		await editor.bridge.waitForSourceContains('Left<br>');
 

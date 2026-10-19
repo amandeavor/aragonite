@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { skipUnlessSupported } from '../../browser-engine';
 import { activeBlockPath, PluginsPage, capturedErrors } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The bundled slash-commands plugin on the `inline-menu` seed, typed through the keyboard.
@@ -125,7 +126,7 @@ test.describe('slash commands', () => {
 			const fits = await scroller(editor).evaluate((el) => el.scrollHeight > el.clientHeight);
 			expect(fits).toBe(true);
 			await editor.page.locator(`[data-block-path='[${MID}]']`).click();
-			await editor.page.keyboard.press('End');
+			await editor.page.keyboard.press(edgeKey('lineEnd'));
 		});
 
 		/** Types `/quote`, notes `watched`'s top, picks the row, and returns how far it moved. */

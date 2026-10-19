@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { addReplaceIsland } from '../../decoration-sources';
+import { extendKey } from '../../platform-keys';
 
 /**
  * Editing around decoration widgets (`requirements/decorations/island-editing.md`). Both kinds
@@ -200,7 +201,7 @@ test.describe('decoration widget editing', () => {
 		await expect(page.locator(ISLAND)).toHaveCount(1);
 
 		await editor.focusBlockStart(0);
-		await page.keyboard.press('Shift+End');
+		await page.keyboard.press(extendKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+c');
 		await editor.waitForClipboardWrite();
 

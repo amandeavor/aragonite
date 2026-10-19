@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable, waitForDoc, activeBlockPath } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Committing block math (requirements/plugins/latex-block-commit-split.md): a source committed with
@@ -21,7 +22,7 @@ test.describe('block math commit core: multi-block source re-splits', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await page.keyboard.press('Enter');
 		await page.keyboard.type('hello');
@@ -41,7 +42,7 @@ test.describe('block math commit core: multi-block source re-splits', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await page.keyboard.press('Enter');
 		await page.keyboard.type('hello');
@@ -57,10 +58,10 @@ test.describe('block math commit core: multi-block source re-splits', () => {
 	test('deleting both fences converts the block to a paragraph on blur', async ({ page }) => {
 		await editor.revealByClick();
 		// `$$x^2$$` → `x^2`: strip the trailing then leading fence by keyboard.
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Backspace');
 		await page.keyboard.press('Backspace');
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Delete');
 		await page.keyboard.press('Delete');
 		await editor.getBlock(0).click();
@@ -73,7 +74,7 @@ test.describe('block math commit core: multi-block source re-splits', () => {
 
 	test('undo after the split restores the single math block in one step', async ({ page }) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await page.keyboard.press('Enter');
 		await page.keyboard.type('hello');

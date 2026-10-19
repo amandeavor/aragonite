@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey, extendKey } from '../../../platform-keys';
 
 test.describe('selection: keyboard: edge cases', () => {
 	let editor: EditorPage;
@@ -22,7 +23,7 @@ test.describe('selection: keyboard: edge cases', () => {
 	test('Shift+ArrowDown out of a last-block table leaves the cell editable', async () => {
 		await editor.loadContent('intro\n\n| aa | bb |\n| -- | -- |\n| cc | wxyz |\n');
 		await editor.page.locator('.table-cell').last().click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 
 		await editor.page.keyboard.press('Shift+ArrowDown');
@@ -83,7 +84,7 @@ test.describe('selection: keyboard: edge cases', () => {
 	test('thematic break between endpoints gets overlay, no crash', async () => {
 		await editor.loadContent('above\n\n---\n\nbelow\n');
 		await editor.focusBlockStart(0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		expect(await editor.bridge.getBlockCount()).toBe(3);
 		await expect(

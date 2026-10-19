@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
+import { edgeKey } from '../platform-keys';
 
 const TOGGLE_CHORD = 'ControlOrMeta+Shift+D';
 const ROUTE = '/test/recordings';
@@ -26,7 +27,7 @@ test.describe('debug panel input recording', () => {
 		if (includeText) await section().getByLabel('include text').check();
 		await section().getByRole('button', { name: 'Record', exact: true }).click();
 		await editor.clickBlock(0);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('xy');
 		await section().getByRole('button', { name: 'Stop', exact: true }).click();
 	}

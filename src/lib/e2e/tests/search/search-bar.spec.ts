@@ -10,6 +10,7 @@ import {
 	typeQuery
 } from './helpers';
 import { skipUnlessSupported } from '../../browser-engine';
+import { edgeKey } from '../../platform-keys';
 
 test.describe('search: open and close', () => {
 	let editor: EditorPage;
@@ -101,7 +102,7 @@ test.describe('search: closing returns to the caret', () => {
 		await editor.loadContent(LONG);
 		const home = page.locator("[data-block-path='[12]']");
 		await home.locator('[contenteditable="true"]').click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');
@@ -129,7 +130,7 @@ test.describe('search: closing returns to the caret', () => {
 		);
 		const home = page.locator("[data-block-path='[1]']");
 		await home.locator('[contenteditable="true"]').click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');

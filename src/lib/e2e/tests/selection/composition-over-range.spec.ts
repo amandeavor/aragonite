@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { attachIme } from '../../simulation/ime';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // A composition started over a range across blocks removes the range first, then composes in the
 // block the removal kept, wherever the browser's caret sat (requirements/selection/).
@@ -19,7 +20,7 @@ const THREE = 'alpha\n\nbeta\n\ngamma\n';
 
 /** Shift+Home, then one more step up or left: a range from the caret's block into the one before. */
 async function drawIntoPrevious(editor: EditorPage, step: 'ArrowUp' | 'ArrowLeft'): Promise<void> {
-	await editor.page.keyboard.press('Shift+Home');
+	await editor.page.keyboard.press(extendKey('lineStart'));
 	await editor.page.keyboard.press(`Shift+${step}`);
 }
 
@@ -39,7 +40,7 @@ const ROUTES: RangeRoute[] = [
 		source: THREE,
 		async draw(editor) {
 			await editor.focusBlock(2, 2);
-			await editor.page.keyboard.press('ControlOrMeta+Shift+Home');
+			await editor.page.keyboard.press(extendKey('docStart'));
 		},
 		after: (text) => `${text}mma\n`
 	},
@@ -57,7 +58,7 @@ const ROUTES: RangeRoute[] = [
 		source: THREE,
 		async draw(editor) {
 			await editor.focusBlock(0, 2);
-			await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+			await editor.page.keyboard.press(extendKey('docEnd'));
 		},
 		after: (text) => `al${text}\n`
 	},
@@ -84,8 +85,8 @@ const ROUTES: RangeRoute[] = [
 		source: '| a | b |\n| - | - |\n| cc | dd |\n',
 		async draw(editor) {
 			await editor.page.locator('.table-cell').nth(2).click();
-			await editor.page.keyboard.press('Home');
-			await editor.page.keyboard.press('Shift+End');
+			await editor.page.keyboard.press(edgeKey('lineStart'));
+			await editor.page.keyboard.press(extendKey('lineEnd'));
 			await editor.page.keyboard.press('Shift+ArrowRight');
 			await editor.page.keyboard.press('Shift+ArrowRight');
 		},

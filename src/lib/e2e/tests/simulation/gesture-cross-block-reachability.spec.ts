@@ -14,6 +14,7 @@ import {
 	shiftClickAcross,
 	typeOverSelection
 } from '../../simulation/gestures/cross-block';
+import { extendKey } from '../../platform-keys';
 
 // Each step checks that the risky state the gesture is meant to reach really happened, since a
 // range that quietly stayed inside one block would be an invisible hole in the coverage. The
@@ -109,7 +110,7 @@ test('sim gesture reachability: every cross-block build and destroy engages, and
 	await test.step('paste-over replaces the covered content with the clipboard', async () => {
 		await editor.loadContent('alpha\n\nbeta\n\nCLIP\n');
 		await editor.focusBlockAtPath([2], 0);
-		await editor.page.keyboard.press('Shift+End');
+		await editor.page.keyboard.press(extendKey('lineEnd'));
 		await editor.page.keyboard.press('ControlOrMeta+c');
 		await editor.waitForClipboardWrite();
 		const ctx = await selectAcrossContent(page, editor);

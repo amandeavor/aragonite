@@ -154,9 +154,9 @@ test.describe('in-body tags as inline widgets', () => {
 		const box = await tagChip(editor, 'inbox').boundingBox();
 		if (!box) throw new Error('no chip box');
 
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 		await editor.waitForRenderFlush();
 
 		expect(

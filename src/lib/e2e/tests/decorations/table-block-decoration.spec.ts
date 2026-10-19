@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Block decorations addressed to a table row or cell
 // (requirements/decorations/table-block-decoration.md).
@@ -91,7 +92,7 @@ test.describe('block decorations on table rows and cells', () => {
 		await expect(cellC).toHaveClass(/\be2e-cell-dec\b/);
 
 		await cellC.click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText('x');
 		await expect(cellC).toHaveText('cx');
 		await expect(cellC).toHaveClass(/\be2e-cell-dec\b/);

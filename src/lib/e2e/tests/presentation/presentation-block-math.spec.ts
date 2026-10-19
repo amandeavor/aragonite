@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, roundTripStable } from '../plugins/helpers';
 import { clickModeToggle } from '../../mode-switch';
+import { edgeKey } from '../../platform-keys';
 
 // Switching mode while a revealed source holds an uncommitted edit commits it through the mode
 // effect that blurs. The header toggle keeps editor focus, so the commit comes from the mode
@@ -23,7 +24,7 @@ test.describe('reading-mode flip commits a render-primary reveal', () => {
 	// keyboard, so no mouseup competes for the caret.
 	async function revealFromBefore() {
 		await ep.getBlock(0).click();
-		await ep.page.keyboard.press('End');
+		await ep.page.keyboard.press(edgeKey('lineEnd'));
 		await ep.page.keyboard.press('ArrowRight');
 		await expect(ep.page.locator(SOURCE)).toHaveCount(1);
 		await ep.waitForRenderFlush();
@@ -61,7 +62,7 @@ test.describe('reading-mode flip commits a render-primary reveal', () => {
 		// The block shows its source and edits again after the round trip through reading.
 		await page.locator(RENDER).click();
 		await expect(page.locator(SOURCE)).toHaveCount(1);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowLeft');
 		await page.keyboard.press('ArrowLeft');
 		await page.keyboard.type('b');

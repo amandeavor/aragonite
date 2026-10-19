@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { clickModeToggle } from '../../../mode-switch';
+import { edgeKey } from '../../../platform-keys';
 
 const HEADER = '| H |\n| :- |\n';
 
@@ -88,7 +89,7 @@ test.describe('table cell: inline rendering', () => {
 		await cell.click();
 		// Ctrl+End: the very end of the cell's content. End alone stops at the end
 		// of the first visual line, before the trailing widget.
-		await page.keyboard.press('Control+End');
+		await page.keyboard.press(edgeKey('blockEnd'));
 		await editor.typeText('Z');
 		// Without widget-aware offset reads, the caret read would land short of
 		// the widget's 4 raw bytes and the char would splice inside the tag.
@@ -99,8 +100,8 @@ test.describe('table cell: inline rendering', () => {
 		await editor.loadContent('| H |\n| :- |\n| Left<br> |\n');
 		const cell = page.locator('.table-cell').nth(1);
 		await cell.click();
-		await page.keyboard.press('Home');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineStart'));
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText('Q');
 		// End from line 1 stays on line 1, before the widget.
 		await editor.bridge.waitForSourceContains('| LeftQ<br> |');
@@ -113,7 +114,7 @@ test.describe('table cell: inline rendering', () => {
 		const first = page.locator('.table-cell').nth(2);
 		const second = page.locator('.table-cell').nth(3);
 		await first.click();
-		await page.keyboard.press('Control+End');
+		await page.keyboard.press(edgeKey('blockEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(second).toBeFocused();
 	});
@@ -135,7 +136,7 @@ test.describe('table cell: inline rendering', () => {
 		await editor.loadContent('| A | B |\n| --- | --- |\n| x<br>y | z |\n');
 		const cell = page.locator('.table-cell').nth(2);
 		await cell.click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowRight'); // past `x`
 		await page.keyboard.press('ArrowRight'); // across the `<br>`
 
@@ -152,7 +153,7 @@ test.describe('table cell: inline rendering', () => {
 		await editor.loadContent('| A | B |\n| --- | --- |\n| x<br>y | z |\n');
 		const cell = page.locator('.table-cell').nth(2);
 		await cell.click();
-		await page.keyboard.press('Control+End');
+		await page.keyboard.press(edgeKey('blockEnd'));
 		await page.keyboard.press('ArrowLeft'); // → the <br>'s trailing edge (before `y`)
 
 		await page.keyboard.press('Backspace');

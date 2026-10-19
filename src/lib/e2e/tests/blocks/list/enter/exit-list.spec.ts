@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey, extendKey } from '../../../../platform-keys';
 
 test.describe('list Enter: exit list on empty item', () => {
 	let editor: EditorPage;
@@ -15,7 +16,7 @@ test.describe('list Enter: exit list on empty item', () => {
 		await editor.loadContent('- alpha\n- beta\n');
 		const beta = editor.page.locator('[contenteditable="true"]', { hasText: 'beta' });
 		await beta.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.bridge.waitForSourceContains('- \n');
 		await editor.page.keyboard.press('Enter');
@@ -34,7 +35,7 @@ test.describe('list Enter: exit list on empty item', () => {
 		await editor.loadContent('- Alpha\n- Beta\n');
 		const beta = editor.page.locator('[contenteditable="true"]', { hasText: 'Beta' });
 		await beta.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.bridge.waitForSourceContains('- \n');
 		await editor.page.keyboard.press('Enter');
@@ -50,7 +51,7 @@ test.describe('list Enter: exit list on empty item', () => {
 		await editor.loadContent('- Only\n');
 		const item = editor.page.locator('[contenteditable="true"]', { hasText: 'Only' });
 		await item.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForListItemCount(2);
 		await editor.page.keyboard.press('Enter');
@@ -69,7 +70,7 @@ test.describe('list Enter: exit list on empty item', () => {
 		await editor.loadContent('- First\n- Second\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'First' });
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Enter');
 		await editor.bridge.waitForSourceContains('- \n- First');
 		await editor.page.keyboard.press('ArrowUp');
@@ -84,8 +85,8 @@ test.describe('list Enter: exit list on empty item', () => {
 		await editor.loadContent('- First\n- Second\n- Third\n');
 		const second = editor.page.locator('[contenteditable="true"]', { hasText: 'Second' });
 		await second.click();
-		await editor.page.keyboard.press('Home');
-		await editor.page.keyboard.press('Shift+End');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
+		await editor.page.keyboard.press(extendKey('lineEnd'));
 		await editor.page.keyboard.press('Delete');
 		await editor.bridge.waitForSource((s) => !s.includes('Second'));
 		await editor.page.keyboard.press('Enter');
@@ -100,7 +101,7 @@ test.describe('list Enter: exit list on empty item', () => {
 		await editor.loadContent('- Item\n  - Nested\n');
 		const item = editor.page.locator('[contenteditable="true"]', { hasText: 'Item' }).first();
 		await item.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForListItemCount(3);
 		await editor.page.keyboard.press('Enter');
@@ -116,8 +117,8 @@ test.describe('list Enter: exit list on empty item', () => {
 		await editor.loadContent('- First\n- Last\n');
 		const last = editor.page.locator('[contenteditable="true"]', { hasText: 'Last' });
 		await last.click();
-		await editor.page.keyboard.press('Home');
-		await editor.page.keyboard.press('Shift+End');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
+		await editor.page.keyboard.press(extendKey('lineEnd'));
 		await editor.page.keyboard.press('Delete');
 		await editor.bridge.waitForSource((s) => !s.includes('Last'));
 		await editor.page.keyboard.press('Enter');
@@ -136,7 +137,7 @@ test.describe('list Enter: exit list on empty item', () => {
 		await editor.loadContent('- Item\n  1. NestedOrdered\n');
 		const item = editor.page.locator('[contenteditable="true"]', { hasText: 'Item' }).first();
 		await item.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForListItemCount(3);
 		await editor.page.keyboard.press('Enter');
@@ -153,8 +154,8 @@ test.describe('list Enter: exit list on empty item', () => {
 		await editor.loadContent('- First\n\n  second\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'First' });
 		await first.click();
-		await editor.page.keyboard.press('Home');
-		await editor.page.keyboard.press('Shift+End');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
+		await editor.page.keyboard.press(extendKey('lineEnd'));
 		await editor.page.keyboard.press('Delete');
 		await editor.bridge.waitForSource((s) => !s.includes('First'));
 		await editor.page.keyboard.press('Enter');

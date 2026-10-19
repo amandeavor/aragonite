@@ -8,6 +8,7 @@ import {
 	spacerCount,
 	startCountingHostChanges
 } from './vr-helpers';
+import { edgeKey } from '../../platform-keys';
 
 // A change to the blocks of a document below the windowing threshold, an edit or a swap of
 // the whole document, mounts every block and keeps the untouched ones: the block list decides
@@ -59,7 +60,7 @@ test.describe('an edit in an unwindowed document keeps the blocks after it mount
 		const hostChanges = await startCountingHostChanges(page);
 
 		await editor.clickBlockAtPath([5], 'Paragraph 5'.length);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await editor.waitForBlockHostCount(PARAGRAPHS + 2);
 		await settleFrames(page);
@@ -76,7 +77,7 @@ test.describe('an edit in an unwindowed document keeps the blocks after it mount
 		const hostChanges = await startCountingHostChanges(page);
 
 		await editor.clickBlockAtPath([0, 1, 0], 1);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await editor.waitForListItemCount(6);
 		await settleFrames(page);
@@ -93,7 +94,7 @@ test.describe('an edit in an unwindowed document keeps the blocks after it mount
 		await editor.seedClipboard(PASTE);
 
 		await editor.clickBlockAtPath([5], 'Paragraph 5'.length);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.paste();
 		await editor.bridge.waitForSourceContains(`Pasted ${PASTED_PARAGRAPHS - 1}`);
 		await settleFrames(page);

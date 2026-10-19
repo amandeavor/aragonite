@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { openImageField, undoDepth, waitForAllImagesLoaded } from './helpers';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('image popover commit', () => {
 	let editor: EditorPage;
@@ -204,7 +205,7 @@ test.describe('image popover commit', () => {
 
 		const alt = await openImageField(page);
 		await expect(alt).toHaveValue('dog');
-		await alt.press('End');
+		await alt.press(edgeKey('lineEnd'));
 		await page.keyboard.type('!');
 		await page.keyboard.press('Enter');
 		await editor.bridge.waitForSourceContains('![dog!]');

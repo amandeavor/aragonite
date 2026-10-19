@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 const HEADINGS = '# Heading 1\n\n## Heading 2\n\n### Heading 3\n';
 const PARAGRAPHS = 'Para one.\n\nPara two.\n\nPara three.\n';
@@ -31,7 +32,7 @@ test.describe('sticky column: rapid cross-block navigation (timing)', () => {
 	): Promise<void> {
 		await editor.loadContent(doc);
 		await editor.page.locator('[contenteditable="true"]').nth(start).click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.page.keyboard.press(key);
 		await editor.page.keyboard.press(key);

@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('single-block clipboard: basics', () => {
 	let editor: EditorPage;
@@ -12,8 +13,8 @@ test.describe('single-block clipboard: basics', () => {
 	// One key apart (End vs Home). The copy is part of the block, so a paste at the wrong end
 	// reads differently and fails its row.
 	for (const [position, key, expected] of [
-		['end appends', 'End', 'StartSt'],
-		['start prepends', 'Home', 'StStart']
+		['end appends', edgeKey('lineEnd'), 'StartSt'],
+		['start prepends', edgeKey('lineStart'), 'StStart']
 	] as const) {
 		test(`paste at ${position} the copied text`, async () => {
 			await editor.loadContent('Start\n');

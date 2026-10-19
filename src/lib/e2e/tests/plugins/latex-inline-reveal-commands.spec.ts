@@ -2,6 +2,7 @@ import type { Locator } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { PluginsPage, capturedErrors } from './helpers';
 import { MathRevealPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * A block command fired while an inline source is open runs against the bytes typed into it: each
@@ -48,7 +49,7 @@ test.describe('block commands against a revealed inline source', () => {
 
 		// Home lands at raw 0, the source's leading edge, still inside the open source, so nothing
 		// closes. Backspace there merges the edited bytes.
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForBlockCount(1);
 		expect(await editor.bridge.getSource()).toBe('above$x^2q$\n');

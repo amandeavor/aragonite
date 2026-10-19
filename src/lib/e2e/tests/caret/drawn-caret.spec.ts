@@ -17,6 +17,7 @@ import { clickPastImageRightEdge, waitForFirstImageLoaded } from '../blocks/imag
 import { PluginsPage } from '../plugins/helpers';
 import { TABLE_THEN_FENCE, arriveAtBoundary } from '../selection/gap-caret-fixtures';
 import { skipUnlessSupported } from '../../browser-engine';
+import { edgeKey } from '../../platform-keys';
 
 // The drawn caret against the browser's own (requirements/caret/drawn-caret.md): exactly one caret
 // shows in every row, and where the bar draws, it sits on the browser's caret position.
@@ -98,7 +99,7 @@ test.describe('the drawn caret', () => {
 				'| a | b |\n| - | - |\n| cell | d |\n',
 				async (ep, page) => {
 					await page.locator('.table-cell').nth(2).click();
-					await page.keyboard.press('End');
+					await page.keyboard.press(edgeKey('lineEnd'));
 				}
 			],
 			['in a code block', '```\ncode\n```\n', (ep) => ep.focusBlock(0, 6)],
@@ -129,7 +130,7 @@ test.describe('the drawn caret', () => {
 			const memo = new MemoPage(page);
 			await memo.gotoSeed();
 			await memo.memo.click();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await expectOneCaretOnTheRange(page);
 		});
 	});
