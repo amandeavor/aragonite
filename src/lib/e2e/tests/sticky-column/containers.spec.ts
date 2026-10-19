@@ -99,7 +99,9 @@ test.describe('sticky column: transparent blocks', () => {
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
 		await editor.page.keyboard.press('Home');
-		for (let i = 0; i < 25; i++) await editor.page.keyboard.press('ArrowRight');
+		// Inside the words both paragraphs open with, so one boundary below is nearest the column
+		// and a caret a letter off either way is caught.
+		for (let i = 0; i < 10; i++) await editor.page.keyboard.press('ArrowRight');
 
 		const sourceX = await editor.getCaretPixelX();
 
