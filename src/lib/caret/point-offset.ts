@@ -86,13 +86,20 @@ export function clampPointIntoBox(rect: DOMRect, x: number, y: number): { x: num
 	};
 }
 
-// Mac and Linux Chromium answer a point above the first line or below the last with that line's
-// start or end, and Windows with the column; a point level with a line gets the column everywhere.
+// Mac and Linux answer a point above the first line's letters or below the last's with that line's
+// start or end, even inside its leading, so the point is asked no further out than a line's middle.
 function levelWithLines(el: HTMLElement, x: number, y: number): number {
 	const box = el.getBoundingClientRect();
 	if (!isInside(box, x, y)) return y;
 	const band = linesBandOf(el, box);
-	return band ? clamp(y, band.top + 1, band.bottom - 1) : y;
+	if (!band) return y;
+	const inset = Math.max(1, Math.min(lineHeightOf(el) / 2, (band.bottom - band.top) / 2));
+	return clamp(y, band.top + inset, band.bottom - inset);
+}
+
+/** `el`'s line height in px; 0 for `normal`, which leaves the band's one-pixel inset. */
+function lineHeightOf(el: HTMLElement): number {
+	return parseFloat(getComputedStyle(el).lineHeight) || 0;
 }
 
 function isInside(box: DOMRect, x: number, y: number): boolean {
