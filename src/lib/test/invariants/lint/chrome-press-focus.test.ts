@@ -118,8 +118,6 @@ const CHROME_PRESS_FOCUS: FileRule = {
 			'the link card holds focus in its field and gives the caret back through `selection/caret-restore.ts`',
 		'src/lib/components/blocks/table/TableActionMenu.svelte':
 			'an ARIA menu with roving focus, which Escape returns to the cell it opened from',
-		'src/lib/components/blocks/code/CodeBlockRail.svelte':
-			'the rail is a tab stop of its own, shown on focus-within, and its menu hands focus back to the ⋮ button',
 		'src/lib/plugins/mermaid/MermaidBlock.svelte':
 			'Edit and Focus move focus on purpose, to the source field and the full-window view',
 		'src/lib/plugins/parrot/ParrotBlock.svelte':
