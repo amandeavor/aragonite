@@ -139,4 +139,22 @@ test.describe('image toolbar focus', () => {
 			await expect(page.locator('.md-image-properties')).toHaveCount(0);
 		});
 	}
+
+	for (const fieldOpen of [false, true]) {
+		test(`Remove with the Alt field ${fieldOpen ? 'open' : 'closed'} leaves typing in the image's paragraph`, async ({
+			page
+		}) => {
+			await editor.loadContent(LOADED);
+			await waitForAllImagesLoaded(page);
+			await page.locator('[data-image-widget]').first().click();
+			if (fieldOpen) {
+				await button(page, 'Alt text').click();
+				await expect(page.locator('.md-image-properties input')).toBeFocused();
+			}
+			await button(page, 'Remove image').click();
+			await editor.bridge.waitForSourceEquals('text\n\n\n');
+			await page.keyboard.type('Q');
+			await editor.bridge.waitForSourceEquals('text\n\nQ\n');
+		});
+	}
 });

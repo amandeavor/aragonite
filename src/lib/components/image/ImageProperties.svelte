@@ -122,7 +122,7 @@
 
 	function toggleField() {
 		if (fieldOpen) {
-			endField(true);
+			void endField(true);
 		} else {
 			fieldCaret.saveCurrent();
 			fieldOpen = true;
@@ -137,24 +137,31 @@
 
 	// A close from the toolbar or the field's keys hands focus back to the image's paragraph, the
 	// image still selected, where Mod+Z and Escape reach it as after a click on the image.
-	function endField(commit: boolean) {
+	function endField(commit: boolean): Promise<void> {
 		closeField(commit);
-		void fieldCaret.restore();
+		return fieldCaret.restore();
 	}
 
 	function onFieldKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
 			e.preventDefault();
-			endField(true);
+			void endField(true);
 		}
 	}
 
 	// Escape drops the draft and a swap lands after the new document is in, so neither saves it;
 	// every other close does. A press elsewhere or a mode change leaves focus where it lands.
 	function dismissField(cause: MenuCloseCause): boolean {
-		if (cause === 'escape-key') endField(false);
+		if (cause === 'escape-key') void endField(false);
 		else closeField(cause !== 'document-swap');
 		return true;
+	}
+
+	// The field's focus comes back before the image goes, so the removal lands as it does with the
+	// field closed.
+	async function removeImage() {
+		if (fieldOpen) await endField(false);
+		onRemove(target);
 	}
 
 	// ── Crop ───────────────────────────────────────────────────────────────────
@@ -177,7 +184,7 @@
 		const widget = getWidgetEl();
 		const img = widget?.querySelector('img') ?? null;
 		if (!widget || !img || img.naturalWidth === 0) return;
-		if (fieldOpen) endField(true);
+		if (fieldOpen) void endField(true);
 		const box = widget.getBoundingClientRect();
 		frame = { width: box.width, height: box.height };
 		natural = { width: img.naturalWidth, height: img.naturalHeight };
@@ -452,7 +459,7 @@
 			class="md-image-btn"
 			aria-label={IMAGE_REMOVE}
 			title={IMAGE_REMOVE}
-			onclick={() => onRemove(target)}
+			onclick={removeImage}
 		>
 			<MenuIcon name="trash" />
 		</button>

@@ -16,6 +16,8 @@ editor's keys reach it there.
 
 - Escape inside the Alt field drops its draft and leaves the image selected; only the next Escape
   dismisses the image
+- Remove, with the Alt field open or closed, leaves typing in the image's paragraph where the image
+  was
 
 ## User interactions
 
@@ -28,3 +30,5 @@ editor's keys reach it there.
   after any other end dismissed nothing: each sub-mode had its own focus test or none, and no test
   pressed Escape after an end at all, so a fix to one end's Mod+Z moved the other key's break
   instead of closing it
+- Remove with the Alt field open left typing going nowhere, since the field's input went with the
+  image: the class rows ended each sub-mode on its own, and none ended one by removing the image
