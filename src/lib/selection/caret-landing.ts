@@ -16,7 +16,7 @@ import { checkLandingFocusScrollsNothing } from '../invariants/landing-focus-scr
 import { componentAt, descendTo, type ChildList } from '../block-lists/child-list';
 import { landsRestoredCaret } from './restored-caret';
 import { caretTargetFor } from './caret-target';
-import { applySelectionToDom } from './native-bridge';
+import { applySelectionToDom, readNativeSelection } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';
 import { caretRectAt } from '../caret/visual-lines';
 import { findBlockPathForElement, findCellPathForElement } from './path-lookup';
@@ -92,9 +92,9 @@ export interface CaretLandingDeps {
 /** What a caret in `el` needs on screen: its line, when the selection's focus sits in `el` and
  *  measures, else `el`'s whole box (a divider, an empty line, a caret not placed yet). */
 function caretBox(el: HTMLElement): DOMRectReadOnly {
-	const selection = typeof window === 'undefined' ? null : window.getSelection();
-	if (selection?.rangeCount && selection.focusNode && el.contains(selection.focusNode)) {
-		const line = caretRectAt(el, selection.focusNode, selection.focusOffset);
+	const focus = typeof window === 'undefined' ? null : readNativeSelection()?.focus;
+	if (focus && el.contains(focus.node)) {
+		const line = caretRectAt(el, focus.node, focus.offset);
 		if (line) return line;
 	}
 	return el.getBoundingClientRect();

@@ -28,6 +28,7 @@ import {
 import { stubScrollOwner, stubScrollport } from '../harness/stub-scrollport';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 import { caretRectAt } from '../../caret/visual-lines';
+import { readNativeSelection } from '../../selection/native-bridge';
 
 const COLUMNS = ['host anchoring holds', 'a held placement is live', 'free'] as const;
 type Column = (typeof COLUMNS)[number];
@@ -163,7 +164,8 @@ function scrollToB4(f: Fixture): Promise<boolean> {
 		isCrossBlock: () => false,
 		isHostChrome: () => false,
 		landCaretAt: async () => true,
-		caretRectAt
+		caretRectAt,
+		readSelection: readNativeSelection
 	});
 	return rects.scrollTo([4]);
 }

@@ -184,6 +184,8 @@ unguarded.
 | G4.219 | No popover closes on focus leaving; every focus-loss listener serves a listed need           | L       |
 | G4.220 | A clipboard read or write outside a clipboard event goes through `system-clipboard.ts`       | L       |
 | G4.221 | No constructed `ClipboardEvent`; a selection's shown text is read in one place               | L       |
+| G4.222 | The browser's selection is read through the bridge readers                                   | L       |
+| G4.223 | The library names no browser engine in code                                                  | L       |
 
 ### The entries
 
@@ -1249,3 +1251,15 @@ menus' Paste rows) hands its text to the focused block's `insertMarkdown` or `in
 since Firefox empties `clipboardData` on a `new ClipboardEvent(...)`. The selection's shown text is read only through
 `shownSelectionText` (`clipboard-step.ts`), which reads LF where Firefox on Windows writes CRLF,
 and nothing for an empty block's placeholder `<br>` selected alone. `lint/file-rules.test.ts`.
+
+**G4.222 · The selection is read in one place.** Engines differ in what the selection reports (a
+caret inside a widget, an anchor inside a CRLF pair), so every file reads it through
+`selection/native-bridge.ts` (`readNativeSelection`, `rawSelectionIn`, `nativeRangeIn`,
+`holdsNativeRange`) or `rawSelectionFocus`. The raw readers left (`caret/`, which the bridge
+imports, two files the selection layer imports, and G4.221's `shownSelectionText`) are listed with
+their reason, and the list only shrinks. `lint/native-selection-reads.test.ts`.
+
+**G4.223 · No engine sniffing.** `src/lib` outside `debug/` names no engine in script (`isFirefox`,
+a user-agent read, `Edg/`): an engine bug is fixed where the editor reads or decides, the same way
+on all three, and a CSS vendor prefix or a platform read (Mac's Cmd) is fine. Zero is the baseline
+(`editor.md` § Browser engines). `lint/engine-sniffing.test.ts`.

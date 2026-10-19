@@ -13,11 +13,11 @@ import type { DocumentGetter } from '../../editor-keys';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
 import { TEXT_SURFACE_SELECTOR } from '../../caret/block-content-selector';
 import {
-	nativeRangeIn,
 	placeContextPress,
 	rangeCoversPoint,
 	resetForPointerDown
 } from '../../selection/cross-block/pointer';
+import { nativeRangeIn } from '../../selection/native-bridge';
 import { createDeadSpaceCaret } from '../../selection/dead-space-caret';
 import { installDragListener } from '../../selection/drag-pointer';
 import { installMultiClickSelect } from '../../selection/multi-click';

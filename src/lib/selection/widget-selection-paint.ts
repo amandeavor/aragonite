@@ -7,6 +7,7 @@
 
 import { widgetElAt } from '../caret/block-el-lookup';
 import type { WidgetTarget } from './primitives';
+import { readNativeSelection } from './native-bridge';
 
 const WIDGET_SELECTOR = '[data-inline-widget]';
 const SELECTED_CLASS = 'md-widget-selected';
@@ -40,10 +41,9 @@ export function installWidgetSelectionPainter(
 			const el = widgetElAt(editorRoot, held.paragraphPath, held.sourceStart);
 			return el ? [el] : [];
 		}
-		const sel = window.getSelection();
-		if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return [];
-		if (!sel.anchorNode || !editorRoot.contains(sel.anchorNode)) return [];
-		const range = sel.getRangeAt(0);
+		const live = readNativeSelection();
+		if (!live || live.collapsed || !editorRoot.contains(live.anchor.node)) return [];
+		const { range } = live;
 		const widgets = editorRoot.querySelectorAll<HTMLElement>(WIDGET_SELECTOR);
 		return [...widgets].filter((w) => range.intersectsNode(w));
 	}

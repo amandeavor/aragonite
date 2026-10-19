@@ -28,7 +28,7 @@ import {
 	holdsOnlyMarkerChrome,
 	type RawRange
 } from '../../../caret/widget-offset';
-import { parkFocusOnEditorRoot } from '../../../selection/native-bridge';
+import { nativeRangeIn, parkFocusOnEditorRoot } from '../../../selection/native-bridge';
 import { assertInvariant } from '../../../assert';
 import { checkRenderedTextFidelity } from '../../../invariants/render-fidelity';
 import { resetForPointerDown } from '../../../selection/cross-block/pointer';
@@ -592,7 +592,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			if (
 				offset !== null &&
 				(offset === 0 || /\s/.test(text[offset - 1] ?? '')) &&
-				!hasSelectionIn(el) &&
+				!nativeRangeIn(el) &&
 				isBlankText(chromeFreeText(el))
 			) {
 				e.preventDefault();
@@ -662,11 +662,6 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		const start = clampToLandableRaw(el, range.start);
 		const end = Math.max(start, clampToLandableRaw(el, range.end));
 		spliceSourceText(el, start, end, insert);
-	}
-
-	function hasSelectionIn(el: HTMLElement): boolean {
-		const sel = window.getSelection();
-		return Boolean(sel && !sel.isCollapsed && el.contains(sel.anchorNode));
 	}
 
 	function onPointerDown(e: PointerEvent): void {

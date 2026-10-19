@@ -9,6 +9,7 @@ import { createEditorRects } from '../editor-rects';
 import type { PlaceOptions } from '../windowing/scroll-owner';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { caretRectAt } from '../caret/visual-lines';
+import { readNativeSelection } from '../selection/native-bridge';
 
 installEditorDomStubsForTests();
 
@@ -36,6 +37,7 @@ function makeRects(over: Partial<Parameters<typeof createEditorRects>[0]> = {}) 
 		isHostChrome: () => false,
 		landCaretAt,
 		caretRectAt,
+		readSelection: readNativeSelection,
 		...over
 	});
 	return { rects, order, place, landCaretAt };

@@ -27,6 +27,7 @@ import { parseReplacement } from '../tree-operations/paste/replacement-parse';
 import { slotReaderAt } from '../tree-operations/list/task-paragraph';
 import { blockNearPoint } from './nearest-block';
 import { findSurfaceForElement } from './path-lookup';
+import { readNativeSelection } from './native-bridge';
 import { charOffsetOf } from './primitives';
 import { storedAsAt } from '../tree-operations/stored-as';
 import { docPathFrom } from '../caret/coordinate-spaces';
@@ -208,9 +209,9 @@ function readSelectionSource(
 	deps: SelectionDropDeps,
 	dragged: EventTarget | null
 ): DragStash | null {
-	const sel = window.getSelection();
-	if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null;
-	const range = sel.getRangeAt(0);
+	const live = readNativeSelection();
+	if (!live || live.collapsed) return null;
+	const { range } = live;
 	// An element that is draggable on its own (a rendered link, an image) is not this gesture,
 	// even with a range painted elsewhere: a selection drag starts on a node the range covers.
 	if (!(dragged instanceof Node) || !range.intersectsNode(dragged)) return null;

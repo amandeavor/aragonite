@@ -8,7 +8,7 @@ import { inlineDescendants } from '../../../core/inline';
 import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 import type { InlineNode } from '../../../core/nodes';
 import type { NodeView } from '../../../core/node-views';
-import { rawOffsetAt } from '../../../caret/widget-offset';
+import { rawSelectionFocus } from '../../../caret/widget-offset';
 import { followEditOf } from '../../../schema/inline-construct-policy';
 import { linkTextRange } from '../../../core/inline/link-source-bytes';
 import { claimsActivationClick, getInlineWidgetEditing } from '../../../core/inline/inline-widgets';
@@ -102,7 +102,7 @@ function constructTarget(construct: InlineNode, raw: string): FollowTarget {
 
 /** What you'd go to at the caret, read after a click or a key has placed it. */
 export function followTargetAtCaret(query: LinkPointQuery): FollowTarget | null {
-	const offset = caretRawOffset(query.contentEl);
+	const offset = rawSelectionFocus(query.contentEl);
 	return offset === null ? null : followTargetAt(query.block, offset, query.reading);
 }
 
@@ -124,11 +124,4 @@ export function linkConstructAt(
 		if (followEditOf(node.kind) === 'card' && node.start === sourceStart) return node;
 	}
 	return null;
-}
-
-function caretRawOffset(contentEl: HTMLElement): number | null {
-	const sel = window.getSelection();
-	if (!sel || sel.rangeCount === 0 || !sel.focusNode) return null;
-	if (!contentEl.contains(sel.focusNode)) return null;
-	return rawOffsetAt(contentEl, sel.focusNode, sel.focusOffset);
 }

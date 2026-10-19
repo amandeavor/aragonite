@@ -13,6 +13,7 @@ import type { CaretWriter } from '../caret/widget-offset';
 import type { CrossBlockHandlers } from './cross-block/dispatch';
 import type { CommandDispatchContext } from '../schema/block-commands';
 import { commandAtBlock } from './cross-block/keydown';
+import { holdsNativeRange } from './native-bridge';
 import type { Reading } from '../schema/reading';
 import {
 	extendFocusToNextBlock,
@@ -255,7 +256,7 @@ function handleUnitStep(
 	}
 	const extending = e.shiftKey;
 	// A plain arrow over a range collapses it, which is the browser's.
-	if (!extending && window.getSelection()?.isCollapsed === false) return false;
+	if (!extending && holdsNativeRange()) return false;
 	if (offset === null) return false;
 	const direction = e.key === 'ArrowRight' ? 'forward' : 'backward';
 	const unit = ctx.caretUnits.beside(offset, direction, extending);

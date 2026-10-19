@@ -6,6 +6,7 @@
  */
 import type { BlockComponent } from './block-component';
 import type { ScrollOwner } from './windowing/scroll-owner';
+import type { NativeSelectionRead } from './selection/native-bridge';
 
 export interface EditorRects {
 	/** The block's outermost box, or null when it isn't mounted. */
@@ -48,6 +49,8 @@ export function createEditorRects(deps: {
 	landCaretAt: (path: number[], offset: number) => Promise<boolean>;
 	/** The editor's one measure of a collapsed caret, injected as `landCaretAt` is. */
 	caretRectAt: (root: ParentNode, node: Node, offset: number) => DOMRect | null;
+	/** The editor's reader of the browser's selection, injected as `landCaretAt` is. */
+	readSelection: () => NativeSelectionRead | null;
 }): EditorRects {
 	return {
 		blockRect(path) {
@@ -62,9 +65,8 @@ export function createEditorRects(deps: {
 			if (deps.isCrossBlock()) return null;
 			const root = deps.getEditorRoot();
 			if (!root) return null;
-			const selection = window.getSelection();
-			if (!selection || selection.rangeCount === 0) return null;
-			const range = selection.getRangeAt(0);
+			const range = deps.readSelection()?.range;
+			if (!range) return null;
 			if (!root.contains(range.commonAncestorContainer)) return null;
 			// A caret in the host's header snippet is inside the root but is not a document
 			// caret; reporting it would float caret-following controls over the host's field.

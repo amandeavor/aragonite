@@ -269,6 +269,7 @@ export const TYPE_EDGES: readonly string[] = [
 	'editor-props.ts -> search',
 	'editor-props.ts -> selection',
 	'editor-rects.ts -> block-component.ts',
+	'editor-rects.ts -> selection',
 	'editor-rects.ts -> windowing',
 	'index.ts -> activation-click.ts',
 	'index.ts -> decorations',
