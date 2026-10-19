@@ -197,9 +197,17 @@
 		else el.setAttribute('style', style);
 	}
 
+	// WebKit leaves a pressed button's focus on the toolbar, where Mod+Z reaches no undo, so a crop
+	// that ends hands focus to the page, where Chromium's removed button leaves it.
+	function releaseFocus() {
+		const focused = document.activeElement;
+		if (focused instanceof HTMLElement && rootEl?.contains(focused)) focused.blur();
+	}
+
 	function cancelCrop() {
 		restoreSnapshot();
 		cropping = false;
+		releaseFocus();
 	}
 
 	function applyCrop() {
@@ -212,6 +220,7 @@
 		// The commit rebuilds the widget from the bytes; the preview styles go with the replaced DOM.
 		snapshot = null;
 		cropping = false;
+		releaseFocus();
 		seedBytes = buildBytes(target, next);
 		onCommit(target, fields, next);
 	}
