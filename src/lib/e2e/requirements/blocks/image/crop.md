@@ -42,3 +42,7 @@ Two checks after a handle drag expected the loaded fixture's own bytes (`300x150
 `200x100@30,60`), so a drag that wrote nothing would have passed them; G4.22 caught that they
 proved nothing once the tree was merged, and the checks now exclude the size the fixture loaded
 with.
+
+Escape after a pan dismissed the whole toolbar in WebKit: a clicked button takes no focus there, so
+focus sat on the toolbar, and its own Escape handler ran after the crop's. Only Chromium ran this
+file, where focus falls to the page once the crop button goes away.

@@ -290,16 +290,19 @@
 		return () => document.removeEventListener('dblclick', onDoubleClick);
 	});
 
+	// Escape cancels through the editor's menu closing, which keeps the key from also dismissing
+	// the toolbar when focus sits on it, as it does wherever a clicked button takes no focus.
+	function closeCrop(): boolean {
+		cancelCrop();
+		return true;
+	}
+
 	$effect(() => {
 		if (!cropping) return;
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				e.preventDefault();
-				cancelCrop();
-			} else if (e.key === 'Enter') {
-				e.preventDefault();
-				applyCrop();
-			}
+			if (e.key !== 'Enter') return;
+			e.preventDefault();
+			applyCrop();
 		};
 		document.addEventListener('keydown', onKey, true);
 		return () => document.removeEventListener('keydown', onKey, true);
@@ -349,6 +352,7 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="md-image-crop-surface"
+		{@attach menuPresence.trackUncounted(closeCrop, { inside: () => [rootEl] })}
 		onpointerdown={onCropPointerDown}
 		onpointermove={onCropPointerMove}
 		onpointerup={onCropPointerUp}
