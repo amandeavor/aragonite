@@ -93,29 +93,31 @@ function levelWithLines(el: HTMLElement, x: number, y: number): number {
 	if (!isInside(box, x, y)) return y;
 	const band = linesBandOf(el, box);
 	if (!band) return y;
-	const inset = Math.max(1, Math.min(lineHeightOf(el) / 2, (band.bottom - band.top) / 2));
+	const inset = Math.max(1, Math.min(band.lineHeight / 2, (band.bottom - band.top) / 2));
 	return clamp(y, band.top + inset, band.bottom - inset);
-}
-
-/** `el`'s line height in px; 0 for `normal`, which leaves the band's one-pixel inset. */
-function lineHeightOf(el: HTMLElement): number {
-	return parseFloat(getComputedStyle(el).lineHeight) || 0;
 }
 
 function isInside(box: DOMRect, x: number, y: number): boolean {
 	return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
 }
 
-/** The rows between `el`'s top and bottom padding; null when they leave no row one pixel inside.
- *  Only rows: a hanging list marker sits in the left padding, and the browser keeps a column there. */
-function linesBandOf(el: HTMLElement, box: DOMRect): { top: number; bottom: number } | null {
+/** The rows between `el`'s padding, and its line height (0 for `normal`); null with no row a pixel
+ *  inside. Only rows: a hanging list marker sits in the left padding, where the column holds. */
+function linesBandOf(
+	el: HTMLElement,
+	box: DOMRect
+): { top: number; bottom: number; lineHeight: number } | null {
 	const style = getComputedStyle(el);
 	const px = (value: string) => parseFloat(value) || 0;
 	// The client box leaves out the border and a classic scrollbar; an inline element has none.
 	const inline = el.clientWidth === 0 && el.clientHeight === 0;
 	const top = box.top + (inline ? px(style.borderTopWidth) : el.clientTop);
 	const bottom = inline ? box.bottom - px(style.borderBottomWidth) : top + el.clientHeight;
-	const band = { top: top + px(style.paddingTop), bottom: bottom - px(style.paddingBottom) };
+	const band = {
+		top: top + px(style.paddingTop),
+		bottom: bottom - px(style.paddingBottom),
+		lineHeight: px(style.lineHeight)
+	};
 	return band.bottom - band.top < 2 ? null : band;
 }
 
