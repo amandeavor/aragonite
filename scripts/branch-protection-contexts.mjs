@@ -21,11 +21,11 @@ export const CI_CONTEXTS = [
 ];
 
 /** Checks reported from outside ci.yml that `main` requires, by the workflow that reports them. */
-export const EXTERNAL_CONTEXTS = {};
+export const EXTERNAL_CONTEXTS = { 'webkit-macos.yml': shards('e2e-webkit-macos', 5) };
 
 /**
  * Engine checks that run red or green but aren't required yet, because the engine still has reds
  * with no fix, skip or fixme. Each one moves to a required list once its engine runs clean, and a
  * release refuses to publish while this list holds anything (`check-release-gates.mjs`).
  */
-export const PENDING_GATE_CONTEXTS = ['gate', ...shards('e2e-webkit-macos', 5), 'record'];
+export const PENDING_GATE_CONTEXTS = [];

@@ -455,7 +455,8 @@ entry named after the commit). To try the workflow on a branch, dispatch it with
 `nightly` to get the skip and the record, or `trace` to keep a trace of every red.
 
 A red engine job shows red, always. Whether it blocks a merge is up to branch protection:
-`scripts/branch-protection-contexts.mjs` lists the checks `main` requires, and beside them
+`scripts/branch-protection-contexts.mjs` lists the checks `main` requires (macOS WebKit's five
+under `EXTERNAL_CONTEXTS`, since `webkit-macos.yml` reports them), and beside them
 `PENDING_GATE_CONTEXTS`, the engine checks that don't block yet because their engine still has
 reds. A lint makes every check land in exactly one of the two, and `npm run release:publish`
 refuses to publish while the pending list holds anything, so an engine joins the gate before the
