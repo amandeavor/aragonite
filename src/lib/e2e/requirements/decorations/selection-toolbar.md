@@ -17,7 +17,10 @@ right of the selection.
 - selecting text inside one paragraph opens the toolbar like a menu: below the
   selection's last rect and to the right of where it ends, never over the text
 - a cross-block selection places the toolbar the same way, off the rects of the block
-  the selection starts in (through the public `rangeRects`)
+  the selection ends in (through the public `rangeRects`), and off the start block's
+  rects when the end block yields none
+- a cross-block selection that ends in a table cell hangs the toolbar below and right of
+  that cell, so no selected cell sits under it
 
 ## Happy paths (state paint)
 
@@ -78,6 +81,9 @@ right of the selection.
 
 ## Miss-analysis
 
+- The only cross-block placement row ended in a paragraph, so a range ending in a table
+  fell back to the start block's rects and put the bar over the rows it had selected,
+  and no row placed it there
 - The pressed state was a per-command lookup in the mark rows that returned before
   reading anything, and no scenario at any layer ever asked a command that is not a
   mark what it painted, so every command id with no mark row went unasserted

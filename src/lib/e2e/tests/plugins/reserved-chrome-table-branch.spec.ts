@@ -136,10 +136,8 @@ test.describe('reserved child-0 chrome: wall × table branch', () => {
 	});
 
 	test('Gate 6d: table → table across the wall; the between chrome clears, never deletes', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent(TBL_BOTH_FIXTURE);
 		// Outer body cell "1" to inner header cell "c": both endpoints are in tables and the title
 		// sits between them, which covers the shared helper.
@@ -164,10 +162,8 @@ test.describe('reserved child-0 chrome: wall × table branch', () => {
 	});
 
 	test("Gate 6e: a table-involving range consuming the container's whole subtree unit-deletes it", async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent(TBL_ABOVE_FIXTURE);
 		// The whole subtree is covered from outside, so the container goes as one, never leaving an
 		// empty leftover with the title removed.

@@ -9,7 +9,6 @@ selection read by path through `window.__test`, not visuals.
 
 - selecting into it with the keyboard: Shift+End then Shift+ArrowDown from the paragraph above paints one cross-block span whose focus reaches the title leaf (`focus.path === [1, 0]`)
 - selecting into it with the pointer: a drag from the paragraph into the title is cross-block with the same deep focus path
-  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
 - an empty title: selecting in still reaches `[1, 0]` when the reserved title is empty, so an empty child 0 is a real endpoint for a selection
 - collapsed caret: collapsing the cross-block selection puts the caret in the title, and a typed character appears there (`activeBlockPath === [1, 0]`)
 - undo restores: after a title edit, Ctrl+Z takes the source back and returns the caret to the title leaf

@@ -202,8 +202,10 @@
 			// The bar hangs off where the selection ends; the start block's remaining range, then
 			// its whole box, are the fallbacks when the end block yields no rectangle.
 			const rects = editor.getRects();
-			const endRects =
-				editor.getBlockKindAt(end.path) !== 'table' && end.offset > 0
+			// A cell endpoint names the cell the range ends in; a text offset ends before its character.
+			const endRects = end.cellCoordinate
+				? rects.rangeRects(end.path, end.offset, end.offset + 1)
+				: end.offset > 0
 					? rects.rangeRects(end.path, 0, end.offset)
 					: [];
 			const anchored = endRects.length
