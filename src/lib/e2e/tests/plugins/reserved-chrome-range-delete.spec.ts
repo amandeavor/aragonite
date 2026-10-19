@@ -30,10 +30,8 @@ test.describe('reserved child-0 chrome: rangeDelete wall', () => {
 	const WALL_FIXTURE = 'Above\n\n:::callout Title\nBody1\n\nBody2\n:::\n\nBelow\n';
 
 	test('Gate 4a: Delete over a selection covering the whole title clears the chrome, never deleting it', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent(FIXTURE);
 		await editor.dragFromTo([0], 2, [1, 0], 5);
 		await page.keyboard.press('Delete');
@@ -80,10 +78,8 @@ test.describe('reserved child-0 chrome: rangeDelete wall', () => {
 	});
 
 	test('Gate 4c: chrome-between; start truncates, chrome clears, end body child keeps its tail in place', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent(WALL_FIXTURE);
 		await editor.dragFromTo([0], 2, [1, 1], 2);
 		await page.keyboard.press('Delete');
@@ -132,10 +128,8 @@ test.describe('reserved child-0 chrome: rangeDelete wall', () => {
 	});
 
 	test("Gate 4f: a range ending exactly at the container's last byte also deletes it as a unit", async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent(WALL_FIXTURE);
 		await editor.dragFromTo([0], 5, [1, 2], 5);
 		await page.keyboard.press('Delete');

@@ -104,10 +104,8 @@ test.describe('table block: pointer selection', () => {
 	// A drag's table endpoint must carry `cellCoordinate: true` so the collapse lands in the deep
 	// `[table, row, col]` cell, not on the table wrapper where the typed character misses.
 	test('collapsing a pointer-dragged table selection lands the caret in the deep cell (F3)', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent('Before.\n\n' + TABLE_MULTICHAR);
 		const [paraBox, cellBox] = await boxesOf(
 			page.getByText('Before.'),

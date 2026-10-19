@@ -7,12 +7,12 @@ than a slice the length of the rendered text.
 
 ## Happy paths
 
-- Drag from mid-paragraph into the middle of the rendered diagram, then Mod+C: the clipboard
+- Drag from mid-paragraph three quarters down the rendered diagram, then Mod+C: the clipboard
   holds the tail of the paragraph, the blank line, and the diagram's complete fenced markdown.
-  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
+  The diagram joins once the pointer passes its middle, so the drag goes clearly past it: a real
+  pointer reports whole pixels, and one aimed at the exact middle can stop a fraction short.
 - The same drag followed by Mod+X: what is left of the document is the head of the paragraph
   joined to the block after the diagram, with no piece of the fence left behind.
-  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
 
 ## Edge cases
 

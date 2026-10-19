@@ -256,10 +256,8 @@ test.describe('plugin container: <details> collapsible', () => {
 	});
 
 	test('a cross-block copy ending mid-summary pastes back as a real details, open flag intact', async ({
-		page,
-		browserName
+		page
 	}) => {
-		test.fixme(browserName !== 'chromium', '#748: a fast drag ends the range on a stale endpoint');
 		await editor.loadContent(
 			'Above\n\n<details open>\n<summary>Summary</summary>\n\nBody\n\n</details>\n\nBelow\n'
 		);

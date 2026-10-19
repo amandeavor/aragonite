@@ -16,7 +16,6 @@ Direction is still the range's own coverage, and the whole press is one undo ent
 - a drag from the paragraph into a body cell marks that cell's row and every row
   above it, and leaves the rows below untouched: the whole-row snap decides where
   the run stops, so highlight and rewrite agree on the same cell set
-  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
 - a drag between two cells of one table marks the rectangle they span, leaving the
   cells whose index falls between them but whose column does not alone
 - a keyboard `Shift+ArrowDown` out of the last cell, carried on to the document

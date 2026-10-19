@@ -15,9 +15,7 @@ and a container the range covers entirely is deleted as one unit.
 - the range starts in the title, mid-title into a body table cell: the title is truncated by a raw write, so its node and kind survive and nothing is replaced by a reparse, the caret stays in the title, and undo restores at the child level
 - the range ends in the title, from a table above into mid-title: the title keeps the tail the range missed, in its own leaf, and the table the range starts in snaps to whole rows
 - table to table across the title: the title strictly in between is emptied rather than deleted as a node, which the shared deletion collection already covers
-  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
 - the whole subtree covered by a range involving a table: the container is removed as one splice with its children intact, and undo restores the title and the body together
-  (under Firefox and WebKit the spec marks this one `fixme` against #748, a fast drag that ends on a stale endpoint)
 - the state audits cover table state too: a delete that snaps to whole rows commits the endpoint table as its own block list, so its row ids and references stay in step with its children
 
 ## User interactions
