@@ -132,6 +132,12 @@ export function wholeMatrixSkips(yaml: string, required: readonly string[]): str
 		.map((job) => job.names[0]);
 }
 
+/** Whether a trigger filters on paths, which skips the whole workflow and reports no check. */
+export function filtersPaths(yaml: string): boolean {
+	const triggers = yaml.split(/^jobs:/m)[0];
+	return /^ {4}paths(-ignore)?:/m.test(triggers);
+}
+
 /** Jobs whose red the run would report as green. */
 export function redHidingJobs(yaml: string): string[] {
 	return readJobs(yaml)
@@ -272,6 +278,17 @@ describe('branch protection ↔ workflow check names', () => {
 		).toEqual([]);
 	});
 
+	it('no workflow reporting a required check filters its triggers on paths', () => {
+		const filtering = [...workflowChecks]
+			.filter(([, names]) => names.some((name) => required.includes(name)))
+			.filter(([file]) => filtersPaths(workflowYaml.get(file) ?? ''))
+			.map(([file]) => file);
+		expect(
+			filtering,
+			'a path filter skips the whole run, so its required checks never report; skip steps instead'
+		).toEqual([]);
+	});
+
 	it('no undeclared workflow reports a check name the rule requires', () => {
 		const outsideCi = new Map([...workflowChecks].filter(([file]) => file !== CI));
 		const colliding = undeclaredReporters(required, declaredExternal, outsideCi);
@@ -309,6 +326,12 @@ describe('branch-protection context readers: self-tests', () => {
 		expect(redHidingJobs(yaml)).toEqual(['engine (1/2)']);
 		expect(wholeMatrixSkips(yaml, ['engine (2/2)'])).toEqual(['engine (1/2)']);
 		expect(wholeMatrixSkips(yaml, ['unit'])).toEqual([]);
+	});
+
+	it('sees a path filter on a trigger, not on a step', () => {
+		expect(filtersPaths('on:\n  push:\n    paths-ignore: [docs/**]\njobs:\n  a:\n')).toBe(true);
+		expect(filtersPaths('on:\n  push:\njobs:\n  a:\n    paths: x\n')).toBe(false);
+		expect(filtersPaths(workflowYaml.get('webkit-macos.yml') ?? '')).toBe(true);
 	});
 
 	it('reads a matrix list Prettier wrapped onto its own lines', () => {
