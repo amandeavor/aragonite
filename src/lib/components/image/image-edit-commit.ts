@@ -158,8 +158,8 @@ export function createImageEditCommitter(deps: ImageEditCommitterDeps): ImageEdi
 		writeImageEdit(sel, newFields);
 	}
 
-	/** The whole `![...](...)` span goes. The image stays selected until the write has begun, as
-	 *  a Delete on it does, so the undo entry reads the image's caret, not a stray one in its block. */
+	/** The whole `![...](...)` span goes and the caret lands where the image was, as a Delete on it
+	 *  leaves it. The image stays selected until the write has begun, so undo reads its caret. */
 	function removeImage(target: WidgetTarget): void {
 		const image = imageAt(target);
 		if (!image) return;
@@ -168,7 +168,8 @@ export function createImageEditCommitter(deps: ImageEditCommitterDeps): ImageEdi
 			image.start,
 			image.end,
 			'',
-			target.preSelectOffset
+			image.start,
+			{ landCaret: true }
 		);
 		selection.clearWidget();
 	}

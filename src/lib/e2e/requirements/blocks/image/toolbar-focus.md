@@ -31,4 +31,5 @@ editor's keys reach it there.
   pressed Escape after an end at all, so a fix to one end's Mod+Z moved the other key's break
   instead of closing it
 - Remove with the Alt field open left typing going nowhere, since the field's input went with the
-  image: the class rows ended each sub-mode on its own, and none ended one by removing the image
+  image, and Remove landed no caret, so typing went to the line's start or nowhere: the class rows
+  ended each sub-mode on its own, none by removing the image, and none typed after a Remove

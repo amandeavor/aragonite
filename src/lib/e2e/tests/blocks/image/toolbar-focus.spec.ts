@@ -141,10 +141,11 @@ test.describe('image toolbar focus', () => {
 	}
 
 	for (const fieldOpen of [false, true]) {
-		test(`Remove with the Alt field ${fieldOpen ? 'open' : 'closed'} leaves typing in the image's paragraph`, async ({
+		test(`Remove with the Alt field ${fieldOpen ? 'open' : 'closed'} leaves typing where the image was`, async ({
 			page
 		}) => {
-			await editor.loadContent(LOADED);
+			// Mid-line, so a caret anywhere but the image's spot types somewhere else.
+			await editor.loadContent('text\n\na ![cat|200x200](/test-fixtures/sample.png) b\n');
 			await waitForAllImagesLoaded(page);
 			await page.locator('[data-image-widget]').first().click();
 			if (fieldOpen) {
@@ -152,9 +153,9 @@ test.describe('image toolbar focus', () => {
 				await expect(page.locator('.md-image-properties input')).toBeFocused();
 			}
 			await button(page, 'Remove image').click();
-			await editor.bridge.waitForSourceEquals('text\n\n\n');
+			await editor.bridge.waitForSourceEquals('text\n\na  b\n');
 			await page.keyboard.type('Q');
-			await editor.bridge.waitForSourceEquals('text\n\nQ\n');
+			await editor.bridge.waitForSourceEquals('text\n\na Q b\n');
 		});
 	}
 });
