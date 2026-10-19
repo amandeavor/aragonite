@@ -11,6 +11,7 @@ const BRANCH = 'main';
 // Every check ci.yml gates on, each matrix job spelled the way GitHub names it. An engine job that
 // runs with `continue-on-error` reports without gating, so it joins this list once it gates.
 const CI_CONTEXTS = [
+	'changes',
 	'unit',
 	'e2e (1/4)',
 	'e2e (2/4)',

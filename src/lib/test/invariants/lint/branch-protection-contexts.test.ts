@@ -20,6 +20,7 @@ const JOB_NAME = /^ {4}name:\s*(.+?)\s*$/;
 const MATRIX_DIMENSION = /^ {8}([A-Za-z0-9_-]+):\s*\[(.+)\]\s*$/;
 const MATRIX_KEYS_UNPARSED = /^ {8}(include|exclude):/;
 const CONTINUE_ON_ERROR = /^ {4}continue-on-error:\s*(.+?)\s*$/;
+const JOB_IF = /^ {4}if:/;
 
 /** The `jobs:` mapping's own lines, ending at the next top-level key. */
 function jobsBlock(yaml: string): string[] {
@@ -55,6 +56,8 @@ interface JobChecks {
 	names: string[];
 	/** False for a `continue-on-error` job, whose red never fails the run. */
 	gates: boolean;
+	/** A matrix job with a job-level `if:`, which reports one bare check when skipped. */
+	skipsWholeMatrix: boolean;
 }
 
 /** Each job's check names, matrix jobs expanded. */
@@ -63,8 +66,11 @@ function readJobs(yaml: string): JobChecks[] {
 	let label: string | null = null;
 	let dimensions: string[][] = [];
 	let gates = true;
+	let conditional = false;
 	const flush = () => {
-		if (label !== null) jobs.push({ names: expand(label, dimensions), gates });
+		if (label === null) return;
+		const skipsWholeMatrix = conditional && dimensions.length > 0;
+		jobs.push({ names: expand(label, dimensions), gates, skipsWholeMatrix });
 	};
 	for (const line of jobsBlock(yaml)) {
 		const job = JOB_ID.exec(line);
@@ -73,9 +79,11 @@ function readJobs(yaml: string): JobChecks[] {
 			label = job[1];
 			dimensions = [];
 			gates = true;
+			conditional = false;
 			continue;
 		}
 		if (label === null) continue;
+		if (JOB_IF.test(line)) conditional = true;
 		const continues = CONTINUE_ON_ERROR.exec(line);
 		if (continues) {
 			if (continues[1] !== 'true' && continues[1] !== 'false') {
@@ -100,6 +108,13 @@ function readJobs(yaml: string): JobChecks[] {
 /** Every check name the workflow reports. */
 export function checkNames(yaml: string): string[] {
 	return readJobs(yaml).flatMap((job) => job.names);
+}
+
+/** Gating matrix jobs a job-level `if:` can skip whole, leaving their shard checks unreported. */
+export function unreportableGates(yaml: string): string[] {
+	return readJobs(yaml)
+		.filter((job) => job.gates && job.skipsWholeMatrix)
+		.map((job) => job.names[0]);
 }
 
 /** The check names whose red fails the run, the only ones a protection rule can require. */
@@ -218,6 +233,14 @@ describe('branch protection ↔ workflow check names', () => {
 		expect(contexts).toContain('EXTERNAL_CONTEXTS');
 	});
 
+	it('no gating matrix job can be skipped whole', () => {
+		const ciYaml = readFileSync(path.join(WORKFLOWS, CI), 'utf8');
+		expect(
+			unreportableGates(ciYaml),
+			'a matrix job skipped by a job-level if reports one check under its bare name, so its required per-shard checks never arrive; condition its steps instead'
+		).toEqual([]);
+	});
+
 	it('no undeclared workflow reports a check name the rule requires', () => {
 		const outsideCi = new Map([...workflowChecks].filter(([file]) => file !== CI));
 		const colliding = undeclaredReporters(required, declaredExternal, outsideCi);
@@ -256,6 +279,18 @@ describe('branch-protection context readers: self-tests', () => {
 		].join('\n');
 		expect(checkNames(yaml)).toEqual(['unit', 'engine (1/2)', 'engine (2/2)', 'pinned']);
 		expect(gatingCheckNames(yaml)).toEqual(['unit', 'pinned']);
+		expect(unreportableGates(yaml)).toEqual([]);
+		const skipped = [
+			'jobs:',
+			'  e2e:',
+			'    if: false',
+			'    strategy:',
+			'      matrix:',
+			'        shard: [1, 2]'
+		];
+		expect(unreportableGates(skipped.join('\n'))).toEqual(['e2e (1)']);
+		const reporting = [...skipped.slice(0, 2), '    continue-on-error: true', ...skipped.slice(2)];
+		expect(unreportableGates(reporting.join('\n'))).toEqual([]);
 		const expression = ['jobs:', '  e2e:', '    continue-on-error: ${{ matrix.x }}'].join('\n');
 		expect(() => checkNames(expression)).toThrow(/true or false only/);
 	});
