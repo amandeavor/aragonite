@@ -2070,6 +2070,64 @@ function describeOwnerWrites(sources: SourceFile[]): void {
 	});
 }
 
+// ── G4.229 inside the extend module, which functions write an end ────────────
+
+const KEYBOARD_END_WRITES: Record<string, { calls: number; reason: string }> = {
+	'src/lib/selection/keyboard-extend.ts :: moveFocusTo :: focus': {
+		calls: 1,
+		reason: 'every key that moves a focus, which shows it or restores the fold'
+	},
+	'src/lib/selection/keyboard-extend.ts :: enterCrossBlockFromKeyboard :: pair': {
+		calls: 1,
+		reason: 'a pair at the caret, whose focus `moveFocusTo` moves next'
+	},
+	'src/lib/selection/keyboard-extend.ts :: extendFromCell :: pair': {
+		calls: 1,
+		reason: 'a pair at the cell, whose focus `moveFocusTo` moves next'
+	},
+	'src/lib/selection/keyboard-extend.ts :: extendWithinBlock :: in block': {
+		calls: 1,
+		reason: 'a key inside one block, which shows what it wrote'
+	},
+	'src/lib/selection/keyboard-extend.ts :: selectWholeDocument :: pair': {
+		calls: 1,
+		reason: 'the second Mod+A, whose ends are the document edges'
+	},
+	'src/lib/selection/keyboard-extend.ts :: handleShiftClick :: focus': {
+		calls: 1,
+		reason: 'a Shift+click, whose end is under the pointer'
+	},
+	'src/lib/selection/keyboard-extend.ts :: handleShiftClick :: pair': {
+		calls: 2,
+		reason: 'a Shift+click, whose end is under the pointer'
+	}
+};
+
+const END_WRITE_KINDS: CallKind[] = [
+	{ kind: 'focus', callee: 'extendFocus', counts: () => true },
+	{ kind: 'pair', callee: 'enterCrossBlock', counts: () => true },
+	{ kind: 'in block', callee: 'extendSelectionToRaw', counts: () => true }
+];
+
+function describeKeyboardEndWrites(sources: SourceFile[]): void {
+	describe('G4.229 inside `keyboard-extend.ts`, only the declared functions write an end', () => {
+		it('the writes are exactly the declared ones', () => {
+			const found = Object.fromEntries(
+				sources
+					.filter((file) => file.relPath === SOURCE.keyboardExtend)
+					.flatMap((file) => [...callSites(file, END_WRITE_KINDS)])
+			);
+			const declared = Object.fromEntries(
+				Object.entries(KEYBOARD_END_WRITES).map(([site, { calls }]) => [site, calls])
+			);
+			expect(
+				found,
+				'a key that writes its end here directly skips the show: go through `moveFocusTo` or `extendWithinBlock`, or declare it here with why'
+			).toEqual(declared);
+		});
+	});
+}
+
 // ── G4.94 the editor's own selection has one store and three writers ─────────
 
 const SELECTION_WRITERS: ManifestRule[] = [
@@ -2899,6 +2957,7 @@ describeManifests(BARE_FOCUSES, SOURCES);
 describeFileRules([HELD_BRANDS], SOURCES);
 describeCorrections(SOURCES);
 describeOwnerWrites(SOURCES);
+describeKeyboardEndWrites(SOURCES);
 describeMeasureWrites(SOURCES);
 describeManifests([MEASURE_CHANNEL], SOURCES);
 describeManifests([MARK_HANDLER_CALLERS], SOURCES);

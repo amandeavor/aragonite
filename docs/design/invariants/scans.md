@@ -1301,8 +1301,8 @@ spec that reads or sets the scroll (every VR spec does) and in every shared e2e 
 scrolls only a target that's off screen. `e2e/lint/e2e-drivers.test.ts`.
 
 **G4.229 · A moved selection end shows.** Every end a key moves (Shift+Arrow, Shift+Home and End,
-the document edges, a range folding back into one block) is written in `selection/keyboard-extend.ts`,
-whose writes ask the caret landing to park the caret there and show it, so a new key route can't
-leave its end off screen. Outside it, a write of a selection end (`extendFocus`, `enterCrossBlock`,
-`extendSelectionToRaw`) fails the scan unless its file is listed with why it shows nothing: a pointer
-drag's end is under the pointer, a restore shows its own caret. `lint/file-rules.test.ts`.
+the document edges, a fold back into one block) is written in `selection/keyboard-extend.ts`, by
+the functions the scan lists there, which mount that end and show it. Elsewhere a write of an end
+(`extendFocus`, `enterCrossBlock`, `extendSelectionToRaw`) fails the scan unless its file is listed
+with why it shows nothing: a drag's end is under the pointer, a restore shows its own caret.
+`lint/file-rules.test.ts`.
