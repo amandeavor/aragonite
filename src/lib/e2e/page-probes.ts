@@ -1,5 +1,5 @@
 import { type ConsoleMessage, type Page, type Request, type Response } from '@playwright/test';
-import { UNDO_DEBOUNCE_MS } from '../editor-actions/commit/text-batch';
+import { TYPING_PAUSE_MS } from '../plugins/highlight-occurrences/typing-pause';
 
 // Page-level checks shared across the e2e suites. Whether a spec asserts on what a probe
 // collected is its own decision: this module hands it back and never asserts.
@@ -61,8 +61,8 @@ export async function freezeInPageClock(page: Page): Promise<void> {
 	await page.clock.pauseAt(FROZEN_UNTIL);
 }
 
-/** Advance a frozen clock by this to elapse the editor's typing pause, with a margin past it. */
-export const PAST_TYPING_PAUSE_MS = UNDO_DEBOUNCE_MS + 50;
+/** Advance a frozen clock by this to elapse the occurrence plugin's typing pause, with a margin. */
+export const PAST_OCCURRENCE_PAUSE_MS = TYPING_PAUSE_MS + 50;
 
 // Whether the top-level block at `index` has a mounted host: false once windowing unmounts it.
 export function topLevelHostPresent(page: Page, index: number): Promise<boolean> {

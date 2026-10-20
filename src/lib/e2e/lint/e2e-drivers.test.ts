@@ -6,7 +6,7 @@
  */
 import { it, expect } from 'vitest';
 import { collectFiles, readSource } from '../../test/invariants/lint/scan-source';
-import { describeManifests } from '../../test/invariants/lint/file-rule';
+import { describeManifests, notUnder } from '../../test/invariants/lint/file-rule';
 import type { SourceFile } from '../../test/invariants/lint/scan-source';
 
 const files = collectFiles('src/lib/e2e', { extensions: ['.ts'] }).map(readSource);
@@ -21,6 +21,8 @@ const INSERT_TEXT_HELPER = 'src/lib/e2e/insert-text.ts';
 const PLATFORM_KEYS = 'src/lib/e2e/platform-keys.ts';
 const EDGE_CHORDS_SPEC = 'src/lib/e2e/tests/keyboard-navigation/edge-chords.spec.ts';
 const IN_PLACE_HELPER = 'src/lib/e2e/click-in-place.ts';
+const TYPING_BATCH_HELPER = 'src/lib/e2e/typing-batch.ts';
+const TYPING_PAUSE_SPEC = 'src/lib/e2e/tests/undo-typing-pause.spec.ts';
 
 const COMPOSITION = 'Composition';
 const COMPOSING = 'Composing';
@@ -52,6 +54,24 @@ const act = (verb: string) => `.${verb}(`;
 // No page object here has a reload or history method, and `EditorPage.goto` takes a query, not a route.
 const RAW_GOTO = /(?<![\w$])page\s*\.\s*goto\s*\(|\.\s*goto\s*\(\s*['"`](?:\/|https?:)/;
 const RAW_HISTORY = /\.\s*(?:reload|goBack|goForward)\s*\(/;
+
+const SCANNED_SPECS = notUnder('src/lib/e2e/lint/');
+const wait = (ms: string) => `await page.waitFor${'Timeout'}(${ms});`;
+const lines = (...parts: string[]) => parts.join('\n');
+const FIXED_WAIT = /\bwaitForTimeout\s*\(/;
+const UNDO_STEP = /\.\s*(?:undo|redo)\s*\(|\+[zZ]['"`]/;
+const NAMES_UNDO = /\bundo|debounce|typing (?:pause|batch)/i;
+// A fixed wait whose own line names undo grouping, or that sits within three lines of an undo.
+function waitsOutTypingPause(file: SourceFile): boolean {
+	const code = file.code.split('\n');
+	const text = file.text.split('\n');
+	return code.some(
+		(line, i) =>
+			FIXED_WAIT.test(line) &&
+			(NAMES_UNDO.test(text[i]) ||
+				code.slice(Math.max(0, i - 3), i + 4).some((near) => UNDO_STEP.test(near)))
+	);
+}
 
 describeManifests(
 	[
@@ -225,6 +245,47 @@ describeManifests(
 				"await link.click({ modifiers: ['ControlOrMeta'] });",
 				"await page.keyboard.down('ControlOrMeta');"
 			]
+		},
+		// Miss-analysis: a wall-clock wait split undo steps on a quiet runner and joined them on a
+		// loaded one. A wait more than three lines from the undo, with no comment, still gets past.
+		{
+			id: 'G4.232 a fixed wait never decides where undo steps split',
+			population: SCANNED_SPECS,
+			matches: waitsOutTypingPause,
+			declared: {
+				'src/lib/e2e/tests/blocks/image/selection-history.spec.ts':
+					'waits after an undo or redo has landed, for a stale selection that drops the caret late'
+			},
+			reason: `end the typing batch with endTypingBatch (${TYPING_BATCH_HELPER}): every navigation holds it, so a wait splits nothing, and the page's own timer can run late`,
+			hits: [
+				`${wait('300')} // past the 250ms undo debounce`,
+				lines(wait('700'), '', `await editor.${'undo'}();`),
+				lines(wait('150'), press('ControlOrMeta+z'))
+			],
+			misses: [
+				`${wait('150')} // checking nothing happens`,
+				lines('await editor.endTypingBatch();', `await editor.${'undo'}();`),
+				lines(wait('60'), 'await a();', 'await b();', 'await c();', `await editor.${'undo'}();`)
+			]
+		},
+		{
+			id: 'G4.232 only the typing-batch helper and its spec read the real pause',
+			population: SCANNED_SPECS,
+			matches: new RegExp(
+				`\\b(?:UNDO_${'DEBOUNCE'}_MS|PAST_TYPING_${'PAUSE'}_MS|waitForUndo${'Batch'}Flush|release${'Typing'}Pause)\\b`
+			),
+			declared: {
+				[TYPING_BATCH_HELPER]: 'releaseTypingPause, which hands the batch back to the real timer',
+				[TYPING_PAUSE_SPEC]: 'the one row that runs the real pause'
+			},
+			reason: `split undo steps with endTypingBatch (${TYPING_BATCH_HELPER}); the real pause runs only in ${TYPING_PAUSE_SPEC}`,
+			hits: [
+				`await editor.waitForUndo${'Batch'}Flush();`,
+				`await page.clock.runFor(PAST_TYPING_${'PAUSE'}_MS);`,
+				`import { UNDO_${'DEBOUNCE'}_MS } from '../editor-actions/commit/text-batch';`,
+				`await release${'Typing'}Pause(page);`
+			],
+			misses: ['await editor.endTypingBatch();', 'await page.clock.runFor(OCCURRENCE_PAUSE_MS);']
 		},
 		// Miss-analysis: three scroll rows went red on Firefox only, read as the editor scrolling,
 		// for a scroll the driver made. A locator held in a variable named `mouse` still gets past.

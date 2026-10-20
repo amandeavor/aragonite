@@ -8,7 +8,6 @@ import {
 } from './clipboard-arm';
 import { generateFixture, type FixtureShape } from '../test/perf/fixtures/generate';
 import { BLOCK_CONTENT_LOCATOR_SELECTOR } from '../caret/block-content-selector';
-import { PAST_TYPING_PAUSE_MS } from './page-probes';
 import { gotoReady } from './goto-ready';
 import { pointAtRaw } from './text-runs';
 import { expectPresentationMode } from './mode-switch';
@@ -322,12 +321,6 @@ export class EditorPage {
 			expected,
 			{ timeout, polling: 16 }
 		);
-	}
-
-	/** A fixed wait: the source already holds the typed text, so nothing marks the typing pause
-	 *  ending, and a test wanting two undo entries needs its next input after it. */
-	async waitForUndoBatchFlush(): Promise<void> {
-		await this.page.waitForTimeout(PAST_TYPING_PAUSE_MS);
 	}
 
 	/** End the typing batch open now, so the next key starts its own undo step. */

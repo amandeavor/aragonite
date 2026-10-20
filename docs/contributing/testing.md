@@ -648,6 +648,14 @@ via a `bridge.waitForSource*` or DOM-count predicate. Unsettled `keyboard.type` 
 races the inline re-render's caret restore and can type your text out of order, which is exactly
 as much fun to diagnose as it sounds.
 
+**Undo steps split where the spec says, never on a timer.** A user's typing groups into one
+undo step until they stop for 250 ms, and a spec can't lean on that: a loaded runner fires the
+page's timer late, and Firefox's driver can take longer than that between two keys. So every
+navigation through `gotoReady` holds the pause, and keys typed at any speed stay one undo step until
+the spec calls `editor.endTypingBatch()` (or `endTypingBatch(page)` from `e2e/typing-batch.ts`, when
+there's no `EditorPage` around). A wait in between splits nothing, and G4.232 fails one next to an
+undo anyway. The real pause runs in one spec only, `undo-typing-pause.spec.ts`.
+
 **Container edits need Svelte's reactivity cycle to settle.** After typing inside a list item or
 blockquote, `$effect`s and post-tick commits must flush before `getSource()` reflects the
 change. Wait on `editor.bridge.waitForSourceContains('expected')` or a sibling predicate.
