@@ -82,6 +82,8 @@ function backwardUnit(cluster: string): string {
 	return Array.from(cluster).at(-1) ?? cluster;
 }
 
+const REGIONAL_INDICATOR_START = /^[\uDC00-\uDFFF]?\p{Regional_Indicator}/u;
+
 // A cluster within two segments of an edge the window cut may run past it: the cut can leave half
 // a surrogate pair, or the ZWJ before an emoji, as a segment of its own.
 function clusterBefore(text: string, caret: number, floor: number): string {
@@ -93,7 +95,10 @@ function clusterBefore(text: string, caret: number, floor: number): string {
 		if (!segments) return Array.from(window).at(-1) ?? window;
 		const last = segments.containing(window.length - 1)!;
 		const clearOfCut = last.index > 0 && segments.containing(last.index - 1)!.index > 0;
-		if (from === floor || clearOfCut) return last.segment;
+		// Flags pair regional indicators from the start of their run, so a cut run pairs them wrong.
+		if (from === floor || (clearOfCut && !REGIONAL_INDICATOR_START.test(window))) {
+			return last.segment;
+		}
 	}
 }
 

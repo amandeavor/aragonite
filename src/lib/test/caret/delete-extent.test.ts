@@ -23,9 +23,11 @@ const THUMB_TONE = '\u{1F44D}\u{1F3FD}';
 const E_ACUTE = 'é';
 const TE = 'ते';
 const GAK = '각';
-// Each longer than the delete window: thirty people joined by ZWJ, and a letter under 100 accents.
+// Each longer than the delete window: thirty people joined by ZWJ, a letter under 100 accents, and
+// seventeen flags with one more regional indicator.
 const LONG_CHAIN = Array(30).fill('\u{1F468}').join('\u200D');
 const LONG_MARKS = 'a' + '\u0301'.repeat(100);
+const FLAG_RUN = FLAG.repeat(17) + '\u{1F1EB}';
 
 function take(text: string, caret: number, direction: DeleteDirection): string {
 	const span = characterExtent(text, caret, direction, { start: 0, end: text.length });
@@ -186,8 +188,8 @@ describe('characterExtent: the window it reads', () => {
 		}
 	});
 
-	// A cluster the window cut used to go in parts: half a ZWJ chain, a combining run's tail left on
-	// the letter before, a lone surrogate.
+	// A cluster the window cuts still goes whole: no half ZWJ chain, no accents left on the letter
+	// before, no lone surrogate.
 	it('takes a ZWJ sequence longer than the window whole, either way', () => {
 		const text = `x${LONG_CHAIN}y`;
 		expect(take(text, 1 + LONG_CHAIN.length, 'backward')).toBe('xy');
@@ -198,6 +200,12 @@ describe('characterExtent: the window it reads', () => {
 		const text = `x${LONG_MARKS}y`;
 		expect(take(text, 1, 'forward')).toBe('xy');
 		expect(take(text, 1 + LONG_MARKS.length, 'backward')).toBe(`x${LONG_MARKS.slice(0, -1)}y`);
+	});
+
+	// Regional indicators pair from the start of their run, which the window can cut.
+	it('pairs a run of regional indicators longer than the window from the run start', () => {
+		const text = `a${FLAG_RUN}`;
+		expect(take(text, text.length, 'backward')).toBe(`a${FLAG.repeat(17)}`);
 	});
 
 	it('never splits a surrogate pair where the window starts', () => {
@@ -221,7 +229,8 @@ describe('characterExtent: a span never splits what the editor keeps whole', () 
 		GAK,
 		'\u{1D400}',
 		LONG_CHAIN,
-		LONG_MARKS
+		LONG_MARKS,
+		FLAG_RUN
 	);
 	it('ends on a cluster boundary going forward, and inside one only after a combining mark', () => {
 		const segmenter = graphemeSegmenter()!;
