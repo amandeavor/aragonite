@@ -374,7 +374,9 @@ describe('editor-root gestures: the right-click press record', () => {
 			'a key',
 			(h: ReturnType<typeof harness>) =>
 				h.root.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true }))
-		]
+		],
+		// A touch's long-press opens its menu with no mousedown before it.
+		['a touch press', (h: ReturnType<typeof harness>) => h.press(h.editable)]
 	])('%s after it hands the next menu to the live selection', (_, after) => {
 		const h = pressThenSelect({ button: 2 });
 		after(h);
@@ -400,6 +402,13 @@ describe('editor-root gestures: the right-click press record', () => {
 		])('with %s puts the caret at the press for the menu', (_, init) => {
 			const h = harness();
 			rightClick(h, h.widgetLink, init);
+			expect(h.focus).toHaveBeenCalledOnce();
+		});
+
+		it('whose pointerdown a block cancelled, so no mousedown came, still puts the caret there', () => {
+			const h = harness();
+			h.press(h.widgetLink, { ...AT, button: 2 });
+			h.widgetLink.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, ...AT }));
 			expect(h.focus).toHaveBeenCalledOnce();
 		});
 

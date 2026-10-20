@@ -147,8 +147,8 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		if (active instanceof HTMLElement && root.contains(active) && active !== root) active.blur();
 	}
 
-	// The latest secondary press (a right button, or Control with the left on a Mac); a key in
-	// between means the next menu is the keyboard's.
+	// The latest secondary press (a right button, or Control with the left on a Mac); a key or any
+	// other press in between, a touch's long-press included, leaves none.
 	let contextPress: ContextPress | null = null;
 
 	function install(root: HTMLElement): () => void {
@@ -257,6 +257,11 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 			}),
 			onRoot(root, 'pointerdown', startMarginDrag),
 			onRoot(root, 'mousedown', handleMouseDown),
+			// Every press writes the record: a widget that shows its source cancels the pointerdown,
+			// so no mousedown follows, and a mousedown rewrites it after the block's own pointerdown.
+			onRoot<PointerEvent>(root, 'pointerdown', (e) => (contextPress = notePress(root, e)), {
+				capture: true
+			}),
 			onRoot<MouseEvent>(root, 'mousedown', (e) => (contextPress = notePress(root, e)), {
 				capture: true
 			}),

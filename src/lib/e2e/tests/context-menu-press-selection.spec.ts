@@ -18,28 +18,30 @@ interface Point {
 	y: number;
 }
 
-const dispatchAt = (page: Page, type: 'mousedown' | 'contextmenu', at: Point) =>
-	page.evaluate(
-		({ type, x, y }) => {
-			const init = {
-				bubbles: true,
-				cancelable: true,
-				button: 2,
-				buttons: 2,
-				clientX: x,
-				clientY: y
-			};
-			document.elementFromPoint(x, y)!.dispatchEvent(new MouseEvent(type, init));
-		},
-		{ type, ...at }
-	);
+/** The right button's press as an engine fires it: a block that cancels the pointerdown (a widget
+ *  that shows its source) gets no mousedown. */
+const pressAt = (page: Page, at: Point) =>
+	page.evaluate(({ x, y }) => {
+		const init = { bubbles: true, cancelable: true, button: 2, buttons: 2, clientX: x, clientY: y };
+		const el = document.elementFromPoint(x, y)!;
+		const pointer = { ...init, pointerId: 1, pointerType: 'mouse', isPrimary: true };
+		if (el.dispatchEvent(new PointerEvent('pointerdown', pointer))) {
+			el.dispatchEvent(new MouseEvent('mousedown', init));
+		}
+	}, at);
+
+const contextMenuAt = (page: Page, at: Point) =>
+	page.evaluate(({ x, y }) => {
+		const init = { bubbles: true, cancelable: true, button: 2, buttons: 2, clientX: x, clientY: y };
+		document.elementFromPoint(x, y)!.dispatchEvent(new MouseEvent('contextmenu', init));
+	}, at);
 
 /** A right-click as Safari delivers it: the press, its own selection under the pointer (which
  *  Playwright's WebKit never makes, so `selectUnder` does), then `contextmenu`. */
 async function safariRightClick(page: Page, at: Point, selectUnder: () => Promise<unknown>) {
-	await dispatchAt(page, 'mousedown', at);
+	await pressAt(page, at);
 	await selectUnder();
-	await dispatchAt(page, 'contextmenu', at);
+	await contextMenuAt(page, at);
 }
 
 /** Right-click `word`, which Safari selects; `path` and `start` name it in the editor's offsets. */
@@ -104,6 +106,31 @@ test.describe('the right-click menu reads the selection from the press', () => {
 	});
 });
 
+// A widget that shows its source cancels its pointerdown, so no mousedown follows a press on one.
+test('a click on a widget that shows its source ends the right-click before it', async ({
+	page
+}) => {
+	const editor = new PluginsPage(page);
+	await editor.gotoPlugins('math-two');
+	await editor.setPresentationMode('live');
+	await editor.waitForRenderFlush();
+	const equations = page.locator("[data-block-path='[0]'] [data-inline-widget]");
+	await editor.focusBlock(0, 0);
+	for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+ArrowRight');
+	const sum = await textRunCenter(page, 'Sum');
+	await page.mouse.click(sum.x, sum.y, { button: 'right' });
+	await expect(menuItem(page, 'Cut')).toBeEnabled();
+	await page.keyboard.press('Escape');
+	const first = await elementCenter(equations.first());
+	await page.mouse.click(first.x, first.y);
+	await editor.waitForRenderFlush();
+	// The first shows its source now, so the second is the last widget left.
+	const second = await elementCenter(equations.last());
+	await page.mouse.click(second.x, second.y, { button: 'right' });
+	await expect(menuItem(page, 'Insert block')).toBeVisible();
+	expect(await page.evaluate(() => window.getSelection()!.toString())).toBe('');
+});
+
 // Every engine but Safari leaves a right-click's press as a caret, so the menu a real right-click
 // opens there is the one the same press opens after Safari's own select.
 
@@ -111,7 +138,8 @@ test.describe('the right-click menu reads the selection from the press', () => {
 const TARGETS_DOC =
 	'abcd efgh\n\n---\n\n```\ncode body\n```\n\n| cell | d |\n| --- | --- |\n| e | f |\n\n' +
 	'See [the docs](https://example.com/) here\n\nAt <https://example.org/angle> here\n\n' +
-	'Pic ![pic](/test-fixtures/sample.png) here\n';
+	'Pic ![pic](/test-fixtures/sample.png) here\n\n' +
+	'- In ![pic](/test-fixtures/sample.png) a list\n\n> In ![pic](/test-fixtures/sample.png) a quote\n';
 
 interface Target {
 	name: string;
@@ -140,11 +168,20 @@ const withImage = async (page: Page) => {
 	return editor;
 };
 
-const inPlugins = (seed: string) => async (page: Page) => {
+const inPlugins = (seed: string, doc?: string) => async (page: Page) => {
 	const editor = new PluginsPage(page);
 	await editor.gotoPlugins(seed);
+	if (doc) await editor.loadContent(doc);
 	await editor.setPresentationMode('live');
 	await editor.waitForRenderFlush();
+	return editor;
+};
+
+const IMAGE = '![pic](/test-fixtures/sample.png)';
+
+const imageIn = (seed: string, doc: string) => async (page: Page) => {
+	const editor = await inPlugins(seed, doc)(page);
+	await waitForFirstImageLoaded(page);
 	return editor;
 };
 
@@ -210,7 +247,24 @@ const TARGETS: Target[] = [
 	element('an emoji', inPlugins('emoji'), widgetIn('[0]'), 'Cut'),
 	element('a footnote reference', inPlugins('footnotes-ref'), widgetIn('[1]'), 'Cut'),
 	element("a plugin's widget", inPlugins('chips'), widgetIn('[0]'), 'Cut'),
-	element("a plugin's widget in a cell", inPlugins('chips'), widgetIn('[1]'), 'Cut')
+	element("a plugin's widget in a cell", inPlugins('chips'), widgetIn('[1]'), 'Cut'),
+	element('an image in a list item', withImage, widgetIn('[7,0,0]'), 'Cut'),
+	element('an image in a quote', withImage, widgetIn('[8,0]'), 'Cut'),
+	element(
+		'a footnote reference in a footnote definition',
+		inPlugins('footnotes', 'A note [^a] here\n\n[^a]: See [^b] too\n\n[^b]: Other\n'),
+		widgetIn('[1,0]'),
+		'Cut'
+	),
+	element(
+		'an image in a details body',
+		imageIn(
+			'details',
+			`<details open>\n<summary>S</summary>\n\nIn ${IMAGE} a body\n\n</details>\n`
+		),
+		widgetIn('[0,1]'),
+		'Cut'
+	)
 ];
 
 interface MenuRead {

@@ -78,6 +78,9 @@ export interface RootMenus {
 
 const EDIT_LINK = 'link.edit';
 
+const isBlockHost = (node: EventTarget): node is HTMLElement =>
+	node instanceof HTMLElement && node.matches('.block-host[data-block-path]');
+
 interface Point {
 	x: number;
 	y: number;
@@ -207,7 +210,9 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		// The keyboard's contextmenu event (Windows fires it on the ContextMenu key's release)
 		// lands on the item the keydown's own menu already focused: that menu is the answer.
 		if (target.closest('.md-menu')) return;
-		const host = target.closest<HTMLElement>('.block-host[data-block-path]');
+		// Read off the press's own path: the caret placed for the menu may have shown a widget's
+		// source, which takes the target out of the page.
+		const host = e.composedPath().find(isBlockHost) ?? null;
 		const path = readBlockPath(host);
 		if (!host || !path) return;
 		const point = { x: e.clientX, y: e.clientY };

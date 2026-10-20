@@ -4,16 +4,18 @@ Safari selects the word, line break or whole element under a right-click before 
 `contextmenu`. The editor decides which menu to open on whether the right button's press landed on
 a selected range; what the clipboard rows act on (Cut and Copy, the Paste target) stays the live
 selection, so Paste replacing a right-clicked word works as a native macOS right-click does.
-The rows model Safari by setting the selection between a dispatched `mousedown` and `contextmenu`,
-since Playwright's WebKit off macOS selects nothing on a right-click.
+The rows model Safari by setting the selection between a dispatched press and `contextmenu`, since
+Playwright's WebKit off macOS selects nothing on a right-click. The press is fired as an engine fires
+it: a pointerdown, then a mousedown only if no block cancelled the pointerdown.
 
 ## Happy paths
 
 - A right-click after Safari's own select opens the menu a real right-click opens on an engine
   that selects nothing, for every target: a word in prose, in a link, in an autolink, in code and
   in a cell, a divider, an inline image (selected or not), a tag, a wikilink in prose and in a
-  cell, an inline equation, an emoji, a footnote reference, and a plugin's widget in prose and in
-  a cell.
+  cell, an inline equation, an emoji, a footnote reference, a plugin's widget in prose and in
+  a cell, an image in a list item, a quote and a details body, and a footnote reference inside a
+  footnote definition.
   - A word Safari selects in text the clipboard rows act on (prose, a link or an autolink, a cell) stays
     selected, with Copy enabled, and Paste replaces it.
   - Anywhere else (code, a divider, any inline widget) the caret at the press replaces Safari's
@@ -31,6 +33,9 @@ since Playwright's WebKit off macOS selects nothing on a right-click.
   never draws over an open menu.
   - The selection toolbar a word Safari selected brings back may stand at the read: it is no menu
     the pick came from.
+- A click on a widget that shows its source, between two right-clicks, ends the first one: a
+  right-click on another such widget then opens the menu its own press makes, with the caret at the
+  press and the Insert flyout.
 
 ## Miss-analysis
 
@@ -45,3 +50,6 @@ since Playwright's WebKit off macOS selects nothing on a right-click.
 - In Firefox the prose Paste, Paste as plain text and cell Paste pasted nothing (#746): each
   handed its text over as a constructed paste event, whose `clipboardData` Firefox empties. The
   suite ran on Chromium alone, which keeps it.
+- On every engine a right-click on a widget that shows its source (a tag, a wikilink, an equation,
+  a footnote reference) gets no mousedown, since the block cancels the pointerdown, so the menu
+  read whatever right-click came before. The rows dispatched a mousedown no engine fires there.
