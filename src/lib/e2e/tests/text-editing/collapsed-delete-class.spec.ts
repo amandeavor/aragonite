@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { skipUnlessSupported } from '../../browser-engine';
 
 /**
  * A collapsed Backspace or Delete inside a line takes the same bytes on every engine, by key or by
@@ -207,3 +208,53 @@ for (const route of ['key', 'soft keyboard'] as const) {
 		}
 	});
 }
+
+/** A soft keyboard's Backspace naming the range it would take, as a real one does: `widget` makes
+ *  it the first inline widget, otherwise the character before the caret. */
+async function sendKeylessBackspaceOver(page: Page, widget: boolean): Promise<void> {
+	await page.evaluate((widget) => {
+		const target = document.activeElement as HTMLElement;
+		const range = document.createRange();
+		if (widget) range.selectNode(target.querySelector('[data-inline-widget]')!);
+		else {
+			const caret = window.getSelection()!.getRangeAt(0);
+			range.setStart(caret.startContainer, caret.startOffset - 1);
+			range.setEnd(caret.startContainer, caret.startOffset);
+		}
+		target.dispatchEvent(
+			new InputEvent('beforeinput', {
+				inputType: 'deleteContentBackward',
+				bubbles: true,
+				cancelable: true,
+				targetRanges: [new StaticRange(range)]
+			})
+		);
+	}, widget);
+}
+
+test.describe('a soft keyboard delete that names its range', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+	});
+
+	test('one character named: the editor takes it', async ({ page }) => {
+		await editor.loadContent('abc\n');
+		await editor.focusBlockAtPath([0], 3);
+		await sendKeylessBackspaceOver(page, false);
+		await editor.bridge.waitForSourceEquals('ab\n');
+	});
+
+	// The keyboard's own wider edit (an autocorrected word, a whole widget) stays the browser's,
+	// which a hand-fired event has none of, so the editor writing nothing is the proof.
+	test('a wider range named: the editor leaves it to the browser', async ({ page }) => {
+		skipUnlessSupported(page, 'syntheticTargetRanges');
+		await editor.loadContent('a&copy;b\n');
+		await editor.focusBlockAtPath([0], 7);
+		await sendKeylessBackspaceOver(page, true);
+		await editor.waitForRenderFlush();
+		expect(await editor.bridge.getSource()).toBe('a&copy;b\n');
+	});
+});

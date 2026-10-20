@@ -31,6 +31,10 @@ after the delete, and that one undo puts both back.
 
 - the key: Backspace or Delete pressed once
 - a soft keyboard: a cancelable `deleteContentBackward` or `deleteContentForward` with no keydown
+- a soft keyboard naming one character as its range: the editor takes it
+- a soft keyboard naming more than one character (here a whole entity): the editor writes nothing and
+  leaves the keyboard's own edit to the browser (skipped on WebKit, which drops the range a script
+  gives an event)
 
 ## Error cases
 
