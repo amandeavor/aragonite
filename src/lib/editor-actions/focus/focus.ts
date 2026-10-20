@@ -24,8 +24,11 @@ export function createFocusActions(
 		caretWriter: deps.caretWriter,
 		getPresentationMode: deps.reading.mode
 	};
-	const gapStopAt = (parentPath: number[], boundaryIndex: number) =>
-		tryGapStop(gapScope, parentPath, boundaryIndex);
+	function gapStopAt(parentPath: number[], boundaryIndex: number): boolean {
+		const stopped = tryGapStop(gapScope, parentPath, boundaryIndex);
+		if (stopped) void deps.caretLanding.showGap();
+		return stopped;
+	}
 
 	/** Past the last block a move appends a paragraph (outside reading mode); before the first
 	 *  it stops. */

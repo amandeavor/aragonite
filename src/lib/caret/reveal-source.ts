@@ -56,7 +56,7 @@ export function createSourceReveal(deps: SourceRevealDeps): SourceReveal {
 		if (!settled) return;
 		// Focus before the caret write: a caret placed in an unfocused editable receives no
 		// typing, and focusing afterwards would reset the selection to the element start.
-		if (document.activeElement !== settled) settled.focus();
+		if (document.activeElement !== settled) settled.focus({ preventScroll: true });
 		const clamped = Math.max(0, Math.min(atSourceOffset, deps.source.length));
 		placeCaret(settled, deps.sourceStart + clamped);
 	}

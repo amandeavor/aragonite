@@ -1,5 +1,6 @@
 import { type Locator, type Page } from '@playwright/test';
 import { isWebKit } from '../../../browser-engine';
+import { clickInPlace } from '../../../click-in-place';
 
 // Shared image-widget reads for the image block e2e specs.
 
@@ -91,7 +92,9 @@ export async function dropNativeCaret(page: Page): Promise<void> {
 
 /** The toolbar's one field, the alt: click its button, then the input is the one there. */
 export async function openImageField(page: Page, name: 'Alt text' = 'Alt text'): Promise<Locator> {
-	await page.locator('.md-image-properties').getByRole('button', { name, exact: true }).click();
+	await clickInPlace(
+		page.locator('.md-image-properties').getByRole('button', { name, exact: true })
+	);
 	const input = page.locator('.md-image-properties input');
 	await input.waitFor({ state: 'visible' });
 	return input;

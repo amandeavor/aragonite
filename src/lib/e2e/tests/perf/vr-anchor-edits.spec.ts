@@ -9,6 +9,7 @@ import {
 	spacerCount,
 	topVisibleHostTop
 } from './vr-helpers';
+import { clickInPlace } from '../../click-in-place';
 
 // Edits and unmounts away from what is on screen: an insert above it shifts every index below,
 // a cell scrolled out of view leaves a column's width, and a move below it relocates the block
@@ -162,7 +163,7 @@ test('reordering a list item below the fold does not drift scrollTop (F7)', asyn
 	await editor.scrollEditorTo(Math.round(alphaOffset! - 250));
 
 	// The baseline is taken after the click, so any scroll the click caused is included in it.
-	await page.locator('[contenteditable="true"]', { hasText: 'ZBETAITEM' }).click();
+	await clickInPlace(page.locator('[contenteditable="true"]', { hasText: 'ZBETAITEM' }));
 	await editor.waitForRenderFlush();
 
 	const listTopRel = (await offsetOf('ZALPHAITEM'))! - (await scrollTopOf(page));
@@ -207,7 +208,7 @@ for (const [key, item] of [
 
 		const listTop = await revealedOffsetOf(page, editor, 'ZALPHAITEM');
 		await editor.scrollEditorTo(Math.round(listTop - 250));
-		await page.locator('[contenteditable="true"]', { hasText: item }).click();
+		await clickInPlace(page.locator('[contenteditable="true"]', { hasText: item }));
 		await editor.waitForRenderFlush();
 		expect(
 			listTop - (await scrollTopOf(page)),

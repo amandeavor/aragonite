@@ -4,7 +4,7 @@ A click into a block puts the caret there, and sometimes swaps what the block sh
 
 Two bits of code hold that up, both from the fix for click-focus jumps (270c2839c):
 
-- The click routes in `src/lib/components/blocks/text/widget-interaction.ts` focus the block's own element with a plain `focus()`: when a click opens a formula's source, when an arrow key enters a formula at the block's edge, and when a click beside a formula snaps the caret to it. The block is already on screen by then, so the browser's own focus scroll has nothing to do. A route that focused something off screen would scroll the page by itself, and this spec would catch it.
+- The click routes in `src/lib/components/blocks/text/widget-interaction.ts` focus the block's own element with `preventScroll`: when a click opens a formula's source, when an arrow key enters a formula at the block's edge, and when a click beside a formula snaps the caret to it. The focus scrolls nothing in any browser; the height correction below is the only scroll a click causes.
 - When heights change around the click, the height correction keeps the focused block still, as long as its top is at or below the top of the viewport (`src/lib/windowing/steady-block.ts :: heldBlock`, which every correction a list makes picks through), instead of the block at the top. It only matters when something above the clicked block changes height too, like an open formula above it closing as the click lands; otherwise holding either block gives the same answer.
 
 The fixture is the `/test/plugins` route, which has the LaTeX plugin on, with 30 short paragraphs above and below the three targets. The display formula renders on one line but has six lines of source, so opening it makes the block a lot taller.
@@ -15,7 +15,7 @@ The fixture is the `/test/plugins` route, which has the LaTeX plugin on, with 30
 - Click on a display formula: its source shows, taller than the render, and `scrollTop` doesn't move (1px tolerance).
 - Click on an inline formula: its source opens in the line, and `scrollTop` doesn't move (1px tolerance).
 - With the display formula's source open, click on the inline formula in the line below it: the display formula closes and shrinks as the inline one opens, and the clicked line stays under the pointer (its top moves under 1px). Holding the top block here instead slides the line up by the shrink, over 100px.
-  (under Firefox the spec marks this one `fixme` against #749, the focusing click scrolling the page)
+  Miss-analysis: on Firefox the driver's own click scrolled its target to the middle of the screen before pressing, so the row went red there for a scroll the editor never made, and got parked instead of clicked in place.
 
 ## Non-vacuity
 

@@ -14,6 +14,7 @@ import { pointAtRaw } from './text-runs';
 import { expectPresentationMode } from './mode-switch';
 import type { PresentationMode } from '../presentation-mode';
 import { insertText } from './insert-text';
+import { clickInPlace } from './click-in-place';
 
 // Re-exported so a spec's in-`evaluate` block-content lookup uses the one selector definition
 // instead of inlining `:not(.selection-overlay)`.
@@ -175,7 +176,7 @@ export class EditorPage {
 	// ── User Actions ────────────────────────────────────────────────────
 
 	async clickBlock(index: number) {
-		await this.getBlock(index).click();
+		await clickInPlace(this.getBlock(index));
 	}
 
 	/** Reaches the nested blocks `clickBlock` cannot, by resolving the path to a pixel point. */

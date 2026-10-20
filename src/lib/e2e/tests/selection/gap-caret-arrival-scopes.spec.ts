@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { CLOSER_BOUNDARY, LAST_CELL, WINDOWED } from './gap-caret-fixtures';
+import { clickInPlace } from '../../click-in-place';
 
 // Arrival at boundaries the root's own flat list does not answer: inside a container, and at
 // the join a render window cuts (`requirements/selection/gap-caret-arrival-scopes.md`).
@@ -56,7 +57,7 @@ test.describe('gap caret under virtual rendering', () => {
 		expect(mountedRootHosts).toBeLessThan(60);
 
 		await page.evaluate(() => (window as any).__test.rects.scrollTo([100], { block: 'center' }));
-		await page.locator('.table-cell').nth(LAST_CELL).click();
+		await clickInPlace(page.locator('.table-cell').nth(LAST_CELL));
 		await editor.page.keyboard.press('ArrowDown');
 
 		await editor.bridge.waitForGapCaret({ parentPath: [], index: 101 });

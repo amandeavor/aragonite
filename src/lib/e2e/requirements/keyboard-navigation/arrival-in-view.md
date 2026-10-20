@@ -20,3 +20,7 @@ When a key puts the caret somewhere that isn't fully on screen, the editor scrol
   - Miss-analysis: reorder-in-view moves paragraphs, whose focus never scrolled, so no test moved a block focused whole, the one kind whose focus call did.
 - Select All (twice, so it takes the whole document), then ArrowRight in a document taller than the editor: the caret collapses to the end, and the last block is on screen
   - Miss-analysis: the collapse only mounted the end block and trusted the focus call to show it, which didn't happen once the block had to mount first, and no test collapsed a range in a document taller than the editor.
+- ArrowDown from a table's last cell onto the gap below it, the gap 4px under the bottom edge: the gap comes on screen at the bottom edge. The same from 40px under: the gap lands at the bottom edge too, not in the middle of the screen
+  - Miss-analysis: every gap test had the gap on screen or ran where the browser's own focus scroll happened to show it (Chromium's, which centres a far one), so nothing noticed no route asked the editor to show the gap.
+- ArrowDown onto a block formula just below the viewport: the formula opens its source and the caret's line comes on screen
+  - Miss-analysis: a rendered block takes focus a tick after the move hands it the caret, so the arrival's scroll found no focus in it; the browser's own focus scroll had covered that, and every formula arrival test started on screen.

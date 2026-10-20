@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { progressiveScrollTo, spacerCount, UNWINDOWED_PROSE } from './vr-helpers';
+import { clickInPlace } from '../../click-in-place';
 
 // Two writers to one scrollTop, made to collide: scrolling to a block re-asserts a position that
 // includes the header's height, while the header's resize observer adds the difference on top, so
@@ -126,7 +127,7 @@ test('a header resize while a landed reveal still holds its pin does not double-
 		return rect.top - document.querySelector('.editor')!.getBoundingClientRect().top;
 	}, TARGET);
 
-	await page.locator('[data-testid="header-height-toggle"]').click();
+	await clickInPlace(page.locator('[data-testid="header-height-toggle"]'));
 	await editor.waitForResizeObserverFlush();
 	await editor.waitForRenderFlush();
 
@@ -172,7 +173,7 @@ test('a header resize compensates rather than re-places a reveal the anchor is n
 	await editor.waitForRenderFlush();
 	expect(Math.abs((await offsetInPort(visibleTarget)) - beforeReveal)).toBeLessThanOrEqual(1);
 
-	await page.locator('[data-testid="header-height-toggle"]').click();
+	await clickInPlace(page.locator('[data-testid="header-height-toggle"]'));
 	await editor.waitForResizeObserverFlush();
 	await editor.waitForRenderFlush();
 

@@ -2,12 +2,13 @@
  * An e2e spec drives the browser through the shared helpers, each of which waits for or supplies
  * what a raw call skips: composition through the IME driver (G4.49), the clipboard through its
  * helper (G4.212), navigation through `gotoReady` and `reloadReady`, a mode switch through a helper
- * that waits for the mode (G4.133), and click runs and keyless text through their Firefox helpers.
- * Runs with the other e2e lints; probe text is spelled in pieces, since this file is scanned too.
+ * that waits for the mode (G4.133), and click runs, keyless text and scroll-safe clicks (G4.228)
+ * through their Firefox helpers. Probe text is spelled in pieces, since this file is scanned too.
  */
 import { it, expect } from 'vitest';
 import { collectFiles, readSource } from '../../test/invariants/lint/scan-source';
 import { describeManifests } from '../../test/invariants/lint/file-rule';
+import type { SourceFile } from '../../test/invariants/lint/scan-source';
 
 const files = collectFiles('src/lib/e2e', { extensions: ['.ts'] }).map(readSource);
 
@@ -18,6 +19,7 @@ const BRIDGE_HOME = 'src/lib/e2e/editor-page.ts';
 const CONTROL_HOME = 'src/lib/e2e/mode-switch.ts';
 const MULTI_CLICK_HELPER = 'src/lib/e2e/multi-click.ts';
 const INSERT_TEXT_HELPER = 'src/lib/e2e/insert-text.ts';
+const IN_PLACE_HELPER = 'src/lib/e2e/click-in-place.ts';
 
 const COMPOSITION = 'Composition';
 const COMPOSING = 'Composing';
@@ -30,6 +32,18 @@ const setter = 'setPresentation' + 'Mode';
 const dbl = 'dbl' + 'click';
 const count = 'click' + 'Count';
 const insert = 'insert' + 'Text';
+
+// A shared helper, which can't know whether its caller measures the scroll, or a spec that reads or
+// sets it (the VR specs all do, some through their helpers).
+const SCROLL_READ =
+	/\bscroll(?:Top|Left|X|Y|Height)\b|\b(?:scrollEditorTo|progressiveScrollTo|scrollIntoView|toBeInViewport)\b|\brects\.scrollTo\b/;
+const HOLDS_SCROLL = (file: SourceFile): boolean =>
+	!file.relPath.startsWith('src/lib/e2e/lint/') &&
+	!file.relPath.startsWith('src/lib/e2e/simulation/') &&
+	(!file.relPath.endsWith('.spec.ts') ||
+		file.relPath.startsWith('src/lib/e2e/tests/perf/') ||
+		SCROLL_READ.test(file.code));
+const act = (verb: string) => `.${verb}(`;
 
 // No page object here has a reload or history method, and `EditorPage.goto` takes a query, not a route.
 const RAW_GOTO = /(?<![\w$])page\s*\.\s*goto\s*\(|\.\s*goto\s*\(\s*['"`](?:\/|https?:)/;
@@ -160,6 +174,59 @@ describeManifests(
 	.${insert}(ch)`
 			],
 			misses: [`await ${insert}(page, 'x');`, "await page.keyboard.type('x');"]
+		},
+		// Miss-analysis: three scroll rows went red on Firefox only, read as the editor scrolling,
+		// for a scroll the driver made. A locator held in a variable named `mouse` still gets past.
+		{
+			id: 'G4.228 a spec that reads the scroll, and every shared helper, acts on a locator in place',
+			population: HOLDS_SCROLL,
+			matches:
+				/(?<!\b(?:mouse|touchscreen)\s*)\.\s*(?:click|hover|tap|dragTo|scrollIntoViewIfNeeded)\s*\(/,
+			declared: {
+				'src/lib/e2e/tests/decorations/mark-hover.spec.ts':
+					'clicks the host’s toggle from page script, so no driver moves the pointer',
+				'src/lib/e2e/tests/perf/vr-header-reveal-race.spec.ts':
+					'clicks the header toggle from page script, inside the scroll it races',
+				'src/lib/e2e/tests/perf/vr-reveal-anchor.spec.ts':
+					'clicks a contents entry from page script, inside the scroll it races'
+			},
+			reason: `click, hover or scroll a locator with ${IN_PLACE_HELPER}: Firefox over BiDi scrolls every locator action's target to the middle of the screen first`,
+			hits: [
+				`await cell.${'click'}();`,
+				`await row${act('hover')});`,
+				`await target${act('click')}{ position: { x, y } });`,
+				`await page.getByTestId('edit')
+	${act('click')});`,
+				`await el${act('scrollIntoViewIfNeeded')});`,
+				{ relPath: 'src/lib/e2e/tests/perf/vr-x.spec.ts', code: `await cell${act('click')});` },
+				{
+					relPath: 'src/lib/e2e/tests/x.spec.ts',
+					code: `await progressiveScrollTo(editor, 900);\nawait cell${act('click')});`
+				},
+				{
+					relPath: 'src/lib/e2e/tests/x.spec.ts',
+					code: `await page.evaluate(() => __test.rects.scrollTo([9]));\nawait cell${act('click')});`
+				},
+				{
+					relPath: 'src/lib/e2e/tests/x.spec.ts',
+					code: `const x = await el.evaluate((e) => e.scrollLeft);\nawait cell${act('click')});`
+				},
+				{
+					relPath: 'src/lib/e2e/tests/x.spec.ts',
+					code: `await cell${act('click')});\nawait expect(row).toBeInViewport();`
+				}
+			],
+			misses: [
+				'await clickInPlace(cell);',
+				`await page.mouse${act('click')}x, y);`,
+				`await page.mouse${act('move')}x, y);`,
+				`await page.touchscreen${act('tap')}x, y);`,
+				{ relPath: 'src/lib/e2e/tests/x.spec.ts', code: `await cell${act('click')});` },
+				{
+					relPath: 'src/lib/e2e/tests/x.spec.ts',
+					code: `expect(doc.scrollWidth).toBe(390);\nawait chip${act('tap')});`
+				}
+			]
 		},
 		// Miss-analysis: two selection specs stayed green with the harness dropping live mode to
 		// source. An alias of the bridge held across statements still gets past the matcher.

@@ -2,6 +2,9 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { gotoReady } from '../../goto-ready';
+import { FENCE, LAST_CELL, TABLE as GAP_TABLE, filler } from '../selection/gap-caret-fixtures';
+import { clickInPlace } from '../../click-in-place';
 
 const DIVIDER_AT = 45;
 // The block after the divider wraps to several lines, so moving the divider past it takes it
@@ -204,7 +207,7 @@ test.describe('a text or table caret that arrives off screen comes into view', (
 	}) => {
 		await page.evaluate((i) => (window as any).__test.rects.reveal([i]), TABLE_AT);
 		await editor.waitForRenderFlush();
-		await cellInRow(page, 3).click();
+		await clickInPlace(cellInRow(page, 3));
 		await putJustBelow(page, `[data-block-path='[${TABLE_AT}]'] [data-table-row-idx='4']`);
 
 		await page.keyboard.press('ArrowDown');
@@ -247,7 +250,7 @@ test.describe('an arrival shows the caret itself, however it lands', () => {
 	// one table row test stepped a single row, so every other press of a long walk went unseen.
 	test('walking down a long table keeps every row’s caret on screen', async ({ page }) => {
 		const table = page.locator(`[data-block-path='[${TABLE_AT}]']`);
-		await table.locator("[data-table-row-idx='0'] .table-cell").first().click();
+		await clickInPlace(table.locator("[data-table-row-idx='0'] .table-cell").first());
 		for (let row = 1; row < ROWS; row++) {
 			await page.keyboard.press('ArrowDown');
 			await expect(
@@ -323,5 +326,92 @@ test.describe('an arrival shows the caret itself, however it lands', () => {
 
 		await expectCaretShown(page, 'after ArrowDown');
 		expect(Math.abs((await scrollTopOf(page)) - before)).toBeLessThan(80);
+	});
+});
+
+test.describe('a gap caret that arrives off screen comes into view at the nearest edge', () => {
+	const TABLE_AT = 30;
+	const GAP = { parentPath: [], index: TABLE_AT + 1 };
+
+	/** The gap's boundary against the editor's visible band, in viewport pixels. */
+	const gapInBand = (page: Page) =>
+		page.evaluate(() => {
+			const view = document.querySelector('.editor') as HTMLElement;
+			const top = view.getBoundingClientRect().top + view.clientTop;
+			const gap = document.querySelector('[data-gap-caret]') as HTMLElement;
+			return { at: gap.getBoundingClientRect().top - top, band: view.clientHeight };
+		});
+
+	// Miss-analysis: every gap test had the gap on screen or ran where the browser's own focus
+	// scroll happened to show it, so nothing noticed no route asked the editor to show the gap.
+	for (const below of [4, 40]) {
+		test(`ArrowDown onto a gap ${below}px under the bottom edge lands it at that edge`, async ({
+			page
+		}) => {
+			const editor = new EditorPage(page);
+			await editor.goto();
+			await editor.loadContent(`${filler(30, 0)}\n${GAP_TABLE}\n${FENCE}\n${filler(80, 30)}`);
+			await page.evaluate((i) => (window as any).__test.rects.reveal([i]), TABLE_AT);
+			await editor.waitForRenderFlush();
+			await clickInPlace(page.locator('.table-cell').nth(LAST_CELL));
+			// The table's bottom, where the gap opens, `below` pixels under the editor's bottom edge.
+			for (let pass = 0; pass < 3; pass++) {
+				await page.evaluate(
+					({ i, below }) => {
+						const view = document.querySelector('.editor') as HTMLElement;
+						const block = document.querySelector(`[data-block-path='[${i}]']`) as HTMLElement;
+						const bottom = view.getBoundingClientRect().top + view.clientTop + view.clientHeight;
+						view.scrollTop += block.getBoundingClientRect().bottom - bottom - below;
+					},
+					{ i: TABLE_AT, below }
+				);
+				await editor.waitForRenderFlush();
+			}
+
+			await page.keyboard.press('ArrowDown');
+			await editor.bridge.waitForGapCaret(GAP);
+			await editor.waitForRenderFlush();
+
+			const { at, band } = await gapInBand(page);
+			expect(at).toBeLessThan(band);
+			// At the edge, not centred: the gap sits within its own line of the bottom.
+			expect(at).toBeGreaterThan(band - 30);
+		});
+	}
+});
+
+test.describe('a block that shows its source on arrival comes into view', () => {
+	const MATH_AT = 30;
+	const lines = (count: number, from: number) =>
+		Array.from({ length: count }, (_, i) => `Line ${from + i} with some words on it.`);
+
+	// Miss-analysis: the source opens a tick after the move hands the block the caret, and every
+	// math arrival test started on screen, where nothing had to scroll.
+	test('ArrowDown onto a block formula just below the viewport shows its source', async ({
+		page
+	}) => {
+		const editor = new EditorPage(page);
+		await gotoReady(page, '/test/plugins?seed=mathblock');
+		await editor.loadContent(
+			[...lines(MATH_AT, 0), '$$x^2$$', ...lines(30, MATH_AT + 1)].join('\n\n') + '\n'
+		);
+		await editor.waitForRenderFlush();
+		await editor.focusBlockEnd(MATH_AT - 1);
+		for (let pass = 0; pass < 3; pass++) {
+			await page.evaluate((i) => {
+				const view = document.querySelector('.editor') as HTMLElement;
+				const block = document.querySelector(`[data-block-path='[${i}]']`) as HTMLElement;
+				const bottom = view.getBoundingClientRect().top + view.clientTop + view.clientHeight;
+				view.scrollTop += block.getBoundingClientRect().top - bottom - 4;
+			}, MATH_AT);
+			await editor.waitForRenderFlush();
+		}
+		await expect(page.locator(`[data-block-path='[${MATH_AT}]']`)).not.toBeInViewport();
+
+		await page.keyboard.press('ArrowDown');
+		await expect(page.locator('.math-block-source')).toHaveCount(1);
+		await editor.waitForRenderFlush();
+
+		await expectCaretShown(page, 'after ArrowDown');
 	});
 });

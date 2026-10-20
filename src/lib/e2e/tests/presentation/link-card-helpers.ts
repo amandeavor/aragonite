@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import type { EditorPage } from '../../editor-page';
 import { textRunCenter } from '../../text-runs';
+import { clickInPlace } from '../../click-in-place';
 
 // The link card's selectors and the gestures that open and commit it.
 
@@ -21,7 +22,7 @@ export async function openCardOn(ep: EditorPage, page: Page, word: string): Prom
 
 /** Step into the card's field the way a user does; the caret stays in the document until then. */
 export async function editUrl(page: Page, url: string): Promise<void> {
-	await page.locator(URL_FIELD).click();
+	await clickInPlace(page.locator(URL_FIELD));
 	await expect(page.locator(URL_FIELD)).toBeFocused();
 	await page.keyboard.press('ControlOrMeta+a');
 	await page.keyboard.type(url);
