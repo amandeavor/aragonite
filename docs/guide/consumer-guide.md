@@ -377,7 +377,7 @@ editor.getBlockKindAt([99]); // null
 
 `getSelection(): EditorSelection | null`
 
-Returns a snapshot of the current selection (a copy, so changing it changes nothing), or `null` when the editor isn't focused, or after a reading-mode jump, which places no caret. While an image is selected whole, it returns a collapsed caret at the image's edge (its end, after a click): the next `insertMarkdown` or keystroke still replaces the image, and passing that value to `setSelection` puts a caret back there without selecting the image again.
+Returns a snapshot of the current selection (a copy, so changing it changes nothing), or `null` when the editor isn't focused. Reading mode has no caret, so there it's `null` unless a range is selected. While an image is selected whole, it returns a collapsed caret at the image's edge (its end, after a click): the next `insertMarkdown` or keystroke still replaces the image, and passing that value to `setSelection` puts a caret back there without selecting the image again.
 
 ```ts
 editor.getSelection();
@@ -586,7 +586,7 @@ A keystroke fires its `input` as it's written, one per key, with no `detail` (re
 
 `path` always walks from the document root to the block operated on, nested blocks and typing included. One event names one path even when the write spanned several blocks; a `delete`, `updateContent`, `tableDeleteRow` or `tableDeleteColumn` that did carries `detail.crossBlock: true`, and a host that reconciles incrementally should re-read the whole affected range on those rather than just `path`.
 
-**`selectionChange`** carries the same snapshot [`getSelection()`](#reading-the-document-and-the-selection) returns, or `null` when nothing is focused or a reading-mode jump just put focus somewhere with no caret.
+**`selectionChange`** carries the same snapshot [`getSelection()`](#reading-the-document-and-the-selection) returns, or `null` when nothing is focused. In reading mode, which has no caret, a click or a jump reports `null` too.
 
 ```ts
 events.on('selectionChange', (sel) => sel);

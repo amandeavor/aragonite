@@ -190,15 +190,16 @@ export interface EditorInstance {
 	getBlockKindAt(path: number[]): AnyBlockKind | null;
 	/**
 	 * The live selection, or null when nothing is focused. While an image is selected whole it is
-	 * a caret at the image's edge its selection came from (its end after a click).
+	 * a caret at the image's edge its selection came from (its end after a click). Reading mode
+	 * has no caret, so there it's null unless a range is selected.
 	 */
 	getSelection(): EditorSelection | null;
 	/**
 	 * Restore a `getSelection()` snapshot. Async because the target is scrolled into view first,
 	 * and true means it got there, not merely that it mounted. Never throws: an out-of-range
-	 * offset clamps in its own coordinate space (a table's cell index to the last cell), and an
-	 * unresolvable path, or a scroll that never arrives, resolves false. A caret at the start of a
-	 * list lands in its first item; one inside a closed body lands on its title row.
+	 * offset clamps in its own coordinate space, and an unresolvable path, or a scroll that never
+	 * arrives, resolves false. A caret at a list's start lands in its first item, one inside a
+	 * closed body on its title row, and in reading mode one lands as focus on its block.
 	 */
 	setSelection(selection: EditorSelection): Promise<boolean>;
 	/**

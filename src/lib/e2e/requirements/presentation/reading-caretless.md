@@ -10,6 +10,9 @@ there's no caret to move inside one.
 
 - **A click on a word:** focus is on the word's block, the browser holds no caret in the editor,
   and `getSelection()` is null
+- **Clicks, heard by a host:** `selectionChange` reports no caret for any of them, and a host
+  listening for `focusin` and `focusout` around the editor hears nothing from a click in the block
+  that already holds focus
 - **Leaving reading mode after a click:** a letter typed in source mode lands at the clicked
   point (the start of the clicked word)
 - **ArrowDown from a click:** focus steps to the next block each press, a wrapped paragraph
@@ -44,3 +47,6 @@ there's no caret to move inside one.
   paragraph that kept ArrowDown forever, and a block focused by Tab that no arrow moved, never ran.
 - No row typed after leaving reading mode from a click, so a caret put back at the block's start
   instead of the click read as fine.
+- The click rows read `getSelection()` after the click, never what `selectionChange` said during
+  it, and Chromium reports the click's caret only once it's cleared, so the caret Firefox and
+  WebKit announced went unseen; no row listened for focus events around the editor either.

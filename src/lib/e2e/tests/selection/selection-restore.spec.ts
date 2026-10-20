@@ -301,6 +301,10 @@ test.describe('selection: setSelection restores a getSelection snapshot', () => 
 			ranges: window.getSelection()?.rangeCount ?? 0
 		}));
 		expect(where).toEqual({ focused: '[1]', ranges: 0 });
+
+		await editor.setPresentationMode('source');
+		await page.keyboard.type('X');
+		await editor.bridge.waitForSourceContains('BravoX two');
 	});
 
 	test('an unresolvable path resolves false without scrolling or stealing focus', async ({

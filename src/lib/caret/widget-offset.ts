@@ -180,7 +180,7 @@ export function rawSelectionFocus(el: HTMLElement): RawOffset | null {
  */
 export interface CaretWriter {
 	/** A collapsed caret at raw `raw` in `el`, past a marker prefix (Chromium bounces one before
-	 *  it). Reading mode has no caret: there it drops the selection and returns false. */
+	 *  it). Where `declinesCaret` takes the caret (reading mode) it drops the selection instead. */
 	placeCaretAtRaw(el: HTMLElement, raw: number, placement: { clamp: CaretClamp }): boolean;
 	/** Raw `[anchor, focus]` in `el`, backward when the focus comes first; an endpoint at raw 0
 	 *  behind a marker prefix lands after the span, as a caret does. */
@@ -208,7 +208,12 @@ export interface CaretWriter {
 	clear(): void;
 }
 
-export function createCaretWriter(onWrite: () => void, isReading: () => boolean): CaretWriter {
+/** `declinesCaret` is handed each caret the writer is asked for and answers true where none may
+ *  stand (reading mode), taking note of the point if it wants it. */
+export function createCaretWriter(
+	onWrite: () => void,
+	declinesCaret: (el: HTMLElement, raw: number) => boolean
+): CaretWriter {
 	// The editor's own caret stands wherever it put it; only a caret the browser moved is moved.
 	let written: DomPosition | null = null;
 
@@ -261,7 +266,7 @@ export function createCaretWriter(onWrite: () => void, isReading: () => boolean)
 
 	return {
 		placeCaretAtRaw(el, raw, { clamp }) {
-			if (isReading()) {
+			if (declinesCaret(el, raw)) {
 				clear();
 				return false;
 			}

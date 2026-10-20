@@ -21,7 +21,7 @@ import { landsRestoredCaret } from './restored-caret';
 import { caretTargetFor } from './caret-target';
 import { applySelectionToDom, readNativeSelection } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';
-import { caretRectAt, caretRectAtRaw } from '../caret/visual-lines';
+import { caretRectAt, caretRectAtRaw, lineHeightOf } from '../caret/visual-lines';
 import { findBlockPathForElement, findCellPathForElement } from './path-lookup';
 import type { CaretPosition, EditorSelection, SelectionPoint } from './primitives';
 import {
@@ -115,8 +115,7 @@ function caretBox(el: HTMLElement): DOMRectReadOnly {
 
 function firstLineBox(el: HTMLElement): DOMRectReadOnly {
 	const box = el.getBoundingClientRect();
-	const line = parseFloat(getComputedStyle(el).lineHeight) || box.height;
-	return new DOMRect(box.left, box.top, box.width, Math.min(box.height, line));
+	return new DOMRect(box.left, box.top, box.width, Math.min(box.height, lineHeightOf(el)));
 }
 
 export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {

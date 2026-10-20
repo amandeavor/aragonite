@@ -39,6 +39,40 @@ test.describe('reading mode: a click keeps no caret', () => {
 		expect(await editor.bridge.getSelection()).toBeNull();
 	});
 
+	test('a click tells selectionChange subscribers of no caret', async ({ page }) => {
+		const editor = await loadReading(page, DOC);
+		await page.evaluate(() => (window as any).__test.startSelectionChangeCapture());
+
+		await clickWord(page, [0], 'gamma');
+		await clickWord(page, [1], 'para');
+		await expect.poll(() => focusName(page)).toContain('[1]');
+
+		const heard = await page.evaluate(() => (window as any).__test.stopSelectionChangeCapture());
+		expect(heard.filter((record: { focus: unknown }) => record.focus !== null)).toEqual([]);
+		expect(await editor.bridge.getSelection()).toBeNull();
+	});
+
+	test('a click in a focused block: a host around the editor hears no focus leave', async ({
+		page
+	}) => {
+		await loadReading(page, DOC);
+		await clickWord(page, [0], 'gamma');
+		await page.evaluate(() => {
+			const w = window as any;
+			w.__heard = [];
+			const host = document.querySelector('.editor')!.parentElement!;
+			for (const type of ['focusin', 'focusout']) {
+				host.addEventListener(type, () => w.__heard.push(type));
+			}
+		});
+
+		await clickWord(page, [0], 'delta');
+		await clickWord(page, [0], 'beta');
+		await expect.poll(() => holdsCaret(page)).toBe(false);
+
+		expect(await page.evaluate(() => (window as any).__heard)).toEqual([]);
+	});
+
 	test('a double click still selects its word', async ({ page }) => {
 		skipUnlessSupported(page, 'nativeWordSelect');
 		await loadReading(page, DOC);

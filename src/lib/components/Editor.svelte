@@ -49,7 +49,7 @@
 	import { createDraftRegistry } from './draft-registry';
 	import { createShownSourceState } from './blocks/text/shown-source.svelte';
 	import { createDocumentStamps } from '../editor-actions/commit/document-stamp';
-	import type { EditorSelection } from '../selection/primitives';
+	import { selectionsEqual, type EditorSelection } from '../selection/primitives';
 	import { widgetSpanAt } from './blocks/text/widget-adjacency';
 	import { assignIds } from '../block-id';
 	import { createDocumentSwap, initDocument } from './editor-root/document-swap';
@@ -320,7 +320,12 @@
 		selection: selectionState,
 		watchSize: (el, onResize) => scrollOwner.watchSize(el, onResize)
 	});
-	const caretWriter = createCaretWriter(drawnCaret.request, () => reading.mode() === 'reading');
+	// Reading mode has no caret; one the editor asks for there marks where leaving puts it.
+	const caretWriter = createCaretWriter(drawnCaret.request, (el, raw) => {
+		if (reading.mode() !== 'reading') return false;
+		readingFocus.notePoint(el, raw);
+		return true;
+	});
 
 	// With no live range this reads no document bytes, so a keystroke at a caret costs nothing here.
 	const coverage = $derived.by(() => {
@@ -1210,9 +1215,14 @@
 		return blockNodeAt(doc, path)?.kind ?? null;
 	}
 
-	/** A snapshot of the current selection with copied paths, or null when nothing is focused. */
+	/** A snapshot of the current selection with copied paths, or null when nothing is focused.
+	 *  Reading mode has no caret, so a collapsed one the browser holds for a moment reads as null. */
 	export function getSelection(): EditorSelection | null {
-		return readCurrentSelection(selectionState, blockRefs);
+		const selection = readCurrentSelection(selectionState, blockRefs);
+		if (!selection || reading.mode() !== 'reading') return selection;
+		const { focus } = selection;
+		const isCaret = !focus.cellCoordinate && selectionsEqual(selection, { anchor: focus, focus });
+		return isCaret ? null : selection;
 	}
 
 	function caretAt(path: number[], offset = 0): EditorSelection {

@@ -43,7 +43,7 @@ const OWN_TAB_STOPS: FileRule = {
 	id: 'G4.235 only a control or the reading-mode stop puts an element in the tab order',
 	population: under(SOURCE_DIR.library),
 	matches:
-		/tabindex\s*=\s*["']0["']|tabindex=\{[^}]*\b0\b[^}]*\}|tabindex:\s*0\b|tabIndex\s*=\s*0\b|tabIndex\s*=[^;\n]*\?\s*0\s*:/,
+		/tabindex\s*[=:]\s*["']?0\b|tabindex=\{[^}]*\b0\b[^}]*\}|tabindex\s*=[^;\n]*[?:]\s*0\b|setAttribute\(\s*["']tabindex["']\s*,\s*["'`]?0\b/i,
 	allowed: {
 		[SOURCE.readingFocus]: 'the reading-mode stop itself',
 		'src/lib/ambient/ambient-dom.ts':
@@ -59,12 +59,17 @@ const OWN_TAB_STOPS: FileRule = {
 		inLibrary('<div tabindex={open ? 0 : -1}></div>'),
 		inLibrary('const props = { tabindex: 0 };'),
 		inLibrary('el.tabIndex = 0;'),
-		inLibrary('el.tabIndex = focused ? 0 : -1;')
+		inLibrary('el.tabIndex = focused ? 0 : -1;'),
+		inLibrary('el.tabIndex = reading ? -1 : 0;'),
+		inLibrary("el.setAttribute('tabindex', '0');"),
+		inLibrary('const props = { tabIndex: 0 };'),
+		inLibrary('<div tabIndex="0"></div>')
 	],
 	misses: [
 		inLibrary('<div tabindex="-1"></div>'),
 		inLibrary('el.tabIndex = -1;'),
-		inLibrary('const tabIndex = 10;')
+		inLibrary('const tabIndex = 10;'),
+		inLibrary("el.setAttribute('tabindex', '-1');")
 	]
 };
 

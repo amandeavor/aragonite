@@ -122,6 +122,22 @@ describe('reading mode keeps one tab stop', () => {
 		await mounted.settle();
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['invariant:reading-tab-stops']);
 	});
+
+	it('reports an element left editable in a block, and leaves the host header alone', async () => {
+		mounted = mountEditor({ source: DOC, presentationMode: 'reading' });
+		await mounted.settle();
+
+		const header = document.createElement('div');
+		header.setAttribute('data-host-content', '');
+		header.innerHTML = '<div tabindex="0"></div><div contenteditable="true"></div>';
+		root().append(header);
+		expect(readingTabOrderProblem(root())).toBeNull();
+
+		const field = document.createElement('div');
+		field.setAttribute('contenteditable', 'true');
+		root().querySelector('[data-block-path="[2]"]')!.append(field);
+		expect(readingTabOrderProblem(root())).toMatch(/2 tab stops that aren't controls/);
+	});
 });
 
 describe('the editing modes leave every block its own tab stop', () => {

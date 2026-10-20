@@ -27,7 +27,7 @@ import {
 	landableStartAbutsIsland,
 	markerPrefixOf
 } from '../caret/widget-offset';
-import { isAtFirstVisualLine, isAtLastVisualLine } from '../caret/visual-lines';
+import { isAtFirstVisualLine, isAtLastVisualLine, lineHeightOf } from '../caret/visual-lines';
 import {
 	caretEdgeKey,
 	endsSelectAllRun,
@@ -214,11 +214,6 @@ function scrollsThroughBlock(ctx: SharedKeydownContext, el: HTMLElement): boolea
 		return now && new DOMRect(0, now.bottom, 1, line);
 	});
 	return true;
-}
-
-function lineHeightOf(el: HTMLElement): number {
-	const style = getComputedStyle(el);
-	return parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4 || 20;
 }
 
 /** A plain arrow at a hidden construct edge moves the side the caret means, not the caret

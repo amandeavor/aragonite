@@ -863,8 +863,7 @@
 	onblur={onBlur}
 	oncompositionstart={editableSurface.onCompositionStart}
 	oncompositionend={editableSurface.onCompositionEnd}
-	{@attach editableSurface.caretSource}
-	{@attach editableSurface.tabStop}
+	{@attach editableSurface.registerSurface}
 ></div>
 
 <style>

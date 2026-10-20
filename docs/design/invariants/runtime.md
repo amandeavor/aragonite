@@ -592,6 +592,6 @@ range, a soft keyboard's wider delete, a surface not decided yet). `checkDeleteD
 **G1.133 · Reading mode has one block stop** (`reading-tab-stops`). In reading mode Tab is the
 page's focus walk, so the editor keeps one block in it, the one whose own element last took focus
 (`components/editor-root/reading-focus.svelte.ts`), and every other block's focus element sits at
--1. Dev fails a second element in the tab order that isn't a control, checked each time the stop
-moves. The same check ships as `readingTabOrderProblem` for a plugin's tests.
+-1. Dev fails a second element in the tab order that isn't a control (one left editable counts,
+the host's header doesn't). The same check ships as `readingTabOrderProblem` for a plugin's tests.
 `checkReadingTabStops` · `reading-focus.test.ts`, `reading-keyboard.spec.ts`.

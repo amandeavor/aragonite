@@ -277,15 +277,13 @@ export interface EditableSurfaceDeps {
 
 export interface EditableSurface {
 	/** Spread on the editable element: its accessibility attributes, the empty block's hint, the
-	 *  attachment that hint reads focus through, and the drawn caret's registration. */
+	 *  attachment that hint reads focus through, and `registerSurface`. */
 	attributes(combobox: InlineMenuCombobox | null): EditableSurfaceAttributes & {
 		[attachment: symbol]: unknown;
 	};
-	/** Registers the element with the drawn caret while it is mounted; `attributes` carries it, and
-	 *  a surface that spreads no attributes attaches it on its own. */
-	caretSource(el: HTMLElement): () => void;
-	/** Holds the element's tabindex for the reading-mode tab stop, the same way. */
-	tabStop(el: HTMLElement): () => void;
+	/** Registers the element with the drawn caret and the reading-mode tab stop while it is
+	 *  mounted; `attributes` carries it, and a surface that spreads none attaches it on its own. */
+	registerSurface(el: HTMLElement): () => void;
 	crossBlock: CrossBlockHandlers;
 	sharedCtx: SharedKeydownContext;
 	surface: EditableSurfaceMethods;
@@ -835,10 +833,16 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 
 	// Taken once: Svelte re-runs an attachment only when the function under its key changes.
 	const trackKey = createAttachmentKey();
-	const caretSourceKey = createAttachmentKey();
-	const tabStopKey = createAttachmentKey();
+	const registerKey = createAttachmentKey();
 
-	const tabStop = (el: HTMLElement) => deps.readingFocus.hold(el, deps.getMyPath);
+	function registerSurface(el: HTMLElement): () => void {
+		const releaseStop = deps.readingFocus.hold(el, deps.getMyPath);
+		const releaseCaret = caretSource(el);
+		return () => {
+			releaseCaret();
+			releaseStop();
+		};
+	}
 
 	// A composition or a shown inline source owns the caret, so the browser's own shows then.
 	const caretSource = (el: HTMLElement) =>
@@ -858,11 +862,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// `aria-expanded`, so a screen reader would hear nothing about the list.
 	function attributes(combobox: InlineMenuCombobox | null) {
 		const hint = placeholder.text() ?? undefined;
-		const attachments = {
-			[trackKey]: placeholder.track,
-			[caretSourceKey]: caretSource,
-			[tabStopKey]: tabStop
-		};
+		const attachments = { [trackKey]: placeholder.track, [registerKey]: registerSurface };
 		if (deps.reading.mode() === 'reading') {
 			return { ...readingRole(deps.getNode()), 'data-placeholder': hint, ...attachments };
 		}
@@ -881,8 +881,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 
 	return {
 		attributes,
-		caretSource,
-		tabStop,
+		registerSurface,
 		crossBlock,
 		sharedCtx,
 		surface,

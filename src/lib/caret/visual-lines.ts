@@ -79,8 +79,12 @@ export function neighbourCaretRect(
 /** How far apart two carets' boxes may sit and still read as one visual line: under one line of
  *  the element's own leading, so sub/superscript or inline-image jitter is not a new line. */
 export function sameLineTolerance(el: HTMLElement): number {
-	const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || FALLBACK_LINE_HEIGHT;
-	return lineHeight * SAME_LINE_TOLERANCE;
+	return lineHeightOf(el) * SAME_LINE_TOLERANCE;
+}
+
+/** `el`'s computed line height in pixels, with a generic line where it computes to `normal`. */
+export function lineHeightOf(el: HTMLElement): number {
+	return parseFloat(getComputedStyle(el).lineHeight) || FALLBACK_LINE_HEIGHT;
 }
 
 /** The right edge of what `el` draws on the visual line nearest `y`, or null where it draws
