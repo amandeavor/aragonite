@@ -389,4 +389,17 @@ describe('a landing in reading mode', () => {
 		await landing.navigate(at([0], 0));
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['invariant:reading-landing-leaves-no-caret']);
 	});
+
+	// Miss-analysis: the check read the whole editor, so a click elsewhere during the jump's
+	// scroll failed a landing that left nothing behind, and no test placed a caret outside the leaf.
+	it('a caret a click put in another block during the scroll passes the check', async () => {
+		const other = document.createElement('p');
+		other.textContent = 'Elsewhere.';
+		const { landing } = readingBlock(() => {
+			document.body.append(other);
+			getSelection()!.collapse(other.firstChild!, 2);
+		});
+		await landing.navigate(at([0], 0));
+		expect(takeDevWarns()).toEqual([]);
+	});
 });

@@ -94,7 +94,7 @@ These checks run in three kinds of place:
 | G1.121 | A menu asked to close is gone a tick later                                                 | A·N     |
 | G1.122 | A built-in metadata read names the kind the node is                                        | A·N     |
 | G1.128 | A caret key a selected widget passes on leaves the widget first                            | A·N     |
-| G1.131 | A landing in reading mode leaves no browser selection in the editor                        | A·N     |
+| G1.131 | A landing in reading mode leaves no browser selection in the block it landed in            | A·N     |
 
 ### The entries
 
@@ -576,5 +576,6 @@ widget's handler passed on with the widget still selected. `checkMotionLeftWidge
 **G1.131 · A reading-mode landing leaves no caret** (`reading-landing-leaves-no-caret`). Reading
 mode has no caret, so a landing there (a footnote jump, an outline entry, `navigateTo`) moves focus
 to its target and clears the selection: Firefox starts Tab from a selection, the others from focus.
-Dev fails a selection still in the editor once the landing has scrolled.
+Dev fails a selection still in the landed block once the landing has scrolled (only that block, so a
+click elsewhere mid-scroll passes).
 `checkReadingLandingLeavesNoCaret` · `caret-landing.test.ts`, `reading-jump-focus.spec.ts`.

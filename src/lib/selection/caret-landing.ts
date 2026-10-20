@@ -263,7 +263,7 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 		if (reading) {
 			assertInvariant('reading-landing-leaves-no-caret', () =>
 				checkReadingLandingLeavesNoCaret(
-					deps.getEditorRoot(),
+					deps.getBlockElByPath([...target.leafPath]),
 					readNativeSelection()?.focus.node ?? null
 				)
 			);

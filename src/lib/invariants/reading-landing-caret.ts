@@ -1,18 +1,19 @@
 /**
- * G1.131: a landing in reading mode leaves no browser selection in the editor. Firefox starts Tab
- * from a selection and the other engines from focus, so a caret left behind splits where Tab goes.
+ * G1.131: a landing in reading mode leaves no browser selection in the block it landed in. Firefox
+ * starts Tab from a selection and the other engines from focus, so a caret left behind splits where
+ * Tab goes. Only the landed block counts, so a click elsewhere while the jump scrolls passes.
  */
 
 import type { InvariantViolation } from '../assert';
 
 export function checkReadingLandingLeavesNoCaret(
-	root: Node | null,
+	landedEl: Node | null,
 	selected: Node | null
 ): InvariantViolation | null {
-	if (!root || !selected || !root.contains(selected)) return null;
+	if (!landedEl || !selected || !landedEl.contains(selected)) return null;
 	return {
 		code: 'reading-landing-leaves-no-caret',
 		message:
-			'a reading-mode landing left a browser selection in the editor: clear it, so Tab starts from the focused element'
+			'a reading-mode landing left a browser selection in the block it landed in: clear it, so Tab starts from the focused element'
 	};
 }
