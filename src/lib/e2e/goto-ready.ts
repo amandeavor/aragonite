@@ -1,5 +1,6 @@
 import type { ConsoleMessage, Page } from '@playwright/test';
 import { watchPageFailures } from './page-probes';
+import { holdTypingBatches } from './typing-batch';
 
 // Every e2e navigation, so a spec acts only on a hydrated route: a server-rendered route paints
 // its markup before any handler attaches, and only the route's readiness global says they have.
@@ -98,6 +99,7 @@ async function navigateReady(
 		// The routes paint a webfont; a caret measured before it arrives is placed by the
 		// fallback font's metrics, and the block reflows under the spec.
 		await page.evaluate(() => document.fonts.ready);
+		await holdTypingBatches(page);
 	} finally {
 		failures.stop();
 		loadSteps.stop();

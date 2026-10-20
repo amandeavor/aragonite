@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTextBatch, UNDO_DEBOUNCE_MS } from '#lib/editor-actions/commit/text-batch.js';
+import {
+	createTextBatch,
+	endTypingBatchesForTests,
+	holdTypingPausesForTests,
+	openTypingBatchCountForTests,
+	UNDO_DEBOUNCE_MS
+} from '#lib/editor-actions/commit/text-batch.js';
+
+// The suite runs in a dev build, so the one production row turns dev checks off here.
+const env = vi.hoisted(() => ({ devChecks: true }));
+vi.mock('#lib/env.js', () => ({ isDevChecks: () => env.devChecks }));
 
 function harness() {
 	const pushSnapshot = vi.fn();
@@ -82,5 +92,74 @@ describe('text-batch lifecycle', () => {
 		expect(onEnd).toHaveBeenCalledTimes(1);
 		batch.keystroke([3], 5);
 		expect(pushSnapshot).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('text-batch test control', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		endTypingBatchesForTests();
+	});
+	afterEach(() => {
+		env.devChecks = true;
+		holdTypingPausesForTests(false);
+		vi.useRealTimers();
+	});
+
+	it('a held batch outlasts any pause, and the end closes every open batch', () => {
+		holdTypingPausesForTests(true);
+		const one = harness();
+		const two = harness();
+		one.batch.keystroke([0], 0);
+		one.batch.armPause();
+		two.batch.keystroke([1], 0);
+		two.batch.armPause();
+		vi.advanceTimersByTime(UNDO_DEBOUNCE_MS * 10);
+		one.batch.keystroke([0], 1);
+		expect(one.pushSnapshot).toHaveBeenCalledTimes(1);
+		expect(openTypingBatchCountForTests()).toBe(2);
+
+		endTypingBatchesForTests();
+		expect(one.onEnd).toHaveBeenCalledTimes(1);
+		expect(two.onEnd).toHaveBeenCalledTimes(1);
+		expect(openTypingBatchCountForTests()).toBe(0);
+		one.batch.keystroke([0], 2);
+		expect(one.pushSnapshot).toHaveBeenCalledTimes(2);
+	});
+
+	it('an end with no batch open ends nothing', () => {
+		const { batch, onEnd } = harness();
+		batch.keystroke([0], 0);
+		batch.interrupt();
+		endTypingBatchesForTests();
+		expect(onEnd).toHaveBeenCalledTimes(1);
+	});
+
+	it('releasing the hold ends what it kept open, and the timer runs again', () => {
+		holdTypingPausesForTests(true);
+		const { batch, pushSnapshot, onEnd } = harness();
+		batch.keystroke([0], 0);
+		batch.armPause();
+		holdTypingPausesForTests(false);
+		expect(onEnd).toHaveBeenCalledTimes(1);
+
+		batch.keystroke([0], 1);
+		batch.armPause();
+		vi.advanceTimersByTime(UNDO_DEBOUNCE_MS);
+		expect(onEnd).toHaveBeenCalledTimes(2);
+		expect(openTypingBatchCountForTests()).toBe(0);
+		batch.keystroke([0], 2);
+		expect(pushSnapshot).toHaveBeenCalledTimes(3);
+	});
+
+	it('outside dev checks the hold is refused and the pause still ends a batch', () => {
+		env.devChecks = false;
+		expect(holdTypingPausesForTests(true)).toBe(false);
+		const { batch, onEnd } = harness();
+		batch.keystroke([0], 0);
+		batch.armPause();
+		expect(openTypingBatchCountForTests()).toBe(0);
+		vi.advanceTimersByTime(UNDO_DEBOUNCE_MS);
+		expect(onEnd).toHaveBeenCalledTimes(1);
 	});
 });

@@ -7,7 +7,6 @@
 ## Edge cases
 
 - Type, click into a different block, type: two independent batches separated by the focus change, not the structural op.
-- Type, pause past the debounce window, type more in the same block: two batches (debounce expired).
 
 ## A burst that ends in a kind change
 
