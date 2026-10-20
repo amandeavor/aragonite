@@ -53,9 +53,25 @@ export function handlePendingBreakKey(e: KeyboardEvent, deps: PendingBreakKeyDep
 	}
 	const stepsBack = e.key === 'Backspace' || (e.key === 'ArrowLeft' && edge === null);
 	if (!stepsBack && e.key !== 'Delete') return false;
-	deps.pendingBreak.end();
-	if (!stepsBack || e.shiftKey || hasModifier(e)) return false;
+	// Shift+Backspace is Backspace on every OS; Shift+ArrowLeft extends a selection.
+	const extending = e.shiftKey && e.key === 'ArrowLeft';
+	if (!stepsBack || extending || hasModifier(e)) {
+		deps.pendingBreak.end();
+		return false;
+	}
 	e.preventDefault();
+	takeBackOpenLine(deps);
+	return true;
+}
+
+/** Takes the open line back, the caret left at the end of the text above: Backspace or ArrowLeft
+ *  on the line, or a soft keyboard's delete there. False when no line is open. */
+export function takeBackOpenLine(
+	deps: Pick<PendingBreakKeyDeps, 'pendingBreak' | 'requestCaret'>
+): boolean {
+	const at = deps.pendingBreak.at();
+	if (at === null) return false;
+	deps.pendingBreak.end();
 	deps.requestCaret(at);
 	return true;
 }

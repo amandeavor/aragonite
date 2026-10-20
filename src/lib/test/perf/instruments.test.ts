@@ -19,6 +19,7 @@ import {
 	recordNeighbourPass,
 	recordSettlePass,
 	recordIslandKeyScan,
+	recordDeleteWindow,
 	recordIslandRebuild,
 	recordParse,
 	recordRebuildDepth,
@@ -71,6 +72,7 @@ const EMPTY: PerfSnapshot = {
 	decorationRuns: 0,
 	islandRebuilds: 0,
 	islandKeyScans: 0,
+	deleteWindowUnits: 0,
 	heightTableBuilds: [],
 	neighbourPasses: 0,
 	settlePasses: 0
@@ -88,6 +90,7 @@ function recordOneOfEach(): void {
 	recordDecorationRun();
 	recordIslandRebuild();
 	recordIslandKeyScan();
+	recordDeleteWindow(8);
 	recordHeightTableBuild([0, 1], 640);
 	recordNeighbourPass();
 	recordSettlePass();

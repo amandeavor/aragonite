@@ -57,7 +57,7 @@ export function createTypedInput(deps: TypedInputDeps): (e: InputEvent) => boole
 			deps.widgets.isRevealing,
 			(edit) =>
 				void deps.writeText({
-					...rangeWrite(edit),
+					...rangeWrite(deps.node, edit),
 					intent: 'typed',
 					mode: 'authored',
 					source: 'live-selection-edit'

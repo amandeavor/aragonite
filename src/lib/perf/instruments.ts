@@ -63,6 +63,8 @@ export interface PerfSnapshot {
 	decorationRuns: number;
 	islandRebuilds: number;
 	islandKeyScans: number;
+	/** Code units a collapsed delete segmented around the caret, summed over deletes. */
+	deleteWindowUnits: number;
 	/** One entry per windowing height table built: the list's path and the width it estimated at. */
 	heightTableBuilds: { path: string; width: number }[];
 	/** Checks of whether a change moved the focused block past a neighbour, which only a rebuilt
@@ -116,6 +118,7 @@ function emptySnapshot(): PerfSnapshot {
 		decorationRuns: 0,
 		islandRebuilds: 0,
 		islandKeyScans: 0,
+		deleteWindowUnits: 0,
 		heightTableBuilds: [],
 		neighbourPasses: 0,
 		settlePasses: 0
@@ -249,6 +252,11 @@ export function recordIslandRebuild(): void {
 export function recordIslandKeyScan(): void {
 	if (!enabled) return;
 	counters.islandKeyScans++;
+}
+
+export function recordDeleteWindow(units: number): void {
+	if (!enabled) return;
+	counters.deleteWindowUnits += units;
 }
 
 export function recordHeightTableBuild(path: readonly number[], width: number): void {

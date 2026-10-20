@@ -567,7 +567,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 			// The widget stays selected through its own key, so the write leaves the caret alone.
 			updateContent: (newRaw, caretBefore, caretAfter) =>
 				void deps.writeText({
-					...rangeWrite({ raw: newRaw, caret: caretAfter }),
+					...rangeWrite(node, { raw: newRaw, caret: caretAfter }),
 					intent: 'typed',
 					mode: 'authored',
 					source: 'widget-key',
@@ -621,7 +621,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 			if (isReading()) return;
 			void replaceSelectedWidget(deps, widget, text, (edit) =>
 				deps.writeText({
-					...rangeWrite(edit),
+					...rangeWrite(deps.node, edit),
 					intent: 'typed',
 					mode: 'authored',
 					source: 'widget',

@@ -1,5 +1,4 @@
 import { test, type Page } from '@playwright/test';
-import { isMacOS } from './platform-keys';
 
 /** Which browser is running, for the harness helpers whose path differs by engine (the clipboard,
  *  the IME driver, dropping the native caret). */
@@ -25,13 +24,16 @@ export type EngineCapability =
 	| 'caretScreenshot'
 	| 'contextMenuKey'
 	| 'insertWithoutScroll'
-	| 'inertBackspace';
+	| 'inertBackspace'
+	| 'syntheticTargetRanges';
 
-/** Firefox over BiDi lacks CDP, touch, `emulateMedia`, the ContextMenu key and a screenshot caret,
- *  and scrolls on any insert; Playwright's macOS WebKit goes back in history on Backspace. */
+/** Firefox over BiDi and Playwright's WebKit each lack a few gestures; `SKIP_REASONS` says which
+ *  and why. */
 export function engineSupports(page: Page, capability: EngineCapability): boolean {
 	if (capability === 'cdp') return isChromium(page);
-	if (capability === 'inertBackspace') return !(isMacOS && isWebKit(page));
+	if (capability === 'inertBackspace' || capability === 'syntheticTargetRanges') {
+		return !isWebKit(page);
+	}
 	return !isFirefox(page);
 }
 
@@ -44,7 +46,9 @@ const SKIP_REASONS: Record<EngineCapability, string> = {
 	insertWithoutScroll:
 		'Firefox scrolls an off-screen caret into view on every insert, keyed or not',
 	inertBackspace:
-		"Playwright's macOS WebKit goes back in history on a Backspace outside an editable, which Safari no longer does"
+		"Playwright's WebKit goes back in history on a Backspace outside an editable, which Safari no longer does",
+	syntheticTargetRanges:
+		'WebKit reports no target ranges for an InputEvent a script builds, whatever it was given'
 };
 
 /** Skip the running test on an engine that lacks `capability`. */

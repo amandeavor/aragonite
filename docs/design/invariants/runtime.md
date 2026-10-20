@@ -95,6 +95,7 @@ These checks run in three kinds of place:
 | G1.122 | A built-in metadata read names the kind the node is                                        | A·N     |
 | G1.128 | A caret key a selected widget passes on leaves the widget first                            | A·N     |
 | G1.131 | A landing in reading mode leaves no browser selection in the block it landed in            | A·N     |
+| G1.132 | A Backspace or Delete at a caret the editor decides never reaches `input` undecided        | A·N     |
 
 ### The entries
 
@@ -579,3 +580,10 @@ to its target and clears the selection: Firefox starts Tab from a selection, the
 Dev fails a selection still in the landed block once the landing has scrolled (only that block, so a
 click elsewhere mid-scroll passes).
 `checkReadingLandingLeavesNoCaret` · `caret-landing.test.ts`, `reading-jump-focus.spec.ts`.
+
+**G1.132 · The editor's delete runs, not the browser's** (`collapsed-delete-decided`). A collapsed
+Backspace or Delete in prose or a table cell is written by the editor at `beforeinput`
+(`components/blocks/editable/collapsed-delete.ts`), so every engine takes the same bytes. Dev fails
+the `input` after one unless its `beforeinput` was declined for a named reason (a composition, a
+range, a soft keyboard's wider delete, a surface not decided yet). `checkDeleteDecided` ·
+`collapsed-delete.test.ts`.

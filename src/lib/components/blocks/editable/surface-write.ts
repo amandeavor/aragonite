@@ -112,9 +112,13 @@ export function withOwnEnding(node: NodeView, text: string): string {
 	return text + ownTrailingLineEnding(node.raw);
 }
 
-/** A range edit as the text a surface write takes: its bytes, less the ending the write adds. */
+/** A range edit of `node` as the text a surface write takes: its bytes, less the ending the write
+ *  adds back, which is `node`'s own, so a last line saved without one keeps a break the edit ends on. */
 export function rangeWrite(
+	node: NodeView,
 	edit: Pick<LeafRangeEdit, 'raw' | 'caret'>
 ): Pick<TextWrite, 'text' | 'caretAfter'> {
-	return { text: trimTrailingLineEnding(edit.raw), caretAfter: edit.caret };
+	const ending = ownTrailingLineEnding(node.raw);
+	const text = ending && edit.raw.endsWith(ending) ? edit.raw.slice(0, -ending.length) : edit.raw;
+	return { text, caretAfter: edit.caret };
 }
