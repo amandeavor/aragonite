@@ -36,9 +36,12 @@ test.describe('/ showcase on a phone', () => {
 	test('the mode chip lists every presentation mode on screen and a tap flips the editor', async ({
 		page
 	}) => {
+		skipUnlessSupported(page, 'touch');
 		// The segmented switcher does not fit a phone, so one chip names the mode and opens the list.
 		await page.locator('.showcase-mode-trigger').tap();
 		const options = page.locator('.showcase-mode-option');
+		// Counted first, so the on-screen check below cannot pass on a list that never opened.
+		await expect(options).toHaveCount(5);
 		const offscreen = await options.evaluateAll(
 			(els, width) =>
 				els
@@ -48,7 +51,6 @@ test.describe('/ showcase on a phone', () => {
 			PHONE.width
 		);
 		expect(offscreen).toEqual([]);
-		await expect(options).toHaveCount(5);
 
 		// Not live: the showcase opens there, so a tap on it would prove nothing.
 		await page.locator('.showcase-mode-option[data-mode="reading"]').tap();

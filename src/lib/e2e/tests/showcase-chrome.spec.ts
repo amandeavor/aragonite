@@ -6,10 +6,9 @@ import { edgeKey } from '../platform-keys';
 import { clickInPlace } from '../click-in-place';
 import { clickShowcaseSetting, openShowcaseSettings, showcaseSetting } from '../showcase-settings';
 
-// The `/` showcase bar: its settings popover (theme, drag handles, the debug panel), its links, and
-// the table of contents as navigation. This route has no `window.__test` bridge, so the cases read rendered DOM only.
-// The mode toggle and the bundled plugins have their own specs. What the demo document says is
-// read from its bytes, never written out here, since it is rewritten by hand.
+// The `/` showcase bar (its settings popover and links) and the table of contents as navigation,
+// read from rendered DOM since this route has no `window.__test` bridge. The mode toggle and the
+// bundled plugins have their own specs; the demo document is read from its bytes, never quoted.
 // Requirements: e2e/requirements/showcase-chrome.md.
 
 test.describe('/ showcase chrome', () => {
@@ -74,7 +73,9 @@ test.describe('/ showcase chrome', () => {
 		await clickModeButton(page, 'reading');
 		const toggle = await showcaseSetting(page, 'drag-handles-toggle');
 		await expect(toggle).toBeDisabled();
-		await expect(toggle).toContainText('Reading mode hides the drag handles');
+		// The reason is the switch's description, so its name stays the two words of its label.
+		await expect(toggle).toHaveAccessibleName('drag handles');
+		await expect(toggle).toHaveAccessibleDescription('Reading mode hides the drag handles');
 	});
 
 	test('hotkey opens the debug panel and the header affordance closes it', async ({ page }) => {

@@ -1,6 +1,6 @@
 /**
- * The showcase's header controls as data, so the Svelte, React and Vue showcases offer the same
- * controls under the same test ids and open in the same state. Each host draws its own buttons.
+ * The showcase's controls as data, so the Svelte, React and Vue showcases offer the same controls
+ * under the same test ids and open in the same state. `top-bar.ts` draws them.
  */
 
 export const PRESENTATION_MODES = [

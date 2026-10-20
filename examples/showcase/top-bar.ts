@@ -152,10 +152,18 @@ export function mountShowcaseBar(
 
 	function settingRow(key: ToggleKey): HTMLButtonElement {
 		const toggle = TOGGLES[key];
-		const desc = el('span', { class: 'showcase-row-desc' });
+		// Named by its label alone; the line under it is the row's description.
+		const descId = `showcase-desc-${key}`;
+		const desc = el('span', { class: 'showcase-row-desc', id: descId });
 		const row = el(
 			'button',
-			{ type: 'button', class: 'showcase-row', 'data-testid': toggle.testId },
+			{
+				type: 'button',
+				class: 'showcase-row',
+				'data-testid': toggle.testId,
+				'aria-label': toggle.label,
+				'aria-describedby': descId
+			},
 			el('span', { class: 'showcase-row-text' }, el('span', {}, toggle.label), desc),
 			el('span', { class: 'showcase-switch', 'aria-hidden': 'true' })
 		);
@@ -205,6 +213,8 @@ export function mountShowcaseBar(
 	paint();
 	return {
 		update(next) {
+			// A host may hand the state over on every render of its own, a keystroke's included.
+			if (sameState(state, next)) return;
 			state = next;
 			paint();
 		},
@@ -249,6 +259,11 @@ function popover(
 		release = dismissPopover(anchor, result.close);
 	});
 	return result;
+}
+
+function sameState(a: ShowcaseBarState, b: ShowcaseBarState): boolean {
+	const keys = Object.keys(TOGGLES) as ToggleKey[];
+	return a.mode === b.mode && keys.every((key) => !a.pressed[key] === !b.pressed[key]);
 }
 
 function modKey(): string {
