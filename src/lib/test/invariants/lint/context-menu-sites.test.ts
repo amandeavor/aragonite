@@ -8,12 +8,16 @@ import { describeManifests, under, type ManifestRule } from './file-rule';
 import { collectEditorSources } from './scan-source';
 import { SOURCE, SOURCE_DIR } from './source-paths';
 
-const probe = (code: string) => ({ relPath: `${SOURCE_DIR.components}Probe.svelte`, code });
+const probe = (code: string, dir: string = SOURCE_DIR.components) => ({
+	relPath: `${dir}Probe.svelte`,
+	code
+});
 
 const CONTEXT_MENU_SITES: ManifestRule = {
 	id: 'G4.231 a right-click menu listens only where it is declared',
-	population: under(SOURCE_DIR.library),
-	matches: /\bon:?contextmenu\s*=|['"]contextmenu['"]/,
+	// The reference plugins too: their views render inside the editor as a bundled plugin's do.
+	population: under(SOURCE_DIR.library, SOURCE_DIR.referencePlugins),
+	matches: /\bon:?contextmenu\b|['"`]contextmenu['"`]/,
 	declared: {
 		[SOURCE.editorRootGestures]:
 			"the root's capture phase: the caret the menus read, placed before either opens",
@@ -26,9 +30,17 @@ const CONTEXT_MENU_SITES: ManifestRule = {
 	hits: [
 		probe('<div oncontextmenu={open}></div>'),
 		probe("el.addEventListener('contextmenu', open);"),
-		probe('<div on:contextmenu={open}></div>')
+		probe('<div on:contextmenu={open}></div>'),
+		probe('<div on:contextmenu|preventDefault={open}></div>'),
+		probe('el.addEventListener(`contextmenu`, open);'),
+		probe('mount(view, { oncontextmenu });'),
+		probe("const type = 'contextmenu';", SOURCE_DIR.referencePlugins)
 	],
-	misses: [probe('// a contextmenu fires after the press'), probe('const menu = openMenu();')]
+	misses: [
+		probe('// a contextmenu fires after the press'),
+		probe('const menu = openMenu();'),
+		probe("if (e.key === 'ContextMenu') open();")
+	]
 };
 
 describeManifests([CONTEXT_MENU_SITES], collectEditorSources());

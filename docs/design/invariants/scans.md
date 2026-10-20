@@ -1319,6 +1319,6 @@ under `components/` or `plugins/` that reads the chord or calls the history itse
 **G4.231 · Right-click menus are declared** (`context-menu-sites`). Safari selects the word or the
 widget under a right-click before `contextmenu` fires. The root's capture-phase listener runs first
 and decides what's left: a word stays for the clipboard rows, and a press on a widget gets the caret
-every other engine puts beside it. A file under `src/lib` that listens for `contextmenu` and isn't
-in the scan's list fails, so a new menu route gets checked against that caret the day it's added.
+every other engine puts beside it. A file in `src/lib` or a reference plugin that listens for
+`contextmenu` and isn't in the scan's list fails, so a new menu route is checked the day it lands.
 `lint/context-menu-sites.test.ts`; the target rows in `context-menu-press-selection.spec.ts`.
