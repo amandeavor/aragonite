@@ -131,6 +131,9 @@ test.describe('multi-click: the block inline syntax handler beside inline widget
 			// No native caret; the editor's read answers the image's end, where the click left it.
 			const imageEnd = { path: [0], offset: IMAGE_PARAGRAPH.indexOf(')') + 1 };
 			expect(await documentCaret(page)).toEqual([0, { anchor: imageEnd, focus: imageEnd }]);
+			// The open crop holds typing; Escape ends just the crop, and the image stays selected.
+			await page.keyboard.press('Escape');
+			await expect(page.locator('.md-image-crop-surface')).toHaveCount(0);
 			await page.keyboard.press('X');
 			await editor.bridge.waitForSourceContains('X');
 			expect(await editor.bridge.getSource()).toBe('before X after\n');

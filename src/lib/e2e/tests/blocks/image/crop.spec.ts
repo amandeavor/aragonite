@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { waitForFirstImageLoaded } from './helpers';
 import { multiClickElement } from '../../../multi-click';
+import { edgeKey } from '../../../platform-keys';
 
 // The crop is limestone's cover crop on an inline image: the toolbar's crop button makes the
 // image pannable (drag pans, the wheel zooms) and the tick writes `|WxH@X,Y[,Z]`.
@@ -168,7 +169,7 @@ test.describe('image crop', () => {
 	test('Mod+Z during a crop undoes nothing', async ({ page }) => {
 		await editor.loadContent(PICTURE);
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('A');
 		const edited = PICTURE.replace(/^one/, 'oneA');
 		await editor.bridge.waitForSourceEquals(edited);
