@@ -13,7 +13,7 @@ import type { DocumentGetter } from '../../editor-keys';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
 import { TEXT_SURFACE_SELECTOR } from '../../caret/block-content-selector';
 import {
-	placeContextPress,
+	placePaddingPress,
 	rangeCoversPoint,
 	resetForPointerDown
 } from '../../selection/cross-block/pointer';
@@ -25,7 +25,7 @@ import { findSurfacePathForElement } from '../../selection/path-lookup';
 import { claimsPointerGesture } from '../../selection/pointer-gesture';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import { isBlockNode, nodeAt } from '../../tree-operations/node-primitives';
-import { widgetSourceRange } from '../../core/inline/inline-widgets';
+import { isSecondaryPress, pressesSelectedWidget } from '../../selection/widget-press';
 import {
 	LINK_ELEMENT_SELECTOR,
 	clickFollowsAt,
@@ -60,6 +60,12 @@ export interface RootGesturesDeps {
 	reading: Reading;
 }
 
+/** Whether a secondary press landed on the user's own range, and on an inline widget. */
+interface ContextPress {
+	range: boolean;
+	onWidget: boolean;
+}
+
 export interface RootGestures {
 	/** `root` is the element the installing effect captured, not a live binding. */
 	install(root: HTMLElement): () => void;
@@ -91,16 +97,6 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		lastBlockIndex: () => deps.getDoc().children.length - 1,
 		land: (pos) => deps.land(pos)
 	});
-
-	function pressesSelectedWidget(target: EventTarget | null): boolean {
-		const el =
-			target instanceof Element ? target.closest('[data-inline-widget][data-source-start]') : null;
-		const source = el && widgetSourceRange(el);
-		const path = el && findSurfacePathForElement(el);
-		return (
-			source !== null && path != null && deps.selection.widgetIn(path)?.sourceStart === source.start
-		);
-	}
 
 	function dragStartsHere(root: HTMLElement, target: EventTarget | null): boolean {
 		if (claimsPointerGesture(target)) return false;
@@ -141,9 +137,9 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		if (active instanceof HTMLElement && root.contains(active) && active !== root) active.blur();
 	}
 
-	// The selection at the latest secondary press (a right button, or Control with the left on a
-	// Mac); a key in between means the next menu is the keyboard's.
-	let contextPress: { range: boolean } | null = null;
+	// The latest secondary press (a right button, or Control with the left on a Mac); a key or any
+	// other press in between, a touch's long-press included, leaves none.
+	let contextPress: ContextPress | null = null;
 
 	function install(root: HTMLElement): () => void {
 		// Per install: rebinding the root starts with no click in progress.
@@ -247,32 +243,45 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 					deps.reading.mode() !== 'reading' && dragStartsHere(root, target)
 						? deadSpaceCaret.blockPathNearPoint(root, x, y)
 						: null,
-				pressesSelectedWidget
+				pressesSelectedWidget: (target) => pressesSelectedWidget(deps.selection, target)
 			}),
 			onRoot(root, 'pointerdown', startMarginDrag),
 			onRoot(root, 'mousedown', handleMouseDown),
+			// Every press writes the record: a widget that shows its source cancels the pointerdown,
+			// so no mousedown follows, and a mousedown rewrites it after the block's own pointerdown.
+			onRoot<PointerEvent>(root, 'pointerdown', (e) => (contextPress = notePress(root, e)), {
+				capture: true
+			}),
 			onRoot<MouseEvent>(root, 'mousedown', (e) => (contextPress = notePress(root, e)), {
 				capture: true
 			}),
 			onRoot(root, 'keydown', () => (contextPress = null), { capture: true }),
-			onRoot<MouseEvent>(
-				root,
-				'contextmenu',
-				(e) => placeContextPress(deps.selection, deps.caretWriter, e, rangeAtContextPress(root)),
-				{
-					capture: true
-				}
-			)
+			onRoot<MouseEvent>(root, 'contextmenu', (e) => placeCaretForMenu(root, e), {
+				capture: true
+			})
 		);
 	}
 
-	function notePress(root: HTMLElement, e: MouseEvent): { range: boolean } | null {
-		if (!(e.button === 2 || (e.button === 0 && e.ctrlKey))) return null;
-		// A range across blocks is painted by the editor, so the browser's rectangles don't show it.
-		const range = deps.selection.isCrossBlock
-			? nativeRangeIn(root)
-			: rangeCoversPoint(root, e.clientX, e.clientY);
-		return { range };
+	function notePress(root: HTMLElement, e: MouseEvent): ContextPress | null {
+		if (!isSecondaryPress(e)) return null;
+		// A widget the editor holds selected is the user's own selection, as a range is. A range
+		// across blocks is painted by the editor, so the browser's rectangles don't show it.
+		const range =
+			pressesSelectedWidget(deps.selection, e.target) ||
+			(deps.selection.isCrossBlock
+				? nativeRangeIn(root)
+				: rangeCoversPoint(root, e.clientX, e.clientY));
+		const onWidget = e.target instanceof Element && !!e.target.closest('[data-inline-widget]');
+		return { range, onWidget };
+	}
+
+	// Before any menu reads the caret: Safari's word select stays for the clipboard rows, while a
+	// widget it selected whole gives way to the caret every other engine puts beside it.
+	function placeCaretForMenu(root: HTMLElement, e: MouseEvent): void {
+		if (!contextPress || contextPress.range || deps.selection.isCrossBlock) return;
+		if (deps.reading.mode() === 'reading') return;
+		if (contextPress.onWidget) deadSpaceCaret.placeAtPoint(root, e.clientX, e.clientY);
+		else placePaddingPress(deps.caretWriter, e);
 	}
 
 	function rangeAtContextPress(root: HTMLElement): boolean {

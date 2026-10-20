@@ -3,8 +3,10 @@
 
 import { findSurfacePathForElement } from '../../selection/path-lookup';
 
-// The widget itself and the overlay controls attached to it never count as outside.
-const IMAGE_CHROME_SELECTOR = '[data-image-widget], [data-image-overlay]';
+// The widget itself, the overlay controls attached to it and the right-click menus, whose rows act
+// on it, never count as outside.
+const IMAGE_CHROME_SELECTOR =
+	'[data-image-widget], [data-image-overlay], .block-menu, .table-action-menu';
 
 /** Whether a press should end the image selection. A Shift-press on this editor's text is left
  *  to that block, which grows a range from the image and ends it. */

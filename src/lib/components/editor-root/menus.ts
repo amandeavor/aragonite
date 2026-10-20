@@ -53,6 +53,8 @@ export interface RootMenusDeps {
 	placeCaretAtPoint(x: number, y: number): boolean;
 	/** Whether the right button's press landed on a selected range, which picks the menu. */
 	rangeAtContextPress(): boolean;
+	/** Whether the editor holds an inline widget selected, which Cut and Copy act on as on a range. */
+	holdsWidget(): boolean;
 	/** The public insert entry point; a flyout row inserts `below` the block the caret is in. */
 	insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean>;
 	/** An insert at the caret aimed at the block focused now, which a Paste row runs once the
@@ -77,6 +79,9 @@ export interface RootMenus {
 }
 
 const EDIT_LINK = 'link.edit';
+
+const isBlockHost = (node: EventTarget): node is HTMLElement =>
+	node instanceof HTMLElement && node.matches('.block-host[data-block-path]');
 
 interface Point {
 	x: number;
@@ -105,7 +110,7 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 	}
 
 	function clipboardRows(): MenuEntry[] {
-		const selected = !!focusedEditable() && holdsNativeRange();
+		const selected = deps.holdsWidget() || (!!focusedEditable() && holdsNativeRange());
 		return [
 			{ id: 'clip.cut', label: 'Cut', icon: 'scissors', disabled: !selected },
 			{ id: 'clip.copy', label: 'Copy', icon: 'copy', disabled: !selected },
@@ -207,7 +212,9 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		// The keyboard's contextmenu event (Windows fires it on the ContextMenu key's release)
 		// lands on the item the keydown's own menu already focused: that menu is the answer.
 		if (target.closest('.md-menu')) return;
-		const host = target.closest<HTMLElement>('.block-host[data-block-path]');
+		// Read off the press's own path: the caret placed for the menu may have shown a widget's
+		// source, which takes the target out of the page.
+		const host = e.composedPath().find(isBlockHost) ?? null;
 		const path = readBlockPath(host);
 		if (!host || !path) return;
 		const point = { x: e.clientX, y: e.clientY };
