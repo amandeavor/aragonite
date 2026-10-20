@@ -263,7 +263,10 @@ describe('editor-root listeners: selectionchange bridge', () => {
 			let emits = 0;
 			teardowns.push(
 				installSelectionChangeBridge({
-					caretWriter: createCaretWriter(() => {}),
+					caretWriter: createCaretWriter(
+						() => {},
+						() => false
+					),
 					root,
 					isHostChrome: () => false,
 					announceIfMoved: () => emits++,
@@ -312,7 +315,10 @@ describe('editor-root listeners: selectionchange bridge', () => {
 		root.focus();
 		teardowns.push(
 			installSelectionChangeBridge({
-				caretWriter: createCaretWriter(() => {}),
+				caretWriter: createCaretWriter(
+					() => {},
+					() => false
+				),
 				root,
 				isHostChrome: () => false,
 				announceIfMoved: () => {},

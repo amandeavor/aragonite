@@ -8,6 +8,7 @@ import { EditorPage } from '../../editor-page';
 import { settleScroll } from '../../autoscroll';
 import { blockView, capturedErrors, dragBetweenPoints } from './helpers';
 import { FootnotePage } from './footnotes-helpers';
+import { addHostButtons, focusName } from '../../reading-focus-probes';
 
 // Reading mode's keyboard is the page's (requirements/plugins/reading-keyboard.md): the editor
 // keeps one tab stop, the block last focused, and Tab and Shift+Tab walk only controls.
@@ -33,8 +34,6 @@ interface Kind {
 	name: string;
 	/** Clicks the kind where focus lands on its own focus element. */
 	press(page: Page): Promise<void>;
-	/** A click on a word leaves the browser's caret there. */
-	onText?: boolean;
 }
 
 const onWord = (path: number[], word: string) => async (page: Page) => {
@@ -44,24 +43,14 @@ const onWord = (path: number[], word: string) => async (page: Page) => {
 };
 const onBox = (box: (page: Page) => Locator) => (page: Page) => clickInPlace(box(page));
 
-/** Why a row waits: Firefox and WebKit start the walk from a click's caret, which reading mode
- *  doesn't clear yet. WebKit's Shift+Tab from it finds the block itself and stays. */
-function waitsOnClickCaret(kind: Kind, backward: boolean, browserName: string): string | null {
-	if (!kind.onText) return null;
-	if (browserName === 'webkit' && backward) return "WebKit's Shift+Tab from a click's caret stays";
-	if (kind.name === 'footnote definition' && browserName !== 'chromium') {
-		return 'the walk starts from the click past the back marker';
-	}
-	return null;
-}
 const block = (page: Page, path: number[]) =>
 	page.locator(`[data-block-path="${JSON.stringify(path)}"]`);
 
 const KINDS: Kind[] = [
-	{ name: 'paragraph', press: onWord([2], 'plain'), onText: true },
-	{ name: 'heading', press: onWord([1], 'heading'), onText: true },
-	{ name: 'list item', press: onWord([3, 0, 0], 'one'), onText: true },
-	{ name: 'blockquote line', press: onWord([4, 0], 'quoted'), onText: true },
+	{ name: 'paragraph', press: onWord([2], 'plain') },
+	{ name: 'heading', press: onWord([1], 'heading') },
+	{ name: 'list item', press: onWord([3, 0, 0], 'one') },
+	{ name: 'blockquote line', press: onWord([4, 0], 'quoted') },
 	{ name: 'code block', press: onBox((page) => block(page, [5]).locator('.code-block')) },
 	{
 		name: 'first table cell',
@@ -72,41 +61,14 @@ const KINDS: Kind[] = [
 		press: onBox((page) => block(page, [6]).locator('.table-cell').last())
 	},
 	{ name: 'divider', press: onBox((page) => block(page, [7]).locator('.thematic-break-rule')) },
-	{ name: 'details summary', press: onWord([8, 0], 'More'), onText: true },
-	{ name: 'admonition title', press: onWord([9, 0], 'Pro'), onText: true },
+	{ name: 'details summary', press: onWord([8, 0], 'More') },
+	{ name: 'admonition title', press: onWord([9, 0], 'Pro') },
 	{
 		name: 'mermaid diagram',
 		press: onBox((page) => block(page, [10]).locator('.mermaid-viewport'))
 	},
-	{ name: 'footnote definition', press: onWord([13, 0], 'note'), onText: true }
+	{ name: 'footnote definition', press: onWord([13, 0], 'note') }
 ];
-
-/** Buttons the host puts before and after the editor, where a walk out of it lands. */
-async function addHostButtons(page: Page): Promise<void> {
-	await page.evaluate(() => {
-		const editor = document.querySelector('.editor')!;
-		for (const [id, where] of [
-			['host-before', 'beforebegin'],
-			['host-after', 'afterend']
-		] as const) {
-			const button = document.createElement('button');
-			button.id = id;
-			button.textContent = id;
-			editor.insertAdjacentElement(where, button);
-		}
-	});
-}
-
-/** The focused element, named by what it is and the block it sits in. */
-function focusName(page: Page): Promise<string> {
-	return page.evaluate(() => {
-		const active = document.activeElement as HTMLElement | null;
-		if (!active || active === document.body) return 'body';
-		if (active.id.startsWith('host-')) return active.id;
-		const path = active.closest('[data-block-path]')?.getAttribute('data-block-path') ?? '?';
-		return `${active.tagName.toLowerCase()}.${active.classList[0] ?? ''} ${path} "${active.textContent?.trim().slice(0, 12)}"`;
-	});
-}
 
 /** Every element of the editor a focus walk from the focused element should reach, in order. */
 function controlsFrom(page: Page, backward: boolean, links: boolean): Promise<string[]> {
@@ -161,11 +123,8 @@ test.describe('reading mode: Tab walks controls, and the editor is one stop', ()
 	for (const kind of KINDS) {
 		for (const backward of [false, true]) {
 			test(`${kind.name}: clicked, then ${backward ? 'Shift+Tab' : 'Tab'} out`, async ({
-				page,
-				browserName
+				page
 			}) => {
-				const waits = waitsOnClickCaret(kind, backward, browserName);
-				test.fixme(waits !== null, waits ?? '');
 				const editor = new FootnotePage(page);
 				const links = await focusWalkReachesLinks(page);
 				await editor.load(KINDS_DOC, 'reading');

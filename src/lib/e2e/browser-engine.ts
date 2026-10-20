@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { focusWalkKey, isMacOS } from './platform-keys';
+import { focusWalkKey } from './platform-keys';
 
 /** Which browser is running, for the harness helpers whose path differs by engine (the clipboard,
  *  the IME driver, dropping the native caret). */
@@ -26,7 +26,8 @@ export type EngineCapability =
 	| 'contextMenuKey'
 	| 'insertWithoutScroll'
 	| 'inertBackspace'
-	| 'syntheticTargetRanges';
+	| 'syntheticTargetRanges'
+	| 'nativeWordSelect';
 
 /** Firefox over BiDi and Playwright's WebKit each lack a few gestures; `SKIP_REASONS` says which
  *  and why. */
@@ -49,7 +50,9 @@ const SKIP_REASONS: Record<EngineCapability, string> = {
 	inertBackspace:
 		"Playwright's WebKit goes back in history on a Backspace outside an editable, which Safari no longer does",
 	syntheticTargetRanges:
-		'WebKit reports no target ranges for an InputEvent a script builds, whatever it was given'
+		'WebKit reports no target ranges for an InputEvent a script builds, whatever it was given',
+	nativeWordSelect:
+		"Firefox over BiDi fires no native double click, so the browser selects no word in text the editor doesn't select itself"
 };
 
 /** Skip the running test on an engine that lacks `capability`. */

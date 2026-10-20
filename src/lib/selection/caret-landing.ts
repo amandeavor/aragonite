@@ -308,6 +308,16 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 			const mounted = await descendTo(deps.root, mountPath, { current: at(stamp) });
 			if (generation !== stamp) return 'unplaced';
 			deps.caretMemory.forget();
+			// Reading mode has no caret, so a stored one lands as focus on its block, as a jump does.
+			const readingCaret = deps.isReading() && route === 'collapsed' ? caretAt(focus) : null;
+			const readingTarget = readingCaret && componentAt(deps.root, readingCaret.path);
+			if (readingCaret && readingTarget) {
+				placeWithoutScrolling(() =>
+					focusWithoutCaret(readingTarget, readingCaret.path, readingCaret.offset)
+				);
+				await bringIntoView(mountPath, reveal);
+				return mounted ? 'applied' : 'unplaced';
+			}
 			const placed = placeWithoutScrolling(() =>
 				applySelectionToDom(
 					{ anchor, focus },

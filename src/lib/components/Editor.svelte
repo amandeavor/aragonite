@@ -39,6 +39,7 @@
 	import { componentAt, type ChildList } from '../block-lists/child-list';
 	import { createSelectionState } from '../selection/selection-state.svelte';
 	import { coverRange, rangeCoverage } from '../selection/range-coverage';
+	import { findSurfacePathForElement } from '../selection/path-lookup';
 	import { createSelectionDescription } from '../selection/selection-description';
 	import { EDITOR_LABEL } from '../a11y-strings';
 	import TailInsert from './TailInsert.svelte';
@@ -319,7 +320,7 @@
 		selection: selectionState,
 		watchSize: (el, onResize) => scrollOwner.watchSize(el, onResize)
 	});
-	const caretWriter = createCaretWriter(drawnCaret.request);
+	const caretWriter = createCaretWriter(drawnCaret.request, () => reading.mode() === 'reading');
 
 	// With no live range this reads no document bytes, so a keystroke at a caret costs nothing here.
 	const coverage = $derived.by(() => {
@@ -387,7 +388,10 @@
 	const menuPresence = createMenuPresence({ isReading: () => effectiveMode === 'reading' });
 	const readingFocus = createReadingFocus({
 		isReading: () => effectiveMode === 'reading',
-		isInView: (path) => scrollOwner.isInView(path)
+		isInView: (path) => scrollOwner.isInView(path),
+		getBlockElByPath: (path) => getBlockElByPath(path),
+		isHostChrome,
+		clearSelection: () => caretWriter.clear()
 	});
 	const stamps = createDocumentStamps();
 	// Work still in flight at the unmount stops there: its write is refused at the write gate, its
@@ -872,6 +876,7 @@
 		announceSelection: selectionAnnouncer.announce,
 		getBlockElByPath,
 		isHostChrome,
+		takeReadingCaret: readingFocus.takeExitCaret,
 		caretMemory,
 		// Built below; a mode switch runs after init, so the getter reads past the TDZ.
 		get layout() {
@@ -893,7 +898,6 @@
 	$effect(() => {
 		modeFlip.afterFlip(effectiveMode);
 	});
-	rootEffect((root) => modeFlip.install(root));
 	rootEffect((root) => readingFocus.install(root));
 
 	// ── Root gestures ───────────────────────────────────────────────────
@@ -913,7 +917,8 @@
 		activationClick,
 		presses,
 		linkCard,
-		reading
+		reading,
+		readingFocus
 	});
 	rootEffect((root) => {
 		return removeAll(
@@ -1215,10 +1220,13 @@
 	}
 
 	// Read off the placed selection, not the requested one: a caret aimed into a hidden body lands
-	// on its title row.
+	// on its title row. Reading mode places none, so the block that took focus answers there.
 	function focusInView(): boolean {
 		const focus = getSelection()?.focus;
-		return !!focus && scrollOwner.isInView(selectionState.cellLandingFor(focus).path);
+		if (focus) return scrollOwner.isInView(selectionState.cellLandingFor(focus).path);
+		const active = effectiveMode === 'reading' ? document.activeElement : null;
+		const path = active && findSurfacePathForElement(active);
+		return !!path && scrollOwner.isInView(path);
 	}
 
 	// Asks of the leaf the landing placed in: reading mode leaves no selection to read it off.

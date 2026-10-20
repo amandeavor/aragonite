@@ -44,13 +44,6 @@ WebKit skips them unless the user's own setting includes them).
 - Every walk asserts the editor's error channel stayed empty
 - A walk that never reaches the host button fails, naming every element it visited
 
-## Waiting rows
-
-- On Firefox and WebKit a click on a word leaves the browser's caret there, and they start the
-  walk from it: Firefox and WebKit skip a footnote definition's back marker before the clicked
-  word, and WebKit's Shift+Tab from the caret finds the block itself and stays. Those rows are
-  `fixme` until reading mode clears a click's caret.
-
 ## Miss-analysis
 
 - Every table cell Tab row ran in an editing mode, and the one reading-mode row asserted a cell

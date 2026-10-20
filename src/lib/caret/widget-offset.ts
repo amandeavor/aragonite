@@ -179,8 +179,8 @@ export function rawSelectionFocus(el: HTMLElement): RawOffset | null {
  * nothing. Methods return false when refused.
  */
 export interface CaretWriter {
-	/** A collapsed caret at raw offset `raw` in `el`. Raw 0 lands just after a marker prefix span,
-	 *  since Chromium bounces a caret placed before it. */
+	/** A collapsed caret at raw `raw` in `el`, past a marker prefix (Chromium bounces one before
+	 *  it). Reading mode has no caret: there it drops the selection and returns false. */
 	placeCaretAtRaw(el: HTMLElement, raw: number, placement: { clamp: CaretClamp }): boolean;
 	/** Raw `[anchor, focus]` in `el`, backward when the focus comes first; an endpoint at raw 0
 	 *  behind a marker prefix lands after the span, as a caret does. */
@@ -208,7 +208,7 @@ export interface CaretWriter {
 	clear(): void;
 }
 
-export function createCaretWriter(onWrite: () => void): CaretWriter {
+export function createCaretWriter(onWrite: () => void, isReading: () => boolean): CaretWriter {
 	// The editor's own caret stands wherever it put it; only a caret the browser moved is moved.
 	let written: DomPosition | null = null;
 
@@ -251,8 +251,20 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 		return writeSelection(caretPointAtRaw(el, anchor), caretPointAtRaw(el, focus));
 	}
 
+	function clear(): void {
+		const sel = window.getSelection();
+		if (!sel) return;
+		sel.removeAllRanges();
+		written = null;
+		onWrite();
+	}
+
 	return {
 		placeCaretAtRaw(el, raw, { clamp }) {
+			if (isReading()) {
+				clear();
+				return false;
+			}
 			const at = clamp === 'reachable' ? clampToLandableRaw(el, Math.max(0, raw)) : raw;
 			const point = caretPointAtRaw(el, at);
 			return writeSelection(point, point);
@@ -302,13 +314,7 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 		extendToLineEdge(side) {
 			return modifyToLineEdge('extend', side);
 		},
-		clear() {
-			const sel = window.getSelection();
-			if (!sel) return;
-			sel.removeAllRanges();
-			written = null;
-			onWrite();
-		}
+		clear
 	};
 }
 

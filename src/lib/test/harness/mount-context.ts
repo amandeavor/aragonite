@@ -232,7 +232,10 @@ export function editorMountContext(overrides: MountContextOverrides = {}): Map<s
 		overrides.services?.readingFocus ??
 		createReadingFocus({
 			isReading: () => doc.reading.mode() === 'reading',
-			isInView: (path) => services.scrollOwner.isInView(path)
+			isInView: (path) => services.scrollOwner.isInView(path),
+			getBlockElByPath: doc.blockElLookup,
+			isHostChrome: () => false,
+			clearSelection: () => services.caretWriter.clear()
 		});
 	// Read off the selection the test handed in, the way the editor derives it.
 	services.rangeCoverage =

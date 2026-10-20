@@ -163,6 +163,8 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 		activateLink,
 		linkCard: { open: () => false },
 		reading,
+		// Reading mode's click caret is `reading-focus.test.ts`'s.
+		readingFocus: { noteClick: () => {} },
 		activationClick: bindActivationClick(reading.mode, () => linkClick, presses),
 		presses
 	});
