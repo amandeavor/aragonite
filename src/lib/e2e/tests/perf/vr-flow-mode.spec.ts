@@ -89,7 +89,6 @@ test('typing and undo in a host-scroll entry behave as in self mode', async ({ p
 	await page.keyboard.type('FLOW_MARK');
 	await expect.poll(() => flowSource(page, 'a')).toContain('FLOW_MARK');
 
-	await page.waitForTimeout(300); // past the 250ms undo debounce
 	await page.keyboard.press('ControlOrMeta+z');
 	await expect.poll(() => flowSource(page, 'a')).not.toContain('FLOW_MARK');
 });

@@ -42,7 +42,6 @@ test.describe('editing a whole-block range that opens with a widget', () => {
 					expect(await editor.bridge.getSource()).toBe('X\n');
 
 					// One undo restores the bytes whole: the replacement was a single commit.
-					await editor.waitForUndoBatchFlush();
 					await editor.undo();
 					await editor.bridge.waitForSourceEquals(MATH_LINE);
 				});

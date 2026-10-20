@@ -111,7 +111,6 @@ test.describe('plugin container: <details> collapsible', () => {
 		await editor.focusBlockAtPath([0, 0], 3); // end of "Sum"
 		await editor.typeText('X');
 		await editor.bridge.waitForSourceContains('<summary>SumX</summary>');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.pressDeclined('Enter');
 		// The check consumed Enter: no body block was created, and the caret stays in the summary.

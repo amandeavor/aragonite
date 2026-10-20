@@ -294,7 +294,7 @@ export async function kindChangeUndoInListItem(
 	const { page, editor, tracker } = ctx;
 	const before = await editor.bridge.getSource();
 	// A fresh typing batch, so the one undo covers exactly the two keys below.
-	await editor.waitForUndoBatchFlush();
+	await editor.endTypingBatch();
 	await editor.clickBlockAtPath(itemParagraphPath, 0);
 	await assertFocusBlock(ctx, itemParagraphPath);
 	await page.keyboard.press(edgeKey('lineStart'));

@@ -56,7 +56,6 @@ test.describe('plugin inline emoji shortcodes', () => {
 
 		// One undo restores the shortcode whole, since the delete was a single commit. Assert the
 		// exact original source rather than containment, so a partial restore fails.
-		await editor.waitForUndoBatchFlush();
 		await editor.undo();
 		await editor.bridge.waitForSourceContains(':smile:');
 		await expect(emojiIn(editor, 0)).toHaveCount(1);

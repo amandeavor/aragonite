@@ -211,7 +211,7 @@ test.describe('the bundled party parrot', () => {
 		await page.keyboard.press(edgeKey('lineEnd'));
 		// Two bursts across the batch window: per-keystroke commits would take two undos.
 		await page.keyboard.type(' to');
-		await editor.waitForUndoBatchFlush();
+		await editor.endTypingBatch();
 		await page.keyboard.type('night');
 		await editor.leaveDownward();
 		await editor.bridge.waitForSourceContains('tonight');

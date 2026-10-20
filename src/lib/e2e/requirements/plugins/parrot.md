@@ -50,8 +50,8 @@ source back into a caption and commits the edit once. Seed `parrot`: block 0
 
 ## Edge cases
 
-- One undo entry per cycle: showing the source, editing and leaving, with typing that spans an
-  undo batch pause, undoes in one step back to the seed, with the caption reading the old text.
+- One undo entry per cycle: showing the source, editing and leaving, with typing in two bursts
+  the test ends apart, undoes in one step back to the seed, with the caption reading the old text.
 - One undo entry for a commit and split together: Enter after an edit closes the source and
   splits on the same press, and the commit is still inside its undo batch when the split lands,
   so one undo goes back to the seed.

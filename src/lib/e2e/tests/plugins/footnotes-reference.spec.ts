@@ -98,7 +98,6 @@ test.describe('plugin inline footnote references', () => {
 		expect(await roundTripStable(page)).toBe(true);
 
 		// One undo restores the seed bytes: showing, editing and committing is one entry.
-		await editor.waitForUndoBatchFlush();
 		await editor.undo();
 		await editor.bridge.waitForSourceContains('Body has [^a] and [^b] here.');
 		expect(await editor.bridge.getSource()).toContain('Body has [^a] and [^b] here.');

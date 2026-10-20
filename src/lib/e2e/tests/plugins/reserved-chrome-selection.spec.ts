@@ -110,7 +110,6 @@ test.describe('reserved child-0 chrome: selection parity', () => {
 		await editor.focusBlockAtPath([1, 0], 5); // end of "Title"
 		await editor.typeText('!');
 		await editor.bridge.waitForSourceContains(':::callout Title!');
-		await editor.waitForUndoBatchFlush();
 
 		// Polls the CST child, not the bytes, which can finish before the title child is rebuilt.
 		await editor.undo();

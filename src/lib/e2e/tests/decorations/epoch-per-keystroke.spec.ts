@@ -1,11 +1,11 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { PluginsPage } from '../plugins/helpers';
-import { freezeInPageClock, PAST_TYPING_PAUSE_MS } from '../../page-probes';
+import { freezeInPageClock, PAST_OCCURRENCE_PAUSE_MS } from '../../page-probes';
 
 /**
  * The edit counter bumps once per keystroke (requirements/decorations/epoch-per-keystroke.md).
- * The clock is frozen after setup, so the typing batch's pause elapses only when the spec
+ * The clock is frozen after setup, so the occurrence plugin's typing pause elapses only when the spec
  * advances it: the marks step aside on the keystroke and the advance is what brings them back.
  */
 
@@ -75,7 +75,7 @@ test.describe('decoration refresh per keystroke, not per typing batch', () => {
 		const [wordLeft] = (await probe(page)).wordLefts;
 
 		// Frozen from here: no in-page timer fires until this spec advances the clock, so
-		// the typing batch flushes exactly where the test says it does.
+		// the occurrence marks come back exactly where the test says they do.
 		await freezeInPageClock(page);
 		await page.keyboard.type(' ');
 
@@ -84,7 +84,7 @@ test.describe('decoration refresh per keystroke, not per typing batch', () => {
 		await expect.poll(async () => (await probe(page)).wordLefts[0]).toBeGreaterThan(wordLeft + 1);
 		await expect.poll(() => coverage(page)).toEqual({ aligned: 0, painted: 0, words: 2 });
 
-		await page.clock.runFor(PAST_TYPING_PAUSE_MS);
+		await page.clock.runFor(PAST_OCCURRENCE_PAUSE_MS);
 		await expect.poll(() => coverage(page)).toEqual({ aligned: 2, painted: 2, words: 2 });
 	});
 

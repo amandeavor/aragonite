@@ -132,7 +132,6 @@ test.describe('undo steps: an inline-menu pick', () => {
 		await expect
 			.poll(() => menu.locator('[role="option"] .inline-menu-label').allTextContents())
 			.toEqual(['Quote']);
-		await editor.waitForUndoBatchFlush();
 		await roundTrip(editor, async () => {
 			await page.keyboard.press('Enter');
 			await expect.poll(() => editor.bridge.getBlockKind(3)).toBe('blockquote');

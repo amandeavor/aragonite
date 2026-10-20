@@ -91,7 +91,6 @@ test.describe('a space left at an item’s content start', () => {
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceEquals('-  b\n\n  c\n');
 		expect(await editor.parseConverged()).toBe(true);
-		await editor.waitForUndoBatchFlush();
 
 		await editor.undo();
 

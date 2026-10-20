@@ -11,8 +11,11 @@
 	import '@fontsource/jetbrains-mono/700.css';
 	import appCss from '../app.css?url';
 	import '#lib/styles/editor-theme.css';
+	import { installTypingBatchHandle } from './typing-batches';
 
 	let { children }: { children: Snippet } = $props();
+
+	installTypingBatchHandle();
 
 	// Linked rather than imported, so `/test/no-reset` can stand in for a host page with no
 	// stylesheet of its own.

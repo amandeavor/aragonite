@@ -139,7 +139,6 @@ test.describe('table block: wide-table horizontal scroll', () => {
 		await editor.focusBlockAtPath([0, 1, 11], 3);
 		await editor.typeSlowly('xy');
 		await editor.bridge.waitForSourceContains('| a12xy |');
-		await editor.waitForUndoBatchFlush();
 		for (let i = 0; i < COLS - 1; i++) await page.keyboard.press('Shift+Tab');
 		await expect.poll(() => tableEl.evaluate((el) => el.scrollLeft)).toBeLessThan(5);
 

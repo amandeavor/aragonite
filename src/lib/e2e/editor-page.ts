@@ -8,13 +8,13 @@ import {
 } from './clipboard-arm';
 import { generateFixture, type FixtureShape } from '../test/perf/fixtures/generate';
 import { BLOCK_CONTENT_LOCATOR_SELECTOR } from '../caret/block-content-selector';
-import { PAST_TYPING_PAUSE_MS } from './page-probes';
 import { gotoReady } from './goto-ready';
 import { pointAtRaw } from './text-runs';
 import { expectPresentationMode } from './mode-switch';
 import type { PresentationMode } from '../presentation-mode';
 import { insertText } from './insert-text';
 import { clickInPlace } from './click-in-place';
+import { endTypingBatch } from './typing-batch';
 
 // Re-exported so a spec's in-`evaluate` block-content lookup uses the one selector definition
 // instead of inlining `:not(.selection-overlay)`.
@@ -323,10 +323,9 @@ export class EditorPage {
 		);
 	}
 
-	/** A fixed wait: the source already holds the typed text, so nothing marks the typing pause
-	 *  ending, and a test wanting two undo entries needs its next input after it. */
-	async waitForUndoBatchFlush(): Promise<void> {
-		await this.page.waitForTimeout(PAST_TYPING_PAUSE_MS);
+	/** End the typing batch open now, so the next key starts its own undo step. */
+	async endTypingBatch(): Promise<void> {
+		await endTypingBatch(this.page);
 	}
 
 	/** Last resort for proving nothing changed after a gesture the editor records no decision for;

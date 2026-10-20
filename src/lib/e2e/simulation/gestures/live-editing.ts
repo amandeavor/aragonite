@@ -34,7 +34,7 @@ async function inLiveMode(ctx: SimContext, run: () => Promise<void>): Promise<vo
 	const { page, editor, tracker } = ctx;
 	// Gives this gesture's edit its own undo entry, so the single undo it closes with reverses
 	// exactly that rather than reaching back into whatever was typed before.
-	await editor.waitForUndoBatchFlush();
+	await editor.endTypingBatch();
 	const before = await editor.bridge.getSource();
 	await clickModeToggle(page, 'live');
 	try {

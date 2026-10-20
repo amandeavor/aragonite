@@ -65,7 +65,6 @@ test.describe('table block: caret/selection recovery on undo', () => {
 
 		await editor.typeSlowly('xy');
 		await editor.bridge.waitForSourceContains('| 1 | 2xy | 3 |');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.undo();
 		await editor.bridge.waitForSourceEquals(before);
@@ -93,7 +92,6 @@ test.describe('table block: caret/selection recovery on undo', () => {
 		await page.keyboard.press('Backspace');
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceContains('| 1 | Col | 3 |');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.undo();
 		await editor.bridge.waitForSourceEquals(before);

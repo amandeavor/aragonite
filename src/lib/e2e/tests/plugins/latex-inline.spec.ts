@@ -179,7 +179,6 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('ABC');
 		await editor.bridge.waitForSourceContains('NextABC');
-		await editor.waitForUndoBatchFlush();
 
 		// Open the formula and close it with no edit. A write that changed nothing would still push
 		// an undo entry, and this Ctrl+Z would undo that instead of the ABC edit.

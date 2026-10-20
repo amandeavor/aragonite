@@ -66,5 +66,5 @@ margin click as the interrupt, while the bullets below said they all happen mid-
 ## Determinism
 
 - replay stability: running a given seed twice asserts the identical end state. What
-  is asserted is the source, which does not depend on timing (pauses vary wall-time
-  but not the resulting source)
+  is asserted is the source, which does not depend on timing (the typing pause is held, and a
+  session ends its batches itself)

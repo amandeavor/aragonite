@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { PluginsPage } from '../plugins/helpers';
-import { freezeInPageClock, PAST_TYPING_PAUSE_MS } from '../../page-probes';
+import { freezeInPageClock, PAST_OCCURRENCE_PAUSE_MS } from '../../page-probes';
 
 /**
  * highlight-occurrences hardening (requirements/decorations/hloccur-memo.md). The seed wraps
@@ -81,7 +81,7 @@ test.describe('highlight-occurrences memoized scan + capability skip', () => {
 		await editor.typeSlowly('XYZ');
 		await expect(page.locator(OCCURRENCE)).toHaveCount(0);
 
-		await page.clock.runFor(PAST_TYPING_PAUSE_MS);
+		await page.clock.runFor(PAST_OCCURRENCE_PAUSE_MS);
 		await expect(page.locator(OCCURRENCE)).toHaveCount(1); // 'XYZbeta', its single occurrence
 	});
 

@@ -27,31 +27,6 @@ test.describe('nested list item, typing + undo', () => {
 		await editor.bridge.waitForSourceEquals(before);
 	});
 
-	test('typing in two different items produces two batches', async () => {
-		const before = await editor.bridge.getSource();
-
-		const firstItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item one' });
-		await firstItem.click();
-		await editor.page.keyboard.press(edgeKey('lineEnd'));
-		await editor.typeSlowly(' A');
-		await editor.waitForUndoBatchFlush();
-
-		const secondItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item two' });
-		await secondItem.click();
-		await editor.page.keyboard.press(edgeKey('lineEnd'));
-		await editor.typeSlowly(' B');
-		await editor.bridge.waitForSourceContains('item two B');
-		await editor.waitForUndoBatchFlush();
-
-		await editor.undo();
-		await editor.bridge.waitForSourceNotContains(' B');
-		expect((await editor.bridge.getSource()).includes(' B')).toBe(false);
-		expect((await editor.bridge.getSource()).includes(' A')).toBe(true);
-
-		await editor.undo();
-		await editor.bridge.waitForSourceEquals(before);
-	});
-
 	// A focus change between sibling items must end the typing batch before the 250ms pause, or the
 	// batch keyed on the outer container's index spans both leaves.
 	test('focus change between sibling items inside debounce window still breaks the batch', async () => {
@@ -62,13 +37,12 @@ test.describe('nested list item, typing + undo', () => {
 		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly(' A');
 
-		// No `waitForTimeout`: switch focus before the 250ms debounce fires.
+		// The pause is held, so only the focus change can end the first batch.
 		const secondItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item two' });
 		await secondItem.click();
 		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly(' B');
 		await editor.bridge.waitForSourceContains('item two B');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.undo();
 		await editor.bridge.waitForSourceNotContains(' B');

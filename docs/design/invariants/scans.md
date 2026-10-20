@@ -8,7 +8,7 @@ backs it.
 
 Scans over the library live in `test/invariants/lint/` and ride `npm run test:editor:invariants`.
 Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133, G4.211,
-G4.212, G4.213, G4.226, G4.228) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
+G4.212, G4.213, G4.226, G4.228, G4.232) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
 bash and PowerShell), and `npm test` runs both.
 
 This is the catalogued set, not the whole of `test/invariants/lint/`: a scan holding one module's
@@ -193,6 +193,7 @@ unguarded.
 | G4.228 | An e2e locator action that must leave the scroll alone rides the in-place helper             | L       |
 | G4.229 | A key moves a selection end through `keyboard-extend.ts`, which shows it                     | L       |
 | G4.230 | Editor chrome runs no undo or redo of its own; the root answers them there                   | L       |
+| G4.232 | An e2e spec splits undo steps with `endTypingBatch`, never a fixed wait                      | L       |
 
 ### The entries
 
@@ -1314,3 +1315,10 @@ the editor root answers the history chords anywhere inside it, and in its find b
 mounts it, but where a block took the key or a text field owns it (`chromeHoldsFocus`). A file
 under `components/` or `plugins/` that reads the chord or calls the history itself fails.
 `lint/history-chord-sites.test.ts`; every engine in `keyboard-navigation/chrome-focus-undo.spec.ts`.
+
+**G4.232 · Undo steps split on the spec's word.** The page's 250 ms typing pause fires late on a loaded
+runner, and Firefox's driver can leave longer than that between two keys, so every e2e navigation
+holds it (`e2e/goto-ready.ts`, through `e2e/typing-batch.ts`), and a spec ends a batch with `endTypingBatch`.
+A `waitForTimeout` within three lines of an undo, or on a line naming undo grouping, fails, and so
+does a reach for the real pause or the page handle outside `e2e/typing-batch.ts` and `tests/undo-typing-pause.spec.ts`.
+`e2e/lint/e2e-drivers.test.ts`.
