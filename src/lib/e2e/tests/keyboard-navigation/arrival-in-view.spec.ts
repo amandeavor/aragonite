@@ -2,6 +2,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { gotoReady } from '../../goto-ready';
 import { FENCE, LAST_CELL, TABLE as GAP_TABLE, filler } from '../selection/gap-caret-fixtures';
 import { clickInPlace } from '../../click-in-place';
 
@@ -377,4 +378,40 @@ test.describe('a gap caret that arrives off screen comes into view at the neares
 			expect(at).toBeGreaterThan(band - 30);
 		});
 	}
+});
+
+test.describe('a block that shows its source on arrival comes into view', () => {
+	const MATH_AT = 30;
+	const lines = (count: number, from: number) =>
+		Array.from({ length: count }, (_, i) => `Line ${from + i} with some words on it.`);
+
+	// Miss-analysis: the source opens a tick after the move hands the block the caret, and every
+	// math arrival test started on screen, where nothing had to scroll.
+	test('ArrowDown onto a block formula just below the viewport shows its source', async ({
+		page
+	}) => {
+		const editor = new EditorPage(page);
+		await gotoReady(page, '/test/plugins?seed=mathblock');
+		await editor.loadContent(
+			[...lines(MATH_AT, 0), '$$x^2$$', ...lines(30, MATH_AT + 1)].join('\n\n') + '\n'
+		);
+		await editor.waitForRenderFlush();
+		await editor.focusBlockEnd(MATH_AT - 1);
+		for (let pass = 0; pass < 3; pass++) {
+			await page.evaluate((i) => {
+				const view = document.querySelector('.editor') as HTMLElement;
+				const block = document.querySelector(`[data-block-path='[${i}]']`) as HTMLElement;
+				const bottom = view.getBoundingClientRect().top + view.clientTop + view.clientHeight;
+				view.scrollTop += block.getBoundingClientRect().top - bottom - 4;
+			}, MATH_AT);
+			await editor.waitForRenderFlush();
+		}
+		await expect(page.locator(`[data-block-path='[${MATH_AT}]']`)).not.toBeInViewport();
+
+		await page.keyboard.press('ArrowDown');
+		await expect(page.locator('.math-block-source')).toHaveCount(1);
+		await editor.waitForRenderFlush();
+
+		await expectCaretShown(page, 'after ArrowDown');
+	});
 });
