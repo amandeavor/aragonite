@@ -887,6 +887,7 @@
 	$effect(() => {
 		modeFlip.afterFlip(effectiveMode);
 	});
+	rootEffect((root) => modeFlip.install(root));
 
 	// ── Root gestures ───────────────────────────────────────────────────
 

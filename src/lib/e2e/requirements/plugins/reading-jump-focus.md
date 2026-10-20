@@ -26,8 +26,21 @@ target. Each scenario below runs once with Tab and once with Shift+Tab, on all t
 
 - **Marker back to a reference in a table cell:** focus is on the `[^c]` reference in the cell,
   through the cell's own focus; Shift+Tab reaches the cell
-  (the Tab half is `fixme`: reading mode runs Tab in a table cell as cell navigation, and the
+  (the Tab half is `fixme` on #759: reading mode runs Tab in a table cell as cell navigation, and the
   last cell keeps it)
+- **A host's `navigateTo` into a table cell's text** (once, no Tab): focus is on the cell, and
+  `getSelection()` is null there too, not the cell's start
+  (miss-analysis: every jump row landed on a widget or a prose block, so the table's own caret
+  report, which named the focused cell's start with no caret in it, had nothing to fail)
+
+## User interactions
+
+- **Leaving reading mode after a jump** (reference to definition, and the marker back to its
+  reference), once from a host's own button that takes focus out of the editor and once from a
+  shortcut that leaves focus where it was: the caret goes where the jump put focus, so a typed
+  letter lands at the definition's start, or right after the reference
+  (miss-analysis: no row typed after leaving reading mode, so a switch out that put the caret
+  back where it was before reading, offscreen, or nowhere at all, read as fine)
 
 ## Error cases
 

@@ -5,14 +5,15 @@ import { clickInPlace } from '../../click-in-place';
 import { blockView, capturedErrors, tocEntry } from './helpers';
 import { FootnotePage } from './footnotes-helpers';
 
-// Every reading-mode jump, then Tab and Shift+Tab (requirements/plugins/reading-jump-focus.md):
-// focus lands on the jump's target, no caret is left behind, and sequential focus continues from
-// that target on every engine.
+// Every reading-mode jump, then Tab and Shift+Tab, then leaving reading mode
+// (requirements/plugins/reading-jump-focus.md): focus lands on the jump's target with no caret,
+// Tab continues from it on every engine, and leaving reading mode puts the caret there.
 
 // A capped viewport keeps the far blocks unmounted, so each jump has to mount its target.
 test.use({ viewport: { width: 1000, height: 700 } });
 
 const FILLER = 120;
+const TABLE = '| Cell |\n| --- |\n| Cites [^c] |';
 
 /** `[[toc]]`, the citing blocks, filler, a far heading, then the definitions. */
 function jumpDoc() {
@@ -23,7 +24,7 @@ function jumpDoc() {
 		// rather than the reference would put Tab somewhere else.
 		'See [a link](https://example.com), [^b] and then [^a] here.',
 		'Between the citations.',
-		'| Cell |\n| --- |\n| Cites [^c] |',
+		TABLE,
 		'After the table.'
 	];
 	for (let i = 0; i < FILLER; i++)
@@ -141,7 +142,8 @@ const ROUTES: Route[] = [
 		shiftTab: 'block [4]',
 		fixme: {
 			key: 'Tab',
-			reason: 'reading mode runs Tab in a table cell as cell navigation, and the last cell keeps it'
+			reason:
+				'#759: reading mode runs Tab in a table cell as cell navigation, and the last cell keeps it'
 		}
 	},
 	...(['Enter', 'click'] as const).map((how) => ({
@@ -171,6 +173,76 @@ test.describe('reading mode: a jump lands focus where Tab continues', () => {
 					.poll(() => focusedTarget(page))
 					.toBe(key === 'Tab' ? route.tab : route.shiftTab);
 				expect(await capturedErrors(page)).toEqual([]);
+			});
+		}
+	}
+
+	// A host's own navigation button lands through the same `navigateTo` a footnote does.
+	test("a host's navigateTo into a table cell's text leaves no selection either", async ({
+		page
+	}) => {
+		const editor = new JumpPage(page);
+		await editor.load(md, 'reading');
+		const inView = await page.evaluate(
+			([path, offset]) => (window as any).__test.rects.navigateTo(path, offset),
+			[[4], TABLE.indexOf('Cites')] as const
+		);
+		expect(inView).toBe(true);
+
+		await expect.poll(() => focusedTarget(page)).toBe('block [4]');
+		expect(await holdsCaret(page)).toBe(false);
+		expect(await editor.bridge.getSelection()).toBeNull();
+		expect(await capturedErrors(page)).toEqual([]);
+	});
+});
+
+/** Leaves reading mode the way a host does: from its own button, which takes focus out of the
+ *  editor, or from a shortcut, which leaves focus where it was. */
+async function leaveReading(editor: JumpPage, from: 'host button' | 'shortcut'): Promise<void> {
+	if (from === 'host button') {
+		await editor.page.evaluate(() => {
+			const button = document.createElement('button');
+			button.id = 'host-mode-button';
+			button.textContent = 'Edit';
+			button.style.cssText = 'position: fixed; top: 0; right: 0; z-index: 10';
+			// WebKit doesn't focus a clicked button, so this host focuses it itself.
+			button.addEventListener('click', () => button.focus());
+			document.body.append(button);
+		});
+		await clickInPlace(editor.page.locator('#host-mode-button'));
+		await expect(editor.page.locator('#host-mode-button')).toBeFocused();
+	}
+	await editor.setPresentationMode('source');
+}
+
+test.describe('reading mode: leaving it after a jump puts the caret at the jump', () => {
+	const FLIPS = [
+		{
+			name: 'reference to definition',
+			jump: (editor: JumpPage) => editor.jumpToDefA('Enter'),
+			typed: '[^a]: XFirst note.'
+		},
+		{
+			name: 'marker back to its reference',
+			jump: async (editor: JumpPage) => {
+				await editor.jumpToDefA('Enter');
+				await editor.followMarker(defA, 'Enter', 2);
+			},
+			typed: 'then [^a]X here.'
+		}
+	];
+	for (const flip of FLIPS) {
+		for (const from of ['host button', 'shortcut'] as const) {
+			test(`${flip.name}, then source mode from a ${from}, then a typed letter`, async ({
+				page
+			}) => {
+				const editor = new JumpPage(page);
+				await editor.load(md, 'reading');
+				await flip.jump(editor);
+
+				await leaveReading(editor, from);
+				await page.keyboard.type('X');
+				await editor.bridge.waitForSourceContains(flip.typed);
 			});
 		}
 	}

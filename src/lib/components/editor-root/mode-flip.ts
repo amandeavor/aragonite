@@ -2,6 +2,7 @@
  * Keeps the caret across a presentation-mode switch. `beforeFlip` captures the caret and blurs
  * the block while the outgoing mode still owns the DOM; `afterFlip` drops the outgoing markers'
  * geometry, has the overlays measure again, and restores the caret through the shared restore path.
+ * Reading mode has no caret, so leaving it puts one where its focus last sat, read off `install`.
  */
 
 import { tick } from 'svelte';
@@ -11,6 +12,7 @@ import type { LayoutState } from '../../windowing/layout-state.svelte';
 import type { MenuPresence } from '../menu/menu-presence.svelte';
 import type { DraftRegistry } from '../draft-registry';
 import { rawOffsetAt } from '../../caret/widget-offset';
+import { onRoot } from './listeners';
 import type { EditorEvents } from '../../editor-events';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
 import type { PresentationMode } from '../../presentation-mode';
@@ -53,6 +55,8 @@ export interface ModeFlip {
 	beforeFlip(to: PresentationMode): void;
 	/** The `$effect` half: reset mode-bound geometry, then restore the caret after the flush. */
 	afterFlip(to: PresentationMode): void;
+	/** Hears focus moving inside `root`, so leaving reading mode knows where its focus sat. */
+	install(root: HTMLElement): () => void;
 }
 
 interface FlipCaret {
@@ -62,6 +66,8 @@ interface FlipCaret {
 
 export function createModeFlip(deps: ModeFlipDeps): ModeFlip {
 	let flipCaret: FlipCaret | null = null;
+	// What last took focus in the editor while reading: a jump's target, a Tab stop, a click.
+	let readingFocus: Element | null = null;
 	let preFlipSeenMode = deps.mode;
 	let lastEffectiveMode = deps.mode;
 
@@ -82,6 +88,22 @@ export function createModeFlip(deps: ModeFlipDeps): ModeFlip {
 		if (!contentEl?.contains(node)) return null;
 		const offset = rawOffsetAt(contentEl, node, focus.offset);
 		return { path, offset };
+	}
+
+	/** The caret leaving reading puts down where its focus sat: after a focused widget, at a click's
+	 *  point, else at the block's start. Null once that element has left the editor. */
+	function readingFocusCaret(): FlipCaret | null {
+		const el = readingFocus;
+		if (!el?.isConnected) return null;
+		const path = findSurfacePathForElement(el);
+		const contentEl = path && deps.getBlockElByPath(path);
+		if (!path || !contentEl?.contains(el)) return null;
+		const widgetEnd = el.closest('[data-inline-widget]')?.getAttribute('data-source-end');
+		if (widgetEnd) return { path, offset: Number(widgetEnd) };
+		const focus = readNativeSelection()?.focus;
+		if (focus && contentEl.contains(focus.node))
+			return { path, offset: rawOffsetAt(contentEl, focus.node, focus.offset) };
+		return { path, offset: 0 };
 	}
 
 	// The restore path clamps the offset to one the new mode allows; a focused text field is
@@ -111,8 +133,9 @@ export function createModeFlip(deps: ModeFlipDeps): ModeFlip {
 			preFlipSeenMode = to;
 			deps.holdOutgoingMode(from);
 			try {
-				// Reading keeps its entry snapshot: it has no caret of its own to recapture on the way out.
-				if (from !== 'reading') flipCaret = captureCaret();
+				// Reading keeps its entry snapshot for when nothing in the editor took focus meanwhile.
+				flipCaret = from === 'reading' ? (readingFocusCaret() ?? flipCaret) : captureCaret();
+				readingFocus = null;
 				blurForFlip();
 			} finally {
 				deps.holdOutgoingMode(null);
@@ -139,6 +162,13 @@ export function createModeFlip(deps: ModeFlipDeps): ModeFlip {
 				void restoreAfterFlush(caret, to);
 			}
 			deps.events.emit('presentationModeChange', to);
+		},
+		install(root) {
+			return onRoot(root, 'focusin', (e: FocusEvent) => {
+				const target = e.target;
+				if (deps.mode !== 'reading' || !(target instanceof Element)) return;
+				if (!deps.isHostChrome(target)) readingFocus = target;
+			});
 		}
 	};
 }
