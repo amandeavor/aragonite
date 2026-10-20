@@ -19,7 +19,7 @@ The `/` showcase bar's "report a bug" button records the visitor's input and ope
 
 - The browser refuses the clipboard write (focus already moved to the new tab): the card says so and offers Copy recording, whose own click puts the recording on the clipboard.
   Miss-analysis: Firefox can refuse the copy inside `window.open`, before the card is up, and the
-  moved card dropped that answer; the lane ran this case on Chromium only.
+  moved card dropped that answer; the move was tested on Chromium only.
 
 ## Pinned below the browser
 
