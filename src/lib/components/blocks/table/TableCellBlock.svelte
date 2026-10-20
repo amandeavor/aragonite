@@ -844,11 +844,8 @@
 	}
 </script>
 
-<!-- The cell is an editing host, which the compiler cannot see through a role it has to compute. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	bind:this={el}
-	tabindex="0"
 	class={['table-cell', ...blockDecorations.classes]}
 	contenteditable={readOnly ? 'false' : 'true'}
 	role={isHeaderRow ? 'columnheader' : 'cell'}
@@ -866,6 +863,7 @@
 	oncompositionstart={editableSurface.onCompositionStart}
 	oncompositionend={editableSurface.onCompositionEnd}
 	{@attach editableSurface.caretSource}
+	{@attach editableSurface.tabStop}
 ></div>
 
 <style>

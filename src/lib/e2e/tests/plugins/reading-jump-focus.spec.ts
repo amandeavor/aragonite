@@ -109,8 +109,6 @@ interface Route {
 	lands: string;
 	tab: string;
 	shiftTab: string;
-	/** A key whose half of the row waits on a known defect, and why. */
-	fixme?: { key: 'Tab' | 'Shift+Tab'; reason: string };
 }
 
 const ROUTES: Route[] = [
@@ -119,7 +117,7 @@ const ROUTES: Route[] = [
 		jump: (editor: JumpPage) => editor.jumpToDefA(how),
 		lands: `block [${defA},0]`,
 		tab: `marker in [${defA},0]`,
-		shiftTab: `block [${defA - 1}]`
+		shiftTab: 'outside'
 	})),
 	...(['Enter', 'click'] as const).map((how) => ({
 		name: `marker back to its reference (${how})`,
@@ -128,7 +126,7 @@ const ROUTES: Route[] = [
 			await editor.followMarker(defA, how, 2);
 		},
 		lands: 'ref 2 in [2]',
-		tab: 'block [3]',
+		tab: 'ref 3 in [4]',
 		shiftTab: 'ref 1 in [2]'
 	})),
 	{
@@ -138,20 +136,15 @@ const ROUTES: Route[] = [
 			await editor.followMarker(defC, 'Enter', 4);
 		},
 		lands: 'ref 3 in [4]',
-		tab: 'block [5]',
-		shiftTab: 'block [4]',
-		fixme: {
-			key: 'Tab',
-			reason:
-				'#759: reading mode runs Tab in a table cell as cell navigation, and the last cell keeps it'
-		}
+		tab: 'outside',
+		shiftTab: 'block [4]'
 	},
 	...(['Enter', 'click'] as const).map((how) => ({
 		name: `table of contents entry to its heading (${how})`,
 		jump: (editor: JumpPage) => editor.followTocEntry(how),
 		lands: `block [${heading}]`,
-		tab: `block [${heading + 1}]`,
-		shiftTab: `block [${heading - 1}]`
+		tab: `marker in [${defA},0]`,
+		shiftTab: 'outside'
 	}))
 ];
 
@@ -159,7 +152,6 @@ test.describe('reading mode: a jump lands focus where Tab continues', () => {
 	for (const route of ROUTES) {
 		for (const key of ['Tab', 'Shift+Tab'] as const) {
 			test(`${route.name}, then ${key}`, async ({ page }) => {
-				test.fixme(route.fixme?.key === key, route.fixme?.reason ?? '');
 				const editor = new JumpPage(page);
 				await editor.load(md, 'reading');
 				await route.jump(editor);

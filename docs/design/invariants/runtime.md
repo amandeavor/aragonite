@@ -95,6 +95,7 @@ These checks run in three kinds of place:
 | G1.122 | A built-in metadata read names the kind the node is                                        | A·N     |
 | G1.128 | A caret key a selected widget passes on leaves the widget first                            | A·N     |
 | G1.131 | A landing in reading mode leaves no browser selection in the block it landed in            | A·N     |
+| G1.133 | Reading mode leaves one block in the tab order; anything else there is a control           | A·N     |
 
 ### The entries
 
@@ -579,3 +580,10 @@ to its target and clears the selection: Firefox starts Tab from a selection, the
 Dev fails a selection still in the landed block once the landing has scrolled (only that block, so a
 click elsewhere mid-scroll passes).
 `checkReadingLandingLeavesNoCaret` · `caret-landing.test.ts`, `reading-jump-focus.spec.ts`.
+
+**G1.133 · Reading mode has one block stop** (`reading-tab-stops`). In reading mode Tab is the
+page's focus walk, so the editor keeps one block in it, the one whose own element last took focus
+(`components/editor-root/reading-focus.svelte.ts`), and every other block's focus element sits at
+-1. Dev fails a second element in the tab order that isn't a control, checked each time the stop
+moves. The same check ships as `readingTabOrderProblem` for a plugin's tests.
+`checkReadingTabStops` · `reading-focus.test.ts`, `reading-keyboard.spec.ts`.

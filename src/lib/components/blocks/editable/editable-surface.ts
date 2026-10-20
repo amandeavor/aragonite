@@ -26,7 +26,8 @@ import type { PasteImageHook } from '../../../host-hooks';
 import { emitCommandError, type EditorEvents } from '../../../editor-events';
 import type { InlineMenuCombobox } from '../../../inline-menu/inline-menu-state.svelte';
 import type { NodeView } from '../../../core/node-views';
-import { blockAccessibleName } from '../../../a11y-strings';
+import { blockAccessibleName, readingRole } from '../../../a11y-strings';
+import type { ReadingFocus } from '../../editor-root/reading-focus.svelte';
 import type { CommandDispatchContext } from '../../../schema/block-commands';
 import type { PluginActivation } from '../../../schema/plugin-activation';
 import type { UndoController } from '../../../editor-actions/deps';
@@ -131,10 +132,12 @@ export const REMOVED_IN_PLACE = Symbol('removed-in-place');
 // ── Accessibility attributes ────────────────────────────────────────────────
 
 /** What an editable block tells assistive tech: its name, the inline menu's list while one shows
- *  in it, and the empty block's hint, which `data-placeholder` also hands the stylesheet. */
+ *  in it, and the empty block's hint, which `data-placeholder` also hands the stylesheet. Reading
+ *  mode drops the field's role and name: a heading reads as a heading, any other block as text. */
 export interface EditableSurfaceAttributes {
-	role: 'textbox' | 'combobox';
-	'aria-label': string;
+	role?: 'textbox' | 'combobox' | 'heading';
+	'aria-label'?: string;
+	'aria-level'?: number;
 	'aria-expanded'?: 'true';
 	'aria-controls'?: string;
 	'aria-activedescendant'?: string;
@@ -222,6 +225,8 @@ export interface EditableSurfaceDeps {
 	placeholder: () => PlaceholderPolicy | null;
 	/** A prose block's view of the pair the auto-pair wrote; omitted where nothing pairs. */
 	ownPairs?: BlockAutoPairs;
+	/** The editor's reading-mode tab stop, which the element takes its tabindex from. */
+	readingFocus: Pick<ReadingFocus, 'hold'>;
 
 	// ── The per-block reads `SharedKeydownContext` needs ──────────────────────
 	/** The selection's focus endpoint as a raw offset; each block converts its own DOM read. */
@@ -270,6 +275,8 @@ export interface EditableSurface {
 	/** Registers the element with the drawn caret while it is mounted; `attributes` carries it, and
 	 *  a surface that spreads no attributes attaches it on its own. */
 	caretSource(el: HTMLElement): () => void;
+	/** Holds the element's tabindex for the reading-mode tab stop, the same way. */
+	tabStop(el: HTMLElement): () => void;
 	crossBlock: CrossBlockHandlers;
 	sharedCtx: SharedKeydownContext;
 	surface: EditableSurfaceMethods;
@@ -786,6 +793,9 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// Taken once: Svelte re-runs an attachment only when the function under its key changes.
 	const trackKey = createAttachmentKey();
 	const caretSourceKey = createAttachmentKey();
+	const tabStopKey = createAttachmentKey();
+
+	const tabStop = (el: HTMLElement) => deps.readingFocus.hold(el, deps.getMyPath);
 
 	// A composition or a shown inline source owns the caret, so the browser's own shows then.
 	const caretSource = (el: HTMLElement) =>
@@ -805,6 +815,14 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// `aria-expanded`, so a screen reader would hear nothing about the list.
 	function attributes(combobox: InlineMenuCombobox | null) {
 		const hint = placeholder.text() ?? undefined;
+		const attachments = {
+			[trackKey]: placeholder.track,
+			[caretSourceKey]: caretSource,
+			[tabStopKey]: tabStop
+		};
+		if (deps.reading.mode() === 'reading') {
+			return { ...readingRole(deps.getNode()), 'data-placeholder': hint, ...attachments };
+		}
 		return {
 			role: combobox ? ('combobox' as const) : ('textbox' as const),
 			'aria-label': blockAccessibleName(deps.getNode()),
@@ -814,14 +832,14 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			'aria-autocomplete': combobox ? ('list' as const) : undefined,
 			'aria-placeholder': hint,
 			'data-placeholder': hint,
-			[trackKey]: placeholder.track,
-			[caretSourceKey]: caretSource
+			...attachments
 		};
 	}
 
 	return {
 		attributes,
 		caretSource,
+		tabStop,
 		crossBlock,
 		sharedCtx,
 		surface,

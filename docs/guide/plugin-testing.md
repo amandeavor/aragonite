@@ -23,6 +23,7 @@ And a map, so you can jump straight at your question:
 | [Turning warnings into failures](#turning-warnings-into-failures)                                     | Making the editor's dev-mode warnings fail your suite instead of scrolling by                                |
 | [Proving a paste transform is wired](#proving-a-paste-transform-is-wired)                             | Driving the real paste pipeline over a string, no clipboard involved                                         |
 | [Mounting the editor under jsdom](#mounting-the-editor-under-jsdom)                                   | Rendering your component in a simulated browser, and the helper that fills the gaps                          |
+| [One tab stop in reading mode](#one-tab-stop-in-reading-mode-readingtaborderproblem)                  | Checking your mounted block leaves reading mode's Tab to the links and the editor's one stop                 |
 | [The conformance kits](#the-conformance-kits)                                                         | The checks the built-in blocks are held to, pointed at yours, and the vocabulary the three kits share        |
 | [The kind checkup](#the-kind-checkup-runkindconformance)                                              | The checks every block kind has to pass: bytes survive, one edit is one undo step, copying invents nothing   |
 | [The container checkup](#the-container-checkup-runcontainerconformance)                               | Extra checks for a block that holds other blocks, starring the body line that ends the container early       |
@@ -183,6 +184,24 @@ From there `target.querySelector` reaches your component's own markup, and `edit
 ```ts
 expect(target.querySelector('.parrot-block')).not.toBeNull(); // your component, not the raw-text fallback
 expect(editor.getSource()).toBe(MY_SOURCE);
+```
+
+### One tab stop in reading mode: `readingTabOrderProblem`
+
+In reading mode Tab is the page's: it walks the document's links and buttons, and the whole editor is one stop in that walk (the block the reader was last in). A block that puts its own element in the tab order makes Tab stop on it like a link. The editable leaf's spread and the whole-block host already take their stop from the editor, so this only bites when your markup adds a `tabindex` of its own somewhere that isn't a control.
+
+`readingTabOrderProblem(root: HTMLElement): string | null`
+
+Mount your kind with `presentationMode: 'reading'` and hand it the editor's root. `null` means only controls and the editor's one stop are in the tab order; otherwise you get the problem, naming every extra stop:
+
+```ts
+import { readingTabOrderProblem } from '@voithos-labs/aragonite/testing';
+
+const editor = mount(Editor, { target, props: { source: MY_SOURCE, plugins, presentationMode: 'reading', scrollMode: 'host' } });
+flushSync();
+expect(readingTabOrderProblem(target.querySelector('.editor')!)).toBeNull();
+// a stray tabindex="0" on your wrapper instead gives:
+// "reading mode has 2 tab stops that aren't controls (div.text-editable-block at [0], div.parrot-box at [1]): ..."
 ```
 
 ### The conformance kits

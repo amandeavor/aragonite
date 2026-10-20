@@ -44,6 +44,7 @@
 	import TailInsert from './TailInsert.svelte';
 	import BlockMenu from './menu/BlockMenu.svelte';
 	import { createMenuPresence } from './menu/menu-presence.svelte';
+	import { createReadingFocus } from './editor-root/reading-focus.svelte';
 	import { createDraftRegistry } from './draft-registry';
 	import { createShownSourceState } from './blocks/text/shown-source.svelte';
 	import { createDocumentStamps } from '../editor-actions/commit/document-stamp';
@@ -384,6 +385,10 @@
 	// ── Open menus ──────────────────────────────────────────────────────
 
 	const menuPresence = createMenuPresence({ isReading: () => effectiveMode === 'reading' });
+	const readingFocus = createReadingFocus({
+		isReading: () => effectiveMode === 'reading',
+		isInView: (path) => scrollOwner.isInView(path)
+	});
 	const stamps = createDocumentStamps();
 	// Work still in flight at the unmount stops there: its write is refused at the write gate, its
 	// report reaches no handler, and its caret landing reads no more of the tree.
@@ -832,7 +837,8 @@
 		shownSource,
 		stamps,
 		kindCue,
-		textMoves
+		textMoves,
+		readingFocus
 	} satisfies EditorServices);
 
 	setContext(EDITOR_POLICIES_KEY, {
@@ -888,6 +894,7 @@
 		modeFlip.afterFlip(effectiveMode);
 	});
 	rootEffect((root) => modeFlip.install(root));
+	rootEffect((root) => readingFocus.install(root));
 
 	// ── Root gestures ───────────────────────────────────────────────────
 

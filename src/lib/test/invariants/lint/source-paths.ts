@@ -123,6 +123,7 @@ export const SOURCE = {
 	imageProperties: 'src/lib/components/image/ImageProperties.svelte',
 	imageWidgetEditing: 'src/lib/components/image/image-widget-editing.ts',
 	linkCard: 'src/lib/components/link-card/LinkCard.svelte',
+	readingFocus: 'src/lib/components/editor-root/reading-focus.svelte.ts',
 	linkCardHost: 'src/lib/components/link-card/LinkCardHost.svelte',
 
 	// ── Bundled plugins and styles ──────────────────────────────────────────
@@ -274,6 +275,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	imageProperties: 'function draftFields(',
 	imageWidgetEditing: 'export function imageWidgetOnSelectedKey',
 	linkCard: 'function focusStops(',
+	readingFocus: 'export function createReadingFocus',
 	linkCardHost: 'function opensCard(',
 
 	// ── Bundled plugins and styles ──────────────────────────────────────────

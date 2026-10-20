@@ -3,9 +3,10 @@
 Reading mode has no caret, so a jump (a footnote reference to its definition, a definition's
 marker back to its reference, a table of contents entry to its heading) lands focus, not a caret.
 Focus goes to the inline widget that ends at the jump's landing point when there is one with a
-tab stop, else to the target block's own element, and the browser keeps no selection. Every
-engine then starts Tab and Shift+Tab from that element: Tab reaches the first tab stop after it,
-Shift+Tab the one before it.
+tab stop, else to the target block's own element, and the browser keeps no selection. The target
+block becomes the editor's one tab stop (`reading-keyboard.md`), so every engine then starts Tab
+and Shift+Tab from that element and walks controls only: Tab reaches the first control after it,
+Shift+Tab the one before it, and with none mounted on that side the walk leaves the editor.
 
 The document has `[[toc]]`, a paragraph citing `[^b]` then `[^a]` with a link before both, a
 table cell citing `[^c]`, filler, a far heading, then the definitions, so each jump mounts its
@@ -15,19 +16,18 @@ target. Each scenario below runs once with Tab and once with Shift+Tab, on all t
 
 - **Reference to definition** (Enter on the focused reference, or a click): focus is on the
   definition's body block; Tab reaches its `[^a]` marker, named `Back to reference a`; Shift+Tab
-  reaches the block before the definition
+  leaves the editor, since only filler comes before
 - **Marker back to its reference** (Enter after Tab reaches the marker, or a click): focus is on
   the `[^a]` reference itself, not the paragraph, so the link and `[^b]` before it are not in
-  the way; Tab reaches the next block, Shift+Tab reaches `[^b]`
+  the way; Tab reaches `[^c]` in the table, Shift+Tab reaches `[^b]`
 - **Table of contents entry to its heading** (a click, or Enter on the focused entry): focus is
-  on the heading's block; Tab reaches the next block, Shift+Tab the one before
+  on the heading's block; Tab reaches the first definition's marker, Shift+Tab leaves the editor
 
 ## Edge cases
 
 - **Marker back to a reference in a table cell:** focus is on the `[^c]` reference in the cell,
-  through the cell's own focus; Shift+Tab reaches the cell
-  (the Tab half is `fixme` on #759: reading mode runs Tab in a table cell as cell navigation, and the
-  last cell keeps it)
+  through the cell's own focus; Tab leaves the editor (#759: a cell's Tab took the key), and
+  Shift+Tab reaches the cell, the editor's stop
 - **A host's `navigateTo` into a table cell's text** (once, no Tab): focus is on the cell, and
   `getSelection()` is null there too, not the cell's start
 

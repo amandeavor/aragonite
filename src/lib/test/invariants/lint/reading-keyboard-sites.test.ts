@@ -1,13 +1,12 @@
 /**
- * G4.235: in reading mode the page owns Tab. The keymaps' Tab chords are declined at the command
- * dispatcher in reading mode, so a keydown that compares the Tab key by hand is either chrome that
- * never opens there or the range keydown, which hands Tab back first (`docs/design/editor.md`
- * § Browser engines).
+ * G4.235: in reading mode the page owns Tab, and the editor is one stop in it. A keydown that reads
+ * the Tab key by hand skips the dispatcher's reading-mode decline, and an element that puts itself
+ * in the tab order skips the reading-mode stop (`docs/design/editor.md` § Browser engines).
  */
 
-import { describeFileRules, type FileRule } from './file-rule';
+import { describeFileRules, under, type FileRule } from './file-rule';
 import { collectEditorSources } from './scan-source';
-import { SOURCE } from './source-paths';
+import { SOURCE, SOURCE_DIR } from './source-paths';
 
 const HAND_TAB_SITES: FileRule = {
 	id: 'G4.235 a keydown reads the Tab key by hand only where reading mode is settled',
@@ -38,4 +37,35 @@ const HAND_TAB_SITES: FileRule = {
 	]
 };
 
-describeFileRules([HAND_TAB_SITES], collectEditorSources());
+const inLibrary = (code: string) => ({ relPath: `${SOURCE_DIR.library}probe.svelte`, code });
+
+const OWN_TAB_STOPS: FileRule = {
+	id: 'G4.235 only a control or the reading-mode stop puts an element in the tab order',
+	population: under(SOURCE_DIR.library),
+	matches:
+		/tabindex\s*=\s*["']0["']|tabindex=\{[^}]*\b0\b[^}]*\}|tabindex:\s*0\b|tabIndex\s*=\s*0\b|tabIndex\s*=[^;\n]*\?\s*0\s*:/,
+	allowed: {
+		[SOURCE.readingFocus]: 'the reading-mode stop itself',
+		'src/lib/ambient/ambient-dom.ts':
+			'a marker range a kind declares focusable, a control such as the footnote back marker',
+		'src/lib/plugins/footnotes/FootnoteReference.svelte': "the reference, reading mode's link",
+		'src/lib/components/GapCaret.svelte': 'the gap caret, which reading mode never shows'
+	},
+	reason:
+		"a block's focus element takes its tabindex from the reading-mode stop (`readingFocus.hold`, through the editable surface's attributes); any other element with a tab stop must be a control",
+	reaches: [SOURCE.readingFocus],
+	hits: [
+		inLibrary('<div tabindex="0" class="x"></div>'),
+		inLibrary('<div tabindex={open ? 0 : -1}></div>'),
+		inLibrary('const props = { tabindex: 0 };'),
+		inLibrary('el.tabIndex = 0;'),
+		inLibrary('el.tabIndex = focused ? 0 : -1;')
+	],
+	misses: [
+		inLibrary('<div tabindex="-1"></div>'),
+		inLibrary('el.tabIndex = -1;'),
+		inLibrary('const tabIndex = 10;')
+	]
+};
+
+describeFileRules([HAND_TAB_SITES, OWN_TAB_STOPS], collectEditorSources());

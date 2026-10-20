@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { isMacOS } from './platform-keys';
+import { focusWalkKey, isMacOS } from './platform-keys';
 
 /** Which browser is running, for the harness helpers whose path differs by engine (the clipboard,
  *  the IME driver, dropping the native caret). */
@@ -50,4 +50,23 @@ const SKIP_REASONS: Record<EngineCapability, string> = {
 /** Skip the running test on an engine that lacks `capability`. */
 export function skipUnlessSupported(page: Page, capability: EngineCapability): void {
 	test.skip(!engineSupports(page, capability), SKIP_REASONS[capability]);
+}
+
+/** Whether the focus walk stops on a plain `<a href>` in this engine, asked of a bare link the
+ *  page adds and removes. WebKit leaves links out unless the user's own setting puts them in. */
+export async function focusWalkReachesLinks(page: Page): Promise<boolean> {
+	await page.evaluate(() => {
+		const probe = document.createElement('div');
+		probe.id = 'focus-walk-probe';
+		probe.innerHTML =
+			'<button>start</button><a href="#focus-walk-probe">link</a><button>end</button>';
+		document.body.prepend(probe);
+		probe.querySelector('button')!.focus();
+	});
+	await page.keyboard.press(focusWalkKey());
+	return page.evaluate(() => {
+		const reached = document.activeElement?.tagName === 'A';
+		document.getElementById('focus-walk-probe')!.remove();
+		return reached;
+	});
 }
