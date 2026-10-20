@@ -1,8 +1,9 @@
 /**
  * An e2e spec drives the browser through the shared helpers, each supplying what a raw call skips:
  * the IME driver (G4.49), the clipboard helper (G4.212), `gotoReady` and `reloadReady`, the mode
- * switch that waits (G4.133), the Firefox click-run, insert and in-place helpers (G4.228), and the
- * platform's own key spelling (G4.226). Probe text is spelled in pieces, since this file is scanned too.
+ * switch that waits (G4.133), the Firefox click-run, insert and in-place helpers (G4.228), the
+ * platform's own key spelling (G4.226) and `endTypingBatch` (G4.232). Probe text is spelled in
+ * pieces, since this file is scanned too.
  */
 import { it, expect } from 'vitest';
 import { collectFiles, readSource } from '../../test/invariants/lint/scan-source';
