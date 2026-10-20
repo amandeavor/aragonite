@@ -377,7 +377,7 @@ editor.getBlockKindAt([99]); // null
 
 `getSelection(): EditorSelection | null`
 
-Returns a snapshot of the current selection (a copy, so changing it changes nothing), or `null` when the editor isn't focused. While an image is selected whole, it returns a collapsed caret at the image's edge (its end, after a click): the next `insertMarkdown` or keystroke still replaces the image, and passing that value to `setSelection` puts a caret back there without selecting the image again.
+Returns a snapshot of the current selection (a copy, so changing it changes nothing), or `null` when the editor isn't focused, or after a reading-mode jump, which places no caret. While an image is selected whole, it returns a collapsed caret at the image's edge (its end, after a click): the next `insertMarkdown` or keystroke still replaces the image, and passing that value to `setSelection` puts a caret back there without selecting the image again.
 
 ```ts
 editor.getSelection();
@@ -821,7 +821,7 @@ const plugins = [{ plugin: tocPlugin(), options: { maxDepth: 3 } satisfies TocOp
 
 Two editors in one process can list different depths this way; the factory form, `tocPlugin({ maxDepth: 3 })`, is the default for an instance that declares none. The `satisfies TocOptions` is there because `options` is `unknown` to the editor, and with it a typo or an out-of-range level stays a compile error. At runtime anything that isn't a level from 1 to 6 falls back to the factory value.
 
-**Footnotes.** A reference jumps to its definition on the click a link follows: a plain click in reading mode, Ctrl/Cmd+click while editing, or a plain click in live mode too if you set `linkClick: 'plain'`. Any other plain click opens the reference's source to edit. The definition's own `[^label]` marker is the way back, on the same gesture, and it lands the caret right after the first citation. In reading mode both are links a keyboard reaches with Tab and follows with Enter; the editing modes give them no tab stop.
+**Footnotes.** A reference jumps to its definition on the click a link follows: a plain click in reading mode, Ctrl/Cmd+click while editing, or a plain click in live mode too if you set `linkClick: 'plain'`. Any other plain click opens the reference's source to edit. The definition's own `[^label]` marker is the way back, on the same gesture, and it lands the caret right after the first citation. In reading mode both are links a keyboard reaches with Tab and follows with Enter, and the way back focuses that first citation, so Tab carries on from it; the editing modes give them no tab stop.
 
 **Slash commands.** Type `/` at the start of a line or after a space and a list opens under the caret: every block the right-click "Insert block" menu offers (your plugins' blocks included), then Heading 1 to 3. Typing narrows it by label or keyword (`/td` finds the to-do list), Enter picks, and Escape closes it and leaves what you typed. On an empty line the block replaces the line. On a line with text, the `/query` goes and the block lands below it, except a heading row, which turns the line itself into a heading. It never opens in a table cell. Two built-in rows take a word after a space: `/code js` opens a fence tagged `js`, and `/table 3x4` makes three columns by four rows. A plugin's block can take one too, if its insert entry declares [`withArgument`](plugin-api.md#insert-catalogue). `Mod+/` types the `/` for you, and `runCommand('slashCommands.open', 'table')` opens the list already narrowed, which is how a toolbar button or a touch UI gets there.
 
@@ -1330,14 +1330,14 @@ await rects.navigateTo([840]); // true: in view, and the caret sits at its start
 await rects.navigateTo([840], 12); // the same, with the caret after the block's twelfth byte
 ```
 
-| Method                         | Returns                                                                                                                                          |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `blockRect(path)`              | The block's bounding box, or `null` when it isn't mounted                                                                                        |
-| `rangeRects(path, start, end)` | The rects covering an inline range: one per visual line on wrapped text, one per cell on a table                                                 |
-| `caretRect()`                  | The live native caret, or `null` (including whenever a cross-block selection is active)                                                          |
-| `reveal(path)`                 | Mounts a block virtual rendering has unmounted, resolving `true` once its element exists                                                         |
-| `scrollTo(path, opts?)`        | Mounts the block, then scrolls the viewport to it (`opts.block`: `'nearest'` default, or `'center'`; `opts.hold`: keep holding it, default true) |
-| `navigateTo(path, offset?)`    | The same, plus lands the caret in the block (at its start, or at the offset you pass), which is what a navigation button should do for the user  |
+| Method                         | Returns                                                                                                                                                                                                     |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `blockRect(path)`              | The block's bounding box, or `null` when it isn't mounted                                                                                                                                                   |
+| `rangeRects(path, start, end)` | The rects covering an inline range: one per visual line on wrapped text, one per cell on a table                                                                                                            |
+| `caretRect()`                  | The live native caret, or `null` (including whenever a cross-block selection is active)                                                                                                                     |
+| `reveal(path)`                 | Mounts a block virtual rendering has unmounted, resolving `true` once its element exists                                                                                                                    |
+| `scrollTo(path, opts?)`        | Mounts the block, then scrolls the viewport to it (`opts.block`: `'nearest'` default, or `'center'`; `opts.hold`: keep holding it, default true)                                                            |
+| `navigateTo(path, offset?)`    | The same, plus lands the caret in the block (at its start, or at the offset you pass), which is what a navigation button should do for the user. Reading mode has no caret, so it moves focus there instead |
 
 Offsets are raw offsets into the block (dimmed markers included) on text blocks, and cell indices on tables. `rangeRects` accepts the exported `SELECTION_END` as `end`, meaning "through the block's last measurable position".
 
@@ -1368,7 +1368,7 @@ The getters are live, so Svelte chrome just reads them. Anywhere else, repaint y
 - **It mounts first.** A block virtual rendering has unmounted has no element to scroll to, so the call mounts it and then scrolls. `reveal(path)` is that same mount without the scroll, for measuring something offscreen.
 - **The boolean is honest.** It resolves only after the position settles, so `true` means the block is genuinely in view, not merely that the call ran. A closed `<details>` on the way is opened first, as one undoable edit. In reading mode a section that shows closed can't be opened, so the target can't mount, and the call resolves `false` and leaves nothing pinned.
 - **`'nearest'` holds, `'center'` places.** The default `'nearest'` scrolls only as far as it has to (not at all for a block already on screen), then keeps the block right where it landed through the reflow a mount triggers (images decoding above it collapse the document height). `'center'` places the block precisely once the scroll settles, and stops holding it after. Pass `hold: false` to hand the viewport straight back, which is what a restore that writes its own remembered scroll position afterwards wants.
-- **Land the caret if a user asked to go there.** A navigation affordance that only scrolls leaves focus on whatever the user clicked, where the editor's chords don't reach: an undo typed right after the jump does nothing. `navigateTo` places the caret at the target (into the first line, for a block that holds others). Like `reveal` and `scrollTo`, it opens a closed `<details>` on the way.
+- **Land the caret if a user asked to go there.** A navigation affordance that only scrolls leaves focus on whatever the user clicked, where the editor's chords don't reach: an undo typed right after the jump does nothing. `navigateTo` places the caret at the target (into the first line, for a block that holds others). Like `reveal` and `scrollTo`, it opens a closed `<details>` on the way. In reading mode there's no caret to place, so focus goes to the block, or to a widget with a tab stop that ends right at your offset (a footnote reference, say), and Tab carries on from there on every browser. `getSelection()` reads `null` afterwards.
 
 Finding the path in the first place: `parse(getSource())` gives you the document tree (every node has a `kind` and containers have `children`), so collect the headings, recursing into containers so a heading inside a blockquote or list is reachable too:
 
