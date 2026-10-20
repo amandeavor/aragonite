@@ -27,6 +27,14 @@ after the delete, and that one undo puts both back.
 - a quote child, Backspace after a ZWJ family: the family goes whole
 - a table cell, Backspace after a ZWJ family: the family goes whole
 
+## Shift+Backspace
+
+Shift+Backspace is Backspace on every OS, so it takes what Backspace takes (key only):
+
+- `a&copy;b`, after the entity: `ab`
+- live mode, `**ab**c`, before `c`: `**a**c`
+- after an image: the image is selected, its bytes kept
+
 ## User interactions
 
 - the key: Backspace or Delete pressed once

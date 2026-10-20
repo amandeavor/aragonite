@@ -178,6 +178,24 @@ async function expectCaret(editor: EditorPage, path: number[], offset: number): 
 		.toEqual({ path, offset });
 }
 
+/** `row`'s delete by `press`, then one undo: the bytes and the caret after each. */
+async function deleteThenUndo(
+	editor: EditorPage,
+	row: Row,
+	press: () => Promise<void>
+): Promise<void> {
+	if (row.mode) await editor.setPresentationMode(row.mode);
+	await editor.loadContent(row.source);
+	await editor.focusBlockAtPath(row.path, row.at);
+	await press();
+	await expect.poll(async () => escaped(await editor.bridge.getSource())).toBe(escaped(row.after));
+	await expectCaret(editor, row.path, row.caret);
+
+	await editor.undo();
+	await expect.poll(async () => escaped(await editor.bridge.getSource())).toBe(escaped(row.source));
+	await expectCaret(editor, row.path, row.at);
+}
+
 for (const route of ['key', 'soft keyboard'] as const) {
 	test.describe(`a collapsed delete by ${route}`, () => {
 		let editor: EditorPage;
@@ -189,21 +207,9 @@ for (const route of ['key', 'soft keyboard'] as const) {
 
 		for (const row of ROWS) {
 			test(row.name, async ({ page }) => {
-				if (row.mode) await editor.setPresentationMode(row.mode);
-				await editor.loadContent(row.source);
-				await editor.focusBlockAtPath(row.path, row.at);
-				if (route === 'key') await page.keyboard.press(row.key);
-				else await sendKeylessDelete(page, row.key);
-				await expect
-					.poll(async () => escaped(await editor.bridge.getSource()))
-					.toBe(escaped(row.after));
-				await expectCaret(editor, row.path, row.caret);
-
-				await editor.undo();
-				await expect
-					.poll(async () => escaped(await editor.bridge.getSource()))
-					.toBe(escaped(row.source));
-				await expectCaret(editor, row.path, row.at);
+				await deleteThenUndo(editor, row, () =>
+					route === 'key' ? page.keyboard.press(row.key) : sendKeylessDelete(page, row.key)
+				);
 			});
 		}
 	});
@@ -270,5 +276,53 @@ test.describe('a soft keyboard delete that names its range', () => {
 		await sendKeylessBackspaceOver(page, true);
 		await editor.waitForRenderFlush();
 		expect(await editor.bridge.getSource()).toBe('a&copy;b\n');
+	});
+});
+
+// Shift+Backspace is Backspace on every OS, so it follows the widget's policy and the hidden-run
+// rule too.
+const SHIFT_ROWS: Row[] = [
+	{
+		name: 'an atomic widget before the caret goes whole',
+		source: 'a&copy;b\n',
+		path: [0],
+		at: 7,
+		key: 'Backspace',
+		after: 'ab\n',
+		caret: 1
+	},
+	{
+		name: 'in live mode, past a hidden closer it takes the letter inside',
+		source: '**ab**c\n',
+		mode: 'live',
+		path: [0],
+		at: 6,
+		key: 'Backspace',
+		after: '**a**c\n',
+		caret: 3
+	}
+];
+
+test.describe('Shift+Backspace takes what Backspace takes', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+	});
+
+	for (const row of SHIFT_ROWS) {
+		test(row.name, async ({ page }) => {
+			await deleteThenUndo(editor, row, () => page.keyboard.press('Shift+Backspace'));
+		});
+	}
+
+	test('an image before the caret is selected, its bytes kept', async ({ page }) => {
+		const source = 'lead![cat](/test-fixtures/sample.png)\n';
+		await editor.loadContent(source);
+		await editor.focusBlockEnd(0);
+		await page.keyboard.press('Shift+Backspace');
+		await expect(page.locator('[data-image-overlay]')).toBeVisible();
+		expect(await editor.bridge.getSource()).toBe(source);
 	});
 });
