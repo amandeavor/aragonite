@@ -1,6 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
-import { documentCaret } from './helpers';
+import { documentCaret, waitForFirstImageLoaded } from './helpers';
 import { multiClickElement } from '../../../multi-click';
 
 test.describe('image widget selection', () => {
@@ -70,6 +70,7 @@ test.describe('image widget selection', () => {
 	for (const { name, opensCrop, selector } of controls) {
 		test(`a press on ${name} of a selected image leaves no native caret`, async ({ page }) => {
 			await editor.loadContent(IMAGE_PARAGRAPH);
+			await waitForFirstImageLoaded(page);
 			const image = page.locator('[data-image-widget]').first();
 			if (opensCrop) await multiClickElement(image, 2);
 			else await image.click();
