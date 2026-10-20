@@ -52,7 +52,7 @@ test('undo of an off-window block edit reverts cleanly and restores focus', asyn
 	await editor.focusBlockStart(0);
 	await editor.typeText('ALPHA_MARK');
 	await editor.bridge.waitForSourceContains('ALPHA_MARK');
-	await editor.waitForUndoBatchFlush();
+	await editor.endTypingBatch();
 
 	// All the way down: the focused block is kept mounted for up to pinExtensionCap blocks, so
 	// scrolling by one viewport would not unmount block 0.
@@ -342,7 +342,7 @@ test("undo fires after the caret's block is windowed out (F2)", async ({ page })
 	await editor.focusBlockStart(0);
 	await editor.typeText('WINDOWED_MARK');
 	await editor.bridge.waitForSourceContains('WINDOWED_MARK');
-	await editor.waitForUndoBatchFlush();
+	await editor.endTypingBatch();
 
 	// Past the limit on keeping the focused block mounted, focus leaves the editable entirely.
 	const scrollHeight = await page.evaluate(

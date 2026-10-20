@@ -51,7 +51,7 @@ test.describe('a render-primary block folds onto the document it opened over', (
 
 		// Two bursts with a pause between them, so the draft holds two entries and not five.
 		await editor.typeSlowly('x^');
-		await editor.waitForUndoBatchFlush();
+		await editor.endTypingBatch();
 		await editor.typeSlowly('2');
 		await expect.poll(() => editor.sourceText()).toBe('$$\nx^2\n$$');
 		for (const remaining of ['$$\nx^\n$$', '$$\n\n$$']) {

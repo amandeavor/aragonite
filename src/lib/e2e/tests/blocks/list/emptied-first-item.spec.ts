@@ -34,7 +34,6 @@ test.describe('emptying the first item of a list under a paragraph', () => {
 		await editor.focusBlockAtPath([1, 0, 0], 1);
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceEquals('para\n\n- \n');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.undo();
 		await editor.bridge.waitForSourceEquals('para\n- x\n');

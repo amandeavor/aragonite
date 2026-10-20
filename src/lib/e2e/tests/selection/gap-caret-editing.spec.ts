@@ -122,7 +122,6 @@ test.describe('undo and redo across a create', () => {
 		await editor.focusBlockStart(0);
 		await editor.typeSlowly('EDIT');
 		await editor.bridge.waitForSourceContains('EDITpara');
-		await editor.waitForUndoBatchFlush();
 		await clickInPlace(editor.page.locator('.table-cell').nth(LAST_CELL));
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.bridge.waitForGapCaret(AT_BOUNDARY);

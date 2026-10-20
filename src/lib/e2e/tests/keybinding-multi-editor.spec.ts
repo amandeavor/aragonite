@@ -15,14 +15,13 @@ const activeEditorIndex = (page: Page) =>
 		[...document.querySelectorAll('.editor')].findIndex((e) => e.contains(document.activeElement))
 	);
 
-// Type at the end of an editor's first editable block, then wait past the undo debounce so the
-// typing lands as one undoable entry. The click also makes this the editor last interacted with.
+// Type at the end of an editor's first editable block. The click also makes this the editor last
+// interacted with.
 async function editEditor(page: Page, editor: Locator, mark: string): Promise<void> {
 	await editor.locator('[contenteditable]').first().click();
 	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type(mark);
 	await expect(editor).toContainText(mark);
-	await page.waitForTimeout(300); // past the 250ms undo debounce, so the typing is one undo entry
 }
 
 test.describe('multi-editor document-chord containment', () => {

@@ -32,8 +32,7 @@ test.describe('undo and redo', () => {
 		await editor.focusBlockEnd(0);
 		await editor.typeText('v');
 		await editor.bridge.waitForSourceContains('<div');
-		await editor.waitForUndoBatchFlush();
-		expect(await editor.bridge.getBlockKind(0)).toBe('htmlBlock');
+		await expect.poll(() => editor.bridge.getBlockKind(0)).toBe('htmlBlock');
 
 		await editor.undo();
 		expect(await editor.bridge.getBlockKind(0)).toBe('paragraph');
@@ -72,7 +71,6 @@ test.describe('undo brings an off-screen caret into view', () => {
 		);
 		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText('x');
-		await editor.waitForUndoBatchFlush();
 		const box = (await editor.editorContainer.boundingBox())!;
 		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 	});
@@ -126,7 +124,6 @@ test.describe('undo brings an off-screen caret into view', () => {
 		await editor.bridge.waitForGapCaret(gap);
 		await editor.typeSlowly('x');
 		await editor.bridge.waitForSourceContains('\nx\n');
-		await editor.waitForUndoBatchFlush();
 
 		for (let i = 0; i < 20 && (await page.locator('.table-cell').count()) > 0; i++) {
 			await page.mouse.wheel(0, 600);
@@ -161,7 +158,6 @@ test.describe('undo shows the caret’s line in a block taller than the screen',
 		await editor.focusBlockEnd(TALL);
 		await editor.typeText('x');
 		await editor.bridge.waitForSourceContains('line after line, x');
-		await editor.waitForUndoBatchFlush();
 		// The paragraph's top 100px into the view, so its end sits far below the bottom edge.
 		for (let pass = 0; pass < 3; pass++) {
 			await page.evaluate((i) => {

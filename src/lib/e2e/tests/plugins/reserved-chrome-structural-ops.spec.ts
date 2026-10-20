@@ -130,7 +130,6 @@ test.describe('reserved child-0 chrome: structural ops + paste', () => {
 		await editor.focusBlockAtPath([1, 1], 4); // end of "Body"
 		await editor.typeText('Q');
 		await editor.bridge.waitForSourceContains('BodyQ');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.focusBlockAtPath([1, 0], 5); // end of "Title"
 		await page.keyboard.press('Enter');

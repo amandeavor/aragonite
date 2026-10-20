@@ -31,7 +31,6 @@ test.describe('plugin container: :::callout editability', () => {
 		state = await waitForContainer(page, 0, (s) => s.childTexts[1] === 'First one');
 		expect(state.rootCount).toBe(1);
 		expect(state.childCount).toBe(2);
-		await editor.waitForUndoBatchFlush();
 
 		// Split: Enter mid-body must add a third child to the callout; a broken container would
 		// grow the document root instead (rootCount === 2).
@@ -51,7 +50,6 @@ test.describe('plugin container: :::callout editability', () => {
 		expect(afterSplitTyping.raw).toBe(':::callout Title\nFirst one\n\ntwo\n:::\n');
 		expect(await editor.bridge.getSource()).toBe(':::callout Title\nFirst one\n\ntwo\n:::\n');
 		expect(await roundTripStable(page)).toBe(true);
-		await editor.waitForUndoBatchFlush();
 
 		// Merge: caret to the start of the last child with a real Home, then Backspace joins it
 		// back into the previous body paragraph, never into the title.
@@ -63,7 +61,6 @@ test.describe('plugin container: :::callout editability', () => {
 		expect(afterMerge.raw).toBe(':::callout Title\nFirst onetwo\n:::\n');
 		expect(await editor.bridge.getSource()).toBe(':::callout Title\nFirst onetwo\n:::\n');
 		expect(await roundTripStable(page)).toBe(true);
-		await editor.waitForUndoBatchFlush();
 
 		// Undo the merge → back to the captured three-child split state, uncorrupted.
 		await editor.undo();

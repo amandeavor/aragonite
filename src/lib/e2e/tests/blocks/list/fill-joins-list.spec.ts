@@ -142,7 +142,6 @@ test.describe('a to-do filled beside a to-do list joins it', () => {
 				await gesture.fill(editor, page);
 				await editor.bridge.waitForSourceEquals(gesture.joined);
 				for (const bytes of gesture.undos) {
-					await editor.waitForUndoBatchFlush();
 					await editor.undo();
 					await editor.bridge.waitForSourceEquals(bytes);
 				}

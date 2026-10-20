@@ -4,7 +4,7 @@ Undo and redo for structural and text operations.
 
 ## Happy paths
 
-Undo reverting a split, undo reverting a burst of typed text after the debounce, and undo on an empty stack changing nothing are walked by `undo-typing-structural.spec.ts`: type, split, type, then undo four times, the last on an empty stack. Redo restoring a split is the redo row in `text-editing/break-over-selection.spec.ts`.
+Undo reverting a split, undo reverting a burst of typed text, and undo on an empty stack changing nothing are walked by `undo-typing-structural.spec.ts`: type, split, type, then undo four times, the last on an empty stack. Redo restoring a split is the redo row in `text-editing/break-over-selection.spec.ts`.
 
 ## Edge cases
 

@@ -86,7 +86,6 @@ test.describe('an undo that restores a glyph widget leaves the scrollport alone'
 			await editor.waitForRenderFlush();
 			expect(await viewport(page), 'the delete left the reader alone').toEqual(parked);
 
-			await editor.waitForUndoBatchFlush();
 			await editor.undo();
 			await editor.bridge.waitForSourceContains(':sunny:');
 			await editor.waitForRenderFlush();

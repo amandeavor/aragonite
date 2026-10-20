@@ -30,7 +30,6 @@ test.describe('undo cursor anchoring without a keydown', () => {
 		// `insertText` fires beforeinput and input with no keydown, which is the point here.
 		await insertText(page, 'xyz');
 		await editor.bridge.waitForSourceContains('abcxyz tail');
-		await editor.waitForUndoBatchFlush();
 		await editor.undo();
 		await editor.bridge.waitForSourceEquals('abc tail\n');
 		await expectCaretAt(page, [0], 3);
@@ -43,7 +42,6 @@ test.describe('undo cursor anchoring without a keydown', () => {
 		await ime.compose('に');
 		await ime.commit('日');
 		await editor.bridge.waitForSourceContains('abc日 tail');
-		await editor.waitForUndoBatchFlush();
 		await editor.undo();
 		await editor.bridge.waitForSourceEquals('abc tail\n');
 		await expectCaretAt(page, [0], 3);
@@ -58,7 +56,6 @@ test.describe('undo cursor anchoring without a keydown', () => {
 		for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
 		await insertText(page, 'xyz');
 		await editor.bridge.waitForSourceContains('abcxyz tail');
-		await editor.waitForUndoBatchFlush();
 		await editor.undo();
 		await editor.bridge.waitForSourceContains('| abc tail |');
 		await page.keyboard.type('W');

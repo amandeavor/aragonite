@@ -82,7 +82,6 @@ test.describe('a block turned into text right under a table', () => {
 
 				await route.edit(editor);
 				await expect.poll(() => editor.bridge.getSource()).toBe(route.typed.replace('W', ''));
-				await editor.waitForUndoBatchFlush();
 				await editor.undo();
 
 				await editor.bridge.waitForSourceEquals(route.source);

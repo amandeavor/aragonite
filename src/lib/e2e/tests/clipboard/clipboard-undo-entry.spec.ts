@@ -1,7 +1,5 @@
-import { type Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
-import { freezeInPageClock } from '../../page-probes';
 import { textRunCenter } from '../../text-runs';
 
 // A cut or a paste is its own undo entry, apart from the typing on either side.
@@ -21,7 +19,6 @@ const SURFACES = [
 
 test.describe('a cut or paste is its own undo entry', () => {
 	let editor: EditorPage;
-	// Polled from the test process: an in-page poll would wait on the frozen clock.
 	const source = () => editor.bridge.getSource();
 
 	test.beforeEach(async ({ page }) => {
@@ -30,12 +27,11 @@ test.describe('a cut or paste is its own undo entry', () => {
 		await editor.seedClipboard('PASTE');
 	});
 
-	/** Loads `doc` with the caret at `offset` of `path`, then stops the in-page clock, so the typing
-	 *  pause never elapses and a burst stays open until something ends it. */
-	async function openAt(page: Page, doc: string, path: number[], offset: number): Promise<void> {
+	/** Loads `doc` with the caret at `offset` of `path`; the held typing pause keeps a burst open
+	 *  until something ends it. */
+	async function openAt(doc: string, path: number[], offset: number): Promise<void> {
 		await editor.loadContent(doc);
 		await editor.focusBlockAtPath(path, offset);
-		await freezeInPageClock(page);
 	}
 
 	async function typeXy(typed: string): Promise<void> {
@@ -44,8 +40,8 @@ test.describe('a cut or paste is its own undo entry', () => {
 	}
 
 	for (const surface of SURFACES) {
-		test(`Ctrl+V right after typing in ${surface.name} undoes alone`, async ({ page }) => {
-			await openAt(page, surface.doc, surface.path, surface.end);
+		test(`Ctrl+V right after typing in ${surface.name} undoes alone`, async () => {
+			await openAt(surface.doc, surface.path, surface.end);
 			await typeXy(surface.typed);
 			await editor.paste();
 			await expect.poll(source).toContain('PASTE');
@@ -54,10 +50,8 @@ test.describe('a cut or paste is its own undo entry', () => {
 			await expect.poll(source).toBe(surface.typed);
 		});
 
-		test(`typing right after Ctrl+V in ${surface.name} undoes and redoes apart from it`, async ({
-			page
-		}) => {
-			await openAt(page, surface.doc, surface.path, surface.end);
+		test(`typing right after Ctrl+V in ${surface.name} undoes and redoes apart from it`, async () => {
+			await openAt(surface.doc, surface.path, surface.end);
 			await editor.paste();
 			await expect.poll(source).toContain('PASTE');
 			const pasted = await source();
@@ -76,7 +70,7 @@ test.describe('a cut or paste is its own undo entry', () => {
 		});
 
 		test(`Ctrl+X right after typing in ${surface.name} undoes alone`, async ({ page }) => {
-			await openAt(page, surface.doc, surface.path, surface.end);
+			await openAt(surface.doc, surface.path, surface.end);
 			await typeXy(surface.typed);
 			await page.keyboard.press('Shift+ArrowLeft');
 			await page.keyboard.press('ControlOrMeta+x');
@@ -90,7 +84,7 @@ test.describe('a cut or paste is its own undo entry', () => {
 	// The menus reach the same paste step through `insertMarkdown`, the cell menu through its own.
 	for (const surface of [SURFACES[0], SURFACES[2]]) {
 		test(`a menu Paste right after typing in ${surface.name} undoes alone`, async ({ page }) => {
-			await openAt(page, surface.doc, surface.path, surface.end);
+			await openAt(surface.doc, surface.path, surface.end);
 			await typeXy(surface.typed);
 			const at = await textRunCenter(page, 'abxy');
 			await page.mouse.click(at.x, at.y, { button: 'right' });
@@ -126,7 +120,7 @@ test.describe('a cut or paste is its own undo entry', () => {
 	for (const route of STRUCTURAL) {
 		test(`${route.name} undoes apart from the typing either side`, async ({ page }) => {
 			await editor.seedClipboard(route.clip);
-			await openAt(page, route.doc, route.path, 2);
+			await openAt(route.doc, route.path, 2);
 			const typed = route.doc.replace('ab', 'abxy');
 			await typeXy(typed);
 			if (route.doc === PROSE) {

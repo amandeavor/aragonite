@@ -47,13 +47,12 @@ test.describe('a list item whose body ends in an empty paragraph', () => {
 		await editor.bridge.waitForSourceNotContains('b');
 		expect(await editor.bridge.getSource()).toBe(blanked);
 		expect(await editor.parseConverged()).toBe(true);
-		await editor.waitForUndoBatchFlush();
+		await editor.endTypingBatch();
 
 		await page.keyboard.type('x');
 		await editor.bridge.waitForSourceContains('x');
 		expect(await editor.bridge.getSource()).toBe('- a\n\n  x\n\n- c\n');
 		expect(await editor.parseConverged()).toBe(true);
-		await editor.waitForUndoBatchFlush();
 
 		await editor.undo();
 		await editor.bridge.waitForSourceNotContains('x');

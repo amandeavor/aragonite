@@ -14,13 +14,11 @@ test.describe('needsUndoCheckpoint, typing / structural / typing', () => {
 		await editor.focusBlockEnd(0);
 		await editor.typeSlowly(' one');
 		await editor.bridge.waitForSourceContains(' one');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.page.keyboard.press('Enter');
 
 		await editor.typeSlowly('two');
 		await editor.bridge.waitForSourceContains('two');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.undo();
 		expect((await editor.bridge.getSource()).includes('two')).toBe(false);

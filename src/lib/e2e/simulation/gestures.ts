@@ -576,9 +576,9 @@ export class Gestures {
 
 	// ── History ───────────────────────────────────────────────────────────────
 
-	/** Waits out the typing pause so the next gesture starts a new undo entry. */
+	/** A user stopping to think: ends the typing batch, so the next gesture starts a new undo entry. */
 	pause(): Promise<void> {
-		return this.ctx.editor.waitForUndoBatchFlush();
+		return this.ctx.editor.endTypingBatch();
 	}
 
 	async undo(): Promise<void> {
