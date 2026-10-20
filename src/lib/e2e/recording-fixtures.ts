@@ -106,8 +106,8 @@ export function pressedKeydown(step: RecordedStep): RecordedEvent | undefined {
 }
 
 /**
- * The part of a step's events a faithful replay reproduces: types, input types and which ones the
- * browser didn't mark trusted. Key-ups, pointer events and selection changes vary by driver.
+ * The part of a step's events a faithful replay reproduces: types, input types and trust. Key-ups,
+ * pointer events and selections vary by driver; an `input` follows only an unprevented beforeinput.
  */
 export function eventSignature(step: RecordedStep): string[] {
 	return step.events
@@ -116,4 +116,10 @@ export function eventSignature(step: RecordedStep): string[] {
 		.map((e) => e.type + (e.inputType ? `:${e.inputType}` : '') + (e.trusted ? '' : '!untrusted'));
 }
 
-const IGNORED_IN_SIGNATURE = new Set(['keyup', 'pointerdown', 'pointerup', 'selectionchange']);
+const IGNORED_IN_SIGNATURE = new Set([
+	'keyup',
+	'pointerdown',
+	'pointerup',
+	'selectionchange',
+	'input'
+]);
