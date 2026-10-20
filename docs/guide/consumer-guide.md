@@ -584,7 +584,7 @@ A keystroke fires its `input` as it's written, one per key, with no `detail` (re
 
 `path` always walks from the document root to the block operated on, nested blocks and typing included. One event names one path even when the write spanned several blocks; a `delete`, `updateContent`, `tableDeleteRow` or `tableDeleteColumn` that did carries `detail.crossBlock: true`, and a host that reconciles incrementally should re-read the whole affected range on those rather than just `path`.
 
-**`selectionChange`** carries the same snapshot [`getSelection()`](#reading-the-document-and-the-selection) returns, or `null` when nothing is focused.
+**`selectionChange`** carries the same snapshot [`getSelection()`](#reading-the-document-and-the-selection) returns, or `null` when nothing is focused or a reading-mode jump just put focus somewhere with no caret.
 
 ```ts
 events.on('selectionChange', (sel) => sel);
