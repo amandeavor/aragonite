@@ -23,6 +23,9 @@ const THUMB_TONE = '\u{1F44D}\u{1F3FD}';
 const E_ACUTE = 'é';
 const TE = 'ते';
 const GAK = '각';
+// Each longer than the delete window: thirty people joined by ZWJ, and a letter under 100 accents.
+const LONG_CHAIN = Array(30).fill('\u{1F468}').join('\u200D');
+const LONG_MARKS = 'a' + '\u0301'.repeat(100);
 
 function take(text: string, caret: number, direction: DeleteDirection): string {
 	const span = characterExtent(text, caret, direction, { start: 0, end: text.length });
@@ -182,6 +185,25 @@ describe('characterExtent: the window it reads', () => {
 			disablePerfInstruments();
 		}
 	});
+
+	// A cluster the window cut used to go in parts: half a ZWJ chain, a combining run's tail left on
+	// the letter before, a lone surrogate.
+	it('takes a ZWJ sequence longer than the window whole, either way', () => {
+		const text = `x${LONG_CHAIN}y`;
+		expect(take(text, 1 + LONG_CHAIN.length, 'backward')).toBe('xy');
+		expect(take(text, 1, 'forward')).toBe('xy');
+	});
+
+	it('takes a combining run longer than the window whole on Delete, its last mark on Backspace', () => {
+		const text = `x${LONG_MARKS}y`;
+		expect(take(text, 1, 'forward')).toBe('xy');
+		expect(take(text, 1 + LONG_MARKS.length, 'backward')).toBe(`x${LONG_MARKS.slice(0, -1)}y`);
+	});
+
+	it('never splits a surrogate pair where the window starts', () => {
+		const text = `\u{1F600}${'\uFE0F'.repeat(DELETE_WINDOW - 1)}`;
+		expect(take(text, text.length, 'backward')).toBe('');
+	});
 });
 
 describe('characterExtent: a span never splits what the editor keeps whole', () => {
@@ -197,7 +219,9 @@ describe('characterExtent: a span never splits what the editor keeps whole', () 
 		E_ACUTE,
 		TE,
 		GAK,
-		'\u{1D400}'
+		'\u{1D400}',
+		LONG_CHAIN,
+		LONG_MARKS
 	);
 	it('ends on a cluster boundary going forward, and inside one only after a combining mark', () => {
 		const segmenter = graphemeSegmenter()!;

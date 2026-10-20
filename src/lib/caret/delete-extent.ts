@@ -2,7 +2,7 @@
  * What a collapsed delete inside a line takes, decided by the editor so every engine takes the
  * same bytes: an emoji and a CRLF line ending go whole either way, and Backspace takes only the
  * last code point of any other cluster, so an accent or an Indic vowel sign comes off on its own.
- * Each answer reads a fixed window around the caret, never the whole block.
+ * Each answer reads a fixed window around the caret, wider only for a cluster longer than it.
  */
 
 import { graphemeSegmenter } from '../core/text-units';
@@ -49,8 +49,8 @@ export type DeleteDecline =
 
 export type DeleteVerdict = { decided: true } | { decided: false; decline: DeleteDecline };
 
-/** Wide enough for the longest emoji sequences (a tag flag is 14 code units); a cluster longer
- *  than this goes in window-sized parts. */
+/** Wide enough for the longest emoji sequences (a tag flag is 14 code units); a cluster the window
+ *  may have cut is read again in one twice the size. */
 export const DELETE_WINDOW = 64;
 
 /** The character a delete at `caret` takes in `text`, kept inside `bounds`; null at the bound the
@@ -63,14 +63,13 @@ export function characterExtent(
 ): DeleteSpan | null {
 	if (direction === 'backward') {
 		if (caret <= bounds.start) return null;
-		const window = text.slice(Math.max(bounds.start, caret - DELETE_WINDOW), caret);
-		recordDeleteWindow(window.length);
-		return { start: caret - backwardUnit(lastCluster(window)).length, end: caret };
+		return {
+			start: caret - backwardUnit(clusterBefore(text, caret, bounds.start)).length,
+			end: caret
+		};
 	}
 	if (caret >= bounds.end) return null;
-	const window = text.slice(caret, Math.min(bounds.end, caret + DELETE_WINDOW));
-	recordDeleteWindow(window.length);
-	return { start: caret, end: caret + firstCluster(window).length };
+	return { start: caret, end: caret + clusterAfter(text, caret, bounds.end).length };
 }
 
 // ── Clusters ─────────────────────────────────────────────────────────────────
@@ -83,14 +82,30 @@ function backwardUnit(cluster: string): string {
 	return Array.from(cluster).at(-1) ?? cluster;
 }
 
-function lastCluster(window: string): string {
-	const segmenter = graphemeSegmenter();
-	if (!segmenter) return Array.from(window).at(-1) ?? window;
-	return segmenter.segment(window).containing(window.length - 1)?.segment ?? window;
+// A cluster within two segments of an edge the window cut may run past it: the cut can leave half
+// a surrogate pair, or the ZWJ before an emoji, as a segment of its own.
+function clusterBefore(text: string, caret: number, floor: number): string {
+	for (let size = DELETE_WINDOW; ; size *= 2) {
+		const from = Math.max(floor, caret - size);
+		const window = text.slice(from, caret);
+		recordDeleteWindow(window.length);
+		const segments = graphemeSegmenter()?.segment(window);
+		if (!segments) return Array.from(window).at(-1) ?? window;
+		const last = segments.containing(window.length - 1)!;
+		const clearOfCut = last.index > 0 && segments.containing(last.index - 1)!.index > 0;
+		if (from === floor || clearOfCut) return last.segment;
+	}
 }
 
-function firstCluster(window: string): string {
-	const segmenter = graphemeSegmenter();
-	if (!segmenter) return Array.from(window)[0] ?? window;
-	return segmenter.segment(window).containing(0)?.segment ?? window;
+function clusterAfter(text: string, caret: number, ceiling: number): string {
+	for (let size = DELETE_WINDOW; ; size *= 2) {
+		const to = Math.min(ceiling, caret + size);
+		const window = text.slice(caret, to);
+		recordDeleteWindow(window.length);
+		const segments = graphemeSegmenter()?.segment(window);
+		if (!segments) return Array.from(window)[0] ?? window;
+		const first = segments.containing(0)!.segment;
+		const next = segments.containing(first.length)?.segment ?? '';
+		if (to === ceiling || first.length + next.length < window.length) return first;
+	}
 }
