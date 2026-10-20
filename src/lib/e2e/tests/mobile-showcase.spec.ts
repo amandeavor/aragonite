@@ -33,9 +33,13 @@ test.describe('/ showcase on a phone', () => {
 			.toEqual({ pagePan: 0, editorPan: 0 });
 	});
 
-	test('every presentation mode sits on screen and a tap flips the editor', async ({ page }) => {
-		const modes = page.locator('.showcase-mode');
-		const offscreen = await modes.evaluateAll(
+	test('the mode chip lists every presentation mode on screen and a tap flips the editor', async ({
+		page
+	}) => {
+		// The segmented switcher does not fit a phone, so one chip names the mode and opens the list.
+		await page.locator('.showcase-mode-trigger').tap();
+		const options = page.locator('.showcase-mode-option');
+		const offscreen = await options.evaluateAll(
 			(els, width) =>
 				els
 					.map((el) => ({ mode: el.getAttribute('data-mode'), box: el.getBoundingClientRect() }))
@@ -44,10 +48,12 @@ test.describe('/ showcase on a phone', () => {
 			PHONE.width
 		);
 		expect(offscreen).toEqual([]);
+		await expect(options).toHaveCount(5);
 
-		// `live` sits at the far end of the group, so it is the one a row that cannot wrap loses.
-		await page.locator('.showcase-mode[data-mode="live"]').tap();
-		await expect(page.locator('.editor')).toHaveAttribute('data-presentation', 'live');
+		// Not live: the showcase opens there, so a tap on it would prove nothing.
+		await page.locator('.showcase-mode-option[data-mode="reading"]').tap();
+		await expect(page.locator('.editor')).toHaveAttribute('data-presentation', 'reading');
+		await expect(options).toHaveCount(0);
 	});
 
 	test('the find bar opens inside the viewport and takes typed text', async ({ page }) => {
@@ -81,18 +87,28 @@ test.describe('/ showcase on a phone', () => {
 
 	test('the controls a thumb has to hit clear 24px', async ({ page }) => {
 		skipUnlessSupported(page, 'touch');
-		// WCAG 2.2 AA (2.5.8), not Apple's 44px: eleven header controls at 44 each would give back
-		// every row the condensed header saves. Buttons and links both, so no tag is missed.
-		const header = await page
-			.locator('.showcase-header button, .showcase-header a')
-			.evaluateAll((els) =>
-				els.map((el) => {
-					const box = el.getBoundingClientRect();
-					return Math.min(box.width, box.height);
-				})
+		// WCAG 2.2 AA (2.5.8), not Apple's 44px. Buttons and links both, so no tag is missed, and
+		// only the rendered ones: the segmented switcher is in the page but not drawn on a phone.
+		const sizes = () =>
+			page.locator('.showcase-header button, .showcase-header a').evaluateAll((els) =>
+				els
+					.filter((el) => el.getClientRects().length > 0)
+					.map((el) => {
+						const box = el.getBoundingClientRect();
+						return Math.min(box.width, box.height);
+					})
 			);
-		expect(header.length).toBeGreaterThanOrEqual(11);
-		expect(Math.min(...header)).toBeGreaterThanOrEqual(24);
+		const bar = await sizes();
+		expect(bar.length).toBeGreaterThanOrEqual(4);
+		expect(Math.min(...bar)).toBeGreaterThanOrEqual(24);
+
+		// The settings popover carries the switches and, on a phone, the links.
+		await page.getByTestId('showcase-settings').tap();
+		await expect(page.getByTestId('theme-toggle')).toBeVisible();
+		const open = await sizes();
+		expect(open.length).toBeGreaterThanOrEqual(bar.length + 7);
+		expect(Math.min(...open)).toBeGreaterThanOrEqual(24);
+		await page.keyboard.press('Escape');
 
 		await page.keyboard.press('ControlOrMeta+f');
 		await expect(page.locator('.search-bar')).toBeVisible();
@@ -107,8 +123,7 @@ test.describe('/ showcase on a phone', () => {
 	});
 
 	test('the header leaves the document three quarters of the screen', async ({ page }) => {
-		// A quarter, not a fifth: controls big enough for a thumb cost two rows back, and a
-		// header nobody can operate saves nothing.
+		// One row on a phone; the quarter is the ceiling it has to stay under.
 		const header = (await page.locator('.showcase-header').boundingBox())!;
 		expect(header.height).toBeLessThanOrEqual(PHONE.height / 4);
 	});

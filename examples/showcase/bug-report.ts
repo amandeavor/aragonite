@@ -4,7 +4,11 @@
  * before the visitor submits: it goes on the clipboard, or downloads when too long for an issue.
  */
 
-import type { InputRecording } from '#lib';
+/** The editor's input recording, typed by the parts read here so this file imports nothing. */
+export interface BugRecording {
+	editor: { version: string };
+	steps: readonly unknown[];
+}
 
 export const NEW_BUG_URL = 'https://github.com/voithos-labs/aragonite/issues/new';
 
@@ -19,7 +23,7 @@ export interface BugReport {
 	attachment: string;
 }
 
-export function bugReport(recording: InputRecording, where: string): BugReport {
+export function bugReport(recording: BugRecording, where: string): BugReport {
 	const json = JSON.stringify(recording);
 	const fenced = '```json\n' + json + '\n```';
 	const link = (field: string) =>

@@ -1,6 +1,6 @@
 # Feature: Report a bug from the showcase
 
-The `/` showcase header's "report a bug" button records the visitor's input and opens GitHub's bug form with the recording attached. It never files the issue; the visitor reads the form and submits it.
+The `/` showcase bar's "report a bug" button records the visitor's input and opens GitHub's bug form with the recording attached. It never files the issue; the visitor reads the form and submits it.
 
 ## Happy paths
 
@@ -9,6 +9,8 @@ The `/` showcase header's "report a bug" button records the visitor's input and 
 ## User interactions
 
 - Cancel on the card closes it and records nothing; the button reads "report a bug" again.
+- Escape closes the card and hands focus back to the button. A press outside leaves it open, so
+  a stray click never throws away the privacy note before Start.
 
 ## Error cases
 

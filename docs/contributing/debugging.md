@@ -41,9 +41,9 @@ secure origin, and `http://192.168.x.x` isn't one. So **Send** posts the file to
 instead, which writes it into `recordings-inbox/` (gitignored) at the repo root:
 
 1. Start the dev server on your LAN: `npm run dev -- --host` (same in bash and PowerShell).
-2. Open `http://<your machine's IP>:1420/` on the phone and tap **under the hood** (the panel
-   covers a phone's whole screen, and the recording keeps going while it's closed): Record, close
-   the panel, do the thing, open it again, Stop, Send.
+2. Open `http://<your machine's IP>:1420/` on the phone, tap the settings button (top right) and
+   switch on **under the hood** (the panel covers a phone's whole screen, and the recording keeps
+   going while it's closed): Record, close the panel, do the thing, open it again, Stop, Send.
 3. The section says where it saved. Anywhere the route isn't there (a build, the deployed demo),
    Send downloads the file instead, and **Download** always does.
 

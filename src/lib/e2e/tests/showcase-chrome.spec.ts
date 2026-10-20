@@ -4,9 +4,10 @@ import { SHOWCASE_MD, scanShowcase } from '../showcase-document';
 import { clickModeButton } from '../mode-switch';
 import { edgeKey } from '../platform-keys';
 import { clickInPlace } from '../click-in-place';
+import { clickShowcaseSetting, openShowcaseSettings, showcaseSetting } from '../showcase-settings';
 
-// The `/` showcase header: theme, drag handles, the debug panel, and the table of contents as
-// navigation. This route has no `window.__test` bridge, so the cases read rendered DOM only.
+// The `/` showcase bar: its settings popover (theme, drag handles, the debug panel), its links, and
+// the table of contents as navigation. This route has no `window.__test` bridge, so the cases read rendered DOM only.
 // The mode toggle and the bundled plugins have their own specs. What the demo document says is
 // read from its bytes, never written out here, since it is rewritten by hand.
 // Requirements: e2e/requirements/showcase-chrome.md.
@@ -30,10 +31,10 @@ test.describe('/ showcase chrome', () => {
 		// Light is the showcase's default; the editor's own `theme` default stays dark.
 		await expect(editor).toHaveAttribute('data-editor-theme', 'light');
 
-		await clickInPlace(page.getByTestId('theme-toggle'));
+		await clickShowcaseSetting(page, 'theme-toggle');
 		await expect(editor).toHaveAttribute('data-editor-theme', 'dark');
 
-		await clickInPlace(page.getByTestId('theme-toggle'));
+		await clickShowcaseSetting(page, 'theme-toggle');
 		await expect(editor).toHaveAttribute('data-editor-theme', 'light');
 	});
 
@@ -52,7 +53,7 @@ test.describe('/ showcase chrome', () => {
 		await page.keyboard.type(' ZZMARKER');
 		await expect(intro).toContainText('ZZMARKER');
 
-		await clickInPlace(page.getByTestId('drag-handles-toggle'));
+		await clickShowcaseSetting(page, 'drag-handles-toggle');
 		// Not zero: an image's own handle does not answer to the toggle.
 		await expect
 			.poll(() =>
@@ -61,18 +62,19 @@ test.describe('/ showcase chrome', () => {
 			.toBe(0);
 		await expect(page.locator('.editor')).toContainText('ZZMARKER');
 
-		await clickInPlace(page.getByTestId('drag-handles-toggle'));
+		await clickShowcaseSetting(page, 'drag-handles-toggle');
 		await expect.poll(() => handles.count()).toBeGreaterThan(0);
 	});
 
 	test('reading mode disables the drag-handles toggle', async ({ page }) => {
-		const toggle = page.getByTestId('drag-handles-toggle');
-		await expect(toggle).toBeEnabled();
+		await expect(await showcaseSetting(page, 'drag-handles-toggle')).toBeEnabled();
 
 		// The editor turns drag handles off in reading mode; a toggle that stayed enabled would
 		// look active while doing nothing.
 		await clickModeButton(page, 'reading');
+		const toggle = await showcaseSetting(page, 'drag-handles-toggle');
 		await expect(toggle).toBeDisabled();
+		await expect(toggle).toContainText('Reading mode hides the drag handles');
 	});
 
 	test('hotkey opens the debug panel and the header affordance closes it', async ({ page }) => {
@@ -87,8 +89,30 @@ test.describe('/ showcase chrome', () => {
 			panel.locator('.debug-section[data-section-title="CST tree"] .debug-section-body')
 		).toContainText('heading');
 
-		await clickInPlace(page.getByTestId('debug-toggle'));
+		// The bar pads itself past the open panel, so the settings button is not under it.
+		await clickShowcaseSetting(page, 'debug-toggle');
 		await expect(panel).toHaveCount(0);
+	});
+
+	test('the settings popover closes on Escape, handing focus back, and on a press outside', async ({
+		page
+	}) => {
+		const trigger = page.getByTestId('showcase-settings');
+		await openShowcaseSettings(page);
+		await page.keyboard.press('Escape');
+		await expect(page.getByTestId('theme-toggle')).toHaveCount(0);
+		await expect(trigger).toBeFocused();
+
+		// The bar's empty middle-left takes no focus, so only the press itself can close it.
+		await openShowcaseSettings(page);
+		await clickInPlace(page.locator('.showcase-bar'), { position: { x: 300, y: 26 } });
+		await expect(page.getByTestId('theme-toggle')).toHaveCount(0);
+		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+	});
+
+	test('the wordmark links to the repository', async ({ page }) => {
+		const wordmark = page.getByRole('link', { name: 'aragonite on GitHub' });
+		await expect(wordmark).toHaveAttribute('href', 'https://github.com/voithos-labs/aragonite');
 	});
 
 	test('selecting text in live mode floats the toolbar and its bold button wraps the run', async ({

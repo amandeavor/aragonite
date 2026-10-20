@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { MAX_BODY_RECORDING, bugReport, describeWhere } from '../../../routes/bug-report';
+import {
+	MAX_BODY_RECORDING,
+	bugReport,
+	describeWhere
+} from '../../../../examples/showcase/bug-report';
 import { INPUT_RECORDING_FORMAT, type InputRecording } from '#lib/debug/input-recording.js';
 
 // Miss-analysis: new module; the e2e row covers only the clipboard path.
