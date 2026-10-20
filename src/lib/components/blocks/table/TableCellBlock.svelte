@@ -648,26 +648,11 @@
 		// Recorded before the block-level extend answers, so a refusal (no block past the table)
 		// takes it back: left behind, the next Backspace would delete a whole cell through it.
 		selection.enterCrossBlock(anchor, cellPoint(tablePath, anchor.offset));
+		const extend = { selection, caretWriter, getDoc, reading };
 		const extended =
 			ext.direction === 'forward'
-				? extendFocusToNextBlock(
-						selection,
-						caretWriter,
-						getDoc(),
-						grammar,
-						el,
-						ext.fromCellPath,
-						'vertical'
-					)
-				: extendFocusToPreviousBlock(
-						selection,
-						caretWriter,
-						getDoc(),
-						grammar,
-						el,
-						ext.fromCellPath,
-						'start'
-					);
+				? extendFocusToNextBlock(extend, el, ext.fromCellPath, 'vertical')
+				: extendFocusToPreviousBlock(extend, el, ext.fromCellPath, 'start');
 		if (!extended) {
 			selection.collapse();
 			return false;

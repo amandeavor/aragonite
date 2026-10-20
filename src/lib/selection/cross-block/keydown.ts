@@ -141,8 +141,7 @@ function extendOverRange(
 	el: HTMLElement,
 	doc: Document
 ): void {
-	const { selection, caretWriter: writer, getBlockElByPath } = ctx;
-	const { grammar } = ctx.reading;
+	const { selection, getBlockElByPath } = ctx;
 	const key = e.key as ArrowKey;
 	const ext = intraTableRectExtension(doc, selection.anchor, selection.focus, key);
 	if (ext?.kind === 'cell') {
@@ -151,38 +150,23 @@ function extendOverRange(
 	}
 	if (ext) {
 		if (ext.direction === 'forward') {
-			extendFocusToNextBlock(selection, writer, doc, grammar, el, ext.fromCellPath, 'vertical');
+			extendFocusToNextBlock(ctx, el, ext.fromCellPath, 'vertical');
 		} else {
-			extendFocusToPreviousBlock(selection, writer, doc, grammar, el, ext.fromCellPath, 'start');
+			extendFocusToPreviousBlock(ctx, el, ext.fromCellPath, 'start');
 		}
 		return;
 	}
 	const focusPath = selection.focus?.path ?? ctx.getMyPath();
 	const focusEl = getBlockElByPath(focusPath) ?? el;
 	if (key === 'ArrowDown' || key === 'ArrowRight') {
-		const axis = key === 'ArrowDown' ? 'vertical' : 'horizontal';
 		extendFocusToNextBlock(
-			selection,
-			writer,
-			doc,
-			grammar,
+			ctx,
 			focusEl,
 			focusPath,
-			axis,
-			getBlockElByPath
+			key === 'ArrowDown' ? 'vertical' : 'horizontal'
 		);
 	} else {
-		const side = key === 'ArrowUp' ? 'start' : 'end';
-		extendFocusToPreviousBlock(
-			selection,
-			writer,
-			doc,
-			grammar,
-			focusEl,
-			focusPath,
-			side,
-			getBlockElByPath
-		);
+		extendFocusToPreviousBlock(ctx, focusEl, focusPath, key === 'ArrowUp' ? 'start' : 'end');
 	}
 }
 
@@ -383,16 +367,7 @@ async function handleDocEdgeExtend(
 	const el = ctx.getEl();
 	if (!el) return false;
 	e.preventDefault();
-	extendFocusToDocEdge(
-		ctx.selection,
-		ctx.caretWriter,
-		ctx.getDoc(),
-		ctx.reading.grammar,
-		el,
-		ctx.getMyPath(),
-		direction,
-		ctx.getBlockElByPath
-	);
+	extendFocusToDocEdge(ctx, el, ctx.getMyPath(), direction);
 	await revealActiveEndpoint(ctx);
 	return true;
 }

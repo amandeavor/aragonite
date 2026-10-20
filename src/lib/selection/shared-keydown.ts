@@ -130,15 +130,7 @@ export async function handleSharedKeydown(
 			// offset, so native Shift+ArrowUp extension has nowhere left to go within it.
 			if (e.shiftKey && offset <= bounds().start) {
 				e.preventDefault();
-				extendFocusToPreviousBlock(
-					ctx.selection,
-					ctx.caretWriter,
-					ctx.getDoc(),
-					ctx.reading.grammar,
-					el,
-					myPath,
-					'start'
-				);
+				extendFocusToPreviousBlock(ctx, el, myPath, 'start');
 				scrollFocusBlockIntoView(ctx.selection, ctx.scrollOwner);
 				return true;
 			}
@@ -157,15 +149,7 @@ export async function handleSharedKeydown(
 			// offset, so native Shift+ArrowDown extension has nowhere left to go.
 			if (e.shiftKey && offset >= bounds().end) {
 				e.preventDefault();
-				extendFocusToNextBlock(
-					ctx.selection,
-					ctx.caretWriter,
-					ctx.getDoc(),
-					ctx.reading.grammar,
-					el,
-					myPath,
-					'vertical'
-				);
+				extendFocusToNextBlock(ctx, el, myPath, 'vertical');
 				scrollFocusBlockIntoView(ctx.selection, ctx.scrollOwner);
 				return true;
 			}
@@ -182,14 +166,7 @@ export async function handleSharedKeydown(
 		if (offset !== null && offset <= bounds().start) {
 			if (e.shiftKey) {
 				e.preventDefault();
-				extendFocusToPreviousBlock(
-					ctx.selection,
-					ctx.caretWriter,
-					ctx.getDoc(),
-					ctx.reading.grammar,
-					el,
-					myPath
-				);
+				extendFocusToPreviousBlock(ctx, el, myPath);
 				scrollFocusBlockIntoView(ctx.selection, ctx.scrollOwner);
 				return true;
 			}
@@ -204,14 +181,7 @@ export async function handleSharedKeydown(
 		if (offset !== null && offset >= bounds().end) {
 			if (e.shiftKey) {
 				e.preventDefault();
-				extendFocusToNextBlock(
-					ctx.selection,
-					ctx.caretWriter,
-					ctx.getDoc(),
-					ctx.reading.grammar,
-					el,
-					myPath
-				);
+				extendFocusToNextBlock(ctx, el, myPath);
 				scrollFocusBlockIntoView(ctx.selection, ctx.scrollOwner);
 				return true;
 			}
