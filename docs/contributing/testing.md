@@ -12,7 +12,7 @@ Where to jump:
 - [Unit tests (Vitest)](#unit-tests-vitest): where a file goes, the area scripts, mounting a
   block without the whole editor, and the console-warning gate.
 - [E2E tests (Playwright)](#e2e-tests-playwright): the fixture import rule, the test bridge, the
-  dev server, the area scripts, the plugins route and what's installed on it, the browser engines, the
+  app the suite serves, the area scripts, the plugins route and what's installed on it, the browser engines, the
   requirement files, and the gotchas.
 - [The conformance differ](#the-conformance-differ): our inline parser diffed against
   commonmark.js.
@@ -40,7 +40,7 @@ The three commands you'll type most:
 ```bash
 npm test               # full suite: unit, then every e2e project
 npm run test:editor    # all unit tests
-npm run test:e2e       # all E2E tests (auto-starts the dev server)
+npm run test:e2e       # all E2E tests (builds and serves the app first)
 ```
 
 Both layers are also sliced into area scripts for the inner loop, `test:editor:<area>` and
@@ -301,24 +301,31 @@ await editor.bridge.getSelectionPaths(); // { anchor: { path: [1], offset: 6 }, 
 await editor.getBlockText(0); // '# Hello', the dimmed marker included
 ```
 
-### One dev server, and isolated runs
+### The app under test is a build
 
-Every Playwright project shares one dev server, started by the Playwright config on port 1420
-and reused when something is already listening there. That reuse is the convenience and the
-trap: an interrupted run leaves a server alive, and the next run serves whatever that tree was
-mid-edit. `E2E_ISOLATED=1` starts the run's own servers instead, on 1430 (and 1431 for the
-`PERF_PROD` preview), reusing neither. `npm run test:e2e:isolated` runs the whole suite that way,
-and anything narrower is the same script with Playwright's own arguments appended.
-`E2E_PORT=1440` picks the isolated port (the preview takes the next one), so two isolated runs on
-one machine, from two worktrees say, never race for 1430:
+Every run starts by building the app (a development build, so every dev check, warning and test
+bridge is still in it) and serves that with `vite preview` on port 1430. The build takes about ten
+seconds and saves far more than that: on the dev server each page load fetched about 700 modules
+one transform at a time, and on CI that was most of what a test spent its time on.
+
+Two things follow from serving a build:
+
+- A run tests the tree as it stood when the run started. Saving a file mid-run changes nothing,
+  and the next run picks it up.
+- Nothing is ever reused. Each run builds its own app into `.svelte-kit/e2e-<port>`, so a server
+  left over from an interrupted run fails the next one loudly (the port is taken) instead of
+  serving it stale code. Kill it and rerun.
+
+`E2E_PORT=1440` moves the run to another port (the perf gate's prod preview takes the next one),
+so two runs on one machine, from two worktrees say, never fight over 1430:
 
 ```
-$ npm run test:e2e:isolated -- --project=e2e-top smoke.spec.ts
+$ node scripts/run-with-env.mjs E2E_PORT=1440 -- npm run test:e2e -- --project=e2e-top smoke.spec.ts
 
-> node scripts/run-with-env.mjs E2E_ISOLATED=1 -- playwright test --project=e2e-top smoke.spec.ts
-
-[WebServer] > vite dev --port 1430 --strictPort
-[WebServer]   ➜  Local:   http://localhost:1430/
+[WebServer] > vite build
+[WebServer] ✓ built in …
+[WebServer] > vite preview --host 127.0.0.1 --port 1440 --strictPort
+[WebServer]   ➜  Local:   http://127.0.0.1:1440/
 
 Running 1 test using 1 worker
 
@@ -331,7 +338,11 @@ Running 1 test using 1 worker
 Windows shell. Go through the npm script rather than calling it yourself; from a bare shell
 `playwright` isn't on the path.)
 
-**A spec that dies with `Failed to fetch dynamically imported module`** caught the dev server
+`E2E_SERVER=dev` serves the Vite dev server instead (reusing one already on 1420 unless `E2E_PORT`
+says otherwise), for Playwright's UI and watch modes, which want it to reload when you save.
+
+**A spec that dies with `Failed to fetch dynamically imported module`** under `E2E_SERVER=dev` caught
+the dev server
 finding a package after the page loaded and reloading it. A package the app loads with `import()`
 goes in `optimizeDeps.include` in `vite.config.js`; the unit lint usually tells you first.
 
@@ -380,7 +391,8 @@ seed table is in `+page.svelte`. What each fixture is for, so you can pick one:
   simulation's plugin gestures observe the editor's chrome handling and not a plugin feature
   (yes, it duplicates admonitions as a product; as a fixture it's what those tests stand on). Its
   two directive names are claimed by no other plugin, since a contended name resolves by install
-  order, and the dev server installs in a different order than a fresh tab would. Always on.
+  order, and the server, shared by every test, installs in a different order than a fresh tab
+  would. Always on.
 - `memo/`: a `%%` leaf you edit as plain text, the one plugin anywhere that builds
   `createEditableLeaf` in `'plain'` mode (the bundled leaves all use `'render-primary'`), so
   the `editable-leaf-*` specs drive it. Always on; seed `memo` loads its document.
@@ -441,9 +453,8 @@ npm run test:e2e:webkit
 node scripts/run-with-env.mjs ENGINE=webkit -- npm run test:e2e:clipboard
 ```
 
-Run them alone and on a quiet tree. They share the dev server with everything else, and a save
-into `src/` mid-run triggers an SSR reload that turns the run red for a reason the product never
-had.
+Run them alone. Firefox and WebKit are slower than Chromium, and a machine already busy with
+another battery makes their timing-sensitive rows flake for a reason the product never had.
 
 **In CI.** `ci.yml` runs all three engines' full suites, each sharded, on every pull request to
 `dev` or `main` and on every push to either. A newer push to a PR or to `dev` cancels the run in
@@ -709,7 +720,7 @@ the widget once the image decodes (selecting the image instead of placing a care
 bare-`boundingBox` read needs a guard first: `waitForFirstImageLoaded`
 (`tests/blocks/image/helpers.ts`), a `waitFor()`/`click()` on the widget, or an explicit fixture
 width (`![alt|120](url)`) when width is the only dimension you need. It only shows up as a
-full-suite flake, since dev-server latency decides whether the image beat your read.
+full-suite flake, since server latency under load decides whether the image beat your read.
 
 **Driving IME composition.** Two complementary halves. For handler-level contract pins (the
 composing gate, the end path, offset capture), use the unit harness:
@@ -903,7 +914,7 @@ behind.
 One session on its own:
 
 ```
-$ npm run test:e2e:isolated -- --project=e2e-simulation fenced-code-image-smoke.spec.ts
+$ npm run test:e2e -- --project=e2e-simulation fenced-code-image-smoke.spec.ts
 
 Running 1 test using 1 worker
 

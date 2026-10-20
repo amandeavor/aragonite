@@ -43,7 +43,7 @@ function fireOf(m: ConsoleMessage): { tag: string; text: string } | null {
 	const tag = warnTagOfLine(m.text());
 	if (tag === null) return null;
 	if (!tag.startsWith('svelte:')) return { tag, text };
-	// Under the dev server every Svelte warning reports Vite's console proxy as its origin, which
+	// Under the Vite dev server every Svelte warning reports Vite's console proxy as its origin, which
 	// names nothing, so the code inside the text is all there is to go on.
 	const at = m.location();
 	const origin = at.url.includes('@vite/client')

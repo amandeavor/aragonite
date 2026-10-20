@@ -133,11 +133,12 @@ test.describe('a nested list estimates at its own width', () => {
 		await resetPerf(page);
 
 		await page.mouse.wheel(0, 600);
+		// The browser applies a wheel scroll after the event resolves, so wait for it to land.
+		await expect
+			.poll(() => page.evaluate(() => (document.querySelector('.editor') as HTMLElement).scrollTop))
+			.toBeGreaterThan(0);
 		await editor.waitForRenderFlush();
 
-		expect(
-			await page.evaluate(() => (document.querySelector('.editor') as HTMLElement).scrollTop)
-		).toBeGreaterThan(0);
 		expect(await heightTableBuilds(page)).toEqual([]);
 	});
 });

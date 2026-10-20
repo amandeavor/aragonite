@@ -91,7 +91,6 @@ The library is `src/lib/`; `src/routes/test/editor` is the dev harness. Inside `
 | `npm run test:editor:<area>` | Unit tests by area (`package.json` is the list)                                                  |
 | `npm run test:e2e`           | E2E tests (all)                                                                                  |
 | `npm run test:e2e:<area>`    | E2E tests by area                                                                                |
-| `npm run test:e2e:isolated`  | E2E tests on a dev server of their own, reusing nothing already running                          |
 | `npm test`                   | Full suite: unit, then every e2e project                                                         |
 | `npm run check`              | svelte-check, 0 errors baseline                                                                  |
 | `npm run lint`               | Prettier, the docs link check, the codebase-map check, ESLint                                    |
@@ -128,11 +127,10 @@ How much you run scales with what you did, in three tiers:
 
 Two rules from the rule set, both bought with incidents. Never pipe a gate command: `npm test | tail` reports the pipe's exit code, not the gate's, so capture to a file and read the exit yourself ([rules.md § Working the gates](docs/contributing/rules.md#working-the-gates) shows the trap in both shells). And the long suites (the full e2e run, the simulation) run alone, never next to other work on the same tree.
 
-Three warnings though, about the e2e suite on real hardware:
+Two warnings though, about the e2e suite on real hardware:
 
 - A few specs still carry absolute wall-clock budgets, so a slower laptop or a busy host can tip one red without your change being wrong. Most of that class is gone (a guard, G4.48, prices timing as a growth ratio instead, which cancels machine speed); what's left is the allowlist in `src/lib/test/invariants/lint/suite-file-rules.test.ts`, each entry with its reason. CI is the arbiter, same as perf.
-- A run you interrupt can leave a dev server alive, and the next run will cheerfully reuse it and serve stale code, which looks exactly like everything failing at once. Kill leftover node processes before rerunning. `npm run test:e2e:isolated` sidesteps the whole class by starting the run's own server on its own port and reusing nothing ([testing.md § E2E tests](docs/contributing/testing.md#e2e-tests-playwright) has the ports).
-- Pre-warm the dev server on a cold checkout. Playwright's server timeout is short enough that a cold Vite boot on fresh `node_modules` can outrun it. Run `npm run dev` once and let it come up, or learn to read your first e2e run's instant failure as the phantom it is.
+- A run you interrupt can leave its server alive, and the next run then fails at once because the port is taken. Kill leftover node processes and rerun ([testing.md § The app under test is a build](docs/contributing/testing.md#the-app-under-test-is-a-build) has the ports).
 
 ## Commit messages
 

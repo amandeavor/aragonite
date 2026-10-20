@@ -39,13 +39,19 @@ type Route = keyof typeof READY_BY_ROUTE;
 /** A route from the table, optionally with a query. */
 export type RouteUrl = Route | `${Route}?${string}`;
 
-/** A ceiling, since a full battery on one dev server slows hydration; it stays under Playwright's
+/** A ceiling, since a full battery on one server slows hydration; it stays under Playwright's
  *  test timeout so a miss reports what the page did (`lint/harness-timeout-headroom.test.ts`). */
 export const READY_TIMEOUT = 45_000;
 
+// Not `load`: Firefox holds it until the app has booted, so an image the editor requests by then
+// and a spec's route never answers holds it forever. The readiness global is the signal.
+const NAVIGATED = 'domcontentloaded';
+
 export function gotoReady(page: Page, url: RouteUrl): Promise<void> {
 	const ready = READY_BY_ROUTE[url.split('?')[0] as Route];
-	return navigateReady(page, url, ready, (timeout) => page.goto(url, { timeout }));
+	return navigateReady(page, url, ready, (timeout) =>
+		page.goto(url, { timeout, waitUntil: NAVIGATED })
+	);
 }
 
 export function reloadReady(page: Page): Promise<void> {
@@ -53,7 +59,9 @@ export function reloadReady(page: Page): Promise<void> {
 	const route = new URL(url).pathname;
 	if (!(route in READY_BY_ROUTE)) throw new Error(`reloadReady: ${route} has no readiness global`);
 	const ready = READY_BY_ROUTE[route as Route];
-	return navigateReady(page, url, ready, (timeout) => page.reload({ timeout }));
+	return navigateReady(page, url, ready, (timeout) =>
+		page.reload({ timeout, waitUntil: NAVIGATED })
+	);
 }
 
 async function navigateReady(
@@ -129,15 +137,15 @@ function watchLoadSteps(page: Page): { seen(): string[]; stop(): void } {
 	};
 }
 
-/** Whether the dev server still answers, asked from the test process: the server's own output
+/** Whether the app server still answers, asked from the test process: the server's own output
  *  goes to the runner's reporters, which a worker cannot read. */
 async function probeDevServer(page: Page): Promise<string> {
 	const started = Date.now();
 	try {
 		const response = await page.request.get('/favicon.svg', { timeout: 5_000 });
-		return `The dev server answered /favicon.svg with ${response.status()} in ${Date.now() - started} ms.`;
+		return `The app server answered /favicon.svg with ${response.status()} in ${Date.now() - started} ms.`;
 	} catch (error) {
-		return `The dev server did not answer /favicon.svg: ${firstLine(error)}`;
+		return `The app server did not answer /favicon.svg: ${firstLine(error)}`;
 	}
 }
 

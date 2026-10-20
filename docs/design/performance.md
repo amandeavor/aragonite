@@ -184,7 +184,7 @@ The undo gauge is push-sampled: it updates only when a snapshot is pushed, and u
 
 ### One caveat on every non-gate number
 
-The bench and browser layers run under DEV (Vitest / dev server) with invariant assertions active, so every timing they print is a conservative upper bound on production, not a production latency. The real thing is faster than what you're reading, never slower. The gate is the exception: `perf:check` measures the production build.
+The bench and browser layers run under DEV (Vitest, and a development build in the browser) with invariant assertions active, so every timing they print is a conservative upper bound on production, not a production latency. The real thing is faster than what you're reading, never slower. The gate is the exception: `perf:check` measures the production build.
 
 ## Two architectural decisions
 

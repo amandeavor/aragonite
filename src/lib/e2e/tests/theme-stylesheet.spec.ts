@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { type Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { gotoReady } from '../goto-ready';
@@ -6,20 +7,34 @@ import { gotoReady } from '../goto-ready';
 // Unit mounts load no stylesheet, so only a real browser shows either.
 // Requirements: e2e/requirements/theme-stylesheet.md.
 
-/** Drops the theme stylesheet the dev server injected and, unless kept, the page's own colors. */
+const THEME_SHEET = readFileSync('src/lib/styles/editor-theme.css', 'utf8');
+
+/** Deletes the theme stylesheet's rules, matched by text since a build merges them into the
+ *  layout's CSS, and unless kept the page's own colors. */
 async function dropThemeStylesheet(page: Page, keepPageColors: boolean): Promise<void> {
-	const removed = await page.evaluate((keep) => {
-		const sheet = document.querySelector('style[data-vite-dev-id$="editor-theme.css"]');
-		sheet?.remove();
-		// The site's `:root` and the harness wrapper each declare one.
-		if (!keep) {
-			for (const el of [document.documentElement, document.querySelector('.test-harness')]) {
-				(el as HTMLElement).style.setProperty('--color-bg', 'initial');
+	const palette = () =>
+		computed(page, '.editor', '--md-palette-bg').then((value) => value.trim() !== '');
+	expect(await palette(), 'the theme stylesheet gives the editor its palette').toBe(true);
+	await page.evaluate(
+		({ sheetText, keep }) => {
+			const theme = new CSSStyleSheet();
+			theme.replaceSync(sheetText);
+			const themeRules = new Set(Array.from(theme.cssRules, (rule) => rule.cssText));
+			for (const sheet of Array.from(document.styleSheets)) {
+				for (let i = sheet.cssRules.length - 1; i >= 0; i--) {
+					if (themeRules.has(sheet.cssRules[i].cssText)) sheet.deleteRule(i);
+				}
 			}
-		}
-		return sheet !== null;
-	}, keepPageColors);
-	expect(removed, 'the dev server injected the theme stylesheet as a style element').toBe(true);
+			// The site's `:root` and the harness wrapper each declare one.
+			if (!keep) {
+				for (const el of [document.documentElement, document.querySelector('.test-harness')]) {
+					(el as HTMLElement).style.setProperty('--color-bg', 'initial');
+				}
+			}
+		},
+		{ sheetText: THEME_SHEET, keep: keepPageColors }
+	);
+	expect(await palette(), 'no theme rule is left to give the editor its palette').toBe(false);
 }
 
 /** The harness remounts its editor when the drag-handle toggle flips. */

@@ -3,35 +3,45 @@ import { defineConfig, type Project } from '@playwright/test';
 declare const process: { env: Record<string, string | undefined> };
 const PROD = !!process.env.PERF_PROD;
 const ENGINE = process.env.ENGINE ?? 'chromium';
-// A run that adopts a developer's live harness on the default port serves whatever that
-// tree currently is, so a reviewer's battery moves both servers and reuses neither.
-// `E2E_PORT` picks the isolated server's port, so two isolated batteries on one machine (two
-// worktrees, say) never race for 1430; it implies isolation.
+// The suite serves a development build of the tree as the run starts (dev checks on, no
+// on-demand transforms), never reused, since a reused build is staler than any dev server.
+// `E2E_SERVER=dev` serves the Vite dev server instead, for UI and watch mode's live reload; it
+// adopts a dev server already on 1420 unless `E2E_PORT` asks for its own. `E2E_PORT` moves the
+// run's server (the perf gate's preview takes the next port), so two runs never share one.
+const BUILT = process.env.E2E_SERVER !== 'dev';
 const OWN_PORT = Number(process.env.E2E_PORT) || 0;
-const ISOLATED = !!process.env.E2E_ISOLATED || OWN_PORT > 0;
-const DEV_PORT = OWN_PORT || (ISOLATED ? 1430 : 1420);
-const PROD_PORT = OWN_PORT ? OWN_PORT + 1 : ISOLATED ? 1431 : 1421;
+const REUSE = !BUILT && OWN_PORT === 0;
+const APP_PORT = OWN_PORT || (BUILT ? 1430 : 1420);
+const PROD_PORT = APP_PORT + 1;
+// IPv4 loopback: on Windows, Firefox tries 127.0.0.1 for `localhost` first and a refused
+// connection there costs 2 s per navigation.
+const HOST = '127.0.0.1';
+// A dev server someone started listens on `localhost`, which on Windows is IPv6 only.
+const APP_ORIGIN = `http://${REUSE ? 'localhost' : HOST}:${APP_PORT}`;
 
 // `stdout: 'pipe'` routes the server's console through the reporters, which is what lets
 // `server-warn-reporter` fail a run on an SSR-side `[aragonite:` guard fire. Stderr already pipes.
-const BUILT = process.env.E2E_SERVER !== 'dev';
-const HOST = BUILT ? '127.0.0.1' : 'localhost';
-const devServer = BUILT
+const appServer = BUILT
 	? {
-			command: `npm run build:e2e && npm run preview:e2e -- --host ${HOST} --port ${DEV_PORT} --strictPort`,
-			url: `http://${HOST}:${DEV_PORT}/test/editor`,
+			// Its own output directory per port, so two runs and the perf gate's prod build never
+			// overwrite the app another run is serving.
+			command: `npm run build:e2e && npm run preview:e2e -- --host ${HOST} --port ${APP_PORT} --strictPort`,
+			env: { E2E_BUILD_DIR: `.svelte-kit/e2e-${APP_PORT}` },
+			url: `${APP_ORIGIN}/test/editor`,
 			reuseExistingServer: false,
 			stdout: 'pipe' as const,
-			timeout: 180_000
+			timeout: 120_000
 		}
 	: {
-			// `vite.config.js` pins the default port with `strictPort`, so isolation must move it on
-			// the command line; Playwright's `url` only says where to wait.
-			command: ISOLATED ? `npm run dev -- --port ${DEV_PORT} --strictPort` : 'npm run dev',
+			// `vite.config.js` pins the default port with `strictPort`, so a run's own server must
+			// move it on the command line; Playwright's `url` only says where to wait.
+			command: REUSE
+				? 'npm run dev'
+				: `npm run dev -- --host ${HOST} --port ${APP_PORT} --strictPort`,
 			// Waits for the harness page: Vite opens and closes the port while checking it is free,
 			// before it serves, so a port check can pass early and the first page load is refused.
-			url: `http://localhost:${DEV_PORT}/test/editor`,
-			reuseExistingServer: !ISOLATED,
+			url: `${APP_ORIGIN}/test/editor`,
+			reuseExistingServer: REUSE,
 			stdout: 'pipe' as const,
 			// Covers the first compile of the harness page, which has taken about 40s on a loaded machine.
 			timeout: 60_000
@@ -41,7 +51,7 @@ const prodServer = {
 	command: `npm run build && npm run preview -- --port ${PROD_PORT} --strictPort`,
 	// Waits for a page, not the port, for the same reason as the dev server.
 	url: `http://localhost:${PROD_PORT}/test/editor`,
-	reuseExistingServer: !ISOLATED,
+	reuseExistingServer: REUSE,
 	stdout: 'pipe' as const,
 	timeout: 180_000
 };
@@ -94,7 +104,7 @@ export default defineConfig({
 	timeout: 60_000,
 	retries: 0,
 	use: {
-		baseURL: `http://${HOST}:${DEV_PORT}`,
+		baseURL: APP_ORIGIN,
 		headless: true,
 		...engine,
 		// Pinned, not inherited: specs across several projects assert near-absolute geometry and
@@ -107,7 +117,7 @@ export default defineConfig({
 		['./src/lib/e2e/server-warn-reporter.ts'],
 		...(process.env.GITHUB_STEP_SUMMARY ? [['./src/lib/e2e/ci-summary-reporter.ts'] as const] : [])
 	],
-	webServer: PROD ? [devServer, prodServer] : devServer,
+	webServer: PROD ? [appServer, prodServer] : appServer,
 	projects: [
 		{
 			name: 'e2e-top',
