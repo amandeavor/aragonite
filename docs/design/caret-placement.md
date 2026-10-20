@@ -34,10 +34,11 @@ flowchart TD
 
 `src/lib/selection/cross-block/pointer.ts` :: `resetForPointerDown` runs first on every pointer-down on a block, and decides what the click forgets: the caret memory (`src/lib/caret/caret-memory.ts`, holding stage 7's sticky column, stage 6's marker side and the pending marks, which always go together), a gap caret (stage 8), and, unless Shift is held, a live cross-block range. That last one matters most, because a caret dropped inside a range that's still live turns the next keystroke into a replace-everything.
 
-Every editable surface's pointer-down, a plugin's included, goes through `handlePointerDown` in the same file. Mostly the browser places the caret itself, as any contenteditable does, and the editor refines it afterwards. Two presses the editor takes away from the browser:
+Every editable surface's pointer-down, a plugin's included, goes through `handlePointerDown` in the same file. Mostly the browser places the caret itself, as any contenteditable does, and the editor refines it afterwards. Three presses the editor takes away from the browser:
 
 - **A plain click in the surface's top or bottom padding.** Chromium on Mac and Linux would put that caret at the line's start or end, so the editor places it at the column under the pointer (through stage 2's probe) and cancels the mousedown. Not the pointer-down, since cancelling that swallows the mousedown a double-click needs; a double or triple click stays the multi-click gesture's.
-- **A right-click in the same padding**, which moves the caret before any menu opens. `placeContextPress` in the same file listens at the editor root, ahead of every block's own menu, and puts it back at the column.
+- **A right-click in the same padding**, which moves the caret before any menu opens. `placePaddingPress` in the same file puts it back at the column, called from the editor root's capture-phase listener (`src/lib/components/editor-root/gestures.ts` :: `placeCaretForMenu`), which runs ahead of every block's own menu.
+- **A right-click on an inline widget.** Safari selects the widget whole, so that same root listener puts the caret beside it, where every other engine leaves it, and the menu offers what the widget offers (Edit link, for one that goes somewhere). A widget the editor already holds selected stays selected, and the menu's Cut and Copy act on it.
 
 A text block's own pointer-down (`src/lib/components/blocks/text/TextEditableBlock.svelte`) also remembers the point for stage 4, and on a widget that shows its source when clicked (an inline formula) it suppresses the browser's caret, so the reveal is the only thing placing one.
 

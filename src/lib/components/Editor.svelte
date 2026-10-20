@@ -935,6 +935,7 @@
 		blockEdit,
 		placeCaretAtPoint,
 		rangeAtContextPress: () => (editorEl ? rootGestures.rangeAtContextPress(editorEl) : false),
+		holdsWidget: () => selectionState.widget !== null,
 		insertMarkdown,
 		aimInsertAtFocus: () => focusedSurface.aimInsertAtFocus(),
 		insertCatalogue: getInsertCatalogue,

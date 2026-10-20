@@ -193,6 +193,7 @@ unguarded.
 | G4.228 | An e2e locator action that must leave the scroll alone rides the in-place helper             | L       |
 | G4.229 | A key moves a selection end through `keyboard-extend.ts`, which shows it                     | L       |
 | G4.230 | Editor chrome runs no undo or redo of its own; the root answers them there                   | L       |
+| G4.231 | A right-click menu listens for `contextmenu` only where it is declared                       | L       |
 | G4.232 | An e2e spec splits undo steps with `endTypingBatch`, never a fixed wait                      | L       |
 
 ### The entries
@@ -1315,6 +1316,13 @@ the editor root answers the history chords anywhere inside it, and in its find b
 mounts it, but where a block took the key or a text field owns it (`chromeHoldsFocus`). A file
 under `components/` or `plugins/` that reads the chord or calls the history itself fails.
 `lint/history-chord-sites.test.ts`; every engine in `keyboard-navigation/chrome-focus-undo.spec.ts`.
+
+**G4.231 · Right-click menus are declared** (`context-menu-sites`). Safari selects the word or the
+widget under a right-click before `contextmenu` fires. The root's capture-phase listener runs first
+and decides what's left: a word stays for the clipboard rows, and a press on a widget gets the caret
+every other engine puts beside it. A file in `src/lib` or a reference plugin that listens for
+`contextmenu` and isn't in the scan's list fails, so a new menu route is checked the day it lands.
+`lint/context-menu-sites.test.ts`; the target rows in `context-menu-press-selection.spec.ts`.
 
 **G4.232 · Undo steps split on the spec's word.** The page's 250 ms typing pause fires late on a loaded
 runner, and Firefox's driver can leave longer than that between two keys, so every e2e navigation

@@ -64,6 +64,12 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		note: 'A modified multi-click is left to the browser (Shift extends, Mod activates): no keystroke is consumed.'
 	},
 	{
+		file: 'selection/widget-press.ts',
+		chords: [],
+		keys: [],
+		note: "Control with the primary button is a Mac's right-click, read off a press: no keystroke is consumed."
+	},
+	{
 		file: 'components/GapCaret.svelte',
 		chords: [],
 		keys: [
