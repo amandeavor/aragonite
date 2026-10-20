@@ -43,6 +43,7 @@ function mount() {
 		caretLanding: { restore: async () => 'applied' as const, showSelectionEnd },
 		commands: commandContext(),
 		reading: fixtureReading(),
+		scroll: { visibleBand: () => null, showRect: () => {} },
 		getEl: () => el,
 		getCursorOffset: () => {
 			const sel = window.getSelection()!;

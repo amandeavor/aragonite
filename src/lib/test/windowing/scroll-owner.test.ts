@@ -421,7 +421,15 @@ function placedOnB4(top: number): (f: Fixture) => void {
 // ── The census ───────────────────────────────────────────────────────────────
 
 /** The owner's members that write no scroll position; `watchSize`'s callback only records heights. */
-const NON_WRITES = ['port', 'isInView', 'shows', 'release', 'watchSize', 'roundOpen'] as const;
+const NON_WRITES = [
+	'port',
+	'isInView',
+	'shows',
+	'visibleBand',
+	'release',
+	'watchSize',
+	'roundOpen'
+] as const;
 type ScrollWrites = Omit<ScrollOwner, (typeof NON_WRITES)[number]>;
 
 describe('scroll owner: every write has a row under every owner of the position', () => {

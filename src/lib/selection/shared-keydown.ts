@@ -35,6 +35,7 @@ import {
 	type CaretEdgeKey
 } from '../schema/keybindings';
 import { isDefaultGlobalChord } from '../schema/commands';
+import type { ScrollOwner } from '../windowing/scroll-owner';
 
 // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -60,6 +61,8 @@ export interface SharedKeydownContext extends LandableBoundsContext {
 	commands: CommandDispatchContext;
 	/** How the editor reads its bytes, whose grammar the vertical extension skips leaves by. */
 	reading: Reading;
+	/** What the editor shows, and the one scroll a key may ask for (a tall block with no caret). */
+	scroll: Pick<ScrollOwner, 'visibleBand' | 'showRect'>;
 	/** A plain horizontal arrow at a hidden construct edge: true when the press moved which side
 	 *  of the edge the caret means instead of moving the caret (live-mode.md § 4.2). */
 	stepEdge?(e: KeyboardEvent): boolean;
@@ -127,16 +130,16 @@ export async function handleSharedKeydown(
 	let cachedBounds: LandableBounds | null = null;
 	const bounds = () => (cachedBounds ??= caretLandableBounds(ctx, el));
 
-	// The selection's moving end, which the line check measures: after a forward extension the
-	// anchor stays mid-block while the focus sits at the boundary.
-	const verticalOffset = () => ctx.getFocusOffset() ?? ctx.getCursorOffset() ?? 0;
+	// The moving end, which the line check measures (a forward extension's anchor stays mid-block);
+	// with no caret in the block, as in reading mode, every arrow is at its edge.
+	const verticalOffset = () => ctx.getFocusOffset() ?? ctx.getCursorOffset();
 
 	if (e.key === 'ArrowUp') {
 		const offset = verticalOffset();
-		if (isAtFirstVisualLine(el, offset, bounds())) {
+		if (offset === null || isAtFirstVisualLine(el, offset, bounds())) {
 			// Cross the boundary only when focus is already at the block's first reachable
 			// offset, so native Shift+ArrowUp extension has nowhere left to go within it.
-			if (e.shiftKey && offset <= bounds().start) {
+			if (e.shiftKey && offset !== null && offset <= bounds().start) {
 				e.preventDefault();
 				extendFocusToPreviousBlock(ctx, el, myPath, 'start');
 				return true;
@@ -151,16 +154,17 @@ export async function handleSharedKeydown(
 
 	if (e.key === 'ArrowDown') {
 		const offset = verticalOffset();
-		if (isAtLastVisualLine(el, offset, bounds())) {
+		if (offset === null || isAtLastVisualLine(el, offset, bounds())) {
 			// Cross the boundary only when focus is already at the block's last reachable
 			// offset, so native Shift+ArrowDown extension has nowhere left to go.
-			if (e.shiftKey && offset >= bounds().end) {
+			if (e.shiftKey && offset !== null && offset >= bounds().end) {
 				e.preventDefault();
 				extendFocusToNextBlock(ctx, el, myPath, 'vertical');
 				return true;
 			}
 			if (!e.shiftKey && !e.altKey) {
 				e.preventDefault();
+				if (offset === null && scrollsThroughBlock(ctx, el)) return true;
 				void ctx.focus.moveFocus(index + 1, { stickyColumnFrom: 'above' });
 				return true;
 			}
@@ -169,7 +173,7 @@ export async function handleSharedKeydown(
 
 	if (e.key === 'ArrowLeft') {
 		const offset = e.shiftKey ? (stepOffset ?? bounds().start) : stepOffset;
-		if (offset !== null && offset <= bounds().start) {
+		if (offset === null || offset <= bounds().start) {
 			if (e.shiftKey) {
 				e.preventDefault();
 				extendFocusToPreviousBlock(ctx, el, myPath);
@@ -183,7 +187,7 @@ export async function handleSharedKeydown(
 
 	if (e.key === 'ArrowRight') {
 		const offset = e.shiftKey ? (stepOffset ?? bounds().end) : stepOffset;
-		if (offset !== null && offset >= bounds().end) {
+		if (offset === null || offset >= bounds().end) {
 			if (e.shiftKey) {
 				e.preventDefault();
 				extendFocusToNextBlock(ctx, el, myPath);
@@ -196,6 +200,25 @@ export async function handleSharedKeydown(
 	}
 
 	return false;
+}
+
+/** ArrowDown with no caret in a block running past the editor's bottom edge scrolls one line
+ *  instead of leaving it, so a reader reads the whole block. True when it scrolled. */
+function scrollsThroughBlock(ctx: SharedKeydownContext, el: HTMLElement): boolean {
+	const band = ctx.scroll.visibleBand();
+	const bottom = el.getBoundingClientRect().bottom;
+	if (!band || bottom <= band.bottom + 1) return false;
+	const line = Math.min(lineHeightOf(el), bottom - band.bottom);
+	ctx.scroll.showRect(() => {
+		const now = ctx.scroll.visibleBand();
+		return now && new DOMRect(0, now.bottom, 1, line);
+	});
+	return true;
+}
+
+function lineHeightOf(el: HTMLElement): number {
+	const style = getComputedStyle(el);
+	return parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4 || 20;
 }
 
 /** A plain arrow at a hidden construct edge moves the side the caret means, not the caret

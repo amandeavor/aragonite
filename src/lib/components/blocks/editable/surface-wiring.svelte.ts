@@ -51,6 +51,7 @@ export type SharedSurfaceDeps = Pick<
 	| 'placeholder'
 	| 'onPasteImage'
 	| 'readingFocus'
+	| 'scrollOwner'
 >;
 
 export interface SurfaceWiring {
@@ -85,7 +86,8 @@ export function wireSurfaceContexts(): SurfaceWiring {
 		events,
 		commands,
 		kindCue,
-		readingFocus
+		readingFocus,
+		scrollOwner
 	} = services;
 	const {
 		blockElLookup: getBlockElByPath,
@@ -120,7 +122,8 @@ export function wireSurfaceContexts(): SurfaceWiring {
 		commands,
 		placeholder,
 		onPasteImage,
-		readingFocus
+		readingFocus,
+		scrollOwner
 	};
 
 	const dispatchChord = (e: KeyboardEvent, target: KindCommandTarget): boolean => {

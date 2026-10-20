@@ -501,7 +501,7 @@
 
 	const onInput = editableSurface.onInput;
 	// Callers guard `el` first.
-	function cellPlanState(offset: number): CellKeyState {
+	function cellPlanState(offset: number | null): CellKeyState {
 		// A cell has no marker prefix, so these are raw offsets; they follow what is on screen,
 		// not the mode, since a cell's move follows what the user sees.
 		const bounds = landableDomTextBounds(el!);
@@ -542,7 +542,7 @@
 		if ((await widgetInteraction.handleSelectedWidgetKeydown(e)) || editableSurface.isDetached())
 			return;
 
-		const caretBeforeKey = cursor.getRaw() ?? 0;
+		const caretBeforeKey = cursor.getRaw();
 
 		// Before the plan, whose edge branches ignore modifiers and would eat a column move. A move
 		// from a cell moves the whole table, since a table's grid rows are not reorderable children.
@@ -572,7 +572,7 @@
 					!e.ctrlKey &&
 					!e.metaKey &&
 					(e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
-					startIntraTableRect(e.key, caretBeforeKey)
+					startIntraTableRect(e.key, caretBeforeKey ?? 0)
 				) {
 					e.preventDefault();
 					return;

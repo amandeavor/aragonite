@@ -1,13 +1,15 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { focusWalkKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 import { textRunCenter, textRunStart } from '../../text-runs';
-import { focusName, holdsCaret } from '../../reading-focus-probes';
+import { addHostButtons, focusName, holdsCaret } from '../../reading-focus-probes';
 import { multiClick } from '../../multi-click';
 import { skipUnlessSupported } from '../../browser-engine';
 
 // Reading mode has no caret (requirements/presentation/reading-caretless.md): a click focuses its
-// block and leaves none.
+// block and leaves none, and the arrows step from block to block.
 
 async function loadReading(page: Page, md: string): Promise<EditorPage> {
 	const editor = new EditorPage(page);
@@ -20,6 +22,9 @@ async function clickWord(page: Page, path: number[], word: string): Promise<void
 	const at = await textRunStart(page, word, { path });
 	await page.mouse.click(at.x, at.y);
 }
+
+const scrollTop = (editor: EditorPage) =>
+	editor.editorContainer.evaluate((el) => (el as HTMLElement).scrollTop);
 
 test.describe('reading mode: a click keeps no caret', () => {
 	const DOC = 'Alpha beta gamma delta.\n\nSecond para here.\n\nThird one.\n';
@@ -69,5 +74,113 @@ test.describe('reading mode: a click keeps no caret', () => {
 		await page.keyboard.type('X');
 
 		await editor.bridge.waitForSourceContains('Alpha beta Xgamma delta.');
+	});
+
+	test('a click, then an arrow to the next block: leaving puts the caret at that block', async ({
+		page
+	}) => {
+		const editor = await loadReading(page, DOC);
+
+		await clickWord(page, [0], 'gamma');
+		await page.keyboard.press('ArrowDown');
+		await editor.setPresentationMode('source');
+		await page.keyboard.type('X');
+
+		await editor.bridge.waitForSourceContains('XSecond para here.');
+	});
+});
+
+test.describe('reading mode: the arrows step blocks', () => {
+	const WRAPPED = 'Long words here '.repeat(30).trim() + '.';
+	const DOC = ['Zero.', WRAPPED, 'Two.', '| H1 | H2 |\n| --- | --- |\n| a | bee |', 'Four.'].join(
+		'\n\n'
+	);
+
+	test('from a click, ArrowDown leaves a wrapped paragraph and walks into a table', async ({
+		page
+	}) => {
+		await loadReading(page, DOC);
+		await clickWord(page, [0], 'Zero');
+
+		const seen: string[] = [];
+		for (let i = 0; i < 4; i++) {
+			await page.keyboard.press('ArrowDown');
+			seen.push((await focusName(page)).split(' ').slice(0, 2).join(' '));
+		}
+
+		expect(seen).toEqual([
+			'div.text-editable-block [1]',
+			'div.text-editable-block [2]',
+			'div.table-cell [3]',
+			'div.table-cell [3]'
+		]);
+		expect(await holdsCaret(page)).toBe(false);
+	});
+
+	test('a table cell steps by the grid, and out of the table at its edge', async ({ page }) => {
+		await loadReading(page, DOC);
+		await clickInPlace(page.locator('.table-cell', { hasText: 'H1' }));
+
+		await page.keyboard.press('ArrowRight');
+		expect(await focusName(page)).toContain('"H2"');
+		await page.keyboard.press('ArrowDown');
+		expect(await focusName(page)).toContain('"bee"');
+		await page.keyboard.press('ArrowLeft');
+		expect(await focusName(page)).toContain('"a"');
+		await page.keyboard.press('ArrowDown');
+		expect(await focusName(page)).toContain('[4]');
+	});
+
+	test('after Tab lands on the stop, the arrows still move', async ({ page }) => {
+		await loadReading(page, DOC);
+		await addHostButtons(page);
+
+		await page.locator('#host-before').focus();
+		await page.keyboard.press(focusWalkKey());
+		expect(await focusName(page)).toContain('[0]');
+		await page.keyboard.press('ArrowRight');
+		expect(await focusName(page)).toContain('[1]');
+		await page.keyboard.press('ArrowLeft');
+		expect(await focusName(page)).toContain('[0]');
+	});
+
+	test('the stop follows the arrows: Tab back in lands on the block arrowed to', async ({
+		page
+	}) => {
+		await loadReading(page, DOC);
+		await addHostButtons(page);
+
+		await clickWord(page, [0], 'Zero');
+		await page.keyboard.press('ArrowDown');
+		await page.keyboard.press('ArrowDown');
+		await page.locator('#host-before').focus();
+		await page.keyboard.press(focusWalkKey());
+
+		expect(await focusName(page)).toContain('[2]');
+	});
+
+	test('ArrowDown in a block taller than the editor scrolls by a line until it ends', async ({
+		page
+	}) => {
+		const tall = 'Tall words here '.repeat(600).trim() + '.';
+		const editor = await loadReading(page, `Top.\n\n${tall}\n\nAfter.\n`);
+		await clickWord(page, [0], 'Top');
+		await page.keyboard.press('ArrowDown');
+		expect(await focusName(page)).toContain('[1]');
+
+		const before = await scrollTop(editor);
+		await page.keyboard.press('ArrowDown');
+		expect(await focusName(page)).toContain('[1]');
+		const step = (await scrollTop(editor)) - before;
+		expect(step).toBeGreaterThan(5);
+		expect(step).toBeLessThan(60);
+
+		let presses = 1;
+		while ((await focusName(page)).includes('[1]') && presses < 400) {
+			await page.keyboard.press('ArrowDown');
+			presses++;
+		}
+		expect(await focusName(page)).toContain('[2]');
+		expect(presses).toBeGreaterThan(5);
 	});
 });

@@ -113,6 +113,12 @@ function caretBox(el: HTMLElement): DOMRectReadOnly {
 	return el.getBoundingClientRect();
 }
 
+function firstLineBox(el: HTMLElement): DOMRectReadOnly {
+	const box = el.getBoundingClientRect();
+	const line = parseFloat(getComputedStyle(el).lineHeight) || box.height;
+	return new DOMRect(box.left, box.top, box.width, Math.min(box.height, line));
+}
+
 export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 	let generation = 0;
 	/** True while the tree generation `stamp` names is still the one in place. */
@@ -214,13 +220,16 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 		const el = deps.scroll && deps.getBlockElByPath([...path]);
 		const active = el ? document.activeElement : null;
 		if (!el?.contains(active)) return;
-		// The cell that took the caret shows whole; in any other leaf only the caret's line, or a
-		// paragraph taller than the viewport would jump the page by a screen.
+		// A cell shows whole; any other leaf only the caret's line (its first, in reading mode), so a
+		// paragraph taller than the viewport doesn't jump the page by a screen.
 		const cell = findCellPathForElement(active);
 		const cellEl = cell && deps.getBlockElByPath(cell);
 		const leaf = findBlockPathForElement(active);
 		const leafEl = (leaf && deps.getBlockElByPath(leaf)) ?? el;
-		deps.scroll?.showRect(() => (cellEl ? cellEl.getBoundingClientRect() : caretBox(leafEl)));
+		deps.scroll?.showRect(() => {
+			if (cellEl) return cellEl.getBoundingClientRect();
+			return deps.isReading() ? firstLineBox(leafEl) : caretBox(leafEl);
+		});
 	}
 
 	/** Reading mode has no caret: the block's own `focus` picks the element, focus moves on to a

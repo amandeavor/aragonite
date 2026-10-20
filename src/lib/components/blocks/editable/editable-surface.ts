@@ -28,6 +28,7 @@ import type { InlineMenuCombobox } from '../../../inline-menu/inline-menu-state.
 import type { NodeView } from '../../../core/node-views';
 import { blockAccessibleName, readingRole } from '../../../a11y-strings';
 import type { ReadingFocus } from '../../editor-root/reading-focus.svelte';
+import type { ScrollOwner } from '../../../windowing/scroll-owner';
 import type { CommandDispatchContext } from '../../../schema/block-commands';
 import type { PluginActivation } from '../../../schema/plugin-activation';
 import type { UndoController } from '../../../editor-actions/deps';
@@ -230,6 +231,8 @@ export interface EditableSurfaceDeps {
 	ownPairs?: BlockAutoPairs;
 	/** The editor's reading-mode tab stop, which the element takes its tabindex from. */
 	readingFocus: Pick<ReadingFocus, 'hold'>;
+	/** What the editor shows, for an arrow in a block taller than that with no caret. */
+	scrollOwner: Pick<ScrollOwner, 'visibleBand' | 'showRect'>;
 
 	// ── The per-block reads `SharedKeydownContext` needs ──────────────────────
 	/** The selection's focus endpoint as a raw offset; each block converts its own DOM read. */
@@ -405,7 +408,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		getDoc: deps.getDoc,
 		caretLanding: deps.caretLanding,
 		commands: deps.commands,
-		reading: deps.reading
+		reading: deps.reading,
+		scroll: deps.scrollOwner
 	};
 
 	// ── BlockComponent methods ────────────────────────────────────────────────

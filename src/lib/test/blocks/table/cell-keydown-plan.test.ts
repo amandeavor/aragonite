@@ -149,6 +149,22 @@ describe('cellKeydownPlan: arrow boundary moves', () => {
 	}
 });
 
+// With no caret (reading mode), every arrow is at the cell's edge; Backspace and Delete move none.
+describe('cellKeydownPlan: a cell with no caret', () => {
+	const cases: Array<[string, ChordKeys, CellKeyPlan]> = [
+		['ArrowRight', key('ArrowRight'), cell(1, 2, 'start')],
+		['ArrowLeft', key('ArrowLeft'), cell(1, 0, 'end')],
+		['ArrowDown', key('ArrowDown'), cell(2, 1, 'start')],
+		['Backspace', key('Backspace'), { kind: 'native' }],
+		['Delete', key('Delete'), { kind: 'native' }]
+	];
+	for (const [name, input, plan] of cases) {
+		it(`${name} → ${plan.kind}`, () => {
+			expect(cellKeydownPlan(input, state({ offset: null }))).toEqual(plan);
+		});
+	}
+});
+
 describe('cellCommandPlan: the keymap moves', () => {
 	const cases: Array<[string, CellMoveCommand, Partial<CellKeyState>, CellKeyPlan]> = [
 		['Tab mid-table', 'cell.tab', {}, cell(1, 2, 'start')],

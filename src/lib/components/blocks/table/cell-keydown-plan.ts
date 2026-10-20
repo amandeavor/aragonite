@@ -12,7 +12,8 @@ export interface CellKeyState {
 	colIdx: number;
 	columnCount: number;
 	rowCount: number;
-	offset: number;
+	/** Null with no caret in the cell (reading mode has none), where every arrow is at its edge. */
+	offset: number | null;
 	/** The first and last offsets the caret can sit at in the cell. A mode that draws no marker
 	 *  puts a leading or trailing run out of reach, so a test of raw 0 or the length never fires. */
 	contentStart: number;
@@ -39,18 +40,20 @@ export function cellKeydownPlan(e: ChordKeys, s: CellKeyState): CellKeyPlan {
 		};
 	}
 	if (caretEdgeKey(e)) return { kind: 'native' };
-	if (e.key === 'ArrowLeft' && !e.shiftKey && s.offset <= s.contentStart && s.collapsed) {
+	const atStart = s.offset === null || (s.offset <= s.contentStart && s.collapsed);
+	const atEnd = s.offset === null || (s.offset >= s.contentEnd && s.collapsed);
+	if (e.key === 'ArrowLeft' && !e.shiftKey && atStart) {
 		return horizontalMove(prevCell(pos, s.columnCount), 'end', 'up');
 	}
-	if (e.key === 'ArrowRight' && !e.shiftKey && s.offset >= s.contentEnd && s.collapsed) {
+	if (e.key === 'ArrowRight' && !e.shiftKey && atEnd) {
 		return horizontalMove(nextCell(pos, s.columnCount, s.rowCount), 'start', 'down');
 	}
 	if (e.key === 'ArrowUp' && !e.shiftKey) return verticalMove(cellAbove(pos), 'up');
 	if (e.key === 'ArrowDown' && !e.shiftKey) return verticalMove(cellBelow(pos, s.rowCount), 'down');
-	if (e.key === 'Backspace' && s.offset <= s.contentStart && s.collapsed) {
+	if (e.key === 'Backspace' && s.offset !== null && atStart) {
 		return horizontalMove(prevCell(pos, s.columnCount), 'end', 'up');
 	}
-	if (e.key === 'Delete' && s.offset >= s.contentEnd && s.collapsed) {
+	if (e.key === 'Delete' && s.offset !== null && atEnd) {
 		return horizontalMove(nextCell(pos, s.columnCount, s.rowCount), 'start', 'down');
 	}
 	return { kind: 'native' };
