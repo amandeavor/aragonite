@@ -149,7 +149,8 @@ interface Target {
 	/** What Safari selects under the press: a word, named in the editor's offsets, or an element
 	 *  whole. */
 	select: { word: string; path: number[]; start: number } | { element: (page: Page) => Locator };
-	/** Whether Safari's word stays for the clipboard rows; anywhere else the caret replaces it. */
+	/** Whether what was selected stays for the clipboard rows (Safari's word, or the image the
+	 *  editor holds); anywhere else the caret replaces it. */
 	keeps: boolean;
 	/** A row the menu must hold, so a menu both presses get wrong still fails. */
 	holds: string;
@@ -188,6 +189,11 @@ const imageIn = (seed: string, doc: string) => async (page: Page) => {
 /** The overlay a selected image draws, the one sign the editor holds it. */
 const imageHeld = (page: Page) => page.locator('[data-image-overlay]');
 
+async function holdImage(page: Page): Promise<void> {
+	await page.locator("[data-block-path='[6]'] [data-image-widget]").click();
+	await expect(imageHeld(page)).toBeVisible();
+}
+
 const widgetIn = (path: string) => (page: Page) =>
 	page.locator(`[data-block-path='${path}'] [data-inline-widget]`).first();
 
@@ -220,10 +226,8 @@ const TARGETS: Target[] = [
 	element('an inline image', withImage, widgetIn('[6]'), 'Cut'),
 	{
 		...element('a selected image', withImage, widgetIn('[6]'), 'Cut'),
-		prepare: async (page) => {
-			await page.locator("[data-block-path='[6]'] [data-image-widget]").click();
-			await expect(imageHeld(page)).toBeVisible();
-		}
+		keeps: true,
+		prepare: holdImage
 	},
 	element(
 		'a tag',
@@ -341,6 +345,7 @@ test.describe("a right-click opens the same menu after Safari's own select", () 
 			// that stays shows as the Copy row it enables.
 			if (target.keeps) {
 				expect(safari.rows.find((r) => r.label === 'Copy')?.enabled).toBe(true);
+				expect(safari.held).toBe(real.held);
 			} else {
 				expect(safari).toEqual({ rows: real.rows, selected: '', held: real.held });
 			}
@@ -395,4 +400,110 @@ test.describe('a menu Paste reads the clipboard once the menu is gone', () => {
 async function rightClickOn(page: Page, word: string): Promise<void> {
 	const at = await textRunCenter(page, word);
 	await page.mouse.click(at.x, at.y, { button: 'right' });
+}
+
+// The image the editor holds is the user's selection, as selected text is.
+const IMAGE_BYTES = '![pic](/test-fixtures/sample.png)';
+
+// Each held widget: its block, how the user selects it, its bytes and the text around them.
+const HELD_HOSTS = [
+	{
+		name: 'an image in prose',
+		path: '[6]',
+		open: withImage,
+		hold: holdImage,
+		held: (page: Page) => expect(imageHeld(page)).toBeVisible(),
+		bytes: IMAGE_BYTES,
+		text: `Pic ${IMAGE_BYTES} here`
+	},
+	...[
+		{
+			name: 'a chip in prose',
+			path: '[0]',
+			at: [0],
+			after: 15,
+			bytes: '{{alpha}}',
+			text: 'Prose {{alpha}} here'
+		},
+		{
+			name: 'a chip in a cell',
+			path: '[1]',
+			at: [1, 1, 0],
+			after: 10,
+			bytes: '{{beta}}',
+			text: 'x {{beta}} y'
+		}
+	].map((chip) => ({
+		...chip,
+		open: inPlugins('chips'),
+		// Mod+K beside a chip selects it whole.
+		hold: async (page: Page) => {
+			await page.evaluate(([p, offset]) => (window as any).__test.focusBlockComponent(p, offset), [
+				chip.at,
+				chip.after
+			] as const);
+			await page.keyboard.press('ControlOrMeta+k');
+		},
+		held: (page: Page) =>
+			expect(page.locator(`[data-block-path='${chip.path}'] .md-widget-selected`)).toHaveCount(1)
+	}))
+];
+
+const countIn = (source: string, bytes: string) => source.split(bytes).length - 1;
+
+const HELD_PRESSES = [
+	{
+		name: 'a right-click',
+		press: async (editor: EditorPage, path: string) => {
+			const at = await elementCenter(widgetIn(path)(editor.page));
+			await editor.page.mouse.click(at.x, at.y, { button: 'right' });
+		}
+	},
+	{
+		name: "a right-click after Safari's own select",
+		press: (editor: EditorPage, path: string) =>
+			rightClickAsSafari(editor, element('', inEditor, widgetIn(path), 'Cut'))
+	}
+];
+
+for (const host of HELD_HOSTS) {
+	for (const { name, press } of HELD_PRESSES) {
+		test.describe(`the menu from ${name} on ${host.name} held selected acts on it`, () => {
+			let editor: EditorPage;
+
+			test.beforeEach(async ({ page }) => {
+				editor = await host.open(page);
+				await host.hold(page);
+				await host.held(page);
+				await editor.seedClipboard('');
+				await press(editor, host.path);
+				await host.held(page);
+				await expect(menuItem(page, 'Cut')).toBeEnabled();
+				await expect(menuItem(page, 'Copy')).toBeEnabled();
+			});
+
+			test('Copy carries its bytes, and a paste elsewhere gives it back', async ({ page }) => {
+				const before = countIn(await editor.bridge.getSource(), host.bytes);
+				await menuItem(page, 'Copy').click();
+				await expect.poll(() => editor.readClipboard()).toBe(host.bytes);
+				await editor.focusBlockEnd(0);
+				await editor.paste();
+				await expect
+					.poll(async () => countIn(await editor.bridge.getSource(), host.bytes))
+					.toBe(before + 1);
+			});
+
+			test('Cut takes it out and carries its bytes', async ({ page }) => {
+				await menuItem(page, 'Cut').click();
+				await expect.poll(() => editor.readClipboard()).toBe(host.bytes);
+				await editor.bridge.waitForSourceContains(host.text.replace(host.bytes, ''));
+			});
+
+			test('Paste replaces it', async ({ page }) => {
+				await editor.seedClipboard('Q');
+				await menuItem(page, 'Paste').click();
+				await editor.bridge.waitForSourceContains(host.text.replace(host.bytes, 'Q'));
+			});
+		});
+	}
 }

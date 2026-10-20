@@ -53,6 +53,8 @@ export interface RootMenusDeps {
 	placeCaretAtPoint(x: number, y: number): boolean;
 	/** Whether the right button's press landed on a selected range, which picks the menu. */
 	rangeAtContextPress(): boolean;
+	/** Whether the editor holds an inline widget selected, which Cut and Copy act on as on a range. */
+	holdsWidget(): boolean;
 	/** The public insert entry point; a flyout row inserts `below` the block the caret is in. */
 	insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean>;
 	/** An insert at the caret aimed at the block focused now, which a Paste row runs once the
@@ -108,7 +110,7 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 	}
 
 	function clipboardRows(): MenuEntry[] {
-		const selected = !!focusedEditable() && holdsNativeRange();
+		const selected = deps.holdsWidget() || (!!focusedEditable() && holdsNativeRange());
 		return [
 			{ id: 'clip.cut', label: 'Cut', icon: 'scissors', disabled: !selected },
 			{ id: 'clip.copy', label: 'Copy', icon: 'copy', disabled: !selected },

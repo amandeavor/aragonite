@@ -46,6 +46,7 @@ async function removeFenceAfterSwitchToReading() {
 		blockEdit: editor.actions,
 		placeCaretAtPoint: () => true,
 		rangeAtContextPress: () => false,
+		holdsWidget: () => false,
 		insertMarkdown: async () => true,
 		aimInsertAtFocus: () => null,
 		insertCatalogue: () => [],

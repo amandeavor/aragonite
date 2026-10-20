@@ -18,10 +18,15 @@ it: a pointerdown, then a mousedown only if no block cancelled the pointerdown.
   footnote definition.
   - A word Safari selects in text the clipboard rows act on (prose, a link or an autolink, a cell) stays
     selected, with Copy enabled, and Paste replaces it.
-  - Anywhere else (code, a divider, any inline widget) the caret at the press replaces Safari's
-    select, so a widget that goes somewhere offers Edit link and Cut and Copy are off.
+  - A selected image the editor holds stays held, with Copy enabled.
+  - Anywhere else (code, a divider, any other inline widget) the caret at the press replaces
+    Safari's select, so a widget that goes somewhere offers Edit link and Cut and Copy are off.
 - A real right-click inside a selection keeps it: the clipboard rows act on it, with no Insert
   flyout.
+- A right-click on a widget the editor holds selected (an image, a chip in prose or in a cell),
+  real or after Safari's own select, keeps it held, with Cut and Copy on, and the rows act on it as
+  Ctrl+X, Ctrl+C and Ctrl+V do: Copy carries its bytes and a paste elsewhere gives it back, Cut
+  takes it out, Paste replaces it.
 
 ## Edge cases
 
@@ -53,3 +58,6 @@ it: a pointerdown, then a mousedown only if no block cancelled the pointerdown.
 - On every engine a right-click on a widget that shows its source (a tag, a wikilink, an equation,
   a footnote reference) gets no mousedown, since the block cancels the pointerdown, so the menu
   read whatever right-click came before. The rows dispatched a mousedown no engine fires there.
+- A right-click on a selected image or chip dropped it, and the menu's Cut and Copy stayed off:
+  the rows read the browser's range, which a held widget never has, the editor's press-outside
+  check ended the hold on any press, and no row right-clicked a widget the editor held.

@@ -412,6 +412,14 @@ describe('editor-root gestures: the right-click press record', () => {
 			expect(h.focus).toHaveBeenCalledOnce();
 		});
 
+		it('on the widget the editor holds selected keeps it for the clipboard rows', () => {
+			const h = harness();
+			h.selection.selectWidget({ paragraphPath: [4], sourceStart: 2, preSelectOffset: 2 });
+			rightClick(h, h.widgetLink, { button: 2 });
+			expect(h.focus).not.toHaveBeenCalled();
+			expect(h.gestures.rangeAtContextPress(h.root)).toBe(true);
+		});
+
 		it('on text leaves what the browser selected for the clipboard rows', () => {
 			const h = harness();
 			rightClick(h, h.editable, { button: 2 });

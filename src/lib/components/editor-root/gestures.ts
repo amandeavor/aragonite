@@ -25,7 +25,7 @@ import { findSurfacePathForElement } from '../../selection/path-lookup';
 import { claimsPointerGesture } from '../../selection/pointer-gesture';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import { isBlockNode, nodeAt } from '../../tree-operations/node-primitives';
-import { widgetSourceRange } from '../../core/inline/inline-widgets';
+import { isSecondaryPress, pressesSelectedWidget } from '../../selection/widget-press';
 import {
 	LINK_ELEMENT_SELECTOR,
 	clickFollowsAt,
@@ -97,16 +97,6 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		lastBlockIndex: () => deps.getDoc().children.length - 1,
 		land: (pos) => deps.land(pos)
 	});
-
-	function pressesSelectedWidget(target: EventTarget | null): boolean {
-		const el =
-			target instanceof Element ? target.closest('[data-inline-widget][data-source-start]') : null;
-		const source = el && widgetSourceRange(el);
-		const path = el && findSurfacePathForElement(el);
-		return (
-			source !== null && path != null && deps.selection.widgetIn(path)?.sourceStart === source.start
-		);
-	}
 
 	function dragStartsHere(root: HTMLElement, target: EventTarget | null): boolean {
 		if (claimsPointerGesture(target)) return false;
@@ -253,7 +243,7 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 					deps.reading.mode() !== 'reading' && dragStartsHere(root, target)
 						? deadSpaceCaret.blockPathNearPoint(root, x, y)
 						: null,
-				pressesSelectedWidget
+				pressesSelectedWidget: (target) => pressesSelectedWidget(deps.selection, target)
 			}),
 			onRoot(root, 'pointerdown', startMarginDrag),
 			onRoot(root, 'mousedown', handleMouseDown),
@@ -273,11 +263,14 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 	}
 
 	function notePress(root: HTMLElement, e: MouseEvent): ContextPress | null {
-		if (!(e.button === 2 || (e.button === 0 && e.ctrlKey))) return null;
-		// A range across blocks is painted by the editor, so the browser's rectangles don't show it.
-		const range = deps.selection.isCrossBlock
-			? nativeRangeIn(root)
-			: rangeCoversPoint(root, e.clientX, e.clientY);
+		if (!isSecondaryPress(e)) return null;
+		// A widget the editor holds selected is the user's own selection, as a range is. A range
+		// across blocks is painted by the editor, so the browser's rectangles don't show it.
+		const range =
+			pressesSelectedWidget(deps.selection, e.target) ||
+			(deps.selection.isCrossBlock
+				? nativeRangeIn(root)
+				: rangeCoversPoint(root, e.clientX, e.clientY));
 		const onWidget = e.target instanceof Element && !!e.target.closest('[data-inline-widget]');
 		return { range, onWidget };
 	}
