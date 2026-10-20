@@ -286,6 +286,7 @@
 	// shadow the host's tokens.
 	const inThemedScope = $derived(!!editorEl?.closest('.aragonite-editor-theme'));
 	let headerEl: HTMLDivElement | undefined = $state();
+	let findBarEl: HTMLDivElement | undefined = $state();
 	let typeScaleProbeEl: HTMLDivElement | undefined = $state();
 	let widthProbeEl: HTMLDivElement | undefined = $state();
 	const undoManager = createUndoManager();
@@ -1046,6 +1047,7 @@
 		commands,
 		crossBlock: editorCrossBlock,
 		isHostChrome,
+		isFindBar: (node) => !!node && !!findBarEl?.contains(node),
 		saveSearchCaret: searchCaret.saveCurrent,
 		setReplaceExpanded: (expanded) => (replaceExpanded = expanded)
 	});
@@ -1390,6 +1392,7 @@
 			class:aragonite-editor-portal={!!searchBarAnchor}
 			class:aragonite-editor-theme={!!searchBarAnchor && inThemedScope}
 			data-editor-theme={searchBarAnchor ? theme : undefined}
+			bind:this={findBarEl}
 			{@attach portalInto(searchBarAnchor)}
 		>
 			<SearchBar

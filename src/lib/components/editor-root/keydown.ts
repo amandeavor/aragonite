@@ -26,6 +26,8 @@ export interface EditorRootKeydownDeps {
 	/** True for nodes in the host's own header: they sit inside `root.contains`
 	 *  without being the editor's own content. */
 	isHostChrome(node: Node | null): boolean;
+	/** True for nodes in this editor's find bar, which the host can mount outside the root. */
+	isFindBar(node: Node | null): boolean;
 	/** Snapshot the pre-search selection; the bar's close handler restores it. */
 	saveSearchCaret(): void;
 	setReplaceExpanded(expanded: boolean): void;
@@ -38,6 +40,9 @@ export interface EditorRootKeydown {
 }
 
 export function createEditorRootKeydown(deps: EditorRootKeydownDeps): EditorRootKeydown {
+	const focusInEditor = (root: HTMLElement, active: Element | null): boolean =>
+		root.contains(active) || deps.isFindBar(active);
+
 	/** Search and Escape, with focus in this editor or a search chord this instance holds; a text
 	 *  field outside every editor keeps page-wide Find while the user types in it. */
 	function handleSearchChords(
@@ -46,7 +51,7 @@ export function createEditorRootKeydown(deps: EditorRootKeydownDeps): EditorRoot
 		chord: string | null,
 		active: Element | null
 	): boolean {
-		if (!(root.contains(active) || (claimsBodyChord(root) && !isForeignTextEntry(active))))
+		if (!(focusInEditor(root, active) || (claimsBodyChord(root) && !isForeignTextEntry(active))))
 			return false;
 
 		if (deps.searchBarEnabled && chord && isReservedUiChord(chord)) {
@@ -82,7 +87,7 @@ export function createEditorRootKeydown(deps: EditorRootKeydownDeps): EditorRoot
 		return (
 			active !== null &&
 			active !== root &&
-			root.contains(active) &&
+			focusInEditor(root, active) &&
 			!isTextEntrySurface(active) &&
 			!event.defaultPrevented
 		);

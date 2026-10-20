@@ -36,6 +36,8 @@ interface Harness {
 	root: HTMLElement;
 	/** The `header` snippet's box: the host's own header, mounted inside the root. */
 	header: HTMLElement;
+	/** The editor's find bar, mounted outside the root as a host's `searchBarAnchor` puts it. */
+	findBar: HTMLElement;
 	/** `handledBelow`: a handler under the root already took the key and prevented its default. */
 	press(key: string, init?: KeyboardEventInit, handledBelow?: boolean): KeyboardEvent;
 	search: ReturnType<typeof fakeSearch>;
@@ -58,6 +60,8 @@ function harness(): Harness {
 	document.body.append(root);
 	const header = document.createElement('div');
 	root.append(header);
+	const findBar = document.createElement('div');
+	document.body.append(findBar);
 
 	const search = fakeSearch();
 	const crossBlockKeys: KeyboardEvent[] = [];
@@ -99,6 +103,7 @@ function harness(): Harness {
 			}
 		},
 		isHostChrome: (node) => !!node && header.contains(node),
+		isFindBar: (node) => !!node && findBar.contains(node),
 		saveSearchCaret: () => searchCaretSaves++,
 		setReplaceExpanded: (expanded) => replaceExpanded.push(expanded)
 	};
@@ -107,6 +112,7 @@ function harness(): Harness {
 	return {
 		root,
 		header,
+		findBar,
 		press(key, init, handledBelow = false) {
 			const event = new KeyboardEvent('keydown', { key, cancelable: true, ...init });
 			if (handledBelow) event.preventDefault();
@@ -425,6 +431,18 @@ describe('editor-root keydown: focus inside the root', () => {
 		const event = h.press('z', MOD_Z);
 		expect(h.undoCount()).toBe(1);
 		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it("the find bar's button outside the root runs the editor undo; its field keeps its own", () => {
+		const h = harness();
+		const button = document.createElement('button');
+		const field = document.createElement('input');
+		h.findBar.append(button, field);
+		button.focus();
+		expect(h.press('z', MOD_Z).defaultPrevented).toBe(true);
+		field.focus();
+		expect(h.press('z', MOD_Z).defaultPrevented).toBe(false);
+		expect(h.undoCount()).toBe(1);
 	});
 
 	it('a focused chrome button takes no text or motion for a cross-block range', () => {

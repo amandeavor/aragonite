@@ -14,6 +14,8 @@ interface ChromeKind {
 	doc: string;
 	/** The rail draws in the writing modes only. */
 	live?: true;
+	/** The editor harness's query, for a kind the plugins page doesn't mount. */
+	query?: `?${string}`;
 	/** The button, once whatever shows it is up. */
 	reach(page: Page): Promise<Locator>;
 }
@@ -48,6 +50,17 @@ const KINDS: ChromeKind[] = [
 		name: "a details block's toggle",
 		doc: 'one\n\n<details open>\n<summary>Sum</summary>\n\nbody\n\n</details>\n',
 		reach: async (page) => page.locator('.details-toggle').first()
+	},
+	{
+		name: "the find bar's buttons, mounted outside the editor by the host",
+		doc: 'one\n\ntwo\n',
+		query: '?searchAnchor=on',
+		reach: async (page) => {
+			await page.keyboard.press('ControlOrMeta+f');
+			// A query first, as a search would have, so an engine's own undo has the field's typing.
+			await page.keyboard.type('tw');
+			return page.getByTestId('search-anchor').locator('.search-bar button').first();
+		}
 	}
 ];
 
@@ -56,7 +69,8 @@ for (const kind of KINDS) {
 		page
 	}) => {
 		const editor = new PluginsPage(page);
-		await editor.gotoPlugins();
+		if (kind.query) await editor.goto(kind.query);
+		else await editor.gotoPlugins();
 		await editor.loadContent(kind.doc);
 		if (kind.live) await editor.setPresentationMode('live');
 		// Two edits, so an undo that ran twice shows.

@@ -1302,7 +1302,7 @@ scrolls only a target that's off screen. `e2e/lint/e2e-drivers.test.ts`.
 
 **G4.230 · Chrome undoes through the root** (`history-chord-sites`). Engines disagree on Mod+Z
 with a toolbar button focused (Chromium and WebKit undo the block last edited, Firefox nothing), so
-the editor root answers the history chords anywhere inside it but where a block took the key or a
-text field owns it (`chromeHoldsFocus`). A file under `components/` or `plugins/` that reads the
-chord or calls the history itself fails. `lint/history-chord-sites.test.ts`; every engine in
-`keyboard-navigation/chrome-focus-undo.spec.ts`.
+the editor root answers the history chords anywhere inside it, and in its find bar wherever the host
+mounts it, but where a block took the key or a text field owns it (`chromeHoldsFocus`). A file
+under `components/` or `plugins/` that reads the chord or calls the history itself fails.
+`lint/history-chord-sites.test.ts`; every engine in `keyboard-navigation/chrome-focus-undo.spec.ts`.

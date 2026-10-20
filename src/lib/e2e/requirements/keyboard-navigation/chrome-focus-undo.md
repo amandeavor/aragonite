@@ -9,7 +9,8 @@ press, on every engine.
 
 - With a chrome button focused after two edits, Mod+Z takes back only the last edit, and
   Mod+Shift+Z puts it back: the trailing insert row, the image toolbar, the code rail (live mode),
-  the table's add-row button, the details toggle
+  the table's add-row button, the details toggle, and the find bar's buttons when the host mounts
+  the bar outside the editor (`searchBarAnchor`)
 
 ## Edge cases
 
@@ -21,3 +22,6 @@ press, on every engine.
 - In Firefox, Mod+Z with focus on an image toolbar button undid nothing, while Chromium and WebKit
   undid through their own history on the block last edited: the toolbar specs pressed Mod+Z only
   after focus was back on the paragraph, and no row pressed it with focus on chrome
+- Mod+Z with focus on a button of a find bar the host mounted outside the editor undid nothing in
+  Chromium or Firefox: the rows reached only chrome inside the editor root, the boundary the fix
+  was written against
