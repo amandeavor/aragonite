@@ -39,6 +39,8 @@ to type in block 3.
   widget records it.
 - Edit link in the right-click menu on a tag shows its source, the way the caret arrowing in
   does.
+  - Fixme on macOS WebKit against #756: Safari selects the widget under the right-click, and the
+    menu offers no Edit link.
 - Mod+K with the caret beside a tag shows its source too.
 
 ## Error cases

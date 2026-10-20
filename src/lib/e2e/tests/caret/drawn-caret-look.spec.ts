@@ -9,6 +9,7 @@ import {
 	keys,
 	nextRow
 } from '../presentation/helpers';
+import { edgeKey } from '../../platform-keys';
 
 // The drawn caret shows what the next typed letter will be (requirements/caret/drawn-caret-look.md).
 // Every step reads the look, then types and reads the bytes, so the look is checked against what the
@@ -123,14 +124,14 @@ for (const c of CONSTRUCTS) {
 				await test.step(`${place}: End keeps the look, and the letter types inside`, async () => {
 					await nextRow(ep, doc);
 					await clickWordSettled(ep, page, c.word);
-					await keys(ep, page, 'End');
+					await keys(ep, page, edgeKey('lineEnd'));
 					await expectLookNow(page, c.marks, 'after End');
 					await typed(`a ${d}${c.word}X${d}`);
 				});
 
 				await test.step(`${place}: End after a held space turns the look plain`, async () => {
 					await fresh(true);
-					await keys(ep, page, 'End');
+					await keys(ep, page, edgeKey('lineEnd'));
 					await expectLookNow(page, [], 'after End');
 					await typed(`a ${construct} X`);
 				});

@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { nextRow } from './presentation/helpers';
 import type { KeybindingOverride } from '../../schema/keybinding-overrides';
+import { edgeKey } from '../platform-keys';
 
 async function setKeybindings(editor: EditorPage, overrides: KeybindingOverride[] | undefined) {
 	await editor.page.evaluate((ov) => (window as any).__test.setKeybindings(ov), overrides);
@@ -19,7 +20,7 @@ test.describe('keybinding-override prop', () => {
 		await editor.loadContent('hello\n');
 		await setKeybindings(editor, [{ chord: 'Mod+Y', command: 'history.undo' }]);
 		await editor.page.locator('.text-editable-block').first().click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type(' world');
 		await expect.poll(() => editor.bridge.getSource()).toContain('hello world');
 		await editor.page.keyboard.press('ControlOrMeta+y');
@@ -30,7 +31,7 @@ test.describe('keybinding-override prop', () => {
 		await editor.loadContent('hello\n');
 		await setKeybindings(editor, [{ chord: 'Mod+Z', command: null }]);
 		await editor.page.locator('.text-editable-block').first().click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('X');
 		await editor.page.keyboard.press('ControlOrMeta+z');
 		await expect.poll(() => editor.bridge.getSource()).toContain('helloX');
@@ -51,7 +52,7 @@ test.describe('keybinding-override prop', () => {
 
 		const heading = editor.page.locator('.text-editable-block', { hasText: 'title' });
 		await heading.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('Z');
 		await expect.poll(() => editor.bridge.getSource()).toContain('titleZ');
 		await editor.page.keyboard.press('ControlOrMeta+Alt+y');
@@ -59,7 +60,7 @@ test.describe('keybinding-override prop', () => {
 
 		const para = editor.page.locator('.text-editable-block', { hasText: 'para' });
 		await para.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('Z');
 		await expect.poll(() => editor.bridge.getSource()).toContain('paraZ');
 		await editor.page.keyboard.press('ControlOrMeta+Alt+y'); // unbound here, so no undo
@@ -78,7 +79,7 @@ test.describe('override fires where no block holds focus', () => {
 		await setKeybindings(editor, [{ chord: 'Mod+Alt+U', command: 'history.undo' }]);
 
 		await editor.page.locator('.table-cell').nth(3).click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('Z');
 		await expect.poll(() => editor.bridge.getSource()).toContain('dZ');
 
@@ -111,7 +112,7 @@ test.describe('override fires on every leaf dispatch surface', () => {
 				if (i === 0) await editor.loadContent(s.content);
 				else await nextRow(editor, s.content);
 				await editor.page.locator(s.focus).first().click();
-				await editor.page.keyboard.press('End');
+				await editor.page.keyboard.press(edgeKey('lineEnd'));
 				await editor.page.keyboard.type('Z');
 				await expect.poll(() => editor.bridge.getSource()).toContain('Z');
 				await editor.page.keyboard.press('ControlOrMeta+Alt+u');

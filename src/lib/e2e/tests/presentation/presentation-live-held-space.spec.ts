@@ -5,6 +5,7 @@ import type { Page } from '@playwright/test';
 import { clickBlockSettled, clickEnd, enterPresentationMode, nextRow, stepTo } from './helpers';
 import { attachIme } from '../../simulation/ime';
 import { insertText } from '../../insert-text';
+import { edgeKey } from '../../platform-keys';
 
 // A space typed at a hidden closer is written past it while the caret still means inside, so the
 // next letter takes it back in. Only the source tells inside from outside, so every row reads it.
@@ -29,7 +30,7 @@ async function pasteText(ep: EditorPage, text: string): Promise<void> {
 async function atLineEnd(ep: EditorPage, page: Page): Promise<void> {
 	await nextRow(ep, 'a');
 	await clickBlockSettled(ep, 0);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await ep.waitForRenderFlush();
 }
 
@@ -113,7 +114,7 @@ test('live mode: typing on after an existing bold', async ({ page }) => {
 	await test.step('an arrow back from the text after it, then a space and a word, extends it', async () => {
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.waitForRenderFlush();
 		await stepTo(ep, page, 'ArrowLeft', 11);
 		await page.keyboard.type(' more');
@@ -169,7 +170,7 @@ test('live mode: the hold ends without touching the bytes', async ({ page }) => 
 		await ep.bridge.waitForSourceContains('a **two** \n\nnext');
 
 		await clickBlockSettled(ep, 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('w');
 		await ep.bridge.waitForSourceContains('a **two** w\n');
 	});
@@ -193,8 +194,8 @@ const EXITS: { name: string; press: (page: Page) => Promise<void>; end: string; 
 		mid: 'Some **bold** w text'
 	},
 	{
-		name: 'End',
-		press: (page) => page.keyboard.press('End'),
+		name: edgeKey('lineEnd'),
+		press: (page) => page.keyboard.press(edgeKey('lineEnd')),
 		end: 'a **two** w',
 		mid: 'Some **bold**  textw'
 	}

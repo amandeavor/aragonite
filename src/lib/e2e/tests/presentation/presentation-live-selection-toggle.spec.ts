@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickBlockSettled, enterPresentationMode, focusOffset, nextRow, stepTo } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // "Mod+B over a selection": the half of the chord that writes bytes at once, in the mode that
 // paints none of them. The source is the reference; the rendered element is what the user
@@ -43,7 +44,7 @@ async function selectFrom(
 	length: number
 ): Promise<void> {
 	await clickBlockSettled(ep, block);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await ep.waitForRenderFlush();
 	await stepTo(ep, page, 'ArrowRight', from);
 	expect(await focusOffset(ep)).toBe(from);
@@ -196,7 +197,7 @@ test('live mode: chords chained on one selection', async ({ page }) => {
 test('live mode: one undo after typing then toggling keeps the typed bytes', async ({ page }) => {
 	const ep = await enterPresentationMode(page, 'live', DOC);
 	await clickBlockSettled(ep, PLAIN);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type(' typed');
 	await ep.bridge.waitForSourceContains('plain words here typed');
 

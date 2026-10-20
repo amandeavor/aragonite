@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 const NBSP = '\u00a0';
 
@@ -15,7 +16,7 @@ test.describe('a non-breaking space is content', () => {
 		await editor.loadContent(source);
 		await editor.page.locator('[contenteditable="true"]', { hasText: 'a' }).first().click();
 		await editor.page.keyboard.press('ArrowDown');
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 
 		await editor.bridge.waitForSource((s) => s !== source);
@@ -27,7 +28,7 @@ test.describe('a non-breaking space is content', () => {
 	test('Enter after a list item holding only a non-breaking space starts the next item', async () => {
 		await editor.loadContent(`- ${NBSP}\n`);
 		await editor.page.locator('.list-item-block [contenteditable="true"]').first().click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 
 		await editor.waitForListItemCount(2);

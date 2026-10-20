@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 test.describe('list Backspace: forward Delete behavior', () => {
 	let editor: EditorPage;
@@ -14,7 +15,7 @@ test.describe('list Backspace: forward Delete behavior', () => {
 		const middle = editor.page.locator('[contenteditable="true"]', { hasText: 'middle' });
 		await middle.click();
 		const before = await editor.bridge.getSource();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.pressDeclined('Delete');
 		expect(await editor.bridge.getSource()).toBe(before);
 	});
@@ -23,7 +24,7 @@ test.describe('list Backspace: forward Delete behavior', () => {
 		await editor.loadContent('- first\n- last item\n\nAfter\n');
 		const last = editor.page.locator('[contenteditable="true"]', { hasText: 'last item' });
 		await last.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Delete');
 		await editor.bridge.waitForSourceMatches(/^- last itemAfter$/m);
 		const source = await editor.bridge.getSource();

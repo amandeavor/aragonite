@@ -65,6 +65,56 @@ export function endsSelectAllRun(e: ChordKeys): boolean {
 	return eventToChord(e) !== null && !isSelectAllChord(e);
 }
 
+// ── Caret-edge keys ──────────────────────────────────────────────────────────
+
+/**
+ * Where a caret-edge key sends the caret: its visual line's edge, the edge of the block's text (a
+ * table cell's, in a cell), or with Shift the document's. `arrow` marks the Cmd+Arrow spelling,
+ * which the browser moves natively on macOS and nowhere else.
+ */
+export type CaretEdgeKey =
+	| {
+			readonly to: 'line';
+			readonly side: 'start' | 'end';
+			readonly extend: boolean;
+			readonly arrow: boolean;
+	  }
+	| { readonly to: 'block' | 'doc'; readonly side: 'start' | 'end'; readonly arrow: boolean };
+
+/** A keydown's key and whichever modifier flags it carries; an absent flag is not held. */
+export type EdgeKeys = Pick<KeyboardEvent, 'key'> &
+	Partial<Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>>;
+
+/**
+ * The one reading of a caret-edge key, from Home and End with their usual modifiers or from
+ * macOS's Cmd+Arrow (`docs/design/editor.md` § Browser engines). Every edge site asks here.
+ */
+export function caretEdgeKey(e: EdgeKeys): CaretEdgeKey | null {
+	if (e.key === 'Home' || e.key === 'End') {
+		const side = e.key === 'Home' ? 'start' : 'end';
+		const mod = e.ctrlKey || e.metaKey;
+		if (mod && e.shiftKey) return { to: 'doc', side, arrow: false };
+		if (e.altKey) return null;
+		return mod
+			? { to: 'block', side, arrow: false }
+			: { to: 'line', side, extend: e.shiftKey === true, arrow: false };
+	}
+	// The raw Meta flag, never `Mod`: Ctrl+Arrow is word motion on Windows and Linux.
+	if (!e.metaKey || e.ctrlKey || e.altKey) return null;
+	switch (e.key) {
+		case 'ArrowLeft':
+			return { to: 'line', side: 'start', extend: e.shiftKey === true, arrow: true };
+		case 'ArrowRight':
+			return { to: 'line', side: 'end', extend: e.shiftKey === true, arrow: true };
+		case 'ArrowUp':
+			return { to: e.shiftKey ? 'doc' : 'block', side: 'start', arrow: true };
+		case 'ArrowDown':
+			return { to: e.shiftKey ? 'doc' : 'block', side: 'end', arrow: true };
+		default:
+			return null;
+	}
+}
+
 export function normalizeChord(chord: string): string {
 	const parts = chord.split('+');
 	const key = parts.pop() ?? '';

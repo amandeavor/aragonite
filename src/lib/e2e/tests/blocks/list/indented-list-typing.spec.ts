@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Requirements: `e2e/requirements/blocks/list/indented-list-typing.md`.
 
@@ -18,7 +19,7 @@ test.describe('typing in an indented list', () => {
 			await editor.setPresentationMode(mode);
 			await editor.loadContent('  - a\n  - b\n');
 			await editor.clickBlockAtPath([0, 0, 0], 0);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 
 			await page.keyboard.type('Q');
 
@@ -31,7 +32,7 @@ test.describe('typing in an indented list', () => {
 			await editor.setPresentationMode(mode);
 			await editor.loadContent('  - a\n  - b\n');
 			await editor.clickBlockAtPath([0, 0, 0], 0);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 
 			await page.keyboard.press('Enter');
 			await page.keyboard.type('x');

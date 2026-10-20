@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // A line break typed into a one-line `$$x^2$$` turns it into the multi-line form, on screen and in
 // the bytes, so a reload reads the same document the editor shows.
@@ -20,7 +21,7 @@ test.describe('Enter in a one-line math block', () => {
 		test(`Enter at the body's end opens a body line under it (${mode})`, async ({ page }) => {
 			await editor.setPresentationMode(mode);
 			await editor.revealByClick();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			// Source mode paints the closer, so End lands past it; two steps back is the body's end.
 			if (mode === 'source') {
 				await page.keyboard.press('ArrowLeft');
@@ -45,8 +46,8 @@ test.describe('Enter in a one-line math block', () => {
 	}) => {
 		await editor.setPresentationMode('live');
 		await editor.getBlock(2).click();
-		await page.keyboard.press('End');
-		await page.keyboard.press('Shift+Home');
+		await page.keyboard.press(edgeKey('lineEnd'));
+		await page.keyboard.press(extendKey('lineStart'));
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceEquals('Before\n\n$$x^2$$\n\n\n');
 
@@ -65,7 +66,7 @@ test.describe('Enter in a one-line math block', () => {
 	test('undo after the blur puts the one-line form back in one step', async ({ page }) => {
 		await editor.setPresentationMode('live');
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await editor.getBlock(2).click();
 		await editor.bridge.waitForSourceEquals('Before\n\n$$\nx^2\n\n$$\n\nAfter\n');

@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Deleting the rule between a paragraph and indented code: the code becomes the paragraph's
 // continuation, and every other byte stays, the blank lines included.
@@ -15,7 +16,7 @@ for (const [label, whitespace] of [
 		const tail = `    code\n${whitespace}\n\`\`\`\n\`\`\`\n`;
 		await editor.loadContent(`para\n***\n${tail}`);
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		await page.keyboard.press('Delete');
 		await page.keyboard.press('Delete');

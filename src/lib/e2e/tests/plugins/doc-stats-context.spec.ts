@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { PluginsPage } from './helpers';
 import { gotoReady } from '../../goto-ready';
+import { edgeKey } from '../../platform-keys';
 
 // The doc-stats plugin writes one record per live editor to `window.__docStats`, which every test
 // here reads (requirements/plugins/doc-stats-context.md). Single-editor cases run on
@@ -98,7 +99,7 @@ test.describe('doc-stats context chain: attach survives a structural edit', () =
 		await waitForStats(page, (s) => Object.values(s)[0]?.blocks === 2);
 
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		// `blocks` reads the live document, so the split's momentary empty paragraph counts.
 		const afterSplit = await waitForStats(page, (s) => Object.values(s)[0]?.blocks === 3);

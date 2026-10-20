@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Requirements: `e2e/requirements/blocks/table/cell-bytes.md`.
 
@@ -18,7 +19,7 @@ test.describe('a cell edit in a table not spelled the editor’s way', () => {
 	/** Types `Q` at the end of the `index`th cell, counting across the rows. */
 	async function typeAtEnd(page: Page, index: number) {
 		await page.locator('.table-cell').nth(index).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('Q');
 	}
 

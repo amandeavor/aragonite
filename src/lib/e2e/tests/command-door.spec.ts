@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { nextRow } from './presentation/helpers';
 import type { KeybindingOverride } from '../../schema/keybinding-overrides';
+import { edgeKey } from '../platform-keys';
 
 // editor.runCommand(): the public call a selection toolbar makes
 // (`requirements/command-door.md`). Selections are built with real gestures; the call itself is
@@ -111,7 +112,7 @@ test.describe('runCommand: the semantic command entry point', () => {
 	test('a table cell takes the entry point through its published ref slot', async () => {
 		await editor.loadContent('| a | b |\n| --- | --- |\n| 1 | 2 |\n');
 		await editor.page.locator('.table-cell').nth(3).click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Shift+ArrowRight');
 
 		expect(await run('format.toggleStrong')).toBe(true);

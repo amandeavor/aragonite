@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { enterPresentationMode, focusOffset, focusPath, press } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // A setext heading's underline is drawn as a marker: source mode shows it on its own line, where
 // the caret can go to edit it, and live mode hides it, where the title's end is the block's end.
@@ -35,7 +36,7 @@ test('source mode: a click at the block middle lands on the underline line', asy
 	expect(await focusPath(ep)).toEqual([0]);
 	expect(await focusOffset(ep)).toBeGreaterThan(4);
 
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await ep.typeSlowly('s');
 	await ep.bridge.waitForSourceEquals('Plan\n---s\n');
 	expect(await ep.bridge.getBlockKind(0)).toBe('paragraph');

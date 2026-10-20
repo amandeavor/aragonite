@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { nextRow } from '../presentation/helpers';
+import { edgeKey } from '../../platform-keys';
 
 // A block added after a last line with no line break gets a line of its own, and a move keeps the
 // file's missing final break (`requirements/text-editing/open-last-line.md`). The fixture fails
@@ -23,7 +24,7 @@ test.describe('text editing, a last line with no line break', () => {
 			await test.step('Enter at the end of the last list item adds an item', async () => {
 				await nextRow(editor, '- a\n- b');
 				await editor.focusBlockAtPath([0, 1, 0], 0);
-				await page.keyboard.press('End');
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.press('Enter');
 				await page.keyboard.type('c');
 
@@ -37,7 +38,7 @@ test.describe('text editing, a last line with no line break', () => {
 			await test.step('ArrowDown past the last line adds a paragraph', async () => {
 				await nextRow(editor, 'one');
 				await editor.focusBlockStart(0);
-				await page.keyboard.press('End');
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.press('ArrowDown');
 				await page.keyboard.type('x');
 

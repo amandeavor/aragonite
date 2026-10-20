@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 test.describe('list Enter: nested item promote (Shift+Tab semantics)', () => {
 	let editor: EditorPage;
@@ -14,7 +15,7 @@ test.describe('list Enter: nested item promote (Shift+Tab semantics)', () => {
 		await editor.loadContent('- item\n  - nested\n');
 		const nested = editor.page.locator('[contenteditable="true"]', { hasText: 'nested' });
 		await nested.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForListItemCount(3);
 		await editor.page.keyboard.press('Enter');
@@ -33,7 +34,7 @@ test.describe('list Enter: nested item promote (Shift+Tab semantics)', () => {
 		await editor.loadContent('- item\n  - nested\n');
 		const nested = editor.page.locator('[contenteditable="true"]', { hasText: 'nested' });
 		await nested.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForListItemCount(3);
 		await editor.page.keyboard.press('Enter');
@@ -54,7 +55,7 @@ test.describe('list Enter: nested item promote (Shift+Tab semantics)', () => {
 		await editor.loadContent('- a\n  - b\n    - c\n');
 		const c = editor.page.locator('[contenteditable="true"]', { hasText: 'c' });
 		await c.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForListItemCount(4);
 		await editor.page.keyboard.press('Enter');

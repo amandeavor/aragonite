@@ -155,6 +155,12 @@ test.describe('a menu Paste reads the clipboard once the menu is gone', () => {
 
 	const ROUTES: { name: string; open: (page: Page) => Promise<void>; row: string }[] = [
 		{ name: 'prose Paste', open: (page) => rightClickOn(page, 'abcd'), row: 'Paste' },
+		// The word stays selected after the menu, so the selection toolbar is up at the read.
+		{
+			name: 'prose Paste over a word Safari selected',
+			open: () => rightClickWord(editor, 'abcd', [0], 0),
+			row: 'Paste'
+		},
 		{
 			name: 'prose Paste as plain text',
 			open: (page) => rightClickOn(page, 'abcd'),

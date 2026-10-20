@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('table block: navigation', () => {
 	let editor: EditorPage;
@@ -25,7 +26,7 @@ test.describe('table block: navigation', () => {
 	test('ArrowRight from the block above enters the first cell at its start', async ({ page }) => {
 		await editor.loadContent('Text before.\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n');
 		await page.getByText('Text before.').click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(page.locator('.table-cell').nth(0)).toBeFocused();
 		await page.keyboard.type('X');
@@ -35,7 +36,7 @@ test.describe('table block: navigation', () => {
 	test('ArrowLeft from the block below enters the last cell at its end', async ({ page }) => {
 		await editor.loadContent('| A | B |\n| --- | --- |\n| 1 | 2 |\n\nText after.\n');
 		await page.getByText('Text after.').click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowLeft');
 		await expect(page.locator('.table-cell').nth(3)).toBeFocused();
 		await page.keyboard.type('X');
@@ -45,7 +46,7 @@ test.describe('table block: navigation', () => {
 	test('ArrowDown exits table downward into next block', async ({ page }) => {
 		await editor.loadContent('| A | B |\n| --- | --- |\n| 1 | 2 |\n\nText after.\n');
 		await page.locator('.table-cell').nth(2).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowDown');
 		const focusedPath = await page.evaluate(
 			() =>
@@ -58,7 +59,7 @@ test.describe('table block: navigation', () => {
 	test('ArrowUp exits table upward into previous block', async ({ page }) => {
 		await editor.loadContent('Text before.\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n');
 		await page.locator('.table-cell').nth(0).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowUp');
 		const focusedPath = await page.evaluate(
 			() =>
@@ -78,7 +79,7 @@ test.describe('table block: navigation', () => {
 		await editor.loadContent('| AAA | BBB |\n| --- | --- |\n| ccc | ddd |\n');
 		// Click cell "ccc" (body row, col 0) and place caret at end (offset 3).
 		await page.locator('.table-cell').nth(2).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowUp');
 		// Type a character and confirm it lands at the start of "AAA", not the end.
 		await editor.typeText('!');

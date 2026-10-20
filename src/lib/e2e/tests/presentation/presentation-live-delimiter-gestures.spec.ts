@@ -11,6 +11,7 @@ import {
 	nextRow,
 	stepTo
 } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Typing a construct closed and leaving it in live mode: auto-pairing and where the typed byte
 // goes, as one gesture. The source is the reference throughout. Each test walks its rows as
@@ -45,7 +46,7 @@ const PAIRS = [
 
 async function atEnd(ep: EditorPage, page: Page, block: number, target: number): Promise<void> {
 	await clickBlockSettled(ep, block);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await ep.waitForRenderFlush();
 	await stepTo(ep, page, 'ArrowLeft', target);
 }
@@ -117,7 +118,7 @@ test('live mode: a construct typed to completion is left behind', async ({ page 
 	const atPlainEnd = async () => {
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, PLAIN);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.waitForRenderFlush();
 	};
 
@@ -190,7 +191,7 @@ test('live mode: the same gestures in a table cell', async ({ page }) => {
 			.locator("[role='table'] [contenteditable='true']")
 			.filter({ hasText: 'plain' });
 		await cell.first().click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.waitForRenderFlush();
 		await page.keyboard.type('*ab* z');
 		await ep.bridge.waitForSourceContains('| plain*ab* z |');

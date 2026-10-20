@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { PresentationMode } from '../../../presentation-mode';
 import { PluginsPage, capturedErrors, clickWidgetEnd } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Typing a widget's opening byte in front of its body, for every widget kind that can show its
@@ -150,7 +151,7 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		expect(await caret(editor)).toEqual({ path: [0], offset: 7 });
 		// The source stays shown over `# few` until the caret leaves it.
 		expect(await washedRanges(editor)).toBe(1);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await expect.poll(() => washedRanges(editor)).toBe(0);
 		expect(await capturedErrors(page)).toEqual([]);
 	});
@@ -164,7 +165,7 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		// One key: two can fall into two undo steps when a loaded runner spaces them past the pause.
 		await page.keyboard.type('a');
 		expect(await editor.bridge.getSource()).toBe('#faew words here\n\nOther\n');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.undo();
 		expect(await editor.bridge.getSource()).toBe('#few words here\n\nOther\n');
@@ -193,7 +194,7 @@ test.describe('a caret typed into a widget that can show its source', () => {
 		expect(await widgetsIn(editor, 0)).toBe(0);
 		expect(await washedRanges(editor)).toBe(1);
 
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await expect.poll(() => widgetsIn(editor, 0)).toBe(1);
 		expect(await washedRanges(editor)).toBe(0);
 		expect(await capturedErrors(page)).toEqual([]);

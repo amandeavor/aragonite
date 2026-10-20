@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Enter at raw offset 0 of a non-empty text block: empty block above, content below, caret
 // staying on the content. Requirements: `enter-at-block-start.md`. Source bytes alone cannot
@@ -42,7 +43,7 @@ test.describe('text editing: Enter at block start', () => {
 	test('real click + Home + Enter on a paragraph, typing lands at the head of the content', async () => {
 		await editor.loadContent('Content\n');
 		await editor.clickBlock(0);
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForBlockHostCount(2);
 

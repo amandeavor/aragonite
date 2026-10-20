@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 test.describe('list Backspace: U1 unwrap on first item', () => {
 	let editor: EditorPage;
@@ -12,7 +13,7 @@ test.describe('list Backspace: U1 unwrap on first item', () => {
 		await editor.loadContent('Before\n\n- Item one\n- Item two\n');
 		const item = editor.page.locator('[contenteditable="true"]', { hasText: 'Item one' });
 		await item.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^Item one/m);
 
@@ -26,7 +27,7 @@ test.describe('list Backspace: U1 unwrap on first item', () => {
 		await editor.loadContent('- Solo\n');
 		const item = editor.page.locator('[contenteditable="true"]').first();
 		await item.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		// Byte-exact: the marker's raw-0 offset translation must leave no residue of the list.
 		await editor.bridge.waitForSourceEquals('Solo\n');
@@ -39,7 +40,7 @@ test.describe('list Backspace: U1 unwrap on first item', () => {
 		await editor.loadContent('- First\n  - Nested\n- Second\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'First' }).first();
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^First/m);
 
@@ -53,7 +54,7 @@ test.describe('list Backspace: U1 unwrap on first item', () => {
 		await editor.loadContent('- First\n  1. OrderedNested\n- Second\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'First' }).first();
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^First/m);
 
@@ -67,7 +68,7 @@ test.describe('list Backspace: U1 unwrap on first item', () => {
 		await editor.loadContent('1. First\n2. Second\n3. Third\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'First' }).first();
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^1\. Second/m);
 
@@ -83,7 +84,7 @@ test.describe('list Backspace: U1 unwrap on first item', () => {
 		await editor.loadContent('1. one\n2. two\n\n3. three\n4. four\n');
 		const third = editor.page.locator('[contenteditable="true"]', { hasText: 'three' });
 		await third.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^three$/m);
 		const source = await editor.bridge.getSource();

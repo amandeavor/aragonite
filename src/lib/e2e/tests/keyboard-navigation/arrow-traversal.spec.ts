@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { SIMPLE_CONTENT } from '../../test-content';
+import { edgeKey } from '../../platform-keys';
 
 test.describe('keyboard navigation', () => {
 	let editor: EditorPage;
@@ -86,7 +87,7 @@ test.describe('keyboard navigation', () => {
 
 		const bqEditable = editor.getBlock(1).locator('[contenteditable="true"]').first();
 		await bqEditable.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('ArrowUp');
 		await editor.typeText('B');
 		await editor.bridge.waitForSourceMatches(/^[^>].*B/m);

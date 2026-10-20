@@ -1,5 +1,6 @@
 import { type SimContext } from '../invariants';
 import { waitForNodeCount } from './node-count';
+import { edgeKey } from '../../platform-keys';
 
 // Directive gestures for the `:::name` syntax (plugins route only). Each waits for the block to
 // change kind or for the widget to swap in, then resyncs, since predicting across either would
@@ -77,7 +78,7 @@ export async function editLeafInfo(
 	const before = await editor.bridge.getSource();
 
 	await editor.clickBlock(leafIndex);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type(text);
 	await editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
 	await editor.waitForRenderFlush();
@@ -91,7 +92,7 @@ export async function leafBackspaceAtStart(ctx: SimContext, leafIndex: number): 
 	const before = await editor.bridge.getSource();
 
 	await editor.clickBlock(leafIndex);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await editor.pressDeclined('Backspace');
 
 	const after = await editor.bridge.getSource();
@@ -115,7 +116,7 @@ export async function editContainerBody(
 	const before = await editor.bridge.getSource();
 
 	await editor.clickBlockAtPath(bodyPath, 0);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type(text);
 	await editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
 	await editor.waitForRenderFlush();

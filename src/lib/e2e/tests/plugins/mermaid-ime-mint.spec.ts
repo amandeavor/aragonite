@@ -5,6 +5,7 @@ import { skipUnlessSupported } from '../../browser-engine';
 import { attachIme } from '../../simulation/ime';
 import { MermaidPage, STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
 import { multiClickElement } from '../../multi-click';
+import { edgeKey } from '../../platform-keys';
 
 // Requirements: `e2e/requirements/plugins/mermaid-ime-mint.md`.
 
@@ -60,7 +61,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	test('the host survives a redraw and still creates', async ({ page }) => {
 		await multiClickElement(editor.viewport, 2);
 		await expect(editor.page.getByTestId('mermaid-source')).toBeFocused();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('\n\tB --> C[Done]');
 		await page.keyboard.press('ControlOrMeta+Enter');
 
@@ -80,7 +81,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	test('focus settles on the host after the redraw, not on the new viewport', async ({ page }) => {
 		await multiClickElement(editor.viewport, 2);
 		await expect(editor.page.getByTestId('mermaid-source')).toBeFocused();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('\n\tB --> C[Done]');
 		await page.keyboard.press('ControlOrMeta+Enter');
 

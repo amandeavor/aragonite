@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('code block keyboard: beyond parity', () => {
 	let editor: EditorPage;
@@ -63,7 +64,7 @@ test.describe('code block keyboard: beyond parity', () => {
 		);
 
 		await editor.getBlock(0).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 20; i++) {
 			await page.keyboard.press('ArrowRight');
 		}

@@ -18,6 +18,7 @@ import {
 	revertingDetour,
 	undoRedoDifferential
 } from './invariants';
+import { edgeKey } from '../platform-keys';
 
 export interface SessionOpts {
 	seed: number;
@@ -189,7 +190,7 @@ async function reorderUndoDetour(ctx: SimContext, g: Gestures): Promise<void> {
 async function selectDeleteUndoDetour(ctx: SimContext, g: Gestures, chars: number): Promise<void> {
 	await revertingDetour(ctx, async () => {
 		await g.clickToReposition([0]);
-		await ctx.page.keyboard.press('End');
+		await ctx.page.keyboard.press(edgeKey('lineEnd'));
 		await g.selectAndDelete(chars);
 	});
 }
@@ -201,10 +202,10 @@ async function selectDeleteUndoDetour(ctx: SimContext, g: Gestures, chars: numbe
 async function copyPasteUndoDetour(ctx: SimContext, g: Gestures): Promise<void> {
 	await revertingDetour(ctx, async () => {
 		await g.clickToReposition([0]);
-		await ctx.page.keyboard.press('End');
+		await ctx.page.keyboard.press(edgeKey('lineEnd'));
 		await g.selectChars(4);
 		await g.copySelection();
-		await ctx.page.keyboard.press('End');
+		await ctx.page.keyboard.press(edgeKey('lineEnd'));
 		await g.pasteHere();
 	});
 }
@@ -231,13 +232,13 @@ async function buildAndDestroyRange(
 	// copy collapses whatever is selected, so it has to happen before the range is built.
 	if (destroy === 'paste-over') {
 		await g.clickToReposition([0]);
-		await ctx.page.keyboard.press('End');
+		await ctx.page.keyboard.press(edgeKey('lineEnd'));
 		await g.selectChars(3);
 		await g.copySelection();
 	}
 
 	await g.clickToReposition([0]);
-	await ctx.page.keyboard.press('End');
+	await ctx.page.keyboard.press(edgeKey('lineEnd'));
 
 	if (build === 'shift-down') await g.extendSelectionAcross('down');
 	else if (build === 'shift-click') await g.shiftClickAcross([1], 1);

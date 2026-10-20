@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage } from '../plugins/helpers';
 import { FIXTURE_BYTES } from '../perf/vr-helpers';
+import { edgeKey } from '../../platform-keys';
 import { clickInPlace } from '../../click-in-place';
 
 /**
@@ -75,7 +76,7 @@ test.describe('fold fixture: widgets in table cells', () => {
 			await clickInPlace(page.locator('.table-cell').nth(1));
 			await page.keyboard.press('Shift+Tab');
 			await expect(page.locator('.table-cell').first()).toBeFocused();
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await page.keyboard.press('ArrowRight'); // past `a`
 			await page.keyboard.press('ArrowRight'); // past the space, to the widget's leading edge
 

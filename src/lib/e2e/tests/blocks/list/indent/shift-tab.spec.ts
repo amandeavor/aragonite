@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 // What the lifted item carries and how markers and numbers settle are pinned in
 // `lift-keeps-order.test.ts`; these rows keep the caret and the emptied-parent cases.
@@ -35,7 +36,7 @@ test.describe('list Shift+Tab', () => {
 		await editor.loadContent('1. one\n   1. two\n2. three\n');
 		const two = editor.page.locator('[contenteditable="true"]', { hasText: 'two' });
 		await two.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Shift+Tab');
 		await editor.bridge.waitForSourceMatches(/^2\. two$/m);
 		const afterPromote = await editor.bridge.getSource();
@@ -54,7 +55,7 @@ test.describe('list Shift+Tab', () => {
 
 		const nestedA = editor.page.locator('[contenteditable="true"]', { hasText: 'nested a' });
 		await nestedA.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Shift+Tab');
 
 		await editor.typeText('X');
@@ -66,7 +67,7 @@ test.describe('list Shift+Tab', () => {
 
 		const lonely = editor.page.locator('[contenteditable="true"]', { hasText: 'lonely nested' });
 		await lonely.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Shift+Tab');
 
 		await editor.typeText('X');

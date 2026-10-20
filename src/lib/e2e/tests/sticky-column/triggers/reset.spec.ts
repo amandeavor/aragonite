@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 const PIXEL_TOLERANCE = 5;
 
@@ -23,7 +24,7 @@ test.describe('sticky column: reset triggers', () => {
 		);
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		const baseColumnX = await editor.getCaretPixelX();
 		for (let i = 0; i < 30; i++) await editor.page.keyboard.press('ArrowRight');
 		return baseColumnX;
@@ -52,7 +53,7 @@ test.describe('sticky column: reset triggers', () => {
 			name: 'click',
 			reset: async () => {
 				await editor.page.locator('[contenteditable="true"]').nth(1).click();
-				await editor.page.keyboard.press('Home');
+				await editor.page.keyboard.press(edgeKey('lineStart'));
 			},
 			tolerance: PIXEL_TOLERANCE * 3
 		},
@@ -66,9 +67,9 @@ test.describe('sticky column: reset triggers', () => {
 			tolerance: PIXEL_TOLERANCE * 3
 		},
 		{
-			name: 'End',
+			name: edgeKey('lineEnd'),
 			reset: async () => {
-				await editor.page.keyboard.press('End');
+				await editor.page.keyboard.press(edgeKey('lineEnd'));
 				await editor.waitForRenderFlush();
 			},
 			tolerance: PIXEL_TOLERANCE * 3

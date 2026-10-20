@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, roundTripStable, capturedErrors } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The `[^label]` reference as an inline widget: a superscript footnote number that swaps to its
@@ -89,7 +90,7 @@ test.describe('plugin inline footnote references', () => {
 		// then step the caret out of the source to commit.
 		for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('x');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.bridge.waitForSourceContains('[^ax]');
 		expect(await editor.bridge.getSource()).toContain('Body has [^ax] and [^b] here.');
@@ -120,7 +121,7 @@ test.describe('plugin inline footnote references', () => {
 		// The shown source edits one byte per keypress: deleting the opening `[` and committing
 		// turns the reference into literal text.
 		await page.keyboard.press('Delete');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.bridge.waitForSourceContains('Body has ^a] and [^b] here.');
 		// The reference is gone from the body; the `[^a]:` definition marker keeps its own bytes,
 		// so the assertion is limited to the body line.

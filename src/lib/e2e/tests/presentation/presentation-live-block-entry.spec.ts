@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickBlockSettled, enterPresentationMode, focusOffset } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // The mirror of leaving a block: entering one puts the caret at CURSOR_END or raw 0, and in live
 // mode both can sit where a typed byte would go inside a construct, at the same pixel as the
@@ -34,7 +35,7 @@ async function arriveFrom(
 	key: 'ArrowLeft' | 'ArrowRight'
 ): Promise<void> {
 	await clickBlockSettled(ep, block);
-	await page.keyboard.press(key === 'ArrowLeft' ? 'Home' : 'End');
+	await page.keyboard.press(key === 'ArrowLeft' ? edgeKey('lineStart') : edgeKey('lineEnd'));
 	await ep.waitForRenderFlush();
 	await page.keyboard.press(key);
 	await ep.waitForRenderFlush();
@@ -103,9 +104,9 @@ test.describe('live mode: an arrival puts the caret where the walk could have st
 		await ep.loadContent('- **bold** tail\n');
 		await ep.waitForRenderFlush();
 		await clickBlockSettled(ep, 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.waitForRenderFlush();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		expect(await focusOffset(ep)).toBe(2);
 
@@ -118,7 +119,7 @@ test.describe('live mode: an arrival puts the caret where the walk could have st
 	// can occupy; checked so the two cannot drift apart.
 	test('the vertical arrival lands on the same offset', async ({ page }) => {
 		await clickBlockSettled(ep, MIDDLE);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.waitForRenderFlush();
 		await page.keyboard.press('ArrowUp');
 		await ep.waitForRenderFlush();

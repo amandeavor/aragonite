@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 // A body line typed into a ```math source that reads as the fence's closer grows the fence when
 // the source is committed, as it does in a code block, instead of splitting the block in two.
@@ -16,7 +17,7 @@ for (const mode of ['source', 'live'] as const) {
 			await editor.revealFromBefore();
 			// Onto the body line, whichever line the arrival left the caret on, then its end.
 			if (mode === 'source') await page.keyboard.press('ArrowDown');
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('Enter');
 			await editor.typeSlowly('```');
 			await expect.poll(() => editor.sourceText()).toBe('```math\nx^2\n```\n```');

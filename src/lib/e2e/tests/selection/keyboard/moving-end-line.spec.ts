@@ -8,6 +8,7 @@ import {
 	landAt,
 	nextRow
 } from '../../presentation/helpers';
+import { edgeKey } from '../../../platform-keys';
 
 // Over a selection, ArrowUp and ArrowDown, shifted or not, ask which line and column the
 // selection's moving end is at, not its start.
@@ -75,7 +76,7 @@ for (const mode of ['source', 'live'] as const) {
 			await clickWordSettled(ep, page, 'Left');
 			await landAt(ep, page, 1);
 			await shiftPress(ep, page, 'ArrowDown');
-			await shiftPress(ep, page, 'End');
+			await shiftPress(ep, page, edgeKey('lineEnd'));
 			expect((await selection(ep)).focus.offset).toBe(TEXT_END);
 
 			await shiftPress(ep, page, 'ArrowDown');

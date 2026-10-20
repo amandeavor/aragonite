@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Requirements: `e2e/requirements/blocks/table/pipeless-row.md`.
 
@@ -24,7 +25,7 @@ test.describe('a line with no pipe after a table', () => {
 
 	test('typing in the row writes it back as a table row', async ({ page }) => {
 		await page.locator('.table-cell').nth(4).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('X');
 
 		await editor.bridge.waitForSourceContains('Para one.X');

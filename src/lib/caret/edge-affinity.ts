@@ -4,7 +4,7 @@
  * `edge-seat.ts` is the one reader; this module also says which keys end the record.
  */
 
-import { BARE_MODIFIER_KEYS, isCharacterKey } from '../schema/keybindings';
+import { BARE_MODIFIER_KEYS, caretEdgeKey, isCharacterKey } from '../schema/keybindings';
 
 /**
  * `outside` puts the next letter outside every construct whose hidden run the caret touches: a fresh
@@ -29,13 +29,15 @@ export function edgeStepDirection(
 	return e.key === 'ArrowLeft' ? 'backward' : null;
 }
 
-/** The plain key that can land the caret at a code chip's edge from its right-hand side, or
- *  null: ArrowLeft from the text after it, and End past a chip ending the line. */
+/** The key that can land the caret at a code chip's edge from its right-hand side, or null:
+ *  a plain ArrowLeft from the text after it, and the line-end key past a chip ending the line. */
 export function chipArrivalKey(
 	e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey' | 'isComposing'>
-): 'ArrowLeft' | 'End' | null {
-	if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.isComposing) return null;
-	if (e.key === 'End') return 'End';
+): 'ArrowLeft' | 'lineEnd' | null {
+	if (e.isComposing) return null;
+	const edge = caretEdgeKey(e);
+	if (edge?.to === 'line' && edge.side === 'end' && !edge.extend) return 'lineEnd';
+	if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return null;
 	return e.key === 'ArrowLeft' ? 'ArrowLeft' : null;
 }
 

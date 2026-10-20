@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { countEditEvents } from './helpers';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('one edit event per op: blockquote splitBlock exit', () => {
 	let editor: EditorPage;
@@ -17,7 +18,7 @@ test.describe('one edit event per op: blockquote splitBlock exit', () => {
 		const before = await editor.bridge.getSource();
 		const paras = editor.page.locator('.blockquote-block [contenteditable="true"]');
 		await paras.last().click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 
 		const count = await countEditEvents(editor, async () => {
 			await editor.page.keyboard.press('Enter');

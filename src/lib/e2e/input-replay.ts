@@ -10,6 +10,7 @@ import type { ExpectedState, RecordedStep } from '../debug/input-recording';
 import { pressedKeydown } from './recording-fixtures';
 import type { EditorSelection } from '../selection/primitives';
 import { insertText } from './insert-text';
+import { edgeKey, extendKey } from './platform-keys';
 
 export async function replayStep(editor: EditorPage, step: RecordedStep): Promise<void> {
 	const page = editor.page;
@@ -42,11 +43,25 @@ export async function replayStep(editor: EditorPage, step: RecordedStep): Promis
 	}
 }
 
+/** The edges a recorded Home or End means, so its replay presses this platform's chord. */
+const RECORDED_EDGES = {
+	Home: { line: 'lineStart', block: 'blockStart', doc: 'docStart' },
+	End: { line: 'lineEnd', block: 'blockEnd', doc: 'docEnd' }
+} as const;
+
 /** The step's key with its held modifiers; Ctrl and Cmd both become the platform's own. */
 function chordOf(step: RecordedStep): string {
 	const down = pressedKeydown(step);
 	if (!down?.key) throw new Error('a key step with no key to press');
 	const mods = down.mods ?? '';
+	const edges = Object.hasOwn(RECORDED_EDGES, down.key)
+		? RECORDED_EDGES[down.key as keyof typeof RECORDED_EDGES]
+		: null;
+	if (edges && !mods.includes('A')) {
+		const mod = /[CM]/.test(mods);
+		if (mods.includes('S')) return extendKey(mod ? edges.doc : edges.line);
+		return edgeKey(mod ? edges.block : edges.line);
+	}
 	const held = [
 		/[CM]/.test(mods) ? 'ControlOrMeta' : '',
 		mods.includes('A') ? 'Alt' : '',

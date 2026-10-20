@@ -3,6 +3,7 @@ import { PluginsPage, clickWidgetEnd, revealWidget, roundTripStable } from './he
 import { textRunCenter, textRunRect } from '../../text-runs';
 import { attachIme } from '../../simulation/ime';
 import { multiClick, multiClickElement } from '../../multi-click';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Inline `$…$` math: select it, its editable source opens, closing it re-renders it (design §
@@ -110,7 +111,7 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 		await page.keyboard.type('y');
 		// End carries the caret out of the source, which closes it. Enter does not close; it is the
 		// block's split key (latex-inline-reveal-commands).
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		await expect(editor.mathWidget).toHaveCount(1);
 		await expect(editor.mathWidget.locator('.katex')).toHaveCount(1);
@@ -129,7 +130,7 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 		expect(revealed).toContain('$x^2z$');
 		expect(revealed).not.toContain('zBefore');
 
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await expect(editor.mathWidget).toHaveCount(1);
 		// End's caret survives the widget drawing again, so the next character ends the line.
 		await page.keyboard.type('!');
@@ -175,7 +176,7 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 	}) => {
 		// A real edit in the sibling paragraph: the entry the next Ctrl+Z must reach.
 		await editor.getBlock(1).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('ABC');
 		await editor.bridge.waitForSourceContains('NextABC');
 		await editor.waitForUndoBatchFlush();
@@ -183,7 +184,7 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 		// Open the formula and close it with no edit. A write that changed nothing would still push
 		// an undo entry, and this Ctrl+Z would undo that instead of the ABC edit.
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await expect(editor.mathWidget).toHaveCount(1);
 
 		await editor.undo();

@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { extendKey } from '../../platform-keys';
 
 // A windowed doc: many short paragraphs with a unique marker as the last block,
 // off-window from the top.
@@ -37,7 +38,7 @@ test('Shift+Ctrl+End extends to an off-window endpoint and scrolls it into view,
 
 	// Extend a cross-block selection to the document end (the off-window last block).
 	await editor.clickBlock(0);
-	await page.keyboard.press('ControlOrMeta+Shift+End');
+	await page.keyboard.press(extendKey('docEnd'));
 	await editor.waitForRenderFlush();
 
 	// Poll the mount and scroll rather than waiting a fixed time; the endpoint must end up

@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { clickModeToggle } from '../../mode-switch';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // Reading mode on /test/editor: markers hidden by CSS with the DOM intact, the text inert with
 // the source stable through the bridge, and selection, copy and navigation still live.
@@ -76,12 +77,20 @@ test.describe('reading mode: inertness', () => {
 		await clickModeToggle(page, 'reading');
 	});
 
-	test('typing, Enter, Backspace, and Delete change nothing', async ({ page }) => {
+	test('typing, Enter, and Delete change nothing', async ({ page }) => {
 		await ep.clickBlock(1);
 		await page.keyboard.type('XYZ');
 		await page.keyboard.press('Enter');
-		await page.keyboard.press('Backspace');
 		await page.keyboard.press('Delete');
+		await ep.expectSurfaceInert();
+		expect(await ep.bridge.getSource()).toBe(baseline);
+		expect(await ep.getDomBlockCount()).toBeGreaterThan(0);
+	});
+
+	test('Backspace changes nothing', async ({ page }) => {
+		skipUnlessSupported(page, 'inertBackspace');
+		await ep.clickBlock(1);
+		await page.keyboard.press('Backspace');
 		await ep.expectSurfaceInert();
 		expect(await ep.bridge.getSource()).toBe(baseline);
 		expect(await ep.getDomBlockCount()).toBeGreaterThan(0);

@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 test.describe('clipboard: deeply nested', () => {
 	let editor: EditorPage;
@@ -27,7 +28,7 @@ test.describe('clipboard: deeply nested', () => {
 		await editor.seedClipboard('# Heading\n\npara\n');
 
 		await editor.focusBlockAtPath([0, 0, 0, 0], 0);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('Heading');
 

@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { countEditEvents } from './helpers';
 import { nextRow } from '../../presentation/helpers';
+import { edgeKey, extendKey } from '../../../platform-keys';
 
 test.describe('edit events per paste op', () => {
 	test('each paste route emits the edit events its ops make', async ({ page }) => {
@@ -12,7 +13,7 @@ test.describe('edit events per paste op', () => {
 			await nextRow(editor, '- Item 1\n- Item 2\n');
 			const first = editor.page.locator('[contenteditable="true"]', { hasText: 'Item 1' });
 			await first.click();
-			await editor.page.keyboard.press('End');
+			await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 			await editor.seedClipboard('one\n\ntwo\n');
 
@@ -28,8 +29,8 @@ test.describe('edit events per paste op', () => {
 			await nextRow(editor, '- alpha\n- beta\n');
 			const second = editor.page.locator('[contenteditable="true"]', { hasText: 'beta' });
 			await second.click();
-			await editor.page.keyboard.press('Home');
-			await editor.page.keyboard.press('Shift+End');
+			await editor.page.keyboard.press(edgeKey('lineStart'));
+			await editor.page.keyboard.press(extendKey('lineEnd'));
 
 			await editor.seedClipboard('- one\n- two\n');
 
@@ -46,7 +47,7 @@ test.describe('edit events per paste op', () => {
 			const before = await editor.bridge.getSource();
 			const first = editor.page.locator('[contenteditable="true"]', { hasText: 'alpha' });
 			await first.click();
-			await editor.page.keyboard.press('End');
+			await editor.page.keyboard.press(edgeKey('lineEnd'));
 			await editor.page.keyboard.press('Shift+ArrowDown');
 			await editor.waitForCrossBlock(true);
 

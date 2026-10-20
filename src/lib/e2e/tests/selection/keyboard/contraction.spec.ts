@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('selection: keyboard: shift+arrow contraction (D1)', () => {
 	let editor: EditorPage;
@@ -76,7 +77,7 @@ test.describe('selection: keyboard: shift+arrow contraction (D1)', () => {
 		await editor.page.keyboard.press('ControlOrMeta+c');
 		await editor.waitForClipboardWrite();
 		await editor.clickBlock(1);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('targetHello world');
 	});

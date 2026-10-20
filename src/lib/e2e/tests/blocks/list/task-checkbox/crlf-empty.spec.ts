@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 // A CRLF to-do emptied and typed into again keeps its CRLF line and its marker.
 // Requirements: `e2e/requirements/blocks/list/task-checkbox/crlf-empty.md`.
@@ -15,7 +16,7 @@ test.describe('task checkbox: emptying a CRLF to-do', () => {
 	/** Click `foo`, go to its end, and delete it a key at a time. */
 	async function emptyFoo(): Promise<void> {
 		await editor.page.getByText('foo').click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		for (let i = 0; i < 3; i++) await editor.page.keyboard.press('Backspace');
 	}
 

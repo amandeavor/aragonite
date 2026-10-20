@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 import { clickInPlace } from '../../../click-in-place';
 
 const TABLE_FIXTURE = '| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n';
@@ -58,7 +59,7 @@ test.describe('table block: caret/selection recovery on undo', () => {
 	test('undo after typing in a cell restores caret to that cell', async ({ page }) => {
 		// Cell index 4 = body row 0, col 1: the middle of the 3×3, the "2" cell.
 		await clickInPlace(page.locator('.table-cell').nth(4));
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		const before = await editor.bridge.getSource();
 
@@ -84,7 +85,7 @@ test.describe('table block: caret/selection recovery on undo', () => {
 			'| A | Column | C |\n| --- | --- | --- |\n| 1 | Column | 3 |\n| 4 | data | 6 |\n'
 		);
 		await clickInPlace(page.locator('.table-cell').nth(4));
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		const before = await editor.bridge.getSource();
 

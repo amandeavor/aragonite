@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { gotoReady } from '../../goto-ready';
+import { edgeKey } from '../../platform-keys';
 
 // The auto-pair steps over, collapses or deletes only the empty pair it wrote itself. Two
 // delimiters it did not write as a pair are the user's, and a key between them touches one byte.
@@ -68,15 +69,15 @@ test('a key in another editor leaves the pair the auto-pair wrote its own', asyn
 	const [left, right] = [page.locator('.editor').nth(0), page.locator('.editor').nth(1)];
 	const alpha = left.locator('[contenteditable="true"]', { hasText: 'Alpha' });
 	await alpha.click();
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type(' *');
 	await expect(alpha).toHaveText('Alpha paragraph **');
 
 	await right.locator('[contenteditable="true"]', { hasText: 'Beta' }).click();
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type('x');
 	await alpha.click();
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.press('ArrowLeft');
 	await page.keyboard.type('*');
 

@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Block-exit navigation, keyboard parity, highlighting, paste, and indent live in sibling
 // editing-*.spec.ts files.
@@ -86,7 +87,7 @@ test.describe('code block editing: happy paths', () => {
 	test('code block content round-trips through source', async () => {
 		await editor.loadContent('```python\ndef hello():\n    pass\n```\n');
 		await editor.getBlock(0).click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText('\n    return 42');
 		await editor.bridge.waitForSourceContains('return 42');
 		const source = await editor.bridge.getSource();

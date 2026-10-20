@@ -4,6 +4,7 @@ import { blockCenter, pastLineEnd } from './multi-click-helpers';
 import { pointAtRaw, textOutsideMarkers, textRunCenter, textRunStart } from '../../text-runs';
 import { multiClick } from '../../multi-click';
 import { dragSelection } from '../../selection-drag';
+import { COPY_DRAG_MODIFIERS, edgeKey } from '../../platform-keys';
 
 // Dragging a selection and dropping it (`requirements/selection/selection-drag-drop.md`). Drops
 // aim past a line's end or at its first glyph: the two points whose offset no font metric moves.
@@ -20,7 +21,7 @@ function converged(page: import('@playwright/test').Page): Promise<boolean> {
 /** A fresh document has nothing to undo, so a Ctrl+Z that still leaves `expected` says both that
  *  the declined gesture put no entry on the undo stack and that it wrote nothing. */
 async function undoLeavesDocument(editor: EditorPage, expected: string): Promise<void> {
-	await editor.pressDeclined('Control+z');
+	await editor.pressDeclined('ControlOrMeta+z');
 	expect(await editor.page.evaluate(() => (window as any).__test.getSource())).toBe(expected);
 }
 
@@ -83,9 +84,9 @@ test.describe('dragging a selection', () => {
 		await editor.bridge.waitForSourceEquals('alpha  gammabeta\n\nsecond para here\n');
 		expect(await converged(page)).toBe(true);
 		expect(await domMatchesRaw(page, 0)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(TWO);
-		await page.keyboard.press('Control+y');
+		await page.keyboard.press('ControlOrMeta+y');
 		await editor.bridge.waitForSourceEquals('alpha  gammabeta\n\nsecond para here\n');
 	});
 
@@ -96,11 +97,11 @@ test.describe('dragging a selection', () => {
 		expect(await converged(page)).toBe(true);
 		expect(await domMatchesRaw(page, 0)).toBe(true);
 		expect(await domMatchesRaw(page, 1)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(TWO);
 	});
 
-	for (const modifier of ['Control', 'Alt'] as const) {
+	for (const modifier of COPY_DRAG_MODIFIERS) {
 		test(`a word released with ${modifier} held is copied, the source kept`, async ({ page }) => {
 			const beta = await doubleClickOn('beta');
 			const target = await textRunStart(page, 'second para here');
@@ -109,9 +110,9 @@ test.describe('dragging a selection', () => {
 			expect(await converged(page)).toBe(true);
 			expect(await domMatchesRaw(page, 0)).toBe(true);
 			expect(await domMatchesRaw(page, 1)).toBe(true);
-			await page.keyboard.press('Control+z');
+			await page.keyboard.press('ControlOrMeta+z');
 			await editor.bridge.waitForSourceEquals(TWO);
-			await page.keyboard.press('Control+y');
+			await page.keyboard.press('ControlOrMeta+y');
 			await editor.bridge.waitForSourceEquals(COPIED);
 		});
 	}
@@ -125,19 +126,19 @@ test.describe('dragging a selection', () => {
 		await editor.bridge.waitForSource((s) => s.endsWith('alpha beta gammasecond para here\n'));
 		expect(await page.evaluate(() => (window as any).__test.getBlockCount())).toBe(2);
 		expect(await converged(page)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(TWO);
 	});
 
 	test('a Shift+Arrow selection drags the same way', async ({ page }) => {
 		const beta = await textRunCenter(page, 'beta');
 		await page.mouse.click(beta.x, beta.y);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
 		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight');
 		await dragSelection(page, beta, await textRunStart(page, 'second para here'));
 		await editor.bridge.waitForSourceEquals('alpha  gamma\n\nbetasecond para here\n');
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(TWO);
 	});
 
@@ -151,7 +152,7 @@ test.describe('dragging a selection', () => {
 		);
 		await editor.bridge.waitForSourceEquals('```\nconst  = 1\n```\n\nvaluesecond para here\n');
 		expect(await converged(page)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals('```\nconst value = 1\n```\n\nsecond para here\n');
 	});
 
@@ -170,7 +171,7 @@ test.describe('dragging a selection', () => {
 		expect(await converged(page)).toBe(true);
 		expect(await cellMatchesRaw(page, 1, 0)).toBe(true);
 		expect(await domMatchesRaw(page, 1)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(CELL_DOC);
 	});
 

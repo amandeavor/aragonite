@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // A paste into a CRLF document writes its own lines in CRLF, whatever ending the clipboard held.
 // Requirements: e2e/requirements/clipboard/paste-crlf-document.md.
@@ -15,7 +16,7 @@ test.describe('a paste into a CRLF document', () => {
 		await editor.goto();
 		await editor.loadContent('abc\r\nAfter\r\n');
 		await editor.focusBlockAtPath([0], 0);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 	});
 
 	test('two paragraphs land with CRLF between and inside them', async () => {

@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { readDoc, waitForDoc, activeBlockPath } from './helpers';
 import { MermaidPage } from './mermaid-helpers';
 import { multiClickElement } from '../../multi-click';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Whole-block focus on a broken mermaid fence (requirements/plugins/mermaid-broken-focus.md). The
@@ -46,7 +47,7 @@ test.describe('mermaid broken-fence whole-block focus', () => {
 		const original = await editor.bridge.getSource();
 
 		await editor.getBlock(2).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await editor.pressDeclined('Backspace');
 		await expect(editor.inputHost).toBeFocused();
 		expect(await editor.bridge.getSource()).toBe(original); // focus only — no byte change

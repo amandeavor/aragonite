@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 const TABLE_2x3 = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
 
@@ -21,8 +22,8 @@ test.describe('cross-block delete: container survivor caret', () => {
 		// Select from the first cell of the first table through document end, so both
 		// tables are fully consumed and the blockquote is the only survivor.
 		await page.locator('.table-cell').first().click();
-		await page.keyboard.press('Home');
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(edgeKey('lineStart'));
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await page.keyboard.press('Backspace');

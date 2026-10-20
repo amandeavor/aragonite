@@ -7,7 +7,7 @@
 
 import type { ContentWrite } from '../../../action-contracts';
 import type { BlockPendingBreak } from '../../../caret/pending-break.svelte';
-import { BARE_MODIFIER_KEYS } from '../../../schema/keybindings';
+import { BARE_MODIFIER_KEYS, caretEdgeKey } from '../../../schema/keybindings';
 import type { TextWrite } from '../editable/surface-write';
 import { hasModifier, isPlainTypingKey } from './click-snap-guard';
 
@@ -22,7 +22,8 @@ export interface PendingBreakKeyDeps {
 	requestCaret(at: number): void;
 }
 
-/** True when the key was handled here, its default prevented. */
+/** True when the key was handled here, its default prevented; a line-edge Cmd+Arrow has its
+ *  default prevented and still goes on. */
 export function handlePendingBreakKey(e: KeyboardEvent, deps: PendingBreakKeyDeps): boolean {
 	const at = deps.pendingBreak.at();
 	if (at === null || e.isComposing || BARE_MODIFIER_KEYS.includes(e.key)) return false;
@@ -43,7 +44,14 @@ export function handlePendingBreakKey(e: KeyboardEvent, deps: PendingBreakKeyDep
 		});
 		return true;
 	}
-	const stepsBack = e.key === 'Backspace' || e.key === 'ArrowLeft';
+	const edge = caretEdgeKey(e);
+	// The open line is empty, so Cmd+Left and Cmd+Right keep the caret where it is, which only macOS
+	// does natively; the key then goes on to the other handlers, as Home does.
+	if (edge?.to === 'line' && edge.arrow && !edge.extend) {
+		e.preventDefault();
+		return false;
+	}
+	const stepsBack = e.key === 'Backspace' || (e.key === 'ArrowLeft' && edge === null);
 	if (!stepsBack && e.key !== 'Delete') return false;
 	deps.pendingBreak.end();
 	if (!stepsBack || e.shiftKey || hasModifier(e)) return false;

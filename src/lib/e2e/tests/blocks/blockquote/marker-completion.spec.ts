@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Requirements: `e2e/requirements/blocks/blockquote/marker-completion.md`.
 
@@ -80,7 +81,7 @@ test.describe('blockquote: the space that completes the `> ` marker', () => {
 		await editor.loadContent('> Line one\n');
 		const inner = editor.getBlock(0).locator('[contenteditable="true"]').first();
 		await inner.click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await editor.bridge.waitForSourceMatches(/> Line one\n>\n>\n$/);
 
@@ -97,7 +98,7 @@ test.describe('blockquote: the space that completes the `> ` marker', () => {
 		await editor.loadContent('> abc\n');
 		const inner = editor.getBlock(0).locator('[contenteditable="true"]').first();
 		await inner.click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 
 		await page.keyboard.press('Space');
 

@@ -26,6 +26,8 @@ since Playwright's WebKit selects nothing on a right-click.
 - Every menu Paste route (prose Paste, Paste as plain text, Replace with clipboard, the cell's
   Paste) reads the clipboard only once its menu has left the page, so Safari's own Paste prompt
   never draws over an open menu.
+  - The selection toolbar a word Safari selected brings back may stand at the read: it is no menu
+    the pick came from.
 
 ## Miss-analysis
 

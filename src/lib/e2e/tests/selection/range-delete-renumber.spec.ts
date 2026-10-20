@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Requirements: `e2e/requirements/selection/range-delete-renumber.md`.
 
@@ -60,7 +61,7 @@ test.describe('a range removal keeps the ordered list’s numbers', () => {
 				await editor.setPresentationMode(mode);
 				await editor.loadContent(LIST);
 				await editor.focusBlockAtPath([0, 1, 0], 1);
-				await extend(editor, ['End', 'ArrowRight']);
+				await extend(editor, [edgeKey('lineEnd'), 'ArrowRight']);
 
 				await gesture.run(editor);
 

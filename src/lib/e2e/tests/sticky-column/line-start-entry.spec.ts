@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // A caret right after a `\n` is on the next line for every vertical move: a column landing in a
 // block whose line starts after one, and the edge-line check at such a line start. Code blocks
@@ -19,7 +20,7 @@ test.describe('sticky column: a line that starts after a line break', () => {
 		const html = `<div>\n${BODY}\n</div>`;
 		await editor.loadContent(`${PARAGRAPH}\n\n${html}\n\n${PARAGRAPH}\n`);
 		await editor.getBlock(2).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 
 		await page.keyboard.press('ArrowUp');
 		await editor.waitForRenderFlush();
@@ -36,7 +37,7 @@ test.describe('sticky column: a line that starts after a line break', () => {
 		await editor.loadContent(`${PARAGRAPH}\n\nabc\nxyz\n`);
 		await editor.focusBlockStart(1);
 		await page.keyboard.press('ArrowDown');
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		expect((await editor.bridge.getSelectionPaths())?.focus).toEqual({ path: [1], offset: 4 });
 
 		await page.keyboard.press('ArrowUp');

@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 test.describe('cross-block clipboard: copy', () => {
 	let editor: EditorPage;
@@ -56,7 +57,7 @@ test.describe('cross-block clipboard: copy', () => {
 
 		await editor.clickBlock(2);
 		await editor.waitForCrossBlock(false);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.paste();
 		await editor.bridge.waitForSourceMatches(/target[\s\S]*\n\s*\n\s*two/);
 
@@ -69,7 +70,7 @@ test.describe('cross-block clipboard: copy', () => {
 		const beforeSource = await editor.bridge.getSource();
 
 		await editor.focusBlock(0, 0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.page.keyboard.press('ControlOrMeta+c');
@@ -77,7 +78,7 @@ test.describe('cross-block clipboard: copy', () => {
 
 		await editor.clickBlock(2);
 		await editor.waitForCrossBlock(false);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.paste();
 		await editor.bridge.waitForSourceMatches(/first block[\s\S]*first block/);

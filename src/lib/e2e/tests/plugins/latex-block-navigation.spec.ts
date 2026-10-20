@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Every way the caret enters and leaves a `$$` block, in the mode that paints its fence lines and
 // the one that hides them. Requirements: e2e/requirements/plugins/latex-block-navigation.md.
@@ -36,7 +37,7 @@ for (const mode of ['live', 'source'] as const) {
 			page
 		}) => {
 			await editor.getBlock(0).click();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('ArrowRight');
 			await expect(editor.source).toBeFocused();
 			expect(await editor.caretOffset()).toBe(bodyStart);
@@ -50,7 +51,7 @@ for (const mode of ['live', 'source'] as const) {
 			page
 		}) => {
 			await editor.getBlock(2).click();
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await page.keyboard.press('ArrowLeft');
 			await expect(editor.source).toBeFocused();
 			expect(await editor.caretOffset()).toBe(bodyEnd);
@@ -113,7 +114,7 @@ test.describe('block math navigation (live): an empty block', () => {
 	// leaving again commits that completion like any other edit made while it was open.
 	test('arrows pass through from above, leaving the completed block behind', async ({ page }) => {
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(editor.source).toBeFocused();
 		expect(await editor.sourceText()).toBe('$$\n\n$$');
@@ -126,7 +127,7 @@ test.describe('block math navigation (live): an empty block', () => {
 
 	test('arrows pass through from below', async ({ page }) => {
 		await editor.getBlock(2).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowLeft');
 		await expect(editor.source).toBeFocused();
 		expect(await editor.sourceText()).toBe('$$\n\n$$');

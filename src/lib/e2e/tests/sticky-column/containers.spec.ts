@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 const PIXEL_TOLERANCE = 5;
 
@@ -43,7 +44,7 @@ test.describe('sticky column: container traversal', () => {
 
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 20; i++) await editor.page.keyboard.press('ArrowRight');
 
 		const sourceX = await editor.getCaretPixelX();
@@ -65,7 +66,7 @@ test.describe('sticky column: container traversal', () => {
 
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 15; i++) await editor.page.keyboard.press('ArrowRight');
 
 		const sourceX = await editor.getCaretPixelX();
@@ -98,7 +99,7 @@ test.describe('sticky column: transparent blocks', () => {
 
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		// Inside the words both paragraphs open with, so one boundary below is nearest the column
 		// and a caret a letter off either way is caught.
 		for (let i = 0; i < 10; i++) await editor.page.keyboard.press('ArrowRight');
@@ -152,7 +153,7 @@ test.describe('sticky column: edge cases', () => {
 
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 20; i++) await editor.page.keyboard.press('ArrowRight');
 
 		await editor.page.keyboard.press('ArrowDown');
@@ -162,7 +163,7 @@ test.describe('sticky column: edge cases', () => {
 		await editor.waitForRenderFlush();
 
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		const postRefocusX = await editor.getCaretPixelX();
 
 		await editor.page.keyboard.press('ArrowDown');

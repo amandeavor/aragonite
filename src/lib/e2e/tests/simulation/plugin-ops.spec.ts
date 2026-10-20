@@ -6,6 +6,7 @@ import { makeRng } from '../../simulation/rng';
 import { type SimContext, assertCheckpoint } from '../../simulation/invariants';
 import { makeSimContext, topLevelIndexOf } from './helpers';
 import { PluginsPage, activeBlockPath } from '../plugins/helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Plugin containers in a long session, run in the default gate: an opaque container's raw text
 // never goes stale, a rebuild is repeatable, and the title row keeps its place. Built like
@@ -41,7 +42,7 @@ async function containerRaw(page: Page, kind: string): Promise<string> {
 async function typeAtPath(ctx: SimContext, path: number[], text: string): Promise<void> {
 	const before = await ctx.editor.bridge.getSource();
 	await ctx.editor.clickBlockAtPath(path, 0);
-	await ctx.page.keyboard.press('End');
+	await ctx.page.keyboard.press(edgeKey('lineEnd'));
 	await ctx.page.keyboard.type(text);
 	await ctx.editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
 	await ctx.editor.waitForRenderFlush();
@@ -74,7 +75,7 @@ async function mergeFromBelow(
 ): Promise<void> {
 	const before = await ctx.editor.bridge.getSource();
 	await ctx.editor.clickBlockAtPath([tailIdx], 0);
-	await ctx.page.keyboard.press('Home');
+	await ctx.page.keyboard.press(edgeKey('lineStart'));
 	if (expectMutation) {
 		await ctx.page.keyboard.press('Backspace');
 		await ctx.editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
@@ -157,7 +158,7 @@ test.describe('plugin-container ops simulation', () => {
 		// ── Split the callout body, then undo/redo the split's typing ───────────
 		await g.pause();
 		await editor.clickBlockAtPath([noteIdx, 1], 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await g.pressEnter();
 		await assertCheckpoint(ctx, 'note-body-split');
 
@@ -220,7 +221,7 @@ test.describe('plugin-container ops simulation', () => {
 
 		tailIdx = (await rootCount(page)) - 1;
 		await g.clickToReposition([tailIdx]);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await g.pasteHere();
 		await assertCheckpoint(ctx, 'cross-container-paste');
 
@@ -233,7 +234,7 @@ test.describe('plugin-container ops simulation', () => {
 		// container under the round-trip, nested-state and no-errors checks.
 		tailIdx = (await rootCount(page)) - 1;
 		await g.clickToReposition([tailIdx]);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await g.pasteGithubAlert();
 		await assertCheckpoint(ctx, 'github-alert-paste');
 

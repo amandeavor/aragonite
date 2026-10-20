@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { boxesOf, dragBetweenBoxes, dragBetweenCells } from './helpers';
+import { extendKey } from '../../../platform-keys';
 
 const TABLE_3x3 = '| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n';
 
@@ -155,7 +156,7 @@ test.describe('table block: pointer selection', () => {
 		expect(await page.locator('.table-block > .vr-spacer').count()).toBe(0);
 
 		await page.locator('.table-cell').nth(3).click(); // first body cell "aaa"
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		await page.keyboard.press('ArrowRight'); // collapse to the end (last cell)
 		// The collapse is async, so this waits for it before typing, or the marker replaces the
@@ -178,7 +179,7 @@ test.describe('table block: pointer selection', () => {
 		expect(await page.locator('.table-block > .vr-spacer').count()).toBe(0);
 
 		await page.locator('.table-cell').nth(3).click(); // first body cell "aaa"
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		await page.keyboard.press('ArrowLeft'); // collapse to the start (anchor cell)
 		await editor.waitForCrossBlock(false);
@@ -198,7 +199,7 @@ test.describe('table block: pointer selection', () => {
 		expect(await page.locator('.table-block > .vr-spacer').count()).toBe(0);
 
 		await page.locator('.table-cell').nth(3).click(); // first body cell "aaa"
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		await page.keyboard.press('ArrowDown'); // collapse to the end (last cell)
 		await editor.waitForCrossBlock(false);

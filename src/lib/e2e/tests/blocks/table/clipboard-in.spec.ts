@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { dragBetweenCells } from './helpers';
+import { edgeKey } from '../../../platform-keys';
 
 const TABLE_2BODY = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
 
@@ -150,7 +151,7 @@ test.describe('table block: paste in', () => {
 		await editor.loadContent(TABLE_2BODY);
 		const before = await editor.bridge.getSource();
 		await page.locator('.table-cell').nth(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.seedClipboard('xyz');
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('| Axyz | B |');

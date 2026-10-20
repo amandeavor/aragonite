@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { extendKey } from '../../platform-keys';
 
 test.describe('cross-container clipboard: blockquote boundary', () => {
 	let editor: EditorPage;
@@ -75,7 +76,7 @@ test.describe('cross-container clipboard: blockquote boundary', () => {
 	test('copy from inside blockquote to paragraph then paste reproduces text', async () => {
 		await editor.loadContent('> quoted text\n\noutside\n\ndestination\n');
 		await editor.focusBlockAtPath([0, 0], 0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.page.keyboard.press('ControlOrMeta+c');

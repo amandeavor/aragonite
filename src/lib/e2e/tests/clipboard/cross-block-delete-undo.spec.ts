@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { extendKey } from '../../platform-keys';
 
 test.describe('cross-block delete: Ctrl+Z restores content + selection', () => {
 	let editor: EditorPage;
@@ -14,7 +15,7 @@ test.describe('cross-block delete: Ctrl+Z restores content + selection', () => {
 		await editor.loadContent(original);
 
 		await editor.focusBlockStart(0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 
 		await editor.page.keyboard.press('Delete');
 		await editor.bridge.waitForSource((s) => !s.includes('Alpha') && !s.includes('Gamma'));

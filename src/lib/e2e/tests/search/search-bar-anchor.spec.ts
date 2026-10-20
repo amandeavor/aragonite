@@ -3,6 +3,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { gotoReady } from '../../goto-ready';
 import { findInput, openFind, overlays, replaceInput, typeQuery } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 const anchor = (page: Page) => page.getByTestId('search-anchor');
 const anchoredBar = (page: Page) => anchor(page).locator('.search-bar');
@@ -74,7 +75,7 @@ test.describe('search bar: consumer anchor', () => {
 		page
 	}) => {
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+f');
 		await expect(findInput(page)).toBeFocused();
 

@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import type { EditorPage } from '../../editor-page';
 import { enterPresentationMode, nextRow } from './helpers';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // An ATX heading's closing `#` run is a marker after the text, and keys at the text's end keep it
 // there. Each test walks its rows as steps, every step on a fresh copy of its document.
@@ -43,7 +44,7 @@ test('live mode: keys at the end of the text', async ({ page }) => {
 	await test.step('a typed key lands before the closing run', async () => {
 		await nextRow(ep, DOC);
 		await ep.focusBlockAtPath([0], 3);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.typeSlowly('x');
 		await ep.bridge.waitForSourceEquals('# Hix #\n\nnext\n');
 	});
@@ -51,7 +52,7 @@ test('live mode: keys at the end of the text', async ({ page }) => {
 	await test.step('Backspace takes the last character and keeps the run', async () => {
 		await nextRow(ep, DOC);
 		await ep.focusBlockAtPath([0], 3);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Backspace');
 		await ep.bridge.waitForSourceEquals('# H #\n\nnext\n');
 	});
@@ -59,7 +60,7 @@ test('live mode: keys at the end of the text', async ({ page }) => {
 	await test.step('a typed space stays text, and the next key follows it', async () => {
 		await nextRow(ep, DOC);
 		await ep.focusBlockAtPath([0], 3);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.typeSlowly(' ');
 		await ep.bridge.waitForSourceEquals('# Hi  #\n\nnext\n');
 		await ep.typeSlowly('x');
@@ -69,7 +70,7 @@ test('live mode: keys at the end of the text', async ({ page }) => {
 	await test.step('a typed closing run turns back into text with the next key', async () => {
 		await nextRow(ep, '# Hi\n\nnext\n');
 		await ep.focusBlockAtPath([0], 3);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.typeSlowly(' #');
 		await ep.bridge.waitForSourceEquals('# Hi #\n\nnext\n');
 		await ep.typeSlowly('t');
@@ -84,7 +85,7 @@ test('live mode: emptying the text', async ({ page }) => {
 	await test.step('inside a list item, Backspace over the last character leaves an empty paragraph, as at the top level', async () => {
 		await nextRow(ep, '- # H #\n- b\n');
 		await ep.focusBlockAtPath([0, 0, 0], 1);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Backspace');
 		await ep.bridge.waitForSourceEquals('- \n- b\n');
 		await ep.typeSlowly('k');
@@ -95,7 +96,7 @@ test('live mode: emptying the text', async ({ page }) => {
 	await test.step('End in an empty heading with a closing run, then a key, writes past the run', async () => {
 		await nextRow(ep, '#  #\n\nnext\n');
 		await ep.focusBlockAtPath([0], 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.typeSlowly('k');
 		await ep.bridge.waitForSourceEquals('#  #k\n\nnext\n');
 	});
@@ -103,7 +104,7 @@ test('live mode: emptying the text', async ({ page }) => {
 	await test.step('spaces typed into an empty heading stay in the heading', async () => {
 		await nextRow(ep, '# \n\nnext\n');
 		await ep.focusBlockAtPath([0], 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.typeSlowly('  ');
 		await ep.bridge.waitForSourceEquals('#   \n\nnext\n');
 	});
@@ -111,8 +112,8 @@ test('live mode: emptying the text', async ({ page }) => {
 	await test.step('selecting the text and typing a space leaves a paragraph holding the space', async () => {
 		await nextRow(ep, DOC);
 		await ep.focusBlockAtPath([0], 3);
-		await page.keyboard.press('End');
-		await page.keyboard.press('Shift+Home');
+		await page.keyboard.press(edgeKey('lineEnd'));
+		await page.keyboard.press(extendKey('lineStart'));
 		await ep.typeSlowly(' ');
 		await ep.typeSlowly('x');
 		await ep.bridge.waitForSourceEquals(' x\n\nnext\n');
@@ -122,7 +123,7 @@ test('live mode: emptying the text', async ({ page }) => {
 		await test.step(`Backspace over the last character of ${JSON.stringify(source)} leaves an empty paragraph`, async () => {
 			await nextRow(ep, source);
 			await ep.focusBlockAtPath([0], 1);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('Backspace');
 			await ep.bridge.waitForSourceEquals('\nnext\n');
 			await ep.typeSlowly('k');
@@ -133,8 +134,8 @@ test('live mode: emptying the text', async ({ page }) => {
 	await test.step('selecting the text and pressing Backspace leaves an empty paragraph', async () => {
 		await nextRow(ep, DOC);
 		await ep.focusBlockAtPath([0], 3);
-		await page.keyboard.press('End');
-		await page.keyboard.press('Shift+Home');
+		await page.keyboard.press(edgeKey('lineEnd'));
+		await page.keyboard.press(extendKey('lineStart'));
 		await page.keyboard.press('Backspace');
 		await ep.bridge.waitForSourceEquals('\nnext\n');
 		await ep.typeSlowly('k');
@@ -162,7 +163,7 @@ test.describe('shown closing run: a selection that leaves it keeps it', () => {
 			await test.step(`selecting "# Hi" of ${JSON.stringify(source)} and typing x keeps the run`, async () => {
 				await nextRow(ep, source);
 				await ep.focusBlockAtPath([...path], 4);
-				await page.keyboard.press('Shift+Home');
+				await page.keyboard.press(extendKey('lineStart'));
 				await ep.typeSlowly('x');
 				await ep.bridge.waitForSourceEquals(written);
 			});
@@ -207,7 +208,7 @@ test('live mode: the closing run stays on the heading', async ({ page }) => {
 		await test.step(`Shift+Enter at the end of the text of ${JSON.stringify(source)}, then a key`, async () => {
 			await nextRow(ep, source);
 			await ep.focusBlockAtPath([0], 1);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('Shift+Enter');
 			await expect.poll(() => caretStartsNewLine(page)).toBe(true);
 			await ep.typeSlowly('w');
@@ -224,7 +225,7 @@ test('live mode: the closing run stays on the heading', async ({ page }) => {
 			await nextRow(ep, source);
 			await ep.seedClipboard('abc\n\ndef');
 			await ep.focusBlockAtPath([0], 1);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await ep.paste();
 			await ep.bridge.waitForSourceEquals(written);
 		});

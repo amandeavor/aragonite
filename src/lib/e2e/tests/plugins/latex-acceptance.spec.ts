@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, clickWidgetCenter, clickWidgetEnd } from './helpers';
+import { edgeKey } from '../../platform-keys';
 import { clickInPlace } from '../../click-in-place';
 
 /**
@@ -134,7 +135,7 @@ test.describe('latex acceptance axes', () => {
 
 		// Leave past the bottom edge, a view change with no edit: the scroll still holds and the
 		// re-rendered display sits exactly where it started, with no net shift.
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(editor.blockRender).toHaveCount(1);
 		await editor.waitForScrollSettle();
@@ -161,7 +162,7 @@ test.describe('latex acceptance axes', () => {
 		await expect(editor.inlineWidget).toHaveCount(0);
 		await page.keyboard.type('z');
 		// Moving the caret out closes the source; Enter splits the block instead.
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await expect(editor.inlineWidget).toHaveCount(1);
 
 		// End's caret survives the widget drawing again, so the next character ends the line.
@@ -189,7 +190,7 @@ test.describe('latex acceptance axes', () => {
 		// paragraph; getBlock(4) is "Para 2.".
 		await clickWidgetCenter(editor.blockRender.nth(1));
 		await expect(editor.blockSource).toHaveCount(1);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('z');

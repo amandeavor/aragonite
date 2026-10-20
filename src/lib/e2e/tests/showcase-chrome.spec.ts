@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures';
 import { gotoReady } from '../goto-ready';
 import { SHOWCASE_MD, scanShowcase } from '../showcase-document';
 import { clickModeButton } from '../mode-switch';
+import { edgeKey } from '../platform-keys';
 import { clickInPlace } from '../click-in-place';
 
 // The `/` showcase header: theme, drag handles, the debug panel, and the table of contents as
@@ -47,7 +48,7 @@ test.describe('/ showcase chrome', () => {
 		// the only way to see whether the route carried the current source across.
 		const intro = page.locator('.block-host [contenteditable]').first();
 		await clickInPlace(intro);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type(' ZZMARKER');
 		await expect(intro).toContainText('ZZMARKER');
 
@@ -105,7 +106,7 @@ test.describe('/ showcase chrome', () => {
 
 		const intro = page.locator('.block-host [contenteditable]').first();
 		await clickInPlace(intro);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight');
 		await expect(toolbar).toBeVisible();
 
