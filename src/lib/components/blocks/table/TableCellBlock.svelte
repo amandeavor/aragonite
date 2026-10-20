@@ -778,6 +778,9 @@
 	// ── Right-click menu clipboard ──────────────────────────────────────────
 
 	function getSelectionOffsets(): { start: number; end: number } | null {
+		// A widget the editor holds selected is the selection the menu acts on, as a range is.
+		const held = selection.widgetRange();
+		if (held && pathsEqual(held.path, myPath)) return { start: held.start, end: held.end };
 		const range = cursor.getRawSelection();
 		if (range) return range;
 		const caret = cursor.getRaw();

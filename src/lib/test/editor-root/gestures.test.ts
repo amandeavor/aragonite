@@ -374,10 +374,82 @@ describe('editor-root gestures: the right-click press record', () => {
 			'a key',
 			(h: ReturnType<typeof harness>) =>
 				h.root.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true }))
-		]
+		],
+		// A touch's long-press opens its menu with no mousedown before it.
+		['a touch press', (h: ReturnType<typeof harness>) => h.press(h.editable)]
 	])('%s after it hands the next menu to the live selection', (_, after) => {
 		const h = pressThenSelect({ button: 2 });
 		after(h);
 		expect(h.gestures.rangeAtContextPress(h.root)).toBe(true);
+	});
+	// Miss-analysis: #756, the rows modelled Safari selecting a word or a block, never a widget.
+	describe('a press on an inline widget', () => {
+		/** Over the nearest block's box, where the caret walk lands. */
+		const AT = { clientX: BOX.left + 5, clientY: 40 };
+
+		function rightClick(h: ReturnType<typeof harness>, target: EventTarget, init = {}) {
+			h.mouseDown(target, { ...AT, ...init });
+			// Safari's own select of the element under the press.
+			const range = document.createRange();
+			range.selectNode(h.widgetLink.parentElement!);
+			window.getSelection()!.addRange(range);
+			target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, ...AT, ...init }));
+		}
+
+		it.each([
+			['the right button', { button: 2 }],
+			['Control with the primary button', { button: 0, ctrlKey: true }]
+		])('with %s puts the caret at the press for the menu', (_, init) => {
+			const h = harness();
+			rightClick(h, h.widgetLink, init);
+			expect(h.focus).toHaveBeenCalledOnce();
+		});
+
+		it('whose pointerdown a block cancelled, so no mousedown came, still puts the caret there', () => {
+			const h = harness();
+			h.press(h.widgetLink, { ...AT, button: 2 });
+			h.widgetLink.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, ...AT }));
+			expect(h.focus).toHaveBeenCalledOnce();
+		});
+
+		it('on the widget the editor holds selected keeps it for the clipboard rows', () => {
+			const h = harness();
+			h.selection.selectWidget({ paragraphPath: [4], sourceStart: 2, preSelectOffset: 2 });
+			rightClick(h, h.widgetLink, { button: 2 });
+			expect(h.focus).not.toHaveBeenCalled();
+			expect(h.gestures.rangeAtContextPress(h.root)).toBe(true);
+		});
+
+		it('on text leaves what the browser selected for the clipboard rows', () => {
+			const h = harness();
+			rightClick(h, h.editable, { button: 2 });
+			expect(h.focus).not.toHaveBeenCalled();
+		});
+
+		it("inside the user's range keeps the range", () => {
+			const h = harness();
+			const range = document.createRange();
+			range.selectNodeContents(h.widgetLink);
+			window.getSelection()!.addRange(range);
+			// jsdom draws no rectangles, so the range covers the press by fiat.
+			Range.prototype.getClientRects = () =>
+				[{ left: 0, right: 500, top: 0, bottom: 100 }] as never;
+			teardowns.push(() => delete (Range.prototype as Partial<Range>).getClientRects);
+			rightClick(h, h.widgetLink, { button: 2 });
+			expect(h.focus).not.toHaveBeenCalled();
+		});
+
+		it('in reading mode places nothing', () => {
+			const h = harness({ mode: 'reading' });
+			rightClick(h, h.widgetLink, { button: 2 });
+			expect(h.focus).not.toHaveBeenCalled();
+		});
+
+		it('from the keyboard places nothing', () => {
+			const h = harness();
+			h.root.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true }));
+			h.widgetLink.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, ...AT }));
+			expect(h.focus).not.toHaveBeenCalled();
+		});
 	});
 });

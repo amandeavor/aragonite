@@ -567,7 +567,8 @@
 		caretMemory,
 		getBlockElByPath,
 		getEditorRoot: () => editorEl ?? null,
-		scroll: scrollOwner
+		scroll: scrollOwner,
+		isReading: () => reading.mode() === 'reading'
 	});
 
 	const editorActionsDeps: EditorActionsDeps = {
@@ -886,6 +887,7 @@
 	$effect(() => {
 		modeFlip.afterFlip(effectiveMode);
 	});
+	rootEffect((root) => modeFlip.install(root));
 
 	// ── Root gestures ───────────────────────────────────────────────────
 
@@ -935,6 +937,7 @@
 		blockEdit,
 		placeCaretAtPoint,
 		rangeAtContextPress: () => (editorEl ? rootGestures.rangeAtContextPress(editorEl) : false),
+		holdsWidget: () => selectionState.widget !== null,
 		insertMarkdown,
 		aimInsertAtFocus: () => focusedSurface.aimInsertAtFocus(),
 		insertCatalogue: getInsertCatalogue,
@@ -1211,9 +1214,10 @@
 		return !!focus && scrollOwner.isInView(selectionState.cellLandingFor(focus).path);
 	}
 
+	// Asks of the leaf the landing placed in: reading mode leaves no selection to read it off.
 	async function navigateCaret(path: number[], offset: number): Promise<boolean> {
-		const outcome = await caretLanding.navigate({ path: docPathFrom(path), offset });
-		return outcome === 'placed' && focusInView();
+		const leaf = await caretLanding.navigate({ path: docPathFrom(path), offset });
+		return !!leaf && scrollOwner.isInView(leaf);
 	}
 
 	/** True only if the selection was placed and its focus block is in view; a programmatic

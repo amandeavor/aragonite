@@ -101,6 +101,7 @@ function landingOver(source: string, over: Partial<CaretLandingDeps> = {}) {
 		getBlockElByPath: () => STAND_IN,
 		getEditorRoot: () => null,
 		scroll: null,
+		isReading: () => false,
 		...over
 	};
 	return {
@@ -147,7 +148,8 @@ describe('landing a caret', () => {
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => null,
 			getEditorRoot: () => null,
-			scroll: null
+			scroll: null,
+			isReading: () => false
 		});
 		expect(await box.landing.land(at([1], 0))).toBe('stale');
 		expect(placements).toEqual([]);
@@ -230,7 +232,8 @@ describe('bringing a landing into view', () => {
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => STAND_IN,
 			getEditorRoot: () => null,
-			scroll: { ...scroll, port: () => port }
+			scroll: { ...scroll, port: () => port },
+			isReading: () => false
 		});
 		await landing.land(at([0], 0));
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['invariant:landing-focus-scrolls-nothing']);
@@ -269,7 +272,8 @@ describe('the other entry points', () => {
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => null,
 			getEditorRoot: () => null,
-			scroll: null
+			scroll: null,
+			isReading: () => false
 		});
 
 		expect(await box.landing.restore({ gapCaret: { parentPath: [], index: 1 } })).toBe('unplaced');
@@ -331,5 +335,71 @@ describe('the other entry points', () => {
 		const { landing, placements } = landingOver('- a\n');
 		expect(await landing.mount([0, 0])).not.toBeNull();
 		expect(placements).toEqual([]);
+	});
+});
+
+describe('a landing in reading mode', () => {
+	/** A mounted paragraph `See [^a] here.` whose focus puts a caret down, as a block's does. */
+	function readingBlock(clear?: () => void) {
+		const el = document.createElement('div');
+		el.tabIndex = 0;
+		el.innerHTML =
+			'See <span data-inline-widget data-source-start="4" data-source-end="8"><sup tabindex="0">1</sup></span> here.';
+		document.body.replaceChildren(el);
+		const doc = parse('See [^a] here.\n');
+		const block = stubBlockComponent({
+			focus: () => {
+				el.focus();
+				getSelection()!.collapse(el.lastChild!, 1);
+			}
+		});
+		const landing = createCaretLanding({
+			caretWriter: clear ? { ...testCaretWriter, clear } : testCaretWriter,
+			getDoc: () => doc,
+			root: {
+				count: () => 1,
+				refs: refSlotsOver([block]),
+				windowing: { revealChild: async () => {}, isInWindow: () => true }
+			},
+			selectionState: createSelectionState({ getDoc: () => doc }),
+			caretMemory: createCaretMemory(),
+			getBlockElByPath: () => el,
+			getEditorRoot: () => document.body,
+			scroll: null,
+			isReading: () => true
+		});
+		return { landing, el, sup: el.querySelector('sup')! };
+	}
+
+	// Miss-analysis: every landing test ran outside reading mode, so a caret left behind there,
+	// which Firefox starts Tab from, had nothing to fail.
+	it('focuses the widget ending at the landing point, else the block, and leaves no caret', async () => {
+		const { landing, el, sup } = readingBlock();
+		expect(await landing.navigate(at([0], 8))).toEqual([0]);
+		expect(document.activeElement).toBe(sup);
+		expect(getSelection()!.rangeCount).toBe(0);
+
+		await landing.navigate(at([0], 4));
+		expect(document.activeElement).toBe(el);
+		expect(getSelection()!.rangeCount).toBe(0);
+	});
+
+	it('a caret still there after the landing fails the reading-landing check', async () => {
+		const { landing } = readingBlock(() => {});
+		await landing.navigate(at([0], 0));
+		expect(takeDevWarns().map((w) => w.tag)).toEqual(['invariant:reading-landing-leaves-no-caret']);
+	});
+
+	// Miss-analysis: the check read the whole editor, so a click elsewhere during the jump's
+	// scroll failed a landing that left nothing behind, and no test placed a caret outside the leaf.
+	it('a caret a click put in another block during the scroll passes the check', async () => {
+		const other = document.createElement('p');
+		other.textContent = 'Elsewhere.';
+		const { landing } = readingBlock(() => {
+			document.body.append(other);
+			getSelection()!.collapse(other.firstChild!, 2);
+		});
+		await landing.navigate(at([0], 0));
+		expect(takeDevWarns()).toEqual([]);
 	});
 });

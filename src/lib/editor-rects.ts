@@ -28,8 +28,8 @@ export interface EditorRects {
 		path: readonly number[],
 		opts?: { block?: 'nearest' | 'center'; hold?: boolean }
 	): Promise<boolean>;
-	/** Mount `path`, scroll there and land the caret at `offset` (default 0) as an edit does, so the
-	 *  next key addresses the document; a closed `<details>` on the way opens. True once in view. */
+	/** Mount `path` (opening a closed `<details>`), scroll there and land the caret at `offset`, default
+	 *  0, as an edit does. Reading mode moves focus there instead. True once in view. */
 	navigateTo(path: readonly number[], offset?: number): Promise<boolean>;
 }
 

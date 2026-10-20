@@ -220,7 +220,8 @@ export function createHeadlessActions(
 			},
 			getBlockElByPath: (path) => deps.getBlockElByPath(path),
 			getEditorRoot: () => null,
-			scroll: null
+			scroll: null,
+			isReading: () => deps.reading.mode() === 'reading'
 		}),
 		() => doc,
 		landings

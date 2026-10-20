@@ -72,6 +72,7 @@ function harness(
 		blockEdit,
 		placeCaretAtPoint,
 		rangeAtContextPress: () => opts.rangeAtPress ?? !(window.getSelection()?.isCollapsed ?? true),
+		holdsWidget: () => false,
 		insertMarkdown,
 		aimInsertAtFocus,
 		insertCatalogue: () => insertCatalogue(everyInstalledPlugin),

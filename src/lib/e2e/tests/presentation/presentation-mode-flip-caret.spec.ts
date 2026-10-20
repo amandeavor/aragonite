@@ -53,6 +53,21 @@ test.describe('mode flips: the caret comes back', () => {
 		await ep.bridge.waitForSourceContains('boXld');
 	});
 
+	test('a click while reading moves the caret the flip out puts back', async ({ page }) => {
+		const ep = await enterPresentationMode(page, 'source', DOC);
+		await clickWordSettled(ep, page, 'bold');
+		await landAt(ep, page, SEAT);
+		await clickModeToggle(page, 'reading');
+		await ep.waitForRenderFlush();
+
+		await clickWordSettled(ep, page, 'Title');
+		await clickModeToggle(page, 'reading');
+		await expect.poll(async () => (await focusPoint(ep))?.path).toEqual([0]);
+
+		await page.keyboard.type('X');
+		await expect.poll(() => ep.bridge.getSource()).toMatch(/^# T\w*X\w*\n/);
+	});
+
 	// A cell keys its DOM on the mode, so a mode change rebuilds every mounted cell and runs the
 	// prose capture and restore for a caret three levels deep with no `data-block-path` of its own.
 	test('a caret inside a table cell survives the flip and takes the next byte there', async ({
