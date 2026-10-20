@@ -187,7 +187,8 @@ async function landOnB4(f: Fixture, as: 'edit' | 'navigation'): Promise<void> {
 			return el;
 		},
 		getEditorRoot: () => null,
-		scroll: f.owner
+		scroll: f.owner,
+		isReading: () => false
 	});
 	const pos = { path: docPathFrom([4]), offset: 0 };
 	await (as === 'edit' ? landing.land(pos) : landing.navigate(pos));
@@ -574,7 +575,8 @@ describe('scroll owner: the edges', () => {
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => el,
 			getEditorRoot: () => null,
-			scroll: f.owner
+			scroll: f.owner,
+			isReading: () => false
 		});
 		measureB2Taller(f);
 		landing.followArrival([5]);

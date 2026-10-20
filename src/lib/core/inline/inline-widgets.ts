@@ -46,6 +46,18 @@ export function widgetElByStart(el: HTMLElement, start: number): HTMLElement | n
 	return el.querySelector<HTMLElement>(`[data-inline-widget][data-source-start="${start}"]`);
 }
 
+/** The tab stop of the widget in `el` whose source ends at `offset`: what a reading-mode landing
+ *  at `offset` focuses, so a jump back to a reference lands on the reference. */
+export function widgetTabStopEndingAt(el: HTMLElement, offset: number): HTMLElement | null {
+	const widget = el.querySelector(`[data-inline-widget][data-source-end="${offset}"]`);
+	if (!widget) return null;
+	return (
+		[widget, ...widget.querySelectorAll('*')].find(
+			(node): node is HTMLElement => node instanceof HTMLElement && node.tabIndex >= 0
+		) ?? null
+	);
+}
+
 /**
  * Props an inline widget's view gets. The editor mounts a new view when the widget's source
  * changes, so `source` never shifts under one, and sends `update` with the new `inline` when typing

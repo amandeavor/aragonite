@@ -14,6 +14,8 @@ import type { ScrollOwner } from '../windowing/scroll-owner';
 import type { BlockElLookup } from '../caret/block-el-lookup';
 import { isDevChecks } from '../env';
 import { checkLandingFocusScrollsNothing } from '../invariants/landing-focus-scroll';
+import { checkReadingLandingLeavesNoCaret } from '../invariants/reading-landing-caret';
+import { widgetTabStopEndingAt } from '../core/inline/inline-widgets';
 import { componentAt, descendTo, type ChildList } from '../block-lists/child-list';
 import { landsRestoredCaret } from './restored-caret';
 import { caretTargetFor } from './caret-target';
@@ -52,9 +54,9 @@ export type LandingOutcome = 'placed' | 'unresolvable' | 'stale';
 export interface CaretLanding {
 	/** Put the caret at `pos` as an arrival, through the block's own `focus`. */
 	land(pos: CaretPosition, opts?: LandOptions): Promise<LandingOutcome>;
-	/** Land as a navigation: open a collapsed body on the way, and hold the block where it landed
-	 *  until the user scrolls, so a late image decode can't move it. */
-	navigate(pos: CaretPosition): Promise<LandingOutcome>;
+	/** Land as a navigation, opening a collapsed body and holding the block until the user scrolls
+	 *  (a late image decode can't move it). Resolves the leaf it placed in, or null. */
+	navigate(pos: CaretPosition): Promise<readonly number[] | null>;
 	/** Put a stored selection back at the bytes it names, or a gap caret at its boundary. */
 	restore(
 		selection: EditorSelection | GapCaretSelection,
@@ -96,6 +98,8 @@ export interface CaretLandingDeps {
 	getEditorRoot(): HTMLElement | null;
 	/** Null where nothing renders (a headless harness), so a landing only mounts. */
 	scroll: Pick<ScrollOwner, 'shows' | 'showRect' | 'place' | 'port'> | null;
+	/** True in reading mode, where a landing moves focus and puts down no caret. */
+	isReading(): boolean;
 }
 
 /** What a caret in `el` needs on screen: its line, when the selection's focus sits in `el` and
@@ -219,29 +223,59 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 		deps.scroll?.showRect(() => (cellEl ? cellEl.getBoundingClientRect() : caretBox(leafEl)));
 	}
 
+	/** Reading mode has no caret: the block's own `focus` picks the element, focus moves on to a
+	 *  widget ending at the landing point, and the caret goes, so every engine starts Tab there. */
+	function focusWithoutCaret(
+		component: BlockComponent,
+		leafPath: readonly number[],
+		offset: number
+	) {
+		deps.selectionState.batch(() => {
+			component.focus(offset);
+			const el = deps.getBlockElByPath([...leafPath]);
+			(el && widgetTabStopEndingAt(el, offset))?.focus({ preventScroll: true });
+			deps.caretWriter.clear();
+		});
+	}
+
 	async function landAt(
 		pos: CaretPosition,
 		stamp: number,
 		reveal: Reveal,
 		open: { openCollapsed?: boolean }
-	): Promise<LandingOutcome> {
+	): Promise<{ outcome: LandingOutcome; leafPath?: readonly number[] }> {
 		const target = caretTargetFor(deps.getDoc(), pos, open);
-		if (!target) return 'unresolvable';
+		if (!target) return { outcome: 'unresolvable' };
 		const component = await descendTo(deps.root, target.leafPath, { ...open, current: at(stamp) });
 		// A descent cut short by a swap reports 'stale', not 'unresolvable'.
-		if (generation !== stamp) return 'stale';
-		if (!component) return 'unresolvable';
+		if (generation !== stamp) return { outcome: 'stale' };
+		if (!component) return { outcome: 'unresolvable' };
 		deps.caretMemory.forget();
-		placeWithoutScrolling(() => component.focus(target.offset));
+		const reading = deps.isReading();
+		placeWithoutScrolling(() =>
+			reading
+				? focusWithoutCaret(component, target.leafPath, target.offset)
+				: component.focus(target.offset)
+		);
 		// A split's second half starts plain, whatever format the text after the cut carries.
 		if (pos.fresh) deps.caretMemory.noteOutside();
 		await bringIntoView(target.leafPath, reveal);
-		return 'placed';
+		if (reading) {
+			assertInvariant('reading-landing-leaves-no-caret', () =>
+				checkReadingLandingLeavesNoCaret(
+					deps.getEditorRoot(),
+					readNativeSelection()?.focus.node ?? null
+				)
+			);
+		}
+		return { outcome: 'placed', leafPath: target.leafPath };
 	}
 
 	return {
-		land: (pos, opts = {}) => landAt(pos, opts.stamp ?? generation, opts.reveal ?? 'into-view', {}),
-		navigate: (pos) => landAt(pos, generation, 'held', { openCollapsed: true }),
+		land: async (pos, opts = {}) =>
+			(await landAt(pos, opts.stamp ?? generation, opts.reveal ?? 'into-view', {})).outcome,
+		navigate: async (pos) =>
+			(await landAt(pos, generation, 'held', { openCollapsed: true })).leafPath ?? null,
 
 		async restore(selection, opts = {}) {
 			const reveal = opts.reveal ?? 'into-view';

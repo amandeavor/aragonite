@@ -92,44 +92,21 @@ test.describe('toc outline: click-to-navigate', () => {
 		await expect.poll(() => blockView(page, [target])).toEqual({ mounted: true, inView: true });
 	});
 
-	test('navigates in reading mode, placing the selection with no editable target', async ({
+	// Entries are real `<button>`s: tab-focusable, activating on Enter/Space. Reading mode's
+	// keyboard jump is in `reading-jump-focus.spec.ts`.
+	test('keyboard: focusing an entry and pressing Enter scrolls its heading into view', async ({
 		page
 	}) => {
-		await editor.setPresentationMode('reading');
 		await expect(page.locator(`[data-block-path='[${target}]']`)).toHaveCount(0);
 
-		await editor.entry('Deep Target Heading').click();
+		const entry = editor.entry('Deep Target Heading');
+		await entry.focus();
+		await expect(entry).toBeFocused();
+		await page.keyboard.press('Enter');
 		await editor.waitForRenderFlush();
 
 		await expect.poll(() => blockView(page, [target])).toEqual({ mounted: true, inView: true });
-		// Reading mode has no active editable element, so the browser's range shows where the selection
-		// lands; offset 4 is past the hidden `### `, since every placement clamps (G4.36).
-		expect(await editor.bridge.getSelection()).toEqual({
-			anchor: { path: [target], offset: 4 },
-			focus: { path: [target], offset: 4 }
-		});
 	});
-
-	// Entries are real `<button>`s: tab-focusable, activating on Enter/Space. Keyboard
-	// navigation is view-only, so it must work in reading mode exactly as in source.
-	for (const mode of ['source', 'reading'] as const) {
-		test(`keyboard: focusing an entry and pressing Enter scrolls its heading into view (${mode} mode)`, async ({
-			page
-		}) => {
-			if (mode === 'reading') {
-				await editor.setPresentationMode('reading');
-			}
-			await expect(page.locator(`[data-block-path='[${target}]']`)).toHaveCount(0);
-
-			const entry = editor.entry('Deep Target Heading');
-			await entry.focus();
-			await expect(entry).toBeFocused();
-			await page.keyboard.press('Enter');
-			await editor.waitForRenderFlush();
-
-			await expect.poll(() => blockView(page, [target])).toEqual({ mounted: true, inView: true });
-		});
-	}
 
 	test('rapid clicks on two entries settle on the last target without stranding', async ({
 		page
