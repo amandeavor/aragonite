@@ -116,8 +116,12 @@ async function handleCrossBlockActive(
 			return true;
 		case 'lineEdge': {
 			const edge = caretEdgeKey(e);
-			const focusEl = ctx.selection.focus && ctx.getBlockElByPath(ctx.selection.focus.path);
-			if (edge && focusEl) extendToLineEdge(ctx, focusEl, edge.side);
+			const focus = ctx.selection.focus;
+			if (!edge || !focus) return true;
+			// The end can have scrolled out of the rendered window since the key that last moved it.
+			await ctx.caretLanding.mount(focus.path);
+			const focusEl = ctx.getBlockElByPath(focus.path);
+			if (focusEl) extendToLineEdge(ctx, focusEl, edge.side);
 			return true;
 		}
 		case 'collapse': {

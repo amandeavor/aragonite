@@ -15,6 +15,7 @@ When a key moves the end of a selection you're growing, the page scrolls just fa
 
 - Two hundred paragraphs, Mod+Shift+End from the first: the last paragraph, never rendered yet, mounts and comes on screen, and a plain ArrowLeft still collapses the range
 - Twenty paragraphs and then a quote holding forty paragraphs, Shift+ArrowDown 30 times from the sixth paragraph's end: the moving end goes into the quote's sixteenth paragraph, and the page follows it
+- Two hundred paragraphs, Mod+Shift+End from the first, then a scroll back to the top, which takes the last paragraph out of the rendered window: Shift+Home still moves the end to the start of its line and brings it back on screen
 - A range from the first paragraph down onto a long paragraph that wraps, then Shift+End: the moving end goes to the end of the first visual line, not the paragraph's end
 - A one-column table of sixty rows, the caret in the row sitting on the bottom edge: Shift+ArrowDown selects down to the row below, which comes on screen
 - The same table, ten more Shift+ArrowDown: the selection grows a row at a time and the page follows
@@ -31,3 +32,5 @@ When a key moves the end of a selection you're growing, the page scrolls just fa
 ## Miss-analysis
 
 The only reveal rows were the windowed-out document edge and a Shift+Arrow past an edge, both of which leave the range across blocks. No row folded a range back into one block, where the range state empties and every reveal read that state. The fold also wrote its range forward, losing which end was moving, and no row pressed a key after a fold. No row grew a range from prose into a table, where every press re-landed on the table's first cell.
+
+Shift+Home and Shift+End were only ever pressed with the moving end on screen, so no row pressed one after the end's block had left the rendered window, where the key found nothing to measure and did nothing.

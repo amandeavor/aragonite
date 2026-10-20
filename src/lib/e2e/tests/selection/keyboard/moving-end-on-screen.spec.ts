@@ -168,6 +168,20 @@ test.describe('a range across blocks', () => {
 		expect(await ep.bridge.isCrossBlockSelection()).toBe(false);
 	});
 
+	test('Shift+Home on an end scrolled out of the rendered window still moves it', async ({
+		page
+	}) => {
+		const ep = await open(page, paragraphs(200));
+		await ep.focusBlock(0, 3);
+		await press(ep, page, extendKey('docEnd'));
+		await endOnScreen(page);
+		await ep.scrollEditorTo(0);
+		await expect(page.locator('[data-block-path="199"]')).toHaveCount(0);
+		await press(ep, page, extendKey('lineStart'));
+		const end = await endOnScreen(page);
+		expect(end.focus).toEqual({ path: [199], offset: 0 });
+	});
+
 	test('Shift+End and Shift+Home move the end along its line, on screen', async ({ page }) => {
 		const ep = await open(page, SIXTY);
 		await ep.focusBlockEnd(5);
