@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { waitForFirstImageLoaded } from './image/helpers';
 
 // How a link invites a click, and how it lays out: both need real layout and CSS, and jsdom has
 // no computed cursor, no `:has()` and no element boxes.
@@ -109,11 +110,8 @@ test.describe('link styling + affordance', () => {
 		await expect(widget).toBeVisible();
 		const img = widget.locator('img');
 
-		// Measuring before the bitmap decodes would compare two ~0px boxes and pass
-		// vacuously; wait for a real intrinsic size first.
-		await expect
-			.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
-			.toBeGreaterThan(0);
+		// Measuring before the bitmap decodes would compare two ~0px boxes and pass vacuously.
+		await waitForFirstImageLoaded(page);
 
 		const anchor = page.locator('a.md-link-content');
 		await expect(anchor).toHaveCount(1);
