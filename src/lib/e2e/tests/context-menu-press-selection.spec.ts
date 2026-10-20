@@ -148,6 +148,9 @@ const inPlugins = (seed: string) => async (page: Page) => {
 	return editor;
 };
 
+/** The overlay a selected image draws, the one sign the editor holds it. */
+const imageHeld = (page: Page) => page.locator('[data-image-overlay]');
+
 const widgetIn = (path: string) => (page: Page) =>
 	page.locator(`[data-block-path='${path}'] [data-inline-widget]`).first();
 
@@ -180,7 +183,10 @@ const TARGETS: Target[] = [
 	element('an inline image', withImage, widgetIn('[6]'), 'Cut'),
 	{
 		...element('a selected image', withImage, widgetIn('[6]'), 'Cut'),
-		prepare: (page) => widgetIn('[6]')(page).click()
+		prepare: async (page) => {
+			await page.locator("[data-block-path='[6]'] [data-image-widget]").click();
+			await expect(imageHeld(page)).toBeVisible();
+		}
 	},
 	element(
 		'a tag',
@@ -210,6 +216,7 @@ const TARGETS: Target[] = [
 interface MenuRead {
 	rows: { label: string; enabled: boolean }[];
 	selected: string;
+	held: boolean;
 }
 
 async function readMenu(page: Page): Promise<MenuRead> {
@@ -221,7 +228,11 @@ async function readMenu(page: Page): Promise<MenuRead> {
 			enabled: !(el as HTMLButtonElement).disabled && el.getAttribute('aria-disabled') !== 'true'
 		}))
 	);
-	return { rows, selected: await page.evaluate(() => window.getSelection()!.toString()) };
+	return {
+		rows,
+		selected: await page.evaluate(() => window.getSelection()!.toString()),
+		held: await imageHeld(page).isVisible()
+	};
 }
 
 /** Opened with nothing focused, as a Safari press on content the caret can't enter leaves it. */
@@ -277,7 +288,7 @@ test.describe("a right-click opens the same menu after Safari's own select", () 
 			if (target.keeps) {
 				expect(safari.rows.find((r) => r.label === 'Copy')?.enabled).toBe(true);
 			} else {
-				expect(safari).toEqual({ rows: real.rows, selected: '' });
+				expect(safari).toEqual({ rows: real.rows, selected: '', held: real.held });
 			}
 		});
 	}
