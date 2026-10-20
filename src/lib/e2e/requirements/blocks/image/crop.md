@@ -27,9 +27,11 @@ this editor's own addition to the Obsidian-style size hint (`image-dimensions.ts
   (unit-covered in `image-crop.test.ts`)
 - the tick or Enter writes the crop; Escape, the cross, or a click away abandons it and
   restores the image untouched, with no source change and no undo entry
-- any other key during a crop (a letter, Backspace, Delete, an arrow, Mod+X) changes nothing and
-  leaves the crop open, and Enter still applies it after
-- a key aimed at one of the host's own controls during a crop still reaches it
+- a crop is a mode, like an open dialog: what would write over the image does nothing and leaves
+  the crop open, and Enter still applies it after. That covers a letter, Backspace, Delete, a paste,
+  and the editor's own chords (Shift+Arrow's resize, Mod+X, Mod+Z), read off the editor's keymap
+- everything else works during a crop: Mod+F opens the find bar, the browser's own chords keep
+  their default, and a key aimed at one of the host's own controls still reaches it
 - a committed crop renders as a fixed frame (`md-image-cropped`, `object-fit: cover`) the image
   pans inside; resizing it keeps the frame's shape
 - a crop loaded from bytes survives its own commit byte for byte (the tick over an untouched

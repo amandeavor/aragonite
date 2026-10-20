@@ -138,19 +138,64 @@ test.describe('image crop', () => {
 	});
 
 	// The image sits selected under the crop, where a typed key would replace it.
-	for (const key of ['x', 'Backspace', 'Delete', 'ArrowLeft', 'ControlOrMeta+x']) {
+	const PICTURE = 'one\n\nbefore ![cat|200x200](/test-fixtures/sample.png) after\n';
+
+	async function expectCropUntouched(page: import('@playwright/test').Page, source: string) {
+		await editor.waitForNoSourceMutation();
+		expect(await editor.bridge.getSource()).toBe(source);
+		await expect(page.locator('.md-image-crop-surface')).toBeVisible();
+		await page.keyboard.press('Enter');
+		await editor.bridge.waitForSourceContains('![cat|200x200@50,50]');
+	}
+
+	for (const key of ['x', 'Backspace', 'Delete', 'Shift+ArrowRight', 'ControlOrMeta+x']) {
 		test(`${key} during a crop changes nothing and keeps the crop open`, async ({ page }) => {
-			const loaded = 'one\n\nbefore ![cat|200x200](/test-fixtures/sample.png) after\n';
-			await editor.loadContent(loaded);
+			await editor.loadContent(PICTURE);
 			await selectAndStartCrop(page);
 			await page.keyboard.press(key);
-			await editor.waitForNoSourceMutation();
-			expect(await editor.bridge.getSource()).toBe(loaded);
-			await expect(page.locator('.md-image-crop-surface')).toBeVisible();
-			await page.keyboard.press('Enter');
-			await editor.bridge.waitForSourceContains('![cat|200x200@50,50]');
+			await expectCropUntouched(page, PICTURE);
 		});
 	}
+
+	test('a paste during a crop changes nothing and keeps the crop open', async ({ page }) => {
+		await editor.loadContent(PICTURE);
+		await selectAndStartCrop(page);
+		await editor.seedClipboard('Q');
+		await editor.paste();
+		await expectCropUntouched(page, PICTURE);
+	});
+
+	test('Mod+Z during a crop undoes nothing', async ({ page }) => {
+		await editor.loadContent(PICTURE);
+		await editor.clickBlock(0);
+		await page.keyboard.press('End');
+		await page.keyboard.type('A');
+		const edited = PICTURE.replace(/^one/, 'oneA');
+		await editor.bridge.waitForSourceEquals(edited);
+		await selectAndStartCrop(page);
+		await editor.undo();
+		await expectCropUntouched(page, edited);
+	});
+
+	test('Mod+F during a crop opens the find bar', async ({ page }) => {
+		await editor.loadContent(PICTURE);
+		await selectAndStartCrop(page);
+		await page.keyboard.press('ControlOrMeta+f');
+		await expect(page.locator('.search-input')).toBeFocused();
+	});
+
+	test("the browser's own chords during a crop keep their default", async ({ page }) => {
+		await editor.loadContent(PICTURE);
+		await selectAndStartCrop(page);
+		// Heard last, so it sees what every listener before it did to the key.
+		await page.evaluate(() => {
+			window.addEventListener('keydown', (e) => {
+				if (e.key.toLowerCase() === 'l') (window as any).__lPrevented = e.defaultPrevented;
+			});
+		});
+		await page.keyboard.press('ControlOrMeta+l');
+		expect(await page.evaluate(() => (window as any).__lPrevented)).toBe(false);
+	});
 
 	test("a key aimed at the host's own control during a crop stays the host's", async ({ page }) => {
 		// The anchor route draws a host button outside the editor.

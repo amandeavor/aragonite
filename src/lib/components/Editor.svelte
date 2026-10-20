@@ -1457,6 +1457,7 @@
 		lifetime={lifetimeController.signal}
 		{menuPresence}
 		fieldCaret={imageFieldCaret}
+		editorTakesChord={claimsChord}
 	/>
 	<LinkCardHost
 		card={linkCard}
