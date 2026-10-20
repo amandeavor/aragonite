@@ -59,13 +59,12 @@ export function mountShowcaseBar(
 			'aria-label': 'aragonite on GitHub',
 			title: 'aragonite on GitHub'
 		},
-		'aragonite',
-		icon('github', 14)
+		'aragonite'
 	);
-	const brand = el('div', { class: 'showcase-brand' }, wordmark);
 	if (options.framework) {
-		brand.append(el('span', { class: 'showcase-framework' }, `in ${options.framework}`));
+		wordmark.append(el('span', { class: 'showcase-framework' }, `in ${options.framework}`));
 	}
+	wordmark.append(icon('github', 14));
 
 	// ── Mode switcher: segments when wide, a chip and a list when narrow ──
 	const segments = PRESENTATION_MODES.map((mode) => {
@@ -176,7 +175,9 @@ export function mountShowcaseBar(
 		report.anchor,
 		settings.anchor
 	);
-	header.replaceChildren(el('div', { class: 'showcase-bar' }, brand, modes, modeList.anchor, end));
+	header.replaceChildren(
+		el('div', { class: 'showcase-bar' }, wordmark, modes, modeList.anchor, end)
+	);
 
 	function paint() {
 		for (const segment of segments) {

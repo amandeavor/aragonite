@@ -3,6 +3,8 @@
 // `scripts/adapter-smoke.mjs` builds and runs whatever this lists.
 const REACT = ['page-contract'];
 const VUE = ['page-contract', 'vue'];
+// The example apps also serve the showcase (`showcase.html`); the meta-framework apps do not.
+const SHOWCASE = 'showcase';
 
 export const APPS = {
 	react: {
@@ -10,7 +12,7 @@ export const APPS = {
 		command: 'npm run preview',
 		port: 1489,
 		version: '19.',
-		specs: REACT,
+		specs: [...REACT, SHOWCASE],
 		perPr: true
 	},
 	'react-dev': {
@@ -18,7 +20,7 @@ export const APPS = {
 		command: 'npm run dev',
 		port: 1490,
 		version: '19.',
-		specs: REACT,
+		specs: [...REACT, SHOWCASE],
 		perPr: true
 	},
 	next: {
@@ -34,7 +36,7 @@ export const APPS = {
 		command: 'npm run preview:react18',
 		port: 1492,
 		version: '18.',
-		specs: REACT,
+		specs: [...REACT, SHOWCASE],
 		perPr: false
 	},
 	vue: {
@@ -42,7 +44,7 @@ export const APPS = {
 		command: 'npm run preview',
 		port: 1494,
 		version: '3.',
-		specs: VUE,
+		specs: [...VUE, SHOWCASE],
 		perPr: true
 	},
 	'vue-dev': {
@@ -50,7 +52,7 @@ export const APPS = {
 		command: 'npm run dev',
 		port: 1495,
 		version: '3.',
-		specs: VUE,
+		specs: [...VUE, SHOWCASE],
 		perPr: true
 	},
 	nuxt: {
@@ -66,7 +68,7 @@ export const APPS = {
 		command: 'npm run preview:vue33',
 		port: 1497,
 		version: '3.3.',
-		specs: VUE,
+		specs: [...VUE, SHOWCASE],
 		perPr: false
 	}
 };

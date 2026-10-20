@@ -1,19 +1,20 @@
 <!-- The showcase in Vue: the shell around `examples/showcase/`, which holds the document, the
-     plugins and the controls the Svelte and React showcases share. -->
+     plugins, the controls and the top bar the Svelte and React showcases share. -->
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { Aragonite } from '@voithos-labs/aragonite-vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue';
+import { Aragonite, type AragoniteInstance } from '@voithos-labs/aragonite-vue';
 import SHOWCASE_DOCUMENT from '../../../showcase/showcase-content.md?raw';
+import { INITIAL_STATE, showsSelectionMenu } from '../../../showcase/controls';
 import {
-	HANDLES_GATED_TITLE,
-	INITIAL_STATE,
-	PRESENTATION_MODES,
-	TOGGLES,
-	handlesGated,
-	showsSelectionMenu
-} from '../../../showcase/controls';
+	mountShowcaseBar,
+	type ShowcaseBar,
+	type ShowcaseBarState,
+	type ToggleKey
+} from '../../../showcase/top-bar';
 import { showcasePlugins } from '../../../showcase/plugins';
 import { demoPasteImage, resolveDemoImageUrl } from '../../../showcase/image-store';
+
+const CHANGELOG_URL = 'https://github.com/voithos-labs/aragonite/blob/main/docs/changelog.md';
 
 const source = ref(SHOWCASE_DOCUMENT);
 const theme = ref(INITIAL_STATE.theme);
@@ -22,86 +23,60 @@ const dragHandles = ref(INITIAL_STATE.dragHandles);
 const selectionMenu = ref(INITIAL_STATE.selectionMenu);
 const occurrences = ref(INITIAL_STATE.occurrences);
 const showSource = ref(INITIAL_STATE.showSource);
-const handlesOff = computed(() => handlesGated(presentationMode.value));
+const editor = shallowRef<AragoniteInstance | null>(null);
+const header = shallowRef<HTMLElement | null>(null);
+
+const barState = computed<ShowcaseBarState>(() => ({
+	mode: presentationMode.value,
+	pressed: {
+		theme: theme.value === 'dark',
+		dragHandles: dragHandles.value,
+		selectionMenu: selectionMenu.value,
+		occurrences: occurrences.value,
+		source: showSource.value
+	}
+}));
+
+const flips: Partial<Record<ToggleKey, () => void>> = {
+	theme: () => (theme.value = theme.value === 'dark' ? 'light' : 'dark'),
+	dragHandles: () => (dragHandles.value = !dragHandles.value),
+	selectionMenu: () => (selectionMenu.value = !selectionMenu.value),
+	occurrences: () => (occurrences.value = !occurrences.value),
+	source: () => (showSource.value = !showSource.value)
+};
+
+let bar: ShowcaseBar | null = null;
+onMounted(() => {
+	bar = mountShowcaseBar(
+		header.value!,
+		{
+			framework: 'Vue',
+			changelogHref: CHANGELOG_URL,
+			tools: ['source'],
+			onMode: (mode) => (presentationMode.value = mode),
+			onToggle: (key) => flips[key]?.(),
+			editor: () => editor.value?.handle
+		},
+		barState.value
+	);
+});
+// Read before the mount check, so the watcher tracks the state from its first run.
+watchEffect(() => {
+	const state = barState.value;
+	bar?.update(state);
+});
+onBeforeUnmount(() => bar?.destroy());
 </script>
 
 <template>
 	<div class="showcase aragonite-editor-theme" :data-editor-theme="theme">
-		<header class="showcase-header">
-			<span class="showcase-title">aragonite</span>
-			<span class="showcase-tag">showcase in Vue</span>
-			<button
-				type="button"
-				:class="['showcase-toggle', { active: theme === 'light' }]"
-				:data-testid="TOGGLES.theme.testId"
-				:aria-pressed="theme === 'light'"
-				@click="theme = theme === 'dark' ? 'light' : 'dark'"
-			>
-				{{ TOGGLES.theme.label }}
-			</button>
-			<button
-				type="button"
-				:class="['showcase-toggle', { active: dragHandles }]"
-				:data-testid="TOGGLES.dragHandles.testId"
-				:aria-pressed="dragHandles"
-				:disabled="handlesOff"
-				:title="handlesOff ? HANDLES_GATED_TITLE : undefined"
-				@click="dragHandles = !dragHandles"
-			>
-				{{ TOGGLES.dragHandles.label }}
-			</button>
-			<button
-				type="button"
-				:class="['showcase-toggle', { active: selectionMenu }]"
-				:data-testid="TOGGLES.selectionMenu.testId"
-				:aria-pressed="selectionMenu"
-				:title="TOGGLES.selectionMenu.title"
-				@click="selectionMenu = !selectionMenu"
-			>
-				{{ TOGGLES.selectionMenu.label }}
-			</button>
-			<button
-				type="button"
-				:class="['showcase-toggle', { active: occurrences }]"
-				:data-testid="TOGGLES.occurrences.testId"
-				:aria-pressed="occurrences"
-				:title="TOGGLES.occurrences.title"
-				@click="occurrences = !occurrences"
-			>
-				{{ TOGGLES.occurrences.label }}
-			</button>
-			<button
-				type="button"
-				:class="['showcase-toggle', { active: showSource }]"
-				:data-testid="TOGGLES.source.testId"
-				:aria-pressed="showSource"
-				:title="TOGGLES.source.title"
-				@click="showSource = !showSource"
-			>
-				{{ TOGGLES.source.label }}
-			</button>
-			<span class="showcase-hint">Mod+F to search</span>
-			<div class="showcase-modes" role="group" aria-label="Presentation mode">
-				<button
-					v-for="mode in PRESENTATION_MODES"
-					:key="mode"
-					type="button"
-					:class="['showcase-mode', { active: presentationMode === mode }]"
-					:data-mode="mode"
-					@click="presentationMode = mode"
-				>
-					{{ mode }}
-				</button>
-			</div>
-			<a class="showcase-link" href="https://github.com/voithos-labs/aragonite/tree/main/docs"
-				>docs</a
-			>
-		</header>
+		<header ref="header" class="showcase-header"></header>
 		<div class="showcase-body">
 			<!-- The plugin set is read at mount, so the occurrences toggle remounts the editor; the
 			     bound document carries across. -->
 			<Aragonite
 				:key="String(occurrences)"
+				ref="editor"
 				v-model="source"
 				class="showcase-editor"
 				:plugins="showcasePlugins(occurrences)"

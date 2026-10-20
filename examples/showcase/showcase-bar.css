@@ -30,16 +30,9 @@
 	box-sizing: border-box;
 }
 
-.showcase-brand {
-	justify-self: start;
-	display: flex;
-	align-items: baseline;
-	gap: 8px;
-	min-width: 0;
-}
-
 /* The wordmark is the repository link: a soft fill and the GitHub mark show on hover or focus. */
 .showcase-wordmark {
+	justify-self: start;
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -73,6 +66,9 @@
 }
 
 .showcase-framework {
+	font-size: 13px;
+	font-weight: 400;
+	letter-spacing: 0;
 	color: var(--color-ui-muted);
 	white-space: nowrap;
 }

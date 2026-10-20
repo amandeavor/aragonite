@@ -46,7 +46,7 @@ export const TOGGLES = {
 	source: {
 		testId: 'source-toggle',
 		label: 'show source',
-		title: 'The Markdown the editor holds, beside it'
+		title: 'The Markdown the editor holds'
 	}
 } as const satisfies Record<string, ShowcaseToggle>;
 
