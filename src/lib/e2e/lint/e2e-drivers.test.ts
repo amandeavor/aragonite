@@ -270,13 +270,14 @@ describeManifests(
 			]
 		},
 		{
-			id: 'G4.232 only the typing-batch helper and its spec read the real pause',
+			id: 'G4.232 only the typing-batch helper and its spec reach the real pause or the page handle',
 			population: SCANNED_SPECS,
 			matches: new RegExp(
-				`\\b(?:UNDO_${'DEBOUNCE'}_MS|PAST_TYPING_${'PAUSE'}_MS|waitForUndo${'Batch'}Flush|release${'Typing'}Pause)\\b`
+				`\\b(?:UNDO_${'DEBOUNCE'}_MS|PAST_TYPING_${'PAUSE'}_MS|waitForUndo${'Batch'}Flush|release${'Typing'}Pause|__typing${'Batches'})\\b`
 			),
 			declared: {
-				[TYPING_BATCH_HELPER]: 'releaseTypingPause, which hands the batch back to the real timer',
+				[TYPING_BATCH_HELPER]:
+					'the page handle, and releaseTypingPause, which hands the batch back to the real timer',
 				[TYPING_PAUSE_SPEC]: 'the one row that runs the real pause'
 			},
 			reason: `split undo steps with endTypingBatch (${TYPING_BATCH_HELPER}); the real pause runs only in ${TYPING_PAUSE_SPEC}`,
@@ -284,7 +285,8 @@ describeManifests(
 				`await editor.waitForUndo${'Batch'}Flush();`,
 				`await page.clock.runFor(PAST_TYPING_${'PAUSE'}_MS);`,
 				`import { UNDO_${'DEBOUNCE'}_MS } from '../editor-actions/commit/text-batch';`,
-				`await release${'Typing'}Pause(page);`
+				`await release${'Typing'}Pause(page);`,
+				`await page.evaluate(() => (window as any).__typing${'Batches'}.release());`
 			],
 			misses: ['await editor.endTypingBatch();', 'await page.clock.runFor(OCCURRENCE_PAUSE_MS);']
 		},

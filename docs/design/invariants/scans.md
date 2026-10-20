@@ -1320,5 +1320,5 @@ under `components/` or `plugins/` that reads the chord or calls the history itse
 runner, and Firefox's driver can leave longer than that between two keys, so every e2e navigation
 holds it (`e2e/goto-ready.ts`, through `e2e/typing-batch.ts`), and a spec ends a batch with `endTypingBatch`.
 A `waitForTimeout` within three lines of an undo, or on a line naming undo grouping, fails, and so
-does a read of the real pause outside `e2e/typing-batch.ts` and `tests/undo-typing-pause.spec.ts`.
+does a reach for the real pause or the page handle outside `e2e/typing-batch.ts` and `tests/undo-typing-pause.spec.ts`.
 `e2e/lint/e2e-drivers.test.ts`.
