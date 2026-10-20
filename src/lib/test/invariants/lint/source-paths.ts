@@ -81,6 +81,7 @@ export const SOURCE = {
 	nativeBridge: 'src/lib/selection/native-bridge.ts',
 	rangeDelete: 'src/lib/selection/range-delete.ts',
 	crossBlockKeydown: 'src/lib/selection/cross-block/keydown.ts',
+	keyboardExtend: 'src/lib/selection/keyboard-extend.ts',
 	pointerPreamble: 'src/lib/selection/cross-block/pointer.ts',
 	rangeReplace: 'src/lib/selection/cross-block/range-replace.ts',
 
@@ -231,6 +232,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	nativeBridge: 'export function readNativeCaretInBlock',
 	rangeDelete: 'export interface TableRowSplice',
 	crossBlockKeydown: 'export interface CrossBlockKeydown',
+	keyboardExtend: 'export interface KeyboardExtendContext',
 	pointerPreamble: 'export interface CrossBlockPointer',
 	rangeReplace: 'export type RangeInsertion',
 

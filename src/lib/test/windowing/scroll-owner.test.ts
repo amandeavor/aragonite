@@ -15,8 +15,7 @@ import type { EditorDoc, EditorServices } from '../../editor-keys';
 import type { ScrollOwner } from '../../windowing/scroll-owner';
 import { refSlotsOver } from '../../block-lists/child-refs';
 import { createCaretLanding } from '../../selection/caret-landing';
-import { scrollFocusBlockIntoView } from '../../selection/keyboard-extend';
-import { createSelectionState, type SelectionState } from '../../selection/selection-state.svelte';
+import { createSelectionState } from '../../selection/selection-state.svelte';
 import { stubBlockComponent } from '../../testing/headless-actions';
 import {
 	heightsOracle,
@@ -150,9 +149,6 @@ function growHeader(f: Fixture): void {
 	FakeResizeObserver.last!.grow(40 + GROWTH);
 	uninstall();
 }
-
-/** A cross-block range whose moving end sits at the start of `path`. */
-const focusOn = (path: number[]) => ({ focus: { path, offset: 0 } }) as unknown as SelectionState;
 
 function scrollToB4(f: Fixture): Promise<boolean> {
 	const rects = createEditorRects({
@@ -328,19 +324,6 @@ const ROWS: Record<keyof ScrollWrites, Row[]> = {
 				// The newer placement takes the slot and writes.
 				'a held placement is live': placedOnB4(START + GROWTH),
 				free: placedOnB4(START + GROWTH)
-			}
-		},
-		{
-			// Not awaited, as the key handler doesn't: b5 measures while the placement runs.
-			name: 'a keyboard extension reaching b4, a block below it measuring',
-			run: (f) => {
-				scrollFocusBlockIntoView(focusOn([4]), f.owner);
-				measureTaller(f, 5);
-			},
-			expect: {
-				'host anchoring holds': placedOnB4(START),
-				'a held placement is live': placedOnB4(START),
-				free: placedOnB4(START)
 			}
 		},
 		{

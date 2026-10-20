@@ -22,6 +22,7 @@ export function extendCtx(selection: SelectionState, doc: Document): KeyboardExt
 		selection,
 		caretWriter: testCaretWriter,
 		getDoc: () => doc,
-		reading: { grammar: defaultGrammarView }
+		reading: { grammar: defaultGrammarView },
+		caretLanding: { restore: async () => 'applied', showSelectionEnd: async () => {} }
 	};
 }

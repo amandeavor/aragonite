@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // The caret landing on its own: resolve, mount, the tree-swap check, the placement, and the one
 // scroll it may write. Headless blocks, with the scroll as a recording fake.
 import { describe, it, expect } from 'vitest';
@@ -18,6 +19,7 @@ import {
 } from '../../selection/caret-landing';
 import { createSelectionState } from '../../selection/selection-state.svelte';
 import { stubBlockComponent } from '../../testing/headless-actions';
+import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { stubScrollport } from '../harness/stub-scrollport';
 import { takeDevWarns } from '../support/warn-gate';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
@@ -101,7 +103,13 @@ function landingOver(source: string, over: Partial<CaretLandingDeps> = {}) {
 		scroll: null,
 		...over
 	};
-	return { landing: createCaretLanding(deps), placements, caretMemory, doc };
+	return {
+		landing: createCaretLanding(deps),
+		placements,
+		caretMemory,
+		doc,
+		selectionState: deps.selectionState
+	};
 }
 
 const at = (path: number[], offset: number) => ({ path: docPathFrom(path), offset });
@@ -266,6 +274,37 @@ describe('the other entry points', () => {
 
 		expect(await box.landing.restore({ gapCaret: { parentPath: [], index: 1 } })).toBe('unplaced');
 		expect(selectionState.gapCaret).toBeNull();
+	});
+
+	// Parking moves focus to the end's block, and a rule's own keys would then win over the range's.
+	it('showing a range end mounts it and shows it, the caret left where the range began', async () => {
+		installEditorDomStubsForTests();
+		const { scroll, calls } = recordingScroll(false);
+		const { landing, placements, selectionState } = landingOver('a\n\nbc\n\n---\n', {
+			scroll,
+			// A real element, since the end is measured at its raw offset inside the block.
+			getBlockElByPath: () => document.createElement('div')
+		});
+		for (const focus of [
+			{ path: [1], offset: 2 },
+			{ path: [2], offset: 3 }
+		]) {
+			selectionState.enterCrossBlock({ path: [0], offset: 1 }, focus);
+			await landing.showSelectionEnd();
+		}
+		expect(placements).toEqual([]);
+		expect(selectionState.isCrossBlock).toBe(true);
+		expect(calls).toEqual(['showRect', 'showRect']);
+	});
+
+	// Miss-analysis: GH #111; the suite pinned the text branch's offset, never the cell branch's.
+	it('a range end on a cell parks at the cell leaf’s start, which the cell clamps', async () => {
+		const { landing, placements, selectionState } = landingOver(
+			'alpha\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n'
+		);
+		selectionState.enterCrossBlock({ path: [0], offset: 1 }, { path: [1], offset: 0 });
+		await landing.showSelectionEnd();
+		expect(placements).toEqual([{ path: [1, 0, 0], offset: CURSOR_START, parked: true }]);
 	});
 
 	it('mount hands back the component without placing a caret', async () => {

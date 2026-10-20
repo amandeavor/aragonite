@@ -6,7 +6,7 @@
 
 import { tick } from 'svelte';
 import { assertInvariant } from '../assert';
-import type { BlockComponent } from '../block-component';
+import { CURSOR_START, type BlockComponent } from '../block-component';
 import type { DocumentView } from '../core/node-views';
 import type { CaretMemory } from '../caret/caret-memory';
 import { docPathFrom } from '../caret/coordinate-spaces';
@@ -19,7 +19,7 @@ import { landsRestoredCaret } from './restored-caret';
 import { caretTargetFor } from './caret-target';
 import { applySelectionToDom, readNativeSelection } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';
-import { caretRectAt } from '../caret/visual-lines';
+import { caretRectAt, caretRectAtRaw } from '../caret/visual-lines';
 import { findBlockPathForElement, findCellPathForElement } from './path-lookup';
 import type { CaretPosition, EditorSelection, SelectionPoint } from './primitives';
 import {
@@ -71,6 +71,9 @@ export interface CaretLanding {
 	/** A gap caret was just placed: once it renders, the page scrolls the least distance that
 	 *  shows it. */
 	showGap(): Promise<void>;
+	/** A key just moved the selection's moving end: its block mounts (a cell takes the caret) and
+	 *  the page scrolls the least distance that shows the end. */
+	showSelectionEnd(): Promise<void>;
 	/** Bumped by every undo, redo, document swap and the unmount: a landing that waited across one
 	 *  is stale. */
 	generation(): number;
@@ -121,8 +124,13 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 		return placed;
 	}
 
-	/** The only place a landing writes a scroll position. */
-	async function bringIntoView(leafPath: readonly number[], reveal: Reveal): Promise<void> {
+	/** The only place a landing writes a scroll position. `caret` measures what must show in the
+	 *  block: the browser's caret, unless the caller says otherwise. */
+	async function bringIntoView(
+		leafPath: readonly number[],
+		reveal: Reveal,
+		caret: (el: HTMLElement) => DOMRectReadOnly = caretBox
+	): Promise<void> {
 		const scroll = deps.scroll;
 		if (reveal === 'mount' || !scroll) return;
 		const el = deps.getBlockElByPath([...leafPath]);
@@ -132,11 +140,11 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 			return;
 		}
 		scroll.showRect(() => {
-			const caret = caretBox(el);
-			if (scroll.shows(caret)) return null;
+			const line = caret(el);
+			if (scroll.shows(line)) return null;
 			// A block that fits shows whole, as it always has; a taller one shows the caret's line.
 			const box = el.getBoundingClientRect();
-			return box.height <= (scroll.port()?.viewportHeight() ?? 0) ? box : caret;
+			return box.height <= (scroll.port()?.viewportHeight() ?? 0) ? box : line;
 		});
 	}
 
@@ -148,6 +156,46 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 		if (proxy.parentElement?.dataset.gapCaret === undefined) return;
 		if (!deps.getEditorRoot()?.contains(proxy)) return;
 		deps.scroll?.showRect(() => proxy.getBoundingClientRect());
+	}
+
+	async function park(pos: CaretPosition): Promise<boolean> {
+		const stamp = generation;
+		const target = caretTargetFor(deps.getDoc(), pos);
+		if (!target) return false;
+		const component = await descendTo(deps.root, target.leafPath, { current: at(stamp) });
+		if (generation !== stamp || !component?.parkCaret) return false;
+		component.parkCaret(target.offset);
+		return true;
+	}
+
+	async function showSelectionEnd(): Promise<void> {
+		const focus = deps.selectionState.focus;
+		if (!focus) {
+			const leaf = nativeFocusLeaf();
+			if (leaf) await bringIntoView(leaf, 'into-view');
+			return;
+		}
+		const end = deps.selectionState.cellLandingFor(focus);
+		if (focus.cellCoordinate) {
+			// A cell takes the caret at its start, since ArrowRight at its end reads as leaving the table.
+			await park({ path: docPathFrom(end.path), offset: CURSOR_START });
+		} else {
+			// Only mounted: the caret stays where the range began, whose block serves the range's keys.
+			await descendTo(deps.root, end.path, { current: at(generation) });
+		}
+		await bringIntoView(
+			end.path,
+			'into-view',
+			(el) => caretRectAtRaw(el, end.offset) ?? el.getBoundingClientRect()
+		);
+	}
+
+	/** The leaf holding the browser's selection focus, a table cell's own path in a cell. */
+	function nativeFocusLeaf(): number[] | null {
+		const node = readNativeSelection()?.focus.node;
+		const el = node instanceof Element ? node : (node?.parentElement ?? null);
+		if (!el || !deps.getEditorRoot()?.contains(el)) return null;
+		return findCellPathForElement(el) ?? findBlockPathForElement(el);
 	}
 
 	function showArrival(path: readonly number[]): void {
@@ -240,15 +288,7 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 			return mounted && placed ? 'applied' : 'unplaced';
 		},
 
-		async park(pos) {
-			const stamp = generation;
-			const target = caretTargetFor(deps.getDoc(), pos);
-			if (!target) return false;
-			const component = await descendTo(deps.root, target.leafPath, { current: at(stamp) });
-			if (generation !== stamp || !component?.parkCaret) return false;
-			component.parkCaret(target.offset);
-			return true;
-		},
+		park,
 
 		mount: (path, opts) => descendTo(deps.root, path, { ...opts, current: at(generation) }),
 		followArrival(path) {
@@ -256,6 +296,7 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 			void tick().then(() => showArrival(path));
 		},
 		showGap,
+		showSelectionEnd,
 		generation: () => generation,
 		noteTreeSwap: () => {
 			generation++;

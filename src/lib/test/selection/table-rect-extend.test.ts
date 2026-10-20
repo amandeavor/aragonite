@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { intraTableRectExtension, type ArrowKey } from '../../selection/table-rect-extend';
+import { tableFocusExtension, type ArrowKey } from '../../selection/table-rect-extend';
 import type { DocumentView } from '../../core/node-views';
 import type { SelectionPoint } from '../../selection/primitives';
 
@@ -28,9 +28,9 @@ function tableDoc(cols = 3, rows = 4): DocumentView {
 
 const at = (offset: number): SelectionPoint => ({ path: [0], offset, cellCoordinate: true });
 const extend = (doc: DocumentView, offset: number, key: ArrowKey) =>
-	intraTableRectExtension(doc, at(offset), at(offset), key);
+	tableFocusExtension(doc, at(offset), at(offset), key);
 
-describe('intraTableRectExtension', () => {
+describe('tableFocusExtension', () => {
 	const doc = tableDoc(3, 4); // cells 0..11
 
 	it('extends down one whole row (not the next doc-order cell)', () => {
@@ -64,6 +64,22 @@ describe('intraTableRectExtension', () => {
 		expect(extend(doc, 3, 'ArrowLeft')).toEqual({ kind: 'cell', offset: 3 }); // first col clamps
 	});
 
+	// Miss-analysis: every row held both ends in the table, so a range grown into it from prose
+	// above fell to the document-order walk, which re-landed on the table's first cell every press.
+	it('steps a focus by row when the anchor is outside the table, and leaves sideways keys', () => {
+		const prose = { path: [1], offset: 2 };
+		expect(tableFocusExtension(doc, prose, at(4), 'ArrowDown')).toEqual({
+			kind: 'cell',
+			offset: 7
+		});
+		expect(tableFocusExtension(doc, prose, at(1), 'ArrowUp')).toEqual({
+			kind: 'exit',
+			direction: 'backward',
+			fromCellPath: [0, 0, 0]
+		});
+		expect(tableFocusExtension(doc, prose, at(4), 'ArrowRight')).toBeNull();
+	});
+
 	it('returns null when the endpoints are not on one table', () => {
 		const nonTable = {
 			kind: 'document',
@@ -71,14 +87,14 @@ describe('intraTableRectExtension', () => {
 			suffix: '',
 			children: [{ kind: 'paragraph', leadingTrivia: '', raw: 'x' }]
 		} as unknown as DocumentView;
-		expect(intraTableRectExtension(nonTable, at(0), at(0), 'ArrowDown')).toBeNull();
+		expect(tableFocusExtension(nonTable, at(0), at(0), 'ArrowDown')).toBeNull();
 		// Character offsets on the table path: no corner counts cells.
 		expect(
-			intraTableRectExtension(doc, { path: [0], offset: 4 }, { path: [0], offset: 4 }, 'ArrowDown')
+			tableFocusExtension(doc, { path: [0], offset: 4 }, { path: [0], offset: 4 }, 'ArrowDown')
 		).toBeNull();
 		// Different paths — a cross-block selection, not an intra-table rectangle.
 		expect(
-			intraTableRectExtension(doc, { path: [0], offset: 4 }, { path: [1], offset: 0 }, 'ArrowDown')
+			tableFocusExtension(doc, { path: [0], offset: 4 }, { path: [1], offset: 0 }, 'ArrowDown')
 		).toBeNull();
 	});
 });

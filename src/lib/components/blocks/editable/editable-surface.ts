@@ -20,7 +20,6 @@ import {
 	type StickyColumnDirection
 } from '../../../block-component';
 import type { UserScrollport } from '../../../windowing/scroll-ancestors';
-import type { ScrollOwner } from '../../../windowing/scroll-owner';
 import type { DocumentGetter } from '../../../editor-keys';
 import type { BlockElLookup } from '../../../caret/block-el-lookup';
 import type { PasteImageHook } from '../../../host-hooks';
@@ -194,14 +193,12 @@ export interface EditableSurfaceDeps {
 	getDoc: DocumentGetter;
 	getBlockElByPath: BlockElLookup;
 	focusActions: FocusActions;
-	/** Where a cross-block key's caret goes: a collapse, an extend's parked caret, a command's block. */
-	caretLanding: Pick<CaretLanding, 'restore' | 'park' | 'mount'>;
+	/** Where a cross-block key's caret goes: a collapse, an extended end, a command's block. */
+	caretLanding: Pick<CaretLanding, 'restore' | 'mount' | 'showSelectionEnd'>;
 	getEditorRoot: () => HTMLElement | null;
 	/** What scrolls this editor (the root in self mode; the host's scroller or the window in
 	 *  host mode), for the cross-block drag-select autoscroll. */
 	getScrollHost: () => UserScrollport | null;
-	/** Brings the block a Shift+Arrow extends into to the nearest edge. */
-	scrollOwner: Pick<ScrollOwner, 'place'>;
 	getEditorLifetime: () => AbortSignal | null;
 	caretMemory: CaretMemory;
 	blockEdit: BlockEditActions;
@@ -356,7 +353,6 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		caretLanding: deps.caretLanding,
 		getEditorRoot: deps.getEditorRoot,
 		getScrollHost: deps.getScrollHost,
-		scrollOwner: deps.scrollOwner,
 		getEditorLifetime: deps.getEditorLifetime,
 		caretMemory: deps.caretMemory,
 		blockEdit: deps.blockEdit,
@@ -394,7 +390,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		history: deps.history,
 		focus: deps.focusActions,
 		getDoc: deps.getDoc,
-		scrollOwner: deps.scrollOwner,
+		caretLanding: deps.caretLanding,
 		commands: deps.commands,
 		reading: deps.reading
 	};

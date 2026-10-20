@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../selection/keyboard-extend', () => ({
 	extendFocusToNextBlock: vi.fn(),
 	extendFocusToPreviousBlock: vi.fn(),
-	scrollFocusBlockIntoView: vi.fn()
+	extendWithinBlock: vi.fn()
 }));
 
 import { handleSharedKeydown, type SharedKeydownContext } from '../../selection/shared-keydown';
@@ -53,6 +53,7 @@ function makeEnv(source: string, offset: number | null, mode?: string): Env {
 		// required reader fails to type-check here.
 		ctx: {
 			caretWriter: testCaretWriter,
+			caretLanding: { restore: async () => 'applied' as const, showSelectionEnd: async () => {} },
 			// No plugins stood up here, so every installed one is active.
 			commands: commandContext(),
 			reading: fixtureReading(),
@@ -73,7 +74,6 @@ function makeEnv(source: string, offset: number | null, mode?: string): Env {
 			history: {} as SharedKeydownContext['history'],
 			focus: { moveFocus } as unknown as SharedKeydownContext['focus'],
 			getDoc: () => doc,
-			scrollOwner: { place: () => ({ scroll: async () => true }) },
 			caretUnits: { beside: () => null, crossed: () => {} }
 		}
 	};

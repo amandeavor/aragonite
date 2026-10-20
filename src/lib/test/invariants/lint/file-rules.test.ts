@@ -1464,6 +1464,35 @@ const RULES: FileRule[] = [
 		misses: ['if (presses.travelled(e)) return;', 'const dx = Math.abs(width - startWidth);']
 	},
 	{
+		id: 'G4.229 a key moves a selection end through keyboard-extend, which shows it',
+		matches: /\.(?:extendFocus|enterCrossBlock|extendSelectionToRaw)\s*\(/,
+		allowed: {
+			[SOURCE.keyboardExtend]:
+				'every key that moves an end, which shows it; also the select-all and Shift+click writes',
+			'src/lib/selection/drag-pointer.ts': 'a pointer drag, whose end is under the pointer',
+			'src/lib/components/blocks/table/cell-pointer.ts':
+				'a pointer drag across cells, whose end is under the pointer',
+			'src/lib/selection/native-bridge.ts': 'the restore, whose landing shows the caret itself',
+			'src/lib/selection/cross-block/range-indent.ts':
+				'an indent keeping a block held whole, which moves no end',
+			'src/lib/testing/kind-conformance.ts': 'the conformance kit, which sets up a range'
+		},
+		reaches: [SOURCE.keyboardExtend],
+		reason:
+			'an end a key moves has to land on screen through the scroll owner: write it through `selection/keyboard-extend.ts`, whose writes call `showSelectionEnd`',
+		hits: [
+			'selection.extendFocus(cellPoint(path, 3));',
+			'ctx.selection.enterCrossBlock(anchor, focus);',
+			'deps.caretWriter.extendSelectionToRaw(el, bounds.start);',
+			'selection.extendFocus (point);'
+		],
+		misses: [
+			'extendWithinBlock(deps.extend, el, bounds.start);',
+			'extendFocusToNextBlock(ctx, el, path);',
+			'extendFocus(point: SelectionEndpoint): void;'
+		]
+	},
+	{
 		id: 'G4.225 the drag session hears a release before anything else on the page',
 		// Any phase counts, since a capture flag held in a variable is invisible to a scan.
 		matches:

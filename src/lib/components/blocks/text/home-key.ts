@@ -7,11 +7,8 @@
 
 import { isAtFirstVisualLine, type CaretBounds } from '../../../caret/visual-lines';
 import { caretEdgeKey } from '../../../schema/keybindings';
-import {
-	landableStartAbutsIsland,
-	markerPrefixOf,
-	type CaretWriter
-} from '../../../caret/widget-offset';
+import { landableStartAbutsIsland, markerPrefixOf } from '../../../caret/widget-offset';
+import { extendWithinBlock, type KeyboardExtendContext } from '../../../selection/keyboard-extend';
 
 export interface HomeKeyDeps {
 	getEl(): HTMLElement | null;
@@ -21,8 +18,8 @@ export interface HomeKeyDeps {
 	getFocusOffset(): number | null;
 	/** A collapsed caret at the start of the text, through the clamp every caret placement takes. */
 	focusContentStart(): void;
-	/** The editor's caret writer, which Shift+Home extends the selection through. */
-	caretWriter: CaretWriter;
+	/** What Shift+Home extends the selection through. */
+	extend: Pick<KeyboardExtendContext, 'caretWriter' | 'caretLanding'>;
 }
 
 /** True when the key was handled here, its default prevented. */
@@ -36,7 +33,7 @@ export function handleHomeKey(e: KeyboardEvent, deps: HomeKeyDeps): boolean {
 	const focus = deps.getFocusOffset() ?? bounds.start;
 	if (!isAtFirstVisualLine(el, focus, bounds)) return false;
 	e.preventDefault();
-	if (edge.extend) deps.caretWriter.extendSelectionToRaw(el, bounds.start);
+	if (edge.extend) extendWithinBlock(deps.extend, el, bounds.start);
 	else deps.focusContentStart();
 	return true;
 }

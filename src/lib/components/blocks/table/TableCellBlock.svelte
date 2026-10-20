@@ -34,12 +34,7 @@
 	import { resetForPointerDown } from '../../../selection/cross-block/pointer';
 	import type { PointerPressOptions } from '../../../selection/cross-block/dispatch';
 	import { publishRefSlot, type RefSlots } from '../../../block-lists/child-refs';
-	import {
-		selectWholeDocument,
-		extendFocusToNextBlock,
-		extendFocusToPreviousBlock
-	} from '../../../selection/keyboard-extend';
-	import { intraTableRectExtension } from '../../../selection/table-rect-extend';
+	import { selectWholeDocument, extendFromCell } from '../../../selection/keyboard-extend';
 	import { isAtFirstVisualLine, isAtLastVisualLine } from '../../../caret/visual-lines';
 	import { cellKeydownPlan, type CellKeyPlan, type CellKeyState } from './cell-keydown-plan';
 	import { tableAxisCommand } from './cell-table-commands';
@@ -103,7 +98,8 @@
 		getBlockElByPath,
 		getEditorRoot,
 		events: editorEvents,
-		reading
+		reading,
+		caretLanding
 	} = wiring.deps;
 	const { grammar } = reading;
 	// Made per gesture, never derived: a derived value would subscribe the cell to the tree.
@@ -637,28 +633,13 @@
 				: isAtFirstVisualLine(el, offset, bounds);
 		if (!atEdge) return false;
 
-		const tablePath = myPath.slice(0, -2);
-		const anchor = cellPoint(tablePath, rowMajorCellIndex(rowIdx, colIdx, columnCount));
-		const ext = intraTableRectExtension(getDoc(), anchor, anchor, key);
-		if (!ext) return false;
-
-		if (ext.kind === 'cell') {
-			selection.enterCrossBlock(anchor, cellPoint(tablePath, ext.offset));
-			return true;
-		}
-		// Recorded before the block-level extend answers, so a refusal (no block past the table)
-		// takes it back: left behind, the next Backspace would delete a whole cell through it.
-		selection.enterCrossBlock(anchor, cellPoint(tablePath, anchor.offset));
-		const extend = { selection, caretWriter, getDoc, reading };
-		const extended =
-			ext.direction === 'forward'
-				? extendFocusToNextBlock(extend, el, ext.fromCellPath, 'vertical')
-				: extendFocusToPreviousBlock(extend, el, ext.fromCellPath, 'start');
-		if (!extended) {
-			selection.collapse();
-			return false;
-		}
-		return true;
+		const anchor = cellPoint(myPath.slice(0, -2), rowMajorCellIndex(rowIdx, colIdx, columnCount));
+		return extendFromCell(
+			{ selection, caretWriter, getDoc, reading, caretLanding },
+			el,
+			anchor,
+			key
+		);
 	}
 
 	function exitWithStickyX(direction: ExitDirection): void {

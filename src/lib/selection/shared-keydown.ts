@@ -7,7 +7,7 @@
 import type { FocusActions, HistoryActions } from '../action-contracts';
 import type { DocumentGetter } from '../editor-keys';
 import type { CaretMemory } from '../caret/caret-memory';
-import type { ScrollOwner } from '../windowing/scroll-owner';
+import type { CaretLanding } from './caret-landing';
 import type { SelectionState } from './selection-state.svelte';
 import type { CaretWriter } from '../caret/widget-offset';
 import type { CrossBlockHandlers } from './cross-block/dispatch';
@@ -18,7 +18,7 @@ import type { Reading } from '../schema/reading';
 import {
 	extendFocusToNextBlock,
 	extendFocusToPreviousBlock,
-	scrollFocusBlockIntoView
+	extendWithinBlock
 } from './keyboard-extend';
 import { getCurrentCursorEditorRelativeX } from '../caret/sticky-measure';
 import {
@@ -53,8 +53,8 @@ export interface SharedKeydownContext extends LandableBoundsContext {
 	caretMemory: CaretMemory;
 	history: HistoryActions;
 	focus: FocusActions;
-	/** Brings the block a Shift+Arrow extends into to the nearest edge. */
-	scrollOwner: Pick<ScrollOwner, 'place'>;
+	/** Shows each end a Shift+Arrow moves, and restores a range folded back into one block. */
+	caretLanding: Pick<CaretLanding, 'restore' | 'showSelectionEnd'>;
 	/** The editor's command dispatch: the caret memory reads a chord by its current binding, and
 	 *  the history suppression below takes only this editor's plugin chords. */
 	commands: CommandDispatchContext;
@@ -139,7 +139,6 @@ export async function handleSharedKeydown(
 			if (e.shiftKey && offset <= bounds().start) {
 				e.preventDefault();
 				extendFocusToPreviousBlock(ctx, el, myPath, 'start');
-				scrollFocusBlockIntoView(ctx.selection, ctx.scrollOwner);
 				return true;
 			}
 			if (!e.shiftKey && !e.altKey) {
@@ -158,7 +157,6 @@ export async function handleSharedKeydown(
 			if (e.shiftKey && offset >= bounds().end) {
 				e.preventDefault();
 				extendFocusToNextBlock(ctx, el, myPath, 'vertical');
-				scrollFocusBlockIntoView(ctx.selection, ctx.scrollOwner);
 				return true;
 			}
 			if (!e.shiftKey && !e.altKey) {
@@ -175,7 +173,6 @@ export async function handleSharedKeydown(
 			if (e.shiftKey) {
 				e.preventDefault();
 				extendFocusToPreviousBlock(ctx, el, myPath);
-				scrollFocusBlockIntoView(ctx.selection, ctx.scrollOwner);
 				return true;
 			}
 			e.preventDefault();
@@ -190,7 +187,6 @@ export async function handleSharedKeydown(
 			if (e.shiftKey) {
 				e.preventDefault();
 				extendFocusToNextBlock(ctx, el, myPath);
-				scrollFocusBlockIntoView(ctx.selection, ctx.scrollOwner);
 				return true;
 			}
 			e.preventDefault();
@@ -241,7 +237,7 @@ function handleUnitStep(
 	if (!unit) return false;
 	e.preventDefault();
 	const target = direction === 'forward' ? unit.end : unit.start;
-	if (extending) ctx.caretWriter.extendSelectionToRaw(el, target);
+	if (extending) extendWithinBlock(ctx, el, target);
 	else ctx.caretWriter.placeCaretAtRaw(el, target, { clamp: 'exact' });
 	ctx.caretUnits.crossed();
 	return true;
