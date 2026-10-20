@@ -5,16 +5,19 @@ Safari selects the word, line break or whole element under a right-click before 
 a selected range; what the clipboard rows act on (Cut and Copy, the Paste target) stays the live
 selection, so Paste replacing a right-clicked word works as a native macOS right-click does.
 The rows model Safari by setting the selection between a dispatched `mousedown` and `contextmenu`,
-since Playwright's WebKit selects nothing on a right-click.
+since Playwright's WebKit off macOS selects nothing on a right-click.
 
 ## Happy paths
 
-- A divider Safari highlights whole opens the divider's block actions ("Copy divider").
-- A word Safari selects in a code block opens the code block's actions, and the caret replaces
-  the word so no highlight lingers under the menu.
-- A word Safari selects in a paragraph opens the clipboard rows with the "Insert block" flyout, and
-  the word stays selected with Copy enabled.
-- A word Safari selects in a table cell is what the cell menu's Copy acts on.
+- A right-click after Safari's own select opens the menu a real right-click opens on an engine
+  that selects nothing, for every target: a word in prose, in a link, in an autolink, in code and
+  in a cell, a divider, an inline image (selected or not), a tag, a wikilink in prose and in a
+  cell, an inline equation, an emoji, a footnote reference, and a plugin's widget in prose and in
+  a cell.
+  - A word Safari selects in text the clipboard rows act on (prose, a link or an autolink, a cell) stays
+    selected, with Copy enabled, and Paste replaces it.
+  - Anywhere else (code, a divider, any inline widget) the caret at the press replaces Safari's
+    select, so a widget that goes somewhere offers Edit link and Cut and Copy are off.
 - A real right-click inside a selection keeps it: the clipboard rows act on it, with no Insert
   flyout.
 
@@ -36,6 +39,9 @@ since Playwright's WebKit selects nothing on a right-click.
   under a right-click.
 - The Paste prompt drew over the menu because each pick closed its menu by a state write and read
   the clipboard before the page updated; no row looked at the page when the read began.
+- A right-click on a tag or a wikilink offered no Edit link in Safari (#756): Safari selects the
+  widget whole, the rows modelled its select only as a word or a block, and the cell menu never
+  asked about the press.
 - In Firefox the prose Paste, Paste as plain text and cell Paste pasted nothing (#746): each
   handed its text over as a constructed paste event, whose `clipboardData` Firefox empties. The
   suite ran on Chromium alone, which keeps it.
