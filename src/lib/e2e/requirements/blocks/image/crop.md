@@ -29,6 +29,7 @@ this editor's own addition to the Obsidian-style size hint (`image-dimensions.ts
   restores the image untouched, with no source change and no undo entry
 - any other key during a crop (a letter, Backspace, Delete, an arrow, Mod+X) changes nothing and
   leaves the crop open, and Enter still applies it after
+- a key aimed at one of the host's own controls during a crop still reaches it
 - a committed crop renders as a fixed frame (`md-image-cropped`, `object-fit: cover`) the image
   pans inside; resizing it keeps the frame's shape
 - a crop loaded from bytes survives its own commit byte for byte (the tick over an untouched

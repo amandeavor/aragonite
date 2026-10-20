@@ -23,5 +23,5 @@ press, on every engine.
   undid through their own history on the block last edited: the toolbar specs pressed Mod+Z only
   after focus was back on the paragraph, and no row pressed it with focus on chrome
 - Mod+Z with focus on a button of a find bar the host mounted outside the editor undid nothing in
-  Chromium or Firefox: the rows reached only chrome inside the editor root, the boundary the fix
-  was written against
+  Chromium or Firefox: the rows only reached chrome inside the editor root, which is all the fix
+  checked

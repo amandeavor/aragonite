@@ -321,15 +321,18 @@
 		return true;
 	}
 
-	// A crop is a mode over the selected image: Enter applies, Escape cancels, Tab moves focus as it does
-	// anywhere, and every other key does nothing, or the image's paragraph would type over the image.
+	// A crop is a mode over the selected image: Enter applies, Escape cancels, Tab moves focus, and
+	// any other key in the editor does nothing, or the image's paragraph would type over the image.
 	$effect(() => {
 		if (!cropping) return;
 		const onKey = (e: KeyboardEvent) => {
 			if (e.key === 'Escape' || e.key === 'Tab' || BARE_MODIFIER_KEYS.includes(e.key)) return;
+			// A key aimed at the host's own controls stays theirs; the bare page counts as the editor.
+			const t = e.target;
+			const editorEl = getWidgetEl()?.closest('.editor');
+			if (t instanceof Node && t !== document.body && !editorEl?.contains(t)) return;
 			// A focused crop button takes its own Enter and Space.
-			if (e.target instanceof Element && e.target.closest('button') && rootEl?.contains(e.target))
-				return;
+			if (t instanceof Element && t.closest('button') && rootEl?.contains(t)) return;
 			e.preventDefault();
 			e.stopPropagation();
 			if (e.key === 'Enter') applyCrop();

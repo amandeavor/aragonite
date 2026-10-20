@@ -152,6 +152,17 @@ test.describe('image crop', () => {
 		});
 	}
 
+	test("a key aimed at the host's own control during a crop stays the host's", async ({ page }) => {
+		// The anchor route draws a host button outside the editor.
+		await editor.goto('?searchAnchor=on');
+		await editor.loadContent('![cat|200x200](/test-fixtures/sample.png)\n');
+		await selectAndStartCrop(page);
+		const toggle = page.getByTestId('anchor-toggle');
+		await toggle.focus();
+		await page.keyboard.press('Space');
+		await expect(toggle).toHaveText(/Anchor: off/);
+	});
+
 	test('dragging a corner bracket resizes the frame and so its aspect', async ({ page }) => {
 		await editor.loadContent('![cat|200x200](/test-fixtures/sample.png)\n');
 		const widget = await selectAndStartCrop(page);
