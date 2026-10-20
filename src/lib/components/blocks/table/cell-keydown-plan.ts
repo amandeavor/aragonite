@@ -1,9 +1,8 @@
 /**
- * Turns a keydown into a plan for a table cell's caret-dependent navigation: move to the next cell
- * at a text boundary, move a row, leave the table, and the row-appending end of Tab and Enter. The
- * branches ignore Alt and Mod, which the command dispatcher takes first: a modified arrow nothing
- * took must still navigate, and `native` hands it to the shared prose handling, which moves
- * between siblings by index. Cmd+Arrow is a caret-edge key, not a move, so it is `native` too.
+ * Turns a keydown into a plan for a table cell's caret-dependent moves: the next cell at a text
+ * boundary, a row, or out of the table. Tab and Enter are keymap chords, planned by
+ * `cellCommandPlan`. Alt and Mod are ignored, since the command dispatcher takes those first; a
+ * Cmd+Arrow is a caret-edge key, so it is `native`.
  */
 import { cellAbove, cellBelow, nextCell, prevCell, type CellCoord } from './table-navigation';
 import { caretEdgeKey, isSelectAllChord, type ChordKeys } from '../../../schema/keybindings';
@@ -48,12 +47,6 @@ export function cellKeydownPlan(e: ChordKeys, s: CellKeyState): CellKeyPlan {
 	}
 	if (e.key === 'ArrowUp' && !e.shiftKey) return verticalMove(cellAbove(pos), 'up');
 	if (e.key === 'ArrowDown' && !e.shiftKey) return verticalMove(cellBelow(pos, s.rowCount), 'down');
-	if (e.key === 'Tab' && !e.shiftKey) {
-		return orAppendRow(nextCell(pos, s.columnCount, s.rowCount));
-	}
-	if (e.key === 'Tab' && e.shiftKey)
-		return horizontalMove(prevCell(pos, s.columnCount), 'end', 'up');
-	if (e.key === 'Enter' && !e.shiftKey) return orAppendRow(cellBelow(pos, s.rowCount));
 	if (e.key === 'Backspace' && s.offset <= s.contentStart && s.collapsed) {
 		return horizontalMove(prevCell(pos, s.columnCount), 'end', 'up');
 	}
@@ -61,6 +54,21 @@ export function cellKeydownPlan(e: ChordKeys, s: CellKeyState): CellKeyPlan {
 		return horizontalMove(nextCell(pos, s.columnCount, s.rowCount), 'start', 'down');
 	}
 	return { kind: 'native' };
+}
+
+/** The keymap's cell moves; Tab and Enter past the table's last cell append a row. */
+export type CellMoveCommand = 'cell.tab' | 'cell.shiftTab' | 'cell.enter';
+
+export function cellCommandPlan(id: CellMoveCommand, s: CellKeyState): CellKeyPlan {
+	const pos = { rowIdx: s.rowIdx, colIdx: s.colIdx };
+	switch (id) {
+		case 'cell.tab':
+			return orAppendRow(nextCell(pos, s.columnCount, s.rowCount));
+		case 'cell.shiftTab':
+			return horizontalMove(prevCell(pos, s.columnCount), 'end', 'up');
+		case 'cell.enter':
+			return orAppendRow(cellBelow(pos, s.rowCount));
+	}
 }
 
 function orAppendRow(move: CellCoord | null): CellKeyPlan {

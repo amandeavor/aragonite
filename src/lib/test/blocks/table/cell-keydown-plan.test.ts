@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+	cellCommandPlan,
 	cellKeydownPlan,
 	type CellKeyPlan,
+	type CellMoveCommand,
 	type CellKeyState
 } from '../../../components/blocks/table/cell-keydown-plan';
 import type { ChordKeys } from '../../../schema/keybindings';
@@ -147,23 +149,34 @@ describe('cellKeydownPlan: arrow boundary moves', () => {
 	}
 });
 
-describe('cellKeydownPlan: tab and enter', () => {
-	const cases: Array<[string, ChordKeys, Partial<CellKeyState>, CellKeyPlan]> = [
-		['Tab mid-table', key('Tab'), {}, cell(1, 2, 'start')],
-		['Tab last cell', key('Tab'), { rowIdx: 2, colIdx: 2 }, { kind: 'insert-row-below' }],
-		['Shift+Tab mid-table', key('Tab', { shiftKey: true }), {}, cell(1, 0, 'end')],
+describe('cellCommandPlan: the keymap moves', () => {
+	const cases: Array<[string, CellMoveCommand, Partial<CellKeyState>, CellKeyPlan]> = [
+		['Tab mid-table', 'cell.tab', {}, cell(1, 2, 'start')],
+		['Tab last cell', 'cell.tab', { rowIdx: 2, colIdx: 2 }, { kind: 'insert-row-below' }],
+		['Shift+Tab mid-table', 'cell.shiftTab', {}, cell(1, 0, 'end')],
 		[
 			'Shift+Tab first cell',
-			key('Tab', { shiftKey: true }),
+			'cell.shiftTab',
 			{ rowIdx: 0, colIdx: 0 },
 			{ kind: 'exit', direction: 'up' }
 		],
-		['Enter mid-table (no sticky column)', key('Enter'), {}, cell(2, 1, 'start')],
-		['Enter last row', key('Enter'), { rowIdx: 2 }, { kind: 'insert-row-below' }]
+		['Enter mid-table (no sticky column)', 'cell.enter', {}, cell(2, 1, 'start')],
+		['Enter last row', 'cell.enter', { rowIdx: 2 }, { kind: 'insert-row-below' }]
 	];
-	for (const [name, input, over, plan] of cases) {
+	for (const [name, id, over, plan] of cases) {
 		it(`${name} → ${plan.kind}`, () => {
-			expect(cellKeydownPlan(input, state(over))).toEqual(plan);
+			expect(cellCommandPlan(id, state(over))).toEqual(plan);
+		});
+	}
+
+	// A key the keymap declined (reading mode, a disabled binding) is the browser's.
+	for (const [name, input] of [
+		['Tab', key('Tab')],
+		['Shift+Tab', key('Tab', { shiftKey: true })],
+		['Enter', key('Enter')]
+	] as const) {
+		it(`the keydown plan leaves ${name} alone`, () => {
+			expect(cellKeydownPlan(input, state({ rowIdx: 2, colIdx: 2 }))).toEqual({ kind: 'native' });
 		});
 	}
 });

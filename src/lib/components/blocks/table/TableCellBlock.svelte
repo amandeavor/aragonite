@@ -36,7 +36,12 @@
 	import { publishRefSlot, type RefSlots } from '../../../block-lists/child-refs';
 	import { selectWholeDocument, extendFromCell } from '../../../selection/keyboard-extend';
 	import { isAtFirstVisualLine, isAtLastVisualLine } from '../../../caret/visual-lines';
-	import { cellKeydownPlan, type CellKeyPlan, type CellKeyState } from './cell-keydown-plan';
+	import {
+		cellCommandPlan,
+		cellKeydownPlan,
+		type CellKeyPlan,
+		type CellKeyState
+	} from './cell-keydown-plan';
 	import { tableAxisCommand } from './cell-table-commands';
 	import { cellPoint } from '../../../selection/primitives';
 	import type { ClipboardAction } from './table-menu-model';
@@ -378,17 +383,7 @@
 		}
 		if (id === 'cell.lineBreak') return writeLineBreak;
 		if (id !== 'cell.enter' && id !== 'cell.tab' && id !== 'cell.shiftTab') return null;
-		const plan = cellKeydownPlan(
-			{
-				key: id === 'cell.enter' ? 'Enter' : 'Tab',
-				ctrlKey: false,
-				metaKey: false,
-				shiftKey: id === 'cell.shiftTab',
-				altKey: false
-			},
-			cellPlanState(cursor.getRaw() ?? 0)
-		);
-		if (plan.kind === 'native' || plan.kind === 'select-all-step') return null;
+		const plan = cellCommandPlan(id, cellPlanState(cursor.getRaw() ?? 0));
 		return () => void applyCellPlan(plan);
 	}
 
@@ -597,8 +592,6 @@
 				return;
 			default:
 				e.preventDefault();
-				// Reading mode keeps navigation and consumes the structural plans.
-				if (readOnly && plan.kind !== 'focus-cell' && plan.kind !== 'exit') return;
 				await applyCellPlan(plan);
 				return;
 		}

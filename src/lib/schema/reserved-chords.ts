@@ -128,8 +128,9 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 	},
 	{
 		file: 'components/blocks/table/cell-keydown-plan.ts',
-		chords: ['Shift+Tab'],
-		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Backspace', 'Delete', 'Enter', 'Tab']
+		chords: [],
+		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Backspace', 'Delete'],
+		note: 'Arrows and Backspace or Delete at a cell edge move between cells, Shift declining; Tab and Enter are the keymap’s.'
 	},
 	{
 		file: 'components/blocks/text/TextEditableBlock.svelte',
