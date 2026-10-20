@@ -4,8 +4,10 @@ What the seeded document says is read out of `examples/showcase/showcase-content
 never quoted here: the owner rewrites it by hand, and the version quoting its prose went red
 on the rewrite.
 
-The root route wraps `<Editor>` in a restrained header: the presentation-mode segmented
-control, three toggles (theme, drag handles, debug panel), a keyboard hint and two links.
+The root route wraps `<Editor>` in one quiet bar, the same bar the React and Vue showcases
+mount (`examples/showcase/top-bar.ts`): the wordmark linking to the repository, the
+presentation-mode switcher, the docs and changelog links, report a bug, and a settings popover
+holding the theme, drag-handle, selection-menu, occurrence and debug-panel switches.
 This spec owns the page around the editor, not the document. Two sibling specs already cover
 the rest of the route and are not re-tested here: `plugins/showcase-route.md` covers the
 bundled plugins, `presentation/presentation-showcase.md` covers the mode toggle.
@@ -19,12 +21,15 @@ and interactions are real clicks and key presses.
   the first heading the editor shows, and its `[[toc]]` line renders an outline
 - the showcase opens in live mode and the light theme (the editor's own defaults stay
   source and dark; these are the demo's)
+- the wordmark is a link named "aragonite on GitHub" to the repository
 - the theme toggle switches `data-editor-theme` on the editor root from `light` to `dark`
   and back, with the editor still mounted after each switch
 - the drag-handles toggle removes the hover handles (`.block-drag-handle`) from the document
   and restores them, and the editor comes back with the same content
-- `Ctrl+Shift+D` opens the debug panel over the showcase, and the header's own button closes
-  it again: one state behind two controls
+- `Ctrl+Shift+D` opens the debug panel over the showcase, and the settings popover's own switch
+  closes it again: one state behind two controls
+- the settings popover closes on Escape, handing focus back to its button, and on a press
+  outside it that takes no focus (a press on the bar's empty space)
 - the debug panel's CST section shows the live tree of the showcase document
 - clicking the outline's last entry scrolls the editor down to that heading, whichever
   sections the document happens to hold
@@ -48,14 +53,14 @@ and interactions are real clicks and key presses.
 
 - the drag-handles prop is set once at mount, so its toggle remounts the editor: an edit
   made before the switch must survive it, since the route passes the live source across
-- the editor turns drag handles off entirely in reading mode, so the toggle is disabled
-  there rather than painting an active state it cannot produce
-- the open panel is fixed to the right edge, so the header's button has to stay clear of
-  it: a click on the close control must not be intercepted by the panel it closes
+- the editor turns drag handles off entirely in reading mode, so the switch is disabled
+  there, saying why, rather than painting an active state it cannot produce
+- the open panel is fixed to the right edge, so the bar pads itself past the panel and its
+  settings button stays clear of it: a click there must not be intercepted by the panel
 
 ## User interactions
 
-- every toggle is driven by a real click, and the panel hotkey by a real key press
+- every switch is driven by a real click on its popover row, and the panel hotkey by a real key press
 - text reaches the document by clicking a block and typing, never by a source setter
 
 ## Error cases

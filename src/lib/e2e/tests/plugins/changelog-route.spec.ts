@@ -144,6 +144,6 @@ test.describe('/changelog route', () => {
 		// looking plausible, so what the destination page itself shows is the real assertion.
 		await clickInPlace(page.locator('.changelog-link'));
 		await expect(page).toHaveURL(/\/$/);
-		await expect(page.getByTestId('theme-toggle')).toBeVisible();
+		await expect(page.getByTestId('showcase-settings')).toBeVisible();
 	});
 });

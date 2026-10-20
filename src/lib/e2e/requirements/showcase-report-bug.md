@@ -1,6 +1,6 @@
 # Feature: Report a bug from the showcase
 
-The `/` showcase header's "report a bug" button records the visitor's input and opens GitHub's bug form with the recording attached. It never files the issue; the visitor reads the form and submits it.
+The `/` showcase bar's "report a bug" button records the visitor's input and opens GitHub's bug form with the recording attached. It never files the issue; the visitor reads the form and submits it.
 
 ## Happy paths
 
@@ -9,11 +9,18 @@ The `/` showcase header's "report a bug" button records the visitor's input and 
 ## User interactions
 
 - Cancel on the card closes it and records nothing; the button reads "report a bug" again.
+- Escape closes the card and hands focus back to the button. A press outside leaves it open, so
+  a stray click never throws away the privacy note before Start, and an Escape typed in the editor
+  is the editor's: the card stays and the editor keeps focus.
+  Miss-analysis: the first case pressed Escape with focus in the editor and asserted the card
+  closed, so it pinned the focus steal as the contract.
 
 ## Error cases
 
 - The browser refuses the clipboard write (focus already moved to the new tab): the card says so and offers Copy recording, whose own click puts the recording on the clipboard.
+  Miss-analysis: Firefox can refuse the copy inside `window.open`, before the card is up, and the
+  moved card dropped that answer; the move was tested on Chromium only.
 
 ## Pinned below the browser
 
-- A recording short enough for the link rides the URL itself, and one too long for an issue body downloads as a file instead (`test/debug/bug-report-link.test.ts`).
+- Even a short recording goes on the clipboard, never the link, and one too long for an issue body downloads as a file instead (`test/debug/bug-report-link.test.ts`).

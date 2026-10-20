@@ -28,6 +28,28 @@ test.describe('/ showcase report a bug', () => {
 		await expect(page.getByTestId('report-bug')).toHaveText('report a bug');
 	});
 
+	test('a press outside leaves the card open, and Escape closes it only from the card', async ({
+		page
+	}) => {
+		const button = page.getByTestId('report-bug');
+		const card = page.getByTestId('report-card');
+		await button.click();
+		// A stray press must not throw away the privacy note before Start.
+		await page.locator('[data-block-kind="paragraph"]').first().click();
+		await expect(card).toBeVisible();
+
+		// Escape typed in the editor is the editor's: the card stays and the caret keeps its focus.
+		await page.keyboard.press('Escape');
+		await expect(card).toBeVisible();
+		await expect(page.locator('.editor :focus')).toHaveCount(1);
+
+		// A press on the card's text leaves focus on nothing, which still counts as the card's.
+		await card.locator('p').first().click();
+		await page.keyboard.press('Escape');
+		await expect(card).toHaveCount(0);
+		await expect(button).toBeFocused();
+	});
+
 	test('records with text, then on stop opens the bug form with the recording on the clipboard', async ({
 		page
 	}) => {

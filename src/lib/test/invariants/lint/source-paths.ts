@@ -294,7 +294,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 
 	// ── Demo routes and the consumer example ────────────────────────────────
 	appCss: 'Page-chrome tokens for the demo routes',
-	showcaseRoute: 'function toggleOccurrences(',
+	showcaseRoute: 'function mountBar(',
 	calloutReferenceKind: 'export const CALLOUT',
 	memoReferenceBlock: 'class="memo-block"',
 	consumerPluginProbe: 'export const _probe',

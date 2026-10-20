@@ -1,6 +1,6 @@
 /**
- * The showcase's header controls as data, so the Svelte, React and Vue showcases offer the same
- * controls under the same test ids and open in the same state. Each host draws its own buttons.
+ * The showcase's controls as data, so the Svelte, React and Vue showcases offer the same controls
+ * under the same test ids and open in the same state. `top-bar.ts` draws them.
  */
 
 export const PRESENTATION_MODES = [
@@ -21,23 +21,32 @@ export interface ShowcaseToggle {
 }
 
 export const TOGGLES = {
-	// Pressed means light, the theme the page opens in.
-	theme: { testId: 'theme-toggle', label: 'light' },
-	dragHandles: { testId: 'drag-handles-toggle', label: 'handles' },
+	// Pressed means dark; the page opens light.
+	theme: { testId: 'theme-toggle', label: 'dark mode' },
+	dragHandles: {
+		testId: 'drag-handles-toggle',
+		label: 'drag handles',
+		title: 'A grip beside each block, for moving it'
+	},
 	selectionMenu: {
 		testId: 'selection-menu-toggle',
 		label: 'selection menu',
-		title: 'Show the formatting menu over a selection'
+		title: 'Formatting over a selection, in live mode'
 	},
 	occurrences: {
 		testId: 'occurrences-toggle',
 		label: 'occurrences',
-		title: 'Highlight every other occurrence of the word under the caret'
+		title: 'Mark other uses of the word at the caret'
+	},
+	debugPanel: {
+		testId: 'debug-toggle',
+		label: 'under the hood',
+		title: 'The live syntax tree, selection and undo'
 	},
 	source: {
 		testId: 'source-toggle',
 		label: 'show source',
-		title: 'Show the Markdown the editor holds'
+		title: 'The Markdown the editor holds'
 	}
 } as const satisfies Record<string, ShowcaseToggle>;
 
