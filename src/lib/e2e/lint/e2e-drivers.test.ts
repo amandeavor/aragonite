@@ -35,7 +35,8 @@ const insert = 'insert' + 'Text';
 
 // A shared helper, which can't know whether its caller measures the scroll, or a spec that reads or
 // sets it (the VR specs all do, some through their helpers).
-const SCROLL_READ = /\bscroll(?:Top|Y|Height)\b|\bscrollEditorTo\b|\bprogressiveScrollTo\b/;
+const SCROLL_READ =
+	/\bscroll(?:Top|Left|X|Y|Height)\b|\b(?:scrollEditorTo|progressiveScrollTo|scrollIntoView|toBeInViewport)\b|\brects\.scrollTo\b/;
 const HOLDS_SCROLL = (file: SourceFile): boolean =>
 	!file.relPath.startsWith('src/lib/e2e/lint/') &&
 	!file.relPath.startsWith('src/lib/e2e/simulation/') &&
@@ -201,6 +202,18 @@ describeManifests(
 				{
 					relPath: 'src/lib/e2e/tests/x.spec.ts',
 					code: `await progressiveScrollTo(editor, 900);\nawait cell${act('click')});`
+				},
+				{
+					relPath: 'src/lib/e2e/tests/x.spec.ts',
+					code: `await page.evaluate(() => __test.rects.scrollTo([9]));\nawait cell${act('click')});`
+				},
+				{
+					relPath: 'src/lib/e2e/tests/x.spec.ts',
+					code: `const x = await el.evaluate((e) => e.scrollLeft);\nawait cell${act('click')});`
+				},
+				{
+					relPath: 'src/lib/e2e/tests/x.spec.ts',
+					code: `await cell${act('click')});\nawait expect(row).toBeInViewport();`
 				}
 			],
 			misses: [
@@ -208,7 +221,11 @@ describeManifests(
 				`await page.mouse${act('click')}x, y);`,
 				`await page.mouse${act('move')}x, y);`,
 				`await page.touchscreen${act('tap')}x, y);`,
-				{ relPath: 'src/lib/e2e/tests/x.spec.ts', code: `await cell${act('click')});` }
+				{ relPath: 'src/lib/e2e/tests/x.spec.ts', code: `await cell${act('click')});` },
+				{
+					relPath: 'src/lib/e2e/tests/x.spec.ts',
+					code: `expect(doc.scrollWidth).toBe(390);\nawait chip${act('tap')});`
+				}
 			]
 		},
 		// Miss-analysis: two selection specs stayed green with the harness dropping live mode to

@@ -3,6 +3,7 @@ import { gotoReady } from '../../goto-ready';
 import { findInput } from '../search/helpers';
 import type { Page } from '@playwright/test';
 import { clickModeButton } from '../../mode-switch';
+import { clickInPlace } from '../../click-in-place';
 
 // The `/changelog` route renders the repo's changelog, one release family per document, behind a
 // prepended `[[toc]]` inside a collapsed `<details>`, under all nine bundled plugins. The route has
@@ -49,8 +50,8 @@ test.describe('/changelog route', () => {
 		let tallest = 0;
 		let tallestEntries = 0;
 		for (let i = 0; i < chipCount; i++) {
-			await chips.nth(i).click();
-			await page.locator('.details-toggle').click();
+			await clickInPlace(chips.nth(i));
+			await clickInPlace(page.locator('.details-toggle'));
 			await expect(entries.first()).toBeVisible();
 			const n = await entries.count();
 			if (n > tallestEntries) {
@@ -58,8 +59,8 @@ test.describe('/changelog route', () => {
 				tallest = i;
 			}
 		}
-		await chips.nth(tallest).click();
-		await page.locator('.details-toggle').click();
+		await clickInPlace(chips.nth(tallest));
+		await clickInPlace(page.locator('.details-toggle'));
 		await expect(entries.first()).toBeVisible();
 		await expect.poll(() => entries.count()).toBeGreaterThan(1);
 
@@ -72,7 +73,7 @@ test.describe('/changelog route', () => {
 		// Precondition: the tail is unmounted, so the click has to mount it, not just scroll.
 		await expect(heading).toHaveCount(0);
 
-		await oldest.click();
+		await clickInPlace(oldest);
 		await expect(heading).toBeInViewport();
 	});
 
@@ -84,7 +85,7 @@ test.describe('/changelog route', () => {
 		await expect(opener).not.toContainText('Newest first');
 
 		// The oldest family follows the pointer with a `git log` hint, which must survive the drop.
-		await page.locator('.changelog-family').last().click();
+		await clickInPlace(page.locator('.changelog-family').last());
 		await expect(opener).toContainText('Compact summary');
 		await expect(page.locator('a[href$="changelog.md"]')).toHaveCount(0);
 	});
@@ -93,7 +94,7 @@ test.describe('/changelog route', () => {
 		const before = await outlineRaw(page);
 		expect(before.startsWith('<details>\n')).toBe(true);
 
-		await page.locator('.details-toggle').click();
+		await clickInPlace(page.locator('.details-toggle'));
 		// The body really mounted, which `aria-expanded` alone could fake.
 		await expect(page.locator('.toc-block-item').first()).toBeVisible();
 
@@ -111,10 +112,10 @@ test.describe('/changelog route', () => {
 		const target = (await oldest.getAttribute('data-family')) ?? '';
 		expect(target).not.toBe(current);
 
-		await oldest.click();
+		await clickInPlace(oldest);
 		await expect(heading).toContainText(`Changelog ${target}`);
 		// The outline serves the document on screen, not the one it was first built for.
-		await page.locator('.details-toggle').click();
+		await clickInPlace(page.locator('.details-toggle'));
 		await expect(page.locator('.toc-block-item').first()).toContainText(target);
 	});
 
@@ -141,7 +142,7 @@ test.describe('/changelog route', () => {
 	test('the header link navigates back to the showcase', async ({ page }) => {
 		// `resolve()` under a configured base path: a wrong href lands on a 404 with the URL still
 		// looking plausible, so what the destination page itself shows is the real assertion.
-		await page.locator('.changelog-link').click();
+		await clickInPlace(page.locator('.changelog-link'));
 		await expect(page).toHaveURL(/\/$/);
 		await expect(page.getByTestId('theme-toggle')).toBeVisible();
 	});

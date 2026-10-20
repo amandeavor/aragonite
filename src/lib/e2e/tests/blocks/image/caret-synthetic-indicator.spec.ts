@@ -15,6 +15,7 @@ import {
 	expectBarBesideWidget
 } from '../../../carets-showing';
 import { filler } from '../../selection/gap-caret-fixtures';
+import { clickInPlace } from '../../../click-in-place';
 
 const ONE_DRAWN = { native: false, drawn: 1 };
 const NONE = { native: false, drawn: 0 };
@@ -242,7 +243,7 @@ test.describe('synthetic caret indicator at widget boundary', () => {
 		await expect.poll(() => paintedCarets(page)).toEqual(['[0,0,0]']);
 
 		const followingPara = page.locator('[contenteditable="true"]').nth(1);
-		await followingPara.click();
+		await clickInPlace(followingPara);
 		await expect.poll(() => paintedCarets(page)).toEqual([]);
 		await expect.poll(() => caretsShowing(page)).toEqual(ONE_DRAWN);
 	});
