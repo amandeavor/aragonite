@@ -653,7 +653,8 @@ undo step until they stop for 250 ms, and a spec can't lean on that: a loaded ru
 page's timer late, and Firefox's driver can take longer than that between two keys. So every
 navigation through `gotoReady` holds the pause, and keys typed at any speed stay one undo step until
 the spec calls `editor.endTypingBatch()` (or `endTypingBatch(page)` from `e2e/typing-batch.ts`, when
-there's no `EditorPage` around). A wait in between splits nothing, and G4.232 fails one next to an
+there's no `EditorPage` around). An undo, a structural edit like Enter or Tab, and typing in another
+block each end the batch on their own, so none of them needs the call first. A wait in between splits nothing, and G4.232 fails one next to an
 undo anyway. The real pause runs in one spec only, `undo-typing-pause.spec.ts`.
 
 **Container edits need Svelte's reactivity cycle to settle.** After typing inside a list item or
