@@ -192,6 +192,7 @@ unguarded.
 | G4.227 | A caret-edge key is read in one place, `caretEdgeKey`                                        | L       |
 | G4.228 | An e2e locator action that must leave the scroll alone rides the in-place helper             | L       |
 | G4.229 | A key moves a selection end through `keyboard-extend.ts`, which shows it                     | L       |
+| G4.230 | Editor chrome runs no undo or redo of its own; the root answers them there                   | L       |
 
 ### The entries
 
@@ -1306,3 +1307,10 @@ the functions the scan lists there, which mount that end and show it. Elsewhere 
 (`extendFocus`, `enterCrossBlock`, `extendSelectionToRaw`) fails the scan unless its file is listed
 with why it shows nothing: a drag's end is under the pointer, a restore shows its own caret.
 `lint/file-rules.test.ts`.
+
+**G4.230 · Chrome undoes through the root** (`history-chord-sites`). Engines disagree on Mod+Z
+with a toolbar button focused (Chromium and WebKit undo the block last edited, Firefox nothing), so
+the editor root answers the history chords anywhere inside it, and in its find bar wherever the host
+mounts it, but where a block took the key or a text field owns it (`chromeHoldsFocus`). A file
+under `components/` or `plugins/` that reads the chord or calls the history itself fails.
+`lint/history-chord-sites.test.ts`; every engine in `keyboard-navigation/chrome-focus-undo.spec.ts`.

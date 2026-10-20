@@ -17,6 +17,9 @@
 	import type { CaretWriter } from '../../caret/widget-offset';
 	import type { CaretRestore } from '../../selection/caret-restore';
 	import { DEFAULT_CROP, applyCropToWidget, panCrop, zoomCrop, type Size } from './image-crop';
+	import { eventToChord } from '../../schema/keybindings';
+	import { isReservedUiChord } from '../../schema/commands';
+	import { isPlainTypingKey } from '../blocks/text/click-snap-guard';
 
 	let {
 		target,
@@ -30,6 +33,7 @@
 		menuPresence,
 		caretWriter,
 		fieldCaret,
+		editorTakesChord,
 		cropping = $bindable(false)
 	}: {
 		target: WidgetTarget;
@@ -51,6 +55,9 @@
 		caretWriter: CaretWriter;
 		/** The alt field borrows focus from the image's paragraph and gives it back through here. */
 		fieldCaret: CaretRestore;
+		/** Whether the editor acts on this chord itself (`claimsChord`): during a crop, those are the
+		 *  chords that would write over the image. */
+		editorTakesChord: (e: KeyboardEvent) => boolean;
 		cropping?: boolean;
 	} = $props();
 
@@ -320,15 +327,45 @@
 		return true;
 	}
 
+	// A crop is a mode over the selected image, like an open dialog: Enter applies, Escape cancels,
+	// and whatever would write over the image does nothing. Every other key works as usual.
 	$effect(() => {
 		if (!cropping) return;
+		// The bare page counts as the editor; the host's own controls keep their keys.
+		const aimedAtEditor = (t: EventTarget | null): boolean =>
+			t === document.body ||
+			(t instanceof Node && !!getWidgetEl()?.closest('.editor')?.contains(t));
+		// Typing and deleting over the selected image, and the editor's own chords, minus the find bar's.
+		const writes = (e: KeyboardEvent): boolean => {
+			if (isPlainTypingKey(e) || e.key === 'Backspace' || e.key === 'Delete') return true;
+			const chord = eventToChord(e);
+			return chord !== null && !isReservedUiChord(chord) && editorTakesChord(e);
+		};
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key !== 'Enter') return;
+			if (e.key === 'Escape' || e.key === 'Tab' || !aimedAtEditor(e.target)) return;
+			// A focused crop button takes its own Enter and Space.
+			const t = e.target;
+			if (t instanceof Element && t.closest('button') && rootEl?.contains(t)) return;
+			if (e.key !== 'Enter' && !writes(e)) return;
+			// Prevented too: the browser's own default for these would edit the paragraph.
 			e.preventDefault();
-			applyCrop();
+			e.stopPropagation();
+			if (e.key === 'Enter') applyCrop();
+		};
+		// A cut or a paste would land on the image however it was asked for.
+		const onClipboard = (e: ClipboardEvent) => {
+			if (!aimedAtEditor(e.target)) return;
+			e.preventDefault();
+			e.stopPropagation();
 		};
 		document.addEventListener('keydown', onKey, true);
-		return () => document.removeEventListener('keydown', onKey, true);
+		document.addEventListener('cut', onClipboard, true);
+		document.addEventListener('paste', onClipboard, true);
+		return () => {
+			document.removeEventListener('keydown', onKey, true);
+			document.removeEventListener('cut', onClipboard, true);
+			document.removeEventListener('paste', onClipboard, true);
+		};
 	});
 
 	// ── Placement ──────────────────────────────────────────────────────────────

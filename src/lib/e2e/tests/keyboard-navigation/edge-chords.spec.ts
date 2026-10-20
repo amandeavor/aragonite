@@ -33,6 +33,66 @@ function besideImage(word: string): EdgeRow['place'] {
 	};
 }
 
+/** A click on the image, so it sits selected with its toolbar up. */
+const selectImage: EdgeRow['place'] = async (ep, page) => {
+	await waitForFirstImageLoaded(page);
+	await page.locator('[data-image-widget]').first().click();
+	await expect(page.locator('[data-image-overlay]')).toBeVisible();
+};
+
+// Mid-line and between blocks, so a key that leaves from the wrong edge, or that extends past the
+// image or short of it, types somewhere else.
+const SELECTED = `one\n\nbefore ${IMAGE} after\n\ntwo\n`;
+
+const SELECTED_ROWS: EdgeRow[] = [
+	{
+		name: 'the block start from a selected image leaves the image',
+		doc: SELECTED,
+		place: selectImage,
+		chords: { key: 'ControlOrMeta+Home', arrow: 'Meta+ArrowUp' },
+		nativeKey: true,
+		outcome: { typed: `one\n\nZbefore ${IMAGE} after\n\ntwo\n` }
+	},
+	{
+		name: 'the block end from a selected image leaves the image',
+		doc: SELECTED,
+		place: selectImage,
+		chords: { key: 'ControlOrMeta+End', arrow: 'Meta+ArrowDown' },
+		nativeKey: true,
+		outcome: { typed: `one\n\nbefore ${IMAGE} afterZ\n\ntwo\n` }
+	},
+	{
+		name: 'extending to the line start from a selected image keeps the image',
+		doc: SELECTED,
+		place: selectImage,
+		chords: { key: 'Shift+Home', arrow: 'Shift+Meta+ArrowLeft' },
+		nativeKey: true,
+		outcome: { typed: 'one\n\nZ after\n\ntwo\n' }
+	},
+	{
+		name: 'extending to the line end from a selected image keeps the image',
+		doc: SELECTED,
+		place: selectImage,
+		chords: { key: 'Shift+End', arrow: 'Shift+Meta+ArrowRight' },
+		nativeKey: true,
+		outcome: { typed: 'one\n\nbefore Z\n\ntwo\n' }
+	},
+	{
+		name: "extending to the document's start from a selected image keeps the image",
+		doc: SELECTED,
+		place: selectImage,
+		chords: { key: 'ControlOrMeta+Shift+Home', arrow: 'Shift+Meta+ArrowUp' },
+		outcome: { typed: 'Z after\n\ntwo\n' }
+	},
+	{
+		name: "extending to the document's end from a selected image keeps the image",
+		doc: SELECTED,
+		place: selectImage,
+		chords: { key: 'ControlOrMeta+Shift+End', arrow: 'Shift+Meta+ArrowDown' },
+		outcome: { typed: 'one\n\nbefore Z\n' }
+	}
+];
+
 const EDGE_ROWS: EdgeRow[] = [
 	{
 		name: 'the line start before a leading image types ahead of it',
@@ -81,15 +141,12 @@ const EDGE_ROWS: EdgeRow[] = [
 	{
 		name: 'the line start from a selected image leaves the image',
 		doc: `before ${IMAGE} after\n`,
-		place: async (ep, page) => {
-			await waitForFirstImageLoaded(page);
-			await page.locator('[data-image-widget]').first().click();
-			await expect(page.locator('[data-image-overlay]')).toBeVisible();
-		},
+		place: selectImage,
 		chords: { key: 'Home', arrow: 'Meta+ArrowLeft' },
 		nativeKey: true,
 		outcome: { typed: `Zbefore ${IMAGE} after\n` }
 	},
+	...SELECTED_ROWS,
 	{
 		name: 'the line start on the line Shift+Enter opened keeps that line',
 		doc: 'abc\n',

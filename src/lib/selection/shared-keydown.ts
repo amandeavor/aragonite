@@ -243,8 +243,8 @@ function handleUnitStep(
 	return true;
 }
 
-/** A block-edge key where a marker or a widget sits at that end of the text lands on the text's
- *  edge: Firefox's own stops short of a widget, and only macOS moves for Cmd+Arrow. */
+/** A block-edge key lands on the text's edge wherever the browser's own wouldn't: past a marker or
+ *  a widget at that end (Firefox stops short of one), and for Cmd+Arrow, which only macOS moves. */
 function handleBlockEdgeChord(
 	e: KeyboardEvent,
 	edge: CaretEdgeKey | null,
@@ -256,7 +256,7 @@ function handleBlockEdgeChord(
 	const guarded = toEnd
 		? landableEndAbutsIsland(el)
 		: markerPrefixOf(el) !== null || landableStartAbutsIsland(el);
-	if (!guarded) return false;
+	if (!guarded && !edge.arrow) return false;
 	e.preventDefault();
 	const bounds = caretLandableBounds(ctx, el);
 	ctx.caretWriter.placeCaretAtRaw(el, toEnd ? bounds.end : bounds.start, { clamp: 'reachable' });

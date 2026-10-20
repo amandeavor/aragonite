@@ -180,6 +180,8 @@ export interface CaretWriter {
 	/** Moves the caret to its visual line's left or right edge, what macOS's Cmd+Arrow does, for
 	 *  an edge site that places the caret where the browser won't. */
 	moveCaretToLineEdge(side: 'start' | 'end'): boolean;
+	/** Moves the selection's focus to its visual line's edge, keeping the anchor: Cmd+Shift+Arrow. */
+	extendToLineEdge(side: 'start' | 'end'): boolean;
 	/** Drops the native selection: a gap caret, a widget or a whole-block range holds none. */
 	clear(): void;
 }
@@ -207,6 +209,20 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 		written = sel.isCollapsed ? { node: sel.focusNode!, offset: sel.focusOffset } : null;
 		onWrite();
 		return true;
+	}
+
+	// The browser finds the line's edge; `writeSelection` checks the landing and repaints.
+	function modifyToLineEdge(alter: 'move' | 'extend', side: 'start' | 'end'): boolean {
+		const sel = window.getSelection();
+		if (!sel || sel.rangeCount === 0) return false;
+		sel.modify(alter, side === 'start' ? 'left' : 'right', 'lineboundary');
+		const { anchorNode, focusNode } = sel;
+		if (!anchorNode || !focusNode) return false;
+		const focus = { node: focusNode, offset: sel.focusOffset };
+		return writeSelection(
+			alter === 'move' ? focus : { node: anchorNode, offset: sel.anchorOffset },
+			focus
+		);
 	}
 
 	function selectRawRange(el: HTMLElement, anchor: number, focus: number): boolean {
@@ -259,12 +275,10 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 			return writeSelection(caret, caret);
 		},
 		moveCaretToLineEdge(side) {
-			const sel = window.getSelection();
-			if (!sel || sel.rangeCount === 0 || sel.focusNode === null) return false;
-			sel.modify('move', side === 'start' ? 'left' : 'right', 'lineboundary');
-			// The browser finds the line's edge; `writeSelection` checks the landing and repaints.
-			const caret = { node: sel.focusNode, offset: sel.focusOffset };
-			return writeSelection(caret, caret);
+			return modifyToLineEdge('move', side);
+		},
+		extendToLineEdge(side) {
+			return modifyToLineEdge('extend', side);
 		},
 		clear() {
 			const sel = window.getSelection();

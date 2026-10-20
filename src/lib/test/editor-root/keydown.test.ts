@@ -36,7 +36,10 @@ interface Harness {
 	root: HTMLElement;
 	/** The `header` snippet's box: the host's own header, mounted inside the root. */
 	header: HTMLElement;
-	press(key: string, init?: KeyboardEventInit): KeyboardEvent;
+	/** The editor's find bar, mounted outside the root as a host's `searchBarAnchor` puts it. */
+	findBar: HTMLElement;
+	/** `handledBelow`: a handler under the root already took the key and prevented its default. */
+	press(key: string, init?: KeyboardEventInit, handledBelow?: boolean): KeyboardEvent;
 	search: ReturnType<typeof fakeSearch>;
 	crossBlockKeys: KeyboardEvent[];
 	/** Text the range's own type-to-replace path was handed, in order. */
@@ -57,6 +60,8 @@ function harness(): Harness {
 	document.body.append(root);
 	const header = document.createElement('div');
 	root.append(header);
+	const findBar = document.createElement('div');
+	document.body.append(findBar);
 
 	const search = fakeSearch();
 	const crossBlockKeys: KeyboardEvent[] = [];
@@ -98,6 +103,7 @@ function harness(): Harness {
 			}
 		},
 		isHostChrome: (node) => !!node && header.contains(node),
+		isFindBar: (node) => !!node && findBar.contains(node),
 		saveSearchCaret: () => searchCaretSaves++,
 		setReplaceExpanded: (expanded) => replaceExpanded.push(expanded)
 	};
@@ -106,8 +112,10 @@ function harness(): Harness {
 	return {
 		root,
 		header,
-		press(key, init) {
+		findBar,
+		press(key, init, handledBelow = false) {
 			const event = new KeyboardEvent('keydown', { key, cancelable: true, ...init });
+			if (handledBelow) event.preventDefault();
 			handler.handleKeyDown(event, root);
 			return event;
 		},
@@ -393,18 +401,58 @@ describe('editor-root keydown: body-chord containment', () => {
 // The root answers only a caret with no focused element: a focused block or gap caret handles
 // its own chords, and widening the root's check would run each such chord twice.
 
-describe('editor-root keydown: a focused surface inside the root owns its chords', () => {
-	it('a global chord resolves nothing while a focusable child holds focus', () => {
+describe('editor-root keydown: focus inside the root', () => {
+	function focusChild(h: Harness, el: HTMLElement): void {
+		h.root.append(el);
+		el.focus();
+		expect(h.root.ownerDocument.activeElement).toBe(el);
+	}
+
+	it('a focused surface that took the chord keeps it, so it never runs twice', () => {
 		const h = harness();
-		registerEditor(h.root);
 		const surface = document.createElement('div');
 		surface.tabIndex = 0;
-		h.root.append(surface);
-		surface.focus();
-		expect(h.root.ownerDocument.activeElement).toBe(surface);
-
-		h.press('z', MOD_Z);
+		focusChild(h, surface);
+		h.press('z', MOD_Z, true);
 		expect(h.undoCount()).toBe(0);
+	});
+
+	it('a text field inside the editor keeps its own Mod+Z', () => {
+		const h = harness();
+		focusChild(h, document.createElement('input'));
+		const event = h.press('z', MOD_Z);
+		expect(h.undoCount()).toBe(0);
+		expect(event.defaultPrevented).toBe(false);
+	});
+
+	it('a focused chrome button runs the editor undo, with the default prevented', () => {
+		const h = harness();
+		focusChild(h, document.createElement('button'));
+		const event = h.press('z', MOD_Z);
+		expect(h.undoCount()).toBe(1);
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it("the find bar's button outside the root runs the editor undo; its field keeps its own", () => {
+		const h = harness();
+		const button = document.createElement('button');
+		const field = document.createElement('input');
+		h.findBar.append(button, field);
+		button.focus();
+		expect(h.press('z', MOD_Z).defaultPrevented).toBe(true);
+		field.focus();
+		expect(h.press('z', MOD_Z).defaultPrevented).toBe(false);
+		expect(h.undoCount()).toBe(1);
+	});
+
+	it('a focused chrome button takes no text or motion for a cross-block range', () => {
+		const h = harness();
+		h.setCrossBlock(true);
+		focusChild(h, document.createElement('button'));
+		h.press('a');
+		h.press('ArrowDown', { shiftKey: true });
+		expect(h.inserted).toEqual([]);
+		expect(h.crossBlockKeys).toEqual([]);
 	});
 });
 

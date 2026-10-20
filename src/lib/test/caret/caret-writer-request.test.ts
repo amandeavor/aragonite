@@ -44,6 +44,11 @@ const CALLS: Record<
 		if (typeof sel.modify !== 'function') Object.assign(sel, { modify: () => {} });
 		writer.moveCaretToLineEdge('end');
 	},
+	extendToLineEdge: (writer) => {
+		const sel = window.getSelection()!;
+		if (typeof sel.modify !== 'function') Object.assign(sel, { modify: () => {} });
+		writer.extendToLineEdge('start');
+	},
 	clear: (writer) => writer.clear()
 };
 

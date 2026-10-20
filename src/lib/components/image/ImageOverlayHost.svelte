@@ -32,7 +32,8 @@
 		getEditorEl,
 		lifetime,
 		menuPresence,
-		fieldCaret
+		fieldCaret,
+		editorTakesChord
 	}: {
 		inlineRange: InlineRangeCommit;
 		events: EditorEvents;
@@ -43,6 +44,8 @@
 		lifetime: AbortSignal;
 		/** Puts focus back on the selected image once its alt field, which borrows it, closes. */
 		fieldCaret: CaretRestore;
+		/** The editor's own chords, which a crop keeps from writing over the image. */
+		editorTakesChord: (e: KeyboardEvent) => boolean;
 	} = $props();
 
 	let imageOverlayEl: HTMLDivElement | undefined = $state();
@@ -148,6 +151,7 @@
 				{menuPresence}
 				{caretWriter}
 				{fieldCaret}
+				{editorTakesChord}
 				bind:cropping
 			/>
 		{/key}
