@@ -17,6 +17,7 @@
 	import type { CaretWriter } from '../../caret/widget-offset';
 	import type { CaretRestore } from '../../selection/caret-restore';
 	import { DEFAULT_CROP, applyCropToWidget, panCrop, zoomCrop, type Size } from './image-crop';
+	import { BARE_MODIFIER_KEYS } from '../../schema/keybindings';
 
 	let {
 		target,
@@ -320,12 +321,18 @@
 		return true;
 	}
 
+	// A crop is a mode over the selected image: Enter applies, Escape cancels, Tab moves focus as it does
+	// anywhere, and every other key does nothing, or the image's paragraph would type over the image.
 	$effect(() => {
 		if (!cropping) return;
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key !== 'Enter') return;
+			if (e.key === 'Escape' || e.key === 'Tab' || BARE_MODIFIER_KEYS.includes(e.key)) return;
+			// A focused crop button takes its own Enter and Space.
+			if (e.target instanceof Element && e.target.closest('button') && rootEl?.contains(e.target))
+				return;
 			e.preventDefault();
-			applyCrop();
+			e.stopPropagation();
+			if (e.key === 'Enter') applyCrop();
 		};
 		document.addEventListener('keydown', onKey, true);
 		return () => document.removeEventListener('keydown', onKey, true);

@@ -137,6 +137,21 @@ test.describe('image crop', () => {
 		await expect(page.locator('.md-resize-handle')).toHaveCount(1);
 	});
 
+	// The image sits selected under the crop, where a typed key would replace it.
+	for (const key of ['x', 'Backspace', 'Delete', 'ArrowLeft', 'ControlOrMeta+x']) {
+		test(`${key} during a crop changes nothing and keeps the crop open`, async ({ page }) => {
+			const loaded = 'one\n\nbefore ![cat|200x200](/test-fixtures/sample.png) after\n';
+			await editor.loadContent(loaded);
+			await selectAndStartCrop(page);
+			await page.keyboard.press(key);
+			await editor.waitForNoSourceMutation();
+			expect(await editor.bridge.getSource()).toBe(loaded);
+			await expect(page.locator('.md-image-crop-surface')).toBeVisible();
+			await page.keyboard.press('Enter');
+			await editor.bridge.waitForSourceContains('![cat|200x200@50,50]');
+		});
+	}
+
 	test('dragging a corner bracket resizes the frame and so its aspect', async ({ page }) => {
 		await editor.loadContent('![cat|200x200](/test-fixtures/sample.png)\n');
 		const widget = await selectAndStartCrop(page);
