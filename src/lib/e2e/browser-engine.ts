@@ -27,8 +27,8 @@ export type EngineCapability =
 	| 'insertWithoutScroll'
 	| 'inertBackspace';
 
-/** Firefox over BiDi has no CDP session, no touch emulation, no `emulateMedia` effect, no
- *  ContextMenu key, no caret in a screenshot and scrolls on any insert; macOS WebKit's Backspace navigates. */
+/** Firefox over BiDi lacks CDP, touch, `emulateMedia`, the ContextMenu key and a screenshot caret,
+ *  and scrolls on any insert; Playwright's macOS WebKit goes back in history on Backspace. */
 export function engineSupports(page: Page, capability: EngineCapability): boolean {
 	if (capability === 'cdp') return isChromium(page);
 	if (capability === 'inertBackspace') return !(isMacOS && isWebKit(page));

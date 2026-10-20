@@ -543,7 +543,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 			// The browser moves for Cmd+Arrow on macOS only, so the line edge is placed here.
 			if (edge.arrow) {
 				e.preventDefault();
-				deps.caretWriter.moveFocusToLineEdge(edge.side, false);
+				deps.caretWriter.moveCaretToLineEdge(edge.side);
 			}
 			return false;
 		}

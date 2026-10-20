@@ -27,5 +27,6 @@ export const EXTERNAL_CONTEXTS = { 'webkit-macos.yml': shards('e2e-webkit-macos'
  * Engine checks that run red or green but aren't required yet, because the engine still has reds
  * with no fix, skip or fixme. Each one moves to a required list once its engine runs clean, and a
  * release refuses to publish while this list holds anything (`check-release-gates.mjs`).
+ * @type {string[]}
  */
 export const PENDING_GATE_CONTEXTS = [];

@@ -177,9 +177,9 @@ export interface CaretWriter {
 	/** Writes this writer's own caret in `el` again, where it stands, after something beside it
 	 *  shows or hides: WebKit keeps a caret resolved against the layout it was placed in. */
 	rewriteCaret(el: HTMLElement): boolean;
-	/** Moves the live selection's focus to its visual line's left or right edge, what macOS's
-	 *  Cmd+Arrow does, for an edge site that places the caret where the browser won't. */
-	moveFocusToLineEdge(side: 'start' | 'end', extend: boolean): boolean;
+	/** Moves the caret to its visual line's left or right edge, what macOS's Cmd+Arrow does, for
+	 *  an edge site that places the caret where the browser won't. */
+	moveCaretToLineEdge(side: 'start' | 'end'): boolean;
 	/** Drops the native selection: a gap caret, a widget or a whole-block range holds none. */
 	clear(): void;
 }
@@ -258,15 +258,13 @@ export function createCaretWriter(onWrite: () => void): CaretWriter {
 			if (!caret || written?.node !== caret.node || written.offset !== caret.offset) return false;
 			return writeSelection(caret, caret);
 		},
-		moveFocusToLineEdge(side, extend) {
+		moveCaretToLineEdge(side) {
 			const sel = window.getSelection();
-			if (!sel || sel.rangeCount === 0 || sel.anchorNode === null) return false;
-			sel.modify(extend ? 'extend' : 'move', side === 'start' ? 'left' : 'right', 'lineboundary');
-			// Written back through the one write, so the landing meets every endpoint check.
-			return writeSelection(
-				{ node: sel.anchorNode, offset: sel.anchorOffset },
-				{ node: sel.focusNode!, offset: sel.focusOffset }
-			);
+			if (!sel || sel.rangeCount === 0 || sel.focusNode === null) return false;
+			sel.modify('move', side === 'start' ? 'left' : 'right', 'lineboundary');
+			// The browser finds the line's edge; `writeSelection` checks the landing and repaints.
+			const caret = { node: sel.focusNode, offset: sel.focusOffset };
+			return writeSelection(caret, caret);
 		},
 		clear() {
 			const sel = window.getSelection();

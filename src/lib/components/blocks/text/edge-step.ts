@@ -26,7 +26,7 @@ export interface EdgeStepDeps {
 	/** The reading `getInlines` was read with, so a reference link reads as one. */
 	reading: Reading;
 	caretMemory: Pick<CaretMemory, 'side' | 'pin' | 'pinOnArrival'>;
-	caretWriter: Pick<CaretWriter, 'moveFocusToLineEdge'>;
+	caretWriter: Pick<CaretWriter, 'moveCaretToLineEdge'>;
 }
 
 export interface EdgeStep {
@@ -81,7 +81,7 @@ export function createEdgeStep(deps: EdgeStepDeps): EdgeStep {
 		// Only macOS moves the caret for Cmd+Right, so the arrival it pinned is placed here.
 		if (stops && chipArrivalKey(e) === 'lineEnd' && caretEdgeKey(e)?.arrow) {
 			e.preventDefault();
-			deps.caretWriter.moveFocusToLineEdge('end', false);
+			deps.caretWriter.moveCaretToLineEdge('end');
 		}
 		return false;
 	}
