@@ -97,3 +97,62 @@ test.describe('undo, a typing burst that ends in a kind change', () => {
 		});
 	});
 });
+
+// The caret stays in the leaf the first burst typed in, so the leaf's id never changes and no pause
+// runs under the e2e hold: only the edit's own end of the typing batch splits the two bursts.
+test.describe('undo, typing either side of a structural edit in the same leaf', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+	});
+
+	for (const { edit, seed, typeAt, editAt, key, typed, edited, last } of [
+		{
+			edit: 'a Backspace join',
+			seed: 'one\n\ntwo\n',
+			typeAt: { path: [0], offset: 3 },
+			editAt: { path: [1], offset: 0 },
+			key: 'Backspace',
+			typed: 'oneX\n\ntwo\n',
+			edited: 'oneXtwo\n',
+			last: 'oneXYtwo\n'
+		},
+		{
+			edit: 'a Tab indent',
+			seed: '- a\n- b\n',
+			typeAt: { path: [0, 1, 0], offset: 1 },
+			editAt: { path: [0, 1, 0], offset: 2 },
+			key: 'Tab',
+			typed: '- a\n- bX\n',
+			edited: '- a\n  - bX\n',
+			last: '- a\n  - YbX\n'
+		},
+		{
+			edit: 'a Shift+Tab outdent',
+			seed: '- a\n  - b\n',
+			typeAt: { path: [0, 0, 1, 0, 0], offset: 1 },
+			editAt: { path: [0, 0, 1, 0, 0], offset: 2 },
+			key: 'Shift+Tab',
+			typed: '- a\n  - bX\n',
+			edited: '- a\n- bX\n',
+			last: '- a\n- YbX\n'
+		}
+	]) {
+		test(`one undo after ${edit} takes back only the second burst`, async () => {
+			await editor.loadContent(seed);
+			await editor.focusBlockAtPath(typeAt.path, typeAt.offset);
+			await editor.page.keyboard.type('X');
+			await editor.bridge.waitForSourceEquals(typed);
+			await editor.focusBlockAtPath(editAt.path, editAt.offset);
+			await editor.page.keyboard.press(key);
+			await editor.bridge.waitForSourceEquals(edited);
+			await editor.page.keyboard.type('Y');
+			await editor.bridge.waitForSourceEquals(last);
+
+			await editor.undo();
+			await editor.bridge.waitForSourceEquals(edited);
+		});
+	}
+});
