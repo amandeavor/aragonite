@@ -103,6 +103,9 @@ export default defineConfig({
 	// many-worker contention on slower hosts, and a real hang still fails at 60.
 	timeout: 60_000,
 	retries: 0,
+	// The test, not the file, is what a worker and a shard take, so no long file holds a worker
+	// after the rest have finished.
+	fullyParallel: true,
 	use: {
 		baseURL: APP_ORIGIN,
 		headless: true,
@@ -139,9 +142,7 @@ export default defineConfig({
 			name: 'e2e-simulation',
 			testMatch: 'simulation/**/*.spec.ts',
 			timeout: 180_000,
-			// Each session is independent and the asserted artifact is the timing-independent
-			// source, so scheduling cannot change an assertion. Capped: one browser per worker.
-			fullyParallel: true,
+			// Capped: each session drives a long note, one browser per worker.
 			workers: 4,
 			// The editor scrolls internally, so a short viewport clips a long note's trailing
 			// blocks out of the capture screenshots; fixed, so pixel geometry stays deterministic.
