@@ -14,18 +14,28 @@ const PROD_PORT = OWN_PORT ? OWN_PORT + 1 : ISOLATED ? 1431 : 1421;
 
 // `stdout: 'pipe'` routes the server's console through the reporters, which is what lets
 // `server-warn-reporter` fail a run on an SSR-side `[aragonite:` guard fire. Stderr already pipes.
-const devServer = {
-	// `vite.config.js` pins the default port with `strictPort`, so isolation must move it on
-	// the command line; Playwright's `url` only says where to wait.
-	command: ISOLATED ? `npm run dev -- --port ${DEV_PORT} --strictPort` : 'npm run dev',
-	// Waits for the harness page: Vite opens and closes the port while checking it is free,
-	// before it serves, so a port check can pass early and the first page load is refused.
-	url: `http://localhost:${DEV_PORT}/test/editor`,
-	reuseExistingServer: !ISOLATED,
-	stdout: 'pipe' as const,
-	// Covers the first compile of the harness page, which has taken about 40s on a loaded machine.
-	timeout: 60_000
-};
+const BUILT = process.env.E2E_SERVER !== 'dev';
+const HOST = BUILT ? '127.0.0.1' : 'localhost';
+const devServer = BUILT
+	? {
+			command: `npm run build:e2e && npm run preview:e2e -- --host ${HOST} --port ${DEV_PORT} --strictPort`,
+			url: `http://${HOST}:${DEV_PORT}/test/editor`,
+			reuseExistingServer: false,
+			stdout: 'pipe' as const,
+			timeout: 180_000
+		}
+	: {
+			// `vite.config.js` pins the default port with `strictPort`, so isolation must move it on
+			// the command line; Playwright's `url` only says where to wait.
+			command: ISOLATED ? `npm run dev -- --port ${DEV_PORT} --strictPort` : 'npm run dev',
+			// Waits for the harness page: Vite opens and closes the port while checking it is free,
+			// before it serves, so a port check can pass early and the first page load is refused.
+			url: `http://localhost:${DEV_PORT}/test/editor`,
+			reuseExistingServer: !ISOLATED,
+			stdout: 'pipe' as const,
+			// Covers the first compile of the harness page, which has taken about 40s on a loaded machine.
+			timeout: 60_000
+		};
 
 const prodServer = {
 	command: `npm run build && npm run preview -- --port ${PROD_PORT} --strictPort`,
@@ -84,7 +94,7 @@ export default defineConfig({
 	timeout: 60_000,
 	retries: 0,
 	use: {
-		baseURL: `http://localhost:${DEV_PORT}`,
+		baseURL: `http://${HOST}:${DEV_PORT}`,
 		headless: true,
 		...engine,
 		// Pinned, not inherited: specs across several projects assert near-absolute geometry and

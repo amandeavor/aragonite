@@ -1,0 +1,73 @@
+name: measure test speed
+# Temporary: measurement runs for the ci/test-speed lane, removed before it merges.
+on:
+  push:
+    branches: [ci/test-speed]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/e2e-setup
+        with:
+          engine: ${{ matrix.engine }}
+      - run: |
+          start=$(date +%s); npm run build:e2e > build.log 2>&1; echo "- e2e build: $(( $(date +%s) - start )) s" >> "$GITHUB_STEP_SUMMARY"
+          nohup npm run preview:e2e -- --host 127.0.0.1 --port 1560 --strictPort > preview.log 2>&1 &
+          nohup npm run dev -- --port 1561 --strictPort > dev.log 2>&1 &
+          start=$(date +%s); until curl -sf -o /dev/null http://localhost:1561/test/editor; do sleep 1; done; echo "- dev server first page: $(( $(date +%s) - start )) s" >> "$GITHUB_STEP_SUMMARY"
+          until curl -sf -o /dev/null http://127.0.0.1:1560/test/editor; do sleep 1; done
+          getent hosts localhost >> "$GITHUB_STEP_SUMMARY" || true
+          node .github/measure/page-load-probe.cjs ${{ matrix.engine }} http://localhost:1561 12
+          node .github/measure/page-load-probe.cjs ${{ matrix.engine }} http://127.0.0.1:1560 12
+          npm run preview:e2e -- --port 1562 --strictPort > preview2.log 2>&1 &
+          until curl -sf -o /dev/null http://localhost:1562/test/editor; do sleep 1; done
+          node .github/measure/page-load-probe.cjs ${{ matrix.engine }} http://localhost:1562 12
+
+  workers:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        run:
+          [
+            'firefox 6 4/12 a',
+            'firefox 6 4/12 b',
+            'firefox 8 4/12 a',
+            'firefox 8 4/12 b',
+            'chromium 4 2/4 a',
+            'webkit 4 2/6 a'
+          ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: m
+        run: |
+          set -- ${{ matrix.run }}
+          echo "engine=$1" >> "$GITHUB_OUTPUT"; echo "workers=$2" >> "$GITHUB_OUTPUT"; echo "shard=$3" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/e2e-setup
+        with:
+          engine: ${{ steps.m.outputs.engine }}
+      - run: nohup bash -c 'while true; do echo "$(date +%s) $(free -m | awk "/Mem:/{print \$3, \$7}")"; sleep 5; done' > test-results-mem.log 2>&1 &
+      - env:
+          ENGINE: ${{ steps.m.outputs.engine }}
+        run: npx playwright test --shard=${{ steps.m.outputs.shard }} --workers=${{ steps.m.outputs.workers }}
+      - if: always()
+        run: |
+          mkdir -p test-results && cp test-results-mem.log test-results/mem.log || true
+          awk 'BEGIN{u=0;a=1e9}{if($2>u)u=$2; if($3<a)a=$3}END{print "peak used MB", u, "min available MB", a}' test-results-mem.log | tee -a "$GITHUB_STEP_SUMMARY"
+          nproc >> "$GITHUB_STEP_SUMMARY"; free -m >> "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: workers-${{ strategy.job-index }}
+          path: |
+            test-results/ci-summary.json
+            test-results/mem.log

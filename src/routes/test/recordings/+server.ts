@@ -1,15 +1,15 @@
 // Takes an input recording the debug panel's Send button posts, for a phone on the LAN where the
-// clipboard and file sharing need a secure origin. Dev server only; a build answers 404.
-import { dev } from '$app/env';
+// clipboard and file sharing need a secure origin. Development builds only; a prod build answers 404.
 import { error, json } from '@sveltejs/kit';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { readInputRecording } from '#lib/debug/input-recording.js';
+import { isDevChecks } from '#lib/env.js';
 
 const INBOX = 'recordings-inbox';
 
 export async function POST({ request }) {
-	if (!dev) error(404);
+	if (!isDevChecks()) error(404);
 	let recording;
 	try {
 		recording = readInputRecording(await request.text());

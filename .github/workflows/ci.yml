@@ -91,7 +91,20 @@ jobs:
         with:
           engine: chromium
       - if: needs.changes.outputs.code == 'true'
+        run: nohup bash -c 'while true; do echo "$(date +%s) $(free -m | awk "/Mem:/{print \$3, \$7}")"; sleep 5; done' > test-results-mem.log 2>&1 &
+      - if: needs.changes.outputs.code == 'true'
         run: npx playwright test --shard=${{ matrix.shard }}
+      - if: always() && needs.changes.outputs.code == 'true'
+        run: |
+          mkdir -p test-results && cp test-results-mem.log test-results/mem.log || true
+          awk 'BEGIN{u=0;a=1e9}{if($2>u)u=$2; if($3<a)a=$3}END{print "peak used MB", u, "min available MB", a}' test-results-mem.log | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: always() && needs.changes.outputs.code == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-chromium-${{ strategy.job-index }}
+          path: |
+            test-results/ci-summary.json
+            test-results/mem.log
 
   # The same correctness suite in WebKit and Firefox (docs/contributing/testing.md § Browser
   # engines). Their checks are required, so a docs-only change skips the steps, not the job.
@@ -112,12 +125,20 @@ jobs:
         with:
           engine: webkit
       - if: needs.changes.outputs.code == 'true'
+        run: nohup bash -c 'while true; do echo "$(date +%s) $(free -m | awk "/Mem:/{print \$3, \$7}")"; sleep 5; done' > test-results-mem.log 2>&1 &
+      - if: needs.changes.outputs.code == 'true'
         run: npx playwright test --shard=${{ matrix.shard }}
+      - if: always() && needs.changes.outputs.code == 'true'
+        run: |
+          mkdir -p test-results && cp test-results-mem.log test-results/mem.log || true
+          awk 'BEGIN{u=0;a=1e9}{if($2>u)u=$2; if($3<a)a=$3}END{print "peak used MB", u, "min available MB", a}' test-results-mem.log | tee -a "$GITHUB_STEP_SUMMARY"
       - if: always() && needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-webkit-${{ strategy.job-index }}
-          path: test-results/ci-summary.json
+          path: |
+            test-results/ci-summary.json
+            test-results/mem.log
 
   e2e-firefox:
     needs: changes
@@ -152,12 +173,20 @@ jobs:
       # Firefox spends most of a test waiting on the browser rather than the CPU, so the runner's
       # four cores carry four workers where the other engines keep Playwright's default two.
       - if: needs.changes.outputs.code == 'true'
+        run: nohup bash -c 'while true; do echo "$(date +%s) $(free -m | awk "/Mem:/{print \$3, \$7}")"; sleep 5; done' > test-results-mem.log 2>&1 &
+      - if: needs.changes.outputs.code == 'true'
         run: npx playwright test --shard=${{ matrix.shard }} --workers=4
+      - if: always() && needs.changes.outputs.code == 'true'
+        run: |
+          mkdir -p test-results && cp test-results-mem.log test-results/mem.log || true
+          awk 'BEGIN{u=0;a=1e9}{if($2>u)u=$2; if($3<a)a=$3}END{print "peak used MB", u, "min available MB", a}' test-results-mem.log | tee -a "$GITHUB_STEP_SUMMARY"
       - if: always() && needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-firefox-${{ strategy.job-index }}
-          path: test-results/ci-summary.json
+          path: |
+            test-results/ci-summary.json
+            test-results/mem.log
 
   perf:
     needs: changes
