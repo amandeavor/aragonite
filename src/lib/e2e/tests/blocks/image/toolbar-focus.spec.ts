@@ -1,7 +1,8 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { waitForAllImagesLoaded } from './helpers';
+import { focusWalkKey } from '../../../platform-keys';
 
 // Every way an image toolbar sub-mode ends, then each key that must still reach the image: the
 // end leaves the image selected with its paragraph focused, wherever the engine puts a pressed
@@ -159,3 +160,83 @@ test.describe('image toolbar focus', () => {
 		});
 	}
 });
+
+// The toolbar's buttons are reached by keyboard from the open Alt field, going back with Shift+Tab.
+const MID_LINE = 'text\n\na ![cat|200x200](/test-fixtures/sample.png) b\n';
+
+interface KeyboardAction {
+	label: string;
+	/** Typed into the Alt field first, so the action has a write to undo. */
+	draft: string;
+	/** What finishes the action once its button is pressed. */
+	finish?: (page: Page) => Promise<void>;
+}
+
+const KEYBOARD_ACTIONS: KeyboardAction[] = [
+	{ label: 'Alt text', draft: ' v2' },
+	{ label: 'Crop image', draft: '', finish: (page) => page.keyboard.press('Enter') },
+	{ label: 'Remove image', draft: '' }
+];
+
+interface AfterKey {
+	name: string;
+	check(editor: EditorPage, page: Page): Promise<void>;
+}
+
+const AFTER_KEYS: AfterKey[] = [
+	{
+		name: 'a typed letter lands where the image is',
+		async check(editor, page) {
+			await page.keyboard.type('Q');
+			await editor.bridge.waitForSourceEquals('text\n\na Q b\n');
+		}
+	},
+	{
+		name: 'Mod+Z undoes the action',
+		async check(editor) {
+			await editor.undo();
+			await editor.bridge.waitForSourceEquals(MID_LINE);
+		}
+	},
+	{
+		name: "Escape leaves the toolbar closed and the next letter in the image's line",
+		async check(editor, page) {
+			await page.keyboard.press('Escape');
+			await expect(page.locator('.md-image-properties')).toHaveCount(0);
+			await page.keyboard.type('Q');
+			await editor.bridge.waitForSource((source) => /\n\na [^\n]*Q[^\n]* b\n$/.test(source));
+		}
+	}
+];
+
+test.describe('image toolbar buttons reached by keyboard', () => {
+	for (const action of KEYBOARD_ACTIONS) {
+		for (const activate of ['Enter', 'Space']) {
+			for (const after of AFTER_KEYS) {
+				test(`${action.label} by Shift+Tab and ${activate}: ${after.name}`, async ({ page }) => {
+					const editor = new EditorPage(page);
+					await editor.goto();
+					await editor.loadContent(MID_LINE);
+					await waitForAllImagesLoaded(page);
+					await page.locator('[data-image-widget]').first().click();
+					await button(page, 'Alt text').click();
+					await page.keyboard.type(action.draft);
+					const target = button(page, action.label);
+					for (let i = 0; i < 3 && !(await isFocused(target)); i++) {
+						await page.keyboard.press(focusWalkKey({ backward: true }));
+					}
+					await expect(target).toBeFocused();
+					const before = await editor.bridge.getSource();
+					await page.keyboard.press(activate);
+					await action.finish?.(page);
+					await editor.bridge.waitForSource((source) => source !== before);
+					await after.check(editor, page);
+				});
+			}
+		}
+	}
+});
+
+function isFocused(target: Locator): Promise<boolean> {
+	return target.evaluate((el) => el === document.activeElement);
+}

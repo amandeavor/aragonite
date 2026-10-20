@@ -23,6 +23,12 @@ editor's keys reach it there.
 
 - Pressing a toolbar button leaves focus on the image's paragraph; only the Alt field's input takes
   focus, and it hands focus back when the field closes from the toolbar or its keys
+- A keyboard reaches the toolbar's buttons from the open Alt field with Shift+Tab. Alt text, Crop
+  image (then Enter to apply) and Remove image, each pressed with Enter or with Space, hand focus
+  back to the image's paragraph, so afterwards:
+  - a typed letter lands where the image is (it replaces a still-selected image)
+  - Mod+Z undoes the action
+  - Escape leaves the toolbar closed and the next typed letter lands in the image's line
 
 ## Miss-analysis
 
