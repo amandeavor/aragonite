@@ -658,7 +658,9 @@ export function installTestProbes({
 			caretRect: (): DOMRect | null => editor.getRects().caretRect(),
 			reveal: (path: number[]): Promise<boolean> => editor.getRects().reveal(path),
 			scrollTo: (path: number[], opts?: { block?: 'nearest' | 'center' }): Promise<boolean> =>
-				editor.getRects().scrollTo(path, opts)
+				editor.getRects().scrollTo(path, opts),
+			navigateTo: (path: number[], offset?: number): Promise<boolean> =>
+				editor.getRects().navigateTo(path, offset)
 		},
 		// ── Cross-block caretRect timing probe ─────────────────────────────
 		// Read inside the synchronous handler, before the data-cross-block attribute updates, so

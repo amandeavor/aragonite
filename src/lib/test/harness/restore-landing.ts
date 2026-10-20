@@ -66,7 +66,8 @@ export function restoreLandingOver(
 		caretMemory,
 		getBlockElByPath,
 		getEditorRoot: () => null,
-		scroll: null
+		scroll: null,
+		isReading: () => false
 	});
 	return { landing, revealed, caretMemory };
 }
