@@ -39,6 +39,7 @@ import {
 } from '../../../debug/interaction-trace';
 import { assertInvariant } from '../../../assert';
 import { checkWidgetCaretLanding } from '../../../invariants/widget-caret-landing';
+import { checkMotionLeftWidget } from '../../../invariants/selected-widget-motion';
 import type { RevealFold } from '../editable/surface-clipboard';
 import { hasModifier, isPlainTypingKey, surfaceHoldsRange } from './click-snap-guard';
 import { caretEdgeKey } from '../../../schema/keybindings';
@@ -156,18 +157,35 @@ export interface WidgetInteraction {
 	islandDragAnchor(x: number, y: number): number | null;
 }
 
-/** The widget edge a selected widget hands a caret-moving key off from, or null for any other key. */
-function caretMoveEdge(key: string): 'start' | 'end' | null {
-	switch (key) {
-		case 'ArrowUp':
-		case 'PageUp':
-			return 'start';
-		case 'ArrowDown':
-		case 'PageDown':
-			return 'end';
-		default:
-			return null;
+/** How a key that moves or extends the caret leaves a selected widget. */
+interface CaretMotion {
+	/** The widget edge the key moves toward. */
+	side: 'start' | 'end';
+	extend: boolean;
+	/** The Cmd+Arrow line-edge spelling, which the browser moves for on macOS only. */
+	lineArrow: boolean;
+}
+
+/** The caret motion a key on a selected widget asks for, or null for any other key; Shift+Left and
+ *  Shift+Right are the widget kind's, and a plain Left or Right steps out by its own rule. */
+function caretMotionOf(e: KeyboardEvent): CaretMotion | null {
+	const edge = caretEdgeKey(e);
+	if (edge) {
+		const line = edge.to === 'line';
+		return {
+			side: edge.side,
+			extend: edge.to === 'doc' || (line && edge.extend),
+			lineArrow: line && edge.arrow
+		};
 	}
+	if (hasModifier(e)) return null;
+	const side =
+		e.key === 'ArrowUp' || e.key === 'PageUp'
+			? 'start'
+			: e.key === 'ArrowDown' || e.key === 'PageDown'
+				? 'end'
+				: null;
+	return side && { side, extend: e.shiftKey, lineArrow: false };
 }
 
 /** What {@link replaceSelectedWidget} reads. */
@@ -501,7 +519,35 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		deps.selection.clearWidget();
 	}
 
+	// The move runs after the widget declines the key, so it needs a real selection to read: a caret
+	// at the edge the key moves toward, or for an extend the widget as a range anchored at its far edge.
+	function leaveWidgetBy(motion: CaretMotion, widget: { start: number; end: number }): void {
+		const [near, far] =
+			motion.side === 'start' ? [widget.start, widget.end] : [widget.end, widget.start];
+		const el = deps.getEl();
+		if (!motion.extend || !el) {
+			leaveWidget(near);
+			return;
+		}
+		deps.caretWriter.selectRawRange(el, far, near);
+		deps.selection.clearWidget();
+	}
+
 	async function handleSelectedWidgetKeydown(e: KeyboardEvent): Promise<boolean> {
+		const handled = await keydownOnSelectedWidget(e);
+		if (!handled) {
+			assertInvariant('selected-widget-motion', () =>
+				checkMotionLeftWidget(
+					e.key,
+					caretMotionOf(e) !== null,
+					deps.selection.widgetIn(deps.myPath) !== null
+				)
+			);
+		}
+		return handled;
+	}
+
+	async function keydownOnSelectedWidget(e: KeyboardEvent): Promise<boolean> {
 		const node = deps.node;
 		const selectedWidget = deps.selection.widgetIn(deps.myPath);
 		if (selectedWidget === null) return false;
@@ -530,20 +576,14 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 				})
 		});
 		if (consumed) return true;
-		// A line-edge key leaves from the widget's edge on its side; a block or document edge is the
-		// shared keydown's, as it is from a caret.
-		const edge = caretEdgeKey(e);
-		if (edge) {
-			if (edge.to !== 'line') return false;
-			if (edge.extend) {
-				e.preventDefault();
-				return true;
-			}
-			leaveWidget(edge.side === 'start' ? widget.start : widget.end);
+		const motion = caretMotionOf(e);
+		if (motion) {
+			leaveWidgetBy(motion, widget);
 			// The browser moves for Cmd+Arrow on macOS only, so the line edge is placed here.
-			if (edge.arrow) {
+			if (motion.lineArrow) {
 				e.preventDefault();
-				deps.caretWriter.moveCaretToLineEdge(edge.side);
+				if (motion.extend) deps.caretWriter.extendToLineEdge(motion.side);
+				else deps.caretWriter.moveCaretToLineEdge(motion.side);
 			}
 			return false;
 		}
@@ -574,13 +614,6 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 				leaveWidget(left ? widget.start : widget.end);
 			}
 			return true;
-		}
-		// A vertical arrow and the page keys are shared moves that need a real caret to read: put one
-		// at the edge the key leaves from and decline, so the move runs from there.
-		const moveEdge = e.shiftKey ? null : caretMoveEdge(e.key);
-		if (moveEdge) {
-			leaveWidget(moveEdge === 'start' ? widget.start : widget.end);
-			return false;
 		}
 		// Reading mode still consumes the key, since a selected widget owns its keys, but writes
 		// nothing.

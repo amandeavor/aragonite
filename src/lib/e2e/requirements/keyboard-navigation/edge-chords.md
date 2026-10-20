@@ -16,6 +16,11 @@ same way; neither spelling changes what the other does.
   Cmd+Right
 - The line start from a selected image leaves the image and types at the line's start: Home and
   Cmd+Left
+- The block start and end from a selected image leave the image for the paragraph's start or end:
+  Mod+Home and Cmd+Up, Mod+End and Cmd+Down
+- Extending from a selected image keeps the image in the selection, anchored at its far edge: to
+  the line start (Shift+Home, Cmd+Shift+Left) and end (Shift+End, Cmd+Shift+Right), and to the
+  document's start (Mod+Shift+Home, Cmd+Shift+Up) and end (Mod+Shift+End, Cmd+Shift+Down)
 - The line start on the line Shift+Enter opened at a block's end keeps that line, so a typed letter
   lands on it: Home and Cmd+Left
 - Extending to the document's end from a caret takes every block after it: Mod+Shift+End and
@@ -36,6 +41,8 @@ same way; neither spelling changes what the other does.
   push, not only on the macOS run
   - On macOS the Home and End spellings of the rows where the browser moves the caret itself (the
     code chip, the selected image) skip, since macOS scrolls on those keys instead
+- Cmd+Up and Cmd+Down land on the block's edge on every platform, the editor placing them, since
+  only macOS moves the caret for them
 
 ## Miss-analysis
 
@@ -44,3 +51,6 @@ same way; neither spelling changes what the other does.
   Home and End, and the one macOS run read Home as a scroll, so nothing ever sent Cmd+Arrow.
 - The Shift+Enter line's Cmd+Left row was only run on Chromium and macOS WebKit, so nothing saw
   WebKit and Firefox off macOS take Cmd+Left as a plain ArrowLeft, leaving the open line.
+- Mod+Home, Mod+End and every extend on a selected image did nothing, and Mod+Shift+End in Chromium
+  extended from the block's start: the selected-image row pressed only Home, and no row pressed a
+  block or document chord on the selected image itself.

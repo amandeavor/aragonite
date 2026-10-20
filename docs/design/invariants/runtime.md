@@ -93,6 +93,7 @@ These checks run in three kinds of place:
 | G1.119 | No caret the editor writes sits between a CRLF pair's `\r` and `\n`                        | A·N     |
 | G1.121 | A menu asked to close is gone a tick later                                                 | A·N     |
 | G1.122 | A built-in metadata read names the kind the node is                                        | A·N     |
+| G1.128 | A caret key a selected widget passes on leaves the widget first                            | A·N     |
 
 ### The entries
 
@@ -563,3 +564,10 @@ that kind lives), and dev fails when it isn't. A node that might be something el
 containers included, is read with `metadataIfKind`, which gives undefined there. That's what keeps
 a container whose metadata has an `ordered` field from renumbering like a list.
 `core/nodes.ts` · `plugin-metadata.test.ts`.
+
+**G1.128 · A caret key on a selected widget leaves it** (`selected-widget-motion`). Selecting a
+widget clears the browser's range, so a key that moves or extends the caret, passed on to the
+shared keydown or the browser, needs a real selection first: a caret at the edge the key moves
+toward, or for an extend the widget as a range anchored at its far edge. Dev fails a caret key the
+widget's handler passed on with the widget still selected. `checkMotionLeftWidget` ·
+`selected-widget-motion.test.ts`.
