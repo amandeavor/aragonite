@@ -41,7 +41,11 @@
 	import { createEdgePolicyDispatch } from './edge-policy-dispatch';
 	import { createEdgeStep } from './edge-step';
 	import { createTypedPlacement } from './edge-seat';
-	import { handlePendingBreakKey, type PendingBreakKeyDeps } from './pending-break-keys';
+	import {
+		takeBackOpenLine,
+		handlePendingBreakKey,
+		type PendingBreakKeyDeps
+	} from './pending-break-keys';
 	import { handleHomeKey, type HomeKeyDeps } from './home-key';
 	import { storedAsAt } from '../../../tree-operations/stored-as';
 	import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
@@ -242,7 +246,8 @@
 		},
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
-		deleteAtCaret: (caret, direction) => edgeDispatch.deleteAtCaret(caret, direction),
+		deleteAtCaret: (caret, direction) =>
+			takeBackOpenLine(pendingBreakKeyDeps) || edgeDispatch.deleteAtCaret(caret, direction),
 		// After a shown source is written: until then the selected text lives in the DOM only.
 		removeSelection: (range) =>
 			new Promise<ContentWrite>((written) =>

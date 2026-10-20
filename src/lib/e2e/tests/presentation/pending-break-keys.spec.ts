@@ -83,3 +83,41 @@ test('source mode: the open line of an empty paragraph: ArrowLeft drops the line
 
 	await expect.poll(() => ep.bridge.getSource()).toBe('first\n\nz\n');
 });
+
+/** A soft keyboard's delete: the `beforeinput` alone, with no keydown in front. */
+async function sendKeylessDelete(page: Page, inputType: string): Promise<void> {
+	await page.evaluate((inputType) => {
+		(document.activeElement as HTMLElement).dispatchEvent(
+			new InputEvent('beforeinput', { inputType, bubbles: true, cancelable: true })
+		);
+	}, inputType);
+}
+
+for (const mode of ['source', 'live'] as const) {
+	test(`${mode} mode: a delete on the open line takes the line, never the text above`, async ({
+		page
+	}) => {
+		const ep = await enterPresentationMode(page, mode, DOC);
+		const deletes: [string, () => Promise<void>][] = [
+			['Shift+Backspace', () => page.keyboard.press('Shift+Backspace')],
+			['a soft keyboard’s Backspace', () => sendKeylessDelete(page, 'deleteContentBackward')],
+			['a soft keyboard’s Delete', () => sendKeylessDelete(page, 'deleteContentForward')]
+		];
+		for (const [name, press] of deletes) {
+			await test.step(name, async () => {
+				await nextRow(ep, DOC);
+				await clickBlockSettled(ep, 1);
+				await page.keyboard.press(edgeKey('lineEnd'));
+				await page.keyboard.press('Shift+Enter');
+				await ep.waitForRenderFlush();
+				await press();
+				await ep.waitForRenderFlush();
+				await expect(
+					page.locator('.block-host').nth(1).locator('br[data-caret-anchor="break"]')
+				).toHaveCount(0);
+				await ep.typeSlowly('z');
+				await expect.poll(() => ep.bridge.getSource()).toBe('first\n\nabcz\n\nnext\n');
+			});
+		}
+	});
+}

@@ -9,6 +9,10 @@ Miss-analysis: the first version ended the line before the key ran, so every key
 text's end on the line above. The rows only tried Backspace and ArrowLeft, the two keys where that's
 the right answer.
 
+Miss-analysis: Shift+Backspace and a soft keyboard's delete on the open line took the last letter
+of the text above, since the rows pressed only a plain Backspace, the one delete the key handler
+took itself.
+
 ## User interactions
 
 Each row is `first` / `abc` / `next`, Shift+Enter at the end of `abc`, the key, then `z`, in source
@@ -28,3 +32,5 @@ and live mode.
   inside the bold like after a click: `a **boldz**`.
 - source, an empty paragraph after `first`: ArrowLeft drops the line and stays in the paragraph,
   rather than moving up to `first` the way ArrowLeft at a block's start does: `z` on its own.
+- Shift+Backspace, and a soft keyboard's Backspace or Delete (the `beforeinput` alone), take the
+  line like Backspace and leave the text above whole: `abcz`, in source and live mode.
