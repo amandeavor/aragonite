@@ -3,6 +3,7 @@ import { type Locator, type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { gotoFlow, settleFrames, spacerCount } from './vr-helpers';
 import { edgeKey } from '../../platform-keys';
+import { clickInPlace, hoverInPlace, showInPlace } from '../../click-in-place';
 
 // Flow mode, where the app does the scrolling: several editors inside one scrolling ancestor,
 // plus a pane that clips rather than scrolls. The editor root covers the whole document here,
@@ -83,7 +84,7 @@ test('the editor root stops being a scroll container and the ancestor carries th
 test('typing and undo in a host-scroll entry behave as in self mode', async ({ page }) => {
 	await gotoFlow(page);
 
-	await entry(page, 'a').locator('[contenteditable]').first().click();
+	await clickInPlace(entry(page, 'a').locator('[contenteditable]').first());
 	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type('FLOW_MARK');
 	await expect.poll(() => flowSource(page, 'a')).toContain('FLOW_MARK');
@@ -177,7 +178,7 @@ test('a drag at the scrollport edge autoscrolls the host, not the non-scrolling 
 	// The drag handle only mounts on hover. Grab it, then hold the pointer near the bottom edge
 	// of the scroll container: the autoscroll loop must move the ancestor.
 	const source = entry(page, 'a').locator('.block-host').nth(2);
-	await source.hover();
+	await hoverInPlace(source);
 	const handle = await source.locator('.block-drag-handle').first().boundingBox();
 	expect(handle).not.toBeNull();
 	const port = (await page.locator('[data-testid="scroller"]').boundingBox())!;
@@ -197,7 +198,7 @@ test('the find bar rides the entry top edge, not the ancestor scrollport', async
 
 	// The entry starts below the viewport; scroll it into reach before focusing a block.
 	await scrollHostTo(page, 1100);
-	await entry(page, 'a').locator('[contenteditable]').first().click();
+	await clickInPlace(entry(page, 'a').locator('[contenteditable]').first());
 	await page.keyboard.press('ControlOrMeta+f');
 	await expect(page.locator('.search-bar')).toHaveCount(1);
 	await expect(entry(page, 'a').locator('.search-bar')).toHaveCount(1);
@@ -242,7 +243,7 @@ test('nested scopes in a host-scroll entry window their children and stay error-
 
 	// Into view first: an editor below the viewport correctly mounts almost no blocks (VR-11), which
 	// would pass the count for the wrong reason.
-	await nested.scrollIntoViewIfNeeded();
+	await showInPlace(nested);
 	await settleFrames(page);
 
 	// List items and table rows are rendered directly by an `{#each}` rather than as block
@@ -253,7 +254,7 @@ test('nested scopes in a host-scroll entry window their children and stay error-
 
 	// Editing inside a nested list drives the measuring that reports totals up to a parent
 	// height table nothing reads, and a throw during that render fails here.
-	await nested.locator('.list-item-block [contenteditable]').first().click();
+	await clickInPlace(nested.locator('.list-item-block [contenteditable]').first());
 	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type('NESTED_MARK');
 	await expect.poll(() => flowSource(page, 'nested')).toContain('NESTED_MARK');
@@ -272,9 +273,9 @@ test('two entries in one scroller window independently against the shared port',
 	expect(await page.locator('.vr-spacer').count()).toBeGreaterThan(0);
 
 	const sourceABefore = await flowSource(page, 'a');
-	await entry(page, 'b').scrollIntoViewIfNeeded();
+	await showInPlace(entry(page, 'b'));
 	await settleFrames(page);
-	await entry(page, 'b').locator('[contenteditable]').first().click();
+	await clickInPlace(entry(page, 'b').locator('[contenteditable]').first());
 	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type('BETA_MARK');
 	await expect.poll(() => flowSource(page, 'b')).toContain('BETA_MARK');

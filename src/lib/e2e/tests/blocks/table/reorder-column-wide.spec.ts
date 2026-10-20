@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { clickInPlace } from '../../../click-in-place';
 
 // 12 columns at ~150px each overflow `.table-block`'s overflow-x in an 800px viewport, so the late
 // columns start scrolled off the right edge. A column moved into that region carries the caret
@@ -46,7 +47,7 @@ test.describe('table block: column move on a wide (overflowing) table', () => {
 		expect(last).toBeGreaterThan(0);
 		expect(last).toBeLessThan(COLS - 1);
 
-		await page.locator('.table-cell').nth(last).click();
+		await clickInPlace(page.locator('.table-cell').nth(last));
 		await page.keyboard.press('Alt+ArrowRight');
 
 		// Insert semantics: the column swaps past its clipped neighbour.

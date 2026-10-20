@@ -444,7 +444,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 			(n) => n.start === hit.inline.start && widgetEditing(n.kind)?.revealSource
 		);
 		if (!target) return;
-		el.focus();
+		el.focus({ preventScroll: true });
 		revealOpenedByLastClick = true;
 		void startReveal(target, seat ?? insideEndOffset(target));
 	}
@@ -692,7 +692,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 				: findLastEdgeWidget(deps.node, deps.reading);
 		if (!target) return false;
 		// Focus the contenteditable so subsequent keys route to this block's handler.
-		deps.getEl()?.focus();
+		deps.getEl()?.focus({ preventScroll: true });
 		enterWidget(target, side === 'end');
 		return true;
 	}
@@ -749,7 +749,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		) {
 			return;
 		}
-		el.focus();
+		el.focus({ preventScroll: true });
 		deps.cursor.setRaw(asRawOffset(seat.offset), { clamp: 'reachable' });
 		// `setRaw` may have landed in a trailing text node, where the browser draws a caret.
 		if (!caretIsInTextContent(el)) deps.setSnapTarget(seat.offset);

@@ -15,10 +15,6 @@ test.describe('image crop', () => {
 
 	async function selectAndStartCrop(page: import('@playwright/test').Page) {
 		await waitForFirstImageLoaded(page);
-		// A crop starts only over a decoded picture, and `complete` holds for a broken one too.
-		await page.waitForFunction(
-			() => (document.querySelector('[data-image-widget] img') as HTMLImageElement).naturalWidth > 0
-		);
 		const widget = page.locator('[data-image-widget]').first();
 		await widget.click();
 		await page.locator('.md-image-properties').getByRole('button', { name: 'Crop image' }).click();

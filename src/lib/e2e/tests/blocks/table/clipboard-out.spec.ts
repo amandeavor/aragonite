@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { dragBetweenCells } from './helpers';
 import { extendKey } from '../../../platform-keys';
+import { clickInPlace } from '../../../click-in-place';
 
 const TABLE_ALIGNED = '| A | B | C |\n| :--- | :---: | ---: |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n';
 
@@ -17,7 +18,7 @@ test.describe('table block: clipboard out', () => {
 
 	test('Ctrl+A inside a cell + Ctrl+C copies the cell text', async ({ page }) => {
 		await editor.loadContent(TABLE_ALIGNED);
-		await page.locator('.table-cell').nth(3).click();
+		await clickInPlace(page.locator('.table-cell').nth(3));
 		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('ControlOrMeta+c');
 		await expect.poll(() => editor.readClipboard()).toBe('1');
@@ -29,7 +30,7 @@ test.describe('table block: clipboard out', () => {
 		page
 	}) => {
 		await editor.loadContent('| A | B |\n| --- | --- |\n| a<br>b | world |\n');
-		await page.locator('.table-cell').nth(2).click(); // "a<br>b"
+		await clickInPlace(page.locator('.table-cell').nth(2)); // "a<br>b"
 		await page.keyboard.press('ControlOrMeta+a'); // stage-1 select-all selects the cell content
 		await page.keyboard.press('ControlOrMeta+c');
 		// The browser default would copy rendered textContent ("ab"), losing the `<br>` source.
@@ -38,7 +39,7 @@ test.describe('table block: clipboard out', () => {
 
 	test('Ctrl+A in an empty cell copies an empty string', async ({ page }) => {
 		await editor.loadContent('| A | B |\n| --- | --- |\n|  | 2 |\n');
-		await page.locator('.table-cell').nth(2).click();
+		await clickInPlace(page.locator('.table-cell').nth(2));
 		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('ControlOrMeta+c');
 		await expect.poll(() => editor.readClipboard()).toBe('');
@@ -72,7 +73,7 @@ test.describe('table block: clipboard out', () => {
 
 	test('whole table copy after Ctrl+A 2nd press emits table raw', async ({ page }) => {
 		await editor.loadContent(TABLE_ALIGNED);
-		await page.locator('.table-cell').nth(3).click();
+		await clickInPlace(page.locator('.table-cell').nth(3));
 		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('ControlOrMeta+a');
 		await editor.waitForCrossBlock(true);

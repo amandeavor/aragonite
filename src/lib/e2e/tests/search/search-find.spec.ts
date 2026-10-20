@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { activeOverlays, count, findInput, openFind, overlays, typeQuery } from './helpers';
+import { clickInPlace } from '../../click-in-place';
 
 test.describe('search: find and highlight', () => {
 	let editor: EditorPage;
@@ -27,8 +28,8 @@ test.describe('search: find and highlight', () => {
 
 	test('a regex matching empty paints no zero-width overlay sliver', async ({ page }) => {
 		await openFind(editor);
-		await page.getByRole('button', { name: 'Regex' }).click();
-		await findInput(page).click();
+		await clickInPlace(page.getByRole('button', { name: 'Regex' }));
+		await clickInPlace(findInput(page));
 		// `a*` matches each `a` run and the empty string at every other position; the
 		// empty matches measure zero-width and must be dropped, not painted.
 		await typeQuery(editor, 'a*');
@@ -131,7 +132,7 @@ test.describe('search: bar stays pinned', () => {
 		expect(before!.pinnedToTop && before!.inViewport).toBe(true);
 
 		// Navigate to the off-screen match; the editor scrolls down to bring it into view.
-		await page.getByRole('button', { name: 'Next match' }).click();
+		await clickInPlace(page.getByRole('button', { name: 'Next match' }));
 		await expect(count(page)).toHaveText(/2\s+of\s+2/);
 		// If the document stopped overflowing, Next would scroll nothing and "the bar stayed at top"
 		// would hold trivially, so the jump must really have scrolled the editor.

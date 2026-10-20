@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { PluginsPage } from '../../plugins/helpers';
+import { clickInPlace, hoverInPlace } from '../../../click-in-place';
 
 // Shared pointer helpers for the table block e2e specs. The drag is the real mouse path (down,
 // interpolated moves, up), and the 10 steps match `EditorPage`'s own `dragMouseTo`.
@@ -46,10 +47,10 @@ export async function openFlyout(
 	group: 'Row' | 'Column'
 ): Promise<void> {
 	const target = typeof cell === 'number' ? page.locator('.table-cell').nth(cell) : cell;
-	await target.click({ button: 'right' });
+	await clickInPlace(target, { button: 'right' });
 	const row = page.getByRole('menuitem', { name: group, exact: true });
 	await expect(row).toBeVisible();
-	await row.hover();
+	await hoverInPlace(row);
 }
 
 // ── The inline-math table seed ──────────────────────────────────────────────

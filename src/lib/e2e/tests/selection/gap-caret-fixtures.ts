@@ -1,4 +1,5 @@
 import type { EditorPage } from '../../editor-page';
+import { clickInPlace } from '../../click-in-place';
 
 // The documents whose block joins the gap caret rests in, and the gesture that arrives there.
 
@@ -25,7 +26,7 @@ export const WINDOWED = `${filler(100, 0)}\n${TABLE}\n${FENCE}\n${filler(100, 10
 
 /** Click the table's last cell and step down onto the boundary below it. */
 export async function arriveAtBoundary(editor: EditorPage): Promise<void> {
-	await editor.page.locator('.table-cell').nth(LAST_CELL).click();
+	await clickInPlace(editor.page.locator('.table-cell').nth(LAST_CELL));
 	await editor.page.keyboard.press('ArrowDown');
 	await editor.bridge.waitForGapCaret(AT_BOUNDARY);
 }

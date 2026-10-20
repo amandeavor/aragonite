@@ -28,8 +28,8 @@ export interface GapCaretRestoreDeps {
 	caretWriter: CaretWriter;
 	/** Mounts the block at `path`: the caret landing's `mount`. */
 	mount(path: number[]): Promise<BlockComponent | null>;
-	/** Brings the mounted block into view as the restore's reveal policy says. */
-	reveal(path: number[]): Promise<void>;
+	/** Shows the placed gap caret as the restore's reveal policy says. */
+	show(): Promise<void>;
 	/** False once the tree the restore set out in is gone, so it places no caret into its successor. */
 	current(): boolean;
 	/** Cleared on each restore, since a placed caret did not arrive by a key. */
@@ -47,14 +47,14 @@ export async function restoreGapCaret(
 	deps.caretMemory.forget();
 
 	const index = Math.min(Math.max(pos.index, 0), children.length);
-	// The boundary itself mounts nothing; what must be on screen is the block it sits
-	// against, so the gap's own BlockList is inside a live window when it renders.
+	// The boundary itself mounts nothing; what must be mounted is the block it sits against,
+	// so the gap's own BlockList is inside a live window when it renders.
 	const neighbour = index < children.length ? index : index - 1;
 	const neighbourPath = [...pos.parentPath, neighbour];
 	const mounted = (await deps.mount(neighbourPath)) !== null;
-	if (mounted) await deps.reveal(neighbourPath);
 	if (!deps.current()) return 'unplaced';
 	placeGapCaret(deps.selectionState, deps.caretWriter, { parentPath: pos.parentPath, index });
+	if (mounted) await deps.show();
 	return mounted ? 'applied' : 'unplaced';
 }
 

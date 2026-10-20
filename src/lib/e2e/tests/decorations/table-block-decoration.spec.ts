@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 // Block decorations addressed to a table row or cell
 // (requirements/decorations/table-block-decoration.md).
@@ -91,7 +92,7 @@ test.describe('block decorations on table rows and cells', () => {
 		const cellC = page.locator(CELLS).nth(2);
 		await expect(cellC).toHaveClass(/\be2e-cell-dec\b/);
 
-		await cellC.click();
+		await clickInPlace(cellC);
 		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText('x');
 		await expect(cellC).toHaveText('cx');

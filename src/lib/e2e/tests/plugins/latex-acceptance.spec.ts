@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, clickWidgetCenter, clickWidgetEnd } from './helpers';
 import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 /**
  * Acceptance coverage for the LaTeX extension, each test labelled with the spec's axis id. These
@@ -193,7 +194,7 @@ test.describe('latex acceptance axes', () => {
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('z');
-		await editor.getBlock(4).click();
+		await clickInPlace(editor.getBlock(4));
 
 		await editor.bridge.waitForSourceContains('$$zb^2$$');
 		await expect(editor.blockRender).toHaveCount(3);

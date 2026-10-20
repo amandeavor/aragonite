@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { gotoPageScroll, scrollPageTo } from './vr-helpers';
+import { hoverInPlace } from '../../click-in-place';
 
 // Drag autoscroll where the window's own viewport does the scrolling. The edge distances come
 // from boxes, and `document.scrollingElement`'s box is the whole document, so a pointer at the
@@ -17,7 +18,7 @@ const scrollY = (page: Page): Promise<number> => page.evaluate(() => window.scro
  *  cancels with Escape. */
 async function dragHandleTo(page: Page, clientY: number): Promise<void> {
 	const source = page.locator(DRAG_SOURCE);
-	await source.hover();
+	await hoverInPlace(source);
 	const handle = await source.locator('.block-drag-handle').first().boundingBox();
 	expect(handle).not.toBeNull();
 	await page.mouse.move(handle!.x + handle!.width / 2, handle!.y + handle!.height / 2);

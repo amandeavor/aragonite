@@ -3,6 +3,7 @@ import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { gotoReady } from '../goto-ready';
 import { edgeKey } from '../platform-keys';
+import { clickInPlace } from '../click-in-place';
 
 // The editor lays out the same on a page with no CSS reset as on `/test/editor`, which has one,
 // and leaves what a host put inside it on the page's own styles.
@@ -99,7 +100,7 @@ test.describe('an editor on a page with no CSS reset', () => {
 
 	test('typing at the end of a long line does not scroll the page sideways', async ({ page }) => {
 		await loadOnNoReset(page, LONG_LINE);
-		await page.locator('.editor [contenteditable="true"]').first().click();
+		await clickInPlace(page.locator('.editor [contenteditable="true"]').first());
 		await page.keyboard.press(edgeKey('blockEnd'));
 		await page.keyboard.type(' and on');
 		await expect(page.locator('.editor')).toContainText('wraps. and on');
@@ -163,7 +164,7 @@ test.describe('an editor on a page with no CSS reset', () => {
 			['%%', 'dom-row']
 		]) {
 			await test.step(`an inline menu ${name}`, async () => {
-				await page.locator('.editor [contenteditable="true"]').first().click();
+				await clickInPlace(page.locator('.editor [contenteditable="true"]').first());
 				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.type(` ${trigger}`);
 				const row = `.inline-menu[data-inline-menu="${name}"] .host-button`;
@@ -179,7 +180,7 @@ test.describe('an editor on a page with no CSS reset', () => {
 	}) => {
 		const barStyles = async (query: string) => {
 			await loadOnNoReset(page, 'A paragraph.\n', query);
-			await page.locator('.editor [contenteditable="true"]').first().click();
+			await clickInPlace(page.locator('.editor [contenteditable="true"]').first());
 			await page.keyboard.press('ControlOrMeta+f');
 			await expect(page.locator('.search-bar')).toBeVisible();
 			return page.locator('.search-bar').evaluate((bar) =>

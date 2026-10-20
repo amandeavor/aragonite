@@ -4,6 +4,7 @@
  * the block into view. One per editor, built in `Editor.svelte`; nothing else scrolls for a landing.
  */
 
+import { tick } from 'svelte';
 import { assertInvariant } from '../assert';
 import type { BlockComponent } from '../block-component';
 import type { DocumentView } from '../core/node-views';
@@ -67,6 +68,9 @@ export interface CaretLanding {
 	/** An arrow move put focus in the block at `path`: the page scrolls the least distance that
 	 *  shows the caret's line, or the whole cell in a table. */
 	followArrival(path: readonly number[]): void;
+	/** A gap caret was just placed: once it renders, the page scrolls the least distance that
+	 *  shows it. */
+	showGap(): Promise<void>;
 	/** Bumped by every undo, redo, document swap and the unmount: a landing that waited across one
 	 *  is stale. */
 	generation(): number;
@@ -136,6 +140,29 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 		});
 	}
 
+	async function showGap(): Promise<void> {
+		await tick();
+		// A live gap caret holds focus on its proxy, the box around the boundary.
+		const proxy = document.activeElement;
+		if (!deps.selectionState.gapCaret || !(proxy instanceof HTMLElement)) return;
+		if (proxy.parentElement?.dataset.gapCaret === undefined) return;
+		if (!deps.getEditorRoot()?.contains(proxy)) return;
+		deps.scroll?.showRect(() => proxy.getBoundingClientRect());
+	}
+
+	function showArrival(path: readonly number[]): void {
+		const el = deps.scroll && deps.getBlockElByPath([...path]);
+		const active = el ? document.activeElement : null;
+		if (!el?.contains(active)) return;
+		// The cell that took the caret shows whole; in any other leaf only the caret's line, or a
+		// paragraph taller than the viewport would jump the page by a screen.
+		const cell = findCellPathForElement(active);
+		const cellEl = cell && deps.getBlockElByPath(cell);
+		const leaf = findBlockPathForElement(active);
+		const leafEl = (leaf && deps.getBlockElByPath(leaf)) ?? el;
+		deps.scroll?.showRect(() => (cellEl ? cellEl.getBoundingClientRect() : caretBox(leafEl)));
+	}
+
 	async function landAt(
 		pos: CaretPosition,
 		stamp: number,
@@ -170,7 +197,7 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 					caretWriter: deps.caretWriter,
 					caretMemory: deps.caretMemory,
 					mount: (path) => descendTo(deps.root, path, { current: at(stamp) }),
-					reveal: (path) => bringIntoView(path, reveal),
+					show: reveal === 'mount' ? async () => {} : showGap,
 					current: at(stamp)
 				});
 			}
@@ -225,17 +252,10 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 
 		mount: (path, opts) => descendTo(deps.root, path, { ...opts, current: at(generation) }),
 		followArrival(path) {
-			const el = deps.scroll && deps.getBlockElByPath([...path]);
-			const active = el ? document.activeElement : null;
-			if (!el?.contains(active)) return;
-			// The cell that took the caret shows whole; in any other leaf only the caret's line, or a
-			// paragraph taller than the viewport would jump the page by a screen.
-			const cell = findCellPathForElement(active);
-			const cellEl = cell && deps.getBlockElByPath(cell);
-			const leaf = findBlockPathForElement(active);
-			const leafEl = (leaf && deps.getBlockElByPath(leaf)) ?? el;
-			deps.scroll?.showRect(() => (cellEl ? cellEl.getBoundingClientRect() : caretBox(leafEl)));
+			// A block showing its source on arrival focuses a tick after the move hands it the caret.
+			void tick().then(() => showArrival(path));
 		},
+		showGap,
 		generation: () => generation,
 		noteTreeSwap: () => {
 			generation++;

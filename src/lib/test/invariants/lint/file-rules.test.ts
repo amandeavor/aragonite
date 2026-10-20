@@ -1718,16 +1718,6 @@ const BARE_FOCUSES: ManifestRule[] = [
 		id: 'G4.91 a focus call that may scroll is declared',
 		matches: BARE_FOCUS_RE,
 		declared: {
-			'src/lib/components/blocks/text/widget-interaction.ts':
-				'a click that reveals a widget’s source focuses the surface under the pointer, already on screen',
-			'src/lib/caret/reveal-source.ts':
-				'the revealed source takes focus where the click that revealed it landed',
-			'src/lib/components/GapCaret.svelte':
-				'an arrow move arriving on a gap caret keeps the browser’s own scroll to it',
-			'src/lib/selection/keyboard-extend.ts':
-				'a native range re-made in a block the keyboard is already on',
-			'src/lib/plugins/mermaid/MermaidBlock.svelte':
-				'the diagram’s own surface takes focus back after a redraw or an edit, and the focus view its overlay',
 			'src/lib/components/blocks/code/CodeBlockRail.svelte':
 				'the rail’s menu button takes focus back as its popout closes',
 			'src/lib/components/blocks/table/TableActionMenu.svelte':

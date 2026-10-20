@@ -8,7 +8,7 @@ backs it.
 
 Scans over the library live in `test/invariants/lint/` and ride `npm run test:editor:invariants`.
 Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133, G4.211,
-G4.212, G4.213) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
+G4.212, G4.213, G4.226, G4.228) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
 bash and PowerShell), and `npm test` runs both.
 
 This is the catalogued set, not the whole of `test/invariants/lint/`: a scan holding one module's
@@ -190,6 +190,7 @@ unguarded.
 | G4.225 | The drag session is the first listener to hear a release                                     | L       |
 | G4.226 | An e2e spec presses the platform's own chord for an edge key or a modifier                   | L       |
 | G4.227 | A caret-edge key is read in one place, `caretEdgeKey`                                        | L       |
+| G4.228 | An e2e locator action that must leave the scroll alone rides the in-place helper             | L       |
 
 ### The entries
 
@@ -1291,3 +1292,9 @@ sends both spellings literally. `e2e/lint/e2e-drivers.test.ts`.
 the same moves, so every site that steps in on one asks `caretEdgeKey` (`schema/keybindings.ts`)
 and none compares Home or End itself. It reads the raw Meta flag: Ctrl+Arrow is word motion on
 Windows and Linux. `lint/caret-edge-key-reader.test.ts`.
+
+**G4.228 · A click that leaves the scroll alone.** Over WebDriver BiDi (Firefox), every locator
+action first scrolls its target to the middle of the screen, even one already showing. So in a
+spec that reads or sets the scroll (every VR spec does) and in every shared e2e helper, a locator
+`click`, `hover`, `tap`, `dragTo` or `scrollIntoViewIfNeeded` fails the scan; `e2e/click-in-place.ts`
+scrolls only a target that's off screen. `e2e/lint/e2e-drivers.test.ts`.

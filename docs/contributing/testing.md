@@ -504,7 +504,11 @@ only Chromium has a CDP session, and lets the page's microtasks drain after `com
 way a browser does before it writes the composed text. That hand-fired sequence is the one
 exemption another scan (G4.49) grants, and no spec may copy it. So event order and the real paste
 chord stay pinned in Chromium. Firefox over BiDi needs a few more helpers: `e2e/multi-click.ts`
-(BiDi can't send a double click), `e2e/selection-drag.ts` and `e2e/insert-text.ts`.
+(BiDi can't send a double click), `e2e/selection-drag.ts` and `e2e/insert-text.ts`. And one that
+bites quietly: over BiDi, every locator action (`click`, `hover`, `scrollIntoViewIfNeeded`)
+scrolls its target to the middle of the screen first, even when it's already showing. So a spec
+that reads or sets the scroll position, and any shared helper, clicks through `e2e/click-in-place.ts`,
+which scrolls only a target that's off screen (G4.228 fails a raw one).
 
 **What a green run doesn't tell you.** Playwright's WebKit isn't Safari and isn't a WKWebView,
 just the closest proxy there is; the macOS run gets nearer (the platform's key bindings and

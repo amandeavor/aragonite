@@ -10,6 +10,7 @@ import {
 import { textRunEnd, textRunStart } from '../../text-runs';
 import { skipUnlessSupported } from '../../browser-engine';
 import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 // The drawn caret against the layout around its editable (requirements/caret/drawn-caret-layout.md):
 // a scroller that clips the caret, a size watch it shares with the block it sits in, and a code
@@ -148,7 +149,7 @@ test.describe('the drawn caret in a table scrolled sideways', () => {
 			`para\n\n| ${columns.join(' | ')} |\n|${' - |'.repeat(18)}\n| ${columns.join(' | ')} |\n`
 		);
 		const table = (await page.locator('.table-block').boundingBox())!;
-		await page.locator('.table-cell').first().click();
+		await clickInPlace(page.locator('.table-cell').first());
 		await page.keyboard.press(edgeKey('lineEnd'));
 		await nextFrames(page);
 		expect(
@@ -195,7 +196,7 @@ test.describe('the drawn caret and a table row’s size watch', () => {
 		await page.evaluate(() => {
 			(document.querySelectorAll('.table-cell')[2] as HTMLElement).dataset.probe = 'first';
 		});
-		await page.locator('.table-cell').nth(2).click();
+		await clickInPlace(page.locator('.table-cell').nth(2));
 		await nextFrames(page);
 		await editor.clickBlock(0);
 		await nextFrames(page);

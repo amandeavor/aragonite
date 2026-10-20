@@ -1,6 +1,7 @@
 import { expect } from '../../fixtures';
 import { PluginsPage } from './helpers';
 import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 // Shared page helpers for the latex suites that open a formula's source: the inline widget, in
 // MathRevealPage, used by the commit-first tests and by Enter's block meaning, and the block and
@@ -34,7 +35,7 @@ export class BlockMathPage extends PluginsPage {
 	 * waits for that element instead of the `revealWidget` count reaching zero.
 	 */
 	async revealByClick(): Promise<void> {
-		await this.render.click();
+		await clickInPlace(this.render);
 		await expect(this.source).toHaveCount(1);
 		await this.waitForRenderFlush();
 	}
@@ -42,7 +43,7 @@ export class BlockMathPage extends PluginsPage {
 	/** Enter the math block from the paragraph above with a real ArrowRight, so the caret lands
 	 *  through `focus(0)` with no mouseup competing for it. */
 	async revealFromBefore(): Promise<void> {
-		await this.getBlock(0).click();
+		await clickInPlace(this.getBlock(0));
 		await this.page.keyboard.press(edgeKey('lineEnd'));
 		await this.page.keyboard.press('ArrowRight');
 		await expect(this.source).toHaveCount(1);

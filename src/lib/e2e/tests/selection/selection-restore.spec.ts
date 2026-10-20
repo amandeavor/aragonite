@@ -4,6 +4,7 @@ import { EditorPage } from '../../editor-page';
 import { deferImage } from '../../page-probes';
 import type { EditorSelection } from '../../../selection/primitives';
 import { dragBetweenCells } from '../blocks/table/helpers';
+import { clickInPlace } from '../../click-in-place';
 
 const PROSE = 'Alpha one\n\nBravo two\n\nCharlie three\n';
 const TABLE_3x3 = '| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n';
@@ -255,7 +256,7 @@ test.describe('selection: setSelection restores a getSelection snapshot', () => 
 
 		// Collapse into a cell outside the rectangle. Table cells carry no
 		// data-block-path (no BlockHost), so they are addressed by role.
-		await page.locator('.table-cell').nth(8).click();
+		await clickInPlace(page.locator('.table-cell').nth(8));
 		await editor.waitForCrossBlock(false);
 
 		expect(await editor.bridge.setSelection(snapshot!)).toBe(true);
