@@ -8,16 +8,17 @@ import { isDevChecks } from '#lib/env.js';
 import {
 	endTypingBatchesForTests,
 	holdTypingPausesForTests,
-	openTypingBatchCountForTests
+	openTypingBatchCountForTests,
+	releaseTypingPausesForTests
 } from '#lib/editor-actions/commit/text-batch.js';
 import type { TypingBatchHandle } from '#lib/e2e/typing-batch.js';
 
 export function installTypingBatchHandle(): void {
 	if (typeof window === 'undefined' || !isDevChecks()) return;
 	const handle: TypingBatchHandle = {
-		hold: () => holdTypingPausesForTests(true),
+		hold: holdTypingPausesForTests,
 		end: endTypingBatchesForTests,
-		release: () => void holdTypingPausesForTests(false),
+		release: releaseTypingPausesForTests,
 		openCount: openTypingBatchCountForTests
 	};
 	(window as unknown as { __typingBatches: TypingBatchHandle }).__typingBatches = handle;

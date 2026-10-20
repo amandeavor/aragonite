@@ -79,11 +79,16 @@ export function createTextBatch(deps: TextBatchDeps): TextBatch {
 
 /** Test-only, and refused outside dev checks: while held, a typing batch never ends on a pause,
  *  only when a test ends it or the editor interrupts it. Returns whether the hold took. */
-export function holdTypingPausesForTests(held: boolean): boolean {
+export function holdTypingPausesForTests(): boolean {
 	if (!isDevChecks()) return false;
-	if (!held) endTypingBatchesForTests();
-	pausesHeld = held;
+	pausesHeld = true;
 	return true;
+}
+
+/** Test-only: back to the real pause, ending whatever the hold kept open. */
+export function releaseTypingPausesForTests(): void {
+	endTypingBatchesForTests();
+	pausesHeld = false;
 }
 
 /** Test-only: end every open typing batch now, the way its pause would. */

@@ -4,6 +4,7 @@ import {
 	endTypingBatchesForTests,
 	holdTypingPausesForTests,
 	openTypingBatchCountForTests,
+	releaseTypingPausesForTests,
 	UNDO_DEBOUNCE_MS
 } from '#lib/editor-actions/commit/text-batch.js';
 
@@ -102,12 +103,12 @@ describe('text-batch test control', () => {
 	});
 	afterEach(() => {
 		env.devChecks = true;
-		holdTypingPausesForTests(false);
+		releaseTypingPausesForTests();
 		vi.useRealTimers();
 	});
 
 	it('a held batch outlasts any pause, and the end closes every open batch', () => {
-		holdTypingPausesForTests(true);
+		holdTypingPausesForTests();
 		const one = harness();
 		const two = harness();
 		one.batch.keystroke([0], 0);
@@ -136,11 +137,11 @@ describe('text-batch test control', () => {
 	});
 
 	it('releasing the hold ends what it kept open, and the timer runs again', () => {
-		holdTypingPausesForTests(true);
+		holdTypingPausesForTests();
 		const { batch, pushSnapshot, onEnd } = harness();
 		batch.keystroke([0], 0);
 		batch.armPause();
-		holdTypingPausesForTests(false);
+		releaseTypingPausesForTests();
 		expect(onEnd).toHaveBeenCalledTimes(1);
 
 		batch.keystroke([0], 1);
@@ -154,7 +155,7 @@ describe('text-batch test control', () => {
 
 	it('outside dev checks the hold is refused and the pause still ends a batch', () => {
 		env.devChecks = false;
-		expect(holdTypingPausesForTests(true)).toBe(false);
+		expect(holdTypingPausesForTests()).toBe(false);
 		const { batch, onEnd } = harness();
 		batch.keystroke([0], 0);
 		batch.armPause();
