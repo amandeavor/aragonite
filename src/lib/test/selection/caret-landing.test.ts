@@ -298,14 +298,34 @@ describe('the other entry points', () => {
 	});
 
 	// Miss-analysis: GH #111; the suite pinned the text branch's offset, never the cell branch's.
-	it('a range end on a cell parks at the cell leaf’s start, which the cell clamps', async () => {
-		const { landing, placements, selectionState } = landingOver(
-			'alpha\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n'
-		);
-		selectionState.enterCrossBlock({ path: [0], offset: 1 }, { path: [1], offset: 0 });
-		await landing.showSelectionEnd();
-		expect(placements).toEqual([{ path: [1, 0, 0], offset: CURSOR_START, parked: true }]);
-	});
+	// Miss-analysis: an end only mounted left IME nothing to compose in once the start block windowed out.
+	it.each([
+		{
+			end: 'a text end',
+			focus: { path: [1], offset: 2 },
+			parked: [{ path: [1], offset: 2, parked: true }]
+		},
+		{
+			end: 'a cell end',
+			focus: { path: [2], offset: 0 },
+			parked: [{ path: [2, 0, 0], offset: CURSOR_START, parked: true }]
+		},
+		{ end: 'a rule end', focus: { path: [3], offset: 0 }, parked: [] }
+	])(
+		'once the caret has left the editor, $end parks the caret, a block with no text excepted',
+		async ({ focus, parked }) => {
+			const source = 'a\n\nbc\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n---\n';
+			const held = landingOver(source, { getEditorRoot: () => document.body });
+			held.selectionState.enterCrossBlock({ path: [0], offset: 1 }, focus);
+			await held.landing.showSelectionEnd();
+			expect(held.placements.filter((p) => p.parked)).toEqual([]);
+
+			const lost = landingOver(source, { getEditorRoot: () => document.createElement('div') });
+			lost.selectionState.enterCrossBlock({ path: [0], offset: 1 }, focus);
+			await lost.landing.showSelectionEnd();
+			expect(lost.placements.filter((p) => p.parked)).toEqual(parked);
+		}
+	);
 
 	it('mount hands back the component without placing a caret', async () => {
 		const { landing, placements } = landingOver('- a\n');

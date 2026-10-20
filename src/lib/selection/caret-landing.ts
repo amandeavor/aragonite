@@ -28,6 +28,8 @@ import {
 	type SelectionRestoreOutcome
 } from './selection-restore';
 import { isGapSelection, type GapCaretSelection } from '../undo/types';
+import { blockNodeAt } from '../tree-operations/node-primitives';
+import { isWholeBlockUnit } from '../schema/whole-block-unit';
 import type { SelectionState } from './selection-state.svelte';
 
 /** How far a landing moves the viewport: not at all, or just far enough to show the caret when it
@@ -176,18 +178,24 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 			return;
 		}
 		const end = deps.selectionState.cellLandingFor(focus);
-		if (focus.cellCoordinate) {
-			// A cell takes the caret at its start, since ArrowRight at its end reads as leaving the table.
-			await park({ path: docPathFrom(end.path), offset: CURSOR_START });
-		} else {
-			// Only mounted: the caret stays where the range began, whose block serves the range's keys.
-			await descendTo(deps.root, end.path, { current: at(generation) });
-		}
+		await descendTo(deps.root, end.path, { current: at(generation) });
 		await bringIntoView(
 			end.path,
 			'into-view',
 			(el) => caretRectAtRaw(el, end.offset) ?? el.getBoundingClientRect()
 		);
+		// The caret stays in the block the range began in, whose keys serve the range, until a far end
+		// windows that block out. Then an end with text takes it, so a composition has somewhere to go.
+		const node = blockNodeAt(deps.getDoc(), end.path);
+		if (holdsFocus() || !node || isWholeBlockUnit(node)) return;
+		// Raw 0 parks before any hidden marker; `CURSOR_START` clamps past them as a placement does.
+		await park({ path: docPathFrom(end.path), offset: end.offset || CURSOR_START });
+	}
+
+	/** False once the element holding the caret has left the editor; true where nothing renders. */
+	function holdsFocus(): boolean {
+		const root = deps.getEditorRoot();
+		return !root || root.contains(document.activeElement);
 	}
 
 	/** The leaf holding the browser's selection focus, a table cell's own path in a cell. */

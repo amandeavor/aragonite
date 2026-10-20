@@ -17,6 +17,7 @@ interface RangeRoute {
 }
 
 const THREE = 'alpha\n\nbeta\n\ngamma\n';
+const LONG = Array.from({ length: 200 }, (_, i) => `para ${i}`).join('\n\n') + '\n';
 
 /** Shift+Home, then one more step up or left: a range from the caret's block into the one before. */
 async function drawIntoPrevious(editor: EditorPage, step: 'ArrowUp' | 'ArrowLeft'): Promise<void> {
@@ -61,6 +62,17 @@ const ROUTES: RangeRoute[] = [
 			await editor.page.keyboard.press(extendKey('docEnd'));
 		},
 		after: (text) => `al${text}\n`
+	},
+	{
+		// The start block lies past windowing's reach once the end shows, so it unmounts.
+		name: 'a long document drawn downward, its first block windowed out',
+		source: LONG,
+		async draw(editor) {
+			await editor.focusBlock(0, 2);
+			await editor.page.keyboard.press(extendKey('docEnd'));
+			await expect(editor.page.locator('[data-block-path="0"]')).toHaveCount(0);
+		},
+		after: (text) => `pa${text}\n`
 	},
 	{
 		name: 'both paragraphs of a quote',
