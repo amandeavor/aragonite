@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 test.describe('list Tab', () => {
 	let editor: EditorPage;
@@ -67,7 +68,7 @@ test.describe('list Tab', () => {
 
 		const three = editor.page.locator('[contenteditable="true"]', { hasText: 'three' });
 		await three.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Tab');
 
 		await editor.typeText('X');
@@ -96,7 +97,7 @@ test.describe('list Tab', () => {
 
 		const two = editor.page.locator('[contenteditable="true"]', { hasText: /two$/ });
 		await two.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Tab');
 
 		await editor.typeText('X');

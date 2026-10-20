@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 test.describe('blockquote unwrap on Backspace (Rule U2)', () => {
 	let editor: EditorPage;
@@ -13,7 +14,7 @@ test.describe('blockquote unwrap on Backspace (Rule U2)', () => {
 		await editor.loadContent('> Hello world\n');
 		const bq = editor.getBlock(0).locator('[contenteditable="true"]').first();
 		await bq.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSource((s) => !s.includes('> '));
 
@@ -24,7 +25,7 @@ test.describe('blockquote unwrap on Backspace (Rule U2)', () => {
 		await editor.loadContent('> First\n>\n> Second\n');
 		const firstInner = editor.getBlock(0).locator('[contenteditable="true"]').first();
 		await firstInner.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^First/m);
 
@@ -35,7 +36,7 @@ test.describe('blockquote unwrap on Backspace (Rule U2)', () => {
 		await editor.loadContent('> A\n>\n> B\n');
 		const firstInner = editor.getBlock(0).locator('[contenteditable="true"]').first();
 		await firstInner.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 
 		await editor.bridge.waitForSourceEquals('A\n\n> B\n');
@@ -48,7 +49,7 @@ test.describe('blockquote unwrap on Backspace (Rule U2)', () => {
 			'.blockquote-block .blockquote-block [contenteditable="true"]'
 		);
 		await deepEditable.first().click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSource((s) => s.includes('> Deep') && !s.includes('> > '));
 	});
@@ -57,7 +58,7 @@ test.describe('blockquote unwrap on Backspace (Rule U2)', () => {
 		await editor.loadContent('Above paragraph.\n\n> Hello\n');
 		const inner = editor.getBlock(1).locator('[contenteditable="true"]').first();
 		await inner.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/Above paragraph\.\n\s*\nHello/);
 
@@ -68,7 +69,7 @@ test.describe('blockquote unwrap on Backspace (Rule U2)', () => {
 		await editor.loadContent('> - Item\n');
 		const item = editor.getBlock(0).locator('[contenteditable="true"]').first();
 		await item.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceContains('> Item');
 
@@ -79,7 +80,7 @@ test.describe('blockquote unwrap on Backspace (Rule U2)', () => {
 		await editor.loadContent('> Hello world\n');
 		const bq = editor.getBlock(0).locator('[contenteditable="true"]').first();
 		await bq.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^> Hello worl$/m);
 

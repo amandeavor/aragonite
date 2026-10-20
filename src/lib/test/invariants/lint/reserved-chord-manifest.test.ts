@@ -141,6 +141,6 @@ describe('G4.29 scan non-vacuity', () => {
 
 	it('the evidence assertion can fail', () => {
 		const site = HARDCODED_CHORD_SITES.find((s) => s.file === libRelative(SOURCE.keybindings))!;
-		expect(harvestKeys(byPath.get(site.file)!.code)).not.toContain('ArrowUp');
+		expect(harvestKeys(byPath.get(site.file)!.code)).not.toContain('Escape');
 	});
 });

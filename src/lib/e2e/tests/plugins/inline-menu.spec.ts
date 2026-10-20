@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { attachIme } from '../../simulation/ime';
 import { activeBlockPath, PluginsPage, capturedErrors } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Inline menus (`editor.inlineMenus`): the list under the caret on a typed trigger. Seed
@@ -148,7 +149,7 @@ test.describe('inline menus', () => {
 			await test.step('it opens in a list item', async () => {
 				await nextRow();
 				await editor.page.locator('[data-block-path="[3]"] [contenteditable]').first().click();
-				await editor.page.keyboard.press('End');
+				await editor.page.keyboard.press(edgeKey('lineEnd'));
 				await editor.typeText(' #');
 				await expect(menu(editor, TAGS)).toBeVisible();
 			});
@@ -338,7 +339,7 @@ test.describe('inline menus', () => {
 			await nextRow();
 			await editor.typeText(' #');
 			await expect(menu(editor)).toBeVisible();
-			await editor.page.keyboard.press('Home');
+			await editor.page.keyboard.press(edgeKey('lineStart'));
 			await expect(menu(editor)).toHaveCount(0);
 		});
 

@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey, extendKey } from '../../../../platform-keys';
 
 test.describe('list Enter: ordered numbering', () => {
 	let editor: EditorPage;
@@ -12,7 +13,7 @@ test.describe('list Enter: ordered numbering', () => {
 		await editor.loadContent('1. First\n2. Second\n3. Third\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'First' });
 		await first.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.bridge.waitForSourceMatches(/^3\.\s*Second/m);
 		await editor.typeText('New');
@@ -27,7 +28,7 @@ test.describe('list Enter: ordered numbering', () => {
 		await editor.loadContent('1. First\n2. Second\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'First' });
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Enter');
 		await editor.bridge.waitForSource((s) => {
 			const numbers = (s.match(/^(\d+)\./gm) || []).map(Number);
@@ -45,8 +46,8 @@ test.describe('list Enter: ordered numbering', () => {
 		await editor.loadContent('1. First\n2. Second\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'First' });
 		await first.click();
-		await editor.page.keyboard.press('Home');
-		await editor.page.keyboard.press('Shift+End');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
+		await editor.page.keyboard.press(extendKey('lineEnd'));
 		await editor.page.keyboard.press('Delete');
 		await editor.bridge.waitForSource((s) => !s.includes('First'));
 		await editor.page.keyboard.press('Enter');
@@ -61,8 +62,8 @@ test.describe('list Enter: ordered numbering', () => {
 		await editor.loadContent('1. one\n2. two\n3. three\n4. four\n');
 		const third = editor.page.locator('[contenteditable="true"]', { hasText: 'three' });
 		await third.click();
-		await editor.page.keyboard.press('Home');
-		await editor.page.keyboard.press('Shift+End');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
+		await editor.page.keyboard.press(extendKey('lineEnd'));
 		await editor.page.keyboard.press('Delete');
 		await editor.bridge.waitForSource((s) => !s.includes('three'));
 		await editor.page.keyboard.press('Enter');
@@ -89,7 +90,7 @@ test.describe('list Enter: ordered numbering', () => {
 			await editor.loadContent(source);
 			const second = editor.page.locator('[contenteditable="true"]', { hasText: 'two' });
 			await second.click();
-			await editor.page.keyboard.press('End');
+			await editor.page.keyboard.press(edgeKey('lineEnd'));
 			await editor.page.keyboard.press('Enter');
 			await editor.bridge.waitForSourceMatches(/^(> )?4\. three$/m);
 			await editor.page.keyboard.press('Enter');
@@ -105,7 +106,7 @@ test.describe('list Enter: ordered numbering', () => {
 		await editor.loadContent('1. one\n2. two\n\n3. three\n');
 		const third = editor.page.locator('[contenteditable="true"]', { hasText: 'three' });
 		await third.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForListItemCount(4);
 		await editor.typeText('new');

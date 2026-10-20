@@ -10,7 +10,7 @@ import { coverRange, rangeCoverage } from '../range-coverage';
 import type { SelectionState } from '../selection-state.svelte';
 import { blockNodeAt } from '../../tree-operations/node-primitives';
 import { isReadingMode } from '../../presentation-mode';
-import { eventToChord, isSelectAllChord } from '../../schema/keybindings';
+import { caretEdgeKey, eventToChord, isSelectAllChord } from '../../schema/keybindings';
 import {
 	commandOverRange,
 	dispatchKeyCommand,
@@ -69,9 +69,8 @@ async function handleKeyDown(ctx: CrossBlockDispatchContext, e: KeyboardEvent): 
 	ctx.caretMemory.noteKey(e, commandAtBlock(e, ctx));
 
 	// The doc-edge extend behaves the same from a caret and from a range, so it runs before the split.
-	if (isDocEdgeExtendKey(e)) {
-		return handleDocEdgeExtend(ctx, e, e.key === 'End' ? 'end' : 'start');
-	}
+	const edge = caretEdgeKey(e);
+	if (edge?.to === 'doc') return handleDocEdgeExtend(ctx, e, edge.side);
 
 	if (selection.isCrossBlock) {
 		const handled = await handleCrossBlockActive(ctx, e);
@@ -271,7 +270,7 @@ export interface RangeKeyReads {
  *  to it: the range's handler awaits before claiming, so the key can reach the container first. */
 export function rangeOwnsKey(e: KeyboardEvent, reads: RangeKeyReads): boolean {
 	if (!reads.selection.isCrossBlock) return false;
-	return isDocEdgeExtendKey(e) || rangeKeyRole(e, reads) !== null;
+	return caretEdgeKey(e)?.to === 'doc' || rangeKeyRole(e, reads) !== null;
 }
 
 type RangeKeyRole =
@@ -294,9 +293,11 @@ function readRangeKeyRole(e: KeyboardEvent, reads: RangeKeyReads): RangeKeyRole 
 	// caret would leave empty marker pairs where the text stood.
 	if (isClaimedRewriteChord(e)) return 'rewrite';
 	if (isIndentKey(e, reads)) return 'indent';
-	if (e.shiftKey && isArrowKey(e.key)) return 'extend';
+	// Cmd+Arrow is a caret-edge key, which a range leaves to the block as it does Home and End.
+	const step = isArrowKey(e.key) && caretEdgeKey(e) === null;
+	if (e.shiftKey && step) return 'extend';
 	const plain = !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey;
-	if ((e.key === 'Escape' && plain) || (!e.shiftKey && isArrowKey(e.key))) return 'collapse';
+	if ((e.key === 'Escape' && plain) || (!e.shiftKey && step)) return 'collapse';
 	if (isSelectAllChord(e)) return 'selectAll';
 	// Last, since it reads the range's coverage: the navigation keys above never need it.
 	return isCommandCandidateKey(e, reads) ? 'command' : null;
@@ -325,11 +326,6 @@ export function isIndentKey(e: KeyboardEvent, reads: RangeKeyReads): boolean {
 /** Tab or Shift+Tab, with no other modifier. */
 function isTabKey(e: KeyboardEvent): boolean {
 	return e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey;
-}
-
-/** Mod+Shift+End and Mod+Shift+Home, which extend to the document's edge from a caret or a range. */
-function isDocEdgeExtendKey(e: KeyboardEvent): boolean {
-	return (e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'End' || e.key === 'Home');
 }
 
 type ArrowKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';

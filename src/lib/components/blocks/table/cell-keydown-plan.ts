@@ -3,10 +3,10 @@
  * at a text boundary, move a row, leave the table, and the row-appending end of Tab and Enter. The
  * branches ignore Alt and Mod, which the command dispatcher takes first: a modified arrow nothing
  * took must still navigate, and `native` hands it to the shared prose handling, which moves
- * between siblings by index.
+ * between siblings by index. Cmd+Arrow is a caret-edge key, not a move, so it is `native` too.
  */
 import { cellAbove, cellBelow, nextCell, prevCell, type CellCoord } from './table-navigation';
-import { isSelectAllChord, type ChordKeys } from '../../../schema/keybindings';
+import { caretEdgeKey, isSelectAllChord, type ChordKeys } from '../../../schema/keybindings';
 
 export interface CellKeyState {
 	rowIdx: number;
@@ -39,6 +39,7 @@ export function cellKeydownPlan(e: ChordKeys, s: CellKeyState): CellKeyPlan {
 			step: s.selectAllCount === 0 ? 'native' : 'document'
 		};
 	}
+	if (caretEdgeKey(e)) return { kind: 'native' };
 	if (e.key === 'ArrowLeft' && !e.shiftKey && s.offset <= s.contentStart && s.collapsed) {
 		return horizontalMove(prevCell(pos, s.columnCount), 'end', 'up');
 	}

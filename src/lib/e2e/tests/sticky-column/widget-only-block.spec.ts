@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // A paragraph whose only content is a run of entity widgets: the caret can sit at their
 // boundaries and nowhere else, and every one of those positions measures to no box of its own.
@@ -13,7 +14,7 @@ const COLUMN = 20;
 
 async function clickColumnInFirstParagraph(editor: EditorPage): Promise<void> {
 	await editor.page.locator('[contenteditable="true"]').nth(0).click();
-	await editor.page.keyboard.press('Home');
+	await editor.page.keyboard.press(edgeKey('lineStart'));
 	for (let i = 0; i < COLUMN; i++) await editor.page.keyboard.press('ArrowRight');
 	await editor.waitForRenderFlush();
 }
@@ -84,7 +85,7 @@ test.describe('sticky column: a paragraph whose only content is widgets', () => 
 
 	test('ArrowDown from the start of the line lands at the run’s leading edge', async ({ page }) => {
 		await editor.page.locator('[contenteditable="true"]').nth(0).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowDown');
 		await editor.waitForRenderFlush();
 		await page.keyboard.press('X');
@@ -97,7 +98,7 @@ test.describe('sticky column: a paragraph whose only content is widgets', () => 
 		page
 	}) => {
 		await editor.page.locator('[contenteditable="true"]').nth(0).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
 		await editor.waitForRenderFlush();
 		const nearest = await widgetsLeftOfColumn(page, await editor.getCaretPixelX());

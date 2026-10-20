@@ -3,6 +3,7 @@ import { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { focusOffset } from './helpers';
 import { clickModeToggle } from '../../mode-switch';
+import { edgeKey } from '../../platform-keys';
 
 // The caret-affinity rule: the caret is a raw offset, a shown construct's bytes are visible,
 // and typing lands at that offset, with no stored-marks machinery.
@@ -11,7 +12,7 @@ import { clickModeToggle } from '../../mode-switch';
 // Step to a target raw offset with real keys, since a click cannot target hidden markers.
 // Asserts the exact landing so a skipped byte fails loudly rather than typing blind.
 async function stepRightTo(ep: EditorPage, page: Page, target: number): Promise<void> {
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await ep.waitForRenderFlush();
 	let offset = await focusOffset(ep);
 	let guard = 0;
@@ -68,7 +69,7 @@ test.describe('preview-inline: caret affinity', () => {
 		await ep.clickBlock(0);
 		// Home lands at the first visible position, after the hidden opening `**`; step right
 		// into the content, then step left to reach raw offset 0.
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight'); // now inside "bold", markers shown

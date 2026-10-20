@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickBlockSettled, enterPresentationMode, stepTo } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Backspace at a live heading's content start: the block gives up its own structure before the
 // merge chain sees the keypress. The source and the block kind are the references, because the
@@ -52,7 +53,7 @@ test.describe('live mode: Backspace at a heading’s content start demotes befor
 		page
 	}) => {
 		await clickBlockSettled(ep, HEADING);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 
 		await page.keyboard.press('Backspace');
@@ -68,7 +69,7 @@ test.describe('live mode: Backspace at a heading’s content start demotes befor
 	// Demote first, merge second: the merge chain is untouched, it just never sees the first key.
 	test('the second press merges, through the untouched cascade', async ({ page }) => {
 		await clickBlockSettled(ep, FOLLOWER);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		await page.keyboard.press('Backspace');
 		await ep.bridge.waitForSourceContains('HeadingSome text');
@@ -78,7 +79,7 @@ test.describe('live mode: Backspace at a heading’s content start demotes befor
 	// `#`s instead writes the block back unchanged and the keypress does nothing at all.
 	test('an indented heading demotes too', async ({ page }) => {
 		await clickBlockSettled(ep, INDENTED);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 
 		await page.keyboard.press('Backspace');
@@ -91,7 +92,7 @@ test.describe('live mode: Backspace at a heading’s content start demotes befor
 	// offset of that byte, so a bound at the node's content start would match no caret at all.
 	test('a heading opening with a construct demotes at the caret Home leaves', async ({ page }) => {
 		await clickBlockSettled(ep, CONSTRUCT_LED);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 
 		await page.keyboard.press('Backspace');
@@ -104,7 +105,7 @@ test.describe('live mode: Backspace at a heading’s content start demotes befor
 	// without them `[B][r]` is plain text and the bound never clears its hidden `[`.
 	test('a heading opening with a reference link demotes', async ({ page }) => {
 		await clickBlockSettled(ep, REFERENCE_LED);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 
 		await page.keyboard.press('Backspace');
@@ -116,7 +117,7 @@ test.describe('live mode: Backspace at a heading’s content start demotes befor
 	// The same bound on a kind that declares no demote: the key has to reach the merge chain.
 	test('a paragraph opening with a reference link still merges', async ({ page }) => {
 		await clickBlockSettled(ep, REFERENCE_PARA);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 
 		await page.keyboard.press('Backspace');
@@ -127,7 +128,7 @@ test.describe('live mode: Backspace at a heading’s content start demotes befor
 	// reach the key from the other end: the underline goes, the text stays.
 	test('a setext heading gives up its underline', async ({ page }) => {
 		await clickBlockSettled(ep, SETEXT);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 
 		await page.keyboard.press('Backspace');
@@ -144,7 +145,7 @@ test.describe('source mode: the prefix is painted, so nothing demotes', () => {
 		const ep = await enterMode(page, 'source');
 		await clickBlockSettled(ep, HEADING);
 		// Home reaches raw 0 here, which live has no caret for at all.
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		await stepTo(ep, page, 'ArrowRight', 2);
 

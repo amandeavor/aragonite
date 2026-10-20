@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import type { EditorPage } from '../../editor-page';
 import { clickBlockSettled, enterPresentationMode, nextRow } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // A caret key on the line Shift+Enter opened at a block's end moves from that line, where the
 // caret is drawn, and the line goes once the caret leaves it. Each test walks its rows as steps,
@@ -18,7 +19,7 @@ async function keyThenZ(
 	drawn?: number
 ): Promise<void> {
 	await clickBlockSettled(ep, index);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.press('Shift+Enter');
 	await ep.waitForRenderFlush();
 	await page.keyboard.press(key);
@@ -40,8 +41,8 @@ for (const mode of ['source', 'live'] as const) {
 			['ArrowUp', 'first\n\nzabc\n\nnext\n', 0],
 			['ArrowDown', 'first\n\nabc\n\nznext\n', 0],
 			['ArrowRight', 'first\n\nabc\n\nznext\n', 0],
-			['Home', 'first\n\nabc\\\nz\n\nnext\n', 2],
-			['End', 'first\n\nabc\\\nz\n\nnext\n', 2]
+			[edgeKey('lineStart'), 'first\n\nabc\\\nz\n\nnext\n', 2],
+			[edgeKey('lineEnd'), 'first\n\nabc\\\nz\n\nnext\n', 2]
 		] as const) {
 			await test.step(`${key} moves from the open line`, async () => {
 				await nextRow(ep, DOC);
@@ -74,7 +75,7 @@ test('source mode: the open line of an empty paragraph: ArrowLeft drops the line
 }) => {
 	const ep = await enterPresentationMode(page, 'source', 'first\n');
 	await clickBlockSettled(ep, 0);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.press('Enter');
 	await ep.waitForRenderFlush();
 

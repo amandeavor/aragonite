@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Windows clipboard writes CRLF, so every source read normalizes before comparing.
 const asLf = (src: string) => src.replace(/\r\n/g, '\n');
@@ -16,7 +17,7 @@ test.describe('a one-line clipboard ending in a line ending', () => {
 
 	test('at the end of a paragraph drops the ending', async ({ page }) => {
 		await editor.focusBlockAtPath([0], 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('abcx');
 

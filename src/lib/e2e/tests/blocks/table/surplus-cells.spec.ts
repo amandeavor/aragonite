@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // A body row wider than the header keeps its extra cells through edits: the grid shows the
 // header's column count, as GFM renders it, and no edit drops the bytes past it.
@@ -22,7 +23,7 @@ test.describe('a body row wider than the header', () => {
 
 	test('typing in the row keeps its extra cell', async ({ page }) => {
 		await page.locator('.table-cell').nth(1).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('s');
 
 		await expect.poll(() => editor.bridge.getSource()).toBe('| H0 |\n| --- |\n| xs | y |\n| 1 |\n');
@@ -33,7 +34,7 @@ test.describe('a body row wider than the header', () => {
 		page
 	}) => {
 		await page.locator('.table-cell').nth(2).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('2');
 
 		await expect.poll(() => editor.bridge.getSource()).toBe('| H0 |\n| --- |\n| x | y |\n| 12 |\n');

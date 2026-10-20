@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { focusWalkKey } from '../../platform-keys';
 import {
 	count,
 	findInput,
@@ -94,7 +95,7 @@ test.describe('search: replace', () => {
 			await typeQuery(editor, 'foo');
 			await replaceInput(page).click();
 			await page.keyboard.type('bar');
-			for (let i = 0; i < tabs; i++) await page.keyboard.press('Tab');
+			for (let i = 0; i < tabs; i++) await page.keyboard.press(focusWalkKey());
 			await expect(page.getByRole('button', { name: button, exact: true })).toBeFocused();
 
 			await page.keyboard.press('Enter');

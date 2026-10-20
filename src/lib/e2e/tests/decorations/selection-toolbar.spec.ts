@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { pointAtRaw } from '../../text-runs';
+import { extendKey } from '../../platform-keys';
 
 /**
  * Selection toolbar (requirements/decorations/selection-toolbar.md): the editor's own
@@ -250,7 +251,7 @@ test.describe('selection toolbar', () => {
 	}) => {
 		await editor.loadContent('first block here\n\nsecond block below\n');
 		await editor.focusBlockStart(0);
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await expect(page.locator(TOOLBAR)).toBeVisible();

@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('list rendering', () => {
 	let editor: EditorPage;
@@ -39,7 +40,7 @@ test.describe('list arrow navigation', () => {
 		await editor.loadContent('- Last item\n\nAfter.\n');
 		const item = editor.page.locator('[contenteditable="true"]', { hasText: 'Last item' });
 		await item.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.typeText('Z');
 		await editor.bridge.waitForSourceMatches(/^[^-].*Z/m);
@@ -49,7 +50,7 @@ test.describe('list arrow navigation', () => {
 		await editor.loadContent('Before.\n\n- First item\n');
 		const item = editor.page.locator('[contenteditable="true"]', { hasText: 'First item' });
 		await item.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('ArrowUp');
 		await editor.typeText('Z');
 		await editor.bridge.waitForSourceContains('Before.Z');
@@ -59,7 +60,7 @@ test.describe('list arrow navigation', () => {
 		await editor.loadContent('- Alpha\n- Beta\n');
 		const second = editor.page.locator('[contenteditable="true"]', { hasText: 'Beta' });
 		await second.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('ArrowLeft');
 		await editor.typeText('Z');
 		await editor.bridge.waitForSourceContains('- AlphaZ\n- Beta');
@@ -69,7 +70,7 @@ test.describe('list arrow navigation', () => {
 		await editor.loadContent('- Alpha\n- Beta\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'Alpha' });
 		await first.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('ArrowRight');
 		await editor.typeText('Z');
 		await editor.bridge.waitForSourceContains('- Alpha\n- ZBeta');

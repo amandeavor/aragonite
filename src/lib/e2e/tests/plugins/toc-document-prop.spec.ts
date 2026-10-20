@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Locator } from '@playwright/test';
 import { PluginsPage, readContainer } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The outline plugin reads `BlockComponentProps.document`
@@ -61,7 +62,7 @@ test.describe('toc dogfood: the document prop consumer', () => {
 
 	test('the document prop is live: editing a heading updates the folded list', async ({ page }) => {
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly('X');
 
 		await expect(editor.item(0)).toHaveText('OverviewX');
@@ -83,7 +84,7 @@ test.describe('toc dogfood: the document prop consumer', () => {
 
 		// Type a character and delete it back to `[[toc]]`: the commit only runs when the text
 		// really changed, so closing the source only changes the view.
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('x');
 		await page.keyboard.press('Backspace');
 		await editor.getBlock(0).click();
@@ -122,7 +123,7 @@ test.describe('toc dogfood: the document prop reaches nested depth', () => {
 		await expect(editor.nestedItem(1)).toHaveText('Section A');
 
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly('!');
 		await expect(editor.nestedItem(0)).toHaveText('Chapter One!');
 	});

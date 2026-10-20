@@ -11,6 +11,7 @@ import {
 } from './helpers';
 import { textOutsideMarkers } from '../../text-runs';
 import { insertText } from '../../insert-text';
+import { edgeKey } from '../../platform-keys';
 
 // What Enter inside a construct writes in live mode: a closed pair above and a reopened one below.
 // The source is the reference, because a hidden delimiter and an absent one look identical on
@@ -177,7 +178,7 @@ test('source mode: Enter inside a bold word splits the pair open, byte for byte'
 }) => {
 	const ep = await enterMode(page, 'source');
 	await clickBlockSettled(ep, BOLD);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await ep.waitForRenderFlush();
 	await stepTo(ep, page, 'ArrowRight', 9);
 

@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Requirements: `e2e/requirements/text-editing/container-untouched-lines.md`.
 
@@ -18,7 +19,7 @@ test.describe('text editing, an edit inside a quote or list leaves its other lin
 			await editor.setPresentationMode(mode);
 			await editor.loadContent('> a\n>b\n');
 			await editor.clickBlockAtPath([0, 0], 0);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 
 			await page.keyboard.type('Q');
 
@@ -32,7 +33,7 @@ test.describe('text editing, an edit inside a quote or list leaves its other lin
 			await editor.setPresentationMode(mode);
 			await editor.loadContent('>a\n');
 			await editor.clickBlockAtPath([0, 0], 0);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 
 			await page.keyboard.type('Q');
 
@@ -44,7 +45,7 @@ test.describe('text editing, an edit inside a quote or list leaves its other lin
 			await editor.setPresentationMode(mode);
 			await editor.loadContent('- ab\n\n\tc\n');
 			await editor.clickBlockAtPath([0, 0, 0], 0);
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await page.keyboard.press('ArrowRight');
 
 			await page.keyboard.press('Enter');
@@ -60,7 +61,7 @@ test.describe('text editing, an edit inside a quote or list leaves its other lin
 		await editor.loadContent('> a\nlazy\n');
 		await editor.clickBlockAtPath([0, 0], 0);
 		await page.keyboard.press('ArrowDown');
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 
 		await page.keyboard.type('- ');
 
@@ -71,7 +72,7 @@ test.describe('text editing, an edit inside a quote or list leaves its other lin
 	test('a heading typed over a lazy line’s paragraph leaves the line bare', async ({ page }) => {
 		await editor.loadContent('- a\nlazy\n');
 		await editor.clickBlockAtPath([0, 0, 0], 0);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 
 		await page.keyboard.type('# ');
 

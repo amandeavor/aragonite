@@ -1,5 +1,6 @@
 import { test } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // A reference link reads as a link only with the document's definitions, so every edit that
 // checks its bytes by reparsing them has to read with those definitions too.
@@ -29,7 +30,7 @@ test.describe('inline editing, delimiters beside a reference link', () => {
 			await editor.focusBlock(0, offset);
 			for (let i = 0; i < extend; i++) await editor.page.keyboard.press('Shift+ArrowRight');
 			await editor.page.keyboard.press('ControlOrMeta+b');
-			await editor.page.keyboard.press('End');
+			await editor.page.keyboard.press(edgeKey('lineEnd'));
 			await editor.page.keyboard.type('Z');
 
 			await editor.bridge.waitForSourceEquals(`${line}Z${DEFINITION}`);

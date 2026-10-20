@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 const TABLE_2BODY = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
 
@@ -14,7 +15,7 @@ test.describe('table block: cell input escapes pipes', () => {
 	test('typing a pipe escapes it so the row survives a reload', async ({ page }) => {
 		await editor.loadContent(TABLE_2BODY);
 		await page.locator('.table-cell').nth(2).click(); // body row 0, col 0 = "1"
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('|');
 
 		// Row 0's original bytes are gone once the commit lands.
@@ -35,7 +36,7 @@ test.describe('table block: cell input escapes pipes', () => {
 	test('typing continues correctly after an escaped pipe', async ({ page }) => {
 		await editor.loadContent(TABLE_2BODY);
 		await page.locator('.table-cell').nth(2).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('x|y');
 
 		// Caret stays consistent across the escape re-render: "y" lands after the

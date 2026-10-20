@@ -1,10 +1,11 @@
 import { expect } from '@playwright/test';
 import { EditorPage } from '../../../../editor-page';
 import { clickInPlace } from '../../../../click-in-place';
+import { edgeKey } from '../../../../platform-keys';
 
 export async function focusCodeBlockAtEnd(editor: EditorPage) {
 	await clickInPlace(editor.getBlock(0));
-	await editor.page.keyboard.press('End');
+	await editor.page.keyboard.press(edgeKey('lineEnd'));
 }
 
 // Step to `column` of the code body by keyboard: a click computed from a rect cannot land on an

@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Editing keys at the edges of an open `$$` source whose fence lines live mode hides: the ends of
 // the line, Enter, Backspace and Tab must all stay inside the body.
@@ -20,14 +21,14 @@ test.describe('block math editing edges (live)', () => {
 
 	const enterFromAbove = async (page: BlockMathPage['page']) => {
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(editor.source).toBeFocused();
 	};
 
 	const enterFromBelow = async (page: BlockMathPage['page']) => {
 		await editor.getBlock(2).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowLeft');
 		await expect(editor.source).toBeFocused();
 	};
@@ -38,7 +39,7 @@ test.describe('block math editing edges (live)', () => {
 		await enterFromAbove(page);
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.type('X');
 		await expect.poll(() => editor.sourceText()).toBe(`$$\nX${BODY}\n$$`);
 	});
@@ -49,7 +50,7 @@ test.describe('block math editing edges (live)', () => {
 		await enterFromBelow(page);
 		await page.keyboard.press('ArrowLeft');
 		await page.keyboard.press('ArrowLeft');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('X');
 		await expect.poll(() => editor.sourceText()).toBe(`$$\n${BODY}X\n$$`);
 	});
@@ -126,7 +127,7 @@ test.describe('a range out of the body keeps the block (live)', () => {
 		await editor.revealByClick();
 		// Six real steps out of the body and into the paragraph below, so the range ends where
 		// keyboard extension actually put it rather than at a computed offset.
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 6; i++) await page.keyboard.press('Shift+ArrowRight');
 	});
 

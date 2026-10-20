@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { BlockMathPage, MathRevealPage } from './latex-reveal-helpers';
 import { MermaidPage } from './mermaid-helpers';
 import type { PluginsPage } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // An edit held outside the document (a shown formula source, a diagram's edit box) belongs to the
 // document it was opened on: a `source` swap drops it, and it never lands in the incoming one.
@@ -55,7 +56,7 @@ test.describe('a draft held outside the document across a source swap', () => {
 		await editor.block.hover();
 		await editor.block.getByTestId('mermaid-edit').click();
 		await expect(editor.textarea).toBeFocused();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('\nA --> B');
 
 		const next = 'Below\n\n```mermaid\ngraph LR\n```\n\nend\n';

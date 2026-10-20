@@ -6,6 +6,7 @@ import { CARD, URL_FIELD, clickLink, editUrl, openCardOn } from './link-card-hel
 import { findInput } from '../search/helpers';
 import { textRunEnd, textRunStart } from '../../text-runs';
 import { freezeInPageClock, deferImage } from '../../page-probes';
+import { edgeKey } from '../../platform-keys';
 import { clickInPlace } from '../../click-in-place';
 
 // The anchored panel that stands in for the destination live mode hides. The chord's create
@@ -31,7 +32,7 @@ async function stepToBlockStart(ep: EditorPage, page: Page, index: number): Prom
 	for (let i = 0; i < 12; i++) {
 		const focus = (await ep.bridge.getSelectionPaths())?.focus;
 		if (focus?.path.join() === String(index)) {
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			return;
 		}
 		await page.keyboard.press('ArrowUp');
@@ -340,7 +341,7 @@ test.describe('live-mode link card', () => {
 
 		// Typing at the block's start moves the link's `sourceStart`, half of what identifies the
 		// card's target, so the card addresses a construct that is not there.
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.typeText('Z');
 		await ep.bridge.waitForSourceContains('ZVisit [example]');
 		await expect(page.locator(CARD)).toHaveCount(0);
@@ -355,7 +356,7 @@ test.describe('live-mode link card', () => {
 	// caret from before the search, or closing the bar leaves the user at the link instead.
 	test('a card opened over the search bar leaves the pre-search caret alone', async ({ page }) => {
 		await ep.clickBlock(2);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		const preSearch = (await ep.bridge.getSelectionPaths())!.focus;
 
 		await page.keyboard.press('ControlOrMeta+f');

@@ -28,7 +28,12 @@ import {
 	markerPrefixOf
 } from '../caret/widget-offset';
 import { isAtFirstVisualLine, isAtLastVisualLine } from '../caret/visual-lines';
-import { endsSelectAllRun, eventToChord } from '../schema/keybindings';
+import {
+	caretEdgeKey,
+	endsSelectAllRun,
+	eventToChord,
+	type CaretEdgeKey
+} from '../schema/keybindings';
 import { isDefaultGlobalChord } from '../schema/commands';
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -101,7 +106,10 @@ export async function handleSharedKeydown(
 		return false;
 	}
 
-	if (handleBlockEdgeChord(e, ctx, el)) return true;
+	// Cmd+Arrow is a caret-edge key, never a step: only the edge sites read it.
+	const edge = caretEdgeKey(e);
+	if (handleBlockEdgeChord(e, edge, ctx, el)) return true;
+	if (edge) return false;
 
 	// The moving end, read once for the span step and the boundary check: with Shift the focus, since
 	// a forward range's start is its anchor, which extends across blocks while the focus contracts.
@@ -269,18 +277,16 @@ function handleUnitStep(
 	return true;
 }
 
-/** Mod+Home and Mod+End where a marker or a widget sits at that end of the block's text land on the
- *  text's edge here: Firefox's own stops short of a widget ending the text. True if claimed. */
+/** A block-edge key where a marker or a widget sits at that end of the text lands on the text's
+ *  edge: Firefox's own stops short of a widget, and only macOS moves for Cmd+Arrow. */
 function handleBlockEdgeChord(
 	e: KeyboardEvent,
+	edge: CaretEdgeKey | null,
 	ctx: SharedKeydownContext,
 	el: HTMLElement
 ): boolean {
-	if (e.key !== 'Home' && e.key !== 'End') return false;
-	if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || ctx.selection.isCrossBlock) {
-		return false;
-	}
-	const toEnd = e.key === 'End';
+	if (edge?.to !== 'block' || ctx.selection.isCrossBlock) return false;
+	const toEnd = edge.side === 'end';
 	const guarded = toEnd
 		? landableEndAbutsIsland(el)
 		: markerPrefixOf(el) !== null || landableStartAbutsIsland(el);

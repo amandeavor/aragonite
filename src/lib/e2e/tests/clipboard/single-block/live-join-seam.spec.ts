@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { textOutsideMarkers } from '../../../text-runs';
 import type { Page } from '@playwright/test';
+import { edgeKey } from '../../../platform-keys';
 
 // A paste over a single-block selection is a delete then an insert, and its delete half is a join:
 // in live mode the marker runs the cut strands are bytes the user never saw, so the paste paths
@@ -109,7 +110,7 @@ test.describe('table-cell paste over a construct edge', () => {
 	/** The selection the prose row uses, one level down: inside `**bold**`, then past its closer. */
 	async function selectAcrossTheCellCloser(ep: EditorPage, page: Page): Promise<void> {
 		await page.locator('.table-cell').first().click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
 		for (let i = 0; i < 6; i++) await page.keyboard.press('Shift+ArrowRight');
@@ -161,7 +162,7 @@ test.describe('table-cell paste over a construct edge', () => {
 
 		await copyPayload(ep, page);
 		await page.locator('.table-cell').first().click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.waitForRenderFlush();
 		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowLeft');
 		await ep.waitForRenderFlush();

@@ -8,6 +8,7 @@ import type { InlineWidgetEditingContext } from '../../core/inline/inline-widget
 import type { ImageFields } from '../../core/nodes';
 import { buildImageEditBytes } from '../../core/inline/image-source-bytes';
 import { keyboardResizeWidth } from './image-resize';
+import { caretEdgeKey } from '../../schema/keybindings';
 
 const KEYBOARD_STEP = 20;
 const FALLBACK_DEFAULT_WIDTH = 400;
@@ -18,7 +19,10 @@ export function imageWidgetOnSelectedKey(
 ): boolean {
 	// A resize is an edit; refusing here lets the caller swallow the key and do nothing.
 	if (ctx.presentationMode === 'reading') return false;
-	if (!(e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) return false;
+	// Cmd+Shift+Arrow extends to a line's edge on macOS, so it is no resize there.
+	if (!(e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) || caretEdgeKey(e)) {
+		return false;
+	}
 	e.preventDefault();
 
 	const { inline, node } = ctx;

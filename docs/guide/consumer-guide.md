@@ -942,8 +942,8 @@ This table is for a person reading it, and lists the bundled plugins' chords und
 
 A few chords aren't in the table because no keymap holds them, so they aren't rebindable either:
 
-- **The selection chords.** Shift+Arrow to extend a selection, `Mod+Shift+Home` / `Mod+Shift+End`, and the repeated `Mod+A` escalation go through the cross-block selection code.
-- **`Home`, `Shift+Home`, `Mod+Home` and `Mod+End`.** They move the caret the way they do in any text box. The editor only steps in where a block's text starts behind something you can't put a caret in (a list item's or a footnote's marker, an image, a formula), or ends in an inline widget. There `Home` on the block's first line stops where the text starts, `Mod+Home` goes there from any line, and `Mod+End` goes past that last widget. Both `Mod` chords work the same in a table cell.
+- **The selection chords.** Shift+Arrow to extend a selection, `Mod+Shift+Home` / `Mod+Shift+End` (`Cmd+Shift+Up` / `Cmd+Shift+Down` on a Mac), and the repeated `Mod+A` escalation go through the cross-block selection code.
+- **`Home`, `Shift+Home`, `Mod+Home` and `Mod+End`.** They move the caret the way they do in any text box. On a Mac, where Home and End scroll the page, the same moves are `Cmd+Left`, `Cmd+Shift+Left`, `Cmd+Up` and `Cmd+Down`, and the editor reads them the same way. It only steps in where a block's text starts behind something you can't put a caret in (a list item's or a footnote's marker, an image, a formula), or ends in an inline widget. There `Home` on the block's first line stops where the text starts, `Mod+Home` goes there from any line, and `Mod+End` goes past that last widget. Both `Mod` chords work the same in a table cell.
 
 Right-clicking any cell opens the table's action menu: "Edit link" first when you clicked a link, then cut/copy/paste, Row and Column flyouts (insert, move), the two deletes, and the column's alignment. Shift+F10 or the Context Menu key opens it from the keyboard. A table has no per-row or per-column grips: its one drag handle, in the editor's gutter, moves the whole table.
 
@@ -1056,6 +1056,8 @@ Every modifier chord this instance consumes, normalized.
 `claimsChord(event: KeyboardEvent): boolean`
 
 The same question for one keystroke, answered with the editor's own normalization, so a host key handler doesn't re-derive the platform rule: Ctrl and Cmd both fold to `Mod` (a macOS `Ctrl+B` and a `Cmd+B` give the same answer), and a CapsLock-uppercased letter matches its lowercase binding.
+
+One exception to the fold: `Cmd+Left`, `Cmd+Right`, `Cmd+Up` and `Cmd+Down` (and `Cmd+Shift+Left`, `Up` and `Down`) are how a Mac spells Home, End, `Mod+Home` and `Mod+End`, and the editor takes them wherever it takes those, while `Ctrl+Arrow` is the browser's word motion on Windows and Linux. So the set holds those `Mod+Arrow` chords only on a Mac, and `claimsChord` claims `Cmd+Arrow` and leaves `Ctrl+Arrow` alone on every platform.
 
 ```ts
 editor.reservedChords();

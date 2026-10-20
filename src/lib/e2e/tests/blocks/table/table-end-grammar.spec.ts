@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { PluginsPage } from '../../plugins/helpers';
+import { edgeKey } from '../../../platform-keys';
 
 // A table ends where the editor's grammar opens another block, a plugin's multi-line opener
 // included. Driven on the plugins harness, which installs the latex plugin.
@@ -18,7 +19,7 @@ test.describe('a `$$` block right under a table', () => {
 		expect(await editor.bridge.getBlockKind(1)).toBe('mathBlock');
 
 		await page.locator('.table-cell').nth(3).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('X');
 
 		await expect

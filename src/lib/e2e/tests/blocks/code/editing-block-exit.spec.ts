@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('code block editing: edge cases', () => {
 	let editor: EditorPage;
@@ -12,7 +13,7 @@ test.describe('code block editing: edge cases', () => {
 	test('exit code block via Enter on empty trailing line', async () => {
 		await editor.loadContent('```\nsome code\n```\n');
 		await editor.getBlock(0).click();
-		await editor.page.keyboard.press('Control+End');
+		await editor.page.keyboard.press(edgeKey('blockEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.page.keyboard.press('Enter');
 		await editor.typeText('after code');
@@ -39,9 +40,9 @@ test.describe('code block editing: edge cases', () => {
 	test('ArrowUp in first line exits to previous block', async () => {
 		await editor.loadContent('Above paragraph\n\n```\ncode here\n```\n');
 		await editor.getBlock(1).click();
-		await editor.page.keyboard.press('Control+Home');
+		await editor.page.keyboard.press(edgeKey('blockStart'));
 		await editor.page.keyboard.press('ArrowUp');
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText(' appended');
 		await editor.bridge.waitForSourceContains('Above paragraph appended');
 	});
@@ -51,10 +52,10 @@ test.describe('code block editing: edge cases', () => {
 	test('ArrowDown past the closer line exits to next block', async () => {
 		await editor.loadContent('```\ncode here\n```\n\nBelow paragraph\n');
 		await editor.getBlock(0).click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.page.keyboard.press('ArrowDown');
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.typeText('prepended ');
 		await editor.bridge.waitForSourceContains('prepended');
 
@@ -67,7 +68,7 @@ test.describe('code block editing: edge cases', () => {
 		await editor.loadContent('Before\n\n```\ncode\n```\n');
 		const countBefore = await editor.bridge.getBlockCount();
 		await editor.getBlock(1).click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForBlockCount(countBefore);
 		// Only the exact source proves focus moved and the fence survived: block count and a 'code'
@@ -104,7 +105,7 @@ test.describe('code block editing: edge cases', () => {
 	test('Backspace at position 0 of indented code moves focus without deleting', async () => {
 		await editor.loadContent('Before\n\n    indented\n');
 		await editor.getBlock(1).click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.typeText('X');
 		await editor.bridge.waitForSourceContains('BeforeX');
@@ -114,7 +115,7 @@ test.describe('code block editing: edge cases', () => {
 	test('Backspace at position 0 of html block moves focus without deleting', async () => {
 		await editor.loadContent('Before\n\n<div>html</div>\n');
 		await editor.getBlock(1).click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.typeText('X');
 		await editor.bridge.waitForSourceContains('BeforeX');

@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { freezeInPageClock } from '../page-probes';
+import { extendKey } from '../platform-keys';
 
 test.describe('cross-block LRD reactivity', () => {
 	let editor: EditorPage;
@@ -20,7 +21,7 @@ test.describe('cross-block LRD reactivity', () => {
 		// Replace block 1's text with a link reference definition: a real edit that never
 		// touches block 0 but changes what the definitions say.
 		await editor.focusBlockEnd(1);
-		await page.keyboard.press('Shift+Home');
+		await page.keyboard.press(extendKey('lineStart'));
 		await page.keyboard.type('[d]: https://example.com');
 		await editor.bridge.waitForSourceContains('[d]: https://example.com');
 

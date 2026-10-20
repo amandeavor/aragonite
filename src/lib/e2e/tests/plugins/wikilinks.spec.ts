@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { PluginsPage, capturedErrors } from './helpers';
+import { isMacOS } from '../../platform-keys';
 import { multiClickElement } from '../../multi-click';
 
 /**
@@ -33,7 +34,7 @@ const activations = (page: Page) =>
 		() => (window as never as { __linkActivations?: string[] }).__linkActivations ?? []
 	);
 
-async function clickLink(editor: PluginsPage, modifier?: 'Control'): Promise<void> {
+async function clickLink(editor: PluginsPage, modifier?: 'ControlOrMeta'): Promise<void> {
 	const box = await link(editor).boundingBox();
 	if (!box) throw new Error('no link box');
 	if (modifier) await editor.page.keyboard.down(modifier);
@@ -64,7 +65,7 @@ test.describe('wikilinks that follow on a plain click', () => {
 	});
 
 	test('a Ctrl-click follows it too', async ({ page }) => {
-		await clickLink(editor, 'Control');
+		await clickLink(editor, 'ControlOrMeta');
 
 		expect(await activations(page)).toEqual(['Meeting notes']);
 		await expect(link(editor)).toHaveCount(1);
@@ -162,8 +163,13 @@ test.describe('wikilinks that follow on a plain click', () => {
 	});
 
 	test('Edit link in the right-click menu shows the link source, following nothing', async ({
-		page
+		page,
+		browserName
 	}) => {
+		test.fixme(
+			isMacOS && browserName === 'webkit',
+			'#756: Safari selects the widget under a right-click, and the menu then offers no Edit link'
+		);
 		const box = await link(editor).boundingBox();
 		if (!box) throw new Error('no link box');
 
@@ -189,8 +195,13 @@ test.describe('wikilinks that follow on a plain click', () => {
 	});
 
 	test('Edit link on a link in a table cell shows its source, following nothing', async ({
-		page
+		page,
+		browserName
 	}) => {
+		test.fixme(
+			isMacOS && browserName === 'webkit',
+			'#756: Safari selects the widget under a right-click, and the menu then offers no Edit link'
+		);
 		const cellLink = page.locator('.wikilink[data-target="Cell note"]');
 		const box = await cellLink.boundingBox();
 		if (!box) throw new Error('no cell link box');
@@ -377,9 +388,9 @@ test.describe('autolinks a click follows can be edited', () => {
 		test(`a bare URL in a table cell follows its click, ${host} click host`, async ({ page }) => {
 			const opened = await recordOpens(page);
 			if (host === 'modifier') await page.getByTestId('link-click-toggle').click();
-			if (host === 'modifier') await page.keyboard.down('Control');
+			if (host === 'modifier') await page.keyboard.down('ControlOrMeta');
 			await page.locator('.table-cell a.md-autolink').click();
-			if (host === 'modifier') await page.keyboard.up('Control');
+			if (host === 'modifier') await page.keyboard.up('ControlOrMeta');
 
 			await expect.poll(opened).toEqual(['https://example.org/cell']);
 		});

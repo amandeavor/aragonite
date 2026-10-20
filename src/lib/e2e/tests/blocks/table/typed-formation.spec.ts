@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import type { Page } from '@playwright/test';
 import { enterPresentationMode } from '../../presentation/helpers';
+import { edgeKey } from '../../../platform-keys';
 
 // Enter at the end of a lone header row completes a table the line-by-line grammar could never be
 // typed into. The source bytes are the check throughout, and where the caret landed is read by
@@ -13,7 +14,7 @@ const COMPLETED = '| a | b |\n| --- | --- |\n|  |  |\n';
 /** Type `row` into the empty document and press Enter at its end. */
 async function typeRowAndEnter(editor: EditorPage, page: Page, row: string): Promise<void> {
 	await editor.clickBlock(0);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await editor.waitForRenderFlush();
 	await editor.typeSlowly(row);
 	await editor.bridge.waitForSourceContains(row);
@@ -57,7 +58,7 @@ test.describe('table block: typed formation', () => {
 		// the empty paragraph the row gets typed into.
 		await editor.loadContent('| A | B |\n| --- | --- |\n| 1 | 2 |\n\n\n');
 		await editor.clickBlock(1);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 		await editor.typeSlowly('| a | b |');
 		await editor.bridge.waitForSourceContains('| a | b |');
@@ -108,7 +109,7 @@ test.describe('table block: typed formation', () => {
 	}) => {
 		await editor.loadContent('> \n');
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 		await editor.typeSlowly('| a | b |');
 		await editor.bridge.waitForSourceContains('> | a | b |');
@@ -126,7 +127,7 @@ test.describe('table block: typed formation', () => {
 	}) => {
 		await editor.loadContent('- \n');
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 		await editor.typeSlowly('| a | b |');
 		await editor.bridge.waitForSourceContains('- | a | b |');
@@ -155,7 +156,7 @@ test.describe('table block: typed formation across presentation modes', () => {
 	}) => {
 		const ep = await enterPresentationMode(page, 'live', '\n');
 		await ep.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.waitForRenderFlush();
 		await ep.typeSlowly('| a | b |');
 		await ep.bridge.waitForSourceContains('| a | b |');

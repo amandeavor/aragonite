@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Emptying a one-line `$$x^2$$` leaves no body line, and a block holding only its hidden fence
 // lines is what live mode paints as `$$$$`. The completion has to survive the edit path, not just
@@ -29,19 +30,19 @@ test.describe('one-line block math emptied (live)', () => {
 	test('select-all then Backspace leaves an empty body line, not the bare fence', async ({
 		page
 	}) => {
-		await page.keyboard.press('Control+a');
+		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('Backspace');
 		await expectFenceHidden();
 	});
 
 	test('emptying the body key by key settles on the same shape', async ({ page }) => {
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace');
 		await expectFenceHidden();
 	});
 
 	test('typing into the emptied block resumes the formula', async ({ page }) => {
-		await page.keyboard.press('Control+a');
+		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('Backspace');
 		await page.keyboard.type('y');
 		await expect.poll(() => editor.sourceText()).toBe('$$\ny\n$$');
@@ -51,7 +52,7 @@ test.describe('one-line block math emptied (live)', () => {
 	});
 
 	test('the blur after emptying commits the empty body and round-trips', async ({ page }) => {
-		await page.keyboard.press('Control+a');
+		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('Backspace');
 		await editor.getBlock(2).click();
 
@@ -61,16 +62,16 @@ test.describe('one-line block math emptied (live)', () => {
 	});
 
 	test('undo inside the reveal takes the completion back with the delete', async ({ page }) => {
-		await page.keyboard.press('Control+a');
+		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('Backspace');
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await expect.poll(() => editor.sourceText()).toBe('$$x^2$$');
 	});
 
 	// The same as the built-in fence: an emptied code block takes the next Backspace as "delete
 	// the block", since an empty body holds no byte the key could mean.
 	test('a second Backspace on the emptied block deletes it', async ({ page }) => {
-		await page.keyboard.press('Control+a');
+		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('Backspace');
 		await expectFenceHidden();
 		await page.keyboard.press('Backspace');

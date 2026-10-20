@@ -1,4 +1,5 @@
 import { type SimContext, actThenResync, assertStructuralIntegrity } from '../invariants';
+import { edgeKey } from '../../platform-keys';
 
 // Gestures for a native GitHub alert (plugins route, `?seed=admonitions`). A `> [!TYPE]`
 // blockquote is its own `githubAlert` container, and its bytes are never rewritten to `:::`. Each
@@ -49,7 +50,7 @@ export async function mergeGithubAlertMiddleChild(
 	}
 
 	await editor.clickBlockAtPath([alertIndex, childIndex], 0);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await page.keyboard.press('Backspace');
 	await page.waitForFunction(
 		({ i, n }) => (window as any).__test.getDocument().children[i]?.children?.length === n,
@@ -78,7 +79,7 @@ export async function unwrapGithubAlert(ctx: SimContext, alertIndex: number): Pr
 	const alertsBefore = (await docKinds(ctx)).filter((k) => k === 'githubAlert').length;
 
 	await editor.clickBlockAtPath([alertIndex, 0], 0);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await page.keyboard.press('Backspace');
 	await editor.bridge.waitForSourceNotContains(marker);
 

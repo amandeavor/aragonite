@@ -3,6 +3,7 @@ import { roundTripStable, activeBlockPath } from './helpers';
 import { MermaidPage } from './mermaid-helpers';
 import { wholeBlockInput } from '../../whole-block-input';
 import { multiClickElement } from '../../multi-click';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The mermaid reference plugin: a render-first block whose editing the plugin owns
@@ -163,7 +164,7 @@ test.describe('mermaid reference plugin', () => {
 		await expect(error).toContainText('Mermaid error');
 
 		await editor.getBlock(5).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type(' ok');
 		expect(await editor.getBlockText(5)).toBe('After ok');
 	});
@@ -190,7 +191,7 @@ test.describe('mermaid reference plugin', () => {
 		await editor.clickToolbar('mermaid-edit');
 		await expect(editor.textarea).toHaveValue(FIRST_CODE);
 
-		await page.keyboard.press('ControlOrMeta+Home');
+		await page.keyboard.press(edgeKey('blockStart'));
 		await page.keyboard.press('Tab');
 
 		await expect(editor.textarea).toHaveValue('\t' + FIRST_CODE);

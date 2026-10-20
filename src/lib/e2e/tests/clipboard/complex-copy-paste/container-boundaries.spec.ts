@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { DEFAULT_CONTENT } from '../../../test-content';
+import { extendKey } from '../../../platform-keys';
 
 test.describe('clipboard: container boundary scenarios', () => {
 	let editor: EditorPage;
@@ -29,7 +30,7 @@ test.describe('clipboard: container boundary scenarios', () => {
 
 	test('copy from blockquote second paragraph to end collects list markers', async () => {
 		await editor.focusBlockAtPath([6, 1], 0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.page.keyboard.press('ControlOrMeta+c');
@@ -44,7 +45,7 @@ test.describe('clipboard: container boundary scenarios', () => {
 
 	test('copy from ordered list last item across code block to final paragraph', async () => {
 		await editor.focusBlockAtPath([8, 2, 0], 0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.page.keyboard.press('ControlOrMeta+c');

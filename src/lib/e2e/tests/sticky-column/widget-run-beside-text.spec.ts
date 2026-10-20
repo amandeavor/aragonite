@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // A run of entity widgets followed by text, all on one visual line: the widget edges and the
 // text offer positions on the same line, and only the text's paint a caret.
@@ -12,7 +13,7 @@ const DOC = `${PARAGRAPH}\n\n${RUN}${TRAILING}\n\n${PARAGRAPH}\n`;
 
 async function arriveFromColumnZero(editor: EditorPage, from: number, key: string): Promise<void> {
 	await editor.page.locator('[contenteditable="true"]').nth(from).click();
-	await editor.page.keyboard.press('Home');
+	await editor.page.keyboard.press(edgeKey('lineStart'));
 	await editor.waitForRenderFlush();
 	await editor.page.keyboard.press(key);
 	await editor.waitForRenderFlush();

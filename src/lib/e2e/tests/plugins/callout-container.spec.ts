@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, readContainer, waitForContainer, roundTripStable } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Read the callout by CST path through the bridge: document root child [0] is the callout, and its
 // children are the paragraphs the edits must move, never the document root.
@@ -25,7 +26,7 @@ test.describe('plugin container: :::callout editability', () => {
 
 		// Type into the callout's body paragraph, child 1, not the title row.
 		await page.locator('.callout-block [contenteditable="true"]', { hasText: /^First$/ }).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText(' one');
 		state = await waitForContainer(page, 0, (s) => s.childTexts[1] === 'First one');
 		expect(state.rootCount).toBe(1);
@@ -54,7 +55,7 @@ test.describe('plugin container: :::callout editability', () => {
 
 		// Merge: caret to the start of the last child with a real Home, then Backspace joins it
 		// back into the previous body paragraph, never into the title.
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Backspace');
 		const afterMerge = await waitForContainer(page, 0, (s) => s.childCount === 2);
 		expect(afterMerge.rootCount).toBe(1);
@@ -96,7 +97,7 @@ test.describe('plugin container: :::callout editability', () => {
 		// synthesized closer makes them reparse to a second `:::callout`.
 		await editor.clickBlock(2);
 		await editor.waitForCrossBlock(false);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.paste();
 		await editor.bridge.waitForSourceMatches(/:::callout[\s\S]*:::callout/);
 

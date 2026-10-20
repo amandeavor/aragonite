@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Windows clipboard writes CRLF, so every source read normalizes before comparing.
 const asLf = (src: string) => src.replace(/\r\n/g, '\n');
@@ -12,7 +13,7 @@ test.describe('a multi-block paste keeps the lines after the caret', () => {
 		await editor.goto();
 		await editor.loadContent('abc\nAfter\n');
 		await editor.focusBlockAtPath([0], 0);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 	});
 
 	test('pasting two paragraphs at a line break keeps the next line', async () => {

@@ -3,6 +3,7 @@ import type { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { enterPresentationMode, focusOffset, focusPath, press } from './helpers';
 import { textRunCenter } from '../../text-runs';
+import { edgeKey } from '../../platform-keys';
 
 // Live-mode caret edges: no caret reports from inside a hidden marker run, and the block's
 // exits and destructive keys read its content bounds. jsdom cannot see where Chromium drops an
@@ -44,15 +45,15 @@ test.describe('live mode: the caret never reports from inside a hidden run', () 
 	// `## Sub`: the `## ` is unpainted, so the first offset a caret can occupy is 3.
 	test('Home in a heading lands at the content start, not raw 0', async ({ page }) => {
 		await ep.clickBlock(HEADING);
-		expect(await press(ep, page, 'Home')).toBe(3);
-		expect(await press(ep, page, 'End')).toBe(6);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(3);
+		expect(await press(ep, page, edgeKey('lineEnd'))).toBe(6);
 	});
 
 	// `**Lead** in`: the opening `**` is unpainted, so Home lands past it.
 	test('Home in a paragraph opening with a construct lands after the marker', async ({ page }) => {
 		await ep.clickBlock(BOLD_LEAD);
-		expect(await press(ep, page, 'Home')).toBe(2);
-		expect(await press(ep, page, 'End')).toBe(11);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(2);
+		expect(await press(ep, page, edgeKey('lineEnd'))).toBe(11);
 	});
 
 	// `Some **bold** text`: from raw 14 one press crosses the space and the closing `**` to 11, and
@@ -61,7 +62,7 @@ test.describe('live mode: the caret never reports from inside a hidden run', () 
 		page
 	}) => {
 		await ep.clickBlock(BOLD_MID);
-		await press(ep, page, 'End');
+		await press(ep, page, edgeKey('lineEnd'));
 		expect(await press(ep, page, 'ArrowLeft', 4)).toBe(14);
 		expect(await press(ep, page, 'ArrowLeft')).toBe(11);
 		expect(await press(ep, page, 'ArrowLeft')).toBe(10);
@@ -73,7 +74,7 @@ test.describe('live mode: the caret never reports from inside a hidden run', () 
 		page
 	}) => {
 		await ep.clickBlock(BOLD_MID);
-		const seen = [await press(ep, page, 'Home')];
+		const seen = [await press(ep, page, edgeKey('lineStart'))];
 		for (let i = 0; i < 16; i++) seen.push(await press(ep, page, 'ArrowRight'));
 		expect(seen.filter((o) => [6, 7, 12, 13].includes(o))).toEqual([]);
 		expect(seen).toContain(18);
@@ -81,14 +82,14 @@ test.describe('live mode: the caret never reports from inside a hidden run', () 
 
 	test('ArrowRight at the block end still exits into the next block', async ({ page }) => {
 		await ep.clickBlock(BOLD_MID);
-		await press(ep, page, 'End');
+		await press(ep, page, edgeKey('lineEnd'));
 		await press(ep, page, 'ArrowRight');
 		expect(await focusPath(ep)).toEqual([BOLD_LEAD]);
 	});
 
 	test('ArrowUp and ArrowDown still exit at the first and last visual line', async ({ page }) => {
 		await ep.clickBlock(BOLD_MID);
-		await press(ep, page, 'Home');
+		await press(ep, page, edgeKey('lineStart'));
 		await press(ep, page, 'ArrowUp');
 		expect(await focusPath(ep)).toEqual([HEADING]);
 		// Landing in the heading is past its unpainted prefix, like every other arrival.
@@ -113,7 +114,7 @@ test.describe('live mode: a destructive key reads the block’s content bounds',
 	}) => {
 		await ep.clickBlock(BOLD_MID);
 		// `Some …` opens with visible bytes, so Home reaches raw 0 and the merge is reachable.
-		expect(await press(ep, page, 'Home')).toBe(0);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(0);
 		await page.keyboard.press('Backspace');
 		await ep.bridge.waitForSourceContains('## SubSome **bold** text');
 	});
@@ -130,10 +131,10 @@ test.describe('live mode: hidden runs a caret must not be able to type into', ()
 		page
 	}) => {
 		await ep.clickBlock(BOLD_LEAD);
-		await press(ep, page, 'End');
+		await press(ep, page, edgeKey('lineEnd'));
 		await press(ep, page, 'ArrowRight');
 		expect(await focusPath(ep)).toEqual([CODE]);
-		await press(ep, page, 'Home');
+		await press(ep, page, edgeKey('lineStart'));
 
 		await page.keyboard.type('Z');
 		await ep.bridge.waitForSourceContains('```js\nZconst x = 1;\n```');
@@ -160,10 +161,10 @@ test.describe('live mode: hidden runs a caret must not be able to type into', ()
 		await cell.first().click();
 		await ep.waitForRenderFlush();
 
-		expect(await press(ep, page, 'End')).toBe(5);
-		expect(await press(ep, page, 'Home')).toBe(1);
+		expect(await press(ep, page, edgeKey('lineEnd'))).toBe(5);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(1);
 
-		await press(ep, page, 'End');
+		await press(ep, page, edgeKey('lineEnd'));
 		await page.keyboard.type('Q');
 		await ep.bridge.waitForSourceContains('| [text][ref]Q | y |');
 	});

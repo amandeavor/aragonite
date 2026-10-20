@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { SIMPLE_CONTENT } from '../test-content';
 import { FENCE, LAST_CELL, TABLE, filler } from './selection/gap-caret-fixtures';
+import { edgeKey } from '../platform-keys';
 import { clickInPlace } from '../click-in-place';
 
 test.describe('undo and redo', () => {
@@ -69,7 +70,7 @@ test.describe('undo brings an off-screen caret into view', () => {
 		await clickInPlace(
 			editor.page.locator(`[data-block-path='[${BLOCK}]'] [contenteditable="true"]`)
 		);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText('x');
 		await editor.waitForUndoBatchFlush();
 		const box = (await editor.editorContainer.boundingBox())!;

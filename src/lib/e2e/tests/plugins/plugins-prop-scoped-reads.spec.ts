@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { activeBlockPath } from './helpers';
 import { gotoReady } from '../../goto-ready';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 type Pane = 'listing' | 'notListing';
 
@@ -25,8 +26,8 @@ test.describe('checks and plugin reads follow the plugins prop', () => {
 	test('Mod+K over a shortcode the editor draws as text opens the link card', async ({ page }) => {
 		const pane = page.getByTestId('editor-not-listing');
 		await pane.locator('[data-block-kind="paragraph"]').filter({ hasText: 'smile' }).click();
-		await page.keyboard.press('Home');
-		await page.keyboard.press('Shift+End');
+		await page.keyboard.press(edgeKey('lineStart'));
+		await page.keyboard.press(extendKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+k');
 
 		await expect(page.locator('[data-link-card]')).toBeVisible();
@@ -37,7 +38,7 @@ test.describe('checks and plugin reads follow the plugins prop', () => {
 	}) => {
 		const pane = page.getByTestId('editor-not-listing');
 		await pane.locator('[data-block-kind="paragraph"]').filter({ hasText: 'a $x$ b' }).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ControlOrMeta+b');
 		await page.keyboard.type('y');
@@ -80,7 +81,7 @@ test.describe('footnotes number the references their editor draws', () => {
 		const marker = page
 			.getByTestId('editor-not-listing')
 			.locator("[data-block-path='[5]'] .footnote-def-marker");
-		await marker.click({ modifiers: ['Control'] });
+		await marker.click({ modifiers: ['ControlOrMeta'] });
 
 		await expect.poll(() => activeBlockPath(page)).toEqual([4]);
 	});

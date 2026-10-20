@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { type Locator, type Page } from '@playwright/test';
 import { PluginsPage, readContainer, readDoc } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Opaque plugin containers (admonition, <details>, callout) refuse reordering inside them: the
 // resolver returns nothing to move, so dragging or the keyboard does nothing there and the inner
@@ -110,7 +111,7 @@ test.describe('opaque containers decline nested reorder', () => {
 		await editor.loadContent(ADMONITION_SIBLINGS);
 
 		await editor.focusBlockAtPath([1, 1], 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('X'); // a real edit to undo
 		await editor.bridge.waitForSourceContains('Body oneX');
 

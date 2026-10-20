@@ -1,6 +1,7 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
 import { getContainerParityMismatches } from '../../../../container-parity';
+import { edgeKey } from '../../../../platform-keys';
 
 // The worked examples (rows 2 to 5) and the ordered renumber are pinned in
 // `merge-list-item.test.ts` and `merge-keeps-lines.test.ts`.
@@ -15,7 +16,7 @@ test.describe('list Backspace: M1 merge on non-first item', () => {
 		await editor.loadContent('- Alpha\n- Beta\n');
 		const betaItem = editor.page.locator('[contenteditable="true"]', { hasText: 'Beta' });
 		await betaItem.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		// Byte-exact: equality pins the surviving single marker the way a count cannot.
 		await editor.bridge.waitForSourceEquals('- AlphaBeta\n');
@@ -28,7 +29,7 @@ test.describe('list Backspace: M1 merge on non-first item', () => {
 	test('M1 row 6: indented code under the merged item keeps its blank line', async () => {
 		await editor.loadContent('- a\n- b\n\n      code\n');
 		await editor.focusBlockAtPath([0, 1, 0], 1);
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 
 		await editor.bridge.waitForSourceEquals('- ab\n\n      code\n');
@@ -46,7 +47,7 @@ test.describe('list Backspace: M1 merge on non-first item', () => {
 		await editor.loadContent('- A\n  - B\n    - C\n- D\n  - E\n');
 		const dItem = editor.page.locator('[contenteditable="true"]', { hasText: 'D' }).first();
 		await dItem.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^ {4}- CD/m);
 
@@ -61,7 +62,7 @@ test.describe('list Backspace: M1 merge on non-first item', () => {
 		await editor.loadContent('- ```\n  code\n  ```\n- text\n');
 		const textItem = editor.page.locator('[contenteditable="true"]', { hasText: 'text' }).first();
 		await textItem.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.waitForRenderFlush();
 
@@ -77,7 +78,7 @@ test.describe('list Backspace: M1 merge on non-first item', () => {
 		await editor.loadContent('1. First\n2. Second\n3. Third\n');
 		const second = editor.page.locator('[contenteditable="true"]', { hasText: 'Second' });
 		await second.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForListItemCount(4);
 		// The new empty item pushes Third to 4; without pinning that, the

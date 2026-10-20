@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // An HTML block whose kind stays put while its reading changes joins its neighbour the way a
 // reload would: one that stops interrupting joins the paragraph above, and one left open reads on
@@ -20,7 +21,7 @@ async function open(page: Page, doc: string): Promise<EditorPage> {
 /** Selects the three characters before the tag's closing `>` on the block's first line. */
 async function selectTagName(page: Page, editor: EditorPage, path: number[]): Promise<void> {
 	await editor.clickBlockAtPath(path, 1);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.press('ArrowLeft');
 	for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+ArrowLeft');
 }
@@ -47,7 +48,7 @@ test.describe('an HTML block joining its neighbour', () => {
 	test('a comment that loses its closer reads on past the blank line', async ({ page }) => {
 		const editor = await open(page, '<!-- note -->\n\nText\n');
 		await editor.clickBlockAtPath([0], 1);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Backspace');
 
 		await expectSource(editor, '<!-- note --\n\nText\n');
@@ -69,7 +70,7 @@ test('a comment inside a list item that loses its closer reads on past the blank
 }) => {
 	const editor = await open(page, '- a\n\n  <!-- x -->\n\n  b\n');
 	await editor.clickBlockAtPath([0, 0, 1], 1);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.press('Backspace');
 
 	await expectSource(editor, '- a\n\n  <!-- x --\n\n  b\n');

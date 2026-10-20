@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { countEditEvents } from './helpers';
 import { nextRow } from '../../presentation/helpers';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('one edit event per op: cross-block delete', () => {
 	test('Backspace over a cross-block selection emits one edit event, and the surviving list item keeps its id', async ({
@@ -28,7 +29,7 @@ test.describe('one edit event per op: cross-block delete', () => {
 			await nextRow(editor, '- alpha\n- beta\n\nfollow\n');
 			const lastItem = editor.page.locator('[contenteditable="true"]', { hasText: 'beta' });
 			await lastItem.click();
-			await editor.page.keyboard.press('End');
+			await editor.page.keyboard.press(edgeKey('lineEnd'));
 			await editor.page.keyboard.press('Shift+ArrowDown');
 			await editor.waitForCrossBlock(true);
 

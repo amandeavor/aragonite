@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Fixtures separate the trailing paragraph from the list with a blank line: an under-indented line
 // touching the list is a lazy continuation of the last item (CommonMark §5.2).
@@ -15,7 +16,7 @@ test.describe('cross-container merge on Backspace (list prev)', () => {
 		await editor.loadContent('- first\n- second\n\ntext\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^- secondtext$/m);
 		const source = await editor.bridge.getSource();
@@ -27,7 +28,7 @@ test.describe('cross-container merge on Backspace (list prev)', () => {
 		await editor.loadContent('1. first\n2. second\n\ntext\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^2\. secondtext$/m);
 		const source = await editor.bridge.getSource();
@@ -41,7 +42,7 @@ test.describe('cross-container merge on Backspace (list prev)', () => {
 		await editor.loadContent('- a\n  - b\ntext\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^\s+- btext$/m);
 		const source = await editor.bridge.getSource();
@@ -53,7 +54,7 @@ test.describe('cross-container merge on Backspace (list prev)', () => {
 		await editor.loadContent('- first item\n\n- second item\n\n  second para\n\ntext\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/second paratext/);
 		const source = await editor.bridge.getSource();
@@ -66,7 +67,7 @@ test.describe('cross-container merge on Backspace (list prev)', () => {
 		await editor.loadContent('> - item\ntext\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceContains('> - itemtext');
 		const source = await editor.bridge.getSource();
@@ -81,7 +82,7 @@ test.describe('cross-container merge on Backspace (list prev)', () => {
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
 		const before = await editor.bridge.getSource();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.pressDeclined('Backspace');
 		expect(await editor.bridge.getSource()).toBe(before);
 	});

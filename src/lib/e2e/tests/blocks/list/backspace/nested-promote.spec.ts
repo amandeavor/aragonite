@@ -1,5 +1,6 @@
 import { test } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 test.describe('list Backspace: nested item promote', () => {
 	let editor: EditorPage;
@@ -12,7 +13,7 @@ test.describe('list Backspace: nested item promote', () => {
 		await editor.loadContent('- Parent\n  - Nested\n');
 		const nested = editor.page.locator('[contenteditable="true"]', { hasText: 'Nested' });
 		await nested.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceContains('- Parent\n- Nested\n');
 	});

@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { extendKey } from '../../../platform-keys';
 
 test.describe('selection: keyboard: happy paths', () => {
 	let editor: EditorPage;
@@ -30,7 +31,7 @@ test.describe('selection: keyboard: happy paths', () => {
 	test('Shift+ArrowDown from mid-block anchor with focus at end extends cross-block', async () => {
 		await editor.loadContent('first paragraph\n\nsecond\n');
 		await editor.focusBlock(0, 5);
-		await editor.page.keyboard.press('Shift+End');
+		await editor.page.keyboard.press(extendKey('lineEnd'));
 		await editor.page.keyboard.press('Shift+ArrowDown');
 		await editor.waitForCrossBlock(true);
 		const sel = await editor.bridge.getSelectionPaths();
@@ -42,7 +43,7 @@ test.describe('selection: keyboard: happy paths', () => {
 	test('Ctrl+Shift+End extends selection to document end', async () => {
 		await editor.loadContent('start\n\nmid\n\nend\n');
 		await editor.focusBlockStart(0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		const sel = await editor.bridge.getSelectionPaths();
 		expect(sel).not.toBeNull();
@@ -52,7 +53,7 @@ test.describe('selection: keyboard: happy paths', () => {
 	test('Ctrl+Shift+Home extends selection to document start', async () => {
 		await editor.loadContent('start\n\nmid\n\nend\n');
 		await editor.focusBlockEnd(2);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+Home');
+		await editor.page.keyboard.press(extendKey('docStart'));
 		await editor.waitForCrossBlock(true);
 	});
 

@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 // The ```math fence's own fence lines under a marker-hiding mode: lines the mode collapses and the
 // edit range is kept away from, exactly as for its `$$` sibling.
@@ -32,7 +33,7 @@ test.describe('math fence editing edges (live)', () => {
 
 	test('select-all then Backspace empties the body alone', async ({ page }) => {
 		await editor.revealFromBefore();
-		await page.keyboard.press('Control+a');
+		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('Backspace');
 		await expect.poll(() => editor.sourceText()).toBe('```math\n\n```');
 
@@ -46,7 +47,7 @@ test.describe('math fence editing edges (live)', () => {
 	// truncation drops that line, so the closer comes back, as a fenced code block's does.
 	test('a range that runs out of the body keeps the closing fence line', async ({ page }) => {
 		await editor.revealFromBefore();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 12; i++) await page.keyboard.press('Shift+ArrowRight');
 		await page.keyboard.press('Backspace');
 

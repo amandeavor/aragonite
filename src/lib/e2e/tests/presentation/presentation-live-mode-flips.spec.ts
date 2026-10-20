@@ -3,6 +3,7 @@ import type { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickBlockSettled, enterPresentationMode } from './helpers';
 import { clickModeToggle, type ToggledMode } from '../../mode-switch';
+import { edgeKey } from '../../platform-keys';
 
 // Byte stability across every mode, live included: a mode switch is CSS over the one render path,
 // so it may never move a byte.
@@ -56,7 +57,7 @@ test.describe('mode flips: the bytes never move', () => {
 	test('an edit typed in live survives every later flip', async ({ page }) => {
 		const ep = await enterPresentationMode(page, 'live', DOC);
 		await clickBlockSettled(ep, PROSE);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('EDIT');
 		await ep.bridge.waitForSourceContains('EDIT');
 
@@ -78,7 +79,7 @@ test.describe('mode flips: the bytes never move', () => {
 		const ep = await enterPresentationMode(page, 'live', DOC);
 		const baseline = await ep.bridge.getSource();
 		await clickBlockSettled(ep, PROSE);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+b');
 		await ep.waitForRenderFlush();
 

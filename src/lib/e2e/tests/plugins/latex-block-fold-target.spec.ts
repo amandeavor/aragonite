@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Requirements: e2e/requirements/plugins/latex-block-fold-target.md.
 
@@ -43,7 +44,7 @@ test.describe('a render-primary block folds onto the document it opened over', (
 	}) => {
 		await editor.setup('\n');
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly('$$');
 		await editor.bridge.waitForSourceEquals('$$\n\n$$\n');
 		await expect(editor.source).toBeFocused();

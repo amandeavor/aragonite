@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 // The text after a task marker is the item's paragraph (GFM task lists), so a `#` there is text.
 // Requirements: `e2e/requirements/blocks/list/task-checkbox/marker-text.md`.
@@ -35,7 +36,7 @@ test.describe('task checkbox: the text after the marker', () => {
 		await editor.loadContent('- [ ] # beta\n');
 		await editor.page.getByText('beta').click();
 		await editor.waitForRenderFlush();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		await page.keyboard.type('X');
 
@@ -64,7 +65,7 @@ test.describe('task checkbox: the text after the marker', () => {
 		await editor.loadContent('- [ ] alpha\n- [ ] beta\n');
 		await editor.page.getByText('beta').click();
 		await editor.waitForRenderFlush();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 
 		await page.keyboard.type('# ');
 
@@ -143,7 +144,7 @@ test.describe('task checkbox: the text after the marker', () => {
 		await editor.loadContent('- [ ] |b|\n  |-|\n- zed\n');
 		await editor.page.getByText('zed').click();
 		await editor.waitForRenderFlush();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		await page.keyboard.press('Enter');
 		await page.keyboard.type('Q');

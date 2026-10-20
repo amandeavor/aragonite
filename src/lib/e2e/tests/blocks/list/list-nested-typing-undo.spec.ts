@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('nested list item, typing + undo', () => {
 	let editor: EditorPage;
@@ -15,7 +16,7 @@ test.describe('nested list item, typing + undo', () => {
 
 		const firstItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item one' });
 		await firstItem.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.typeSlowly(' extra');
 		await editor.bridge.waitForSourceContains('item one extra');
@@ -31,13 +32,13 @@ test.describe('nested list item, typing + undo', () => {
 
 		const firstItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item one' });
 		await firstItem.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly(' A');
 		await editor.waitForUndoBatchFlush();
 
 		const secondItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item two' });
 		await secondItem.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly(' B');
 		await editor.bridge.waitForSourceContains('item two B');
 		await editor.waitForUndoBatchFlush();
@@ -58,13 +59,13 @@ test.describe('nested list item, typing + undo', () => {
 
 		const firstItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item one' });
 		await firstItem.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly(' A');
 
 		// No `waitForTimeout`: switch focus before the 250ms debounce fires.
 		const secondItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item two' });
 		await secondItem.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly(' B');
 		await editor.bridge.waitForSourceContains('item two B');
 		await editor.waitForUndoBatchFlush();

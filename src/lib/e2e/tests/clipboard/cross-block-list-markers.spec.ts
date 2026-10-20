@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { extendKey } from '../../platform-keys';
 
 test.describe('cross-block clipboard: list marker preservation on copy', () => {
 	let editor: EditorPage;
@@ -13,7 +14,7 @@ test.describe('cross-block clipboard: list marker preservation on copy', () => {
 		await editor.loadContent('1. hey\n2. hey\n3. hey\n');
 
 		await editor.focusBlockAtPath([0, 0, 0], 0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.page.keyboard.press('ControlOrMeta+c');
@@ -61,7 +62,7 @@ test.describe('cross-block clipboard: list duplication regression', () => {
 		);
 
 		await editor.focusBlockAtPath([0], 0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.page.keyboard.press('ControlOrMeta+c');
@@ -98,7 +99,7 @@ test.describe('cross-block clipboard: partial list promotion regression', () => 
 		);
 
 		await editor.focusBlockAtPath([0, 2, 0], 0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		await editor.page.keyboard.press('ControlOrMeta+c');

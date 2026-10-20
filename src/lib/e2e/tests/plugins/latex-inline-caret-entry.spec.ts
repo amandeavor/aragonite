@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Stepping the caret left or right into an inline-math widget opens its source, and the caret
@@ -22,7 +23,7 @@ class MathEntryPage extends PluginsPage {
 	 *  `Before $x^2$ after`: End, then ArrowLeft through the 6 characters of " after". */
 	async caretRightOfWidget(): Promise<void> {
 		await this.getBlock(0).click();
-		await this.page.keyboard.press('End');
+		await this.page.keyboard.press(edgeKey('lineEnd'));
 		for (let i = 0; i < 6; i++) await this.page.keyboard.press('ArrowLeft');
 	}
 
@@ -30,7 +31,7 @@ class MathEntryPage extends PluginsPage {
 	 *  the 7 characters of "Before ". */
 	async caretLeftOfWidget(): Promise<void> {
 		await this.getBlock(0).click();
-		await this.page.keyboard.press('Home');
+		await this.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 7; i++) await this.page.keyboard.press('ArrowRight');
 	}
 }

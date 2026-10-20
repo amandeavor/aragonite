@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 test.describe('list Enter, sibling creation and mid-item split', () => {
 	let editor: EditorPage;
@@ -12,7 +13,7 @@ test.describe('list Enter, sibling creation and mid-item split', () => {
 		await editor.loadContent('- Alpha\n- Beta\n');
 		const first = editor.page.locator('[contenteditable="true"]', { hasText: 'Alpha' });
 		await first.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.bridge.waitForSource((s) => (s.match(/^- /gm) ?? []).length >= 3);
 		const markers = (await editor.bridge.getSource()).match(/^- /gm) ?? [];
@@ -23,7 +24,7 @@ test.describe('list Enter, sibling creation and mid-item split', () => {
 		await editor.loadContent('- HelloWorld\n');
 		const item = editor.page.locator('[contenteditable="true"]', { hasText: 'HelloWorld' });
 		await item.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 5; i++) await editor.page.keyboard.press('ArrowRight');
 		await editor.page.keyboard.press('Enter');
 		await editor.bridge.waitForSource((s) => s.includes('- Hello') && s.includes('- World'));
@@ -38,7 +39,7 @@ test.describe('list Enter, sibling creation and mid-item split', () => {
 		const before = await editor.bridge.getSource();
 		const item = editor.page.locator('[contenteditable="true"]', { hasText: 'HelloWorld' });
 		await item.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 5; i++) await editor.page.keyboard.press('ArrowRight');
 		await editor.page.keyboard.press('Enter');
 		// '- HelloWorld' already contains '- Hello', so only the second item's

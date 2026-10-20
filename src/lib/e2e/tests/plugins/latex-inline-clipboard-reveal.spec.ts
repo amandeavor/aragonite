@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage } from './helpers';
 import { dispatchPaste } from '../../clipboard-arm';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * A clipboard edit while an inline formula's source is open: a paste closes the source first and
@@ -22,7 +23,7 @@ class MathClipboardPage extends PluginsPage {
 	 *  characters of " after" to reach raw offset 12, then one more ArrowLeft to enter. */
 	async revealAtTrailingEdge(): Promise<void> {
 		await this.getBlock(0).click();
-		await this.page.keyboard.press('End');
+		await this.page.keyboard.press(edgeKey('lineEnd'));
 		for (let i = 0; i < 6; i++) await this.page.keyboard.press('ArrowLeft');
 		await this.page.keyboard.press('ArrowLeft');
 		await expect(this.mathWidget).toHaveCount(0);

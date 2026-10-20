@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { readDoc, waitForDoc, activeBlockPath, roundTripStable } from './helpers';
 import { MERMAID_FENCE, MermaidPage, STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
 import { multiClickElement } from '../../multi-click';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Whole-block focus and the two-step delete for mermaid (requirements/plugins/mermaid-focus.md).
@@ -37,7 +38,7 @@ test.describe('mermaid whole-block focus', () => {
 
 		await test.step('ArrowDown from the end of the block above focuses it; a second ArrowDown exits below', async () => {
 			await editor.getBlock(0).click();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('ArrowDown');
 			await expect(editor.inputHost).toBeFocused();
 			expect(await activeBlockPath(page)).toEqual([1]);
@@ -48,12 +49,12 @@ test.describe('mermaid whole-block focus', () => {
 
 		await test.step('ArrowLeft at offset 0 below focuses the block; ArrowRight at the end above mirrors', async () => {
 			await editor.getBlock(2).click();
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await page.keyboard.press('ArrowLeft');
 			await expect(editor.inputHost).toBeFocused();
 
 			await editor.getBlock(0).click();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('ArrowRight');
 			await expect(editor.inputHost).toBeFocused();
 		});
@@ -66,7 +67,7 @@ test.describe('mermaid whole-block focus', () => {
 
 		await test.step('Backspace at offset 0 below focuses the block; a second Backspace deletes it; one undo restores it', async () => {
 			await editor.getBlock(2).click();
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await editor.pressDeclined('Backspace');
 			await expect(editor.inputHost).toBeFocused();
 			expect(await editor.bridge.getSource()).toBe(original); // focus only — no byte change, no undo entry
@@ -82,7 +83,7 @@ test.describe('mermaid whole-block focus', () => {
 		await test.step('Delete at the end of the block above focuses it; a second Delete deletes it', async () => {
 			await nextRow();
 			await editor.getBlock(0).click();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await editor.pressDeclined('Delete');
 			await expect(editor.inputHost).toBeFocused();
 			expect(await editor.bridge.getSource()).toBe(original);
@@ -107,7 +108,7 @@ test.describe('mermaid whole-block focus', () => {
 	}) => {
 		const original = await editor.bridge.getSource();
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('Z');
 		await editor.bridge.waitForSourceContains('textZ');
 

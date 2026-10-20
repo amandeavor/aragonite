@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { PluginsPage, capturedErrors } from './helpers';
+import { isMacOS } from '../../platform-keys';
 
 /**
  * In-body `#tag` as a plugin inline widget, the limestone integration reproduced in the harness
@@ -124,7 +125,14 @@ test.describe('in-body tags as inline widgets', () => {
 		expect(await editor.bridge.getSource()).toContain('#project');
 	});
 
-	test('Edit link in the right-click menu on a tag shows its source', async ({ page }) => {
+	test('Edit link in the right-click menu on a tag shows its source', async ({
+		page,
+		browserName
+	}) => {
+		test.fixme(
+			isMacOS && browserName === 'webkit',
+			'#756: Safari selects the widget under a right-click, and the menu then offers no Edit link'
+		);
 		await editor.setPresentationMode('live');
 		await editor.waitForRenderFlush();
 		const box = await tagChip(editor, 'project').boundingBox();
@@ -154,9 +162,9 @@ test.describe('in-body tags as inline widgets', () => {
 		const box = await tagChip(editor, 'inbox').boundingBox();
 		if (!box) throw new Error('no chip box');
 
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 		await editor.waitForRenderFlush();
 
 		expect(
