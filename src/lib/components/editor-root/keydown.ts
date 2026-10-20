@@ -4,7 +4,7 @@
  * pressed inside a block (`test/editor-root/keydown.test.ts` pins the order).
  */
 
-import { claimsBodyChord, isForeignTextEntry } from '../../active-editor';
+import { claimsBodyChord, isForeignTextEntry, isTextEntrySurface } from '../../active-editor';
 import type { SearchState } from '../../search/search-state.svelte';
 import type { CrossBlockHandlers } from '../../selection/cross-block/dispatch';
 import type { CommandDispatchContext } from '../../schema/block-commands';
@@ -76,6 +76,18 @@ export function createEditorRootKeydown(deps: EditorRootKeydownDeps): EditorRoot
 		return active === root || (noElementFocused && claimsBodyChord(root));
 	}
 
+	/** Editor chrome (a toolbar button, a menu item) holds focus and has no keymap, so the editor's
+	 *  global chords answer there; a field owns its own Mod+Z, and a block that took the key ran it. */
+	function chromeHoldsFocus(event: KeyboardEvent, root: HTMLElement, active: Element | null) {
+		return (
+			active !== null &&
+			active !== root &&
+			root.contains(active) &&
+			!isTextEntrySurface(active) &&
+			!event.defaultPrevented
+		);
+	}
+
 	return {
 		handleKeyDown(event, root) {
 			// Normalizes the key (CapsLock uppercases e.key without Shift), matching
@@ -88,16 +100,17 @@ export function createEditorRootKeydown(deps: EditorRootKeydownDeps): EditorRoot
 			if (deps.isHostChrome(active)) return;
 
 			if (handleSearchChords(event, root, chord, active)) return;
-			if (!ownsWindowedOutCaret(root, active)) return;
+			const ownsCaret = ownsWindowedOutCaret(root, active);
+			if (!ownsCaret && !chromeHoldsFocus(event, root, active)) return;
 
 			// No block is focused here, so resolve globally, overrides included, or a consumer's
-			// global rebind would be dead in this one place.
+			// global rebind would be dead in this one place. Prevented, so no engine runs its own undo.
 			if (chord && runGlobalChord(chord, deps.commands)) {
 				event.preventDefault();
 				return;
 			}
 
-			if (!deps.isCrossBlock) return;
+			if (!ownsCaret || !deps.isCrossBlock) return;
 
 			// With nothing editable focused, no `beforeinput` fires for a typed character, so it
 			// comes in here; composition and chorded keys are left alone.

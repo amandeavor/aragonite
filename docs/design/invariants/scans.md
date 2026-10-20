@@ -191,6 +191,7 @@ unguarded.
 | G4.226 | An e2e spec presses the platform's own chord for an edge key or a modifier                   | L       |
 | G4.227 | A caret-edge key is read in one place, `caretEdgeKey`                                        | L       |
 | G4.228 | An e2e locator action that must leave the scroll alone rides the in-place helper             | L       |
+| G4.230 | Editor chrome runs no undo or redo of its own; the root answers them there                   | L       |
 
 ### The entries
 
@@ -1298,3 +1299,10 @@ action first scrolls its target to the middle of the screen, even one already sh
 spec that reads or sets the scroll (every VR spec does) and in every shared e2e helper, a locator
 `click`, `hover`, `tap`, `dragTo` or `scrollIntoViewIfNeeded` fails the scan; `e2e/click-in-place.ts`
 scrolls only a target that's off screen. `e2e/lint/e2e-drivers.test.ts`.
+
+**G4.230 · Chrome undoes through the root** (`history-chord-sites`). Engines disagree on Mod+Z
+with a toolbar button focused (Chromium and WebKit undo the block last edited, Firefox nothing), so
+the editor root answers the history chords anywhere inside it but where a block took the key or a
+text field owns it (`chromeHoldsFocus`). A file under `components/` or `plugins/` that reads the
+chord or calls the history itself fails. `lint/history-chord-sites.test.ts`; every engine in
+`keyboard-navigation/chrome-focus-undo.spec.ts`.
