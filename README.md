@@ -8,7 +8,7 @@
 
 This project is an effort (perhaps in vain) to create a markdown editor that is both open source and not crap. In my book, this means that it has to be lossless, extensible, fast, have a graceful ui/ux, and have a hella good plugin interface. So you know, just some simplistic and easy to achieve goals [^1] [^2].
 
-Note that aragonite is a work in progress [^3]. It's written in typescript and svelte [^4] [^5] [^6] [^7] (but usable in react, vue or plain js), and tested on chromium browsers (chrome and edge), firefox and webkit (safari's engine) on every change [^8].
+Note that aragonite is a work in progress [^3]. It's written in typescript and svelte [^4] [^5] [^6] [^7] (but usable in react, vue or plain js), and tested on chrome, edge, safari and firefox [^8].
 
 _What does it look like?_ Amazing of course:
 
@@ -353,7 +353,7 @@ Aragonite is free software, released under [MPL-2.0](./LICENSE): use it, study i
 
 [^7]: what does vue have that svelte and react don't have? a lower barrier to entry?
 
-[^8]: safari itself isn't tested yet, only webkit on linux and macos, which is close but not quite the same thing. so if safari does something weird, tell me
+[^8]: this is, what you might call, a large bug surface... tell me if you see something weird lmao (fyi, try the report a bug button on aragonite.dev)
 
 [^9]: Parse then serialize returns the same text every time. Editing is close - usually surrounding regions are kept the same, and the local edited line keeps its spelling too. The exception is footnote definitions and alerts.
 

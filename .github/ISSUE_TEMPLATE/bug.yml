@@ -27,8 +27,8 @@ body:
     id: where
     attributes:
       label: Version, browser, mode
-      description: Optional, but it saves a round trip. Chromium and WebKit are tested on every change, so Firefox reports are extra welcome.
-      placeholder: 0.11.1, Firefox 145 on Windows 11, live mode
+      description: Optional, but good lord please include it - saves me a few roundtrips lol
+      placeholder: 0.11.1, Firefox 158 on Windows 11, live mode
 
   - type: textarea
     id: recording
