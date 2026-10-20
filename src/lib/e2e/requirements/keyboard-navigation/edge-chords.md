@@ -42,3 +42,5 @@ same way; neither spelling changes what the other does.
 - Five editor sites each compared Home or End, so Cmd+Arrow on a Mac reached none of them: a
   line start beside a leading image landed past it, and Cmd+Up hopped a block. Every spec pressed
   Home and End, and the one macOS run read Home as a scroll, so nothing ever sent Cmd+Arrow.
+- The Shift+Enter line's Cmd+Left row was only run on Chromium and macOS WebKit, so nothing saw
+  WebKit and Firefox off macOS take Cmd+Left as a plain ArrowLeft, leaving the open line.

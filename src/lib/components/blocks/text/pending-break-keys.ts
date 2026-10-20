@@ -43,8 +43,14 @@ export function handlePendingBreakKey(e: KeyboardEvent, deps: PendingBreakKeyDep
 		});
 		return true;
 	}
-	// Cmd+Left is the line-start key, which moves from the open line as Home does.
-	const stepsBack = e.key === 'Backspace' || (e.key === 'ArrowLeft' && caretEdgeKey(e) === null);
+	const edge = caretEdgeKey(e);
+	// The open line is empty, so Cmd+Left and Cmd+Right keep the caret where it is, which only macOS
+	// does natively; the key then goes on to the other handlers, as Home does.
+	if (edge?.to === 'line' && edge.arrow && !edge.extend) {
+		e.preventDefault();
+		return false;
+	}
+	const stepsBack = e.key === 'Backspace' || (e.key === 'ArrowLeft' && edge === null);
 	if (!stepsBack && e.key !== 'Delete') return false;
 	deps.pendingBreak.end();
 	if (!stepsBack || e.shiftKey || hasModifier(e)) return false;
