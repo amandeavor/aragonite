@@ -11,8 +11,8 @@ import { makeCaretMemory } from '../harness/editor-actions';
 import { restoreTarget } from '../harness/restore-landing';
 import { parse } from '../../core/parser';
 import type { EditorSelection } from '../../selection/primitives';
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { extendCtx } from './extend-walk-env';
 
 interface Emission {
 	/** The block the native caret sat in, which is what a subscriber's read-back resolves. */
@@ -264,16 +264,7 @@ describe('unbatched entry-path emission counts', () => {
 		h.parkCaretIn(0, 3);
 		const doc = parse('Alpha one\n\nBravo two\n');
 
-		expect(
-			extendFocusToNextBlock(
-				h.selectionState,
-				testCaretWriter,
-				doc,
-				defaultGrammarView,
-				h.blocks[0],
-				[0]
-			)
-		).toBe(true);
+		expect(extendFocusToNextBlock(extendCtx(h.selectionState, doc), h.blocks[0], [0])).toBe(true);
 
 		// enterCrossBlockFromKeyboard seeds a collapsed pair, then extendFocus reaches
 		// the next leaf. Two mutations, two emissions, both reporting real state.

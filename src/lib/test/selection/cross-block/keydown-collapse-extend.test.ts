@@ -87,6 +87,7 @@ describe('cross-block keydown: extend', () => {
 
 		expect(env.selection.focus?.path).toEqual([2]);
 		expect(env.selection.anchor?.path).toEqual([0]);
+		expect(env.showSelectionEnd).toHaveBeenCalledTimes(1);
 	});
 
 	// Contraction: pulling the focus back onto the anchor's own block leaves nothing spanning two
@@ -98,6 +99,9 @@ describe('cross-block keydown: extend', () => {
 
 		expect(env.selection.isCrossBlock).toBe(false);
 		expect(env.selection.focus).toBeNull();
+		// A range inside one block is put back through the restore, which shows its moving end.
+		expect(env.revealed.at(-1)).toEqual([0]);
+		expect(env.showSelectionEnd).not.toHaveBeenCalled();
 	});
 
 	for (const [mod, init] of DOC_EDGE_CHORDS) {
@@ -107,6 +111,7 @@ describe('cross-block keydown: extend', () => {
 			expect(await env.keydown.handleKeyDown(press('End', init))).toBe(true);
 
 			expect(env.selection.focus?.path).toEqual([2]);
+			expect(env.showSelectionEnd).toHaveBeenCalledTimes(1);
 		});
 
 		it(`${mod}+Shift+Home extends backwards to the document start`, async () => {

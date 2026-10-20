@@ -1,9 +1,10 @@
-/** Cross-block keyboard extension and collapse: `SelectionState` writes plus the native caret. */
+/** Keyboard extension and collapse: every end a key moves is written here, and shown. */
 
 import type { SelectionState } from './selection-state.svelte';
 import type { SelectedWidgetRange, SelectionPoint } from './primitives';
 import type { Document } from '../core/nodes';
 import type { GrammarView } from '../schema/block-openers';
+import type { Reading } from '../schema/reading';
 import { isVerticallyTransparentNode } from '../core/inline/transparency';
 import type { CaretLanding } from './caret-landing';
 import {
@@ -12,9 +13,10 @@ import {
 	applySingleBlockRange
 } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';
+import { caretRectAtRaw, lineBoxNearest } from '../caret/visual-lines';
 import { offsetFromViewportPoint } from '../caret/point-offset';
-import type { BlockElLookup } from '../caret/block-el-lookup';
-import type { ScrollOwner } from '../windowing/scroll-owner';
+import { tableFocusExtension, type ArrowKey } from './table-rect-extend';
+import { cellPoint } from './primitives';
 import {
 	firstPath,
 	lastPath,
@@ -28,7 +30,7 @@ import { nodeAt } from '../tree-operations/node-primitives';
 import { comparePaths, pathsEqual } from './path-math';
 import { displayLength } from '../core/lines';
 
-// ── Enter / Collapse / Scroll ──────────────────────────────────────────────
+// ── Enter / Collapse ───────────────────────────────────────────────────────
 
 /** Enters cross-block mode on a Shift+Arrow leaving a block, with the native caret as both
  *  anchor and focus; the caller extends the focus right after. */
@@ -74,107 +76,164 @@ export async function collapseCrossBlock(
 	await restore({ anchor: point, focus: point }, { reveal: 'into-view' });
 }
 
-/** Scrolls the focus block into view if mounted, without mounting it: a document-edge extend
- *  mounts its endpoint first, and one Shift+Arrow step lands beside the mounted range. */
-export function scrollFocusBlockIntoView(
-	selection: SelectionState,
-	scroll: Pick<ScrollOwner, 'place'>
+// ── Keyboard Extension ─────────────────────────────────────────────────────
+
+/** What a keyboard extend reads and writes: the field names the keydown contexts already carry, so
+ *  a context passes itself. */
+export interface KeyboardExtendContext {
+	selection: SelectionState;
+	caretWriter: CaretWriter;
+	getDoc(): Document;
+	reading: Pick<Reading, 'grammar'>;
+	/** Shows each end a key moves; a range folded back into one block goes down through `restore`. */
+	caretLanding: Pick<CaretLanding, 'restore' | 'showSelectionEnd'>;
+}
+
+/** Every key that moves a cross-block focus moves it here, so the end it reaches is shown. A focus
+ *  back on the anchor's block is a range inside it, restored with its direction. */
+function moveFocusTo(ctx: KeyboardExtendContext, point: SelectionPoint): void {
+	const { selection } = ctx;
+	const anchor = selection.anchor;
+	selection.extendFocus(point);
+	if (selection.isCrossBlock || !anchor) {
+		void ctx.caretLanding.showSelectionEnd();
+		return;
+	}
+	void ctx.caretLanding.restore({ anchor, focus: point }, { reveal: 'into-view' });
+}
+
+/** Enters cross-block mode from the native caret unless a range is already live. */
+function enterFromCaret(ctx: KeyboardExtendContext, el: HTMLElement, path: number[]): boolean {
+	if (ctx.selection.isCrossBlock) return true;
+	return enterCrossBlockFromKeyboard(ctx.selection, ctx.caretWriter, el, path);
+}
+
+/** Shift+Arrow over a live range moves its focus. A focus on a cell steps by row, or by cell inside
+ *  a rectangle; any other walk starts from the leaf the focus sits in, a cell's own path. */
+export function extendRangeByArrow(
+	ctx: KeyboardExtendContext,
+	el: HTMLElement,
+	key: ArrowKey
 ): void {
-	if (selection.focus) {
-		void scroll.place(selection.focus.path, { block: 'nearest', hold: false }).scroll();
+	const { selection } = ctx;
+	const focus = selection.focus;
+	if (!focus) return;
+	const ext = tableFocusExtension(ctx.getDoc(), selection.anchor, focus, key);
+	if (ext?.kind === 'cell') {
+		moveFocusTo(ctx, cellPoint(focus.path, ext.offset));
+		return;
+	}
+	if (ext) {
+		if (ext.direction === 'forward') extendFocusToNextBlock(ctx, el, ext.fromCellPath, 'vertical');
+		else extendFocusToPreviousBlock(ctx, el, ext.fromCellPath, 'start');
+		return;
+	}
+	const from = selection.cellLandingFor(focus).path;
+	if (key === 'ArrowDown' || key === 'ArrowRight') {
+		extendFocusToNextBlock(ctx, el, from, key === 'ArrowDown' ? 'vertical' : 'horizontal');
+	} else {
+		extendFocusToPreviousBlock(ctx, el, from, key === 'ArrowUp' ? 'start' : 'end');
 	}
 }
 
-// ── Keyboard Extension ─────────────────────────────────────────────────────
+/** The first Shift+ArrowUp or Down at a cell's vertical edge: a range from that cell to the one a
+ *  row away, or out of the table. False when the key reaches no cell and no block. */
+export function extendFromCell(
+	ctx: KeyboardExtendContext,
+	el: HTMLElement,
+	anchor: SelectionPoint,
+	key: 'ArrowUp' | 'ArrowDown'
+): boolean {
+	const { selection } = ctx;
+	const ext = tableFocusExtension(ctx.getDoc(), anchor, anchor, key);
+	if (!ext) return false;
+	// Recorded before the block-level extend answers, so a refusal (no block past the table) takes
+	// it back: left behind, the next Backspace would delete a whole cell through it.
+	selection.enterCrossBlock(anchor, anchor);
+	if (ext.kind === 'cell') {
+		moveFocusTo(ctx, cellPoint(anchor.path, ext.offset));
+		return true;
+	}
+	const extended =
+		ext.direction === 'forward'
+			? extendFocusToNextBlock(ctx, el, ext.fromCellPath, 'vertical')
+			: extendFocusToPreviousBlock(ctx, el, ext.fromCellPath, 'start');
+	if (!extended) selection.collapse();
+	return extended;
+}
 
-/** Moves the cross-block focus to `target`, or re-creates the range natively when the focus is
- *  back on the anchor's block, since keyboard entry left only a collapsed caret there. */
-function extendFocusOrRestore(
-	selection: SelectionState,
-	writer: CaretWriter,
-	target: number[],
-	offset: number,
-	getBlockElByPath?: BlockElLookup
+/** Shift+Home or Shift+End over a range across blocks: the focus goes to the edge of its visual line
+ *  in `blockEl`, the block it sits in. A focus with no text line (a cell, a rule) stays. */
+export function extendToLineEdge(
+	ctx: KeyboardExtendContext,
+	blockEl: HTMLElement,
+	side: 'start' | 'end'
 ): void {
-	const anchor = selection.anchor;
-	selection.extendFocus({ path: target, offset });
-	if (!anchor || selection.isCrossBlock || !getBlockElByPath) return;
-	const blockEl = getBlockElByPath(target);
-	if (!blockEl) return;
-	blockEl.focus({ preventScroll: true });
-	applySingleBlockRange(
-		writer,
-		blockEl,
-		Math.min(anchor.offset, offset),
-		Math.max(anchor.offset, offset)
-	);
+	const focus = ctx.selection.focus;
+	if (!focus || focus.cellCoordinate) return;
+	const offset = lineEdgeOffset(blockEl, focus.offset, side);
+	if (offset !== null) moveFocusTo(ctx, { path: focus.path, offset });
+}
+
+/** Moves the browser selection's focus inside `el` to raw `raw`, for a key the editor takes over
+ *  inside one block, and shows it. */
+export function extendWithinBlock(
+	ctx: Pick<KeyboardExtendContext, 'caretWriter' | 'caretLanding'>,
+	el: HTMLElement,
+	raw: number
+): void {
+	if (ctx.caretWriter.extendSelectionToRaw(el, raw)) void ctx.caretLanding.showSelectionEnd();
 }
 
 /** Extends focus to the next leaf a caret can reach. The vertical axis skips leaves the caret
  *  passes over (an image-only paragraph); the horizontal stops on each, so it stays selectable. */
 export function extendFocusToNextBlock(
-	selection: SelectionState,
-	writer: CaretWriter,
-	doc: Document,
-	grammar: GrammarView,
+	ctx: KeyboardExtendContext,
 	currentBlockEl: HTMLElement,
 	currentBlockPath: number[],
-	axis: 'horizontal' | 'vertical' = 'horizontal',
-	getBlockElByPath?: BlockElLookup
+	axis: 'horizontal' | 'vertical' = 'horizontal'
 ): boolean {
+	const doc = ctx.getDoc();
 	const leafTarget =
 		axis === 'vertical'
-			? firstNonTransparentLeafAfter(doc, grammar, currentBlockPath)
+			? firstNonTransparentLeafAfter(doc, ctx.reading.grammar, currentBlockPath)
 			: nextCaretPath(doc, currentBlockPath);
 	if (!leafTarget) return false;
-
-	if (!selection.isCrossBlock) {
-		if (!enterCrossBlockFromKeyboard(selection, writer, currentBlockEl, currentBlockPath))
-			return false;
-	}
-	extendFocusOrRestore(selection, writer, leafTarget, 0, getBlockElByPath);
+	if (!enterFromCaret(ctx, currentBlockEl, currentBlockPath)) return false;
+	moveFocusTo(ctx, { path: leafTarget, offset: 0 });
 	return true;
 }
 
 /** Extends focus to the previous leaf: `'end'` crosses the boundary by one character, `'start'`
  *  takes the whole previous line as native ArrowUp does, skipping leaves the caret passes over. */
 export function extendFocusToPreviousBlock(
-	selection: SelectionState,
-	writer: CaretWriter,
-	doc: Document,
-	grammar: GrammarView,
+	ctx: KeyboardExtendContext,
 	currentBlockEl: HTMLElement,
 	currentBlockPath: number[],
-	side: 'start' | 'end' = 'end',
-	getBlockElByPath?: BlockElLookup
+	side: 'start' | 'end' = 'end'
 ): boolean {
+	const doc = ctx.getDoc();
 	const leafTarget =
 		side === 'start'
-			? lastNonTransparentLeafBefore(doc, grammar, currentBlockPath)
+			? lastNonTransparentLeafBefore(doc, ctx.reading.grammar, currentBlockPath)
 			: previousCaretPath(doc, currentBlockPath);
 	if (!leafTarget) return false;
-
-	if (!selection.isCrossBlock) {
-		if (!enterCrossBlockFromKeyboard(selection, writer, currentBlockEl, currentBlockPath))
-			return false;
-	}
+	if (!enterFromCaret(ctx, currentBlockEl, currentBlockPath)) return false;
 	const offset = side === 'start' ? 0 : leafOffsetEnd(doc, leafTarget);
-	extendFocusOrRestore(selection, writer, leafTarget, offset, getBlockElByPath);
+	moveFocusTo(ctx, { path: leafTarget, offset });
 	return true;
 }
 
 /** Extends focus to the document edge; a transparent edge leaf is bypassed for the nearest
  *  text-bearing one, as the one-step extension does. */
 export function extendFocusToDocEdge(
-	selection: SelectionState,
-	writer: CaretWriter,
-	doc: Document,
-	grammar: GrammarView,
+	ctx: KeyboardExtendContext,
 	currentBlockEl: HTMLElement,
 	currentBlockPath: number[],
-	to: 'start' | 'end',
-	getBlockElByPath?: BlockElLookup
+	to: 'start' | 'end'
 ): boolean {
+	const doc = ctx.getDoc();
+	const grammar = ctx.reading.grammar;
 	const edge =
 		to === 'start' ? firstCaretLeaf(doc, [0]) : lastCaretLeaf(doc, [doc.children.length - 1]);
 	if (!edge) return false;
@@ -185,14 +244,10 @@ export function extendFocusToDocEdge(
 			: lastNonTransparentLeafFrom(doc, grammar, edge)
 		: edge;
 	if (!target) return false;
-
-	if (!selection.isCrossBlock) {
-		if (!enterCrossBlockFromKeyboard(selection, writer, currentBlockEl, currentBlockPath))
-			return false;
-	}
+	if (!enterFromCaret(ctx, currentBlockEl, currentBlockPath)) return false;
 
 	const offset = to === 'end' ? leafOffsetEnd(doc, target) : 0;
-	extendFocusOrRestore(selection, writer, target, offset, getBlockElByPath);
+	moveFocusTo(ctx, { path: target, offset });
 	return true;
 }
 
@@ -349,6 +404,18 @@ function lastNonTransparentLeafFrom(
 ): number[] | null {
 	if (!isTransparent(doc, grammar, startPath)) return startPath;
 	return lastNonTransparentLeafBefore(doc, grammar, startPath);
+}
+
+/** The raw offset at the `side` edge of the visual line raw `raw` sits on in `el`, measured the way
+ *  a click resolves its point. */
+function lineEdgeOffset(el: HTMLElement, raw: number, side: 'start' | 'end'): number | null {
+	const caret = caretRectAtRaw(el, raw);
+	if (!caret) return null;
+	const y = caret.top + caret.height / 2;
+	const line = lineBoxNearest(el, y);
+	if (!line) return null;
+	// Half a pixel inside the line's box, so the point resolves to its first or last offset.
+	return offsetFromViewportPoint(el, side === 'start' ? line.left + 0.5 : line.right - 0.5, y);
 }
 
 function leafOffsetEnd(doc: Document, path: number[]): number {

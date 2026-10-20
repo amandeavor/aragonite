@@ -1,9 +1,7 @@
 /** The keydown and compositionstart half of cross-block dispatch. */
 
-import { CURSOR_START } from '../../block-component';
 import type { CrossBlockDispatchContext } from './dispatch';
 import type { Document } from '../../core/nodes';
-import { docPathFrom } from '../../caret/coordinate-spaces';
 import { commandLandingKind, kindOfPath, replaceRange } from './range-replace';
 import { bindsIndentAt, coversIndentBinding, indentFormsFor, indentRange } from './range-indent';
 import { coverRange, rangeCoverage } from '../range-coverage';
@@ -21,15 +19,12 @@ import type { AnyCommandId } from '../../schema/command-id';
 import { rangeIndentCommands } from '../../schema/range-indent-forms';
 import {
 	collapseCrossBlock,
-	extendFocusToNextBlock,
-	extendFocusToPreviousBlock,
 	extendFocusToDocEdge,
-	selectWholeDocument,
-	scrollFocusBlockIntoView
+	extendRangeByArrow,
+	extendToLineEdge,
+	selectWholeDocument
 } from '../keyboard-extend';
-import { pathsEqual } from '../path-math';
-import { intraTableRectExtension } from '../table-rect-extend';
-import { cellPoint } from '../primitives';
+import type { ArrowKey } from '../table-rect-extend';
 import { applySurfaceContentRange, readNativeSelection } from '../native-bridge';
 import { selectInBlock } from '../place-caret';
 
@@ -117,9 +112,18 @@ async function handleCrossBlockActive(
 			return true;
 		}
 		case 'extend':
-			extendOverRange(ctx, e, el, doc);
-			await revealActiveEndpoint(ctx);
+			extendRangeByArrow(ctx, el, e.key as ArrowKey);
 			return true;
+		case 'lineEdge': {
+			const edge = caretEdgeKey(e);
+			const focus = ctx.selection.focus;
+			if (!edge || !focus) return true;
+			// The end can have scrolled out of the rendered window since the key that last moved it.
+			await ctx.caretLanding.mount(focus.path);
+			const focusEl = ctx.getBlockElByPath(focus.path);
+			if (focusEl) extendToLineEdge(ctx, focusEl, edge.side);
+			return true;
+		}
 		case 'collapse': {
 			const toEnd = e.key === 'ArrowRight' || e.key === 'ArrowDown';
 			const to = toEnd ? 'end' : 'start';
@@ -129,59 +133,6 @@ async function handleCrossBlockActive(
 		case 'selectAll':
 			selectWholeDocument(ctx.selection, ctx.caretWriter, doc, ctx.getBlockElByPath);
 			return true;
-	}
-}
-
-/** Shift+Arrow moves the range's focus end. Inside a table it grows the rectangle cell by cell
- *  first, since the generic extend snaps the focus back to the row's first cell. */
-function extendOverRange(
-	ctx: CrossBlockDispatchContext,
-	e: KeyboardEvent,
-	el: HTMLElement,
-	doc: Document
-): void {
-	const { selection, caretWriter: writer, getBlockElByPath } = ctx;
-	const { grammar } = ctx.reading;
-	const key = e.key as ArrowKey;
-	const ext = intraTableRectExtension(doc, selection.anchor, selection.focus, key);
-	if (ext?.kind === 'cell') {
-		selection.extendFocus(cellPoint(selection.focus!.path, ext.offset));
-		return;
-	}
-	if (ext) {
-		if (ext.direction === 'forward') {
-			extendFocusToNextBlock(selection, writer, doc, grammar, el, ext.fromCellPath, 'vertical');
-		} else {
-			extendFocusToPreviousBlock(selection, writer, doc, grammar, el, ext.fromCellPath, 'start');
-		}
-		return;
-	}
-	const focusPath = selection.focus?.path ?? ctx.getMyPath();
-	const focusEl = getBlockElByPath(focusPath) ?? el;
-	if (key === 'ArrowDown' || key === 'ArrowRight') {
-		const axis = key === 'ArrowDown' ? 'vertical' : 'horizontal';
-		extendFocusToNextBlock(
-			selection,
-			writer,
-			doc,
-			grammar,
-			focusEl,
-			focusPath,
-			axis,
-			getBlockElByPath
-		);
-	} else {
-		const side = key === 'ArrowUp' ? 'start' : 'end';
-		extendFocusToPreviousBlock(
-			selection,
-			writer,
-			doc,
-			grammar,
-			focusEl,
-			focusPath,
-			side,
-			getBlockElByPath
-		);
 	}
 }
 
@@ -274,7 +225,7 @@ export function rangeOwnsKey(e: KeyboardEvent, reads: RangeKeyReads): boolean {
 }
 
 type RangeKeyRole =
-	'delete' | 'rewrite' | 'indent' | 'command' | 'extend' | 'collapse' | 'selectAll';
+	'delete' | 'rewrite' | 'indent' | 'command' | 'extend' | 'lineEdge' | 'collapse' | 'selectAll';
 
 // Each container the key bubbles through asks, and then the range's handler: one answer per event.
 const rolesByEvent = new WeakMap<KeyboardEvent, RangeKeyRole | null>();
@@ -293,8 +244,10 @@ function readRangeKeyRole(e: KeyboardEvent, reads: RangeKeyReads): RangeKeyRole 
 	// caret would leave empty marker pairs where the text stood.
 	if (isClaimedRewriteChord(e)) return 'rewrite';
 	if (isIndentKey(e, reads)) return 'indent';
-	// Cmd+Arrow is a caret-edge key, which a range leaves to the block as it does Home and End.
-	const step = isArrowKey(e.key) && caretEdgeKey(e) === null;
+	const edge = caretEdgeKey(e);
+	if (edge?.to === 'line' && edge.extend) return 'lineEdge';
+	// Any other caret-edge key (Cmd+ArrowUp, plain Home) the range leaves to the block.
+	const step = isArrowKey(e.key) && edge === null;
 	if (e.shiftKey && step) return 'extend';
 	const plain = !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey;
 	if ((e.key === 'Escape' && plain) || (!e.shiftKey && step)) return 'collapse';
@@ -328,8 +281,6 @@ function isTabKey(e: KeyboardEvent): boolean {
 	return e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey;
 }
 
-type ArrowKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
-
 const isArrowKey = (key: string): key is ArrowKey =>
 	key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight';
 
@@ -352,25 +303,6 @@ export function isClaimedRewriteChord(e: KeyboardEvent): boolean {
 	);
 }
 
-/** Parks the caret at the focus endpoint, never ending the range (G2.12) and never opening a
- *  closed body. A cell takes its start, since ArrowRight at its end reads as leaving the table. */
-async function revealActiveEndpoint(ctx: CrossBlockDispatchContext): Promise<void> {
-	const focus = ctx.selection.focus;
-	const landing = focus && ctx.selection.cellLandingFor(focus);
-	// A landing that deepened the path is a cell; anything else lands as itself. A cell that never
-	// mounted falls through, so the mounted table still scrolls the endpoint into view.
-	if (focus && landing && !pathsEqual(landing.path, focus.path)) {
-		if (await ctx.caretLanding.park({ path: docPathFrom(landing.path), offset: CURSOR_START })) {
-			return;
-		}
-	}
-	// A windowed-out text endpoint cannot be scrolled to while unmounted, so it mounts first.
-	if (focus && !ctx.getBlockElByPath(focus.path)) {
-		await ctx.caretLanding.park({ path: docPathFrom(focus.path), offset: focus.offset });
-	}
-	scrollFocusBlockIntoView(ctx.selection, ctx.scrollOwner);
-}
-
 async function handleDocEdgeExtend(
 	ctx: CrossBlockDispatchContext,
 	e: KeyboardEvent,
@@ -379,17 +311,7 @@ async function handleDocEdgeExtend(
 	const el = ctx.getEl();
 	if (!el) return false;
 	e.preventDefault();
-	extendFocusToDocEdge(
-		ctx.selection,
-		ctx.caretWriter,
-		ctx.getDoc(),
-		ctx.reading.grammar,
-		el,
-		ctx.getMyPath(),
-		direction,
-		ctx.getBlockElByPath
-	);
-	await revealActiveEndpoint(ctx);
+	extendFocusToDocEdge(ctx, el, ctx.getMyPath(), direction);
 	return true;
 }
 

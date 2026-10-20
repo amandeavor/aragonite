@@ -1464,6 +1464,35 @@ const RULES: FileRule[] = [
 		misses: ['if (presses.travelled(e)) return;', 'const dx = Math.abs(width - startWidth);']
 	},
 	{
+		id: 'G4.229 a key moves a selection end through keyboard-extend, which shows it',
+		matches: /\.(?:extendFocus|enterCrossBlock|extendSelectionToRaw)\s*\(/,
+		allowed: {
+			[SOURCE.keyboardExtend]:
+				'every key that moves an end, which shows it; also the select-all and Shift+click writes',
+			'src/lib/selection/drag-pointer.ts': 'a pointer drag, whose end is under the pointer',
+			'src/lib/components/blocks/table/cell-pointer.ts':
+				'a pointer drag across cells, whose end is under the pointer',
+			'src/lib/selection/native-bridge.ts': 'the restore, whose landing shows the caret itself',
+			'src/lib/selection/cross-block/range-indent.ts':
+				'an indent keeping a block held whole, which moves no end',
+			'src/lib/testing/kind-conformance.ts': 'the conformance kit, which sets up a range'
+		},
+		reaches: [SOURCE.keyboardExtend],
+		reason:
+			'an end a key moves has to land on screen through the scroll owner: write it through `selection/keyboard-extend.ts`, whose writes call `showSelectionEnd`',
+		hits: [
+			'selection.extendFocus(cellPoint(path, 3));',
+			'ctx.selection.enterCrossBlock(anchor, focus);',
+			'deps.caretWriter.extendSelectionToRaw(el, bounds.start);',
+			'selection.extendFocus (point);'
+		],
+		misses: [
+			'extendWithinBlock(deps.extend, el, bounds.start);',
+			'extendFocusToNextBlock(ctx, el, path);',
+			'extendFocus(point: SelectionEndpoint): void;'
+		]
+	},
+	{
 		id: 'G4.225 the drag session hears a release before anything else on the page',
 		// Any phase counts, since a capture flag held in a variable is invisible to a scan.
 		matches:
@@ -2036,6 +2065,64 @@ function describeOwnerWrites(sources: SourceFile[]): void {
 			expect(
 				found,
 				'an owner write outside `writeScroll` can land under an open round: go through `writeScroll`, or declare it here with why'
+			).toEqual(declared);
+		});
+	});
+}
+
+// ── G4.229 inside the extend module, which functions write an end ────────────
+
+const KEYBOARD_END_WRITES: Record<string, { calls: number; reason: string }> = {
+	'src/lib/selection/keyboard-extend.ts :: moveFocusTo :: focus': {
+		calls: 1,
+		reason: 'every key that moves a focus, which shows it or restores the fold'
+	},
+	'src/lib/selection/keyboard-extend.ts :: enterCrossBlockFromKeyboard :: pair': {
+		calls: 1,
+		reason: 'a pair at the caret, whose focus `moveFocusTo` moves next'
+	},
+	'src/lib/selection/keyboard-extend.ts :: extendFromCell :: pair': {
+		calls: 1,
+		reason: 'a pair at the cell, whose focus `moveFocusTo` moves next'
+	},
+	'src/lib/selection/keyboard-extend.ts :: extendWithinBlock :: in block': {
+		calls: 1,
+		reason: 'a key inside one block, which shows what it wrote'
+	},
+	'src/lib/selection/keyboard-extend.ts :: selectWholeDocument :: pair': {
+		calls: 1,
+		reason: 'the second Mod+A, whose ends are the document edges'
+	},
+	'src/lib/selection/keyboard-extend.ts :: handleShiftClick :: focus': {
+		calls: 1,
+		reason: 'a Shift+click, whose end is under the pointer'
+	},
+	'src/lib/selection/keyboard-extend.ts :: handleShiftClick :: pair': {
+		calls: 2,
+		reason: 'a Shift+click, whose end is under the pointer'
+	}
+};
+
+const END_WRITE_KINDS: CallKind[] = [
+	{ kind: 'focus', callee: 'extendFocus', counts: () => true },
+	{ kind: 'pair', callee: 'enterCrossBlock', counts: () => true },
+	{ kind: 'in block', callee: 'extendSelectionToRaw', counts: () => true }
+];
+
+function describeKeyboardEndWrites(sources: SourceFile[]): void {
+	describe('G4.229 inside `keyboard-extend.ts`, only the declared functions write an end', () => {
+		it('the writes are exactly the declared ones', () => {
+			const found = Object.fromEntries(
+				sources
+					.filter((file) => file.relPath === SOURCE.keyboardExtend)
+					.flatMap((file) => [...callSites(file, END_WRITE_KINDS)])
+			);
+			const declared = Object.fromEntries(
+				Object.entries(KEYBOARD_END_WRITES).map(([site, { calls }]) => [site, calls])
+			);
+			expect(
+				found,
+				'a key that writes its end here directly skips the show: go through `moveFocusTo` or `extendWithinBlock`, or declare it here with why'
 			).toEqual(declared);
 		});
 	});
@@ -2870,6 +2957,7 @@ describeManifests(BARE_FOCUSES, SOURCES);
 describeFileRules([HELD_BRANDS], SOURCES);
 describeCorrections(SOURCES);
 describeOwnerWrites(SOURCES);
+describeKeyboardEndWrites(SOURCES);
 describeMeasureWrites(SOURCES);
 describeManifests([MEASURE_CHANNEL], SOURCES);
 describeManifests([MARK_HANDLER_CALLERS], SOURCES);

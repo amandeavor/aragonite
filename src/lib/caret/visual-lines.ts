@@ -6,7 +6,7 @@
 
 import { domDescendants } from './dom-walk';
 import { FALLBACK_LINE_HEIGHT } from '../windowing/typography-estimates';
-import { caretAnchorAfter, isBlockLineText } from './widget-offset';
+import { caretAnchorAfter, isBlockLineText, rawRangeToDomRange } from './widget-offset';
 
 // Fraction of a line height within which the cursor Y counts as the boundary line; under one
 // line, so sub/superscript or inline-image jitter doesn't read as a different line.
@@ -28,6 +28,12 @@ export function caretRectAt(root: ParentNode, node: Node, offset: number): DOMRe
 	range.collapse(true);
 	// A collapsed range has no width, so a box with width and no height is not a caret's.
 	return firstUsefulRect(range, false);
+}
+
+/** The box a collapsed caret at raw offset `raw` in the block element `el` sits in. */
+export function caretRectAtRaw(el: HTMLElement, raw: number): DOMRect | null {
+	const at = rawRangeToDomRange(el, raw, raw);
+	return at && caretRectAt(el, at.startContainer, at.startOffset);
 }
 
 /** The box of the one character at `at` in `text`, null past its end or where it paints nothing. */
@@ -80,26 +86,39 @@ export function sameLineTolerance(el: HTMLElement): number {
 /** The right edge of what `el` draws on the visual line nearest `y`, or null where it draws
  *  nothing: a point in a line's leading, or below the last line, reads that line. */
 export function lineEndNearest(el: HTMLElement, y: number): number | null {
+	return lineBoxNearest(el, y)?.right ?? null;
+}
+
+/** The box of what `el` draws on the visual line nearest `y`, read as `lineEndNearest` reads it. */
+export function lineBoxNearest(el: HTMLElement, y: number): LineBox | null {
 	const range = document.createRange();
 	range.selectNodeContents(el);
-	const lines: { top: number; bottom: number; right: number }[] = [];
+	const lines: LineBox[] = [];
 	for (const rect of range.getClientRects()) {
 		if (rect.width === 0 || rect.height === 0) continue;
 		const line = lines.find((each) => rect.top < each.bottom && rect.bottom > each.top);
-		if (!line) lines.push({ top: rect.top, bottom: rect.bottom, right: rect.right });
-		else {
+		if (!line) {
+			lines.push({ top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right });
+		} else {
 			line.top = Math.min(line.top, rect.top);
 			line.bottom = Math.max(line.bottom, rect.bottom);
+			line.left = Math.min(line.left, rect.left);
 			line.right = Math.max(line.right, rect.right);
 		}
 	}
-	const distance = (line: { top: number; bottom: number }) =>
+	const distance = (line: LineBox) =>
 		y < line.top ? line.top - y : y > line.bottom ? y - line.bottom : 0;
-	const nearest = lines.reduce<(typeof lines)[number] | null>(
+	return lines.reduce<LineBox | null>(
 		(best, line) => (best === null || distance(line) < distance(best) ? line : best),
 		null
 	);
-	return nearest?.right ?? null;
+}
+
+export interface LineBox {
+	top: number;
+	bottom: number;
+	left: number;
+	right: number;
 }
 
 /** Non-collapsed ranges reliably return rects where collapsed ones don't. */

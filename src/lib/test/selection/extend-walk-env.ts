@@ -3,6 +3,10 @@
 
 import { createSelectionState } from '../../selection/selection-state.svelte';
 import type { Document } from '../../core/nodes';
+import type { SelectionState } from '../../selection/selection-state.svelte';
+import type { KeyboardExtendContext } from '../../selection/keyboard-extend';
+import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 
 export function stateAt(doc: Document, path: number[]) {
 	const s = createSelectionState({ getDoc: () => doc });
@@ -11,3 +15,14 @@ export function stateAt(doc: Document, path: number[]) {
 }
 
 export const el = () => document.createElement('div');
+
+/** The keyboard extend's context over `doc`, with the default grammar and the test caret writer. */
+export function extendCtx(selection: SelectionState, doc: Document): KeyboardExtendContext {
+	return {
+		selection,
+		caretWriter: testCaretWriter,
+		getDoc: () => doc,
+		reading: { grammar: defaultGrammarView },
+		caretLanding: { restore: async () => 'applied', showSelectionEnd: async () => {} }
+	};
+}

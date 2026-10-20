@@ -116,7 +116,8 @@
 		getDoc,
 		getEditorRoot,
 		events: editorEvents,
-		reading
+		reading,
+		caretLanding
 	} = wiring.deps;
 	const { grammar } = reading;
 	// Made per gesture, never derived: a derived value would subscribe the block to the tree.
@@ -763,7 +764,7 @@
 		getFocusOffset: () => cursor.getFocusOffset(),
 		// Not offset 0: the start value is the one a caret placement clamps past hidden markers.
 		focusContentStart: () => focus(CURSOR_START),
-		caretWriter
+		extend: { caretWriter, caretLanding }
 	};
 
 	async function onKeyDown(e: KeyboardEvent): Promise<void> {

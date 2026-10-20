@@ -1018,7 +1018,6 @@
 		caretLanding,
 		getEditorRoot: () => editorEl ?? null,
 		getScrollHost,
-		scrollOwner,
 		getEditorLifetime: () => lifetimeController.signal,
 		caretMemory,
 		blockEdit,

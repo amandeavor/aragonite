@@ -191,6 +191,7 @@ unguarded.
 | G4.226 | An e2e spec presses the platform's own chord for an edge key or a modifier                   | L       |
 | G4.227 | A caret-edge key is read in one place, `caretEdgeKey`                                        | L       |
 | G4.228 | An e2e locator action that must leave the scroll alone rides the in-place helper             | L       |
+| G4.229 | A key moves a selection end through `keyboard-extend.ts`, which shows it                     | L       |
 
 ### The entries
 
@@ -1298,3 +1299,10 @@ action first scrolls its target to the middle of the screen, even one already sh
 spec that reads or sets the scroll (every VR spec does) and in every shared e2e helper, a locator
 `click`, `hover`, `tap`, `dragTo` or `scrollIntoViewIfNeeded` fails the scan; `e2e/click-in-place.ts`
 scrolls only a target that's off screen. `e2e/lint/e2e-drivers.test.ts`.
+
+**G4.229 · A moved selection end shows.** Every end a key moves (Shift+Arrow, Shift+Home and End,
+the document edges, a fold back into one block) is written in `selection/keyboard-extend.ts`, by
+the functions the scan lists there, which mount that end and show it. Elsewhere a write of an end
+(`extendFocus`, `enterCrossBlock`, `extendSelectionToRaw`) fails the scan unless its file is listed
+with why it shows nothing: a drag's end is under the pointer, a restore shows its own caret.
+`lint/file-rules.test.ts`.

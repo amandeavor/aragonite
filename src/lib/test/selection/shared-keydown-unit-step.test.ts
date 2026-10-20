@@ -37,8 +37,10 @@ function mount() {
 	const selection = createSelectionState();
 	const caretMemory = makeCaretMemory();
 	const noteKey = vi.spyOn(caretMemory, 'noteKey');
+	const showSelectionEnd = vi.fn(async () => {});
 	const ctx: SharedKeydownContext = {
 		caretWriter: testCaretWriter,
+		caretLanding: { restore: async () => 'applied' as const, showSelectionEnd },
 		commands: commandContext(),
 		reading: fixtureReading(),
 		getEl: () => el,
@@ -56,7 +58,6 @@ function mount() {
 		history: {} as SharedKeydownContext['history'],
 		focus: {} as FocusActions,
 		getDoc: () => ({ kind: 'document', children: [] }) as never,
-		scrollOwner: { place: () => ({ scroll: async () => true }) },
 		caretUnits: {
 			beside: (offset, direction, extending) => {
 				asked.push({ offset, direction, extending });
@@ -72,7 +73,7 @@ function mount() {
 		const sel = window.getSelection()!;
 		return { anchor: sel.anchorOffset, focus: sel.focusOffset };
 	};
-	return { ctx, select, read, asked, crossed, noteKey, selection };
+	return { ctx, select, read, asked, crossed, noteKey, selection, showSelectionEnd };
 }
 
 const press = (key: string, over: KeyboardEventInit = {}) =>
@@ -101,6 +102,8 @@ describe('handleSharedKeydown: a span the caret cannot stop inside is crossed in
 			expect(h.crossed).toHaveBeenCalledTimes(1);
 			// The key note runs first, so the step resets the sticky column like any horizontal one.
 			expect(h.noteKey).toHaveBeenCalledTimes(1);
+			// A moved selection end is shown; a moved caret is the caret landing's business.
+			expect(h.showSelectionEnd).toHaveBeenCalledTimes(row.shift ? 1 : 0);
 		});
 	}
 

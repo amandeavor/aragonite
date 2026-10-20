@@ -18,6 +18,8 @@ through a real CDP composition.
   - first block to last, drawn downward, so the caret starts in the block the removal keeps
   - both paragraphs of a quote, which the removal empties
   - both items of a list, which the removal empties
+  - a long document drawn downward from its first block with Mod+Shift+End, which pushes that first
+    block out of the rendered window, so the caret has to move to the end it reached
   - both cells of a table row, drawn from the first cell into the second, so the caret starts in
     the second. The removal empties both cells and the text lands in the first one, where typing
     over the same cells puts it.
@@ -33,3 +35,5 @@ through a real CDP composition.
   unseen.
 - Miss-analysis: the only composition row over a range drew it downward, so the caret sat in the
   block the removal keeps, and no row composed over a range whose removal took the caret's block.
+- Miss-analysis, for the long document: every range here fit on one screen, so no row drew one far
+  enough that the block holding the caret left the page, which left the composition nowhere to go.

@@ -109,7 +109,7 @@ const NON_CARET_PRESS_FILES: Record<string, string> = {
  *  extend is growing a range; anything else wants `focus`. */
 const PARK_DOOR_CALLERS: Record<string, string> = {
 	'src/lib/selection/caret-landing.ts':
-		"park — the extend's endpoint (cross-block/keydown.ts :: revealActiveEndpoint), mounted and given the dispatch caret while the extend still owns the range",
+		'park — a range end a key moved (showSelectionEnd), given the caret once windowing unmounted the block holding it, while the extend still owns the range',
 	'src/lib/editor-actions/container-block-component.ts':
 		"implementation: the container walk lands through its child's park door",
 	'src/lib/components/blocks/editable/editable-leaf.ts':
