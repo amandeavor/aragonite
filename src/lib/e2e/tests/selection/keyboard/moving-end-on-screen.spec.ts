@@ -16,6 +16,11 @@ const TABLE =
 	Array.from({ length: 60 }, (_, i) => `| cell ${i} |`).join('\n') +
 	'\n\nafter\n';
 const LAST_ROW = 60;
+// Twenty paragraphs, then a quote holding forty paragraphs of its own.
+const QUOTED =
+	paragraphs(20) + '\n' + Array.from({ length: 40 }, (_, i) => `> quote ${i}`).join('\n>\n') + '\n';
+// A paragraph long enough to wrap onto several lines.
+const WRAPPED = 'top\n\n' + Array.from({ length: 60 }, (_, i) => `word${i}`).join(' ') + '\n';
 
 interface Point {
 	path: number[];
@@ -174,6 +179,39 @@ test.describe('a range across blocks', () => {
 		await press(ep, page, extendKey('lineStart'));
 		end = await endOnScreen(page);
 		expect(end.focus).toEqual({ path: [35], offset: 0 });
+	});
+});
+
+test.describe('a range into a container', () => {
+	test("Shift+ArrowDown into a quote's paragraphs past the bottom edge is followed", async ({
+		page
+	}) => {
+		const ep = await open(page, QUOTED);
+		await ep.focusBlockEnd(5);
+		await press(ep, page, 'Shift+ArrowDown', 30);
+		const end = await endOnScreen(page);
+		expect(end.focus).toEqual({ path: [20, 15], offset: 0 });
+	});
+});
+
+test.describe('a range ending on a wrapped line', () => {
+	test('Shift+End takes the moving end to the end of its visual line, not its block', async ({
+		page
+	}) => {
+		const ep = await open(page, WRAPPED);
+		await ep.focusBlock(0, 1);
+		await press(ep, page, 'Shift+ArrowDown', 2);
+		await press(ep, page, extendKey('lineEnd'));
+		const end = await endOnScreen(page);
+		expect(end.focus.path).toEqual([1]);
+		const sameLine = await page.evaluate((offset) => {
+			const rects = (window as any).__test.rects;
+			const top = (at: number) => rects.rangeRects([1], at, at + 1)[0].top;
+			return { first: top(0), last: top(offset - 1), next: top(offset + 1) };
+		}, end.focus.offset);
+		// The last character taken sits on the first line, and the one after the end on the next.
+		expect(sameLine.last).toBe(sameLine.first);
+		expect(sameLine.next).toBeGreaterThan(sameLine.first);
 	});
 });
 

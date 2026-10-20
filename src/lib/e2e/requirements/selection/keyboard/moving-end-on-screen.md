@@ -14,6 +14,8 @@ When a key moves the end of a selection you're growing, the page scrolls just fa
 ## Edge cases
 
 - Two hundred paragraphs, Mod+Shift+End from the first: the last paragraph, never rendered yet, mounts and comes on screen, and a plain ArrowLeft still collapses the range
+- Twenty paragraphs and then a quote holding forty paragraphs, Shift+ArrowDown 30 times from the sixth paragraph's end: the moving end goes into the quote's sixteenth paragraph, and the page follows it
+- A range from the first paragraph down onto a long paragraph that wraps, then Shift+End: the moving end goes to the end of the first visual line, not the paragraph's end
 - A one-column table of sixty rows, the caret in the row sitting on the bottom edge: Shift+ArrowDown selects down to the row below, which comes on screen
 - The same table, ten more Shift+ArrowDown: the selection grows a row at a time and the page follows
 - A paragraph above the table, Shift+ArrowDown from its end into the table and 40 more times: the selection grows a row at a time through the table instead of sticking on its first row
