@@ -75,10 +75,17 @@ describe('rangeWrite: the text a range edit hands the surface write', () => {
 		});
 	});
 
+	it('takes off a CRLF ending whole', () => {
+		expect(rangeWrite(paragraph('ab\r\n'), { raw: 'a\r\n', caret: 1 }).text).toBe('a');
+	});
+
 	it('keeps a line ending the edit leaves at the end of a block saved without one', () => {
-		expect(rangeWrite(paragraph('ab\\nx'), { raw: 'ab\\n', caret: 4 })).toEqual({
-			text: 'ab\\n',
-			caretAfter: 4
-		});
+		expect(rangeWrite(paragraph('a\\\nb'), { raw: 'a\\\n', caret: 3 }).text).toBe('a\\\n');
+		expect(rangeWrite(paragraph('a\\\r\nb'), { raw: 'a\\\r\n', caret: 4 }).text).toBe('a\\\r\n');
+	});
+
+	// A widget's own key hands its text over whole, which a plugin may spell without the ending.
+	it('takes nothing off an edit that does not end with the block’s ending', () => {
+		expect(rangeWrite(paragraph('ab\n'), { raw: 'a', caret: 1 }).text).toBe('a');
 	});
 });

@@ -119,5 +119,6 @@ export function rangeWrite(
 	edit: Pick<LeafRangeEdit, 'raw' | 'caret'>
 ): Pick<TextWrite, 'text' | 'caretAfter'> {
 	const ending = ownTrailingLineEnding(node.raw);
-	return { text: edit.raw.slice(0, edit.raw.length - ending.length), caretAfter: edit.caret };
+	const text = ending && edit.raw.endsWith(ending) ? edit.raw.slice(0, -ending.length) : edit.raw;
+	return { text, caretAfter: edit.caret };
 }
