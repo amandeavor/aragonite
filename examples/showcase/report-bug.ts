@@ -5,6 +5,7 @@
  */
 import { el, icon, setAttrs } from './bar-dom';
 import { bugReport, describeWhere, type BugRecording } from './bug-report';
+import { closeOnEscape } from './popover';
 
 /** The editor's input recorder, typed by shape so every host's editor handle fits. */
 export interface RecordingEditor {
@@ -27,6 +28,8 @@ export function mountReportBug(options: ReportBugOptions): {
 	let phase: Phase = 'idle';
 	let handle: { stop(): BugRecording } | null = null;
 	let attachment = '';
+	let carrier: 'clipboard' | 'download' = 'clipboard';
+	let copyFailed = false;
 
 	const label = el('span', { class: 'showcase-action-label' });
 	const glyph = el('span', { class: 'showcase-action-glyph' });
@@ -46,18 +49,18 @@ export function mountReportBug(options: ReportBugOptions): {
 
 	// The card closes on Escape but not on a press outside: a stray click should not throw away
 	// the privacy note before Start.
-	const onKeyDown = (event: KeyboardEvent) => {
-		if (event.key !== 'Escape' || !card) return;
-		show('idle');
-		button.focus();
-	};
-	document.addEventListener('keydown', onKeyDown);
+	let releaseEscape: (() => void) | null = null;
 
 	function show(next: Phase, message?: () => HTMLElement) {
 		phase = next;
 		card?.remove();
+		releaseEscape?.();
+		releaseEscape = null;
 		card = message ? message() : next === 'asking' ? askingCard() : null;
-		if (card) anchor.append(card);
+		if (card) {
+			anchor.append(card);
+			releaseEscape = closeOnEscape(anchor, () => show('idle'));
+		}
 		paintButton();
 	}
 
@@ -89,18 +92,26 @@ export function mountReportBug(options: ReportBugOptions): {
 		);
 		const report = bugReport(recording, where);
 		attachment = report.attachment;
-		if (report.carrier === 'clipboard') copy();
-		else download(recording, report.attachment);
+		carrier = report.carrier;
+		copyFailed = false;
+		if (carrier === 'clipboard') copy();
+		else download(recording, attachment);
 		window.open(report.url, '_blank', 'noopener');
-		show('sent', () => sentCard(report.carrier, false));
+		show('sent', sentCard);
 	}
 
-	// A copy refused as the new tab took focus works from a click of its own on this page.
+	// A copy refused as the new tab took focus works from a click of its own on this page. Firefox
+	// can finish the copy inside `window.open`, before the card is up, so its outcome is kept.
 	function copy() {
 		navigator.clipboard.writeText(attachment).then(
-			() => phase === 'sent' && show('sent', () => sentCard('clipboard', false)),
-			() => phase === 'sent' && show('sent', () => sentCard('clipboard', true))
+			() => copied(false),
+			() => copied(true)
 		);
+	}
+
+	function copied(failed: boolean) {
+		copyFailed = failed;
+		if (phase === 'sent') show('sent', sentCard);
 	}
 
 	function download(recording: BugRecording, json: string) {
@@ -155,7 +166,7 @@ export function mountReportBug(options: ReportBugOptions): {
 		);
 	}
 
-	function sentCard(carrier: 'clipboard' | 'download', copyFailed: boolean) {
+	function sentCard() {
 		const text =
 			carrier === 'download'
 				? "GitHub opened in a new tab. The recording was too long for an issue, so it downloaded as a file: drag it into the form's Recording box."
@@ -179,7 +190,7 @@ export function mountReportBug(options: ReportBugOptions): {
 	return {
 		anchor,
 		destroy() {
-			document.removeEventListener('keydown', onKeyDown);
+			releaseEscape?.();
 			handle?.stop();
 		}
 	};

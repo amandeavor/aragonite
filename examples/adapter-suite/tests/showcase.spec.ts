@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, pageListeners } from './fixtures';
 
 // The React and Vue showcases mount the shared top bar and own its state, so these cases check the
 // loop the Svelte showcase's own specs cannot: a click in the bar changes the host's state, and the
@@ -38,4 +38,16 @@ test('the wordmark names the framework and links to the repository', async ({ pa
 	const wordmark = page.getByRole('link', { name: 'aragonite on GitHub' });
 	await expect(wordmark).toHaveAttribute('href', 'https://github.com/voithos-labs/aragonite');
 	await expect(wordmark).toContainText(/in (React|Vue)/);
+});
+
+test('a popover that closes takes its listeners with it', async ({ page }) => {
+	const closed = await pageListeners(page);
+	await page.getByTestId('showcase-settings').click();
+	await expect(page.getByTestId('theme-toggle')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await page.getByTestId('report-bug').click();
+	await expect(page.getByTestId('report-card')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(page.getByTestId('report-card')).toHaveCount(0);
+	expect(await pageListeners(page)).toEqual(closed);
 });

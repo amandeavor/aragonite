@@ -12,6 +12,11 @@ closing, widths) is covered on the Svelte showcase, in `src/lib/e2e/requirements
 - A mode segment switches the editor's presentation mode and moves the pressed segment.
 - The wordmark names the framework ("in React", "in Vue") and links to the repository.
 
+## Edge cases
+
+- Opening the settings popover and the report card, then closing each with Escape, leaves the
+  same listeners on the document and window as before.
+
 ## Error cases
 
 - Any console error, page error, aragonite dev warning or Vue warning fails the case.
