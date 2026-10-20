@@ -40,7 +40,7 @@ function keyWrite(
 	});
 	return (edit: LeafRangeEdit) =>
 		writeText({
-			...rangeWrite(edit),
+			...rangeWrite(getNode(), edit),
 			intent: 'typed',
 			mode: 'authored',
 			source: 'widget',

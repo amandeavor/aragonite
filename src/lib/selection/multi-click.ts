@@ -6,6 +6,7 @@
  */
 
 import { asDomTextOffset } from '../caret/coordinate-spaces';
+import { wordSegmenter } from '../core/text-units';
 import { caretOffsetAtPoint } from '../caret/point-offset';
 import type { UserScrollport } from '../windowing/scroll-ancestors';
 import {
@@ -32,18 +33,6 @@ export interface Span {
 }
 
 // ── The word rule ────────────────────────────────────────────────────────────
-
-let segmenter: Intl.Segmenter | null | undefined;
-
-function wordSegmenter(): Intl.Segmenter | null {
-	if (segmenter === undefined) {
-		segmenter =
-			typeof Intl.Segmenter === 'function'
-				? new Intl.Segmenter(undefined, { granularity: 'word' })
-				: null;
-	}
-	return segmenter;
-}
 
 /** The segment at `offset`: the word ending there if there is one, else the segment starting
  *  there, as the browser takes it. Null on a platform with no segmenter. */
