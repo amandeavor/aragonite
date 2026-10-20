@@ -22,7 +22,8 @@ export interface PendingBreakKeyDeps {
 	requestCaret(at: number): void;
 }
 
-/** True when the key was handled here, its default prevented. */
+/** True when the key was handled here, its default prevented; a line-edge Cmd+Arrow has its
+ *  default prevented and still goes on. */
 export function handlePendingBreakKey(e: KeyboardEvent, deps: PendingBreakKeyDeps): boolean {
 	const at = deps.pendingBreak.at();
 	if (at === null || e.isComposing || BARE_MODIFIER_KEYS.includes(e.key)) return false;
