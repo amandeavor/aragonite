@@ -353,7 +353,7 @@ Aragonite is free software, released under [MPL-2.0](./LICENSE): use it, study i
 
 [^7]: what does vue have that svelte and react don't have? a lower barrier to entry?
 
-[^8]: this is, what you might call, a large bug surface... tell me if you see something weird lmao (fyi, try the report a bug button on aragonite.dev)
+[^8]: this is, what you might call, a large bug surface... if you see something weird, be a homie and click that "report a bug" button on aragonite.dev
 
 [^9]: Parse then serialize returns the same text every time. Editing is close - usually surrounding regions are kept the same, and the local edited line keeps its spelling too. The exception is footnote definitions and alerts.
 
