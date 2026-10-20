@@ -35,6 +35,8 @@ after the delete, and that one undo puts both back.
 - a soft keyboard naming more than one character (here a whole entity): the editor writes nothing and
   leaves the keyboard's own edit to the browser (skipped on WebKit, which drops the range a script
   gives an event)
+- the same, right after a Backspace the editor took at its keydown (an entity deleted whole): still
+  the keyboard's own edit, since that key fired no input of its own
 
 ## Error cases
 
@@ -46,3 +48,5 @@ after the delete, and that one undo puts both back.
 - Every delete row pressed a key in Chromium alone, whose own delete takes an emoji and a CRLF pair
   whole, so Firefox's split ZWJ family, WebKit's half pair and a soft keyboard's delete (which no
   keydown arm sees) had no row.
+- A keyboard's wide delete right after a key the editor took at its keydown was decided as one
+  character: the soft keyboard rows each started on a fresh page, so no row followed a key.

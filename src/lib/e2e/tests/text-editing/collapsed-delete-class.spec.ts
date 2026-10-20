@@ -257,4 +257,18 @@ test.describe('a soft keyboard delete that names its range', () => {
 		await editor.waitForRenderFlush();
 		expect(await editor.bridge.getSource()).toBe('a&copy;b\n');
 	});
+
+	// The Backspace before it was taken at its keydown, so it fired no input of its own.
+	test('a wider range named after a key the editor took: still left to the browser', async ({
+		page
+	}) => {
+		skipUnlessSupported(page, 'syntheticTargetRanges');
+		await editor.loadContent('a&copy;b&copy;\n');
+		await editor.focusBlockAtPath([0], 14);
+		await page.keyboard.press('Backspace');
+		await editor.bridge.waitForSourceEquals('a&copy;b\n');
+		await sendKeylessBackspaceOver(page, true);
+		await editor.waitForRenderFlush();
+		expect(await editor.bridge.getSource()).toBe('a&copy;b\n');
+	});
 });

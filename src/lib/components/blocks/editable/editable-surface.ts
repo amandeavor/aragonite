@@ -572,8 +572,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 
 	// The Enter keydown whose handler is still running, which decides that key's break itself.
 	let enterKeydown: KeyboardEvent | null = null;
-	// Whether the last keydown was a Backspace or Delete, which the next delete input is.
-	let deleteKeydown = false;
+	// The last Backspace or Delete keydown, whose input the next delete is unless a handler took it.
+	let deleteKeydown: KeyboardEvent | null = null;
 	// The delete step's verdict on the input in progress, which the `input` after it checks.
 	let deleteVerdict: DeleteVerdict | null = null;
 
@@ -603,7 +603,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		if (!e.isComposing && el) deps.caretWriter.canonicalizeCaret(el);
 		if (!e.isComposing) recordPreEditOffset();
 		if (e.key === 'Enter' && !e.isComposing) enterKeydown = e;
-		deleteKeydown = !e.isComposing && (e.key === 'Backspace' || e.key === 'Delete');
+		deleteKeydown = !e.isComposing && (e.key === 'Backspace' || e.key === 'Delete') ? e : null;
 		try {
 			await deps.handleKeydown(e);
 		} finally {
@@ -621,8 +621,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// Synchronous to the block's handler: the block's `preventDefault` only counts inside this
 	// listener's microtask checkpoint.
 	function onBeforeInput(e: InputEvent): void {
-		const keyed = deleteKeydown;
-		deleteKeydown = false;
+		const keyed = deleteKeydown !== null && !deleteKeydown.defaultPrevented;
+		deleteKeydown = null;
 		// A step below that claims the input leaves it this verdict; the delete step overwrites it.
 		deleteVerdict = { decided: false, decline: 'claimed' };
 		endsDroppedComposition(e);
