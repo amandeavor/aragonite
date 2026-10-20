@@ -9,6 +9,7 @@ import type { NodeView } from '../../../core/node-views';
 import type { StoredAs } from '../../../schema/stored-as';
 import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
 import { readNativeSelection } from '../../../selection/native-bridge';
+import { decidedDeleteDirection } from '../../../caret/delete-extent';
 
 /** The raw-offset lookups a browser range edit needs from the block. */
 export interface LiveEditCursor {
@@ -36,6 +37,8 @@ export function resolveLiveRangeEdit(
 	store: StoredAs
 ): LiveRangeEdit | null {
 	if (!store.reading.hidesDelimitersAtCaret() || !rewritesTargetRange(e)) return null;
+	// A delete at a caret is the editor's own delete step's, which decides it after this one.
+	if (decidedDeleteDirection(e.inputType) && cursor.getRawSelection() === null) return null;
 	const target = pendingEditRange(e, cursor);
 	if (!target) return null;
 	const insert = replacementText(e);

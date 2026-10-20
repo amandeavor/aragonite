@@ -16,11 +16,11 @@ import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
 import type { StoredAs } from '../../../schema/stored-as';
 import { getInlineConstructPolicy } from '../../../schema/inline-construct-policy';
 import { removesExactly } from './screen-diff';
-import { isHighSurrogate, isLowSurrogate } from '../../../core/lines';
+import { characterExtent, type DeleteDirection } from '../../../caret/delete-extent';
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-export type DeleteDirection = 'backward' | 'forward';
+export type { DeleteDirection };
 
 /** Named fields rather than a positional row: `display`, the two ranges and the caret are all
  *  offsets into the same string, and a swapped pair would type-check. */
@@ -74,9 +74,12 @@ export function resolveEdgeDeletion(query: EdgeDeletionQuery): EdgeDeletion | nu
 	if (!target) return null;
 
 	// Decided beside the deleted span, not the caret. With no hidden run beside the cut the key
-	// stays with the browser, which handles graphemes and IME.
+	// takes the plain character the editor's delete rule names.
 	const plain = expandThroughEmptied(constructs, target);
-	const native = nativeCut(caret, direction);
+	const native = characterExtent(display, caret, direction, content) ?? {
+		start: caret,
+		end: caret
+	};
 	const touchesHiddenRun =
 		isDelimiterByte(constructs, target.start - 1) || isDelimiterByte(constructs, target.end);
 	if (!touchesHiddenRun && plain.start === native.start && plain.end === native.end) return null;
@@ -120,12 +123,6 @@ interface Target extends Span {
 	atomic: InlineNode | null;
 }
 
-function nativeCut(caret: number, direction: DeleteDirection): Span {
-	return direction === 'backward'
-		? { start: caret - 1, end: caret }
-		: { start: caret, end: caret + 1 };
-}
-
 /** The first thing the user can see on `direction`'s side of the caret. The scan stops at the
  *  content range, since the block's own structural bytes are never deleted here. */
 function deletionTarget(
@@ -143,19 +140,20 @@ function deletionTarget(
 	) {
 		const atomic = constructs.find((c) => !c.content && covers(c.node, at));
 		if (atomic) return { start: atomic.node.start, end: atomic.node.end, atomic: atomic.node };
-		if (!isDelimiterByte(constructs, at)) return { ...codePointAt(display, at), atomic: null };
+		if (!isDelimiterByte(constructs, at))
+			return { ...characterAt(display, at, direction), atomic: null };
 	}
 	return null;
 }
 
-/** The whole code point `at` belongs to. Half a surrogate pair is not a character, and this module
- *  handles keys beside a hidden run wherever they land, emoji included. */
-function codePointAt(display: string, at: number): Span {
-	const start =
-		isLowSurrogate(display.charCodeAt(at)) && isHighSurrogate(display.charCodeAt(at - 1))
-			? at - 1
-			: at;
-	return { start, end: isHighSurrogate(display.charCodeAt(start)) ? start + 2 : start + 1 };
+/** The character the editor's delete rule takes with `at` as the code unit it reaches first, so a
+ *  key beside a hidden run takes an emoji or a CRLF pair whole, as it does anywhere else. */
+function characterAt(display: string, at: number, direction: DeleteDirection): Span {
+	const span =
+		direction === 'backward'
+			? characterExtent(display, at + 1, 'backward', { start: 0, end: at + 1 })
+			: characterExtent(display, at, 'forward', { start: at, end: display.length });
+	return span ?? { start: at, end: at + 1 };
 }
 
 /** The second try when the plain cut does not parse back: also take the delimiter runs the cut sits

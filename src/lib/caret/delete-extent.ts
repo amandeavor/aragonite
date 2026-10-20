@@ -42,6 +42,13 @@ export function decidedDeleteDirection(inputType: string): DeleteDirection | nul
 	return Object.hasOwn(DECIDED_DELETES, inputType) ? DECIDED_DELETES[inputType] : null;
 }
 
+/** Why a delete the editor decides went to the browser after all, read back on `input` instead.
+ *  The editor's own check (G1.132) accepts an undecided delete only with one of these. */
+export type DeleteDecline =
+	'claimed' | 'composing' | 'not-cancelable' | 'range' | 'no-caret' | 'wide-keyless' | 'surface';
+
+export type DeleteVerdict = { decided: true } | { decided: false; decline: DeleteDecline };
+
 /** Wide enough for the longest emoji sequences (a tag flag is 14 code units); a cluster longer
  *  than this goes in window-sized parts. */
 export const DELETE_WINDOW = 64;

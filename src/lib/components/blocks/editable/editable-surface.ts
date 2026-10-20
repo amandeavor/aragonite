@@ -93,6 +93,9 @@ import {
 } from '../../../debug/interaction-trace';
 import { assertInvariant } from '../../../assert';
 import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
+import { checkDeleteDecided } from '../../../invariants/collapsed-delete';
+import type { DeleteDirection, DeleteVerdict } from '../../../caret/delete-extent';
+import { decideCollapsedDelete, type CollapsedDeleteReads } from './collapsed-delete';
 import type { Reading } from '../../../schema/reading';
 import { createPlaceholderHint, type PlaceholderPolicy } from '../placeholder-hint.svelte';
 import type { CompositionSeat } from '../text/composition-seat';
@@ -259,6 +262,9 @@ export interface EditableSurfaceDeps {
 	localHistory?: (e: InputEvent) => boolean;
 	/** The block's own beforeinput handling, run after the shared step, which it must not await. */
 	handleBeforeInput?: (e: InputEvent) => void;
+	/** Takes what a collapsed Backspace or Delete at raw `caret` aims at, through the block's own
+	 *  text; false to leave it to the browser. Omitted where the browser's delete is read back. */
+	deleteAtCaret?: (caret: number, direction: DeleteDirection) => boolean;
 }
 
 export interface EditableSurface {
@@ -566,6 +572,27 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 
 	// The Enter keydown whose handler is still running, which decides that key's break itself.
 	let enterKeydown: KeyboardEvent | null = null;
+	// Whether the last keydown was a Backspace or Delete, which the next delete input is.
+	let deleteKeydown = false;
+	// The delete step's verdict on the input in progress, which the `input` after it checks.
+	let deleteVerdict: DeleteVerdict | null = null;
+
+	const deleteReads: CollapsedDeleteReads = {
+		composing: deps.getComposing,
+		caret: () => deps.backend.getRaw(),
+		hasRange: () => deps.backend.getRawSelection() !== null,
+		text: () => trimTrailingLineEnding(deps.getNode().raw),
+		targetRange: (e) => {
+			const target = typeof e.getTargetRanges === 'function' ? e.getTargetRanges()[0] : undefined;
+			return target ? deps.backend.rawRangeOf(target) : null;
+		},
+		deleteAtCaret: deps.deleteAtCaret
+			? (caret, direction) => {
+					deps.inputPrelude?.();
+					return deps.deleteAtCaret!(caret, direction);
+				}
+			: undefined
+	};
 
 	// A keydown that writes for itself fires no beforeinput, so the caret is read here too.
 	const onKeyDown = withKeydownVerdict(async (e) => {
@@ -576,6 +603,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		if (!e.isComposing && el) deps.caretWriter.canonicalizeCaret(el);
 		if (!e.isComposing) recordPreEditOffset();
 		if (e.key === 'Enter' && !e.isComposing) enterKeydown = e;
+		deleteKeydown = !e.isComposing && (e.key === 'Backspace' || e.key === 'Delete');
 		try {
 			await deps.handleKeydown(e);
 		} finally {
@@ -593,6 +621,10 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// Synchronous to the block's handler: the block's `preventDefault` only counts inside this
 	// listener's microtask checkpoint.
 	function onBeforeInput(e: InputEvent): void {
+		const keyed = deleteKeydown;
+		deleteKeydown = false;
+		// A step below that claims the input leaves it this verdict; the delete step overwrites it.
+		deleteVerdict = { decided: false, decline: 'claimed' };
 		endsDroppedComposition(e);
 		adoptsComposition(e);
 		// A drop's text lands at the pointer, not at the caret a chord promised its marks to.
@@ -604,6 +636,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		if (!e.isComposing) recordPreEditOffset();
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);
+		if (e.defaultPrevented) return;
+		deleteVerdict = decideCollapsedDelete(e, keyed, deleteReads);
 	}
 
 	/** The browser's own Undo and Redo are the editor's, and a character typed over a range across
@@ -622,6 +656,11 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	}
 
 	function onInput(e: Event): void {
+		const verdict = deleteVerdict;
+		deleteVerdict = null;
+		if (e instanceof InputEvent && !e.isComposing && !deps.getComposing()) {
+			assertInvariant('collapsed-delete-decided', () => checkDeleteDecided(e.inputType, verdict));
+		}
 		if (!endsDroppedComposition(e)) commitDomRead(false);
 	}
 

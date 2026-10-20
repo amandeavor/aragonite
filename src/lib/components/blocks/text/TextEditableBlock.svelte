@@ -204,7 +204,7 @@
 		resolveRangeEdit: (range, typed) => {
 			const edit = replaceRangeInLeaf(node, range, typed, storedAs());
 			if (edit.matchesBrowserEdit) return null;
-			const { text, caretAfter } = rangeWrite(edit);
+			const { text, caretAfter } = rangeWrite(node, edit);
 			return { raw: text, caret: caretAfter };
 		}
 	});
@@ -242,13 +242,14 @@
 		},
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
+		deleteAtCaret: (caret, direction) => edgeDispatch.deleteAtCaret(caret, direction),
 		// After a shown source is written: until then the selected text lives in the DOM only.
 		removeSelection: (range) =>
 			new Promise<ContentWrite>((written) =>
 				afterSourceCommit(() =>
 					written(
 						writeText({
-							...rangeWrite(replaceRangeInLeaf(node, range, '', storedAs())),
+							...rangeWrite(node, replaceRangeInLeaf(node, range, '', storedAs())),
 							intent: 'command',
 							mode: 'authored',
 							source: 'selection-removal'

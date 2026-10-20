@@ -8,6 +8,7 @@ import type { BlockEditActions } from '#lib/action-contracts.js';
 import type { NodeView } from '#lib/core/node-views.js';
 import {
 	createSurfaceWrite,
+	rangeWrite,
 	type TextWrite
 } from '#lib/components/blocks/editable/surface-write.js';
 import { withStoredCaret } from '#lib/editor-actions/stored-caret.js';
@@ -59,5 +60,25 @@ describe('the caret after a surface write', () => {
 		const { writeText, requestCaret } = writerOver('ab\n', true);
 		void writeText({ ...TYPED, text: 'abc', caretAfter: 3, leavesCaret: true });
 		expect(requestCaret).not.toHaveBeenCalled();
+	});
+});
+
+// Miss-analysis: every range edit ran in a block saved with a line ending, so none cut a last line
+// down to a hard break's open line and lost the ending the edit left.
+describe('rangeWrite: the text a range edit hands the surface write', () => {
+	const paragraph = (raw: string): NodeView => ({ kind: 'paragraph', leadingTrivia: '', raw });
+
+	it('takes off only the block’s own ending, which the write adds back', () => {
+		expect(rangeWrite(paragraph('ab\n'), { raw: 'a\n', caret: 1 })).toEqual({
+			text: 'a',
+			caretAfter: 1
+		});
+	});
+
+	it('keeps a line ending the edit leaves at the end of a block saved without one', () => {
+		expect(rangeWrite(paragraph('ab\\nx'), { raw: 'ab\\n', caret: 4 })).toEqual({
+			text: 'ab\\n',
+			caretAfter: 4
+		});
 	});
 });

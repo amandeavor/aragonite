@@ -94,6 +94,7 @@ These checks run in three kinds of place:
 | G1.121 | A menu asked to close is gone a tick later                                                 | A·N     |
 | G1.122 | A built-in metadata read names the kind the node is                                        | A·N     |
 | G1.128 | A caret key a selected widget passes on leaves the widget first                            | A·N     |
+| G1.132 | A Backspace or Delete at a caret the editor decides never reaches `input` undecided        | A·N     |
 
 ### The entries
 
@@ -571,3 +572,10 @@ shared keydown or the browser, needs a real selection first: a caret at the edge
 toward, or for an extend the widget as a range anchored at its far edge. Dev fails a caret key the
 widget's handler passed on with the widget still selected. `checkMotionLeftWidget` ·
 `selected-widget-motion.test.ts`.
+
+**G1.132 · The editor's delete runs, not the browser's** (`collapsed-delete-decided`). A collapsed
+Backspace or Delete in prose or a table cell is written by the editor at `beforeinput`
+(`components/blocks/editable/collapsed-delete.ts`), so every engine takes the same bytes. Dev fails
+the `input` after one unless its `beforeinput` was declined for a named reason (a composition, a
+range, a soft keyboard's wider delete, a surface not decided yet). `checkDeleteDecided` ·
+`collapsed-delete.test.ts`.

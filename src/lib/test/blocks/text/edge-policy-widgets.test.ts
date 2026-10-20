@@ -453,7 +453,7 @@ describe('pending cursor', () => {
 			caretAfter(b.island);
 
 			expect(b.dispatch.handleKeydown(key('Backspace'), asRawOffset(5))).toBe(true);
-			expect(b.parks).toEqual([{ offset: 4 + SHIFT, source: 'island' }]);
+			expect(b.parks).toEqual([{ offset: 4 + SHIFT, source: 'delete' }]);
 		});
 
 		it('an atomic widget delete', () => {

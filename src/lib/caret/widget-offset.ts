@@ -124,15 +124,37 @@ export function rawTextOfContent(el: HTMLElement, raw: string, suffix: string): 
 		out += text;
 		content += text;
 	}
-	// A heading's hidden markers belong to its text, so a read holding nothing else is an emptied
-	// block, whichever of them the browser left; so is blank text typed over the text.
-	if (content === '') return '';
-	if (hiddenPrefix === null || !isBlankText(content)) return out;
-	return isBlankText(raw.slice(hiddenPrefix, displayLength(raw) - suffix.length)) ? out : content;
+	const wasBlank = isBlankText(raw.slice(hiddenPrefix ?? 0, displayLength(raw) - suffix.length));
+	return keptBlockText({ text: out, content, hidesPrefix: hiddenPrefix !== null, wasBlank });
+}
+
+/** What a prose block keeps once an edit leaves `content` between its markers (a hidden `#` marker
+ *  not counted, a shown one counted) and `text` in all; the input read-back and the editor's own
+ *  delete both ask here. */
+export interface EditedBlock {
+	text: string;
+	content: string;
+	hidesPrefix: boolean;
+	/** Whether the text between the markers was blank before the edit. */
+	wasBlank: boolean;
+}
+
+/** A heading's hidden markers belong to its text, so an edit leaving nothing else empties the
+ *  block, and blank text typed over the text drops the hidden marker an ATX heading can't keep. */
+export function keptBlockText(edited: EditedBlock): string {
+	if (edited.content === '') return '';
+	if (!edited.hidesPrefix || !isBlankText(edited.content) || edited.wasBlank) return edited.text;
+	return edited.content;
 }
 
 function isHiddenBlockPrefix(child: Element, el: HTMLElement): boolean {
 	return child.hasAttribute(BLOCK_PREFIX_ATTR) && isHiddenMarkerRoot(child, el);
+}
+
+/** Whether `el` draws its block's own opening marker (a heading's `#`) as nothing just now. */
+export function hidesBlockPrefix(el: HTMLElement): boolean {
+	const prefix = el.querySelector(`:scope > [${BLOCK_PREFIX_ATTR}]`);
+	return prefix !== null && isHiddenBlockPrefix(prefix, el);
 }
 
 // A heading's closing run goes with a hidden `#` marker the browser dropped, since the user saw
