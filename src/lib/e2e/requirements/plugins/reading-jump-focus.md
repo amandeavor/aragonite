@@ -30,8 +30,6 @@ target. Each scenario below runs once with Tab and once with Shift+Tab, on all t
   last cell keeps it)
 - **A host's `navigateTo` into a table cell's text** (once, no Tab): focus is on the cell, and
   `getSelection()` is null there too, not the cell's start
-  (miss-analysis: every jump row landed on a widget or a prose block, so the table's own caret
-  report, which named the focused cell's start with no caret in it, had nothing to fail)
 
 ## User interactions
 
@@ -39,8 +37,6 @@ target. Each scenario below runs once with Tab and once with Shift+Tab, on all t
   reference), once from a host's own button that takes focus out of the editor and once from a
   shortcut that leaves focus where it was: the caret goes where the jump put focus, so a typed
   letter lands at the definition's start, or right after the reference
-  (miss-analysis: no row typed after leaving reading mode, so a switch out that put the caret
-  back where it was before reading, offscreen, or nowhere at all, read as fine)
 
 ## Error cases
 
@@ -52,3 +48,7 @@ target. Each scenario below runs once with Tab and once with Shift+Tab, on all t
 - Every jump spec asserted where the block landed, never where Tab went from there, and the one
   that did ran the forward hop alone with Firefox marked `fixme`, so no row compared the engines
   across every jump route.
+- Every jump row landed on a widget or a prose block, so the table's own caret report, which named
+  the focused cell's start with no caret in it, had nothing to fail.
+- No row typed after leaving reading mode, so a switch out that put the caret back where it was
+  before reading, offscreen, or nowhere at all, read as fine.
