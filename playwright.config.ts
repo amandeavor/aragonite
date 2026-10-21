@@ -154,6 +154,8 @@ export default defineConfig({
 			name: 'e2e-perf',
 			testMatch: 'perf/**/*.perf.spec.ts',
 			timeout: 600_000,
+			// Timed rows: a file's rows run one after another, so a row never measures beside its siblings.
+			fullyParallel: false,
 			use: { viewport: { width: 1280, height: 900 } }
 		},
 		{
@@ -171,6 +173,7 @@ export default defineConfig({
 						name: 'e2e-perf-prod',
 						testMatch: 'perf/**/*.perf.spec.ts',
 						timeout: 600_000,
+						fullyParallel: false,
 						use: {
 							viewport: { width: 1280, height: 900 },
 							baseURL: `http://localhost:${PROD_PORT}`

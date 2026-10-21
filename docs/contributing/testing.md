@@ -661,8 +661,9 @@ node scripts/run-with-env.mjs RECORDINGS_BLESS=1 -- npx playwright test --projec
 
 ### Patterns and gotchas
 
-**Every test runs on its own.** The suite is `fullyParallel`, so two tests from one file can run at
-the same time in different workers, in any order, or in different CI shards. A test that reads
+**Every test runs on its own.** The suite is `fullyParallel` (the timed perf rows aside), so two
+tests from one file can run at the same time in different workers, in any order, or in different
+CI shards. A test that reads
 something an earlier test in its file left behind (a `let` at the top of a `describe` that one test
 sets and the next reads, say) passes when its file runs top to bottom and fails once the suite
 splits it up. Set it up in `beforeEach` or in the test itself.
