@@ -129,12 +129,22 @@ export function makeEdgeDispatch(
 		keyCaret = deps.getRawSelection()?.start ?? caret ?? 0;
 		return dispatch.handleKeydown(e, caret);
 	};
-	// The surface records the caret at `beforeinput` too, before it hands the delete on.
+	// The surface records the caret at `beforeinput`, and at a chord's keydown, before it hands the
+	// delete on.
 	const deleteAtCaret: typeof dispatch.deleteAtCaret = (caret, intent) => {
 		keyCaret = caret;
 		return dispatch.deleteAtCaret(caret, intent);
 	};
-	return { dispatch: { ...dispatch, deleteAtCaret }, handleKeydown, edits, markerWrites };
+	const deleteBeside: typeof dispatch.deleteBeside = (caret, direction) => {
+		keyCaret = caret;
+		return dispatch.deleteBeside(caret, direction);
+	};
+	return {
+		dispatch: { ...dispatch, deleteAtCaret, deleteBeside },
+		handleKeydown,
+		edits,
+		markerWrites
+	};
 }
 
 // ── DOM scaffolding ──────────────────────────────────────────────────────────

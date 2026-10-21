@@ -49,6 +49,7 @@ describe('branch order', () => {
 
 		it('ranks the families as the design states, cut line included', () => {
 			expect(dispatch.arms.map((arm) => arm.id)).toEqual([
+				'delete-beside',
 				'cst-widget',
 				'reading-mode',
 				'decoration-island',

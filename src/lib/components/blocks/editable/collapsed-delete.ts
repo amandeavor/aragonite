@@ -1,7 +1,8 @@
 /**
  * Where a collapsed delete is decided for every editable leaf: the browser's delete is prevented
  * and the block writes the bytes (`caret/delete-extent.ts`), so all engines take the same text. A
- * delete it declines goes on to the browser and is read back on `input`.
+ * delete it declines goes on to the browser and is read back on `input`. A chord's answer that no
+ * unit changes is decided at its keydown, since an engine may send no input for it.
  */
 
 import {
@@ -14,6 +15,7 @@ import {
 	type DeleteVerdict
 } from '../../../caret/delete-extent';
 import type { RawRange } from '../../../caret/widget-offset';
+import { isBareKey } from '../text/click-snap-guard';
 
 export interface CollapsedDeleteReads {
 	composing(): boolean;
@@ -24,12 +26,40 @@ export interface CollapsedDeleteReads {
 	/** The raw range the browser reports the input would take, null where it names none. */
 	targetRange(e: InputEvent): RawRange | null;
 	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
+	/** Takes or enters what a delete of any unit facing `direction` meets at `caret`; true when it
+	 *  did. Absent where the block draws no widgets. */
+	deleteBeside?: (caret: number, direction: DeleteDirection) => boolean;
+	/** Whether `caret` is the first or last offset the caret can reach, on the side `direction` faces. */
+	atEdge(caret: number, direction: DeleteDirection): boolean;
 	/** Runs what the plain key binds at this block, through the editor's keymap and the host's
 	 *  `keybindings`; absent where the block binds nothing. */
 	runPlainKey?: (key: PlainDeleteKey) => void;
 }
 
 export type PlainDeleteKey = 'Backspace' | 'Delete';
+
+/** What a Backspace or Delete chord the keymap left alone does at its keydown: takes what it faces
+ *  beside the caret, else runs the plain key at the edge it faces. Null leaves it to its input. */
+export function decideDeleteChord(
+	e: KeyboardEvent,
+	reads: CollapsedDeleteReads
+): 'beside' | 'at-edge' | null {
+	const key = e.key;
+	if (key !== 'Backspace' && key !== 'Delete') return null;
+	if (isBareKey(e) || e.defaultPrevented || e.isComposing || reads.hasRange()) return null;
+	const caret = reads.caret();
+	if (caret === null) return null;
+	const direction = key === 'Backspace' ? 'backward' : 'forward';
+	if (reads.deleteBeside?.(caret, direction)) {
+		e.preventDefault();
+		return 'beside';
+	}
+	if (!reads.atEdge(caret, direction)) return null;
+	// Prevented whatever the binding does: the browser's own delete there takes a hidden marker.
+	e.preventDefault();
+	reads.runPlainKey?.(key);
+	return 'at-edge';
+}
 
 /** The verdict on a `beforeinput` the editor decides deletes for; null for every other input.
  *  `keyChord` is the opening Backspace or Delete keydown's chord, null for a soft keyboard. */

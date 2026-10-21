@@ -16,6 +16,11 @@ export function hasModifier(e: KeyboardEvent): boolean {
 	return e.ctrlKey || e.metaKey || e.altKey;
 }
 
+/** The key alone: no Shift, Ctrl, Alt or Meta held. */
+export function isBareKey(e: KeyboardEvent): boolean {
+	return !e.shiftKey && !hasModifier(e);
+}
+
 /** A typed character: no modifier chord, one code point. A chord is a command instead. */
 export function isPlainTypingKey(e: KeyboardEvent): boolean {
 	return !hasModifier(e) && isCharacterKey(e.key);

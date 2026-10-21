@@ -3,6 +3,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { skipUnlessSupported } from '../../browser-engine';
 import { edgeKey, WORD_MODIFIER } from '../../platform-keys';
+import { addReplaceIsland, addWidgetIsland } from '../../decoration-sources';
 
 /**
  * A collapsed Backspace or Delete inside a line takes the same bytes on every engine, by key or by
@@ -343,18 +344,8 @@ test.describe('a soft keyboard delete that names its range', () => {
 	});
 });
 
-// Shift+Backspace is Backspace on every OS, so it follows the widget's policy and the hidden-run
-// rule too.
+// Shift+Backspace is Backspace on every OS, so it follows the hidden-run rule too.
 const SHIFT_ROWS: Row[] = [
-	{
-		name: 'an atomic widget before the caret goes whole',
-		source: 'a&copy;b\n',
-		path: [0],
-		at: 7,
-		key: 'Backspace',
-		after: 'ab\n',
-		caret: 1
-	},
 	{
 		name: 'in live mode, past a hidden closer it takes the letter inside',
 		source: '**ab**c\n',
@@ -380,29 +371,22 @@ test.describe('Shift+Backspace takes what Backspace takes', () => {
 			await deleteThenUndo(editor, row, () => page.keyboard.press('Shift+Backspace'));
 		});
 	}
-
-	test('an image before the caret is selected, its bytes kept', async ({ page }) => {
-		const source = 'lead![cat](/test-fixtures/sample.png)\n';
-		await editor.loadContent(source);
-		await editor.focusBlockEnd(0);
-		await page.keyboard.press('Shift+Backspace');
-		await expect(page.locator('[data-image-overlay]')).toBeVisible();
-		expect(await editor.bridge.getSource()).toBe(source);
-	});
 });
 
-interface EdgeRow {
+interface KeyRow {
 	name: string;
 	source: string;
 	path: number[];
 	at: number;
 	forward?: boolean;
-	live?: boolean;
+	mode?: 'live';
 	viaEnd?: boolean;
+	/** Installs a decoration source, before the content loads. */
+	decorate?: (page: Page) => Promise<void>;
 }
 
 // A delete of any unit at a block's edge, by any route, does what the plain key does there.
-const EDGE_ROWS: EdgeRow[] = [
+const EDGE_ROWS: KeyRow[] = [
 	{ name: 'Backspace at a paragraph start', source: 'abc\n\nnext\n', path: [1], at: 0 },
 	{ name: 'Delete at a paragraph end', source: 'abc\n\nnext\n', path: [0], at: 3, forward: true },
 	{ name: 'Backspace at a second list item start', source: '- a\n- b\n', path: [0, 1, 0], at: 0 },
@@ -414,7 +398,7 @@ const EDGE_ROWS: EdgeRow[] = [
 		path: [0],
 		at: 2,
 		forward: true,
-		live: true,
+		mode: 'live',
 		viaEnd: true
 	},
 	// The browser's own delete there would take the space of the hidden `# `.
@@ -423,14 +407,58 @@ const EDGE_ROWS: EdgeRow[] = [
 		source: 'para\n\n# Title\n',
 		path: [1],
 		at: 2,
-		live: true
+		mode: 'live'
 	},
 	// The code block's Backspace steps out to the block above: the bytes stay and the caret moves.
 	{ name: "Backspace at a code block's start", source: 'abc\n\n```\nx\n```\n', path: [1], at: 0 }
 ];
 
-/** A keydown with a modifier the editor's keymap leaves alone, then the input it opens, as a Mac
- *  sends Option or Cmd with Backspace. */
+const IMAGE = '![x](/test-fixtures/sample.png)';
+
+// Beside a widget the plain key takes an atomic one whole and selects the rest, an image included.
+const WIDGET_ROWS: KeyRow[] = [
+	{ name: 'an image before the caret', source: `aa\n\n${IMAGE} bb\n`, path: [1], at: 31 },
+	{
+		name: 'in live mode, an image before the caret',
+		source: `aa\n\n${IMAGE} bb\n`,
+		path: [1],
+		at: 31,
+		mode: 'live'
+	},
+	{
+		name: 'an image after the caret',
+		source: `aa\n\nbb ${IMAGE}\n`,
+		path: [1],
+		at: 3,
+		forward: true
+	},
+	{
+		name: 'in live mode, an image after the caret',
+		source: `aa\n\nbb ${IMAGE}\n`,
+		path: [1],
+		at: 3,
+		forward: true,
+		mode: 'live'
+	},
+	{ name: 'an image closing the block', source: `lead${IMAGE}\n`, path: [0], at: 35 },
+	{ name: 'an entity before the caret', source: 'a&copy;b\n', path: [0], at: 7 },
+	{
+		name: 'a table cell, an image before the caret',
+		source: `| ${IMAGE} b |\n| - |\n`,
+		path: [0, 0, 0],
+		at: 31
+	},
+	{
+		name: 'a replace decoration closing the block',
+		source: 'abHIDDEN\n',
+		path: [0],
+		at: 8,
+		decorate: (page) => addReplaceIsland(page, [0], 2, 8)
+	}
+];
+
+/** A Mac's Option or Cmd delete: the keydown, then in a second call, as its handler has finished
+ *  by then under a real key, the input it opens unless the keydown was prevented. */
 async function sendChordDelete(
 	page: Page,
 	key: 'Backspace' | 'Delete',
@@ -438,15 +466,19 @@ async function sendChordDelete(
 	inputType: string
 ): Promise<void> {
 	await page.evaluate(
-		({ key, modifier, inputType }) => {
-			const target = document.activeElement as HTMLElement;
+		({ key, modifier }) => {
 			const init = { key, [modifier]: true, bubbles: true, cancelable: true };
-			if (!target.dispatchEvent(new KeyboardEvent('keydown', init))) return;
-			const input = { inputType, bubbles: true, cancelable: true };
-			target.dispatchEvent(new InputEvent('beforeinput', input));
+			const keydown = new KeyboardEvent('keydown', init);
+			(window as any).__chordKeydown = keydown;
+			document.activeElement!.dispatchEvent(keydown);
 		},
-		{ key, modifier, inputType }
+		{ key, modifier }
 	);
+	await page.evaluate((inputType) => {
+		if ((window as any).__chordKeydown.defaultPrevented) return;
+		const input = { inputType, bubbles: true, cancelable: true };
+		document.activeElement!.dispatchEvent(new InputEvent('beforeinput', input));
+	}, inputType);
 }
 
 interface EdgeRoute {
@@ -482,43 +514,59 @@ const EDGE_ROUTES: EdgeRoute[] = [
 	}
 ];
 
-/** The source and the caret, which together say what a delete did. */
-async function edgeOutcome(editor: EditorPage): Promise<string> {
+/** The source, the caret and any widget shown selected, which together say what a delete did. */
+async function keyOutcome(editor: EditorPage): Promise<string> {
 	await editor.waitForRenderFlush();
 	const focus = (await editor.bridge.getSelectionPaths())?.focus;
-	return JSON.stringify({ source: await editor.bridge.getSource(), focus });
+	const selected = await editor.page.locator('[data-image-overlay], .md-widget-selected').count();
+	return JSON.stringify({ source: await editor.bridge.getSource(), focus, selected });
 }
 
-for (const route of EDGE_ROUTES) {
-	test.describe(`a delete at a block edge by ${route.name} does what the plain key does`, () => {
-		let editor: EditorPage;
+/** `row`'s plain key, then the same caret by `route`: both come out the same, and the key did
+ *  something. */
+async function expectPlainKeyParity(editor: EditorPage, row: KeyRow, route: EdgeRoute) {
+	const page = editor.page;
+	const key = row.forward ? 'Delete' : 'Backspace';
+	if (row.mode) await editor.setPresentationMode(row.mode);
+	if (row.decorate) await row.decorate(page);
+	const place = async () => {
+		await editor.loadContent(row.source);
+		await editor.focusBlockAtPath(row.path, row.at);
+		if (row.viaEnd) await page.keyboard.press(edgeKey('lineEnd'));
+	};
+	await place();
+	const before = await keyOutcome(editor);
+	await page.keyboard.press(key);
+	const plain = await keyOutcome(editor);
+	expect(plain).not.toBe(before);
 
-		test.beforeEach(async ({ page }) => {
-			editor = new EditorPage(page);
-			await editor.goto();
-		});
+	await place();
+	await route.send(page, key);
+	await expect.poll(() => keyOutcome(editor)).toBe(plain);
+}
 
-		for (const row of EDGE_ROWS.filter((row) => !(route.backwardOnly && row.forward))) {
-			test(row.name, async ({ page }) => {
-				const key = row.forward ? 'Delete' : 'Backspace';
-				if (row.live) await editor.setPresentationMode('live');
-				const place = async () => {
-					await editor.loadContent(row.source);
-					await editor.focusBlockAtPath(row.path, row.at);
-					if (row.viaEnd) await page.keyboard.press(edgeKey('lineEnd'));
-				};
-				await place();
-				const before = await edgeOutcome(editor);
-				await page.keyboard.press(key);
-				const plain = await edgeOutcome(editor);
-				expect(plain).not.toBe(before);
+const PARITY_TABLES = [
+	{ where: 'at a block edge', rows: EDGE_ROWS },
+	{ where: 'beside a widget', rows: WIDGET_ROWS }
+];
 
-				await place();
-				await route.send(page, key);
-				await expect.poll(() => edgeOutcome(editor)).toBe(plain);
+for (const { where, rows } of PARITY_TABLES) {
+	for (const route of EDGE_ROUTES) {
+		test.describe(`a delete ${where} by ${route.name} does what the plain key does`, () => {
+			let editor: EditorPage;
+
+			test.beforeEach(async ({ page }) => {
+				editor = new EditorPage(page);
+				await editor.goto();
 			});
-		}
-	});
+
+			for (const row of rows.filter((row) => !(route.backwardOnly && row.forward))) {
+				test(row.name, async () => {
+					await expectPlainKeyParity(editor, row, route);
+				});
+			}
+		});
+	}
 }
 
 test.describe('a delete at a block edge: undo, Android, the heading marker, a cell', () => {
@@ -556,6 +604,22 @@ test.describe('a delete at a block edge: undo, Android, the heading marker, a ce
 			await editor.bridge.waitForSourceEquals('para\n\nxTitle\n');
 		});
 	}
+
+	// A widget decoration stands for no bytes, so it changes nothing about where the heading starts.
+	test("Backspace at a live heading's start does the same beside a widget decoration", async ({
+		page
+	}) => {
+		await editor.setPresentationMode('live');
+		const press = async () => {
+			await editor.loadContent('para\n\n# Title\n');
+			await editor.focusBlockAtPath([1], 2);
+			await page.keyboard.press('Backspace');
+			return keyOutcome(editor);
+		};
+		const bare = await press();
+		await addWidgetIsland(page, [1], 2);
+		expect(await press()).toBe(bare);
+	});
 
 	test("the word chord at a table cell's start moves to the cell before, as Backspace does", async ({
 		page

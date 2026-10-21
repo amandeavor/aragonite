@@ -203,6 +203,7 @@
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
 		deleteAtCaret: (caret, intent) => edgeDispatch.deleteAtCaret(caret, intent),
+		deleteBeside: (caret, direction) => edgeDispatch.deleteBeside(caret, direction),
 		commandTarget: () => keyTarget,
 		removeSelection: (range) =>
 			writeText({

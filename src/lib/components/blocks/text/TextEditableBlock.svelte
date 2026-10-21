@@ -248,6 +248,7 @@
 		handleBeforeInput: onBeforeInput,
 		deleteAtCaret: (caret, intent) =>
 			takeBackOpenLine(pendingBreakKeyDeps) ? 'taken' : edgeDispatch.deleteAtCaret(caret, intent),
+		deleteBeside: (caret, direction) => edgeDispatch.deleteBeside(caret, direction),
 		commandTarget: () => keyTarget,
 		// After a shown source is written: until then the selected text lives in the DOM only.
 		removeSelection: (range) =>

@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	decideCollapsedDelete,
+	decideDeleteChord,
 	type CollapsedDeleteReads
 } from '#lib/components/blocks/editable/collapsed-delete.js';
 import { checkDeleteDecided } from '#lib/invariants/collapsed-delete.js';
@@ -21,6 +22,7 @@ function reads(overrides: Partial<CollapsedDeleteReads> = {}) {
 		hasRange: () => false,
 		text: () => 'abc',
 		targetRange: () => null,
+		atEdge: () => false,
 		deleteAtCaret: (caret, intent) => {
 			calls.push([caret, intent]);
 			return 'taken';
@@ -141,6 +143,95 @@ describe('decideCollapsedDelete: which deletes the editor writes itself', () => 
 		expect(decideCollapsedDelete(input('deleteContentBackward'), null, base)).toEqual({
 			decided: true
 		});
+	});
+});
+
+// Miss-analysis: the chord's keydown answer at the edge lived inline in the surface with no unit
+// test, and no answer beside a widget existed, so WebKit's silent chord did nothing.
+describe('decideDeleteChord: what a delete chord does at its keydown, whatever its unit', () => {
+	function chord(
+		keyName: string,
+		mods: KeyboardEventInit = { ctrlKey: true },
+		overrides: Partial<CollapsedDeleteReads> = {}
+	) {
+		const beside: [number, string][] = [];
+		const ran: string[] = [];
+		const { base } = reads({
+			deleteBeside: (caret, direction) => {
+				beside.push([caret, direction]);
+				return false;
+			},
+			atEdge: () => false,
+			runPlainKey: (key) => void ran.push(key),
+			...overrides
+		});
+		const e = new KeyboardEvent('keydown', { key: keyName, cancelable: true, ...mods });
+		return { answer: decideDeleteChord(e, base), e, beside, ran };
+	}
+
+	it('takes what it faces beside the caret, by the side its key faces', () => {
+		const backward = chord('Backspace', { ctrlKey: true }, { deleteBeside: () => true });
+		expect([backward.answer, backward.e.defaultPrevented]).toEqual(['beside', true]);
+		expect(chord('Backspace').beside).toEqual([[3, 'backward']]);
+		expect(chord('Delete', { altKey: true }).beside).toEqual([[3, 'forward']]);
+	});
+
+	it('runs the plain key at the edge it faces, and nothing beside wins over the edge', () => {
+		const edge = chord('Delete', { metaKey: true }, { atEdge: (_, d) => d === 'forward' });
+		expect([edge.answer, edge.e.defaultPrevented, edge.ran]).toEqual(['at-edge', true, ['Delete']]);
+		const both = chord(
+			'Backspace',
+			{ ctrlKey: true },
+			{
+				deleteBeside: () => true,
+				atEdge: () => true
+			}
+		);
+		expect([both.answer, both.ran]).toEqual(['beside', []]);
+	});
+
+	it('answers at the edge in a block that draws no widgets', () => {
+		const h = chord(
+			'Backspace',
+			{ ctrlKey: true },
+			{ deleteBeside: undefined, atEdge: () => true }
+		);
+		expect([h.answer, h.ran]).toEqual(['at-edge', ['Backspace']]);
+	});
+
+	// Shift+Backspace is Backspace on every OS, but a binding on the chord itself still wins.
+	it('counts Shift as a chord', () => {
+		expect(chord('Backspace', { shiftKey: true }, { deleteBeside: () => true }).answer).toBe(
+			'beside'
+		);
+	});
+
+	// Inside the line the reach depends on the unit, which only the input names.
+	it('leaves a delete that meets nothing and no edge to its input', () => {
+		const h = chord('Backspace');
+		expect([h.answer, h.e.defaultPrevented, h.ran]).toEqual([null, false, []]);
+	});
+
+	const passes: [string, string, KeyboardEventInit, Partial<CollapsedDeleteReads>][] = [
+		['the plain key, which the block decided', 'Backspace', {}, {}],
+		['another key', 'ArrowLeft', { ctrlKey: true }, {}],
+		['a held range', 'Backspace', { ctrlKey: true }, { hasRange: () => true }],
+		['no caret', 'Backspace', { ctrlKey: true }, { caret: () => null }],
+		['a composition', 'Backspace', { ctrlKey: true, isComposing: true }, {}]
+	];
+	for (const [name, keyName, mods, overrides] of passes) {
+		it(`asks nothing for ${name}`, () => {
+			const h = chord(keyName, mods, { ...overrides, atEdge: () => true });
+			expect([h.answer, h.e.defaultPrevented, h.beside, h.ran]).toEqual([null, false, [], []]);
+		});
+	}
+
+	it('asks nothing for a chord a binding already prevented', () => {
+		const ran: string[] = [];
+		const { base } = reads({ atEdge: () => true, runPlainKey: (key) => void ran.push(key) });
+		const e = new KeyboardEvent('keydown', { key: 'Backspace', ctrlKey: true, cancelable: true });
+		e.preventDefault();
+		expect([decideDeleteChord(e, base), ran]).toEqual([null, []]);
 	});
 });
 

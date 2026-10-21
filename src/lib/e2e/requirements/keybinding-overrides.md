@@ -31,6 +31,11 @@ Backspace binds there:
 - Miss-analysis: a soft keyboard ran the merge by its id and the chords ran nothing, and no row
   pressed a delete at an edge with Backspace rebound
 
+A binding on the delete chord itself wins over what the chord would do. `Shift+Backspace` or
+`Alt+Backspace` rebound to `heading.cycle` with level 1, then that chord right after an image,
+right after a replace decoration, or at a paragraph's start: the paragraph becomes a heading, and
+nothing is taken or selected.
+
 ## Override scope
 
 - a `kind:'heading'` override fires when a heading is focused but not on a paragraph
