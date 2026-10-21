@@ -1,17 +1,28 @@
 /**
- * Whether the cursor sits on the first or last visual line of a wrapping element, by comparing
- * the cursor's line box with the edge line's. A caret beside a non-text child measures to
- * nothing, so it borrows the box it sits against; that box and the line tolerance live here.
+ * Which visual line of a wrapping element the caret sits on, by comparing its line box with the
+ * edge line's. At a soft wrap the caret's one DOM position is on two lines, and only the browser
+ * knows which it shows, so every line decision there asks it through a `LineRead`.
  */
 
 import { domDescendants } from './dom-walk';
 import { FALLBACK_LINE_HEIGHT } from '../windowing/typography-estimates';
-import { caretAnchorAfter, isBlockLineText, rawRangeToDomRange } from './widget-offset';
+import {
+	caretAnchorAfter,
+	isBlockLineText,
+	rawRangeToDomRange,
+	rawSelectionFocus,
+	type CaretWriter
+} from './widget-offset';
 import { offsetFromViewportPoint } from './point-offset';
 
 // Fraction of a line height within which the cursor Y counts as the boundary line; under one
 // line, so sub/superscript or inline-image jitter doesn't read as a different line.
 const SAME_LINE_TOLERANCE = 0.8;
+
+const WRAP_SPACE = [' ', '\t'];
+
+/** How a line decision asks the browser which line the caret shows at a soft wrap. */
+export type LineRead = Pick<CaretWriter, 'focusEndsLine'>;
 
 /** The box a collapsed caret at `(node, offset)` in `root` sits in. Right after a `\n` that is the
  *  next line's start, where WebKit and Firefox measure the line the `\n` ends instead. */
@@ -96,10 +107,15 @@ export function lineEndNearest(el: HTMLElement, y: number): number | null {
 
 /** The raw offset at the `side` edge of the visual line raw `raw` sits on in `el`, measured the way
  *  a click resolves its point; null where nothing is laid out. */
-export function lineEdgeOffset(el: HTMLElement, raw: number, side: 'start' | 'end'): number | null {
-	const caret = caretRectAtRaw(el, raw);
+export function lineEdgeOffset(
+	el: HTMLElement,
+	raw: number,
+	side: 'start' | 'end',
+	lineRead: LineRead
+): number | null {
+	const caret = caretLineBox(el, raw, lineRead);
 	if (!caret) return null;
-	const y = caret.top + caret.height / 2;
+	const y = (caret.top + caret.bottom) / 2;
 	const line = lineBoxNearest(el, y);
 	if (!line) return null;
 	// Half a pixel inside the line's box, so the point resolves to its first or last offset.
@@ -177,9 +193,10 @@ export interface CaretBounds {
 export function isAtFirstVisualLine(
 	el: HTMLElement,
 	fallbackOffset: number,
-	bounds: CaretBounds
+	bounds: CaretBounds,
+	lineRead: LineRead
 ): boolean {
-	return isAtEdgeVisualLine(el, () => fallbackOffset <= bounds.start, {
+	return isAtEdgeVisualLine(el, () => fallbackOffset <= bounds.start, lineRead, {
 		isEmpty: bounds.start === bounds.end,
 		toStart: true,
 		boundaryTop: () => {
@@ -193,9 +210,10 @@ export function isAtFirstVisualLine(
 export function isAtLastVisualLine(
 	el: HTMLElement,
 	fallbackOffset: number,
-	bounds: CaretBounds
+	bounds: CaretBounds,
+	lineRead: LineRead
 ): boolean {
-	return isAtEdgeVisualLine(el, () => fallbackOffset >= bounds.end, {
+	return isAtEdgeVisualLine(el, () => fallbackOffset >= bounds.end, lineRead, {
 		isEmpty: bounds.start === bounds.end,
 		toStart: false,
 		boundaryTop: () => {
@@ -208,7 +226,82 @@ export function isAtLastVisualLine(
 	});
 }
 
+/** The boxes of the letters either side of a soft wrap at `at`, or null where the line doesn't
+ *  wrap there. A caret just after a hard line break is on one line only. */
+export function softWrapAt(
+	at: Pick<Range, 'startContainer' | 'startOffset'>,
+	surface: HTMLElement
+): { before: DOMRect; after: DOMRect } | null {
+	const node = at.startContainer;
+	if (!(node instanceof Text)) return null;
+	const first = nearestLetter(node, at.startOffset, surface, false);
+	if (!first || first.node.data[first.at] === '\n') return null;
+	const before = charRect(first.node, first.at);
+	const next = nearestLetter(node, at.startOffset, surface, true);
+	const after = next && charRect(next.node, next.at);
+	return before && after && after.top >= before.bottom - 1 ? { before, after } : null;
+}
+
+/** The live selection's focus `focus` at a soft wrap in `el`, on the line the browser shows it;
+ *  null off a wrap, where `caretRectAt` measures it right. */
+export function focusCaretAtWrap(
+	el: HTMLElement,
+	focus: Pick<Range, 'startContainer' | 'startOffset'>,
+	lineRead: LineRead
+): CaretRect | null {
+	const wrap = softWrapAt(focus, el);
+	return wrap && focusOnWrapLine(wrap, lineRead);
+}
+
+/** The nearest letter on one side of `at`, across the text nodes `surface` lays out as lines, past
+ *  spaces. */
+export function nearestLetter(
+	start: Text,
+	at: number,
+	surface: HTMLElement,
+	forward: boolean
+): { node: Text; at: number } | null {
+	const walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT);
+	walker.currentNode = start;
+	let node: Text | null = start;
+	let i = forward ? at : at - 1;
+	while (node) {
+		if (isBlockLineText(node, surface)) {
+			for (; i >= 0 && i < node.data.length; i += forward ? 1 : -1) {
+				if (!WRAP_SPACE.includes(node.data[i])) return { node, at: i };
+			}
+		}
+		node = (forward ? walker.nextNode() : walker.previousNode()) as Text | null;
+		if (node) i = forward ? 0 : node.data.length - 1;
+	}
+	return null;
+}
+
 // ── Internal ────────────────────────────────────────────────────────────────
+
+/** The live focus's box at a soft wrap, on the line the browser shows it: the end of the line it
+ *  ends, or the start of the line it starts. Null when the browser can't say. */
+function focusOnWrapLine(
+	wrap: { before: DOMRect; after: DOMRect },
+	lineRead: LineRead
+): CaretRect | null {
+	const endsLine = lineRead.focusEndsLine();
+	if (endsLine === null) return null;
+	const letter = endsLine ? wrap.before : wrap.after;
+	return { left: endsLine ? letter.right : letter.left, top: letter.top, bottom: letter.bottom };
+}
+
+/** The box of a caret at raw `raw` in `el`; where it is the live focus at a soft wrap, on the line
+ *  the browser shows it on. */
+function caretLineBox(el: HTMLElement, raw: number, lineRead: LineRead): CaretRect | null {
+	const sel = window.getSelection();
+	if (sel?.focusNode && rawSelectionFocus(el) === raw) {
+		const focus = { startContainer: sel.focusNode, startOffset: sel.focusOffset };
+		const atWrap = focusCaretAtWrap(el, focus, lineRead);
+		if (atWrap) return atWrap;
+	}
+	return caretRectAtRaw(el, raw);
+}
 
 /** The first rect that can position a caret: the leading client rect when it has real
  *  height, else the bounding rect. `widthTolerant` also accepts a zero-height rect with width. */
@@ -243,6 +336,7 @@ function nextLineStartAfter(text: Text, root: ParentNode): DOMRect | null {
 function isAtEdgeVisualLine(
 	el: HTMLElement,
 	fallback: () => boolean,
+	lineRead: LineRead,
 	edge: { isEmpty: boolean; toStart: boolean; boundaryTop: () => number | null }
 ): boolean {
 	const sel = window.getSelection();
@@ -251,6 +345,17 @@ function isAtEdgeVisualLine(
 
 	const cursorRange = movingEnd(sel);
 	const tolerance = sameLineTolerance(el);
+
+	const wrap = softWrapAt(cursorRange, el);
+	if (wrap) {
+		const edgeTop = edge.boundaryTop();
+		if (edgeTop === null) return fallback();
+		const onEdge = (box: { top: number }) => Math.abs(box.top - edgeTop) < tolerance;
+		// The browser is asked only where one of the wrap's two lines is the edge line.
+		if (!onEdge(wrap.before) && !onEdge(wrap.after)) return false;
+		const caret = focusOnWrapLine(wrap, lineRead);
+		if (caret) return onEdge(caret);
+	}
 	const cursorTop =
 		caretRectAt(el, cursorRange.startContainer, cursorRange.startOffset)?.top ?? null;
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // Every caret write the editor makes asks the drawn caret to repaint (G4.143): each method of the
-// one caret writer, called once, requests exactly one paint, and a refused write requests none.
+// one caret writer, called once, requests exactly one paint, a refused write none, and a read none.
 import { describe, expect, it } from 'vitest';
 import { createCaretWriter, type CaretWriter } from '#lib/caret/widget-offset.js';
 
@@ -13,10 +13,13 @@ function paragraph(text: string): HTMLElement {
 	return el;
 }
 
+/** The writer's one read, which leaves the selection as it stood. */
+type WriterRead = 'focusEndsLine';
+
 /** One call per writer method; typed over every key, so a new method cannot skip its row. A row
  *  that needs the writer's own caret first calls `fresh` after placing it, to count only its call. */
 const CALLS: Record<
-	keyof CaretWriter,
+	Exclude<keyof CaretWriter, WriterRead>,
 	(writer: CaretWriter, el: HTMLElement, fresh: () => void) => void
 > = {
 	placeCaretAtRaw: (writer, el) => writer.placeCaretAtRaw(el, 2, { clamp: 'exact' }),
@@ -58,7 +61,23 @@ describe('every caret writer method requests one paint', () => {
 			() => {},
 			() => false
 		);
-		expect(Object.keys(writer).sort()).toEqual(Object.keys(CALLS).sort());
+		const read: WriterRead[] = ['focusEndsLine'];
+		expect(Object.keys(writer).sort()).toEqual([...Object.keys(CALLS), ...read].sort());
+	});
+
+	it('asking whether the focus ends its line requests nothing and moves nothing', () => {
+		let requests = 0;
+		const writer = createCaretWriter(
+			() => requests++,
+			() => false
+		);
+		const text = paragraph('hello').firstChild!;
+		const sel = window.getSelection()!;
+		sel.collapse(text, 2);
+		// jsdom lays out no lines, so the browser's move is a no-op: the focus already ends its line.
+		if (typeof sel.modify !== 'function') Object.assign(sel, { modify: () => {} });
+		expect(writer.focusEndsLine()).toBe(true);
+		expect([sel.focusNode, sel.focusOffset, requests]).toEqual([text, 2, 0]);
 	});
 
 	it.each(Object.entries(CALLS))('%s', (_, call) => {

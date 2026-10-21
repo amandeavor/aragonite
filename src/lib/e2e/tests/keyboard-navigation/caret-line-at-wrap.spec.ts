@@ -5,6 +5,7 @@ import { edgeKey } from '../../platform-keys';
 import { pointAtRaw } from '../../text-runs';
 import { caretsShowing, oneCaretOnTheBrowsersLine } from '../../carets-showing';
 import { engineSupports } from '../../browser-engine';
+import { waitForImagesDecoded } from '../blocks/image/helpers';
 
 /**
  * Where a line soft-wraps, the caret's spot is both one line's end and the next line's start, and
@@ -172,7 +173,7 @@ test.describe('asking the browser where the line ends', () => {
 		test(`an image starting the next line, ${label}: the caret stays put`, async ({ page }) => {
 			await editor.page.addStyleTag({ content: EDITOR_WIDTH });
 			await editor.loadContent(`before\n\nalpha ${IMAGE} supercalifragilistic tail\n\nafter\n`);
-			await page.waitForFunction(() => [...document.images].every((image) => image.complete));
+			await waitForImagesDecoded(page.locator('.editor img'));
 			await editor.focusBlock(1, 'alpha '.length);
 			const at = await selectionOf(editor);
 			if (asked) expect((await askLineEnd(page)).back).toBe(true);

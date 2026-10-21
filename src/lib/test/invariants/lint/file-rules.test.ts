@@ -552,6 +552,49 @@ const RULES: FileRule[] = [
 		misses: ['const box = el.getBoundingClientRect();', 'const rects = block.getClientRects();']
 	},
 	{
+		id: 'G4.243 the browser moves a selection in one place, the caret writer',
+		matches: /\.modify\s*\(/,
+		allowed: {
+			'src/lib/caret/widget-offset.ts':
+				'the caret writer: its line-edge moves, and the read of which line a caret at a soft wrap shows on'
+		},
+		reason:
+			'a `Selection.modify` moves the caret where the writer never recorded it, so the drawn caret and `canonicalizeCaret` misread it: move through `moveCaretToLineEdge` or `extendToLineEdge`, or ask `focusEndsLine`',
+		hits: [
+			"sel.modify('move', 'forward', 'line');",
+			"window.getSelection()!.modify ('extend', 'left', 'lineboundary');"
+		],
+		misses: ['const modified = view.modifiedAt;', 'modify(node);']
+	},
+	{
+		id: 'G4.243 the caret’s line is decided through the soft-wrap read',
+		matches: /\bcaretRectAt(?:Raw)?\s*\(/,
+		allowed: {
+			'src/lib/caret/visual-lines.ts':
+				'`caretRectAt` itself, and the line decisions, which ask the browser at a soft wrap first',
+			'src/lib/caret/sticky-measure.ts':
+				'the column: the caret’s own x after the soft-wrap read, and the column search over offsets that are no caret',
+			'src/lib/caret/drawn-caret-measure.ts':
+				'the drawn caret’s box, which steps aside for the browser’s own caret at a soft wrap',
+			'src/lib/selection/caret-landing.ts':
+				'the box scrolled into view, where a line off at a soft wrap still shows the caret',
+			'src/lib/selection/selection-drop.ts':
+				'the drop caret, at a point the pointer chose, not the caret',
+			'src/lib/selection/page-step.ts':
+				'the line a page step starts from, a line high at a soft wrap: a known gap, one line in a page',
+			'src/lib/editor-rects.ts':
+				'`rects.caretRect()` for a consumer, which reads the line above at a soft wrap: a known gap'
+		},
+		reason:
+			'at a soft wrap a caret’s one DOM position is on two lines and a measure reads one of them whatever the browser shows, so a line decided off `caretRectAt` is wrong there: use `isAtFirstVisualLine`, `isAtLastVisualLine`, `lineEdgeOffset` or `focusCaretAtWrap`, which ask the browser',
+		hits: [
+			'const top = caretRectAt(el, node, offset)?.top;',
+			'const box = caretRectAtRaw(el, raw);',
+			'deps.caretRectAt(root, n, o)'
+		],
+		misses: ['import { caretRectAt } from "./visual-lines";', 'caretRectAt,']
+	},
+	{
 		id: 'G4.221 a paste with no paste event calls the paste step, never a constructed event',
 		matches: /\bnew\s+(?:\w+\.)?ClipboardEvent\s*\(/,
 		allowed: {},

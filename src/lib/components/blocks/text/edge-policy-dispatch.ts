@@ -576,7 +576,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			text,
 			caret,
 			bounds: landable ?? { start: 0, end: text.length },
-			lineEdge: (side) => lineEdgeOffset(el, caret, side),
+			lineEdge: (side) => lineEdgeOffset(el, caret, side, deps.caretWriter),
 			visible: intent.unit === 'word' ? visibleWalkText(el) : undefined
 		});
 		if (!span) return false;

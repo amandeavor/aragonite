@@ -99,7 +99,9 @@ export async function handleSharedKeydown(
 	const el = ctx.getEl();
 	if (!el) return false;
 
-	ctx.caretMemory.noteKey(e, commandAtBlock(e, ctx), () => getCurrentCursorEditorRelativeX(el));
+	ctx.caretMemory.noteKey(e, commandAtBlock(e, ctx), () =>
+		getCurrentCursorEditorRelativeX(el, ctx.caretWriter)
+	);
 
 	// Ctrl+Y fires no `historyRedo` beforeinput in Chromium and WebView2, so every chord with a
 	// native history default is suppressed here; the block's own dispatch runs the command.
@@ -134,40 +136,42 @@ export async function handleSharedKeydown(
 	// with no caret in the block, as in reading mode, every arrow is at its edge.
 	const verticalOffset = () => ctx.getFocusOffset() ?? ctx.getCursorOffset();
 
+	// A Shift extension crosses the boundary only from the block's first or last reachable offset,
+	// so the browser's own extension has nowhere left to go within it; no line read decides it.
 	if (e.key === 'ArrowUp') {
 		const offset = verticalOffset();
-		if (offset === null || isAtFirstVisualLine(el, offset, bounds())) {
-			// Cross the boundary only when focus is already at the block's first reachable
-			// offset, so native Shift+ArrowUp extension has nowhere left to go within it.
-			if (e.shiftKey && offset !== null && offset <= bounds().start) {
+		if (e.shiftKey) {
+			if (offset !== null && offset <= bounds().start) {
 				e.preventDefault();
 				extendFocusToPreviousBlock(ctx, el, myPath, 'start');
 				return true;
 			}
-			if (!e.shiftKey && !e.altKey) {
-				e.preventDefault();
-				void ctx.focus.moveFocus(index - 1, { stickyColumnFrom: 'below' });
-				return true;
-			}
+		} else if (
+			!e.altKey &&
+			(offset === null || isAtFirstVisualLine(el, offset, bounds(), ctx.caretWriter))
+		) {
+			e.preventDefault();
+			void ctx.focus.moveFocus(index - 1, { stickyColumnFrom: 'below' });
+			return true;
 		}
 	}
 
 	if (e.key === 'ArrowDown') {
 		const offset = verticalOffset();
-		if (offset === null || isAtLastVisualLine(el, offset, bounds())) {
-			// Cross the boundary only when focus is already at the block's last reachable
-			// offset, so native Shift+ArrowDown extension has nowhere left to go.
-			if (e.shiftKey && offset !== null && offset >= bounds().end) {
+		if (e.shiftKey) {
+			if (offset !== null && offset >= bounds().end) {
 				e.preventDefault();
 				extendFocusToNextBlock(ctx, el, myPath, 'vertical');
 				return true;
 			}
-			if (!e.shiftKey && !e.altKey) {
-				e.preventDefault();
-				if (offset === null && scrollsThroughBlock(ctx, el)) return true;
-				void ctx.focus.moveFocus(index + 1, { stickyColumnFrom: 'above' });
-				return true;
-			}
+		} else if (
+			!e.altKey &&
+			(offset === null || isAtLastVisualLine(el, offset, bounds(), ctx.caretWriter))
+		) {
+			e.preventDefault();
+			if (offset === null && scrollsThroughBlock(ctx, el)) return true;
+			void ctx.focus.moveFocus(index + 1, { stickyColumnFrom: 'above' });
+			return true;
 		}
 	}
 

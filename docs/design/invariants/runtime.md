@@ -99,6 +99,7 @@ These checks run in three kinds of place:
 | G1.133 | Reading mode leaves one block in the tab order; anything else there is a control           | A·N     |
 | G1.136 | A DOM block view that moves or hides the element it was given, or fills its text element   | A·N     |
 | G1.138 | A commit never addresses a container state whose component has unmounted                   | A·N     |
+| G1.141 | Asking which line a caret at a soft wrap is on leaves the selection's focus where it was   | A·N     |
 
 ### The entries
 
@@ -611,3 +612,9 @@ ids (`scopeStateFor`). The check is for what the registry can't see: a state loo
 `await` and committed after its container unmounted, whose getters read the dead component's
 props. `isUnmountedBlockListState` · `state-registry-lifetime.svelte.test.ts`,
 `range-edit-unmounted-container.spec.ts`.
+
+**G1.141 · Asking for the caret's line moves nothing** (`line-read-restores-focus`). At a soft wrap
+the caret writer's `focusEndsLine` moves the focus to its line's end and back, which keeps the side
+of the wrap the browser shows it on. Dev fails a focus the move back didn't return, which the writer
+then puts back by hand, losing that side. `checkLineReadRestored` · `line-read-restores.test.ts`,
+`caret-line-at-wrap.spec.ts`.

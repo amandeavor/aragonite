@@ -21,19 +21,26 @@ import {
 } from './widget-offset';
 import {
 	caretRectAt,
+	focusCaretAtWrap,
 	movingEnd,
 	neighbourCaretRect,
 	sameLineTolerance,
-	type CaretRect
+	type CaretRect,
+	type LineRead
 } from './visual-lines';
 
-export function getCurrentCursorEditorRelativeX(el: HTMLElement): EditorX | null {
+export function getCurrentCursorEditorRelativeX(
+	el: HTMLElement,
+	lineRead: LineRead
+): EditorX | null {
 	const sel = window.getSelection();
 	if (!sel || sel.rangeCount === 0) return null;
 	const range = movingEnd(sel);
 
 	const rect =
-		caretRectAt(el, range.startContainer, range.startOffset) ?? neighbourCaretRect(range);
+		focusCaretAtWrap(el, range, lineRead) ??
+		caretRectAt(el, range.startContainer, range.startOffset) ??
+		neighbourCaretRect(range);
 	const viewportX = asViewportX(rect ? rect.left : el.getBoundingClientRect().left);
 	return toEditorX(viewportX, editorLeftOf(el));
 }

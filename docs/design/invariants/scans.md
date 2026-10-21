@@ -200,6 +200,7 @@ unguarded.
 | G4.237 | A test never navigates a page its `beforeEach` already navigated                             | L       |
 | G4.239 | No block runs a merge by its id; a delete at an edge runs the plain key's binding            | L       |
 | G4.240 | Every `ResizeObserver` is made in `windowing/observe-resize.ts`                              | L       |
+| G4.243 | Only the caret writer calls `Selection.modify`; a caret's line is read through one step      | L       |
 
 ### The entries
 
@@ -1366,3 +1367,9 @@ decide it. A `'block.mergePrev'` or `'block.mergeNext'` anywhere but a keymap ro
 first observed while it delivers reports is skipped, and a size changed inside a delivery is
 reported as a loop error. So every observer is made in `windowing/observe-resize.ts`, whose entry
 points say when observing starts. `file-rules.test.ts`.
+
+**G4.243 · One read of the caret's line.** At a soft wrap a caret's one DOM position is on two
+lines, and `caretRectAt` reads one of them whatever the browser shows. So the line decisions in
+`caret/visual-lines.ts` ask the browser there, through the caret writer, the one file allowed
+`Selection.modify`; every other `caretRectAt` caller is listed with why a line off at a wrap is
+harmless or known. `lint/file-rules.test.ts`.
