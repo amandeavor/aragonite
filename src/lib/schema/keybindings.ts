@@ -115,6 +115,20 @@ export function caretEdgeKey(e: EdgeKeys): CaretEdgeKey | null {
 	}
 }
 
+/** Which way a page key moves the caret, and whether Shift grows a selection with it. */
+export interface PageKey {
+	readonly direction: 'up' | 'down';
+	readonly extend: boolean;
+}
+
+/** The one reading of PageUp and PageDown; null with Ctrl, Cmd or Alt held, which the browser
+ *  keeps (Ctrl+PageDown switches tabs). */
+export function pageKey(e: EdgeKeys): PageKey | null {
+	if (e.key !== 'PageUp' && e.key !== 'PageDown') return null;
+	if (e.ctrlKey || e.metaKey || e.altKey) return null;
+	return { direction: e.key === 'PageUp' ? 'up' : 'down', extend: e.shiftKey === true };
+}
+
 export function normalizeChord(chord: string): string {
 	const parts = chord.split('+');
 	const key = parts.pop() ?? '';

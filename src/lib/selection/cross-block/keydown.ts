@@ -8,7 +8,7 @@ import { coverRange, rangeCoverage } from '../range-coverage';
 import type { SelectionState } from '../selection-state.svelte';
 import { blockNodeAt } from '../../tree-operations/node-primitives';
 import { isReadingMode } from '../../presentation-mode';
-import { caretEdgeKey, eventToChord, isSelectAllChord } from '../../schema/keybindings';
+import { caretEdgeKey, eventToChord, isSelectAllChord, pageKey } from '../../schema/keybindings';
 import {
 	commandOverRange,
 	dispatchKeyCommand,
@@ -20,6 +20,7 @@ import { rangeIndentCommands } from '../../schema/range-indent-forms';
 import {
 	collapseCrossBlock,
 	extendFocusToDocEdge,
+	extendByPage,
 	extendRangeByArrow,
 	extendToLineEdge,
 	selectWholeDocument
@@ -65,9 +66,12 @@ async function handleKeyDown(ctx: CrossBlockDispatchContext, e: KeyboardEvent): 
 	// extend branches commit nothing that would update the caret memory.
 	ctx.caretMemory.noteKey(e, commandAtBlock(e, ctx));
 
-	// The doc-edge extend behaves the same from a caret and from a range, so it runs before the split.
+	// The doc-edge and page extends behave the same from a caret and from a range, so they run
+	// before the split.
 	const edge = caretEdgeKey(e);
 	if (edge?.to === 'doc') return handleDocEdgeExtend(ctx, e, edge.side);
+	const page = pageKey(e);
+	if (page?.extend) return handlePageExtend(ctx, e, page.direction);
 
 	if (selection.isCrossBlock) {
 		const handled = await handleCrossBlockActive(ctx, e);
@@ -314,6 +318,18 @@ async function handleDocEdgeExtend(
 	if (!el) return false;
 	e.preventDefault();
 	extendFocusToDocEdge(ctx, el, ctx.getMyPath(), direction);
+	return true;
+}
+
+async function handlePageExtend(
+	ctx: CrossBlockDispatchContext,
+	e: KeyboardEvent,
+	direction: 'up' | 'down'
+): Promise<boolean> {
+	const el = ctx.getEl();
+	if (!el) return false;
+	e.preventDefault();
+	await extendByPage(ctx, el, ctx.getMyPath(), direction);
 	return true;
 }
 

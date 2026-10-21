@@ -43,6 +43,9 @@ export interface ListTree {
 	/** Where to scroll so the list holding `path` mounts that block: the list's top plus its table's
 	 *  offset of the block. */
 	mountTop(path: readonly number[]): number | null;
+	/** The block at `top` in the scroll content, as deep as the mounted lists reach: an unmounted
+	 *  container stands in for its children. Null before the root list mounts. */
+	pathAt(top: number): number[] | null;
 	/** Picks the block to keep still from the tables and the scroll as they stand; the returned
 	 *  read says how far that block has moved since. Null with nothing to hold. */
 	holdForRound(): (() => HeldDelta) | null;
@@ -175,6 +178,25 @@ export function createListTree(deps: ListTreeDeps): ListTree {
 			const at = walk(path, (level) => level.current(), true);
 			if (!at) return null;
 			return { top: rootTop + at.offsets[at.offsets.length - 1], height: at.height };
+		},
+		pathAt(top) {
+			let level = levelAt([]);
+			const rootTop = level?.top() ?? null;
+			if (!level || rootTop === null) return null;
+			const path: number[] = [];
+			let local = top - rootTop;
+			while (level) {
+				const { model } = level.current();
+				if (model.size === 0) break;
+				const index = model.indexAtOffset(Math.max(0, local));
+				path.push(index);
+				const inner = levelAt(path);
+				const chrome = inner?.top() ?? null;
+				if (!inner || chrome === null) break;
+				local -= model.offsetOf(index) + chrome;
+				level = inner;
+			}
+			return path.length > 0 ? path : null;
 		},
 		mountTop(path) {
 			const level = levelAt(path.slice(0, -1));

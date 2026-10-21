@@ -7,6 +7,7 @@ import type { BlockEditActions } from '../../action-contracts';
 import type { DocumentGetter } from '../../editor-keys';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
 import type { UserScrollport } from '../../windowing/scroll-ancestors';
+import type { ScrollOwner } from '../../windowing/scroll-owner';
 import type { SelectionState } from '../selection-state.svelte';
 import type { CaretMemory } from '../../caret/caret-memory';
 import type { CaretWriter } from '../../caret/widget-offset';
@@ -40,6 +41,8 @@ export interface CrossBlockDispatchContext {
 	/** What autoscrolls a drag-select that reaches an edge: the root, the host's scroller, or the
 	 *  window. See `windowing/scroll-ancestors`. */
 	getScrollHost: () => UserScrollport | null;
+	/** The editor's scroll, which a page key steps by and finds the block a page away in. */
+	scroll: Pick<ScrollOwner, 'port' | 'visibleBand' | 'showRect' | 'pathAt'>;
 	/** Aborted when the owning editor unmounts. See the document facet's `lifetime`. */
 	getEditorLifetime: () => AbortSignal | null;
 	caretMemory: CaretMemory;

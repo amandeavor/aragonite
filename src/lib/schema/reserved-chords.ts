@@ -174,9 +174,7 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 			'ArrowUp',
 			'Backspace',
 			'Delete',
-			'Escape',
-			'PageDown',
-			'PageUp'
+			'Escape'
 		],
 		note: 'Extends a selection into a widget. A modified arrow is also swallowed while a widget is selected, but that is a caret-coherence guard in a transient state, not a binding; a plain vertical arrow, a line-edge key or a page key places a caret and declines.'
 	},
@@ -264,10 +262,22 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 			'Mod+ArrowDown',
 			'Mod+Shift+ArrowLeft',
 			'Mod+Shift+ArrowUp',
-			'Mod+Shift+ArrowDown'
+			'Mod+Shift+ArrowDown',
+			'Shift+PageUp',
+			'Shift+PageDown'
 		],
-		keys: ['A', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'End', 'Home'],
-		note: "The normalizer every other site reads, the select-all predicate every block asks, and the caret-edge reader every edge site asks. Its sites take Shift+Home and Mod+Home behind a marker or a leading widget, Mod+End before a trailing widget, Cmd+Right past a code chip and Cmd+Left from a selected widget; Mod+Shift+Home and Mod+Shift+End always extend to the document's edge. The Arrow chords are Cmd's alone (macOS's Home and End), which the chord form cannot tell from Ctrl."
+		keys: [
+			'A',
+			'ArrowDown',
+			'ArrowLeft',
+			'ArrowRight',
+			'ArrowUp',
+			'End',
+			'Home',
+			'PageDown',
+			'PageUp'
+		],
+		note: "The normalizer every other site reads, the select-all predicate every block asks, the caret-edge reader every edge site asks, and the page-key reader, which leaves Ctrl, Cmd and Alt with a page key to the browser. Its sites take Shift+Home and Mod+Home behind a marker or a leading widget, Mod+End before a trailing widget, Cmd+Right past a code chip and Cmd+Left from a selected widget; Mod+Shift+Home and Mod+Shift+End always extend to the document's edge. The Arrow chords are Cmd's alone (macOS's Home and End), which the chord form cannot tell from Ctrl."
 	},
 	{
 		file: 'selection/cross-block/keydown.ts',

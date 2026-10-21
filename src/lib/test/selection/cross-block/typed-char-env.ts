@@ -53,6 +53,12 @@ export function makeHandlers(
 		caretLanding: env.deps.caretLanding,
 		getEditorRoot: () => null,
 		getScrollHost: () => null,
+		scroll: {
+			port: () => null,
+			visibleBand: () => null,
+			showRect: () => {},
+			pathAt: () => null
+		},
 		getEditorLifetime: () => null,
 		caretMemory: env.caretMemory,
 		blockEdit: env.blockEdit,

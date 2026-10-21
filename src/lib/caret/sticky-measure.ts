@@ -38,6 +38,16 @@ export function getCurrentCursorEditorRelativeX(el: HTMLElement): EditorX | null
 	return toEditorX(viewportX, editorLeftOf(el));
 }
 
+/** The editor-relative x of viewport x `viewportX`, for a column measured off a rect. */
+export function editorXOf(el: HTMLElement, viewportX: number): EditorX {
+	return toEditorX(asViewportX(viewportX), editorLeftOf(el));
+}
+
+/** The viewport x an editor-relative column sits at. */
+export function viewportXOf(el: HTMLElement, x: EditorX): number {
+	return toViewportX(x, editorLeftOf(el));
+}
+
 export interface CaretProbe {
 	offset: DomTextOffset;
 	rect: CaretRect;

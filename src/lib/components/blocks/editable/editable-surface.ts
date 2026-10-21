@@ -237,7 +237,7 @@ export interface EditableSurfaceDeps {
 	/** The editor's reading-mode tab stop, which the element takes its tabindex from. */
 	readingFocus: Pick<ReadingFocus, 'hold'>;
 	/** What the editor shows, for an arrow in a block taller than that with no caret. */
-	scrollOwner: Pick<ScrollOwner, 'visibleBand' | 'showRect'>;
+	scrollOwner: Pick<ScrollOwner, 'port' | 'visibleBand' | 'showRect' | 'pathAt'>;
 
 	// ── The per-block reads `SharedKeydownContext` needs ──────────────────────
 	/** The selection's focus endpoint as a raw offset; each block converts its own DOM read. */
@@ -377,6 +377,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		caretLanding: deps.caretLanding,
 		getEditorRoot: deps.getEditorRoot,
 		getScrollHost: deps.getScrollHost,
+		scroll: deps.scrollOwner,
 		getEditorLifetime: deps.getEditorLifetime,
 		caretMemory: deps.caretMemory,
 		blockEdit: deps.blockEdit,

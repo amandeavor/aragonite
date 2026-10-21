@@ -9,10 +9,12 @@ import { isVerticallyTransparentNode } from '../core/inline/transparency';
 import type { CaretLanding } from './caret-landing';
 import {
 	readNativeCaretInBlock,
+	readNativeSelection,
 	applyCollapsedCaret,
 	applySingleBlockRange
 } from './native-bridge';
-import type { CaretWriter } from '../caret/widget-offset';
+import { rawOffsetAt, type CaretWriter } from '../caret/widget-offset';
+import { pageTarget, type PageStepContext } from './page-step';
 import { lineEdgeOffset } from '../caret/visual-lines';
 import { offsetFromViewportPoint } from '../caret/point-offset';
 import { tableFocusExtension, type ArrowKey } from './table-rect-extend';
@@ -173,6 +175,54 @@ export function extendToLineEdge(
 	if (!focus || focus.cellCoordinate) return;
 	const offset = lineEdgeOffset(blockEl, focus.offset, side);
 	if (offset !== null) moveFocusTo(ctx, { path: focus.path, offset });
+}
+
+/** What a page step reads on top of every extend's context. */
+export type PageExtendContext = KeyboardExtendContext &
+	PageStepContext & { caretLanding: Pick<CaretLanding, 'showSelectionEnd'> };
+
+// Each step reads the end the step before it wrote, so a held key never steps twice from one place.
+const pageSteps = new WeakMap<SelectionState, Promise<void>>();
+
+/** Shift+PageUp or Shift+PageDown: the moving end goes a page up or down at its column, from a
+ *  caret, a range inside the block `el` at `path`, or a range across blocks. */
+export function extendByPage(
+	ctx: PageExtendContext,
+	el: HTMLElement,
+	path: number[],
+	direction: 'up' | 'down'
+): Promise<void> {
+	const step = (pageSteps.get(ctx.selection) ?? Promise.resolve()).then(() =>
+		stepEndByPage(ctx, el, path, direction)
+	);
+	pageSteps.set(ctx.selection, step);
+	return step;
+}
+
+async function stepEndByPage(
+	ctx: PageExtendContext,
+	el: HTMLElement,
+	path: number[],
+	direction: 'up' | 'down'
+): Promise<void> {
+	const { selection } = ctx;
+	// The step measures from where the end is, which a wheel may have taken off screen.
+	await ctx.caretLanding.showSelectionEnd();
+	const from = selection.isCrossBlock
+		? selection.focus && selection.cellLandingFor(selection.focus)
+		: nativeFocusIn(el, path);
+	if (!from) return;
+	// Entered before the step's mounts, which can window out the block holding the anchor.
+	if (!enterFromCaret(ctx, el, path)) return;
+	const target = await pageTarget(ctx, from, direction);
+	moveFocusTo(ctx, target ?? from);
+}
+
+/** The browser selection's moving end in `el`, a block the key came to. */
+function nativeFocusIn(el: HTMLElement, path: number[]): SelectionPoint | null {
+	const live = readNativeSelection();
+	if (!live || !el.contains(live.focus.node)) return null;
+	return { path: path.slice(), offset: rawOffsetAt(el, live.focus.node, live.focus.offset) };
 }
 
 /** Moves the browser selection's focus inside `el` to raw `raw`, for a key the editor takes over

@@ -56,6 +56,7 @@ describe("a nested list's first heights", () => {
 			resolve: tree.resolve,
 			holdForRound: tree.holdForRound,
 			mountTop: tree.mountTop,
+			pathAt: tree.pathAt,
 			syncScrollTop: () => {}
 		});
 		flushSync();

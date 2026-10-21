@@ -10,7 +10,8 @@ keeps its anchor. Shift+Left and Shift+Right stay the image's resize.
 - Shift+ArrowUp selects from the image's end up past its start, so a typed letter replaces the
   image and the text before it and keeps the text after
 - Shift+ArrowDown selects from the image's start down past its end, keeping the text before
-- Shift+PageUp and Shift+PageDown anchor the same way and move by the browser's page
+- Shift+PageUp and Shift+PageDown anchor the same way and move the end a screen, as from any
+  caret
 
 ## Edge cases
 

@@ -189,7 +189,7 @@ unguarded.
 | G4.224 | A press on editor chrome takes no focus, unless its file is listed as owning focus           | L       |
 | G4.225 | The drag session is the first listener to hear a release                                     | L       |
 | G4.226 | An e2e spec presses the platform's own chord for an edge key or a modifier                   | L       |
-| G4.227 | A caret-edge key is read in one place, `caretEdgeKey`                                        | L       |
+| G4.227 | A caret-edge or page key is read in one place, `caretEdgeKey` or `pageKey`                   | L       |
 | G4.228 | An e2e locator action that must leave the scroll alone rides the in-place helper             | L       |
 | G4.229 | A key moves a selection end through `keyboard-extend.ts`, which shows it                     | L       |
 | G4.230 | Editor chrome runs no undo or redo of its own; the root answers them there                   | L       |
@@ -1299,7 +1299,8 @@ sends both spellings literally. `e2e/lint/e2e-drivers.test.ts`.
 **G4.227 · One caret-edge reader.** Home and End, with their modifiers, and macOS's Cmd+Arrow mean
 the same moves, so every site that steps in on one asks `caretEdgeKey` (`schema/keybindings.ts`)
 and none compares Home or End itself. It reads the raw Meta flag: Ctrl+Arrow is word motion on
-Windows and Linux. `lint/caret-edge-key-reader.test.ts`.
+Windows and Linux. PageUp and PageDown go the same way, through `pageKey`, which leaves them to the
+browser with Ctrl, Cmd or Alt held. `lint/caret-edge-key-reader.test.ts`.
 
 **G4.228 · A click that leaves the scroll alone.** Over WebDriver BiDi (Firefox), every locator
 action first scrolls its target to the middle of the screen, even one already showing. So in a
@@ -1308,7 +1309,7 @@ spec that reads or sets the scroll (every VR spec does) and in every shared e2e 
 scrolls only a target that's off screen. `e2e/lint/e2e-drivers.test.ts`.
 
 **G4.229 · A moved selection end shows.** Every end a key moves (Shift+Arrow, Shift+Home and End,
-the document edges, a fold back into one block) is written in `selection/keyboard-extend.ts`, by
+Shift+PageUp and PageDown, the document edges, a fold back into one block) is written in `selection/keyboard-extend.ts`, by
 the functions the scan lists there, which mount that end and show it. Elsewhere a write of an end
 (`extendFocus`, `enterCrossBlock`, `extendSelectionToRaw`) fails the scan unless its file is listed
 with why it shows nothing: a drag's end is under the pointer, a restore shows its own caret.
