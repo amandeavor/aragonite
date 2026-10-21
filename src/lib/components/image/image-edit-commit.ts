@@ -20,6 +20,7 @@ import type { CaretWriter } from '../../caret/widget-offset';
 import { widgetElAt } from '../../caret/block-el-lookup';
 import type { Reading } from '../../schema/reading';
 import { widgetNodeIn, widgetSpanAt } from '../blocks/text/widget-adjacency';
+import { observeResizeNow } from '../../windowing/observe-resize';
 
 // ── Public API ──────────────────────────────────────────────────────────
 
@@ -219,16 +220,15 @@ export function createImageEditCommitter(deps: ImageEditCommitterDeps): ImageEdi
 
 		// Each commit rebuilds the inline DOM, so the widget is re-resolved on every update and
 		// the observer re-attached when it changes.
-		let observer: ResizeObserver | null = null;
+		let stopObserving: (() => void) | null = null;
 		let observed: HTMLElement | null = null;
 
 		const update = () => {
 			const widgetEl = getSelectedImageFields()?.widgetEl;
 			if (!widgetEl) return;
 			if (widgetEl !== observed) {
-				observer?.disconnect();
-				observer = new ResizeObserver(update);
-				observer.observe(widgetEl);
+				stopObserving?.();
+				stopObserving = observeResizeNow(widgetEl, update);
 				observed = widgetEl;
 			}
 			const wRect = widgetEl.getBoundingClientRect();
@@ -256,7 +256,7 @@ export function createImageEditCommitter(deps: ImageEditCommitterDeps): ImageEdi
 		editorEl.addEventListener('error', onImgSettle, true);
 
 		return () => {
-			observer?.disconnect();
+			stopObserving?.();
 			unsubscribeEdit();
 			window.removeEventListener('resize', update);
 			editorEl.removeEventListener('load', onImgSettle, true);

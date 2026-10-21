@@ -98,6 +98,7 @@ These checks run in three kinds of place:
 | G1.132 | A Backspace or Delete at a caret the editor decides never reaches `input` undecided        | A·N     |
 | G1.133 | Reading mode leaves one block in the tab order; anything else there is a control           | A·N     |
 | G1.136 | A DOM block view that moves or hides the element it was given, or fills its text element   | A·N     |
+| G1.138 | A commit never addresses a container state whose component has unmounted                   | A·N     |
 
 ### The entries
 
@@ -603,3 +604,10 @@ block, so it stays the host's first content child and never turns `display: cont
 view's text element sits inside it holding no element of its own. `blockContentElAt` hands every
 caret route that text element and `blockBoxElAt` hands rects and scrolling the `div`, so chrome
 beside the text moves no offset and no rect. `checkDomViewContent` · `block-view-leaf.test.ts`.
+
+**G1.138 · A commit addresses live container states** (`block-list-state-mounted`). A container's
+state leaves the registry when it unmounts, and a commit reaching an unmounted one uses its node's
+ids (`scopeStateFor`). The check is for what the registry can't see: a state looked up before an
+`await` and committed after its container unmounted, whose getters read the dead component's
+props. `isUnmountedBlockListState` · `state-registry-lifetime.svelte.test.ts`,
+`range-edit-unmounted-container.spec.ts`.

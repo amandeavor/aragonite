@@ -7,7 +7,8 @@ import { deleteSnapshot, type CaretPosition, type SelectionPoint } from './primi
 import { metadataOf, type CstNode } from '../core/nodes';
 import type { MultiScopeTarget } from '../action-contracts';
 import type { StructuralChange } from '../tree-operations/structural-change';
-import { expectStateForNode, getStateForNode } from '../block-lists/state-registry';
+import { getStateForNode, scopeStateFor } from '../block-lists/state-registry';
+import { containerScopeState } from '../tree-operations/paste/parent-scope';
 import {
 	deleteRow as mutDeleteRow,
 	deleteColumn as mutDeleteColumn,
@@ -25,6 +26,10 @@ import type { CrossBlockMutationContext } from './cross-block/range-replace';
 export type GridLineCoverage = Extract<GridCoverage, { kind: 'row' | 'column' }>;
 
 type GridLineContext = Pick<CrossBlockMutationContext, 'getDoc' | 'controller' | 'selection'>;
+
+// A grid line's range can end in a table the window has unmounted, which commits by its ids.
+const tableState = (table: CstNode) =>
+	containerScopeState({ resolveState: getStateForNode }, table);
 
 /** The collapsed caret, which the commit lands, or null for a refused delete (no body row would be
  *  left, or no column), which clears nothing either. */
@@ -63,7 +68,7 @@ async function commitRowDelete(
 	await ctx.controller.commitContainerStructural({
 		containerNode: table,
 		path: tablePath,
-		state: expectStateForNode(table),
+		state: tableState(table),
 		snapshot,
 		mutate: (scope) => {
 			mutDeleteRow(scope.node, rowIdx);
@@ -90,16 +95,16 @@ async function commitColumnDelete(
 	colIdx: number
 ): Promise<SelectionPoint | null> {
 	const rows = table.children ?? [];
-	// Only mounted rows have reactive state; `ensureUnsharedChildren` copies every row, so the
-	// cell splice never writes a shared node whatever a row's mount state (G1.9).
-	const mountedRowScopes: MultiScopeTarget[] = [];
+	// Every row holding ids is a scope, mounted or not; `ensureUnsharedChildren` copies every row,
+	// so the cell splice never writes a shared node whatever a row's mount state (G1.9).
+	const rowScopes: MultiScopeTarget[] = [];
 	for (let i = 0; i < rows.length; i++) {
-		const state = getStateForNode(rows[i]);
-		if (state) mountedRowScopes.push({ node: rows[i], state, path: [...tablePath, i] });
+		const state = scopeStateFor(rows[i]);
+		if (state) rowScopes.push({ node: rows[i], state, path: [...tablePath, i] });
 	}
 	const scopes: MultiScopeTarget[] = [
-		{ node: table, state: expectStateForNode(table), path: tablePath },
-		...mountedRowScopes
+		{ node: table, state: tableState(table), path: tablePath },
+		...rowScopes
 	];
 
 	let collapsedCaret: SelectionPoint | null = null;
@@ -108,8 +113,8 @@ async function commitColumnDelete(
 		snapshot: deleteSnapshot(tablePath),
 		mutate: (scopeViews) => {
 			const ownedTable = scopeViews[0].node;
-			// Unshare every row before the splice: mounted rows are already copied through their
-			// state, and the call reaches the windowed-out rows that have none.
+			// Unshare every row before the splice: scoped rows are already copied through their
+			// scope, and the call reaches the never-mounted rows that have none.
 			ensureUnsharedChildren(ownedTable, scopeViews[0].sharing);
 			mutDeleteColumn(ownedTable, colIdx);
 
@@ -118,9 +123,9 @@ async function commitColumnDelete(
 			collapsedCaret = { path: [...tablePath, 0, targetCol], offset: 0 };
 			ctx.selection.collapse();
 
-			// Every mounted row loses the same cell; the table's own change is a no-op.
+			// Every scoped row loses the same cell; the table's own change is a no-op.
 			const rowDelete: StructuralChange = { op: 'delete', at: colIdx, count: 1 };
-			return [{ op: 'noop' }, ...mountedRowScopes.map(() => rowDelete)];
+			return [{ op: 'noop' }, ...rowScopes.map(() => rowDelete)];
 		},
 		// A column index is not a child path, so the event targets the table and the column goes
 		// in the detail, as the table's own column edits do.

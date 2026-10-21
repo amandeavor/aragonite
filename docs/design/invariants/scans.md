@@ -198,6 +198,7 @@ unguarded.
 | G4.234 | Delete input types live in `delete-extent.ts`; blocks hear `beforeinput` via their surface   | L       |
 | G4.235 | In reading mode the page owns Tab: no block reads the key by hand or sets its own tab stop   | L       |
 | G4.237 | A test never navigates a page its `beforeEach` already navigated                             | L       |
+| G4.240 | Every `ResizeObserver` is made in `windowing/observe-resize.ts`                              | L       |
 
 ### The entries
 
@@ -1352,3 +1353,8 @@ has had that second navigation interrupted in CI's Firefox, and it's never neede
 another URL gets its own describe. The scan walks each describe chain, outer hooks included, and
 fails a test reaching `gotoReady` or `reloadReady` (through any e2e helper) at its `path:line`.
 `e2e/lint/one-navigation-per-test.test.ts`.
+
+**G4.240 · One home for size observation.** The browser has two size-report quirks: an element
+first observed while it delivers reports is skipped, and a size changed inside a delivery is
+reported as a loop error. So every observer is made in `windowing/observe-resize.ts`, whose entry
+points say when observing starts. `file-rules.test.ts`.

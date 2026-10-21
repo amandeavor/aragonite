@@ -8,7 +8,7 @@
 import type { BlockComponent } from '../block-component';
 import type { NodeView } from '../core/node-views';
 import { assignIds } from '../block-id';
-import { registerBlockListState } from './state-registry';
+import { markBlockListStateUnmounted, registerBlockListState } from './state-registry';
 import { refSlotsOver, type RefSlots } from './child-refs';
 
 export interface BlockListState {
@@ -42,15 +42,21 @@ export function createBlockListState(getNode: () => NodeView): BlockListState {
 	};
 
 	// Sync so callers outside a reactive context (unit tests) see the entry on creation.
-	registerBlockListState(initialNode, state);
+	let registered = initialNode;
+	let release = registerBlockListState(initialNode, state);
 
-	// Re-register on node-identity changes (undo replaces nodes via deep clone).
+	// Re-register on node-identity changes (undo replaces nodes via deep clone), and leave the
+	// registry when the component unmounts, so a windowed-out container is found as unmounted.
 	$effect(() => {
 		const node = getNode();
 		if (!node.childIds) {
 			node.childIds = assignIds(node.children ?? []);
 		}
-		registerBlockListState(node, state);
+		if (node !== registered) {
+			release();
+			registered = node;
+			release = registerBlockListState(node, state);
+		}
 
 		// A replacement in the parent list can reuse this instance with fewer children, and ref
 		// cleanup empties entries without shrinking the array; the refs must match the children.
@@ -58,6 +64,10 @@ export function createBlockListState(getNode: () => NodeView): BlockListState {
 		if (innerBlockRefs.length > childCount) {
 			innerBlockRefs.length = childCount;
 		}
+	});
+	$effect(() => () => {
+		release();
+		markBlockListStateUnmounted(state);
 	});
 
 	return state;

@@ -33,7 +33,7 @@ import { slotReaderAt } from '../../tree-operations/list/task-paragraph';
 import { countsCells } from '../../schema/block-kind-descriptor';
 import { dispatchKeyCommand } from '../../schema/block-commands';
 import { docPathFrom } from '../../caret/coordinate-spaces';
-import { getStateForNode } from '../../block-lists/state-registry';
+import { scopeStateFor } from '../../block-lists/state-registry';
 import { emitClipboardError } from '../../editor-events';
 import { assertInvariant } from '../../assert';
 import { devWarn } from '../../dev-warn';
@@ -300,7 +300,7 @@ function removeRange(
 	);
 }
 
-/** One commit over the document and every mounted container either endpoint splices. */
+/** One commit over the document and every container either endpoint splices. */
 async function commitRemoval(
 	ctx: CrossBlockMutationContext,
 	coverage: RangeCoverage,
@@ -348,7 +348,7 @@ async function commitRemoval(
 	return { wrote, caret: caret() };
 }
 
-/** Every mounted container on either endpoint path whose children the removal splices: the
+/** Every container holding ids on either endpoint path whose children the removal splices: the
  *  ancestors, a grid endpoint itself, and none for a range whose ends are both top-level prose. */
 function touchedContainers(
 	doc: Document,
@@ -369,7 +369,7 @@ function touchedContainers(
 			const key = ancestorPath.join('.');
 			if (seen.has(key)) continue;
 			seen.add(key);
-			const state = getStateForNode(node);
+			const state = scopeStateFor(node);
 			if (!state) continue;
 			touched.push({ path: ancestorPath, node, state });
 		}
