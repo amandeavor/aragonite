@@ -42,8 +42,12 @@ In a paragraph between two one-line blocks, and in a list item between them:
   put and the focus moves up onto line 1
 - a range already held from the middle of the second-to-last line to its end, Shift+ArrowDown: the
   anchor stays put and the focus moves onto the last line
-- the same four in a wrapped table cell, where the first Shift+arrow at the cell's top or bottom
-  line would take a whole row instead: the selection stays inside the cell
+- a range held from line 1 down to line 2's start (Shift+ArrowDown, then Shift+Home), then
+  Shift+ArrowUp: the focus lands on line 1's start; or Shift+ArrowDown: on line 3's start. A held
+  range is never asked which line it's on, so the browser's column stays as it was
+- the first two in a wrapped table cell, where the first Shift+arrow at the cell's top or bottom
+  line would take a whole row instead: the selection stays inside the cell; and the held range to
+  line 2's start, Shift+ArrowDown
 
 ## A soft-line delete
 

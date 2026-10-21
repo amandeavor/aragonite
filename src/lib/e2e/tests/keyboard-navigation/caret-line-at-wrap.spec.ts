@@ -309,35 +309,60 @@ for (const shape of [...SHAPES, CELL]) {
 			expect(range!.focus.offset).toBeGreaterThan(starts[last]);
 		});
 
-		test('a range held back to line 2’s start, Shift+ArrowUp: the anchor stays', async ({
-			page
-		}) => {
-			await editor.focusBlockAtPath(shape.path, starts[1] + 5);
-			await page.keyboard.press(`Shift+${edgeKey('lineStart')}`);
-			expect((await selectionOf(editor))?.focus).toEqual({ path: shape.path, offset: starts[1] });
-			await page.keyboard.press('Shift+ArrowUp');
-			const range = await selectionOf(editor);
-			expect(range?.anchor).toEqual({ path: shape.path, offset: starts[1] + 5 });
-			expect(range?.focus.path).toEqual(shape.path);
-			expect(range!.focus.offset).toBeLessThan(starts[1]);
-		});
-
-		test('a range held to the second-to-last line’s end, Shift+ArrowDown: the anchor stays', async ({
-			page
-		}) => {
-			const last = starts.length - 1;
-			await editor.focusBlockAtPath(shape.path, starts[last - 1] + 5);
-			await page.keyboard.press(`Shift+${edgeKey('lineEnd')}`);
-			expect((await selectionOf(editor))?.focus).toEqual({
-				path: shape.path,
-				offset: starts[last]
+		// A wrapped cell reads a held range's line by measure, so from a wrap its first Shift+arrow
+		// can take a row; these two run in prose only.
+		if (shape !== CELL)
+			test('a range held back to line 2’s start, Shift+ArrowUp: the anchor stays', async ({
+				page
+			}) => {
+				await editor.focusBlockAtPath(shape.path, starts[1] + 5);
+				await page.keyboard.press(`Shift+${edgeKey('lineStart')}`);
+				expect((await selectionOf(editor))?.focus).toEqual({ path: shape.path, offset: starts[1] });
+				await page.keyboard.press('Shift+ArrowUp');
+				const range = await selectionOf(editor);
+				expect(range?.anchor).toEqual({ path: shape.path, offset: starts[1] + 5 });
+				expect(range?.focus.path).toEqual(shape.path);
+				expect(range!.focus.offset).toBeLessThan(starts[1]);
 			});
-			await page.keyboard.press('Shift+ArrowDown');
-			const range = await selectionOf(editor);
-			expect(range?.anchor).toEqual({ path: shape.path, offset: starts[last - 1] + 5 });
-			expect(range?.focus.path).toEqual(shape.path);
-			expect(range!.focus.offset).toBeGreaterThan(starts[last]);
-		});
+
+		if (shape !== CELL)
+			test('a range held to the second-to-last line’s end, Shift+ArrowDown: the anchor stays', async ({
+				page
+			}) => {
+				const last = starts.length - 1;
+				await editor.focusBlockAtPath(shape.path, starts[last - 1] + 5);
+				await page.keyboard.press(`Shift+${edgeKey('lineEnd')}`);
+				expect((await selectionOf(editor))?.focus).toEqual({
+					path: shape.path,
+					offset: starts[last]
+				});
+				await page.keyboard.press('Shift+ArrowDown');
+				const range = await selectionOf(editor);
+				expect(range?.anchor).toEqual({ path: shape.path, offset: starts[last - 1] + 5 });
+				expect(range?.focus.path).toEqual(shape.path);
+				expect(range!.focus.offset).toBeGreaterThan(starts[last]);
+			});
+
+		// Asking a range's line moves its focus and back; the next key must start from the same side.
+		for (const key of ['ArrowUp', 'ArrowDown'] as const) {
+			// A cell's first Shift+ArrowUp from a range at its top wrap reads the measured line.
+			if (shape === CELL && key === 'ArrowUp') continue;
+			test(`a range held to line 2’s start, Shift+${key}: the next line, at the start`, async ({
+				page
+			}) => {
+				await editor.focusBlockAtPath(shape.path, starts[0] + 3);
+				await page.keyboard.press('Shift+ArrowDown');
+				await page.keyboard.press(`Shift+${edgeKey('lineStart')}`);
+				expect((await selectionOf(editor))?.focus).toEqual({ path: shape.path, offset: starts[1] });
+				await page.keyboard.press(`Shift+${key}`);
+				const range = await selectionOf(editor);
+				expect(range?.anchor).toEqual({ path: shape.path, offset: starts[0] + 3 });
+				expect(range?.focus).toEqual({
+					path: shape.path,
+					offset: key === 'ArrowUp' ? starts[0] : starts[2]
+				});
+			});
+		}
 	});
 }
 

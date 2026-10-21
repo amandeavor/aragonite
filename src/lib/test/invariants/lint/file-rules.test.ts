@@ -581,9 +581,9 @@ const RULES: FileRule[] = [
 			'src/lib/selection/selection-drop.ts':
 				'the drop caret, at a point the pointer chose, not the caret',
 			'src/lib/selection/page-step.ts':
-				'the line a page step starts from, a line high at a soft wrap: a known gap, one line in a page',
+				'the line a page step starts from, a line high at a soft wrap (ledger: a page step from a soft wrap starts a line high)',
 			'src/lib/editor-rects.ts':
-				'`rects.caretRect()` for a consumer, which reads the line above at a soft wrap: a known gap'
+				'`rects.caretRect()` for a consumer, the measured line at a soft wrap (ledger: `caretRect()` at a soft wrap reports the measured line)'
 		},
 		reason:
 			'at a soft wrap a caret’s one DOM position is on two lines and a measure reads one of them whatever the browser shows, so a line decided off `caretRectAt` is wrong there: use `isAtFirstVisualLine`, `isAtLastVisualLine`, `lineEdgeOffset` or `focusCaretAtWrap`, which ask the browser',
