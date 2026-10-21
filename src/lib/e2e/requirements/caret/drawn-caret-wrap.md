@@ -12,6 +12,10 @@ painted caret (a red caret, found in a screenshot), by line and by x.
 - ArrowRight across a wrap: the drawn caret, on the browser's line
   (skipped under Firefox, which spends one ArrowRight moving the caret across the wrap at the same offset)
 - Typing at a wrap: one caret, on the browser's line
+- Home on a line after a hard line break: the drawn caret, on the browser's line, since a caret
+  after a `\n` is on one line only
+  - Miss-analysis: no row put the caret after a hard break, so the wrap check reading every `\n`
+    as a wrap (the drawn caret stepping aside at each such line start) passed unseen
 
 ## Edge cases
 

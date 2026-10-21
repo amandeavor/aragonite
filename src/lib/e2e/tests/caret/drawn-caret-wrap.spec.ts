@@ -1,9 +1,9 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { oneCaretOnTheBrowsersLine } from '../../carets-showing';
+import { caretsShowing, oneCaretOnTheBrowsersLine } from '../../carets-showing';
 import { textRunRect } from '../../text-runs';
-import { skipUnlessSupported } from '../../browser-engine';
+import { engineSupports, skipUnlessSupported } from '../../browser-engine';
 import { edgeKey } from '../../platform-keys';
 
 // The drawn caret where a line soft-wraps (requirements/caret/drawn-caret-wrap.md). The range at
@@ -54,6 +54,17 @@ test.describe('the drawn caret at a soft wrap', () => {
 		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('x');
 		await oneCaretOnTheBrowsersLine(page);
+	});
+
+	test('Home on a line after a hard line break: the drawn caret, on the browser’s line', async ({
+		page
+	}) => {
+		await editor.loadContent('alpha line one\nbeta line two\n');
+		await editor.focusBlock(0, 'alpha line one\n'.length + 4);
+		await page.keyboard.press(edgeKey('lineStart'));
+		await expect.poll(() => caretsShowing(page)).toEqual({ native: false, drawn: 1 });
+		if (engineSupports(page, 'caretScreenshot'))
+			expect(await oneCaretOnTheBrowsersLine(page)).toBe('drawn');
 	});
 });
 
