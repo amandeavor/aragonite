@@ -32,8 +32,12 @@ function bindAttributes(binding: LeafSurfaceBinding): void {
 	let appliedTo: HTMLElement | null = null;
 	$effect(() => {
 		const el = binding.getEl();
-		if (el !== appliedTo) applied = new Set();
-		appliedTo = el;
+		if (el !== appliedTo) {
+			// A detached element keeps none of them: left `contenteditable`, it would take typing.
+			for (const key of applied) appliedTo?.removeAttribute(key);
+			applied = new Set();
+			appliedTo = el;
+		}
 		if (!el) return;
 		const next = new Set<string>();
 		for (const [key, value] of Object.entries(binding.props())) {
@@ -49,7 +53,8 @@ function bindAttributes(binding: LeafSurfaceBinding): void {
 	});
 }
 
-// Through `on`, which keeps Svelte's delegated event order; the bundle's handlers never change.
+// Through `on`, at the element: before the editor root's native bubble listeners, where a spread's
+// delegated handler runs after them. The bundle's handlers never change, so each binds once per element.
 function bindListeners(binding: LeafSurfaceBinding): void {
 	$effect(() => {
 		const el = binding.getEl();

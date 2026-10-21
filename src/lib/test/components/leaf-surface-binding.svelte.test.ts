@@ -35,6 +35,26 @@ describe('bindLeafSurface', () => {
 		expect(el.hasAttribute('role')).toBe(false);
 	});
 
+	// Miss-analysis: every row bound one element for its whole life; none detached it.
+	it('takes its attributes off an element it detaches, so the old one stops being editable', () => {
+		let current: HTMLElement | null = $state(null);
+		teardown = $effect.root(() => {
+			bindLeafSurface({
+				getEl: () => current,
+				props: () => ({ contenteditable: 'true', role: 'textbox' })
+			});
+		});
+		const first = document.createElement('div');
+		first.setAttribute('class', 'kept');
+		current = first;
+		flushSync();
+		current = null;
+		flushSync();
+		expect(first.hasAttribute('contenteditable')).toBe(false);
+		expect(first.hasAttribute('role')).toBe(false);
+		expect(first.getAttribute('class')).toBe('kept');
+	});
+
 	it('binds every on-key as a listener, a key it was never told about included', () => {
 		const seen: string[] = [];
 		const el = bound(() => ({
