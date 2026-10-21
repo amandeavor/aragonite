@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
-/**
- * The mermaid adapter behind `@voithos-labs/aragonite/plugins/mermaid/renderer`. Mermaid is
- * stubbed at its module boundary because the adapter's `import('mermaid')` is the only place
- * it enters, and the real thing draws through SVG layout that node cannot do.
- */
+// The mermaid adapter behind `@voithos-labs/aragonite/plugins/mermaid/renderer`. Mermaid is
+// stubbed at its module boundary because the adapter's `import('mermaid')` is the only place
+// it enters, and the real thing draws through SVG layout that jsdom cannot do.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { MermaidRenderer } from '#lib/plugins/mermaid/mermaid-renderer.js';
@@ -124,8 +122,7 @@ describe('mermaid engine adapter', () => {
 		);
 	});
 
-	// Miss-analysis: every row stubbed `render(id, text)` and never looked at a container, so the
-	// engine measuring in the host page's own flow went unseen (#762).
+	// Miss-analysis: every row stubbed a two-argument render and never looked at a container.
 	it('lays each diagram out in a host of its own, off the page, gone once it draws or fails', async () => {
 		const render = await freshAdapter();
 		const hosts: { host: HTMLElement; attached: boolean; position: string }[] = [];
