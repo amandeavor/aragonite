@@ -170,7 +170,8 @@ jobs:
   # change, like the engine jobs', so its required check still reports.
   e2e-census:
     needs: [changes, e2e, e2e-webkit, e2e-firefox]
-    if: always()
+    # A red shard still counts; a cancelled run has nothing to count.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - if: needs.changes.outputs.code == 'true'
