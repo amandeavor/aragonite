@@ -600,6 +600,6 @@ the host's header doesn't). The same check ships as `readingTabOrderProblem` for
 **G1.136 · A DOM view fills the element it was given** (`dom-view-content`). A `defineBlockView`
 view draws into a `div` under the block's host, which rects and the drag handle measure as the
 block, so it stays the host's first content child and never turns `display: contents`. A leaf
-view's text element sits inside it holding no element of its own; `blockContentElAt` hands every
-caret route that element, so chrome beside it moves no offset. `checkDomViewContent` ·
-`block-view-leaf.test.ts`.
+view's text element sits inside it holding no element of its own. `blockContentElAt` hands every
+caret route that text element and `blockBoxElAt` hands rects and scrolling the `div`, so chrome
+beside the text moves no offset and no rect. `checkDomViewContent` · `block-view-leaf.test.ts`.
