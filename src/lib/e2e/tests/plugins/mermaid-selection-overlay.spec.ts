@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage } from './helpers';
-import { STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
+import { STANDARD_DIAGRAM_DOC, settleDiagrams } from './mermaid-helpers';
 import { extendKey } from '../../platform-keys';
 
 /**
@@ -28,7 +28,7 @@ test.describe('cross-block selection overlay: childless opaque container', () =>
 		page
 	}) => {
 		await editor.loadContent(STANDARD_DIAGRAM_DOC);
-		await expect(page.locator('.mermaid-viewport svg')).toHaveCount(1, { timeout: 30_000 });
+		await settleDiagrams(page);
 
 		await editor.focusBlockStart(0);
 		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowDown');
@@ -39,7 +39,7 @@ test.describe('cross-block selection overlay: childless opaque container', () =>
 
 	test('an upward sweep ending on the diagram paints its full-block overlay', async ({ page }) => {
 		await editor.loadContent(STANDARD_DIAGRAM_DOC);
-		await expect(page.locator('.mermaid-viewport svg')).toHaveCount(1, { timeout: 30_000 });
+		await settleDiagrams(page);
 
 		await editor.focusBlockEnd(2);
 		await page.keyboard.press('Shift+ArrowUp');

@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { readDoc, waitForDoc, activeBlockPath } from './helpers';
-import { MermaidPage } from './mermaid-helpers';
+import { MermaidPage, settleDiagrams } from './mermaid-helpers';
 import { multiClickElement } from '../../multi-click';
 import { edgeKey } from '../../platform-keys';
 
@@ -101,7 +101,7 @@ test.describe('mermaid broken-fence whole-block focus', () => {
 		await page.keyboard.type(FIXED_CODE);
 		await page.keyboard.press('ControlOrMeta+Enter');
 
-		await expect(page.locator('.mermaid-viewport svg')).toHaveCount(1, { timeout: 30_000 });
+		await settleDiagrams(page);
 		await expect(editor.inputHost).toBeFocused();
 		expect(await editor.bridge.getSource()).toContain(FIXED_CODE);
 	});
