@@ -17,7 +17,8 @@ export const CI_CONTEXTS = [
 	'adapter-smoke',
 	'emoji-table',
 	...shards('e2e-webkit', 6),
-	...shards('e2e-firefox', 12)
+	...shards('e2e-firefox', 12),
+	'e2e-census'
 ];
 
 /** Checks reported from outside ci.yml that `main` requires, by the workflow that reports them. */

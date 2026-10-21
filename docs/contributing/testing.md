@@ -465,6 +465,17 @@ issue templates) skips the e2e and perf work. macOS WebKit is its own workflow,
 entry named after the commit). To try the workflow on a branch, dispatch it with `ref`, and with
 `nightly` to get the skip and the record, or `trace` to keep a trace of every red.
 
+The shards split by measured time, not by test count. `scripts/e2e-shards.mjs` lists the suite,
+deals the spec files out longest first from `src/lib/e2e/shard-timings.json` (seconds per file per
+engine; a file it hasn't seen counts as the engine's median), and hands Playwright that shard's
+files with `--test-list`. Every shard computes the same split, and the `e2e-census` job then checks
+the shards ran every listed test exactly once. A stale table only costs balance, never a test, so
+it's refreshed at release from a recent green run:
+
+```
+node scripts/refresh-shard-timings.mjs <run-id>
+```
+
 A red engine job shows red, always. Whether it blocks a merge is up to branch protection:
 `scripts/branch-protection-contexts.mjs` lists the checks `main` requires (macOS WebKit's five
 under `EXTERNAL_CONTEXTS`, since `webkit-macos.yml` reports them), and beside them
