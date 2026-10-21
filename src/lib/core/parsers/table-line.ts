@@ -85,7 +85,7 @@ function contentBounds(text: string, from: number, to: number): [number, number]
 
 /** Whether `text` before `end` ends in an odd run of backslashes, which escapes a pipe at `end`;
  *  the run stops at `start`. */
-export function endsInEscape(text: string, end = text.length, start = 0): boolean {
+function endsInEscape(text: string, end = text.length, start = 0): boolean {
 	let i = end;
 	while (i > start && text[i - 1] === '\\') i--;
 	return (end - i) % 2 === 1;

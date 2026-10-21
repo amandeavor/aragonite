@@ -15,7 +15,7 @@ export function caretIsInTextContent(el: HTMLElement): boolean {
 
 /** The same read for a caret position given as a node: the one a press is about to make. A
  *  widget's own text paints, but takes no typing. */
-export function seatIsInTextContent(el: HTMLElement, node: Node): boolean {
+function seatIsInTextContent(el: HTMLElement, node: Node): boolean {
 	if (node.nodeType !== Node.TEXT_NODE || !el.contains(node)) return false;
 	return !isHiddenMarkerText(node, el) && !isInsideAtomicWidget(el, node);
 }

@@ -266,7 +266,7 @@ function readRangeKeyRole(e: KeyboardEvent, reads: RangeKeyReads): RangeKeyRole 
 }
 
 /** Backspace and Delete, which remove the range. */
-export function isRangeDeleteKey(e: KeyboardEvent): boolean {
+function isRangeDeleteKey(e: KeyboardEvent): boolean {
 	return e.key === 'Backspace' || e.key === 'Delete';
 }
 
@@ -295,7 +295,7 @@ const isArrowKey = (key: string): key is ArrowKey =>
 
 /** Chords the range handles itself, swallowed before the browser's bold or Ctrl+K kill-line runs.
  *  Mod+Shift+X is here on its own, since unshifted Mod+X is the block cut. */
-export function isClaimedRewriteChord(e: KeyboardEvent): boolean {
+function isClaimedRewriteChord(e: KeyboardEvent): boolean {
 	if (!(e.ctrlKey || e.metaKey) || e.altKey) return false;
 	// Literal comparisons, not a character class: the chord scan reads the keys a file compares,
 	// and a regex would hide this file's use of Mod+B/I/E/K from it (G4.29).

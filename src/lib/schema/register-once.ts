@@ -7,7 +7,7 @@ import { editorEnv } from '../env';
 import { devWarn } from '../dev-warn';
 
 /** True only on a dev server, not in production and not in a test run: the one case that replaces. */
-export function devReplacesRegistration(): boolean {
+function devReplacesRegistration(): boolean {
 	return editorEnv.isDev && !editorEnv.isTest;
 }
 

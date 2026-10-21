@@ -121,7 +121,7 @@ export function resolveDelimiterAutoPair(
  * Inside a construct whose source is showing (`$ab|$`) the partner is the real closer, and typing
  * it means "done": the caret steps past it and the caller hides the source, so it renders at once.
  */
-export function stepsOverRevealedCloser(
+function stepsOverRevealedCloser(
 	text: string,
 	caret: number,
 	typed: string,

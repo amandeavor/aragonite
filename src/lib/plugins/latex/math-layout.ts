@@ -6,7 +6,7 @@
  */
 export type MathBlockLayout = 'split' | 'stacked' | 'source';
 
-export const MATH_BLOCK_LAYOUTS: readonly MathBlockLayout[] = ['split', 'stacked', 'source'];
+const MATH_BLOCK_LAYOUTS: readonly MathBlockLayout[] = ['split', 'stacked', 'source'];
 
 export function isMathBlockLayout(value: unknown): value is MathBlockLayout {
 	return MATH_BLOCK_LAYOUTS.includes(value as MathBlockLayout);

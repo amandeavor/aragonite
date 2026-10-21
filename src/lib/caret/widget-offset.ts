@@ -71,7 +71,7 @@ export function markerPrefixOf(container: ParentNode): HTMLElement | null {
 }
 
 /** The marker prefix's walk length: what a raw offset adds to become a walk offset. */
-export function markerPrefixLength(container: ParentNode): number {
+function markerPrefixLength(container: ParentNode): number {
 	return markerPrefixOf(container)?.textContent?.length ?? 0;
 }
 

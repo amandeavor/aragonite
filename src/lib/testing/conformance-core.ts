@@ -121,7 +121,7 @@ export function assertReasonDocumented(reason: string, label: string): void {
 }
 
 /** An exempt or boundary cell carries a real reason, so the skip stays visible. */
-export function assertExemptionDocumented(cell: ConformanceCoverage, label: string): void {
+function assertExemptionDocumented(cell: ConformanceCoverage, label: string): void {
 	if (cell.mode === 'assert') {
 		fail(`assertExemptionDocumented called on an 'assert' cell: ${label}`);
 	}
@@ -202,7 +202,7 @@ export function findFirstOfKind(root: Document | CstNode, kind: AnyBlockKind): C
 }
 
 /** Path from `root` to the first node of `kind` in a pre-order traversal, or null. */
-export function findFirstPathOfKind(root: Document | CstNode, kind: AnyBlockKind): number[] | null {
+function findFirstPathOfKind(root: Document | CstNode, kind: AnyBlockKind): number[] | null {
 	let found: number[] | null = null;
 	walkBlocks(root, (node, path) => {
 		if (node.kind !== kind) return;

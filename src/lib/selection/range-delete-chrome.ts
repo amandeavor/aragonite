@@ -122,7 +122,7 @@ export function unjoinedRangeDelete(
 
 /** The caret once the block at `path` went, on the side `gesture` points; read on the committed
  *  tree, which holds the block the commit gives an emptied document. */
-export function caretWhereRemoved(
+function caretWhereRemoved(
 	committed: DocumentView,
 	path: readonly number[],
 	gesture: RemovalGesture

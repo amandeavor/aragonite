@@ -32,7 +32,7 @@ export function isEditableEventTarget(target: EventTarget | null): boolean {
 
 /** The hidden host is the block's one tab stop, so a declared element that is not an editor
  *  leaves the tab order. Applied on every read, since a later render state supplies a new one. */
-export function demoteDeclaredFromTabOrder(declared: HTMLElement | null): HTMLElement | null {
+function demoteDeclaredFromTabOrder(declared: HTMLElement | null): HTMLElement | null {
 	if (declared && declared.tabIndex >= 0 && !isEditableEventTarget(declared)) {
 		declared.tabIndex = -1;
 	}
