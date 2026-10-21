@@ -2,8 +2,6 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-	nextPath,
-	previousPath,
 	firstPath,
 	lastPath,
 	findBlockPathForElement,
@@ -33,61 +31,6 @@ describe('nodeAt', () => {
 		const d = doc([para('a\n')]);
 		expect(nodeAt(d, [5])).toBeNull();
 		expect(nodeAt(d, [0, 0])).toBeNull();
-	});
-});
-
-describe('nextPath', () => {
-	it('moves between siblings at top level', () => {
-		const d = doc([para('a\n'), para('b\n'), para('c\n')]);
-		expect(nextPath(d, [0])).toEqual([1]);
-		expect(nextPath(d, [1])).toEqual([2]);
-		expect(nextPath(d, [2])).toBeNull();
-	});
-
-	it('enters a container as the next block', () => {
-		const d = doc([para('a\n'), bq([para('x\n')])]);
-		expect(nextPath(d, [0])).toEqual([1]);
-		expect(nextPath(d, [1])).toEqual([1, 0]);
-	});
-
-	it('exits a container when at its last child', () => {
-		const d = doc([bq([para('x\n')]), para('after\n')]);
-		expect(nextPath(d, [0, 0])).toEqual([1]);
-	});
-
-	it('exits multiple nested containers when at the deepest last child', () => {
-		const d = doc([bq([bq([para('x\n')])]), para('after\n')]);
-		expect(nextPath(d, [0, 0, 0])).toEqual([1]);
-	});
-
-	it('returns null when already at the last block', () => {
-		const d = doc([para('a\n'), bq([para('x\n')])]);
-		expect(nextPath(d, [1, 0])).toBeNull();
-	});
-});
-
-describe('previousPath', () => {
-	it('moves backward at top level', () => {
-		const d = doc([para('a\n'), para('b\n'), para('c\n')]);
-		expect(previousPath(d, [1])).toEqual([0]);
-		expect(previousPath(d, [0])).toBeNull();
-	});
-
-	it("enters a container's last descendant", () => {
-		const d = doc([bq([para('x\n'), para('y\n')]), para('after\n')]);
-		expect(previousPath(d, [1])).toEqual([0, 1]);
-	});
-
-	it('exits a container to its parent at the first child', () => {
-		const d = doc([bq([para('x\n'), para('y\n')])]);
-		expect(previousPath(d, [0, 0])).toEqual([0]);
-		expect(previousPath(d, [0])).toBeNull();
-	});
-
-	it('steps to the container itself when at its first child', () => {
-		const d = doc([para('a\n'), bq([para('x\n'), para('y\n')])]);
-		expect(previousPath(d, [1, 0])).toEqual([1]);
-		expect(previousPath(d, [1])).toEqual([0]);
 	});
 });
 

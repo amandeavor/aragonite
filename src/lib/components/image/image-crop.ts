@@ -76,10 +76,6 @@ export function zoomCrop(crop: ImageCrop, deltaY: number): ImageCrop {
 	return clampCrop({ ...crop, z: crop.z - deltaY * 0.002 });
 }
 
-export function isDefaultCrop(crop: ImageCrop): boolean {
-	return crop.x === 50 && crop.y === 50 && crop.z === 1;
-}
-
 /** Paint a crop onto a widget and its image, the way a committed one renders. */
 export function applyCropToWidget(
 	widget: HTMLElement,

@@ -148,11 +148,6 @@ function chordDefect(chord: string): string | null {
 	return bad === undefined ? null : `unrecognized modifier "${bad}" (use Mod/Alt/Shift)`;
 }
 
-/** Whether a chord is well-formed: Mod/Alt/Shift modifiers and a non-empty key. */
-export function isChordWellFormed(chord: string): boolean {
-	return chordDefect(chord) === null;
-}
-
 /**
  * Validate then normalize a chord a registration declares, throwing on a malformed one, so a
  * mis-typed `'Ctrl+B'` never collapses to a bare `'B'` that fires on every keypress.

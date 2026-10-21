@@ -3,7 +3,6 @@ import {
 	DEFAULT_CROP,
 	clampCrop,
 	cropImageStyle,
-	isDefaultCrop,
 	paintedSize,
 	panCrop,
 	zoomCrop
@@ -22,7 +21,6 @@ describe('image crop math', () => {
 			top: '0%',
 			objectPosition: '50% 50%'
 		});
-		expect(isDefaultCrop(DEFAULT_CROP)).toBe(true);
 	});
 
 	it('zoom scales the image box and offsets it so the pinned point stays put', () => {

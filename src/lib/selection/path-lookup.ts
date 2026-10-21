@@ -7,40 +7,6 @@ import { caretChildCount, isCollapsedContainer } from '../schema/reserved-chrome
 import { TABLE_CELL_SELECTOR } from '../caret/block-content-selector';
 import type { BlockElLookup } from '../caret/block-el-lookup';
 
-/** Block immediately after `path` in doc order (children before siblings), else null. */
-export function nextPath(doc: Document, path: number[]): number[] | null {
-	const node = nodeAt(doc, path);
-	if (node && 'children' in node && node.children && node.children.length > 0) {
-		return [...path, 0];
-	}
-	let p = path.slice();
-	while (p.length > 0) {
-		const parentPath = p.slice(0, -1);
-		const parent = nodeAt(doc, parentPath);
-		if (!parent || !parent.children) return null;
-		const idx = p[p.length - 1];
-		if (idx + 1 < parent.children.length) {
-			return [...parentPath, idx + 1];
-		}
-		p = parentPath;
-	}
-	return null;
-}
-
-/** Block immediately before `path` in doc order (deepest last descendant first), else null. */
-export function previousPath(doc: Document, path: number[]): number[] | null {
-	if (path.length === 0) return null;
-	const parentPath = path.slice(0, -1);
-	const parent = nodeAt(doc, parentPath);
-	if (!parent || !parent.children) return null;
-	const idx = path[path.length - 1];
-	if (idx > 0) {
-		return lastLeafAtOrBefore(doc, [...parentPath, idx - 1]);
-	}
-	if (parentPath.length === 0) return null;
-	return parentPath;
-}
-
 /** First block in document order, or null if the document is empty. */
 export function firstPath(doc: Document): number[] | null {
 	if (!doc.children || doc.children.length === 0) return null;
@@ -94,7 +60,7 @@ export function lastCaretLeaf(doc: DocumentView, path: readonly number[]): numbe
 }
 
 /** The first caret leaf after `path` in document order, descending into it first when it has
- *  children, as {@link nextPath} does. */
+ *  children. */
 export function nextCaretPath(doc: DocumentView, path: readonly number[]): number[] | null {
 	const node = nodeAt(doc, [...path]);
 	if (!node || path.length === 0) return null;

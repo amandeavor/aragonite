@@ -62,15 +62,6 @@ export function pathsEqual(a: readonly number[], b: readonly number[]): boolean 
 	return true;
 }
 
-/** Number of shared leading indices between two paths. */
-export function sharedPrefixLength(a: readonly number[], b: readonly number[]): number {
-	const len = Math.min(a.length, b.length);
-	for (let i = 0; i < len; i++) {
-		if (a[i] !== b[i]) return i;
-	}
-	return len;
-}
-
 // ── Range predicates ───────────────────────────────────────────────────────
 
 /** True if `path` is strictly between `start` and `end` in document order. */

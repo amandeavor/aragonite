@@ -5,19 +5,9 @@
  */
 
 import type { CstNode } from '../core/nodes';
-import { assignIds, generateBlockId } from '../block-id';
+import { generateBlockId } from '../block-id';
 import { dropChildSpans } from '../schema/child-spans';
 import { spliceMany } from './splice-many';
-
-export function pushChild(container: CstNode, child: CstNode): void {
-	if (!container.children) container.children = [];
-	// Lazy-init (unlike spliceChildren): pushes land in containers assembled mid-merge that
-	// may not have mounted yet, so the parallel array must exist or the new id is dropped.
-	if (!container.childIds) container.childIds = assignIds(container.children);
-	container.children.push(child);
-	container.childIds.push(generateBlockId());
-	dropChildSpans(container);
-}
 
 /**
  * Bring `childIds` back to `children`'s length after an in-place swap. The surviving prefix keeps
