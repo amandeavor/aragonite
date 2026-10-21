@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * The mermaid adapter behind `@voithos-labs/aragonite/plugins/mermaid/renderer`. Mermaid is
  * stubbed at its module boundary because the adapter's `import('mermaid')` is the only place
@@ -17,7 +18,7 @@ vi.mock('mermaid', () => {
 	return { default: engine };
 });
 
-// Mermaid's order is `render(id, text)`; deriving the svg from the second argument is
+// Mermaid's order is `render(id, text, container)`; deriving the svg from the second argument is
 // what pins it, since a swapped call would draw the id.
 const drawSvg = async (_id: string, code: string) => ({ svg: `<svg>${code}</svg>` });
 const BASE_CONFIG = { startOnLoad: false, securityLevel: 'strict', suppressErrorRendering: true };
@@ -121,5 +122,26 @@ describe('mermaid engine adapter', () => {
 		await expect(render('graph TD', 'id-b', { theme: 'dark' })).resolves.toBe(
 			'<svg>graph TD</svg>'
 		);
+	});
+
+	// Miss-analysis: every row stubbed `render(id, text)` and never looked at a container, so the
+	// engine measuring in the host page's own flow went unseen (#762).
+	it('lays each diagram out in a host of its own, off the page, gone once it draws or fails', async () => {
+		const render = await freshAdapter();
+		const hosts: { host: HTMLElement; attached: boolean; position: string }[] = [];
+		engine.render.mockImplementation(async (_id: string, code: string, host: HTMLElement) => {
+			hosts.push({ host, attached: host.isConnected, position: host.style.position });
+			if (code === 'nope') throw new Error('No diagram type detected');
+			return { svg: `<svg>${code}</svg>` };
+		});
+
+		await render('graph TD', 'id-a', { theme: 'dark' });
+		await expect(render('nope', 'id-b', { theme: 'dark' })).rejects.toThrow();
+
+		expect(hosts.map(({ attached, position }) => ({ attached, position }))).toEqual([
+			{ attached: true, position: 'fixed' },
+			{ attached: true, position: 'fixed' }
+		]);
+		expect(hosts.map(({ host }) => host.isConnected)).toEqual([false, false]);
 	});
 });
