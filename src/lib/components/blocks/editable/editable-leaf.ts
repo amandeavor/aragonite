@@ -100,7 +100,6 @@ interface LeafDepsBase {
  * node, so the offset traversal stays exact, and moving focus away on unmount.
  */
 export interface EditableLeafSurfaceProps extends EditableSurfaceAttributes {
-	tabindex: number;
 	/** Reading mode makes a plain leaf's always-mounted source inert. */
 	contenteditable: 'true' | 'false';
 	spellcheck: 'false';
@@ -711,7 +710,6 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 	// ── Source element props ─────────────────────────────────────────────────────
 
 	const surfaceHandlers = {
-		tabindex: 0,
 		spellcheck: 'false' as const,
 		oninput: (e: Event) => {
 			editableSurface.onInput(e);

@@ -377,13 +377,7 @@ interface ClaimRow {
  * The row documenting a keydown claim whose row sits in a keymap family, where no file list can
  * derive it. A claim a token family already rows must not appear here.
  */
-const CLAIM_ROWS: Record<ClaimKey, ClaimRow> = {
-	'Shift+Tab @ components/blocks/table/cell-keydown-plan.ts': {
-		row: 'Move between cells',
-		command: 'cell.shiftTab',
-		kind: 'tableCell'
-	}
-};
+const CLAIM_ROWS: Record<ClaimKey, ClaimRow> = {};
 
 /** Why `entry` does not document the keydown claim `key`, or null when it does. */
 export function claimRowProblem(docRows: DocRow[], key: ClaimKey, entry: ClaimRow): string | null {
@@ -668,7 +662,12 @@ describe('consumer-guide chord coherence: self-tests', () => {
 		expect(claimRowProblem(rows, key, listRow)).toBe(
 			'the row "Indent / outdent a list item" is for listItem, not the tableCell that claims Shift+Tab'
 		);
-		expect(claimRowProblem(rows, key, CLAIM_ROWS[key])).toBeNull();
+		const cellRow = {
+			row: 'Move between cells',
+			command: 'cell.shiftTab' as const,
+			kind: 'tableCell' as const
+		};
+		expect(claimRowProblem(rows, key, cellRow)).toBeNull();
 	});
 
 	it('rejects a chord that is dispatched nowhere', () => {

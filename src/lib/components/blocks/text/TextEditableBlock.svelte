@@ -902,15 +902,12 @@
 	}
 </script>
 
-<!-- Reading mode turns contenteditable off, ruling out every browser edit; tabindex keeps focus
-	and arrow traversal. Both roles the spread sets are interactive, which the compiler cannot see. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- Reading mode turns contenteditable off, ruling out every browser edit; the spread's tab stop
+	keeps the block focusable for arrow traversal. -->
 <div
 	bind:this={el}
-	tabindex="0"
 	class="text-editable-block {blockClass}"
 	contenteditable={readOnly ? 'false' : 'true'}
-	aria-readonly={readOnly ? 'true' : undefined}
 	{...editableSurface.attributes(combobox)}
 	style:--md-prefix-indent={ambientPrefixText ? ambientIndent : null}
 	style:text-indent={ambientPrefixText ? 'calc(-1 * var(--md-prefix-indent))' : null}

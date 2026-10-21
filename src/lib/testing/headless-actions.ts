@@ -191,7 +191,10 @@ export function createHeadlessActions(
 			...(options.onSelectionChange ? { onChange: options.onSelectionChange } : {})
 		}),
 		// A headless suite has no drawn caret to repaint.
-		caretWriter: createCaretWriter(() => {}),
+		caretWriter: createCaretWriter(
+			() => {},
+			() => deps.reading.mode() === 'reading'
+		),
 		getBlockElByPath: () => null,
 		get caretLanding() {
 			return caretLanding;

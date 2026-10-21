@@ -31,14 +31,7 @@ test.describe('footnotes: reading mode keyboard navigation', () => {
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
-	test('Tab from a click in the definition’s text reaches its marker', async ({
-		page,
-		browserName
-	}) => {
-		test.skip(
-			browserName !== 'chromium',
-			'Firefox and WebKit start Tab from the clicked point, which is past the marker'
-		);
+	test('Tab from a click in the definition’s text reaches its marker', async ({ page }) => {
 		const { md, defA } = navDoc();
 		await editor.load(md, 'reading');
 		await editor.pressFromText([0], 'Body');

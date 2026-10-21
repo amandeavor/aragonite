@@ -57,6 +57,7 @@ function makeEnv(source: string, offset: number | null, mode?: string): Env {
 			// No plugins stood up here, so every installed one is active.
 			commands: commandContext(),
 			reading: fixtureReading(),
+			scroll: { visibleBand: () => null, showRect: () => {} },
 			getEl: () => el,
 			getCursorOffset: () => offset,
 			getFocusOffset: () => offset,

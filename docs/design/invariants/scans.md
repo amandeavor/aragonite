@@ -195,6 +195,7 @@ unguarded.
 | G4.230 | Editor chrome runs no undo or redo of its own; the root answers them there                   | L       |
 | G4.231 | A right-click menu listens for `contextmenu` only where it is declared                       | L       |
 | G4.232 | An e2e spec splits undo steps with `endTypingBatch`, never a fixed wait                      | L       |
+| G4.235 | In reading mode the page owns Tab: no block reads the key by hand or sets its own tab stop   | L       |
 
 ### The entries
 
@@ -1330,3 +1331,10 @@ holds it (`e2e/goto-ready.ts`, through `e2e/typing-batch.ts`), and a spec ends a
 A `waitForTimeout` within three lines of an undo, or on a line naming undo grouping, fails, and so
 does a reach for the real pause or the page handle outside `e2e/typing-batch.ts` and `tests/undo-typing-pause.spec.ts`.
 `e2e/lint/e2e-drivers.test.ts`.
+
+**G4.235 · Reading mode leaves Tab to the page** (`reading-keyboard-sites`). The keymaps' Tab chords
+are declined at the command dispatcher in reading mode, so a keydown that compares the Tab key by
+hand fails unless it's chrome that never opens there or the range keydown, which hands Tab back
+first. And an element that writes itself a tabindex of 0 fails unless it's a control or the
+reading-mode stop, so a new block can't add a stop of its own.
+`lint/reading-keyboard-sites.test.ts`; every engine in `plugins/reading-keyboard.spec.ts`.

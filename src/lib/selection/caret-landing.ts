@@ -21,7 +21,7 @@ import { landsRestoredCaret } from './restored-caret';
 import { caretTargetFor } from './caret-target';
 import { applySelectionToDom, readNativeSelection } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';
-import { caretRectAt, caretRectAtRaw } from '../caret/visual-lines';
+import { caretRectAt, caretRectAtRaw, lineHeightOf } from '../caret/visual-lines';
 import { findBlockPathForElement, findCellPathForElement } from './path-lookup';
 import type { CaretPosition, EditorSelection, SelectionPoint } from './primitives';
 import {
@@ -111,6 +111,11 @@ function caretBox(el: HTMLElement): DOMRectReadOnly {
 		if (line) return line;
 	}
 	return el.getBoundingClientRect();
+}
+
+function firstLineBox(el: HTMLElement): DOMRectReadOnly {
+	const box = el.getBoundingClientRect();
+	return new DOMRect(box.left, box.top, box.width, Math.min(box.height, lineHeightOf(el)));
 }
 
 export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
@@ -214,13 +219,16 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 		const el = deps.scroll && deps.getBlockElByPath([...path]);
 		const active = el ? document.activeElement : null;
 		if (!el?.contains(active)) return;
-		// The cell that took the caret shows whole; in any other leaf only the caret's line, or a
-		// paragraph taller than the viewport would jump the page by a screen.
+		// A cell shows whole; any other leaf only the caret's line (its first, in reading mode), so a
+		// paragraph taller than the viewport doesn't jump the page by a screen.
 		const cell = findCellPathForElement(active);
 		const cellEl = cell && deps.getBlockElByPath(cell);
 		const leaf = findBlockPathForElement(active);
 		const leafEl = (leaf && deps.getBlockElByPath(leaf)) ?? el;
-		deps.scroll?.showRect(() => (cellEl ? cellEl.getBoundingClientRect() : caretBox(leafEl)));
+		deps.scroll?.showRect(() => {
+			if (cellEl) return cellEl.getBoundingClientRect();
+			return deps.isReading() ? firstLineBox(leafEl) : caretBox(leafEl);
+		});
 	}
 
 	/** Reading mode has no caret: the block's own `focus` picks the element, focus moves on to a
@@ -308,6 +316,16 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 			const mounted = await descendTo(deps.root, mountPath, { current: at(stamp) });
 			if (generation !== stamp) return 'unplaced';
 			deps.caretMemory.forget();
+			// Reading mode has no caret, so a stored one lands as focus on its block, as a jump does.
+			const readingCaret = deps.isReading() && route === 'collapsed' ? caretAt(focus) : null;
+			const readingTarget = readingCaret && componentAt(deps.root, readingCaret.path);
+			if (readingCaret && readingTarget) {
+				placeWithoutScrolling(() =>
+					focusWithoutCaret(readingTarget, readingCaret.path, readingCaret.offset)
+				);
+				await bringIntoView(mountPath, reveal);
+				return mounted ? 'applied' : 'unplaced';
+			}
 			const placed = placeWithoutScrolling(() =>
 				applySelectionToDom(
 					{ anchor, focus },

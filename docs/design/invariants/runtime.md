@@ -96,6 +96,7 @@ These checks run in three kinds of place:
 | G1.128 | A caret key a selected widget passes on leaves the widget first                            | A·N     |
 | G1.131 | A landing in reading mode leaves no browser selection in the block it landed in            | A·N     |
 | G1.132 | A Backspace or Delete at a caret the editor decides never reaches `input` undecided        | A·N     |
+| G1.133 | Reading mode leaves one block in the tab order; anything else there is a control           | A·N     |
 
 ### The entries
 
@@ -587,3 +588,10 @@ Backspace or Delete in prose or a table cell is written by the editor at `before
 the `input` after one unless its `beforeinput` was declined for a named reason (a composition, a
 range, a soft keyboard's wider delete, a surface not decided yet). `checkDeleteDecided` ·
 `collapsed-delete.test.ts`.
+
+**G1.133 · Reading mode has one block stop** (`reading-tab-stops`). In reading mode Tab is the
+page's focus walk, so the editor keeps one block in it, the one whose own element last took focus
+(`components/editor-root/reading-focus.svelte.ts`), and every other block's focus element sits at
+-1. Dev fails a second element in the tab order that isn't a control (one left editable counts,
+the host's header doesn't). The same check ships as `readingTabOrderProblem` for a plugin's tests.
+`checkReadingTabStops` · `reading-focus.test.ts`, `reading-keyboard.spec.ts`.

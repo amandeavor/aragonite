@@ -359,15 +359,21 @@
 	onmousedown={(e) => e.preventDefault()}
 >
 	<span bind:this={chipEl} class="code-lang-chip">
-		<button
-			type="button"
-			class="code-lang-button"
-			class:open={popout === 'languages'}
-			aria-haspopup="listbox"
-			aria-expanded={popout === 'languages'}
-			aria-label={codeLanguageLabel(language)}
-			onclick={toggleLanguages}>{language}<MenuIcon name="chevron-down" /></button
-		>
+		<!-- A block that can't be edited names its language as a label: a button would be a tab
+		     stop that opens nothing. -->
+		{#if editable}
+			<button
+				type="button"
+				class="code-lang-button"
+				class:open={popout === 'languages'}
+				aria-haspopup="listbox"
+				aria-expanded={popout === 'languages'}
+				aria-label={codeLanguageLabel(language)}
+				onclick={toggleLanguages}>{language}<MenuIcon name="chevron-down" /></button
+			>
+		{:else}
+			<span class="code-lang-label">{language}</span>
+		{/if}
 	</span>
 
 	{#if showRun}
@@ -547,8 +553,13 @@
 		cursor: pointer;
 	}
 
-	.code-lang-button {
+	.code-lang-button,
+	.code-lang-label {
 		padding: 4px 6px;
+	}
+
+	.code-lang-label {
+		color: var(--color-ui-muted);
 	}
 
 	/* An open picker keeps its trigger lit, so the two read as one control. */

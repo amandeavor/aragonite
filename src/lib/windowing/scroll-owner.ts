@@ -65,6 +65,8 @@ export interface ScrollOwner {
 	/** Whether a viewport rect sits wholly inside what the editor shows, so a caret there needs no
 	 *  scroll. */
 	shows(rect: DOMRectReadOnly): boolean;
+	/** The client-coordinate band the editor shows, or null before the root mounts. */
+	visibleBand(): { top: number; bottom: number } | null;
 	/** Scroll the least distance that shows the rect `read` returns (a caret's line, a cell), read
 	 *  after an open round's correction; null shows nothing. Holds nothing, and ends an older hold. */
 	showRect(read: () => DOMRectReadOnly | null): void;
@@ -308,6 +310,7 @@ export function createScrollOwner(deps: ScrollOwnerDeps): ScrollOwner {
 			const band = visibleBand();
 			return !!band && bandShows(band, rect);
 		},
+		visibleBand,
 		showRect(read) {
 			writeScroll(() => {
 				// A newer scroll into view, like a newer placement: an older hold must not drag it back.
