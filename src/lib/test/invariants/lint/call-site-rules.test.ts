@@ -193,7 +193,7 @@ const RULES: CallSiteRule[] = [
 				'Shift+Enter types a new line',
 			'src/lib/components/blocks/editable/editable-leaf.ts :: breakLine':
 				'Enter in a multi-line plugin source types a new line',
-			'src/lib/components/blocks/editable/editable-leaf.ts :: onBeforeInput':
+			'src/lib/components/blocks/editable/editable-leaf.ts :: sourceInsertion':
 				'a line break with no key in a painted plugin source types a new line',
 			'src/lib/components/blocks/text/TextEditableBlock.svelte :: completesLine':
 				'asks whether a completion is planned, and writes nothing'

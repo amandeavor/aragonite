@@ -26,8 +26,16 @@ import {
 	chromeFreeText,
 	clampToLandableRaw,
 	holdsOnlyMarkerChrome,
+	landableRawBounds,
 	type RawRange
 } from '../../../caret/widget-offset';
+import {
+	characterExtent,
+	decidedDelete,
+	isDeleteInput,
+	isMoveDelete,
+	type DeleteDirection
+} from '../../../caret/delete-extent';
 import { nativeRangeIn, parkFocusOnEditorRoot } from '../../../selection/native-bridge';
 import { assertInvariant } from '../../../assert';
 import { checkRenderedTextFidelity } from '../../../invariants/render-fidelity';
@@ -252,6 +260,8 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			(e.inputType === 'historyUndo' || e.inputType === 'historyRedo') &&
 			stepSourceHistory(e, e.inputType === 'historyUndo'),
 		handleBeforeInput: onBeforeInput,
+		deleteAtCaret,
+		handleDeclinedDelete: spliceTargetRange,
 		removeSelection: (range) => {
 			removeRange(range);
 			return REMOVED_IN_PLACE;
@@ -633,27 +643,16 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 	/** A painted source applies text edits itself: the browser's insert replaces a lone `\n` text
 	 *  node and its delete cannot see hidden markers. Clamping keeps edits off hidden fence lines. */
 	function onBeforeInput(e: InputEvent): void {
+		// A delete the editor decides is `deleteAtCaret`'s, and reaches the splice only if declined.
+		if (!decidedDelete(e.inputType)) spliceTargetRange(e);
+	}
+
+	function spliceTargetRange(e: InputEvent): void {
 		if (!deps.renderSource || composing || e.isComposing) return;
 		const el = deps.getEl();
 		if (!el) return;
-		let insert: string;
-		switch (e.inputType) {
-			case 'insertText':
-				insert = e.data ?? '';
-				break;
-			case 'insertLineBreak':
-			case 'insertParagraph':
-				insert = editableSurface.lineEnding();
-				break;
-			case 'deleteContentBackward':
-			case 'deleteContentForward':
-			case 'deleteWordBackward':
-			case 'deleteWordForward':
-				insert = '';
-				break;
-			default:
-				return;
-		}
+		const insert = sourceInsertion(e.inputType, e.data);
+		if (insert === null) return;
 		const target = e.getTargetRanges()[0];
 		const range = target ? backend.rawRangeOf(target) : null;
 		if (!range) return;
@@ -661,6 +660,26 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		const start = clampToLandableRaw(el, range.start);
 		const end = Math.max(start, clampToLandableRaw(el, range.end));
 		spliceSourceText(el, start, end, insert);
+	}
+
+	/** What an input writes over its target range in a painted source; null leaves it alone. */
+	function sourceInsertion(inputType: string, data: string | null): string | null {
+		if (isDeleteInput(inputType)) return isMoveDelete(inputType) ? null : '';
+		if (inputType === 'insertText') return data ?? '';
+		const breaks = inputType === 'insertLineBreak' || inputType === 'insertParagraph';
+		return breaks ? editableSurface.lineEnding() : null;
+	}
+
+	/** A collapsed delete takes one character of the DOM's text, which a shown render-primary source
+	 *  reaches the node with only on blur, kept off the lines the mode hides. */
+	function deleteAtCaret(caret: number, direction: DeleteDirection): boolean {
+		const el = deps.getEl();
+		if (!el) return false;
+		const text = el.textContent ?? '';
+		const bounds = landableRawBounds(el) ?? { start: 0, end: text.length };
+		const span = characterExtent(text, caret, direction, bounds);
+		if (span) spliceSourceText(el, span.start, span.end, '');
+		return true;
 	}
 
 	function onPointerDown(e: PointerEvent): void {

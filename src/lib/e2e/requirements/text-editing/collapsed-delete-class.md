@@ -26,6 +26,9 @@ after the delete, and that one undo puts both back.
 - `- a`, Backspace after `a`: the empty item `- `
 - a quote child, Backspace after a ZWJ family: the family goes whole
 - a table cell, Backspace after a ZWJ family: the family goes whole
+- a code block, Backspace after a ZWJ family: the family goes whole; in live mode, with the fence
+  lines hidden, Delete before it does the same
+- a code block, Backspace inside an empty `()`: both halves go
 
 ## Shift+Backspace
 
@@ -43,6 +46,8 @@ Shift+Backspace is Backspace on every OS, so it takes what Backspace takes (key 
 - a soft keyboard naming more than one character (here a whole entity): the editor writes nothing and
   leaves the keyboard's own edit to the browser (skipped on WebKit, which drops the range a script
   gives an event)
+- the same, after the keydown Android's keyboards send first (`Unidentified`, key code 229): still
+  the keyboard's own edit, since that keydown names no Backspace
 - the same, right after a Backspace the editor took at its keydown (an entity deleted whole): still
   the keyboard's own edit, since that key fired no input of its own
 

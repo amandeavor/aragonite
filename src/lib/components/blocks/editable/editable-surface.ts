@@ -273,6 +273,9 @@ export interface EditableSurfaceDeps {
 	/** Takes what a collapsed Backspace or Delete at raw `caret` aims at, through the block's own
 	 *  text; false to leave it to the browser. Omitted where the browser's delete is read back. */
 	deleteAtCaret?: (caret: number, direction: DeleteDirection) => boolean;
+	/** The block's own handling of a delete `deleteAtCaret` was never asked about (a range, or a
+	 *  soft keyboard's wider edit), run before the browser's delete would. */
+	handleDeclinedDelete?: (e: InputEvent) => void;
 }
 
 export interface EditableSurface {
@@ -590,7 +593,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		composing: deps.getComposing,
 		caret: () => deps.backend.getRaw(),
 		hasRange: () => deps.backend.getRawSelection() !== null,
-		text: () => trimTrailingLineEnding(deps.getNode().raw),
+		text: deps.readText,
 		targetRange: (e) => {
 			const target = typeof e.getTargetRanges === 'function' ? e.getTargetRanges()[0] : undefined;
 			return target ? deps.backend.rawRangeOf(target) : null;
@@ -647,6 +650,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		deps.handleBeforeInput?.(e);
 		if (e.defaultPrevented) return;
 		deleteVerdict = decideCollapsedDelete(e, keyed, deleteReads);
+		if (deleteVerdict && !deleteVerdict.decided) deps.handleDeclinedDelete?.(e);
 	}
 
 	/** The browser's own Undo and Redo are the editor's, and a character typed over a range across

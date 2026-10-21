@@ -6,7 +6,7 @@
 
 import {
 	characterExtent,
-	decidedDeleteDirection,
+	decidedDelete,
 	type DeleteDecline,
 	type DeleteDirection,
 	type DeleteVerdict
@@ -17,7 +17,7 @@ export interface CollapsedDeleteReads {
 	composing(): boolean;
 	caret(): number | null;
 	hasRange(): boolean;
-	/** The block's displayed text, which the caret counts into. */
+	/** The text the caret counts into, as the block shows it now. */
 	text(): string;
 	/** The raw range the browser reports the input would take, null where it names none. */
 	targetRange(e: InputEvent): RawRange | null;
@@ -31,7 +31,7 @@ export function decideCollapsedDelete(
 	keyed: boolean,
 	reads: CollapsedDeleteReads
 ): DeleteVerdict | null {
-	const direction = decidedDeleteDirection(e.inputType);
+	const direction = decidedDelete(e.inputType)?.direction;
 	if (!direction) return null;
 	const caret = reads.caret();
 	const decline = declineReason(e, direction, caret, keyed, reads);

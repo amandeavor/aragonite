@@ -25,6 +25,9 @@ sits on the body's own line where a range through the body reaches it.
 ## Edge cases
 
 - Backspace at the body's start deletes nothing, and the blur commits nothing
+- `XY` and a ZWJ family typed at the body's start, then Backspace twice: the family goes whole,
+  then the `Y`, read off the source on screen (the tree sees it only on blur); the blur commits
+  `X` before the body, and one undo puts the block back
 - Delete at the body's end deletes nothing, and the blur commits nothing
 - Tab leaves the block, as it leaves a paragraph, since no built-in binds it and it is the
   browser's own focus step, and the blur it causes commits the whole draft

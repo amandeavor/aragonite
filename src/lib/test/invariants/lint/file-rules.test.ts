@@ -1521,6 +1521,63 @@ const RULES: FileRule[] = [
 			"onRoot(doc, 'pointerup', endPress, { capture: true }),",
 			"onRoot(doc.defaultView ?? window, 'blur', endPress)"
 		]
+	},
+	{
+		id: 'G4.234 a delete input type is named only where the editor decides deletes',
+		matches:
+			/['"`]delete(?:Content|Word|SoftLine|HardLine|EntireSoftLine|By|Composition)\w*['"`]|\.startsWith\(\s*['"`]delete['"`]|\/\^delete/,
+		allowed: {
+			[SOURCE.deleteExtent]:
+				'the one list of delete input types, which says what each takes and which the editor writes'
+		},
+		reaches: [SOURCE.deleteExtent],
+		reason:
+			'a branch on a delete input type is a second opinion on which deletes the editor writes: ask `caret/delete-extent.ts` (`decidedDelete`, `isDeleteInput`, `isMoveDelete`)',
+		hits: [
+			"if (e.inputType !== 'deleteContentBackward') return false;",
+			"case 'deleteWordForward':",
+			"return e.inputType.startsWith('delete') ? '' : e.data;",
+			'return /^delete(?!By)/.test(e.inputType);',
+			'const cut = inputType === "deleteByCut";'
+		],
+		misses: [
+			'if (!isCharacterBackspace(e.inputType)) return false;',
+			"blockEdit.deleteBlock(index, 'Backspace');",
+			"case 'table.deleteRow':",
+			"['deleteRow', 'Delete row', canDeleteRow(rowIdx, rowCount)]"
+		]
+	},
+	{
+		id: 'G4.234 an editable block hears beforeinput through its editable surface',
+		matches:
+			/addEventListener\(\s*['"]beforeinput['"]|\bonbeforeinput(?:capture)?\s*[=:]\s*\{?\s*(?!editableSurface\.onBeforeInput\b|\(\w+:\s*InputEvent\)\s*=>\s*void)[\w$(]|\[[^\]]*['"]beforeinput['"][^\]]*\]\s*\.(?:map|forEach)\(|\bon(?:Root)?\([^)]*['"]beforeinput['"]/,
+		allowed: {
+			'src/lib/components/menu/InlineMenuHost.svelte':
+				'a capture listener on the root that takes the inline menu’s baseline and writes nothing',
+			'src/lib/components/editor-root/listeners.ts':
+				'a capture listener on the root that ends the undo step and writes nothing',
+			'src/lib/components/GapCaret.svelte':
+				'the gap caret, which is no block’s text and refuses every input but its one character',
+			'src/lib/editor-actions/whole-block-focus-surface.ts':
+				'the proxy a block focused whole types into, which refuses every input but its one character'
+		},
+		reason:
+			'every editable block hears `beforeinput` through `editableSurface.onBeforeInput`, whose last step decides a collapsed delete (`collapsed-delete.ts`); a handler bound around it lets the browser delete on its own. A binding through an event-name variable is invisible here',
+		hits: [
+			"root.addEventListener('beforeinput', onBeforeInput, true);",
+			'<div contenteditable onbeforeinput={onBeforeInput}></div>',
+			'onbeforeinput: handleInput,',
+			'onbeforeinput: (e) => handle(e),',
+			"const removers = ['keydown', 'beforeinput'].map((type) => onRoot(win, type, handler));",
+			"onRoot(win, 'beforeinput', handler, { capture: true })"
+		],
+		misses: [
+			'onbeforeinput={editableSurface.onBeforeInput}',
+			'onbeforeinput: editableSurface.onBeforeInput,',
+			'onbeforeinput: (e: InputEvent) => void;',
+			"if (e.type === 'beforeinput') return true;",
+			"root.removeEventListener('beforeinput', onBeforeInput, true);"
+		]
 	}
 ];
 

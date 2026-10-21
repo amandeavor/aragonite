@@ -5,6 +5,13 @@
 	import type { CodeRunRequest } from '../../../host-hooks';
 	import { asRawOffset } from '../../../caret/coordinate-spaces';
 	import {
+		characterExtent,
+		decidedDelete,
+		isDeleteInput,
+		isMoveDelete,
+		type DeleteDirection
+	} from '../../../caret/delete-extent';
+	import {
 		CONTENT_EMPTY_ATTR,
 		holdsOnlyMarkerChrome,
 		type RawRange
@@ -105,6 +112,8 @@
 		readText: () => plainTextOf(el),
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
+		deleteAtCaret: deleteCodeAt,
+		handleDeclinedDelete: (e) => void guardFenceRangedEdit(e),
 		removeSelection: (range) => removeRange(range, 'selection-removal') ?? false
 	});
 	export const afterSelectionRemoved = editableSurface.afterSelectionRemoved;
@@ -338,7 +347,8 @@
 	}
 
 	function onBeforeInput(e: InputEvent): void {
-		if (guardFenceRangedEdit(e)) return;
+		// A delete the editor decides is `deleteCodeAt`'s, and the fence check sees it only if declined.
+		if (!decidedDelete(e.inputType) && guardFenceRangedEdit(e)) return;
 		// A soft keyboard's line break, with no keydown, is the Shift+Enter command; an IME emitting
 		// one mid-composition writes nothing.
 		if (e.inputType === 'insertLineBreak' && !composing && el) {
@@ -423,7 +433,7 @@
 
 	// A cut's or a drag's own delete belongs to the clipboard or drop handler.
 	function deletes(e: InputEvent): boolean {
-		return /^delete(?!By)/.test(e.inputType);
+		return isDeleteInput(e.inputType) && !isMoveDelete(e.inputType);
 	}
 
 	function replacesRange(e: InputEvent, range: RawRange): boolean {
@@ -454,7 +464,7 @@
 	/** The text an input type writes over its span, or null to refuse it. A `dataTransfer`
 	 *  payload is refused, since it would skip the paste transforms (G4.11). */
 	function rangedEditInsertion(e: InputEvent, span: RawRange): string | null {
-		if (e.inputType.startsWith('delete')) return '';
+		if (isDeleteInput(e.inputType)) return '';
 		switch (e.inputType) {
 			case 'insertText':
 				return e.data ?? '';
@@ -513,30 +523,37 @@
 		if (!el || backend.getRawSelection() !== null) return false;
 		const offset = backend.getRaw() ?? 0;
 		// Offset 0 always leaves the block; so does the body start, where a native Backspace would
-		// delete the opener's terminating `\n`.
-		if (
-			offset === 0 ||
-			classifyFenceBoundary({ node, offset, forward: false }).kind === 'exitPrev'
-		) {
-			// At the top of an empty fence the key can only mean the block, so it goes; a fence
-			// with a body keeps the step-out, since one keypress must never take code with it.
-			if (isBlankText(bodyText())) {
-				void blockEdit.deleteBlock(index, 'Backspace');
-				return true;
-			}
-			focusActions.moveFocus(index - 1, 'end');
-			return true;
-		}
+		// delete the opener's terminating `\n`. Any other Backspace is `deleteCodeAt`'s.
+		const leaves =
+			offset === 0 || classifyFenceBoundary({ node, offset, forward: false }).kind === 'exitPrev';
+		if (!leaves) return false;
+		// At the top of an empty fence the key can only mean the block, so it goes; a fence with a
+		// body keeps the step-out, since one keypress must never take code with it.
+		if (isBlankText(bodyText())) void blockEdit.deleteBlock(index, 'Backspace');
+		else focusActions.moveFocus(index - 1, 'end');
+		return true;
+	}
 
-		// Pair-delete: remove both halves so the auto-closed companion isn't stranded.
-		// A caret inside a backtick fence run reads as a pair, so it declines there.
+	/** A collapsed delete at `caret`: an empty pair goes whole on Backspace, and anything else takes
+	 *  one character, kept to the body while the fence lines hide. */
+	function deleteCodeAt(caret: number, direction: DeleteDirection): boolean {
 		const text = getDisplayText();
-		const pairSpan = { start: offset - 1, end: offset + 1 };
-		if (isBetweenEmptyPair(text, offset) && !crossesFenceBoundary(node, pairSpan)) {
-			void writeCode(text.slice(0, offset - 1) + text.slice(offset + 1), offset - 1, 'pair-delete');
+		// Both halves, so the auto-closed companion isn't stranded; a caret inside a backtick fence
+		// run reads as a pair, so the pair rule declines there.
+		const pairSpan = { start: caret - 1, end: caret + 1 };
+		if (
+			direction === 'backward' &&
+			isBetweenEmptyPair(text, caret) &&
+			!crossesFenceBoundary(node, pairSpan)
+		) {
+			void writeCode(text.slice(0, caret - 1) + text.slice(caret + 1), caret - 1, 'pair-delete');
 			return true;
 		}
-		return false;
+		const unit = characterExtent(text, caret, direction, { start: 0, end: text.length });
+		const span = unit && editSpan(node, unit, fenceLinesShown);
+		const edit = span && computeRangedEdit(text, span, '');
+		if (edit) void writeCode(edit.newText, edit.newCursor, 'delete');
+		return true;
 	}
 
 	function codeDelete(): boolean {

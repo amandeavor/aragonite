@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
 	characterExtent,
-	decidedDeleteDirection,
+	decidedDelete,
+	isCharacterBackspace,
 	DECLINED_DELETES,
 	DELETE_WINDOW,
 	type DeleteDirection
@@ -256,15 +257,27 @@ describe('characterExtent: a span never splits what the editor keeps whole', () 
 	});
 });
 
-describe('decidedDeleteDirection: which inputs the editor writes itself', () => {
+describe('decidedDelete: which inputs the editor writes itself', () => {
 	it('decides the two character deletes', () => {
-		expect(decidedDeleteDirection('deleteContentBackward')).toBe('backward');
-		expect(decidedDeleteDirection('deleteContentForward')).toBe('forward');
+		expect(decidedDelete('deleteContentBackward')).toEqual({
+			unit: 'character',
+			direction: 'backward'
+		});
+		expect(decidedDelete('deleteContentForward')).toEqual({
+			unit: 'character',
+			direction: 'forward'
+		});
 	});
 
 	it('declines every other delete, and nothing is both', () => {
-		for (const type of DECLINED_DELETES) expect(decidedDeleteDirection(type)).toBeNull();
-		expect(decidedDeleteDirection('insertText')).toBeNull();
-		expect(decidedDeleteDirection('toString')).toBeNull();
+		for (const type of DECLINED_DELETES) expect(decidedDelete(type)).toBeNull();
+		expect(decidedDelete('insertText')).toBeNull();
+		expect(decidedDelete('toString')).toBeNull();
+	});
+
+	it('names only the one-character Backspace as one', () => {
+		expect(isCharacterBackspace('deleteContentBackward')).toBe(true);
+		expect(isCharacterBackspace('deleteContentForward')).toBe(false);
+		expect(isCharacterBackspace('deleteWordBackward')).toBe(false);
 	});
 });

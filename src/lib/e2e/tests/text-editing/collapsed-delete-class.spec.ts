@@ -145,6 +145,34 @@ const ROWS: Row[] = [
 		caret: 1
 	},
 	{
+		name: 'a code block takes the emoji before the caret whole',
+		source: `\`\`\`\nab${FAMILY}c\n\`\`\`\n`,
+		path: [0],
+		at: 14,
+		key: 'Backspace',
+		after: '```\nabc\n```\n',
+		caret: 6
+	},
+	{
+		name: 'in live mode, a code block takes the emoji after the caret whole',
+		source: `\`\`\`\nab${FAMILY}c\n\`\`\`\n`,
+		mode: 'live',
+		path: [0],
+		at: 6,
+		key: 'Delete',
+		after: '```\nabc\n```\n',
+		caret: 6
+	},
+	{
+		name: 'a code block takes an empty pair whole on Backspace',
+		source: '```\n()\n```\n',
+		path: [0],
+		at: 5,
+		key: 'Backspace',
+		after: '```\n\n```\n',
+		caret: 4
+	},
+	{
 		name: 'a table cell takes the emoji before the caret whole',
 		source: `| H |\n| - |\n| a${FAMILY} |\n`,
 		path: [0, 1, 0],
@@ -215,27 +243,38 @@ for (const route of ['key', 'soft keyboard'] as const) {
 	});
 }
 
-/** A soft keyboard's Backspace naming the range it would take, as a real one does: `widget` makes
- *  it the first inline widget, otherwise the character before the caret. */
-async function sendKeylessBackspaceOver(page: Page, widget: boolean): Promise<void> {
-	await page.evaluate((widget) => {
-		const target = document.activeElement as HTMLElement;
-		const range = document.createRange();
-		if (widget) range.selectNode(target.querySelector('[data-inline-widget]')!);
-		else {
-			const caret = window.getSelection()!.getRangeAt(0);
-			range.setStart(caret.startContainer, caret.startOffset - 1);
-			range.setEnd(caret.startContainer, caret.startOffset);
-		}
-		target.dispatchEvent(
-			new InputEvent('beforeinput', {
-				inputType: 'deleteContentBackward',
-				bubbles: true,
-				cancelable: true,
-				targetRanges: [new StaticRange(range)]
-			})
-		);
-	}, widget);
+/** A soft keyboard's Backspace naming the range it would take (`widget`: the first inline widget,
+ *  else the character before the caret), after Android's keyless keydown with `android`. */
+async function sendKeylessBackspaceOver(
+	page: Page,
+	widget: boolean,
+	{ android = false } = {}
+): Promise<void> {
+	await page.evaluate(
+		({ widget, android }) => {
+			const target = document.activeElement as HTMLElement;
+			if (android) {
+				const init = { key: 'Unidentified', keyCode: 229, bubbles: true, cancelable: true };
+				target.dispatchEvent(new KeyboardEvent('keydown', init));
+			}
+			const range = document.createRange();
+			if (widget) range.selectNode(target.querySelector('[data-inline-widget]')!);
+			else {
+				const caret = window.getSelection()!.getRangeAt(0);
+				range.setStart(caret.startContainer, caret.startOffset - 1);
+				range.setEnd(caret.startContainer, caret.startOffset);
+			}
+			target.dispatchEvent(
+				new InputEvent('beforeinput', {
+					inputType: 'deleteContentBackward',
+					bubbles: true,
+					cancelable: true,
+					targetRanges: [new StaticRange(range)]
+				})
+			);
+		},
+		{ widget, android }
+	);
 }
 
 test.describe('a soft keyboard delete that names its range', () => {
@@ -260,6 +299,18 @@ test.describe('a soft keyboard delete that names its range', () => {
 		await editor.loadContent('a&copy;b\n');
 		await editor.focusBlockAtPath([0], 7);
 		await sendKeylessBackspaceOver(page, true);
+		await editor.waitForRenderFlush();
+		expect(await editor.bridge.getSource()).toBe('a&copy;b\n');
+	});
+
+	// Android's keyboards send a keydown naming no key before the delete, which is still keyless.
+	test('a wider range named after a keydown that names no key: left to the browser', async ({
+		page
+	}) => {
+		skipUnlessSupported(page, 'syntheticTargetRanges');
+		await editor.loadContent('a&copy;b\n');
+		await editor.focusBlockAtPath([0], 7);
+		await sendKeylessBackspaceOver(page, true, { android: true });
 		await editor.waitForRenderFlush();
 		expect(await editor.bridge.getSource()).toBe('a&copy;b\n');
 	});

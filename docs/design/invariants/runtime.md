@@ -583,10 +583,10 @@ click elsewhere mid-scroll passes).
 `checkReadingLandingLeavesNoCaret` · `caret-landing.test.ts`, `reading-jump-focus.spec.ts`.
 
 **G1.132 · The editor's delete runs, not the browser's** (`collapsed-delete-decided`). A collapsed
-Backspace or Delete in prose or a table cell is written by the editor at `beforeinput`
+Backspace or Delete in any editable block is written by the editor at `beforeinput`
 (`components/blocks/editable/collapsed-delete.ts`), so every engine takes the same bytes. Dev fails
 the `input` after one unless its `beforeinput` was declined for a named reason (a composition, a
-range, a soft keyboard's wider delete, a surface not decided yet). `checkDeleteDecided` ·
+range, a soft keyboard's wider delete, a widget showing its source). `checkDeleteDecided` ·
 `collapsed-delete.test.ts`.
 
 **G1.133 · Reading mode has one block stop** (`reading-tab-stops`). In reading mode Tab is the
