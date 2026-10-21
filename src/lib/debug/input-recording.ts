@@ -1,8 +1,8 @@
 /**
  * The input recording format and the pure work over it: the step classifier, the source hash,
  * the splices that chain one step's bytes to the next, and the reader. No DOM and no Svelte, so
- * the e2e replayer can import it in Node. Field reference: `docs/guide/consumer-guide.md`
- * § Recording input.
+ * the e2e replayer can import it in Node. Field reference:
+ * `docs/guide/consumer-guide/shipping.md` § Recording input.
  */
 
 import type { EditorSelection } from '../selection/primitives';

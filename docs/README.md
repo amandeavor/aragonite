@@ -39,6 +39,8 @@ The published pack. This folder ships inside the npm package (the only docs fold
 | Doc                                                                                          | Scope                                                                                                                                   |
 | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | [`guide/consumer-guide.md`](guide/consumer-guide.md)                                         | Embedding the editor in Svelte, React, Vue or plain JavaScript: props, events, theming, and everything else a host app touches          |
+| [`guide/consumer-guide/recipes.md`](guide/consumer-guide/recipes.md)                         | Worked UI built from the public calls: jump to a block, a selection toolbar, an insert toolbar, a `#` or `[[` menu, a bulk rewrite      |
+| [`guide/consumer-guide/shipping.md`](guide/consumer-guide/shipping.md)                       | Running inside a desktop shell (Tauri, Electron), and getting a bug report out of a user's session                                      |
 | [`guide/plugin-guide.md`](guide/plugin-guide.md)                                             | Teaching the editor your own blocks and inline syntax: a first working plugin, the model behind it, and a map of the recipe pages below |
 | [`guide/plugin-guide/per-editor.md`](guide/plugin-guide/per-editor.md)                       | Per-editor state, events and options, for a page with more than one editor on it                                                        |
 | [`guide/plugin-guide/container-walkthrough.md`](guide/plugin-guide/container-walkthrough.md) | The biggest worked example, a `:::conspiracy` box end to end, then the `closure` checklist every block kind fills in                    |
@@ -57,7 +59,7 @@ The published pack. This folder ships inside the npm package (the only docs fold
 | [`guide/directives.md`](guide/directives.md)                                                 | The `:::name` fence: a named box in Markdown, and how a plugin claims a name                                                            |
 | [`guide/plugin-guide/parrot-frames.md`](guide/plugin-guide/parrot-frames.md)                 | All ten party-parrot frames, ready to paste over the quickstart's two                                                                   |
 
-The pack is the whole `guide/` folder as is, subfolders included (a doc's gifs live in a folder named after it, and so do the plugin guide's recipe pages), so a markdown link inside it may only point at a file the pack carries. Name any other doc as inline code instead. `npm run lint` fails on a link that'd dangle once the pack leaves the repo.
+The pack is the whole `guide/` folder as is, subfolders included (a doc's gifs live in a folder named after it, and so do the plugin guide's recipe pages and the consumer guide's two extra pages), so a markdown link inside it may only point at a file the pack carries. Name any other doc as inline code instead. `npm run lint` fails on a link that'd dangle once the pack leaves the repo.
 
 ## `contributing/`: how we work
 

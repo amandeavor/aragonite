@@ -2,7 +2,7 @@
 	/**
 	 * An insert toolbar as a consumer would write one, the strip under the showcase header: every
 	 * construct is a Markdown snippet passed to `insertMarkdown`, a plugin's included, so the bar
-	 * needs no API of its own per construct (consumer-guide.md § Recipe: an insert toolbar).
+	 * needs no API of its own per construct (consumer-guide/recipes.md § Recipe: an insert toolbar).
 	 */
 	import type { EditorInstance } from '#lib';
 
