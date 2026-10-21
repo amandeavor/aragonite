@@ -101,7 +101,8 @@ export interface ScrollOwnerDeps {
 	/** False while the browser's own scroll anchoring holds the user's place (host mode, root not
 	 *  windowing): two writers on one position correct it twice. */
 	editorCorrects(): boolean;
-	getBlockElByPath: BlockElLookup;
+	/** The element a block is placed and shown by, chrome included. */
+	getBlockBoxByPath: BlockElLookup;
 	getEditorRoot(): HTMLElement | null;
 	/** True when an ancestor owns the scroll: the root then spans the whole document, so
 	 *  intersecting a block with it says nothing about visibility. */
@@ -294,7 +295,7 @@ export function createScrollOwner(deps: ScrollOwnerDeps): ScrollOwner {
 	}
 
 	function landedInView(path: number[]): boolean {
-		const el = deps.getBlockElByPath(path);
+		const el = deps.getBlockBoxByPath(path);
 		const root = deps.getEditorRoot();
 		return el != null && (!root || elementInView(el, root));
 	}
@@ -303,7 +304,7 @@ export function createScrollOwner(deps: ScrollOwnerDeps): ScrollOwner {
 		port: writable,
 		isInView(path) {
 			const root = deps.getEditorRoot();
-			const el = deps.getBlockElByPath([...path]);
+			const el = deps.getBlockBoxByPath([...path]);
 			return !!root && !!el && elementInView(el, root);
 		},
 		shows(rect) {
@@ -347,7 +348,7 @@ export function createScrollOwner(deps: ScrollOwnerDeps): ScrollOwner {
 					// Checked first: a placement another scroll took over during a long mount wait
 					// would otherwise yank the viewport once.
 					if (token.superseded) return false;
-					const el = deps.getBlockElByPath(p);
+					const el = deps.getBlockBoxByPath(p);
 					// A fully visible target stays put under `'nearest'`: the browser moves nothing.
 					writeScroll(() => el && { reveal: el, block });
 					if (el && placement === mine) recordLanding(mine, el);

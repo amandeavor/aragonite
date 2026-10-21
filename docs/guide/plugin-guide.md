@@ -42,7 +42,7 @@ A block's **raw** is its exact source bytes, markers included. The editor saves 
 
 - **`declarePluginKind(name)`** creates a new kind and returns it (a name that's already taken throws). Every other call here takes that return value, and the type system won't accept the bare string in its place. A module that didn't create the kind recovers it with `declaredPluginKind(name)`, which throws for an undeclared name (a typo, say) rather than registering against a kind that doesn't exist.
 - **`registerBlockKind(kind, registration)`** describes how the kind behaves and what draws it: does it merge, is it editable, does it host inline content, where can a caret sit beside it, how it answers every cross-cutting editor system (the `closure` field), its `view`, and its `opener`. Two of those need a word:
-  - A **view** is what draws the block. `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component, and `textBlockView()` hands you the editor's own plain text block.
+  - A **view** is what draws the block. `defineBlockView({ surface, mount })` draws it with plain DOM, into an element the editor makes for it, and wires in editable text or child blocks for you if the `surface` asks. `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component, and `textBlockView()` hands you the editor's own plain text block.
   - An **opener** is the part of the parser that spots the line a block starts with: you give it a `priority` (its place in the dispatch order), an `interruptsParagraph` predicate (or `false`, for never), and a `tryOpen` that claims lines or declines. [Teaching the parser](plugin-guide/parser.md#teaching-the-parser) is its full story. Leave it out for a kind no line starts, like one only a menu inserts.
 
   A leaf needs only what the sample below fills.
@@ -468,15 +468,17 @@ After the freeze the version number carries the promise: a breaking change to a 
 
 Two shapes draw everything a plugin puts on screen. (Not to be confused with the read-only node types in [Views](#views-what-you-read-what-you-own), below; same word, different job.)
 
-- **A block draws through a `BlockView`**, the `view` its `registerBlockKind` call takes. For now a view is either `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, or `textBlockView()`, the editor's own plain text block, so a block with a look of its own is a Svelte component.
+- **A block draws through a `BlockView`**, the `view` its `registerBlockKind` call takes. `defineBlockView` makes one with no framework involved: it fills an element the editor made for the block, and its `surface` says whether the editor wires editable text or child blocks into it ([Block views](plugin-api.md#block-views) has the shapes). `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component, and `textBlockView()` is the editor's own plain text block. A block that shows a rendered view until you click into its source (block math does) is still a Svelte component for now.
 - **Everything else draws through a `PluginView`**: an inline widget, a decoration's widget or badge, and an inline menu row. It's a plain function, `(target, props) => ({ update?, destroy? })`, that fills an element the editor made for it ([Rendering it as a widget](plugin-guide/inline-kinds.md#rendering-it-as-a-widget) walks one through). Already writing Svelte? `svelteView(Component)`, also from `/svelte`, turns a component into one for any of those slots.
 
 Which apps can run your plugin follows from that. An app whose bundler compiles Svelte (a Svelte app, say) compiles the editor from source, along with your components. An app whose bundler doesn't (most React, Vue and plain JavaScript apps) runs a prebuilt copy with its own Svelte compiled in, and a Svelte component of yours can't run on that copy's Svelte. So:
 
-| Your plugin draws with                                                                                    | It runs in                                               |
-| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Plain DOM views, or nothing at all (syntax, commands, paste transforms, decorations, menus with DOM rows) | Every app                                                |
-| A block, or any other Svelte component                                                                    | An app whose bundler compiles Svelte (a Svelte app, say) |
+| Your plugin draws with                                                                                                                    | It runs in                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Plain DOM widget, decoration and menu-row views, or nothing at all (syntax, commands, paste transforms, decorations, menus with DOM rows) | Every app                                                |
+| A block, or any Svelte component                                                                                                          | An app whose bundler compiles Svelte (a Svelte app, say) |
+
+A `defineBlockView` block is plain DOM and built to run on the prebuilt copy too, but nothing has run one there yet, so count on it in an app that compiles Svelte for now.
 
 The bundled plugins run everywhere, since they're compiled into the prebuilt copy. Mount a Svelte component of yours in an app that doesn't compile Svelte, and it fails the way any throwing view does: a block shows a "block failed to render" notice above its source, a widget shows just its source. In a dev build the notice and the console name the cause: the component was compiled against a different copy of Svelte.
 

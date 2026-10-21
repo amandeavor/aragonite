@@ -4,20 +4,21 @@ import { describe, it, expect } from 'vitest';
 import type { Component } from 'svelte';
 import type { CstNode } from '../../core/nodes';
 import type { NodeView } from '../../core/node-views';
-import { svelteBlockEntry, svelteBlockView } from '../../components/svelte-block-view';
+import { svelteBlockView } from '../../components/svelte-block-view';
+import { blockViewEntry } from '../../components/block-view-entry';
 
 const fakeComponent = (() => {}) as unknown as Parameters<typeof svelteBlockView>[0];
 
 describe('svelteBlockView', () => {
 	it('returns a view carrying the same component reference', () => {
-		const entry = svelteBlockEntry(svelteBlockView(fakeComponent));
+		const entry = blockViewEntry(svelteBlockView(fakeComponent));
 		expect(entry?.component).toBe(fakeComponent);
 		expect(entry?.extraProps).toBeUndefined();
 	});
 
 	it('forwards extraProps', () => {
 		const extra = (node: NodeView) => ({ blockClass: node.kind });
-		const entry = svelteBlockEntry(svelteBlockView(fakeComponent, extra));
+		const entry = blockViewEntry(svelteBlockView(fakeComponent, extra));
 		expect(entry?.extraProps).toBe(extra);
 		const node = { kind: 'paragraph', leadingTrivia: '', raw: 'x\n' } as CstNode;
 		expect(entry?.extraProps!(node)).toEqual({ blockClass: 'paragraph' });

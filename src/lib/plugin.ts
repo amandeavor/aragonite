@@ -84,11 +84,29 @@ export type {
 export { simpleLeafClosure, containerClosure } from './schema/closure';
 
 // ── Block views ──────────────────────────────────────────────────────────────
-// What draws a kind, the registration's `view`. `BlockView` is opaque: `svelteBlockView` on
-// `/svelte` makes one from a component.
-export type { BlockView } from './schema/block-view';
-// The editor's plain editable text block, for a kind drawn as plain text and for a host that
-// doesn't compile Svelte; `blockClass` lands on its element.
+// What draws a kind, the registration's `view`: `defineBlockView` draws into an element the
+// editor makes, and `svelteBlockView` on `/svelte` draws with a component.
+export { defineBlockView } from './schema/block-view';
+export type {
+	BlockView,
+	BlockSurface,
+	BlockViewSpec,
+	HandBuiltViewSpec,
+	LeafViewSpec,
+	ContainerViewSpec,
+	BlockViewState,
+	BlockViewContext,
+	LeafViewContext,
+	ContainerViewContext,
+	LeafSurface,
+	ContainerSurface,
+	BlockViewHandle,
+	LeafViewHandle,
+	HandBuiltViewHandle,
+	HandBuiltBlock
+} from './schema/block-view';
+// The editor's plain editable text block, for a kind drawn as plain text; `blockClass` lands on
+// its element.
 export { textBlockView } from './components/blocks/text/text-block-view';
 export type { BlockComponent, BlockComponentExports, BlockComponentProps } from './block-component';
 

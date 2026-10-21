@@ -94,6 +94,8 @@ export interface CaretLandingDeps {
 	caretWriter: CaretWriter;
 	caretMemory: Pick<CaretMemory, 'forget' | 'noteOutside'>;
 	getBlockElByPath: BlockElLookup;
+	/** The element a block shows whole by, chrome included. */
+	getBlockBoxByPath: BlockElLookup;
 	/** The editor's own element, which holds focus while a block with no text is selected whole. */
 	getEditorRoot(): HTMLElement | null;
 	/** Null where nothing renders (a headless harness), so a landing only mounts. */
@@ -154,7 +156,7 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 			const line = caret(el);
 			if (scroll.shows(line)) return null;
 			// A block that fits shows whole, as it always has; a taller one shows the caret's line.
-			const box = el.getBoundingClientRect();
+			const box = (deps.getBlockBoxByPath([...leafPath]) ?? el).getBoundingClientRect();
 			return box.height <= (scroll.port()?.viewportHeight() ?? 0) ? box : line;
 		});
 	}

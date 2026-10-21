@@ -12,6 +12,11 @@ export const BLOCK_CONTENT_SELECTOR = ':scope > :not(.selection-overlay):not(.de
 export const BLOCK_CONTENT_LOCATOR_SELECTOR =
 	':scope > *:not(.selection-overlay):not(.decoration-overlay):not(.block-drag-handle):not(.decoration-badge):not(.code-rail):not(.md-drawn-caret)';
 
+/** On the element a DOM leaf view fills, whose content element is then the text element marked
+ *  with `VIEW_TEXT_ATTR` inside it: the element that takes focus and holds the caret offsets. */
+export const VIEW_TEXT_HOST_ATTR = 'data-view-text-host';
+export const VIEW_TEXT_ATTR = 'data-view-text';
+
 /** A block's or a cell's editable text, which a whole-block input proxy (a hidden editing host
  *  inside a block that renders as one unit) is not. */
 export const TEXT_SURFACE_SELECTOR = '[contenteditable="true"]:not([data-whole-block-input])';

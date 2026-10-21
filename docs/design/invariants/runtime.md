@@ -97,6 +97,7 @@ These checks run in three kinds of place:
 | G1.131 | A landing in reading mode leaves no browser selection in the block it landed in            | A·N     |
 | G1.132 | A Backspace or Delete at a caret the editor decides never reaches `input` undecided        | A·N     |
 | G1.133 | Reading mode leaves one block in the tab order; anything else there is a control           | A·N     |
+| G1.136 | A DOM block view that moves or hides the element it was given, or fills its text element   | A·N     |
 
 ### The entries
 
@@ -595,3 +596,10 @@ page's focus walk, so the editor keeps one block in it, the one whose own elemen
 -1. Dev fails a second element in the tab order that isn't a control (one left editable counts,
 the host's header doesn't). The same check ships as `readingTabOrderProblem` for a plugin's tests.
 `checkReadingTabStops` · `reading-focus.test.ts`, `reading-keyboard.spec.ts`.
+
+**G1.136 · A DOM view fills the element it was given** (`dom-view-content`). A `defineBlockView`
+view draws into a `div` under the block's host, which rects and the drag handle measure as the
+block, so it stays the host's first content child and never turns `display: contents`. A leaf
+view's text element sits inside it holding no element of its own. `blockContentElAt` hands every
+caret route that text element and `blockBoxElAt` hands rects and scrolling the `div`, so chrome
+beside the text moves no offset and no rect. `checkDomViewContent` · `block-view-leaf.test.ts`.

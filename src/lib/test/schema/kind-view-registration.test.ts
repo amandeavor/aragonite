@@ -13,7 +13,7 @@ import {
 } from '#lib/schema/block-kind-descriptor.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { registerBuiltInBlocks } from '#lib/components/built-in-blocks.js';
-import { svelteBlockEntry } from '#lib/components/svelte-block-view.js';
+import { blockViewEntry } from '#lib/components/block-view-entry.js';
 import CodeBlock from '#lib/components/blocks/code/CodeBlock.svelte';
 import TableBlock from '#lib/components/blocks/table/TableBlock.svelte';
 import { testClosure } from '#lib/test/support/closure.js';
@@ -37,7 +37,7 @@ describe('registerBlockKind refuses a kind with no view', () => {
 		expect(() =>
 			registerBlockKind(kind, { ...leaf, view } as unknown as BlockKindRegistration)
 		).toThrow(
-			/"legacy-block" needs a `view`.*svelteBlockView.*`textBlockView\(\)` from `[^`]*\/plugin`/
+			/"legacy-block" needs a `view`.*`defineBlockView\(spec\)`.*`textBlockView\(\)` from `[^`]*\/plugin`.*svelteBlockView/
 		);
 		expect(blockViewFor(kind, everyInstalledPlugin)).toBeUndefined();
 	});
@@ -52,6 +52,6 @@ describe('a built-in keeps its view through the augments that follow it', () => 
 		['table', TableBlock]
 	] as const)('%s still draws through its own component', (kind, component) => {
 		const view = blockViewFor(kind, everyInstalledPlugin);
-		expect(view && svelteBlockEntry(view).component).toBe(component);
+		expect(view && blockViewEntry(view).component).toBe(component);
 	});
 });

@@ -60,7 +60,7 @@ export function stubScrollOwner(
 		getScrollHost: () => STUB_HOST,
 		openPort: () => port,
 		editorCorrects: () => true,
-		getBlockElByPath: () => null,
+		getBlockBoxByPath: () => null,
 		getEditorRoot: () => null,
 		isHostScroll: () => false,
 		getClipBounds: () => [],

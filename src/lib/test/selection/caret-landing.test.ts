@@ -99,6 +99,7 @@ function landingOver(source: string, over: Partial<CaretLandingDeps> = {}) {
 		caretMemory,
 		// A stand-in element, so the scroll half has something to bring into view.
 		getBlockElByPath: () => STAND_IN,
+		getBlockBoxByPath: () => STAND_IN,
 		getEditorRoot: () => null,
 		scroll: null,
 		isReading: () => false,
@@ -147,6 +148,7 @@ describe('landing a caret', () => {
 			selectionState: createSelectionState({ getDoc: () => doc }),
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => null,
+			getBlockBoxByPath: () => null,
 			getEditorRoot: () => null,
 			scroll: null,
 			isReading: () => false
@@ -231,6 +233,7 @@ describe('bringing a landing into view', () => {
 			selectionState: createSelectionState({ getDoc: () => doc }),
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => STAND_IN,
+			getBlockBoxByPath: () => STAND_IN,
 			getEditorRoot: () => null,
 			scroll: { ...scroll, port: () => port },
 			isReading: () => false
@@ -271,6 +274,7 @@ describe('the other entry points', () => {
 			selectionState,
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => null,
+			getBlockBoxByPath: () => null,
 			getEditorRoot: () => null,
 			scroll: null,
 			isReading: () => false
@@ -364,6 +368,7 @@ describe('a landing in reading mode', () => {
 			selectionState: createSelectionState({ getDoc: () => doc }),
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => el,
+			getBlockBoxByPath: () => el,
 			getEditorRoot: () => document.body,
 			scroll: null,
 			isReading: () => true

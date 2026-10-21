@@ -1,18 +1,31 @@
 /**
- * The block content element at a path: what cross-block caret arithmetic measures against.
- * Table cells carry no `data-block-path` (they render without BlockHost), so a deep cell path
+ * A block's elements by path: its box, which geometry measures as the block, and its content
+ * element, which takes focus and holds the caret offsets. They differ only for a DOM leaf view,
+ * whose text sits inside its box. Table cells carry no `data-block-path`, so a deep cell path
  * resolves the table wrapper and descends into the cell DOM.
  */
 
-import { BLOCK_CONTENT_SELECTOR, TABLE_CELL_SELECTOR } from './block-content-selector';
+import {
+	BLOCK_CONTENT_SELECTOR,
+	TABLE_CELL_SELECTOR,
+	VIEW_TEXT_ATTR,
+	VIEW_TEXT_HOST_ATTR
+} from './block-content-selector';
 import { widgetElByStart } from '../core/inline/inline-widgets';
 
 /** A block's content element by its path, or null when that block isn't mounted. */
 export type BlockElLookup = (path: number[]) => HTMLElement | null;
 
 export function blockContentElAt(root: HTMLElement, path: number[]): HTMLElement | null {
+	const box = blockBoxElAt(root, path);
+	if (!box?.hasAttribute(VIEW_TEXT_HOST_ATTR)) return box;
+	return box.querySelector<HTMLElement>(`[${VIEW_TEXT_ATTR}]`) ?? box;
+}
+
+/** The element a block's rect and scroll placement measure, chrome and all. */
+export function blockBoxElAt(root: HTMLElement, path: number[]): HTMLElement | null {
 	const wrapper = root.querySelector(`[data-block-path='${JSON.stringify(path)}']`);
-	if (wrapper) return wrapper.querySelector(BLOCK_CONTENT_SELECTOR) as HTMLElement | null;
+	if (wrapper) return wrapper.querySelector<HTMLElement>(BLOCK_CONTENT_SELECTOR);
 	if (path.length < 3) return null;
 	const tablePath = path.slice(0, -2);
 	const rowIdx = path[path.length - 2];

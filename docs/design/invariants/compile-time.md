@@ -22,6 +22,7 @@ what the type retired.
 | G3.13 | A Vue wrapper prop that isn't an editor option, or a boolean Vue would read as false | T     |
 | G3.14 | A Svelte view whose component wants a prop its slot never passes                     | T     |
 | G3.15 | A block kind registered without the view that draws it                               | T     |
+| G3.18 | A block member with no word on who supplies it for a DOM block view                  | T     |
 
 ### The entries
 
@@ -109,3 +110,10 @@ typed over every kind BlockHost mounts, so one missing from `built-in-blocks.ts`
 For a cast or plain JS, `registerBlockKind` refuses a missing or unbranded view and
 `augmentBlockKind` any `view`. `descriptor-groups.types.test.ts`, `kind-view-registration.test.ts`,
 `augment-guard.test.ts`. G1.2's and G1.18's component halves retired here.
+
+**G3.18 · Every block member says who supplies it.** `schema/block-view.ts :: MEMBER_SOURCES` is a
+`Record<keyof BlockComponent, MemberSource>`, so a member added to `BlockComponent` fails to compile
+until it says who supplies it for a DOM view: a hand-built view's handle, the view's host, the leaf
+or container surface, or only the editor. `HAND_BUILT_MEMBERS` and `HandBuiltBlock` read off it, so
+the handle's type and the members its ref publishes can't drift apart. `block-view.types.test.ts`,
+`block-view-none.test.ts`.

@@ -65,6 +65,7 @@ export function restoreLandingOver(
 		selectionState,
 		caretMemory,
 		getBlockElByPath,
+		getBlockBoxByPath: getBlockElByPath,
 		getEditorRoot: () => null,
 		scroll: null,
 		isReading: () => false
