@@ -11,6 +11,11 @@ import {
 } from '#lib/block-lists/state-registry.js';
 import type { BlockListState } from '#lib/block-lists/block-list-state.svelte.js';
 import type { CstNode } from '#lib/core/nodes.js';
+import { parse } from '#lib/core/parser.js';
+import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
+import { asDocPath } from '#lib/selection/path-math.js';
+import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
+import { drainDevWarns, takeDevWarns } from '#lib/test/support/warn-gate.js';
 import KeyedListState from './fixtures/KeyedListState.svelte';
 
 function listNode(): CstNode {
@@ -100,5 +105,25 @@ describe('a container state lives in the registry while its container is mounted
 		void unmount(instance);
 		flushSync();
 		expect(getStateForNode(node)).toBeUndefined();
+	});
+});
+
+describe('the commit refuses a container state whose component has unmounted (G1.138)', () => {
+	it('fires block-list-state-mounted for a state held across its container unmounting', async () => {
+		const { deps } = makeEditorActionsDeps(parse('- one\n- two\n').children);
+		const controller = createUndoController(deps);
+		const list = () => deps.doc.children[0];
+		const held = mountState(list());
+		held.unmount();
+
+		drainDevWarns();
+		await controller.commitMultiScope({
+			scopes: [{ node: list(), state: held.state, path: [0] }],
+			snapshot: { path: asDocPath([0]), offset: 0 },
+			mutate: () => [{ op: 'noop' }]
+		});
+
+		const tags = takeDevWarns().map((fire) => fire.tag);
+		expect(tags).toContain('invariant:block-list-state-mounted');
 	});
 });

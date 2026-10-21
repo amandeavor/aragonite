@@ -441,14 +441,19 @@ const RULES: FileRule[] = [
 	},
 	{
 		id: 'G4.240 every ResizeObserver is made in observe-resize.ts',
-		matches: /\bnew\s+ResizeObserver\b/,
+		matches: /\bnew\s+(?:(?:globalThis|window|self)\s*\.\s*)?ResizeObserver\b/,
 		allowed: {
 			'src/lib/windowing/observe-resize.ts':
 				'the one home of size observation: its entry points own when observing starts and how reports arrive'
 		},
 		reason:
 			'how the browser delivers size reports (an element observed mid-delivery is skipped, a size changed mid-delivery is a loop error) is handled once; watch through `observeResize`, `observeResizeNow` or the shared watch',
-		hits: ['const o = new ResizeObserver(cb);', 'new  ResizeObserver(() => {})'],
+		hits: [
+			'const o = new ResizeObserver(cb);',
+			'new  ResizeObserver(() => {})',
+			'new globalThis.ResizeObserver(cb)',
+			'new window.ResizeObserver(cb)'
+		],
 		misses: ['let o: ResizeObserver | null = null;', "typeof ResizeObserver !== 'function'"]
 	},
 	{
