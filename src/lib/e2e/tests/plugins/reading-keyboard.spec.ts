@@ -8,6 +8,7 @@ import { EditorPage } from '../../editor-page';
 import { settleScroll } from '../../autoscroll';
 import { blockView, capturedErrors, dragBetweenPoints } from './helpers';
 import { FootnotePage } from './footnotes-helpers';
+import { settleDiagrams } from './mermaid-helpers';
 import { addHostButtons, focusName } from '../../reading-focus-probes';
 
 // Reading mode's keyboard is the page's (requirements/plugins/reading-keyboard.md): the editor
@@ -29,6 +30,15 @@ const KINDS_DOC = [
 	'Outro with [b link](https://example.com/b).',
 	'[^a]: The note text.'
 ].join('\n\n');
+
+/** Loads {@link KINDS_DOC} in reading mode once its diagram has drawn, so a point measured on a
+ *  block below it is still on that block when the click lands. */
+async function loadKinds(page: Page): Promise<FootnotePage> {
+	const editor = new FootnotePage(page);
+	await editor.load(KINDS_DOC, 'reading');
+	await settleDiagrams(page);
+	return editor;
+}
 
 interface Kind {
 	name: string;
@@ -125,9 +135,8 @@ test.describe('reading mode: Tab walks controls, and the editor is one stop', ()
 			test(`${kind.name}: clicked, then ${backward ? 'Shift+Tab' : 'Tab'} out`, async ({
 				page
 			}) => {
-				const editor = new FootnotePage(page);
 				const links = await focusWalkReachesLinks(page);
-				await editor.load(KINDS_DOC, 'reading');
+				await loadKinds(page);
 				await addHostButtons(page);
 
 				await kind.press(page);
@@ -142,8 +151,7 @@ test.describe('reading mode: Tab walks controls, and the editor is one stop', ()
 	}
 
 	test('before any click, the first block is the stop', async ({ page }) => {
-		const editor = new FootnotePage(page);
-		await editor.load(KINDS_DOC, 'reading');
+		await loadKinds(page);
 
 		expect(await blockStops(page)).toEqual(['[0]']);
 	});
@@ -151,9 +159,8 @@ test.describe('reading mode: Tab walks controls, and the editor is one stop', ()
 	test('a drag across two blocks still selects, and Tab then leaves the range', async ({
 		page
 	}) => {
-		const editor = new FootnotePage(page);
 		const links = await focusWalkReachesLinks(page);
-		await editor.load(KINDS_DOC, 'reading');
+		const editor = await loadKinds(page);
 		await addHostButtons(page);
 
 		await dragBetweenPoints(
@@ -170,8 +177,7 @@ test.describe('reading mode: Tab walks controls, and the editor is one stop', ()
 	});
 
 	test('Enter on a focused footnote reference still jumps to its definition', async ({ page }) => {
-		const editor = new FootnotePage(page);
-		await editor.load(KINDS_DOC, 'reading');
+		const editor = await loadKinds(page);
 
 		await editor.refs(11).first().focus();
 		await page.keyboard.press('Enter');

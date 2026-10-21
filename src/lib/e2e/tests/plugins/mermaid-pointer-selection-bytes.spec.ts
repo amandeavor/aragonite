@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, dragBetweenPoints } from './helpers';
-import { MERMAID_FENCE, STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
+import { MERMAID_FENCE, STANDARD_DIAGRAM_DOC, settleDiagrams } from './mermaid-helpers';
 import { pointAtRaw } from '../../text-runs';
 
 /**
@@ -17,7 +17,7 @@ test.describe('pointer drag into a rendered diagram', () => {
 		editor = new PluginsPage(page);
 		await editor.gotoPlugins('mermaid');
 		await editor.loadContent(STANDARD_DIAGRAM_DOC);
-		await expect(page.locator('.mermaid-viewport svg')).toHaveCount(1, { timeout: 30_000 });
+		await settleDiagrams(page);
 	});
 
 	/** Mouse down inside "Above text" after "Above ", then drag three quarters down the diagram. */
