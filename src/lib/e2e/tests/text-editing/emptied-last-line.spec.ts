@@ -41,4 +41,16 @@ test.describe('text editing, a last line erased to nothing', () => {
 			expect(await editor.parseConverged()).toBe(true);
 		});
 	}
+
+	test('a setext underline erased above a blank line keeps one blank line (source)', async ({
+		page
+	}) => {
+		await editor.setPresentationMode('source');
+		await editor.loadContent('Plan\n===\n\nb\n');
+		await editor.focusBlockEnd(0);
+		for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace');
+
+		await expect.poll(() => editor.bridge.getSource()).toBe('Plan\n\nb\n');
+		expect(await editor.parseConverged()).toBe(true);
+	});
 });
