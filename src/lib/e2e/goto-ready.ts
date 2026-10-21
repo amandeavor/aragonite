@@ -88,7 +88,7 @@ async function navigateReady(
 				...(reported.length > 0 ? reported : ['nothing captured']),
 				'Its loads and dev-client lines:',
 				...loadSteps.seen(),
-				await probeDevServer(page)
+				await probeAppServer(page)
 			].join('\n')
 		);
 	};
@@ -139,7 +139,7 @@ function watchLoadSteps(page: Page): { seen(): string[]; stop(): void } {
 
 /** Whether the app server still answers, asked from the test process: the server's own output
  *  goes to the runner's reporters, which a worker cannot read. */
-async function probeDevServer(page: Page): Promise<string> {
+async function probeAppServer(page: Page): Promise<string> {
 	const started = Date.now();
 	try {
 		const response = await page.request.get('/favicon.svg', { timeout: 5_000 });

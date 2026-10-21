@@ -49,7 +49,7 @@ const appServer = BUILT
 
 const prodServer = {
 	command: `npm run build && npm run preview -- --port ${PROD_PORT} --strictPort`,
-	// Waits for a page, not the port, for the same reason as the dev server.
+	// Waits for a page, not the port, for the same reason as the app server.
 	url: `http://localhost:${PROD_PORT}/test/editor`,
 	reuseExistingServer: REUSE,
 	stdout: 'pipe' as const,
