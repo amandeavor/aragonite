@@ -79,10 +79,10 @@ export interface RootGestures {
 	rangeAtContextPress(root: HTMLElement): boolean;
 }
 
-// Empty space and a block's non-editable parts (a rendered equation, a diagram, a whole-block
-// input proxy) grow no native selection, so the editor runs the drag from there.
+// Empty space and a block's non-editable parts (a rendered equation, a diagram) grow no native
+// selection, so the editor runs the drag from there; read-only text with a tab stop is text.
 const NOT_A_DRAG_START =
-	`${TEXT_SURFACE_SELECTOR}, ` +
+	`${TEXT_SURFACE_SELECTOR}, [contenteditable="false"][tabindex], ` +
 	'button:not(.editor-tail-row), input, textarea, select, a, summary, [role="checkbox"], ' +
 	'.code-rail, .table-add-zone, .md-menu, .block-drag-handle';
 
@@ -145,7 +145,9 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 	let contextPress: ContextPress | null = null;
 
 	function install(root: HTMLElement): () => void {
-		// Per install: rebinding the root starts with no click in progress.
+		// Per install: rebinding the root starts with no click in progress. A press on a block's own
+		// box or the margin counts in every mode; only an editing mode runs the drag from it.
+		let boxPress = false;
 		let marginDrag = false;
 		let marginSession: { dispose(): void } | null = null;
 
@@ -173,18 +175,14 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 				if (follows && anchorFollows(anchor)) deps.activateLink(anchor.getAttribute('href')!, e);
 				return;
 			}
+			const pressed = boxPress;
+			boxPress = marginDrag = false;
 			// A double or triple click places no caret: the multi-click select painted its range.
-			if (e.detail >= 2) {
-				marginDrag = false;
-				return;
-			}
-			const pressed = marginDrag;
-			const dragged = pressed && deps.presses.travelled(e);
-			marginDrag = false;
-			if (dragged) return;
+			if (e.detail >= 2) return;
+			if (pressed && deps.presses.travelled(e)) return;
 			if (deadSpaceCaret.handleClick(root, e)) return;
-			// A still click on a block's own box (padding beside a table, a rule, a closed
-			// equation's face) places the caret in that block, as empty space does.
+			// A still click on a block's own box (a rule, a closed equation's face) places the caret
+			// there as empty space does; reading mode declines the caret and the block keeps focus.
 			if (pressed && !deadSpaceCaret.isDeadSpaceTarget(root, e.target)) {
 				if (deadSpaceCaret.placeAtPoint(root, e.clientX, e.clientY)) return;
 			}
@@ -196,11 +194,14 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		// Starts where a click would put the caret; mousedown's default is suppressed so no native
 		// selection fights the drag, and `click` still fires.
 		const startMarginDrag = (e: PointerEvent) => {
-			marginDrag = false;
+			boxPress = marginDrag = false;
 			if (e.button !== 0 || e.shiftKey || isModifiedClick(e) || e.altKey) return;
-			if (deps.reading.mode() === 'reading' || !dragStartsHere(root, e.target)) return;
+			if (!dragStartsHere(root, e.target)) return;
 			const anchor = deadSpaceCaret.anchorAtPoint(root, e.clientX, e.clientY);
 			if (!anchor) return;
+			boxPress = true;
+			// Reading mode places no caret, and the browser's own drag selects there.
+			if (deps.reading.mode() === 'reading') return;
 			marginDrag = true;
 			resetForPointerDown(deps.selection, deps.caretWriter, deps.caretMemory, false);
 			// A block that runs its own drag from a nearby click (a table's cell rectangle) takes

@@ -63,11 +63,11 @@ export function blockAtPoint(
 	return null;
 }
 
-/** Whether the hit's editable text belongs to the block itself, not to a child inside it (a
- *  quote's first line is its first child's). False where editing is off, as in reading mode. */
+/** Whether the hit's text belongs to the block itself, not to a child inside it (a quote's first
+ *  line is its first child's), in every mode. */
 export function holdsOwnText(hit: BlockHit): boolean {
 	const surface = hit.charSurface;
-	if (!surface?.matches('[contenteditable="true"]')) return false;
+	if (!surface) return false;
 	const owner = readBlockPath(surface.closest('[data-block-path]'));
 	return owner !== null && pathsEqual(owner, hit.path);
 }

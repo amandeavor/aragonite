@@ -54,6 +54,8 @@ With a point inside a box, `src/lib/selection/block-hit-test.ts` :: `blockAtPoin
 
 Then the kind names the spot inside the block. A table names a cell through its `caretTargetAtPoint` hook; a block of text (prose, or code, whose box has room around its lines) answers through `src/lib/caret/point-offset.ts` :: `caretOffsetAtPoint`, the nearest offset. Neither does arithmetic of its own: both read the one DOM-to-offset walk in `src/lib/caret/widget-offset.ts`, so an image or a hidden marker counts the same whether you clicked or arrowed there. The walk also reads a caret that WebKit or Firefox parks between a CRLF line's `\r` and `\n` as the line's end, before the pair, which is where Chromium puts it anyway.
 
+Reading mode runs the same walk. There's no caret to write there, so the block it picks takes focus (and becomes the editor's tab stop), and the spot is kept for when you switch back out.
+
 Firefox leaves a caret in two more spots Chromium never does: inside an inline widget (End past a formula, a click right of one), and on the far side of a marker run live mode hides (ArrowLeft out of ` text` after `**bold**`). Neither is a spot the editor writes, and inside a widget no key even types. So the caret writer's `canonicalizeCaret` (same file) moves a caret like that, and the one in a CRLF pair, to where the editor would put it for that pixel, on the `selectionchange` and again at the next keydown, since a fast key can beat the event. A caret the editor wrote itself stays where it is, far side included, and so does a range.
 
 The probe, for the curious:

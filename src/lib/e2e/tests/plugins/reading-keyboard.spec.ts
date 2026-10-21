@@ -7,38 +7,11 @@ import { textRunCenter } from '../../text-runs';
 import { EditorPage } from '../../editor-page';
 import { settleScroll } from '../../autoscroll';
 import { blockView, capturedErrors, dragBetweenPoints } from './helpers';
-import { FootnotePage } from './footnotes-helpers';
-import { settleDiagrams } from './mermaid-helpers';
 import { addHostButtons, focusName } from '../../reading-focus-probes';
+import { block, blockStops, controlsFrom, loadKinds, walkOut } from './reading-kinds';
 
 // Reading mode's keyboard is the page's (requirements/plugins/reading-keyboard.md): the editor
 // keeps one tab stop, the block last focused, and Tab and Shift+Tab walk only controls.
-
-const KINDS_DOC = [
-	'Intro with [a link](https://example.com/a).',
-	'## A heading',
-	'A plain paragraph.',
-	'- item one\n- item two',
-	'> a quoted line',
-	'```js\nlet x = 1;\n```',
-	'| H1 | H2 |\n| --- | --- |\n| a | bee |',
-	'---',
-	'<details>\n<summary>More here</summary>\n\nHidden body.\n\n</details>',
-	':::tip Pro tip\nA tip.\n:::',
-	'```mermaid\ngraph TD\n\tA --> B\n```',
-	'Cites [^a] in passing.',
-	'Outro with [b link](https://example.com/b).',
-	'[^a]: The note text.'
-].join('\n\n');
-
-/** Loads {@link KINDS_DOC} in reading mode once its diagram has drawn, so a point measured on a
- *  block below it is still on that block when the click lands. */
-async function loadKinds(page: Page): Promise<FootnotePage> {
-	const editor = new FootnotePage(page);
-	await editor.load(KINDS_DOC, 'reading');
-	await settleDiagrams(page);
-	return editor;
-}
 
 interface Kind {
 	name: string;
@@ -52,9 +25,6 @@ const onWord = (path: number[], word: string) => async (page: Page) => {
 	await page.mouse.click(at.x, at.y);
 };
 const onBox = (box: (page: Page) => Locator) => (page: Page) => clickInPlace(box(page));
-
-const block = (page: Page, path: number[]) =>
-	page.locator(`[data-block-path="${JSON.stringify(path)}"]`);
 
 const KINDS: Kind[] = [
 	{ name: 'paragraph', press: onWord([2], 'plain') },
@@ -79,55 +49,6 @@ const KINDS: Kind[] = [
 	},
 	{ name: 'footnote definition', press: onWord([13, 0], 'note') }
 ];
-
-/** Every element of the editor a focus walk from the focused element should reach, in order. */
-function controlsFrom(page: Page, backward: boolean, links: boolean): Promise<string[]> {
-	return page.evaluate(
-		({ backward, links }) => {
-			const start = document.activeElement!;
-			const stops = [...document.querySelectorAll<HTMLElement>('.editor *')].filter((el) => {
-				if (el.tabIndex < 0 || el.getClientRects().length === 0) return false;
-				if (!links && el.matches('a[href]:not([tabindex])')) return false;
-				const at = start.compareDocumentPosition(el);
-				return backward
-					? !!(at & Node.DOCUMENT_POSITION_PRECEDING) && !(at & Node.DOCUMENT_POSITION_CONTAINS)
-					: !!(at & Node.DOCUMENT_POSITION_FOLLOWING);
-			});
-			const names = stops.map((el) => {
-				const path = el.closest('[data-block-path]')?.getAttribute('data-block-path') ?? '?';
-				return `${el.tagName.toLowerCase()}.${el.classList[0] ?? ''} ${path} "${el.textContent?.trim().slice(0, 12)}"`;
-			});
-			return backward ? names.reverse() : names;
-		},
-		{ backward, links }
-	);
-}
-
-/** The editor's elements in the tab order that aren't controls: reading mode keeps exactly one. */
-function blockStops(page: Page): Promise<string[]> {
-	return page.evaluate(() =>
-		[...document.querySelectorAll<HTMLElement>('.editor [tabindex]')]
-			.filter((el) => el.tabIndex >= 0)
-			.filter(
-				(el) =>
-					!el.matches('a[href], button, input, select, textarea, [role="link"], [role="button"]')
-			)
-			.map((el) => el.closest('[data-block-path]')?.getAttribute('data-block-path') ?? '?')
-	);
-}
-
-/** Presses Tab (or Shift+Tab) until focus reaches the host's button on that side. */
-async function walkOut(page: Page, backward: boolean): Promise<string[]> {
-	const out = backward ? 'host-before' : 'host-after';
-	const visited: string[] = [];
-	for (let i = 0; i < 40; i++) {
-		await page.keyboard.press(focusWalkKey({ backward }));
-		const name = await focusName(page);
-		if (name === out) return visited;
-		visited.push(name);
-	}
-	throw new Error(`the walk never left the editor: ${visited.join(' | ')}`);
-}
 
 test.describe('reading mode: Tab walks controls, and the editor is one stop', () => {
 	for (const kind of KINDS) {
