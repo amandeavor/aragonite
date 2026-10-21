@@ -425,7 +425,8 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		if (!islands.some((i) => i.start === i.end && i.start === caret)) return false;
 		if (backward ? caret <= 0 : caret >= display().length) return false;
 		// This branch outranks the construct-edge rule beside a hidden run, so it asks that rule.
-		if (!hiddenRunDelete(el, caret, intent)) void deleteSpan(el, caret, intent);
+		if (!hiddenRunDelete(el, caret, intent))
+			void deleteSpan(el, caret, intent, landableRawBounds(el));
 		return true;
 	}
 
@@ -519,17 +520,22 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			bounds && (direction === 'backward' ? caret <= bounds.start : caret >= bounds.end);
 		if (atEdge) return 'at-edge';
 		if (hiddenRunDelete(el, caret, intent)) return 'taken';
-		return deleteSpan(el, caret, intent) ? 'taken' : 'at-edge';
+		return deleteSpan(el, caret, intent, bounds) ? 'taken' : 'at-edge';
 	}
 
 	/** The delete rule's span through the in-leaf range replace, a word read as the screen shows it;
 	 *  a cut leaving a heading only hidden markers empties it. False with nothing to take. */
-	function deleteSpan(el: HTMLElement, caret: number, intent: DeleteIntent): boolean {
+	function deleteSpan(
+		el: HTMLElement,
+		caret: number,
+		intent: DeleteIntent,
+		landable: DeleteSpan | null
+	): boolean {
 		const text = display();
 		const span = deleteExtent(intent, {
 			text,
 			caret,
-			bounds: landableRawBounds(el) ?? { start: 0, end: text.length },
+			bounds: landable ?? { start: 0, end: text.length },
 			lineEdge: (side) => lineEdgeOffset(el, caret, side),
 			visible: intent.unit === 'word' ? visibleWalkText(el) : undefined
 		});

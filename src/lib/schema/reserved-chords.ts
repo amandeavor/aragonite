@@ -161,7 +161,7 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		file: 'components/blocks/text/pending-break-keys.ts',
 		chords: [],
 		keys: ['ArrowLeft', 'Backspace', 'Delete'],
-		note: 'A plain Backspace or ArrowLeft ends the pending break and stops there; with a modifier the key ends it and runs as usual.'
+		note: 'A plain Backspace or ArrowLeft, and any Delete, ends the pending break and stops there; Backspace or ArrowLeft with a modifier ends it and runs as usual.'
 	},
 	{
 		file: 'components/blocks/text/widget-interaction.ts',

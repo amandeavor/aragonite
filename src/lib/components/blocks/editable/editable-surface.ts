@@ -275,13 +275,13 @@ export interface EditableSurfaceDeps {
 	localHistory?: (e: InputEvent) => boolean;
 	/** The block's own beforeinput handling, run after the shared step, which it must not await. */
 	handleBeforeInput?: (e: InputEvent) => void;
-	/** Takes what a collapsed delete at raw `caret` aims at, through the block's own text; false
-	 *  to leave it to the browser. Omitted where the browser's delete is read back. */
+	/** Takes what a collapsed delete at raw `caret` aims at, through the block's own text. Omitted
+	 *  where the browser's delete is read back. */
 	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
 	/** The merge the block's key runs at its edge, which a soft keyboard's delete there runs too. */
 	joinAtEdge?: (direction: DeleteDirection) => void;
-	/** The block's own handling of a delete `deleteAtCaret` was never asked about (a range, or a
-	 *  soft keyboard's wider edit), run before the browser's delete would. */
+	/** The block's own handling of a delete the editor left to the browser (a range, a soft
+	 *  keyboard's wider edit, one `deleteAtCaret` declined), run before the browser's would. */
 	handleDeclinedDelete?: (e: InputEvent) => void;
 }
 
