@@ -7,6 +7,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { asDomTextOffset, asEditorX } from '../../caret/coordinate-spaces';
 import { findOffsetNearestX, getCurrentCursorEditorRelativeX } from '../../caret/sticky-measure';
+import type { LineRead } from '../../caret/visual-lines';
+
+/** One line of text, so no caret here sits at a soft wrap and the browser is never asked. */
+const OFF_A_WRAP: LineRead = {
+	focusEndsLine: () => {
+		throw new Error('asked the browser off a soft wrap');
+	}
+};
 
 const EDITOR_LEFT = 24;
 const WIDGET = { left: 40, right: 64, top: 10, bottom: 30 };
@@ -106,9 +114,9 @@ describe('a caret beside a widget, in a block whose only content is that widget'
 
 	it('reads its column off the widget edge it sits on, not the block edge', () => {
 		placeCaretAt(1);
-		expect(getCurrentCursorEditorRelativeX(block)).toBe(WIDGET.right - EDITOR_LEFT);
+		expect(getCurrentCursorEditorRelativeX(block, OFF_A_WRAP)).toBe(WIDGET.right - EDITOR_LEFT);
 		placeCaretAt(0);
-		expect(getCurrentCursorEditorRelativeX(block)).toBe(WIDGET.left - EDITOR_LEFT);
+		expect(getCurrentCursorEditorRelativeX(block, OFF_A_WRAP)).toBe(WIDGET.left - EDITOR_LEFT);
 	});
 
 	it('leaves the landing to text on the same line, which is where a caret shows', () => {

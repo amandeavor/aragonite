@@ -31,7 +31,7 @@ export function handleHomeKey(e: KeyboardEvent, deps: HomeKeyDeps): boolean {
 	if (!el || (markerPrefixOf(el) === null && !landableStartAbutsIsland(el))) return false;
 	const bounds = deps.caretBounds();
 	const focus = deps.getFocusOffset() ?? bounds.start;
-	if (!isAtFirstVisualLine(el, focus, bounds)) return false;
+	if (!isAtFirstVisualLine(el, focus, bounds, deps.extend.caretWriter)) return false;
 	e.preventDefault();
 	if (edge.extend) extendWithinBlock(deps.extend, el, bounds.start);
 	else deps.focusContentStart();

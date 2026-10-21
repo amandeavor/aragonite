@@ -174,7 +174,7 @@ export function extendToLineEdge(
 ): void {
 	const focus = ctx.selection.focus;
 	if (!focus || focus.cellCoordinate) return;
-	const offset = lineEdgeOffset(blockEl, focus.offset, side);
+	const offset = lineEdgeOffset(blockEl, focus.offset, side, ctx.caretWriter);
 	if (offset !== null) moveFocusTo(ctx, { path: focus.path, offset });
 }
 

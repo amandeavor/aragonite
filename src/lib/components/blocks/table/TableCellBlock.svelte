@@ -628,8 +628,8 @@
 		const bounds = landableDomTextBounds(el);
 		const atEdge =
 			key === 'ArrowDown'
-				? isAtLastVisualLine(el, offset, bounds)
-				: isAtFirstVisualLine(el, offset, bounds);
+				? isAtLastVisualLine(el, offset, bounds, caretWriter)
+				: isAtFirstVisualLine(el, offset, bounds, caretWriter);
 		if (!atEdge) return false;
 
 		const anchor = cellPoint(myPath.slice(0, -2), rowMajorCellIndex(rowIdx, colIdx, columnCount));
@@ -643,7 +643,7 @@
 
 	function exitWithStickyX(direction: ExitDirection): void {
 		if (!el) return;
-		const x = getCurrentCursorEditorRelativeX(el) ?? 0;
+		const x = getCurrentCursorEditorRelativeX(el, caretWriter) ?? 0;
 		if (direction === 'up') tableContext.exitUpward(x);
 		else tableContext.exitDownward(x);
 	}

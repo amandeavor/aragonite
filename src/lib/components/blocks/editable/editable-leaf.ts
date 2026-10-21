@@ -693,7 +693,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			text,
 			caret,
 			bounds: landableRawBounds(el) ?? { start: 0, end: text.length },
-			lineEdge: (side) => lineEdgeOffset(el, caret, side)
+			lineEdge: (side) => lineEdgeOffset(el, caret, side, caretWriter)
 		});
 		if (!span) return 'at-edge';
 		spliceSourceText(el, span.start, span.end, '');

@@ -565,7 +565,7 @@
 			text,
 			caret,
 			bounds: { start: 0, end: text.length },
-			lineEdge: (side) => (el ? lineEdgeOffset(el, caret, side) : null)
+			lineEdge: (side) => (el ? lineEdgeOffset(el, caret, side, caretWriter) : null)
 		});
 		const span = unit && editSpan(node, unit, fenceLinesShown);
 		const edit = span && computeRangedEdit(text, span, '');

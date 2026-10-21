@@ -11,6 +11,14 @@ import {
 	caretBoxAt,
 	findOffsetNearestX
 } from '../../caret/sticky-measure';
+import type { LineRead } from '../../caret/visual-lines';
+
+/** One line of text, so no caret here sits at a soft wrap and the browser is never asked. */
+const OFF_A_WRAP: LineRead = {
+	focusEndsLine: () => {
+		throw new Error('asked the browser off a soft wrap');
+	}
+};
 
 const CHAR_WIDTH = 8;
 const LINE_HEIGHT = 18;
@@ -114,22 +122,22 @@ describe('sticky-measure geometry', () => {
 	describe('getCurrentCursorEditorRelativeX', () => {
 		it('returns null when there is no selection range', () => {
 			window.getSelection()?.removeAllRanges();
-			expect(getCurrentCursorEditorRelativeX(block)).toBeNull();
+			expect(getCurrentCursorEditorRelativeX(block, OFF_A_WRAP)).toBeNull();
 		});
 
 		it('subtracts the editor-container left from the viewport cursor X', () => {
 			selectAt(text, 5);
 			// The caret rect's left is 5 * CHAR_WIDTH = 40; the editor's left is 30, so 10 relative
 			// to the editor.
-			expect(getCurrentCursorEditorRelativeX(block)).toBe(5 * CHAR_WIDTH - EDITOR_LEFT);
+			expect(getCurrentCursorEditorRelativeX(block, OFF_A_WRAP)).toBe(5 * CHAR_WIDTH - EDITOR_LEFT);
 		});
 
 		// Miss-analysis: every row measured a caret, so a selection's start and moving end never differed.
 		it('over a selection, measures the moving end, not the start', () => {
 			window.getSelection()!.setBaseAndExtent(text, 1, text, 9);
-			expect(getCurrentCursorEditorRelativeX(block)).toBe(9 * CHAR_WIDTH - EDITOR_LEFT);
+			expect(getCurrentCursorEditorRelativeX(block, OFF_A_WRAP)).toBe(9 * CHAR_WIDTH - EDITOR_LEFT);
 			window.getSelection()!.setBaseAndExtent(text, 9, text, 1);
-			expect(getCurrentCursorEditorRelativeX(block)).toBe(1 * CHAR_WIDTH - EDITOR_LEFT);
+			expect(getCurrentCursorEditorRelativeX(block, OFF_A_WRAP)).toBe(1 * CHAR_WIDTH - EDITOR_LEFT);
 		});
 	});
 

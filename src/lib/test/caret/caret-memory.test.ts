@@ -88,6 +88,16 @@ describe('noteKey across the parts', () => {
 		expect(m.column()).toBe(120);
 	});
 
+	// Miss-analysis: every row handed a measure that only returns, so one that asks the browser for
+	// the caret's line at a soft wrap (and so resets Firefox's own column) ran on every arrow unseen.
+	it('a later arrow of the run measures nothing', () => {
+		const m = arrived();
+		m.noteKey({ key: 'ArrowDown' }, null, () => {
+			throw new Error('measured a held column');
+		});
+		expect(m.column()).toBe(240);
+	});
+
 	it('a vertical arrow with nothing to measure keeps the column rather than clearing it', () => {
 		const m = arrived();
 		m.noteKey({ key: 'ArrowDown' }, null);

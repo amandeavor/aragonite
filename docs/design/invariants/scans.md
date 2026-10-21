@@ -201,6 +201,7 @@ unguarded.
 | G4.239 | No block runs a merge by its id; a delete at an edge runs the plain key's binding            | L       |
 | G4.240 | Every `ResizeObserver` is made in `windowing/observe-resize.ts`                              | L       |
 | G4.241 | A run is laid out and a join asked by the fix-up alone                                       | L       |
+| G4.243 | Only the caret writer calls `Selection.modify`; a caret's line is read through one step      | L       |
 
 ### The entries
 
@@ -1372,3 +1373,9 @@ points say when observing starts. `file-rules.test.ts`.
 `finishUnfinishedReadings` and `absorbSpanReading` are named only where they live and in `settle.ts`,
 so an op reports what it did (a move's uncovered join included) and the commit's one fix-up lays
 out the runs and asks the joins for every edit alike. `lint/separator-write-doors.test.ts`.
+
+**G4.243 · One read of the caret's line.** At a soft wrap a caret's one DOM position is on two
+lines, and `caretRectAt` reads one of them whatever the browser shows. So the line decisions in
+`caret/visual-lines.ts` ask the browser there, through the caret writer, the one file allowed
+`Selection.modify`; every other `caretRectAt` caller is listed with why a line off at a wrap is
+harmless or known. `lint/file-rules.test.ts`.

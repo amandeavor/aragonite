@@ -37,6 +37,7 @@ import { placeholderBreakOf } from './placeholder-break';
 import { assertInvariant } from '../assert';
 import { checkCaretBeforeBreak } from '../invariants/caret-before-break';
 import { checkCaretOutsideLineEndingPair } from '../invariants/line-ending-pairs';
+import { checkLineReadRestored } from '../invariants/line-read-restores';
 import { recordCanonicalCaretCheck } from '../perf/instruments';
 
 // ── Raw offsets and the caret ────────────────────────────────────────────────
@@ -204,6 +205,9 @@ export interface CaretWriter {
 	moveCaretToLineEdge(side: 'start' | 'end'): boolean;
 	/** Moves the selection's focus to its visual line's edge, keeping the anchor: Cmd+Shift+Arrow. */
 	extendToLineEdge(side: 'start' | 'end'): boolean;
+	/** Whether the selection's focus ends its visual line as the browser shows it, which a soft
+	 *  wrap's one DOM position can't say. A read: nothing is written. Null with no caret. */
+	focusEndsLine(): boolean | null;
 	/** Drops the native selection: a gap caret, a widget or a whole-block range holds none. */
 	clear(): void;
 }
@@ -250,6 +254,24 @@ export function createCaretWriter(
 			alter === 'move' ? focus : { node: anchorNode, offset: sel.anchorOffset },
 			focus
 		);
+	}
+
+	// To the line's end and back: a caret the move left alone already ended its line. A range isn't
+	// asked: an extend there and back moves the column WebKit's next Shift+arrow keeps.
+	function focusEndsLine(): boolean | null {
+		const sel = window.getSelection();
+		const node = sel?.focusNode;
+		if (!sel || !node || !sel.isCollapsed) return null;
+		const offset = sel.focusOffset;
+		sel.modify('move', 'forward', 'lineboundary');
+		if (sel.focusNode === node && sel.focusOffset === offset) return true;
+		sel.modify('move', 'backward', 'lineboundary');
+		const back = { node: sel.focusNode, offset: sel.focusOffset };
+		assertInvariant('line-read-restores-focus', () =>
+			checkLineReadRestored({ node, offset }, back)
+		);
+		if (back.node !== node || back.offset !== offset) sel.collapse(node, offset);
+		return false;
 	}
 
 	function selectRawRange(el: HTMLElement, anchor: number, focus: number): boolean {
@@ -319,6 +341,7 @@ export function createCaretWriter(
 		extendToLineEdge(side) {
 			return modifyToLineEdge('extend', side);
 		},
+		focusEndsLine,
 		clear
 	};
 }

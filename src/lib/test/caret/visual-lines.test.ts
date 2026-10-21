@@ -10,8 +10,17 @@ import {
 	findFirstTextNode,
 	findLastTextNode,
 	isAtFirstVisualLine,
-	isAtLastVisualLine
+	isAtLastVisualLine,
+	softWrapAt,
+	type LineRead
 } from '../../caret/visual-lines';
+
+/** Every row here but the wrap's measures a caret off a soft wrap, where the browser is never asked. */
+const OFF_A_WRAP: LineRead = {
+	focusEndsLine: () => {
+		throw new Error('asked the browser off a soft wrap');
+	}
+};
 
 describe('findFirstTextNode / findLastTextNode', () => {
 	it('returns the node itself when it is a non-empty text node', () => {
@@ -232,10 +241,10 @@ describe('isAtFirstVisualLine / isAtLastVisualLine', () => {
 		// Under load Chromium drops the caret range next to a contenteditable=false widget, and
 		// answering a flat false there strands the caret forever; trust the snapped fallback offset.
 		window.getSelection()?.removeAllRanges();
-		expect(isAtFirstVisualLine(block, 0, { start: 0, end: 11 })).toBe(true);
-		expect(isAtFirstVisualLine(block, 5, { start: 0, end: 11 })).toBe(false);
-		expect(isAtLastVisualLine(block, 11, { start: 0, end: 11 })).toBe(true);
-		expect(isAtLastVisualLine(block, 5, { start: 0, end: 11 })).toBe(false);
+		expect(isAtFirstVisualLine(block, 0, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtFirstVisualLine(block, 5, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(false);
+		expect(isAtLastVisualLine(block, 11, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtLastVisualLine(block, 5, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(false);
 	});
 
 	it('returns true for an empty container regardless of geometry', () => {
@@ -248,25 +257,25 @@ describe('isAtFirstVisualLine / isAtLastVisualLine', () => {
 		const sel = window.getSelection()!;
 		sel.removeAllRanges();
 		sel.addRange(range);
-		expect(isAtFirstVisualLine(empty, 0, { start: 0, end: 0 })).toBe(true);
-		expect(isAtLastVisualLine(empty, 0, { start: 0, end: 0 })).toBe(true);
+		expect(isAtFirstVisualLine(empty, 0, { start: 0, end: 0 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtLastVisualLine(empty, 0, { start: 0, end: 0 }, OFF_A_WRAP)).toBe(true);
 		empty.remove();
 	});
 
 	it('isAtFirstVisualLine: true on the first line, false once the cursor drops a line', () => {
 		placeCursor(2);
 		cursorTop = 0; // same line as the first-text-node probe (top 0)
-		expect(isAtFirstVisualLine(block, 2, { start: 0, end: 11 })).toBe(true);
+		expect(isAtFirstVisualLine(block, 2, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(true);
 		cursorTop = 40; // a full line below the first line
-		expect(isAtFirstVisualLine(block, 2, { start: 0, end: 11 })).toBe(false);
+		expect(isAtFirstVisualLine(block, 2, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(false);
 	});
 
 	it('isAtLastVisualLine: true on the last line, false when the cursor sits a line above it', () => {
 		placeCursor(8);
 		cursorTop = 40; // same line as the last-text-node probe (top 40)
-		expect(isAtLastVisualLine(block, 8, { start: 0, end: 11 })).toBe(true);
+		expect(isAtLastVisualLine(block, 8, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(true);
 		cursorTop = 0; // a full line above the last line
-		expect(isAtLastVisualLine(block, 8, { start: 0, end: 11 })).toBe(false);
+		expect(isAtLastVisualLine(block, 8, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(false);
 	});
 
 	it('isAtFirstVisualLine: falls back to the first reachable offset when the rect is unmeasurable', () => {
@@ -277,11 +286,11 @@ describe('isAtFirstVisualLine / isAtLastVisualLine', () => {
 		Range.prototype.getBoundingClientRect = function (this: Range): DOMRect {
 			return this.collapsed ? rectAt(0, 0) : rectAt(0);
 		};
-		expect(isAtFirstVisualLine(block, 0, { start: 0, end: 11 })).toBe(true);
-		expect(isAtFirstVisualLine(block, 5, { start: 0, end: 11 })).toBe(false);
+		expect(isAtFirstVisualLine(block, 0, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtFirstVisualLine(block, 5, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(false);
 		// A run of hidden markers at the start puts the first offset the caret can sit at past raw
 		// 0, and the fallback answers for the caret the user can actually produce there.
-		expect(isAtFirstVisualLine(block, 3, { start: 3, end: 11 })).toBe(true);
+		expect(isAtFirstVisualLine(block, 3, { start: 3, end: 11 }, OFF_A_WRAP)).toBe(true);
 	});
 
 	it('isAtLastVisualLine: falls back to the reachable end when the rect is unmeasurable', () => {
@@ -292,10 +301,10 @@ describe('isAtFirstVisualLine / isAtLastVisualLine', () => {
 		Range.prototype.getBoundingClientRect = function (this: Range): DOMRect {
 			return this.collapsed ? rectAt(0, 0) : rectAt(40);
 		};
-		expect(isAtLastVisualLine(block, 11, { start: 0, end: 11 })).toBe(true);
-		expect(isAtLastVisualLine(block, 5, { start: 0, end: 11 })).toBe(false);
+		expect(isAtLastVisualLine(block, 11, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtLastVisualLine(block, 5, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(false);
 		// The mirror of the first-line case: a run of hidden markers at the end moves the bound in.
-		expect(isAtLastVisualLine(block, 8, { start: 0, end: 8 })).toBe(true);
+		expect(isAtLastVisualLine(block, 8, { start: 0, end: 8 }, OFF_A_WRAP)).toBe(true);
 	});
 
 	// Miss-analysis: every row here measured a caret, so a selection's start and its moving end
@@ -311,11 +320,44 @@ describe('isAtFirstVisualLine / isAtLastVisualLine', () => {
 		};
 		const sel = window.getSelection()!;
 		sel.setBaseAndExtent(text, 2, text, 9);
-		expect(isAtLastVisualLine(block, 9, { start: 0, end: 11 })).toBe(true);
-		expect(isAtFirstVisualLine(block, 9, { start: 0, end: 11 })).toBe(false);
+		expect(isAtLastVisualLine(block, 9, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtFirstVisualLine(block, 9, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(false);
 		sel.setBaseAndExtent(text, 9, text, 2);
-		expect(isAtFirstVisualLine(block, 2, { start: 0, end: 11 })).toBe(true);
-		expect(isAtLastVisualLine(block, 2, { start: 0, end: 11 })).toBe(false);
+		expect(isAtFirstVisualLine(block, 2, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtLastVisualLine(block, 2, { start: 0, end: 11 }, OFF_A_WRAP)).toBe(false);
+	});
+
+	// Miss-analysis: every row measured a caret off a soft wrap, where the measure is never wrong.
+	describe('at a soft wrap, the line is the one the browser shows', () => {
+		// `h` is line one and `ello world` line two, so the caret after `h` is on both.
+		const answering = (endsLine: boolean | null): LineRead => ({ focusEndsLine: () => endsLine });
+
+		it('the end of line one is the first line, and not the last', () => {
+			placeCursor(1);
+			expect(isAtFirstVisualLine(block, 1, { start: 0, end: 11 }, answering(true))).toBe(true);
+			expect(isAtLastVisualLine(block, 1, { start: 0, end: 11 }, answering(true))).toBe(false);
+		});
+
+		it('the start of line two is the last line, and not the first', () => {
+			placeCursor(1);
+			expect(isAtFirstVisualLine(block, 1, { start: 0, end: 11 }, answering(false))).toBe(false);
+			expect(isAtLastVisualLine(block, 1, { start: 0, end: 11 }, answering(false))).toBe(true);
+		});
+
+		it('with no answer from the browser, the measure decides', () => {
+			placeCursor(1);
+			cursorTop = 0;
+			expect(isAtFirstVisualLine(block, 1, { start: 0, end: 11 }, answering(null))).toBe(true);
+		});
+
+		it('a caret just after a hard line break is on one line, and nothing is asked', () => {
+			// The break is line one and `hello world` line two, as they measure across a wrap.
+			text.data = '\nhello world';
+			placeCursor(1);
+			expect(softWrapAt({ startContainer: text, startOffset: 1 }, block)).toBeNull();
+			cursorTop = 40;
+			expect(isAtFirstVisualLine(block, 1, { start: 0, end: 12 }, OFF_A_WRAP)).toBe(false);
+		});
 	});
 });
 
@@ -371,11 +413,11 @@ describe('a caret with no rect of its own reads the line off the box it sits aga
 	it('a widget-only block is one visual line from either edge of the widget', () => {
 		stubRects(() => rectAt(40));
 		placeCursorAt(0);
-		expect(isAtFirstVisualLine(block, 0, { start: 0, end: 6 })).toBe(true);
-		expect(isAtLastVisualLine(block, 0, { start: 0, end: 6 })).toBe(true);
+		expect(isAtFirstVisualLine(block, 0, { start: 0, end: 6 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtLastVisualLine(block, 0, { start: 0, end: 6 }, OFF_A_WRAP)).toBe(true);
 		placeCursorAt(1);
-		expect(isAtFirstVisualLine(block, 6, { start: 0, end: 6 })).toBe(true);
-		expect(isAtLastVisualLine(block, 6, { start: 0, end: 6 })).toBe(true);
+		expect(isAtFirstVisualLine(block, 6, { start: 0, end: 6 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtLastVisualLine(block, 6, { start: 0, end: 6 }, OFF_A_WRAP)).toBe(true);
 	});
 
 	// Miss-analysis: GH #574; every widget-only fixture had a glyph of text, never none at all.
@@ -390,7 +432,7 @@ describe('a caret with no rect of its own reads the line off the box it sits aga
 		// The second image wraps onto the line below the first; the block spans both.
 		stubRects((start) => (start === 1 ? rectAt(30, 20) : rectAt(0, 50)));
 		placeCursorAt(2);
-		expect(isAtFirstVisualLine(block, 76, { start: 0, end: 76 })).toBe(false);
+		expect(isAtFirstVisualLine(block, 76, { start: 0, end: 76 }, OFF_A_WRAP)).toBe(false);
 	});
 
 	// A widget wide enough to wrap sits on its own line below the text, the shape an inline image
@@ -400,7 +442,7 @@ describe('a caret with no rect of its own reads the line off the box it sits aga
 		// The widget is at [1]; the block's whole contents start at [0] and span both lines.
 		stubRects((start) => (start === 1 ? rectAt(30, 120) : rectAt(0, 150)));
 		placeCursorAt(2);
-		expect(isAtLastVisualLine(block, 0, { start: 0, end: 6 })).toBe(true);
-		expect(isAtFirstVisualLine(block, 0, { start: 0, end: 6 })).toBe(false);
+		expect(isAtLastVisualLine(block, 0, { start: 0, end: 6 }, OFF_A_WRAP)).toBe(true);
+		expect(isAtFirstVisualLine(block, 0, { start: 0, end: 6 }, OFF_A_WRAP)).toBe(false);
 	});
 });

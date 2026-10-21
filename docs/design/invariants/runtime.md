@@ -100,6 +100,7 @@ These checks run in three kinds of place:
 | G1.136 | A DOM block view that moves or hides the element it was given, or fills its text element   | A·N     |
 | G1.138 | A commit never addresses a container state whose component has unmounted                   | A·N     |
 | G1.139 | Each run of blank lines a fix-up touched reads on reload as the tree holds it              | A·P·N   |
+| G1.141 | Asking which line a caret at a soft wrap is on leaves the selection's focus where it was   | A·N     |
 
 ### The entries
 
@@ -618,3 +619,9 @@ fix-up has run, every run of blank lines touching the edit holds the blank block
 and each hidden line where a reload puts it: one separator, on the run's first block, and the
 line a fence line takes in that line's slot. A route that writes a separator after the layout fails it.
 `checkBlankRunsLaidOut` · `blank-run-layout.test.ts`, `blank-runs.property.test.ts`.
+
+**G1.141 · Asking for the caret's line moves nothing** (`line-read-restores-focus`). At a soft wrap
+the caret writer's `focusEndsLine` moves the focus to its line's end and back, which keeps the side
+of the wrap the browser shows it on. Dev fails a focus the move back didn't return, which the writer
+then puts back by hand, losing that side. `checkLineReadRestored` · `line-read-restores.test.ts`,
+`caret-line-at-wrap.spec.ts`.
