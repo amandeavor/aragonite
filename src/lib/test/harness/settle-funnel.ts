@@ -127,9 +127,12 @@ export function reorderSettled(
 	const settled = commitSteps(
 		body,
 		() => {
-			const reordered = reorderChildrenWithTrivia(body, from, to, sharing, grammar);
+			const reordered = reorderChildrenWithTrivia(body, from, to, sharing);
 			landing = reordered.landing;
-			return { change: reordered.change, moved: { to: landing } };
+			return {
+				change: reordered.change,
+				moved: { to: landing, uncovered: reordered.uncovered }
+			};
 		},
 		grammar,
 		sharing

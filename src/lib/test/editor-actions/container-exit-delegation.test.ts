@@ -51,7 +51,8 @@ describe('container exit delegates one parent replaceBlock', () => {
 		const [index, replacement, focus] = vi.mocked(parentBlockEdit.replaceBlock).mock.calls[0];
 		expect(index).toBe(0);
 		expect(replacement.map((n: CstNode) => n.raw)).toEqual(['> a\n', '\n']);
-		expect(replacement[1]).toMatchObject({ kind: 'paragraph', leadingTrivia: '\n' });
+		// The blank line above the gap is the commit's fix-up to write, as for any blank block.
+		expect(replacement[1]).toMatchObject({ kind: 'paragraph', leadingTrivia: '' });
 		expect(focus).toEqual({ replacementIndex: 1, offset: 0 });
 		// The replacement is fresh clones, so the live container is untouched until the commit.
 		expect(quote.raw).toBe('> a\n>\n>\n');

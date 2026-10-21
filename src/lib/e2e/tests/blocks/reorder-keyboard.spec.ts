@@ -91,6 +91,18 @@ test.describe('keyboard reorder', () => {
 		await editor.bridge.waitForSourceMatches(/---[\s\S]*lead/);
 	});
 
+	test('Alt+ArrowUp on a heading flush between a paragraph and a table keeps the table', async () => {
+		await editor.loadContent('a\n# h\n| A | B |\n| --- | --- |\n| 1 | 2 |\n');
+		await editor.page.locator('[contenteditable="true"]', { hasText: 'h' }).first().click();
+		await editor.page.keyboard.press('Alt+ArrowUp');
+
+		await expect
+			.poll(() => editor.bridge.getSource())
+			.toBe('# h\na\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n');
+		expect(await editor.bridge.getBlockKind(2)).toBe('table');
+		expect(await editor.parseConverged()).toBe(true);
+	});
+
 	// A move with no sibling in that direction must change nothing and add no undo entry, or it
 	// silently eats a Ctrl+Z; the clamp's unit test skips the keymap dispatch.
 	test('Alt+Arrow at a boundary is a no-op and creates no undo entry', async () => {

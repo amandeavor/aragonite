@@ -66,6 +66,16 @@ const FIX_UP_CALLERS: Record<string, string> = {
 		'`updateNodeContent`, for a write no commit settles: in place, the trial, a body below a scope'
 };
 
+/** G4.241: where a run is laid out and a join asked, which is the one fix-up and its two helpers. */
+const LAYOUT_AND_JOIN_CALLERS: Record<string, string> = {
+	'src/lib/tree-operations/settle.ts':
+		'`settleEdit` and the write’s fix-up, plus `spliceChildrenSettled` for a body no commit owns',
+	'src/lib/tree-operations/blank-runs.ts': 'defines the run layout',
+	'src/lib/tree-operations/neighbour-merge.ts': 'defines the join question and the span re-read',
+	'src/lib/tree-operations/unfinished-readings.ts':
+		'the fix-up’s step for a construct a written line finishes, re-read through the span'
+};
+
 /** The ops whose fix-up runs a step of its own (a content write, a removal, a move), named only
  *  where the mutation reports that kind through `describeEdit`; unreported, the step is skipped. */
 const KIND_REPORTING_CALLERS: Record<string, string> = {
@@ -142,9 +152,22 @@ describeManifests(
 			hits: [
 				'const { change, written } = writeNodeContent(body, i, write, grammar, sharing);',
 				"import { deleteNode as performDelete } from '../tree-operations';",
-				'const moved = reorderChildrenWithTrivia(scope.body, from, to, sharing, grammar);'
+				'const moved = reorderChildrenWithTrivia(scope.body, from, to, sharing);'
 			],
 			misses: ['// writeNodeContent leaves the fix-up to the commit', 'const deleteNodeLater = 1;']
+		},
+		{
+			id: 'G4.241 the run layout and the join question are asked by the fix-up alone',
+			matches:
+				/(?<![\w'"])(normalizeBlankRuns|resolveJoin|separateJoin|finishUnfinishedReadings|absorbSpanReading)\b/,
+			declared: LAYOUT_AND_JOIN_CALLERS,
+			reason:
+				'an op asks a join or lays out a run itself, where the commit’s fix-up asks every edit the same way: report the edit through `describeEdit` (a move’s uncovered join included) and let `settleEdit` ask',
+			hits: [
+				'separateJoin(body, at, "placed", grammar, sharing);',
+				"import { normalizeBlankRuns } from '../tree-operations/blank-runs';"
+			],
+			misses: ['// resolveJoin reads the flush pair', 'const resolveJoinLater = 1;']
 		},
 		{
 			id: 'G4.208 a commit skips the settle-once check only where its mutation fixes up its own writes',

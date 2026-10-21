@@ -157,7 +157,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 	it.each([
 		[
 			'two whitespace lines (#450)',
-			'para\n# h\n    code\n    \n    \n\n```\n```\n',
+			'# para\n    code\n    \n    \n\n```\n```\n',
 			[
 				['paragraph', '', 'para\n    code\n'],
 				['paragraph', '    \n', '    \n'],
@@ -167,7 +167,7 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 		],
 		[
 			'three whitespace lines (#451)',
-			'para\n***\n    code\n    \n    \n    \n\n```\n```\n',
+			'# para\n    code\n    \n    \n    \n\n```\n```\n',
 			[
 				['paragraph', '', 'para\n    code\n'],
 				['paragraph', '    \n', '    \n'],
@@ -177,17 +177,31 @@ describe('a splice absorbs a join the reload would fold (GH #61)', () => {
 			]
 		]
 	])(
-		'a delete leaving a paragraph over indented code takes the code as its continuation: %s',
+		'a heading typed into a paragraph over indented code takes the code as its continuation: %s',
 		(_label, source, layout) => {
 			const doc = parse(source);
 
-			deleteSettled(doc, 1);
+			settled(
+				doc,
+				() => updateNodeContent(doc, 0, 'para\n', defaultGrammarView, createSharingState()).change
+			);
 
-			expect(serialize(doc)).toBe(source.replace(/^para\n[^\n]*\n/, 'para\n'));
+			expect(serialize(doc)).toBe(source.slice(2));
 			expect(doc.children.map((c) => [c.kind, c.leadingTrivia, c.raw])).toEqual(layout);
 			expect(describeConvergence(doc)).toBeNull();
 		}
 	);
+
+	// A delete uncovers the pair, which keeps its kinds: the code stays code (#479).
+	it('a delete leaving a paragraph over indented code keeps the code', () => {
+		const doc = parse('para\n# h\n    code\n');
+
+		deleteSettled(doc, 1);
+
+		expect(serialize(doc)).toBe('para\n\n    code\n');
+		expect(doc.children.map((c) => c.kind)).toEqual(['paragraph', 'indentedCode']);
+		expect(describeConvergence(doc)).toBeNull();
+	});
 
 	it('a delete between separated paragraphs stays a plain delete', () => {
 		const doc = parse('a\n\nb\n\nc\n');

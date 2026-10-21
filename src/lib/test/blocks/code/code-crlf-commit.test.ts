@@ -48,8 +48,8 @@ describe('CodeBlock keystroke commit preserves the trailing line ending', () => 
 });
 
 describe('CodeBlock fence auto-close creates a CRLF paragraph below', () => {
-	// Enter on an unclosed fence's trailing blank line writes the closer and the paragraph
-	// in one replaceBlock; both are pure line ending, so both take the fence's (G4.20).
+	// Enter on an unclosed fence's trailing blank line writes the closer and the paragraph in one
+	// replaceBlock; the paragraph is pure line ending, so it takes the fence's (G4.20).
 	it('the created paragraph carries the fence’s line ending, not a literal LF', () => {
 		mounted = mountCode('```js\r\ncode\r\n\r\n');
 		const { instance, el } = mounted;
@@ -59,7 +59,6 @@ describe('CodeBlock fence auto-close creates a CRLF paragraph below', () => {
 
 		const [, replacement] = vi.mocked(mounted.blockEdit.replaceBlock).mock.calls[0];
 		expect(replacement[0].raw).toBe('```js\r\ncode\r\n```\r\n');
-		expect(replacement[1].leadingTrivia).toBe('\r\n');
 		expect(replacement[1].raw).toBe('\r\n');
 	});
 });

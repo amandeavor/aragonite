@@ -32,6 +32,10 @@ whether or not the drag handles are turned on.
 - A single undo after a reorder restores the source exactly as it was before the move.
 - Alt+ArrowUp on the first sibling does nothing (it is clamped: no move, no error, no undo
   entry).
+- Alt+ArrowUp on a heading flush between a paragraph and a table, with no blank line on either
+  side: the paragraph and the table close up with a blank line between them, so the table stays a
+  table (regression #479: the two read back as one paragraph; miss-analysis: the move tests that
+  checked the pair left behind all had a blank line on one side of the moved block).
 
 ## Pinned below the browser
 

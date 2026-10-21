@@ -30,7 +30,12 @@ import {
 	writeSeparator,
 	writeWrapSlot
 } from './separator-writes';
-import { absorbWindowSeams, type SettledSplice, type TrackedPosition } from './neighbour-merge';
+import {
+	absorbWindowSeams,
+	separateJoin,
+	type SettledSplice,
+	type TrackedPosition
+} from './neighbour-merge';
 import { holdsTrailingBlankLine, normalizeBlankRuns } from './blank-runs';
 import {
 	asksOfPlaced,
@@ -129,8 +134,8 @@ export interface BodyEdit {
 	/** A content write. */
 	written?: WrittenSlot;
 	/** A move, which carries each separator with its position rather than its node; `to` is where
-	 *  the moved block stands before the fix-up merges anything. */
-	moved?: { to: number };
+	 *  the moved block stands before the fix-up merges anything, `uncovered` the join it left. */
+	moved?: { to: number; uncovered: number | null };
 	/** A block removed by `deleteNode`, on its own or after a join wrote it into the block above. */
 	removed?: true;
 }
@@ -216,7 +221,7 @@ function settleEditHead(
 		const settled = settleWrittenSlot(body, written, change, grammar, sharing);
 		return { ...none, change: settled.change, written: settled };
 	}
-	if (moved) return { ...none, ...settleMove(body, change, moved.to, grammar, sharing) };
+	if (moved) return { ...none, ...settleMove(body, change, moved, grammar, sharing) };
 	return none;
 }
 
@@ -232,18 +237,19 @@ function settleRemoval(
 ): StructuralChange {
 	const { at } = change;
 	handDownVacatedSeparator(body, at, before[at]?.leadingTrivia ?? '', sharing);
+	separateJoin(body, at, 'uncovered', grammar, sharing);
 	const laidOut = normalizeBlankRuns(body, at - 1, at, change, grammar, sharing);
 	const survivor = Math.max(at - 1, 0);
 	const span = at - survivor;
 	return absorbAndLayOut(body, survivor, span, at, laidOut, grammar, sharing, tracked).change;
 }
 
-/** A move carries each separator with its position, so the runs of the rotated window are laid
- *  out again before its joins are asked. */
+/** A move's joins, the moved block's placed and the pair it left uncovered, then the runs of the
+ *  rotated window laid out again, since each separator stayed with its position. */
 function settleMove(
 	body: BodyParent,
 	change: StructuralChange,
-	to: number,
+	{ to, uncovered }: { to: number; uncovered: number | null },
 	grammar: GrammarView,
 	sharing: SharingState
 ): { change: StructuralChange; moved: number } {
@@ -251,6 +257,11 @@ function settleMove(
 	if (!window) return { change, moved: to };
 	const lo = window.at;
 	const hi = window.at + window.added - 1;
+	// The joins read the moved blocks side by side, so a moved open last line ends first.
+	endWindowLines(body, change, sharing, grammar);
+	for (let at = lo; at <= hi + 1; at++) {
+		separateJoin(body, at, at === uncovered ? 'uncovered' : 'placed', grammar, sharing);
+	}
 	const laidOut = normalizeBlankRuns(body, lo, hi, change, grammar, sharing);
 	const settled = absorbAndLayOut(body, lo, hi - lo + 1, to, laidOut, grammar, sharing);
 	return { change: settled.change, moved: settled.landing };
@@ -406,6 +417,8 @@ function settleSplicedWindow(
 	tracked?: TrackedPosition
 ): StructuralChange {
 	handDownVacatedSeparator(body, at, vacated, sharing);
+	// A removal alone uncovers the pair it leaves; a block put in its place is the edit's own.
+	if (added === 0) separateJoin(body, at, 'uncovered', grammar, sharing);
 	if (removed.some(isBlankParagraph)) {
 		// Both ends: the removed blank line was this position's own separator and the one the
 		// block below stood on.

@@ -670,9 +670,9 @@
 			raw: closedDisplay + lineEnding,
 			metadata: { ...meta, closed: true }
 		};
-		// The blank separator line and the paragraph's own line are both pure line
-		// ending, so both take the one the closer above got.
-		const paragraphBelow = emptyParagraph(lineEnding, lineEnding);
+		// The paragraph's own line takes the ending the closer above got; the commit's fix-up
+		// gives it the blank line above.
+		const paragraphBelow = emptyParagraph('', lineEnding);
 		void blockEdit.replaceBlock(
 			index,
 			[closedFence, paragraphBelow],

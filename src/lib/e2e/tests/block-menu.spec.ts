@@ -108,6 +108,21 @@ test.describe('trailing insert row and the block menu', () => {
 		expect(await editor.bridge.getSource()).toBe('first\n\nlast\n');
 	});
 
+	test('Remove on a code block flush between a paragraph and a table keeps the table', async ({
+		page
+	}) => {
+		await editor.loadContent('a\n```\ncode\n```\n| A | B |\n| --- | --- |\n| 1 | 2 |\n');
+		await page.locator('[data-block-kind="fencedCode"]').first().click({ button: 'right' });
+		const menu = page.getByRole('menu', { name: 'Block actions' });
+		await menu.getByRole('menuitem', { name: /^Remove/ }).click();
+
+		await expect
+			.poll(() => editor.bridge.getSource())
+			.toBe('a\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n');
+		expect(await editor.bridge.getBlockKind(1)).toBe('table');
+		expect(await editor.parseConverged()).toBe(true);
+	});
+
 	test('Replace with clipboard right after typing in the block is its own undo step', async ({
 		page
 	}) => {

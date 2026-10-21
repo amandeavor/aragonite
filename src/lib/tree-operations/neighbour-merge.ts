@@ -7,7 +7,12 @@
 import type { CstNode, Document } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import { isBlankParagraph, readBlocks } from '../core/parser';
-import { firstLineEnding, splitLines, trimTrailingLineEnding } from '../core/lines';
+import {
+	firstLineEnding,
+	ownTrailingLineEnding,
+	splitLines,
+	trimTrailingLineEnding
+} from '../core/lines';
 import { tableTakesLine } from '../core/parsers/table';
 import { assignChildIdsDeep } from '../block-id';
 import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
@@ -116,6 +121,71 @@ function installReading(
 	retireChildSpans(body);
 	spliceMany(body.children, at, window.length, blocks);
 }
+
+// ── The join question ──
+
+/**
+ * How two blocks read flush against each other: as themselves, as the lower folded into the
+ * upper's last paragraph, as something else a blank line would undo, or as one a blank line can't
+ * part (a list taking indented code in across any number of them).
+ */
+export type JoinReading = 'stands' | 'folds' | 'separate' | 'merge';
+
+/** Who left a join: an edit that put a block there, or one that took the block between away. */
+export type JoinOrigin = 'placed' | 'uncovered';
+
+export function resolveJoin(prev: CstNode, next: CstNode, grammar: GrammarView): JoinReading {
+	const read = (bytes: string) => readBlocks(bytes, { grammar, scope: 'fragment' }).children;
+	const flush = read(prev.raw + next.raw);
+	if (readsAsPair(flush, prev, next)) return 'stands';
+	// The block above isn't last, so its line ending is the document's.
+	if (!readsAsPair(read(prev.raw + ownTrailingLineEnding(prev.raw) + next.raw), prev, next)) {
+		return 'merge';
+	}
+	// The lower block folds in as itself (two quotes as one) or as prose under a paragraph; a table,
+	// a rule or indented code read as paragraph text would change its kind.
+	const [head] = flush;
+	const tookText = head.kind === prev.kind && head.raw.length > prev.raw.length;
+	const keepsKind = next.kind === prev.kind || (next.kind === 'paragraph' && endsInParagraph(head));
+	return tookText && keepsKind ? 'folds' : 'separate';
+}
+
+/** Keep child `at` apart from the block above with a blank line where its origin asks: placed,
+ *  wherever flush they'd read otherwise; uncovered, only where a block would change its kind. */
+export function separateJoin(
+	body: BodyParent,
+	at: number,
+	origin: JoinOrigin,
+	grammar: GrammarView,
+	sharing: SharingState
+): void {
+	const { children } = body;
+	if (at <= 0 || at >= children.length) return;
+	const prev = children[at - 1];
+	const next = children[at];
+	if (next.leadingTrivia !== '' || isBlankParagraph(prev) || isBlankParagraph(next)) return;
+	const reading = resolveJoin(prev, next, grammar);
+	if (reading === 'separate' || (reading === 'folds' && origin === 'placed')) {
+		mintSeparator(body, at, sharing);
+	}
+}
+
+/** Whether `blocks` are `prev` and `next` again, each with its own bytes and kind. */
+const readsAsPair = (blocks: readonly CstNode[], prev: CstNode, next: CstNode): boolean =>
+	blocks.length === 2 &&
+	blocks[0].kind === prev.kind &&
+	blocks[0].raw === prev.raw &&
+	blocks[1].kind === next.kind &&
+	blocks[1].raw === next.raw;
+
+/** Whether a block's last line sits in a paragraph, at any depth: where lazy text continues. */
+function endsInParagraph(node: CstNode): boolean {
+	if (node.kind === 'paragraph') return true;
+	const last = node.children?.at(-1);
+	return last !== undefined && endsInParagraph(last);
+}
+
+// ── The span re-read ──
 
 /** Re-read children `top` through `bottom` as one span, taken where it holds fewer blocks: a
  *  construct backed out at the top that a line at the bottom now finishes (editor.md § 8). */
