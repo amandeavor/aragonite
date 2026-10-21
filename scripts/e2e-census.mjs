@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Fails a CI run in which an engine's shards together ran fewer tests than the tree lists.
-// `node scripts/e2e-census.mjs <dir>` reads every `ci-summary.json` under <dir> (one artifact per
-// shard); a run that uploaded none, a docs-only push, has nothing to count and passes.
+// `node scripts/e2e-census.mjs <dir> <engine>...` reads every `ci-summary.json` under <dir> (one
+// artifact per shard) and expects shards from each engine named.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,16 +15,20 @@ import { fileURLToPath } from 'node:url';
 const ran = (counts) => counts.passed + counts.failed + counts.flaky + counts.skipped;
 
 /**
- * Every problem with one run's shard summaries: a shard missing, doubled or without a plan, a
- * shard that ran other than its planned tests, and groups lost or run twice across shards.
- * @param {Summary[]} summaries @returns {string[]}
+ * Every problem with one run's shard summaries: an expected engine or a shard missing, a shard
+ * doubled or without a plan, a shard that ran other than its planned tests, and groups lost or
+ * run twice across shards.
+ * @param {Summary[]} summaries @param {string[]} engines @returns {string[]}
  */
-export function censusProblems(summaries) {
+export function censusProblems(summaries, engines) {
 	const problems = [];
 	/** @type {Map<string, Summary[]>} */
 	const byEngine = new Map();
 	for (const summary of summaries) {
 		byEngine.set(summary.engine, [...(byEngine.get(summary.engine) ?? []), summary]);
+	}
+	for (const engine of engines) {
+		if (!byEngine.has(engine)) problems.push(`${engine}: no shard reported`);
 	}
 	for (const [engine, shards] of byEngine) {
 		const plans = shards.map((s) => s.plan);
@@ -78,14 +82,11 @@ function readSummaries(dir) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-	const summaries = readSummaries(process.argv[2] ?? '');
-	const problems = censusProblems(summaries);
+	const [dir, ...engines] = process.argv.slice(2);
+	if (!dir || engines.length === 0)
+		throw new Error('usage: node scripts/e2e-census.mjs <dir> <engine>...');
+	const problems = censusProblems(readSummaries(dir), engines);
 	for (const problem of problems) console.error(problem);
-	const engines = [...new Set(summaries.map((s) => s.engine))];
-	console.log(
-		summaries.length === 0
-			? 'no e2e ran'
-			: `census of ${engines.join(', ')}: ${problems.length} problem(s)`
-	);
+	console.log(`census of ${engines.join(', ')}: ${problems.length} problem(s)`);
 	process.exit(problems.length === 0 ? 0 : 1);
 }

@@ -182,7 +182,7 @@ jobs:
           pattern: e2e-*
           path: e2e-summaries
       - if: needs.changes.outputs.code == 'true'
-        run: node scripts/e2e-census.mjs e2e-summaries
+        run: node scripts/e2e-census.mjs e2e-summaries chromium webkit firefox
 
   perf:
     needs: changes

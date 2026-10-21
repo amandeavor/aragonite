@@ -1,8 +1,8 @@
 /**
  * The CI shard split (`scripts/e2e-shards.mjs`) places every spec file in exactly one shard, from
  * the checked-in timing table alone; the table names only spec files that exist and has a time or
- * an estimate for every one; and the census (`scripts/e2e-census.mjs`) catches a shard that lost,
- * doubled or skipped tests. The census job waits on every sharded job and is a required check.
+ * an estimate for every one; and the census (`scripts/e2e-census.mjs`) catches an engine or a shard
+ * that lost, doubled or skipped tests. The census job waits on every sharded job and is required.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -47,9 +47,10 @@ describe('the shard timing table', () => {
 				.filter((file) => !specFiles.includes(file))
 				.map((file) => `${engine}: ${file}`)
 		);
-		expect(stale, 'refresh the table: node scripts/refresh-shard-timings.mjs <run-id>...').toEqual(
-			[]
-		);
+		expect(
+			stale,
+			`a spec moved or went: rename or delete its key in ${TIMINGS_FILE}, or refresh the table with node scripts/refresh-shard-timings.mjs <run-id>`
+		).toEqual([]);
 	});
 
 	it('has a time or an estimate for every spec file on every engine', () => {
@@ -120,26 +121,32 @@ const complete = () => [
 	summary('2/2', 4, plan('2/2', 4, ['[p] › c']))
 ];
 
+const census = (summaries: ReturnType<typeof complete>) => censusProblems(summaries, ['webkit']);
+
 describe('the census', () => {
-	it('passes a complete run, and a run with no e2e at all', () => {
-		expect(censusProblems(complete())).toEqual([]);
-		expect(censusProblems([])).toEqual([]);
+	it('passes a complete run', () => {
+		expect(census(complete())).toEqual([]);
+	});
+
+	it('names an engine that reported nothing at all', () => {
+		expect(census([])).toEqual(['webkit: no shard reported']);
+		expect(censusProblems(complete(), ['webkit', 'firefox'])).toEqual([
+			'firefox: no shard reported'
+		]);
 	});
 
 	it('names a missing shard, a short shard, a doubled file and a lost one', () => {
-		expect(censusProblems(complete().slice(0, 1)).join('\n')).toMatch(
-			/shard 2\/2 reported nothing/
-		);
+		expect(census(complete().slice(0, 1)).join('\n')).toMatch(/shard 2\/2 reported nothing/);
 		const short = complete();
 		short[1].counts.passed = 3;
-		expect(censusProblems(short).join('\n')).toMatch(/ran 3 tests of the 4 planned/);
+		expect(census(short).join('\n')).toMatch(/ran 3 tests of the 4 planned/);
 		const doubled = complete();
 		doubled[1].plan!.groups = ['[p] › b'];
-		expect(censusProblems(doubled).join('\n')).toMatch(/ran in two shards/);
-		expect(censusProblems(doubled).join('\n')).toMatch(/planned 2 of the 3 spec files/);
+		expect(census(doubled).join('\n')).toMatch(/ran in two shards/);
+		expect(census(doubled).join('\n')).toMatch(/planned 2 of the 3 spec files/);
 		const unplanned = complete();
 		unplanned[0].plan = null;
-		expect(censusProblems(unplanned).join('\n')).toMatch(/no plan/);
+		expect(census(unplanned).join('\n')).toMatch(/no plan/);
 	});
 });
 
@@ -160,5 +167,18 @@ describe('the census job', () => {
 		expect(sharded.map(([id]) => id)).toEqual(['e2e', 'e2e-webkit', 'e2e-firefox']);
 		for (const [id] of sharded) expect(waitsOn, id).toContain(id);
 		expect(CI_CONTEXTS).toContain('e2e-census');
+	});
+
+	it('expects every engine a sharded job runs, and each job uploads the summary it counts', () => {
+		const census = jobs.get('e2e-census') ?? '';
+		const expected = /node scripts\/e2e-census\.mjs \S+ (.*)$/m.exec(census)?.[1].split(' ');
+		const downloads = /^ {10}pattern: (\S+)\*$/m.exec(census)?.[1] ?? '';
+		const engineOf = (body: string) => /^ {10}engine: (\w+)$/m.exec(body)?.[1];
+		expect(downloads, 'the census downloads the summaries by a name prefix').not.toBe('');
+		expect(expected?.sort()).toEqual(sharded.map(([, body]) => engineOf(body)).sort());
+		for (const [id, body] of sharded) {
+			expect(body, id).toMatch(/^ {10}path: test-results\/ci-summary\.json$/m);
+			expect(/^ {10}name: (.+)$/m.exec(body)?.[1].startsWith(downloads), id).toBe(true);
+		}
 	});
 });
