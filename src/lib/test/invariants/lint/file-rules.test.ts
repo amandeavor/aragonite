@@ -1548,6 +1548,26 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
+		id: 'G4.239 no block runs a merge by its id',
+		// A keymap row (`command:`) binds a merge and a handler (`case`) answers one; neither runs it.
+		matches: /(?<!command:\s*|case\s+)['"`]block\.merge(?:Prev|Next)['"`]/,
+		allowed: {
+			[SOURCE.commands]: 'the list of built-in command ids'
+		},
+		reaches: [SOURCE.commands],
+		reason:
+			'a delete at a block’s edge runs what plain Backspace or Delete binds, through `collapsed-delete.ts` and the keymap; a merge run by its id skips the host’s `keybindings`',
+		hits: [
+			"void runCommand(direction === 'backward' ? 'block.mergePrev' : 'block.mergeNext');",
+			"editor.runCommand('block.mergeNext');"
+		],
+		misses: [
+			"{ chord: 'Backspace', command: 'block.mergePrev' },",
+			"case 'block.mergeNext':",
+			'if (target) dispatchKeyCommand(key, target, deps.commands);'
+		]
+	},
+	{
 		id: 'G4.234 an editable block hears beforeinput through its editable surface',
 		matches:
 			/addEventListener\(\s*['"]beforeinput['"]|\bonbeforeinput(?:capture)?\s*[=:]\s*\{?\s*(?!editableSurface\.onBeforeInput\b|\(\w+:\s*InputEvent\)\s*=>\s*void)[\w$(]|\[[^\]]*['"]beforeinput['"][^\]]*\]\s*\.(?:map|forEach)\(|\bon(?:Root)?\([^)]*['"]beforeinput['"]/,
@@ -2338,6 +2358,8 @@ const RANGE_INDENT: ManifestRule[] = [
 				'the container dispatch, which leaves a key a live range owns to the range, whose handler claims it only after an await',
 			'src/lib/components/blocks/editable/surface-wiring.svelte.ts':
 				'a leaf’s own chords, which the leaf runs once the range’s handler has passed on the key',
+			'src/lib/components/blocks/editable/editable-surface.ts':
+				'a delete at a leaf’s edge, which runs what plain Backspace or Delete binds there',
 			'src/lib/selection/cross-block/keydown.ts':
 				'the range’s own handler: what the caret memory notes, whether a key indents, and a format chord over the range',
 			'src/lib/selection/cross-block/range-indent.ts':

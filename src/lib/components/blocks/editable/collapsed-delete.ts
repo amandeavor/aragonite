@@ -24,29 +24,32 @@ export interface CollapsedDeleteReads {
 	/** The raw range the browser reports the input would take, null where it names none. */
 	targetRange(e: InputEvent): RawRange | null;
 	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
-	/** The merge the block's key runs at its edge, for a delete that names no key; absent where
-	 *  the block has none. */
-	joinAtEdge?: (direction: DeleteDirection) => void;
+	/** Runs what the plain key binds at this block, through the editor's keymap and the host's
+	 *  `keybindings`; absent where the block binds nothing. */
+	runPlainKey?: (key: PlainDeleteKey) => void;
 }
 
+export type PlainDeleteKey = 'Backspace' | 'Delete';
+
 /** The verdict on a `beforeinput` the editor decides deletes for; null for every other input.
- *  `keyed` says a Backspace or Delete keydown opened it, rather than a soft keyboard. */
+ *  `keyChord` is the opening Backspace or Delete keydown's chord, null for a soft keyboard. */
 export function decideCollapsedDelete(
 	e: InputEvent,
-	keyed: boolean,
+	keyChord: string | null,
 	reads: CollapsedDeleteReads
 ): DeleteVerdict | null {
 	const intent = decidedDelete(e.inputType);
 	if (!intent) return null;
 	const caret = reads.caret();
-	const decline = declineReason(e, intent, caret, keyed, reads);
+	const decline = declineReason(e, intent, caret, keyChord !== null, reads);
 	if (decline || caret === null) return { decided: false, decline: decline ?? 'no-caret' };
 	const answer = reads.deleteAtCaret?.(caret, intent) ?? 'declined';
 	if (answer === 'declined') return { decided: false, decline: 'surface' };
-	// The browser's own delete at the edge can take a hidden marker, so it never runs. A key reaching
-	// here is a chord the keymap leaves alone, or a merge the host turned down: neither merges.
+	// The browser's own delete at the edge can take a hidden marker, so it never runs.
 	e.preventDefault();
-	if (answer === 'at-edge' && !keyed) reads.joinAtEdge?.(intent.direction);
+	// Every unit at the edge does what the plain key does; that key's own binding ran at its keydown.
+	const plain: PlainDeleteKey = intent.direction === 'backward' ? 'Backspace' : 'Delete';
+	if (answer === 'at-edge' && keyChord !== plain) reads.runPlainKey?.(plain);
 	return { decided: true };
 }
 

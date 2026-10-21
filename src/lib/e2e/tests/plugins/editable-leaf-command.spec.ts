@@ -85,4 +85,23 @@ test.describe('plugin block commands on the editable-leaf level: the %% memo kin
 		await page.keyboard.type('!');
 		await editor.bridge.waitForSourceContains('%% memo text!');
 	});
+
+	// A delete at the leaf's edge runs what plain Backspace binds there, by key or soft keyboard.
+	test("a soft keyboard's Backspace at the memo's start runs the leaf's Backspace binding", async ({
+		page
+	}) => {
+		await page.evaluate(() =>
+			(window as any).__test.setKeybindings([
+				{ chord: 'Backspace', command: 'memo.tag', kind: 'memo' }
+			])
+		);
+		await editor.memo.click();
+		await page.keyboard.press(edgeKey('lineStart'));
+		await page.evaluate(() => {
+			const init = { inputType: 'deleteContentBackward', bubbles: true, cancelable: true };
+			document.activeElement!.dispatchEvent(new InputEvent('beforeinput', init));
+		});
+		await editor.bridge.waitForSourceContains('%%! memo text');
+		expect(await memoTagged(page)).toBe(true);
+	});
 });

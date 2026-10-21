@@ -391,8 +391,18 @@ test.describe('Shift+Backspace takes what Backspace takes', () => {
 	});
 });
 
-// A soft keyboard's delete at a block's edge runs the merge the key runs, the same bytes.
-const EDGE_ROWS = [
+interface EdgeRow {
+	name: string;
+	source: string;
+	path: number[];
+	at: number;
+	forward?: boolean;
+	live?: boolean;
+	viaEnd?: boolean;
+}
+
+// A delete of any unit at a block's edge, by any route, does what the plain key does there.
+const EDGE_ROWS: EdgeRow[] = [
 	{ name: 'Backspace at a paragraph start', source: 'abc\n\nnext\n', path: [1], at: 0 },
 	{ name: 'Delete at a paragraph end', source: 'abc\n\nnext\n', path: [0], at: 3, forward: true },
 	{ name: 'Backspace at a second list item start', source: '- a\n- b\n', path: [0, 1, 0], at: 0 },
@@ -406,10 +416,112 @@ const EDGE_ROWS = [
 		forward: true,
 		live: true,
 		viaEnd: true
+	},
+	// The browser's own delete there would take the space of the hidden `# `.
+	{
+		name: "in live mode, Backspace at a heading's start",
+		source: 'para\n\n# Title\n',
+		path: [1],
+		at: 2,
+		live: true
+	},
+	// The code block's Backspace steps out to the block above: the bytes stay and the caret moves.
+	{ name: "Backspace at a code block's start", source: 'abc\n\n```\nx\n```\n', path: [1], at: 0 }
+];
+
+/** A keydown with a modifier the editor's keymap leaves alone, then the input it opens, as a Mac
+ *  sends Option or Cmd with Backspace. */
+async function sendChordDelete(
+	page: Page,
+	key: 'Backspace' | 'Delete',
+	modifier: 'altKey' | 'metaKey',
+	inputType: string
+): Promise<void> {
+	await page.evaluate(
+		({ key, modifier, inputType }) => {
+			const target = document.activeElement as HTMLElement;
+			const init = { key, [modifier]: true, bubbles: true, cancelable: true };
+			if (!target.dispatchEvent(new KeyboardEvent('keydown', init))) return;
+			const input = { inputType, bubbles: true, cancelable: true };
+			target.dispatchEvent(new InputEvent('beforeinput', input));
+		},
+		{ key, modifier, inputType }
+	);
+}
+
+interface EdgeRoute {
+	name: string;
+	backwardOnly?: boolean;
+	send(page: Page, key: 'Backspace' | 'Delete'): Promise<void>;
+}
+
+const EDGE_ROUTES: EdgeRoute[] = [
+	{ name: 'a soft keyboard', send: (page, key) => sendKeylessDelete(page, key) },
+	{ name: 'the word chord', send: (page, key) => page.keyboard.press(`${WORD_MODIFIER}+${key}`) },
+	// Shift+Delete is a cut on Windows.
+	{ name: 'Shift', backwardOnly: true, send: (page, key) => page.keyboard.press(`Shift+${key}`) },
+	{
+		name: "a Mac's Option word delete",
+		send: (page, key) =>
+			sendChordDelete(
+				page,
+				key,
+				'altKey',
+				key === 'Backspace' ? 'deleteWordBackward' : 'deleteWordForward'
+			)
+	},
+	{
+		name: "a Mac's Cmd line delete",
+		send: (page, key) =>
+			sendChordDelete(
+				page,
+				key,
+				'metaKey',
+				key === 'Backspace' ? 'deleteSoftLineBackward' : 'deleteSoftLineForward'
+			)
 	}
 ];
 
-test.describe('a soft keyboard delete at a block edge does what the key does', () => {
+/** The source and the caret, which together say what a delete did. */
+async function edgeOutcome(editor: EditorPage): Promise<string> {
+	await editor.waitForRenderFlush();
+	const focus = (await editor.bridge.getSelectionPaths())?.focus;
+	return JSON.stringify({ source: await editor.bridge.getSource(), focus });
+}
+
+for (const route of EDGE_ROUTES) {
+	test.describe(`a delete at a block edge by ${route.name} does what the plain key does`, () => {
+		let editor: EditorPage;
+
+		test.beforeEach(async ({ page }) => {
+			editor = new EditorPage(page);
+			await editor.goto();
+		});
+
+		for (const row of EDGE_ROWS.filter((row) => !(route.backwardOnly && row.forward))) {
+			test(row.name, async ({ page }) => {
+				const key = row.forward ? 'Delete' : 'Backspace';
+				if (row.live) await editor.setPresentationMode('live');
+				const place = async () => {
+					await editor.loadContent(row.source);
+					await editor.focusBlockAtPath(row.path, row.at);
+					if (row.viaEnd) await page.keyboard.press(edgeKey('lineEnd'));
+				};
+				await place();
+				const before = await edgeOutcome(editor);
+				await page.keyboard.press(key);
+				const plain = await edgeOutcome(editor);
+				expect(plain).not.toBe(before);
+
+				await place();
+				await route.send(page, key);
+				await expect.poll(() => edgeOutcome(editor)).toBe(plain);
+			});
+		}
+	});
+}
+
+test.describe('a delete at a block edge: undo, Android, the heading marker, a cell', () => {
 	let editor: EditorPage;
 
 	test.beforeEach(async ({ page }) => {
@@ -417,28 +529,14 @@ test.describe('a soft keyboard delete at a block edge does what the key does', (
 		await editor.goto();
 	});
 
-	for (const row of EDGE_ROWS) {
-		test(row.name, async ({ page }) => {
-			const key = row.forward ? 'Delete' : 'Backspace';
-			if (row.live) await editor.setPresentationMode('live');
-			const place = async () => {
-				await editor.loadContent(row.source);
-				await editor.focusBlockAtPath(row.path, row.at);
-				if (row.viaEnd) await page.keyboard.press(edgeKey('lineEnd'));
-			};
-			await place();
-			await page.keyboard.press(key);
-			await editor.waitForRenderFlush();
-			const keyed = await editor.bridge.getSource();
-			expect(keyed).not.toBe(row.source);
-
-			await place();
-			await sendKeylessDelete(page, key);
-			await expect.poll(async () => escaped(await editor.bridge.getSource())).toBe(escaped(keyed));
-			await editor.undo();
-			await expect.poll(() => editor.bridge.getSource()).toBe(row.source);
-		});
-	}
+	test("a soft keyboard's merge is one undo", async ({ page }) => {
+		await editor.loadContent('abc\n\nnext\n');
+		await editor.focusBlockAtPath([1], 0);
+		await sendKeylessDelete(page, 'Backspace');
+		await editor.bridge.waitForSourceEquals('abcnext\n');
+		await editor.undo();
+		await editor.bridge.waitForSourceEquals('abc\n\nnext\n');
+	});
 
 	test('Backspace at a paragraph start after the keydown that names no key', async ({ page }) => {
 		await editor.loadContent('abc\n\nnext\n');
@@ -446,23 +544,28 @@ test.describe('a soft keyboard delete at a block edge does what the key does', (
 		await sendKeylessDelete(page, 'Backspace', { android: true });
 		await editor.bridge.waitForSourceEquals('abcnext\n');
 	});
-});
 
-// A chord the keymap doesn't bind reaches the delete step at the edge, where the browser's own
-// delete would take the hidden marker prefix.
-test.describe('a chorded delete at a block start writes nothing', () => {
+	// The browser's own delete there takes the space of `# ` and leaves `#Title`.
 	for (const chord of ['Shift+Backspace', `${WORD_MODIFIER}+Backspace`]) {
-		test(`${chord} at a live heading's start`, async ({ page }) => {
-			const editor = new EditorPage(page);
-			await editor.goto();
+		test(`${chord} at a live heading's start takes the marker whole`, async ({ page }) => {
 			await editor.setPresentationMode('live');
 			await editor.loadContent('para\n\n# Title\n');
 			await editor.focusBlockAtPath([1], 2);
 			await page.keyboard.press(chord);
 			await page.keyboard.type('x');
-			await editor.bridge.waitForSourceEquals('para\n\n# xTitle\n');
+			await editor.bridge.waitForSourceEquals('para\n\nxTitle\n');
 		});
 	}
+
+	test("the word chord at a table cell's start moves to the cell before, as Backspace does", async ({
+		page
+	}) => {
+		await editor.loadContent('| a | b |\n| - | - |\n| cc | dd |\n');
+		await editor.focusBlockAtPath([0, 1, 1], 0);
+		await page.keyboard.press(`${WORD_MODIFIER}+Backspace`);
+		await page.keyboard.type('Z');
+		await editor.bridge.waitForSourceEquals('| a | b |\n| - | - |\n| ccZ | dd |\n');
+	});
 });
 
 // End and Home leave the caret where each engine puts it at a CRLF line end, and the delete still

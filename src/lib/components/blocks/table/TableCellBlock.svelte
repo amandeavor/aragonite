@@ -203,6 +203,7 @@
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
 		deleteAtCaret: (caret, intent) => edgeDispatch.deleteAtCaret(caret, intent),
+		commandTarget: () => keyTarget,
 		removeSelection: (range) =>
 			writeText({
 				...rangeWrite(node, replaceRangeInLeaf(node, range, '', storedAs())),
@@ -400,6 +401,16 @@
 		return true;
 	});
 
+	const keyTarget = {
+		get kind() {
+			return node.kind;
+		},
+		runCommand,
+		getPath: () => myPath,
+		afterSourceCommit,
+		afterSelectionRemoved: editableSurface.afterSelectionRemoved
+	};
+
 	// The row mounts this cell without `bind:this`, so this registered reference is the only way
 	// a caller reaches it (G4.38).
 	$effect(() => {
@@ -546,14 +557,7 @@
 
 		// Before the plan, whose edge branches ignore modifiers and would eat a column move. A move
 		// from a cell moves the whole table, since a table's grid rows are not reorderable children.
-		const target = {
-			kind: node.kind,
-			runCommand,
-			getPath: () => myPath,
-			afterSourceCommit,
-			afterSelectionRemoved: editableSurface.afterSelectionRemoved
-		};
-		if (wiring.dispatchChord(e, target)) return;
+		if (wiring.dispatchChord(e, keyTarget)) return;
 
 		// Ahead of the plan, which reads an arrow at the cell's edge as a move to the next cell:
 		// a construct closing the cell has a hidden edge to cross first.

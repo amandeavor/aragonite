@@ -115,6 +115,7 @@
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
 		deleteAtCaret: deleteCodeAt,
+		commandTarget: () => keyTarget,
 		handleDeclinedDelete: (e) => void guardFenceRangedEdit(e),
 		removeSelection: (range) => removeRange(range, 'selection-removal') ?? false
 	});
@@ -489,8 +490,7 @@
 
 		if ((await handleSharedKeydown(e, sharedCtx)) || editableSurface.isDetached()) return;
 
-		const target = { kind: node.kind, runCommand, getPath: () => myPath, afterSelectionRemoved };
-		if (wiring.dispatchChord(e, target)) return;
+		if (wiring.dispatchChord(e, keyTarget)) return;
 	}
 
 	// ── Commands ────────────────────────────────────────────────────────
@@ -520,6 +520,15 @@
 			}
 		}
 	);
+
+	const keyTarget = {
+		get kind() {
+			return node.kind;
+		},
+		runCommand,
+		getPath: () => myPath,
+		afterSelectionRemoved
+	};
 
 	function codeBackspace(): boolean {
 		if (!el || backend.getRawSelection() !== null) return false;

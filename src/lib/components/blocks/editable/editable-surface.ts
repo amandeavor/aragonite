@@ -29,7 +29,12 @@ import type { NodeView } from '../../../core/node-views';
 import { blockAccessibleName, readingRole } from '../../../a11y-strings';
 import type { ReadingFocus } from '../../editor-root/reading-focus.svelte';
 import type { ScrollOwner } from '../../../windowing/scroll-owner';
-import type { CommandDispatchContext } from '../../../schema/block-commands';
+import {
+	dispatchKeyCommand,
+	type CommandDispatchContext,
+	type KindCommandTarget
+} from '../../../schema/block-commands';
+import { eventToChord } from '../../../schema/keybindings';
 import type { PluginActivation } from '../../../schema/plugin-activation';
 import type { UndoController } from '../../../editor-actions/deps';
 import type { PasteCommitCoordinator } from '../../../tree-operations/paste/paste-deps';
@@ -96,12 +101,7 @@ import {
 import { assertInvariant } from '../../../assert';
 import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
 import { checkDeleteDecided } from '../../../invariants/collapsed-delete';
-import type {
-	DeleteAnswer,
-	DeleteDirection,
-	DeleteIntent,
-	DeleteVerdict
-} from '../../../caret/delete-extent';
+import type { DeleteAnswer, DeleteIntent, DeleteVerdict } from '../../../caret/delete-extent';
 import { decideCollapsedDelete, type CollapsedDeleteReads } from './collapsed-delete';
 import type { Reading } from '../../../schema/reading';
 import { createPlaceholderHint, type PlaceholderPolicy } from '../placeholder-hint.svelte';
@@ -278,8 +278,8 @@ export interface EditableSurfaceDeps {
 	/** Takes what a collapsed delete at raw `caret` aims at, through the block's own text. Omitted
 	 *  where the browser's delete is read back. */
 	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
-	/** The merge the block's key runs at its edge, which a soft keyboard's delete there runs too. */
-	joinAtEdge?: (direction: DeleteDirection) => void;
+	/** What the block's keys run at, for a delete at its edge, which runs the plain key's binding. */
+	commandTarget?: () => KindCommandTarget;
 	/** The block's own handling of a delete the editor left to the browser (a range, a soft
 	 *  keyboard's wider edit, one `deleteAtCaret` declined), run before the browser's would. */
 	handleDeclinedDelete?: (e: InputEvent) => void;
@@ -611,7 +611,10 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 					return deps.deleteAtCaret!(caret, intent);
 				}
 			: undefined,
-		joinAtEdge: deps.joinAtEdge
+		runPlainKey: (key) => {
+			const target = deps.commandTarget?.();
+			if (target) dispatchKeyCommand(key, target, deps.commands);
+		}
 	};
 
 	// A keydown that writes for itself fires no beforeinput, so the caret is read here too.
@@ -641,7 +644,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// Synchronous to the block's handler: the block's `preventDefault` only counts inside this
 	// listener's microtask checkpoint.
 	function onBeforeInput(e: InputEvent): void {
-		const keyed = deleteKeydown !== null && !deleteKeydown.defaultPrevented;
+		const keyChord =
+			deleteKeydown && !deleteKeydown.defaultPrevented ? eventToChord(deleteKeydown) : null;
 		deleteKeydown = null;
 		// A step below that claims the input leaves it this verdict; the delete step overwrites it.
 		deleteVerdict = { decided: false, decline: 'claimed' };
@@ -657,7 +661,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);
 		if (e.defaultPrevented) return;
-		deleteVerdict = decideCollapsedDelete(e, keyed, deleteReads);
+		deleteVerdict = decideCollapsedDelete(e, keyChord, deleteReads);
 		if (deleteVerdict && !deleteVerdict.decided) deps.handleDeclinedDelete?.(e);
 	}
 

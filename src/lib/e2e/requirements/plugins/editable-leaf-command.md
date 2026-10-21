@@ -27,6 +27,12 @@ kind (commands `memo.tag` on `Mod+Shift+K`, which rewrites `%%` to `%%!`, and `m
   was, since the rewrite keeps the text before it. Miss-analysis: the rows read only the bytes, so
   a caret thrown to the block's start went unseen.
 
+- A host binds Backspace on the memo to `memo.tag`, and a soft keyboard's Backspace (the input
+  with no keydown) lands at the memo's start: the memo is tagged, as the key would tag it, since a
+  delete at a block's edge runs what plain Backspace binds there. Miss-analysis: the edge rows ran
+  in prose blocks only, whose merge was wired by hand, so no row saw a plugin leaf's edge do
+  nothing.
+
 ## Error cases
 
 - A registered handler that throws is caught: pressing its chord reports exactly one `error`

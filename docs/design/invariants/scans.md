@@ -198,6 +198,7 @@ unguarded.
 | G4.234 | Delete input types live in `delete-extent.ts`; blocks hear `beforeinput` via their surface   | L       |
 | G4.235 | In reading mode the page owns Tab: no block reads the key by hand or sets its own tab stop   | L       |
 | G4.237 | A test never navigates a page its `beforeEach` already navigated                             | L       |
+| G4.239 | No block runs a merge by its id; a delete at an edge runs the plain key's binding            | L       |
 
 ### The entries
 
@@ -1352,3 +1353,9 @@ has had that second navigation interrupted in CI's Firefox, and it's never neede
 another URL gets its own describe. The scan walks each describe chain, outer hooks included, and
 fails a test reaching `gotoReady` or `reloadReady` (through any e2e helper) at its `path:line`.
 `e2e/lint/one-navigation-per-test.test.ts`.
+
+**G4.239 · A delete at a block's edge runs the plain key.** A Backspace or Delete of any unit
+(a character, a word, a line, by key or soft keyboard) at a block's edge runs what plain Backspace
+or Delete binds there, through `collapsed-delete.ts` and the keymap, so the host's `keybindings`
+decide it. A `'block.mergePrev'` or `'block.mergeNext'` anywhere but a keymap row, a handler's
+`case` or the command id list fails. `lint/file-rules.test.ts`.
