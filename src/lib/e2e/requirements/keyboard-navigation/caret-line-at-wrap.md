@@ -17,6 +17,8 @@ and WebKit.
 - the same in a list item, and with an image starting the next line
 - End on a short line 1 of a two-line paragraph, ArrowDown: the caret lands on line 2 at line 1's
   column, inside the block, so the question left the caret on line 1's end
+- End on a long line, then ArrowDown twice, through a short line that ends at a wrap: the second
+  ArrowDown lands at the long line's column, the one the browser keeps for a run of arrows
 - after an arrow at a wrap that asks the question, no selection toolbar shows, the selection is
   collapsed, no undo step is added, and one caret shows, on the line the browser shows it
 
@@ -65,3 +67,5 @@ The Mac's Cmd line delete, sent the way `collapsed-delete-class.spec.ts` sends i
 
 - Every vertical-motion row started from a caret the harness placed or from a line with no wrap,
   so no row ever stood on the one spot where a measured caret and the browser's disagree.
+- The run of ArrowDown through a short line's end (Firefox landed at the short line's column): every
+  row pressed one arrow after the question, so none watched the browser's own column across a run.

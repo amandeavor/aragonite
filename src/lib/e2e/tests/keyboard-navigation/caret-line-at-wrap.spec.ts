@@ -202,6 +202,25 @@ test.describe('asking the browser where the line ends', () => {
 		expect(focus!.offset).toBeLessThan(15);
 	});
 
+	test('a run of ArrowDown through a short line’s end keeps the column it started with', async ({
+		page
+	}) => {
+		await page.addStyleTag({ content: EDITOR_WIDTH });
+		// A word too long for line 2 leaves it short, ending at a wrap.
+		const text = `${'abcd '.repeat(10)}tiny ${'x'.repeat(40)} ${PARA}`;
+		await editor.loadContent(`before\n\n${text}\n\nafter\n`);
+		const starts = await lineStarts(page, [1], text.length);
+		await editor.focusBlock(1, 3);
+		await page.keyboard.press(edgeKey('lineEnd'));
+		const column = (await pointAtRaw(page, [1], starts[1], 'before')).x;
+		await page.keyboard.press('ArrowDown');
+		expect(await focusOf(editor)).toEqual({ path: [1], offset: starts[2] });
+		const shortEnd = (await pointAtRaw(page, [1], starts[2], 'before')).x;
+		await page.keyboard.press('ArrowDown');
+		const landed = (await pointAtRaw(page, [1], (await focusOf(editor))!.offset, 'before')).x;
+		expect(Math.abs(landed - column)).toBeLessThan(Math.abs(landed - shortEnd));
+	});
+
 	test('an arrow that asks leaves no trace of the question', async ({ page }) => {
 		const starts = await load(editor, SHAPES[0]);
 		const depth = await editor.bridge.getUndoDepth();

@@ -208,7 +208,9 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 			// Cmd+Up and Cmd+Down jump to an edge as Mod+Home does, so they end the column too.
 			const columnAction = caretEdgeKey(e) ? 'reset' : classifyStickyKey(e.key);
 			if (columnAction === 'reset') dropColumn();
-			else if (columnAction === 'capture') {
+			// A held column needs no measure, and measuring at a soft wrap asks the browser, which resets
+			// the column Firefox keeps for its own next arrow.
+			else if (columnAction === 'capture' && column === null) {
 				const x = measureX?.();
 				if (x !== null && x !== undefined) captureColumn(x);
 			}
