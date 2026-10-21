@@ -16,8 +16,8 @@ export const CI_CONTEXTS = [
 	'consumer-smoke',
 	'adapter-smoke',
 	'emoji-table',
-	...shards('e2e-webkit', 6),
-	...shards('e2e-firefox', 12),
+	...shards('e2e-webkit', 5),
+	...shards('e2e-firefox', 8),
 	'e2e-census'
 ];
 
