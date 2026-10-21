@@ -6,14 +6,9 @@ Miss-analysis: the join check after a write asked only the pair of blocks beside
 
 ## Happy paths
 
-- `:::note\n<div>\n`, Enter at the end of `<div>`, then `:::` on the new line under it: `:::note
-
-<div>
-
-:::
-`, one block holding the `<div>`, and the tree reloads as itself (the #684 report's own keys)
-
+- `:::note\n<div>\n`, Enter at the end of `<div>`, then `:::` on the new line under it: `:::note\n<div>\n\n:::\n`, one block holding the `<div>`, and the tree reloads as itself (the #684 report's own keys)
 - `$$\n<div>\n\nx\n`, Enter at the end of `x`, then `$$`: one math block from the first `$$` to the one typed, and the tree reloads as itself
+- `::::note\n\nx\n\n:::\n`, Delete at the start of the first line: `:::note` now takes the `:::` below as its closer, one block, and the tree reloads as itself; Undo gives back the four colons and the three paragraphs, which reload as themselves too
 
 ## Edge cases
 

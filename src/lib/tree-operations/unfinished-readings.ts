@@ -60,19 +60,32 @@ export function finishUnfinishedReadings(
 	tracked?: TrackedPosition
 ): SettledSplice {
 	const unchanged: SettledSplice = { change, landing: tracked?.index ?? first };
-	if (asks.above) {
-		const top = topmostUnfinished(body, bodyStartIndex(body), first - 1, grammar);
-		recordUnfinishedWalk(first - bodyStartIndex(body));
+	const start = bodyStartIndex(body);
+	if (asks.above && first > start) {
+		const top = topmostUnfinished(body, start, first - 1, grammar);
+		recordUnfinishedWalk(first - start);
 		const settled =
 			top >= 0 ? absorbSpanReading(body, top, last, change, grammar, sharing, tracked) : unchanged;
 		// Once a construct above took the written lines in, they are its body, past any ask below.
 		if (settled.change !== change) return settled;
 	}
 	if (!asks.below || last >= body.children.length - 1) return unchanged;
-	const top = topmostUnfinished(body, first, last, grammar);
-	const bottom = top >= 0 ? firstCandidateBelow(body, last + 1, grammar) : -1;
-	if (bottom < 0) return unchanged;
-	return absorbSpanReading(body, top, bottom, change, grammar, sharing, tracked);
+	// Each re-read can leave a block waiting (the opener refused the closer, or a fence it took was
+	// another's opener), so the walk goes on until none in the re-read span waits.
+	let settled = unchanged;
+	let top = topmostUnfinished(body, first, last, grammar);
+	let from = last + 1;
+	while (top >= 0) {
+		const bottom = firstCandidateBelow(body, from, grammar);
+		recordUnfinishedWalk((bottom < 0 ? body.children.length : bottom + 1) - from);
+		if (bottom < 0) break;
+		const count = body.children.length;
+		settled = absorbSpanReading(body, top, bottom, settled.change, grammar, sharing, tracked);
+		const end = bottom - (count - body.children.length);
+		top = topmostUnfinished(body, top, end, grammar);
+		from = end + 1;
+	}
+	return settled;
 }
 
 /** The topmost block in `[from, to]` whose reading isn't final, or -1; one walk, one test each. */

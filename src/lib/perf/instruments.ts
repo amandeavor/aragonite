@@ -72,7 +72,7 @@ export interface PerfSnapshot {
 	neighbourPasses: number;
 	/** Blank-line and neighbour fix-up passes run over a body after an edit. */
 	settlePasses: number;
-	/** Walks up from a written line looking for a construct it could finish, and the blocks read. */
+	/** Walks up or down from a written line for a construct it could finish, and the blocks read. */
 	unfinishedWalks: number;
 	unfinishedBlocksAsked: number;
 }

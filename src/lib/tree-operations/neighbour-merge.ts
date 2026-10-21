@@ -170,6 +170,11 @@ export function separateJoin(
 	}
 }
 
+/** Whether a re-read gave back the window's own blocks, each with its kind and bytes. */
+const readsAsWindow = (blocks: readonly CstNode[], window: readonly CstNode[]): boolean =>
+	blocks.length === window.length &&
+	blocks.every((block, i) => block.kind === window[i].kind && block.raw === window[i].raw);
+
 /** Whether `blocks` are `prev` and `next` again, each with its own bytes and kind. */
 const readsAsPair = (blocks: readonly CstNode[], prev: CstNode, next: CstNode): boolean =>
 	blocks.length === 2 &&
@@ -187,7 +192,7 @@ function endsInParagraph(node: CstNode): boolean {
 
 // ── The span re-read ──
 
-/** Re-read children `top` through `bottom` as one span, taken where it holds fewer blocks: a
+/** Re-read children `top` through `bottom` as one span, taken where it reads otherwise: a
  *  construct backed out at the top that a line at the bottom now finishes (editor.md § 8). */
 export function absorbSpanReading(
 	body: BodyParent,
@@ -207,7 +212,7 @@ export function absorbSpanReading(
 	const read = (bytes: string) => readBlocks(bytes, { grammar, scope: 'fragment' });
 	const bytes = joinedWindowBytes(window, window.length);
 	const reparsed = read(bytes);
-	if (reparsed.children.length === 0 || reparsed.children.length >= window.length) return unchanged;
+	if (reparsed.children.length === 0 || readsAsWindow(reparsed.children, window)) return unchanged;
 	const blocks = withLowerEdge(body, bottom + 1, bytes, reparsed, read, sharing);
 	installReading(body, top, window, blocks, bytes, sharing, tracked);
 	const eaten = window.length - blocks.length;

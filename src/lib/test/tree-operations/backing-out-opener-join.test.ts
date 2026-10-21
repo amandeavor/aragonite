@@ -179,11 +179,14 @@ describe.each(ROUTES)('a closer written blocks below the construct it finishes, 
 	});
 
 	// The closer was already there; the opener above it only now accepts it.
-	it('a fence shortened to match a closer below takes it in', async () => {
-		const { doc, write } = route('::::note\n\nx\n\n:::\n');
+	it.each([
+		['::::note', ':::note', ':::', 'admonition'],
+		['$$$', '$$', '$$', 'mathBlock']
+	])('a `%s` shortened to `%s` takes in the `%s` below', async (long, short, closer, kind) => {
+		const { doc, write } = route(`${long}\n\nx\n\n${closer}\n`);
 		expect(doc.children).toHaveLength(3);
-		await write(0, ':::note\n');
-		expect(doc.children.map((c) => c.kind)).toEqual(['admonition']);
+		await write(0, `${short}\n`);
+		expect(doc.children.map((c) => c.kind)).toEqual([kind]);
 		expectParseConverged(doc);
 	});
 
@@ -200,6 +203,17 @@ describe.each(ROUTES)('a closer written blocks below the construct it finishes, 
 			expectParseConverged(doc);
 		}
 	);
+
+	// A fence that starts waiting re-pairs every fence below it, and a closer it refuses stops nothing.
+	it.each([
+		['past a `:::` the `::::` refuses', 'x::::note\n\na\n\n:::\n\nb\n\n::::\n', '::::note\n', 1],
+		['and every `$$` pair below', 'x$$\n\na\n\n$$\nm\n$$\n\nb\n\n$$\nn\n$$\n', '$$\n', 5]
+	])('an opener made by a write reads down %s', async (_l, source, text, count) => {
+		const { doc, write } = route(source);
+		await write(0, text);
+		expect(doc.children).toHaveLength(count);
+		expectParseConverged(doc);
+	});
 
 	it('Enter that puts a `$$` on a line of its own closes the `$$` above', async () => {
 		const { doc, split } = route('$$\n\nfoo\n\nx $$\n');
