@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { addReplaceIsland } from '../../decoration-sources';
+import { addReplaceIsland, addWidgetIsland } from '../../decoration-sources';
 import { extendKey } from '../../platform-keys';
 
 /**
@@ -13,38 +13,6 @@ import { extendKey } from '../../platform-keys';
  */
 
 const ISLAND = '[data-decoration-island]';
-
-// The widget source places its widget at a fixed offset and declines once the block lacks the
-// bytes, as the replace source does.
-async function addWidgetIsland(page: Page, path: number[], offset: number) {
-	await page.evaluate(
-		({ path, offset }) => {
-			(window as any).__test.decorations.addSource({
-				name: 'e2e-widget-island',
-				provide: (doc: any) => {
-					let node: any = doc;
-					for (const index of path) node = node?.children?.[index];
-					const held = node ? String(node.raw).replace(/\r?\n$/, '').length : 0;
-					if (held < offset) return [];
-					return [
-						{
-							type: 'widget',
-							path,
-							offset,
-							widget: {
-								view: (target: HTMLElement) => {
-									target.append(document.createElement('span'));
-									return {};
-								}
-							}
-						}
-					];
-				}
-			});
-		},
-		{ path, offset }
-	);
-}
 
 /** The DOM position a real step-over or edge Backspace lands on, which a raw offset cannot address
  *  once a replace decoration takes its bytes out of textContent. Setup only; the keys are real. */

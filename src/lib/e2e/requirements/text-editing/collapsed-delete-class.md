@@ -68,17 +68,31 @@ And beside those:
 - Shift+Backspace and the word chord at a live `# Title`'s start, then `x`: `xTitle`, the marker
   gone whole, never the `#Title` the browser's own delete leaves
 - the word chord at a table cell's start moves to the end of the cell before, as Backspace does
+- live mode, `para` / `# Title` with a widget decoration at the heading's start, Backspace there:
+  the same as with no decoration, the heading becomes a paragraph
 
 A soft keyboard's delete at a table cell's edge does nothing: a cell binds no Backspace, and its
 key moves focus at keydown.
+
+## Any delete beside a widget
+
+A delete of any unit facing a widget does what the plain key does there: an atomic widget goes
+whole, an image is selected with its bytes kept, a replace decoration is selected whole. Each row
+presses the plain key, then the same caret by each route of the block-edge table, and the source,
+the caret and the selection come out the same:
+
+- `aa` / an image then ` bb`, Backspace right after the image, in source and live mode
+- `aa` / `bb ` then an image, Delete right before the image, in source and live mode
+- `lead` then an image closing the block, Backspace at the block's end
+- `a&copy;b`, Backspace after the entity
+- a table cell holding an image then ` b`, Backspace right after the image
+- `abHIDDEN` with a replace decoration over `HIDDEN`, Backspace at the block's end
 
 ## Shift+Backspace
 
 Shift+Backspace is Backspace on every OS, so it takes what Backspace takes (key only):
 
-- `a&copy;b`, after the entity: `ab`
 - live mode, `**ab**c`, before `c`: `**a**c`
-- after an image: the image is selected, its bytes kept
 
 ## User interactions
 
@@ -118,3 +132,8 @@ Shift+Backspace is Backspace on every OS, so it takes what Backspace takes (key 
 - The word chord and Shift+Backspace at a block's edge still did nothing in WebKit once the input
   ran the plain key: WebKit sends no input for a delete with nothing to take, and the chord rows
   ran in Chromium until the three-engine gate.
+- Shift+Backspace or the word chord beside an image did nothing in WebKit: WebKit sends no input
+  for it, and every widget row pressed the plain key, which the editor takes at keydown, or a
+  chord beside an entity, for which WebKit does send one.
+- Backspace at a live heading's start did nothing with a widget decoration there: no edge row
+  carried a decoration.

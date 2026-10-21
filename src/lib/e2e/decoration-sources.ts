@@ -19,3 +19,35 @@ export async function addReplaceIsland(page: Page, path: number[], start: number
 		{ path, start, end }
 	);
 }
+
+/** A widget decoration at `offset` of the block at `path`, standing for no bytes, declined once the
+ *  block lacks the bytes, as the replace source is. */
+export async function addWidgetIsland(page: Page, path: number[], offset: number) {
+	await page.evaluate(
+		({ path, offset }) => {
+			(window as any).__test.decorations.addSource({
+				name: 'e2e-widget-island',
+				provide: (doc: any) => {
+					let node: any = doc;
+					for (const index of path) node = node?.children?.[index];
+					const held = node ? String(node.raw).replace(/\r?\n$/, '').length : 0;
+					if (held < offset) return [];
+					return [
+						{
+							type: 'widget',
+							path,
+							offset,
+							widget: {
+								view: (target: HTMLElement) => {
+									target.append(document.createElement('span'));
+									return {};
+								}
+							}
+						}
+					];
+				}
+			});
+		},
+		{ path, offset }
+	);
+}
