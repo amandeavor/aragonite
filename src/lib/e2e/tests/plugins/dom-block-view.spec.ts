@@ -91,4 +91,20 @@ test.describe('DOM block views', () => {
 		await expect(badge).toHaveCount(1);
 		expect((await viewLog(page)).mounts['dom-badge']).toBe(start.mounts['dom-badge'] + 1);
 	});
+
+	test('a dombox’s own children window inside its box, and mount as they scroll in', async ({
+		page
+	}) => {
+		const children = Array.from({ length: 400 }, (_, i) => `Child ${i} lorem ipsum dolor`);
+		await editor.loadContent([':::dombox Long', children.join('\n\n'), ':::', ''].join('\n'));
+		const mounted = (path: string) => page.locator(`.dombox [data-block-path='${path}']`);
+		const childHosts = page.locator(".dombox > .block-list [data-block-path^='[0,']");
+		await expect(mounted('[0,1]')).toHaveCount(1);
+		expect(await childHosts.count()).toBeLessThan(400);
+		expect(await page.locator('.dombox .vr-spacer').count()).toBeGreaterThan(0);
+
+		await editor.scrollEditorTo(1_000_000);
+		await expect(mounted('[0,400]')).toHaveCount(1);
+		await expect(mounted('[0,1]')).toHaveCount(0);
+	});
 });

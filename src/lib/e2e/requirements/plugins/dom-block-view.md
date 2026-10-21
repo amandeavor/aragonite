@@ -19,3 +19,5 @@ The harness seed `dom-view` has one of each: an `@@ ` memo with a badge drawn be
   with one box over exactly the element its view drew into, edge for edge
 - In a document long enough to window, scrolling the badge block out of the rendered range
   destroys its view once, and scrolling back mounts it again
+- A dombox holding 400 paragraphs mounts only the children near the viewport, with a spacer for
+  the rest inside its own box; scrolling to the end mounts the last child and unmounts the first
