@@ -105,8 +105,17 @@ import {
 import { assertInvariant } from '../../../assert';
 import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
 import { checkDeleteDecided } from '../../../invariants/collapsed-delete';
-import type { DeleteAnswer, DeleteIntent, DeleteVerdict } from '../../../caret/delete-extent';
-import { decideCollapsedDelete, type CollapsedDeleteReads } from './collapsed-delete';
+import type {
+	DeleteAnswer,
+	DeleteDirection,
+	DeleteIntent,
+	DeleteVerdict
+} from '../../../caret/delete-extent';
+import {
+	decideCollapsedDelete,
+	decideDeleteChord,
+	type CollapsedDeleteReads
+} from './collapsed-delete';
 import type { Reading } from '../../../schema/reading';
 import { createPlaceholderHint, type PlaceholderPolicy } from '../placeholder-hint.svelte';
 import type { CompositionSeat } from '../text/composition-seat';
@@ -283,6 +292,9 @@ export interface EditableSurfaceDeps {
 	/** Takes what a collapsed delete at raw `caret` aims at, through the block's own text. Omitted
 	 *  where the browser's delete is read back. */
 	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
+	/** Takes or enters the widget or decoration a delete of any unit facing `direction` meets at raw
+	 *  `caret`; true when it did. Omitted, like `deleteAtCaret`, where the block draws no widgets. */
+	deleteBeside?: (caret: number, direction: DeleteDirection) => boolean;
 	/** What the block's keys run at, for a delete at its edge, which runs the plain key's binding. */
 	commandTarget?: () => KindCommandTarget;
 	/** The block's own handling of a delete the editor left to the browser (a range, a soft
@@ -617,6 +629,18 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 					return deps.deleteAtCaret!(caret, intent);
 				}
 			: undefined,
+		deleteBeside: deps.deleteBeside
+			? (caret, direction) => {
+					deps.inputPrelude?.();
+					return deps.deleteBeside!(caret, direction);
+				}
+			: undefined,
+		atEdge: (caret, direction) => {
+			const el = deps.getEl();
+			if (!el) return false;
+			const bounds = caretLandableBounds(sharedCtx, el);
+			return direction === 'backward' ? caret <= bounds.start : caret >= bounds.end;
+		},
 		runPlainKey: (key) => {
 			const target = deps.commandTarget?.();
 			if (target) dispatchKeyCommand(key, target, deps.commands);
@@ -635,27 +659,11 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		deleteKeydown = !e.isComposing && (e.key === 'Backspace' || e.key === 'Delete') ? e : null;
 		try {
 			await deps.handleKeydown(e);
-			runEdgeChord(e);
+			if (deleteKeydown === e) decideDeleteChord(e, deleteReads);
 		} finally {
 			if (enterKeydown === e) enterKeydown = null;
 		}
 	});
-
-	/** A Backspace or Delete chord the block left alone, at the edge it faces, runs what the plain
-	 *  key binds: an engine may send no input for a delete with nothing to take. */
-	function runEdgeChord(e: KeyboardEvent): void {
-		const key = e.key;
-		const el = deps.getEl();
-		if (deleteKeydown !== e || e.defaultPrevented || !el) return;
-		if ((key !== 'Backspace' && key !== 'Delete') || eventToChord(e) === key) return;
-		const caret = deps.backend.getRaw();
-		if (caret === null || deps.backend.getRawSelection() !== null) return;
-		const bounds = caretLandableBounds(sharedCtx, el);
-		if (key === 'Backspace' ? caret > bounds.start : caret < bounds.end) return;
-		// Prevented whatever the binding does: the browser's own delete there takes a hidden marker.
-		e.preventDefault();
-		deleteReads.runPlainKey?.(key);
-	}
 
 	/** A break input that arrives while its Enter's handler still runs is that key's default, which
 	 *  the handler replaces, so it writes nothing (Playwright's Firefox fires it before the await). */
