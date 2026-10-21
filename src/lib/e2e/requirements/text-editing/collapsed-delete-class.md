@@ -57,6 +57,8 @@ runs, and one undo puts it back:
 A table cell's start keeps today's answer (the Backspace does nothing) until cells get the same
 merge.
 
+## A chord at a block's edge
+
 A chord the keymap doesn't bind (Shift+Backspace, the word Backspace) at a live heading's start
 writes nothing: `# Title` keeps its marker, and a letter typed next lands before `Title`.
 
