@@ -396,7 +396,17 @@ const EDGE_ROWS = [
 	{ name: 'Backspace at a paragraph start', source: 'abc\n\nnext\n', path: [1], at: 0 },
 	{ name: 'Delete at a paragraph end', source: 'abc\n\nnext\n', path: [0], at: 3, forward: true },
 	{ name: 'Backspace at a second list item start', source: '- a\n- b\n', path: [0, 1, 0], at: 0 },
-	{ name: 'Backspace at a quote child start', source: 'x\n\n> q\n', path: [1, 0], at: 0 }
+	{ name: 'Backspace at a quote child start', source: 'x\n\n> q\n', path: [1, 0], at: 0 },
+	// End leaves the caret on either side of the hidden closer, and both are the paragraph's end.
+	{
+		name: 'in live mode, Delete after End at a bold paragraph end',
+		source: '**bold**\n\nnext\n',
+		path: [0],
+		at: 2,
+		forward: true,
+		live: true,
+		viaEnd: true
+	}
 ];
 
 test.describe('a soft keyboard delete at a block edge does what the key does', () => {
@@ -410,15 +420,19 @@ test.describe('a soft keyboard delete at a block edge does what the key does', (
 	for (const row of EDGE_ROWS) {
 		test(row.name, async ({ page }) => {
 			const key = row.forward ? 'Delete' : 'Backspace';
-			await editor.loadContent(row.source);
-			await editor.focusBlockAtPath(row.path, row.at);
+			if (row.live) await editor.setPresentationMode('live');
+			const place = async () => {
+				await editor.loadContent(row.source);
+				await editor.focusBlockAtPath(row.path, row.at);
+				if (row.viaEnd) await page.keyboard.press(edgeKey('lineEnd'));
+			};
+			await place();
 			await page.keyboard.press(key);
 			await editor.waitForRenderFlush();
 			const keyed = await editor.bridge.getSource();
 			expect(keyed).not.toBe(row.source);
 
-			await editor.loadContent(row.source);
-			await editor.focusBlockAtPath(row.path, row.at);
+			await place();
 			await sendKeylessDelete(page, key);
 			await expect.poll(async () => escaped(await editor.bridge.getSource())).toBe(escaped(keyed));
 			await editor.undo();

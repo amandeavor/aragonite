@@ -49,6 +49,8 @@ runs, and one undo puts it back:
 - `abc` / `next`, Backspace at the start of `next`, and Delete at the end of `abc`
 - `- a` / `- b`, Backspace at the start of `b`
 - `x` / `> q`, Backspace at the start of `q`
+- live mode, `**bold**` / `next`, End, then Delete: either side of the hidden closer is the
+  paragraph's end, so both routes merge
 - `abc` / `next`, Backspace at the start of `next` after the keydown Android's keyboards send
   first (`Unidentified`, key code 229): `abcnext`
 

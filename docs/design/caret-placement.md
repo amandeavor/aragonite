@@ -116,7 +116,7 @@ That's the caret placed. Now the keyboard.
 
 A key nobody claims falls through to the keymap, and a byte it types is placed in stage 6. Each entry carries its reason in the file, and the order is the contract, so a new family of key is a visible entry there, not an `if` somewhere else.
 
-A Backspace or Delete at a caret that gets past all of that (and every soft keyboard's, which has no key at all) lands in the same file's `deleteAtCaret` at `beforeinput`. It runs the widget and decoration rules again, then the hidden-marker one (live mode takes the content letter, never a marker you can't see), then takes one character (`src/lib/caret/delete-extent.ts`). At the block's first caret position Backspace takes nothing, since that's the merge's key.
+A Backspace or Delete at a caret that gets past all of that (and every soft keyboard's, which has no key at all) lands in the same file's `deleteAtCaret` at `beforeinput`. It runs the widget and decoration rules again, then the hidden-marker one (live mode takes the content letter, never a marker you can't see), then takes what the delete names: a character, a word, or up to the line's edge (`src/lib/caret/delete-extent.ts`). At the block's first caret position (or its last, for Delete) there's nothing in the line to take, so a soft keyboard's delete runs the block's merge, the same one the key runs at keydown.
 
 ## 6. Which side of a hidden marker
 

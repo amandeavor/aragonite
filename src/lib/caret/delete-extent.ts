@@ -118,7 +118,7 @@ export interface DeleteContext {
 	bounds: DeleteSpan;
 	/** The raw offset at the `side` edge of the caret's visual line; null where nothing is laid out. */
 	lineEdge?: (side: 'start' | 'end') => number | null;
-	/** The text as the screen shows it where the mode hides markers, which a word is read over. */
+	/** The text as the screen shows it (hidden markers left out, a widget one character), for words. */
 	visible?: VisibleText;
 }
 
@@ -229,7 +229,7 @@ function runStartBefore(window: string): number {
 	if (segment.isWordLike) return segment.index;
 	while (segment.index > 0) {
 		const before = segments.containing(segment.index - 1)!;
-		if (before.isWordLike || !isPunctuation(before.segment)) break;
+		if (before.isWordLike || !continuesRun(before.segment)) break;
 		segment = before;
 	}
 	return segment.index;
@@ -252,7 +252,7 @@ function runEndAfter(window: string, reach: ForwardWordReach): number {
 	at = segment.index + segment.segment.length;
 	while (!segment.isWordLike && at < window.length) {
 		const next = segments.containing(at)!;
-		if (next.isWordLike || !isPunctuation(next.segment)) break;
+		if (next.isWordLike || !continuesRun(next.segment)) break;
 		segment = next;
 		at = next.index + next.segment.length;
 	}
@@ -265,7 +265,8 @@ const segmentsOf = (window: string): Intl.Segments => wordSegmenter()!.segment(w
 
 const isSpace = (char: string | undefined) => char !== undefined && /[^\S\r\n]/.test(char);
 const isLineBreak = (char: string | undefined) => char === '\n' || char === '\r';
-const isPunctuation = (segment: string) => !/\s/.test(segment);
+// A run of non-word segments takes in any that holds no space: commas, an emoji, a widget.
+const continuesRun = (segment: string) => !/\s/.test(segment);
 
 // ── Lines ────────────────────────────────────────────────────────────────────
 
