@@ -34,6 +34,14 @@ In a paragraph between two one-line blocks, and in a list item between them:
 - End on line 1, ArrowUp: the caret leaves for the block before, past its middle, since it left
   from the end of a line
 
+Beside a space, the caret is on one line only, so nothing is asked (and no dev check fires):
+
+- End, then ArrowLeft on line 1, which puts the caret before the space the line wraps at, ArrowUp:
+  the caret leaves for the block before
+- End, then ArrowLeft on the second-to-last line, ArrowDown: the caret moves to the last line,
+  inside the block
+- after the space that opens the line after an image, ArrowUp: the caret moves up, inside the block
+
 ## With Shift
 
 - Home on line 2, Shift+ArrowUp: the selection runs from line 2's start up onto line 1, inside the
@@ -69,3 +77,6 @@ The Mac's Cmd line delete, sent the way `collapsed-delete-class.spec.ts` sends i
   so no row ever stood on the one spot where a measured caret and the browser's disagree.
 - The run of ArrowDown through a short line's end (Firefox landed at the short line's column): every
   row pressed one arrow after the question, so none watched the browser's own column across a run.
+- The caret beside a space (before a wrap's space, or after one opening the line after an image):
+  every row stood on the wrap itself, so none checked that a spot on one line only isn't read as a
+  wrap; there Up and Down left from the wrong line, and asking fired the dev check.

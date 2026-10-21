@@ -291,8 +291,42 @@ for (const shape of SHAPES) {
 			expect(focus?.path).toEqual(shape.before);
 			expect(focus!.offset).toBeGreaterThan(BEFORE.length / 2);
 		});
+
+		// Before the space a line wraps at, the caret is on that line only: nothing is asked.
+		test('End, ArrowLeft on line 1, ArrowUp: the block before', async ({ page }) => {
+			await lineEdge(editor, shape, starts, 0, 'end');
+			await page.keyboard.press('ArrowLeft');
+			expect(await focusOf(editor)).toEqual({ path: shape.path, offset: starts[1] - 1 });
+			await page.keyboard.press('ArrowUp');
+			expect((await focusOf(editor))?.path).toEqual(shape.before);
+		});
+
+		test('End, ArrowLeft on the second-to-last line, ArrowDown: the last line', async ({
+			page
+		}) => {
+			const last = starts.length - 1;
+			await lineEdge(editor, shape, starts, last - 1, 'end');
+			await page.keyboard.press('ArrowLeft');
+			expect(await focusOf(editor)).toEqual({ path: shape.path, offset: starts[last] - 1 });
+			await page.keyboard.press('ArrowDown');
+			await onLine(last);
+		});
 	});
 }
+
+test('past the space opening the line after an image, ArrowUp: the line above, nothing asked', async ({
+	page
+}) => {
+	const editor = new EditorPage(page);
+	await editor.goto();
+	await page.addStyleTag({ content: EDITOR_WIDTH });
+	const text = `alpha ${IMAGE} gamma delta`;
+	await editor.loadContent(`before\n\n${text}\n\nafter\n`);
+	await waitForImagesDecoded(page.locator('.editor img'));
+	await editor.focusBlock(1, text.indexOf(' gamma') + 1);
+	await page.keyboard.press('ArrowUp');
+	expect((await focusOf(editor))?.path).toEqual([1]);
+});
 
 // ── With Shift ─────────────────────────────────────────────────────────
 

@@ -239,7 +239,17 @@ export function softWrapAt(
 	const before = charRect(first.node, first.at);
 	const next = nearestLetter(node, at.startOffset, surface, true);
 	const after = next && charRect(next.node, next.at);
-	return before && after && after.top >= before.bottom - 1 ? { before, after } : null;
+	if (!before || !after || after.top < before.bottom - 1) return null;
+	// A line wraps after its spaces, so a caret before a space, or after one that opens the next
+	// line (past an image, say), is on one line only.
+	const ahead = nearestChar(node, at.startOffset, surface, true, () => true);
+	if (ahead && WRAP_SPACE.includes(ahead.node.data[ahead.at])) return null;
+	const behind = nearestChar(node, at.startOffset, surface, false, () => true);
+	const opensLine =
+		behind !== null &&
+		WRAP_SPACE.includes(behind.node.data[behind.at]) &&
+		(charRect(behind.node, behind.at)?.top ?? -Infinity) >= before.bottom - 1;
+	return opensLine ? null : { before, after };
 }
 
 /** The live selection's focus `focus` at a soft wrap in `el`, on the line the browser shows it;
@@ -261,6 +271,20 @@ export function nearestLetter(
 	surface: HTMLElement,
 	forward: boolean
 ): { node: Text; at: number } | null {
+	return nearestChar(start, at, surface, forward, (char) => !WRAP_SPACE.includes(char));
+}
+
+// ── Internal ────────────────────────────────────────────────────────────────
+
+/** The nearest character on one side of `at` that `stops`, across the text nodes `surface` lays out
+ *  as lines. */
+function nearestChar(
+	start: Text,
+	at: number,
+	surface: HTMLElement,
+	forward: boolean,
+	stops: (char: string) => boolean
+): { node: Text; at: number } | null {
 	const walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT);
 	walker.currentNode = start;
 	let node: Text | null = start;
@@ -268,7 +292,7 @@ export function nearestLetter(
 	while (node) {
 		if (isBlockLineText(node, surface)) {
 			for (; i >= 0 && i < node.data.length; i += forward ? 1 : -1) {
-				if (!WRAP_SPACE.includes(node.data[i])) return { node, at: i };
+				if (stops(node.data[i])) return { node, at: i };
 			}
 		}
 		node = (forward ? walker.nextNode() : walker.previousNode()) as Text | null;
@@ -276,8 +300,6 @@ export function nearestLetter(
 	}
 	return null;
 }
-
-// ── Internal ────────────────────────────────────────────────────────────────
 
 /** The live focus's box at a soft wrap, on the line the browser shows it: the end of the line it
  *  ends, or the start of the line it starts. Null when the browser can't say. */
