@@ -100,6 +100,8 @@ for (const mode of ['source', 'live'] as const) {
 		const ep = await enterPresentationMode(page, mode, DOC);
 		const deletes: [string, () => Promise<void>][] = [
 			['Shift+Backspace', () => page.keyboard.press('Shift+Backspace')],
+			['Delete', () => page.keyboard.press('Delete')],
+			['Ctrl+Delete', () => page.keyboard.press('Control+Delete')],
 			['a soft keyboard’s Backspace', () => sendKeylessDelete(page, 'deleteContentBackward')],
 			['a soft keyboard’s Delete', () => sendKeylessDelete(page, 'deleteContentForward')]
 		];

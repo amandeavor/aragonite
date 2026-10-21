@@ -1,7 +1,7 @@
 /**
  * The keys a pending break answers first in a text block, ahead of every other key handler: a
- * typed character lands on the open line, Backspace and ArrowLeft take the line back and stop at
- * the end of the text above, and Delete ends it. Any other key moves from the open line, which
+ * typed character lands on the open line, and Backspace, ArrowLeft and Delete take the line back
+ * and stop at the end of the text above. Any other key moves from the open line, which
  * ends once the caret leaves it (`caretOnPendingBreakLine`).
  */
 
@@ -53,9 +53,10 @@ export function handlePendingBreakKey(e: KeyboardEvent, deps: PendingBreakKeyDep
 	}
 	const stepsBack = e.key === 'Backspace' || (e.key === 'ArrowLeft' && edge === null);
 	if (!stepsBack && e.key !== 'Delete') return false;
-	// Shift+Backspace is Backspace on every OS; Shift+ArrowLeft extends a selection.
+	// Shift+Backspace is Backspace on every OS; Shift+ArrowLeft extends a selection. The open line
+	// holds no bytes, so every Delete takes it back rather than joining the next block.
 	const extending = e.shiftKey && e.key === 'ArrowLeft';
-	if (!stepsBack || extending || hasModifier(e)) {
+	if (e.key !== 'Delete' && (extending || hasModifier(e))) {
 		deps.pendingBreak.end();
 		return false;
 	}
@@ -64,8 +65,8 @@ export function handlePendingBreakKey(e: KeyboardEvent, deps: PendingBreakKeyDep
 	return true;
 }
 
-/** Takes the open line back, the caret left at the end of the text above: Backspace or ArrowLeft
- *  on the line, or a soft keyboard's delete there. False when no line is open. */
+/** Takes the open line back, the caret left at the end of the text above: Backspace, ArrowLeft or
+ *  Delete on the line, or a soft keyboard's delete there. False when no line is open. */
 export function takeBackOpenLine(
 	deps: Pick<PendingBreakKeyDeps, 'pendingBreak' | 'requestCaret'>
 ): boolean {
