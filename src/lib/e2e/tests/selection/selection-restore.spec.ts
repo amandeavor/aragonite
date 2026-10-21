@@ -283,7 +283,8 @@ test.describe('selection: setSelection restores a getSelection snapshot', () => 
 		expect(await page.locator('.selection-overlay').count()).toBeGreaterThan(0);
 	});
 
-	test('places the selection in reading mode', async ({ page }) => {
+	// Reading mode has no caret, so a stored caret lands as focus on its block, as a jump does.
+	test('in reading mode a caret lands as focus on its block, with no caret', async ({ page }) => {
 		await editor.loadContent(PROSE);
 		await editor.clickBlockAtPath([1], 5);
 		const snapshot = await editor.bridge.getSelection();
@@ -293,18 +294,17 @@ test.describe('selection: setSelection restores a getSelection snapshot', () => 
 		await editor.waitForRenderFlush();
 
 		expect(await editor.bridge.setSelection(snapshot!)).toBe(true);
-		// Reading mode turns contenteditable off, so no block holds the caret as `activeElement`, and
-		// the native range is the only sign the selection survives.
-		const rangeInTarget = await page.evaluate(
-			(attr) => {
-				const sel = window.getSelection();
-				if (!sel || sel.rangeCount === 0) return false;
-				const wrapper = document.querySelector(`[data-block-path='${attr}']`);
-				return !!wrapper && wrapper.contains(sel.getRangeAt(0).startContainer);
-			},
-			JSON.stringify([1])
-		);
-		expect(rangeInTarget).toBe(true);
+		const where = await page.evaluate(() => ({
+			focused: document.activeElement
+				?.closest('[data-block-path]')
+				?.getAttribute('data-block-path'),
+			ranges: window.getSelection()?.rangeCount ?? 0
+		}));
+		expect(where).toEqual({ focused: '[1]', ranges: 0 });
+
+		await editor.setPresentationMode('source');
+		await page.keyboard.type('X');
+		await editor.bridge.waitForSourceContains('BravoX two');
 	});
 
 	test('an unresolvable path resolves false without scrolling or stealing focus', async ({

@@ -5,6 +5,7 @@ import type { DocumentView, NodeView } from '../core/node-views';
 import { isBlockNode, nodeAt } from '../tree-operations/node-primitives';
 import { caretChildCount, isCollapsedContainer } from '../schema/reserved-chrome';
 import { TABLE_CELL_SELECTOR } from '../caret/block-content-selector';
+import type { BlockElLookup } from '../caret/block-el-lookup';
 
 /** Block immediately after `path` in doc order (children before siblings), else null. */
 export function nextPath(doc: Document, path: number[]): number[] | null {
@@ -232,4 +233,15 @@ export function findSurfaceForElement(el: Element | null): EditingSurface | null
 /** {@link findSurfaceForElement} for a caller that needs only the path. */
 export function findSurfacePathForElement(el: Element | null): number[] | null {
 	return findSurfaceForElement(el)?.path ?? null;
+}
+
+/** The block surface holding `node`: its path and content element, null outside every block. */
+export function surfaceHolding(
+	node: Node,
+	getBlockElByPath: BlockElLookup
+): { path: number[]; contentEl: HTMLElement } | null {
+	const el = node instanceof Element ? node : node.parentElement;
+	const path = findSurfacePathForElement(el);
+	const contentEl = path && getBlockElByPath(path);
+	return path && contentEl?.contains(node) ? { path, contentEl } : null;
 }

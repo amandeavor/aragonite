@@ -58,6 +58,8 @@ export function commandAtBlock(
 
 async function handleKeyDown(ctx: CrossBlockDispatchContext, e: KeyboardEvent): Promise<boolean> {
 	const { selection } = ctx;
+	// Reading mode leaves Tab to the page's focus walk, over a range too.
+	if (isTabKey(e) && isReadingMode(ctx.reading.mode)) return false;
 
 	// Before the dispatch, since every branch below can consume the key and the collapse and
 	// extend branches commit nothing that would update the caret memory.
@@ -163,9 +165,9 @@ async function handleCrossBlockEntry(
 // ── Keydown Helpers ───────────────────────────────────────────────────────
 
 /** Tab over a selection inside one block, where neither the block nor one holding it binds the key
- *  to an indent: taken for nothing, as over a range. Reading mode leaves Tab to the next link. */
+ *  to an indent: taken for nothing, as over a range. */
 function takesIdleTab(ctx: CrossBlockDispatchContext, e: KeyboardEvent): boolean {
-	if (!isTabKey(e) || isReadingMode(ctx.reading.mode)) return false;
+	if (!isTabKey(e)) return false;
 	const el = ctx.getEl();
 	const live = readNativeSelection();
 	if (!el || !live || live.collapsed) return false;

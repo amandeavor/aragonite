@@ -9,6 +9,7 @@ import { isImageOnlyParagraph } from '../core/inline/picture';
 import type { InlineReading } from '../core/inline/inline-cache';
 import { blockPageRole } from '../schema/page-role';
 import { BLOCK_CONTENT_SELECTOR, DRAG_ANCHOR_ATTR } from '../caret/block-content-selector';
+import { lineHeightOf } from '../caret/visual-lines';
 
 /** A picture's handle ignores `blockDragHandles`, since dragging is the only pointer way to
  *  move one. The caller still checks reading mode. */
@@ -45,11 +46,6 @@ function dragHandleAnchorY(host: HTMLElement): number | null {
 	const y = box.top + box.height / 2 - hostRect.top;
 	// A box painted outside the host (a scrolled or offscreen region) places nothing.
 	return y >= 0 && y <= hostRect.height ? y : null;
-}
-
-function lineHeightOf(content: HTMLElement): number {
-	const line = parseFloat(getComputedStyle(content).lineHeight);
-	return Number.isFinite(line) && line > 0 ? line : 20;
 }
 
 /** The declared anchor, taken only while it is marker-sized and on the block's first line. */

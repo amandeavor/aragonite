@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { EditorPage } from '../../editor-page';
 import { clickWordSettled, enterPresentationMode, landAt } from './helpers';
 import { clickModeToggle } from '../../mode-switch';
+import { textRunCenter } from '../../text-runs';
 
 // The caret half of the mode-switch rules: a mode change moves no byte, so the caret the user
 // had comes back on the other side, saved across reading mode, which has no caret.
@@ -60,7 +61,10 @@ test.describe('mode flips: the caret comes back', () => {
 		await clickModeToggle(page, 'reading');
 		await ep.waitForRenderFlush();
 
-		await clickWordSettled(ep, page, 'Title');
+		// Reading mode keeps no caret, so the click has none to settle; it focuses the block.
+		const title = await textRunCenter(page, 'Title');
+		await page.mouse.click(title.x, title.y);
+		await ep.waitForRenderFlush();
 		await clickModeToggle(page, 'reading');
 		await expect.poll(async () => (await focusPoint(ep))?.path).toEqual([0]);
 

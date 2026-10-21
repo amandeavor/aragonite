@@ -9,6 +9,7 @@ import {
 	type MountedEditor
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { cellAt, pressInCell } from './mount-table';
+import { pressKey } from '#lib/test/harness/settle.js';
 
 beforeAll(installLayoutStubs);
 
@@ -76,5 +77,22 @@ describe('the cell translates the row-creating plans into real rows', () => {
 
 		expect(mounted!.source()).toBe(`${GRID}|  |  |\n`);
 		expect(document.activeElement).toBe(cellAt(mounted!, 3, 0));
+	});
+});
+
+describe("a cell's Tab is the keymap's alone", () => {
+	it("a host that turns off the cell's Tab gets the browser's Tab", async () => {
+		mounted = mountEditor({
+			source: GRID,
+			keybindings: [{ chord: 'Tab', command: null, kind: 'tableCell' }]
+		});
+
+		const cell = cellAt(mounted, 1, 0);
+		cell.focus();
+		const event = await pressKey(cell, { key: 'Tab' });
+
+		expect(event.defaultPrevented).toBe(false);
+		expect(document.activeElement).toBe(cell);
+		expect(mounted.source()).toBe(GRID);
 	});
 });

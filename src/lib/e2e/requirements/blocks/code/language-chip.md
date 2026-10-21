@@ -40,8 +40,8 @@ cannot destroy it.
 - The chip shows on hover over the block or on focus inside it; an open field keeps it showing.
 - The hover is the block's own, not its container's: a fence nested in a blockquote or a list
   item stays hidden while the pointer sits elsewhere inside that container.
-- Reading mode shows the same chip, inert: a click opens no field, since the mode writes
-  no bytes.
+- Reading mode shows the language as a plain label, not a button: a click opens no field, since
+  the mode writes no bytes, and Tab doesn't stop on it.
 
 ## The commit
 
@@ -95,10 +95,9 @@ the typed and pasted routes already share (`fence-content-validity.md`), so all 
 - **A focused preview block shows both.** The preview modes show the fence on the focused
   block, and the chip also shows there (the caret is inside, and an open field counts as
   inside). Redundant, harmless, and cheaper than teaching the chip to read the focus attribute.
-- **The reading-mode chip is an enabled button that does nothing.** No `disabled`, no
-  `aria-disabled`: the mode writes nothing anywhere, the label is the useful half, and a
-  disabled control cannot be reached by the gesture that proves it does nothing. The
-  `aria-label` still names the language, which is what someone reading wants from it.
+- **The reading-mode chip is a label.** Reading mode's Tab walks only things that do something,
+  so a button that opens nothing would be a stop for nothing. The label is the useful half: it
+  still names the language, which is what someone reading wants from it.
 - **Plugin fence kinds do not inherit it.** Mermaid and the math fence have their own
   components; the chip belongs to the built-in `fencedCode` component alone, with no descriptor
   field and no plugin API behind it.
@@ -128,7 +127,7 @@ the typed and pasted routes already share (`fence-content-validity.md`), so all 
 - a container's hover leaves its nested block's chip hidden; hovering that block shows it
 - Escape after typing into the field leaves the source byte-identical
 - clicking away after typing into the field leaves the source byte-identical
-- reading mode: a click on the chip opens no field
+- reading mode: the chip is a label with no button, and a click on it opens no field
 - a backtick committed into an unclosed backtick fence's info string lands without it, and a
   leading tilde run committed into a tilde fence's info string lands without it, both pinned in
   `src/lib/test/blocks/code/code-language-chip-commit.test.ts`

@@ -36,7 +36,12 @@
 	import { publishRefSlot, type RefSlots } from '../../../block-lists/child-refs';
 	import { selectWholeDocument, extendFromCell } from '../../../selection/keyboard-extend';
 	import { isAtFirstVisualLine, isAtLastVisualLine } from '../../../caret/visual-lines';
-	import { cellKeydownPlan, type CellKeyPlan, type CellKeyState } from './cell-keydown-plan';
+	import {
+		cellCommandPlan,
+		cellKeydownPlan,
+		type CellKeyPlan,
+		type CellKeyState
+	} from './cell-keydown-plan';
 	import { tableAxisCommand } from './cell-table-commands';
 	import { cellPoint } from '../../../selection/primitives';
 	import type { ClipboardAction } from './table-menu-model';
@@ -379,17 +384,7 @@
 		}
 		if (id === 'cell.lineBreak') return writeLineBreak;
 		if (id !== 'cell.enter' && id !== 'cell.tab' && id !== 'cell.shiftTab') return null;
-		const plan = cellKeydownPlan(
-			{
-				key: id === 'cell.enter' ? 'Enter' : 'Tab',
-				ctrlKey: false,
-				metaKey: false,
-				shiftKey: id === 'cell.shiftTab',
-				altKey: false
-			},
-			cellPlanState(cursor.getRaw() ?? 0)
-		);
-		if (plan.kind === 'native' || plan.kind === 'select-all-step') return null;
+		const plan = cellCommandPlan(id, cellPlanState(cursor.getRaw() ?? 0));
 		return () => void applyCellPlan(plan);
 	}
 
@@ -506,7 +501,7 @@
 
 	const onInput = editableSurface.onInput;
 	// Callers guard `el` first.
-	function cellPlanState(offset: number): CellKeyState {
+	function cellPlanState(offset: number | null): CellKeyState {
 		// A cell has no marker prefix, so these are raw offsets; they follow what is on screen,
 		// not the mode, since a cell's move follows what the user sees.
 		const bounds = landableDomTextBounds(el!);
@@ -547,7 +542,7 @@
 		if ((await widgetInteraction.handleSelectedWidgetKeydown(e)) || editableSurface.isDetached())
 			return;
 
-		const caretBeforeKey = cursor.getRaw() ?? 0;
+		const caretBeforeKey = cursor.getRaw();
 
 		// Before the plan, whose edge branches ignore modifiers and would eat a column move. A move
 		// from a cell moves the whole table, since a table's grid rows are not reorderable children.
@@ -577,7 +572,7 @@
 					!e.ctrlKey &&
 					!e.metaKey &&
 					(e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
-					startIntraTableRect(e.key, caretBeforeKey)
+					startIntraTableRect(e.key, caretBeforeKey ?? 0)
 				) {
 					e.preventDefault();
 					return;
@@ -598,8 +593,6 @@
 				return;
 			default:
 				e.preventDefault();
-				// Reading mode keeps navigation and consumes the structural plans.
-				if (readOnly && plan.kind !== 'focus-cell' && plan.kind !== 'exit') return;
 				await applyCellPlan(plan);
 				return;
 		}
@@ -852,11 +845,8 @@
 	}
 </script>
 
-<!-- The cell is an editing host, which the compiler cannot see through a role it has to compute. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	bind:this={el}
-	tabindex="0"
 	class={['table-cell', ...blockDecorations.classes]}
 	contenteditable={readOnly ? 'false' : 'true'}
 	role={isHeaderRow ? 'columnheader' : 'cell'}
@@ -873,7 +863,7 @@
 	onblur={onBlur}
 	oncompositionstart={editableSurface.onCompositionStart}
 	oncompositionend={editableSurface.onCompositionEnd}
-	{@attach editableSurface.caretSource}
+	{@attach editableSurface.registerSurface}
 ></div>
 
 <style>

@@ -38,8 +38,10 @@ override the scroll the host wrote last.
     path of a block that holds other blocks
 
 - Offset past the end of the block's content: the caret clamps to the block end, resolves `true`
-- Reading mode (the block is inert, `contenteditable` off): the selection is still placed as a
-  native range inside the target block, since reading mode keeps selection and navigation
+- Reading mode, which has no caret: a stored caret lands as focus on its block, the way a jump
+  does, with no native range, and resolves `true`; leaving reading mode then puts the caret at the
+  stored offset (miss-analysis: the row stopped at the focus check, so the offset the landing
+  dropped on the way out went unseen)
 - A block whose height settles asynchronously (a diagram, display math, an image decoding
   in) grows after the restore resolved: the scroll position the host wrote afterwards
   survives that measure pass

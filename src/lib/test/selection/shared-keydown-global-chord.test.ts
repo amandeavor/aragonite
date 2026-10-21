@@ -34,6 +34,7 @@ function makeCtx(): SharedKeydownContext {
 		// No plugins stood up here, so every installed one is active.
 		commands: commandContext(),
 		reading: fixtureReading(),
+		scroll: { visibleBand: () => null, showRect: () => {} },
 		getEl: () => el,
 		getCursorOffset: () => 0,
 		getFocusOffset: () => null,

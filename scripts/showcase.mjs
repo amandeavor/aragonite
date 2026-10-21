@@ -32,5 +32,6 @@ const tarballs = ['aragonite', `aragonite-${app.wrapper}`].map((name) =>
 if (!existsSync(path.join(app.dir, 'node_modules'))) run('npm ci', app.dir);
 run(`npm install --no-save ${tarballs.map((file) => `"${file}"`).join(' ')}`, app.dir);
 
+// The app's root page is the adapter suite's bare editor, so the browser opens on the showcase.
 console.log(`\nShowcase: http://localhost:${app.port}/showcase.html (Ctrl+C stops it)\n`);
-run('npm run dev', app.dir);
+run('npm run dev -- --open /showcase.html', app.dir);

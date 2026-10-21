@@ -54,7 +54,10 @@ afterEach(() => {
 describe('a caret the browser left off its spot moves to it', () => {
 	it('the far side of a closing run moves to the end of the text before it', () => {
 		const el = mount(BOLD);
-		const writer = createCaretWriter(() => {});
+		const writer = createCaretWriter(
+			() => {},
+			() => false
+		);
 		browserCaret(textOf(el, ' text'), 0);
 		expect(writer.canonicalizeCaret(el)).toBe(true);
 		expect(caret()).toEqual({ node: textOf(el, 'bold'), offset: 4 });
@@ -64,14 +67,20 @@ describe('a caret the browser left off its spot moves to it', () => {
 	it('the far side of an opening run moves to the end of the text before it', () => {
 		const el = mount(BOLD);
 		browserCaret(textOf(el, 'bold'), 0);
-		createCaretWriter(() => {}).canonicalizeCaret(el);
+		createCaretWriter(
+			() => {},
+			() => false
+		).canonicalizeCaret(el);
 		expect(rawSelectionFocus(el)).toBe(5);
 	});
 
 	it('a caret inside a widget moves to the widget edge it reads as', () => {
 		const el = mount(`Text ${widget(5, 10, '<span>x<sup>2</sup></span>')}`, null);
 		browserCaret(textOf(el, '2'), 1);
-		createCaretWriter(() => {}).canonicalizeCaret(el);
+		createCaretWriter(
+			() => {},
+			() => false
+		).canonicalizeCaret(el);
 		expect(caret()).toEqual({ node: el, offset: 2 });
 		expect(rawSelectionFocus(el)).toBe(10);
 	});
@@ -81,13 +90,19 @@ describe('a caret the browser left off its spot moves to it', () => {
 		const el = mount('', null);
 		el.textContent = 'ab\r\ncd';
 		browserCaret(el.firstChild!, 3);
-		createCaretWriter(() => {}).canonicalizeCaret(el);
+		createCaretWriter(
+			() => {},
+			() => false
+		).canonicalizeCaret(el);
 		expect(caret()).toEqual({ node: el.firstChild, offset: 2 });
 	});
 
 	it('a moved caret moves no further', () => {
 		const el = mount(BOLD);
-		const writer = createCaretWriter(() => {});
+		const writer = createCaretWriter(
+			() => {},
+			() => false
+		);
 		browserCaret(textOf(el, ' text'), 0);
 		writer.canonicalizeCaret(el);
 		expect(writer.canonicalizeCaret(el)).toBe(false);
@@ -110,20 +125,33 @@ describe('every other caret stays', () => {
 		const el = mount(html, mode);
 		const at = textOf(el, data);
 		browserCaret(at, offset);
-		expect(createCaretWriter(() => {}).canonicalizeCaret(el)).toBe(false);
+		expect(
+			createCaretWriter(
+				() => {},
+				() => false
+			).canonicalizeCaret(el)
+		).toBe(false);
 		expect(caret()).toEqual({ node: at, offset });
 	});
 
 	it('a range keeps its far-side end', () => {
 		const el = mount(BOLD);
 		window.getSelection()!.setBaseAndExtent(textOf(el, 'Some '), 5, textOf(el, ' text'), 0);
-		expect(createCaretWriter(() => {}).canonicalizeCaret(el)).toBe(false);
+		expect(
+			createCaretWriter(
+				() => {},
+				() => false
+			).canonicalizeCaret(el)
+		).toBe(false);
 		expect(rawSelectionFocus(el)).toBe(13);
 	});
 
 	it('the far side the editor wrote stays, until the browser moves the caret there', () => {
 		const el = mount(BOLD);
-		const writer = createCaretWriter(() => {});
+		const writer = createCaretWriter(
+			() => {},
+			() => false
+		);
 		writer.placeCaretAtRaw(el, 13, { clamp: 'exact' });
 		expect(writer.canonicalizeCaret(el)).toBe(false);
 		expect(rawSelectionFocus(el)).toBe(13);
@@ -144,7 +172,10 @@ describe('the check on every key', () => {
 		browserCaret(textOf(el, ' text'), 2);
 		enablePerfInstruments();
 		resetPerfInstruments();
-		createCaretWriter(() => {}).canonicalizeCaret(el);
+		createCaretWriter(
+			() => {},
+			() => false
+		).canonicalizeCaret(el);
 		expect(perfSnapshot().caretCanonicalSteps).toBe(1);
 		expect(perfSnapshot().caretCanonicalWalks).toBe(0);
 	});

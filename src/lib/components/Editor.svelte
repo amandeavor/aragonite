@@ -39,15 +39,17 @@
 	import { componentAt, type ChildList } from '../block-lists/child-list';
 	import { createSelectionState } from '../selection/selection-state.svelte';
 	import { coverRange, rangeCoverage } from '../selection/range-coverage';
+	import { findSurfacePathForElement } from '../selection/path-lookup';
 	import { createSelectionDescription } from '../selection/selection-description';
 	import { EDITOR_LABEL } from '../a11y-strings';
 	import TailInsert from './TailInsert.svelte';
 	import BlockMenu from './menu/BlockMenu.svelte';
 	import { createMenuPresence } from './menu/menu-presence.svelte';
+	import { createReadingFocus } from './editor-root/reading-focus.svelte';
 	import { createDraftRegistry } from './draft-registry';
 	import { createShownSourceState } from './blocks/text/shown-source.svelte';
 	import { createDocumentStamps } from '../editor-actions/commit/document-stamp';
-	import type { EditorSelection } from '../selection/primitives';
+	import { selectionsEqual, type EditorSelection } from '../selection/primitives';
 	import { widgetSpanAt } from './blocks/text/widget-adjacency';
 	import { assignIds } from '../block-id';
 	import { createDocumentSwap, initDocument } from './editor-root/document-swap';
@@ -318,7 +320,12 @@
 		selection: selectionState,
 		watchSize: (el, onResize) => scrollOwner.watchSize(el, onResize)
 	});
-	const caretWriter = createCaretWriter(drawnCaret.request);
+	// Reading mode has no caret; one the editor asks for there marks where leaving puts it.
+	const caretWriter = createCaretWriter(drawnCaret.request, (el, raw) => {
+		if (reading.mode() !== 'reading') return false;
+		readingFocus.notePoint(el, raw);
+		return true;
+	});
 
 	// With no live range this reads no document bytes, so a keystroke at a caret costs nothing here.
 	const coverage = $derived.by(() => {
@@ -384,6 +391,13 @@
 	// ── Open menus ──────────────────────────────────────────────────────
 
 	const menuPresence = createMenuPresence({ isReading: () => effectiveMode === 'reading' });
+	const readingFocus = createReadingFocus({
+		isReading: () => effectiveMode === 'reading',
+		isInView: (path) => scrollOwner.isInView(path),
+		getBlockElByPath: (path) => getBlockElByPath(path),
+		isHostChrome,
+		clearSelection: () => caretWriter.clear()
+	});
 	const stamps = createDocumentStamps();
 	// Work still in flight at the unmount stops there: its write is refused at the write gate, its
 	// report reaches no handler, and its caret landing reads no more of the tree.
@@ -727,7 +741,12 @@
 	// one each, so a card opened over the search bar cannot overwrite the caret the bar restores.
 	const caretRestoreDeps: CaretRestoreDeps = {
 		getEditorEl: () => editorEl ?? null,
-		read: () => getSelection(),
+		// Reading mode keeps no caret, so the block it focused stands in for one.
+		read: () => {
+			const selection = getSelection();
+			const reading = !selection && effectiveMode === 'reading' ? readingFocus.focusCaret() : null;
+			return selection ?? (reading && caretAt(reading.path, reading.offset));
+		},
 		restore: (selection) => roundTripRestore(selection, { reveal: 'into-view' })
 	};
 	const searchCaret = createCaretRestore(caretRestoreDeps);
@@ -832,7 +851,8 @@
 		shownSource,
 		stamps,
 		kindCue,
-		textMoves
+		textMoves,
+		readingFocus
 	} satisfies EditorServices);
 
 	setContext(EDITOR_POLICIES_KEY, {
@@ -866,6 +886,7 @@
 		announceSelection: selectionAnnouncer.announce,
 		getBlockElByPath,
 		isHostChrome,
+		takeReadingCaret: readingFocus.takeExitCaret,
 		caretMemory,
 		// Built below; a mode switch runs after init, so the getter reads past the TDZ.
 		get layout() {
@@ -887,7 +908,7 @@
 	$effect(() => {
 		modeFlip.afterFlip(effectiveMode);
 	});
-	rootEffect((root) => modeFlip.install(root));
+	rootEffect((root) => readingFocus.install(root));
 
 	// ── Root gestures ───────────────────────────────────────────────────
 
@@ -906,7 +927,8 @@
 		activationClick,
 		presses,
 		linkCard,
-		reading
+		reading,
+		readingFocus
 	});
 	rootEffect((root) => {
 		return removeAll(
@@ -1198,9 +1220,14 @@
 		return blockNodeAt(doc, path)?.kind ?? null;
 	}
 
-	/** A snapshot of the current selection with copied paths, or null when nothing is focused. */
+	/** A snapshot of the current selection with copied paths, or null when nothing is focused.
+	 *  Reading mode has no caret, so a collapsed one the browser holds for a moment reads as null. */
 	export function getSelection(): EditorSelection | null {
-		return readCurrentSelection(selectionState, blockRefs);
+		const selection = readCurrentSelection(selectionState, blockRefs);
+		if (!selection || reading.mode() !== 'reading') return selection;
+		const { focus } = selection;
+		const isCaret = !focus.cellCoordinate && selectionsEqual(selection, { anchor: focus, focus });
+		return isCaret ? null : selection;
 	}
 
 	function caretAt(path: number[], offset = 0): EditorSelection {
@@ -1208,10 +1235,13 @@
 	}
 
 	// Read off the placed selection, not the requested one: a caret aimed into a hidden body lands
-	// on its title row.
+	// on its title row. Reading mode places none, so the block that took focus answers there.
 	function focusInView(): boolean {
 		const focus = getSelection()?.focus;
-		return !!focus && scrollOwner.isInView(selectionState.cellLandingFor(focus).path);
+		if (focus) return scrollOwner.isInView(selectionState.cellLandingFor(focus).path);
+		const active = effectiveMode === 'reading' ? document.activeElement : null;
+		const path = active && findSurfacePathForElement(active);
+		return !!path && scrollOwner.isInView(path);
 	}
 
 	// Asks of the leaf the landing placed in: reading mode leaves no selection to read it off.

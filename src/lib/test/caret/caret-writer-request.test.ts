@@ -54,13 +54,19 @@ const CALLS: Record<
 
 describe('every caret writer method requests one paint', () => {
 	it('the table names every method the writer has', () => {
-		const writer = createCaretWriter(() => {});
+		const writer = createCaretWriter(
+			() => {},
+			() => false
+		);
 		expect(Object.keys(writer).sort()).toEqual(Object.keys(CALLS).sort());
 	});
 
 	it.each(Object.entries(CALLS))('%s', (_, call) => {
 		let requests = 0;
-		const writer = createCaretWriter(() => requests++);
+		const writer = createCaretWriter(
+			() => requests++,
+			() => false
+		);
 		const el = paragraph('hello');
 		window.getSelection()!.collapse(el.firstChild, 0);
 		call(writer, el, () => (requests = 0));
@@ -69,7 +75,10 @@ describe('every caret writer method requests one paint', () => {
 
 	it('a write the browser refuses requests nothing', () => {
 		let requests = 0;
-		const writer = createCaretWriter(() => requests++);
+		const writer = createCaretWriter(
+			() => requests++,
+			() => false
+		);
 		const text = paragraph('hello').firstChild!;
 		const pastTheEnd = { startContainer: text, startOffset: 99, endContainer: text, endOffset: 99 };
 		expect(writer.selectDomRange(pastTheEnd as unknown as Range)).toBe(false);
@@ -78,5 +87,32 @@ describe('every caret writer method requests one paint', () => {
 		window.getSelection()!.collapse(text, 2);
 		expect(writer.rewriteCaret(text.parentElement!)).toBe(false);
 		expect(requests).toBe(0);
+	});
+});
+
+// Miss-analysis: reading mode cleared a caret only after a jump, so an arrow, a cell's re-render
+// or a host's call wrote one the writer never refused.
+describe('in reading mode the writer writes no caret', () => {
+	it('placeCaretAtRaw drops the selection instead and reports the refusal', () => {
+		const writer = createCaretWriter(
+			() => {},
+			() => true
+		);
+		const el = paragraph('hello');
+		window.getSelection()!.collapse(el.firstChild, 1);
+
+		expect(writer.placeCaretAtRaw(el, 3, { clamp: 'exact' })).toBe(false);
+		expect(window.getSelection()!.rangeCount).toBe(0);
+	});
+
+	it('a range still writes, so select-all and a drag keep working', () => {
+		const writer = createCaretWriter(
+			() => {},
+			() => true
+		);
+		const el = paragraph('hello');
+
+		expect(writer.selectRawRange(el, 1, 3)).toBe(true);
+		expect(window.getSelection()!.toString()).toBe('el');
 	});
 });

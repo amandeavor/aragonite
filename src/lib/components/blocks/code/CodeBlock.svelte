@@ -724,14 +724,10 @@
 	}
 </script>
 
-<!-- The textbox role arrives through the spread, where the compiler cannot see it. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	bind:this={el}
-	tabindex="0"
 	class="code-block"
 	contenteditable={readOnly ? 'false' : 'true'}
-	aria-readonly={readOnly ? 'true' : undefined}
 	{...editableSurface.attributes(null)}
 	spellcheck="false"
 	oninput={onInput}

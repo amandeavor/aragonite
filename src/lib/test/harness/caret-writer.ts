@@ -2,4 +2,7 @@
 // mounted editor's own writer.
 import { createCaretWriter } from '#lib/caret/widget-offset.js';
 
-export const testCaretWriter = createCaretWriter(() => {});
+export const testCaretWriter = createCaretWriter(
+	() => {},
+	() => false
+);

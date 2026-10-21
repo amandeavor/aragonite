@@ -1,4 +1,5 @@
 import { test, type Page } from '@playwright/test';
+import { focusWalkKey } from './platform-keys';
 
 /** Which browser is running, for the harness helpers whose path differs by engine (the clipboard,
  *  the IME driver, dropping the native caret). */
@@ -25,7 +26,8 @@ export type EngineCapability =
 	| 'contextMenuKey'
 	| 'insertWithoutScroll'
 	| 'inertBackspace'
-	| 'syntheticTargetRanges';
+	| 'syntheticTargetRanges'
+	| 'nativeWordSelect';
 
 /** Firefox over BiDi and Playwright's WebKit each lack a few gestures; `SKIP_REASONS` says which
  *  and why. */
@@ -48,10 +50,31 @@ const SKIP_REASONS: Record<EngineCapability, string> = {
 	inertBackspace:
 		"Playwright's WebKit goes back in history on a Backspace outside an editable, which Safari no longer does",
 	syntheticTargetRanges:
-		'WebKit reports no target ranges for an InputEvent a script builds, whatever it was given'
+		'WebKit reports no target ranges for an InputEvent a script builds, whatever it was given',
+	nativeWordSelect:
+		"Firefox over BiDi fires no native double click, so the browser selects no word in text the editor doesn't select itself"
 };
 
 /** Skip the running test on an engine that lacks `capability`. */
 export function skipUnlessSupported(page: Page, capability: EngineCapability): void {
 	test.skip(!engineSupports(page, capability), SKIP_REASONS[capability]);
+}
+
+/** Whether the focus walk stops on a plain `<a href>` in this engine, asked of a bare link the
+ *  page adds and removes. WebKit leaves links out unless the user's own setting puts them in. */
+export async function focusWalkReachesLinks(page: Page): Promise<boolean> {
+	await page.evaluate(() => {
+		const probe = document.createElement('div');
+		probe.id = 'focus-walk-probe';
+		probe.innerHTML =
+			'<button>start</button><a href="#focus-walk-probe">link</a><button>end</button>';
+		document.body.prepend(probe);
+		probe.querySelector('button')!.focus();
+	});
+	await page.keyboard.press(focusWalkKey());
+	return page.evaluate(() => {
+		const reached = document.activeElement?.tagName === 'A';
+		document.getElementById('focus-walk-probe')!.remove();
+		return reached;
+	});
 }

@@ -15,8 +15,8 @@ jump has to mount its target.
   `Footnote 1`; Enter mounts its definition and brings it into view
 - **Reading mode, the way back:** where focus lands after each jump, and where Tab goes from
   there, is in `reading-jump-focus.md`
-- **Reading mode, from a click:** Tab from a click in the definition's text focuses its marker
-  (Chromium only: Firefox and WebKit start Tab from the clicked point, past the marker)
+- **Reading mode, from a click:** Tab from a click in the definition's text focuses its marker,
+  on every engine: the click leaves no caret for Firefox and WebKit to start Tab from
 - **Reading mode, axe:** a document holding references and definitions has no new violations
 
 ## Edge cases

@@ -13,8 +13,16 @@
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
 
 	const wiring = wireSurfaceContexts();
-	const { blockEdit, focusActions, caretMemory, caretWriter, selection, reading, commands } =
-		wiring.deps;
+	const {
+		blockEdit,
+		focusActions,
+		caretMemory,
+		caretWriter,
+		selection,
+		reading,
+		commands,
+		readingFocus
+	} = wiring.deps;
 	// Tabindex-focusable independent of contenteditable, so keydown stays live in
 	// reading mode; the edit branches below gate on this instead.
 	const isReading = () => reading.mode() === 'reading';
@@ -28,6 +36,7 @@
 		getFocusEl: () => el,
 		isReading,
 		getLabel: () => blockAccessibleName(node),
+		holdTabStop: (proxy) => readingFocus.hold(proxy, () => myPath),
 		mint: (text) => void blockEdit.insertParagraph(index + 1, text)
 	});
 

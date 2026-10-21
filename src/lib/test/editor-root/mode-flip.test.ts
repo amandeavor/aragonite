@@ -57,6 +57,8 @@ function harness(opts: { mode?: PresentationMode; selection?: EditorSelection | 
 		announceSelection: () => calls.selectionEmits++,
 		getBlockElByPath: () => null,
 		isHostChrome: (node) => !!node && header.contains(node),
+		// Nothing took focus while reading, so leaving it keeps the entry snapshot.
+		takeReadingCaret: () => null,
 		caretMemory: {
 			forget: () => {
 				calls.caretForgets++;

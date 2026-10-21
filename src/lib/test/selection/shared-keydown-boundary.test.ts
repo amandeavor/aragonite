@@ -37,6 +37,7 @@ function makeCtx(over: {
 		// No plugins stood up here, so every installed one is active.
 		commands: commandContext(),
 		reading: fixtureReading(),
+		scroll: { visibleBand: () => null, showRect: () => {} },
 		getEl: () => document.createElement('div'),
 		getCursorOffset: () => over.cursorOffset,
 		getFocusOffset: () => over.focusOffset,

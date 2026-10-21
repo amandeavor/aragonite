@@ -36,6 +36,7 @@ import { rawOffsetAt } from '../../caret/widget-offset';
 import { onRoot, removeAll } from './listeners';
 import type { LinkCardState } from '../link-card/link-card-state.svelte';
 import type { Reading } from '../../schema/reading';
+import type { ReadingFocus } from './reading-focus.svelte';
 import { isModifiedClick, type ActivationClick, type PressTracker } from '../../activation-click';
 
 export interface RootGesturesDeps {
@@ -58,6 +59,8 @@ export interface RootGesturesDeps {
 	linkCard: Pick<LinkCardState, 'open'>;
 	/** Read at the gesture: every branch below checks the mode in force then. */
 	reading: Reading;
+	/** Clears the caret a still click leaves in reading mode, noting where it was. */
+	readingFocus: Pick<ReadingFocus, 'noteClick'>;
 }
 
 /** Whether a secondary press landed on the user's own range, and on an inline widget. */
@@ -147,6 +150,8 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		let marginSession: { dispose(): void } | null = null;
 
 		const handleClick = (e: MouseEvent) => {
+			// A double click's word and a drag's range stay for the clipboard.
+			if (e.detail === 1 && !deps.presses.travelled(e)) deps.readingFocus.noteClick();
 			const target = e.target as Element | null;
 			// The anchor carries the destination after the host's rewrite and the scheme check.
 			const anchor = target?.closest('a[href]') ?? null;
