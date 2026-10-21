@@ -4,9 +4,9 @@ import path from 'node:path';
 import { readSource } from '../invariants/lint/scan-source';
 
 // Drift guard: every export of the three published author barrels must appear in the docs pack,
-// so a new export can't ship undocumented. Names match in backtick form, so incidental prose
-// cannot stand in for an entry. Each section is found by its heading, so the heading matters:
-// rename it in both.
+// so a new export can't ship undocumented, and every name the consumer guide's export table lists
+// must be a real main-barrel export. Names match in backtick form, so incidental prose can't stand
+// in for an entry. Each section is found by its heading, so rename a heading in both places.
 const CATALOG_DOC = 'docs/guide/plugin-api.md';
 const CATALOG_HEADING = '\n## API reference';
 // `@voithos-labs/aragonite/testing` has no catalog table: its section is the catalog, only its
@@ -110,5 +110,27 @@ describe('plugin-testing § Verifying your plugin names every aragonite/testing 
 	it('is not vacuous: a dropped mention is detected', () => {
 		const withoutOne = section.replaceAll('applyPasteTransforms', '__dropped__');
 		expect(undocumented(exportNames, withoutOne, true)).toEqual(['applyPasteTransforms']);
+	});
+});
+
+describe('consumer-guide § The public surface names only real main-barrel exports', () => {
+	const exportNames = barrelExports('src/lib/index.ts');
+	const section = guideSection('docs/guide/consumer-guide.md', '\n## The public surface');
+
+	/** The backticked names in the table's Exports column, the second cell of each body row. */
+	const listedNames = (text: string) =>
+		text
+			.split('\n')
+			.filter((line) => line.startsWith('|') && !/^\|\s*-/.test(line))
+			.slice(1)
+			.flatMap((line) => [...(line.split('|')[2] ?? '').matchAll(/`([^`]+)`/g)].map((m) => m[1]));
+
+	it('every listed name is exported, and a renamed one is caught', () => {
+		expect(listedNames(section).length).toBeGreaterThan(40);
+		expect(listedNames(section).filter((n) => !exportNames.includes(n))).toEqual([]);
+		const renamed = section.replace('`normalizeSelection`', '`normaliseSelection`');
+		expect(listedNames(renamed).filter((n) => !exportNames.includes(n))).toEqual([
+			'normaliseSelection'
+		]);
 	});
 });
