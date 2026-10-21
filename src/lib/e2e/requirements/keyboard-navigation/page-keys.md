@@ -36,8 +36,8 @@ step counts in one-line paragraphs: it lands within one paragraph of a screen's 
   WebKit, and Firefox did nothing: each paragraph is its own editable element, which the browser's
   page step can't leave, and no row pressed a page key.
 - PageDown in a Firefox table cell did nothing: the step read the line nearest its target off the
-  whole table, whose rows merge into one tall line there, and every table row started outside the
-  table, in a one-column table.
+  whole table, whose rows merge into one tall line there. The one table row started its range above
+  the table, in a table of one column.
 - A PageDown that arrived before the one before it had landed did nothing: the step read the caret
   in the block the key was sent to, which the first step had just left, and every row waited for
   each press to land before the next.
