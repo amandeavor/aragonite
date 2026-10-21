@@ -120,6 +120,20 @@ test.describe('the page keys from a caret', () => {
 		expect(short(at.path[0])).toBe(false);
 		expect(Math.abs(at.offset - 20)).toBeLessThanOrEqual(2);
 	});
+
+	// Two columns, so a row's cells sit side by side and the step has to keep to one of them.
+	test('PageDown in a table cell moves a screen of rows down its column', async ({ page }) => {
+		const rows = Array.from({ length: 60 }, (_, i) => `| cell ${i} | x ${i} |`);
+		const ep = await open(page, `intro\n\n| H | I |\n| - | - |\n${rows.join('\n')}\n\nafter\n`);
+		await ep.focusBlockAtPath([1, 2, 1], 1);
+		await press(ep, page, 'PageDown');
+		const at = await caretOnScreen(page);
+		expect(at.collapsed).toBe(true);
+		expect(at.path[2]).toBe(1);
+		expect(at.path[1]).toBeGreaterThan(7);
+		await page.keyboard.type('Z');
+		expect(await ep.bridge.getSource()).toMatch(/\| cell \d+ \| x?Zx? \d+ \|/);
+	});
 });
 
 test.describe('the page keys over a range', () => {

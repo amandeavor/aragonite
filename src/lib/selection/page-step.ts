@@ -79,9 +79,12 @@ async function mountAt(ctx: PageStepContext, contentY: number): Promise<number[]
 	return path;
 }
 
-/** The element of the block at `path` or, for a row a table windows, of the nearest block above. */
+/** The element of the block at `path`, of its first child for a table row (Firefox merges a table's
+ *  lines across its rows, so the cell's is read), else of the nearest block above. */
 function blockElAt(ctx: PageStepContext, path: number[]): HTMLElement | null {
-	for (let depth = path.length; depth > 0; depth--) {
+	const own = ctx.getBlockElByPath(path) ?? ctx.getBlockElByPath([...path, 0]);
+	if (own) return own;
+	for (let depth = path.length - 1; depth > 0; depth--) {
 		const el = ctx.getBlockElByPath(path.slice(0, depth));
 		if (el) return el;
 	}

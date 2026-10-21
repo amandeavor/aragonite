@@ -18,6 +18,8 @@ step counts in one-line paragraphs: it lands within one paragraph of a screen's 
 - A screen's worth of paragraphs from the first one is a run of one-letter lines; from the
   twenty-first character of the first paragraph, PageDown lands on a one-letter line, and a second
   one lands past the run at the twenty-first character again
+- A two-column table of sixty rows, a caret in the second cell of its third row, PageDown: the
+  caret goes a screen of rows down, in the same column
 
 ## User interactions
 
@@ -31,3 +33,6 @@ step counts in one-line paragraphs: it lands within one paragraph of a screen's 
 - PageDown left the caret in its own paragraph while the page scrolled away from it in Chromium and
   WebKit, and Firefox did nothing: each paragraph is its own editable element, which the browser's
   page step can't leave, and no row pressed a page key.
+- PageDown in a Firefox table cell did nothing: the step read the line nearest its target off the
+  whole table, whose rows merge into one tall line there, and every table row started outside the
+  table, in a one-column table.
