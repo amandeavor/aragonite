@@ -206,24 +206,14 @@ How a test claims one, four ways from narrowest to widest, is
 claim helpers (`takeDevWarns`, `drainDevWarns`, `allowDevWarns`) import from
 `src/lib/test/support/warn-gate.ts`.
 
-The machinery, for when you're inside it:
+Two rules the gate holds you to:
 
-- Both teardown guards live in `src/lib/test/support/warn-gate.ts`. The per-test `afterEach` is
-  the verdict; the claim helpers sit in file-level `afterEach` hooks that must run before it,
-  which is why `vitest.config.ts` pins `sequence.hooks: 'stack'`. The per-file `afterAll` is the
-  aggregate, next bullet.
-- Two per-file aggregates close what a per-test verdict can't see: an `allowDevWarns` tag that
-  never fired, and a fire arriving after the last test's verdict. Either fails the file.
 - A guard that defers its fire past a tick (`reportContestedClaim`, say) still lands on the test
-  that provoked it: the verdict awaits a tick before reading. That tick lands after the file's own
-  claim helpers, so claim such a fire inside the test (`await tick()`, then `takeDevWarns()`),
-  never with a file-level `allowDevWarns`.
-- A file that swaps the sink out and never restores it fails itself, and the gate re-arms for
-  the next file.
-- Don't mock or spy your way around it. A `vi.mock` of `#lib/dev-warn.js` deletes the emitter,
-  and a `console.warn` spy sees nothing (the sink took the line) while a spy that swallows the
-  call hides the Svelte warnings too. Either one blinds the gate for that whole file, so a source
-  scan (G4.41 in `invariants/scans.md`) fails on both.
+  that provoked it, but after the file's own claim helpers have run. Claim it inside the test
+  (`await tick()`, then `takeDevWarns()`), never with a file-level `allowDevWarns`.
+- Don't mock or spy your way around it. A `vi.mock` of `#lib/dev-warn.js` deletes the emitter, and
+  a `console.warn` spy either sees nothing (the sink took the line) or hides the Svelte warnings
+  too, so a source scan (G4.41 in `invariants/scans.md`) fails both.
 
 ## E2E tests (Playwright)
 
@@ -304,9 +294,7 @@ await editor.getBlockText(0); // '# Hello', the dimmed marker included
 ### The app under test is a build
 
 Every run starts by building the app (a development build, so every dev check, warning and test
-bridge is still in it) and serves that with `vite preview` on port 1430. The build takes about ten
-seconds and saves far more than that: on the dev server each page load fetched about 700 modules
-one transform at a time, and on CI that was most of what a test spent its time on.
+bridge is still in it) and serves that with `vite preview` on port 1430.
 
 Two things follow from serving a build:
 
@@ -385,42 +373,33 @@ decorations a sibling test is counting, or, in the parrot's case, by animating o
 seed table is in `+page.svelte`. What each fixture is for, so you can pick one:
 
 - `callout/`: `:::callout Title` (and `:::aside`, so a kind switch has somewhere to go), a
-  container with a title line the block always keeps, which the editor calls reserved chrome
-  (block furniture rather than content; a range delete or a merge has to step around it).
-  Minimal on purpose, so the `reserved-chrome-*` specs, the chrome unit suites, and the
-  simulation's plugin gestures observe the editor's chrome handling and not a plugin feature
-  (yes, it duplicates admonitions as a product; as a fixture it's what those tests stand on). Its
-  two directive names are claimed by no other plugin, since a contended name resolves by install
-  order, and the server, shared by every test, installs in a different order than a fresh tab
-  would. Always on.
-- `memo/`: a `%%` leaf you edit as plain text, the one plugin anywhere that builds
-  `createEditableLeaf` in `'plain'` mode (the bundled leaves all use `'render-primary'`), so
-  the `editable-leaf-*` specs drive it. Always on; seed `memo` loads its document.
-- `doc-stats/`: counts blocks and edits per editor and publishes them on `window`. Installed
-  bare here (the no-options path) and with per-editor options on the `multi/` subroute; the
-  working example of `registerGlobalCommand` plus a per-editor context. Always on; seed
-  `docstats`.
-- `ghost-text/`: one decoration widget, drawn by a Svelte component, at the end of the focused
-  paragraph, with no completion backend behind it; its spec proves typing next to the widget never
-  captures the ghost text into the document. Seed `ghost`.
-- `fold/`: `[>hidden<]` ranges collapse to a clickable `…` that reopens on click; the
-  `ReplaceDecoration.widget` fixture, covering a live click handler inside a decoration and
-  decorations inside table cells. Seeds `fold` and `fold-table`.
+  container with a title line it always keeps (reserved chrome: block furniture a range delete or
+  a merge has to step around). Minimal on purpose, for the `reserved-chrome-*` specs, the chrome
+  unit suites and the simulation's plugin gestures. Keep its two directive names unclaimed by any
+  other fixture: a contended name resolves by install order, and the shared server installs in a
+  different order than a fresh tab. Always on.
+- `memo/`: a `%%` leaf you edit as plain text, the only `createEditableLeaf` in `'plain'` mode, for
+  the `editable-leaf-*` specs. Always on; seed `memo`.
+- `doc-stats/`: counts blocks and edits per editor and publishes them on `window`, the
+  `registerGlobalCommand` plus per-editor context fixture. Bare here, with options on `multi/`.
+  Always on; seed `docstats`.
+- `ghost-text/`: one Svelte-drawn decoration widget at the end of the focused paragraph, for the
+  spec proving typing beside it never captures the ghost text. Seed `ghost`.
+- `fold/`: `[>hidden<]` ranges collapse to a clickable `…`; the `ReplaceDecoration.widget`
+  fixture, with a live click handler and decorations in table cells. Seeds `fold` and
+  `fold-table`.
 - `block-badge/`: a class plus an `H` badge on every heading at any depth; the
-  `BlockDecoration.badge` fixture, including a badge surviving its heading scrolling out of the
-  window and back. Seed `badge`.
-- `wiki-embed/`: `![[path|width]]` recognized as a built-in image, resize handles and all;
-  covers an inline syntax producing a built-in kind, and `rewriteImage`, without which a resize
-  would write GFM over the embed. Seed `wiki-embed`.
-- `tags/`: tags inside the text on a bare `#` trigger, registered value for value the way
-  limestone (the app aragonite was extracted from) registers them, so these specs hold what that
-  app gets. Seed `tags`.
-- `inline-menu/`: menus under the caret for the inline-menu specs: a document picker on `[[`, and
-  a mention menu on `@` whose commit waits until the spec releases it. Seed `inline-menu` installs
-  them with the demo tag menu and the bundled slash list, so all four triggers have to stay out of
-  each other's way.
-- `hloccur-scan/`: the bundled highlight-occurrences plugin configured with an `onScan` counter
-  on `window`, so its spec can count how often it rescans. Seed `hloccur-memo`.
+  `BlockDecoration.badge` fixture, a badge surviving a scroll out of the window included. Seed
+  `badge`.
+- `wiki-embed/`: `![[path|width]]` read as a built-in image; pins an inline syntax producing a
+  built-in kind, and `rewriteImage`. Seed `wiki-embed`.
+- `tags/`: tags on a bare `#` trigger, registered the way limestone (the app aragonite was
+  extracted from) registers them. Seed `tags`.
+- `inline-menu/`: a document picker on `[[` and a mention menu on `@` whose commit waits for the
+  spec, installed beside the demo tag menu and the bundled slash list so all four triggers share
+  one editor. Seed `inline-menu`.
+- `hloccur-scan/`: the bundled highlight-occurrences plugin with an `onScan` counter on `window`,
+  for counting rescans. Seed `hloccur-memo`.
 - `sim-mark/` and `sim-island/`: standing decoration sources for the simulation (its own section
   below). One marks every whole-word `paragraph`; the other turns three sentinel strings in the
   text into a replace widget, an inline widget, and a block badge. Both under `?seed=sim`, so
@@ -456,34 +435,11 @@ node scripts/run-with-env.mjs ENGINE=webkit -- npm run test:e2e:clipboard
 Run them alone. Firefox and WebKit are slower than Chromium, and a machine already busy with
 another battery makes their timing-sensitive rows flake for a reason the product never had.
 
-**In CI.** `ci.yml` runs all three engines' full suites, each sharded, on every pull request to
-`dev` or `main` and on every push to either. A newer push to a PR or to `dev` cancels the run in
-progress; `main`'s runs always finish. A change that only touches docs (`docs/`, any `.md`, the
-issue templates) skips the e2e and perf work. macOS WebKit is its own workflow,
-`webkit-macos.yml`, since macOS runners are scarce: nightly on `dev`, plus every pull request to
-`main`. The nightly skips a `dev` commit that already ran green there (the green run leaves a cache
-entry named after the commit). To try the workflow on a branch, dispatch it with `ref`, and with
-`nightly` to get the skip and the record, or `trace` to keep a trace of every red.
-
-The shards split by measured time, not by test count. `scripts/e2e-shards.mjs` lists the suite,
-deals the spec files out longest first from `src/lib/e2e/shard-timings.json` (seconds per file per
-engine; a file it hasn't seen counts as the engine's median), and hands Playwright that shard's
-files with `--test-list`. Every shard computes the same split, and the `e2e-census` job then checks
-the shards ran every listed test exactly once. A stale table only costs balance, never a test, so
-it's refreshed at release from a recent green run:
-
-```
-node scripts/refresh-shard-timings.mjs <run-id>
-```
-
-A red engine job shows red, always. Whether it blocks a merge is up to branch protection:
-`scripts/branch-protection-contexts.mjs` lists the checks `main` requires (macOS WebKit's five
-under `EXTERNAL_CONTEXTS`, since `webkit-macos.yml` reports them), and beside them
-`PENDING_GATE_CONTEXTS`, the engine checks that don't block yet because their engine still has
-reds. A lint makes every check land in exactly one of the two, and `npm run release:publish`
-refuses to publish while the pending list holds anything, so an engine joins the gate before the
-next release at the latest. When one runs clean, move its checks across and re-run
-`scripts/apply-branch-protection.mjs`.
+**In CI.** All three engines' full suites run, sharded, on every pull request to `dev` or `main`
+and every push to either. A change that only touches docs skips the e2e and perf work. macOS
+WebKit runs nightly on `dev` and on every pull request to `main` (`webkit-macos.yml`). How the
+shards split and which engine checks block a merge are in the headers of `scripts/e2e-shards.mjs`
+and `scripts/branch-protection-contexts.mjs`.
 
 To read a red run, open the job summary: it has the pass, fail, flaky and skip counts and every
 failing test, and the job's artifact holds the same rows as `ci-summary.json`. A failure you
