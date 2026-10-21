@@ -344,8 +344,7 @@ test.describe('a soft keyboard delete that names its range', () => {
 	});
 });
 
-// Shift+Backspace is Backspace on every OS, so it follows the widget's policy and the hidden-run
-// rule too.
+// Shift+Backspace is Backspace on every OS, so it follows the hidden-run rule too.
 const SHIFT_ROWS: Row[] = [
 	{
 		name: 'in live mode, past a hidden closer it takes the letter inside',

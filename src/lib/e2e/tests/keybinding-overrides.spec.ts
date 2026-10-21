@@ -1,8 +1,10 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { nextRow } from './presentation/helpers';
 import type { KeybindingOverride } from '../../schema/keybinding-overrides';
 import { edgeKey, WORD_MODIFIER } from '../platform-keys';
+import { addReplaceIsland } from '../decoration-sources';
 
 async function setKeybindings(editor: EditorPage, overrides: KeybindingOverride[] | undefined) {
 	await editor.page.evaluate((ov) => (window as any).__test.setKeybindings(ov), overrides);
@@ -173,5 +175,38 @@ test.describe("a delete at a block's start follows the Backspace binding", () =>
 			await route.send();
 			await editor.bridge.waitForSourceEquals('abc\n\n# next\n');
 		});
+	}
+});
+
+const IMAGE = '![x](/test-fixtures/sample.png)';
+
+// A delete chord's own answers wait for the keymap, so a binding on the chord itself wins over them.
+test.describe('a binding on a delete chord wins over what the chord would take', () => {
+	const places = [
+		{ name: 'beside an image', line: `${IMAGE} bb`, at: 31 },
+		{
+			name: 'beside a replace decoration',
+			line: 'bbHIDDEN',
+			at: 8,
+			decorate: (page: Page) => addReplaceIsland(page, [1], 2, 8)
+		},
+		{ name: "at a paragraph's start", line: 'bb', at: 0 }
+	];
+	for (const chord of ['Shift+Backspace', 'Alt+Backspace']) {
+		for (const place of places) {
+			test(`${chord} ${place.name}`, async ({ page }) => {
+				const editor = new EditorPage(page);
+				await editor.goto();
+				await place.decorate?.(page);
+				await editor.loadContent(`aa\n\n${place.line}\n`);
+				await setKeybindings(editor, [{ chord, command: 'heading.cycle', arg: 1 }]);
+				await editor.focusBlockAtPath([1], place.at);
+				await page.keyboard.press(chord);
+				await editor.bridge.waitForSourceEquals(`aa\n\n# ${place.line}\n`);
+				await editor.waitForRenderFlush();
+				expect(await page.locator('[data-image-overlay], .md-widget-selected').count()).toBe(0);
+				expect(await page.evaluate(() => window.getSelection()?.isCollapsed)).toBe(true);
+			});
+		}
 	}
 });
