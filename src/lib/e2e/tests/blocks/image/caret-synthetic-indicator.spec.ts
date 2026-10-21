@@ -6,7 +6,8 @@ import {
 	dropNativeCaret,
 	pointPastImageRightEdge,
 	waitForAllImagesLoaded,
-	waitForFirstImageLoaded
+	waitForFirstImageLoaded,
+	waitForImagesDecoded
 } from './helpers';
 import {
 	caretsShowing,
@@ -91,7 +92,7 @@ test.describe('synthetic caret indicator at widget boundary', () => {
 		await page.evaluate(() => (window as any).__test.rects.scrollTo([151], { block: 'center' }));
 		await expect(page.locator('[data-block-path="[0]"]')).toHaveCount(0);
 		const imageB = page.locator('[data-block-path="[151]"] [data-image-widget]');
-		await expect.poll(() => imageB.evaluate((w) => w.querySelector('img')!.complete)).toBe(true);
+		await waitForImagesDecoded(imageB.locator('img'));
 		await clickPastWidget(page, imageB);
 		await expect.poll(() => caretsShowing(page)).toEqual(ONE_DRAWN);
 		await expectBarBesideWidget(page, imageB, 'image');

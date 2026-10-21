@@ -2,8 +2,8 @@
  * An e2e spec drives the browser through the shared helpers, each supplying what a raw call skips:
  * the IME driver (G4.49), the clipboard helper (G4.212), `gotoReady` and `reloadReady`, the mode
  * switch that waits (G4.133), the Firefox click-run, insert and in-place helpers (G4.228), the
- * platform's own key spelling (G4.226) and `endTypingBatch` (G4.232). Probe text is spelled in
- * pieces, since this file is scanned too.
+ * platform's own key spelling (G4.226), `endTypingBatch` (G4.232) and `waitForImagesDecoded`.
+ * Probe text is spelled in pieces, since this file is scanned too.
  */
 import { it, expect } from 'vitest';
 import { collectFiles, readSource } from '../../test/invariants/lint/scan-source';
@@ -24,6 +24,7 @@ const EDGE_CHORDS_SPEC = 'src/lib/e2e/tests/keyboard-navigation/edge-chords.spec
 const IN_PLACE_HELPER = 'src/lib/e2e/click-in-place.ts';
 const TYPING_BATCH_HELPER = 'src/lib/e2e/typing-batch.ts';
 const TYPING_PAUSE_SPEC = 'src/lib/e2e/tests/undo-typing-pause.spec.ts';
+const IMAGE_WAIT = 'src/lib/e2e/tests/blocks/image/helpers.ts';
 
 const COMPOSITION = 'Composition';
 const COMPOSING = 'Composing';
@@ -386,6 +387,33 @@ describeManifests(
 				`page.getByTestId('theme-${'toggle'}')`,
 				`page.locator('.showcase-${'modes'}')`,
 				`await clickModeToggle(page, 'live');`
+			]
+		},
+		// Miss-analysis: specs read `complete` or `naturalWidth` their own ways, both of which pass
+		// for a picture whose header parses and whose pixels never decode.
+		{
+			id: 'every e2e wait for a picture rides the shared decode wait',
+			population: SCANNED_SPECS,
+			matches: /\.complete\b|\bnatural(?:Width|Height)\b|\.decode\s*\(\s*\)/,
+			declared: {
+				[IMAGE_WAIT]: 'waitForImagesDecoded, which decodes each picture',
+				'src/lib/e2e/carets-showing.ts': 'decodes its own screenshot before reading the pixels',
+				'src/lib/e2e/tests/blocks/image/image-load-scroll-stability.spec.ts':
+					'asserts the picture has not loaded yet',
+				'src/lib/e2e/tests/perf/vr-nested-growth.spec.ts':
+					'waits for the picture to decode or unmount, whichever comes first'
+			},
+			reason: `wait with waitForImagesDecoded (${IMAGE_WAIT}): \`complete\` and \`naturalWidth\` pass for a picture that never decodes`,
+			hits: [
+				"await page.waitForFunction(() => document.querySelector('img')?.complete);",
+				'imgs.every((img) => img.naturalWidth > 0)',
+				'return (img?.naturalHeight ?? 0) > 0;',
+				'await img.decode();'
+			],
+			misses: [
+				'await waitForFirstImageLoaded(page);',
+				'new TextDecoder().decode(bytes)',
+				'expect(row.completed).toBe(true);'
 			]
 		}
 	],

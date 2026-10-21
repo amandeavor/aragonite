@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures';
-import { documentCaret } from '../blocks/image/helpers';
+import { documentCaret, waitForFirstImageLoaded } from '../blocks/image/helpers';
 import { PluginsPage } from '../plugins/helpers';
 import { nativeSelectionText, inlineWidgetCenter } from './multi-click-helpers';
 import { multiClick } from '../../multi-click';
@@ -121,9 +121,7 @@ test.describe('multi-click: the block inline syntax handler beside inline widget
 			// An image selects whole on its first click and its second opens the crop frame, so the
 			// run is the image's from the start: no range and no caret beside it.
 			await editor.loadContent(IMAGE_PARAGRAPH);
-			await page.waitForFunction(
-				() => (document.querySelector('[data-image-widget] img') as HTMLImageElement)?.complete
-			);
+			await waitForFirstImageLoaded(page);
 			await multiClick(page, await inlineWidgetCenter(page), clicks);
 			await expect(page.locator('[data-image-overlay]')).toHaveCount(1);
 			await page.waitForTimeout(150);
