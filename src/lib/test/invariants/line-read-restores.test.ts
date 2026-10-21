@@ -46,6 +46,18 @@ describe('G1.141 the line read puts the focus back', () => {
 		expect([sel.focusNode, sel.focusOffset, sel.isCollapsed]).toEqual([text, 6, true]);
 	});
 
+	it('a held range is not asked, and the browser never moves it', () => {
+		const el = document.createElement('div');
+		el.textContent = 'hello world';
+		document.body.appendChild(el);
+		const text = el.firstChild as Text;
+		const sel = window.getSelection()!;
+		sel.setBaseAndExtent(text, 2, text, 6);
+		stubModify(sel, text, [5, -5]);
+		expect(testCaretWriter.focusEndsLine()).toBeNull();
+		expect([sel.anchorOffset, sel.focusOffset]).toEqual([2, 6]);
+	});
+
 	it('a read that comes back to the caret fires nothing', () => {
 		const el = document.createElement('div');
 		el.textContent = 'hello world';
