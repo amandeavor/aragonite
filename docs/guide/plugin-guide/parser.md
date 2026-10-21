@@ -57,9 +57,12 @@ For your pricing map: the opt-in `:::name` directive grammar registers its conta
 
 ## A reading that isn't final
 
-Some openers read past their first line looking for something and decline when it isn't there. The `$$` math block hunts down the page for its closing `$$` and gives up without one, so its line ends up a plain paragraph, which a `$$` typed further down can still turn into math. If yours works like that, give it `readingNotFinal`. It gets a block's own bytes and answers one question: is my reading of these bytes final, or could more lines below change it?
+Some openers read past their first line looking for something and decline when it isn't there. The `$$` math block hunts down the page for its closing `$$` and gives up without one, so its line ends up a plain paragraph, which a `$$` typed further down can still turn into math. If yours works like that, give it `readingNotFinal`, which answers two questions:
 
-An opener that reads on and never backs out doesn't need one. A fence left open just runs to the end of the document, like the built-in code block's, and nothing typed below changes that.
+- `notFinal(raw)` gets a block's own bytes: is my reading of these final, or could more lines below change it?
+- `mayClose(line)` gets one line's text: could this be the line that changes it?
+
+An opener that reads on and never backs out doesn't need either. A fence left open just runs to the end of the document, like the built-in code block's, and nothing typed below changes that.
 
 ```ts
 registerBlockKind(mathBlock, {
@@ -67,10 +70,14 @@ registerBlockKind(mathBlock, {
 	opener: {
 		priority: OPENER_PRIORITIES.fencedCode + 5,
 		interruptsParagraph: (text) => text === '$$',
-		// A lone `$$` with no closing `$$` under it is still waiting
-		readingNotFinal: (raw) => {
-			const [first, ...rest] = displayLines(raw);
-			return first.text === '$$' && !rest.some((line) => line.text === '$$');
+		readingNotFinal: {
+			// A lone `$$` with no closing `$$` under it is still waiting
+			notFinal: (raw) => {
+				const [first, ...rest] = displayLines(raw);
+				return first.text === '$$' && !rest.some((line) => line.text === '$$');
+			},
+			// and a `$$` line anywhere below is what it's waiting for
+			mayClose: (line) => line === '$$'
 		},
 		tryOpen(ctx) {
 			// scans for the closing `$$`, and returns null when there isn't one
@@ -79,13 +86,15 @@ registerBlockKind(mathBlock, {
 });
 ```
 
-Here's why the editor cares. After each edit it rejoins neighbouring blocks wherever a reload would read them as one, and to keep that cheap it only looks at the first line of the block below. The line that turns a waiting `$$` into math can be anywhere further down, so leave `readingNotFinal` out on an opener like that and typing the closing `$$` a few lines below leaves two blocks on screen where a reload shows one.
+Here's why the editor cares. After each edit it rejoins neighbouring blocks wherever a reload would read them as one, and to keep that cheap it only looks at the first line of the block below, and only at the blocks right beside the edit. The line that turns a waiting `$$` into math can be several blocks further down. So the editor runs `mayClose` over the lines an edit wrote, and only on a yes does it walk up looking for a block whose `notFinal` says it's waiting, then reads the stretch between them the way a reload would. It goes the other way too: an edit that leaves one of your blocks waiting reads down to the first line `mayClose` says yes to. Leave `readingNotFinal` out on an opener like that and typing the closing `$$` a few blocks below leaves two blocks on screen where a reload shows one.
 
-Answer true only while the reading really isn't final:
+`mayClose` is a cheap candidate test, not a match. It has to say yes to every line your opener would accept as its closer; saying yes to a few more is fine (a `:::` under a `::::note` opener, say), since the reread decides and a yes only costs a look. A no on a real closer is the bug, and the kind conformance kit checks it against the closer in your `conformanceFixture`.
+
+Answer `notFinal` true only while the reading really isn't final:
 
 - A closed `$$` block is done, and so is any block whose first line isn't yours, so check the first line before scanning the rest.
-- Keep it a string scan, never a parse.
-- Every true makes the editor read both neighbouring blocks in full instead of one line, on every edit next to that block, so a true that should've been false costs you there.
+- Keep both of them a string scan, never a parse. `mayClose` runs on every line an edit writes.
+- Every true makes the editor read the block below in full instead of one line, on every edit next to that block, so a true that should've been false costs you there.
 
 ## Openers and document position
 

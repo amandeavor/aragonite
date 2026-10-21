@@ -9,7 +9,7 @@ import type { CstNode, Document } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import { isBlankParagraph } from '../core/parser';
 import type { LineEnding } from '../core/lines';
-import { blockReadingNotFinal, type GrammarView } from '../schema/block-openers';
+import type { GrammarView } from '../schema/block-openers';
 import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
 import { recordSettlePass } from '../perf/instruments';
 import { assertInvariant } from '../assert';
@@ -32,6 +32,13 @@ import {
 } from './separator-writes';
 import { absorbWindowSeams, type SettledSplice, type TrackedPosition } from './neighbour-merge';
 import { holdsTrailingBlankLine, normalizeBlankRuns } from './blank-runs';
+import {
+	asksOfPlaced,
+	asksOfWrite,
+	finishUnfinishedReadings,
+	NO_UNFINISHED_ASKS as NO_ASKS,
+	type UnfinishedAsks
+} from './unfinished-readings';
 
 // ── Separators ──
 
@@ -265,6 +272,7 @@ function settleWrittenSlot(
 	const indentMoved = leadingIndent(previous.raw) !== leadingIndent(slot.text);
 	const lastWritten = lastMintedIndex(change, index);
 	const written = lastWritten - index + 1;
+	const asks = asksOfWrite(previous.raw, slot.text, grammar);
 	// One blank line served both sides: it separated this block from the one above and stood in
 	// as the separator of the block beneath it. Filling it gives each side its own.
 	if (wasBlank && !isBlankParagraph(children[index])) {
@@ -273,13 +281,13 @@ function settleWrittenSlot(
 		returnBorrowedFenceLine(body, lastWritten);
 		const laidOut = normalizeBlankRuns(body, index, lastWritten, change, grammar, sharing);
 		joinListsMadeBeside(body, index, written, [previous], sharing);
-		return settleWriteSeams(body, index, index, lastWritten, laidOut, sharing, grammar);
+		return settleWriteSeams(body, index, index, lastWritten, laidOut, asks, sharing, grammar);
 	}
 	// The reverse transition: the block is a line of its run now, and the last block created is
 	// the one that meets the follower.
 	if (!wasBlank && isBlankParagraph(children[lastWritten])) {
 		const laidOut = normalizeBlankRuns(body, index, lastWritten, change, grammar, sharing);
-		return settleWriteSeams(body, index, index, lastWritten, laidOut, sharing, grammar);
+		return settleWriteSeams(body, index, index, lastWritten, laidOut, asks, sharing, grammar);
 	}
 	// The block's own trailing blank line was the separator of the run below it, so a write that
 	// gives the line up hands the run its separator back.
@@ -292,21 +300,15 @@ function settleWrittenSlot(
 	if (lineMoved || change.op !== 'noop') {
 		change = normalizeBlankRuns(body, index, lastWritten, change, grammar, sharing);
 	}
-	// Same-kind typing asks the join above only when it's flush, the block above's reading isn't
-	// final, the indent moved, or a blank line stays blank (editor.md § 8).
-	if (
-		change.op === 'noop' &&
-		!wasBlank &&
-		!indentMoved &&
-		!flushAbove(children, index) &&
-		!unfinishedAbove(children, index, grammar)
-	) {
+	// Same-kind typing asks the join above only when it's flush, the indent moved, or a blank line
+	// stays blank (editor.md § 8); a construct a written line finishes above is asked apart.
+	if (change.op === 'noop' && !wasBlank && !indentMoved && !flushAbove(children, index)) {
 		// The join below is asked whatever parts it: an HTML block left open reads on past blank lines.
-		if (index + 1 >= children.length) return { change, textStart: 0 };
-		return settleWriteSeams(body, index, index + 1, lastWritten, change, sharing, grammar);
+		if (index + 1 >= children.length && !asks.above) return { change, textStart: 0 };
+		return settleWriteSeams(body, index, index + 1, lastWritten, change, asks, sharing, grammar);
 	}
 	joinListsMadeBeside(body, index, written, [previous], sharing);
-	return settleWriteSeams(body, index, index, lastWritten, change, sharing, grammar);
+	return settleWriteSeams(body, index, index, lastWritten, change, asks, sharing, grammar);
 }
 
 const leadingIndent = (text: string): string => /^[ \t]*/.exec(text)![0];
@@ -314,18 +316,6 @@ const leadingIndent = (text: string): string => /^[ \t]*/.exec(text)![0];
 /** Whether no blank line parts the block from the one above it; a first child has none above. */
 const flushAbove = (children: readonly CstNode[], index: number): boolean =>
 	index > 0 && children[index].leadingTrivia === '';
-
-/** Whether the nearest block above may still read differently (an unclosed `$$`), which a closer
- *  written below can complete across blank lines. */
-function unfinishedAbove(
-	children: readonly CstNode[],
-	index: number,
-	grammar: GrammarView
-): boolean {
-	let above = index - 1;
-	while (above >= 0 && isBlankParagraph(children[above])) above--;
-	return above >= 0 && blockReadingNotFinal(children[above].raw, grammar);
-}
 
 /**
  * Merge across the joins from the one above `firstJoin` to the one below the last written block,
@@ -337,11 +327,12 @@ function settleWriteSeams(
 	firstJoin: number,
 	lastWritten: number,
 	change: StructuralChange,
+	asks: UnfinishedAsks,
 	sharing: SharingState,
 	grammar: GrammarView
 ): SettledContent {
 	const tracked: TrackedPosition = { index, offset: 0 };
-	const settled = absorbAndLayOut(
+	let settled = absorbAndLayOut(
 		body,
 		firstJoin,
 		lastWritten - firstJoin + 1,
@@ -352,6 +343,17 @@ function settleWriteSeams(
 		tracked,
 		// One written block lets a join beside it be refused on a single line of the neighbour.
 		lastWritten === index ? index : undefined
+	);
+	const last = tracked.index + lastWritten - index;
+	settled = finishAndLayOut(
+		body,
+		tracked.index,
+		last,
+		asks,
+		settled.change,
+		grammar,
+		sharing,
+		tracked
 	);
 	return {
 		change: settled.change,
@@ -414,9 +416,10 @@ function settleSplicedWindow(
 	joinListsMadeBeside(body, at, added, removed, sharing);
 	settleEmptyMarkerLists(body, at, added, sharing);
 	const laidOut = normalizeBlankRuns(body, at, at + added - 1, change, grammar, sharing);
+	const asks = added > 0 ? asksOfPlaced(body.children.slice(at, at + added), grammar) : NO_ASKS;
 	// Merging neighbours is part of settling, not a rule each caller repeats, so a new caller
 	// inherits it. A write that reports `noop` splices no window and is asked nothing.
-	return absorbAndLayOut(
+	const absorbed = absorbAndLayOut(
 		body,
 		at,
 		added,
@@ -429,6 +432,43 @@ function settleSplicedWindow(
 		// refused on that block's first line alone; a wider window names no single block.
 		added === 1 ? at : undefined
 	).change;
+	const window = splicedWindow(absorbed);
+	if (!window || window.added === 0) return absorbed;
+	const last = window.at + window.added - 1;
+	return finishAndLayOut(body, window.at, last, asks, absorbed, grammar, sharing, tracked).change;
+}
+
+/** {@link finishUnfinishedReadings}, then the runs a re-read re-divided laid out again. */
+function finishAndLayOut(
+	body: BodyParent,
+	first: number,
+	last: number,
+	asks: UnfinishedAsks,
+	change: StructuralChange,
+	grammar: GrammarView,
+	sharing: SharingState,
+	tracked?: TrackedPosition
+): SettledSplice {
+	const unchanged = { change, landing: tracked?.index ?? first };
+	if (!asks.above && !asks.below) return unchanged;
+	const bounded = Math.min(last, body.children.length - 1);
+	const settled = finishUnfinishedReadings(
+		body,
+		first,
+		bounded,
+		asks,
+		change,
+		grammar,
+		sharing,
+		tracked
+	);
+	const window = settled.change === change ? null : splicedWindow(settled.change);
+	if (!window) return settled;
+	const hi = window.at + window.added - 1;
+	return {
+		...settled,
+		change: normalizeBlankRuns(body, window.at, hi, settled.change, grammar, sharing)
+	};
 }
 
 /** {@link absorbWindowSeams}, then the runs a merge re-divided laid out again, since a merge can

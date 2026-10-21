@@ -144,9 +144,10 @@ function skipSpaces(text: string, pos: number): number {
 /** Whether lines below a block with these bytes could still change it: a label not closed yet, a
  *  `]:` awaiting its destination, or a definition with no title, which takes one from below. */
 export function definitionReadingNotFinal(raw: string): boolean {
+	// The first line decides before any line is split, since a walk asks this of every block.
+	if (labelOpenerOffset(raw) < 0) return false;
 	const lines = splitLines(raw);
-	const labelStart = lines.length > 0 ? labelOpenerOffset(lines[0].text) : -1;
-	if (labelStart < 0) return false;
+	const labelStart = labelOpenerOffset(lines[0].text);
 	const window = new DefinitionWindow(lines, 0, lines.length);
 	const labelEnd = readSpan(window, labelStart, scanLinkLabel);
 	// A label that never closed may still close below; one followed by anything but `:` is a link.

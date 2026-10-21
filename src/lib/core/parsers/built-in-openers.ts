@@ -134,6 +134,7 @@ export const BUILT_IN_OPENERS = {
 			return parseLinkReferenceDefinition(ctx.lines, ctx.index, ctx.end, ctx.leadingTrivia);
 		},
 		interruptsParagraph: false,
-		readingNotFinal: definitionReadingNotFinal
+		// A definition ends at a blank line, so no line past one finishes it.
+		readingNotFinal: { notFinal: definitionReadingNotFinal, mayClose: () => false }
 	}
 } satisfies Partial<Record<BlockKind, BlockOpener>>;

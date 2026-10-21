@@ -524,11 +524,12 @@ Two gestures, one operation: keyboard (Alt+↑/↓ on the focused block, with a 
 A write that keeps its block's kind still asks the join below it whenever there's a block down there, blank line or not. An HTML comment, `<pre>`, `<?` or `<![CDATA[` block reads on until its closer, blank lines included, so breaking `-->` with one Backspace makes the comment swallow the paragraph two lines down. The join above is asked only when:
 
 - the block sits right under its neighbour, since a flush pair can re-read without either kind changing (retype a `<div>` under a paragraph as `<span>` and the two read as one paragraph);
-- the block above's reading isn't final yet, like a lone `$$` that never found its closing `$$` (type one a blank line further down and the two become one math block);
 - the write changes the first line's indent, which alone decides whether a list item above takes the block in;
 - a blank line stays blank.
 
 So the only keystroke that asks nothing is one in the last block of its container (or the document) with nothing flush above it. The ask reads the block above a join whole and the block below one line deep when it can ([`performance.md`](performance.md) § 4 has the rule and what it costs).
+
+One construct isn't beside the write at all. A lone `$$` that never found its closing `$$` reads as a paragraph, and the `$$` that closes it can turn up several blocks further down. Each opener that backs out like that says which lines could finish it (`readingNotFinal.mayClose`), so a write whose changed lines include one walks up for the topmost block still waiting and re-reads the stretch from there through the write, the way a reload does (`tree-operations/unfinished-readings.ts`). A write that leaves its own block waiting reads down to the first line that could finish it. A keystroke whose lines could finish nothing walks nowhere.
 
 A write that leaves its own construct open is closed first (§ 6).
 

@@ -222,7 +222,7 @@ describe('every separator entry point retires the child spans it invalidates', (
 	 *  or a splice changes the child count, refusing a region rewrite. */
 	const ANSWERED_ELSEWHERE: Record<string, string> = {
 		installMergedLeaf: 'writes the survivor’s line inside a merge splice; the count moves',
-		absorbSeamReading: 'writes a fresh block’s line, then splices; the count moves',
+		installReading: 'writes a fresh block’s line, then splices; the count moves',
 		writeParsedContent: 'carries the target’s line onto its own fresh reparse',
 		installReplacement: 'carries the line onto the replacement, byte for byte',
 		spliceSpill: 'carries the line onto the first block of a splice; the count moves',

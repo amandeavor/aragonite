@@ -85,23 +85,69 @@ export function absorbSeamReading(
 		if (blocks[0].kind !== window[0].kind && !readsAsItselfAlone(window[0], read)) break;
 		onBeforeSplice?.();
 		blocks = withLowerEdge(body, at + window.length, bytes, reparsed, read, sharing);
-		blocks[0].leadingTrivia = window[0].leadingTrivia;
-		// The window joins two blocks at least, so its bytes hold the document's line ending.
-		const lineEnding = firstLineEnding(bytes) ?? '\n';
-		for (const block of blocks) {
-			ensureEditableContainers(block, lineEnding);
-			sharing.stamp(block);
-			assignChildIdsDeep(block);
-		}
-		if (tracked) retrackThroughFold(tracked, at, window, blocks);
-		// The merge re-divides the owner's children, which its child spans are laid out against.
-		retireChildSpans(body);
-		spliceMany(children, at, window.length, blocks);
+		installReading(body, at, window, blocks, bytes, sharing, tracked);
 		eaten += window.length - blocks.length;
 		span = blocks.length;
 		spliced = true;
 	}
 	return { at, span, eaten, spliced };
+}
+
+/** The blocks a re-read of `window`'s bytes gave, put in its place, the head keeping its line. */
+function installReading(
+	body: BodyParent,
+	at: number,
+	window: readonly CstNode[],
+	blocks: CstNode[],
+	bytes: string,
+	sharing: SharingState,
+	tracked: TrackedPosition | undefined
+): void {
+	blocks[0].leadingTrivia = window[0].leadingTrivia;
+	// The window joins two blocks at least, so its bytes hold the document's line ending.
+	const lineEnding = firstLineEnding(bytes) ?? '\n';
+	for (const block of blocks) {
+		ensureEditableContainers(block, lineEnding);
+		sharing.stamp(block);
+		assignChildIdsDeep(block);
+	}
+	if (tracked) retrackThroughFold(tracked, at, window, blocks);
+	// The merge re-divides the owner's children, which its child spans are laid out against.
+	retireChildSpans(body);
+	spliceMany(body.children, at, window.length, blocks);
+}
+
+/** Re-read children `top` through `bottom` as one span, taken where it holds fewer blocks: a
+ *  construct backed out at the top that a line at the bottom now finishes (editor.md § 8). */
+export function absorbSpanReading(
+	body: BodyParent,
+	top: number,
+	bottom: number,
+	change: StructuralChange,
+	grammar: GrammarView,
+	sharing: SharingState,
+	tracked?: TrackedPosition
+): SettledSplice {
+	const unchanged = { change, landing: tracked?.index ?? top };
+	const window = body.children.slice(top, bottom + 1);
+	if (window.length < 2) return unchanged;
+	if (window.some((node) => tryGetBlockKindDescriptor(node.kind)?.contextDependentKind)) {
+		return unchanged;
+	}
+	const read = (bytes: string) => readBlocks(bytes, { grammar, scope: 'fragment' });
+	const bytes = joinedWindowBytes(window, window.length);
+	const reparsed = read(bytes);
+	if (reparsed.children.length === 0 || reparsed.children.length >= window.length) return unchanged;
+	const blocks = withLowerEdge(body, bottom + 1, bytes, reparsed, read, sharing);
+	installReading(body, top, window, blocks, bytes, sharing, tracked);
+	const eaten = window.length - blocks.length;
+	const settled = foldAbsorbIntoChange(change, {
+		at: top,
+		span: blocks.length,
+		eaten,
+		spliced: true
+	});
+	return { change: settled, landing: tracked?.index ?? top };
 }
 
 /**
