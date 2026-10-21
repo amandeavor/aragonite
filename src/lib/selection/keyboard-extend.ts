@@ -9,10 +9,13 @@ import { isVerticallyTransparentNode } from '../core/inline/transparency';
 import type { CaretLanding } from './caret-landing';
 import {
 	readNativeCaretInBlock,
+	readNativeSelection,
+	readDomPoint,
 	applyCollapsedCaret,
 	applySingleBlockRange
 } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';
+import { pageTarget, type PageStepContext } from './page-step';
 import { lineEdgeOffset } from '../caret/visual-lines';
 import { offsetFromViewportPoint } from '../caret/point-offset';
 import { tableFocusExtension, type ArrowKey } from './table-rect-extend';
@@ -173,6 +176,77 @@ export function extendToLineEdge(
 	if (!focus || focus.cellCoordinate) return;
 	const offset = lineEdgeOffset(blockEl, focus.offset, side);
 	if (offset !== null) moveFocusTo(ctx, { path: focus.path, offset });
+}
+
+/** What a page step reads on top of every extend's context. */
+export type PageExtendContext = KeyboardExtendContext &
+	PageStepContext & { caretLanding: Pick<CaretLanding, 'showSelectionEnd' | 'restore'> };
+
+// Each step reads the end the step before it wrote, so a held key never steps twice from one place.
+const pageSteps = new WeakMap<SelectionState, Promise<void>>();
+
+/** Shift+PageUp or Shift+PageDown: the moving end goes a page up or down at its column, from a
+ *  caret, a range inside the block `el` at `path`, or a range across blocks. */
+export function extendByPage(
+	ctx: PageExtendContext,
+	el: HTMLElement,
+	path: number[],
+	direction: 'up' | 'down'
+): Promise<void> {
+	return queuePageStep(ctx, async (from) => {
+		// Entered before the step's mounts, which can window out the block holding the anchor.
+		if (!enterFromCaret(ctx, el, path)) return;
+		moveFocusTo(ctx, (await pageTarget(ctx, from, direction)) ?? from);
+	});
+}
+
+/** PageUp or PageDown with no Shift: the caret goes a page up or down at its column, and a range
+ *  collapses to where its moving end would step. */
+export function moveByPage(
+	ctx: PageExtendContext,
+	el: HTMLElement,
+	path: number[],
+	direction: 'up' | 'down'
+): Promise<void> {
+	return queuePageStep(ctx, async (from) => {
+		const target = (await pageTarget(ctx, from, direction)) ?? from;
+		// The landing forgets the caret memory, and with it the column the next page key aims at.
+		const column = ctx.caretMemory.column();
+		ctx.selection.collapse();
+		ctx.caretWriter.clear();
+		await ctx.caretLanding.restore({ anchor: target, focus: target }, { reveal: 'into-view' });
+		if (column !== null) ctx.caretMemory.captureColumn(column);
+	});
+}
+
+/** Runs `step` from the moving end once the step before it is done, the end shown first: a wheel
+ *  may have taken it off screen, or out of the rendered window. */
+function queuePageStep(
+	ctx: PageExtendContext,
+	step: (from: SelectionPoint) => Promise<void>
+): Promise<void> {
+	const run = async () => {
+		await ctx.caretLanding.showSelectionEnd();
+		const { selection } = ctx;
+		const from = selection.isCrossBlock
+			? selection.focus && selection.cellLandingFor(selection.focus)
+			: nativeFocus(ctx);
+		if (from) await step(from);
+	};
+	const queued = (pageSteps.get(ctx.selection) ?? Promise.resolve()).then(run);
+	// A step that failed still lets the next one run; its caller hears the failure.
+	pageSteps.set(
+		ctx.selection,
+		queued.catch(() => {})
+	);
+	return queued;
+}
+
+/** The browser selection's moving end, in whichever block the step before left it. */
+function nativeFocus(ctx: PageStepContext): SelectionPoint | null {
+	const live = readNativeSelection();
+	const root = ctx.getEditorRoot();
+	return live && root && readDomPoint(root, live.focus.node, live.focus.offset);
 }
 
 /** Moves the browser selection's focus inside `el` to raw `raw`, for a key the editor takes over

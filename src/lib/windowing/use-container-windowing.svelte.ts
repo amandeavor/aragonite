@@ -49,6 +49,7 @@ export function useRootWindowing(
 			resolve: listTree.resolve,
 			holdForRound: listTree.holdForRound,
 			mountTop: listTree.mountTop,
+			pathAt: listTree.pathAt,
 			syncScrollTop: () => windowing.syncScrollTop()
 		});
 		onDestroy(scroll.uninstall);

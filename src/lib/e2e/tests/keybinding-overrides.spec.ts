@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { nextRow } from './presentation/helpers';
 import type { KeybindingOverride } from '../../schema/keybinding-overrides';
-import { edgeKey } from '../platform-keys';
+import { edgeKey, WORD_MODIFIER } from '../platform-keys';
 
 async function setKeybindings(editor: EditorPage, overrides: KeybindingOverride[] | undefined) {
 	await editor.page.evaluate((ov) => (window as any).__test.setKeybindings(ov), overrides);
@@ -120,4 +120,58 @@ test.describe('override fires on every leaf dispatch surface', () => {
 			});
 		}
 	});
+});
+
+/** A soft keyboard's Backspace: the `beforeinput` alone, with no keydown. */
+async function sendKeylessBackspace(editor: EditorPage): Promise<void> {
+	await editor.page.evaluate(() => {
+		const init = { inputType: 'deleteContentBackward', bubbles: true, cancelable: true };
+		document.activeElement!.dispatchEvent(new InputEvent('beforeinput', init));
+	});
+}
+
+// Every delete at a block's edge runs what plain Backspace binds, so it follows a host's binding.
+test.describe("a delete at a block's start follows the Backspace binding", () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+	});
+
+	const routes = [
+		{
+			name: 'the word chord',
+			send: () => editor.page.keyboard.press(`${WORD_MODIFIER}+Backspace`)
+		},
+		{ name: 'Shift+Backspace', send: () => editor.page.keyboard.press('Shift+Backspace') },
+		{ name: 'a soft keyboard', send: () => sendKeylessBackspace(editor) }
+	];
+	const disables: [string, KeybindingOverride][] = [
+		['everywhere', { chord: 'Backspace', command: null }],
+		['on paragraphs', { chord: 'Backspace', command: null, kind: 'paragraph' }]
+	];
+
+	for (const [scope, override] of disables) {
+		for (const route of routes) {
+			test(`Backspace disabled ${scope}: ${route.name} joins nothing`, async () => {
+				await editor.loadContent('abc\n\nnext\n');
+				await setKeybindings(editor, [override]);
+				await editor.focusBlockAtPath([1], 0);
+				await route.send();
+				await editor.page.keyboard.type('x');
+				await editor.bridge.waitForSourceEquals('abc\n\nxnext\n');
+			});
+		}
+	}
+
+	for (const route of routes) {
+		test(`Backspace rebound to a heading: ${route.name} makes one`, async () => {
+			await editor.loadContent('abc\n\nnext\n');
+			await setKeybindings(editor, [{ chord: 'Backspace', command: 'heading.cycle', arg: 1 }]);
+			await editor.focusBlockAtPath([1], 0);
+			await route.send();
+			await editor.bridge.waitForSourceEquals('abc\n\n# next\n');
+		});
+	}
 });

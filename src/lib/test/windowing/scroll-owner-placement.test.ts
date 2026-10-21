@@ -55,6 +55,7 @@ function makeOwner(scripts: Record<string, number[]> = {}, opts: { withRoot?: bo
 		},
 		holdForRound: () => null,
 		mountTop: () => null,
+		pathAt: () => null,
 		syncScrollTop: () => {}
 	});
 

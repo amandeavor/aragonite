@@ -945,8 +945,9 @@ This table is for a person reading it, and lists the bundled plugins' chords und
 
 A few chords aren't in the table because no keymap holds them, so they aren't rebindable either:
 
-- **The selection chords.** Shift+Arrow to extend a selection, `Mod+Shift+Home` / `Mod+Shift+End` (`Cmd+Shift+Up` / `Cmd+Shift+Down` on a Mac), and the repeated `Mod+A` escalation go through the cross-block selection code.
+- **The selection chords.** Shift+Arrow to extend a selection, `Shift+PageUp` / `Shift+PageDown` to extend it a screen at a time, `Mod+Shift+Home` / `Mod+Shift+End` (`Cmd+Shift+Up` / `Cmd+Shift+Down` on a Mac), and the repeated `Mod+A` escalation go through the cross-block selection code.
 - **`Home`, `Shift+Home`, `Mod+Home` and `Mod+End`.** They move the caret the way they do in any text box. On a Mac, where Home and End scroll the page, the same moves are `Cmd+Left`, `Cmd+Shift+Left`, `Cmd+Up` and `Cmd+Down`, and the editor reads them the same way. It only steps in where a block's text starts behind something you can't put a caret in (a list item's or a footnote's marker, an image, a formula), or ends in an inline widget. There `Home` on the block's first line stops where the text starts, `Mod+Home` goes there from any line, and `Mod+End` goes past that last widget. Both `Mod` chords work the same in a table cell.
+- **`PageUp` and `PageDown`.** They move the caret a screen up or down at its column, into whichever block is there, and over a selection they drop it where its moving end would go. On a Mac they scroll and leave the caret alone, like every other Mac text box.
 
 Right-clicking any cell opens the table's action menu: "Edit link" first when you clicked a link, then cut/copy/paste, Row and Column flyouts (insert, move), the two deletes, and the column's alignment. Shift+F10 or the Context Menu key opens it from the keyboard. A table has no per-row or per-column grips: its one drag handle, in the editor's gutter, moves the whole table.
 
@@ -963,7 +964,7 @@ Right-clicking any cell opens the table's action menu: "Edit link" first when yo
 | Leave a code block                  | `Enter` on its empty last line (typing the closing fence there does the same)   |
 | Hard line break                     | `Shift+Enter`                                                                   |
 | Code line break, no indent          | `Shift+Enter`                                                                   |
-| Merge into the block before / after | `Backspace` / `Delete` (at the block's start / end)                             |
+| Merge into the block before / after | `Backspace` / `Delete` (at the block's start / end; a word or line delete too)  |
 | Indent / outdent a list item        | `Tab` / `Shift+Tab`                                                             |
 | Check / uncheck a task item         | `Mod+Enter`                                                                     |
 | Indent / dedent a code line         | `Tab` / `Shift+Tab`                                                             |
@@ -1032,6 +1033,8 @@ The `keybindings` prop rebinds (or disables, with `command: null`) chords that g
 An override's `kind` scope takes a plugin kind too; name it through the plugin's exported kind constant, which is a branded string, so a raw literal won't typecheck. A bind reaches every surface the editor owns, including the ones with no focused block for a kind scope to apply to: the caret between two blocks, a block focused as a whole (a thematic break, a plugin diagram), and the document with nothing focused inside it. A disable unbinds the command but the press is still consumed, as [Which shortcuts the editor consumes](#which-shortcuts-the-editor-consumes) explains.
 
 **Over a selection spanning blocks, a chord goes by what you bound it to.** If the key is bound to something that happens at a caret (splitting a block, a hard line break, a heading level), it first removes the selection, the way `Backspace` would, then does its thing where that leaves the caret. So rebind the heading to `Mod+Alt+1` and that chord makes a heading over a selection too, while a disabled `Mod+1` leaves the selection alone. The binding that counts is the one in the block the caret lands in after the removal, so a binding scoped to one kind works here too. The indent keys follow the same rule: a chord you bind to `list.indent` indents a selection's list items, like Tab. That's the keyboard, mind you; `runCommand` with a heading level still declines over a selection spanning blocks, as [Toolbar commands](#toolbar-commands) says.
+
+**`Backspace` and `Delete` speak for every delete at a block's edge.** A word or line delete (`Ctrl+Backspace`, `Option+Backspace`, `Cmd+Backspace` and their `Delete` twins) or a phone keyboard's delete that lands at a block's start runs whatever plain `Backspace` is bound to there, and at its end whatever `Delete` is. So disabling `Backspace` stops all of them merging, and rebinding it rebinds all of them. In a table cell the chords move to the next cell over, like the plain keys do.
 
 Scoping by kind is what makes the shared structural chords reachable, since a chord like `Tab` is bound separately on every kind that wants it. The first entry above frees `Tab` inside list items (for focus traversal in a form-embedded editor, say) and leaves `Tab` alone in code blocks and prose.
 

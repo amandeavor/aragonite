@@ -42,6 +42,8 @@ export interface TargetResolver {
 	holdForRound(): (() => number) | null;
 	/** Where to scroll so the block at `path` mounts in its list. */
 	mountTop(path: readonly number[]): number | null;
+	/** The block at `top` in the scroll content, as deep as the mounted lists reach. */
+	pathAt(top: number): number[] | null;
 	/** A scripted `scrollTop` write fires no `scroll` event in time, so the root window re-reads it. */
 	syncScrollTop(): void;
 }
@@ -84,6 +86,9 @@ export interface ScrollOwner {
 	place(path: readonly number[], opts: PlaceOptions): ScrollPlacement;
 	/** Scroll so the block at `path` leads the viewport, to mount it there. */
 	scrollToMount(path: readonly number[]): void;
+	/** The block at `top` in the scroll content, from the height tables, as deep as the mounted
+	 *  lists reach; null before the root list mounts. */
+	pathAt(top: number): number[] | null;
 	/** Read the position now; the returned call puts it back after a view swap renders. */
 	keep(): () => Promise<void>;
 	/** A keydown, pointerdown or wheel on the scroll container: drop any held placement. */
@@ -361,6 +366,7 @@ export function createScrollOwner(deps: ScrollOwnerDeps): ScrollOwner {
 				}
 			};
 		},
+		pathAt: (top) => resolver?.pathAt(top) ?? null,
 		scrollToMount(path) {
 			writeScroll(() => {
 				const top = resolver?.mountTop(path) ?? null;

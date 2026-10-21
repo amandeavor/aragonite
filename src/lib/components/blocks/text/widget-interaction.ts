@@ -42,7 +42,7 @@ import { checkWidgetCaretLanding } from '../../../invariants/widget-caret-landin
 import { checkMotionLeftWidget } from '../../../invariants/selected-widget-motion';
 import type { RevealFold } from '../editable/surface-clipboard';
 import { hasModifier, isPlainTypingKey, surfaceHoldsRange } from './click-snap-guard';
-import { caretEdgeKey } from '../../../schema/keybindings';
+import { caretEdgeKey, pageKey } from '../../../schema/keybindings';
 import { caretIsInTextContent } from '../../../caret/text-seat';
 import {
 	findFirstEdgeWidget,
@@ -179,12 +179,15 @@ function caretMotionOf(e: KeyboardEvent): CaretMotion | null {
 		};
 	}
 	if (hasModifier(e)) return null;
-	const side =
-		e.key === 'ArrowUp' || e.key === 'PageUp'
-			? 'start'
-			: e.key === 'ArrowDown' || e.key === 'PageDown'
-				? 'end'
-				: null;
+	const page = pageKey(e);
+	if (page) {
+		return {
+			side: page.direction === 'up' ? 'start' : 'end',
+			extend: page.extend,
+			lineArrow: false
+		};
+	}
+	const side = e.key === 'ArrowUp' ? 'start' : e.key === 'ArrowDown' ? 'end' : null;
 	return side && { side, extend: e.shiftKey, lineArrow: false };
 }
 

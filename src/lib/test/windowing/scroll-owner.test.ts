@@ -429,7 +429,8 @@ const NON_WRITES = [
 	'visibleBand',
 	'release',
 	'watchSize',
-	'roundOpen'
+	'roundOpen',
+	'pathAt'
 ] as const;
 type ScrollWrites = Omit<ScrollOwner, (typeof NON_WRITES)[number]>;
 
@@ -513,6 +514,7 @@ describe('scroll owner: the edges', () => {
 			resolve: () => ({ top: 300, height: 20 }),
 			holdForRound: () => null,
 			mountTop: () => null,
+			pathAt: () => null,
 			syncScrollTop
 		});
 		owner.place([4], { block: 'center', hold: true });

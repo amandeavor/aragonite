@@ -132,6 +132,7 @@ describe('editor-root geometry: header slot compensation', () => {
 			resolve: () => null,
 			holdForRound: () => null,
 			mountTop: () => null,
+			pathAt: () => null,
 			syncScrollTop: () => {}
 		});
 		teardowns.push(

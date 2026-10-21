@@ -122,6 +122,16 @@ describe('deleteExtent: a line delete', () => {
 		expect(take('ab cd ef|', intent('soft-line', 'backward'), { lineEdge })).toBe('ab |');
 		expect(take('ab|cd\nef', intent('soft-line', 'forward'), { lineEdge })).toBe('ab|\nef');
 	});
+
+	// A null extent reads as the block's edge, where the delete runs the plain key's merge.
+	it('finds something to take at a wrapped line start inside the block, so it never merges', () => {
+		const lineEdge = (side: 'start' | 'end') => (side === 'start' ? 6 : 8);
+		for (const unit of ['soft-line', 'hard-line', 'word'] as const) {
+			expect(take('ab cd |ef', intent(unit, 'backward'), { lineEdge })).not.toBeNull();
+			expect(take('ab cd |ef', intent(unit, 'forward'), { lineEdge })).not.toBeNull();
+		}
+		expect(take('|ab', intent('soft-line', 'backward'), { lineEdge: () => 0 })).toBeNull();
+	});
 });
 
 describe('deleteExtent: a word read as the screen shows it', () => {

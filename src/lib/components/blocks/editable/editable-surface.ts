@@ -29,7 +29,12 @@ import type { NodeView } from '../../../core/node-views';
 import { blockAccessibleName, readingRole } from '../../../a11y-strings';
 import type { ReadingFocus } from '../../editor-root/reading-focus.svelte';
 import type { ScrollOwner } from '../../../windowing/scroll-owner';
-import type { CommandDispatchContext } from '../../../schema/block-commands';
+import {
+	dispatchKeyCommand,
+	type CommandDispatchContext,
+	type KindCommandTarget
+} from '../../../schema/block-commands';
+import { eventToChord } from '../../../schema/keybindings';
 import type { PluginActivation } from '../../../schema/plugin-activation';
 import type { UndoController } from '../../../editor-actions/deps';
 import type { PasteCommitCoordinator } from '../../../tree-operations/paste/paste-deps';
@@ -86,7 +91,11 @@ import {
 	type CaretWriter,
 	type RawRange
 } from '../../../caret/widget-offset';
-import type { CaretUnitSource, SharedKeydownContext } from '../../../selection/shared-keydown';
+import {
+	caretLandableBounds,
+	type CaretUnitSource,
+	type SharedKeydownContext
+} from '../../../selection/shared-keydown';
 import {
 	isInteractionTraceEnabled,
 	traceCompositionEnd,
@@ -96,12 +105,7 @@ import {
 import { assertInvariant } from '../../../assert';
 import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
 import { checkDeleteDecided } from '../../../invariants/collapsed-delete';
-import type {
-	DeleteAnswer,
-	DeleteDirection,
-	DeleteIntent,
-	DeleteVerdict
-} from '../../../caret/delete-extent';
+import type { DeleteAnswer, DeleteIntent, DeleteVerdict } from '../../../caret/delete-extent';
 import { decideCollapsedDelete, type CollapsedDeleteReads } from './collapsed-delete';
 import type { Reading } from '../../../schema/reading';
 import { createPlaceholderHint, type PlaceholderPolicy } from '../placeholder-hint.svelte';
@@ -236,8 +240,9 @@ export interface EditableSurfaceDeps {
 	ownPairs?: BlockAutoPairs;
 	/** The editor's reading-mode tab stop, which the element takes its tabindex from. */
 	readingFocus: Pick<ReadingFocus, 'hold'>;
-	/** What the editor shows, for an arrow in a block taller than that with no caret. */
-	scrollOwner: Pick<ScrollOwner, 'visibleBand' | 'showRect'>;
+	/** What the editor shows, for an arrow in a block taller than that with no caret, and where a
+	 *  page key steps to. */
+	scrollOwner: Pick<ScrollOwner, 'port' | 'visibleBand' | 'showRect' | 'pathAt'>;
 
 	// ── The per-block reads `SharedKeydownContext` needs ──────────────────────
 	/** The selection's focus endpoint as a raw offset; each block converts its own DOM read. */
@@ -278,8 +283,8 @@ export interface EditableSurfaceDeps {
 	/** Takes what a collapsed delete at raw `caret` aims at, through the block's own text. Omitted
 	 *  where the browser's delete is read back. */
 	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
-	/** The merge the block's key runs at its edge, which a soft keyboard's delete there runs too. */
-	joinAtEdge?: (direction: DeleteDirection) => void;
+	/** What the block's keys run at, for a delete at its edge, which runs the plain key's binding. */
+	commandTarget?: () => KindCommandTarget;
 	/** The block's own handling of a delete the editor left to the browser (a range, a soft
 	 *  keyboard's wider edit, one `deleteAtCaret` declined), run before the browser's would. */
 	handleDeclinedDelete?: (e: InputEvent) => void;
@@ -377,6 +382,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		caretLanding: deps.caretLanding,
 		getEditorRoot: deps.getEditorRoot,
 		getScrollHost: deps.getScrollHost,
+		scroll: deps.scrollOwner,
 		getEditorLifetime: deps.getEditorLifetime,
 		caretMemory: deps.caretMemory,
 		blockEdit: deps.blockEdit,
@@ -611,7 +617,10 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 					return deps.deleteAtCaret!(caret, intent);
 				}
 			: undefined,
-		joinAtEdge: deps.joinAtEdge
+		runPlainKey: (key) => {
+			const target = deps.commandTarget?.();
+			if (target) dispatchKeyCommand(key, target, deps.commands);
+		}
 	};
 
 	// A keydown that writes for itself fires no beforeinput, so the caret is read here too.
@@ -626,10 +635,27 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		deleteKeydown = !e.isComposing && (e.key === 'Backspace' || e.key === 'Delete') ? e : null;
 		try {
 			await deps.handleKeydown(e);
+			runEdgeChord(e);
 		} finally {
 			if (enterKeydown === e) enterKeydown = null;
 		}
 	});
+
+	/** A Backspace or Delete chord the block left alone, at the edge it faces, runs what the plain
+	 *  key binds: an engine may send no input for a delete with nothing to take. */
+	function runEdgeChord(e: KeyboardEvent): void {
+		const key = e.key;
+		const el = deps.getEl();
+		if (deleteKeydown !== e || e.defaultPrevented || !el) return;
+		if ((key !== 'Backspace' && key !== 'Delete') || eventToChord(e) === key) return;
+		const caret = deps.backend.getRaw();
+		if (caret === null || deps.backend.getRawSelection() !== null) return;
+		const bounds = caretLandableBounds(sharedCtx, el);
+		if (key === 'Backspace' ? caret > bounds.start : caret < bounds.end) return;
+		// Prevented whatever the binding does: the browser's own delete there takes a hidden marker.
+		e.preventDefault();
+		deleteReads.runPlainKey?.(key);
+	}
 
 	/** A break input that arrives while its Enter's handler still runs is that key's default, which
 	 *  the handler replaces, so it writes nothing (Playwright's Firefox fires it before the await). */
@@ -641,7 +667,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// Synchronous to the block's handler: the block's `preventDefault` only counts inside this
 	// listener's microtask checkpoint.
 	function onBeforeInput(e: InputEvent): void {
-		const keyed = deleteKeydown !== null && !deleteKeydown.defaultPrevented;
+		const keyChord =
+			deleteKeydown && !deleteKeydown.defaultPrevented ? eventToChord(deleteKeydown) : null;
 		deleteKeydown = null;
 		// A step below that claims the input leaves it this verdict; the delete step overwrites it.
 		deleteVerdict = { decided: false, decline: 'claimed' };
@@ -657,7 +684,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);
 		if (e.defaultPrevented) return;
-		deleteVerdict = decideCollapsedDelete(e, keyed, deleteReads);
+		deleteVerdict = decideCollapsedDelete(e, keyChord, deleteReads);
 		if (deleteVerdict && !deleteVerdict.decided) deps.handleDeclinedDelete?.(e);
 	}
 

@@ -248,8 +248,7 @@
 		handleBeforeInput: onBeforeInput,
 		deleteAtCaret: (caret, intent) =>
 			takeBackOpenLine(pendingBreakKeyDeps) ? 'taken' : edgeDispatch.deleteAtCaret(caret, intent),
-		joinAtEdge: (direction) =>
-			void runCommand(direction === 'backward' ? 'block.mergePrev' : 'block.mergeNext'),
+		commandTarget: () => keyTarget,
 		// After a shown source is written: until then the selected text lives in the DOM only.
 		removeSelection: (range) =>
 			new Promise<ContentWrite>((written) =>
@@ -640,6 +639,17 @@
 
 	export const afterSourceCommit = commands.afterSourceCommit;
 	export const isCommandActive = commands.isCommandActive;
+
+	const keyTarget = {
+		get kind() {
+			return node.kind;
+		},
+		runCommand,
+		getPath: () => myPath,
+		afterSourceCommit,
+		afterSelectionRemoved
+	};
+
 	export function landRestoredCaret(offset: number): void {
 		widgetInteraction.restoreCaret(offset, 'reachable');
 	}
@@ -802,14 +812,7 @@
 
 		if (handleHomeKey(e, homeKeyDeps)) return;
 
-		const target = {
-			kind: node.kind,
-			runCommand,
-			getPath: () => myPath,
-			afterSourceCommit,
-			afterSelectionRemoved
-		};
-		if (wiring.dispatchChord(e, target)) return;
+		if (wiring.dispatchChord(e, keyTarget)) return;
 	}
 
 	function onBeforeInput(e: InputEvent): void {

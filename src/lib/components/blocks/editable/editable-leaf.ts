@@ -49,7 +49,11 @@ import { traceRevealOpen, traceRevealFold } from '../../../debug/interaction-tra
 import { isBlankText, trimTrailingLineEnding, type LineEnding } from '../../../core/lines';
 import type { PresentationMode } from '../../../presentation-mode';
 import { tryGetBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
-import { blockCommandTarget, type CommandRun } from '../../../schema/block-commands';
+import {
+	blockCommandTarget,
+	type CommandRun,
+	type KindCommandTarget
+} from '../../../schema/block-commands';
 import type { EditorContext } from '../../../schema/plugin-install';
 import { componentPluginEditor, componentPluginOptions } from '../../../schema/block-kind-plugin';
 import { createTextBatch } from '../../../editor-actions/commit/text-batch';
@@ -264,6 +268,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			stepSourceHistory(e, e.inputType === 'historyUndo'),
 		handleBeforeInput: onBeforeInput,
 		deleteAtCaret,
+		commandTarget: () => keyTarget,
 		handleDeclinedDelete: spliceTargetRange,
 		removeSelection: (range) => {
 			removeRange(range);
@@ -577,14 +582,16 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 
 	/** Resolve a chord at this leaf's kind and report whether it was consumed. Both views spend
 	 *  it: undo belongs to the block whatever half of the swap holds focus. */
-	const dispatchChord = (e: KeyboardEvent): boolean =>
-		wiring.dispatchChord(e, {
-			kind: deps.getNode().kind,
-			getCommandContext,
-			getPath: deps.getPath,
-			afterSourceCommit,
-			afterSelectionRemoved: editableSurface.afterSelectionRemoved
-		});
+	const keyTarget: KindCommandTarget = {
+		get kind() {
+			return deps.getNode().kind;
+		},
+		getCommandContext,
+		getPath: deps.getPath,
+		afterSourceCommit,
+		afterSelectionRemoved: editableSurface.afterSelectionRemoved
+	};
+	const dispatchChord = (e: KeyboardEvent): boolean => wiring.dispatchChord(e, keyTarget);
 
 	async function handleKeydown(e: KeyboardEvent): Promise<void> {
 		const el = deps.getEl();

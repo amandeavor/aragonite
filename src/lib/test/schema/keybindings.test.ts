@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { caretEdgeKey, eventToChord, normalizeChord } from '#lib/schema/keybindings.js';
+import { caretEdgeKey, eventToChord, normalizeChord, pageKey } from '#lib/schema/keybindings.js';
 
 function ke(init: Partial<KeyboardEventInit> & { key: string }): KeyboardEvent {
 	return new KeyboardEvent('keydown', init);
@@ -62,5 +62,25 @@ describe('caretEdgeKey', () => {
 		['PageUp', { metaKey: true }]
 	] as const)('reads %s %o as no edge', (key, mods) => {
 		expect(caretEdgeKey(ke({ key, ...mods }))).toBeNull();
+	});
+});
+
+describe('pageKey', () => {
+	it('reads PageUp and PageDown, Shift as growing a selection', () => {
+		expect(pageKey(ke({ key: 'PageUp' }))).toEqual({ direction: 'up', extend: false });
+		expect(pageKey(ke({ key: 'PageDown', shiftKey: true }))).toEqual({
+			direction: 'down',
+			extend: true
+		});
+	});
+
+	// Ctrl+PageDown switches the browser's tab, so the editor leaves it alone.
+	it.each([
+		['PageDown', { ctrlKey: true }],
+		['PageUp', { metaKey: true, shiftKey: true }],
+		['PageDown', { altKey: true }],
+		['ArrowDown', { shiftKey: true }]
+	] as const)('reads %s %o as no page key', (key, mods) => {
+		expect(pageKey(ke({ key, ...mods }))).toBeNull();
 	});
 });

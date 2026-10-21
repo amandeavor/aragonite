@@ -429,7 +429,15 @@ const UNLISTED_BY_DESIGN: Record<ClaimKey, string> = {
 		'the Tables preamble documents it in prose as the keyboard route to the cell menu'
 	),
 	...unlisted(
-		['Mod+A', 'Mod+Shift+Home', 'Mod+Shift+End', 'Mod+Shift+ArrowUp', 'Mod+Shift+ArrowDown'],
+		[
+			'Mod+A',
+			'Mod+Shift+Home',
+			'Mod+Shift+End',
+			'Mod+Shift+ArrowUp',
+			'Mod+Shift+ArrowDown',
+			'Shift+PageUp',
+			'Shift+PageDown'
+		],
 		'schema/keybindings.ts',
 		SELECTION_PREAMBLE
 	),

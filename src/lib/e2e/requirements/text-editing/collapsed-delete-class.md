@@ -41,26 +41,36 @@ the pair as one character. In source and live mode, from `abc\r\nAfter\r\n`:
 - a code block with the body `abc\r\nxyz`, End on the first body line, Backspace: the body reads
   `ab\r\nxyz`
 
-## A soft keyboard at a block's edge
+## Any delete at a block's edge
 
-A soft keyboard's Backspace at a block's start, or Delete at its end, runs the same merge the key
-runs, and one undo puts it back:
+A delete of any unit at a block's start (Backspace) or end (Delete) does what the plain key does
+there: it runs whatever plain Backspace or Delete binds, the merge unless the host rebound it.
+Each row presses the plain key, then the same edge again by each route, and the source and the
+caret come out the same. The routes: a soft keyboard (the `beforeinput` alone), the word chord
+(Ctrl+Backspace, Option on a Mac), Shift+Backspace, and the Mac's Option word delete and Cmd line
+delete (a keydown with the modifier, then the input it opens, since those chords only exist on a
+Mac):
 
 - `abc` / `next`, Backspace at the start of `next`, and Delete at the end of `abc`
 - `- a` / `- b`, Backspace at the start of `b`
 - `x` / `> q`, Backspace at the start of `q`
 - live mode, `**bold**` / `next`, End, then Delete: either side of the hidden closer is the
   paragraph's end, so both routes merge
+- live mode, `para` / `# Title`, Backspace at the heading's start: the heading becomes a paragraph
+- `abc` / a code block, Backspace at the code block's start: the caret steps out to the end of
+  `abc`, the bytes kept
+
+And beside those:
+
+- a soft keyboard's merge is one undo
 - `abc` / `next`, Backspace at the start of `next` after the keydown Android's keyboards send
   first (`Unidentified`, key code 229): `abcnext`
+- Shift+Backspace and the word chord at a live `# Title`'s start, then `x`: `xTitle`, the marker
+  gone whole, never the `#Title` the browser's own delete leaves
+- the word chord at a table cell's start moves to the end of the cell before, as Backspace does
 
-A table cell's start keeps today's answer (the Backspace does nothing) until cells get the same
-merge.
-
-## A chord at a block's edge
-
-A chord the keymap doesn't bind (Shift+Backspace, the word Backspace) at a live heading's start
-writes nothing: `# Title` keeps its marker, and a letter typed next lands before `Title`.
+A soft keyboard's delete at a table cell's edge does nothing: a cell binds no Backspace, and its
+key moves focus at keydown.
 
 ## Shift+Backspace
 
@@ -102,3 +112,9 @@ Shift+Backspace is Backspace on every OS, so it takes what Backspace takes (key 
   edge row pressed the key, whose merge runs at keydown.
 - Shift+Backspace at a live heading's start took the space of `# ` in Firefox: the edge decline
   let the browser's delete run for any key, and no edge row pressed a chord over a hidden marker.
+- A word, line or Shift delete at a block's edge did nothing, and a soft keyboard's did nothing in
+  a code block: every edge row pressed the plain key, whose binding runs at keydown, and the soft
+  keyboard rows ran in prose only, whose merge was wired by hand.
+- The word chord and Shift+Backspace at a block's edge still did nothing in WebKit once the input
+  ran the plain key: WebKit sends no input for a delete with nothing to take, and the chord rows
+  ran in Chromium until the three-engine gate.
