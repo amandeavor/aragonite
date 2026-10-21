@@ -11,7 +11,11 @@ import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createLeafTyping } from '#lib/editor-actions/leaf-write.js';
 import { legalizeWrite, updateNodeContent } from '#lib/tree-operations/content-write.js';
-import { makeEditorActionsDeps, makeTopHarness } from '#lib/test/harness/editor-actions.js';
+import {
+	makeEditorActionsDeps,
+	makeNestedHarness,
+	makeTopHarness
+} from '#lib/test/harness/editor-actions.js';
 import { createTopLevelScope } from '#lib/editor-actions/block-edit-scope.js';
 import { commitLeafText } from '#lib/editor-actions/block-edit-core.js';
 import { describeConvergence, expectParseConverged } from '#lib/test/harness/parse-converged.js';
@@ -207,7 +211,8 @@ describe.each(ROUTES)('a closer written blocks below the construct it finishes, 
 	// A fence that starts waiting re-pairs every fence below it, and a closer it refuses stops nothing.
 	it.each([
 		['past a `:::` the `::::` refuses', 'x::::note\n\na\n\n:::\n\nb\n\n::::\n', '::::note\n', 1],
-		['and every `$$` pair below', 'x$$\n\na\n\n$$\nm\n$$\n\nb\n\n$$\nn\n$$\n', '$$\n', 5]
+		['and every `$$` pair below', 'x$$\n\na\n\n$$\nm\n$$\n\nb\n\n$$\nn\n$$\n', '$$\n', 5],
+		['into more blocks than it re-read', 'x$$\n\na\n\n$$\nm\n\nn\n$$\n', '$$\n', 4]
 	])('an opener made by a write reads down %s', async (_l, source, text, count) => {
 		const { doc, write } = route(source);
 		await write(0, text);
@@ -227,6 +232,28 @@ describe.each(ROUTES)('a closer written blocks below the construct it finishes, 
 		await write(2, 'bars\n');
 		expect(doc.children.map((c) => c.kind)).toEqual(['paragraph', 'paragraph', 'paragraph']);
 		expectParseConverged(doc);
+	});
+});
+
+// A body below the document reads down the same way, through the keystroke's own route.
+describe('an opener made by a write inside a quote', () => {
+	beforeEach(() => {
+		installPlugins([latexPlugin(), admonitionsPlugin()]);
+	});
+
+	it.each([
+		['past a `:::` the `::::` refuses', '> x::::note\n>\n> a\n>\n> :::\n>\n> b\n>\n> ::::\n', 1],
+		[
+			'and every `$$` pair below',
+			'> x$$\n>\n> a\n>\n> $$\n> m\n> $$\n>\n> b\n>\n> $$\n> n\n> $$\n',
+			5
+		]
+	])('reads down %s', async (_l, source, count) => {
+		const h = makeNestedHarness(source, { index: 0 });
+		const raw = h.deps.doc.children[0].children![0].raw;
+		await h.bundle.blockEdit.updateBlockContent(0, raw.slice(1), 'authored', 1, 0);
+		expect(h.deps.doc.children[0].children).toHaveLength(count);
+		expectParseConverged(h.deps.doc);
 	});
 });
 
