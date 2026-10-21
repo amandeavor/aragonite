@@ -57,6 +57,9 @@ runs, and one undo puts it back:
 A table cell's start keeps today's answer (the Backspace does nothing) until cells get the same
 merge.
 
+A chord the keymap doesn't bind (Shift+Backspace, the word Backspace) at a live heading's start
+writes nothing: `# Title` keeps its marker, and a letter typed next lands before `Title`.
+
 ## Shift+Backspace
 
 Shift+Backspace is Backspace on every OS, so it takes what Backspace takes (key only):
@@ -95,3 +98,5 @@ Shift+Backspace is Backspace on every OS, so it takes what Backspace takes (key 
   pair, so no row asked which of the two the user pressed.
 - A soft keyboard's Backspace at a block's start did nothing once the editor took the delete: every
   edge row pressed the key, whose merge runs at keydown.
+- Shift+Backspace at a live heading's start took the space of `# ` in Firefox: the edge decline
+  let the browser's delete run for any key, and no edge row pressed a chord over a hidden marker.

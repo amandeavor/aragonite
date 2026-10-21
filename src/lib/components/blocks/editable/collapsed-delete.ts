@@ -43,10 +43,10 @@ export function decideCollapsedDelete(
 	if (decline || caret === null) return { decided: false, decline: decline ?? 'no-caret' };
 	const answer = reads.deleteAtCaret?.(caret, intent) ?? 'declined';
 	if (answer === 'declined') return { decided: false, decline: 'surface' };
-	// A key reaching here at the edge is one its own merge command turned down (the host unbound it).
-	if (answer === 'at-edge' && keyed) return { decided: false, decline: 'key-at-edge' };
+	// The browser's own delete at the edge can take a hidden marker, so it never runs. A key reaching
+	// here is a chord the keymap leaves alone, or a merge the host turned down: neither merges.
 	e.preventDefault();
-	if (answer === 'at-edge') reads.joinAtEdge?.(intent.direction);
+	if (answer === 'at-edge' && !keyed) reads.joinAtEdge?.(intent.direction);
 	return { decided: true };
 }
 

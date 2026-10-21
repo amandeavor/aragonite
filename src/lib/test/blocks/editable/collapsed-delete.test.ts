@@ -86,9 +86,9 @@ describe('decideCollapsedDelete: which deletes the editor writes itself', () => 
 		});
 	});
 
-	// A soft keyboard's delete at the edge runs the merge the key would; a key that got here is one
-	// its own merge command turned down.
-	it('runs the block merge for a keyless delete at the edge, and never for a key', () => {
+	// A soft keyboard's delete at the edge runs the merge the key would; a key that got here is a
+	// chord the keymap leaves alone, and the browser's delete there would take a hidden marker.
+	it('runs the block merge for a keyless delete at the edge, and lets nothing run for a key', () => {
 		for (const keyed of [false, true]) {
 			const joined: string[] = [];
 			const { base } = reads({
@@ -96,10 +96,8 @@ describe('decideCollapsedDelete: which deletes the editor writes itself', () => 
 				joinAtEdge: (direction) => void joined.push(direction)
 			});
 			const e = input('deleteContentBackward');
-			const verdict = decideCollapsedDelete(e, keyed, base);
-			if (keyed) expect(verdict).toEqual({ decided: false, decline: 'key-at-edge' });
-			else expect(verdict).toEqual({ decided: true });
-			expect([e.defaultPrevented, joined]).toEqual(keyed ? [false, []] : [true, ['backward']]);
+			expect(decideCollapsedDelete(e, keyed, base)).toEqual({ decided: true });
+			expect([e.defaultPrevented, joined]).toEqual([true, keyed ? [] : ['backward']]);
 		}
 	});
 

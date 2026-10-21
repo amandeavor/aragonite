@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { skipUnlessSupported } from '../../browser-engine';
-import { edgeKey } from '../../platform-keys';
+import { edgeKey, WORD_MODIFIER } from '../../platform-keys';
 
 /**
  * A collapsed Backspace or Delete inside a line takes the same bytes on every engine, by key or by
@@ -446,6 +446,23 @@ test.describe('a soft keyboard delete at a block edge does what the key does', (
 		await sendKeylessDelete(page, 'Backspace', { android: true });
 		await editor.bridge.waitForSourceEquals('abcnext\n');
 	});
+});
+
+// A chord the keymap doesn't bind reaches the delete step at the edge, where the browser's own
+// delete would take the hidden marker prefix.
+test.describe('a chorded delete at a block start writes nothing', () => {
+	for (const chord of ['Shift+Backspace', `${WORD_MODIFIER}+Backspace`]) {
+		test(`${chord} at a live heading's start`, async ({ page }) => {
+			const editor = new EditorPage(page);
+			await editor.goto();
+			await editor.setPresentationMode('live');
+			await editor.loadContent('para\n\n# Title\n');
+			await editor.focusBlockAtPath([1], 2);
+			await page.keyboard.press(chord);
+			await page.keyboard.type('x');
+			await editor.bridge.waitForSourceEquals('para\n\n# xTitle\n');
+		});
+	}
 });
 
 // End and Home leave the caret where each engine puts it at a CRLF line end, and the delete still

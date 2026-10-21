@@ -72,14 +72,7 @@ export function isMoveDelete(inputType: string): boolean {
 /** Why a delete the editor decides went to the browser after all, read back on `input` instead.
  *  The editor's own check (G1.132) accepts an undecided delete only with one of these. */
 export type DeleteDecline =
-	| 'claimed'
-	| 'composing'
-	| 'not-cancelable'
-	| 'range'
-	| 'no-caret'
-	| 'wide-keyless'
-	| 'surface'
-	| 'key-at-edge';
+	'claimed' | 'composing' | 'not-cancelable' | 'range' | 'no-caret' | 'wide-keyless' | 'surface';
 
 export type DeleteVerdict = { decided: true } | { decided: false; decline: DeleteDecline };
 

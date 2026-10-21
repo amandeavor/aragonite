@@ -586,7 +586,7 @@ click elsewhere mid-scroll passes).
 Backspace or Delete in any editable block is written by the editor at `beforeinput`
 (`components/blocks/editable/collapsed-delete.ts`), so every engine takes the same bytes. Dev fails
 the `input` after one unless its `beforeinput` was declined for a named reason (a composition, a
-range, a soft keyboard's wider delete, a shown widget source, a key its block's merge turned down).
+range, a soft keyboard's wider delete, a shown widget source).
 `checkDeleteDecided` · `collapsed-delete.test.ts`.
 
 **G1.133 · Reading mode has one block stop** (`reading-tab-stops`). In reading mode Tab is the
