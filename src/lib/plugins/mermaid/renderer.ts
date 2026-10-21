@@ -44,8 +44,24 @@ async function renderThemed(code: string, id: string, theme: MermaidTheme): Prom
 		mermaid.initialize({ ...BASE_CONFIG, theme });
 		configuredTheme = theme;
 	}
-	const { svg } = await mermaid.render(id, code);
-	return svg;
+	const host = measuringHost();
+	try {
+		const { svg } = await mermaid.render(id, code, host);
+		return svg;
+	} finally {
+		host.remove();
+	}
+}
+
+/** Where mermaid lays a diagram out to measure it: in the page, so text measures in the host
+ *  page's fonts, but fixed and clipped to nothing, so the page never grows while it draws. */
+function measuringHost(): HTMLElement {
+	const host = document.createElement('div');
+	host.setAttribute('aria-hidden', 'true');
+	host.style.cssText =
+		'position:fixed;top:0;left:0;width:100%;height:0;overflow:hidden;visibility:hidden;pointer-events:none';
+	document.body.append(host);
+	return host;
 }
 
 /**
