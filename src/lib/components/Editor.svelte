@@ -741,7 +741,12 @@
 	// one each, so a card opened over the search bar cannot overwrite the caret the bar restores.
 	const caretRestoreDeps: CaretRestoreDeps = {
 		getEditorEl: () => editorEl ?? null,
-		read: () => getSelection(),
+		// Reading mode keeps no caret, so the block it focused stands in for one.
+		read: () => {
+			const selection = getSelection();
+			const reading = !selection && effectiveMode === 'reading' ? readingFocus.focusCaret() : null;
+			return selection ?? (reading && caretAt(reading.path, reading.offset));
+		},
 		restore: (selection) => roundTripRestore(selection, { reveal: 'into-view' })
 	};
 	const searchCaret = createCaretRestore(caretRestoreDeps);

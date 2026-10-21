@@ -11,7 +11,7 @@ import { prebuiltExternals } from './pack-manifest.mjs';
 
 const PREBUILT_DIR = 'dist/prebuilt';
 
-// Gzipped bytes, a little above the measured 535,830 of JS and 23,247 of CSS.
+// Gzipped bytes, a little above the measured 535,906 of JS and 23,247 of CSS.
 const BUDGET = { js: 537_000, css: 23_800 };
 
 /**

@@ -22,8 +22,10 @@ there's no caret to move inside one.
 
 ## Edge cases
 
-- **A click, then an arrow, then leaving reading mode:** the caret goes to the start of the
-  block the arrow reached, not to the clicked point
+- **A click, then an arrow, then leaving reading mode:** the caret goes where the arrow entered
+  the block it reached (the start after ArrowDown, the end after ArrowUp), not to the clicked point
+- **The find bar opened and closed after a click:** Escape hands focus back to the clicked block
+  with no caret, and leaving reading mode then puts the caret at the clicked word
 - **After Tab lands on the stop** (no click, no caret): ArrowRight and ArrowLeft still step
 - **The stop follows the arrows:** after two ArrowDowns, Tab in from a host button lands on the
   block they reached
@@ -50,3 +52,5 @@ there's no caret to move inside one.
 - The click rows read `getSelection()` after the click, never what `selectionChange` said during
   it, and Chromium reports the click's caret only once it's cleared, so the caret Firefox and
   WebKit announced went unseen; no row listened for focus events around the editor either.
+- No row opened an overlay in reading mode after a click, so the overlay restore that read no
+  caret, and dropped focus to the editor's root, went unseen.

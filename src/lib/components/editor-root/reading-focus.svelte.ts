@@ -26,8 +26,10 @@ export interface ReadingFocus {
 	/** A caret the editor asked for while reading, which it declines: leaving reading puts the
 	 *  caret there while the block still holds focus. */
 	notePoint(contentEl: HTMLElement, offset: number): void;
-	/** Where leaving reading mode puts the caret, and forgets it: after a focused widget, at a
-	 *  selection's focus or the noted point in the focused block, else at its start. */
+	/** The caret reading mode stands in for: after a focused widget, at a selection's focus or the
+	 *  noted point in the focused block, else at its start. */
+	focusCaret(): { path: number[]; offset: number } | null;
+	/** {@link focusCaret}, read as the editor leaves reading mode, and forgotten. */
 	takeExitCaret(): { path: number[]; offset: number } | null;
 	/** Writes every held element's tabindex and hears focus moving inside `root`, which moves the
 	 *  stop; a dev build checks that one block is a tab stop. */
@@ -63,7 +65,7 @@ export function createReadingFocus(deps: ReadingFocusDeps): ReadingFocus {
 		return fallback ? keyOf(fallback) : null;
 	});
 
-	function exitCaret(): { path: number[]; offset: number } | null {
+	function focusCaret(): { path: number[]; offset: number } | null {
 		const el = focused;
 		const surface = el?.isConnected ? surfaceHolding(el, deps.getBlockElByPath) : null;
 		if (!el || !surface) return null;
@@ -104,8 +106,9 @@ export function createReadingFocus(deps: ReadingFocusDeps): ReadingFocus {
 		notePoint(contentEl, offset) {
 			point = { contentEl, offset };
 		},
+		focusCaret,
 		takeExitCaret() {
-			const caret = exitCaret();
+			const caret = focusCaret();
 			focused = null;
 			point = null;
 			return caret;

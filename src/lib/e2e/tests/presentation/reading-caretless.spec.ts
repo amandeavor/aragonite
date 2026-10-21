@@ -39,6 +39,7 @@ test.describe('reading mode: a click keeps no caret', () => {
 		expect(await editor.bridge.getSelection()).toBeNull();
 	});
 
+	// Only Firefox and WebKit can red here: Chromium reports the click's caret once it's cleared.
 	test('a click tells selectionChange subscribers of no caret', async ({ page }) => {
 		const editor = await loadReading(page, DOC);
 		await page.evaluate(() => (window as any).__test.startSelectionChangeCapture());
@@ -71,6 +72,22 @@ test.describe('reading mode: a click keeps no caret', () => {
 		await expect.poll(() => holdsCaret(page)).toBe(false);
 
 		expect(await page.evaluate(() => (window as any).__heard)).toEqual([]);
+	});
+
+	test('the find bar opened and closed after a click hands focus back to the clicked word', async ({
+		page
+	}) => {
+		const editor = await loadReading(page, DOC);
+		await clickWord(page, [1], 'para');
+		await page.keyboard.press('ControlOrMeta+f');
+		await page.keyboard.type('here');
+		await page.keyboard.press('Escape');
+
+		await expect.poll(() => focusName(page)).toContain('[1]');
+		expect(await holdsCaret(page)).toBe(false);
+		await editor.setPresentationMode('source');
+		await page.keyboard.type('X');
+		await editor.bridge.waitForSourceContains('Second Xpara here.');
 	});
 
 	test('a double click still selects its word', async ({ page }) => {
@@ -121,6 +138,19 @@ test.describe('reading mode: a click keeps no caret', () => {
 		await page.keyboard.type('X');
 
 		await editor.bridge.waitForSourceContains('XSecond para here.');
+	});
+
+	test('a click, then ArrowUp: leaving puts the caret at the end of the block above', async ({
+		page
+	}) => {
+		const editor = await loadReading(page, DOC);
+
+		await clickWord(page, [1], 'para');
+		await page.keyboard.press('ArrowUp');
+		await editor.setPresentationMode('source');
+		await page.keyboard.type('X');
+
+		await editor.bridge.waitForSourceContains('gamma delta.X');
 	});
 });
 
