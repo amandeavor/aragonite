@@ -130,20 +130,7 @@ The `closure` block is the kind's written answer to every cross-cutting editor s
 - `proseLeafClosure`, file-local to `built-in-descriptors.ts`: the prose trio (paragraph, heading, setext heading).
 - Anything else writes its cells by hand, like the thematic break above. A missing cell is a compile error either way.
 
-The optional fields, every one of them (the pinned inventory, container fields included, is `docs/design/plugin-contract.md` § The descriptor field reference):
-
-| Field                   | For                                                                                                                                                                          |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `keymap`                | Declarative chord → command bindings; see [Commands](#commands)                                                                                                              |
-| `conformanceFixture`    | Source that parses to your kind. **The field the conformance kit enrols on** ([Testing](#testing))                                                                           |
-| `contentStart`          | `{ range, backspace? }`: `range` when the editable span is narrower than raw (a heading's `# `); `backspace: 'demote-first'` drops those markers on Backspace before a merge |
-| `blockFocus`            | `'whole-block'`: an opaque childless block joins the focus-then-delete model (arrows stop on it; Backspace focuses, a second press deletes); needs `supportsInline: false`   |
-| `contextDependentKind`  | Kinds with no standalone line recognizer, whose container owns their syntax (a table cell)                                                                                   |
-| `rawWrite`              | Make a written raw legal as this kind's own bytes, and map a caret through it; the fenced code's rule is `schema/fenced-code-raw.ts`                                         |
-| `renderImagesAsWidgets` | `false` opts out of image widgets (a table cell renders the alt text instead)                                                                                                |
-| `foreignDragHitTest`    | Custom drop-target geometry: the _exact_ hit, declining off-target                                                                                                           |
-| `caretTargetAtPoint`    | Where a caret-placing gesture lands inside the block: the _nearest_ target                                                                                                   |
-| `dragLabel`             | What the drag ghost calls the block when its text makes a bad label (code shows `Code`, not its first line)                                                                  |
+Every other field is optional, and they're all in `docs/design/plugin-contract.md` § The descriptor field reference, with what leaving each one out means. A lint holds that table to the descriptor type, so read it there rather than from a copy here.
 
 A container declares its container-only fields as one `container` group, and `isContainer` is derived from the group's presence, so a leaf carrying container fields won't compile. The blockquote's group:
 
@@ -162,20 +149,15 @@ container: {
 },
 ```
 
-Required, together:
+`contract` and `rebuildRaw` are the two the group can't do without: how the container re-derives its own bytes from its children. Which of `'strip'`, `'grid'` and `'opaque'` yours is, and what each promises, is `docs/design/syntax-tree.md` § The container contract. The one thing it asks of a built-in specifically is that an opaque `rebuildRaw` be deterministic, since a dev probe runs it twice and compares.
 
-- `contract` and `rebuildRaw`: how the container re-derives its own bytes from its children. Which of `'strip'`, `'grid'` and `'opaque'` yours is, and what each promises, is `docs/design/syntax-tree.md` § The container contract; the one thing it asks of you specifically is that an opaque `rebuildRaw` be deterministic, since a DEV probe runs it twice and compares. Implementations live in `schema/container-rebuilders.ts`.
+Where the code behind the fields lives, for when yours needs a new one:
 
-Optional, each earning its place:
-
-- `reservedChrome`: child 0 is a title leaf whose bytes live in the container's own raw (chrome: the parts of a block that are furniture, not content). Register the chrome kind itself through `registerChromeLeaf`. Backspace at the title's start always keeps it, so a container with one declares only `unwrapRole.middleChildBackspace`.
-- `containerPaste`: kind-specific paste routing, for a clipboard whose top block is your kind landing inside a same-kind ancestor.
-- `unwrapRole`: the Backspace-at-start strategy; see `editor-actions/unwrap-strategies.ts`.
-- `lastLineChild`: which child holds the container's last line, or `-1` when its own bytes do (a header-only table's delimiter row). Declare it only when the default (a strip's last child unless an inner suffix comes after it, a grid's last row, an opaque container's own bytes) is wrong for your kind.
-- `bodyWrap`: for a container whose body sits between its own opener and closer lines (a `:::note` fence, say). Pass the same wrap your opener parsed the body with, and the parser then moves the blank line next to the chrome into the wrap instead of into a body block.
-- `bodyWrite`: for a container with a fixed closing line (`</details>`) that a body edit could accidentally type. `normalize` escapes it out of a child's raw, and `mapOffset` says where the caret lands after the escape.
-- `contentStartSpace: 'complete-marker'`: the first space typed at the start of a child whose marker lacks its space (an empty child, or text right after a bare marker) belongs to the marker. When text already follows the marker, the editor writes that space into your container's line itself; when the child is empty it writes nothing and leaves the spelling to you. So declare it only if your `rebuildRaw` does both: keeps a line the editor wrote the space into as it is, and spells an empty line that gains text with the space.
-- `reorderChildren`: this container's direct children reorder among themselves, by drag or Alt+↑/↓, declared as `{}`. See `tree-operations/reorder-unit.ts`.
+- `rebuildRaw` implementations: `schema/container-rebuilders.ts`.
+- `unwrapRole` strategies: `editor-actions/unwrap-strategies.ts`.
+- `reorderChildren`: `tree-operations/reorder-unit.ts`.
+- A `rawWrite` rule to copy: the fenced code's, `schema/fenced-code-raw.ts`.
+- `reservedChrome`'s title leaf registers its own kind through `registerChromeLeaf`.
 
 ### 2. The component
 
