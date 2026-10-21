@@ -36,7 +36,7 @@ renders as an inline widget stays rendered, and switching back restores the sour
   times
 - the first sample waits for a settled document: nothing still announcing itself as rendering,
   and two consecutive reads of the mounted text in agreement. A diagram whose first render pulls
-  its library over a cold dev server sits on a stable placeholder while it does, so neither wait
+  its library on first use sits on a stable placeholder while it does, so neither wait
   covers the other
 
 ## User interactions

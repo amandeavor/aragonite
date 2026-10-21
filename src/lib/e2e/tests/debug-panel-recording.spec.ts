@@ -32,7 +32,7 @@ test.describe('debug panel input recording', () => {
 		await section().getByRole('button', { name: 'Stop', exact: true }).click();
 	}
 
-	test('Record, type, Stop, then Send saves the recording on the dev server', async () => {
+	test('Record, type, Stop, then Send saves the recording on the app server', async () => {
 		await recordTyping(true);
 		await expect(section()).toContainText('steps, with text');
 

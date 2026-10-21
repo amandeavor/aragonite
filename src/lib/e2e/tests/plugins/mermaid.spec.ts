@@ -9,7 +9,7 @@ import { edgeKey } from '../../platform-keys';
  * The mermaid reference plugin: a render-first block whose editing the plugin owns
  * (requirements/plugins/mermaid.md). Seed `?seed=mermaid`: a heading, two valid diagrams, one
  * invalid diagram, a ```js fence and a trailing paragraph. The first SVG wait is generous, since
- * the renderer loads through a dynamic import the dev server transforms on first use.
+ * the renderer is a large module the page fetches on first use.
  */
 
 const SEED = [

@@ -2,11 +2,11 @@
 
 ## Happy paths
 
-- Record, type two letters, Stop: the section says how many steps it holds and whether text was kept; Send saves the file through the dev server's `/test/recordings` route into `recordings-inbox/`, and the saved file starts from the loaded document and ends on the last letter's splice.
+- Record, type two letters, Stop: the section says how many steps it holds and whether text was kept; Send saves the file through the app server's `/test/recordings` route into `recordings-inbox/`, and the saved file starts from the loaded document and ends on the last letter's splice.
 
 ## Edge cases
 
-- Send with the dev route missing (a build, the deployed demo): the recording downloads instead, the section says why, and a recording made without text holds no initial source.
+- Send with the dev route missing (a production build, the deployed demo): the recording downloads instead, the section says why, and a recording made without text holds no initial source.
 
 ## Error cases
 

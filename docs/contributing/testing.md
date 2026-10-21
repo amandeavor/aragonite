@@ -322,9 +322,9 @@ so two runs on one machine, from two worktrees say, never fight over 1430:
 ```
 $ node scripts/run-with-env.mjs E2E_PORT=1440 -- npm run test:e2e -- --project=e2e-top smoke.spec.ts
 
-[WebServer] > vite build
+[WebServer] > node scripts/run-with-env.mjs NODE_ENV=development ARAGONITE_E2E_BUILD=1 -- vite build
 [WebServer] ✓ built in …
-[WebServer] > vite preview --host 127.0.0.1 --port 1440 --strictPort
+[WebServer] > node scripts/run-with-env.mjs ARAGONITE_E2E_BUILD=1 -- vite preview --host 127.0.0.1 --port 1440 --strictPort
 [WebServer]   ➜  Local:   http://127.0.0.1:1440/
 
 Running 1 test using 1 worker
@@ -341,10 +341,10 @@ Windows shell. Go through the npm script rather than calling it yourself; from a
 `E2E_SERVER=dev` serves the Vite dev server instead (reusing one already on 1420 unless `E2E_PORT`
 says otherwise), for Playwright's UI and watch modes, which want it to reload when you save.
 
-**A spec that dies with `Failed to fetch dynamically imported module`** under `E2E_SERVER=dev` caught
-the dev server
-finding a package after the page loaded and reloading it. A package the app loads with `import()`
-goes in `optimizeDeps.include` in `vite.config.js`; the unit lint usually tells you first.
+**A spec that dies with `Failed to fetch dynamically imported module`** under `E2E_SERVER=dev`
+caught the dev server finding a package after the page loaded and reloading it. A package the app
+loads with `import()` goes in `optimizeDeps.include` in `vite.config.js`; the unit lint usually
+tells you first.
 
 ### By area
 

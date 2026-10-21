@@ -1,7 +1,7 @@
 /**
  * The panel's input recording controls: record, stop, then send the file to the dev server
  * (`src/routes/test/recordings`) or download it. Send falls back to a download wherever the dev
- * route isn't there, which is any build, the deployed demo included.
+ * route isn't there, which is any production build, the deployed demo included.
  */
 
 import type { Editor } from '#lib/svelte.js';
