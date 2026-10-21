@@ -473,10 +473,12 @@ Two shapes draw everything a plugin puts on screen. (Not to be confused with the
 
 Which apps can run your plugin follows from that. An app whose bundler compiles Svelte (a Svelte app, say) compiles the editor from source, along with your components. An app whose bundler doesn't (most React, Vue and plain JavaScript apps) runs a prebuilt copy with its own Svelte compiled in, and a Svelte component of yours can't run on that copy's Svelte. So:
 
-| Your plugin draws with                                                                                                                         | It runs in                                               |
-| ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Plain DOM views (a `defineBlockView` block included), or nothing at all (syntax, commands, paste transforms, decorations, menus with DOM rows) | Every app                                                |
-| A Svelte component (a block from `svelteBlockView`, a widget or row from `svelteView`)                                                         | An app whose bundler compiles Svelte (a Svelte app, say) |
+| Your plugin draws with                                                                                                                    | It runs in                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Plain DOM widget, decoration and menu-row views, or nothing at all (syntax, commands, paste transforms, decorations, menus with DOM rows) | Every app                                                |
+| A block, or any Svelte component                                                                                                          | An app whose bundler compiles Svelte (a Svelte app, say) |
+
+A `defineBlockView` block is plain DOM and built to run on the prebuilt copy too, but nothing has run one there yet, so count on it in an app that compiles Svelte for now.
 
 The bundled plugins run everywhere, since they're compiled into the prebuilt copy. Mount a Svelte component of yours in an app that doesn't compile Svelte, and it fails the way any throwing view does: a block shows a "block failed to render" notice above its source, a widget shows just its source. In a dev build the notice and the console name the cause: the component was compiled against a different copy of Svelte.
 

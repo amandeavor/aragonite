@@ -199,7 +199,10 @@ function registerDomViews(): void {
 			focus: { mode: 'implemented', via: 'the container surface' },
 			mergeBackspace: { mode: 'implemented', via: 'mergeRole=container + unwrapRole' },
 			undo: { mode: 'inherit-default' },
-			clipboard: { mode: 'inherit-default' },
+			clipboard: {
+				mode: 'implemented',
+				via: 'byte-slice copy; a slice touching the title re-emits the box, as the callout does'
+			},
 			simOracle: { mode: 'inherit-default' }
 		})
 	});
