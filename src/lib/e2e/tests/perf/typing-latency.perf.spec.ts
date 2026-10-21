@@ -28,9 +28,9 @@ test.skip(
 	'report-only — run via `npm run perf:e2e`; the perf:check gate skips these'
 );
 
-// Every row runs against the dev server with the dev-mode checks on, so each number is a
+// Every row runs against a development build with the dev-mode checks on, so each number is a
 // cautious upper bound on the latency in production.
-const DEV_CAVEAT = 'dev server, DEV invariant assertions active — conservative upper bound';
+const DEV_CAVEAT = 'development build, DEV invariant assertions active — conservative upper bound';
 
 const SIZES: Array<[label: string, bytes: number, keystrokes: number]> = [
 	['100KB', 100_000, 30],

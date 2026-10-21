@@ -28,6 +28,9 @@ the windowing suites handed every list its element before the first read.
 - ten keystrokes in a nested item build no height table, once the first edit
   in the chain has been made
 - a wheel scroll over the document builds no height table
+  - miss-analysis: the row read the scroll position as soon as the wheel event resolved, but the
+    browser moves the page a little later (Chromium and Firefox read 0 there more often than not),
+    and only a render flush stood between the two; it first went red in CI's Firefox
 
 ## User interactions
 

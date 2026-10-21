@@ -67,8 +67,20 @@ const depsOutsideRoot = path.relative(process.cwd(), nodeModulesTarget).startsWi
 // and index.html is the prerendered showcase.
 const staticSite = adapter({ fallback: '404.html' });
 
+// The e2e suite serves a development build through `vite preview`, which needs nothing adapted, from
+// the output directory its run names (`playwright.config.ts`).
+const e2eBuild = process.env.ARAGONITE_E2E_BUILD === '1';
+const previewOnly = { name: 'e2e-preview', adapt() {} };
+const e2eOutDir = process.env.E2E_BUILD_DIR ?? '.svelte-kit/e2e';
+
 export default defineConfig({
-	plugins: [silenceBrokenImageFixture, sveltekit({ adapter: staticSite }), posixScanEntries],
+	plugins: [
+		silenceBrokenImageFixture,
+		sveltekit(e2eBuild ? { adapter: previewOnly, outDir: e2eOutDir } : { adapter: staticSite }),
+		posixScanEntries
+	],
+	// Readable stack traces in a failing spec's page errors.
+	...(e2eBuild ? { build: { minify: false, sourcemap: true } } : {}),
 	// Per checkout when the deps live outside it, or sibling worktrees' dev servers
 	// re-optimize one shared pre-bundle under each other and 500 every page.
 	...(depsOutsideRoot ? { cacheDir: '.svelte-kit/vite-cache' } : {}),

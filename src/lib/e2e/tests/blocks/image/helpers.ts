@@ -1,16 +1,20 @@
 import { type Locator, type Page } from '@playwright/test';
 import { isWebKit } from '../../../browser-engine';
 import { clickInPlace } from '../../../click-in-place';
+import { expect } from '../../../fixtures';
 
 // Shared image-widget reads for the image block e2e specs.
 
 // Resolve once the first widget's `<img>` has decoded: a point worked out from the 0x0 placeholder
 // box lands inside the widget afterwards, and a crop starts only over a decoded picture.
 export async function waitForFirstImageLoaded(page: Page): Promise<void> {
-	await page.waitForFunction(() => {
+	const state = await page.waitForFunction(() => {
 		const img = document.querySelector<HTMLImageElement>('[data-image-widget] img');
-		return !!img && img.complete && img.naturalWidth > 0;
+		if (!img?.complete) return false;
+		return img.naturalWidth > 0 ? 'decoded' : `broken: ${img.src}`;
 	});
+	// A broken image never decodes, so it fails here, named, rather than at the test timeout.
+	expect(await state.jsonValue(), 'the first image widget decoded').toBe('decoded');
 }
 
 // Every widget decoded (`complete` alone holds for a broken image too): a spec staging one image's reflow against another needs both loaded first.

@@ -23,10 +23,11 @@ concurrency:
 # comment: a major tag is mutable, so a repoint silently changes what every job
 # runs. Bump the SHA and the comment together.
 #
-# Parallel jobs: the static and unit gate, the e2e suite sharded once per browser engine, the
-# prod-build perf gate, the consumer and framework smokes (the packed library installed into
-# example apps), and the emoji-table provenance gate. The Chromium e2e shards run every Playwright
-# project (the perf rows skip themselves there; the perf job runs them against the prod build).
+# Parallel jobs: the static and unit gate, the e2e suite sharded once per browser engine by
+# measured time (`scripts/e2e-shards.mjs`) and the census over its shards, the prod-build perf
+# gate, the consumer and framework smokes (the packed library installed into example apps), and
+# the emoji-table provenance gate. The Chromium e2e shards run every Playwright project (the perf
+# rows skip themselves there; the perf job runs them against the prod build).
 jobs:
   # Whether the change touches more than docs; a docs-only one skips the e2e and perf work. A
   # gating matrix job skips its steps, not itself: skipped whole, it reports one check under its bare
@@ -91,7 +92,17 @@ jobs:
         with:
           engine: chromium
       - if: needs.changes.outputs.code == 'true'
-        run: npx playwright test --shard=${{ matrix.shard }}
+        env:
+          E2E_SHARD: ${{ matrix.shard }}
+          E2E_SHARD_PLAN: ${{ runner.temp }}/shard-list.txt.plan.json
+        run: |
+          node scripts/e2e-shards.mjs "$E2E_SHARD" "$RUNNER_TEMP/shard-list.txt"
+          npx playwright test --test-list "$RUNNER_TEMP/shard-list.txt"
+      - if: always() && needs.changes.outputs.code == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-chromium-${{ strategy.job-index }}
+          path: test-results/ci-summary.json
 
   # The same correctness suite in WebKit and Firefox (docs/contributing/testing.md § Browser
   # engines). Their checks are required, so a docs-only change skips the steps, not the job.
@@ -103,7 +114,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ['1/6', '2/6', '3/6', '4/6', '5/6', '6/6']
+        shard: ['1/5', '2/5', '3/5', '4/5', '5/5']
     steps:
       - if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -112,7 +123,12 @@ jobs:
         with:
           engine: webkit
       - if: needs.changes.outputs.code == 'true'
-        run: npx playwright test --shard=${{ matrix.shard }}
+        env:
+          E2E_SHARD: ${{ matrix.shard }}
+          E2E_SHARD_PLAN: ${{ runner.temp }}/shard-list.txt.plan.json
+        run: |
+          node scripts/e2e-shards.mjs "$E2E_SHARD" "$RUNNER_TEMP/shard-list.txt"
+          npx playwright test --test-list "$RUNNER_TEMP/shard-list.txt"
       - if: always() && needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -127,21 +143,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard:
-          [
-            '1/12',
-            '2/12',
-            '3/12',
-            '4/12',
-            '5/12',
-            '6/12',
-            '7/12',
-            '8/12',
-            '9/12',
-            '10/12',
-            '11/12',
-            '12/12'
-          ]
+        shard: ['1/8', '2/8', '3/8', '4/8', '5/8', '6/8', '7/8', '8/8']
     steps:
       - if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -149,15 +151,38 @@ jobs:
         uses: ./.github/actions/e2e-setup
         with:
           engine: firefox
-      # Firefox spends most of a test waiting on the browser rather than the CPU, so the runner's
-      # four cores carry four workers where the other engines keep Playwright's default two.
+      # One worker per core. Firefox is CPU-bound against the build: six and eight workers made each
+      # test slower without finishing the shard sooner. Two against four hasn't been measured.
       - if: needs.changes.outputs.code == 'true'
-        run: npx playwright test --shard=${{ matrix.shard }} --workers=4
+        env:
+          E2E_SHARD: ${{ matrix.shard }}
+          E2E_SHARD_PLAN: ${{ runner.temp }}/shard-list.txt.plan.json
+        run: |
+          node scripts/e2e-shards.mjs "$E2E_SHARD" "$RUNNER_TEMP/shard-list.txt"
+          npx playwright test --test-list "$RUNNER_TEMP/shard-list.txt" --workers=4
       - if: always() && needs.changes.outputs.code == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-firefox-${{ strategy.job-index }}
           path: test-results/ci-summary.json
+
+  # Every test the tree lists ran in exactly one shard per engine. Its steps skip on a docs-only
+  # change, like the engine jobs', so its required check still reports.
+  e2e-census:
+    needs: [changes, e2e, e2e-webkit, e2e-firefox]
+    # A red shard still counts; a cancelled run has nothing to count.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: e2e-*
+          path: e2e-summaries
+      - if: needs.changes.outputs.code == 'true'
+        run: node scripts/e2e-census.mjs e2e-summaries chromium webkit firefox
 
   perf:
     needs: changes

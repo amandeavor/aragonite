@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { stripVTControlCharacters } from 'node:util';
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter';
@@ -6,7 +6,8 @@ import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwri
 /**
  * Writes a GitHub job's e2e counts and failing tests to its job summary, and the same rows as
  * `test-results/ci-summary.json` for the job's artifact. Counts are per test, not per attempt, so
- * a retried test counts once, under its final outcome.
+ * a retried test counts once, under its final outcome. A shard cut by `scripts/e2e-shards.mjs`
+ * names itself in `E2E_SHARD` and carries its plan from `E2E_SHARD_PLAN`, which the census reads.
  */
 
 interface Row {
@@ -25,6 +26,7 @@ class CiSummaryReporter implements Reporter {
 	onBegin(config: FullConfig, suite: Suite): void {
 		this.suite = suite;
 		if (config.shard) this.shard = ` shard ${config.shard.current}/${config.shard.total}`;
+		else if (process.env.E2E_SHARD) this.shard = ` shard ${process.env.E2E_SHARD}`;
 	}
 
 	onEnd(): void {
@@ -62,7 +64,10 @@ class CiSummaryReporter implements Reporter {
 					counts,
 					failures,
 					skipReasons: [...skipReasons],
-					fileSeconds: [...fileSeconds].map(([spec, s]) => [spec, Math.round(s)])
+					fileSeconds: [...fileSeconds].map(([spec, s]) => [spec, Math.round(s)]),
+					plan: process.env.E2E_SHARD_PLAN
+						? JSON.parse(readFileSync(process.env.E2E_SHARD_PLAN, 'utf8'))
+						: null
 				},
 				null,
 				1

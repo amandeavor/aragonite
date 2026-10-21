@@ -11,7 +11,7 @@ export const MERMAID_FENCE = '```mermaid\ngraph TD\n\tA[Start] --> B[Finish]\n``
  *  selection case is written against. */
 export const STANDARD_DIAGRAM_DOC = `Above text\n\n${MERMAID_FENCE}\n\ntail text\n`;
 
-// Long on purpose: the renderer loads through a dynamic import the dev server transforms once.
+// Long on purpose: the renderer is a large module the page fetches on first use.
 const RENDER_TIMEOUT = 30_000;
 
 export class MermaidPage extends PluginsPage {

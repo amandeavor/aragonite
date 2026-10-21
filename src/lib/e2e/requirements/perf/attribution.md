@@ -19,5 +19,5 @@
 
 ## Notes
 
-- All rows run serially (timing-sensitive). Dev server, with dev-mode assertions active, so the numbers are an upper bound on production.
+- All rows run serially (timing-sensitive). A development build, with dev-mode assertions active, so the numbers are an upper bound on production.
 - Block addressing uses CST indices via the `window.__test` bridge, never the chained DOM locator (minutes at thousands of hosts).

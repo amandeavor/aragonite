@@ -14,7 +14,7 @@ many times over, scrolled by real wheel ticks with the pointer over the editor.
   the editor's own setter), long tasks, the worst rAF gap, how far the tick
   scrolled, and how long the smooth scroll took to settle
 - a CPU profile spans the scroll; the self-time table names the functions a
-  hitch belongs to, readable on the dev server only, since the production
+  hitch belongs to, readable on a development build only, since the production
   bundle mangles names
 - the dev-mode render instruments ride along (render count and ms per tick),
   and so does the drawn caret's paint count (`caretPaints`), which reads zero

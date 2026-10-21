@@ -101,7 +101,7 @@ test.describe('math-ops simulation', () => {
 
 		await editor.loadContent(MERMAID_DOC);
 		await editor.waitForRenderFlush();
-		// The diagram renders through a dynamic import the dev server compiles on first use, so
+		// The diagram renders through a large module the page fetches on first use, so
 		// wait for the SVG before driving the focus gestures.
 		await settleDiagrams(page);
 
