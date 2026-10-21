@@ -218,7 +218,7 @@ export function editorMountContext(overrides: MountContextOverrides = {}): Map<s
 		createScrollOwner({
 			getScrollHost: doc.editorRoot,
 			editorCorrects: () => true,
-			getBlockElByPath: doc.blockElLookup,
+			getBlockBoxByPath: doc.blockElLookup,
 			getEditorRoot: doc.editorRoot,
 			isHostScroll: () => false,
 			getClipBounds: () => []

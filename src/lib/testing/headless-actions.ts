@@ -222,6 +222,7 @@ export function createHeadlessActions(
 				noteOutside: () => deps.caretMemory.noteOutside()
 			},
 			getBlockElByPath: (path) => deps.getBlockElByPath(path),
+			getBlockBoxByPath: (path) => deps.getBlockElByPath(path),
 			getEditorRoot: () => null,
 			scroll: null,
 			isReading: () => deps.reading.mode() === 'reading'

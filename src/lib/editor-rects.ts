@@ -34,7 +34,8 @@ export interface EditorRects {
 }
 
 export function createEditorRects(deps: {
-	getBlockElByPath: (path: number[]) => HTMLElement | null;
+	/** The element the block measures as, chrome included. */
+	getBlockBoxByPath: (path: number[]) => HTMLElement | null;
 	getBlockComponent: (path: number[]) => BlockComponent | null;
 	/** Mounts `path`, opening a collapsed body on the way: every caller here is a navigation. */
 	revealPath: (path: number[]) => Promise<unknown>;
@@ -54,7 +55,7 @@ export function createEditorRects(deps: {
 }): EditorRects {
 	return {
 		blockRect(path) {
-			return deps.getBlockElByPath(path)?.getBoundingClientRect() ?? null;
+			return deps.getBlockBoxByPath(path)?.getBoundingClientRect() ?? null;
 		},
 		rangeRects(path, start, end) {
 			return deps.getBlockComponent(path)?.measurePartialRects?.(start, end) ?? [];
@@ -80,7 +81,7 @@ export function createEditorRects(deps: {
 		},
 		async reveal(path) {
 			await deps.revealPath(path);
-			return deps.getBlockElByPath(path) != null;
+			return deps.getBlockBoxByPath(path) != null;
 		},
 		async scrollTo(path, opts) {
 			const p = [...path];

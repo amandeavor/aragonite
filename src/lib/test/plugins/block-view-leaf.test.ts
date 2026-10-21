@@ -216,6 +216,17 @@ describe('a DOM leaf view’s lifecycle', () => {
 			await editor.settle();
 			expect(document.activeElement).toBe(surfaceAt(editor, LEAF));
 		});
+
+		// Miss-analysis: the descent to the text element had rows for focus and offsets, none for a measure.
+		it('measures the whole drawn block for rects.blockRect, badge included', async () => {
+			const editor = mountLeaf(badged());
+			await editor.settle();
+			const text = surfaceAt(editor, LEAF);
+			const target = text.parentElement!;
+			target.getBoundingClientRect = () => new DOMRect(0, 10, 300, 40);
+			text.getBoundingClientRect = () => new DOMRect(0, 30, 300, 20);
+			expect(editor.instance.getRects().blockRect(LEAF)?.height).toBe(40);
+		});
 	});
 });
 

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { blockContentElAt } from '#lib/caret/block-el-lookup.js';
+import { blockBoxElAt, blockContentElAt } from '#lib/caret/block-el-lookup.js';
+import { VIEW_TEXT_ATTR, VIEW_TEXT_HOST_ATTR } from '#lib/caret/block-content-selector.js';
 import { mountTableGrid } from '../selection/table-grid';
 
 // Miss-analysis: the descent into a table cell was tested only through a caret on a mounted table.
@@ -38,5 +39,19 @@ describe('blockContentElAt', () => {
 		const root = document.createElement('div');
 		root.append(mountTableGrid({ path: [0], rows: 1, cols: 1 }).host);
 		expect(blockContentElAt(root, [0, 0])).toBeNull();
+	});
+});
+
+describe('a DOM leaf view with chrome before its text', () => {
+	it('measures as its whole box, and takes the caret in its text element', () => {
+		const root = document.createElement('div');
+		const { host, content: box } = hostAt([0]);
+		box.setAttribute(VIEW_TEXT_HOST_ATTR, '');
+		const text = document.createElement('div');
+		text.setAttribute(VIEW_TEXT_ATTR, '');
+		box.append(document.createElement('span'), text);
+		root.append(host);
+		expect(blockBoxElAt(root, [0])).toBe(box);
+		expect(blockContentElAt(root, [0])).toBe(text);
 	});
 });

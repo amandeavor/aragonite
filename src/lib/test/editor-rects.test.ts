@@ -26,7 +26,7 @@ function makeRects(over: Partial<Parameters<typeof createEditorRects>[0]> = {}) 
 	});
 	const landCaretAt = vi.fn(async (_path: number[], _offset: number) => true);
 	const rects = createEditorRects({
-		getBlockElByPath: () => null,
+		getBlockBoxByPath: () => null,
 		getBlockComponent: () => null,
 		revealPath: async () => {
 			order.push('reveal');
@@ -90,13 +90,13 @@ describe('EditorRects.navigateTo', () => {
 
 describe('EditorRects.reveal and scrollTo on a path nothing mounts', () => {
 	it('reveal resolves false when no element stands at the path after the mount', async () => {
-		const { rects } = makeRects({ getBlockElByPath: () => null });
+		const { rects } = makeRects({ getBlockBoxByPath: () => null });
 		expect(await rects.reveal([99])).toBe(false);
 	});
 
 	it('reveal resolves true once the mount leaves an element at the path', async () => {
 		const el = document.createElement('div');
-		const { rects } = makeRects({ getBlockElByPath: () => el });
+		const { rects } = makeRects({ getBlockBoxByPath: () => el });
 		expect(await rects.reveal([2])).toBe(true);
 	});
 

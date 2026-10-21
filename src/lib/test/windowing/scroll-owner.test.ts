@@ -84,7 +84,7 @@ function fixture(
 		chromeAbove: () => box.header,
 		ownerDeps: {
 			editorCorrects: () => column !== 'host anchoring holds',
-			getBlockElByPath: blockEl
+			getBlockBoxByPath: blockEl
 		}
 	});
 	box.port = scope.port;
@@ -152,7 +152,7 @@ function growHeader(f: Fixture): void {
 
 function scrollToB4(f: Fixture): Promise<boolean> {
 	const rects = createEditorRects({
-		getBlockElByPath: () => null,
+		getBlockBoxByPath: () => null,
 		getBlockComponent: () => null,
 		revealPath: async () => {},
 		getEditorRoot: () => null,
@@ -186,6 +186,7 @@ async function landOnB4(f: Fixture, as: 'edit' | 'navigation'): Promise<void> {
 			el.getBoundingClientRect = () => ({ top: 600, bottom: 610 }) as DOMRect;
 			return el;
 		},
+		getBlockBoxByPath: (path) => f.blockEl(path),
 		getEditorRoot: () => null,
 		scroll: f.owner,
 		isReading: () => false
@@ -582,6 +583,7 @@ describe('scroll owner: the edges', () => {
 			selectionState: createSelectionState({ getDoc: () => doc }),
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => el,
+			getBlockBoxByPath: () => el,
 			getEditorRoot: () => null,
 			scroll: f.owner,
 			isReading: () => false

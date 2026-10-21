@@ -156,7 +156,7 @@
 	import { checkMarkerCssParity } from '../invariants/marker-css-parity';
 	import { checkHostColorsResolve } from '../invariants/theme-stylesheet';
 	import { registerEditorBuiltIns } from './editor-built-ins';
-	import { blockContentElAt, type BlockElLookup } from '../caret/block-el-lookup';
+	import { blockBoxElAt, blockContentElAt, type BlockElLookup } from '../caret/block-el-lookup';
 
 	registerEditorBuiltIns();
 	runStartupInvariantChecks();
@@ -544,6 +544,8 @@
 
 	const getBlockElByPath: BlockElLookup = (path) =>
 		editorEl ? blockContentElAt(editorEl, path) : null;
+	const getBlockBoxByPath: BlockElLookup = (path) =>
+		editorEl ? blockBoxElAt(editorEl, path) : null;
 
 	// The root list as a descent reads it; the window's calls go through arrows because
 	// `topWindowing` is declared further down.
@@ -567,7 +569,7 @@
 	const scrollOwner = createScrollOwner({
 		getScrollHost,
 		editorCorrects: ownsScrollCorrection,
-		getBlockElByPath,
+		getBlockBoxByPath,
 		getEditorRoot: () => editorEl ?? null,
 		isHostScroll: () => hostScroll,
 		getClipBounds
@@ -580,6 +582,7 @@
 		caretWriter,
 		caretMemory,
 		getBlockElByPath,
+		getBlockBoxByPath,
 		getEditorRoot: () => editorEl ?? null,
 		scroll: scrollOwner,
 		isReading: () => reading.mode() === 'reading'
@@ -643,7 +646,7 @@
 	});
 
 	const rects = createEditorRects({
-		getBlockElByPath,
+		getBlockBoxByPath,
 		getBlockComponent,
 		revealPath: (path) => caretLanding.mount(path, { openCollapsed: true }),
 		getEditorRoot: () => editorEl ?? null,

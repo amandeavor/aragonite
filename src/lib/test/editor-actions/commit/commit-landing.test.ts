@@ -118,6 +118,7 @@ describe.each(COMMIT_ROUTES)('a landing across an undo, through %s', (_route, co
 			selectionState: h.deps.selectionState,
 			caretMemory: h.deps.caretMemory,
 			getBlockElByPath: () => null,
+			getBlockBoxByPath: () => null,
 			getEditorRoot: () => null,
 			scroll: null,
 			isReading: () => false
