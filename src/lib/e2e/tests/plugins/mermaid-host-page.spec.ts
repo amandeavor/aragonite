@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { MermaidPage, settleDiagrams } from './mermaid-helpers';
+import { clickInPlace } from '../../click-in-place';
 
 // A diagram drawing never changes the host page around the editor
 // (requirements/plugins/mermaid-host-page.md): the page doesn't grow, and nothing stays behind.
@@ -69,14 +70,14 @@ test.describe('a rendering diagram leaves the host page alone', () => {
 		await settleDiagrams(page, 2);
 		const drawn = (await bodyWatch(page)).heights.length;
 
-		await page.getByTestId('theme-toggle').click();
+		await clickInPlace(page.getByTestId('theme-toggle'));
 		await expect.poll(async () => (await bodyWatch(page)).heights.length).toBeGreaterThan(drawn);
-		await settleDiagrams(page, 2);
+		// The diagrams on screen stay up while their redraws run, so wait for the last one to end.
+		await expect.poll(async () => (await bodyWatch(page)).left).toEqual([]);
 
 		const watch = await bodyWatch(page);
 		const height = await pageHeight(page);
 		expect(watch.heights).toEqual(watch.heights.map(() => height));
-		expect(watch.left).toEqual([]);
 	});
 
 	test('a diagram that fails to render leaves nothing behind, render after render', async ({
@@ -87,10 +88,10 @@ test.describe('a rendering diagram leaves the host page alone', () => {
 		await editor.loadDiagram('Above\n\n```mermaid\nnotadiagram broken\n```\n\nBelow\n', 'error');
 		const tried = (await bodyWatch(page)).heights.length;
 
-		await page.getByTestId('theme-toggle').click();
+		await clickInPlace(page.getByTestId('theme-toggle'));
 		await expect.poll(async () => (await bodyWatch(page)).heights.length).toBeGreaterThan(tried);
 		await expect(page.locator('.mermaid-error')).toBeVisible();
 
-		expect((await bodyWatch(page)).left).toEqual([]);
+		await expect.poll(async () => (await bodyWatch(page)).left).toEqual([]);
 	});
 });
