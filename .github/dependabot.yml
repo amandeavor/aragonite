@@ -24,6 +24,19 @@ updates:
       - dependency-name: 'jsdom'
         versions: ['30.1.x']
 
+  # The Vue 3.3 app tests the oldest Vue the adapter supports, so its Vue stays at 3.3.
+  - package-ecosystem: 'npm'
+    directory: '/examples/vue/vue-3.3'
+    schedule:
+      interval: 'monthly'
+    target-branch: 'dev'
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: 'vue'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: '@vue/*'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+
   # The workflows pin third-party actions to commit SHAs with the version in
   # a trailing comment; dependabot bumps the SHA and the comment together.
   - package-ecosystem: 'github-actions'
