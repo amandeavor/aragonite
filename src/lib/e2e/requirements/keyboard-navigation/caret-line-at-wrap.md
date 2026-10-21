@@ -42,12 +42,8 @@ In a paragraph between two one-line blocks, and in a list item between them:
   put and the focus moves up onto line 1
 - a range already held from the middle of the second-to-last line to its end, Shift+ArrowDown: the
   anchor stays put and the focus moves onto the last line
-- the first two in a wrapped table cell, where the first Shift+arrow at the cell's top or bottom
+- the same four in a wrapped table cell, where the first Shift+arrow at the cell's top or bottom
   line would take a whole row instead: the selection stays inside the cell
-
-Known gap: the two held-range rows in a wrapped cell still take a row (a `test.fixme` each). A held
-range's focus is measured, not asked, since moving it to the line's end and back moves a focus that
-ends its line onto the next line on Chromium; the measure reads the wrong line there.
 
 ## A soft-line delete
 
