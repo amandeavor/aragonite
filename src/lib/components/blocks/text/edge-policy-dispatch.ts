@@ -1,9 +1,8 @@
 /**
- * The one place a caret-edge key is decided in a prose block. A plain Backspace, Delete or
- * printable key at a caret edge resolves against a declared policy (the inline construct's beside
- * the caret, or the ancestor container's at the content start), never native editing, which would
- * corrupt the bytes those constructs stand for (G4.12). Which side of a hidden delimiter a typed
- * byte lands on is the write's question, not a key's (`caret/next-insertion.ts`).
+ * Where a prose block or a table cell decides two things: a key aimed at an inline construct or
+ * the container's marker, by a declared policy rather than native editing, which would corrupt the
+ * bytes those constructs stand for (G4.12); and every collapsed Backspace or Delete, by key or soft
+ * keyboard, at `beforeinput` (`deleteAtCaret`). Where a typed byte lands is `next-insertion.ts`'s.
  */
 
 import type { ContentWrite } from '../../../action-contracts';
@@ -166,13 +165,6 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			reason:
 				'a selection into the ambient span blocks native delete silently, with no beforeinput',
 			claims: handleAmbient
-		},
-		// The three below handle only what would otherwise reach native editing or the block-merge
-		// command; the more specific families above still take a key aimed at one of theirs.
-		{
-			id: 'construct-edge-delete',
-			reason: 'a destructive key beside an unpainted delimiter run takes content, never a marker',
-			claims: handleConstructEdgeDelete
 		},
 		{
 			id: 'marker-completion',
@@ -487,26 +479,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		return true;
 	}
 
-	// ── Hidden construct edge (deleting) ───────────────────────────────────────
-
-	/** A plain Backspace or Delete against a hidden delimiter run takes the neighbouring content
-	 *  character instead of a byte the user never saw (`docs/design/live-mode.md` § 4.4). */
-	function handleConstructEdgeDelete(e: KeyboardEvent, caretOffset: RawOffset | null): boolean {
-		if (e.key !== 'Backspace' && e.key !== 'Delete') return false;
-		if (e.shiftKey || hasModifier(e)) return false;
-		if (caretOffset === null || heldRange()) return false;
-		const el = deps.getEl();
-		if (!el) return false;
-		// At the first offset the caret can sit at, Backspace is a block gesture (merge, or nothing),
-		// not a delete of the first visible character past a hidden run.
-		if (e.key === 'Backspace') {
-			const bounds = landableRawBounds(el);
-			if (bounds && caretOffset <= bounds.start) return false;
-		}
-		if (!hiddenRunDelete(el, caretOffset, keyDirection(e))) return false;
-		e.preventDefault();
-		return true;
-	}
+	// ── Collapsed deletes ──────────────────────────────────────────────────────
 
 	/** The construct-edge rule's answer beside a hidden run, written; false where it has none. */
 	function hiddenRunDelete(el: HTMLElement, caret: number, direction: DeleteDirection): boolean {
@@ -516,8 +489,6 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		applyEdgeDeletion(deletion, caret);
 		return true;
 	}
-
-	// ── Any other collapsed delete ─────────────────────────────────────────────
 
 	function deleteAtCaret(caret: number, direction: DeleteDirection): boolean {
 		const el = deps.getEl();
@@ -531,6 +502,10 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			const islands = islandsInDom(el);
 			if (islands.length > 0 && islandDelete(el, islands, caret, direction)) return true;
 		}
+		// Backspace at the first offset the caret can sit at is the block's gesture (merge, or
+		// nothing), never the first visible character past a hidden run.
+		const bounds = landableRawBounds(el);
+		if (direction === 'backward' && bounds && caret <= bounds.start) return true;
 		if (!hiddenRunDelete(el, caret, direction)) deleteCharacter(el, caret, direction);
 		return true;
 	}

@@ -99,7 +99,8 @@ describe('live mode, a marked letter alone on the line under a break', () => {
 		const el = surfaceAt(editor, [0]);
 		placeCaret(el, 11);
 
-		await pressKey(el, { key: 'Backspace' });
+		// The key's keydown passes, so its delete arrives at `beforeinput`.
+		if (!(await pressKey(el, { key: 'Backspace' })).defaultPrevented) await nativeBackspace(el);
 
 		expect(editor.source()).toBe('abc def\n');
 		// The unwrapped mark is pending too, so the next letter takes it back.

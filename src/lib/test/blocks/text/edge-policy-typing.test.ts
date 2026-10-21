@@ -52,7 +52,6 @@ describe('branch order', () => {
 				'reading-mode',
 				'decoration-island',
 				'ambient-marker',
-				'construct-edge-delete',
 				'marker-completion'
 			]);
 		});
@@ -233,7 +232,7 @@ describe('pending marks', () => {
 		it('leaves the emptied construct’s mark pending for the next byte', () => {
 			const h = mount('plain*x*\n');
 
-			expect(h.handleKeydown(key('Backspace'), at(7))).toBe(true);
+			expect(h.dispatch.deleteAtCaret(7, 'backward')).toBe(true);
 			expect(h.edits).toEqual([[0, 'plain\n', 7, 5]]);
 			expect(h.marks.pended).toEqual(['emphasis']);
 		});
@@ -241,7 +240,7 @@ describe('pending marks', () => {
 		it('pends nothing where the press empties no construct', () => {
 			const h = mount('Some **bold** text\n');
 
-			expect(h.handleKeydown(key('Backspace'), at(13))).toBe(true);
+			expect(h.dispatch.deleteAtCaret(13, 'backward')).toBe(true);
 			expect(h.marks.pended).toEqual([]);
 		});
 
@@ -250,7 +249,7 @@ describe('pending marks', () => {
 		it('pends nothing for an unwrapped kind no format chord writes', () => {
 			const h = mount('a [x](u) b\n');
 
-			expect(h.handleKeydown(key('Backspace'), at(4))).toBe(true);
+			expect(h.dispatch.deleteAtCaret(4, 'backward')).toBe(true);
 			expect(h.edits).toEqual([[0, 'a  b\n', 4, 2]]);
 			expect(h.marks.pended).toEqual([]);
 		});
@@ -294,13 +293,18 @@ describe('stored read cost', () => {
 	}
 
 	describe('a keystroke with no hidden run beside it reads nothing of where the block is stored', () => {
-		it.each([
-			['Backspace inside a word', 'Backspace', 16],
-			['Delete inside a word', 'Delete', 15],
-			['a letter typed inside a word', 'X', 16]
-		])('%s', (_name, name, caret) => {
+		it('a letter typed inside a word', () => {
 			const leaf = countedLeaf();
-			expect(dispatchOver(leaf).handleKeydown(key(name), at(caret))).toBe(false);
+			expect(dispatchOver(leaf).handleKeydown(key('X'), at(16))).toBe(false);
+			expect(leaf.reads()).toBe(0);
+		});
+
+		it.each([
+			['Backspace inside a word', 'backward', 16],
+			['Delete inside a word', 'forward', 15]
+		] as const)('%s', (_name, direction, caret) => {
+			const leaf = countedLeaf();
+			expect(dispatchOver(leaf).dispatch.deleteAtCaret(caret, direction)).toBe(true);
 			expect(leaf.reads()).toBe(0);
 		});
 
@@ -324,7 +328,7 @@ describe('stored read cost', () => {
 		// The positive half: a key at a hidden run does read the store, so a zero above is no accident.
 		it('Backspace at a hidden run reads it', () => {
 			const leaf = countedLeaf();
-			expect(dispatchOver(leaf).handleKeydown(key('Backspace'), at(13))).toBe(true);
+			expect(dispatchOver(leaf).dispatch.deleteAtCaret(13, 'backward')).toBe(true);
 			expect(leaf.reads()).toBeGreaterThan(0);
 		});
 	});

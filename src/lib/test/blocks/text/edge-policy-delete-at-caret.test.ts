@@ -25,7 +25,7 @@ describe('deleteAtCaret: a collapsed delete the browser never runs', () => {
 	it('Backspace takes the character before the caret through one write', () => {
 		const h = mount('abc\n');
 		expect(h.dispatch.deleteAtCaret(3, 'backward')).toBe(true);
-		expect(h.edits).toEqual([[0, 'ab\n', 0, 2]]);
+		expect(h.edits).toEqual([[0, 'ab\n', 3, 2]]);
 	});
 
 	it('Backspace takes a ZWJ family whole', () => {
