@@ -46,8 +46,16 @@ describe('a cell dispatch write anchors undo at the exact pre-edit caret', () =>
 		const writer = (mounted.instance.__test as { getCaretWriter(): CaretWriter }).getCaretWriter();
 		writer.placeCaretAtRaw(el, 13, { clamp: 'exact' });
 
+		// The key's keydown passes, so its delete arrives at `beforeinput`.
 		el.dispatchEvent(
 			new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
+		);
+		el.dispatchEvent(
+			new InputEvent('beforeinput', {
+				inputType: 'deleteContentBackward',
+				bubbles: true,
+				cancelable: true
+			})
 		);
 		await mounted.settle();
 		// Backspace at the hidden closer takes the content character and keeps the `**` pair.

@@ -362,8 +362,8 @@ function drawnRange(node: CstNode, gesture: Gesture): { start: number; end: numb
 	return start === end ? null : { start, end };
 }
 
-/** A printable key or a destructive keypress at `offset`, through the caret-edge dispatch. A press
- *  no branch takes falls back to the browser's own: its cut, or the block merge at an edge. */
+/** A printable key or a destructive keypress at `offset`, through the caret-edge dispatch. A typed
+ *  key no branch takes is the browser's insert; a delete, the merge at an edge or the editor's own. */
 async function pressEdgeKey(
 	h: Harness,
 	leaf: LeafAt,
@@ -423,9 +423,14 @@ async function pressEdgeKey(
 	});
 	const event = new KeyboardEvent('keydown', { key, cancelable: true });
 	if (dispatch.handleKeydown(event, asRawOffset(offset) as RawOffset)) return true;
-	if (gesture.kind === 'type') await nativeType(h, leaf, offset, key, mode, writeText, placement);
-	else await nativePress(h, leaf, offset, gesture.kind);
-	return false;
+	if (gesture.kind === 'type') {
+		await nativeType(h, leaf, offset, key, mode, writeText, placement);
+		return false;
+	}
+	// The block merge takes the key at an edge; anywhere else its `beforeinput` is the editor's.
+	if (await mergeAtEdge(h, leaf, offset, gesture.kind)) return false;
+	dispatch.deleteAtCaret(offset, gesture.kind === 'backspace' ? 'backward' : 'forward');
+	return true;
 }
 
 /** What the browser does with a typed key no branch took: the auto-pair decides at the offset the
@@ -461,35 +466,25 @@ async function nativeType(
 	await writeText({ ...typed, text, caretAfter: offset + key.length });
 }
 
-/** What the browser does with a destructive keypress no branch took. */
-async function nativePress(
+/** The block merge a destructive keypress at the content's edge aims at; false away from an edge.
+ *  A container's own merge rules are not modelled here, so its edge presses do nothing. */
+async function mergeAtEdge(
 	h: Harness,
 	leaf: LeafAt,
 	offset: number,
 	kind: GestureKind
-): Promise<void> {
+): Promise<boolean> {
 	const { node, index } = leaf;
 	const { start, end } = getContentRange(node);
-	const write = (raw: string, caret: number) =>
-		leaf.blockEdit.updateBlockContent(index, raw, 'authored', offset, caret);
-	// At the start or end of the content the keypress becomes a block gesture: the merge it aims at.
-	// A container's own merge rules are not modelled here, so its edge presses do nothing.
 	const topLevel = leaf.path.length === 1;
 	if (kind === 'backspace') {
-		if (offset > start) {
-			const from = snapToScalarBoundary(node.raw, offset - 1);
-			await write(splice(node.raw, from, offset, ''), from);
-		} else if (topLevel && index > 0) {
-			await h.blockEdit.mergeWithPrevious(index);
-		}
-		return;
+		if (offset > start) return false;
+		if (topLevel && index > 0) await h.blockEdit.mergeWithPrevious(index);
+		return true;
 	}
-	if (offset >= end) {
-		if (topLevel && index < h.doc.children.length - 1) await h.blockEdit.mergeWithNext(index);
-		return;
-	}
-	const to = offset + (snapToScalarBoundary(node.raw, offset + 1) === offset ? 2 : 1);
-	await write(splice(node.raw, offset, to, ''), offset);
+	if (offset < end) return false;
+	if (topLevel && index < h.doc.children.length - 1) await h.blockEdit.mergeWithNext(index);
+	return true;
 }
 
 const splice = (raw: string, from: number, to: number, insert: string): string =>

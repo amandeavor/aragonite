@@ -2,7 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import type { EditorPage } from '../../editor-page';
 import { clickBlockSettled, enterPresentationMode, nextRow } from './helpers';
-import { edgeKey } from '../../platform-keys';
+import { edgeKey, WORD_MODIFIER } from '../../platform-keys';
 
 // A caret key on the line Shift+Enter opened at a block's end moves from that line, where the
 // caret is drawn, and the line goes once the caret leaves it. Each test walks its rows as steps,
@@ -101,7 +101,7 @@ for (const mode of ['source', 'live'] as const) {
 		const deletes: [string, () => Promise<void>][] = [
 			['Shift+Backspace', () => page.keyboard.press('Shift+Backspace')],
 			['Delete', () => page.keyboard.press('Delete')],
-			['Ctrl+Delete', () => page.keyboard.press('Control+Delete')],
+			['a word Delete', () => page.keyboard.press(`${WORD_MODIFIER}+Delete`)],
 			['a soft keyboard’s Backspace', () => sendKeylessDelete(page, 'deleteContentBackward')],
 			['a soft keyboard’s Delete', () => sendKeylessDelete(page, 'deleteContentForward')]
 		];

@@ -35,6 +35,7 @@ and live mode.
   inside the bold like after a click: `a **boldz**`.
 - source, an empty paragraph after `first`: ArrowLeft drops the line and stays in the paragraph,
   rather than moving up to `first` the way ArrowLeft at a block's start does: `z` on its own.
-- Shift+Backspace, Delete, Ctrl+Delete, and a soft keyboard's Backspace or Delete (the
-  `beforeinput` alone), take the line like Backspace and leave the text above whole: `abcz`, in
-  source and live mode. The open line holds no bytes, so Delete never joins `next` to `abc`.
+- Shift+Backspace, Delete, a word Delete (Ctrl+Delete, Alt+Delete on a Mac), and a soft
+  keyboard's Backspace or Delete (the `beforeinput` alone) take the line like Backspace and leave
+  the text above whole: `abcz`, in source and live mode. The open line holds no bytes, so Delete
+  never joins `next` to `abc`.
