@@ -15,12 +15,9 @@ import { caretPointFor, type RemovalGesture } from './caret-target';
 import { docPathFrom } from '../caret/coordinate-spaces';
 import {
 	blockNodeAt,
-	bodyUnder,
-	nodeAt,
 	normalizeBodyWrite,
 	normalizeOwnRaw
 } from '../tree-operations/node-primitives';
-import { settleSeparatorOnBlank } from '../tree-operations/settle';
 import { displayLength, documentLineEnding } from '../core/lines';
 import { isProseKind } from '../core/inline';
 import { isMergeEligible } from '../schema/merge-rules';
@@ -168,13 +165,6 @@ function joinedRangeDelete(
 		// May be nested in a blockquote/list/listItem whose raw depends on this leaf.
 		ensureUnsharedPath(doc, start.path, sharing);
 		const shift = installSurvivor(doc, start.path, startBlock, joined.raw, sharing, reading);
-		// Before the rebuild, which reads the blank lines: a selection covering a block's whole
-		// text leaves it blank, and a blank block is the separating line of the one below it.
-		const parent = nodeAt(doc, start.path.slice(0, -1));
-		if (parent) {
-			const body = bodyUnder(parent, documentLineEnding(doc));
-			settleSeparatorOnBlank(body, start.path[start.path.length - 1], sharing);
-		}
 		rebuildUnsharedAncestry(doc, start.path, sharing, null, grammar);
 		const joinAt = { path: start.path.slice(), offset: Math.max(0, joined.seam + shift) };
 		return { newDoc: doc, caret: () => joinAt };

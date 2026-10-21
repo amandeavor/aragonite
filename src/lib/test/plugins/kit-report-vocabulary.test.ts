@@ -50,7 +50,10 @@ describe('conformance kit reports share one vocabulary', () => {
 		expect(rawWrite?.status).toBe('asserted');
 		expect(rawWrite).not.toHaveProperty('mode');
 		const { closure } = getBlockKindDescriptor('fencedCode');
-		for (const report of cells.filter((c) => c.cell !== 'rawWrite')) {
+		const closureCells = cells.filter(
+			(c) => c.cell !== 'rawWrite' && c.cell !== 'unfinishedReading'
+		);
+		for (const report of closureCells) {
 			expect(report.mode).toBe(closure[report.cell as keyof typeof closure].mode);
 		}
 	});

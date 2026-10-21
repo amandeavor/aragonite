@@ -661,8 +661,8 @@ function assertContentStartSpaceIsRebuilt(
 	);
 }
 
-/** `container.bodyWrap` is tested, not trusted: `clearRedundantSeparator` reads it to place a freed
- *  blank line, and a kind whose parse disagrees loses the start of its body on reload. */
+/** `container.bodyWrap` is tested, not trusted: the blank-line fix-up reads it to place each blank
+ *  line beside a fence line, and a kind whose parse disagrees gains or loses a block on reload. */
 function assertBodyWrapMatchesParse(kind: AnyBlockKind, descriptor: BlockKindDescriptor): void {
 	if (isGridDescriptor(descriptor)) return;
 	const fixture = descriptor.conformanceFixture;
@@ -713,5 +713,20 @@ function assertBodyWrapMatchesParse(kind: AnyBlockKind, descriptor: BlockKindDes
 		descriptor.bodyWrap?.afterOpenerLine === true,
 		`${kind} container.bodyWrap.afterOpenerLine agrees with what its parse does with a blank ` +
 			`line against the opener`
+	);
+
+	// A closing fence line takes the blank line beside it, so a kind with one reloads a blank last
+	// block as one block fewer. A list's children are its items, which hold no blank block.
+	if (node.children[expected - 1].children !== undefined) return;
+	node.innerPrefix = '';
+	node.innerSuffix = '';
+	node.children.push({ kind: 'paragraph', leadingTrivia: ending, raw: ending });
+	descriptor.rebuildRaw!(node);
+	const keepsBlankTail = findFirstOfKind(parse(node.raw), kind)?.children?.length === expected + 1;
+	assertIs(
+		!keepsBlankTail,
+		descriptor.bodyWrap?.beforeCloserLine === true,
+		`${kind} container.bodyWrap.beforeCloserLine agrees with what its parse does with a blank ` +
+			`line against the closer`
 	);
 }

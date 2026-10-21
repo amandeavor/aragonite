@@ -112,7 +112,12 @@ export type { BlockComponent, BlockComponentExports, BlockComponentProps } from 
 
 // ── Parser openers ───────────────────────────────────────────────────────────
 // A registration's `opener`: how the block parser recognizes the kind from a line.
-export type { BlockOpener, BlockOpenerResult, OpenContext } from './schema/block-openers';
+export type {
+	BlockOpener,
+	BlockOpenerResult,
+	OpenContext,
+	UnfinishedReading
+} from './schema/block-openers';
 // The shared "does this line start a block at the outer level" gate, so a container opener
 // scanning its own extent ends it where cmark-gfm does instead of forking the rule.
 export { lineStartsOuterBlock } from './schema/block-openers';

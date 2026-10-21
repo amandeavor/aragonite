@@ -8,7 +8,9 @@
 import type { AnyBlockKind, CstNode, Document } from '../core/nodes';
 import {
 	displayLength,
+	displayLines,
 	documentLineEnding,
+	splitLines,
 	ownTrailingLineEnding,
 	trimTrailingLineEnding
 } from '../core/lines';
@@ -47,15 +49,16 @@ import {
 	type KitCell
 } from './conformance-core';
 import { installOwnRaw } from '../tree-operations/node-primitives';
-import { defaultGrammarView } from '../schema/block-openers';
+import { defaultGrammarView, type BlockOpener, type OpenContext } from '../schema/block-openers';
 import { createHeadlessActions } from './headless-actions';
 import { kitReading } from './kit-reading';
 import { assertParseConverged } from './parse-convergence';
 
 // ── Report + profile ─────────────────────────────────────────────────────────
 
-/** A closure column, plus `rawWrite`, which reads the descriptor rather than the closure block. */
-export type KindCell = ClosureColumn | 'rawWrite';
+/** A closure column, plus two cells that read the descriptor and the opener rather than the
+ *  closure block: `rawWrite`, and `unfinishedReading`. */
+export type KindCell = ClosureColumn | 'rawWrite' | 'unfinishedReading';
 
 export interface KindCellReport extends CellReport<KindCell> {
 	/** The closure mode the kind declared for the cell; absent on `rawWrite`. */
@@ -117,7 +120,8 @@ export async function runKindConformance(
 					: () => executeCell(column, descriptor.closure[column], run)
 			};
 		}),
-		{ cell: 'rawWrite', run: execRawWrite }
+		{ cell: 'rawWrite', run: execRawWrite },
+		{ cell: 'unfinishedReading', run: execUnfinishedReading }
 	];
 	const reports = await runCells(cells, run, {
 		subject: kind,
@@ -126,7 +130,7 @@ export async function runKindConformance(
 	return {
 		kind,
 		cells: reports.map((report) =>
-			report.cell === 'rawWrite'
+			report.cell === 'rawWrite' || report.cell === 'unfinishedReading'
 				? report
 				: { ...report, mode: descriptor.closure[report.cell].mode }
 		)
@@ -385,6 +389,54 @@ function execRawWrite({ kind, descriptor, parsed: ctx }: KindRun): CellOutcome {
 	}
 	checkLeafRawWrite(kind, ctx.fixture);
 	return 'five writes, each idempotent, leaving the next block its own, caret map agreeing';
+}
+
+/** An opener that backs out says which lines could finish it, and that has to hold for the closer
+ *  that finishes the kind's own fixture, or a closer typed blocks below goes unasked. */
+function execUnfinishedReading({ parsed: ctx }: KindRun): CellOutcome {
+	if (!ctx) return { status: 'exempt', detail: 'has no conformanceFixture to read a closer from' };
+	const lines = displayLines(trimTrailingLineEnding(ctx.node.raw));
+	const closer = lines[lines.length - 1].text;
+	const opened = ctx.node.raw.slice(0, ctx.node.raw.lastIndexOf(closer));
+	const waiting = defaultGrammarView
+		.orderedOpeners()
+		.filter(
+			(opener) =>
+				lines.length > 1 &&
+				opensKind(opener, ctx.node.raw, ctx.kind) &&
+				opener.readingNotFinal?.notFinal(opened)
+		);
+	if (waiting.length === 0) {
+		return {
+			status: 'exempt',
+			detail: 'no opener reads the fixture without its last line as waiting on a closer'
+		};
+	}
+	for (const opener of waiting) {
+		assert(
+			opener.readingNotFinal!.mayClose(closer),
+			`${ctx.kind}'s opener says its fixture without its last line is unfinished, but its ` +
+				`readingNotFinal.mayClose refuses ${show(closer)}, the line that finishes it: mayClose ` +
+				`must accept every closer the opener takes, or a closer typed blocks below is never asked`
+		);
+	}
+	return 'mayClose accepts the closer that finishes the fixture';
+}
+
+/** Whether `opener` reads `raw` alone as a block of `kind`. */
+function opensKind(opener: BlockOpener, raw: string, kind: AnyBlockKind): boolean {
+	const lines = splitLines(raw);
+	const ctx: OpenContext = {
+		lines,
+		index: 0,
+		end: lines.length,
+		line: lines[0],
+		leadingTrivia: '',
+		isDocumentParse: false,
+		depth: 0,
+		grammar: defaultGrammarView
+	};
+	return opener.tryOpen(ctx)?.node.kind === kind;
 }
 
 // ── Exported executors (direct-drive for regression tests) ───────────────────

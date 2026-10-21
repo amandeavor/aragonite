@@ -31,11 +31,8 @@ export function previewContentReparse(
 	const tailSuffix =
 		index === target.children.length - 1 && 'suffix' in target ? target.suffix : '';
 	const lineEnding = 'lineEnding' in target ? target.lineEnding : documentLineEnding(target);
-	const probe = makeBlockNode({
-		kind: node.kind,
-		leadingTrivia: node.leadingTrivia,
-		raw: node.raw
-	});
+	// The probe heads the trial's body, which separates from nothing, so it holds no line above.
+	const probe = makeBlockNode({ kind: node.kind, leadingTrivia: '', raw: node.raw });
 	// The owner and its task marker go along as a copy, so the trial reads the bytes the write will.
 	const taskItem = followsTaskMarker(owner, index) ? owner : undefined;
 	const ownerCopy =

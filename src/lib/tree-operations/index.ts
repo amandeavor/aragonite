@@ -5,7 +5,7 @@ export {
 	paragraphNode,
 	normalizeReplacementTrivia
 } from './node-primitives';
-export { deleteNode, restoreSeparatorOnFill, dropDoubledSeparator } from './settle';
+export { deleteNode, restoreSeparatorOnFill } from './settle';
 export { focusTargetInReplacement } from './neighbour-merge';
 export { updateNodeContent, reclassifyContainer } from './content-write';
 export type { MergeIntoPrevResult, MergeResult, SplitResult } from './node-ops';

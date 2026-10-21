@@ -134,17 +134,17 @@ describe('emptying a body block against the wrap’s chrome lines', () => {
 		expectParseConverged(doc);
 	});
 
-	// The standing line is the one the reload strips, so the fix-up keeps it rather than rewriting
-	// a byte-equivalent shape.
-	it('leaves a standing follower separator as the strip line, creating nothing', () => {
+	// The standing line is the one the reload strips, so it moves into the wrap, adding nothing.
+	it('moves a standing follower separator into the wrap, creating nothing', () => {
 		const doc = parse(':::callout Title\n```\nc\n```\n\nBody2\n:::\n');
 		const callout = doc.children[0];
 		expect(callout.children![2].leadingTrivia).toBe('\n');
 
 		emptyBodyChild(callout, 1);
 
-		expect(callout.innerPrefix).toBe('');
-		expect(callout.children![2].leadingTrivia).toBe('\n');
+		expect(callout.innerPrefix).toBe('\n');
+		expect(callout.children![2].leadingTrivia).toBe('');
+		expect(serialize(doc)).toBe(':::callout Title\n\n\nBody2\n:::\n');
 		expectParseConverged(doc);
 	});
 

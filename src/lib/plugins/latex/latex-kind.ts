@@ -36,6 +36,7 @@ import { isFlankingSpace } from './flanking';
 import { registerMathBlockCompleter } from './math-completion';
 import {
 	awaitsMathCloser,
+	isMathFenceLine,
 	legalMathSource,
 	mathBlockLines,
 	mathCloserLine,
@@ -219,7 +220,7 @@ export function registerMathBlock(view: BlockView): void {
 			// `$$` collides with no built-in matcher, so this number only keeps it from tying.
 			priority: OPENER_PRIORITIES.fencedCode + 5,
 			interruptsParagraph: opensMathBlock,
-			readingNotFinal: awaitsMathCloser,
+			readingNotFinal: { notFinal: awaitsMathCloser, mayClose: isMathFenceLine },
 			tryOpen(ctx) {
 				const closer = mathCloserLine(ctx.lines, ctx.index, ctx.end);
 				// An unclosed fence declines, so its lines read as a paragraph.

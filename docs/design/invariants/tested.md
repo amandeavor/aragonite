@@ -80,10 +80,11 @@ verb's allowlisted callers, and the park verb on each leaf forwarding a shared c
 `lint/caret-gesture-range-reset.test.ts`; `range-interrupt-ops.spec.ts` uses real gestures.
 
 **G2.13 · Shape fixed point.** An edit on a loaded document leaves a tree whose serialization
-reparses to the same block shape; G2.1 can't see a lost block whose bytes were exact. Two lanes:
-blank-line-separated documents under the split, delete, merge, fill, empty, retype and update
-gestures, and inline-source paragraphs under the live split. `shape-fixed-point.property.test.ts`,
-with example cases in `parse-convergence.test.ts`.
+reparses to the same block shape and the same blank lines between blocks; G2.1 can't see a lost
+block whose bytes were exact. Three lanes: the split, delete, merge, fill, empty, retype and update
+gestures; inline-source paragraphs under the live split; and leaves blanked, filled and erased to
+an empty last line inside fenced bodies. `shape-fixed-point.property.test.ts`,
+`blank-runs.property.test.ts`, example cases in `parse-convergence.test.ts`.
 
 **G2.14 · Toggle and active-read equivalence.** Over a RANGE, the toggle and `isInlineFormatActive`
 agree: where the read says active the toggle unapplies, where it says inactive the toggle applies;

@@ -211,7 +211,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	unshare: 'export function walkUnsharing',
 	separatorWrites: 'export function writeSeparator',
 	neighbourMerge: 'export function absorbWindowSeams',
-	settle: 'export function clearRedundantSeparator',
+	settle: 'export function settleEdit',
 	contentWrite: 'export interface LegalWrite',
 	nodeOps: 'export interface SplitResult',
 	chainRebuild: 'export function attachedChainPrefix',

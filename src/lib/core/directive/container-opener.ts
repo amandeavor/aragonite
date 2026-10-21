@@ -36,7 +36,11 @@ export function directiveContainerOpener(
 		// moves this with it. A colon fence collides with no built-in matcher; it only needs a gap.
 		priority: OPENER_PRIORITIES.blockquote + 5,
 		interruptsParagraph: (line) => matchDirectiveOpener(line) !== null,
-		readingNotFinal: directiveReadingNotFinal,
+		// A run of colons alone could be the closer of a container left open above.
+		readingNotFinal: {
+			notFinal: directiveReadingNotFinal,
+			mayClose: (line) => isDirectiveCloser(line, 3)
+		},
 		tryOpen(ctx) {
 			const fence = matchDirectiveOpener(ctx.line.text);
 			if (!fence) return null;
@@ -175,6 +179,8 @@ function firstCloserAtLeast(index: CloserIndex, from: number, min: number): numb
 /** Whether a block with these bytes opens a container fence its own lines never close: it read on
  *  for the closer, became a paragraph, and a closer typed below still completes it. */
 function directiveReadingNotFinal(raw: string): boolean {
+	// A fence line starts with its colons, so any other block is answered before a line is read.
+	if (!raw.startsWith('::')) return false;
 	const fence = matchDirectiveOpener(firstDisplayLine(raw).text);
 	if (!fence || fence.tier === 'leaf') return false;
 	const lines = splitLines(raw);

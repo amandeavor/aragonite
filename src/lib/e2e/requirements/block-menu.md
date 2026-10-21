@@ -25,6 +25,9 @@ step aside.
     menu is tested
 - a right-click on a code block opens `Block actions`; its Remove row deletes the block and the
   neighbours close up
+- Remove on a code block flush between a paragraph and a table leaves a blank line between them,
+  so the table stays a table (regression #479; miss-analysis: the Remove test had blank lines on
+  both sides of the removed block)
 - type in a code block, then pick Replace with clipboard before the typing pauses: one Ctrl+Z
   takes back the replace alone and leaves the typed character
   - Miss-analysis: the menu tests picked rows on an untouched document, and the unit tests built

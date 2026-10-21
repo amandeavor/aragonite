@@ -40,8 +40,8 @@ export function buildQuoteExitReplacement(container: NodeView, grammar: GrammarV
 	trimmed.childIds = assignIds(trimmed.children);
 	rebuildContainerRaw(trimmed, grammar);
 
-	// Every byte this op creates is a line ending. The quote spans two lines at least here, so
-	// its bytes hold the document's ending.
+	// The empty line is all its bytes, and the commit's fix-up gives it the blank line above. The
+	// quote spans two lines at least here, so its bytes hold the document's ending.
 	const lineEnding = firstLineEnding(container.raw) ?? '\n';
-	return [trimmed, emptyParagraph(lineEnding, lineEnding)];
+	return [trimmed, emptyParagraph('', lineEnding)];
 }

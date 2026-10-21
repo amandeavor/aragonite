@@ -258,12 +258,12 @@ A blank line between two blocks isn't a node. It's the next block's `leadingTriv
 a blank paragraph **is** the separating line of the block under it, and any operation that fills,
 deletes or replaces a blank block has to restore a separator somebody else was relying on. Get it
 wrong and the document saves fine but reloads as a different number of blocks. Read
-`docs/design/syntax-tree.md` § Blank lines before touching any of this: two byte-equivalent
-spellings exist, and which one you're holding decides which helper applies.
+`docs/design/syntax-tree.md` § Blank lines before touching any of this.
 
-The helpers live at the head of `src/lib/tree-operations/settle.ts` (`clearRedundantSeparator`,
-`dropDoubledSeparator`, `restoreSeparatorOnFill`, `restoreSeparatorAfterBlank`,
-`settleSeparatorOnBlank`). Each takes a `BodyParent`
+The count itself is one function, `src/lib/tree-operations/blank-runs.ts` :: `normalizeBlankRuns`,
+which lays out each run of blank lines an edit touched the way a reload reads it. The steps that
+depend on what the edit did sit at the head of `src/lib/tree-operations/settle.ts`
+(`restoreSeparatorOnFill`, `restoreSeparatorAfterBlank`). Each takes a `BodyParent`
 (`src/lib/tree-operations/node-primitives.ts` :: `BodyParent`), the children plus the container
 that owns them, since that container's fence lines decide where a blank line may sit.
 
@@ -282,11 +282,10 @@ Almost nothing calls them by hand. An edit splices and writes, and the fix-up af
 - **`spliceChildrenSettled`**, which the path-addressed helpers in
   `src/lib/tree-operations/path-mutate.ts` and `src/lib/tree-operations/cleanup.ts` splice through.
 
-The callers that still carry a helper by hand, each saying why at the site:
+The one caller that still carries a helper by hand, saying why at the site:
 
 - `insertParagraph` in `src/lib/editor-actions/block-edit-core.ts` (the gap caret, the trailing
-  insert row, insert-below, a character typed on a block focused whole);
-- a range delete inside one block, in `src/lib/selection/range-delete.ts`.
+  insert row, insert-below, a character typed on a block focused whole).
 
 One helper sits outside them: `src/lib/tree-operations/list/sublist-separator.ts` ::
 `settleSublistSeparator` gives a list right under a paragraph, whose first item's line is empty,

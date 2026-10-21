@@ -228,6 +228,7 @@ Takes your kind (the value `declaredPluginKind` returns) and executes the headle
   - With one, it drives the rule through a handful of damaging writes: the closing line cut, everything past the first line cut, an empty write, and, for a fixture of two or more lines, the first line cut and the closing line copied into the body. Each result has to come back unchanged from a second pass of the rule and leave the block after it alone, and on a fixture of three or more lines the closing line cut also has to keep your kind.
   - Your `mapOffset` is checked against `normalize` at every offset of each write: an offset before every byte the rule changed stays put, one after them moves by what the rule added or dropped, and none goes backwards.
   - It's `boundary` for a kind with the rule and no top-level fixture (none at all, or one sitting inside a container), and `exempt` for a kind with neither the rule nor a top-level fixture.
+- The unfinished-reading cell, last, also with no `mode`. If your opener backs out without its closer and says so with `readingNotFinal` ([A reading that isn't final](plugin-guide/parser.md#a-reading-that-isnt-final)), it takes your fixture's last line off and checks `mayClose` says yes to that line, the closer that finishes it. It's `exempt` when your opener doesn't read the fixture without its last line as waiting, which is every kind that never backs out.
 
 Cells whose mechanism only exists in a browser (focus, selection and search painting, reorder, and the note-taking simulation aragonite runs over its own kinds) are recorded `boundary`; the kit won't fake them green. Covering those is your own browser tests' job. For the parrot, the whole checkup is the test the [guide's quickstart](plugin-guide.md#the-first-fifteen-minutes) ends on:
 
@@ -237,7 +238,7 @@ it('parrot conforms', async () => {
 });
 ```
 
-It resolves with a report, one cell per closure column and then the raw-write cell. For the parrot exactly as the guide declares it:
+It resolves with a report, one cell per closure column and then the raw-write and unfinished-reading cells. For the parrot exactly as the guide declares it:
 
 ```ts
 const report = await runKindConformance(declaredPluginKind(PARROT));
@@ -252,7 +253,8 @@ report.cells.map((c) => `${c.cell}: ${c.status}`);
 //   'undo: boundary',           // implemented too, so the kit can't drive it generically
 //   'clipboard: asserted',      // copy is a raw byte slice
 //   'simOracle: boundary',      // aragonite's own simulation, never this runner
-//   'rawWrite: asserted'        // no rule, and cutting the closing line swallows nothing
+//   'rawWrite: asserted',       // no rule, and cutting the closing line swallows nothing
+//   'unfinishedReading: exempt' // the parrot never backs out
 // ]
 ```
 
