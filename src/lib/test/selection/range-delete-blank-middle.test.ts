@@ -7,9 +7,8 @@ import type { Document } from '#lib/core/nodes.js';
 import type { SelectionPoint } from '#lib/selection/primitives.js';
 import { deleteRange } from '../harness/range-delete';
 
-// A blank block covered as a range's middle is the separating line of the block after it, but
-// the `deleteAtPath` splice hands nothing down to that successor, and `clearRedundantSeparator`
-// only ever frees a separator.
+// A blank block covered as a range's middle is the separating line of the block after it, so the
+// block that survives below the range takes that line.
 // Miss-analysis: GH #73; every cross-block fixture put content blocks between its endpoints.
 
 const TABLE = '| h1 | h2 |\n| --- | --- |\n| a | b |\n';
@@ -21,8 +20,7 @@ function del(source: string, start: SelectionPoint, end: SelectionPoint): Docume
 }
 
 describe('a deleted blank middle hands its line to the block below', () => {
-	// The plain branch deletes the end endpoint too, so the successor that survives is the block
-	// past it, one `clearRedundantSeparator` already stripped while the blank still stood.
+	// The plain branch deletes the end endpoint too, so the block that survives is the one past it.
 	it('keeps the successor separated once the blank above it is gone', () => {
 		const doc = del('a\n\n\nb\n\nc\n', { path: [0], offset: 1 }, { path: [2], offset: 1 });
 
