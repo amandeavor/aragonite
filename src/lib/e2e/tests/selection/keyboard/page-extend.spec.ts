@@ -2,7 +2,6 @@ import { test, expect } from '../../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../../editor-page';
 import { extendKey } from '../../../platform-keys';
-import { hoverInPlace } from '../../../click-in-place';
 
 // Shift+PageUp and Shift+PageDown move a selection's moving end a screen up or down, from a caret
 // or a range, and the end stays on screen. Requirements:
@@ -113,23 +112,14 @@ test.describe('a range across blocks', () => {
 		});
 	}
 
-	test('an end the wheel took out of the rendered window steps from where it is', async ({
-		page
-	}) => {
+	test('an end scrolled out of the rendered window steps from where it is', async ({ page }) => {
 		const ep = await open(page, paragraphs(200));
 		const perPage = await blocksPerPage(page);
 		await ep.focusBlock(0, 3);
 		await press(ep, page, extendKey('docEnd'));
 		await endOnScreen(page);
-		await hoverInPlace(ep.editorContainer);
-		// How far one wheel event scrolls is the engine's call, so the wheel turns until the top shows.
-		const scrollTop = () => page.evaluate(() => document.querySelector('.editor')!.scrollTop);
-		await expect
-			.poll(async () => {
-				await page.mouse.wheel(0, -2000);
-				return scrollTop();
-			})
-			.toBe(0);
+		// The scroll only sets the scene; Linux WebKit's wheel events never moved this container in CI.
+		await ep.scrollEditorTo(0);
 		await expect(page.locator('[data-block-path="199"]')).toHaveCount(0);
 		await press(ep, page, 'Shift+PageUp');
 		const end = await endOnScreen(page);

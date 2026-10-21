@@ -18,7 +18,7 @@ one-line paragraphs: it lands within one paragraph of a screen's worth.
 
 ## Edge cases
 
-- Two hundred paragraphs, a range to the document's end, then a wheel scroll to the top, which
+- Two hundred paragraphs, a range to the document's end, then a scroll to the top, which
   takes the end's paragraph out of the rendered window: Shift+PageUp steps the end a screen up
   from where it was, and brings it on screen
 - A range ending ten paragraphs from the document's end, Shift+PageDown twice: the end stops on
