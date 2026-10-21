@@ -283,7 +283,7 @@ function settleWrittenSlot(
 	const indentMoved = leadingIndent(previous.raw) !== leadingIndent(slot.text);
 	const lastWritten = lastMintedIndex(change, index);
 	const written = lastWritten - index + 1;
-	const asks = asksOfWrite(previous.raw, slot.text, grammar);
+	const asks = asksOfWrite(previous.raw, slot.text, lastWritten > index, grammar);
 	// One blank line served both sides: it separated this block from the one above and stood in
 	// as the separator of the block beneath it. Filling it gives each side its own.
 	if (wasBlank && !isBlankParagraph(children[index])) {

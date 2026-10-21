@@ -25,13 +25,19 @@ export interface UnfinishedAsks {
 
 export const NO_UNFINISHED_ASKS: UnfinishedAsks = { above: false, below: false };
 
-/** What a content write asks, from the lines it changed: a candidate closer looks up, and a
- *  rewritten first line or a lost candidate closer looks down. */
-export function asksOfWrite(before: string, after: string, grammar: GrammarView): UnfinishedAsks {
+/** What a content write asks: a changed line that could close looks up; a changed line that starts
+ *  a block (the first, or any once the write was read as several) or a lost closer looks down. */
+export function asksOfWrite(
+	before: string,
+	after: string,
+	divided: boolean,
+	grammar: GrammarView
+): UnfinishedAsks {
 	const changed = changedLines(before, after);
 	const lost = changedLines(after, before);
 	const above = changed.lines.some((line) => lineMayFinishReading(line, grammar));
-	const below = changed.fromFirst || lost.lines.some((line) => lineMayFinishReading(line, grammar));
+	const startsBlock = changed.fromFirst || divided;
+	const below = startsBlock || lost.lines.some((line) => lineMayFinishReading(line, grammar));
 	return { above, below };
 }
 

@@ -187,6 +187,20 @@ describe.each(ROUTES)('a closer written blocks below the construct it finishes, 
 		expectParseConverged(doc);
 	});
 
+	// A write read as several blocks starts each past the first on a line it wrote.
+	it.each([
+		['a `:::note`', 'a\n\nx\n\n:::\n', 'a\n:::note\n', 'admonition'],
+		['a `$$`', 'a\n\nx\n\n$$\n', 'a\n$$\n', 'mathBlock']
+	])(
+		'%s written under paragraph text takes in the closer below',
+		async (_l, source, text, kind) => {
+			const { doc, write } = route(source);
+			await write(0, text);
+			expect(doc.children.map((c) => c.kind)).toEqual(['paragraph', kind]);
+			expectParseConverged(doc);
+		}
+	);
+
 	it('Enter that puts a `$$` on a line of its own closes the `$$` above', async () => {
 		const { doc, split } = route('$$\n\nfoo\n\nx $$\n');
 		await split(2, 2);
