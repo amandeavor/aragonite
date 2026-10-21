@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { skipUnlessSupported } from '../../browser-engine';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * A collapsed Backspace or Delete inside a line takes the same bytes on every engine, by key or by
@@ -186,18 +187,30 @@ const ROWS: Row[] = [
 /** The source with `\r` and `\n` spelled out, so a diff shows a lone one. */
 const escaped = (source: string) => JSON.stringify(source);
 
-/** A soft keyboard's delete: the `beforeinput` alone, no keydown, as Android and iOS send it. */
-async function sendKeylessDelete(page: Page, key: Row['key']): Promise<void> {
-	await page.evaluate((key) => {
-		const target = document.activeElement as HTMLElement;
-		target.dispatchEvent(
-			new InputEvent('beforeinput', {
-				inputType: key === 'Backspace' ? 'deleteContentBackward' : 'deleteContentForward',
-				bubbles: true,
-				cancelable: true
-			})
-		);
-	}, key);
+/** A soft keyboard's delete: the `beforeinput` alone, as iOS sends it, or after the keydown naming no
+ *  key Android's keyboards send first (`android`). */
+async function sendKeylessDelete(
+	page: Page,
+	key: Row['key'],
+	{ android = false } = {}
+): Promise<void> {
+	await page.evaluate(
+		({ key, android }) => {
+			const target = document.activeElement as HTMLElement;
+			if (android) {
+				const init = { key: 'Unidentified', keyCode: 229, bubbles: true, cancelable: true };
+				target.dispatchEvent(new KeyboardEvent('keydown', init));
+			}
+			target.dispatchEvent(
+				new InputEvent('beforeinput', {
+					inputType: key === 'Backspace' ? 'deleteContentBackward' : 'deleteContentForward',
+					bubbles: true,
+					cancelable: true
+				})
+			);
+		},
+		{ key, android }
+	);
 }
 
 async function expectCaret(editor: EditorPage, path: number[], offset: number): Promise<void> {
@@ -377,3 +390,101 @@ test.describe('Shift+Backspace takes what Backspace takes', () => {
 		expect(await editor.bridge.getSource()).toBe(source);
 	});
 });
+
+// A soft keyboard's delete at a block's edge runs the merge the key runs, the same bytes.
+const EDGE_ROWS = [
+	{ name: 'Backspace at a paragraph start', source: 'abc\n\nnext\n', path: [1], at: 0 },
+	{ name: 'Delete at a paragraph end', source: 'abc\n\nnext\n', path: [0], at: 3, forward: true },
+	{ name: 'Backspace at a second list item start', source: '- a\n- b\n', path: [0, 1, 0], at: 0 },
+	{ name: 'Backspace at a quote child start', source: 'x\n\n> q\n', path: [1, 0], at: 0 }
+];
+
+test.describe('a soft keyboard delete at a block edge does what the key does', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+	});
+
+	for (const row of EDGE_ROWS) {
+		test(row.name, async ({ page }) => {
+			const key = row.forward ? 'Delete' : 'Backspace';
+			await editor.loadContent(row.source);
+			await editor.focusBlockAtPath(row.path, row.at);
+			await page.keyboard.press(key);
+			await editor.waitForRenderFlush();
+			const keyed = await editor.bridge.getSource();
+			expect(keyed).not.toBe(row.source);
+
+			await editor.loadContent(row.source);
+			await editor.focusBlockAtPath(row.path, row.at);
+			await sendKeylessDelete(page, key);
+			await expect.poll(async () => escaped(await editor.bridge.getSource())).toBe(escaped(keyed));
+			await editor.undo();
+			await expect.poll(() => editor.bridge.getSource()).toBe(row.source);
+		});
+	}
+
+	test('Backspace at a paragraph start after the keydown that names no key', async ({ page }) => {
+		await editor.loadContent('abc\n\nnext\n');
+		await editor.focusBlockAtPath([1], 0);
+		await sendKeylessDelete(page, 'Backspace', { android: true });
+		await editor.bridge.waitForSourceEquals('abcnext\n');
+	});
+});
+
+// End and Home leave the caret where each engine puts it at a CRLF line end, and the delete still
+// edits the pair as one character.
+const CRLF_PARAGRAPH = 'abc\r\nAfter\r\n';
+const CRLF_CODE = '```\r\nabc\r\nxyz\r\n```\r\n';
+
+for (const mode of ['source', 'live'] as const) {
+	test.describe(`a CRLF line end reached by the keyboard (${mode})`, () => {
+		let editor: EditorPage;
+
+		test.beforeEach(async ({ page }) => {
+			editor = new EditorPage(page);
+			await editor.goto();
+			await editor.setPresentationMode(mode);
+		});
+
+		const expectSource = async (expected: string) =>
+			expect.poll(async () => escaped(await editor.bridge.getSource())).toBe(escaped(expected));
+
+		test('Delete after End takes the whole pair', async ({ page }) => {
+			await editor.loadContent(CRLF_PARAGRAPH);
+			await editor.focusBlockStart(0);
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await page.keyboard.press('Delete');
+			await expectSource('abcAfter\r\n');
+		});
+
+		test('Backspace after End takes the letter before the pair', async ({ page }) => {
+			await editor.loadContent(CRLF_PARAGRAPH);
+			await editor.focusBlockStart(0);
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await page.keyboard.press('Backspace');
+			await expectSource('ab\r\nAfter\r\n');
+		});
+
+		test('Backspace after End in a code body takes the letter before the pair', async ({
+			page
+		}) => {
+			await editor.loadContent(CRLF_CODE);
+			await editor.focusBlockAtPath([0], 5);
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await page.keyboard.press('Backspace');
+			await expectSource('```\r\nab\r\nxyz\r\n```\r\n');
+		});
+
+		test('Backspace after Home on the next line takes the whole pair', async ({ page }) => {
+			await editor.loadContent(CRLF_PARAGRAPH);
+			await editor.focusBlockStart(0);
+			await page.keyboard.press('ArrowDown');
+			await page.keyboard.press(edgeKey('lineStart'));
+			await page.keyboard.press('Backspace');
+			await expectSource('abcAfter\r\n');
+		});
+	});
+}

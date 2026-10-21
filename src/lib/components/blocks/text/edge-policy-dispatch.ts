@@ -26,7 +26,12 @@ import {
 	type CaretWriter,
 	type EditedBlock
 } from '../../../caret/widget-offset';
-import { deleteExtent, type DeleteIntent, type DeleteSpan } from '../../../caret/delete-extent';
+import {
+	deleteExtent,
+	type DeleteAnswer,
+	type DeleteIntent,
+	type DeleteSpan
+} from '../../../caret/delete-extent';
 import { lineEdgeOffset } from '../../../caret/visual-lines';
 import { recordIslandKeyScan } from '../../../perf/instruments';
 import { hasModifier, isPlainTypingKey } from './click-snap-guard';
@@ -127,8 +132,8 @@ export interface EdgePolicyDispatch {
 	 *  where Firefox fires the insertion's `beforeinput` and inserts nothing. True if written. */
 	typeBeforeClosingWidget(caret: number, typed: string): boolean;
 	/** A collapsed delete that reached `beforeinput`, by the rules the keys above follow, then the
-	 *  character rule; false while a shown source holds bytes the tree hasn't seen. */
-	deleteAtCaret(caret: number, intent: DeleteIntent): boolean;
+	 *  delete rule; declined while a shown source holds bytes the tree hasn't seen. */
+	deleteAtCaret(caret: number, intent: DeleteIntent): DeleteAnswer;
 }
 
 /** One family of gestures, listed in the order the families outrank each other. A family is not a
@@ -420,7 +425,7 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		if (!islands.some((i) => i.start === i.end && i.start === caret)) return false;
 		if (backward ? caret <= 0 : caret >= display().length) return false;
 		// This branch outranks the construct-edge rule beside a hidden run, so it asks that rule.
-		if (!hiddenRunDelete(el, caret, intent)) deleteSpan(el, caret, intent);
+		if (!hiddenRunDelete(el, caret, intent)) void deleteSpan(el, caret, intent);
 		return true;
 	}
 
@@ -493,31 +498,33 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 		return true;
 	}
 
-	function deleteAtCaret(caret: number, intent: DeleteIntent): boolean {
+	function deleteAtCaret(caret: number, intent: DeleteIntent): DeleteAnswer {
 		const el = deps.getEl();
-		if (!el || deps.isRevealing()) return false;
+		if (!el || deps.isRevealing()) return 'declined';
 		const { direction } = intent;
 		// A word or a line beside a widget answers as a character does, by the widget's policy.
 		const widgetAt = widgetAtCursor(caret, widgetsIn(deps.node, deps.reading), direction);
 		if (widgetAt && widgetAt.atRight === (direction === 'backward')) {
 			takeOrEnterWidget(widgetAt, true);
-			return true;
+			return 'taken';
 		}
 		if (deps.hasIslands()) {
 			const islands = islandsInDom(el);
-			if (islands.length > 0 && islandDelete(el, islands, caret, intent)) return true;
+			if (islands.length > 0 && islandDelete(el, islands, caret, intent)) return 'taken';
 		}
-		// Backspace at the first offset the caret can sit at is the block's gesture (merge, or
-		// nothing), never the first visible character past a hidden run.
+		// At the first or last offset the caret can sit at the delete is the block's merge, never
+		// the first visible character past a hidden run.
 		const bounds = landableRawBounds(el);
-		if (direction === 'backward' && bounds && caret <= bounds.start) return true;
-		if (!hiddenRunDelete(el, caret, intent)) deleteSpan(el, caret, intent);
-		return true;
+		const atEdge =
+			bounds && (direction === 'backward' ? caret <= bounds.start : caret >= bounds.end);
+		if (atEdge) return 'at-edge';
+		if (hiddenRunDelete(el, caret, intent)) return 'taken';
+		return deleteSpan(el, caret, intent) ? 'taken' : 'at-edge';
 	}
 
-	/** The delete rule's span (`caret/delete-extent.ts`), a word read as the screen shows it, through
-	 *  the in-leaf range replace; a cut that leaves a heading only its hidden markers empties it. */
-	function deleteSpan(el: HTMLElement, caret: number, intent: DeleteIntent): void {
+	/** The delete rule's span through the in-leaf range replace, a word read as the screen shows it;
+	 *  a cut leaving a heading only hidden markers empties it. False with nothing to take. */
+	function deleteSpan(el: HTMLElement, caret: number, intent: DeleteIntent): boolean {
 		const text = display();
 		const span = deleteExtent(intent, {
 			text,
@@ -526,12 +533,13 @@ export function createEdgePolicyDispatch(deps: EdgePolicyDispatchDeps): EdgePoli
 			lineEdge: (side) => lineEdgeOffset(el, caret, side),
 			visible: intent.unit === 'word' ? visibleWalkText(el) : undefined
 		});
-		if (!span) return;
+		if (!span) return false;
 		deps.setSnapTarget(null);
 		const written = rangeEdit(span, '');
 		const kept = keptBlockText(editedBlock(el, text, span, written.text));
-		if (kept !== written.text) return writeDisplay(kept, 0, 'delete');
-		void deps.writeText({ ...written, intent: 'typed', mode: 'authored', source: 'delete' });
+		if (kept !== written.text) writeDisplay(kept, 0, 'delete');
+		else void deps.writeText({ ...written, intent: 'typed', mode: 'authored', source: 'delete' });
+		return true;
 	}
 
 	/** The block as `keptBlockText` reads it once `span` is cut from `text`, the parts the input

@@ -34,6 +34,7 @@ import {
 	deleteExtent,
 	isDeleteInput,
 	isMoveDelete,
+	type DeleteAnswer,
 	type DeleteIntent
 } from '../../../caret/delete-extent';
 import { lineEdgeOffset } from '../../../caret/visual-lines';
@@ -673,9 +674,9 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 
 	/** A collapsed delete takes what the delete rule names in the DOM's text, which a shown
 	 *  render-primary source reaches the node with only on blur, kept off the lines the mode hides. */
-	function deleteAtCaret(caret: number, intent: DeleteIntent): boolean {
+	function deleteAtCaret(caret: number, intent: DeleteIntent): DeleteAnswer {
 		const el = deps.getEl();
-		if (!el) return false;
+		if (!el) return 'declined';
 		const text = el.textContent ?? '';
 		const span = deleteExtent(intent, {
 			text,
@@ -683,8 +684,9 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			bounds: landableRawBounds(el) ?? { start: 0, end: text.length },
 			lineEdge: (side) => lineEdgeOffset(el, caret, side)
 		});
-		if (span) spliceSourceText(el, span.start, span.end, '');
-		return true;
+		if (!span) return 'at-edge';
+		spliceSourceText(el, span.start, span.end, '');
+		return 'taken';
 	}
 
 	function onPointerDown(e: PointerEvent): void {

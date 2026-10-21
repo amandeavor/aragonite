@@ -7,6 +7,7 @@
 import {
 	characterExtent,
 	decidedDelete,
+	type DeleteAnswer,
 	type DeleteDecline,
 	type DeleteDirection,
 	type DeleteIntent,
@@ -22,7 +23,10 @@ export interface CollapsedDeleteReads {
 	text(): string;
 	/** The raw range the browser reports the input would take, null where it names none. */
 	targetRange(e: InputEvent): RawRange | null;
-	deleteAtCaret?: (caret: number, intent: DeleteIntent) => boolean;
+	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
+	/** The merge the block's key runs at its edge, for a delete that names no key; absent where
+	 *  the block has none. */
+	joinAtEdge?: (direction: DeleteDirection) => void;
 }
 
 /** The verdict on a `beforeinput` the editor decides deletes for; null for every other input.
@@ -37,8 +41,12 @@ export function decideCollapsedDelete(
 	const caret = reads.caret();
 	const decline = declineReason(e, intent, caret, keyed, reads);
 	if (decline || caret === null) return { decided: false, decline: decline ?? 'no-caret' };
-	if (!reads.deleteAtCaret?.(caret, intent)) return { decided: false, decline: 'surface' };
+	const answer = reads.deleteAtCaret?.(caret, intent) ?? 'declined';
+	if (answer === 'declined') return { decided: false, decline: 'surface' };
+	// A key reaching here at the edge is one its own merge command turned down (the host unbound it).
+	if (answer === 'at-edge' && keyed) return { decided: false, decline: 'key-at-edge' };
 	e.preventDefault();
+	if (answer === 'at-edge') reads.joinAtEdge?.(intent.direction);
 	return { decided: true };
 }
 

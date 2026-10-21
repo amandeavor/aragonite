@@ -72,9 +72,20 @@ export function isMoveDelete(inputType: string): boolean {
 /** Why a delete the editor decides went to the browser after all, read back on `input` instead.
  *  The editor's own check (G1.132) accepts an undecided delete only with one of these. */
 export type DeleteDecline =
-	'claimed' | 'composing' | 'not-cancelable' | 'range' | 'no-caret' | 'wide-keyless' | 'surface';
+	| 'claimed'
+	| 'composing'
+	| 'not-cancelable'
+	| 'range'
+	| 'no-caret'
+	| 'wide-keyless'
+	| 'surface'
+	| 'key-at-edge';
 
 export type DeleteVerdict = { decided: true } | { decided: false; decline: DeleteDecline };
+
+/** What a block did with a collapsed delete: took it, found nothing in the line to take at the
+ *  edge the delete faces (where the block's merge is the answer), or left it to the browser. */
+export type DeleteAnswer = 'taken' | 'at-edge' | 'declined';
 
 /** Wide enough for the longest emoji sequences (a tag flag is 14 code units); a cluster the window
  *  may have cut is read again in one twice the size. */

@@ -23,7 +23,7 @@ function reads(overrides: Partial<CollapsedDeleteReads> = {}) {
 		targetRange: () => null,
 		deleteAtCaret: (caret, intent) => {
 			calls.push([caret, intent]);
-			return true;
+			return 'taken';
 		},
 		...overrides
 	};
@@ -66,7 +66,7 @@ describe('decideCollapsedDelete: which deletes the editor writes itself', () => 
 			{ targetRange: () => ({ start: 0, end: 3 }) },
 			false
 		],
-		['surface', input('deleteContentBackward'), { deleteAtCaret: () => false }, true],
+		['surface', input('deleteContentBackward'), { deleteAtCaret: () => 'declined' }, true],
 		['surface', input('deleteContentBackward'), { deleteAtCaret: undefined }, true]
 	];
 	for (const [decline, e, overrides, keyed] of declines) {
@@ -84,6 +84,23 @@ describe('decideCollapsedDelete: which deletes the editor writes itself', () => 
 		expect(decideCollapsedDelete(input('deleteWordBackward'), false, base)).toEqual({
 			decided: true
 		});
+	});
+
+	// A soft keyboard's delete at the edge runs the merge the key would; a key that got here is one
+	// its own merge command turned down.
+	it('runs the block merge for a keyless delete at the edge, and never for a key', () => {
+		for (const keyed of [false, true]) {
+			const joined: string[] = [];
+			const { base } = reads({
+				deleteAtCaret: () => 'at-edge',
+				joinAtEdge: (direction) => void joined.push(direction)
+			});
+			const e = input('deleteContentBackward');
+			const verdict = decideCollapsedDelete(e, keyed, base);
+			if (keyed) expect(verdict).toEqual({ decided: false, decline: 'key-at-edge' });
+			else expect(verdict).toEqual({ decided: true });
+			expect([e.defaultPrevented, joined]).toEqual(keyed ? [false, []] : [true, ['backward']]);
+		}
 	});
 
 	it('takes a keyed delete whatever the browser says it would take', () => {

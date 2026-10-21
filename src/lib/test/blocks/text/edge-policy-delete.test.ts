@@ -130,7 +130,7 @@ describe('a collapsed delete beside a hidden run', () => {
 
 	it('rewrites through the CST and anchors the undo entry at the pre-edit caret', () => {
 		const h = mount('Some **bold** text\n', 'live');
-		expect(h.dispatch.deleteAtCaret(13, BACKSPACE)).toBe(true);
+		expect(h.dispatch.deleteAtCaret(13, BACKSPACE)).toBe('taken');
 		expect(h.edits).toEqual([[0, 'Some **bol** text\n', 13, 10]]);
 	});
 
@@ -150,7 +150,7 @@ describe('a collapsed delete beside a hidden run', () => {
 	// shows the stars, so the delete is taken and writes nothing.
 	it('takes the delete and writes nothing where no rewrite parses back', () => {
 		const h = mount('**a *b*** z\n', 'live');
-		expect(h.dispatch.deleteAtCaret(6, BACKSPACE)).toBe(true);
+		expect(h.dispatch.deleteAtCaret(6, BACKSPACE)).toBe('taken');
 		expect(h.edits).toHaveLength(0);
 	});
 
@@ -187,9 +187,9 @@ describe('the block edge', () => {
 	const mountEscapes = () =>
 		mount('\\*a\\*\n', [marker('\\'), text('*'), text('a'), marker('\\'), text('*')]);
 
-	it('takes nothing on Backspace at the first reachable offset inside a leading escape', () => {
+	it('stops at the edge on Backspace at the first reachable offset inside a leading escape', () => {
 		const h = mountEscapes();
-		expect(h.dispatch.deleteAtCaret(1, BACKSPACE)).toBe(true);
+		expect(h.dispatch.deleteAtCaret(1, BACKSPACE)).toBe('at-edge');
 		expect(h.edits).toHaveLength(0);
 	});
 

@@ -26,7 +26,7 @@ function mount(source: string) {
 describe('deleteAtCaret: a collapsed delete the browser never runs', () => {
 	it('Backspace takes the character before the caret through one write', () => {
 		const h = mount('abc\n');
-		expect(h.dispatch.deleteAtCaret(3, BACKSPACE)).toBe(true);
+		expect(h.dispatch.deleteAtCaret(3, BACKSPACE)).toBe('taken');
 		expect(h.edits).toEqual([[0, 'ab\n', 3, 2]]);
 	});
 
@@ -44,9 +44,9 @@ describe('deleteAtCaret: a collapsed delete the browser never runs', () => {
 		expect([forward.edits[0][1], backward.edits[0][1]]).toEqual(['x\n', 'ex\n']);
 	});
 
-	it('takes nothing at the block start, where the merge is the key', () => {
+	it('answers at the edge at the block start, where the merge is the key', () => {
 		const h = mount('abc\n');
-		expect(h.dispatch.deleteAtCaret(0, BACKSPACE)).toBe(true);
+		expect(h.dispatch.deleteAtCaret(0, BACKSPACE)).toBe('at-edge');
 		expect(h.edits).toHaveLength(0);
 	});
 
@@ -78,7 +78,7 @@ describe('deleteAtCaret: a collapsed delete the browser never runs', () => {
 	it('leaves a shown source to the browser, whose bytes the tree has not seen', () => {
 		const node = parse('abc\n').children[0];
 		const h = makeEdgeDispatch(node, mountSurface('abc'), { isRevealing: () => true });
-		expect(h.dispatch.deleteAtCaret(3, BACKSPACE)).toBe(false);
+		expect(h.dispatch.deleteAtCaret(3, BACKSPACE)).toBe('declined');
 		expect(h.edits).toHaveLength(0);
 	});
 });

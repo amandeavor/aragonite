@@ -233,7 +233,7 @@ describe('pending marks', () => {
 		it('leaves the emptied construct’s mark pending for the next byte', () => {
 			const h = mount('plain*x*\n');
 
-			expect(h.dispatch.deleteAtCaret(7, BACKSPACE)).toBe(true);
+			expect(h.dispatch.deleteAtCaret(7, BACKSPACE)).toBe('taken');
 			expect(h.edits).toEqual([[0, 'plain\n', 7, 5]]);
 			expect(h.marks.pended).toEqual(['emphasis']);
 		});
@@ -241,7 +241,7 @@ describe('pending marks', () => {
 		it('pends nothing where the press empties no construct', () => {
 			const h = mount('Some **bold** text\n');
 
-			expect(h.dispatch.deleteAtCaret(13, BACKSPACE)).toBe(true);
+			expect(h.dispatch.deleteAtCaret(13, BACKSPACE)).toBe('taken');
 			expect(h.marks.pended).toEqual([]);
 		});
 
@@ -250,7 +250,7 @@ describe('pending marks', () => {
 		it('pends nothing for an unwrapped kind no format chord writes', () => {
 			const h = mount('a [x](u) b\n');
 
-			expect(h.dispatch.deleteAtCaret(4, BACKSPACE)).toBe(true);
+			expect(h.dispatch.deleteAtCaret(4, BACKSPACE)).toBe('taken');
 			expect(h.edits).toEqual([[0, 'a  b\n', 4, 2]]);
 			expect(h.marks.pended).toEqual([]);
 		});
@@ -307,7 +307,7 @@ describe('stored read cost', () => {
 			const leaf = countedLeaf();
 			expect(
 				dispatchOver(leaf).dispatch.deleteAtCaret(caret, { unit: 'character', direction })
-			).toBe(true);
+			).toBe('taken');
 			expect(leaf.reads()).toBe(0);
 		});
 
@@ -331,7 +331,7 @@ describe('stored read cost', () => {
 		// The positive half: a key at a hidden run does read the store, so a zero above is no accident.
 		it('Backspace at a hidden run reads it', () => {
 			const leaf = countedLeaf();
-			expect(dispatchOver(leaf).dispatch.deleteAtCaret(13, BACKSPACE)).toBe(true);
+			expect(dispatchOver(leaf).dispatch.deleteAtCaret(13, BACKSPACE)).toBe('taken');
 			expect(leaf.reads()).toBeGreaterThan(0);
 		});
 	});
