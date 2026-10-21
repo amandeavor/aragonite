@@ -13,7 +13,7 @@
 	import BlockDragHandle from './BlockDragHandle.svelte';
 	import { showsDragHandle } from './drag-handle';
 	import { defaultRegistryView } from '../schema/registry-view';
-	import { svelteBlockEntry } from './svelte-block-view';
+	import { blockViewEntry } from './block-view-entry';
 	import { RAW_TEXT_VIEW } from './blocks/text/text-block-view';
 	import { isGridDescriptor } from '../schema/block-kind-descriptor';
 	import { FAILED_BLOCK_LABEL } from '../a11y-strings';
@@ -100,7 +100,7 @@
 	);
 
 	let view = $derived(registryView.blockView(node.kind));
-	let entry = $derived(svelteBlockEntry(view ?? RAW_TEXT_VIEW));
+	let entry = $derived(blockViewEntry(view ?? RAW_TEXT_VIEW));
 
 	$effect(() => {
 		if (!view) devWarn('block-host', 'no view for kind, rendering raw', node.kind);
