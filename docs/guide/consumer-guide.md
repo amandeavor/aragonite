@@ -107,7 +107,7 @@ Two things hold for all three:
   import '@voithos-labs/aragonite/styles/editor-theme.css';
   ```
 
-- **Plugins go in `plugins` as usual.** Every bundled plugin runs here, and so does any plugin that draws with plain DOM. One that ships Svelte components of its own (any plugin with a custom block, for now) needs a bundler that compiles Svelte; [the plugin guide](plugin-guide.md#what-draws-your-plugin-and-where-it-runs) says which plugins those are.
+- **Plugins go in `plugins` as usual.** Every bundled plugin runs here, and so does any plugin that draws with plain DOM. One that ships Svelte components of its own (a block made with `svelteBlockView`, say) needs a bundler that compiles Svelte; [the plugin guide](plugin-guide.md#what-draws-your-plugin-and-where-it-runs) says which plugins those are.
 
 ### React
 
