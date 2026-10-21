@@ -8,6 +8,7 @@ import { coverRange, rangeCoverage } from '../range-coverage';
 import type { SelectionState } from '../selection-state.svelte';
 import { blockNodeAt } from '../../tree-operations/node-primitives';
 import { isReadingMode } from '../../presentation-mode';
+import { usesMacEditingConventions } from '../../schema/platform-conventions';
 import { caretEdgeKey, eventToChord, isSelectAllChord, pageKey } from '../../schema/keybindings';
 import {
 	commandOverRange,
@@ -21,6 +22,7 @@ import {
 	collapseCrossBlock,
 	extendFocusToDocEdge,
 	extendByPage,
+	moveByPage,
 	extendRangeByArrow,
 	extendToLineEdge,
 	selectWholeDocument
@@ -72,6 +74,7 @@ async function handleKeyDown(ctx: CrossBlockDispatchContext, e: KeyboardEvent): 
 	if (edge?.to === 'doc') return handleDocEdgeExtend(ctx, e, edge.side);
 	const page = pageKey(e);
 	if (page?.extend) return handlePageExtend(ctx, e, page.direction);
+	if (page) return handlePageMove(ctx, e, page.direction);
 
 	if (selection.isCrossBlock) {
 		const handled = await handleCrossBlockActive(ctx, e);
@@ -330,6 +333,20 @@ async function handlePageExtend(
 	if (!el) return false;
 	e.preventDefault();
 	await extendByPage(ctx, el, ctx.getMyPath(), direction);
+	return true;
+}
+
+/** On a Mac the page keys scroll and leave the caret, and in reading mode there's no caret to move,
+ *  so both stay the browser's. */
+async function handlePageMove(
+	ctx: CrossBlockDispatchContext,
+	e: KeyboardEvent,
+	direction: 'up' | 'down'
+): Promise<boolean> {
+	const el = ctx.getEl();
+	if (!el || usesMacEditingConventions() || isReadingMode(ctx.reading.mode)) return false;
+	e.preventDefault();
+	await moveByPage(ctx, el, ctx.getMyPath(), direction);
 	return true;
 }
 

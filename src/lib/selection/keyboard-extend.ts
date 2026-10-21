@@ -179,7 +179,7 @@ export function extendToLineEdge(
 
 /** What a page step reads on top of every extend's context. */
 export type PageExtendContext = KeyboardExtendContext &
-	PageStepContext & { caretLanding: Pick<CaretLanding, 'showSelectionEnd'> };
+	PageStepContext & { caretLanding: Pick<CaretLanding, 'showSelectionEnd' | 'restore'> };
 
 // Each step reads the end the step before it wrote, so a held key never steps twice from one place.
 const pageSteps = new WeakMap<SelectionState, Promise<void>>();
@@ -216,6 +216,42 @@ async function stepEndByPage(
 	if (!enterFromCaret(ctx, el, path)) return;
 	const target = await pageTarget(ctx, from, direction);
 	moveFocusTo(ctx, target ?? from);
+}
+
+/** PageUp or PageDown with no Shift: the caret goes a page up or down at its column, and a range
+ *  collapses to where its moving end would step. */
+export function moveByPage(
+	ctx: PageExtendContext,
+	el: HTMLElement,
+	path: number[],
+	direction: 'up' | 'down'
+): Promise<void> {
+	const step = (pageSteps.get(ctx.selection) ?? Promise.resolve()).then(() =>
+		stepCaretByPage(ctx, el, path, direction)
+	);
+	pageSteps.set(ctx.selection, step);
+	return step;
+}
+
+async function stepCaretByPage(
+	ctx: PageExtendContext,
+	el: HTMLElement,
+	path: number[],
+	direction: 'up' | 'down'
+): Promise<void> {
+	const { selection } = ctx;
+	await ctx.caretLanding.showSelectionEnd();
+	const from = selection.isCrossBlock
+		? selection.focus && selection.cellLandingFor(selection.focus)
+		: nativeFocusIn(el, path);
+	if (!from) return;
+	const target = (await pageTarget(ctx, from, direction)) ?? from;
+	// The landing forgets the caret memory, and with it the column the next page key aims at.
+	const column = ctx.caretMemory.column();
+	selection.collapse();
+	ctx.caretWriter.clear();
+	await ctx.caretLanding.restore({ anchor: target, focus: target }, { reveal: 'into-view' });
+	if (column !== null) ctx.caretMemory.captureColumn(column);
 }
 
 /** The browser selection's moving end in `el`, a block the key came to. */
