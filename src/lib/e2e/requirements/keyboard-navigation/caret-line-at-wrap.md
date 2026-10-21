@@ -52,13 +52,14 @@ Beside a space, the caret is on one line only, so nothing is asked (and no dev c
   put and the focus moves up onto line 1
 - a range already held from the middle of the second-to-last line to its end, Shift+ArrowDown: the
   anchor stays put and the focus moves onto the last line
-- a range held from line 1 down to line 2's start (Shift+ArrowDown, then Shift+ArrowLeft back to
-  it, since on a Mac Shift+Cmd+ArrowLeft moves a forward range's start), then Shift+ArrowUp: the
-  focus lands on line 1's start; or Shift+ArrowDown: on line 3's start. A held range is never
-  asked which line it's on, so the browser's column stays as it was
+- a range held from line 1 down to line 2's start, then Shift+ArrowDown: the focus lands on line
+  3's start; a range held from line 1 down to line 3's start, then Shift+ArrowUp: on line 2's
+  start. The focus reaches each start by Shift+ArrowDown, then Shift+ArrowLeft back to it (on a Mac
+  Shift+Cmd+ArrowLeft moves a forward range's start, and a Shift+arrow stops at the anchor rather
+  than cross it). A held range is never asked which line it's on, so the browser's column stays
+  as it was
 - the first two in a wrapped table cell, where the first Shift+arrow at the cell's top or bottom
-  line would take a whole row instead: the selection stays inside the cell; and the held range to
-  line 2's start, Shift+ArrowDown
+  line would take a whole row instead: the selection stays inside the cell; and both held ranges
 
 ## A soft-line delete
 

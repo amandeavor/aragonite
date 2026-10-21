@@ -397,26 +397,31 @@ for (const shape of [...SHAPES, CELL]) {
 			});
 
 		// A held range is never asked its line, so the next key starts from the side the browser shows.
-		for (const key of ['ArrowUp', 'ArrowDown'] as const) {
-			// A cell's first Shift+ArrowUp from a range at its top wrap reads the measured line.
-			if (shape === CELL && key === 'ArrowUp') continue;
-			test(`a range held to line 2’s start, Shift+${key}: the next line, at the start`, async ({
+		// Up runs from line 3, since a Mac stops a Shift+arrow at the anchor rather than cross it.
+		for (const [key, held] of [
+			['ArrowUp', 2],
+			['ArrowDown', 1]
+		] as const) {
+			test(`a range held to line ${held + 1}’s start, Shift+${key}: the next line, at the start`, async ({
 				page
 			}) => {
 				await editor.focusBlockAtPath(shape.path, starts[0] + 3);
-				await page.keyboard.press('Shift+ArrowDown');
+				for (let i = 0; i < held; i++) await page.keyboard.press('Shift+ArrowDown');
 				// Back by characters: on a Mac, Shift+Cmd+ArrowLeft moves a forward range's start instead.
 				for (let i = 0; i < 8; i++) {
-					if ((await selectionOf(editor))?.focus.offset === starts[1]) break;
+					if ((await selectionOf(editor))?.focus.offset === starts[held]) break;
 					await page.keyboard.press('Shift+ArrowLeft');
 				}
-				expect((await selectionOf(editor))?.focus).toEqual({ path: shape.path, offset: starts[1] });
+				expect((await selectionOf(editor))?.focus).toEqual({
+					path: shape.path,
+					offset: starts[held]
+				});
 				await page.keyboard.press(`Shift+${key}`);
 				const range = await selectionOf(editor);
 				expect(range?.anchor).toEqual({ path: shape.path, offset: starts[0] + 3 });
 				expect(range?.focus).toEqual({
 					path: shape.path,
-					offset: key === 'ArrowUp' ? starts[0] : starts[2]
+					offset: starts[held + (key === 'ArrowUp' ? -1 : 1)]
 				});
 			});
 		}
