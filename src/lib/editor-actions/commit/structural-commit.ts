@@ -14,6 +14,7 @@ import { assertInvariant } from '../../assert';
 import { docPathFrom } from '../../caret/coordinate-spaces';
 import { assignIds } from '../../block-id';
 import { replaceRefs } from '../../block-lists/child-refs';
+import { isUnmountedBlockListState } from '../../block-lists/state-registry';
 import { documentBody, nodeAt } from '../../tree-operations/node-primitives';
 import { settleEdit, type EditKind, type SettledEdit } from '../../tree-operations/settle';
 import { keepOpenTail } from '../../tree-operations/open-tail';
@@ -211,6 +212,19 @@ export function createStructuralCommit(
 		);
 	}
 
+	// The registry drops an unmounted container, so a state found there is live; one a caller held
+	// across an await may not be, and its getters read the dead component's props.
+	function assertScopeStateMounted(s: MultiScopeTarget): void {
+		assertInvariant('block-list-state-mounted', () =>
+			isUnmountedBlockListState(s.state)
+				? {
+						code: 'block-list-state-mounted',
+						message: `commit: the ${s.node.kind} at [${s.path.join(',')}] was handed the state of a container that has unmounted`
+					}
+				: null
+		);
+	}
+
 	const isDocScope = (s: MultiScopeTarget) => (s.node as unknown) === (deps.doc as unknown);
 
 	/**
@@ -353,7 +367,10 @@ export function createStructuralCommit(
 			snapshot,
 			mutate: (wasOpen) => {
 				startCommitSettles();
-				for (const s of scopes) assertScopeIdentity(s);
+				for (const s of scopes) {
+					assertScopeStateMounted(s);
+					assertScopeIdentity(s);
+				}
 				if (scopes.slice(1).some(isDocScope)) {
 					throw new Error('commitMultiScope: the document scope goes first');
 				}

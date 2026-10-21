@@ -14,7 +14,7 @@ import { serialize } from '#lib/core/serializer.js';
 import { parseConverges } from '#lib/testing/parse-convergence.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { spliceChildren } from '#lib/tree-operations/children.js';
-import { getStateForNode } from '#lib/block-lists/state-registry.js';
+import { getStateForNode, isUnmountedBlockListState } from '#lib/block-lists/state-registry.js';
 import type { CstNode, Document, PluginBlockKind } from '#lib/core/nodes.js';
 import type { GapCaretPosition } from '#lib/selection/gap-caret.js';
 import type { EditorSelection } from '#lib/selection/primitives.js';
@@ -344,6 +344,8 @@ interface StateDrift {
 	childrenLen: number;
 	idsLen: number;
 	refsLen: number;
+	/** The registry handed back a state whose container has unmounted. */
+	unmounted?: true;
 }
 
 /** `raw` is the focus block's source when the event fired, so a spec can tell an announcement
@@ -845,7 +847,17 @@ export function installTestProbes({
 				if (!node.children) return;
 				containers++;
 				const state = getStateForNode(node);
-				if (state) {
+				if (state && isUnmountedBlockListState(state)) {
+					// Its getters read the dead component's props, so nothing else is read off it.
+					violations.push({
+						path: [...path],
+						kind: node.kind,
+						childrenLen: node.children.length,
+						idsLen: node.childIds?.length ?? 0,
+						refsLen: 0,
+						unmounted: true
+					});
+				} else if (state) {
 					resolved++;
 					const childrenLen = node.children.length;
 					const idsLen = state.innerBlockIds.length;

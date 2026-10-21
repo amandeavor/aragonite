@@ -22,7 +22,7 @@ import type { MultiScopeTarget } from '../action-contracts';
 import type { UndoController } from './deps';
 import type { StructuralChange } from '../tree-operations/structural-change';
 import type { BlockListState } from '../block-lists/block-list-state.svelte';
-import { getStateForNode } from '../block-lists/state-registry';
+import { scopeStateFor } from '../block-lists/state-registry';
 import { assertInvariant } from '../assert';
 import {
 	columnAligned,
@@ -144,14 +144,14 @@ export function createTableMutationsContext(
 		});
 	}
 
-	/** The table scope plus one per mounted row: an unmounted row has no registered state and
-	 *  would throw, and the table scope carries the bytes to every row anyway. */
-	function mountedColumnScopes(): { scopes: MultiScopeTarget[]; rowIndices: number[] } {
+	/** The table scope plus one per row holding ids, mounted or not, so every row's ids follow the
+	 *  splice; a never-mounted row holds none, and the table scope carries the bytes to every row. */
+	function columnScopes(): { scopes: MultiScopeTarget[]; rowIndices: number[] } {
 		const { node, myPath, rowsState } = deps;
 		const scopes: MultiScopeTarget[] = [{ node, state: rowsState, path: [...myPath] }];
 		const rowIndices: number[] = [];
 		(node.children ?? []).forEach((row, i) => {
-			const state = getStateForNode(row);
+			const state = scopeStateFor(row);
 			if (!state) return;
 			scopes.push({ node: row, state, path: [...myPath, i] });
 			rowIndices.push(i);
@@ -169,13 +169,13 @@ export function createTableMutationsContext(
 		announce: CommitAnnouncement;
 	}): Promise<void> {
 		const { myPath, controller } = deps;
-		const { scopes, rowIndices } = mountedColumnScopes();
+		const { scopes, rowIndices } = columnScopes();
 		await controller.commitMultiScope({
 			scopes,
 			// Columns are not nodes: undo restores to the table itself.
 			snapshot: { path: docPathFrom(myPath), offset: 0 },
 			mutate: ([tableScope, ...rowScopes]) => {
-				// Reaches the unmounted rows the scopes skip, so the per-row cell splice below
+				// Reaches the never-mounted rows the scopes skip, so the per-row cell splice below
 				// never writes through a row an undo snapshot shares (G1.9).
 				ensureUnsharedChildren(tableScope.node, tableScope.sharing);
 				// The splice walks the copied table's rows, so the row scopes' ids and refs only
@@ -188,7 +188,7 @@ export function createTableMutationsContext(
 								message: 'commitColumnEdit: row scopes misaligned with owned table children'
 							}
 				);
-				// One change per row, in row order; pair the mounted rows with theirs.
+				// One change per row, in row order; pair the scoped rows with theirs.
 				const perRow = opts.mutateColumns(tableScope.node);
 				return [{ op: 'noop' }, ...rowIndices.map((i) => perRow[i])];
 			},
@@ -209,7 +209,7 @@ export function createTableMutationsContext(
 		let cols = 0;
 		for (const line of grid) cols = Math.max(cols, line.length);
 		if (rows === 0 || cols === 0) return;
-		const { scopes, rowIndices } = mountedColumnScopes();
+		const { scopes, rowIndices } = columnScopes();
 		await controller.commitMultiScope({
 			scopes,
 			snapshot: { path: docPathFrom(myPath), offset: 0 },

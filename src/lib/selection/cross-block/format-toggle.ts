@@ -14,7 +14,7 @@ import type { Reading } from '../../schema/reading';
 import { blockNodeAt } from '../../tree-operations/node-primitives';
 import { trackChildIds } from '../../tree-operations/structural-change';
 import { tryGetBlockKindDescriptor } from '../../schema/block-kind-descriptor';
-import { getStateForNode } from '../../block-lists/state-registry';
+import { scopeStateFor } from '../../block-lists/state-registry';
 import { comparePaths } from '../path-math';
 import { coverRange } from '../range-coverage';
 import type { SelectionPoint } from '../primitives';
@@ -100,7 +100,7 @@ async function toggleFormatOverRange(
 	const { start, end } = range;
 
 	const restored = restoredRange(anchor, focus, start, end, plan);
-	// A write whose bytes read as several blocks splices the list holding it, so each mounted one
+	// A write whose bytes read as several blocks splices the list holding it, so each one holding ids
 	// goes along to have its ids republished.
 	const scopes: MultiScopeTarget[] = [deps.controller.getDocScope(), ...writtenLists(doc, plan)];
 	await deps.controller.commitMultiScope({
@@ -130,7 +130,7 @@ async function toggleFormatOverRange(
 	});
 }
 
-/** The mounted containers directly holding a written prose block, outermost first. A grid's cell
+/** The containers holding ids that directly hold a written prose block, outermost first. A grid's cell
  *  keeps its kind whatever it holds, so its row never splices. */
 function writtenLists(
 	doc: ReturnType<DocumentGetter>,
@@ -143,7 +143,7 @@ function writtenLists(
 		const owner = blockNodeAt(doc, ownerPath);
 		const leaf = blockNodeAt(doc, path);
 		if (!owner || !leaf || tryGetBlockKindDescriptor(leaf.kind)?.contextDependentKind) continue;
-		const state = getStateForNode(owner);
+		const state = scopeStateFor(owner);
 		if (state) lists.set(ownerPath.join(','), { path: ownerPath, node: owner, state });
 	}
 	return [...lists.values()].sort(

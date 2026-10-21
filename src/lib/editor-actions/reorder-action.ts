@@ -11,7 +11,8 @@ import type { SettledEdit } from '../tree-operations/settle';
 import { resolveReorderUnit, type ReorderUnit } from '../tree-operations/reorder-unit';
 import { blockNodeAt, documentBody, nodeAt } from '../tree-operations/node-primitives';
 import { orderedBaseOf, renumberOrderedListFrom } from '../tree-operations/list/ordered-markers';
-import { expectStateForNode } from '../block-lists/state-registry';
+import { getStateForNode } from '../block-lists/state-registry';
+import { containerScopeState } from '../tree-operations/paste/parent-scope';
 import { readCurrentSelection } from '../selection/native-bridge';
 import { extendDocPath, docPathFrom } from '../caret/coordinate-spaces';
 import type { EditorActionsDeps, UndoController } from './deps';
@@ -71,11 +72,11 @@ export function createReorderAction(
 
 		const parent = blockNodeAt(deps.doc, unit.parentPath);
 		if (!parent) return Promise.resolve(false);
-		const state = expectStateForNode(parent);
 		return controller.commitContainerStructural({
 			containerNode: parent,
 			path: unit.parentPath,
-			state,
+			// A drop can land after autoscroll carried the parent's mounted part out of the window.
+			state: containerScopeState({ resolveState: getStateForNode }, parent),
 			// A drag carries no live caret, so undo restores to the moved unit's pre-move path.
 			snapshot: { path: extendDocPath(unit.parentPath, unit.index), offset },
 			op: {
