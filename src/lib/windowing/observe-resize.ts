@@ -1,9 +1,11 @@
 /**
- * Watches one element's size for a component that can mount while the browser delivers resize
- * notifications. An element first observed during that delivery is skipped at its depth and
- * reported as a ResizeObserver loop error, so observation starts at the next frame; the first
- * notification then still carries the element's size as of that frame. Returns the disposer.
+ * Every ResizeObserver in the editor is made here (G4.240), so the browser's size-report quirks
+ * are handled once. An element first observed while the browser delivers reports is skipped at
+ * its depth and reported as a loop error, so a watcher that can start then waits a frame.
  */
+
+/** Watches `el` from the next frame on, for a component that can mount during a delivery; the
+ *  first report still carries the size as of that frame. Returns the disposer. */
 export function observeResize(el: Element, onResize: ResizeObserverCallback): () => void {
 	// jsdom has no ResizeObserver; callers keep their other measuring paths there.
 	if (typeof ResizeObserver !== 'function') return () => {};
@@ -13,6 +15,15 @@ export function observeResize(el: Element, onResize: ResizeObserverCallback): ()
 		cancelAnimationFrame(frame);
 		observer.disconnect();
 	};
+}
+
+/** Watches `el` from now on, for a watcher set up outside a delivery (an editor-level one at
+ *  mount); one that can start during a delivery uses `observeResize`. Returns the disposer. */
+export function observeResizeNow(el: Element, onResize: ResizeObserverCallback): () => void {
+	if (typeof ResizeObserver !== 'function') return () => {};
+	const observer = new ResizeObserver(onResize);
+	observer.observe(el);
+	return () => observer.disconnect();
 }
 
 export interface SharedResizeWatch {

@@ -4,6 +4,7 @@
  * per callback, so there is no timer (G4.4).
  */
 
+import { observeResizeNow } from '../../windowing/observe-resize';
 import type { UserScrollport } from '../../windowing/scroll-ancestors';
 import type { RootListScroll, ScrollOwner } from '../../windowing/scroll-owner';
 import { ESTIMATE_BASE_FONT_SIZE } from '../../windowing/typography-estimates';
@@ -15,14 +16,12 @@ import { onRoot, removeAll } from './listeners';
  *  re-wrap makes the measured heights wrong. */
 export function installWidthWatcher(el: HTMLElement, onWidthChange: () => void): () => void {
 	let lastWidth = el.clientWidth;
-	const observer = new ResizeObserver(() => {
+	return observeResizeNow(el, () => {
 		const width = el.clientWidth;
 		if (width === lastWidth) return;
 		lastWidth = width;
 		onWidthChange();
 	});
-	observer.observe(el);
-	return () => observer.disconnect();
 }
 
 /** Calls `bump` when the resolved scroll container `target` changes height. */
@@ -40,13 +39,11 @@ export function installViewportHeightWatcher(target: UserScrollport, bump: () =>
 	// does not narrow; `createScrollport` casts the same way at the same split.
 	const el = target as HTMLElement;
 	let lastHeight = el.clientHeight;
-	const observer = new ResizeObserver(() => {
+	return observeResizeNow(el, () => {
 		if (el.clientHeight === lastHeight) return;
 		lastHeight = el.clientHeight;
 		bump();
 	});
-	observer.observe(el);
-	return () => observer.disconnect();
 }
 
 // ── Type scale ──────────────────────────────────────────────────────
@@ -67,9 +64,7 @@ export function installTypeScaleProbe(el: HTMLElement, deps: TypeScaleProbeDeps)
 		deps.onScale(next);
 	};
 	apply(el.getBoundingClientRect().height);
-	const observer = new ResizeObserver((entries) => apply(borderBoxHeight(entries, el)));
-	observer.observe(el);
-	return () => observer.disconnect();
+	return observeResizeNow(el, (entries) => apply(borderBoxHeight(entries, el)));
 }
 
 // Border boxes throughout, first measurement and fallback alike, so a browser without
@@ -97,7 +92,7 @@ export interface HeaderSlotCompensationDeps {
 export function installHeaderSlotCompensation(deps: HeaderSlotCompensationDeps): () => void {
 	const { el, port, compensate } = deps;
 	let lastHeight = el.getBoundingClientRect().height;
-	const observer = new ResizeObserver((entries) => {
+	return observeResizeNow(el, (entries) => {
 		const height = borderBoxHeight(entries, el);
 		const delta = height - lastHeight;
 		lastHeight = height;
@@ -108,6 +103,4 @@ export function installHeaderSlotCompensation(deps: HeaderSlotCompensationDeps):
 			return port()?.scrollTop() === 0 ? 0 : delta;
 		});
 	});
-	observer.observe(el);
-	return () => observer.disconnect();
 }
