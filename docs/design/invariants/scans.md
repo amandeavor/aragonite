@@ -8,7 +8,7 @@ backs it.
 
 Scans over the library live in `test/invariants/lint/` and ride `npm run test:editor:invariants`.
 Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133, G4.211,
-G4.212, G4.213, G4.226, G4.228, G4.232) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
+G4.212, G4.213, G4.226, G4.228, G4.232, G4.237) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
 bash and PowerShell), and `npm test` runs both.
 
 This is the catalogued set, not the whole of `test/invariants/lint/`: a scan holding one module's
@@ -196,6 +196,7 @@ unguarded.
 | G4.231 | A right-click menu listens for `contextmenu` only where it is declared                       | L       |
 | G4.232 | An e2e spec splits undo steps with `endTypingBatch`, never a fixed wait                      | L       |
 | G4.235 | In reading mode the page owns Tab: no block reads the key by hand or sets its own tab stop   | L       |
+| G4.237 | A test never navigates a page its `beforeEach` already navigated                             | L       |
 
 ### The entries
 
@@ -1338,3 +1339,9 @@ hand fails unless it's chrome that never opens there or the range keydown, which
 first. And an element that writes itself a tabindex of 0 fails unless it's a control or the
 reading-mode stop, so a new block can't add a stop of its own.
 `lint/reading-keyboard-sites.test.ts`; every engine in `plugins/reading-keyboard.spec.ts`.
+
+**G4.237 · One navigation per test.** A test navigating a page its `beforeEach` already loaded
+has had that second navigation interrupted in CI's Firefox, and it's never needed: a test wanting
+another URL gets its own describe. The scan walks each describe chain, outer hooks included, and
+fails a test reaching `gotoReady` or `reloadReady` (through any e2e helper) at its `path:line`.
+`e2e/lint/one-navigation-per-test.test.ts`.

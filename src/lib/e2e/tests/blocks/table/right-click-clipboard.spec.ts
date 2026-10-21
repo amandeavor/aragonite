@@ -126,8 +126,8 @@ test.describe('table block: cell right-click clipboard', () => {
 		await editor.bridge.waitForSourceNotContains('| 1 | 2 |');
 		const cut = await editor.bridge.getSource();
 
-		await editor.goto();
 		await editor.loadContent(grid);
+		await editor.seedClipboard('');
 		await dragBetweenCells(page, 2, 5);
 		await editor.waitForCrossBlock(true);
 		await page.locator('.table-cell').nth(2).click({ button: 'right' });
@@ -157,7 +157,6 @@ test.describe('table block: cell right-click clipboard', () => {
 		await editor.bridge.waitForSourceContains('| s | t |');
 		const pasted = await editor.bridge.getSource();
 
-		await editor.goto();
 		await editor.loadContent(grid);
 		await editor.seedClipboard('p\tq\ns\tt\n');
 		await page.locator('.table-cell').nth(5).click({ button: 'right' });

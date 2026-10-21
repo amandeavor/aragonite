@@ -7,6 +7,16 @@ import { expectNoNewA11yViolations } from '../../a11y/axe-helper';
 // equation, list item, divider) rather than prose, and out of the screen-reader and tab order. It
 // is always in the DOM and only fades in, so `toBeVisible()` passes even with a broken hover rule
 // and these assert the opacity directly.
+
+/** Signed distance from the handle's center to the center of `anchor`'s box, in px. */
+async function gripOffset(host: import('@playwright/test').Locator, anchor: string) {
+	return host.evaluate((el, sel) => {
+		const grip = el.querySelector(':scope > .block-drag-handle .grip')!.getBoundingClientRect();
+		const target = (el.querySelector(sel) ?? el).getBoundingClientRect();
+		return grip.top + grip.height / 2 - (target.top + target.height / 2);
+	}, anchor);
+}
+
 test.describe('reorder hover handle', () => {
 	let editor: EditorPage;
 
@@ -14,15 +24,6 @@ test.describe('reorder hover handle', () => {
 		editor = new EditorPage(page);
 		await editor.goto();
 	});
-
-	/** Signed distance from the handle's center to the center of `anchor`'s box, in px. */
-	async function gripOffset(host: import('@playwright/test').Locator, anchor: string) {
-		return host.evaluate((el, sel) => {
-			const grip = el.querySelector(':scope > .block-drag-handle .grip')!.getBoundingClientRect();
-			const target = (el.querySelector(sel) ?? el).getBoundingClientRect();
-			return grip.top + grip.height / 2 - (target.top + target.height / 2);
-		}, anchor);
-	}
 
 	test('top-level block: handle is hidden, reveals on hover, and is aria-hidden', async () => {
 		await editor.loadContent('- one\n\n```js\nplain code\n```\n');
@@ -107,46 +108,6 @@ test.describe('reorder hover handle', () => {
 			[gutterX, midY]
 		);
 		expect(hits, 'handle must be hittable in the gutter at mid-height').toBe(true);
-	});
-
-	// The handle sits at the card's own first line height, not at its first line of text: a card
-	// pads above that text, so a handle level with the first code line hangs below its shoulder.
-	test('the drag handle sits in the top band of a code card, above its first line', async ({
-		page
-	}) => {
-		await editor.goto('?presentationMode=live');
-		await editor.loadContent('```js\nfirst line\nsecond line\n```\n\ntail\n');
-		const code = page.locator('.block-host[data-block-kind="fencedCode"]').first();
-		await code.hover();
-		await expect(code.locator('.block-drag-handle')).toHaveCSS('opacity', '1');
-
-		const firstLineTop = (await textRunRect(page, 'first', { path: [0] })).top;
-		const seat = await code.evaluate((host, lineTop) => {
-			const grip = host.querySelector('.grip')!.getBoundingClientRect();
-			const card = host.getBoundingClientRect();
-			const centre = grip.top + grip.height / 2;
-			const line = parseFloat(getComputedStyle(host).lineHeight) || 20;
-			return { fromCardTop: centre - card.top, aboveFirstLine: lineTop - centre, line };
-		}, firstLineTop);
-		expect(seat.fromCardTop, 'inside the card, not on its edge').toBeGreaterThan(4);
-		expect(seat.fromCardTop, 'within the first line-height of the card').toBeLessThanOrEqual(
-			seat.line
-		);
-		expect(seat.aboveFirstLine, 'above the first code line').toBeGreaterThan(0);
-	});
-
-	// A one-line block centers on its row, checkbox or bullet alike: level with the row is where
-	// the eye puts it, and the checkbox sits a little below that center.
-	test('the drag handle centres on a one-line list row', async ({ page }) => {
-		await editor.goto('?presentationMode=live');
-		await editor.loadContent('- [ ] open task\n- plain bullet\n\ntail\n');
-		for (const text of ['open task', 'plain bullet']) {
-			const item = page.locator('.list-item-block', { hasText: text }).last();
-			await item.hover();
-			await expect(item.locator('.block-drag-handle')).toHaveCSS('opacity', '1');
-			const delta = await gripOffset(item, ':scope');
-			expect(Math.abs(delta), `${text}: off the row centre by ${delta}px`).toBeLessThanOrEqual(2);
-		}
 	});
 
 	test('the drag handle centres on a divider', async ({ page }) => {
@@ -252,5 +213,52 @@ test.describe('reorder hover handle', () => {
 		await editor.loadContent('- one\n- two\n\nplain\n\n> quoted\n');
 		await editor.waitForRenderFlush();
 		await expectNoNewA11yViolations(page, 'reorder-handle');
+	});
+});
+
+test.describe('reorder hover handle in live mode', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?presentationMode=live');
+	});
+
+	// The handle sits at the card's own first line height, not at its first line of text: a card
+	// pads above that text, so a handle level with the first code line hangs below its shoulder.
+	test('the drag handle sits in the top band of a code card, above its first line', async ({
+		page
+	}) => {
+		await editor.loadContent('```js\nfirst line\nsecond line\n```\n\ntail\n');
+		const code = page.locator('.block-host[data-block-kind="fencedCode"]').first();
+		await code.hover();
+		await expect(code.locator('.block-drag-handle')).toHaveCSS('opacity', '1');
+
+		const firstLineTop = (await textRunRect(page, 'first', { path: [0] })).top;
+		const seat = await code.evaluate((host, lineTop) => {
+			const grip = host.querySelector('.grip')!.getBoundingClientRect();
+			const card = host.getBoundingClientRect();
+			const centre = grip.top + grip.height / 2;
+			const line = parseFloat(getComputedStyle(host).lineHeight) || 20;
+			return { fromCardTop: centre - card.top, aboveFirstLine: lineTop - centre, line };
+		}, firstLineTop);
+		expect(seat.fromCardTop, 'inside the card, not on its edge').toBeGreaterThan(4);
+		expect(seat.fromCardTop, 'within the first line-height of the card').toBeLessThanOrEqual(
+			seat.line
+		);
+		expect(seat.aboveFirstLine, 'above the first code line').toBeGreaterThan(0);
+	});
+
+	// A one-line block centers on its row, checkbox or bullet alike: level with the row is where
+	// the eye puts it, and the checkbox sits a little below that center.
+	test('the drag handle centres on a one-line list row', async ({ page }) => {
+		await editor.loadContent('- [ ] open task\n- plain bullet\n\ntail\n');
+		for (const text of ['open task', 'plain bullet']) {
+			const item = page.locator('.list-item-block', { hasText: text }).last();
+			await item.hover();
+			await expect(item.locator('.block-drag-handle')).toHaveCSS('opacity', '1');
+			const delta = await gripOffset(item, ':scope');
+			expect(Math.abs(delta), `${text}: off the row centre by ${delta}px`).toBeLessThanOrEqual(2);
+		}
 	});
 });

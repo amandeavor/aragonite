@@ -95,19 +95,6 @@ test.describe('decoded-entity atomic widget', () => {
 		await editor.bridge.waitForSourceEquals('a&copy;b\n');
 	});
 
-	test('live: one Backspace on an entity alone in a bold word takes the pair too', async ({
-		page
-	}) => {
-		await editor.goto('?presentationMode=live');
-		await editor.loadContent('x **&copy;** y\n');
-		await expect(glyph(page)).toHaveText('©');
-		await editor.focusBlock(0, 10);
-		await page.keyboard.press('Backspace');
-		await editor.bridge.waitForSourceNotContains('&copy;');
-		expect(await editor.bridge.getSource()).toBe('x  y\n');
-		expect(await textOutsideMarkers(editor.getBlock(0))).not.toContain('*');
-	});
-
 	test('copying across the entity yields the raw bytes, never the glyph', async ({ page }) => {
 		await editor.loadContent('a&copy;b\n');
 		await expect(glyph(page)).toHaveText('©');
@@ -135,5 +122,26 @@ test.describe('decoded-entity atomic widget', () => {
 		await editor.loadContent('a&nbsp;b\n');
 		await expect(glyph(page)).toHaveCount(0);
 		expect(await editor.getBlockText(0)).toContain('&nbsp;');
+	});
+});
+
+test.describe('decoded-entity atomic widget in live mode', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?presentationMode=live');
+	});
+
+	test('live: one Backspace on an entity alone in a bold word takes the pair too', async ({
+		page
+	}) => {
+		await editor.loadContent('x **&copy;** y\n');
+		await expect(glyph(page)).toHaveText('©');
+		await editor.focusBlock(0, 10);
+		await page.keyboard.press('Backspace');
+		await editor.bridge.waitForSourceNotContains('&copy;');
+		expect(await editor.bridge.getSource()).toBe('x  y\n');
+		expect(await textOutsideMarkers(editor.getBlock(0))).not.toContain('*');
 	});
 });

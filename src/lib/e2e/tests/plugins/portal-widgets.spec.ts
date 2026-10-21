@@ -123,11 +123,19 @@ test.describe('component-portal inline widgets', () => {
 		// The bytes did not move: cancelling touched no source.
 		expect(await editor.bridge.getSource()).toContain('Twice $x^2$ and $x^2$ again');
 	});
+});
+
+test.describe('component-portal inline widgets in a table cell', () => {
+	let editor: PortalPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new PortalPage(page);
+		await editor.gotoPlugins('mathtable');
+	});
 
 	test('table cell: a widget renders and keeps its mount id while typing in the cell', async ({
 		page
 	}) => {
-		await editor.gotoPlugins('mathtable');
 		await expect(editor.mathWidget).toHaveCount(1);
 		const idBefore = await editor.mountId();
 

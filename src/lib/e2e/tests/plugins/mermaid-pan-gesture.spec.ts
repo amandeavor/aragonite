@@ -109,7 +109,8 @@ test.describe('a diagram pan claims its own drag', () => {
 	// What decides is the element the plugin declares, not the kind: the error box declares no
 	// gesture, so a drag on it still takes the block whole, as a drag on any rendered block does.
 	test('a drag on the error card still takes the block whole', async () => {
-		await editor.loadDiagram(BROKEN_DOC, 'error');
+		await editor.loadContent(BROKEN_DOC);
+		await editor.settleDiagram('error');
 
 		await dragAcross(editor, '.mermaid-surface');
 

@@ -149,24 +149,6 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		expect(await editor.getBlockText(0)).toBe('Before');
 	});
 
-	test('A7: a multiline aligned fence renders and reveals byte-for-byte across its spans', async () => {
-		await editor.gotoMathSeed('mathblock-multiline');
-		// Renders despite the internal newlines.
-		await expect(editor.renderedKatex).toHaveCount(1);
-
-		await editor.revealByClick();
-		// Drawn as fence lines and highlight tokens, so what keeps the offsets exact is the rule
-		// that textContent matches the raw: every internal `\n` survives and nothing is added.
-		const shape = await editor.sourceShape();
-		expect(shape.spans).toBeGreaterThan(1);
-		expect(shape.text).toBe('$$\n\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}\n$$');
-
-		// Blur with no edit only changes the view, and the bytes survive.
-		await editor.getBlock(2).click();
-		await expect(editor.renderedKatex).toHaveCount(1);
-		expect(await roundTripStable(editor.page)).toBe(true);
-	});
-
 	test('ArrowRight from the previous block reveals; ArrowRight past the end folds and moves on', async ({
 		page
 	}) => {
@@ -287,6 +269,32 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 
 		await editor.getBlock(2).click();
 		expect(await editor.bridge.getSource()).toBe('Before\n\n$$ax^2$$\n\nAfter\n');
+		expect(await roundTripStable(editor.page)).toBe(true);
+	});
+});
+
+test.describe('plugin block math: a multiline fence', () => {
+	let editor: BlockMathCaretPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new BlockMathCaretPage(page);
+		await editor.gotoMathSeed('mathblock-multiline');
+	});
+
+	test('A7: a multiline aligned fence renders and reveals byte-for-byte across its spans', async () => {
+		// Renders despite the internal newlines.
+		await expect(editor.renderedKatex).toHaveCount(1);
+
+		await editor.revealByClick();
+		// Drawn as fence lines and highlight tokens, so what keeps the offsets exact is the rule
+		// that textContent matches the raw: every internal `\n` survives and nothing is added.
+		const shape = await editor.sourceShape();
+		expect(shape.spans).toBeGreaterThan(1);
+		expect(shape.text).toBe('$$\n\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}\n$$');
+
+		// Blur with no edit only changes the view, and the bytes survive.
+		await editor.getBlock(2).click();
+		await expect(editor.renderedKatex).toHaveCount(1);
 		expect(await roundTripStable(editor.page)).toBe(true);
 	});
 });

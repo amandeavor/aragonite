@@ -154,36 +154,6 @@ test.describe('selection toolbar', () => {
 		await expect(bold).toHaveAttribute('aria-pressed', 'false');
 	});
 
-	// The link editor is not a mark, so its pressed state is the construct the card would edit.
-	// Live mode alone: every other mode paints the destination and the chord opens nothing.
-	test('the link button paints pressed inside a link and unpressed outside it', async ({
-		page
-	}) => {
-		await editor.goto('?presentationMode=live');
-		// The link spans raw [6, 36); `linked words` is its text and ` after` follows.
-		await editor.loadContent('plain [linked words](https://x.test) after\n');
-		await editor.focusBlockAtPath([0], 8);
-		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight');
-
-		const link = page.locator('[data-testid="toolbar-link.openCard"]');
-		await expect(page.locator(TOOLBAR)).toBeVisible();
-		await expect(link).toHaveAttribute('aria-pressed', 'true');
-
-		await editor.focusBlockAtPath([0], 0);
-		for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight');
-		await expect(link).toHaveAttribute('aria-pressed', 'false');
-
-		// What the pressed state promises: clicking over the same range opens that link's own card.
-		await editor.focusBlockAtPath([0], 8);
-		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight');
-		await expect(link).toHaveAttribute('aria-pressed', 'true');
-		await link.click();
-
-		await expect(page.locator('[data-link-card]')).toBeVisible();
-		await expect(page.locator('[data-link-card] input')).toHaveValue('https://x.test');
-		await expect(page.locator('[data-link-card] input')).toBeFocused();
-	});
-
 	// What the split has to show the user: the toggles stay live because they handle a
 	// cross-block range, and only the button that would still be refused looks dead.
 	test('a cross-block selection greys only the link editor out', async ({ page }) => {
@@ -321,5 +291,43 @@ test.describe('selection toolbar', () => {
 		await page.locator('[data-testid="toolbar-set-heading"]').hover();
 		await page.locator('[data-testid="toolbar-set-heading-0"]').click();
 		await editor.bridge.waitForSourceEquals('select some of this text\n\nsecond block\n');
+	});
+});
+
+test.describe('selection toolbar in live mode', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?presentationMode=live');
+	});
+
+	// The link editor is not a mark, so its pressed state is the construct the card would edit.
+	// Live mode alone: every other mode paints the destination and the chord opens nothing.
+	test('the link button paints pressed inside a link and unpressed outside it', async ({
+		page
+	}) => {
+		// The link spans raw [6, 36); `linked words` is its text and ` after` follows.
+		await editor.loadContent('plain [linked words](https://x.test) after\n');
+		await editor.focusBlockAtPath([0], 8);
+		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight');
+
+		const link = page.locator('[data-testid="toolbar-link.openCard"]');
+		await expect(page.locator(TOOLBAR)).toBeVisible();
+		await expect(link).toHaveAttribute('aria-pressed', 'true');
+
+		await editor.focusBlockAtPath([0], 0);
+		for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight');
+		await expect(link).toHaveAttribute('aria-pressed', 'false');
+
+		// What the pressed state promises: clicking over the same range opens that link's own card.
+		await editor.focusBlockAtPath([0], 8);
+		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight');
+		await expect(link).toHaveAttribute('aria-pressed', 'true');
+		await link.click();
+
+		await expect(page.locator('[data-link-card]')).toBeVisible();
+		await expect(page.locator('[data-link-card] input')).toHaveValue('https://x.test');
+		await expect(page.locator('[data-link-card] input')).toBeFocused();
 	});
 });

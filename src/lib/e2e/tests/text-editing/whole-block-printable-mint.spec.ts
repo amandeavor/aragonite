@@ -60,18 +60,25 @@ test.describe('whole-block focus: a typed character creates a paragraph below', 
 		await editor.waitForNoSourceMutation();
 		expect(await editor.bridge.getSource()).toBe(original);
 	});
+});
+
+test.describe('whole-block focus in reading mode', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?presentationMode=reading');
+		await editor.loadContent(RULE_DOC);
+	});
 
 	test('reading mode: a printable at whole-block focus changes no byte', async ({ page }) => {
-		const readingEditor = new EditorPage(page);
-		await readingEditor.goto('?presentationMode=reading');
-		await readingEditor.loadContent(RULE_DOC);
-		const original = await readingEditor.bridge.getSource();
+		const original = await editor.bridge.getSource();
 
-		await rule(readingEditor).click();
-		await expect(wholeBlockInput(rule(readingEditor))).toBeFocused();
+		await rule(editor).click();
+		await expect(wholeBlockInput(rule(editor))).toBeFocused();
 		await page.keyboard.press('x');
 
-		await readingEditor.expectSurfaceInert();
-		expect(await readingEditor.bridge.getSource()).toBe(original);
+		await editor.expectSurfaceInert();
+		expect(await editor.bridge.getSource()).toBe(original);
 	});
 });
