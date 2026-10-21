@@ -53,8 +53,8 @@ async function renderThemed(code: string, id: string, theme: MermaidTheme): Prom
 	}
 }
 
-/** Where mermaid lays a diagram out to measure it: in the page, so text measures in the host
- *  page's fonts, but fixed and clipped to nothing, so the page never grows while it draws. */
+/** Where mermaid lays a diagram out to measure it: in the document, which layout needs, but fixed
+ *  and clipped to nothing, so the page never grows while it draws. */
 function measuringHost(): HTMLElement {
 	const host = document.createElement('div');
 	host.setAttribute('aria-hidden', 'true');
