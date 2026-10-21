@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import {
+	BACKSPACE,
+	DELETE,
 	installEdgeDispatchCleanup,
 	makeEdgeDispatch,
 	mountIslandBlock,
@@ -24,34 +26,34 @@ function mount(source: string) {
 describe('deleteAtCaret: a collapsed delete the browser never runs', () => {
 	it('Backspace takes the character before the caret through one write', () => {
 		const h = mount('abc\n');
-		expect(h.dispatch.deleteAtCaret(3, 'backward')).toBe(true);
+		expect(h.dispatch.deleteAtCaret(3, BACKSPACE)).toBe(true);
 		expect(h.edits).toEqual([[0, 'ab\n', 3, 2]]);
 	});
 
 	it('Backspace takes a ZWJ family whole', () => {
 		const h = mount('a\u{1F468}‍\u{1F469}‍\u{1F467}\n');
-		h.dispatch.deleteAtCaret(9, 'backward');
+		h.dispatch.deleteAtCaret(9, BACKSPACE);
 		expect(h.edits.map((e) => e[1])).toEqual(['a\n']);
 	});
 
 	it('Delete takes a combining cluster whole, Backspace only its mark', () => {
 		const forward = mount('éx\n');
-		forward.dispatch.deleteAtCaret(0, 'forward');
+		forward.dispatch.deleteAtCaret(0, DELETE);
 		const backward = mount('éx\n');
-		backward.dispatch.deleteAtCaret(2, 'backward');
+		backward.dispatch.deleteAtCaret(2, BACKSPACE);
 		expect([forward.edits[0][1], backward.edits[0][1]]).toEqual(['x\n', 'ex\n']);
 	});
 
 	it('takes nothing at the block start, where the merge is the key', () => {
 		const h = mount('abc\n');
-		expect(h.dispatch.deleteAtCaret(0, 'backward')).toBe(true);
+		expect(h.dispatch.deleteAtCaret(0, BACKSPACE)).toBe(true);
 		expect(h.edits).toHaveLength(0);
 	});
 
 	it('takes the byte past a widget decoration, which stands for none', () => {
 		const { node, el } = mountIslandBlock('hello\n', 3, 3);
 		const h = makeEdgeDispatch(node, el, { hasIslands: () => true });
-		h.dispatch.deleteAtCaret(3, 'backward');
+		h.dispatch.deleteAtCaret(3, BACKSPACE);
 		expect(h.edits.map((e) => e[1])).toEqual(['helo\n']);
 	});
 
@@ -61,7 +63,7 @@ describe('deleteAtCaret: a collapsed delete the browser never runs', () => {
 		const h = makeEdgeDispatch(node, el, {
 			enterWidget: (widget) => void entered.push(widget.start)
 		});
-		h.dispatch.deleteAtCaret(inlineWidgets[0].end, 'backward');
+		h.dispatch.deleteAtCaret(inlineWidgets[0].end, BACKSPACE);
 		expect(h.edits).toHaveLength(0);
 		expect(entered).toEqual([inlineWidgets[0].start]);
 	});
@@ -69,14 +71,14 @@ describe('deleteAtCaret: a collapsed delete the browser never runs', () => {
 	it('takes an atomic widget whole, as the key does', () => {
 		const { node, el, inlineWidgets } = mountWidgetBlock('a&copy;b', 'entityReference');
 		const h = makeEdgeDispatch(node, el);
-		h.dispatch.deleteAtCaret(inlineWidgets[0].start, 'forward');
+		h.dispatch.deleteAtCaret(inlineWidgets[0].start, DELETE);
 		expect(h.edits.map((e) => e[1])).toEqual(['ab']);
 	});
 
 	it('leaves a shown source to the browser, whose bytes the tree has not seen', () => {
 		const node = parse('abc\n').children[0];
 		const h = makeEdgeDispatch(node, mountSurface('abc'), { isRevealing: () => true });
-		expect(h.dispatch.deleteAtCaret(3, 'backward')).toBe(false);
+		expect(h.dispatch.deleteAtCaret(3, BACKSPACE)).toBe(false);
 		expect(h.edits).toHaveLength(0);
 	});
 });

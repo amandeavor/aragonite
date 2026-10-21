@@ -6,6 +6,7 @@ import { parse } from '#lib/core/parser.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import { asRawOffset, asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
 import {
+	BACKSPACE,
 	installEdgeDispatchCleanup,
 	makeEdgeDispatch,
 	mountSurface,
@@ -232,7 +233,7 @@ describe('pending marks', () => {
 		it('leaves the emptied construct’s mark pending for the next byte', () => {
 			const h = mount('plain*x*\n');
 
-			expect(h.dispatch.deleteAtCaret(7, 'backward')).toBe(true);
+			expect(h.dispatch.deleteAtCaret(7, BACKSPACE)).toBe(true);
 			expect(h.edits).toEqual([[0, 'plain\n', 7, 5]]);
 			expect(h.marks.pended).toEqual(['emphasis']);
 		});
@@ -240,7 +241,7 @@ describe('pending marks', () => {
 		it('pends nothing where the press empties no construct', () => {
 			const h = mount('Some **bold** text\n');
 
-			expect(h.dispatch.deleteAtCaret(13, 'backward')).toBe(true);
+			expect(h.dispatch.deleteAtCaret(13, BACKSPACE)).toBe(true);
 			expect(h.marks.pended).toEqual([]);
 		});
 
@@ -249,7 +250,7 @@ describe('pending marks', () => {
 		it('pends nothing for an unwrapped kind no format chord writes', () => {
 			const h = mount('a [x](u) b\n');
 
-			expect(h.dispatch.deleteAtCaret(4, 'backward')).toBe(true);
+			expect(h.dispatch.deleteAtCaret(4, BACKSPACE)).toBe(true);
 			expect(h.edits).toEqual([[0, 'a  b\n', 4, 2]]);
 			expect(h.marks.pended).toEqual([]);
 		});
@@ -304,7 +305,9 @@ describe('stored read cost', () => {
 			['Delete inside a word', 'forward', 15]
 		] as const)('%s', (_name, direction, caret) => {
 			const leaf = countedLeaf();
-			expect(dispatchOver(leaf).dispatch.deleteAtCaret(caret, direction)).toBe(true);
+			expect(
+				dispatchOver(leaf).dispatch.deleteAtCaret(caret, { unit: 'character', direction })
+			).toBe(true);
 			expect(leaf.reads()).toBe(0);
 		});
 
@@ -328,7 +331,7 @@ describe('stored read cost', () => {
 		// The positive half: a key at a hidden run does read the store, so a zero above is no accident.
 		it('Backspace at a hidden run reads it', () => {
 			const leaf = countedLeaf();
-			expect(dispatchOver(leaf).dispatch.deleteAtCaret(13, 'backward')).toBe(true);
+			expect(dispatchOver(leaf).dispatch.deleteAtCaret(13, BACKSPACE)).toBe(true);
 			expect(leaf.reads()).toBeGreaterThan(0);
 		});
 	});

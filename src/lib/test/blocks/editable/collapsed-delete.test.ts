@@ -7,22 +7,22 @@ import {
 	type CollapsedDeleteReads
 } from '#lib/components/blocks/editable/collapsed-delete.js';
 import { checkDeleteDecided } from '#lib/invariants/collapsed-delete.js';
-import type { DeleteDirection } from '#lib/caret/delete-extent.js';
+import type { DeleteIntent } from '#lib/caret/delete-extent.js';
 
 function input(inputType: string, init: Partial<InputEventInit> = {}): InputEvent {
 	return new InputEvent('beforeinput', { inputType, cancelable: true, ...init });
 }
 
 function reads(overrides: Partial<CollapsedDeleteReads> = {}) {
-	const calls: [number, DeleteDirection][] = [];
+	const calls: [number, DeleteIntent][] = [];
 	const base: CollapsedDeleteReads = {
 		composing: () => false,
 		caret: () => 3,
 		hasRange: () => false,
 		text: () => 'abc',
 		targetRange: () => null,
-		deleteAtCaret: (caret, direction) => {
-			calls.push([caret, direction]);
+		deleteAtCaret: (caret, intent) => {
+			calls.push([caret, intent]);
 			return true;
 		},
 		...overrides
@@ -31,21 +31,24 @@ function reads(overrides: Partial<CollapsedDeleteReads> = {}) {
 }
 
 describe('decideCollapsedDelete: which deletes the editor writes itself', () => {
-	it('decides Backspace and Delete at a caret, and keeps the browser out', () => {
-		for (const [type, direction] of [
-			['deleteContentBackward', 'backward'],
-			['deleteContentForward', 'forward']
+	it('decides every delete with a side and a unit, and keeps the browser out', () => {
+		for (const [type, unit, direction] of [
+			['deleteContentBackward', 'character', 'backward'],
+			['deleteContentForward', 'character', 'forward'],
+			['deleteWordBackward', 'word', 'backward'],
+			['deleteSoftLineForward', 'soft-line', 'forward'],
+			['deleteHardLineBackward', 'hard-line', 'backward']
 		] as const) {
 			const { base, calls } = reads();
 			const e = input(type);
 			expect(decideCollapsedDelete(e, true, base)).toEqual({ decided: true });
 			expect(e.defaultPrevented).toBe(true);
-			expect(calls).toEqual([[3, direction]]);
+			expect(calls).toEqual([[3, { unit, direction }]]);
 		}
 	});
 
 	it('is no verdict at all for an input it never decides', () => {
-		for (const type of ['insertText', 'deleteWordBackward', 'deleteByCut', 'deleteContent']) {
+		for (const type of ['insertText', 'deleteEntireSoftLine', 'deleteByCut', 'deleteContent']) {
 			expect(decideCollapsedDelete(input(type), true, reads().base)).toBeNull();
 		}
 	});
@@ -75,6 +78,14 @@ describe('decideCollapsedDelete: which deletes the editor writes itself', () => 
 		});
 	}
 
+	// A word names its own reach, so a soft keyboard's word delete is the editor's whatever its range.
+	it('takes a keyless word delete whatever the browser says it would take', () => {
+		const { base } = reads({ targetRange: () => ({ start: 0, end: 3 }) });
+		expect(decideCollapsedDelete(input('deleteWordBackward'), false, base)).toEqual({
+			decided: true
+		});
+	});
+
 	it('takes a keyed delete whatever the browser says it would take', () => {
 		const { base } = reads({ targetRange: () => ({ start: 0, end: 3 }) });
 		expect(decideCollapsedDelete(input('deleteContentBackward'), true, base)).toEqual({
@@ -95,7 +106,7 @@ describe('G1.132 checkDeleteDecided: no delete the editor decides reaches input 
 		const declined = { decided: false, decline: 'composing' } as const;
 		expect(checkDeleteDecided('deleteContentBackward', declined)).toBeNull();
 		expect(checkDeleteDecided('insertText', null)).toBeNull();
-		expect(checkDeleteDecided('deleteWordBackward', null)).toBeNull();
+		expect(checkDeleteDecided('deleteEntireSoftLine', null)).toBeNull();
 	});
 
 	it('fails a delete no delete step saw, and one the browser ran after the editor wrote it', () => {

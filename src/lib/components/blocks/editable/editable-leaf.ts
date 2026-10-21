@@ -30,12 +30,13 @@ import {
 	type RawRange
 } from '../../../caret/widget-offset';
 import {
-	characterExtent,
 	decidedDelete,
+	deleteExtent,
 	isDeleteInput,
 	isMoveDelete,
-	type DeleteDirection
+	type DeleteIntent
 } from '../../../caret/delete-extent';
+import { lineEdgeOffset } from '../../../caret/visual-lines';
 import { nativeRangeIn, parkFocusOnEditorRoot } from '../../../selection/native-bridge';
 import { assertInvariant } from '../../../assert';
 import { checkRenderedTextFidelity } from '../../../invariants/render-fidelity';
@@ -670,14 +671,18 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		return breaks ? editableSurface.lineEnding() : null;
 	}
 
-	/** A collapsed delete takes one character of the DOM's text, which a shown render-primary source
-	 *  reaches the node with only on blur, kept off the lines the mode hides. */
-	function deleteAtCaret(caret: number, direction: DeleteDirection): boolean {
+	/** A collapsed delete takes what the delete rule names in the DOM's text, which a shown
+	 *  render-primary source reaches the node with only on blur, kept off the lines the mode hides. */
+	function deleteAtCaret(caret: number, intent: DeleteIntent): boolean {
 		const el = deps.getEl();
 		if (!el) return false;
 		const text = el.textContent ?? '';
-		const bounds = landableRawBounds(el) ?? { start: 0, end: text.length };
-		const span = characterExtent(text, caret, direction, bounds);
+		const span = deleteExtent(intent, {
+			text,
+			caret,
+			bounds: landableRawBounds(el) ?? { start: 0, end: text.length },
+			lineEdge: (side) => lineEdgeOffset(el, caret, side)
+		});
 		if (span) spliceSourceText(el, span.start, span.end, '');
 		return true;
 	}

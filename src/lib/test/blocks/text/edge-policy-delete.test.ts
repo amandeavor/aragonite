@@ -6,6 +6,8 @@ import { parse } from '#lib/core/parser.js';
 import { asRawOffset } from '#lib/caret/coordinate-spaces.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
 import {
+	BACKSPACE,
+	DELETE,
 	at,
 	installEdgeDispatchCleanup,
 	key,
@@ -128,19 +130,19 @@ describe('a collapsed delete beside a hidden run', () => {
 
 	it('rewrites through the CST and anchors the undo entry at the pre-edit caret', () => {
 		const h = mount('Some **bold** text\n', 'live');
-		expect(h.dispatch.deleteAtCaret(13, 'backward')).toBe(true);
+		expect(h.dispatch.deleteAtCaret(13, BACKSPACE)).toBe(true);
 		expect(h.edits).toEqual([[0, 'Some **bol** text\n', 13, 10]]);
 	});
 
 	it('drops the delimiters the cut empties in the same commit', () => {
 		const h = mount('**b** tail\n', 'live');
-		h.dispatch.deleteAtCaret(3, 'backward');
+		h.dispatch.deleteAtCaret(3, BACKSPACE);
 		expect(h.edits).toEqual([[0, ' tail\n', 3, 0]]);
 	});
 
 	it('takes the first content byte on Delete at a leading run', () => {
 		const h = mount('**bold** x\n', 'live');
-		h.dispatch.deleteAtCaret(0, 'forward');
+		h.dispatch.deleteAtCaret(0, DELETE);
 		expect(h.edits).toEqual([[0, '**old** x\n', 0, 0]]);
 	});
 
@@ -148,7 +150,7 @@ describe('a collapsed delete beside a hidden run', () => {
 	// shows the stars, so the delete is taken and writes nothing.
 	it('takes the delete and writes nothing where no rewrite parses back', () => {
 		const h = mount('**a *b*** z\n', 'live');
-		expect(h.dispatch.deleteAtCaret(6, 'backward')).toBe(true);
+		expect(h.dispatch.deleteAtCaret(6, BACKSPACE)).toBe(true);
 		expect(h.edits).toHaveLength(0);
 	});
 
@@ -156,7 +158,7 @@ describe('a collapsed delete beside a hidden run', () => {
 	for (const mode of [undefined, 'preview-block', 'preview-inline']) {
 		it(`takes the shown delimiter byte in ${mode ?? 'source'} mode`, () => {
 			const h = mount('Some **bold** text\n', mode);
-			h.dispatch.deleteAtCaret(13, 'backward');
+			h.dispatch.deleteAtCaret(13, BACKSPACE);
 			expect(h.edits.map((e) => e[1])).toEqual(['Some **bold* text\n']);
 		});
 	}
@@ -187,33 +189,33 @@ describe('the block edge', () => {
 
 	it('takes nothing on Backspace at the first reachable offset inside a leading escape', () => {
 		const h = mountEscapes();
-		expect(h.dispatch.deleteAtCaret(1, 'backward')).toBe(true);
+		expect(h.dispatch.deleteAtCaret(1, BACKSPACE)).toBe(true);
 		expect(h.edits).toHaveLength(0);
 	});
 
 	it('takes the escape whole one step past the first reachable offset', () => {
 		const h = mountEscapes();
-		h.dispatch.deleteAtCaret(2, 'backward');
+		h.dispatch.deleteAtCaret(2, BACKSPACE);
 		expect(h.edits).toEqual([[0, 'a\\*\n', 2, 0]]);
 	});
 
 	it('takes the escape on Delete at the first reachable offset: forward is a construct edit', () => {
 		const h = mountEscapes();
-		h.dispatch.deleteAtCaret(1, 'forward');
+		h.dispatch.deleteAtCaret(1, DELETE);
 		expect(h.edits).toEqual([[0, 'a\\*\n', 1, 0]]);
 	});
 
 	// The bytes before the content start are the block's own: the merge or demote command's.
 	it('takes nothing on Backspace at a heading’s content start', () => {
 		const h = mount('## **b** x\n', [marker('## '), text('**b** x')]);
-		h.dispatch.deleteAtCaret(3, 'backward');
+		h.dispatch.deleteAtCaret(3, BACKSPACE);
 		expect(h.edits).toHaveLength(0);
 	});
 
 	// A setext underline is structure past the content, which Delete joins rather than eats.
 	it('takes nothing on Delete at a setext heading’s content end', () => {
 		const h = mount('Title\n===\n', [text('Title'), marker('\n===')]);
-		h.dispatch.deleteAtCaret(5, 'forward');
+		h.dispatch.deleteAtCaret(5, DELETE);
 		expect(h.edits).toHaveLength(0);
 	});
 });

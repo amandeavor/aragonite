@@ -429,7 +429,8 @@ async function pressEdgeKey(
 	}
 	// The block merge takes the key at an edge; anywhere else its `beforeinput` is the editor's.
 	if (await mergeAtEdge(h, leaf, offset, gesture.kind)) return false;
-	dispatch.deleteAtCaret(offset, gesture.kind === 'backspace' ? 'backward' : 'forward');
+	const direction = gesture.kind === 'backspace' ? 'backward' : 'forward';
+	dispatch.deleteAtCaret(offset, { unit: 'character', direction });
 	return true;
 }
 
@@ -521,8 +522,8 @@ function toggleFormat(
 	return true;
 }
 
-/** A chorded delete over the range the browser reports: the caret stays collapsed, so the range
- *  arrives on the beforeinput event and the block's own handler is the only code that sees it. */
+/** A word delete over a drawn span: the editor's word delete cuts its span through the same in-leaf
+ *  range replace a selection's delete does, so the span is handed over as the selection. */
 function wordDelete(
 	h: Harness,
 	leaf: LeafAt,
@@ -540,7 +541,7 @@ function wordDelete(
 	const edit = resolveLiveRangeEdit(
 		event,
 		node,
-		{ rawRangeOf: () => range, getRawSelection: () => null },
+		{ rawRangeOf: () => range, getRawSelection: () => range },
 		storeOf(h, leaf, mode)
 	);
 	if (edit === null) {

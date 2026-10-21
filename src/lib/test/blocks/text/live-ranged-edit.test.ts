@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 // Every destructive gesture a prose block can receive, at the point that decides whether it
-// reaches the join rules: a chorded key arrives as `beforeinput` at a collapsed caret whose
-// target range is the whole word.
+// reaches the join rules: a word or line delete at a caret is the editor's own unit, and a drag's
+// or a replacement's range is the one the browser reports.
 // Miss-analysis: this layer had no test, so its two checks that fail open went unseen.
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll, vi } from 'vitest';
 import { unmount } from 'svelte';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import { asDomTextOffset } from '#lib/caret/coordinate-spaces.js';
@@ -12,6 +12,9 @@ import { makeStubBlockEdit } from '../../harness/editor-actions';
 import { mountCell, noIslands, type MountedCell } from '../table/mount-cell';
 import { settleEditor } from '#lib/test/harness/settle.js';
 import { mountBlock } from '../../harness/mount-block';
+import { installLayoutStubs } from '../../harness/mount-editor.svelte';
+
+beforeAll(installLayoutStubs);
 
 // `**bold** tail`: the run is [0,2) and [6,8), the word `bold` is [2,6).
 const BOLD = '**bold** tail\n';
@@ -78,17 +81,17 @@ afterEach(async () => {
 });
 
 describe('a destructive chord at a collapsed caret reaches the join', () => {
-	// The word delete reports `bold`; the literal cut leaves `**** tail`, four asterisks the user
-	// can neither see nor remove.
+	// The cut takes `bold`; the literal one leaves `**** tail`, four asterisks the user can neither
+	// see nor remove. The word and line deletes name their own span, whatever the browser reports.
 	it.each([
-		['deleteWordBackward', { start: 2, end: 6 }],
-		['deleteWordForward', { start: 2, end: 6 }],
-		['deleteSoftLineBackward', { start: 0, end: 6 }],
-		['deleteHardLineBackward', { start: 0, end: 6 }],
-		['deleteByDrag', { start: 2, end: 6 }]
-	] as const)('%s takes the stranded run with it', async (inputType, target) => {
+		['deleteWordBackward', 6, { start: 0, end: 13 }],
+		['deleteWordForward', 2, { start: 0, end: 13 }],
+		['deleteSoftLineBackward', 6, { start: 0, end: 13 }],
+		['deleteHardLineBackward', 6, { start: 0, end: 13 }],
+		['deleteByDrag', 6, { start: 2, end: 6 }]
+	] as const)('%s takes the stranded run with it', async (inputType, caret, target) => {
 		mounted = mountText(BOLD);
-		seat(mounted.el, 6, 6);
+		seat(mounted.el, caret, caret);
 		const e = await press(mounted.el, inputType, target);
 
 		expect(e.defaultPrevented).toBe(true);
@@ -145,8 +148,8 @@ describe('the same gestures over a real selection', () => {
 describe('what the branch leaves to the browser', () => {
 	it('a range crossing no hidden run', async () => {
 		mounted = mountText('plain words here\n');
-		seat(mounted.el, 6, 6);
-		const e = await press(mounted.el, 'deleteWordBackward', { start: 0, end: 6 });
+		seat(mounted.el, 0, 6);
+		const e = await press(mounted.el, 'deleteContentBackward', { start: 0, end: 6 });
 
 		expect(e.defaultPrevented).toBe(false);
 		expect(committed(mounted.blockEdit)).toEqual([]);

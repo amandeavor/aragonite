@@ -96,7 +96,7 @@ import {
 import { assertInvariant } from '../../../assert';
 import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
 import { checkDeleteDecided } from '../../../invariants/collapsed-delete';
-import type { DeleteDirection, DeleteVerdict } from '../../../caret/delete-extent';
+import type { DeleteIntent, DeleteVerdict } from '../../../caret/delete-extent';
 import { decideCollapsedDelete, type CollapsedDeleteReads } from './collapsed-delete';
 import type { Reading } from '../../../schema/reading';
 import { createPlaceholderHint, type PlaceholderPolicy } from '../placeholder-hint.svelte';
@@ -270,9 +270,9 @@ export interface EditableSurfaceDeps {
 	localHistory?: (e: InputEvent) => boolean;
 	/** The block's own beforeinput handling, run after the shared step, which it must not await. */
 	handleBeforeInput?: (e: InputEvent) => void;
-	/** Takes what a collapsed Backspace or Delete at raw `caret` aims at, through the block's own
-	 *  text; false to leave it to the browser. Omitted where the browser's delete is read back. */
-	deleteAtCaret?: (caret: number, direction: DeleteDirection) => boolean;
+	/** Takes what a collapsed delete at raw `caret` aims at, through the block's own text; false
+	 *  to leave it to the browser. Omitted where the browser's delete is read back. */
+	deleteAtCaret?: (caret: number, intent: DeleteIntent) => boolean;
 	/** The block's own handling of a delete `deleteAtCaret` was never asked about (a range, or a
 	 *  soft keyboard's wider edit), run before the browser's delete would. */
 	handleDeclinedDelete?: (e: InputEvent) => void;
@@ -599,9 +599,9 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			return target ? deps.backend.rawRangeOf(target) : null;
 		},
 		deleteAtCaret: deps.deleteAtCaret
-			? (caret, direction) => {
+			? (caret, intent) => {
 					deps.inputPrelude?.();
-					return deps.deleteAtCaret!(caret, direction);
+					return deps.deleteAtCaret!(caret, intent);
 				}
 			: undefined
 	};

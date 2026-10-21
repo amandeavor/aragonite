@@ -5,12 +5,13 @@
 	import type { CodeRunRequest } from '../../../host-hooks';
 	import { asRawOffset } from '../../../caret/coordinate-spaces';
 	import {
-		characterExtent,
 		decidedDelete,
+		deleteExtent,
 		isDeleteInput,
 		isMoveDelete,
-		type DeleteDirection
+		type DeleteIntent
 	} from '../../../caret/delete-extent';
+	import { lineEdgeOffset } from '../../../caret/visual-lines';
 	import {
 		CONTENT_EMPTY_ATTR,
 		holdsOnlyMarkerChrome,
@@ -535,21 +536,27 @@
 	}
 
 	/** A collapsed delete at `caret`: an empty pair goes whole on Backspace, and anything else takes
-	 *  one character, kept to the body while the fence lines hide. */
-	function deleteCodeAt(caret: number, direction: DeleteDirection): boolean {
+	 *  what the delete rule names, kept to the body while the fence lines hide. */
+	function deleteCodeAt(caret: number, intent: DeleteIntent): boolean {
 		const text = getDisplayText();
 		// Both halves, so the auto-closed companion isn't stranded; a caret inside a backtick fence
 		// run reads as a pair, so the pair rule declines there.
 		const pairSpan = { start: caret - 1, end: caret + 1 };
 		if (
-			direction === 'backward' &&
+			intent.unit === 'character' &&
+			intent.direction === 'backward' &&
 			isBetweenEmptyPair(text, caret) &&
 			!crossesFenceBoundary(node, pairSpan)
 		) {
 			void writeCode(text.slice(0, caret - 1) + text.slice(caret + 1), caret - 1, 'pair-delete');
 			return true;
 		}
-		const unit = characterExtent(text, caret, direction, { start: 0, end: text.length });
+		const unit = deleteExtent(intent, {
+			text,
+			caret,
+			bounds: { start: 0, end: text.length },
+			lineEdge: (side) => (el ? lineEdgeOffset(el, caret, side) : null)
+		});
 		const span = unit && editSpan(node, unit, fenceLinesShown);
 		const edit = span && computeRangedEdit(text, span, '');
 		if (edit) void writeCode(edit.newText, edit.newCursor, 'delete');
