@@ -18,6 +18,7 @@ import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 
 const KIND = 'painted-undo-leaf';
 const SOURCE = '@@ one';
+const FAMILY = '\u{1F468}‍\u{1F469}‍\u{1F467}';
 
 function paint(text: string): DocumentFragment {
 	const frag = document.createDocumentFragment();
@@ -153,6 +154,26 @@ describe('a burst of typing inside an open painted reveal', () => {
 
 		await pressUndoChord(el);
 		expect(el.textContent).toBe(`${SOURCE}a`);
+		await pressUndoChord(el);
+		expect(el.textContent).toBe(SOURCE);
+	});
+
+	// Miss-analysis: every burst typed ASCII, so a keystroke measured in code units looked right.
+	it('keeps an emoji typed and then deleted in the burst', async () => {
+		mounted = mountLeaf();
+		const el = await mounted.revealAtEnd();
+		await typeChar(el, 'a');
+		await typeChar(el, FAMILY);
+		el.dispatchEvent(
+			new InputEvent('beforeinput', {
+				inputType: 'deleteContentBackward',
+				bubbles: true,
+				cancelable: true
+			})
+		);
+		await settleEditor();
+		expect(el.textContent).toBe(`${SOURCE}a`);
+
 		await pressUndoChord(el);
 		expect(el.textContent).toBe(SOURCE);
 	});

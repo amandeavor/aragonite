@@ -38,6 +38,7 @@ import {
 	type DeleteIntent
 } from '../../../caret/delete-extent';
 import { lineEdgeOffset } from '../../../caret/visual-lines';
+import { isAtMostOneCharacter } from '../../../core/text-units';
 import { nativeRangeIn, parkFocusOnEditorRoot } from '../../../selection/native-bridge';
 import { assertInvariant } from '../../../assert';
 import { checkRenderedTextFidelity } from '../../../invariants/render-fidelity';
@@ -512,8 +513,8 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		deps.onSourceEdit?.(entry.text);
 	}
 
-	/** Only a keystroke-shaped edit (one character at most, not a newline) joins a typing burst;
-	 *  anything else takes its own undo entry. */
+	/** Only a keystroke-shaped edit (one character at most, an emoji included, not a line break)
+	 *  joins a typing burst; anything else takes its own undo entry. */
 	function recordSourceEdit(text: string, caret: number, keystroke: boolean): void {
 		if (!keystroke) {
 			sourceBatch.interrupt();
@@ -529,7 +530,10 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 	// cut or paste would inject <div>/<br> elements that vanish from textContent.
 	function spliceSourceText(el: HTMLElement, start: number, end: number, insert: string): void {
 		const text = el.textContent ?? '';
-		const keystroke = end - start <= 1 && insert.length <= 1 && insert !== '\n';
+		const keystroke =
+			isAtMostOneCharacter(text.slice(start, end)) &&
+			isAtMostOneCharacter(insert) &&
+			!/[\r\n]/.test(insert);
 		if (deps.renderSource) recordSourceEdit(text, backend.getRaw() ?? start, keystroke);
 		const spliced = text.slice(0, start) + insert + text.slice(end);
 		// Every edit gets the reshape showing the source does: an emptied body is the same bare
