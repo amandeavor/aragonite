@@ -219,16 +219,24 @@ test.describe('image popover commit', () => {
 		await page.locator('.paragraph-block').first().click();
 		expect(await undoDepth(page)).toBe(undoLengthBefore);
 	});
+});
 
-	// A host shortcut switches the mode with no press, so nothing clicks away from the field first.
-	for (const [from, to] of [
-		['source', 'live'],
-		['live', 'source']
-	] as const) {
+// A host shortcut switches the mode with no press, so nothing clicks away from the field first.
+for (const [from, to] of [
+	['source', 'live'],
+	['live', 'source']
+] as const) {
+	test.describe(`image popover commit, mounted in ${from} mode`, () => {
+		let editor: EditorPage;
+
+		test.beforeEach(async ({ page }) => {
+			editor = new EditorPage(page);
+			await editor.goto(`?presentationMode=${from}`);
+		});
+
 		test(`a switch from ${from} to ${to} closes the alt field and saves its draft`, async ({
 			page
 		}) => {
-			await editor.goto(`?presentationMode=${from}`);
 			await editor.loadContent('![cat](/test-fixtures/sample.png)\n\nbelow.\n');
 			await page.locator('[data-image-widget]').first().click();
 			await (await openImageField(page)).fill('cat v2');
@@ -242,5 +250,5 @@ test.describe('image popover commit', () => {
 				.poll(async () => (await editor.bridge.getSelectionPaths())?.focus.path)
 				.toEqual([0]);
 		});
-	}
-});
+	});
+}

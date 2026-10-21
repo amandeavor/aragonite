@@ -205,8 +205,9 @@ export interface EditorInstance {
 	/**
 	 * Put the caret at a viewport point exactly as a click there would: the point clamps into the
 	 * nearest block's box, the block under it picks the spot, and a live cross-block range ends
-	 * first. A host decides which of its clicks come here. False when no focusable position
-	 * resolves; a point past an unmounted tail lands there once that mounts.
+	 * first, and in reading mode the block takes focus instead. A host decides which of its clicks
+	 * come here. False when no focusable position resolves; a point past an unmounted tail lands
+	 * there once that mounts.
 	 */
 	placeCaretAtPoint(x: number, y: number): boolean;
 	/**

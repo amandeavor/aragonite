@@ -146,21 +146,6 @@ test.describe('block decorations', () => {
 		});
 	});
 
-	// Independent of the refusal above: the CSS rule reads the same element its JavaScript
-	// counterpart does, so the attribute on the outer block div paints nothing.
-	test('a content-empty mark on the host paints no marker under live', async ({ page }) => {
-		await editor.goto('?presentationMode=live');
-		await editor.loadContent('# heading\n');
-		const marker = page.locator(`${HOST} .md-marker`).first();
-		await expect(marker).toHaveCSS('display', 'none');
-
-		await page.evaluate((host) => {
-			document.querySelector(host)?.setAttribute('data-content-empty', '');
-		}, HOST);
-
-		await expect(marker).toHaveCSS('display', 'none');
-	});
-
 	test('a badged block still types and splits normally', async ({ page }) => {
 		await editor.loadContent('hello\n');
 		await page.evaluate(() => {
@@ -195,5 +180,28 @@ test.describe('block decorations', () => {
 			.poll(() => page.evaluate(() => (window as any).__test.getSource()))
 			.toContain('below');
 		expect(await editor.getDomBlockCount()).toBe(2);
+	});
+});
+
+test.describe('block decorations in live mode', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?presentationMode=live');
+	});
+
+	// Independent of the refusal above: the CSS rule reads the same element its JavaScript
+	// counterpart does, so the attribute on the outer block div paints nothing.
+	test('a content-empty mark on the host paints no marker under live', async ({ page }) => {
+		await editor.loadContent('# heading\n');
+		const marker = page.locator(`${HOST} .md-marker`).first();
+		await expect(marker).toHaveCSS('display', 'none');
+
+		await page.evaluate((host) => {
+			document.querySelector(host)?.setAttribute('data-content-empty', '');
+		}, HOST);
+
+		await expect(marker).toHaveCSS('display', 'none');
 	});
 });

@@ -260,8 +260,7 @@ function landingFor(hit: BlockHit, probeX: number, probeY: number): CaretTarget 
 	// A leaf with no text (a rule, a rendered equation) reaches here only when clicked on its
 	// own box: the block itself is the target, and its `focus` ignores the offset.
 	if (!hit.charSurface) return { path: [], offset: 0 };
-	// Reading mode turns editing off, so no text is a block's own there. A container that kept
-	// the point has only its children's text, none of it level with the point.
+	// A container that kept the point has only its children's text, none of it level with it.
 	if (!holdsOwnText(hit)) return null;
 	// A block whose box pads its own text (a code block) lands a point in that padding on the
 	// nearest line.

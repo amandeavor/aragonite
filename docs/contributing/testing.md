@@ -610,6 +610,12 @@ hydrated, since the server-rendered markup shows up well before any click handle
 `reloadReady(page)` is the reload version, and `editor.goto()` already calls `gotoReady` for you.
 A raw `page.goto` or `page.reload` fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
+One navigation per test, though. If a test wants a different URL than its `beforeEach` gave it
+(another mode, a flag in the query), it gets its own `describe` with its own `beforeEach`, instead
+of navigating again inside the test. Mounting in a mode and switching into it after load are
+different code paths, so pick the one the test is actually about.
+`src/lib/e2e/lint/one-navigation-per-test.test.ts` fails a test that navigates again.
+
 A new route gets a row in `src/lib/e2e/goto-ready.ts :: READY_BY_ROUTE`, or `gotoReady` won't
 compile for it. Every route that mounts an editor already sets `__parityDocuments`, so that's the
 usual value. If the specs read a global the route sets for them (`__syntax`, say), that one goes in

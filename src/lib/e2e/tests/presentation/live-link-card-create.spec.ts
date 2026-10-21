@@ -73,7 +73,7 @@ test.describe('live-mode link card: the create half of Mod+K', () => {
 		page
 	}) => {
 		const filler = Array.from({ length: 60 }, (_, i) => `filler line ${i + 1}`).join('\n\n');
-		const ep = await enterPresentationMode(page, 'live', `${filler}\n\nAlpha bravo charlie\n`);
+		await ep.loadContent(`${filler}\n\nAlpha bravo charlie\n`);
 		await ep.scrollEditorTo(10_000_000);
 		await clickWordSettled(ep, page, 'Alpha');
 		await landAt(ep, page, 6);

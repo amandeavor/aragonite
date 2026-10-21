@@ -4,6 +4,37 @@ import { waitForFirstImageLoaded } from './helpers';
 import { multiClickElement } from '../../../multi-click';
 import { edgeKey } from '../../../platform-keys';
 
+async function selectAndStartCrop(page: import('@playwright/test').Page) {
+	await waitForFirstImageLoaded(page);
+	const widget = page.locator('[data-image-widget]').first();
+	await widget.click();
+	await page.locator('.md-image-properties').getByRole('button', { name: 'Crop image' }).click();
+	try {
+		await expect(page.locator('.md-image-crop-surface')).toBeVisible();
+	} catch (err) {
+		// A crop that never starts has only reddened on a CI WebKit run, so the red carries the state.
+		throw new Error(`the crop never started; the page held ${await cropStartState(page)}`, {
+			cause: err
+		});
+	}
+	return widget;
+}
+
+function cropStartState(page: import('@playwright/test').Page): Promise<string> {
+	return page.evaluate(() => {
+		const img = document.querySelector('[data-image-widget] img') as HTMLImageElement | null;
+		const active = document.activeElement;
+		return JSON.stringify({
+			active: active && `${active.tagName}.${active.className}`,
+			toolbar: !!document.querySelector('.md-image-properties'),
+			widgets: document.querySelectorAll('[data-image-widget]').length,
+			img: img && { complete: img.complete, naturalWidth: img.naturalWidth },
+			selection: (window as any).__test.getSelection(),
+			source: (window as any).__test.getSource()
+		});
+	});
+}
+
 // The crop is limestone's cover crop on an inline image: the toolbar's crop button makes the
 // image pannable (drag pans, the wheel zooms) and the tick writes `|WxH@X,Y[,Z]`.
 test.describe('image crop', () => {
@@ -13,37 +44,6 @@ test.describe('image crop', () => {
 		editor = new EditorPage(page);
 		await editor.goto();
 	});
-
-	async function selectAndStartCrop(page: import('@playwright/test').Page) {
-		await waitForFirstImageLoaded(page);
-		const widget = page.locator('[data-image-widget]').first();
-		await widget.click();
-		await page.locator('.md-image-properties').getByRole('button', { name: 'Crop image' }).click();
-		try {
-			await expect(page.locator('.md-image-crop-surface')).toBeVisible();
-		} catch (err) {
-			// A crop that never starts has only reddened on a CI WebKit run, so the red carries the state.
-			throw new Error(`the crop never started; the page held ${await cropStartState(page)}`, {
-				cause: err
-			});
-		}
-		return widget;
-	}
-
-	function cropStartState(page: import('@playwright/test').Page): Promise<string> {
-		return page.evaluate(() => {
-			const img = document.querySelector('[data-image-widget] img') as HTMLImageElement | null;
-			const active = document.activeElement;
-			return JSON.stringify({
-				active: active && `${active.tagName}.${active.className}`,
-				toolbar: !!document.querySelector('.md-image-properties'),
-				widgets: document.querySelectorAll('[data-image-widget]').length,
-				img: img && { complete: img.complete, naturalWidth: img.naturalWidth },
-				selection: (window as any).__test.getSelection(),
-				source: (window as any).__test.getSource()
-			});
-		});
-	}
 
 	test('a double click on the picture starts the crop', async ({ page }) => {
 		await editor.loadContent('![cat|200x200](/test-fixtures/sample.png)\n');
@@ -198,17 +198,6 @@ test.describe('image crop', () => {
 		expect(await page.evaluate(() => (window as any).__lPrevented)).toBe(false);
 	});
 
-	test("a key aimed at the host's own control during a crop stays the host's", async ({ page }) => {
-		// The anchor route draws a host button outside the editor.
-		await editor.goto('?searchAnchor=on');
-		await editor.loadContent('![cat|200x200](/test-fixtures/sample.png)\n');
-		await selectAndStartCrop(page);
-		const toggle = page.getByTestId('anchor-toggle');
-		await toggle.focus();
-		await page.keyboard.press('Space');
-		await expect(toggle).toHaveText(/Anchor: off/);
-	});
-
 	test('dragging a corner bracket resizes the frame and so its aspect', async ({ page }) => {
 		await editor.loadContent('![cat|200x200](/test-fixtures/sample.png)\n');
 		const widget = await selectAndStartCrop(page);
@@ -301,5 +290,24 @@ test.describe('image crop', () => {
 
 		await editor.undo();
 		await editor.bridge.waitForSourceEquals(loaded);
+	});
+});
+
+// The anchor route draws a host button outside the editor.
+test.describe('image crop beside a host control', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?searchAnchor=on');
+	});
+
+	test("a key aimed at the host's own control during a crop stays the host's", async ({ page }) => {
+		await editor.loadContent('![cat|200x200](/test-fixtures/sample.png)\n');
+		await selectAndStartCrop(page);
+		const toggle = page.getByTestId('anchor-toggle');
+		await toggle.focus();
+		await page.keyboard.press('Space');
+		await expect(toggle).toHaveText(/Anchor: off/);
 	});
 });

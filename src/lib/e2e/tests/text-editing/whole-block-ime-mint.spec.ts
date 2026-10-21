@@ -69,18 +69,25 @@ test.describe('whole-block focus: AltGr and IME input create a paragraph below',
 
 		await editor.bridge.waitForSourceMatches(/---\n\n€\n\nAfter/);
 	});
+});
 
-	test('reading mode: an AltGr-shaped insert changes no byte', async ({ page }) => {
-		const readingEditor = new EditorPage(page);
-		await readingEditor.goto('?presentationMode=reading');
-		await readingEditor.loadContent(RULE_DOC);
-		const original = await readingEditor.bridge.getSource();
+test.describe('whole-block focus in reading mode', () => {
+	let editor: EditorPage;
 
-		await rule(readingEditor).click();
-		await expect(wholeBlockInput(rule(readingEditor))).toBeFocused();
-		await insertTextViaCdp(readingEditor, '€');
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?presentationMode=reading');
+		await editor.loadContent(RULE_DOC);
+	});
 
-		await readingEditor.expectSurfaceInert();
-		expect(await readingEditor.bridge.getSource()).toBe(original);
+	test('reading mode: an AltGr-shaped insert changes no byte', async () => {
+		const original = await editor.bridge.getSource();
+
+		await rule(editor).click();
+		await expect(wholeBlockInput(rule(editor))).toBeFocused();
+		await insertTextViaCdp(editor, '€');
+
+		await editor.expectSurfaceInert();
+		expect(await editor.bridge.getSource()).toBe(original);
 	});
 });

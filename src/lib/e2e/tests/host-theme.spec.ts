@@ -202,16 +202,6 @@ test.describe('/test/host-theme: a host that declares no colors', () => {
 		await pickTheme(page, 'bare-dark');
 		await expect.poll(() => background(page, '.search-bar')).toBe(PALETTE_BG.dark);
 	});
-
-	test('a find bar moved into an anchor follows the theme prop too', async ({ page }) => {
-		await gotoReady(page, '/test/host-theme?searchAnchor=on');
-		await pickTheme(page, 'bare-light');
-		await openFindBar(page);
-		const anchored = '[data-testid="search-anchor"] .search-bar';
-		expect(await background(page, anchored)).toBe(PALETTE_BG.light);
-		await pickTheme(page, 'bare-dark');
-		await expect.poll(() => background(page, anchored)).toBe(PALETTE_BG.dark);
-	});
 });
 
 test.describe('/test/host-theme: a host that declares every color', () => {
@@ -226,4 +216,19 @@ test.describe('/test/host-theme: a host that declares every color', () => {
 			}
 		});
 	}
+});
+
+test.describe('/test/host-theme: a find bar moved into an anchor', () => {
+	test.beforeEach(async ({ page }) => {
+		await gotoReady(page, '/test/host-theme?searchAnchor=on');
+	});
+
+	test('a find bar moved into an anchor follows the theme prop too', async ({ page }) => {
+		await pickTheme(page, 'bare-light');
+		await openFindBar(page);
+		const anchored = '[data-testid="search-anchor"] .search-bar';
+		expect(await background(page, anchored)).toBe(PALETTE_BG.light);
+		await pickTheme(page, 'bare-dark');
+		await expect.poll(() => background(page, anchored)).toBe(PALETTE_BG.dark);
+	});
 });

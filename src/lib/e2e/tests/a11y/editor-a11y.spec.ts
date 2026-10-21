@@ -111,11 +111,19 @@ test.describe('editor accessibility (axe baseline-ratchet)', () => {
 		await expect(surface([4], '[data-whole-block-input]')).toHaveAccessibleName('Divider');
 		await expect(page.getByRole('separator')).toHaveCount(1);
 	});
+});
+
+test.describe('editor accessibility with a placeholder', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?placeholder=Start%20writing');
+	});
 
 	test('an empty block announces its hint as aria-placeholder, with no new violations', async ({
 		page
 	}) => {
-		await editor.goto('?placeholder=Start%20writing');
 		await editor.loadContent('');
 		const textbox = page.getByRole('textbox', { name: 'Paragraph' });
 		await expect(textbox).toHaveAttribute('aria-placeholder', 'Start writing');

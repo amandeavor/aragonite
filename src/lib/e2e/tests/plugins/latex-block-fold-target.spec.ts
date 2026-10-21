@@ -42,7 +42,7 @@ test.describe('a render-primary block folds onto the document it opened over', (
 	test('undo from inside a just-created reveal walks the draft back, then returns the paragraph', async ({
 		page
 	}) => {
-		await editor.setup('\n');
+		await editor.loadContent('\n');
 		await editor.clickBlock(0);
 		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly('$$');

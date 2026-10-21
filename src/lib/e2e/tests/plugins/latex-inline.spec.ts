@@ -73,35 +73,6 @@ test.describe('plugin inline math: select → reveal-source editing', () => {
 		await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('$x^2$');
 	});
 
-	test('clicking column-aligned text on another visual line places the caret, not reveal', async ({
-		page
-	}) => {
-		await editor.gotoMath('math-multiline');
-
-		const widgetBox = await editor.mathWidget.boundingBox();
-		if (!widgetBox) throw new Error('math widget has no bounding box');
-		const line2 = await textRunRect(page, 'second visual line', { path: [0] });
-		const line2Y = line2.top + line2.height / 2;
-		// Premise: the second line renders below the widget, so the point below is
-		// genuinely a different visual line sharing the widget's column.
-		expect(line2Y).toBeGreaterThan(widgetBox.y + widgetBox.height);
-
-		// Click at the widget's horizontal center but on line 2: same column, other line.
-		await page.mouse.click(widgetBox.x + widgetBox.width / 2, line2Y);
-		await editor.waitForRenderFlush();
-
-		// The widget is untouched: the click landed on real text, not on it.
-		await expect(editor.mathWidget).toHaveCount(1);
-
-		// The caret really landed in the second line's text: a typed character goes into the
-		// block's source while the formula stays rendered and never opens for editing.
-		await page.keyboard.type('Q');
-		await editor.bridge.waitForSourceContains('Q');
-		const source = await editor.bridge.getSource();
-		expect(source).toContain('$x^2$');
-		expect(source).toContain('visual line here');
-	});
-
 	test('editing the source and walking the caret out re-renders KaTeX and persists the edit', async ({
 		page
 	}) => {
@@ -243,4 +214,40 @@ test.describe('plugin inline math: a double-click inside an open reveal', () => 
 				.toBe('beta');
 		});
 	}
+});
+
+test.describe('plugin inline math: a formula over several lines', () => {
+	let editor: MathPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new MathPage(page);
+		await editor.gotoMath('math-multiline');
+	});
+
+	test('clicking column-aligned text on another visual line places the caret, not reveal', async ({
+		page
+	}) => {
+		const widgetBox = await editor.mathWidget.boundingBox();
+		if (!widgetBox) throw new Error('math widget has no bounding box');
+		const line2 = await textRunRect(page, 'second visual line', { path: [0] });
+		const line2Y = line2.top + line2.height / 2;
+		// Premise: the second line renders below the widget, so the point below is
+		// genuinely a different visual line sharing the widget's column.
+		expect(line2Y).toBeGreaterThan(widgetBox.y + widgetBox.height);
+
+		// Click at the widget's horizontal center but on line 2: same column, other line.
+		await page.mouse.click(widgetBox.x + widgetBox.width / 2, line2Y);
+		await editor.waitForRenderFlush();
+
+		// The widget is untouched: the click landed on real text, not on it.
+		await expect(editor.mathWidget).toHaveCount(1);
+
+		// The caret really landed in the second line's text: a typed character goes into the
+		// block's source while the formula stays rendered and never opens for editing.
+		await page.keyboard.type('Q');
+		await editor.bridge.waitForSourceContains('Q');
+		const source = await editor.bridge.getSource();
+		expect(source).toContain('$x^2$');
+		expect(source).toContain('visual line here');
+	});
 });
