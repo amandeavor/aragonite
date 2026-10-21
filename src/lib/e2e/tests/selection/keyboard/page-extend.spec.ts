@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../../editor-page';
 import { extendKey } from '../../../platform-keys';
+import { hoverInPlace } from '../../../click-in-place';
 
 // Shift+PageUp and Shift+PageDown move a selection's moving end a screen up or down, from a caret
 // or a range, and the end stays on screen. Requirements:
@@ -120,12 +121,15 @@ test.describe('a range across blocks', () => {
 		await ep.focusBlock(0, 3);
 		await press(ep, page, extendKey('docEnd'));
 		await endOnScreen(page);
-		const editor = (await page.locator('.editor').boundingBox())!;
-		await page.mouse.move(editor.x + editor.width / 2, editor.y + editor.height / 2);
-		await page.mouse.wheel(0, -100_000);
-		// The wheel's scroll can run on past its event: the key waits for it to reach the top.
+		await hoverInPlace(ep.editorContainer);
+		// How far one wheel event scrolls is the engine's call, so the wheel turns until the top shows.
 		const scrollTop = () => page.evaluate(() => document.querySelector('.editor')!.scrollTop);
-		await expect.poll(scrollTop).toBe(0);
+		await expect
+			.poll(async () => {
+				await page.mouse.wheel(0, -2000);
+				return scrollTop();
+			})
+			.toBe(0);
 		await expect(page.locator('[data-block-path="199"]')).toHaveCount(0);
 		await press(ep, page, 'Shift+PageUp');
 		const end = await endOnScreen(page);
