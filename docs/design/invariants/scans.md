@@ -200,6 +200,7 @@ unguarded.
 | G4.237 | A test never navigates a page its `beforeEach` already navigated                             | L       |
 | G4.239 | No block runs a merge by its id; a delete at an edge runs the plain key's binding            | L       |
 | G4.240 | Every `ResizeObserver` is made in `windowing/observe-resize.ts`                              | L       |
+| G4.241 | A run is laid out and a join asked by the fix-up alone                                       | L       |
 
 ### The entries
 
@@ -1366,3 +1367,8 @@ decide it. A `'block.mergePrev'` or `'block.mergeNext'` anywhere but a keymap ro
 first observed while it delivers reports is skipped, and a size changed inside a delivery is
 reported as a loop error. So every observer is made in `windowing/observe-resize.ts`, whose entry
 points say when observing starts. `file-rules.test.ts`.
+
+**G4.241 · The fix-up asks the joins.** `normalizeBlankRuns`, `resolveJoin`, `separateJoin`,
+`finishUnfinishedReadings` and `absorbSpanReading` are named only where they live and in `settle.ts`,
+so an op reports what it did (a move's uncovered join included) and the commit's one fix-up lays
+out the runs and asks the joins for every edit alike. `lint/separator-write-doors.test.ts`.
