@@ -396,7 +396,7 @@ for (const shape of [...SHAPES, CELL]) {
 				expect(range!.focus.offset).toBeGreaterThan(starts[last]);
 			});
 
-		// Asking a range's line moves its focus and back; the next key must start from the same side.
+		// A held range is never asked its line, so the next key starts from the side the browser shows.
 		for (const key of ['ArrowUp', 'ArrowDown'] as const) {
 			// A cell's first Shift+ArrowUp from a range at its top wrap reads the measured line.
 			if (shape === CELL && key === 'ArrowUp') continue;
@@ -405,7 +405,11 @@ for (const shape of [...SHAPES, CELL]) {
 			}) => {
 				await editor.focusBlockAtPath(shape.path, starts[0] + 3);
 				await page.keyboard.press('Shift+ArrowDown');
-				await page.keyboard.press(`Shift+${edgeKey('lineStart')}`);
+				// Back by characters: on a Mac, Shift+Cmd+ArrowLeft moves a forward range's start instead.
+				for (let i = 0; i < 8; i++) {
+					if ((await selectionOf(editor))?.focus.offset === starts[1]) break;
+					await page.keyboard.press('Shift+ArrowLeft');
+				}
 				expect((await selectionOf(editor))?.focus).toEqual({ path: shape.path, offset: starts[1] });
 				await page.keyboard.press(`Shift+${key}`);
 				const range = await selectionOf(editor);
