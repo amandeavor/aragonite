@@ -99,6 +99,7 @@ These checks run in three kinds of place:
 | G1.133 | Reading mode leaves one block in the tab order; anything else there is a control           | A·N     |
 | G1.136 | A DOM block view that moves or hides the element it was given, or fills its text element   | A·N     |
 | G1.138 | A commit never addresses a container state whose component has unmounted                   | A·N     |
+| G1.139 | Each run of blank lines a fix-up touched reads on reload as the tree holds it              | A·P·N   |
 
 ### The entries
 
@@ -611,3 +612,9 @@ ids (`scopeStateFor`). The check is for what the registry can't see: a state loo
 `await` and committed after its container unmounted, whose getters read the dead component's
 props. `isUnmountedBlockListState` · `state-registry-lifetime.svelte.test.ts`,
 `range-edit-unmounted-container.spec.ts`.
+
+**G1.139 · Blank runs are laid out** (`blank-runs-laid-out`). Once `settleEdit` or a write's own
+fix-up has run, every run of blank lines touching the edit holds the blank blocks a reload reads
+and each hidden line where a reload puts it: one separator, on the run's first block, and the
+line a fence line takes in that line's slot. A route that writes a separator after the layout fails it.
+`checkBlankRunsLaidOut` · `blank-run-layout.test.ts`, `blank-runs.property.test.ts`.

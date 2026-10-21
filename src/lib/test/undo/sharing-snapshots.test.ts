@@ -99,23 +99,23 @@ describe('structural-sharing snapshots', () => {
 		expect(shared.leadingTrivia).toBe('');
 	});
 
-	// Taking a separator back can write the block two below, the furthest a fix-up reaches.
-	// Miss-analysis: GH #96; the separator cases only ever wrote the very next block.
-	it('emptying a block unshares the run member two slots below it', async () => {
+	// Emptying a block writes the separator of the blank block below it, which the snapshot shares.
+	// Miss-analysis: GH #96; the separator cases only ever wrote the block being emptied.
+	it('emptying a block unshares the run member it takes the separator from', async () => {
 		const { deps, controller } = makeHarness('Hello\n\nSecond\n');
 		const actions = createBlockEditActions(deps, controller);
 		await actions.splitBlock(0, 5);
 		await actions.splitBlock(1, 0);
 		await actions.updateBlockContent(1, 'x\n', 'authored', 0);
 		deps.undoManager.push(controller.captureCurrentState());
-		const shared = deps.undoManager.getStacks().undo.at(-1)!.snapshot.children[3];
+		const shared = deps.undoManager.getStacks().undo.at(-1)!.snapshot.children[2];
 		expect(shared.leadingTrivia).toBe('\n');
 
 		await actions.updateBlockContent(1, '\n', 'authored', 0);
 
 		expect(serialize(deps.doc)).toBe('Hello\n\n\n\nSecond\n');
 		expect(shared.leadingTrivia).toBe('\n');
-		expect(deps.doc.children[3]).not.toBe(shared);
+		expect(deps.doc.children[2]).not.toBe(shared);
 	});
 
 	it('emptying a block inside a container unshares the follower it settles', async () => {

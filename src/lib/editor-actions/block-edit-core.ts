@@ -27,7 +27,6 @@ import {
 	normalizeReplacementTrivia,
 	rebuildUnsharedChain,
 	restoreSeparatorOnFill,
-	dropDoubledSeparator,
 	emptyParagraph,
 	paragraphNode,
 	landAtTaskStart,
@@ -381,9 +380,8 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 					const change: StructuralChange = { op: 'insert', at: i, count: 1 };
 					stampStructuralChange(view.body.children, change, view.sharing);
 					// The commit's blank-line fix-up cannot infer that the displaced sibling, pushed off
-					// the first position, needs a separator, or that an empty paragraph is a blank line.
+					// the first position, needs a separator.
 					restoreSeparatorOnFill(view.body, i + 1, view.sharing);
-					dropDoubledSeparator(view.body, i, view.sharing);
 					return change;
 				},
 				landing: () => scope.at(i, [], displayLength(text))

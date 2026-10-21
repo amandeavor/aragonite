@@ -32,7 +32,7 @@ const TRIVIA_WRITERS: Record<string, string> = {
 	'src/lib/tree-operations/list/sublist-separator.ts':
 		'the settle door for an empty-marker sublist, whose line no splice window can infer: the write lands on the list, the edit two levels below it',
 	'src/lib/tree-operations/list/item-partition.ts':
-		'same head normalization, per promoted item and the item’s first block, plus the lines a dissolving item’s blocks take where no splice probe can infer them: above each list it leaves, which the paragraph above decides, above a paragraph under the items before it, and one blank line shared by a blank paragraph and its follower',
+		'same head normalization, per promoted item and the item’s first block, plus the lines a dissolving item’s blocks take where no splice probe can infer them: above each list it leaves, which the paragraph above decides, and above a paragraph under the items before it',
 	'src/lib/tree-operations/list/item-moves.ts':
 		'a block carried in after a lifted item’s sublist takes the line it needs to read back where it now stands',
 	'src/lib/tree-operations/paste/list-break-out.ts': 'head normalization inside the built halves',
@@ -46,16 +46,15 @@ const TRIVIA_WRITERS: Record<string, string> = {
 /** Files that may name one of those functions directly rather than the shared one. */
 const HAND_SETTLE_CALLERS: Record<string, string> = {
 	'src/lib/tree-operations/settle.ts': 'defines them, and `settleEdit`, the one fix-up beside them',
-	'src/lib/tree-operations/index.ts': 're-exports the two the gap-caret mint still needs',
+	'src/lib/tree-operations/blank-runs.ts': 'defines the run layout every fix-up ends with',
+	'src/lib/tree-operations/index.ts': 're-exports the one the gap-caret mint still needs',
 	'src/lib/tree-operations/list/sublist-separator.ts': 'defines the empty-marker sublist door',
 	'src/lib/tree-operations/chain-rebuild.ts':
 		'the chain rebuild is where a list rebuilt down to an empty marker becomes visible',
 	'src/lib/editor-actions/block-edit-core.ts':
-		'the gap-caret paragraph is a block of its own on both sides, which a splice window cannot say: the displaced follower’s line is the join rule’s placed row, and the dropped double is the blank-run count',
+		'the gap-caret paragraph is a block of its own on both sides, which a splice window cannot say: the displaced follower’s line is the join rule’s placed row',
 	'src/lib/tree-operations/list/item-moves.ts':
-		'the nesting move settles the sublist it creates, and a lift the blocks it carries in',
-	'src/lib/selection/range-delete.ts':
-		'its same-block arm writes bytes rather than splicing, so it settles as the content door does'
+		'the nesting move settles the sublist it creates, and a lift the blocks it carries in'
 };
 
 /** G4.208: the commit's one fix-up and the write's own fix-up, each named only by its callers. */
@@ -92,7 +91,7 @@ const OWN_FIX_UP_COMMITS: Record<string, string> = {
 const writesTrivia = /\.leadingTrivia\s*\+?=(?!=)/;
 
 const namesHandSettle =
-	/(?<![\w'"])(clearRedundantSeparator|dropDoubledSeparator|restoreSeparatorOnFill|restoreSeparatorAfterBlank|settleSeparatorOnBlank|settleSublistSeparator|joinListsMadeBeside)\b/;
+	/(?<![\w'"])(normalizeBlankRuns|restoreSeparatorOnFill|restoreSeparatorAfterBlank|settleSublistSeparator|joinListsMadeBeside)\b/;
 
 describeManifests(
 	[
@@ -117,9 +116,9 @@ describeManifests(
 				'a file names a settle function directly: use the shared one, or declare why it cannot',
 			hits: [
 				'restoreSeparatorOnFill(parent, i + 1, sharing);',
-				"import { dropDoubledSeparator } from '../tree-operations';"
+				"import { normalizeBlankRuns } from '../tree-operations/blank-runs';"
 			],
-			misses: ['// dropDoubledSeparator is the run-level twin']
+			misses: ['// normalizeBlankRuns lays out the run']
 		},
 		{
 			id: 'G4.208 the fix-up after an edit is run by the commit or the write no commit settles',

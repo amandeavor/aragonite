@@ -74,7 +74,7 @@ export function absorbSeamReading(
 		probe = undefined;
 		const bytes = joinedWindowBytes(window, window.length);
 		const reparsed = read(bytes);
-		const blocks = reparsed.children;
+		let blocks = reparsed.children;
 		// Content blocks only: the blank lines an absorbed block held come back as blank blocks.
 		if (blocks.length === 0 || contentCount(blocks) > contentCount(window)) break;
 		// A count that did not drop is still a merge when the head took content from the block
@@ -84,7 +84,7 @@ export function absorbSeamReading(
 		// setext underline below it), so what must survive is the head's own reading, not its kind.
 		if (blocks[0].kind !== window[0].kind && !readsAsItselfAlone(window[0], read)) break;
 		onBeforeSplice?.();
-		absorbFragmentPeel(body, at + window.length, reparsed.suffix, blocks, sharing);
+		blocks = withLowerEdge(body, at + window.length, bytes, reparsed, read, sharing);
 		blocks[0].leadingTrivia = window[0].leadingTrivia;
 		// The window joins two blocks at least, so its bytes hold the document's line ending.
 		const lineEnding = firstLineEnding(bytes) ?? '\n';
@@ -357,32 +357,27 @@ function preChangeIndex(
 	return inherited === undefined ? null : change.at + inherited;
 }
 
-/** The fragment parse's trailing blank run stays in the last block's raw at the body's tail and
- *  joins the follower's run elsewhere (`docs/design/syntax-tree.md` § Blank lines). */
-function absorbFragmentPeel(
+/**
+ * The merged blocks once the blank lines at the window's lower edge are read with them: a re-read
+ * that ends in a blank line takes the follower's separator into the same reading, as a reload does.
+ */
+function withLowerEdge(
 	body: BodyParent,
 	followerIndex: number,
-	peel: string,
-	blocks: CstNode[],
+	bytes: string,
+	reparsed: Document,
+	read: (bytes: string) => Document,
 	sharing: SharingState
-): void {
+): CstNode[] {
+	const blocks = reparsed.children;
 	const follower = body.children[followerIndex];
 	if (!follower) {
-		blocks[blocks.length - 1].raw += peel;
-		return;
+		blocks[blocks.length - 1].raw += reparsed.suffix;
+		return blocks;
 	}
-	// Blocks ending blank already hold the run's one separating line, so every line of the
-	// follower's own becomes a blank block of the run instead of a second separator.
-	const runSeparated = isBlankParagraph(blocks[blocks.length - 1]);
-	if (peel === '' && !(runSeparated && follower.leadingTrivia !== '')) return;
-	const lines = blankLinesOf(peel + follower.leadingTrivia);
-	writeSeparator(body, followerIndex, lines.length > 1 || runSeparated ? '' : lines[0], sharing);
-	const first = runSeparated ? 0 : 1;
-	for (let i = first; i < lines.length; i++) {
-		const trivia = !runSeparated && i === 1 ? lines[0] : '';
-		blocks.push({ kind: 'paragraph', leadingTrivia: trivia, raw: lines[i] });
-	}
+	const endsBlank = reparsed.suffix !== '' || isBlankParagraph(blocks[blocks.length - 1]);
+	if (!endsBlank || (follower.leadingTrivia === '' && reparsed.suffix === '')) return blocks;
+	const edge = read(bytes + follower.leadingTrivia);
+	writeSeparator(body, followerIndex, edge.suffix, sharing);
+	return edge.children;
 }
-
-/** A blank run split back into the lines it is made of, each keeping its own ending. */
-const blankLinesOf = (run: string): string[] => run.match(/[^\n]*\n|[^\n]+$/g) ?? [];

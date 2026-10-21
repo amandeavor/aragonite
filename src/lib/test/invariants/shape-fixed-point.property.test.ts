@@ -6,7 +6,7 @@ import { isBlankParagraph, parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { mergeWithNext, splitNode, updateNodeContent } from '#lib/tree-operations/index.js';
 import { isMergeEligible } from '#lib/schema/merge-rules.js';
-import { describeConvergence } from '#lib/test/harness/parse-converged.js';
+import { describeConvergence, describeRunDivergence } from '#lib/test/harness/parse-converged.js';
 import { settled, mergePrevSettled, deleteSettled } from '#lib/test/harness/settle-funnel.js';
 import { keepsEveryByte } from '#lib/test/harness/live-oracles.js';
 import {
@@ -289,7 +289,7 @@ function divergenceAfterEdit(
 	applyGesture(doc, gesture, mode);
 	const divergence = gesture.op.startsWith('merge')
 		? joinDivergence(doc)
-		: describeConvergence(doc);
+		: (describeConvergence(doc) ?? describeRunDivergence(doc));
 	if (divergence) return `${divergence} — after ${gesture.op}@${gesture.at}`;
 	const bytes = serialize(doc);
 	if (serialize(parse(bytes)) !== bytes) return `bytes not a round-trip: ${JSON.stringify(bytes)}`;

@@ -3,7 +3,7 @@ import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
 import { deleteNode, splitNode, updateNodeContent } from '../../tree-operations';
 import { documentBody, emptyParagraph } from '../../tree-operations/node-primitives';
-import { settleSeparatorOnBlank } from '../../tree-operations/settle';
+import { normalizeBlankRuns } from '../../tree-operations/blank-runs';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { settled } from '#lib/test/harness/settle-funnel.js';
 import { fixtureReading } from '../harness/fixture-grammar';
@@ -114,7 +114,14 @@ describe('the folded trailing blank materializes when the tail turns blank (GH #
 		const doc = parse('foo bar\n\n');
 		doc.children[0].raw = '\n';
 
-		settleSeparatorOnBlank(documentBody(doc), 0, createSharingState());
+		normalizeBlankRuns(
+			documentBody(doc),
+			0,
+			0,
+			{ op: 'noop' },
+			defaultGrammarView,
+			createSharingState()
+		);
 
 		expect(doc.children).toHaveLength(2);
 		expect(doc.suffix).toBe('');

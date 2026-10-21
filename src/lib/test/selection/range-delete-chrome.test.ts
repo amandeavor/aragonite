@@ -129,9 +129,10 @@ describe('chrome wall: rangeDelete post-states', () => {
 			'paragraph'
 		]);
 		expect(doc.children[1].children?.map((c) => c.raw)).toEqual(['\n', '\n', 'Body2\n']);
-		// The placeholder survives the reload only through a second blank line below it: stripping
-		// the `:::` fence eats the first, and the next block's separator is the second.
-		expect(doc.children[1].children?.map((c) => c.leadingTrivia)).toEqual(['', '', '\n']);
+		// The placeholder survives the reload only through a second blank line: the `:::` fence line
+		// strips the first into the wrap, where a reload puts it.
+		expect(doc.children[1].innerPrefix).toBe('\n');
+		expect(doc.children[1].children?.map((c) => c.leadingTrivia)).toEqual(['', '', '']);
 		expectParseConverged(doc);
 	});
 

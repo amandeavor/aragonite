@@ -13,7 +13,6 @@ import { isBlankParagraph } from '../../core/parser';
 import { keepingListOrder } from '../../invariants/list-move-keeps-order';
 import { leafTexts } from '../../invariants/leaf-text';
 import { cloneNode } from '../clone';
-import { doublesSeparator } from '../settle';
 import { assembleListHalf } from './list-builders';
 import { orderedBaseOf } from './ordered-markers';
 
@@ -97,9 +96,6 @@ function assembleInOrder(list: NodeView, itemIndex: number, pieces: ItemPiece[])
 		half.leadingTrivia = lineAboveList(blocks.at(-1), half, piece.leadingTrivia);
 		blocks.push(half);
 	}
-	blocks.forEach((block, i) => {
-		if (doublesSeparator(blocks, i)) block.leadingTrivia = '';
-	});
 	return { blocks, firstBlockIndex };
 }
 

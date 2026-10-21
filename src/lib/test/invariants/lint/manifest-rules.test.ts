@@ -305,6 +305,8 @@ const PLAIN_READS: Record<string, string> = {
 		'hands on: reads the clipboard’s own blocks to pick the paste strategy, which a childless container steers; the routes that land them fill in at the splice',
 	'src/lib/tree-operations/reorder.ts':
 		'probe: asks whether two neighbours still read as a pair, and installs nothing',
+	'src/lib/tree-operations/blank-runs.ts':
+		'probe: asks whether a leaf’s own reading leaves its trailing blank line out, and installs nothing',
 	'src/lib/tree-operations/neighbour-merge.ts':
 		'installs after backfill: merges a window of whole sibling blocks by how their joined bytes read, comparing block counts on the plain read',
 	'src/lib/tree-operations/list/list-builders.ts':
