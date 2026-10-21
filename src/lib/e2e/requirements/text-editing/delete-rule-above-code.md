@@ -7,8 +7,8 @@ leaves a blank line between them instead: the code stays a code block, with ever
 The editor's blocks must match what a reload of the same bytes reads.
 
 Miss-analysis: the one unit pin on this join encoded the lost blank line as known, and no case
-gave the code more whitespace lines than the join had blocks to hold them. Later (#479) the pair a
-delete leaves was let change a block's kind, which these rows now hold against.
+gave the code more whitespace lines than the join had blocks to hold them, and no row held that the
+blocks a delete leaves side by side keep their kinds.
 
 ## Happy paths
 
