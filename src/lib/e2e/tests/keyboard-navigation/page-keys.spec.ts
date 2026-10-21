@@ -121,6 +121,25 @@ test.describe('the page keys from a caret', () => {
 		expect(Math.abs(at.offset - 20)).toBeLessThanOrEqual(2);
 	});
 
+	// A held key's repeat can reach the block before the step it follows has landed; two keydowns
+	// sent in one task are that repeat, which a real press, sent a task apart, never is.
+	test('a PageDown sent before the last one landed steps on from where it lands', async ({
+		page
+	}) => {
+		const ep = await open(page, paragraphs(200));
+		const perPage = await blocksPerPage(page);
+		await ep.focusBlock(2, 5);
+		await page.evaluate(() => {
+			const init = { key: 'PageDown', bubbles: true, cancelable: true };
+			for (let i = 0; i < 2; i++)
+				document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', init));
+		});
+		await ep.waitForRenderFlush();
+		const at = await caretOnScreen(page);
+		expect(at.collapsed).toBe(true);
+		expectPageStep(2, at.path[0], 2 * perPage);
+	});
+
 	// Two columns, so a row's cells sit side by side and the step has to keep to one of them.
 	test('PageDown in a table cell moves a screen of rows down its column', async ({ page }) => {
 		const rows = Array.from({ length: 60 }, (_, i) => `| cell ${i} | x ${i} |`);

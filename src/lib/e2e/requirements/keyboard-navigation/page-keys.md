@@ -18,6 +18,8 @@ step counts in one-line paragraphs: it lands within one paragraph of a screen's 
 - A screen's worth of paragraphs from the first one is a run of one-letter lines; from the
   twenty-first character of the first paragraph, PageDown lands on a one-letter line, and a second
   one lands past the run at the twenty-first character again
+- Two hundred paragraphs, a caret in the third, and a second PageDown that arrives before the
+  first has landed, as a held key's repeat can: the caret goes two screens down
 - A two-column table of sixty rows, a caret in the second cell of its third row, PageDown: the
   caret goes a screen of rows down, in the same column
 
@@ -36,3 +38,6 @@ step counts in one-line paragraphs: it lands within one paragraph of a screen's 
 - PageDown in a Firefox table cell did nothing: the step read the line nearest its target off the
   whole table, whose rows merge into one tall line there, and every table row started outside the
   table, in a one-column table.
+- A PageDown that arrived before the one before it had landed did nothing: the step read the caret
+  in the block the key was sent to, which the first step had just left, and every row waited for
+  each press to land before the next.

@@ -10,10 +10,11 @@ import type { CaretLanding } from './caret-landing';
 import {
 	readNativeCaretInBlock,
 	readNativeSelection,
+	readDomPoint,
 	applyCollapsedCaret,
 	applySingleBlockRange
 } from './native-bridge';
-import { rawOffsetAt, type CaretWriter } from '../caret/widget-offset';
+import type { CaretWriter } from '../caret/widget-offset';
 import { pageTarget, type PageStepContext } from './page-step';
 import { lineEdgeOffset } from '../caret/visual-lines';
 import { offsetFromViewportPoint } from '../caret/point-offset';
@@ -192,7 +193,7 @@ export function extendByPage(
 	path: number[],
 	direction: 'up' | 'down'
 ): Promise<void> {
-	return queuePageStep(ctx, el, path, async (from) => {
+	return queuePageStep(ctx, async (from) => {
 		// Entered before the step's mounts, which can window out the block holding the anchor.
 		if (!enterFromCaret(ctx, el, path)) return;
 		moveFocusTo(ctx, (await pageTarget(ctx, from, direction)) ?? from);
@@ -207,7 +208,7 @@ export function moveByPage(
 	path: number[],
 	direction: 'up' | 'down'
 ): Promise<void> {
-	return queuePageStep(ctx, el, path, async (from) => {
+	return queuePageStep(ctx, async (from) => {
 		const target = (await pageTarget(ctx, from, direction)) ?? from;
 		// The landing forgets the caret memory, and with it the column the next page key aims at.
 		const column = ctx.caretMemory.column();
@@ -222,8 +223,6 @@ export function moveByPage(
  *  may have taken it off screen, or out of the rendered window. */
 function queuePageStep(
 	ctx: PageExtendContext,
-	el: HTMLElement,
-	path: number[],
 	step: (from: SelectionPoint) => Promise<void>
 ): Promise<void> {
 	const run = async () => {
@@ -231,7 +230,7 @@ function queuePageStep(
 		const { selection } = ctx;
 		const from = selection.isCrossBlock
 			? selection.focus && selection.cellLandingFor(selection.focus)
-			: nativeFocusIn(el, path);
+			: nativeFocus(ctx);
 		if (from) await step(from);
 	};
 	const queued = (pageSteps.get(ctx.selection) ?? Promise.resolve()).then(run);
@@ -243,11 +242,11 @@ function queuePageStep(
 	return queued;
 }
 
-/** The browser selection's moving end in `el`, a block the key came to. */
-function nativeFocusIn(el: HTMLElement, path: number[]): SelectionPoint | null {
+/** The browser selection's moving end, in whichever block the step before left it. */
+function nativeFocus(ctx: PageStepContext): SelectionPoint | null {
 	const live = readNativeSelection();
-	if (!live || !el.contains(live.focus.node)) return null;
-	return { path: path.slice(), offset: rawOffsetAt(el, live.focus.node, live.focus.offset) };
+	const root = ctx.getEditorRoot();
+	return live && root && readDomPoint(root, live.focus.node, live.focus.offset);
 }
 
 /** Moves the browser selection's focus inside `el` to raw `raw`, for a key the editor takes over
