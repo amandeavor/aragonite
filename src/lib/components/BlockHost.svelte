@@ -4,7 +4,7 @@
 		resolveBlockSurface,
 		type AmbientPrefix,
 		type BlockComponent,
-		type BlockComponentExports
+		type HostedBlockExports
 	} from '../block-component';
 	import type { NodeView } from '../core/node-views';
 	import { useBlockDecorations } from '../decorations/use-block-decorations.svelte';
@@ -90,7 +90,7 @@
 
 	let hostEl: HTMLElement | null = $state(null);
 	// The one place a block's published interface is resolved; every reader of the ref gets it.
-	let instance: BlockComponentExports | undefined = $state();
+	let instance: HostedBlockExports | undefined = $state();
 	let ref: BlockComponent | undefined = $derived(resolveBlockSurface(instance));
 
 	// Both halves count: a hand-written container can lack `measurePartialRects`, or have children

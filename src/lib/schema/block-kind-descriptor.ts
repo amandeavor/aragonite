@@ -17,7 +17,7 @@ import type { ClosureBlock } from './closure';
 import { registeredChord, type KeyBinding } from './keybindings';
 import type { HeightEstimateEnv } from './height-estimates';
 import { rejectIncoherentPairs } from './registration-pairs';
-import { isBlockView, type BlockView } from './block-view';
+import { blockViewForm, domViewSpec, isBlockView, type BlockView } from './block-view';
 import type { PluginActivation } from './plugin-activation';
 import type { RegistryRecord } from './plugin-registry';
 import type { BlockOpener } from './block-openers';
@@ -448,7 +448,8 @@ export type BuiltinRegistration = (WholeBlockRegistration | CaretBlockRegistrati
  * the kind. `isContainer` is derived (`container !== undefined`), never declared.
  */
 export type BlockKindRegistration = BuiltinRegistration & {
-	/** What draws the kind: `svelteBlockView(Component)` from `/svelte`, or `textBlockView()`. */
+	/** What draws the kind: `defineBlockView(spec)`, `textBlockView()`, or `svelteBlockView(Component)`
+	 *  from `/svelte`. */
 	view: BlockView;
 };
 
@@ -493,11 +494,25 @@ export function registerBlockKind(kind: AnyBlockKind, registration: BlockKindReg
 	const { view, ...fields } = registration;
 	if (!isBlockView(view)) {
 		throw new TypeError(
-			`registerBlockKind: "${kind}" needs a \`view\`, such as \`svelteBlockView(Component)\` from ` +
-				'`@voithos-labs/aragonite/svelte`, or `textBlockView()` from `@voithos-labs/aragonite/plugin`'
+			`registerBlockKind: "${kind}" needs a \`view\`, such as \`defineBlockView(spec)\` or ` +
+				'`textBlockView()` from `@voithos-labs/aragonite/plugin`, or `svelteBlockView(Component)` ' +
+				'from `@voithos-labs/aragonite/svelte`'
 		);
 	}
+	rejectSurfaceMismatch(kind, view, fields.container !== undefined);
 	storeKind('registerBlockKind', kind, fields, view);
+}
+
+/** A DOM view builds child blocks exactly when its kind declares a container group. */
+function rejectSurfaceMismatch(kind: AnyBlockKind, view: BlockView, isContainer: boolean): void {
+	if (blockViewForm(view) !== 'dom') return;
+	const { surface } = domViewSpec(view);
+	if ((surface === 'container') === isContainer) return;
+	throw new TypeError(
+		`registerBlockKind: "${kind}" ${isContainer ? 'is a container' : 'has no container group'}, ` +
+			`but its view's surface is '${surface}': a container kind takes ` +
+			"`defineBlockView({ surface: 'container', ... })`, any other kind 'none' or 'leaf'"
+	);
 }
 
 /** `registerBlockKind` for a built-in, whose view `attachBuiltinViews` adds from the component

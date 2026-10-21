@@ -4,7 +4,12 @@
  * resolves the table wrapper and descends into the cell DOM.
  */
 
-import { BLOCK_CONTENT_SELECTOR, TABLE_CELL_SELECTOR } from './block-content-selector';
+import {
+	BLOCK_CONTENT_SELECTOR,
+	TABLE_CELL_SELECTOR,
+	VIEW_TEXT_ATTR,
+	VIEW_TEXT_HOST_ATTR
+} from './block-content-selector';
 import { widgetElByStart } from '../core/inline/inline-widgets';
 
 /** A block's content element by its path, or null when that block isn't mounted. */
@@ -12,7 +17,7 @@ export type BlockElLookup = (path: number[]) => HTMLElement | null;
 
 export function blockContentElAt(root: HTMLElement, path: number[]): HTMLElement | null {
 	const wrapper = root.querySelector(`[data-block-path='${JSON.stringify(path)}']`);
-	if (wrapper) return wrapper.querySelector(BLOCK_CONTENT_SELECTOR) as HTMLElement | null;
+	if (wrapper) return viewTextOrSelf(wrapper.querySelector<HTMLElement>(BLOCK_CONTENT_SELECTOR));
 	if (path.length < 3) return null;
 	const tablePath = path.slice(0, -2);
 	const rowIdx = path[path.length - 2];
@@ -32,4 +37,10 @@ export function blockContentElAt(root: HTMLElement, path: number[]): HTMLElement
 export function widgetElAt(root: HTMLElement, path: number[], start: number): HTMLElement | null {
 	const block = blockContentElAt(root, path);
 	return block ? widgetElByStart(block, start) : null;
+}
+
+// A DOM leaf view's text element, which a view may wrap in chrome of its own.
+function viewTextOrSelf(content: HTMLElement | null): HTMLElement | null {
+	if (!content?.hasAttribute(VIEW_TEXT_HOST_ATTR)) return content;
+	return content.querySelector<HTMLElement>(`[${VIEW_TEXT_ATTR}]`) ?? content;
 }

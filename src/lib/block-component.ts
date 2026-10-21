@@ -395,15 +395,21 @@ export type BlockComponentExports =
 	| { readonly blockApi: EditableLeafBlockApi }
 	| { readonly containerApi: ContainerBlockComponent };
 
+/** What a component BlockHost renders publishes: a block component's exports, or a DOM view
+ *  host's `viewRef`, whose ref arrives once the view has mounted. */
+export type HostedBlockExports =
+	BlockComponentExports | { readonly viewRef: () => BlockComponent | undefined };
+
 /**
  * The `BlockComponent` behind a published instance: the one place that knows a factory's object
- * sits under `blockApi` or `containerApi`. Returns the object it was handed, never a wrapper,
- * because `publishRefSlot` compares identity and a new object would overwrite the stored one.
+ * sits under `blockApi` or `containerApi`, and a DOM view's behind `viewRef`. Returns the object it
+ * was handed, never a wrapper, because `publishRefSlot` compares identity.
  */
 export function resolveBlockSurface(
-	exports: BlockComponentExports | undefined
+	exports: HostedBlockExports | undefined
 ): BlockComponent | undefined {
 	if (!exports) return undefined;
+	if ('viewRef' in exports) return exports.viewRef();
 	if ('blockApi' in exports) return exports.blockApi;
 	return 'containerApi' in exports ? exports.containerApi : exports;
 }
