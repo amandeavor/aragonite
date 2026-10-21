@@ -142,6 +142,8 @@ describe('holdsOwnText: whose text a hit carries', () => {
 		host.setAttribute('data-block-path', path);
 		const surface = host.appendChild(document.createElement('div'));
 		surface.setAttribute('contenteditable', editable);
+		// Every block's text keeps a tab index; reading mode takes all but one out of the order.
+		surface.tabIndex = -1;
 		return surface;
 	}
 
@@ -161,4 +163,14 @@ describe('holdsOwnText: whose text a hit carries', () => {
 			expect(holdsOwnText({ path: [4], host, charSurface })).toBe(false);
 		});
 	}
+
+	// A list's bullet comes before its items' text and isn't editable in any mode.
+	it("a marker in the block's own box isn't its text", () => {
+		const host = document.createElement('div');
+		host.setAttribute('data-block-path', '[3]');
+		const charSurface = host.appendChild(document.createElement('span'));
+		charSurface.setAttribute('contenteditable', 'false');
+
+		expect(holdsOwnText({ path: [3], host, charSurface })).toBe(false);
+	});
 });

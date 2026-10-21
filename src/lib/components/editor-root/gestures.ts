@@ -11,7 +11,7 @@ import type { CaretLanding } from '../../selection/caret-landing';
 import type { UserScrollport } from '../../windowing/scroll-ancestors';
 import type { DocumentGetter } from '../../editor-keys';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
-import { TEXT_SURFACE_SELECTOR } from '../../caret/block-content-selector';
+import { BLOCK_TEXT_SELECTOR } from '../../caret/block-content-selector';
 import {
 	placePaddingPress,
 	rangeCoversPoint,
@@ -79,10 +79,10 @@ export interface RootGestures {
 	rangeAtContextPress(root: HTMLElement): boolean;
 }
 
-// Empty space and a block's non-editable parts (a rendered equation, a diagram) grow no native
-// selection, so the editor runs the drag from there; read-only text with a tab stop is text.
+// Empty space and a block's non-editable parts (a rendered equation, a diagram, a whole-block
+// input proxy) grow no native selection, so the editor runs the drag from there.
 const NOT_A_DRAG_START =
-	`${TEXT_SURFACE_SELECTOR}, [contenteditable="false"][tabindex], ` +
+	`${BLOCK_TEXT_SELECTOR}, ` +
 	'button:not(.editor-tail-row), input, textarea, select, a, summary, [role="checkbox"], ' +
 	'.code-rail, .table-add-zone, .md-menu, .block-drag-handle';
 
