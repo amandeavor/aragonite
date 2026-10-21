@@ -1,6 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
-import { openImageField } from './helpers';
+import { openImageField, waitForFirstImageLoaded } from './helpers';
 
 test.describe('image popover portal isolation', () => {
 	let editor: EditorPage;
@@ -46,9 +46,7 @@ test.describe('image popover portal isolation', () => {
 	test('opening popover does not shift the widget or the block below it', async ({ page }) => {
 		await editor.loadContent('intro\n\n![cat|400x200](/test-fixtures/sample.png)\n\nfollowing.\n');
 		const widget = page.locator('[data-image-widget]').first();
-		await page.waitForFunction(
-			() => !!(document.querySelector('[data-image-widget] img') as HTMLImageElement)?.complete
-		);
+		await waitForFirstImageLoaded(page);
 		const widgetTopBefore = (await widget.boundingBox())!.y;
 		const widgetHeightBefore = (await widget.boundingBox())!.height;
 		const belowYBefore = (await editor.getBlock(2).boundingBox())!.y;

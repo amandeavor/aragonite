@@ -9,30 +9,8 @@ async function selectAndStartCrop(page: import('@playwright/test').Page) {
 	const widget = page.locator('[data-image-widget]').first();
 	await widget.click();
 	await page.locator('.md-image-properties').getByRole('button', { name: 'Crop image' }).click();
-	try {
-		await expect(page.locator('.md-image-crop-surface')).toBeVisible();
-	} catch (err) {
-		// A crop that never starts has only reddened on a CI WebKit run, so the red carries the state.
-		throw new Error(`the crop never started; the page held ${await cropStartState(page)}`, {
-			cause: err
-		});
-	}
+	await expect(page.locator('.md-image-crop-surface')).toBeVisible();
 	return widget;
-}
-
-function cropStartState(page: import('@playwright/test').Page): Promise<string> {
-	return page.evaluate(() => {
-		const img = document.querySelector('[data-image-widget] img') as HTMLImageElement | null;
-		const active = document.activeElement;
-		return JSON.stringify({
-			active: active && `${active.tagName}.${active.className}`,
-			toolbar: !!document.querySelector('.md-image-properties'),
-			widgets: document.querySelectorAll('[data-image-widget]').length,
-			img: img && { complete: img.complete, naturalWidth: img.naturalWidth },
-			selection: (window as any).__test.getSelection(),
-			source: (window as any).__test.getSource()
-		});
-	});
 }
 
 // The crop is limestone's cover crop on an inline image: the toolbar's crop button makes the

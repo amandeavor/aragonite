@@ -2,6 +2,7 @@ import { test, expect } from '../../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../../editor-page';
 import { deferImage } from '../../../page-probes';
+import { waitForFirstImageLoaded } from './helpers';
 
 // A short fixed viewport makes the editor a real (capped) scroll container; the e2e-blocks project
 // sets none.
@@ -130,14 +131,7 @@ async function expectNoShiftOnImageLoad(
 	expect(refBefore).not.toBeNull();
 
 	releaseImage();
-	await page.waitForFunction(
-		() => {
-			const img = document.querySelector('[data-image-widget] img') as HTMLImageElement | null;
-			return !!img && img.complete && img.naturalWidth > 0;
-		},
-		null,
-		{ timeout: 5000, polling: 16 }
-	);
+	await waitForFirstImageLoaded(page);
 	await editor.waitForRenderFlush();
 	await editor.waitForResizeObserverFlush();
 	await editor.waitForRenderFlush();

@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { enterPresentationMode } from '../../presentation/helpers';
+import { waitForFirstImageLoaded } from './helpers';
 
 const STANDALONE_IMAGE_DOC =
 	'before paragraph.\n\n![pic](/test-fixtures/sample.png)\n\nafter paragraph.\n';
@@ -104,9 +105,7 @@ test.describe('live mode: horizontal arrows onto a picture inside a link', () =>
 				'live',
 				'text\n\n[![cat|120x80](/test-fixtures/sample.png)](https://x)\n\nend\n'
 			);
-			await page.waitForFunction(
-				() => !!(document.querySelector('[data-image-widget] img') as HTMLImageElement)?.complete
-			);
+			await waitForFirstImageLoaded(page);
 			await editor.focusBlockAtPath([from], at);
 
 			await page.keyboard.press(key);

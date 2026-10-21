@@ -5,25 +5,36 @@ import { expect } from '../../../fixtures';
 
 // Shared image-widget reads for the image block e2e specs.
 
-// Resolve once the first widget's `<img>` has decoded: a point worked out from the 0x0 placeholder
-// box lands inside the widget afterwards, and a crop starts only over a decoded picture.
-export async function waitForFirstImageLoaded(page: Page): Promise<void> {
-	const state = await page.waitForFunction(() => {
-		const img = document.querySelector<HTMLImageElement>('[data-image-widget] img');
-		if (!img?.complete) return false;
-		return img.naturalWidth > 0 ? 'decoded' : `broken: ${img.src}`;
-	});
-	// A broken image never decodes, so it fails here, named, rather than at the test timeout.
-	expect(await state.jsonValue(), 'the first image widget decoded').toBe('decoded');
+const WIDGET_IMAGE = '[data-image-widget] img';
+
+/** At least one `<img>` matches `images` and each has decoded, or the spec fails naming it;
+ *  `complete` and `naturalWidth` also pass for a picture whose pixels never decode. */
+export async function waitForImagesDecoded(images: Locator): Promise<void> {
+	await images.first().waitFor({ state: 'attached' });
+	const undecodable = await images.evaluateAll((imgs) =>
+		Promise.all(
+			(imgs as HTMLImageElement[]).map((img) =>
+				img.decode().then(
+					() => null,
+					(e: Error) => `${img.currentSrc || img.src}: ${e.name}`
+				)
+			)
+		).then((outcomes) => outcomes.filter((outcome) => outcome !== null))
+	);
+	expect(undecodable, 'every image decoded').toEqual([]);
 }
 
-// Every widget decoded (`complete` alone holds for a broken image too): a spec staging one image's reflow against another needs both loaded first.
+// The first widget's picture: a point worked out from the 0x0 placeholder box lands inside the
+// widget afterwards, and a crop starts only over a decoded picture.
+export function waitForFirstImageLoaded(page: Page): Promise<void> {
+	return waitForImagesDecoded(page.locator(WIDGET_IMAGE).first());
+}
+
+// Every widget's picture, none at all included: a spec staging one image's reflow against another
+// needs both decoded, and a row table can run the same wait over a shape with no picture.
 export async function waitForAllImagesLoaded(page: Page): Promise<void> {
-	await page.waitForFunction(() =>
-		Array.from(document.querySelectorAll<HTMLImageElement>('[data-image-widget] img')).every(
-			(img) => img.complete && img.naturalWidth > 0
-		)
-	);
+	const images = page.locator(WIDGET_IMAGE);
+	if ((await images.count()) > 0) await waitForImagesDecoded(images);
 }
 
 /** The document caret: the native range count and the editor's own read of the selection. */
