@@ -115,3 +115,6 @@ Shift+Backspace is Backspace on every OS, so it takes what Backspace takes (key 
 - A word, line or Shift delete at a block's edge did nothing, and a soft keyboard's did nothing in
   a code block: every edge row pressed the plain key, whose binding runs at keydown, and the soft
   keyboard rows ran in prose only, whose merge was wired by hand.
+- The word chord and Shift+Backspace at a block's edge still did nothing in WebKit once the input
+  ran the plain key: WebKit sends no input for a delete with nothing to take, and the chord rows
+  ran in Chromium until the three-engine gate.

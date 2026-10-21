@@ -192,30 +192,11 @@ export function extendByPage(
 	path: number[],
 	direction: 'up' | 'down'
 ): Promise<void> {
-	const step = (pageSteps.get(ctx.selection) ?? Promise.resolve()).then(() =>
-		stepEndByPage(ctx, el, path, direction)
-	);
-	pageSteps.set(ctx.selection, step);
-	return step;
-}
-
-async function stepEndByPage(
-	ctx: PageExtendContext,
-	el: HTMLElement,
-	path: number[],
-	direction: 'up' | 'down'
-): Promise<void> {
-	const { selection } = ctx;
-	// The step measures from where the end is, which a wheel may have taken off screen.
-	await ctx.caretLanding.showSelectionEnd();
-	const from = selection.isCrossBlock
-		? selection.focus && selection.cellLandingFor(selection.focus)
-		: nativeFocusIn(el, path);
-	if (!from) return;
-	// Entered before the step's mounts, which can window out the block holding the anchor.
-	if (!enterFromCaret(ctx, el, path)) return;
-	const target = await pageTarget(ctx, from, direction);
-	moveFocusTo(ctx, target ?? from);
+	return queuePageStep(ctx, el, path, async (from) => {
+		// Entered before the step's mounts, which can window out the block holding the anchor.
+		if (!enterFromCaret(ctx, el, path)) return;
+		moveFocusTo(ctx, (await pageTarget(ctx, from, direction)) ?? from);
+	});
 }
 
 /** PageUp or PageDown with no Shift: the caret goes a page up or down at its column, and a range
@@ -226,32 +207,40 @@ export function moveByPage(
 	path: number[],
 	direction: 'up' | 'down'
 ): Promise<void> {
-	const step = (pageSteps.get(ctx.selection) ?? Promise.resolve()).then(() =>
-		stepCaretByPage(ctx, el, path, direction)
-	);
-	pageSteps.set(ctx.selection, step);
-	return step;
+	return queuePageStep(ctx, el, path, async (from) => {
+		const target = (await pageTarget(ctx, from, direction)) ?? from;
+		// The landing forgets the caret memory, and with it the column the next page key aims at.
+		const column = ctx.caretMemory.column();
+		ctx.selection.collapse();
+		ctx.caretWriter.clear();
+		await ctx.caretLanding.restore({ anchor: target, focus: target }, { reveal: 'into-view' });
+		if (column !== null) ctx.caretMemory.captureColumn(column);
+	});
 }
 
-async function stepCaretByPage(
+/** Runs `step` from the moving end once the step before it is done, the end shown first: a wheel
+ *  may have taken it off screen, or out of the rendered window. */
+function queuePageStep(
 	ctx: PageExtendContext,
 	el: HTMLElement,
 	path: number[],
-	direction: 'up' | 'down'
+	step: (from: SelectionPoint) => Promise<void>
 ): Promise<void> {
-	const { selection } = ctx;
-	await ctx.caretLanding.showSelectionEnd();
-	const from = selection.isCrossBlock
-		? selection.focus && selection.cellLandingFor(selection.focus)
-		: nativeFocusIn(el, path);
-	if (!from) return;
-	const target = (await pageTarget(ctx, from, direction)) ?? from;
-	// The landing forgets the caret memory, and with it the column the next page key aims at.
-	const column = ctx.caretMemory.column();
-	selection.collapse();
-	ctx.caretWriter.clear();
-	await ctx.caretLanding.restore({ anchor: target, focus: target }, { reveal: 'into-view' });
-	if (column !== null) ctx.caretMemory.captureColumn(column);
+	const run = async () => {
+		await ctx.caretLanding.showSelectionEnd();
+		const { selection } = ctx;
+		const from = selection.isCrossBlock
+			? selection.focus && selection.cellLandingFor(selection.focus)
+			: nativeFocusIn(el, path);
+		if (from) await step(from);
+	};
+	const queued = (pageSteps.get(ctx.selection) ?? Promise.resolve()).then(run);
+	// A step that failed still lets the next one run; its caller hears the failure.
+	pageSteps.set(
+		ctx.selection,
+		queued.catch(() => {})
+	);
+	return queued;
 }
 
 /** The browser selection's moving end in `el`, a block the key came to. */

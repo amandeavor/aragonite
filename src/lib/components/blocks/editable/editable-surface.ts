@@ -91,7 +91,11 @@ import {
 	type CaretWriter,
 	type RawRange
 } from '../../../caret/widget-offset';
-import type { CaretUnitSource, SharedKeydownContext } from '../../../selection/shared-keydown';
+import {
+	caretLandableBounds,
+	type CaretUnitSource,
+	type SharedKeydownContext
+} from '../../../selection/shared-keydown';
 import {
 	isInteractionTraceEnabled,
 	traceCompositionEnd,
@@ -236,7 +240,8 @@ export interface EditableSurfaceDeps {
 	ownPairs?: BlockAutoPairs;
 	/** The editor's reading-mode tab stop, which the element takes its tabindex from. */
 	readingFocus: Pick<ReadingFocus, 'hold'>;
-	/** What the editor shows, for an arrow in a block taller than that with no caret. */
+	/** What the editor shows, for an arrow in a block taller than that with no caret, and where a
+	 *  page key steps to. */
 	scrollOwner: Pick<ScrollOwner, 'port' | 'visibleBand' | 'showRect' | 'pathAt'>;
 
 	// ── The per-block reads `SharedKeydownContext` needs ──────────────────────
@@ -630,10 +635,27 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		deleteKeydown = !e.isComposing && (e.key === 'Backspace' || e.key === 'Delete') ? e : null;
 		try {
 			await deps.handleKeydown(e);
+			runEdgeChord(e);
 		} finally {
 			if (enterKeydown === e) enterKeydown = null;
 		}
 	});
+
+	/** A Backspace or Delete chord the block left alone, at the edge it faces, runs what the plain
+	 *  key binds: an engine may send no input for a delete with nothing to take. */
+	function runEdgeChord(e: KeyboardEvent): void {
+		const key = e.key;
+		const el = deps.getEl();
+		if (deleteKeydown !== e || e.defaultPrevented || !el) return;
+		if ((key !== 'Backspace' && key !== 'Delete') || eventToChord(e) === key) return;
+		const caret = deps.backend.getRaw();
+		if (caret === null || deps.backend.getRawSelection() !== null) return;
+		const bounds = caretLandableBounds(sharedCtx, el);
+		if (key === 'Backspace' ? caret > bounds.start : caret < bounds.end) return;
+		// Prevented whatever the binding does: the browser's own delete there takes a hidden marker.
+		e.preventDefault();
+		deleteReads.runPlainKey?.(key);
+	}
 
 	/** A break input that arrives while its Enter's handler still runs is that key's default, which
 	 *  the handler replaces, so it writes nothing (Playwright's Firefox fires it before the await). */
