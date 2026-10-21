@@ -108,17 +108,20 @@ That's the caret placed. Now the keyboard.
 
 ## 5. The next key, at an edge
 
-`src/lib/components/blocks/text/edge-policy-dispatch.ts` :: `createEdgePolicyDispatch`. A plain key (a character, Backspace, Delete) while the caret sits against something that isn't plain text: an atomic widget, a view-only decoration, the container's marker prefix. Native contenteditable would mutate the bytes those stand for, so the dispatch decides who owns the key instead. It's a declared list of five handlers in rank order, and the first one to claim the key wins:
+`src/lib/components/blocks/text/edge-policy-dispatch.ts` :: `createEdgePolicyDispatch`. A plain key (a character, Backspace, Delete) while the caret sits against something that isn't plain text: an atomic widget, a view-only decoration, the container's marker prefix. Native contenteditable would mutate the bytes those stand for, so the dispatch decides who owns the key instead. It's a declared list of six handlers in rank order, and the first one to claim the key wins:
 
-1. a key aimed at a widget (enter it, select it, or step over it, per the kind's policy),
-2. a reading-mode cut (nothing below runs, since reading writes no bytes),
-3. a decoration widget,
-4. the marker prefix,
-5. the space a container marker re-emits by itself.
+1. a Backspace or Delete facing a widget or a decoration (take it, select it, or show its source, per its policy),
+2. any other key aimed at a widget (enter it, or step over it),
+3. a reading-mode cut (nothing below runs, since reading writes no bytes),
+4. a decoration widget,
+5. the marker prefix,
+6. the space a container marker re-emits by itself.
 
 A key nobody claims falls through to the keymap, and a byte it types is placed in stage 6. Each entry carries its reason in the file, and the order is the contract, so a new family of key is a visible entry there, not an `if` somewhere else.
 
-A Backspace or Delete at a caret that gets past all of that (and every soft keyboard's, which has no key at all) lands in the same file's `deleteAtCaret` at `beforeinput`. It runs the widget and decoration rules again, then the hidden-marker one (live mode takes the content letter, never a marker you can't see), then takes what the delete names: a character, a word, or up to the line's edge (`src/lib/caret/delete-extent.ts`). At the block's first caret position (or its last, for Delete) there's nothing in the line to take, so the delete runs whatever plain Backspace (or Delete) is bound to there, the block's merge unless the host rebound it. That goes for every unit and route: a key's chord (Shift+Backspace, a word or line delete) is decided at its own keydown, in `src/lib/components/blocks/editable/editable-surface.ts` :: `runEdgeChord`, and this step answers what reaches it, a soft keyboard and anything the keydown's edge missed. The browser's own delete never runs at the edge, since it could eat a marker the mode hides.
+A Backspace or Delete at a caret that gets past all of that (and every soft keyboard's, which has no key at all) lands in the same file's `deleteAtCaret` at `beforeinput`. It runs the widget and decoration rules again, then the hidden-marker one (live mode takes the content letter, never a marker you can't see), then takes what the delete names: a character, a word, or up to the line's edge (`src/lib/caret/delete-extent.ts`). At the block's first caret position (or its last, for Delete) there's nothing in the line to take, so the delete runs whatever plain Backspace (or Delete) is bound to there, the block's merge unless the host rebound it. That goes for every unit and route. The browser's own delete never runs at the edge, since it could eat a marker the mode hides.
+
+A chord (Shift+Backspace, a word or line delete) gets the same two answers at its own keydown, since WebKit sometimes sends no input for one: next to a widget it does what the plain key does there, and at the block's edge it runs the plain key's binding (`src/lib/components/blocks/editable/collapsed-delete.ts` :: `decideDeleteChord`). That runs after the keymap, so a host that binds the chord itself still wins. Anything else a chord takes depends on its unit, which only the `beforeinput` names, so it waits for that.
 
 ## 6. Which side of a hidden marker
 
