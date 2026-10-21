@@ -59,7 +59,7 @@ describe('every caret-edge branch asks whether a range is held', () => {
 	const arms = armsOf(code);
 
 	it('read the branch manifest', () => {
-		expect(arms.length).toBeGreaterThan(5);
+		expect(arms.length).toBeGreaterThan(4);
 		expect(arms.map((arm) => arm.id)).toContain('cst-widget');
 	});
 

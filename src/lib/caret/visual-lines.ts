@@ -7,6 +7,7 @@
 import { domDescendants } from './dom-walk';
 import { FALLBACK_LINE_HEIGHT } from '../windowing/typography-estimates';
 import { caretAnchorAfter, isBlockLineText, rawRangeToDomRange } from './widget-offset';
+import { offsetFromViewportPoint } from './point-offset';
 
 // Fraction of a line height within which the cursor Y counts as the boundary line; under one
 // line, so sub/superscript or inline-image jitter doesn't read as a different line.
@@ -91,6 +92,18 @@ export function lineHeightOf(el: HTMLElement): number {
  *  nothing: a point in a line's leading, or below the last line, reads that line. */
 export function lineEndNearest(el: HTMLElement, y: number): number | null {
 	return lineBoxNearest(el, y)?.right ?? null;
+}
+
+/** The raw offset at the `side` edge of the visual line raw `raw` sits on in `el`, measured the way
+ *  a click resolves its point; null where nothing is laid out. */
+export function lineEdgeOffset(el: HTMLElement, raw: number, side: 'start' | 'end'): number | null {
+	const caret = caretRectAtRaw(el, raw);
+	if (!caret) return null;
+	const y = caret.top + caret.height / 2;
+	const line = lineBoxNearest(el, y);
+	if (!line) return null;
+	// Half a pixel inside the line's box, so the point resolves to its first or last offset.
+	return offsetFromViewportPoint(el, side === 'start' ? line.left + 0.5 : line.right - 0.5, y);
 }
 
 /** The box of what `el` draws on the visual line nearest `y`, read as `lineEndNearest` reads it. */

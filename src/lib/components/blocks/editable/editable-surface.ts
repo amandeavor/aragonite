@@ -96,7 +96,12 @@ import {
 import { assertInvariant } from '../../../assert';
 import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
 import { checkDeleteDecided } from '../../../invariants/collapsed-delete';
-import type { DeleteDirection, DeleteVerdict } from '../../../caret/delete-extent';
+import type {
+	DeleteAnswer,
+	DeleteDirection,
+	DeleteIntent,
+	DeleteVerdict
+} from '../../../caret/delete-extent';
 import { decideCollapsedDelete, type CollapsedDeleteReads } from './collapsed-delete';
 import type { Reading } from '../../../schema/reading';
 import { createPlaceholderHint, type PlaceholderPolicy } from '../placeholder-hint.svelte';
@@ -270,9 +275,14 @@ export interface EditableSurfaceDeps {
 	localHistory?: (e: InputEvent) => boolean;
 	/** The block's own beforeinput handling, run after the shared step, which it must not await. */
 	handleBeforeInput?: (e: InputEvent) => void;
-	/** Takes what a collapsed Backspace or Delete at raw `caret` aims at, through the block's own
-	 *  text; false to leave it to the browser. Omitted where the browser's delete is read back. */
-	deleteAtCaret?: (caret: number, direction: DeleteDirection) => boolean;
+	/** Takes what a collapsed delete at raw `caret` aims at, through the block's own text. Omitted
+	 *  where the browser's delete is read back. */
+	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
+	/** The merge the block's key runs at its edge, which a soft keyboard's delete there runs too. */
+	joinAtEdge?: (direction: DeleteDirection) => void;
+	/** The block's own handling of a delete the editor left to the browser (a range, a soft
+	 *  keyboard's wider edit, one `deleteAtCaret` declined), run before the browser's would. */
+	handleDeclinedDelete?: (e: InputEvent) => void;
 }
 
 export interface EditableSurface {
@@ -590,17 +600,18 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		composing: deps.getComposing,
 		caret: () => deps.backend.getRaw(),
 		hasRange: () => deps.backend.getRawSelection() !== null,
-		text: () => trimTrailingLineEnding(deps.getNode().raw),
+		text: deps.readText,
 		targetRange: (e) => {
 			const target = typeof e.getTargetRanges === 'function' ? e.getTargetRanges()[0] : undefined;
 			return target ? deps.backend.rawRangeOf(target) : null;
 		},
 		deleteAtCaret: deps.deleteAtCaret
-			? (caret, direction) => {
+			? (caret, intent) => {
 					deps.inputPrelude?.();
-					return deps.deleteAtCaret!(caret, direction);
+					return deps.deleteAtCaret!(caret, intent);
 				}
-			: undefined
+			: undefined,
+		joinAtEdge: deps.joinAtEdge
 	};
 
 	// A keydown that writes for itself fires no beforeinput, so the caret is read here too.
@@ -647,6 +658,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		deps.handleBeforeInput?.(e);
 		if (e.defaultPrevented) return;
 		deleteVerdict = decideCollapsedDelete(e, keyed, deleteReads);
+		if (deleteVerdict && !deleteVerdict.decided) deps.handleDeclinedDelete?.(e);
 	}
 
 	/** The browser's own Undo and Redo are the editor's, and a character typed over a range across

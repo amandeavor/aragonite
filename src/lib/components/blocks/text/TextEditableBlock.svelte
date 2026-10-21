@@ -246,8 +246,10 @@
 		},
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
-		deleteAtCaret: (caret, direction) =>
-			takeBackOpenLine(pendingBreakKeyDeps) || edgeDispatch.deleteAtCaret(caret, direction),
+		deleteAtCaret: (caret, intent) =>
+			takeBackOpenLine(pendingBreakKeyDeps) ? 'taken' : edgeDispatch.deleteAtCaret(caret, intent),
+		joinAtEdge: (direction) =>
+			void runCommand(direction === 'backward' ? 'block.mergePrev' : 'block.mergeNext'),
 		// After a shown source is written: until then the selected text lives in the DOM only.
 		removeSelection: (range) =>
 			new Promise<ContentWrite>((written) =>

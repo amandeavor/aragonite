@@ -537,9 +537,9 @@ the signal would run after the stop; the recorder warns when one does. `debug/in
 `input-recorder.test.ts`.
 
 **G1.117 · A CRLF pair stays whole** (`line-ending-pairs`). WebKit and Firefox stop a caret between
-a line's `\r` and `\n` and delete one alone. The DOM-to-raw read rounds a position inside a pair to
-before it (`domTextOffsetAtNode`), the input read-back edits the pair as one character
-(`keepLineEndingPairs`), and `canonicalizeCaret` moves a caret inside one before it. Any other write
+a line's `\r` and `\n`. The DOM-to-raw read rounds a position inside a pair to before it
+(`domTextOffsetAtNode`), the editor's delete takes a pair whole, and the read-back moves an edit
+inside one before it (`keepLineEndingPairs`), as `canonicalizeCaret` does a caret. Any other write
 (a tree op, a plugin rule) warns after its commit or in-place keystroke if a pair went while a lone
 `\r` or `\n` came. `checkLineEndingPairsKept` · `line-ending-pairs.test.ts`.
 
@@ -583,11 +583,11 @@ click elsewhere mid-scroll passes).
 `checkReadingLandingLeavesNoCaret` · `caret-landing.test.ts`, `reading-jump-focus.spec.ts`.
 
 **G1.132 · The editor's delete runs, not the browser's** (`collapsed-delete-decided`). A collapsed
-Backspace or Delete in prose or a table cell is written by the editor at `beforeinput`
+Backspace or Delete in any editable block is written by the editor at `beforeinput`
 (`components/blocks/editable/collapsed-delete.ts`), so every engine takes the same bytes. Dev fails
 the `input` after one unless its `beforeinput` was declined for a named reason (a composition, a
-range, a soft keyboard's wider delete, a surface not decided yet). `checkDeleteDecided` ·
-`collapsed-delete.test.ts`.
+range, a soft keyboard's wider delete, a shown widget source).
+`checkDeleteDecided` · `collapsed-delete.test.ts`.
 
 **G1.133 · Reading mode has one block stop** (`reading-tab-stops`). In reading mode Tab is the
 page's focus walk, so the editor keeps one block in it, the one whose own element last took focus

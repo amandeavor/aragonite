@@ -195,6 +195,7 @@ unguarded.
 | G4.230 | Editor chrome runs no undo or redo of its own; the root answers them there                   | L       |
 | G4.231 | A right-click menu listens for `contextmenu` only where it is declared                       | L       |
 | G4.232 | An e2e spec splits undo steps with `endTypingBatch`, never a fixed wait                      | L       |
+| G4.234 | Delete input types live in `delete-extent.ts`; blocks hear `beforeinput` via their surface   | L       |
 | G4.235 | In reading mode the page owns Tab: no block reads the key by hand or sets its own tab stop   | L       |
 | G4.237 | A test never navigates a page its `beforeEach` already navigated                             | L       |
 
@@ -1332,6 +1333,12 @@ holds it (`e2e/goto-ready.ts`, through `e2e/typing-batch.ts`), and a spec ends a
 A `waitForTimeout` within three lines of an undo, or on a line naming undo grouping, fails, and so
 does a reach for the real pause or the page handle outside `e2e/typing-batch.ts` and `tests/undo-typing-pause.spec.ts`.
 `e2e/lint/e2e-drivers.test.ts`.
+
+**G4.234 · One list of which deletes the editor writes.** `caret/delete-extent.ts` names every
+delete input type and what each takes, so one spelled out anywhere else (a string, a
+`startsWith('delete')`, a regex) fails: ask `decidedDelete`, `isDeleteInput` or `isMoveDelete`. A
+`beforeinput` binding other than `editableSurface.onBeforeInput`, whose last step writes the delete,
+fails too unless it's listed with why it writes no block's text. `lint/file-rules.test.ts`.
 
 **G4.235 · Reading mode leaves Tab to the page** (`reading-keyboard-sites`). The keymaps' Tab chords
 are declined at the command dispatcher in reading mode, so a keydown that compares the Tab key by

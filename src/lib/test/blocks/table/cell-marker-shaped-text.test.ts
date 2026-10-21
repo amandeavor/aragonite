@@ -39,8 +39,16 @@ describe('the caret-edge delete still rewrites a cell whose text opens like a ma
 		const el = cellAt(mounted, 0, 0);
 		placeCaret(el, cell.length - 2);
 
+		// The key's keydown passes, so its delete arrives at `beforeinput`.
 		el.dispatchEvent(
 			new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
+		);
+		el.dispatchEvent(
+			new InputEvent('beforeinput', {
+				inputType: 'deleteContentBackward',
+				bubbles: true,
+				cancelable: true
+			})
 		);
 		await mounted.settle();
 

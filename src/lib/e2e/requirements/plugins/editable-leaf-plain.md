@@ -46,5 +46,7 @@ leaf gets the rule without wiring anything itself.
 
 ## Edge cases
 
+- Backspace after a ZWJ family typed at the memo's end takes the family whole, by the key and by
+  a soft keyboard's `beforeinput` alone, and the next letter lands where the family was
 - Undo batches like prose: a burst of typed characters undoes in one step, back to the text as
   it was before the typing

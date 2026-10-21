@@ -8,7 +8,7 @@ The stages, in the order they fire:
 2. [Which block, and where in it](#2-which-block-and-where-in-it): a point becomes a block and an offset
 3. [The one way in](#3-the-one-way-in): the one place a caret gets written
 4. [The snap](#4-the-snap): fixing the browser's caret beside a widget
-5. [The next key, at an edge](#5-the-next-key-at-an-edge): the seven edge handlers, ranked
+5. [The next key, at an edge](#5-the-next-key-at-an-edge): the five edge handlers, ranked
 6. [Which side of a hidden marker](#6-which-side-of-a-hidden-marker): where a typed byte goes when the markers paint nothing
 7. [Leaving the block](#7-leaving-the-block): the sticky column
 8. [The gap between blocks](#8-the-gap-between-blocks): a caret between two blocks, where neither can hold one
@@ -108,17 +108,17 @@ That's the caret placed. Now the keyboard.
 
 ## 5. The next key, at an edge
 
-`src/lib/components/blocks/text/edge-policy-dispatch.ts` :: `createEdgePolicyDispatch`. A plain key (a character, Backspace, Delete) while the caret sits against something that isn't plain text: an atomic widget, a view-only decoration, the container's marker prefix, a marker run that paints nothing. Native contenteditable would mutate the bytes those stand for, so the dispatch decides who owns the key instead. It's a declared list of seven handlers in rank order, and the first one to claim the key wins:
+`src/lib/components/blocks/text/edge-policy-dispatch.ts` :: `createEdgePolicyDispatch`. A plain key (a character, Backspace, Delete) while the caret sits against something that isn't plain text: an atomic widget, a view-only decoration, the container's marker prefix. Native contenteditable would mutate the bytes those stand for, so the dispatch decides who owns the key instead. It's a declared list of five handlers in rank order, and the first one to claim the key wins:
 
-1. a pending mark (a `Mod+B` with nothing selected promised that the next byte gets bold),
-2. a key aimed at a widget (enter it, select it, or step over it, per the kind's policy),
-3. a reading-mode cut (nothing below runs, since reading writes no bytes),
-4. a decoration widget,
-5. the marker prefix,
-6. a delete beside an unpainted delimiter (takes content, never a marker),
-7. the space a container marker re-emits by itself.
+1. a key aimed at a widget (enter it, select it, or step over it, per the kind's policy),
+2. a reading-mode cut (nothing below runs, since reading writes no bytes),
+3. a decoration widget,
+4. the marker prefix,
+5. the space a container marker re-emits by itself.
 
 A key nobody claims falls through to the keymap, and a byte it types is placed in stage 6. Each entry carries its reason in the file, and the order is the contract, so a new family of key is a visible entry there, not an `if` somewhere else.
+
+A Backspace or Delete at a caret that gets past all of that (and every soft keyboard's, which has no key at all) lands in the same file's `deleteAtCaret` at `beforeinput`. It runs the widget and decoration rules again, then the hidden-marker one (live mode takes the content letter, never a marker you can't see), then takes what the delete names: a character, a word, or up to the line's edge (`src/lib/caret/delete-extent.ts`). At the block's first caret position (or its last, for Delete) there's nothing in the line to take, so a soft keyboard's delete runs the block's merge, the same one the key runs at keydown. A chord that gets there (Shift+Backspace, a word delete) takes nothing, since the browser's own delete could eat a marker it hides.
 
 ## 6. Which side of a hidden marker
 

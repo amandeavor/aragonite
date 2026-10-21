@@ -1,6 +1,8 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { roundTripStable, waitForDoc, activeBlockPath } from './helpers';
 import { MemoPage } from './memo-helpers';
+import { insertText } from '../../insert-text';
 import { edgeKey, extendKey } from '../../platform-keys';
 
 /**
@@ -9,6 +11,21 @@ import { edgeKey, extendKey } from '../../platform-keys';
  * text block has, through the public factory alone: typing, moving the caret, undo batching,
  * cross-block selection and the clipboard.
  */
+
+const FAMILY = String.fromCodePoint(0x1f468, 0x200d, 0x1f469, 0x200d, 0x1f467);
+
+/** A soft keyboard's Backspace: the `beforeinput` alone, no keydown. */
+async function sendKeylessBackspace(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		document.activeElement!.dispatchEvent(
+			new InputEvent('beforeinput', {
+				inputType: 'deleteContentBackward',
+				bubbles: true,
+				cancelable: true
+			})
+		);
+	});
+}
 
 test.describe('plain-mode editable leaf: the %% memo kind', () => {
 	let editor: MemoPage;
@@ -52,6 +69,22 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 		await editor.bridge.waitForSourceNotContains('abc');
 		expect(await editor.bridge.getSource()).toContain('%% memo text');
 	});
+
+	// The editor writes the delete, so a soft keyboard's (the `beforeinput` alone) takes what the
+	// key takes.
+	for (const route of ['key', 'soft keyboard'] as const) {
+		test(`Backspace by ${route} takes an emoji whole`, async ({ page }) => {
+			await editor.memo.click();
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await insertText(page, FAMILY);
+			await editor.bridge.waitForSourceContains(`%% memo text${FAMILY}`);
+
+			if (route === 'key') await page.keyboard.press('Backspace');
+			else await sendKeylessBackspace(page);
+			await page.keyboard.type('z');
+			await editor.bridge.waitForSourceContains('%% memo textz');
+		});
+	}
 
 	test('a cross-block selection sweeps through the memo', async ({ page }) => {
 		await editor.focusBlockEnd(0);

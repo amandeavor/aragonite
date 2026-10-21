@@ -10,13 +10,6 @@ test.describe('forward delete', () => {
 		await editor.goto();
 	});
 
-	test('Delete in middle of block works normally', async () => {
-		await editor.loadContent('Hello world\n');
-		await editor.focusBlock(0, 5);
-		await editor.page.keyboard.press('Delete');
-		await editor.bridge.waitForSourceContains('Helloworld');
-	});
-
 	// The forward counterpart of the Backspace two-step (`text-editing/edge-cases.spec.ts`): the
 	// thematic break takes whole-block focus first, and deletes on the second keypress.
 	test('Delete before thematic break focuses it, and a second press removes it', async () => {

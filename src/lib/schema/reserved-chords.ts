@@ -11,6 +11,7 @@ import type { KeybindingOverrideMap } from './keybinding-overrides';
 import type { PluginActivation } from './plugin-activation';
 import { kindEnablementFor } from './registry-view';
 import { caretEdgeKey, eventToChord } from './keybindings';
+import { usesMacEditingConventions } from './platform-conventions';
 
 // ── The hardcoded-chord list ─────────────────────────────────────────────────
 
@@ -160,7 +161,7 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		file: 'components/blocks/text/pending-break-keys.ts',
 		chords: [],
 		keys: ['ArrowLeft', 'Backspace', 'Delete'],
-		note: 'A plain Backspace or ArrowLeft ends the pending break and stops there; with a modifier the key ends it and runs as usual.'
+		note: 'A plain Backspace or ArrowLeft, and any Delete, ends the pending break and stops there; Backspace or ArrowLeft with a modifier ends it and runs as usual.'
 	},
 	{
 		file: 'components/blocks/text/widget-interaction.ts',
@@ -365,7 +366,7 @@ export function collectReservedChords(options: ReservedChordOptions): ReadonlySe
 	for (const chord of globallyDisabledChords(options.keybindings)) {
 		if (!HARDCODED_CHORDS.has(chord)) claimed.delete(chord);
 	}
-	if (options.cmdEdgeChords ?? cmdIsCommandKey())
+	if (options.cmdEdgeChords ?? usesMacEditingConventions())
 		for (const chord of CMD_EDGE_CHORDS) claimed.add(chord);
 	return claimed;
 }
@@ -376,11 +377,6 @@ export function chordIsClaimed(event: KeyboardEvent, chords: ReadonlySet<string>
 	const chord = eventToChord(event);
 	if (chord === null) return false;
 	return chords.has(chord) || (CMD_EDGE_CHORDS.has(chord) && caretEdgeKey(event)?.arrow === true);
-}
-
-/** Cmd is the command key on Apple platforms, where Cmd+Arrow is Home and End. */
-function cmdIsCommandKey(): boolean {
-	return typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 }
 
 /** Modifier-carrying, so the fixed-order normal form puts something before the key. */

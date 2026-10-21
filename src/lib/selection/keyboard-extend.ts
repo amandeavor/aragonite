@@ -13,7 +13,7 @@ import {
 	applySingleBlockRange
 } from './native-bridge';
 import type { CaretWriter } from '../caret/widget-offset';
-import { caretRectAtRaw, lineBoxNearest } from '../caret/visual-lines';
+import { lineEdgeOffset } from '../caret/visual-lines';
 import { offsetFromViewportPoint } from '../caret/point-offset';
 import { tableFocusExtension, type ArrowKey } from './table-rect-extend';
 import { cellPoint } from './primitives';
@@ -404,18 +404,6 @@ function lastNonTransparentLeafFrom(
 ): number[] | null {
 	if (!isTransparent(doc, grammar, startPath)) return startPath;
 	return lastNonTransparentLeafBefore(doc, grammar, startPath);
-}
-
-/** The raw offset at the `side` edge of the visual line raw `raw` sits on in `el`, measured the way
- *  a click resolves its point. */
-function lineEdgeOffset(el: HTMLElement, raw: number, side: 'start' | 'end'): number | null {
-	const caret = caretRectAtRaw(el, raw);
-	if (!caret) return null;
-	const y = caret.top + caret.height / 2;
-	const line = lineBoxNearest(el, y);
-	if (!line) return null;
-	// Half a pixel inside the line's box, so the point resolves to its first or last offset.
-	return offsetFromViewportPoint(el, side === 'start' ? line.left + 0.5 : line.right - 0.5, y);
 }
 
 function leafOffsetEnd(doc: Document, path: number[]): number {

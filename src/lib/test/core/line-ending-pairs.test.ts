@@ -32,13 +32,6 @@ describe('keepLineEndingPairs: a native edit never splits a CRLF pair', () => {
 			caretAfter: 3
 		},
 		{
-			name: 'Delete before the pair, which took only the `\\r`, takes the pair',
-			after: 'abc\nAfter',
-			caret: 3,
-			text: 'abcAfter',
-			caretAfter: 3
-		},
-		{
 			name: 'typing over a range ending between the halves keeps the pair',
 			after: 'Z\nAfter',
 			caret: 1,

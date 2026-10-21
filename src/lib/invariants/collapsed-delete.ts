@@ -4,14 +4,14 @@
  * browser's own delete through.
  */
 
-import { decidedDeleteDirection, type DeleteVerdict } from '../caret/delete-extent';
+import { decidedDelete, type DeleteVerdict } from '../caret/delete-extent';
 import type { InvariantViolation } from '../assert';
 
 export function checkDeleteDecided(
 	inputType: string,
 	verdict: DeleteVerdict | null
 ): InvariantViolation | null {
-	if (decidedDeleteDirection(inputType) === null) return null;
+	if (decidedDelete(inputType) === null) return null;
 	if (verdict && !verdict.decided) return null;
 	return {
 		code: verdict ? 'delete-not-prevented' : 'delete-never-decided',

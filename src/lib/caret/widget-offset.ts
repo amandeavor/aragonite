@@ -674,6 +674,38 @@ export function maskedWalkText(container: ParentNode): string {
 	return out;
 }
 
+/** A block's text as the screen shows it, each character with the raw span it stands for. */
+export interface VisibleText {
+	text: string;
+	rawStart: number[];
+	rawEnd: number[];
+}
+
+/** The text a rule that reads words across hidden markers sees: the marker text the mode hides and
+ *  the container's marker prefix left out, an atomic widget as one U+FFFC. */
+export function visibleWalkText(container: ParentNode): VisibleText {
+	const visible: VisibleText = { text: '', rawStart: [], rawEnd: [] };
+	const prefix = markerPrefixOf(container);
+	const prefixLength = markerPrefixLength(container);
+	const raw = (walk: number) => toClampedRawOffset(asDomTextOffset(walk), prefixLength);
+	for (const seg of walkSegments(container, markerHidingMode(container))) {
+		if (seg.kind === 'widget') {
+			visible.text += '￼';
+			visible.rawStart.push(raw(seg.start));
+			visible.rawEnd.push(raw(seg.start + seg.len));
+			continue;
+		}
+		if (seg.hiddenRoot !== null || prefix?.contains(seg.node)) continue;
+		const data = seg.node.textContent ?? '';
+		visible.text += data;
+		for (let i = 0; i < data.length; i++) {
+			visible.rawStart.push(raw(seg.start + i));
+			visible.rawEnd.push(raw(seg.start + i + 1));
+		}
+	}
+	return visible;
+}
+
 /** Whether any visible text in `container` ends past `from`: a caret there has a box of its own,
  *  which a block of widgets alone never offers. */
 export function holdsTextPast(container: ParentNode, from: DomTextOffset): boolean {

@@ -25,7 +25,7 @@ export function lineEndingPairBeside(
 }
 
 /** `after`, read back from a native edit of `before`, with each pair it cut kept whole; `caret`, in
- *  `after`, follows. A one-character delete takes the pair, any other edge in one moves before it. */
+ *  `after`, follows. An edit's edge inside a pair moves to before it. */
 export function keepLineEndingPairs(
 	before: string,
 	after: string,
@@ -39,13 +39,8 @@ export function keepLineEndingPairs(
 	const inserted = after.slice(edit.start, edit.start + edit.inserted);
 	let start = edit.start;
 	let end = edit.end;
-	if (inserted === '' && end - start === 1) {
-		if (splitsLineEndingPair(before, start)) start--;
-		else end++;
-	} else {
-		if (splitsLineEndingPair(before, start)) start--;
-		if (splitsLineEndingPair(before, end)) end--;
-	}
+	if (splitsLineEndingPair(before, start)) start--;
+	if (splitsLineEndingPair(before, end)) end--;
 	const text = before.slice(0, start) + inserted + before.slice(end);
 	const moved =
 		caret <= start

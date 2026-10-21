@@ -87,6 +87,7 @@ export const SOURCE = {
 
 	// ── Caret geometry and windowing ────────────────────────────────────────
 	coordinateBrands: 'src/lib/caret/coordinate-spaces.ts',
+	deleteExtent: 'src/lib/caret/delete-extent.ts',
 	domWalk: 'src/lib/caret/dom-walk.ts',
 	blockContentSelector: 'src/lib/caret/block-content-selector.ts',
 	blockElLookup: 'src/lib/caret/block-el-lookup.ts',
@@ -239,6 +240,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 
 	// ── Caret geometry and windowing ────────────────────────────────────────
 	coordinateBrands: 'export type RawOffset',
+	deleteExtent: 'export const DECIDED_DELETES',
 	domWalk: 'export function* domDescendants',
 	blockContentSelector: 'export const BLOCK_CONTENT_SELECTOR',
 	blockElLookup: 'export function blockContentElAt',

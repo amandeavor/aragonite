@@ -202,7 +202,7 @@
 		getInlines: () => resolvedInlineContent(node, reading),
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
-		deleteAtCaret: (caret, direction) => edgeDispatch.deleteAtCaret(caret, direction),
+		deleteAtCaret: (caret, intent) => edgeDispatch.deleteAtCaret(caret, intent),
 		removeSelection: (range) =>
 			writeText({
 				...rangeWrite(node, replaceRangeInLeaf(node, range, '', storedAs())),

@@ -1,14 +1,16 @@
 /**
- * Where a collapsed delete inside a line is decided for every editable leaf: the browser's delete
- * is prevented and the block writes the bytes (`caret/delete-extent.ts`), so all engines take the
- * same text. A delete it declines goes on to the browser and is read back on `input`, as before.
+ * Where a collapsed delete is decided for every editable leaf: the browser's delete is prevented
+ * and the block writes the bytes (`caret/delete-extent.ts`), so all engines take the same text. A
+ * delete it declines goes on to the browser and is read back on `input`.
  */
 
 import {
 	characterExtent,
-	decidedDeleteDirection,
+	decidedDelete,
+	type DeleteAnswer,
 	type DeleteDecline,
 	type DeleteDirection,
+	type DeleteIntent,
 	type DeleteVerdict
 } from '../../../caret/delete-extent';
 import type { RawRange } from '../../../caret/widget-offset';
@@ -17,11 +19,14 @@ export interface CollapsedDeleteReads {
 	composing(): boolean;
 	caret(): number | null;
 	hasRange(): boolean;
-	/** The block's displayed text, which the caret counts into. */
+	/** The text the caret counts into, as the block shows it now. */
 	text(): string;
 	/** The raw range the browser reports the input would take, null where it names none. */
 	targetRange(e: InputEvent): RawRange | null;
-	deleteAtCaret?: (caret: number, direction: DeleteDirection) => boolean;
+	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
+	/** The merge the block's key runs at its edge, for a delete that names no key; absent where
+	 *  the block has none. */
+	joinAtEdge?: (direction: DeleteDirection) => void;
 }
 
 /** The verdict on a `beforeinput` the editor decides deletes for; null for every other input.
@@ -31,19 +36,23 @@ export function decideCollapsedDelete(
 	keyed: boolean,
 	reads: CollapsedDeleteReads
 ): DeleteVerdict | null {
-	const direction = decidedDeleteDirection(e.inputType);
-	if (!direction) return null;
+	const intent = decidedDelete(e.inputType);
+	if (!intent) return null;
 	const caret = reads.caret();
-	const decline = declineReason(e, direction, caret, keyed, reads);
+	const decline = declineReason(e, intent, caret, keyed, reads);
 	if (decline || caret === null) return { decided: false, decline: decline ?? 'no-caret' };
-	if (!reads.deleteAtCaret?.(caret, direction)) return { decided: false, decline: 'surface' };
+	const answer = reads.deleteAtCaret?.(caret, intent) ?? 'declined';
+	if (answer === 'declined') return { decided: false, decline: 'surface' };
+	// The browser's own delete at the edge can take a hidden marker, so it never runs. A key reaching
+	// here is a chord the keymap leaves alone, or a merge the host turned down: neither merges.
 	e.preventDefault();
+	if (answer === 'at-edge' && !keyed) reads.joinAtEdge?.(intent.direction);
 	return { decided: true };
 }
 
 function declineReason(
 	e: InputEvent,
-	direction: DeleteDirection,
+	intent: DeleteIntent,
 	caret: number | null,
 	keyed: boolean,
 	reads: CollapsedDeleteReads
@@ -52,7 +61,11 @@ function declineReason(
 	if (!e.cancelable) return 'not-cancelable';
 	if (reads.hasRange()) return 'range';
 	if (caret === null) return 'no-caret';
-	if (!keyed && widerThanCharacter(e, direction, caret, reads)) return 'wide-keyless';
+	// A word or line names its own reach; only a one-character delete can be an autocorrect's.
+	const character = intent.unit === 'character';
+	if (!keyed && character && widerThanCharacter(e, intent.direction, caret, reads)) {
+		return 'wide-keyless';
+	}
 	return null;
 }
 

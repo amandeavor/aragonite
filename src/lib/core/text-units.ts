@@ -21,3 +21,12 @@ export function wordSegmenter(): Intl.Segmenter | null {
 	if (words === undefined) words = create('word');
 	return words;
 }
+
+/** Whether `text` is empty or one user-perceived character, a code point apiece where the platform
+ *  has no segmenter. */
+export function isAtMostOneCharacter(text: string): boolean {
+	if (text.length <= 1) return true;
+	const units = (graphemeSegmenter()?.segment(text) ?? Array.from(text))[Symbol.iterator]();
+	units.next();
+	return units.next().done === true;
+}
