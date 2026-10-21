@@ -1,4 +1,5 @@
 import { expect } from '../../fixtures';
+import type { Page } from '@playwright/test';
 import { PluginsPage } from './helpers';
 import { wholeBlockInput } from '../../whole-block-input';
 
@@ -44,6 +45,13 @@ export class MermaidPage extends PluginsPage {
 			await expect(this.page.locator('.mermaid-error')).toBeVisible({ timeout: RENDER_TIMEOUT });
 			return;
 		}
-		await expect(this.viewport.locator('svg')).toHaveCount(1, { timeout: RENDER_TIMEOUT });
+		await settleDiagrams(this.page);
 	}
+}
+
+/** Waits for the page's `count` diagrams to draw, which grows each block and moves what's below. */
+export async function settleDiagrams(page: Page, count = 1): Promise<void> {
+	await expect(page.locator('.mermaid-viewport svg')).toHaveCount(count, {
+		timeout: RENDER_TIMEOUT
+	});
 }

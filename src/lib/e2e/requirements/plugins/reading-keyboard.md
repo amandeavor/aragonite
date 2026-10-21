@@ -52,3 +52,6 @@ WebKit skips them unless the user's own setting includes them).
 - No row pressed Tab over a range in reading mode, so the range's Tab, taken even when nothing
   indents, trapped focus unseen.
 - No row counted reading mode's tab stops, so every paragraph being one read as fine.
+- The footnote definition row measured its word before the diagram above it had drawn, and
+  nothing waited for the draw, so on a slow engine the block moved down before the click and the
+  click landed on the admonition's padding, which focuses the editor itself.
