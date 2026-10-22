@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      playwright: ${{ steps.playwright.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,6 +45,10 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node scripts/ci-code-changed.mjs "$BASE" >> "$GITHUB_OUTPUT"
+      # The e2e jobs run in Playwright's image for this exact version, which ships every browser
+      # and its OS packages, so no job installs them from the Ubuntu mirror.
+      - id: playwright
+        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
 
   unit:
     runs-on: ubuntu-latest
@@ -78,6 +83,9 @@ jobs:
   e2e:
     needs: changes
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --user 1001
     strategy:
       # One red shard must not cancel the others — a full failure map per run
       # beats re-running to discover the next failure.
@@ -109,6 +117,9 @@ jobs:
   e2e-webkit:
     needs: changes
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --user 1001
     env:
       ENGINE: webkit
     strategy:
@@ -138,6 +149,9 @@ jobs:
   e2e-firefox:
     needs: changes
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --user 1001
     env:
       ENGINE: firefox
     strategy:
