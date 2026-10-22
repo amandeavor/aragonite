@@ -19,7 +19,7 @@
 		"@sveltejs/adapter-node": "^6.0.0",
 		"@sveltejs/kit": "^3.0.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
-		"katex": "^0.17.0",
+		"katex": "^0.19.0",
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"typescript": "^6.0.3",
