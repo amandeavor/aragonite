@@ -16,6 +16,7 @@ import {
 	simpleLeafClosure,
 	fenceRawWrite,
 	fenceShapeOfRaw,
+	fenceReading,
 	matchFenceInfo,
 	scanFence,
 	OPENER_PRIORITIES,
@@ -290,6 +291,7 @@ export function registerMathFence(view: BlockView): void {
 			// it, at a priority of its own just below mermaid's.
 			priority: OPENER_PRIORITIES.fencedCode - 4,
 			interruptsParagraph: (line) => matchMathFence(line) !== null,
+			readingNotFinal: fenceReading,
 			tryOpen(ctx) {
 				const fence = matchMathFence(ctx.line.text);
 				if (!fence) return null;

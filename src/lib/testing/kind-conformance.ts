@@ -54,6 +54,7 @@ import { createHeadlessActions } from './headless-actions';
 import { kitReading } from './kit-reading';
 import { assertParseConverged } from './parse-convergence';
 import { checkWriteRuleKeepsBytes } from '../invariants/write-rule-keeps-bytes';
+import { fenceReading } from '../core/parsers/fence-syntax';
 
 // ── Report + profile ─────────────────────────────────────────────────────────
 
@@ -408,6 +409,13 @@ function execUnfinishedReading({ parsed: ctx }: KindRun): CellOutcome {
 				opener.readingNotFinal?.notFinal(opened)
 		);
 	if (waiting.length === 0) {
+		// A fence that nothing closes takes in every block below, so its opener has to say so.
+		assert(
+			lines.length < 2 || !fenceReading.notFinal(opened),
+			`${ctx.kind}'s fixture is a fence, but its opener declares no readingNotFinal: declare ` +
+				`fenceReading, or an edit that moves where the fence closes leaves the blocks below ` +
+				`paired the old way`
+		);
 		return {
 			status: 'exempt',
 			detail: 'no opener reads the fixture without its last line as waiting on a closer'
