@@ -62,7 +62,7 @@ Some openers read past their first line looking for something and decline when i
 - `notFinal(raw)` gets a block's own bytes: is my reading of these final, or could more lines below change it?
 - `mayClose(line)` gets one line's text: could this be the line that changes it?
 
-A fence is the other shape. It never backs out: left open, it takes in every line below it. But where it closes can still move, and when it does, every fence further down pairs up differently. If your opener claims a fence, declare `readingNotFinal: fenceReading` and you're done. Writing your own reading for something that takes everything below like that? Add `readsOn: true`. Then the editor knows it can't be waiting above anything, so it never walks up for it, and when nothing below closes it, it reads it on to the end.
+A fence is the other shape. It never backs out: left open, it takes in every line below it. But where it closes can still move, and when it does, every fence further down pairs up differently. If your opener claims a fence, declare `readingNotFinal: fenceReading` and you're done. Writing your own reading for something that takes everything below like that? Add `readsOn: true`. Then the editor knows it can't be waiting above anything, so it never walks up for it, and when nothing below closes it, the block reads on to the end.
 
 ```ts
 registerBlockKind(mathBlock, {
