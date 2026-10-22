@@ -100,6 +100,19 @@ test.describe('reading mode: a click keeps no caret', () => {
 		expect(await page.evaluate(() => getSelection()?.toString().trim())).toBe('gamma');
 	});
 
+	test('ArrowLeft over a double-clicked word steps to the block above, leaving no caret', async ({
+		page
+	}) => {
+		skipUnlessSupported(page, 'nativeWordSelect');
+		await loadReading(page, DOC);
+
+		await multiClick(page, await textRunCenter(page, 'para', { path: [1] }), 2);
+		await page.keyboard.press('ArrowLeft');
+
+		await expect.poll(() => focusName(page)).toContain('[0]');
+		expect(await holdsCaret(page)).toBe(false);
+	});
+
 	test('Shift+click after a click selects from the clicked word, focuses its block, and still draws no caret', async ({
 		page
 	}) => {
