@@ -19,7 +19,7 @@ The orientation point for the whole design tree. §§ 1-3 orient any task; after
 | [13](#13-block-identity)                      | Block identity                 | the stable ids that keep rendering and focus pointed at the right block                               |
 | [14](#14-block-kinds)                         | Block kinds                    | every built-in block type and how the editor treats it                                                |
 | [15](#15-extension-points)                    | Extension points               | where plugins attach; a pointer, since the real spec lives elsewhere                                  |
-| [16](#16-standing-directions)                 | Standing directions            | the editor that died before this one, and four watch-outs for future work                             |
+| [16](#16-standing-directions)                 | Standing directions            | four watch-outs for future work                                                                       |
 
 ## 1. What this is
 
@@ -99,19 +99,7 @@ A block notices a boundary event (Enter, Backspace at offset 0, an arrow at an e
 | CST → Blocks   | Svelte reactivity                              | Blocks re-render from the new tree                |
 | Editor → Block | Component refs (`bind:this`)                   | `focus(offset)` after a structural op             |
 
-The context function is one member of an action bundle. The block-editing bundle's most-used members (`src/lib/action-contracts.ts` :: `BlockEditActions` has all of them, docstrings included):
-
-```
-splitBlock(blockIndex, offset)
-mergeWithPrevious(blockIndex)            mergeWithNext(blockIndex)
-deleteBlock(blockIndex, gesture)
-insertParagraph(boundaryIndex, text)
-updateBlockContent(blockIndex, text, mode, preEditOffset, postEditFocusOffset?)
-updateBlockMetadata(blockIndex, metadata, options?)
-replaceBlock(blockIndex, replacement, focus, { snapshotOffset })
-```
-
-`blockIndex` is always relative to the calling block's own list, never the document. Every member resolves to whether bytes landed, so a focus move that writes nothing (say, `descendToBody` onto a block that's already there) resolves `false`.
+The context function is one member of an action bundle. The block-editing bundle is `src/lib/action-contracts.ts` :: `BlockEditActions`, each member's docstring stating its own contract. A member's `blockIndex` is always relative to the calling block's own list, never the document, and every member resolves to whether bytes landed, so a focus move that writes nothing (say, `descendToBody` onto a block that's already there) resolves `false`.
 
 `updateBlockContent` hands back the write's promise with a bit more on it, readable the moment the call returns. `admitted` says whether the write got through at all (reading mode turns it away, and so does a block with no text of its own, like a list), and only an admitted write has a caret. That's `caret`, the landing offset counted in the bytes as stored (the kind's write rule can move it, § 5), and `keepsCaret`, which is false when the write puts the caret somewhere itself (a new kind, a merge into the block above, a container that changed kind).
 
@@ -121,14 +109,9 @@ if (write.admitted && write.keepsCaret) requestCaret(write.caret); // 6, unless 
 await write; // true once the bytes are in
 ```
 
-A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/editable/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it does the rest:
+A block's own editable element doesn't call it by hand for typing, though. The input read-back, the keys a surface types for you (an auto-pair's partner, a Tab) and a plugin source's commit all go through one call, `src/lib/components/blocks/editable/surface-write.ts` :: `writeText`. You hand it the new text and where the caret goes, and it picks undo's caret, keeps the block's line ending and puts the caret back.
 
-- undo's caret is the one recorded when the key or input arrived
-- the block keeps the line ending it had, so a last line saved without one stays that way
-- the caret goes back only when `keepsCaret` says so
-- a typed write gets the kind cue and the on-type completion (a lone `$$`), and nothing else does
-
-The input read-back fixes one thing before it gets there. WebKit and Firefox let a caret stop between a CRLF line's `\r` and `\n`. A delete there never reaches the read-back (the editor writes it, and takes the pair whole), but a letter typed there does, so `src/lib/components/blocks/editable/editable-surface.ts` passes what the browser wrote through `src/lib/core/line-ending-pairs.ts` :: `keepLineEndingPairs`, which puts the letter before the pair the way Chromium does. A new route that reads native edits back needs the same call (G1.117 warns when a pair gets split anyway).
+A new route that reads native edits back passes them through `src/lib/core/line-ending-pairs.ts` :: `keepLineEndingPairs` first, since WebKit and Firefox let a letter land between a CRLF's `\r` and `\n` (G1.117 warns when a pair gets split anyway).
 
 A few commands (the format toggle, a cut inside one block) still call `updateBlockContent` themselves and keep the line ending through `withOwnEnding` from the same file. A paste inside one block goes through the paste dispatch instead (`docs/design/selection.md` § The paste pipeline).
 
@@ -217,10 +200,12 @@ How it sits in the import graph:
 
 ### The block-kind descriptor
 
-One registration per kind, through `registerBlockKind`. A leaf, trimmed to the fields this doc talks about:
+One registration per kind: a plugin's through `registerBlockKind`, which also takes the kind's `view`, and a built-in's through `registerBuiltinBlockKind` in `src/lib/schema/built-in-descriptors.ts`, which gets its view later. A built-in leaf, trimmed to the fields this doc talks about:
 
 ```ts
-registerBlockKind('thematicBreak', {
+registerBuiltinBlockKind('thematicBreak', {
+	pageRole: 'object',
+	estimateHeight: singleLineEstimate,
 	mergeRole: 'not-mergeable',
 	editable: false,
 	supportsInline: false,
@@ -235,7 +220,9 @@ No `keymap` there, and it still moves on Alt+ArrowUp/Down: a whole-block kind ge
 And a container, which carries one extra group:
 
 ```ts
-registerBlockKind('blockquote', {
+registerBuiltinBlockKind('blockquote', {
+	pageRole: 'prose',
+	estimateHeight: containerEstimate,
 	mergeRole: 'container',
 	editable: true,
 	supportsInline: false,
@@ -251,16 +238,7 @@ registerBlockKind('blockquote', {
 });
 ```
 
-What the fields are for, by the section that explains each:
-
-- `mergeRole` and `editable` (§ 8), `supportsInline` (whether the kind's content gets inline-parsed), and `blockFocus`, the whole-block focus policy (§ 8). A whole-block kind can't parse inline syntax, so it declares `supportsInline: false`;
-- `contextDependentKind`: no standalone recognizer, so a content edit keeps the kind rather than re-deriving it (a table cell);
-- `keymap`, the declarative keybindings (next subsection), and `contentStart`, where the editable slice of `raw` sits (a heading's text after its `## `), plus what Backspace does at its start (in a mode that hides the markers at the caret, a heading drops its `## ` first). The editor reads the two back as `getContentRange` and `contentStartBackspace`;
-- the two point-to-internals hooks a coordinate-addressed kind declares separately: `foreignDragHitTest`, the exact drag hit test, and `caretTargetAtPoint`, the nearest caret target a caret-placing gesture asks for (§ 4);
-- `gapEdges`, which edges of the block a caret may park against from outside (`docs/design/selection.md` § The gap caret);
-- `rawWrite`, the kind's write rule for its own bytes, and `bodyWrite`, a container's rule for a child's bytes. Both have the same shape: `normalize` makes written bytes legal, and `mapOffset` moves a caret along with them. Every content write runs the block's rule and then its container's (`tree-operations/content-write.ts :: legalizeWrite`), and hands the caller its caret already moved, so no block maps a caret by hand. The write also tells the rule whether the user typed the bytes in the block (`authored`) or they arrived whole (`literal`, a paste or a replace): a fence the user's still typing is left alone, while a pasted closer grows the fence;
-- how the block sits on the page. `pageRole` says whether it reads as prose (no drag handle; right-clicking its text opens the clipboard rows) or as an object you pick up whole (`src/lib/schema/page-role.ts :: blockPageRole` is the read, and it counts a paragraph of nothing but images as an object). `estimateHeight` is windowing's height guess until it gets to measure the block, and `dragLabel` is what the drag ghost calls a block whose text makes a bad label. A plugin that skips the first two gets an object, with the container or the prose height guess;
-- for containers, the `container` group: the contract and the raw rebuild (§ 9), `reservedChrome` (chrome: the parts of a block that are furniture, not content, like a title row; § 9), `containerPaste` (`docs/design/selection.md` § The paste pipeline), `unwrapRole` (§ 8), `contentStartSpace` (§ 8's marker completion), `reorderChildren`, `bodyWrite` (the write rule for a child's bytes, above), and `bodyWrap` (whether the body sits between the container's own fence lines, like `:::note` ... `:::`).
+What every field declares, and what leaving it out means, is [`plugin-contract.md`](plugin-contract.md) § The descriptor field reference. One pair is worth knowing here: `rawWrite` is a kind's rule for its own bytes and `bodyWrite` a container's rule for a child's, and every content write runs the block's rule and then its container's (`tree-operations/content-write.ts :: legalizeWrite`), handing the caller its caret already moved, so no block maps a caret by hand.
 
 The group is why an illegal leaf/container mix is a compile error rather than a runtime surprise: `contract` and `rebuildRaw` are required together inside it, and `isContainer` is derived from the group's presence, never declared.
 
@@ -440,9 +418,9 @@ The tree is mutable plain objects, no class hierarchy: the parser produces mutab
 
 ### Reactive state plumbing (Svelte 5)
 
-Three invariants govern how tree state crosses into Svelte's reactivity. Each prevents silent corruption, and none is discoverable from the types ([`../contributing/rules.md`](../contributing/rules.md)), which is the worst combination there is, so here they are in full.
+Three rules govern how tree state crosses into Svelte's reactivity. None is discoverable from the types, and breaking one corrupts state silently ([`../contributing/casebook.md`](../contributing/casebook.md) has the incidents).
 
-1. **Reactive state crosses module boundaries as getters, never values.** Re-init effects and bootstrap helpers read mutable state through `() => state` closures or getter properties. A plain value-read would snapshot at effect-run time _and_ register the state as a dependency of the effect, re-firing it on every later mutation and wiping unrelated work. The `source` effect in `Editor.svelte` is the one to copy: it reads the prop, then runs the swap inside `untrack`, since the swap reads the whole document and a tracked read would re-run it on every keystroke.
+1. **Reactive state crosses module boundaries as getters, never values.** Re-init effects and bootstrap helpers read mutable state through `() => state` closures or getter properties. The `source` effect in `Editor.svelte` is the one to copy: it reads the prop, then runs the swap inside `untrack`, since a tracked read of the whole document would re-run it on every keystroke.
 2. **The document is not its own memo key; the content version is.** The `$state` document is mutated in place, so its object identity survives every edit. Anything derived from the whole tree (footnote numbering, a table of contents) keys on the editor's **content version**, a counter each route writing the document's bytes bumps and nothing else moves:
 
    ```ts
@@ -453,9 +431,9 @@ Three invariants govern how tree state crosses into Svelte's reactivity. Each pr
    }
    ```
 
-   It's announced rather than derived from a walk because the walk was O(document nodes) per edit and the announcement is O(1), at the cost of invalidating on a commit that moved no byte. It isn't the decoration engine's `editEpoch`, which follows it one `tick()` later; the version is the reactive read a `$derived` subscribes to, while the epoch is the plain number `provide` receives.
+   It isn't the decoration engine's `editEpoch`, which follows it one `tick()` later: the version is the reactive read a `$derived` subscribes to, the epoch the plain number `provide` receives.
 
-3. **The render path computes inline content locally and reads no cache.** There's no `inlineContent` node field: prose blocks compute the inline tree from `node.raw` on each render, so a render effect's reactive read set is `node.raw` plus its closure inputs, nothing more. Non-render consumers (event handlers, exported methods, click-snap) read inline content through an accessor backed by an external, non-reactive WeakMap that Svelte's ownership tracking never observes. A reactive cache field read and written in one render effect corrupts keyed `{#each}` rendering (the incident is in [`../contributing/casebook.md`](../contributing/casebook.md)).
+3. **The render path computes inline content locally and reads no cache.** There's no `inlineContent` node field: prose blocks compute the inline tree from `node.raw` on each render, so a render effect's reactive read set is `node.raw` plus its closure inputs, nothing more. Non-render consumers (event handlers, exported methods, click-snap) read inline content through an accessor backed by an external, non-reactive WeakMap.
 
 ## 8. Orchestration
 
@@ -837,44 +815,16 @@ That cached text is also what a `source` prop write gets compared with. The writ
 
 ### The event channel
 
-The editor exposes an observer surface via `getEvents()`: eight channels, where `on(name, cb)` returns a disposer. Events fire synchronously from their emission sites, and handlers must not mutate the document (reentrant edits aren't supported).
+The editor's observer surface is `getEvents()`: eight channels, each `on(name, cb)` returning a disposer, fired synchronously from where the thing happened. What each channel carries, with sample payloads, is the consumer's reference, [`../guide/consumer-guide.md`](../guide/consumer-guide.md) § Events. What's here is where each one comes from.
 
-```ts
-const off = editor.getEvents().on('edit', (e) => e);
-// { op: 'input', path: [2], timestamp: 1788390000412 }
-// { op: 'split', path: [2], detail: { at: 14 }, timestamp: 1788390001033 }
-// { op: 'delete', path: [1], detail: { crossBlock: true }, timestamp: 1788390004120 }
-off();
-```
+- **`edit`** fires at every write, as it lands. A commit that names an `op` emits its structural variant (`schema/operations.ts` lists them), a keystroke written in place emits `input` (`src/lib/editor-actions/leaf-write.ts`), the history layer emits `undo` / `redo` as it puts the entry back (before the caret's placed), and find/replace emits one `replaceBlock` for a whole replace-all, since its per-block commits name no `op`. The typing batch only groups undo steps, so a keystroke never waits for a pause to be heard.
+- **`selectionChange`** has one announcer (`selection/selection-announcer.ts`), which drops a repeat of what it last sent. It hears the editor's own caret placements as they happen, the writes to the selection state, a few explicit announces (focus leaving, a document swap), and a bridge for the carets the browser places itself. The payload is the announcer's own read when it emits, so a gesture that writes state and then moves the caret must not notify between the two: the state store takes a batch for that, and the restore route spans both halves with one (`docs/design/selection.md` § Cross-block selection).
+- **`sourceSwap`** is emitted last in a swap, once the tree, the cleared selection and the link references are in place. A swap drops every draft first: some edits wait outside the document until they commit (a code fence's language field, a diagram's edit box, a math block's shown source), each a draft of the bytes it opened on, kept in `src/lib/components/draft-registry.ts`. The torn-down block still blurs a render later, so a draft's commit asks `canWrite()` first and writes nothing for a document that's gone. A mode change closes the drafts too, after the switch's own blur has saved the focused one.
+- **`menuChange`** reads one open-menu registry (`components/menu/menu-presence.svelte.ts`). Every menu and popover attaches itself there, with its own close, so it reads open exactly while it's mounted, and the registry closes each one on a press outside it or on Escape (newest first), wherever focus is. Safari never focuses a clicked button, so a menu waiting for its opener to blur would just stay open. A document swap and a mode change close them all with one call. The toolbar's heading flyout closes through the registry too, with `trackUncounted`, so it never reads as open.
+- **`searchChange`** comes from one `$effect` in `Editor.svelte` that compares `search-state.svelte.ts :: viewKey` with the last one it fired on, so every route that changes the search fires it, once per flush. A regex scan or a replace in flight reads as no change until it lands.
+- **`error`** is the one channel for every failure the editor contained rather than threw: a throwing subscriber never starves the others, a throwing block degrades to a readable fallback while its siblings survive, and a throwing decoration source keeps its prior decorations rather than blanking. The commit primitive (above) says which commit throws roll the tree back.
 
-- **`edit`.** At every write, as it lands. The payload is a discriminated union keyed by `op` (`schema/operations.ts` lists every variant and its `detail`): a commit that names an `op` emits its structural variant, a keystroke written in place (`src/lib/editor-actions/leaf-write.ts`) emits `input` (no `detail`; the block holds the text), the history layer emits `undo` / `redo` as it puts the entry back (before the caret's placed), and find/replace emits one `replaceBlock` for a whole replace-all (its per-block commits name no `op`). The typing batch only groups undo steps, so a keystroke never waits for a pause to be heard, which is what lets a host echo or save on `edit`. **`path` is doc-absolute for every op**, including `input` (the edited leaf) and every nested container op, and resolves from the document root to the operated node, or to the one-past-end slot an append creates. Column-shaped table ops target the table and carry the column index in `detail`; undo, redo and a replace-all across several blocks carry the root path `[]`.
-- **`selectionChange`.** The selection snapshot, or `null`. Everything that emits it goes through one announcer (`selection/selection-announcer.ts`), which drops a repeat of what it last sent. It hears the editor's own caret placements as they happen, writes to the selection state (a range, a clear, a gap caret, a widget selected whole) plus a few explicit announces (focus leaving, a document swap), and a bridge for the carets the browser places itself.
-
-  Placements announce as they place, so a subscriber keying on "the caret arrived here" hears it before anything is typed there (a caret move inside one block still waits for the browser's later `selectionchange`). The payload is the announcer's own read of the selection when it emits, so a gesture that writes state and then moves the caret must not notify between the two; the state store takes a batch for exactly that, and the restore route spans both halves with one (`docs/design/selection.md` § Cross-block selection). The carve-outs:
-  - A gap arrival emits a short burst rather than one notification, since the caret lands a tick after the state batch. Subscribers read the value it ends on, which is null while a gap is live.
-  - Selecting an image whole announces once, with the image's edge as the caret, and its ending announces nothing of its own (whatever ends it announces itself).
-
-- **`presentationModeChange`.** The effective presentation mode after a `presentationMode` prop change (never fired at mount).
-- **`themeChange`.** The theme name after a `theme` prop change (never fired at mount), for a plugin that paints its own colors and so can't pick the change up from CSS.
-- **`sourceSwap`.** `{ generation }` after a `source` prop write replaces the whole document (a write of the text it already holds doesn't, above), emitted last in the swap, once the tree, the cleared selection and the link references are in place. A swap is not an edit and fires no `edit`, so a host marking a document dirty on `edit` never hears its own write; `editEpoch` still follows the swap a tick later, and a decoration source tells the two apart by this channel.
-
-  A swap also drops every draft first. Some edits wait outside the document until they commit (a code fence's language field, a diagram's edit box, a math block's shown source), each a draft of the bytes it opened on, kept in `src/lib/components/draft-registry.ts`. The torn-down block still blurs a render later, so a draft's commit asks `canWrite()` first and writes nothing for a document that's gone. A mode change closes the drafts too, after the switch's own blur has saved the focused one.
-
-- **`menuChange`.** `true` when an editor-owned menu opens while none was and `false` when the last one closes, so a host's own controls over the selection can step aside rather than stack. Every menu and popover counts (the right-click menu, an inline menu's list, the code block's language picker, the link card, ...): each attaches itself, with its own close, to one open-menu registry (`components/menu/menu-presence.svelte.ts`), so it reads open exactly while it's mounted. The registry also closes each one on a press outside it or on Escape (newest first), wherever focus happens to be. Safari never focuses a clicked button, so a menu waiting for its opener to blur would just stay open. A document swap and a mode change close every one of them with one call. The selection toolbar isn't counted, since it steps aside on this event itself, and neither is a view a plugin draws. The toolbar's heading flyout still closes through the registry, with `trackUncounted`, so it never reads as open.
-- **`searchChange`.** No payload: what the find bar shows changed (open or closed, the query, the options, the current match, the match count, the error or a replace's count), and the handler reads `getSearch()`. One `$effect` in `Editor.svelte` compares `search-state.svelte.ts :: viewKey` with the last one it fired on, so every route that changes the search fires it, once per flush. A regex scan or a replace in flight reads as no change until it lands, so a replace-all that commits block by block fires once.
-- **`error`.** A failure the editor _contained_ rather than propagated, `{ origin, error, context? }`, discriminated by `origin`; one channel for surfacing or logging every contained failure.
-
-| `origin`     | What happened, and what the containment did                                                                                                                                                                                           |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `subscriber` | an observer threw (an event subscriber, a plugin's attach callback, an inline-menu source); it never starves the others, and is never silently swallowed                                                                              |
-| `render`     | a block threw, and the per-`BlockHost` boundary degrades it to a readable fallback while its siblings survive; or a prose leaf's or a table cell's inline render, or a decoration badge, failed, and that piece falls back on its own |
-| `commit`     | a commit threw (§ 11 says which throws roll the tree and the undo/redo stacks back first, and which roll nothing back), or replace-all failed to build a subtree                                                                      |
-| `command`    | a plugin's block-command handler threw; the gesture no-ops, attributed to its kind, command id, and owning plugin                                                                                                                     |
-| `decoration` | a decoration source's `provide` threw, and its prior decorations are retained rather than blanked, attributed to the source; or one of a mark's own handlers (`onClick`, `onHover`, `onActivate`) threw, attributed to its path       |
-| `clipboard`  | a paste consumed the gesture and inserted nothing, a host image-import hook threw, or a drop threw between its two writes; the channel a host reads to release an `onPasteImage` asset                                                |
-| `link`       | the default activation declined a disallowed scheme; a consumer supplying `onLinkActivate` owns its own policy and never reaches this                                                                                                 |
-
-The debug op-log is a subscriber to `edit`, not a call from commit sites, and a future persistent-history layer hooks in the same way, touching no editor internals. One wrinkle worth knowing: a paste surfaces under more than one op kind, chosen by the paste _strategy_, not the target's depth. A default structural paste into one leaf emits `op: 'replaceBlock'` (the leaf is replaced by the spliced result at its parent, whatever the depth); the list/container absorb-and-merge strategies emit `op: 'paste'`; and a paste that stays inline goes through the content write, so it surfaces as `updateContent` or `input`, same as typing. A consumer counting structural pastes must match the first two, and can't tell an inline one from typing.
+The debug op-log is a subscriber to `edit`, not a call from commit sites, and a future persistent-history layer hooks in the same way. One wrinkle: a paste's op follows the paste _strategy_, not the target's depth. A default structural paste into one leaf emits `replaceBlock`, the list and container absorb-and-merge strategies emit `paste`, and a paste that stays inline goes through the content write, so it reads as `updateContent` or `input`, same as typing. A consumer counting structural pastes matches the first two, and can't tell an inline one from typing.
 
 ## 13. Block identity
 
@@ -915,11 +865,9 @@ Everything above is reachable by a plugin without touching an editor internal. T
 
 ## 16. Standing directions
 
-A previous attempt at a per-block editor died, and the cause of death was timing hacks: `setTimeout` and `requestAnimationFrame` as sequencing glue, each one papering over an operation flow that was wrong underneath. Its death bought the design rules this codebase runs on, and those live in [`../contributing/rules.md`](../contributing/rules.md) rather than here, so a newcomer meets them on the way to a first edit instead of in an appendix.
-
-Four directions came later, from the first real integration rather than the predecessor, and each one aims the next milestone that touches its area:
+The design rules this codebase runs on live in [`../contributing/rules.md`](../contributing/rules.md). Four directions came from the first real integration, and each one aims the next milestone that touches its area:
 
 1. **Inline-widget _editing_ is where a consumer's defect density concentrates.** What happens when a caret, a keystroke, or a command meets an inline widget is one region, and consumer-reported defects cluster there. A new inline-editing capability picks its key space deliberately (a syntax handler at one inline priority, or an inline kind; the split is the design, not an accident of it) and enrols in the inline conformance kit, which is where a handler's behavior is held.
-2. **The webview host boundary is invisible to the in-repo harness.** Clipboard retargeting, host accelerator keys, and image-src scheme policy are the host webview's decisions rather than the page's, so no Chromium-driven suite can see them, and that class of bug is found by a real host or by a user.
+2. **The webview host boundary is invisible to the in-repo harness.** What a green run can't see is in `docs/contributing/testing.md` § Browser engines ("What a green run doesn't tell you").
 3. **A process-global singleton is a deliberate choice with a written second-claimant story.** One slot works until the second claimant arrives, and by then the interleaving is a consumer-visible defect rather than a design question.
 4. **Every gesture that places a caret is a data-loss candidate until proven otherwise.** A live cross-block range sitting there before the gesture is what turns a caret landing into a whole-document loss. Every placement through `src/lib/selection/place-caret.ts` ends a live range, but a route that parks a caret directly (a block's `parkCaret`) ends nothing, so a new caret-placing entry joins the simulation's range-interrupt family (`src/lib/e2e/simulation/gestures/range-interrupt.ts`) by hand or goes unprobed.
