@@ -63,6 +63,9 @@ export interface UnfinishedReading {
 	/** Whether a line could be the one that changes it. A cheap candidate test, not a match: true
 	 *  for every line this opener accepts as its closer, wider is fine, narrower breaks the edit. */
 	mayClose: (lineText: string) => boolean;
+	/** The block takes in every line below it until its closer, as an unclosed fence does: it never
+	 *  stands above another block, and with no closer below it reads to the body's end. */
+	readsOn?: boolean;
 }
 
 type OpenerRecord = RegistryRecord<AnyBlockKind, BlockOpener>;
@@ -152,9 +155,22 @@ export function readingNotFinalIn(grammar: GrammarView): (raw: string) => boolea
 	return (raw) => readings.some((reading) => reading.notFinal(raw));
 }
 
+/** Whether a block with these bytes waits on a closer and takes in every line below until then. */
+export function readsOnIn(grammar: GrammarView): (raw: string) => boolean {
+	const readings = unfinishedReadings(grammar).filter((reading) => reading.readsOn);
+	return (raw) => readings.some((reading) => reading.notFinal(raw));
+}
+
 /** Whether an opener in `grammar` says this line could finish a reading it left unfinished. */
 export function lineMayFinishReading(lineText: string, grammar: GrammarView): boolean {
 	return unfinishedReadings(grammar).some((reading) => reading.mayClose(lineText));
+}
+
+/** {@link lineMayFinishReading} for a block above the line, which a reading that reads on never is. */
+export function lineMayFinishReadingAbove(lineText: string, grammar: GrammarView): boolean {
+	return unfinishedReadings(grammar).some(
+		(reading) => !reading.readsOn && reading.mayClose(lineText)
+	);
 }
 
 // Kept against the grammar's opener list, which a walk up a long body reads once per block.
@@ -164,9 +180,8 @@ function unfinishedReadings(grammar: GrammarView): readonly UnfinishedReading[] 
 	const openers = grammar.orderedOpeners();
 	let readings = readingsByOpeners.get(openers);
 	if (!readings) {
-		readings = openers.flatMap((opener) =>
-			opener.readingNotFinal ? [opener.readingNotFinal] : []
-		);
+		// Kinds sharing one grammar (every fence) share one reading, asked once.
+		readings = [...new Set(openers.flatMap((opener) => opener.readingNotFinal ?? []))];
 		readingsByOpeners.set(openers, readings);
 	}
 	return readings;

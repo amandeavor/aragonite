@@ -8,7 +8,13 @@
 import type { NodeView } from '../core/node-views';
 import { displayLines } from '../core/lines';
 import { recordUnfinishedWalk } from '../perf/instruments';
-import { lineMayFinishReading, readingNotFinalIn, type GrammarView } from '../schema/block-openers';
+import {
+	lineMayFinishReading,
+	lineMayFinishReadingAbove,
+	readingNotFinalIn,
+	readsOnIn,
+	type GrammarView
+} from '../schema/block-openers';
 import type { SharingState } from './sharing';
 import type { StructuralChange } from './structural-change';
 import type { BodyParent } from './node-primitives';
@@ -35,7 +41,7 @@ export function asksOfWrite(
 ): UnfinishedAsks {
 	const changed = changedLines(before, after);
 	const lost = changedLines(after, before);
-	const above = changed.lines.some((line) => lineMayFinishReading(line, grammar));
+	const above = changed.lines.some((line) => lineMayFinishReadingAbove(line, grammar));
 	const startsBlock = changed.fromFirst || divided;
 	const below = startsBlock || lost.lines.some((line) => lineMayFinishReading(line, grammar));
 	return { above, below };
@@ -44,7 +50,7 @@ export function asksOfWrite(
 /** What blocks an edit placed ask: every one of their lines is new. */
 export function asksOfPlaced(blocks: readonly NodeView[], grammar: GrammarView): UnfinishedAsks {
 	const lines = blocks.flatMap((block) => textLines(block.raw));
-	return { above: lines.some((line) => lineMayFinishReading(line, grammar)), below: true };
+	return { above: lines.some((line) => lineMayFinishReadingAbove(line, grammar)), below: true };
 }
 
 /** Re-read from the topmost unfinished block above `first` through `last` when the edit asks up,
@@ -75,10 +81,13 @@ export function finishUnfinishedReadings(
 	let settled = unchanged;
 	let top = topmostUnfinished(body, first, last, grammar);
 	let from = last + 1;
-	while (top >= 0) {
-		const bottom = firstCandidateBelow(body, from, grammar);
-		recordUnfinishedWalk((bottom < 0 ? body.children.length : bottom + 1) - from);
-		if (bottom < 0) break;
+	while (top >= 0 && from < body.children.length) {
+		const candidate = firstCandidateBelow(body, from, grammar);
+		recordUnfinishedWalk((candidate < 0 ? body.children.length : candidate + 1) - from);
+		// With no closer below, a block that reads on takes the rest of the body as a reload does.
+		if (candidate < 0) top = topmostReadingOn(body, top, from - 1, grammar);
+		if (top < 0) break;
+		const bottom = candidate < 0 ? body.children.length - 1 : candidate;
 		const count = body.children.length;
 		settled = absorbSpanReading(body, top, bottom, settled.change, grammar, sharing, tracked);
 		const end = bottom - (count - body.children.length);
@@ -99,6 +108,18 @@ function topmostUnfinished(
 	let top = -1;
 	for (let i = to; i >= from; i--) if (notFinal(body.children[i].raw)) top = i;
 	return top;
+}
+
+/** The topmost block in `[from, to]` that waits on a closer and reads on until then, or -1. */
+function topmostReadingOn(
+	body: BodyParent,
+	from: number,
+	to: number,
+	grammar: GrammarView
+): number {
+	const readsOn = readsOnIn(grammar);
+	for (let i = from; i <= to; i++) if (readsOn(body.children[i].raw)) return i;
+	return -1;
 }
 
 /** The first block from `from` down holding a line that could finish an unfinished reading. */

@@ -11,6 +11,7 @@ import {
 	registerBlockCommand,
 	setPluginMetadata,
 	getPluginMetadata,
+	fenceReading,
 	matchFenceInfo,
 	escalatedFenceLength,
 	fenceRawWrite,
@@ -115,6 +116,7 @@ export function registerMermaidKind(view: BlockView): void {
 			// before it rather than sit between two built-ins.
 			priority: OPENER_PRIORITIES.fencedCode - 5,
 			interruptsParagraph: (line) => matchMermaidFence(line) !== null,
+			readingNotFinal: fenceReading,
 			tryOpen(ctx) {
 				const fence = matchMermaidFence(ctx.line.text);
 				if (!fence) return null;

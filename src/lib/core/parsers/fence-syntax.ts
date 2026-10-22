@@ -5,7 +5,16 @@
  */
 
 import { escalateTerminatorRun } from '../terminator-escalation';
-import { OPTIONAL_LINE_ENDING, splitLines, trimWhitespace, WHITESPACE_RUN } from '../lines';
+import type { UnfinishedReading } from '../../schema/block-openers';
+import {
+	displayLines,
+	firstDisplayLine,
+	isBlankLine,
+	OPTIONAL_LINE_ENDING,
+	splitLines,
+	trimWhitespace,
+	WHITESPACE_RUN
+} from '../lines';
 
 /**
  * The fence-open shape, re-exported on `@voithos-labs/aragonite/plugin` for fence-claiming openers:
@@ -138,4 +147,26 @@ export function matchFenceInfo(token: string): (text: string) => FenceOpen | nul
 /** An info string's first word, which names the fence's language; empty when there is none. */
 export function fenceLanguage(info: string): string {
 	return trimWhitespace(info).split(WHITESPACE_RUN)[0];
+}
+
+// ── An unclosed fence ─────────────────────────────────────────────────────────
+
+/**
+ * A fence opener's `readingNotFinal`: a fence nothing closes yet takes every line below it, so the
+ * settle after an edit re-reads down to the first bare run that may close it, or to the body's end.
+ */
+export const fenceReading: UnfinishedReading = {
+	notFinal: awaitsFenceCloser,
+	mayClose: (text) => matchFenceClose(text, '`', 3) || matchFenceClose(text, '~', 3),
+	readsOn: true
+};
+
+/** Whether `raw` opens a fence on its first line and its last non-blank line doesn't close it. */
+function awaitsFenceCloser(raw: string): boolean {
+	const fence = matchFenceOpen(firstDisplayLine(raw).text);
+	if (!fence) return false;
+	const lines = displayLines(raw);
+	let last = lines.length - 1;
+	while (last > 0 && isBlankLine(lines[last].text)) last--;
+	return last === 0 || !matchFenceClose(lines[last].text, fence.marker, fence.length);
 }

@@ -264,7 +264,12 @@ function settleMove(
 	}
 	const laidOut = normalizeBlankRuns(body, lo, hi, change, grammar, sharing);
 	const settled = absorbAndLayOut(body, lo, hi - lo + 1, to, laidOut, grammar, sharing);
-	return { change: settled.change, moved: settled.landing };
+	// The moved block may now wait on a closer below it, or be one for a block above.
+	const tracked: TrackedPosition = { index: settled.landing, offset: 0 };
+	const asks = asksOfPlaced([body.children[settled.landing]], grammar);
+	const at = settled.landing;
+	const finished = finishAndLayOut(body, at, at, asks, settled.change, grammar, sharing, tracked);
+	return { change: finished.change, moved: tracked.index };
 }
 
 // ── A content write's joins ──
@@ -445,8 +450,9 @@ function settleSplicedWindow(
 		// refused on that block's first line alone; a wider window names no single block.
 		added === 1 ? at : undefined
 	).change;
-	const window = splicedWindow(absorbed);
-	if (!window || window.added === 0) return absorbed;
+	// A splice outside a commit reports no change of its own, yet the blocks it placed still ask.
+	const window = splicedWindow(absorbed) ?? { at, added };
+	if (window.added === 0) return absorbed;
 	const last = window.at + window.added - 1;
 	return finishAndLayOut(body, window.at, last, asks, absorbed, grammar, sharing, tracked).change;
 }
