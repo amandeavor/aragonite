@@ -182,17 +182,7 @@ A container component hosts its own nested `BlockList`, reusing the same orchest
 
 ### The container `raw` contract
 
-A container's `raw` holds the **full outer source**: `> ` prefixes, list markers, indentation, the `:::name` opener line. Its children hold slices of the _inner_ content. So yes, a parent stores its children's bytes over again, all the way down:
-
-```ts
-const quote = parse('> a\n>\n> - one\n> - two\n').children[0];
-quote.raw; // '> a\n>\n> - one\n> - two\n'
-quote.children[1].raw; // '- one\n- two\n'      the list, quote prefix stripped
-quote.children[1].children[1].raw; // '- two\n'  its second item
-quote.children[1].children[1].children[0].raw; // 'two\n'  the item's paragraph
-```
-
-The two are redundant, not additive, which is why the serializer never recurses (`editor.md` § Serialization is where the trade pays for itself). Three contracts relate a container's `raw` to its children (`strip`, `grid`, `opaque`), declared per kind in the descriptor's `container` group; `syntax-tree.md` § The container contract is authoritative on what each promises and which kinds pick which.
+A container's `raw` holds its whole subtree's source, markers and all, and its children hold slices of the inner content, so a parent stores its children's bytes over again. What that buys and costs, and the three contracts (`strip`, `grid`, `opaque`) a container picks from to say how its `raw` relates to its children, are `syntax-tree.md` § The one thing that surprises people and § The container contract. This section is how the editor keeps the copy honest.
 
 A container's `rebuildRaw` rewrites its `raw` from its children and metadata after any edit inside it, and ancestry dispatch runs it up the whole nesting chain. It reads its own previous bytes too, so the lines an edit didn't touch keep the spelling they had (`src/lib/schema/strip-rebuild.ts :: rebuildStripRaw` pairs each new line with the line it used to be; a table goes row by row). A line you changed keeps its old prefix while that prefix still reads the new text; only a new line, a line that's blank before or after the edit, or one whose tab the content column cuts in half gets the container's own spelling. Inside a commit, the commit runs it for you, once per container, after the mutation. A mutation that needs a node's bytes early (a node below its scope, which the commit won't reach) asks the scope's `rebuild` instead.
 
