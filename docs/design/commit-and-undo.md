@@ -1,0 +1,112 @@
+# Commits and undo
+
+What happens once an edit has decided what to write: the undo stack it lands in, the commit every structural edit runs through, and the events it sends out. [`structural-edits.md`](structural-edits.md) is what the edits themselves do, and `editor.md` § Serialization is how the document becomes text again.
+
+## Undo / redo
+
+One unified undo stack; browser contenteditable undo is off. Each entry is a snapshot:
+
+```ts
+// undo/types.ts
+interface UndoEntry {
+	snapshot: Document; // shares nodes with the live tree, see below
+	blockIds: string[]; // the top-level ID array, for stable keyed rendering
+	selection: EditorSelection | GapCaretSelection; // anchor/focus in path addressing, or a gap position
+	integrity?: number; // DEV-only digest, verified on restore
+}
+```
+
+Collapsed, single-block, and cross-block selections all use that one `selection` representation. The stack is capped at 200 entries (nobody has asked for more yet), and on a restore the snapshot replaces the tree, so there's never a question of which state is correct.
+
+**Snapshots share structure with the live tree.** An entry references the live nodes rather than cloning them, and each node carries an editor-level epoch mark (`ownerEpoch`) recording whether a snapshot still shares it, so pushing an entry costs O(top-level children), not O(all nodes). The cost moves to mutation time as **copy-path-on-write**: before any write, the chain of nodes from the document root down to the target is copied and the copies spliced in, so a shared node is never written through. The commit steps own this protocol. A commit copies the path down to each scope it touches and hands the mutation an owned children array; the mutation copies each child it writes before writing it (`tree-operations/unshare.ts`, which the `CommitScope` adapter's view offers as `unshareChild`), and never writes through a node reference captured before the commit.
+
+**The aliasing contract is bytes-scoped.** A node a snapshot still shares is read-only _on its serialized bytes_: it may move within the tree, since restructuring rewrites no bytes, but any write to its bytes must copy first. The derived inline cache is exempt by construction, living in an external WeakMap and never on the node. This is invariant G1.9 ([`invariants/runtime.md`](invariants/runtime.md)); in dev an integrity check digests each snapshot on push and re-verifies at every commit and restore, so a violating write is caught at the commit that made it, not at the undo that exposes it.
+
+**Triggers.** An entry is pushed before every structural operation and before every cut or paste (a copy writes nothing, so it pushes nothing). Text input is batched: consecutive keystrokes in one block group into a single entry, broken by pauses, focus changes, structural ops, and any cut or paste.
+
+**Where undo puts the caret.** The snapshot's selection path is read live from the focused leaf, so undo lands the caret on the exact leaf that was being typed in, including deep inside nested containers. The offset on that leaf is the one the caller supplies rather than the live (post-edit) one, so the caret goes back to where the edit began:
+
+- For typed text a block reads that position at `beforeinput`, which every input route fires (a composition reads it where the composition starts), so dictation or a soft keyboard undoes in place like a keystroke.
+- Every other edit passes where it began, never where it leaves the caret: a command its selection's start, a paste the start of the range it replaced (or the side a selected widget was selected from), and the paste dispatch hands that one offset to every commit it makes.
+- When no ref reports a cursor (headless harness, handle drags, menu-driven ops), the path falls back to the commit's declared doc-absolute restore coordinate, so it resolves to the operated child rather than a scope-local index.
+- While a widget is selected whole, the entry records the widget edge the selection came from (`docs/design/selection.md`).
+
+**One gesture, one entry.** Plenty of gestures take more than one commit. A cross-block paste is a delete and then an insert, an IME composition over a range is a delete the composed text then joins (`continueTypingBurst`, below), a drop is a cut and then an insert, an inline-menu pick clears its query and then maybe inserts a block below, and replace-all is one commit per block it rewrites. Each runs its commits inside an undo step (`src/lib/action-contracts.ts` :: `CommitController`'s `undoStep(seed, run)`), and they undo in one press:
+
+- The entry is pushed at the first write that actually lands. It holds the document from just before that write, and the selection as it stood when the step opened (a gesture often collapses its range before it writes anything; `seed` is the fallback when nothing's focused).
+- Every later write in the step joins that entry, and a step that writes nothing leaves nothing.
+- The step ends when the gesture's own work finishes, or earlier at the author's next input in that editor (a key other than a bare modifier, a keyless `beforeinput`, a paste, a cut or a drop), so typing while a plugin's commit waits gets its own entry.
+
+A gesture can't push an entry ahead of its write; all it gets is the step. The code keeps that rule rather than the types forcing it, though. A commit outside a step still pushes its own entry, and the typing batch pushes at a burst's first keystroke, before the keystroke writes. A keystroke that changes its block (a new kind, or several blocks) commits, and that commit lands in the entry its typing batch already holds, ending the burst. The join holds only because nothing awaits between the batch push and the commit call.
+
+The other way round works too: after a commit, `CommitController`'s `continueTypingBurst()` makes the next typing write join the entry that commit wrote. A composition over a range is the one user, so the composed text lands in the entry its removal opened (compositionend ends the continuation with `endContinuedBurst`).
+
+## The commit primitive
+
+Every structural mutation routes through one internal commit helper. Three entry points name the three scopes (`src/lib/action-contracts.ts` :: `CommitController`): **`commitStructural`** (the document's children array), **`commitContainerStructural`** (one container's children array), and **`commitMultiScope`** (several container states in one logical step, a cross-container delete or an indent/unindent: one snapshot, one edit event, one atomic reactivity publish across every touched scope). The first two are just the third over a single scope, the document or one container, so every commit runs the same steps. A caller describes the change and the helper runs the commit steps around it, and each entry point resolves to whether any bytes landed (false when reading mode refused the write, the commit rolled back, or a `discardIfNoop` commit found nothing had changed). A commit can also pass `announce`, the line a screen reader hears about it ("Moved block to position 2 of 3"), spoken only after a commit that wrote. The split, from `editor-actions/block-edit-core.ts`:
+
+```ts
+await scope.commit({
+	snapshot: { index: i, offset }, // where the caret goes back to on undo
+	eventTarget: i, // the block the `edit` event names
+	op: { kind: 'split', detail: { at: offset } },
+	mutate: (view) => {
+		/* cut view.children[i] at offset; return the structural change */
+	},
+	landing: () => scope.at(secondHalfIndex, [], CURSOR_EXACT_START),
+	discardIfNoop: true // a split that moved nothing pushes no undo entry
+});
+```
+
+The commit's steps, in order. `src/lib/editor-actions/commit/undo-controller.ts` :: `__commit` runs them all, and `runCommitCeremony` inside it holds the part from the caret memory to the `edit` event:
+
+1. ask whether reading mode admits the write (below), and stop if not,
+2. forget the caret memory and end the typing batch's current burst,
+3. capture the snapshot (skipped when an open undo step or the typing batch already holds this gesture's entry, as above),
+4. hand the mutation owned copies: the path down to each container scope, and a top-level children array of its own (the old one is what a throw puts back). With the document among the scopes that's a plain array off the `$state` proxy, published at step 8, since splicing the live one would pay a tracked write for every block it shifts,
+5. run the mutation,
+6. run the one fix-up over each list the mutation wrote (`src/lib/tree-operations/settle.ts` :: `settleEdit`, `structural-edits.md` § Structural operations): the step the mutation's own kind asks first (a content write's joins, a removed block's neighbours, a move's blank lines), which the mutation reports through its scope's `describeEdit`; then end the line of every block it placed, and of the block right above them (`src/lib/tree-operations/open-tail.ts` :: `endWindowLines`), since the separators are read side by side; then settle the separators and joins around the edit,
+7. give an emptied document its one empty paragraph (`src/lib/tree-operations/keep-one-block.ts` :: `keepOneBlock`),
+8. publish each scope's new children and ids, then rebuild every enclosing container's `raw`, deepest first and each container once, asking each container's own slot on the way out (`structural-edits.md` § The container `raw` contract),
+9. if the file had no final line break before the commit, take the break off its new last line again, unless that line is blank (`src/lib/tree-operations/open-tail.ts` :: `keepOpenTail`; `docs/design/syntax-tree.md` § Blank lines says why a blank one keeps it),
+10. in a dev build, check every block the commit could have written,
+11. bump the content version, clear a gap caret, and emit an `edit` event when the commit names an `op`,
+12. `await tick()`, then read the caller's `landing` and put the caret there, awaited,
+13. speak the caller's `announce` line in the edit live region, when the commit wrote.
+
+A throw anywhere from the snapshot through the tail step (9) rolls the tree and the undo stacks back. A throw in the landing doesn't: the commit already succeeded, so it's reported on the `error` channel (§ The event channel) and the next edit runs as normal.
+
+The landing is a value, not a callback that places anything: a position (a document path and an offset, where the path may name a container) or a stored selection. The commit reads it after the tick, so it sees the tree the commit left, and hands it to the editor's one caret landing (`src/lib/selection/caret-landing.ts` :: `createCaretLanding`). That resolves the position to a leaf a caret can sit in, mounts each level on the way down, gives up if an undo, redo or document swap happened since the commit started, focuses the block through its own `focus` (a stored selection goes back at its exact bytes instead), and scrolls it into view when it's off screen. A few details, for the curious:
+
+- A commit that reading mode refused lands nothing. One that `discardIfNoop` threw away still lands, since a refused merge still moves the caret across the boundary you pressed at.
+- When an enclosing container collapsed during the commit, the collapse's position replaces the caller's, because the collapse rebuilt the blocks the caller's position names.
+- In a dev build, reading the landing must leave focus and the selection alone, so a landing that sneaks in a caret of its own gets caught the first time a test runs it.
+- A commit can say how far its landing moves the viewport (`reveal`). An ordinary edit scrolls only when the caret isn't fully on screen, just far enough to show it, and holds nothing after; a navigation holds its block where it landed.
+- A gesture over a range that spans blocks gets one caret from the range replace, which holds each commit's landing instead of placing it (`CommitController`'s `holdLandings`) and then places the last one that wrote. An IME composition gets one too, before the IME writes anything, so the composition carries on in the block the removal kept.
+
+Callers pick a scope; they never assemble the steps, and **this is the canonical entry for any new structural mutation** (the op-log isn't a commit step; it subscribes to `edit` downstream). The top-level and container action factories share one core through a `CommitScope` adapter, so the structural-edit sequence is single-sourced and the factories differ only in scope wiring and container-only concerns.
+
+**Reading mode is refused where the bytes are written.** Every entry point that writes the document asks `src/lib/editor-actions/commit/reading-write-gate.ts` :: `admitsWrite` first: the three commit scopes, the keystroke's in-place write (`src/lib/editor-actions/leaf-write.ts` :: `createLeafTyping`), and undo/redo. In reading mode each one declines, pushing no snapshot and emitting no event.
+
+- A keystroke asks once, before it picks between a commit and the in-place write, and comes back with `admitted: false` and no caret. A dev build also warns `[aragonite:reading-write]`, since whatever got there offered a write it shouldn't have.
+- The reading-mode checks still left on gestures hide an affordance, or keep a promise the refusal can't keep by itself (a `runCommand` that answers `false`, a key the editor still consumes).
+- A mode switch commits whatever an open block is holding before the new mode takes effect, so that edit lands in the mode it was typed in.
+
+The same check quietly refuses a write made for a document a `source` swap has replaced (a paste that waited on a slow clipboard read, say). Each write handle a block holds is stamped with the document it was made for (`src/lib/editor-actions/commit/document-stamp.ts`) as the block mounts.
+
+Two snapshots still come from outside the primitive. The typing batch's, pushed at a burst's first keystroke before its write, because an ordinary keystroke writes in place without a commit at all; and undo and redo's own, the current state they push onto the opposite stack before they swap (`captureCurrentState`).
+
+**Persistent history.** The undo stack is session-scoped: in memory, cleared when the document closes. Cross-session history belongs at the save boundary, outside the editor, which only hands over the serialized document.
+
+## The event channel
+
+The editor's observer surface is `getEvents()`: eight channels, each `on(name, cb)` returning a disposer, fired synchronously from where the thing happened. What each channel carries, with sample payloads, is the consumer's reference, `docs/guide/consumer-guide.md` § Events. What's here is where each one comes from.
+
+- **`edit`** fires at every write, as it lands. A commit that names an `op` emits its structural variant (`schema/operations.ts` lists them), a keystroke written in place emits `input` (`src/lib/editor-actions/leaf-write.ts`), the history layer emits `undo` / `redo` as it puts the entry back (before the caret's placed), and find/replace emits one `replaceBlock` for a whole replace-all, since its per-block commits name no `op`. The typing batch only groups undo steps, so a keystroke never waits for a pause to be heard.
+- **`selectionChange`** has one announcer (`selection/selection-announcer.ts`), which drops a repeat of what it last sent. It hears the editor's own caret placements as they happen, the writes to the selection state, a few explicit announces (focus leaving, a document swap), and a bridge for the carets the browser places itself. The payload is the announcer's own read when it emits, so a gesture that writes state and then moves the caret must not notify between the two: the state store takes a batch for that, and the restore route spans both halves with one (`docs/design/selection.md` § Cross-block selection). Selecting an image whole announces once, with the image's edge as the caret, and its ending announces nothing of its own (whatever ends it announces itself).
+- **`sourceSwap`** is emitted last in a swap, once the tree, the cleared selection and the link references are in place. The decoration engine's `editEpoch` still follows a swap a tick later, so a decoration source tells a swap from an edit by this channel. A swap drops every draft first: some edits wait outside the document until they commit (a code fence's language field, a diagram's edit box, a math block's shown source), each a draft of the bytes it opened on, kept in `src/lib/components/draft-registry.ts`. The torn-down block still blurs a render later, so a draft's commit asks `canWrite()` first and writes nothing for a document that's gone. A mode change closes the drafts too, after the switch's own blur has saved the focused one.
+- **`menuChange`** reads one open-menu registry (`components/menu/menu-presence.svelte.ts`). Every menu and popover attaches itself there, with its own close, so it reads open exactly while it's mounted, and the registry closes each one on a press outside it or on Escape (newest first), wherever focus is. Safari never focuses a clicked button, so a menu waiting for its opener to blur would just stay open. A document swap and a mode change close them all with one call. The toolbar's heading flyout closes through the registry too, with `trackUncounted`, so it never reads as open.
+- **`searchChange`** comes from one `$effect` in `Editor.svelte` that compares `search-state.svelte.ts :: viewKey` with the last one it fired on, so every route that changes the search fires it, once per flush. A regex scan or a replace in flight reads as no change until it lands.
+- **`error`** is the one channel for every failure the editor contained rather than threw: a throwing subscriber never starves the others, a throwing block degrades to a readable fallback while its siblings survive, a throwing decoration source keeps its prior decorations rather than blanking, and a throwing plugin command no-ops its gesture. Origin `commit` also covers a replace-all that failed to build a subtree; the commit primitive (above) says which commit throws roll the tree back.
+
+The debug op-log is a subscriber to `edit`, not a call from commit sites, and a future persistent-history layer hooks in the same way. One wrinkle: a paste's op follows the paste _strategy_, not the target's depth. A default structural paste into one leaf emits `replaceBlock`, the list and container absorb-and-merge strategies emit `paste`, and a paste that stays inline goes through the content write, so it reads as `updateContent` or `input`, same as typing. A consumer counting structural pastes matches the first two, and can't tell an inline one from typing.

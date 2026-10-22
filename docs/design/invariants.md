@@ -167,8 +167,9 @@ The catalog is a convention anyone extends, so here's the whole procedure:
 6. Cite the G-number from the guard and its tests, so a grep for the id lands here and at the code
    in one pass.
 
-Retiring one: G1.3 is the pattern. When a stronger level makes a check redundant, delete the guard
-and its tests, and keep the number. The row stays, marked retired, saying what superseded it.
+Retiring one: G1.3 is the pattern. When a stronger level makes a check redundant, delete the guard,
+its tests and its entry, and keep the number. The row stays, marked retired, saying what superseded
+it.
 
 ## Reading the catalog
 

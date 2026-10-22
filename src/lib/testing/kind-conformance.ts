@@ -246,7 +246,7 @@ function execRoundTrip(
 	return 'byte round-trip';
 }
 
-/** An independent restatement of the merge-role table (`docs/design/editor.md` § Merge
+/** An independent restatement of the merge-role table (`docs/design/structural-edits.md` § Merge
  *  eligibility: roles, not pairs); derived from `isMergeEligible` it would test nothing. */
 const MERGE_ROLE_EXPECTATION: Record<
 	MergeRole,

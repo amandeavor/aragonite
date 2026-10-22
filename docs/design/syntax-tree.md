@@ -64,11 +64,11 @@ flowchart LR
     C & D --> E["container node"]
 ```
 
-So serialization **never recurses**. It writes the document's prefix, then each top-level child's `leadingTrivia + raw`, then the suffix, and stops; the subtree is already in there (`core/serializer.ts` is a handful of lines, and `editor.md` § 12 shows it).
+So serialization **never recurses**. It writes the document's prefix, then each top-level child's `leadingTrivia + raw`, then the suffix, and stops; the subtree is already in there (`core/serializer.ts` is a handful of lines, and `editor.md` § Serialization shows it).
 
 The flip side: an edit _inside_ a container means nothing until the container's `raw` is written back from its children. That's `rebuildRaw`, on the container's descriptor (the per-kind record saying how a kind merges, edits and renders), run up the whole chain of enclosing containers. Skip it and `raw` quietly disagrees with the children, and the document you save is the one you had before the edit. So, don't.
 
-That rebuild is the price of the redundancy, and it's paid in bytes, not depth. A structural edit rewrites every enclosing container's bytes, which in a document nested d deep comes to roughly d/2 copies of the outermost one. Typing pays less: a container that knows which child changed rewrites only that child's stretch of its `raw` (`editor.md` § 9). Real documents don't stack megabytes at every level, so in practice a keystroke inside a list costs what a keystroke anywhere costs. The measurements, and why the redundancy was kept, are in `performance.md` § Two architectural decisions, if you're curious.
+That rebuild is the price of the redundancy, and it's paid in bytes, not depth. A structural edit rewrites every enclosing container's bytes, which in a document nested d deep comes to roughly d/2 copies of the outermost one. Typing pays less: a container that knows which child changed rewrites only that child's stretch of its `raw` (`structural-edits.md` § The container `raw` contract). Real documents don't stack megabytes at every level, so in practice a keystroke inside a list costs what a keystroke anywhere costs. The measurements, and why the redundancy was kept, are in `performance.md` § Two architectural decisions, if you're curious.
 
 ### Node shape
 
@@ -88,7 +88,7 @@ makeBlockNode({ kind: 'paragraph', leadingTrivia: '', raw: 'x\n' });
 
 Two rules keep the union honest:
 
-- A block changing kind (paragraph to heading as you type `## `) never has `kind` rewritten in place. The re-parse makes a fresh node and puts it in the old one's slot (`editor.md` § 8), so no node ever carries one branch's kind with another branch's metadata.
+- A block changing kind (paragraph to heading as you type `## `) never has `kind` rewritten in place. The re-parse makes a fresh node and puts it in the old one's slot (`structural-edits.md` § Structural operations), so no node ever carries one branch's kind with another branch's metadata.
 - Building a node from a kind only known at runtime goes through `makeBlockNode`, the one allowed cast.
 
 The fields, by category:
@@ -104,7 +104,7 @@ The fields, by category:
 | `childIds`             | containers                                                    | Stable per-child IDs for keyed rendering (so Svelte reuses each child's component by ID, not by position). Carried on the node, so undo restores them with `children`.                                                                                |
 | `childSpans`           | containers                                                    | Where each child's bytes sit inside the container's own `raw`, so rewriting one child re-emits one region. Derived; dropped whenever the children change shape.                                                                                       |
 | `markerWidths`         | lists                                                         | How many items open with a marker of each width, which sizes the list's marker column without reading every item. Derived; the parse fills it and the list's rebuild keeps it.                                                                        |
-| `ownerEpoch`           | every node                                                    | Whether an undo snapshot still shares this node, so a write copies it first. See `editor.md` § Undo / redo.                                                                                                                                           |
+| `ownerEpoch`           | every node                                                    | Whether an undo snapshot still shares this node, so a write copies it first. See `commit-and-undo.md` § Undo / redo.                                                                                                                                  |
 
 `innerPrefix` is the one field you won't see on a built-in. With the bundled admonitions plugin installed:
 
@@ -150,7 +150,7 @@ parse('- [ ]  b\n').children[0].children[0].metadata.taskMarker; // '[ ]  '
 parse('> > a\n').children[0].metadata; // { quoteDepth: 2 }
 ```
 
-An edit that leaves spaces between an item's marker and its text keeps exactly those bytes, so the item reads the same in the editor as it will after a reload. How, and what it costs, is in `editor.md` § The container `raw` contract.
+An edit that leaves spaces between an item's marker and its text keeps exactly those bytes, so the item reads the same in the editor as it will after a reload. How, and what it costs, is in `structural-edits.md` § The container `raw` contract.
 
 Only `'strip'` carries that equation as a checked invariant. `'grid'` and `'opaque'` are exempt from it, for different reasons and with different consequences:
 
@@ -268,7 +268,7 @@ That means a blank block does two jobs at once: it's a block, and it's the separ
 
 #### The last line
 
-The last line is the one line allowed to have no line ending, and a file saved without a final line break keeps it that way through any structural edit and through typing (an inline paste still adds one, for now). The commit ends the lines of every block an edit places, then takes the break back off whichever block ends up last (`docs/design/editor.md` § The commit primitive).
+The last line is the one line allowed to have no line ending, and a file saved without a final line break keeps it that way through any structural edit and through typing (an inline paste still adds one, for now). The commit ends the lines of every block an edit places, then takes the break back off whichever block ends up last (`docs/design/commit-and-undo.md` § The commit primitive).
 
 One exception, on purpose: when the new last line is blank, it keeps its break, since a blank line is nothing but its break and dropping it would drop the block too. That covers Enter at the very end, ArrowDown past the last block, an empty inserted paragraph, and the empty line Enter leaves in a last quote or list item.
 

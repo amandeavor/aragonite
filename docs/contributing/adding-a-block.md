@@ -117,7 +117,7 @@ What you have to declare:
 
 `gapEdges` names the edges of your block that may host a gap caret (a caret parked between two blocks, where neither surface can hold one) because your own surface can't host a sibling-paragraph insertion there: `'before'`, `'after'`, `'both'`, or `'none'`. A boundary only opens when both blocks facing it declare it, and an edge some gesture of yours already covers stays undeclared, which is why the thematic break above says `'before'` and not `'both'`; `docs/design/selection.md` § The gap caret has the semantics.
 
-`mergeRole` is one of `prose`, `prose-absorber`, `container`, `self-merge`, `not-mergeable`, and `docs/design/editor.md` § "Merge eligibility: roles, not pairs" says which roles merge with which.
+`mergeRole` is one of `prose`, `prose-absorber`, `container`, `self-merge`, `not-mergeable`, and `docs/design/structural-edits.md` § "Merge eligibility: roles, not pairs" says which roles merge with which.
 
 `pageRole` is how the block reads on the page. A `'prose'` block (a paragraph, a heading, a quote) gets no drag handle, and right-clicking its text opens the clipboard rows. An `'object'` (code, a table, a divider) gets a handle and its own block menu. There's one exception you don't declare: a paragraph holding nothing but images counts as an object whatever its kind says (`src/lib/schema/page-role.ts`).
 
@@ -449,7 +449,7 @@ Copy from `ListBlock.svelte` (direct-each) or `TableBlock.svelte` (row windowing
 
 ### Interactive ambient markers
 
-A container's `ambientPrefix` (the read-only marker a container lends its first child, like a footnote definition's `[^label]: `) is either inert text, the default, or carries interactive character ranges, meaning clickable regions inside the read-only prefix. The shape is `AmbientPrefix` in `src/lib/block-component.ts`, and the contract is `docs/design/editor.md` § Ambient markers.
+A container's `ambientPrefix` (the read-only marker a container lends its first child, like a footnote definition's `[^label]: `) is either inert text, the default, or carries interactive character ranges, meaning clickable regions inside the read-only prefix. The shape is `AmbientPrefix` in `src/lib/block-component.ts`, and the contract is `docs/design/structural-edits.md` § Ambient markers.
 
 - **Inert:** return a string, the way a plain list item's marker is `- `. (The blockquote passes no prefix at all; its `> ` markers render as border-only chrome.)
 - **Interactive:** return the object form: `text` plus one or more ranges, each a character span, a class name and a click handler, plus optionally a role and ARIA state, an accessible name, a tab stop, and an Enter/Space handler.

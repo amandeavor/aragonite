@@ -1,7 +1,7 @@
 /**
  * Rebuilds container `raw` up a node's ancestors, looking up `descriptor.rebuildRaw`, so a
  * plugin container joins in by declaring one. A container's metadata follows its rebuilt bytes
- * (`docs/design/editor.md` § The container `raw` contract).
+ * (`docs/design/structural-edits.md` § The container `raw` contract).
  */
 
 import type { AnyBlockKind, CstNode } from '../core/nodes';

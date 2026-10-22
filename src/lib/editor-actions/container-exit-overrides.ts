@@ -2,7 +2,7 @@
  * The override every plugin container shares: Enter on an empty last child exits the
  * container, unless a selection's removal is what emptied it. Backspace unwrap comes from the
  * kind's declared `unwrapRole`, which picks a strategy in `unwrap-strategies.ts`
- * (`docs/design/editor.md` § Container unwrap).
+ * (`docs/design/structural-edits.md` § Container unwrap).
  */
 
 import type { BlockEditActions } from '../action-contracts';

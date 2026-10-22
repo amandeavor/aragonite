@@ -1,6 +1,6 @@
 # Live Mode
 
-`presentationMode="live"` is the fifth of the five presentation modes, which run from raw source up to fully rendered. It hides every Markdown marker standing over content, and nothing brings one back, not even the caret walking into the construct (that's preview-inline's trick). The document stays editable the whole time. Like every mode it's CSS over the one render path (`editor.md` § 4), so the bytes and the offsets are the source document's. What live changes is editing. A caret next to a marker it can't see needs answers the other modes never had to give, and this doc catalogues them.
+`presentationMode="live"` is the fifth of the five presentation modes, which run from raw source up to fully rendered. It hides every Markdown marker standing over content, and nothing brings one back, not even the caret walking into the construct (that's preview-inline's trick). The document stays editable the whole time. Like every mode it's CSS over the one render path (`editor.md` § The editing surface), so the bytes and the offsets are the source document's. What live changes is editing. A caret next to a marker it can't see needs answers the other modes never had to give, and this doc catalogues them.
 
 A `live-mode.md § 4.x` citation in source or a test resolves to § 4 below, and those numbers never move. Jump by section:
 

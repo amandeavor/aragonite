@@ -19,7 +19,7 @@ These checks run in three kinds of place:
 | ------ | ------------------------------------------------------------------------------------------ | ------- |
 | G1.1   | A strip container's raw and metadata never go stale against its children and bytes         | A·P·N·D |
 | G1.2   | Every built-in block kind has a descriptor (its view moved up to G3.15)                    | A·P     |
-| G1.3   | _Retired upward_: container-iff-rebuildRaw is now unrepresentable                          | T       |
+| G1.3   | _Retired upward_: container-iff-rebuildRaw is now unrepresentable (G3.6)                   | T       |
 | G1.4   | No container publishes the undo-history context key                                        | A·L·N   |
 | G1.5   | Leaf fields on leaves, container fields on containers                                      | A·P·N   |
 | G1.6   | `cloneMetadata` hands back a genuinely independent copy                                    | A·P     |
@@ -48,12 +48,12 @@ These checks run in three kinds of place:
 | G1.29  | A selection endpoint's offset means what its own block's coordinate space says             | A·N     |
 | G1.30  | Every registered kind declares a `mergeRole` from the known set                            | A·N     |
 | G1.31  | The inline-construct policy table is coherent and unambiguous                              | A·N     |
-| G1.32  | _Retired upward_: a content-start Backspace with no range no longer compiles               | T       |
+| G1.32  | _Retired upward_: a content-start Backspace with no range no longer compiles (G3.10)       | T       |
 | G1.33  | A block the caret is placed in paints at least one position a caret can land on            | A·N     |
 | G1.34  | _Retired_: a split's landing reads the index `splitNode` returned (G4.43)                  | L       |
 | G1.35  | A slot that holds exactly one node never takes bytes that reparse to several               | A·N     |
 | G1.36  | A structural change fits the arrays it syncs; ids stay in lockstep with children           | A·N     |
-| G1.37  | _Retired upward_: a context-dependent kind with an opener no longer compiles               | T       |
+| G1.37  | _Retired upward_: a context-dependent kind with an opener no longer compiles (G3.10)       | T       |
 | G1.38  | A spliced container raw equals what a full rebuild would write                             | A·P·N   |
 | G1.39  | At most one caret the editor draws shows at a time                                         | L       |
 | G1.40  | Every built-in kind declares its page role and its height estimate                         | A·N     |
@@ -113,14 +113,7 @@ blank `>`. Grids are exempt; opaque containers are G1.12's and G1.13's. `checkSt
 
 **G1.2 · Registry completeness.** Every `BlockKind` resolves to a descriptor, the kinds enumerated
 from the union-derived manifest (`core/nodes.ts :: BLOCK_KIND_TABLE`, `ALL_BLOCK_KINDS`). Predicate
-`checkRegistryCompleteness` (`registry.ts`) · bootstrap · `registry.test.ts`. The rule used to say
-"and a component" too; that half retired upward to G3.15, whose table type makes a built-in with
-no view a compile error.
-
-**G1.3 · Retired upward.** The rule was: `isContainer` iff `rebuildRaw`. The grouped registration
-shape (G3.6) derives `isContainer` from the `container` group, whose `rebuildRaw` is required, so
-the pairing violation became unrepresentable, and the runtime guard and its tests are deleted.
-Superseded by G3.6 (`BlockKindRegistration`).
+`checkRegistryCompleteness` (`registry.ts`) · bootstrap · `registry.test.ts`.
 
 **G1.4 · No container history context.** No container `setContext`s `HISTORY_KEY`. Predicate
 `checkNoContainerHistoryKey` (`context-keys.ts`) · run in
@@ -154,8 +147,7 @@ edit already copied. Dev hashes every node's bytes. `checkSnapshotIntegrity` ·
 `snapshot-integrity.test.ts`, `undo-restoration.property.test.ts`; a throwing commit is G2.17.
 
 **G1.10 · Unique opener priorities.** No two openers share a priority: a tie still dispatches by
-kind name, but it's almost always a mistake. The rule used to say every opener's kind has a
-descriptor too; an opener is now a field of the kind's registration, so that half can't be written.
+kind name, but it's almost always a mistake.
 Predicate `checkOpenerRegistry` (`registry.ts`) · bootstrap · `opener-registry.test.ts`.
 
 **G1.11 · Keymap coherence.** Every keymap chord names a known command id, and chords are unique
@@ -278,22 +270,12 @@ rank and command no other mark row does; a plugin row can't take a built-in comm
 mount, once the hooks load. `checkInlineConstructPolicy` · `runStartupInvariantChecks` ·
 `inline-construct-policy-coherence.test.ts`, `inline-construct-policy.test.ts`.
 
-**G1.32 · Retired upward.** The rule was: a kind declaring `contentStartBackspace` also declares
-`getContentRange`, since without the range its content starts at raw 0 and the demote never fires.
-A registration now declares the two as one group, `contentStart: { range, backspace? }`, with the
-range required, so the runtime guard and its test are deleted. Superseded by G3.10.
-
 **G1.33 · The caret can land.** In a mode that hides markers and edits (live, preview-inline), a
 block holding the caret paints a spot the caret can land on; one that's all hidden markers takes the
 next key between `display:none` spans, on either side. Built-ins hold by construction
 (`docs/design/live-mode.md` § 4.1), so this catches a plugin drawing its own marker chrome. It fires
 from the root's `focusin`, so a consumer's caret component is covered. `checkLandableCaret` ·
 `editor-root/focus.ts` · `landable-caret.test.ts`, `landable-caret-doors.test.ts`.
-
-**G1.34 · Retired.** The rule was: the index a split's caret lands on is the one `splitNode`
-returned, never a re-derived `blockIndex + 1`. The guard could never fire (it compared the split's
-answer with itself). A split now builds its landing from `SplitResult.secondHalfIndex`, and G4.43
-keeps every split call reading it.
 
 **G1.35 · Single-node sink.** A slot that installs exactly one node never installs bytes that
 reparse to several (bytes arriving plural are fine). Every join (Backspace, Delete, the list-item
@@ -308,12 +290,6 @@ depth. It's checked where applied and where the commit publishes ids (a record c
 wrong window) and, over the whole document, at e2e teardown. `applyStructuralChangeToIdsRefs`,
 `assertCommittedNodes` · `structural-descriptor.test.ts`, `child-spans.test.ts`,
 `cross-block-delete-seam-fold.test.ts`, `child-id-parity.test.ts`.
-
-**G1.37 · Retired upward.** The rule was: `contextDependentKind` (a kind with no opener of its
-own, whose container writes its syntax) never sits beside an opener, since it suppresses the reparse
-for a kind the parser can recognize. The two used to live in different registries; now the opener
-is a field of the registration, so the pair is G3.10's `context-dependent-opener` row: a type error,
-and a throw for a cast. Its bootstrap check and tests are deleted.
 
 **G1.38 · Faithful container splices** (`child-spans-faithful`). After every one-region splice, dev
 re-derives the container raw on a scratch node and, on a difference, names the kind and refuses the
@@ -386,11 +362,6 @@ version bump (G4.52) reports text the editor no longer holds. In dev the first r
 text re-serializes and compares, except with the perf instruments armed and in the `source` swap
 compare, which an echoing host hits every keystroke. `invariants/current-source.ts` ·
 `commit/current-source.ts :: createCurrentSource` · `current-source.test.ts`.
-
-**G1.53 · Retired.** The rule was: a write made for a document a `source` swap replaced is refused,
-and a dev build says so (`stale-document-write`). The refusal stays, quietly, in every build, in
-`editor-actions/commit/reading-write-gate.ts :: admitsWrite`: a late write after a swap (a paste
-whose clipboard read finished late) is ordinary, not a bug.
 
 **G1.54 · The tree's top-level array comes back untouched** (`top-level-untouched`). A commit with
 the document among its scopes hands its mutation a copy of the top-level array and installs it at

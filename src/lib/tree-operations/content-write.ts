@@ -1,7 +1,7 @@
 /**
  * The content write: every byte that enters a node goes through `updateNodeContent` after
  * `legalizeWrite` makes it legal for its position. Also re-derives a container's kind from its
- * rebuilt raw (`docs/design/editor.md` § Structural operations).
+ * rebuilt raw (`docs/design/structural-edits.md` § Structural operations).
  */
 
 import type { AnyBlockKind, CstNode, Document } from '../core/nodes';

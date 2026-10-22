@@ -1,6 +1,6 @@
 /**
  * The Backspace unwrap strategies a container's declared `unwrapRole` selects, run from the
- * container's blockEdit (`docs/design/editor.md` § Container unwrap).
+ * container's blockEdit (`docs/design/structural-edits.md` § Container unwrap).
  */
 
 import { CURSOR_END, CURSOR_START } from '../block-component';

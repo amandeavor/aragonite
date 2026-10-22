@@ -193,7 +193,7 @@ function endsInParagraph(node: CstNode): boolean {
 // ── The span re-read ──
 
 /** Re-read children `top` through `bottom` as one span, taken where it reads otherwise: a
- *  construct backed out at the top that a line at the bottom now finishes (editor.md § 8). */
+ *  construct backed out at the top that a line at the bottom now finishes (structural-edits.md § Structural operations). */
 export function absorbSpanReading(
 	body: BodyParent,
 	top: number,

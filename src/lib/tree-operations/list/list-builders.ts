@@ -102,7 +102,7 @@ function mintListItem(
 	if (children[0]) children[0].leadingTrivia = '';
 	rebuildListItemRaw(item);
 	// A first line the marker line doesn't hold as this item takes the wider marker it reads as,
-	// or else opens below an empty marker (`docs/design/editor.md` § 9).
+	// or else opens below an empty marker (`docs/design/structural-edits.md` § The container `raw` contract).
 	if (adoptOwnReading(item, grammar)) return item;
 	if (takeWidenedMarker(item, grammar) && adoptOwnReading(item, grammar)) return item;
 	openBelowMarker(item);

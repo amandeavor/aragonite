@@ -104,7 +104,7 @@ describe('dispatchMoveFocus', () => {
 		expect(child.focus).toHaveBeenCalledWith(CURSOR_END);
 	});
 
-	// A target that cannot take focus must not stop the move (`docs/design/editor.md`
+	// A target that cannot take focus must not stop the move (`docs/design/structural-edits.md`
 	// § Focus traversal); with no focusable sibling ahead, the walk hands up to the parent.
 	it('non-focusable at the boundary: delegates upward in the move direction', async () => {
 		const child = stubBlockComponent({ focus: vi.fn(), focusable: false });

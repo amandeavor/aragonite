@@ -484,7 +484,7 @@ function readLine(codec: LineCodec, line: string, place: LinePlace): BodyLine | 
 }
 
 /** `fresh` written over `old`, lines with equal text paired from the top, then the bottom, the
- *  rest in order (`docs/design/editor.md` § The container `raw` contract). */
+ *  rest in order (`docs/design/structural-edits.md` § The container `raw` contract). */
 function writeLines(
 	old: OldLine[],
 	fresh: BodyLineOut[],
