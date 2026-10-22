@@ -1,6 +1,6 @@
 # Recipes
 
-Part of the [consumer guide](../consumer-guide.md). Worked examples built from the public calls, [screen geometry](../consumer-guide.md#screen-geometry) and [the selection events](../consumer-guide.md#events) mostly, then one for rewriting a whole document at once.
+Part of the [consumer guide](../consumer-guide.md). Worked examples built from the public calls (mostly [screen geometry](../consumer-guide.md#screen-geometry) and [the selection events](../consumer-guide.md#events)), plus one for rewriting a whole document at once.
 
 ## Recipe: navigating to a block
 
