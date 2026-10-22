@@ -322,9 +322,9 @@ function escalateFenceRuns(input: FenceWriteInput): FenceWriteResult {
 	return { display: joinDisplayLines(lines), caret: moved };
 }
 
-/** Last line reading as this fence's closer at or after `from`; line 0 is the opener's line. */
-function lastCloserIndex(lines: DisplayLine[], fence: FenceShape, from = 1): number {
-	for (let i = lines.length - 1; i >= from; i--) {
+/** Last line past the opener's line 0 that reads as this fence's closer, or -1. */
+function lastCloserIndex(lines: DisplayLine[], fence: FenceShape): number {
+	for (let i = lines.length - 1; i >= 1; i--) {
 		if (matchFenceClose(lines[i].text, fence.marker, fence.length)) return i;
 	}
 	return -1;
