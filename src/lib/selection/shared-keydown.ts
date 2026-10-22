@@ -13,7 +13,7 @@ import type { CaretWriter } from '../caret/widget-offset';
 import type { CrossBlockHandlers } from './cross-block/dispatch';
 import type { CommandDispatchContext } from '../schema/block-commands';
 import { commandAtBlock, isArrowKey } from './cross-block/keydown';
-import { rawSelectionIn } from './native-bridge';
+import { holdsNativeRange, rawSelectionIn } from './native-bridge';
 import type { Reading } from '../schema/reading';
 import {
 	extendFocusToNextBlock,
@@ -225,6 +225,8 @@ function collapseRangeForArrow(
 	if (!isArrowKey(e.key) || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) {
 		return false;
 	}
+	// A caret, the common case, costs no walk of the block.
+	if (!holdsNativeRange()) return false;
 	const range = rawSelectionIn(el);
 	if (!range || range.collapsed || range.start === null || range.end === null) return false;
 	const at =
