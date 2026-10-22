@@ -79,7 +79,7 @@
 			rendered = result;
 			if (hadFocus) {
 				await tick();
-				focusSurfaceEl()?.focus();
+				focusSurfaceEl()?.focus({ preventScroll: true });
 			}
 		});
 		return () => {
@@ -233,7 +233,7 @@
 	});
 
 	function refocusBlock(): void {
-		void tick().then(() => focusSurfaceEl()?.focus());
+		void tick().then(() => focusSurfaceEl()?.focus({ preventScroll: true }));
 	}
 
 	function openEdit(): void {
@@ -317,7 +317,7 @@
 	function openFocusView(): void {
 		focusView = true;
 		overlayView.reset();
-		void tick().then(() => overlayEl?.focus());
+		void tick().then(() => overlayEl?.focus({ preventScroll: true }));
 	}
 
 	function closeFocusView(): void {
@@ -354,7 +354,16 @@
 			onfocusout={() => commitEdit(false)}
 			onpointerdown={(e) => e.stopPropagation()}></textarea>
 	{:else}
-		<div class="mermaid-toolbar" data-corner-control onpointerdown={(e) => e.stopPropagation()}>
+		<!-- A press here skips the block's own press handling and leaves focus where it was; Edit and
+		     Focus move it themselves. -->
+		<div
+			class="mermaid-toolbar"
+			data-corner-control
+			onpointerdown={(e) => {
+				e.stopPropagation();
+				e.preventDefault();
+			}}
+		>
 			<button type="button" data-testid="mermaid-edit" onclick={openEdit}>Edit</button>
 			<button type="button" data-testid="mermaid-focus" onclick={openFocusView}>Focus</button>
 			<button type="button" data-testid="mermaid-reset" onclick={() => view.reset()}>
@@ -362,11 +371,11 @@
 			</button>
 		</div>
 		{#if surfaceState === 'rendered'}
-			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+			<!-- Focusable for a click, out of the tab order: the block's editing host is its stop. -->
 			<div
 				class="mermaid-viewport"
 				{...viewportGesture}
-				tabindex="0"
+				tabindex="-1"
 				role="img"
 				aria-label="Mermaid diagram"
 				onwheel={onViewportWheel}
@@ -384,10 +393,9 @@
 			<!-- {#key} remounts once per state: a change of state replaces the element, and
 			     its focus and blur timing with it. -->
 			{#key surfaceState}
-				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 				<div
 					class="mermaid-surface"
-					tabindex="0"
+					tabindex="-1"
 					role="group"
 					aria-label={surfaceLabel}
 					onpointerdown={onSurfacePointerDown}
@@ -420,7 +428,13 @@
 			aria-label="Diagram focus view"
 			onkeydown={onOverlayKeydown}
 		>
-			<div class="mermaid-overlay-bar" onpointerdown={(e) => e.stopPropagation()}>
+			<div
+				class="mermaid-overlay-bar"
+				onpointerdown={(e) => {
+					e.stopPropagation();
+					e.preventDefault();
+				}}
+			>
 				<button type="button" onclick={() => overlayView.reset()}>Reset view</button>
 				<button type="button" data-testid="mermaid-overlay-close" onclick={closeFocusView}>
 					Close

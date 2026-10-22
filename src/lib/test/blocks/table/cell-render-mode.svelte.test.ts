@@ -44,6 +44,7 @@ function mountCell(raw: string) {
 	let mode = $state<PresentationMode>('source');
 	let theme = $state('light');
 	const render = createCellRender({
+		shownSource: () => null,
 		caretWriter: testCaretWriter,
 		get el() {
 			return el;

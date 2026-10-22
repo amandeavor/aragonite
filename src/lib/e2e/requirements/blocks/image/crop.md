@@ -27,6 +27,11 @@ this editor's own addition to the Obsidian-style size hint (`image-dimensions.ts
   (unit-covered in `image-crop.test.ts`)
 - the tick or Enter writes the crop; Escape, the cross, or a click away abandons it and
   restores the image untouched, with no source change and no undo entry
+- a crop is a mode, like an open dialog: what would write over the image does nothing and leaves
+  the crop open, and Enter still applies it after. That covers a letter, Backspace, Delete, a paste,
+  and the editor's own chords (Shift+Arrow's resize, Mod+X, Mod+Z), read off the editor's keymap
+- everything else works during a crop: Mod+F opens the find bar, the browser's own chords keep
+  their default, and a key aimed at one of the host's own controls still reaches it
 - a committed crop renders as a fixed frame (`md-image-cropped`, `object-fit: cover`) the image
   pans inside; resizing it keeps the frame's shape
 - a crop loaded from bytes survives its own commit byte for byte (the tick over an untouched
@@ -42,3 +47,11 @@ Two checks after a handle drag expected the loaded fixture's own bytes (`300x150
 `200x100@30,60`), so a drag that wrote nothing would have passed them; G4.22 caught that they
 proved nothing once the tree was merged, and the checks now exclude the size the fixture loaded
 with.
+
+Escape after a pan dismissed the whole toolbar in WebKit: a clicked button takes no focus there, so
+focus sat on the toolbar, and its own Escape handler ran after the crop's. Only Chromium ran this
+file, where focus falls to the page once the crop button goes away.
+
+A letter, Backspace or Mod+X during a crop replaced or cut the image under it, in every engine: the
+crop rows drove the session by pointer, Enter and Escape only, and the rows for typing over a
+selected image ran with no crop open.

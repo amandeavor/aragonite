@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { MermaidPage, STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
+import { focusWalkKey } from '../../platform-keys';
 
 // Requirements: e2e/requirements/plugins/mermaid-tab-order.md.
 
@@ -39,7 +40,7 @@ test.describe('a plugin whole-block kind is one editing tab stop', () => {
 
 		const stops: string[] = [];
 		for (let i = 0; i < 4; i++) {
-			await page.keyboard.press('Shift+Tab');
+			await page.keyboard.press(focusWalkKey({ backward: true }));
 			stops.push(await focusedStop(page));
 		}
 

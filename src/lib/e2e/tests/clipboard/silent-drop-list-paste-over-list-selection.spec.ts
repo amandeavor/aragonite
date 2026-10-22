@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 test.describe('clipboard: silent drop; multi-item list paste over multi-item list selection', () => {
 	let editor: EditorPage;
@@ -37,9 +38,9 @@ test.describe('clipboard: silent drop; multi-item list paste over multi-item lis
 
 		await editor.focusBlockAtPath([0, 0, 0], 0);
 		await page.keyboard.down('Shift');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowDown');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.up('Shift');
 		await editor.waitForCrossBlock(true);
 

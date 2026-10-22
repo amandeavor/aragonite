@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { updateNodeContent } from '#lib/tree-operations/content-write.js';
-import { reorderChildrenWithTrivia } from '#lib/tree-operations/reorder.js';
 import { documentBody } from '#lib/tree-operations/node-primitives.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { rebuildContainerRaw } from '#lib/schema/container-raw.js';
@@ -10,6 +9,7 @@ import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { documentLineEnding } from '#lib/core/lines.js';
 import { fixtureGrammar } from '#lib/test/harness/fixture-grammar.js';
+import { reorderSettled } from '#lib/test/harness/settle-funnel.js';
 
 // A write that leaves a construct open to the end of the file closes it, so the blocks below stand
 // instead of becoming its body.
@@ -180,7 +180,7 @@ describe('a gesture that writes no bytes still absorbs (GH #180)', () => {
 		const doc = parse('a\n\n```\nx\n');
 		expect(doc.children.map((c) => c.kind)).toEqual(['paragraph', 'fencedCode']);
 
-		const settled = reorderChildrenWithTrivia(
+		const settled = reorderSettled(
 			documentBody(doc),
 			1,
 			0,

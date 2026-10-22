@@ -1,5 +1,6 @@
 // Fails when a wrapper package under `packages/` drifts from the core: each must carry the root's
-// version and peer the core at exactly that version, since every package releases together.
+// version and peer the core at exactly that version, since every package releases together. The
+// version constant the library reports (`src/lib/version.ts`) must match the root's too.
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +27,17 @@ export function lockstepDrift(root, wrappers) {
 	return problems;
 }
 
+/**
+ * The library's version constant against the root manifest, as messages; empty when they match.
+ * @param {{ version: string }} root
+ * @param {string | null} libraryVersion
+ * @returns {string[]}
+ */
+export function libraryVersionDrift(root, libraryVersion) {
+	if (libraryVersion === root.version) return [];
+	return [`src/lib/version.ts says ${libraryVersion ?? 'nothing'}, the core is at ${root.version}`];
+}
+
 /** The root manifest and every workspace manifest, read from `dir`. */
 export function readManifests(dir = '.') {
 	/** @param {string} file */
@@ -35,12 +47,14 @@ export function readManifests(dir = '.') {
 		.map((name) => path.join('packages', name, 'package.json'))
 		.filter((file) => existsSync(path.join(dir, file)))
 		.map(read);
-	return { root, wrappers };
+	const constant = readFileSync(path.join(dir, 'src/lib/version.ts'), 'utf8');
+	const libraryVersion = /ARAGONITE_VERSION = '([^']+)'/.exec(constant)?.[1] ?? null;
+	return { root, wrappers, libraryVersion };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-	const { root, wrappers } = readManifests();
-	const problems = lockstepDrift(root, wrappers);
+	const { root, wrappers, libraryVersion } = readManifests();
+	const problems = [...lockstepDrift(root, wrappers), ...libraryVersionDrift(root, libraryVersion)];
 	if (problems.length > 0) {
 		console.error('check-lockstep:\n  ' + problems.join('\n  '));
 		process.exit(1);

@@ -11,6 +11,7 @@ import {
 	stepTo
 } from './helpers';
 import { attachIme } from '../../simulation/ime';
+import { edgeKey } from '../../platform-keys';
 
 // Which side of a hidden delimiter run a typed byte lands on. The source is the reference: the
 // caret reports the same offset either way, so only the bytes tell the two positions apart. Each
@@ -37,20 +38,19 @@ const DOC = [
 const BOLD = 0;
 const LINK = 1;
 const ESCAPE = 2;
-const HARD_BREAK = 3;
 const LEAD = 4;
 
-/** A fresh copy of the document, the caret at the end of `block`'s line, `Home` or `End`. */
+/** A fresh copy of the document, the caret at `edge` of `block`'s line. */
 async function atLineEdge(
 	ep: EditorPage,
 	page: Page,
 	block: number,
-	key: 'Home' | 'End',
+	edge: 'lineStart' | 'lineEnd',
 	doc = DOC
 ): Promise<void> {
 	await nextRow(ep, doc);
 	await clickBlockSettled(ep, block);
-	await page.keyboard.press(key);
+	await page.keyboard.press(edgeKey(edge));
 	await ep.waitForRenderFlush();
 }
 
@@ -85,7 +85,7 @@ test('live mode: a mark takes the format of the character before the caret', asy
 	// The same screen position, reached leftward across the whole closing run: the way the caret
 	// came makes no difference, the character before it is still bold.
 	await test.step('a caret that came back from the text after bold types inside it too', async () => {
-		await atLineEdge(ep, page, BOLD, 'End');
+		await atLineEdge(ep, page, BOLD, 'lineEnd');
 		await stepTo(ep, page, 'ArrowLeft', 11);
 
 		await page.keyboard.type('X');
@@ -101,7 +101,7 @@ test('live mode: a mark takes the format of the character before the caret', asy
 	});
 
 	await test.step('a caret that stepped right up to bold’s leading edge types before it', async () => {
-		await atLineEdge(ep, page, BOLD, 'Home');
+		await atLineEdge(ep, page, BOLD, 'lineStart');
 		await stepTo(ep, page, 'ArrowRight', 5);
 
 		await page.keyboard.type('X');
@@ -114,7 +114,7 @@ test('live mode: a line edge and a click follow the same rule', async ({ page })
 
 	// At a line start there is no character before the caret, so the one after decides.
 	await test.step('Home on a line opening with bold types inside the construct', async () => {
-		await atLineEdge(ep, page, LEAD, 'Home');
+		await atLineEdge(ep, page, LEAD, 'lineStart');
 		expect(await focusOffset(ep)).toBe(2);
 
 		await page.keyboard.type('X');
@@ -163,7 +163,7 @@ test('live mode: a never-extend construct never takes the byte', async ({ page }
 		await ep.bridge.waitForSourceContains('A [link](https://example.com)X tail');
 
 		await clickBlockSettled(ep, LINK);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.waitForRenderFlush();
 		await stepTo(ep, page, 'ArrowLeft', 7);
 		await page.keyboard.type('Y');
@@ -184,7 +184,7 @@ test('live mode: unstamped marker runs are never typed into', async ({ page }) =
 	// `x \* y`: the backslash is unpainted, the `*` is the glyph. Neither side of the pair
 	// admits a byte between them.
 	await test.step('an escape’s two bytes stay adjacent whichever side is typed at', async () => {
-		await atLineEdge(ep, page, ESCAPE, 'Home');
+		await atLineEdge(ep, page, ESCAPE, 'lineStart');
 		await stepTo(ep, page, 'ArrowRight', 2);
 		await page.keyboard.type('X');
 		await ep.bridge.waitForSourceContains('x X\\* y');
@@ -196,7 +196,10 @@ test('live mode: unstamped marker runs are never typed into', async ({ page }) =
 
 	// `end  \nnext`: the two spaces before the newline are the break's markers.
 	await test.step('a hard break’s trailing spaces survive a byte typed at the line end', async () => {
-		await atLineEdge(ep, page, HARD_BREAK, 'Home');
+		// A click at the block's middle lands on either line by engine, so the click names the second.
+		await nextRow(ep, DOC);
+		await clickWordSettled(ep, page, 'next');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await stepTo(ep, page, 'ArrowLeft', 3);
 
 		await page.keyboard.type('X');
@@ -225,7 +228,7 @@ test('live mode: a childless construct is all delimiters', async ({ page }) => {
 	const ep = await enterPresentationMode(page, 'live', CHILDLESS_DOC);
 
 	await test.step('a click at the left edge of an escaped line types before the backslash', async () => {
-		await atLineEdge(ep, page, ESCAPE_LEAD, 'Home', CHILDLESS_DOC);
+		await atLineEdge(ep, page, ESCAPE_LEAD, 'lineStart', CHILDLESS_DOC);
 
 		await page.keyboard.type('Z');
 		await ep.bridge.waitForSourceContains('Z');
@@ -234,7 +237,7 @@ test('live mode: a childless construct is all delimiters', async ({ page }) => {
 	});
 
 	await test.step('Home on a line opening with an autolink types before its bracket', async () => {
-		await atLineEdge(ep, page, AUTOLINK_LEAD, 'Home', CHILDLESS_DOC);
+		await atLineEdge(ep, page, AUTOLINK_LEAD, 'lineStart', CHILDLESS_DOC);
 
 		await page.keyboard.type('Z');
 		await ep.bridge.waitForSourceContains('Z');
@@ -244,7 +247,7 @@ test('live mode: a childless construct is all delimiters', async ({ page }) => {
 	// The caret lands at the last reachable offset, inside the closing bracket, where a byte
 	// rewrites the destination: a link never extends at either edge, and the angle form is a link.
 	await test.step('End after a trailing autolink types past its closing bracket', async () => {
-		await atLineEdge(ep, page, AUTOLINK_TAIL, 'End', CHILDLESS_DOC);
+		await atLineEdge(ep, page, AUTOLINK_TAIL, 'lineEnd', CHILDLESS_DOC);
 
 		await page.keyboard.type('Z');
 		await ep.bridge.waitForSourceContains('Z');
@@ -254,7 +257,7 @@ test('live mode: a childless construct is all delimiters', async ({ page }) => {
 	// The discriminating counterpart: the same gesture on a bold types inside it, from the
 	// character after the caret, so a change that moved bold too would show up in this row.
 	await test.step('the bold control types inside by the same gesture', async () => {
-		await atLineEdge(ep, page, BOLD_LEAD, 'Home', CHILDLESS_DOC);
+		await atLineEdge(ep, page, BOLD_LEAD, 'lineStart', CHILDLESS_DOC);
 
 		await page.keyboard.type('Z');
 		await ep.bridge.waitForSourceContains('Z');

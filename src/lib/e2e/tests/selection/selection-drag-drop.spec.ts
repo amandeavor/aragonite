@@ -2,6 +2,10 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { blockCenter, pastLineEnd } from './multi-click-helpers';
 import { pointAtRaw, textOutsideMarkers, textRunCenter, textRunStart } from '../../text-runs';
+import { multiClick } from '../../multi-click';
+import { dragSelection } from '../../selection-drag';
+import { COPY_DRAG_MODIFIERS, edgeKey } from '../../platform-keys';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // Dragging a selection and dropping it (`requirements/selection/selection-drag-drop.md`). Drops
 // aim past a line's end or at its first glyph: the two points whose offset no font metric moves.
@@ -11,16 +15,6 @@ const COPIED = 'alpha beta gamma\n\nbetasecond para here\n';
 
 type Point = { x: number; y: number };
 
-/** Presses on already-selected text and drags it to `to`: the browser's own selection drag. */
-async function dragSelection(page: import('@playwright/test').Page, from: Point, to: Point) {
-	await page.mouse.move(from.x, from.y);
-	await page.mouse.down();
-	await page.mouse.move(from.x + 4, from.y, { steps: 2 });
-	await page.mouse.move(to.x, to.y, { steps: 12 });
-	await page.mouse.move(to.x + 1, to.y, { steps: 2 });
-	await page.mouse.up();
-}
-
 function converged(page: import('@playwright/test').Page): Promise<boolean> {
 	return page.evaluate(() => (window as any).__test.parseConverged());
 }
@@ -28,7 +22,7 @@ function converged(page: import('@playwright/test').Page): Promise<boolean> {
 /** A fresh document has nothing to undo, so a Ctrl+Z that still leaves `expected` says both that
  *  the declined gesture put no entry on the undo stack and that it wrote nothing. */
 async function undoLeavesDocument(editor: EditorPage, expected: string): Promise<void> {
-	await editor.pressDeclined('Control+z');
+	await editor.pressDeclined('ControlOrMeta+z');
 	expect(await editor.page.evaluate(() => (window as any).__test.getSource())).toBe(expected);
 }
 
@@ -81,7 +75,7 @@ test.describe('dragging a selection', () => {
 
 	async function doubleClickOn(needle: string): Promise<Point> {
 		const at = await textRunCenter(editor.page, needle);
-		await editor.page.mouse.dblclick(at.x, at.y);
+		await multiClick(editor.page, at, 2);
 		return at;
 	}
 
@@ -91,9 +85,9 @@ test.describe('dragging a selection', () => {
 		await editor.bridge.waitForSourceEquals('alpha  gammabeta\n\nsecond para here\n');
 		expect(await converged(page)).toBe(true);
 		expect(await domMatchesRaw(page, 0)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(TWO);
-		await page.keyboard.press('Control+y');
+		await page.keyboard.press('ControlOrMeta+y');
 		await editor.bridge.waitForSourceEquals('alpha  gammabeta\n\nsecond para here\n');
 	});
 
@@ -104,26 +98,23 @@ test.describe('dragging a selection', () => {
 		expect(await converged(page)).toBe(true);
 		expect(await domMatchesRaw(page, 0)).toBe(true);
 		expect(await domMatchesRaw(page, 1)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(TWO);
 	});
 
-	// Chromium reads the drop's modifier keys off the held keyboard state, so the key goes down
-	// before the mouse and comes up after the release.
-	for (const modifier of ['Control', 'Alt'] as const) {
+	for (const modifier of COPY_DRAG_MODIFIERS) {
 		test(`a word released with ${modifier} held is copied, the source kept`, async ({ page }) => {
+			skipUnlessSupported(page, 'modifierDrop');
 			const beta = await doubleClickOn('beta');
 			const target = await textRunStart(page, 'second para here');
-			await page.keyboard.down(modifier);
-			await dragSelection(page, beta, target);
-			await page.keyboard.up(modifier);
+			await dragSelection(page, beta, target, { copyWith: modifier });
 			await editor.bridge.waitForSourceEquals(COPIED);
 			expect(await converged(page)).toBe(true);
 			expect(await domMatchesRaw(page, 0)).toBe(true);
 			expect(await domMatchesRaw(page, 1)).toBe(true);
-			await page.keyboard.press('Control+z');
+			await page.keyboard.press('ControlOrMeta+z');
 			await editor.bridge.waitForSourceEquals(TWO);
-			await page.keyboard.press('Control+y');
+			await page.keyboard.press('ControlOrMeta+y');
 			await editor.bridge.waitForSourceEquals(COPIED);
 		});
 	}
@@ -132,24 +123,24 @@ test.describe('dragging a selection', () => {
 		page
 	}) => {
 		const at = await textRunCenter(page, 'beta');
-		await page.mouse.click(at.x, at.y, { clickCount: 3 });
+		await multiClick(page, at, 3);
 		await dragSelection(page, at, await textRunStart(page, 'second para here'));
 		await editor.bridge.waitForSource((s) => s.endsWith('alpha beta gammasecond para here\n'));
 		expect(await page.evaluate(() => (window as any).__test.getBlockCount())).toBe(2);
 		expect(await converged(page)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(TWO);
 	});
 
 	test('a Shift+Arrow selection drags the same way', async ({ page }) => {
 		const beta = await textRunCenter(page, 'beta');
 		await page.mouse.click(beta.x, beta.y);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
 		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight');
 		await dragSelection(page, beta, await textRunStart(page, 'second para here'));
 		await editor.bridge.waitForSourceEquals('alpha  gamma\n\nbetasecond para here\n');
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(TWO);
 	});
 
@@ -163,7 +154,7 @@ test.describe('dragging a selection', () => {
 		);
 		await editor.bridge.waitForSourceEquals('```\nconst  = 1\n```\n\nvaluesecond para here\n');
 		expect(await converged(page)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals('```\nconst value = 1\n```\n\nsecond para here\n');
 	});
 
@@ -182,7 +173,7 @@ test.describe('dragging a selection', () => {
 		expect(await converged(page)).toBe(true);
 		expect(await cellMatchesRaw(page, 1, 0)).toBe(true);
 		expect(await domMatchesRaw(page, 1)).toBe(true);
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForSourceEquals(CELL_DOC);
 	});
 
@@ -213,7 +204,7 @@ test.describe('dragging a selection', () => {
 	test('a payload carrying a line break cancels the drop', async ({ page }) => {
 		await editor.loadContent(SOFT_BREAK_DOC);
 		const at = await textRunCenter(page, 'first line');
-		await page.mouse.click(at.x, at.y, { clickCount: 3 });
+		await multiClick(page, at, 3);
 		await dragSelection(page, at, await textRunStart(page, 'second para'));
 		await editor.waitForNoSourceMutation();
 		// The payload itself, beside the whole-document read: dropping the line-break guard moves
@@ -231,7 +222,7 @@ test.describe('dragging a selection', () => {
 		await editor.setPresentationMode('live');
 		await editor.loadContent(LIVE_CODE_DOC);
 		const at = await pointAtRaw(page, [0], 14);
-		await page.mouse.click(at.x, at.y, { clickCount: 3 });
+		await multiClick(page, at, 3);
 		// The triple-click's range takes both hidden fence lines, the shape the drop must not cut.
 		const dragged = await page.evaluate(() => window.getSelection()?.getRangeAt(0).toString());
 		expect(dragged).toBe('```js\nconst x = 1\n```');

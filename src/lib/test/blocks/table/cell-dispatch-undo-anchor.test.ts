@@ -7,11 +7,10 @@ import { tick } from 'svelte';
 import {
 	installLayoutStubs,
 	mountEditor,
-	placeCaret,
 	type MountedEditor
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { cellAt, installTableLayoutStubs } from './mount-table';
-import { domTextOffsetAtNode } from '#lib/caret/widget-offset.js';
+import { domTextOffsetAtNode, type CaretWriter } from '#lib/caret/widget-offset.js';
 import type { UndoEntry } from '#lib/undo/types.js';
 import { rangeSelectionOf } from '../../support/undo-entry';
 
@@ -41,12 +40,22 @@ describe('a cell dispatch write anchors undo at the exact pre-edit caret', () =>
 	it('undo after a construct-edge delete restores caret and bytes byte-exact', async () => {
 		mounted = mountEditor({ source: GRID, presentationMode: 'live' });
 		const el = cellAt(mounted, 0, 0);
-		// `a\|b **bold**`: caret at the end of the displayed text (13), past the escape and the
-		// hidden closer.
-		placeCaret(el, 13);
+		// `a\|b **bold**`: caret past the escape and the hidden closer (13), written by the editor's
+		// own writer, as its edge step writes it.
+		el.focus();
+		const writer = (mounted.instance.__test as { getCaretWriter(): CaretWriter }).getCaretWriter();
+		writer.placeCaretAtRaw(el, 13, { clamp: 'exact' });
 
+		// The key's keydown passes, so its delete arrives at `beforeinput`.
 		el.dispatchEvent(
 			new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
+		);
+		el.dispatchEvent(
+			new InputEvent('beforeinput', {
+				inputType: 'deleteContentBackward',
+				bubbles: true,
+				cancelable: true
+			})
 		);
 		await mounted.settle();
 		// Backspace at the hidden closer takes the content character and keeps the `**` pair.
@@ -65,8 +74,7 @@ describe('a cell dispatch write anchors undo at the exact pre-edit caret', () =>
 		await tick();
 
 		expect(mounted.source()).toBe(GRID);
-		// 11, not the anchor's 13: the restore is clamped to the last reachable offset, since 13
-		// sits past the hidden closer, and both offsets write the same bytes anyway.
+		// 11, not the anchor's 13: the restore clamps to the last reachable offset.
 		expect(caretRawOffset(cellAt(mounted, 0, 0))).toBe(11);
 	});
 });

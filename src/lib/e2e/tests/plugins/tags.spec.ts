@@ -20,7 +20,8 @@ async function dragFromTag(editor: PluginsPage, name: string, toX: (left: number
 	const box = await tagChip(editor, name).boundingBox();
 	if (!box) throw new Error(`no box for #${name}`);
 	const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-	const target = toX(box.x);
+	// BiDi rejects a pointer move outside the viewport.
+	const target = Math.max(toX(box.x), 0);
 	await editor.page.mouse.move(from.x, from.y);
 	await editor.page.mouse.down();
 	for (let step = 1; step <= 6; step++) {
@@ -153,9 +154,9 @@ test.describe('in-body tags as inline widgets', () => {
 		const box = await tagChip(editor, 'inbox').boundingBox();
 		if (!box) throw new Error('no chip box');
 
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 		await editor.waitForRenderFlush();
 
 		expect(

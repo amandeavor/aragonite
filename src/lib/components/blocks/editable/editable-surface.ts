@@ -20,15 +20,21 @@ import {
 	type StickyColumnDirection
 } from '../../../block-component';
 import type { UserScrollport } from '../../../windowing/scroll-ancestors';
-import type { ScrollOwner } from '../../../windowing/scroll-owner';
 import type { DocumentGetter } from '../../../editor-keys';
 import type { BlockElLookup } from '../../../caret/block-el-lookup';
 import type { PasteImageHook } from '../../../host-hooks';
 import { emitCommandError, type EditorEvents } from '../../../editor-events';
 import type { InlineMenuCombobox } from '../../../inline-menu/inline-menu-state.svelte';
 import type { NodeView } from '../../../core/node-views';
-import { blockAccessibleName } from '../../../a11y-strings';
-import type { CommandDispatchContext } from '../../../schema/block-commands';
+import { blockAccessibleName, readingRole } from '../../../a11y-strings';
+import type { ReadingFocus } from '../../editor-root/reading-focus.svelte';
+import type { ScrollOwner } from '../../../windowing/scroll-owner';
+import {
+	dispatchKeyCommand,
+	type CommandDispatchContext,
+	type KindCommandTarget
+} from '../../../schema/block-commands';
+import { eventToChord } from '../../../schema/keybindings';
 import type { PluginActivation } from '../../../schema/plugin-activation';
 import type { UndoController } from '../../../editor-actions/deps';
 import type { PasteCommitCoordinator } from '../../../tree-operations/paste/paste-deps';
@@ -57,7 +63,8 @@ import {
 	trimTrailingLineEnding,
 	type LineEnding
 } from '../../../core/lines';
-import { getContentRange, sameLineSuffix } from '../../../core/inline';
+import { keepLineEndingPairs, lineEndingPairBeside } from '../../../core/line-ending-pairs';
+import { getContentRange, isProseKind, sameLineSuffix } from '../../../core/inline';
 import { droppedOpenLines } from '../../../tree-operations/content-write';
 import type { KindCue } from '../../kind-cue.svelte';
 import type { BlockAutoPairs } from '../text/auto-pair-record';
@@ -74,15 +81,21 @@ import {
 	type InlinePaste,
 	pasteIntoBlock
 } from './surface-clipboard';
+import { shownSelectionText } from './clipboard-step';
 import {
 	rawOfWalkOffset,
 	revealsNoMarkers,
 	rawOffsetAt,
 	walkOffsetOfRaw,
+	type CaretClamp,
 	type CaretWriter,
 	type RawRange
 } from '../../../caret/widget-offset';
-import type { SharedKeydownContext } from '../../../selection/shared-keydown';
+import {
+	caretLandableBounds,
+	type CaretUnitSource,
+	type SharedKeydownContext
+} from '../../../selection/shared-keydown';
 import {
 	isInteractionTraceEnabled,
 	traceCompositionEnd,
@@ -91,6 +104,18 @@ import {
 } from '../../../debug/interaction-trace';
 import { assertInvariant } from '../../../assert';
 import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
+import { checkDeleteDecided } from '../../../invariants/collapsed-delete';
+import type {
+	DeleteAnswer,
+	DeleteDirection,
+	DeleteIntent,
+	DeleteVerdict
+} from '../../../caret/delete-extent';
+import {
+	decideCollapsedDelete,
+	decideDeleteChord,
+	type CollapsedDeleteReads
+} from './collapsed-delete';
 import type { Reading } from '../../../schema/reading';
 import { createPlaceholderHint, type PlaceholderPolicy } from '../placeholder-hint.svelte';
 import type { CompositionSeat } from '../text/composition-seat';
@@ -129,10 +154,12 @@ export const REMOVED_IN_PLACE = Symbol('removed-in-place');
 // ── Accessibility attributes ────────────────────────────────────────────────
 
 /** What an editable block tells assistive tech: its name, the inline menu's list while one shows
- *  in it, and the empty block's hint, which `data-placeholder` also hands the stylesheet. */
+ *  in it, and the empty block's hint, which `data-placeholder` also hands the stylesheet. Reading
+ *  mode drops the field's role and name: a heading reads as a heading, any other block as text. */
 export interface EditableSurfaceAttributes {
-	role: 'textbox' | 'combobox';
-	'aria-label': string;
+	role?: 'textbox' | 'combobox' | 'heading';
+	'aria-label'?: string;
+	'aria-level'?: number;
 	'aria-expanded'?: 'true';
 	'aria-controls'?: string;
 	'aria-activedescendant'?: string;
@@ -163,9 +190,15 @@ export interface EditableSurfaceDeps {
 	/** What an offset handed to `focus` or `parkCaret` becomes before it lands. It receives the
 	 *  `CURSOR_START`, `CURSOR_END` and `CURSOR_EXACT_START` values as they are. */
 	clampLanding?: (offset: number) => number;
-	/** True while an ephemeral edit (inline-math source reveal) owns the DOM: the block
+	/** True while an ephemeral edit (a painted leaf's source) owns the DOM: the block
 	 *  commits on exit, so keyboard input and IME compositionend both skip the commit. */
 	isInputSuppressed?: () => boolean;
+	/** True while a widget in the block shows its source: typing there writes its bytes, and the
+	 *  line completion a typed write runs (`$$` to a fence) stays off. */
+	showsSource?: () => boolean;
+	/** Where `focus` and `parkCaret` put a caret once clamped: a prose block opens the source of a
+	 *  widget the offset falls strictly inside, a block with no inline widgets writes it. */
+	landCaret: (offset: number, clamp: CaretClamp) => void;
 
 	// ── Live block state (functions, never captured values) ───────────────────
 	getNode: () => NodeView;
@@ -185,14 +218,12 @@ export interface EditableSurfaceDeps {
 	getDoc: DocumentGetter;
 	getBlockElByPath: BlockElLookup;
 	focusActions: FocusActions;
-	/** Where a cross-block key's caret goes: a collapse, an extend's parked caret, a command's block. */
-	caretLanding: Pick<CaretLanding, 'restore' | 'park' | 'mount'>;
+	/** Where a cross-block key's caret goes: a collapse, an extended end, a command's block. */
+	caretLanding: Pick<CaretLanding, 'restore' | 'mount' | 'showSelectionEnd'>;
 	getEditorRoot: () => HTMLElement | null;
 	/** What scrolls this editor (the root in self mode; the host's scroller or the window in
 	 *  host mode), for the cross-block drag-select autoscroll. */
 	getScrollHost: () => UserScrollport | null;
-	/** Brings the block a Shift+Arrow extends into to the nearest edge. */
-	scrollOwner: Pick<ScrollOwner, 'place'>;
 	getEditorLifetime: () => AbortSignal | null;
 	caretMemory: CaretMemory;
 	blockEdit: BlockEditActions;
@@ -216,6 +247,12 @@ export interface EditableSurfaceDeps {
 	placeholder: () => PlaceholderPolicy | null;
 	/** A prose block's view of the pair the auto-pair wrote; omitted where nothing pairs. */
 	ownPairs?: BlockAutoPairs;
+	/** The editor's reading-mode tab stop, which the element takes its tabindex from, and the caret
+	 *  reading mode stands in for, which a Shift+click grows from. */
+	readingFocus: Pick<ReadingFocus, 'hold' | 'focusCaret'>;
+	/** What the editor shows, for an arrow in a block taller than that with no caret, and where a
+	 *  page key steps to. */
+	scrollOwner: Pick<ScrollOwner, 'port' | 'visibleBand' | 'showRect' | 'pathAt'>;
 
 	// ── The per-block reads `SharedKeydownContext` needs ──────────────────────
 	/** The selection's focus endpoint as a raw offset; each block converts its own DOM read. */
@@ -224,6 +261,9 @@ export interface EditableSurfaceDeps {
 	/** A surface that hides inline markers crosses each hidden edge in a press of its own
 	 *  (`text/edge-step.ts`); absent where no inline construct renders. */
 	stepEdge?: SharedKeydownContext['stepEdge'];
+	/** The inline spans a horizontal arrow crosses whole (widgets, replace decorations), read at
+	 *  the key; absent where no inline widget renders. A CRLF pair is the surface's own. */
+	inlineUnits?: () => CaretUnitSource;
 
 	// ── Input handling (per block) ────────────────────────────────────────────
 	/** Read the current DOM content as the block's displayed text, for the input commit. */
@@ -250,17 +290,28 @@ export interface EditableSurfaceDeps {
 	localHistory?: (e: InputEvent) => boolean;
 	/** The block's own beforeinput handling, run after the shared step, which it must not await. */
 	handleBeforeInput?: (e: InputEvent) => void;
+	/** Takes what a collapsed delete at raw `caret` aims at, through the block's own text. Omitted
+	 *  where the browser's delete is read back. */
+	deleteAtCaret?: (caret: number, intent: DeleteIntent) => DeleteAnswer;
+	/** Takes or enters the widget or decoration a delete of any unit facing `direction` meets at raw
+	 *  `caret`; true when it did. Omitted, like `deleteAtCaret`, where the block draws no widgets. */
+	deleteBeside?: (caret: number, direction: DeleteDirection) => boolean;
+	/** What the block's keys run at, for a delete at its edge, which runs the plain key's binding. */
+	commandTarget?: () => KindCommandTarget;
+	/** The block's own handling of a delete the editor left to the browser (a range, a soft
+	 *  keyboard's wider edit, one `deleteAtCaret` declined), run before the browser's would. */
+	handleDeclinedDelete?: (e: InputEvent) => void;
 }
 
 export interface EditableSurface {
 	/** Spread on the editable element: its accessibility attributes, the empty block's hint, the
-	 *  attachment that hint reads focus through, and the drawn caret's registration. */
+	 *  attachment that hint reads focus through, and `registerSurface`. */
 	attributes(combobox: InlineMenuCombobox | null): EditableSurfaceAttributes & {
 		[attachment: symbol]: unknown;
 	};
-	/** Registers the element with the drawn caret while it is mounted; `attributes` carries it, and
-	 *  a surface that spreads no attributes attaches it on its own. */
-	caretSource(el: HTMLElement): () => void;
+	/** Registers the element with the drawn caret and the reading-mode tab stop while it is
+	 *  mounted; `attributes` carries it, and a surface that spreads none attaches it on its own. */
+	registerSurface(el: HTMLElement): () => void;
 	crossBlock: CrossBlockHandlers;
 	sharedCtx: SharedKeydownContext;
 	surface: EditableSurfaceMethods;
@@ -339,12 +390,13 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		getMyPath: deps.getMyPath,
 		selection: deps.selection,
 		caretWriter: deps.caretWriter,
+		standInCaret: () => deps.readingFocus.focusCaret(),
 		getDoc: deps.getDoc,
 		getBlockElByPath: deps.getBlockElByPath,
 		caretLanding: deps.caretLanding,
 		getEditorRoot: deps.getEditorRoot,
 		getScrollHost: deps.getScrollHost,
-		scrollOwner: deps.scrollOwner,
+		scroll: deps.scrollOwner,
 		getEditorLifetime: deps.getEditorLifetime,
 		caretMemory: deps.caretMemory,
 		blockEdit: deps.blockEdit,
@@ -356,12 +408,23 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		events: deps.events
 	});
 
+	const caretUnits: CaretUnitSource = {
+		beside: (offset, direction, extending) =>
+			deps.inlineUnits?.().beside(offset, direction, extending) ??
+			// Most blocks hold no `\r`, so the DOM read stays off their arrows.
+			(deps.getNode().raw.includes('\r')
+				? lineEndingPairBeside(deps.readText(), offset, direction)
+				: null),
+		crossed: () => deps.inlineUnits?.().crossed()
+	};
+
 	const sharedCtx: SharedKeydownContext = {
 		getEl: () => deps.getEl(),
 		getCursorOffset: () => deps.backend.getRaw(),
 		getFocusOffset: deps.getFocusOffset,
 		getTextLen: deps.getTextLen,
 		stepEdge: deps.stepEdge,
+		caretUnits,
 		getMyPath: deps.getMyPath,
 		getIndex: deps.getIndex,
 		crossBlock,
@@ -371,9 +434,10 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		history: deps.history,
 		focus: deps.focusActions,
 		getDoc: deps.getDoc,
-		scrollOwner: deps.scrollOwner,
+		caretLanding: deps.caretLanding,
 		commands: deps.commands,
-		reading: deps.reading
+		reading: deps.reading,
+		scroll: deps.scrollOwner
 	};
 
 	// ── BlockComponent methods ────────────────────────────────────────────────
@@ -392,7 +456,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			return;
 		}
 		const requested = landed === CURSOR_START ? 0 : Math.max(0, landed);
-		deps.backend.setRaw(asRawOffset(requested), { clamp: 'reachable' });
+		deps.landCaret(requested, 'reachable');
 	}
 
 	const focus = placeCaret(deps.selection, deps.caretWriter, parkCaret);
@@ -418,10 +482,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	}
 
 	function getSelectedText(): string {
-		if (!deps.getEl()) return '';
-		const sel = window.getSelection();
-		if (!sel || sel.rangeCount === 0) return '';
-		return sel.toString();
+		return deps.getEl() ? shownSelectionText() : '';
 	}
 
 	function setSelection(start: number, end: number): void {
@@ -537,7 +598,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		getPreEditOffset: () => preEditOffset,
 		requestCaret: deps.requestCaret,
 		ownPairs: deps.ownPairs,
-		holdInsertion
+		holdInsertion,
+		showsSource: deps.showsSource
 	});
 
 	function command<A extends unknown[], R>(run: (...args: A) => R): (...args: A) => R {
@@ -547,23 +609,93 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		};
 	}
 
+	// The Enter keydown whose handler is still running, which decides that key's break itself.
+	let enterKeydown: KeyboardEvent | null = null;
+	// The last Backspace or Delete keydown, whose input the next delete is unless a handler took it.
+	let deleteKeydown: KeyboardEvent | null = null;
+	// The delete step's verdict on the input in progress, which the `input` after it checks.
+	let deleteVerdict: DeleteVerdict | null = null;
+
+	const deleteReads: CollapsedDeleteReads = {
+		composing: deps.getComposing,
+		caret: () => deps.backend.getRaw(),
+		hasRange: () => deps.backend.getRawSelection() !== null,
+		text: deps.readText,
+		targetRange: (e) => {
+			const target = typeof e.getTargetRanges === 'function' ? e.getTargetRanges()[0] : undefined;
+			return target ? deps.backend.rawRangeOf(target) : null;
+		},
+		deleteAtCaret: deps.deleteAtCaret
+			? (caret, intent) => {
+					deps.inputPrelude?.();
+					return deps.deleteAtCaret!(caret, intent);
+				}
+			: undefined,
+		deleteBeside: deps.deleteBeside
+			? (caret, direction) => {
+					deps.inputPrelude?.();
+					return deps.deleteBeside!(caret, direction);
+				}
+			: undefined,
+		atEdge: (caret, direction) => {
+			const el = deps.getEl();
+			if (!el) return false;
+			const bounds = caretLandableBounds(sharedCtx, el);
+			return direction === 'backward' ? caret <= bounds.start : caret >= bounds.end;
+		},
+		runPlainKey: (key) => {
+			const target = deps.commandTarget?.();
+			if (target) dispatchKeyCommand(key, target, deps.commands);
+		}
+	};
+
 	// A keydown that writes for itself fires no beforeinput, so the caret is read here too.
 	const onKeyDown = withKeydownVerdict(async (e) => {
 		endsDroppedComposition(e);
+		// A key can outrun the `selectionchange` that moves a caret the browser left off its spot, and
+		// every handler below reads the caret.
+		const el = deps.getEl();
+		if (!e.isComposing && el) deps.caretWriter.canonicalizeCaret(el);
 		if (!e.isComposing) recordPreEditOffset();
-		await deps.handleKeydown(e);
+		if (e.key === 'Enter' && !e.isComposing) enterKeydown = e;
+		deleteKeydown = !e.isComposing && (e.key === 'Backspace' || e.key === 'Delete') ? e : null;
+		try {
+			await deps.handleKeydown(e);
+			if (deleteKeydown === e) decideDeleteChord(e, deleteReads);
+		} finally {
+			if (enterKeydown === e) enterKeydown = null;
+		}
 	});
+
+	/** A break input that arrives while its Enter's handler still runs is that key's default, which
+	 *  the handler replaces, so it writes nothing (Playwright's Firefox fires it before the await). */
+	function isEnterDefault(e: InputEvent): boolean {
+		const isBreak = e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph';
+		return isBreak && enterKeydown !== null;
+	}
 
 	// Synchronous to the block's handler: the block's `preventDefault` only counts inside this
 	// listener's microtask checkpoint.
 	function onBeforeInput(e: InputEvent): void {
+		const keyChord =
+			deleteKeydown && !deleteKeydown.defaultPrevented ? eventToChord(deleteKeydown) : null;
+		deleteKeydown = null;
+		// A step below that claims the input leaves it this verdict; the delete step overwrites it.
+		deleteVerdict = { decided: false, decline: 'claimed' };
 		endsDroppedComposition(e);
 		adoptsComposition(e);
 		// A drop's text lands at the pointer, not at the caret a chord promised its marks to.
 		if (e.inputType === 'insertFromDrop') pendingMarks.end();
+		if (isEnterDefault(e)) {
+			e.preventDefault();
+			return;
+		}
 		if (!e.isComposing) recordPreEditOffset();
 		if (deps.localHistory?.(e) || runSharedBeforeInput(e)) return;
 		deps.handleBeforeInput?.(e);
+		if (e.defaultPrevented) return;
+		deleteVerdict = decideCollapsedDelete(e, keyChord, deleteReads);
+		if (deleteVerdict && !deleteVerdict.decided) deps.handleDeclinedDelete?.(e);
 	}
 
 	/** The browser's own Undo and Redo are the editor's, and a character typed over a range across
@@ -582,6 +714,11 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	}
 
 	function onInput(e: Event): void {
+		const verdict = deleteVerdict;
+		deleteVerdict = null;
+		if (e instanceof InputEvent && !e.isComposing && !deps.getComposing()) {
+			assertInvariant('collapsed-delete-decided', () => checkDeleteDecided(e.inputType, verdict));
+		}
 		if (!endsDroppedComposition(e)) commitDomRead(false);
 	}
 
@@ -596,8 +733,11 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		deps.caretMemory.noteTyping();
 		const el = deps.getEl();
 		if (deps.getComposing() || !el) return unwritten();
-		const text = deps.readText();
-		const savedOffset = deps.backend.getRaw() ?? 0;
+		const { text, caret: savedOffset } = keepLineEndingPairs(
+			trimTrailingLineEnding(deps.getNode().raw),
+			deps.readText(),
+			deps.backend.getRaw() ?? 0
+		);
 		// A block that draws its delimiters keeps the reading verbatim, and so does a run composed
 		// where a record waits, which is that record's insertion.
 		const rewritten =
@@ -692,6 +832,8 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			caret,
 			events: deps.events,
 			onPasteImage: deps.onPasteImage,
+			endTypingBurst: () => deps.controller.flushDebouncedCheckpoint(),
+			readsMarkdown: () => isProseKind(deps.getNode().kind),
 			...block
 		});
 	}
@@ -740,7 +882,16 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 
 	// Taken once: Svelte re-runs an attachment only when the function under its key changes.
 	const trackKey = createAttachmentKey();
-	const caretSourceKey = createAttachmentKey();
+	const registerKey = createAttachmentKey();
+
+	function registerSurface(el: HTMLElement): () => void {
+		const releaseStop = deps.readingFocus.hold(el, deps.getMyPath);
+		const releaseCaret = caretSource(el);
+		return () => {
+			releaseCaret();
+			releaseStop();
+		};
+	}
 
 	// A composition or a shown inline source owns the caret, so the browser's own shows then.
 	const caretSource = (el: HTMLElement) =>
@@ -760,6 +911,10 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// `aria-expanded`, so a screen reader would hear nothing about the list.
 	function attributes(combobox: InlineMenuCombobox | null) {
 		const hint = placeholder.text() ?? undefined;
+		const attachments = { [trackKey]: placeholder.track, [registerKey]: registerSurface };
+		if (deps.reading.mode() === 'reading') {
+			return { ...readingRole(deps.getNode()), 'data-placeholder': hint, ...attachments };
+		}
 		return {
 			role: combobox ? ('combobox' as const) : ('textbox' as const),
 			'aria-label': blockAccessibleName(deps.getNode()),
@@ -769,14 +924,13 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			'aria-autocomplete': combobox ? ('list' as const) : undefined,
 			'aria-placeholder': hint,
 			'data-placeholder': hint,
-			[trackKey]: placeholder.track,
-			[caretSourceKey]: caretSource
+			...attachments
 		};
 	}
 
 	return {
 		attributes,
-		caretSource,
+		registerSurface,
 		crossBlock,
 		sharedCtx,
 		surface,

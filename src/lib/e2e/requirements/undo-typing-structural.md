@@ -7,7 +7,12 @@
 ## Edge cases
 
 - Type, click into a different block, type: two independent batches separated by the focus change, not the structural op.
-- Type, pause past the debounce window, type more in the same block: two batches (debounce expired).
+
+## Typing either side of a structural edit in the same leaf
+
+- `one\n\ntwo\n`, `X` typed at the end of `one`, Backspace at the start of `two`, `Y` typed, one Ctrl+Z: only `Y` goes, `oneXtwo\n`
+- `- a\n- b\n`, `X` typed after `b`, Tab, `Y` typed, one Ctrl+Z: only `Y` goes, `- a\n  - bX\n` (miss-analysis: every type-edit-type spec moved the caret to a new leaf, whose new id ended the batch anyway, or waited out the pause, so removing the commit's own end of the batch reddened nothing)
+- `- a\n  - b\n`, `X` typed after `b`, Shift+Tab, `Y` typed, one Ctrl+Z: only `Y` goes, `- a\n- bX\n`
 
 ## A burst that ends in a kind change
 

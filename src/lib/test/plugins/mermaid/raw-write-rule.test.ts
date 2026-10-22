@@ -97,8 +97,9 @@ describe('a truncating write of a mermaid block gets its closing fence back', ()
 	});
 
 	// Miss-analysis: no test wrote the two shapes the built-in code block repairs (GH #566).
-	it('drops the closer a write stranded by taking the opener line', () => {
-		expect(write('```mermaid\ngraph TD\n```\n', 'graph TD\n```\n')).toBe('graph TD\n');
+	// Miss-analysis (GH #768): this row pinned the stranded closer's drop as intended.
+	it('keeps the closer a write stranded by taking the opener line', () => {
+		expect(write('```mermaid\ngraph TD\n```\n', 'graph TD\n```\n')).toBe('graph TD\n```\n');
 	});
 
 	it('keeps a fence whose info string is no longer mermaid closed', () => {

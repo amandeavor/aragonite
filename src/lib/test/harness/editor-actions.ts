@@ -19,6 +19,7 @@ import type { InlineMarkKind } from '#lib/schema/inline-construct-policy.js';
 import type { EditorActionsDeps, UndoController } from '#lib/editor-actions/deps.js';
 import type { CommitScope, ScopeCommitArgs } from '#lib/editor-actions/block-edit-scope.js';
 import { asDocPath } from '#lib/selection/path-math.js';
+import { settleEdit, type EditKind, type SettledEdit } from '#lib/tree-operations/settle.js';
 import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
 import type { ContainerBlockComponentDeps } from '#lib/editor-actions/container-block-component.js';
 import { refSlotsOver } from '#lib/block-lists/child-refs.js';
@@ -155,10 +156,15 @@ export function makeTableStateAt(getDoc: () => Document, index: number): BlockLi
 // ── CommitScope stub ─────────────────────────────────────────────────────────
 
 /** Runs the real mutate against a live children array, recording commits and landing each one's
- *  caret on `refs`. The in-place keystroke route writes nothing: these suites drive commits. */
+ *  caret on `refs`; `settle` adds the commit's fix-up after it. The in-place route writes nothing. */
 export function makeCommitScopeStub(
 	children: CstNode[],
-	opts: { refs?: (BlockComponent | undefined)[]; collapse?: boolean; owner?: CstNode } = {}
+	opts: {
+		refs?: (BlockComponent | undefined)[];
+		collapse?: boolean;
+		owner?: CstNode;
+		settle?: boolean;
+	} = {}
 ): { scope: CommitScope; commits: ScopeCommitArgs[]; children: CstNode[] } {
 	const refs = opts.refs ?? [];
 	const commits: ScopeCommitArgs[] = [];
@@ -178,12 +184,25 @@ export function makeCommitScopeStub(
 		collapseEmptyReplaceToDelete: opts.collapse ?? true,
 		async commit(args) {
 			commits.push(args);
-			args.mutate({
-				body: { children, owner: opts.owner, lineEnding: lineEnding() },
+			const body = { children, owner: opts.owner, lineEnding: lineEnding() };
+			const before = [...children];
+			let kind: EditKind = {};
+			let settled: SettledEdit | null = null;
+			const change = args.mutate({
+				body,
 				sharing,
 				reading: fixtureReading(),
-				unshareChild: (i) => children[i]
+				unshareChild: (i) => children[i],
+				describeEdit: (edit) => {
+					kind = { ...kind, ...edit };
+					return () => settled;
+				}
 			});
+			if (opts.settle) {
+				const edit = { change, before, ...kind };
+				const grammar = fixtureReading().grammar;
+				settled = settleEdit(body, edit, grammar, sharing, args.trackCaret);
+			}
 			const landing = args.landing?.();
 			if (landing && 'path' in landing) await scope.land(landing);
 			return true;
@@ -199,7 +218,8 @@ export function makeCommitScopeStub(
 			if (!target || !block) return 'unresolvable';
 			block.focus(target.offset);
 			return 'placed';
-		}
+		},
+		reportCommitError: vi.fn()
 	};
 	return { scope, commits, children };
 }
@@ -307,7 +327,8 @@ export function makeStubContainerEdit(): ContainerEditActions {
 		typeInLeaf: vi.fn((_path, _offset, _key, work) => work()),
 		writeLeafInPlace: vi.fn(() => ({ wrote: false as const })),
 		land: vi.fn(async () => 'placed' as const),
-		survivorAfterRemoval: vi.fn(() => null)
+		survivorAfterRemoval: vi.fn(() => null),
+		reportCommitError: vi.fn()
 	};
 }
 
@@ -328,6 +349,7 @@ export function makeStubController(): UndoController & PasteCommitCoordinator {
 		captureCurrentState: vi.fn(),
 		commitLeafText: vi.fn(async () => ({ wrote: false })),
 		replaceBlock: vi.fn(async () => null),
+		insertParagraph: vi.fn(async () => false),
 		resolveState: getStateForNode,
 		expectState: expectStateForNode,
 		focusByPath: vi.fn()

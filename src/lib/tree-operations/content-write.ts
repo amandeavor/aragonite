@@ -1,14 +1,13 @@
 /**
  * The content write: every byte that enters a node goes through `updateNodeContent` after
  * `legalizeWrite` makes it legal for its position. Also re-derives a container's kind from its
- * rebuilt raw (`docs/design/editor.md` § Structural operations).
+ * rebuilt raw (`docs/design/structural-edits.md` § Structural operations).
  */
 
 import type { AnyBlockKind, CstNode, Document } from '../core/nodes';
 import type { DocumentView, NodeView } from '../core/node-views';
-import { isBlankParagraph } from '../core/parser';
 import { escalatedFenceLength, matchFenceOpen } from '../core/parsers/fence-syntax';
-import { blockReadingNotFinal, type GrammarView } from '../schema/block-openers';
+import type { GrammarView } from '../schema/block-openers';
 import {
 	lineOpensAs,
 	parseContainerRaw,
@@ -18,11 +17,14 @@ import {
 import {
 	displayLines,
 	documentLineEnding,
+	firstDisplayLine,
 	joinDisplayLines,
 	ownTrailingLineEnding,
+	trimTrailingLineEnding,
 	type LineEnding
 } from '../core/lines';
 import { openLinesAtEnd } from '../core/inline';
+import { writtenSpan } from '../core/written-span';
 import { assignChildIdsDeep, idsAcrossReread } from '../block-id';
 import {
 	getBlockKindDescriptor,
@@ -42,23 +44,16 @@ import {
 	NEXT_PROSE_LINE,
 	asBody,
 	installOwnRaw,
+	kindWriteRule,
 	type BodyParent,
 	type BodyParentArg,
 	type NodeParent
 } from './node-primitives';
 import { ensureEditableContainers } from '../schema/opened-reading';
-import {
-	releaseWrapPeel,
-	restoreSeparatorAfterBlank,
-	restoreSeparatorOnFill,
-	settleSeparatorOnBlank,
-	widenForTailMint
-} from './settle';
-import {
-	absorbWindowSeams,
-	focusTargetInReplacement,
-	type TrackedPosition
-} from './neighbour-merge';
+import { settleContentWrite, type SettledContent, type WrittenSlot } from './settle';
+import { focusTargetInReplacement } from './neighbour-merge';
+
+export type { SettledContent, WrittenSlot };
 
 // ── Making written bytes legal ──
 
@@ -97,7 +92,7 @@ export function legalizeWrite(
 	const lineEnding = 'lineEnding' in parent ? parent.lineEnding : documentLineEnding(parent);
 	const dropped = droppedOpenLines(node, text);
 	const prose = dropped ? dropped.text + text.slice(dropped.end) : text;
-	const ownRule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;
+	const ownRule = kindWriteRule(node);
 	const ownCtx: WriteContext = { node, mode, lineEnding };
 	const own = ownRule ? ownRule.normalize(prose, ownCtx) : prose;
 	const bodyRule = owner ? tryGetBlockKindDescriptor(owner.kind)?.bodyWrite : undefined;
@@ -132,17 +127,34 @@ export function droppedOpenLines(
 
 // ── Update Content ──
 
-/** What a content write produced once its neighbours were fixed up: its change widened by every
- *  merge, and the offset the written text starts at inside that change's window (nonzero once a
- *  merge above absorbed it). */
-export interface SettledContent {
+/** A content write before its fix-up: the change the reparse made, and what was written where. */
+export interface UnsettledWrite {
 	change: StructuralChange;
-	textStart: number;
+	written: WrittenSlot;
 }
 
 /**
- * Write and reparse the block; only a same-kind single-block edit writes in place, so typing keeps
- * the node's identity. A plain string is made legal here; a {@link LegalWrite} already is.
+ * Write and reparse the block, leaving its fix-up to the commit that reports `written`; only a
+ * same-kind single-block edit writes in place, so typing keeps the node's identity.
+ */
+export function writeNodeContent(
+	parent: BodyParentArg,
+	blockIndex: number,
+	text: string | LegalWrite,
+	grammar: GrammarView,
+	sharing: SharingState
+): UnsettledWrite {
+	const body = asBody(parent);
+	const legal = legalText(body, blockIndex, text);
+	// Reconciled before the container's raw rebuild writes the list item's marker.
+	return writeKeepingTaskMarker(body.owner, body.children, blockIndex, sharing, () =>
+		writeLegal(body, blockIndex, legal, grammar)
+	);
+}
+
+/**
+ * {@link writeNodeContent} plus its fix-up, for a write no commit settles: the keystroke written in
+ * place, the trial before it, and a body below a commit's scope. A plain string is made legal here.
  */
 export function updateNodeContent(
 	parent: BodyParentArg,
@@ -152,142 +164,26 @@ export function updateNodeContent(
 	sharing: SharingState
 ): SettledContent {
 	const body = asBody(parent);
-	const legal =
-		typeof text === 'string' ? legalizeWrite(body, blockIndex, text, 'literal').text : text.text;
-	// Reconciled before the container's raw rebuild writes the list item's marker.
-	return writeKeepingTaskMarker(body.owner, body.children, blockIndex, sharing, () =>
-		writeAndSettleContent(body, blockIndex, legal, grammar, sharing)
-	);
+	const legal = legalText(body, blockIndex, text);
+	return writeKeepingTaskMarker(body.owner, body.children, blockIndex, sharing, () => {
+		const { change, written } = writeLegal(body, blockIndex, legal, grammar);
+		return settleContentWrite(body, written, change, grammar, sharing);
+	});
 }
 
-function writeAndSettleContent(
+const legalText = (body: BodyParent, index: number, text: string | LegalWrite): string =>
+	typeof text === 'string' ? legalizeWrite(body, index, text, 'literal').text : text.text;
+
+function writeLegal(
 	parent: BodyParent,
 	blockIndex: number,
 	text: string,
-	grammar: GrammarView,
-	sharing: SharingState
-): SettledContent {
-	const wasBlank = isBlankParagraph(parent.children[blockIndex]);
-	const indentMoved = leadingIndent(parent.children[blockIndex].raw) !== leadingIndent(text);
+	grammar: GrammarView
+): UnsettledWrite {
+	// Copied, since an in-place write swaps the node's metadata and children for the new reading's.
+	const previous = { ...parent.children[blockIndex] };
 	const change = writeParsedContent(parent, blockIndex, text, grammar);
-	const lastWritten = lastMintedIndex(change, blockIndex);
-	// One blank line served both sides: it separated this block from the one above and stood in
-	// as the separator of the block beneath it. Filling it gives each side its own.
-	if (wasBlank && !isBlankParagraph(parent.children[blockIndex])) {
-		restoreSeparatorOnFill(parent, blockIndex, sharing);
-		restoreSeparatorAfterBlank(parent, followerIndexAfter(change, blockIndex), sharing);
-		releaseWrapPeel(parent, lastWritten);
-		return settleWriteSeams(parent, blockIndex, blockIndex, lastWritten, change, sharing, grammar);
-	}
-	// The reverse transition: the block is the separating line now, so the run it joins gives
-	// back the second one. The last block created is the one that meets the follower.
-	if (!wasBlank && isBlankParagraph(parent.children[lastWritten])) {
-		const settled = parent.children.length;
-		settleSeparatorOnBlank(parent, lastWritten, sharing);
-		const widened = widenForTailMint(change, settled, parent.children.length);
-		return settleWriteSeams(parent, blockIndex, blockIndex, lastWritten, widened, sharing, grammar);
-	}
-	// Same-kind typing asks the join above only when it's flush, the block above's reading isn't
-	// final, the indent moved, or a blank line stays blank (editor.md § 8).
-	if (
-		change.op === 'noop' &&
-		!wasBlank &&
-		!indentMoved &&
-		!flushAbove(parent.children, blockIndex) &&
-		!unfinishedAbove(parent.children, blockIndex, grammar)
-	) {
-		// The join below is asked whatever parts it: an HTML block left open reads on past blank lines.
-		if (blockIndex + 1 >= parent.children.length) return { change, textStart: 0 };
-		return settleWriteSeams(
-			parent,
-			blockIndex,
-			blockIndex + 1,
-			lastWritten,
-			change,
-			sharing,
-			grammar
-		);
-	}
-	return settleWriteSeams(parent, blockIndex, blockIndex, lastWritten, change, sharing, grammar);
-}
-
-const leadingIndent = (text: string): string => /^[ \t]*/.exec(text)![0];
-
-/** Whether no blank line parts the block from the one above it; a first child has none above. */
-const flushAbove = (children: readonly CstNode[], index: number): boolean =>
-	index > 0 && children[index].leadingTrivia === '';
-
-/** Whether the nearest block above may still read differently (an unclosed `$$`), which a closer
- *  written below can complete across blank lines. */
-function unfinishedAbove(
-	children: readonly CstNode[],
-	index: number,
-	grammar: GrammarView
-): boolean {
-	let above = index - 1;
-	while (above >= 0 && isBlankParagraph(children[above])) above--;
-	return above >= 0 && blockReadingNotFinal(children[above].raw, grammar);
-}
-
-/**
- * Merge across the joins from the one above `firstJoin` to the one below the last written block,
- * and report where the written text ended up once a merge above put bytes in front of it.
- */
-function settleWriteSeams(
-	parent: BodyParent,
-	blockIndex: number,
-	firstJoin: number,
-	lastWritten: number,
-	change: StructuralChange,
-	sharing: SharingState,
-	grammar: GrammarView
-): SettledContent {
-	const tracked: TrackedPosition = { index: blockIndex, offset: 0 };
-	const settled = absorbWindowSeams(
-		parent,
-		firstJoin,
-		lastWritten - firstJoin + 1,
-		blockIndex,
-		change,
-		grammar,
-		sharing,
-		tracked,
-		// One written block lets a join beside it be refused on a single line of the neighbour.
-		lastWritten === blockIndex ? blockIndex : undefined
-	);
-	return {
-		change: settled.change,
-		textStart: textOffsetInWindow(parent.children, settled.change, tracked)
-	};
-}
-
-/**
- * The tracked position as an offset in the window's committed text, the space every caret
- * placement measures in, where the head block's own leading blank lines are outside the window.
- */
-function textOffsetInWindow(
-	children: readonly CstNode[],
-	change: StructuralChange,
-	tracked: TrackedPosition
-): number {
-	const at = change.op === 'noop' ? tracked.index : change.at;
-	let pos = 0;
-	for (let i = at; i < tracked.index; i++) {
-		pos += (i === at ? 0 : children[i].leadingTrivia.length) + children[i].raw.length;
-	}
-	const ownTrivia = tracked.index > at ? children[tracked.index].leadingTrivia.length : 0;
-	return pos + ownTrivia + tracked.offset;
-}
-
-/** Where the filled block's follower ended up: a multi-block reparse pushes it down. */
-function followerIndexAfter(change: StructuralChange, blockIndex: number): number {
-	return change.op === 'replace' ? change.at + change.newCount : blockIndex + 1;
-}
-
-/** The last block the write left in the position: a multi-block reparse creates blocks past
- *  the first. */
-function lastMintedIndex(change: StructuralChange, blockIndex: number): number {
-	return change.op === 'replace' ? change.at + change.newCount - 1 : blockIndex;
+	return { change, written: { index: blockIndex, previous, text } };
 }
 
 /**
@@ -302,12 +198,41 @@ function closeWrittenConstruct(
 	read: FragmentReader
 ): { text: string; parsed: Document } {
 	const parsed = read(text);
-	if (blockIndex + 1 >= parent.children.length) return { text, parsed };
+	const next = parent.children[blockIndex + 1];
+	if (!next) return { text, parsed };
 	if (parsed.children.length === 1 && parsed.children[0].kind === oldKind) return { text, parsed };
 	const terminator = openConstructTerminator(text, parsed.children, read);
-	if (!terminator) return { text, parsed };
+	// An opener the write only exposed reads on as a reload reads it, closer and all.
+	if (!terminator || !opensOnWrittenLine(parent.children[blockIndex].raw, text, parsed)) {
+		return { text, parsed };
+	}
+	if (takesCloserBelow(text, parsed, next, read)) return { text, parsed };
 	const closed = text + terminator;
 	return { text: closed, parsed: read(closed) };
+}
+
+/** Whether an opener typed back onto its body takes the closer flush beneath it; a fence typed
+ *  on its own line, or with a blank line under it, gets a closer of its own. */
+function takesCloserBelow(
+	text: string,
+	parsed: Document,
+	next: NodeView,
+	read: FragmentReader
+): boolean {
+	const opened = parsed.children[parsed.children.length - 1];
+	const hasBody = trimTrailingLineEnding(opened.raw).includes('\n');
+	if (!hasBody || next.leadingTrivia !== '') return false;
+	const head = text + firstDisplayLine(next.raw).text + ownTrailingLineEnding(text);
+	return !openConstructTerminator(head, read(head).children, read);
+}
+
+/** Whether the last block of `parsed` opens on a line the write changed in `before`. */
+function opensOnWrittenLine(before: string, text: string, parsed: Document): boolean {
+	const last = parsed.children[parsed.children.length - 1];
+	const start = text.length - parsed.suffix.length - last.raw.length;
+	const lineEnd = start + firstDisplayLine(last.raw).text.length;
+	const span = writtenSpan(before, text);
+	return span.start <= lineEnd && span.end >= start;
 }
 
 /**
@@ -497,7 +422,7 @@ function installReplacement(
 	return parent.children[index];
 }
 
-/** Where a caret at `offset` in the written text ends up after {@link updateNodeContent}'s merges:
+/** Where a caret at `offset` in the written text ends up after the write's merges:
  *  the block holding it and its offset there, counting what a merge above put in front. */
 export function settledCaretPosition(
 	settled: SettledContent,

@@ -5,7 +5,7 @@ wall-time to load each deterministic fixture (shape × 100KB/1MB/10MB) and
 per-keystroke latency while typing into the loaded document. Gated behind
 `PERF` (`PERF=1 npm run perf:e2e`); without it every test skips in seconds.
 
-**Caveat:** rows run against the dev server with the dev-mode invariant assertions
+**Caveat:** rows run against a development build with the dev-mode invariant assertions
 active, so all numbers are conservative upper bounds on production latency,
 not production latencies. The caveat is embedded in every result artifact.
 The gate (`perf-gate.md`) measures a production build instead, so a report row

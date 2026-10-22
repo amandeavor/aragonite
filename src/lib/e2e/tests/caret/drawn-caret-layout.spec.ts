@@ -8,6 +8,9 @@ import {
 	setCaretProp
 } from '../../carets-showing';
 import { textRunEnd, textRunStart } from '../../text-runs';
+import { skipUnlessSupported } from '../../browser-engine';
+import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 // The drawn caret against the layout around its editable (requirements/caret/drawn-caret-layout.md):
 // a scroller that clips the caret, a size watch it shares with the block it sits in, and a code
@@ -83,7 +86,7 @@ test.describe('the drawn caret in a code block scrolled sideways', () => {
 		);
 		const block = (await page.locator('.code-block').boundingBox())!;
 		await page.mouse.click(block.x + 60, block.y + 20);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 60; i++) await page.keyboard.press('ArrowRight');
 		return { x: block.x + 300, y: block.y + 20 };
 	}
@@ -94,7 +97,7 @@ test.describe('the drawn caret in a code block scrolled sideways', () => {
 	] as const) {
 		test(`a caret ${where} shows no bar outside the block`, async ({ page }) => {
 			const over = await parkInLongLine(page);
-			if (wheel < 0) await page.keyboard.press('End');
+			if (wheel < 0) await page.keyboard.press(edgeKey('lineEnd'));
 			await nextFrames(page);
 			expect(
 				(await barAgainst(page, '.code-block')).x,
@@ -112,6 +115,7 @@ test.describe('the drawn caret in a code block scrolled sideways', () => {
 	test('a clipped caret scrolled back into view draws again where the browser paints', async ({
 		page
 	}) => {
+		skipUnlessSupported(page, 'caretScreenshot');
 		const over = await parkInLongLine(page);
 		await page.mouse.move(over.x, over.y);
 		await page.mouse.wheel(600, 0);
@@ -145,8 +149,8 @@ test.describe('the drawn caret in a table scrolled sideways', () => {
 			`para\n\n| ${columns.join(' | ')} |\n|${' - |'.repeat(18)}\n| ${columns.join(' | ')} |\n`
 		);
 		const table = (await page.locator('.table-block').boundingBox())!;
-		await page.locator('.table-cell').first().click();
-		await page.keyboard.press('End');
+		await clickInPlace(page.locator('.table-cell').first());
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await nextFrames(page);
 		expect(
 			(await barAgainst(page, '.table-block')).x,
@@ -192,7 +196,7 @@ test.describe('the drawn caret and a table row’s size watch', () => {
 		await page.evaluate(() => {
 			(document.querySelectorAll('.table-cell')[2] as HTMLElement).dataset.probe = 'first';
 		});
-		await page.locator('.table-cell').nth(2).click();
+		await clickInPlace(page.locator('.table-cell').nth(2));
 		await nextFrames(page);
 		await editor.clickBlock(0);
 		await nextFrames(page);
@@ -374,6 +378,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 	test('inside the chip, off its edges: the bar draws where the browser paints', async ({
 		page
 	}) => {
+		skipUnlessSupported(page, 'caretScreenshot');
 		const editor = await live(page);
 		await editor.focusBlock(0, 'see `co'.length);
 
@@ -416,7 +421,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		const editor = await live(page, 'see `code`');
 		const point = await textRunEnd(page, 'see');
 		await page.mouse.click(point.x - 4, point.y);
-		await press(editor, 'End');
+		await press(editor, edgeKey('lineEnd'));
 		const chip = await chipBox(page);
 		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		await typed(editor, 'see `code`X');
@@ -455,14 +460,14 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 
 	// Miss-analysis: the arrival rows read the bar once it settled, so none saw the frame it was
 	// first painted at the inside stop.
-	for (const [key, doc, from] of [
-		['ArrowLeft', line, 'after'],
-		['End', 'see `code`', 'see']
+	for (const [key, doc, from, toLineEnd] of [
+		['ArrowLeft', line, 'after', false],
+		[edgeKey('lineEnd'), 'see `code`', 'see', true]
 	] as const) {
 		test(`${key} onto a chip's closer paints no frame at the inside stop`, async ({ page }) => {
 			const editor = await live(page, doc);
-			const point = key === 'End' ? await textRunEnd(page, from) : await textRunStart(page, from);
-			await page.mouse.click(key === 'End' ? point.x - 4 : point.x, point.y);
+			const point = toLineEnd ? await textRunEnd(page, from) : await textRunStart(page, from);
+			await page.mouse.click(toLineEnd ? point.x - 4 : point.x, point.y);
 			await expect.poll(async () => (await drawnBar(page))?.state).toBe('text');
 			const chip = await chipBox(page);
 			const xs = await barXsAcross(editor, key);
@@ -476,8 +481,8 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		const editor = await live(page, 'see `code`');
 		const point = await textRunEnd(page, 'see');
 		await page.mouse.click(point.x - 4, point.y);
-		await press(editor, 'End');
-		await press(editor, 'End');
+		await press(editor, edgeKey('lineEnd'));
+		await press(editor, edgeKey('lineEnd'));
 		const chip = await chipBox(page);
 		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		await typed(editor, 'see `code`X');
@@ -489,7 +494,7 @@ test.describe('the drawn caret at a code chip’s edge, live mode', () => {
 		await page.mouse.click(point.x, point.y);
 		const chip = await chipBox(page);
 		expect(await chipBarX(page)).toBeLessThan(chip.right - 1);
-		await press(editor, 'End');
+		await press(editor, edgeKey('lineEnd'));
 		expectInColumnOf(await chipBarX(page), chip.right + 2);
 		await typed(editor, 'see `code`X');
 	});

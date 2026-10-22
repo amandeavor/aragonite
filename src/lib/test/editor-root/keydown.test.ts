@@ -36,7 +36,10 @@ interface Harness {
 	root: HTMLElement;
 	/** The `header` snippet's box: the host's own header, mounted inside the root. */
 	header: HTMLElement;
-	press(key: string, init?: KeyboardEventInit): KeyboardEvent;
+	/** The editor's find bar, mounted outside the root as a host's `searchBarAnchor` puts it. */
+	findBar: HTMLElement;
+	/** `handledBelow`: a handler under the root already took the key and prevented its default. */
+	press(key: string, init?: KeyboardEventInit, handledBelow?: boolean): KeyboardEvent;
 	search: ReturnType<typeof fakeSearch>;
 	crossBlockKeys: KeyboardEvent[];
 	/** Text the range's own type-to-replace path was handed, in order. */
@@ -57,6 +60,8 @@ function harness(): Harness {
 	document.body.append(root);
 	const header = document.createElement('div');
 	root.append(header);
+	const findBar = document.createElement('div');
+	document.body.append(findBar);
 
 	const search = fakeSearch();
 	const crossBlockKeys: KeyboardEvent[] = [];
@@ -98,6 +103,7 @@ function harness(): Harness {
 			}
 		},
 		isHostChrome: (node) => !!node && header.contains(node),
+		isFindBar: (node) => !!node && findBar.contains(node),
 		saveSearchCaret: () => searchCaretSaves++,
 		setReplaceExpanded: (expanded) => replaceExpanded.push(expanded)
 	};
@@ -106,8 +112,10 @@ function harness(): Harness {
 	return {
 		root,
 		header,
-		press(key, init) {
+		findBar,
+		press(key, init, handledBelow = false) {
 			const event = new KeyboardEvent('keydown', { key, cancelable: true, ...init });
+			if (handledBelow) event.preventDefault();
 			handler.handleKeyDown(event, root);
 			return event;
 		},
@@ -393,18 +401,58 @@ describe('editor-root keydown: body-chord containment', () => {
 // The root answers only a caret with no focused element: a focused block or gap caret handles
 // its own chords, and widening the root's check would run each such chord twice.
 
-describe('editor-root keydown: a focused surface inside the root owns its chords', () => {
-	it('a global chord resolves nothing while a focusable child holds focus', () => {
+describe('editor-root keydown: focus inside the root', () => {
+	function focusChild(h: Harness, el: HTMLElement): void {
+		h.root.append(el);
+		el.focus();
+		expect(h.root.ownerDocument.activeElement).toBe(el);
+	}
+
+	it('a focused surface that took the chord keeps it, so it never runs twice', () => {
 		const h = harness();
-		registerEditor(h.root);
 		const surface = document.createElement('div');
 		surface.tabIndex = 0;
-		h.root.append(surface);
-		surface.focus();
-		expect(h.root.ownerDocument.activeElement).toBe(surface);
-
-		h.press('z', MOD_Z);
+		focusChild(h, surface);
+		h.press('z', MOD_Z, true);
 		expect(h.undoCount()).toBe(0);
+	});
+
+	it('a text field inside the editor keeps its own Mod+Z', () => {
+		const h = harness();
+		focusChild(h, document.createElement('input'));
+		const event = h.press('z', MOD_Z);
+		expect(h.undoCount()).toBe(0);
+		expect(event.defaultPrevented).toBe(false);
+	});
+
+	it('a focused chrome button runs the editor undo, with the default prevented', () => {
+		const h = harness();
+		focusChild(h, document.createElement('button'));
+		const event = h.press('z', MOD_Z);
+		expect(h.undoCount()).toBe(1);
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it("the find bar's button outside the root runs the editor undo; its field keeps its own", () => {
+		const h = harness();
+		const button = document.createElement('button');
+		const field = document.createElement('input');
+		h.findBar.append(button, field);
+		button.focus();
+		expect(h.press('z', MOD_Z).defaultPrevented).toBe(true);
+		field.focus();
+		expect(h.press('z', MOD_Z).defaultPrevented).toBe(false);
+		expect(h.undoCount()).toBe(1);
+	});
+
+	it('a focused chrome button takes no text or motion for a cross-block range', () => {
+		const h = harness();
+		h.setCrossBlock(true);
+		focusChild(h, document.createElement('button'));
+		h.press('a');
+		h.press('ArrowDown', { shiftKey: true });
+		expect(h.inserted).toEqual([]);
+		expect(h.crossBlockKeys).toEqual([]);
 	});
 });
 
@@ -538,6 +586,78 @@ describe('editor-root keydown: search chord branches', () => {
 
 		h.press('f', MOD_F);
 		expect(h.search.calls.queries).toEqual(['needle']);
+	});
+
+	// Miss-analysis: the seeding row selected one line, and Firefox on Windows writes a line break as CRLF.
+	it('seeds the query with LF line breaks, whatever the engine wrote', () => {
+		const h = harness();
+		const block = document.createElement('div');
+		block.textContent = 'one\r\ntwo';
+		h.root.append(block);
+		h.root.focus();
+		const range = document.createRange();
+		range.selectNodeContents(block);
+		const selection = window.getSelection();
+		selection?.removeAllRanges();
+		selection?.addRange(range);
+
+		h.press('f', MOD_F);
+		expect(h.search.calls.queries).toEqual(['one\ntwo']);
+	});
+});
+
+// ── Backspace keeps the page ─────────────────────────────────────────────────
+
+// Miss-analysis: the Backspace guard's rows pressed it on a block only, never on a field that
+// deletes on it, so a plugin's date input losing its Backspace went unseen.
+describe('editor-root keydown: Backspace leaves the page only to a field', () => {
+	const input = (type?: string) => () => {
+		const el = document.createElement('input');
+		if (type) el.type = type;
+		return el;
+	};
+	const editable = () => {
+		const el = document.createElement('div');
+		el.setAttribute('contenteditable', 'true');
+		// jsdom focuses no editable on its own.
+		el.tabIndex = 0;
+		return el;
+	};
+	const block = () => {
+		const el = document.createElement('div');
+		el.tabIndex = -1;
+		return el;
+	};
+	const rows: [string, 'root' | 'find bar' | 'page', () => HTMLElement, boolean][] = [
+		['a block with no caret (reading mode)', 'root', block, true],
+		['a chrome button', 'root', () => document.createElement('button'), true],
+		['an editable block', 'root', editable, false],
+		["the find bar's field", 'find bar', input(), false],
+		["the image's alt field or the link card's URL", 'root', input('text'), false],
+		["a plugin's textarea", 'root', () => document.createElement('textarea'), false],
+		["a plugin's date input", 'root', input('date'), false],
+		["the host's own input", 'page', input('text'), false],
+		["the host's own button", 'page', () => document.createElement('button'), false]
+	];
+
+	for (const [name, where, make, prevented] of rows) {
+		it(`${name}: ${prevented ? 'the default is cancelled' : 'the key keeps its default'}`, () => {
+			const h = harness();
+			registerEditor(h.root);
+			const el = make();
+			({ root: h.root, 'find bar': h.findBar, page: document.body })[where].append(el);
+			el.focus();
+			expect(document.activeElement).toBe(el);
+
+			expect(h.press('Backspace').defaultPrevented).toBe(prevented);
+		});
+	}
+
+	it('with nothing focused, only the editor holding body chords cancels it', () => {
+		const h = harness();
+		expect(h.press('Backspace').defaultPrevented).toBe(false);
+		registerEditor(h.root);
+		expect(h.press('Backspace').defaultPrevented).toBe(true);
 	});
 });
 

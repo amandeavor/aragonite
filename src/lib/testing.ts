@@ -35,6 +35,8 @@ export { configureEditorEnv, resetEditorEnv } from './env';
 
 export { installEditorDomStubsForTests } from './testing/mount-dom-stubs';
 
+export { readingTabOrderProblem } from './testing/reading-tab-order';
+
 // ── Paste pipeline ───────────────────────────────────────────────────────────
 
 /**

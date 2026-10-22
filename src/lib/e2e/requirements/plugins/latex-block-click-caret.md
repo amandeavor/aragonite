@@ -21,3 +21,9 @@ and the rendered form is glyphs whose position along the equation names a place 
   way the browser handles it; this handler answers only for the rendered form.
 - Keyboard entry is unchanged: arriving from the block above still lands at the leading edge of
   the source (`latex-block.md` A1 owns that).
+
+## Miss-analysis
+
+- A display equation's box spans the whole card, so the right-edge click landed far past the ink,
+  where Linux Firefox answers from KaTeX's empty spacing spans and put the caret before the `2`.
+  The suite ran on Windows alone, whose Firefox answers with the nearest letter there.

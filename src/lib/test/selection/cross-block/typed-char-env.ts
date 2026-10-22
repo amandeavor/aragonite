@@ -45,6 +45,7 @@ export function makeHandlers(
 	const stubEl = document.createElement('div');
 	return createCrossBlockHandlers({
 		caretWriter: testCaretWriter,
+		standInCaret: () => null,
 		getEl: () => stubEl,
 		getMyPath: () => myPath,
 		selection: env.selectionState,
@@ -53,7 +54,12 @@ export function makeHandlers(
 		caretLanding: env.deps.caretLanding,
 		getEditorRoot: () => null,
 		getScrollHost: () => null,
-		scrollOwner: { place: () => ({ scroll: async () => true }) },
+		scroll: {
+			port: () => null,
+			visibleBand: () => null,
+			showRect: () => {},
+			pathAt: () => null
+		},
 		getEditorLifetime: () => null,
 		caretMemory: env.caretMemory,
 		blockEdit: env.blockEdit,

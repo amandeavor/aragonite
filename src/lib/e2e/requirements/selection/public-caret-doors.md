@@ -21,7 +21,7 @@ the extend is still growing the range a `focus` would cancel.
 - `BlockComponent.focus` ends the live cross-block range, so the next typed character
   inserts at the placed caret instead of replacing the whole document
 - `BlockComponent.parkCaret` places the caret and leaves the cross-block range live,
-  which is what `revealActiveEndpoint` depends on mid-extend
+  which is what a Shift+Arrow growing a range into a table cell depends on
 
 ## Edge cases
 

@@ -10,6 +10,7 @@ import {
 	WINDOWED,
 	loadThenArrive
 } from './gap-caret-fixtures';
+import { clickInPlace } from '../../click-in-place';
 
 // What the gap caret does to the document: creating a block, and the way undo takes back
 // (`requirements/selection/gap-caret-editing.md`). The gap itself (what it paints, mode
@@ -121,8 +122,7 @@ test.describe('undo and redo across a create', () => {
 		await editor.focusBlockStart(0);
 		await editor.typeSlowly('EDIT');
 		await editor.bridge.waitForSourceContains('EDITpara');
-		await editor.waitForUndoBatchFlush();
-		await editor.page.locator('.table-cell').nth(LAST_CELL).click();
+		await clickInPlace(editor.page.locator('.table-cell').nth(LAST_CELL));
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.bridge.waitForGapCaret(AT_BOUNDARY);
 		await editor.typeSlowly('x');
@@ -148,7 +148,7 @@ test.describe('undo onto a windowed-out boundary', () => {
 		expect(await editor.bridge.getBlockKind(100)).toBe('table');
 
 		await page.evaluate(() => (window as any).__test.rects.scrollTo([100]));
-		await page.locator('.table-cell').nth(LAST_CELL).click();
+		await clickInPlace(page.locator('.table-cell').nth(LAST_CELL));
 		await page.keyboard.press('ArrowDown');
 		await editor.bridge.waitForGapCaret(AT_MID);
 		await editor.typeSlowly('x');
@@ -175,7 +175,7 @@ test.describe('editor-global chords at the gap', () => {
 		await editor.focusBlockStart(0);
 		await editor.typeSlowly('EDIT');
 		await editor.bridge.waitForSourceContains('EDITpara');
-		await editor.page.locator('.table-cell').nth(LAST_CELL).click();
+		await clickInPlace(editor.page.locator('.table-cell').nth(LAST_CELL));
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.bridge.waitForGapCaret(AT_BOUNDARY);
 

@@ -29,6 +29,8 @@ import {
 	typeFreshItem,
 	typeFenceOpener,
 	exitFence,
+	breakFenceOpener,
+	retypeFenceBacktick,
 	breakAtEndThen,
 	type BreakFollow
 } from './gestures/structure';
@@ -256,6 +258,16 @@ export class Gestures {
 		return exitFence(this.ctx);
 	}
 
+	/** Backspace on the last backtick of a code block's opener. */
+	breakFenceOpener(blockIndex: number): Promise<void> {
+		return breakFenceOpener(this.ctx, blockIndex);
+	}
+
+	/** The backtick typed back after {@link breakFenceOpener}. */
+	retypeFenceBacktick(): Promise<void> {
+		return retypeFenceBacktick(this.ctx);
+	}
+
 	async hardBreakAt(blockPath: number[], offset: number): Promise<void> {
 		await hardBreakAt(this.ctx, blockPath, offset);
 		this.caretParkedMidBlock = true;
@@ -309,8 +321,8 @@ export class Gestures {
 		return nestQuote(this.ctx, text);
 	}
 
-	toggleTask(listItemPath: number[]): Promise<void> {
-		return toggleTask(this.ctx, listItemPath);
+	toggleTask(itemTextPath: number[]): Promise<void> {
+		return toggleTask(this.ctx, itemTextPath);
 	}
 
 	/** Types `# ` at the start of a list item's paragraph and undoes once; the undo must restore
@@ -576,9 +588,9 @@ export class Gestures {
 
 	// ── History ───────────────────────────────────────────────────────────────
 
-	/** Waits out the typing pause so the next gesture starts a new undo entry. */
+	/** A user stopping to think: ends the typing batch, so the next gesture starts a new undo entry. */
 	pause(): Promise<void> {
-		return this.ctx.editor.waitForUndoBatchFlush();
+		return this.ctx.editor.endTypingBatch();
 	}
 
 	async undo(): Promise<void> {

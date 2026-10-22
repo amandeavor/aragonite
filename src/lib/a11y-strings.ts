@@ -91,6 +91,13 @@ export function blockAccessibleName(node: NodeView): string {
 	return label;
 }
 
+/** What a block reads as in reading mode, where it's text to read rather than a field to edit: a
+ *  heading by its level, any other block by its text alone, so it carries no role or name. */
+export function readingRole(node: NodeView): { role: 'heading'; 'aria-level': number } | null {
+	const level = shownKind(node) === node.kind ? headingLevel(node) : null;
+	return level === null ? null : { role: 'heading', 'aria-level': level };
+}
+
 function humanizeKind(kind: string): string {
 	const words = kind
 		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')

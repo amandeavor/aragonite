@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { PluginsPage } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Enter at the end of a lone `$$` completes a fence pair whose two-line form could never be typed
 // into directly, the plugin counterpart of the built-in table's completion. The source bytes are
@@ -13,7 +14,7 @@ const COMPLETED = '$$\n\n$$\n';
  *  rule, so Enter is only pressed here where the line is not `$$`. */
 async function typeAtEnd(editor: EditorPage, index: number, text: string): Promise<void> {
 	await editor.clickBlock(index);
-	await editor.page.keyboard.press('End');
+	await editor.page.keyboard.press(edgeKey('lineEnd'));
 	await editor.waitForRenderFlush();
 	await editor.typeSlowly(text);
 }
@@ -39,7 +40,7 @@ test.describe('block math: typed formation', () => {
 	test('a lone $$ forms the block as it is typed, no Enter needed', async ({ page }) => {
 		await editor.loadContent('Before\n\n\n');
 		await editor.clickBlock(1);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 		await editor.typeSlowly('$$');
 
@@ -55,7 +56,7 @@ test.describe('block math: typed formation', () => {
 	test('$$ after other text on the line stays a paragraph', async () => {
 		await editor.loadContent('hello\n');
 		await editor.clickBlock(0);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 		await editor.typeSlowly(' $$');
 		await editor.bridge.waitForSourceEquals('hello $$\n');
@@ -69,7 +70,7 @@ test.describe('block math: typed formation', () => {
 	}) => {
 		await editor.loadContent('$$\n');
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 		await page.keyboard.press('Enter');
 
@@ -117,7 +118,7 @@ test.describe('block math: typed formation', () => {
 		// Loaded, not typed: the on-type rule would take the `$$` before the ` x` arrived.
 		await editor.loadContent('$$ x\n');
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 		await page.keyboard.press('Enter');
 
@@ -157,7 +158,7 @@ test.describe('block math: typed formation', () => {
 		await editor.setPresentationMode('source');
 		await editor.waitForRenderFlush();
 		await editor.clickBlock(0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await editor.bridge.waitForSourceEquals(COMPLETED);
 	});

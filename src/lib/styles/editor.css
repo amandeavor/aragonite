@@ -185,15 +185,13 @@
 	user-select: none;
 }
 
-/* A list item's box is a flex row; with a badge it stacks its children instead, so the badge
-   sits above the marker and the text, as a block host's badge does, and moves neither. */
+/* A list item's box is a flex row; a badge takes a row of its own above the marker and the
+   text, as a block host's badge does, and moves neither. */
 :where(.editor) .list-item-block:has(> .decoration-badge) {
-	flex-direction: column;
+	flex-wrap: wrap;
 }
-/* Set per child: the item's own align-items would tie with a rule on the box. */
-:where(.editor) .list-item-block:has(> .decoration-badge) > .decoration-badge,
-:where(.editor) .list-item-block:has(> .decoration-badge) > .list-item-content {
-	align-self: stretch;
+:where(.editor) .list-item-block > .decoration-badge {
+	flex-basis: 100%;
 }
 
 /* An empty block's hint (the `placeholder` prop) paints where typing starts, out of the flow so
@@ -330,8 +328,8 @@
 	object-fit: cover;
 }
 
-/* An image in a list item or blockquote paragraph: the container's marker sits out of flow at the
-   image's bottom-left, since `display: flex` leaves the caret no place past the widget. */
+/* A paragraph holding a picture: the block-level widget would push an in-flow marker onto a line of
+   its own, so the container's marker sits out of flow at the paragraph's top-left, on its first line. */
 :where(.editor)
 	.text-editable-block.paragraph-block:has(> .md-marker[contenteditable='false']):has(
 		.md-image-widget
@@ -347,7 +345,7 @@
 	> .md-marker[contenteditable='false'] {
 	position: absolute;
 	left: 0;
-	bottom: 0;
+	top: 0;
 }
 
 /* Drop the trailing empty line-box the contenteditable keeps after a block-level child,
@@ -630,6 +628,86 @@
 	color: var(--syntax-list, currentColor);
 }
 
+/* A list item's marker is dimmed syntax at plain weight; it takes a heading's size when the item
+   opens with one, and where markers render, the heading's weight too. */
+:where(.editor) .list-item-marker > .md-marker {
+	opacity: var(--syntax-marker-dim, 0.65);
+	font-weight: normal;
+	font-style: normal;
+}
+:where(.editor) .list-item-marker[data-heading='1'] {
+	font-size: var(--md-heading-1-size);
+}
+:where(.editor) .list-item-marker[data-heading='2'] {
+	font-size: var(--md-heading-2-size);
+}
+:where(.editor) .list-item-marker[data-heading='3'] {
+	font-size: var(--md-heading-3-size);
+}
+:where(.editor) .list-item-marker[data-heading='4'] {
+	font-size: var(--md-heading-4-size);
+}
+:where(.editor) .list-item-marker[data-heading='5'] {
+	font-size: var(--md-heading-5-size);
+}
+:where(.editor) .list-item-marker[data-heading='6'] {
+	font-size: var(--md-heading-6-size);
+}
+:where(.editor):is(
+		[data-presentation='reading'],
+		[data-presentation^='preview-'],
+		[data-presentation='live']
+	)
+	.list-item-marker[data-heading]
+	> .md-marker {
+	font-weight: var(--md-heading-weight);
+}
+
+/* A picture's baseline is its bottom edge, so an item that opens with one puts its marker at the
+   top instead. */
+:where(.editor)
+	.list-item-block:has(
+		> .list-item-content > .block-list > .block-host:first-child .md-image-widget
+	)
+	> .list-item-marker {
+	align-self: flex-start;
+}
+
+/* Registered as a length so `1ch` resolves in the list's own font, and every item reads that width. */
+@property --md-list-column {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0px;
+}
+
+/* Registered as a length so it resolves in the block's own font, and its marker reads it unchanged. */
+@property --md-prefix-indent {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0px;
+}
+
+/* A container's leading marker takes its line's size, and where it renders, the line's weight
+   too, so a heading item's number reads as part of the heading. */
+:where(.editor):is(
+		[data-presentation='reading'],
+		[data-presentation^='preview-'],
+		[data-presentation='live']
+	)
+	.text-editable-block
+	> .md-marker[contenteditable='false'] {
+	font-weight: inherit;
+}
+
+/* The marker fills the hanging indent whatever its glyphs measure, so the first line's text starts
+   where wrapped lines do. */
+:where(.editor) .text-editable-block > .md-marker[contenteditable='false'] > .md-marker-box {
+	display: inline-block;
+	width: var(--md-prefix-indent);
+	text-indent: 0;
+	white-space: pre;
+}
+
 :where(.editor) .task-checkbox {
 	color: var(--syntax-task, currentColor);
 }
@@ -746,8 +824,8 @@
 	opacity: var(--syntax-marker-dim, 0.65);
 }
 
-/* A list item's leading marker owns the hanging indent (padding and text-indent are keyed to
-   the span's ch width), so it keeps its box: visibility, not display. */
+/* A list item's leading marker is the hanging indent's box, so it hides with visibility, not
+   display. */
 :where(.editor):is(
 		[data-presentation='reading'],
 		[data-presentation^='preview-'],
@@ -759,17 +837,23 @@
 	opacity: 1;
 }
 
-/* `- ` hides and a rendered bullet paints in its place, the way a blockquote's border does. */
+/* `- ` hides and a rendered bullet paints in its place, the way a blockquote's border does. The
+   steps down to the item's own marker are children, so a nested item keeps its own kind's paint. */
 :where(.editor):is(
 		[data-presentation='reading'],
 		[data-presentation^='preview-'],
 		[data-presentation='live']
 	)
 	.list-item-block[data-list-marker='bullet']
-	.md-marker[contenteditable='false']::before {
+	> .list-item-marker
+	> .md-marker
+	> .md-marker-box::before {
 	content: '•';
 	visibility: visible;
 	color: var(--syntax-list, currentColor);
+	/* Painted over the hidden `-`, so the cell is as wide as the bytes it stands for. */
+	position: absolute;
+	left: 0;
 }
 
 /* The marker text is itself the rendered number (`1. `), so it stays visible and undimmed. */
@@ -779,8 +863,23 @@
 		[data-presentation='live']
 	)
 	.list-item-block[data-list-marker='ordered']
-	.md-marker[contenteditable='false'] {
+	> .list-item-marker
+	> .md-marker {
 	visibility: visible;
+}
+
+/* The drawn box and its gap fill the to-do's column exactly, whatever the trailing space measures. */
+:where(.editor):is(
+		[data-presentation='reading'],
+		[data-presentation^='preview-'],
+		[data-presentation='live']
+	)
+	.list-item-block[data-list-marker='task']
+	> .list-item-marker
+	> .md-marker
+	> .md-marker-box {
+	display: inline-block;
+	width: var(--md-task-indent);
 }
 
 /* GitHub task lists: the `- ` collapses, keeping its bytes for the offset traversal, and the
@@ -797,27 +896,6 @@
 	overflow: hidden;
 }
 
-/* Where the box is drawn, the marker sizes off the editor's text rather than a scaled first child
-   (a heading); the component's inline hanging indent reads `--md-task-indent` to match. */
-:where(.editor):is(
-		[data-presentation='reading'],
-		[data-presentation^='preview-'],
-		[data-presentation='live']
-	)
-	.list-item-block[data-list-marker='task'] {
-	--md-task-indent: calc(2.1 * var(--editor-font-size, 1rem));
-}
-
-:where(.editor):is(
-		[data-presentation='reading'],
-		[data-presentation^='preview-'],
-		[data-presentation='live']
-	)
-	.list-item-block[data-list-marker='task']
-	.md-marker[contenteditable='false'] {
-	font-size: var(--editor-font-size, 1rem);
-}
-
 :where(.editor):is(
 		[data-presentation='reading'],
 		[data-presentation^='preview-'],
@@ -831,8 +909,7 @@
 	color: transparent;
 	position: relative;
 	display: inline-block;
-	/* The box's width plus its gap; `TASK_HANGING_INDENT` in task-checkbox.ts is these two plus
-	   the trailing space. */
+	/* The box's width plus its gap; `--md-task-indent` is these two plus the trailing space. */
 	width: 1.2em;
 	margin-right: 0.65em;
 	vertical-align: baseline;
@@ -990,7 +1067,23 @@
 }
 :where(.editor)[data-presentation='preview-block']
 	.block-host[data-focused]
-	.md-marker[contenteditable='false']::before {
+	.md-marker[contenteditable='false']
+	> .md-marker-box::before {
+	content: none;
+}
+/* A list item's marker sits beside its first block, so it shows while that block has focus. */
+:where(.editor)[data-presentation='preview-block']
+	.list-item-block:has(> .list-item-content > .block-list > .block-host:first-child[data-focused])
+	> .list-item-marker
+	> .md-marker {
+	visibility: visible;
+	opacity: var(--syntax-marker-dim, 0.65);
+}
+:where(.editor)[data-presentation='preview-block']
+	.list-item-block:has(> .list-item-content > .block-list > .block-host:first-child[data-focused])
+	> .list-item-marker
+	> .md-marker
+	> .md-marker-box::before {
 	content: none;
 }
 

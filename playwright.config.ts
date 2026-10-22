@@ -1,37 +1,57 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, type Project } from '@playwright/test';
 
 declare const process: { env: Record<string, string | undefined> };
 const PROD = !!process.env.PERF_PROD;
-const WEBKIT = !!process.env.WEBKIT;
-// A run that adopts a developer's live harness on the default port serves whatever that
-// tree currently is, so a reviewer's battery moves both servers and reuses neither.
-// `E2E_PORT` picks the isolated server's port, so two isolated batteries on one machine (two
-// worktrees, say) never race for 1430; it implies isolation.
+const ENGINE = process.env.ENGINE ?? 'chromium';
+// The suite serves a development build of the tree as the run starts (dev checks on, no
+// on-demand transforms), never reused, since a reused build is staler than any dev server.
+// `E2E_SERVER=dev` serves the Vite dev server instead, for UI and watch mode's live reload; it
+// adopts a dev server already on 1420 unless `E2E_PORT` asks for its own. `E2E_PORT` moves the
+// run's server (the perf gate's preview takes the next port), so two runs never share one.
+const BUILT = process.env.E2E_SERVER !== 'dev';
 const OWN_PORT = Number(process.env.E2E_PORT) || 0;
-const ISOLATED = !!process.env.E2E_ISOLATED || OWN_PORT > 0;
-const DEV_PORT = OWN_PORT || (ISOLATED ? 1430 : 1420);
-const PROD_PORT = OWN_PORT ? OWN_PORT + 1 : ISOLATED ? 1431 : 1421;
+const REUSE = !BUILT && OWN_PORT === 0;
+const APP_PORT = OWN_PORT || (BUILT ? 1430 : 1420);
+const PROD_PORT = APP_PORT + 1;
+// IPv4 loopback: on Windows, Firefox tries 127.0.0.1 for `localhost` first and a refused
+// connection there costs 2 s per navigation.
+const HOST = '127.0.0.1';
+// A dev server someone started listens on `localhost`, which on Windows is IPv6 only.
+const APP_ORIGIN = `http://${REUSE ? 'localhost' : HOST}:${APP_PORT}`;
 
 // `stdout: 'pipe'` routes the server's console through the reporters, which is what lets
 // `server-warn-reporter` fail a run on an SSR-side `[aragonite:` guard fire. Stderr already pipes.
-const devServer = {
-	// `vite.config.js` pins the default port with `strictPort`, so isolation must move it on
-	// the command line; Playwright's `url` only says where to wait.
-	command: ISOLATED ? `npm run dev -- --port ${DEV_PORT} --strictPort` : 'npm run dev',
-	// Waits for the harness page: Vite opens and closes the port while checking it is free,
-	// before it serves, so a port check can pass early and the first page load is refused.
-	url: `http://localhost:${DEV_PORT}/test/editor`,
-	reuseExistingServer: !ISOLATED,
-	stdout: 'pipe' as const,
-	// Covers the first compile of the harness page, which has taken about 40s on a loaded machine.
-	timeout: 60_000
-};
+const appServer = BUILT
+	? {
+			// Its own output directory per port, so two runs and the perf gate's prod build never
+			// overwrite the app another run is serving.
+			command: `npm run build:e2e && npm run preview:e2e -- --host ${HOST} --port ${APP_PORT} --strictPort`,
+			env: { E2E_BUILD_DIR: `.svelte-kit/e2e-${APP_PORT}` },
+			url: `${APP_ORIGIN}/test/editor`,
+			reuseExistingServer: false,
+			stdout: 'pipe' as const,
+			timeout: 120_000
+		}
+	: {
+			// `vite.config.js` pins the default port with `strictPort`, so a run's own server must
+			// move it on the command line; Playwright's `url` only says where to wait.
+			command: REUSE
+				? 'npm run dev'
+				: `npm run dev -- --host ${HOST} --port ${APP_PORT} --strictPort`,
+			// Waits for the harness page: Vite opens and closes the port while checking it is free,
+			// before it serves, so a port check can pass early and the first page load is refused.
+			url: `${APP_ORIGIN}/test/editor`,
+			reuseExistingServer: REUSE,
+			stdout: 'pipe' as const,
+			// Covers the first compile of the harness page, which has taken about 40s on a loaded machine.
+			timeout: 60_000
+		};
 
 const prodServer = {
 	command: `npm run build && npm run preview -- --port ${PROD_PORT} --strictPort`,
-	// Waits for a page, not the port, for the same reason as the dev server.
+	// Waits for a page, not the port, for the same reason as the app server.
 	url: `http://localhost:${PROD_PORT}/test/editor`,
-	reuseExistingServer: !ISOLATED,
+	reuseExistingServer: REUSE,
 	stdout: 'pipe' as const,
 	timeout: 180_000
 };
@@ -48,26 +68,34 @@ const PROJECT_DIRS = [
 	'sticky-column',
 	'a11y',
 	'search',
-	'clipboard'
+	'clipboard',
+	'recordings'
 ];
 
-// The second-engine slice, run on every pull request rather than every commit. It carries no known-red
-// backlog, which is what lets the lane fail rather than report: any red is a regression.
-const WEBKIT_LANE = [
-	'smoke.spec.ts',
-	'source-prop.spec.ts',
-	'text-editing/edge-cases.spec.ts',
-	'text-editing/forward-delete.spec.ts',
-	'text-editing/enter-at-block-start.spec.ts',
-	'text-editing/enter-at-soft-break.spec.ts',
-	'selection/pointer.spec.ts',
-	'selection/keyboard/collapse.spec.ts',
-	'selection/dead-space-click.spec.ts',
-	'selection/gap-caret-arrival.spec.ts',
-	'selection/widget-selected-paint.spec.ts',
-	'caret/**/*.spec.ts',
-	'webkit/**/*.spec.ts'
-];
+// The browser every project runs in. Firefox is the installed release over WebDriver BiDi, not
+// Playwright's patched build; `FIREFOX_PATH` points at one outside the system path. WebKit throws
+// on the clipboard permissions, and the clipboard arm gives both engines an in-page store instead.
+const ENGINES: Record<string, Project['use']> = {
+	chromium: { browserName: 'chromium', permissions: ['clipboard-read', 'clipboard-write'] },
+	firefox: {
+		browserName: 'firefox',
+		channel: 'moz-firefox',
+		launchOptions: {
+			executablePath: process.env.FIREFOX_PATH,
+			// Headless Firefox on a Linux runner finds no pointing device, so `(pointer: fine)` and
+			// `(hover: hover)` stop matching; these give it the desktop mouse it has elsewhere.
+			firefoxUserPrefs: { 'ui.primaryPointerCapabilities': 6, 'ui.allPointerCapabilities': 6 }
+		},
+		permissions: []
+	},
+	webkit: { browserName: 'webkit', permissions: [] }
+};
+const engine = ENGINES[ENGINE];
+if (!engine)
+	throw new Error(`ENGINE=${ENGINE}: expected one of ${Object.keys(ENGINES).join(', ')}`);
+// The perf ceilings are calibrated in Chromium and the docs captures are taken there, so the
+// other engines run the correctness projects only.
+const CHROMIUM_ONLY = new Set(['e2e-capture', 'e2e-perf', 'e2e-perf-prod']);
 
 export default defineConfig({
 	testDir: './src/lib/e2e/tests',
@@ -75,17 +103,24 @@ export default defineConfig({
 	// many-worker contention on slower hosts, and a real hang still fails at 60.
 	timeout: 60_000,
 	retries: 0,
+	// The test, not the file, is what a worker and a shard take, so no long file holds a worker
+	// after the rest have finished.
+	fullyParallel: true,
 	use: {
-		baseURL: `http://localhost:${DEV_PORT}`,
+		baseURL: APP_ORIGIN,
 		headless: true,
-		permissions: ['clipboard-read', 'clipboard-write'],
+		...engine,
 		// Pinned, not inherited: specs across several projects assert near-absolute geometry and
 		// would turn red the day Playwright's implicit default moves. Projects may override.
 		viewport: { width: 1280, height: 720 }
 	},
-	// Playwright's own default, kept explicit because the server watcher rides beside it.
-	reporter: [[process.env.CI ? 'dot' : 'list'], ['./src/lib/e2e/server-warn-reporter.ts']],
-	webServer: PROD ? [devServer, prodServer] : devServer,
+	// Playwright's default reporter, the server-warning watcher, and in a GitHub job its summary.
+	reporter: [
+		[process.env.CI ? 'dot' : 'list'],
+		['./src/lib/e2e/server-warn-reporter.ts'],
+		...(process.env.GITHUB_STEP_SUMMARY ? [['./src/lib/e2e/ci-summary-reporter.ts'] as const] : [])
+	],
+	webServer: PROD ? [appServer, prodServer] : appServer,
 	projects: [
 		{
 			name: 'e2e-top',
@@ -94,8 +129,7 @@ export default defineConfig({
 				...PROJECT_DIRS.map((dir) => `${dir}/**`),
 				'simulation/**',
 				'perf/**',
-				'capture/**',
-				'webkit/**'
+				'capture/**'
 			]
 		},
 		{
@@ -108,9 +142,7 @@ export default defineConfig({
 			name: 'e2e-simulation',
 			testMatch: 'simulation/**/*.spec.ts',
 			timeout: 180_000,
-			// Each session is independent and the asserted artifact is the timing-independent
-			// source, so scheduling cannot change an assertion. Capped: one browser per worker.
-			fullyParallel: true,
+			// Capped: each session drives a long note, one browser per worker.
 			workers: 4,
 			// The editor scrolls internally, so a short viewport clips a long note's trailing
 			// blocks out of the capture screenshots; fixed, so pixel geometry stays deterministic.
@@ -122,6 +154,8 @@ export default defineConfig({
 			name: 'e2e-perf',
 			testMatch: 'perf/**/*.perf.spec.ts',
 			timeout: 600_000,
+			// Timed rows: a file's rows run one after another, so a row never measures beside its siblings.
+			fullyParallel: false,
 			use: { viewport: { width: 1280, height: 900 } }
 		},
 		{
@@ -133,23 +167,13 @@ export default defineConfig({
 			use: { viewport: { width: 1280, height: 900 } }
 		},
 		...PROJECT_DIRS.map((dir) => ({ name: `e2e-${dir}`, testMatch: `${dir}/**/*.spec.ts` })),
-		...(WEBKIT
-			? [
-					{
-						// WebKit throws on the clipboard permissions at CONTEXT creation, so no spec-level
-						// guard can reach them; the lane's clipboard arm rides a dispatched event instead.
-						name: 'e2e-webkit',
-						testMatch: WEBKIT_LANE,
-						use: { browserName: 'webkit' as const, permissions: [] }
-					}
-				]
-			: []),
 		...(PROD
 			? [
 					{
 						name: 'e2e-perf-prod',
 						testMatch: 'perf/**/*.perf.spec.ts',
 						timeout: 600_000,
+						fullyParallel: false,
 						use: {
 							viewport: { width: 1280, height: 900 },
 							baseURL: `http://localhost:${PROD_PORT}`
@@ -157,5 +181,5 @@ export default defineConfig({
 					}
 				]
 			: [])
-	]
+	].filter((project) => ENGINE === 'chromium' || !CHROMIUM_ONLY.has(project.name))
 });

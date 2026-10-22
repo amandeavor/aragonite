@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 const PIXEL_TOLERANCE = 5;
 
@@ -22,7 +23,7 @@ test.describe('sticky column: basic capture and cross-block', () => {
 				.locator('[contenteditable="true"]')
 				.nth(key === 'ArrowDown' ? 0 : 1)
 				.click();
-			await editor.page.keyboard.press('Home');
+			await editor.page.keyboard.press(edgeKey('lineStart'));
 			for (let i = 0; i < 10; i++) await editor.page.keyboard.press('ArrowRight');
 
 			const sourceX = await editor.getCaretPixelX();
@@ -65,7 +66,7 @@ test.describe('sticky column: survive intermediate clamping', () => {
 
 			const first = editor.page.locator('[contenteditable="true"]').nth(0);
 			await first.click();
-			await editor.page.keyboard.press('Home');
+			await editor.page.keyboard.press(edgeKey('lineStart'));
 			for (let i = 0; i < 40; i++) await editor.page.keyboard.press('ArrowRight');
 
 			const sourceX = await editor.getCaretPixelX();

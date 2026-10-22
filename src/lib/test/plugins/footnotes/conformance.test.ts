@@ -14,7 +14,8 @@ const ALL_CELLS = [
 	'undo',
 	'clipboard',
 	'simOracle',
-	'rawWrite'
+	'rawWrite',
+	'unfinishedReading'
 ];
 
 describe('footnote definition conformance', () => {

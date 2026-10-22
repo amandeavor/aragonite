@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickModeToggle } from '../../mode-switch';
+import { edgeKey } from '../../platform-keys';
 
 // preview-block is an editing mode: no edit path is blocked, and the focus mark follows the
 // caret through structural edits. Rendering lives in presentation-preview-block.spec.ts.
@@ -32,7 +33,7 @@ test.describe('preview-block, editing stays live', () => {
 
 	test('typing commits and the document round-trips', async ({ page }) => {
 		await ep.clickBlock(2);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.typeText(' more');
 		await ep.bridge.waitForSourceContains('second line here more');
 		expect(await page.evaluate(() => (window as any).__test.roundTripStable())).toBe(true);
@@ -41,7 +42,7 @@ test.describe('preview-block, editing stays live', () => {
 	test('undo restores the prior source', async ({ page }) => {
 		const before = await ep.bridge.getSource();
 		await ep.clickBlock(2);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await ep.typeText('ZZZ');
 		await ep.bridge.waitForSourceContains('ZZZ');
 		await ep.undo();
@@ -57,7 +58,7 @@ test.describe('preview-block, editing stays live', () => {
 	test('split and merge move the focus mark with the caret', async ({ page }) => {
 		const para = ep.getBlock(1).locator('.md-marker').first();
 		await ep.clickBlock(1);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await expect(para).toBeVisible();
 
 		// Enter splits: the new empty block takes focus and the one it split from hides its markers.

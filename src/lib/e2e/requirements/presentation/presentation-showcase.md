@@ -36,7 +36,7 @@ renders as an inline widget stays rendered, and switching back restores the sour
   times
 - the first sample waits for a settled document: nothing still announcing itself as rendering,
   and two consecutive reads of the mounted text in agreement. A diagram whose first render pulls
-  its library over a cold dev server sits on a stable placeholder while it does, so neither wait
+  its library on first use sits on a stable placeholder while it does, so neither wait
   covers the other
 
 ## User interactions
@@ -49,6 +49,10 @@ renders as an inline widget stays rendered, and switching back restores the sour
   e2e fixture)
 
 ## Miss-analysis
+
+A settled sample read the text and the count of diagrams still rendering in two separate calls, so
+a diagram that finished in between passed its "Rendering diagram…" text as settled (seen on a
+loaded CI runner). The general answer: a settle check whose condition and value were read apart.
 
 The first sample was taken the moment the widgets appeared, so a diagram still fetching its
 renderer was compared against the same diagram once it had one, and the mode switch took the

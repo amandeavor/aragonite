@@ -11,8 +11,8 @@ equation of many and re-rendering, live in `latex-acceptance.spec.ts`.
   holds through both.
 - Closing the source re-renders the display at exactly the geometry it had before, so nothing
   shifts.
-- Showing an inline formula's source, editing it and committing: the caret lands at the widget's
-  trailing edge, so a character typed after the commit falls past the widget rather than at a
+- Showing an inline formula's source, editing it and leaving with End: the caret keeps End's
+  place across the re-render, so a character typed then ends the line rather than landing at a
   block edge.
 - An inline round-trip does not move the following block up or down.
 

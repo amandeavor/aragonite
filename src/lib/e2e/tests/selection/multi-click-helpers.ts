@@ -21,23 +21,6 @@ export function editorSelection(page: Page): Promise<unknown> {
 	return page.evaluate(() => (window as any).__test.getSelection());
 }
 
-/** Clicks `clicks` times at `from` and drags the last one to `to`. */
-export async function multiClickDrag(
-	page: Page,
-	from: { x: number; y: number },
-	to: { x: number; y: number },
-	clicks: number
-): Promise<void> {
-	await page.mouse.move(from.x, from.y);
-	for (let i = 1; i < clicks; i++) {
-		await page.mouse.down({ clickCount: i });
-		await page.mouse.up({ clickCount: i });
-	}
-	await page.mouse.down({ clickCount: clicks });
-	await page.mouse.move(to.x, to.y, { steps: 8 });
-	await page.mouse.up({ clickCount: clicks });
-}
-
 /** A point a little past the end of the first painted run of `needle`, still inside the block's
  *  box: where a click lands on no glyph when the run ends its line. */
 export async function pastLineEnd(page: Page, needle: string): Promise<Point> {
@@ -54,13 +37,15 @@ export async function gutterLeftOf(page: Page, needle: string): Promise<Point> {
 	return pointInGap(host(run.path.slice(0, -1)), editable, 'left', run.top + run.height / 2);
 }
 
-/** The center of the `- ` marker the container draws inside the editable holding `needle`: a
- *  widget inside the editable element, not part of its text. */
+/** The center of the `- ` marker beside the editable holding `needle`, which its list item draws
+ *  in a cell of its own. */
 export async function markerCenterOf(page: Page, needle: string): Promise<Point> {
 	const run = await textRunRect(page, needle);
 	const at = await page.evaluate((path) => {
 		const block = document.querySelector(`[data-block-path='${JSON.stringify(path)}']`);
-		const marker = block?.querySelector('.md-marker[contenteditable="false"]');
+		const marker = block
+			?.closest('.list-item-block')
+			?.querySelector(':scope > .list-item-marker > .md-marker');
 		const b = marker?.getBoundingClientRect();
 		return b ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : null;
 	}, run.path);
@@ -71,18 +56,4 @@ export async function markerCenterOf(page: Page, needle: string): Promise<Point>
 /** The centre of the nth rendered inline widget, or of the `aim` element inside it. */
 export function inlineWidgetCenter(page: Page, aim?: string, index = 0): Promise<Point> {
 	return widgetCenter(page.locator('[data-inline-widget]').nth(index), aim);
-}
-
-/** Clicks `clicks` times at one point, each its own down and up: the run a real double- or
- *  triple-click makes, which `clickCount` alone does not. */
-export async function multiClick(
-	page: Page,
-	at: { x: number; y: number },
-	clicks: number
-): Promise<void> {
-	await page.mouse.move(at.x, at.y);
-	for (let i = 1; i <= clicks; i++) {
-		await page.mouse.down({ clickCount: i });
-		await page.mouse.up({ clickCount: i });
-	}
 }

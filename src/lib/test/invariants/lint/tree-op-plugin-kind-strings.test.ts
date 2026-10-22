@@ -1,5 +1,5 @@
 /**
- * No plugin kind name in a core dispatch layer (`editor.md` § 1). Core naming a plugin kind
+ * No plugin kind name in a core dispatch layer (`editor.md` § What this is). Core naming a plugin kind
  * reads correctly and passes every behavioral test, so only a scan catches it. Scope is
  * `tree-operations/`, `editor-actions/` and `selection/`; the forbidden set derives from
  * what the first-party plugins brand, and built-in kinds are core's own vocabulary.

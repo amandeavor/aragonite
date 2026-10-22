@@ -6,8 +6,10 @@
 import { tick } from 'svelte';
 import { isModifiedClick, type PressTracker } from '../../activation-click';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
+import { readNativeSelection } from '../../selection/native-bridge';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import type { CaretWriter } from '../../caret/widget-offset';
+import { TEXT_SURFACE_SELECTOR } from '../../caret/block-content-selector';
 import { BARE_MODIFIER_KEYS } from '../../schema/keybindings';
 
 // ── Listener plumbing ───────────────────────────────────────────────
@@ -112,26 +114,42 @@ export interface SelectionChangeBridgeDeps {
 	caretWriter: CaretWriter;
 }
 
-/** Announces caret motion the editor did not make (a click, a move within one block), and drops
- *  a caret that appears while an inline widget is selected whole. */
+/** Announces caret motion the editor did not make, after moving a caret the browser left off its
+ *  spot onto it, and drops a caret that appears while an inline widget is selected whole. */
 export function installSelectionChangeBridge(deps: SelectionChangeBridgeDeps): () => void {
+	// A caret moved mid-composition ends the IME's run.
+	let composing = false;
 	const handler = () => {
-		const sel = window.getSelection();
-		if (!sel || sel.rangeCount === 0) return;
-		const anchorNode = sel.anchorNode;
-		if (!anchorNode || !deps.root.contains(anchorNode)) return;
+		const live = readNativeSelection();
+		if (!live) return;
+		const anchorNode = live.anchor.node;
+		if (!deps.root.contains(anchorNode)) return;
 		// A selection in the host's header is not a document selection: announcing there
 		// reports this editor's own unchanged selection on every header caret move.
 		if (deps.isHostChrome(anchorNode)) return;
 		// The paragraph keeps focus while its widget is selected, and the browser puts a caret at
 		// its start on any mouse input. A drag's range and a caret in a popover field stay.
-		if (sel.isCollapsed && deps.selection.widget !== null && inBlockSurface(anchorNode)) {
+		if (live.collapsed && deps.selection.widget !== null && inBlockSurface(anchorNode)) {
 			deps.caretWriter.clear();
 			return;
+		}
+		// Focus can sit on the editor root or a whole-block proxy, which hold no text to move along.
+		const surface = document.activeElement;
+		if (
+			!composing &&
+			surface instanceof HTMLElement &&
+			surface.matches(TEXT_SURFACE_SELECTOR) &&
+			surface.contains(anchorNode)
+		) {
+			deps.caretWriter.canonicalizeCaret(surface);
 		}
 		deps.announceIfMoved();
 	};
 	return removeAll(
+		onRoot(deps.root, 'compositionstart', () => (composing = true)),
+		onRoot(deps.root, 'compositionend', () => (composing = false)),
+		// A browser can drop a composition with no compositionend; the next plain key shows it ended.
+		onRoot<KeyboardEvent>(deps.root, 'keydown', (e) => (composing &&= e.isComposing)),
 		onRoot(document, 'selectionchange', handler),
 		// The browser reports a click's caret on a later task, which a byte typed straight after
 		// beats. On `document` so the block's own click handling refines the caret first.

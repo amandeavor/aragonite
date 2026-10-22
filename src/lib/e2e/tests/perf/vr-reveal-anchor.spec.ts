@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { Locator, Page } from '@playwright/test';
 import { PluginsPage } from '../plugins/helpers';
 import { deferImage } from '../../page-probes';
+import { clickInPlace } from '../../click-in-place';
 
 /**
  * Who holds the scroll position after scrolling to a block, once the scroll is done. The held
@@ -104,7 +105,7 @@ test.describe('reveal anchor: the pin names the full target path', () => {
 		await editor.loadContent(md);
 		await editor.waitForRenderFlush();
 
-		await editor.entry('Buried Target').click();
+		await clickInPlace(editor.entry('Buried Target'));
 		await expect.poll(() => blockInView(page, targetPath)).toBe(true);
 		await editor.waitForResizeObserverFlush();
 		expect(await blockInView(page, targetPath)).toBe(true);

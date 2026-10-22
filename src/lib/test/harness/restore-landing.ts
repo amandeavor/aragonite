@@ -24,7 +24,8 @@ export function restoreTarget(
 		selectionState,
 		getBlockElByPath,
 		caretAt: (point) => selectionState.cellLandingFor(point),
-		getEditorRoot: () => null
+		getEditorRoot: () => null,
+		landCaret: () => false
 	};
 }
 
@@ -64,8 +65,10 @@ export function restoreLandingOver(
 		selectionState,
 		caretMemory,
 		getBlockElByPath,
+		getBlockBoxByPath: getBlockElByPath,
 		getEditorRoot: () => null,
-		scroll: null
+		scroll: null,
+		isReading: () => false
 	});
 	return { landing, revealed, caretMemory };
 }

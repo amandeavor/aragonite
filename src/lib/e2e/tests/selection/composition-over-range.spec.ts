@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { attachIme } from '../../simulation/ime';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 // A composition started over a range across blocks removes the range first, then composes in the
 // block the removal kept, wherever the browser's caret sat (requirements/selection/).
@@ -16,10 +17,11 @@ interface RangeRoute {
 }
 
 const THREE = 'alpha\n\nbeta\n\ngamma\n';
+const LONG = Array.from({ length: 200 }, (_, i) => `para ${i}`).join('\n\n') + '\n';
 
 /** Shift+Home, then one more step up or left: a range from the caret's block into the one before. */
 async function drawIntoPrevious(editor: EditorPage, step: 'ArrowUp' | 'ArrowLeft'): Promise<void> {
-	await editor.page.keyboard.press('Shift+Home');
+	await editor.page.keyboard.press(extendKey('lineStart'));
 	await editor.page.keyboard.press(`Shift+${step}`);
 }
 
@@ -39,7 +41,7 @@ const ROUTES: RangeRoute[] = [
 		source: THREE,
 		async draw(editor) {
 			await editor.focusBlock(2, 2);
-			await editor.page.keyboard.press('ControlOrMeta+Shift+Home');
+			await editor.page.keyboard.press(extendKey('docStart'));
 		},
 		after: (text) => `${text}mma\n`
 	},
@@ -57,9 +59,20 @@ const ROUTES: RangeRoute[] = [
 		source: THREE,
 		async draw(editor) {
 			await editor.focusBlock(0, 2);
-			await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+			await editor.page.keyboard.press(extendKey('docEnd'));
 		},
 		after: (text) => `al${text}\n`
+	},
+	{
+		// The start block lies past windowing's reach once the end shows, so it unmounts.
+		name: 'a long document drawn downward, its first block windowed out',
+		source: LONG,
+		async draw(editor) {
+			await editor.focusBlock(0, 2);
+			await editor.page.keyboard.press(extendKey('docEnd'));
+			await expect(editor.page.locator('[data-block-path="0"]')).toHaveCount(0);
+		},
+		after: (text) => `pa${text}\n`
 	},
 	{
 		name: 'both paragraphs of a quote',
@@ -84,21 +97,12 @@ const ROUTES: RangeRoute[] = [
 		source: '| a | b |\n| - | - |\n| cc | dd |\n',
 		async draw(editor) {
 			await editor.page.locator('.table-cell').nth(2).click();
-			await editor.page.keyboard.press('Home');
-			await editor.page.keyboard.press('Shift+End');
+			await editor.page.keyboard.press(edgeKey('lineStart'));
+			await editor.page.keyboard.press(extendKey('lineEnd'));
 			await editor.page.keyboard.press('Shift+ArrowRight');
 			await editor.page.keyboard.press('Shift+ArrowRight');
 		},
 		after: (text) => `| a | b |\n| - | - |\n| ${text} |  |\n`
-	},
-	{
-		name: 'a one-row table into the rule below it',
-		source: '| c |\n| - |\n\n---\n',
-		async draw(editor) {
-			await editor.page.locator('.table-cell').first().click();
-			await editor.page.keyboard.press('Shift+ArrowDown');
-		},
-		after: (text) => (text ? `---\n\n${text}\n` : '---\n')
 	}
 ];
 

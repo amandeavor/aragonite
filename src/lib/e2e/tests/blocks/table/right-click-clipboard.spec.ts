@@ -1,7 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { dragBetweenCells } from './helpers';
-import { holdClipboardRead, releaseClipboardRead } from '../../../page-probes';
+import { holdClipboardRead, releaseClipboardRead } from '../../../clipboard-arm';
 
 // Cells render row-major: 0=A 1=B (header) · 2="hello" 3="world" (body row).
 const TABLE = '| A | B |\n| --- | --- |\n| hello | world |\n';
@@ -126,8 +126,8 @@ test.describe('table block: cell right-click clipboard', () => {
 		await editor.bridge.waitForSourceNotContains('| 1 | 2 |');
 		const cut = await editor.bridge.getSource();
 
-		await editor.goto();
 		await editor.loadContent(grid);
+		await editor.seedClipboard('');
 		await dragBetweenCells(page, 2, 5);
 		await editor.waitForCrossBlock(true);
 		await page.locator('.table-cell').nth(2).click({ button: 'right' });
@@ -157,7 +157,6 @@ test.describe('table block: cell right-click clipboard', () => {
 		await editor.bridge.waitForSourceContains('| s | t |');
 		const pasted = await editor.bridge.getSource();
 
-		await editor.goto();
 		await editor.loadContent(grid);
 		await editor.seedClipboard('p\tq\ns\tt\n');
 		await page.locator('.table-cell').nth(5).click({ button: 'right' });
@@ -222,7 +221,7 @@ test.describe('table block: cell menu Paste over a live range', () => {
 	for (const [name, select] of RANGES) {
 		test(`over ${name} it ends as Ctrl+V does, the range gone`, async ({ page }) => {
 			await selectOver(select);
-			await page.keyboard.press('ControlOrMeta+v');
+			await editor.paste();
 			await editor.waitForCrossBlock(false);
 			await editor.waitForRenderFlush();
 			const pasted = await editor.bridge.getSource();

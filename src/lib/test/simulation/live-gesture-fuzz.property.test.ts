@@ -192,11 +192,11 @@ describe('the shapes that used to need an exclusion', () => {
 		expect(cut.shape).toBeNull();
 	});
 
-	// The rebalanced split's empty first half gets a blank line of its own, from the same fix-up as
-	// any other gap between blocks.
+	// The rebalanced split's empty first half stays an empty line under the heading, with the
+	// separator any blank block takes from the same fix-up as every other gap between blocks.
 	it('#164: a split with an empty first half converges', async () => {
 		const cut = await liveAndLiteral('## \n**a**b\n', { kind: 'enter', leaf: 1, offset: 2 });
-		expect(cut.live).toBe('## \n\n**a**b\n');
+		expect(cut.live).toBe('## \n\n\n**a**b\n');
 		expect(cut.shape).toBeNull();
 		expect(cut.literalShape).toBeNull();
 	});

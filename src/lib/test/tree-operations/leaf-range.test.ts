@@ -455,11 +455,11 @@ describe('joinLeaves across two leaves', () => {
 	});
 });
 
-// No built-in kind's write rule moves a byte of a merge, so a kind whose rule does shows it runs.
+// No built-in kind's write rule adds a byte to a merge, so a kind whose rule does shows it runs.
 describe('joinLeaves runs the absorbed kind’s write rule', () => {
 	it('on the bytes it takes from the other leaf', () => {
-		const kind = testLeaf('shouting-leaf', {
-			rawWrite: { normalize: (raw) => raw.toUpperCase(), mapOffset: (_raw, offset) => offset }
+		const kind = testLeaf('marking-leaf', {
+			rawWrite: { normalize: (raw) => `!${raw}`, mapOffset: (_raw, offset) => offset + 1 }
 		});
 		const head = parse('x\n').children[0];
 		const tail = { kind, leadingTrivia: '', raw: 'abc\n' } as CstNode;
@@ -475,6 +475,6 @@ describe('joinLeaves runs the absorbed kind’s write rule', () => {
 			store,
 			'\n'
 		);
-		expect(joined).toMatchObject({ raw: 'xABC\n', seam: 1 });
+		expect(joined).toMatchObject({ raw: 'x!abc\n', seam: 1 });
 	});
 });

@@ -3,18 +3,21 @@
  * moves it away from (beside a widget, in hidden marker text, inside a container's marker prefix).
  */
 
-import { isHiddenMarkerText, isInMarkerPrefix } from './widget-offset';
+import { isHiddenMarkerText, isInMarkerPrefix, isInsideAtomicWidget } from './widget-offset';
 
-/** Caret in a text node the user can see: the browser draws a caret there, so the editor's own
- *  caret indicator is not needed. Hidden marker text renders nothing, so it does not count. */
-export function caretIsInTextContent(el: HTMLElement, sel: Selection | null): boolean {
+/** Whether the live caret sits in a text node the user can see, where the browser draws a caret,
+ *  so the editor's own indicator is not needed. Hidden marker text renders nothing. */
+export function caretIsInTextContent(el: HTMLElement): boolean {
+	const sel = window.getSelection();
 	if (!sel || sel.rangeCount === 0) return false;
 	return seatIsInTextContent(el, sel.getRangeAt(0).startContainer);
 }
 
-/** The same read for a caret position given as a node: the one a press is about to make. */
-export function seatIsInTextContent(el: HTMLElement, node: Node): boolean {
-	return node.nodeType === Node.TEXT_NODE && el.contains(node) && !isHiddenMarkerText(node, el);
+/** The same read for a caret position given as a node: the one a press is about to make. A
+ *  widget's own text paints, but takes no typing. */
+function seatIsInTextContent(el: HTMLElement, node: Node): boolean {
+	if (node.nodeType !== Node.TEXT_NODE || !el.contains(node)) return false;
+	return !isHiddenMarkerText(node, el) && !isInsideAtomicWidget(el, node);
 }
 
 /** Whether the click ending a press that put the caret at `seat` moves it: off a widget's side to

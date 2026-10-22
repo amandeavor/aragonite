@@ -13,7 +13,6 @@ import {
 	makeEditorActionsDeps
 } from '#lib/test/harness/editor-actions.js';
 import type { CstNode } from '#lib/core/nodes.js';
-import { allowDevWarns } from '#lib/test/support/warn-gate.js';
 // jsdom has no native selection, so every commit here exercises the no-caret fallback:
 // the stored path must resolve to the operated child in the snapshot it restores
 // (reorder-action's "deep restore path" contract, extended to every container commit).
@@ -62,7 +61,7 @@ function lastUndoEntry(deps: ReturnType<typeof makeEditorActionsDeps>['deps']) {
 
 describe('no-caret container commits snapshot a resolving deep restore path', () => {
 	it('container metadata update stores the operated child path', async () => {
-		const { deps } = makeEditorActionsDeps([para('pad\n'), quoteOf([para('hello\n')])]);
+		const { deps } = makeEditorActionsDeps([para('pad\n'), listOf(['hello\n'])]);
 		const controller = createUndoController(deps);
 		const bundle = createStandardNestedActions(
 			createBlockListState(() => deps.doc.children[1]),
@@ -78,9 +77,11 @@ describe('no-caret container commits snapshot a resolving deep restore path', ()
 			})
 		);
 
-		await bundle.blockEdit.updateBlockMetadata(0, { taskChecked: true });
-		// A paragraph's task field is metadata no reload gives it.
-		allowDevWarns(['invariant:reads-back']);
+		await bundle.blockEdit.updateBlockMetadata(0, {
+			taskItem: true,
+			taskChecked: true,
+			taskMarker: '[x] '
+		});
 
 		const entry = lastUndoEntry(deps);
 		expect(rangeSelectionOf(entry).focus.path).toEqual([1, 0]);

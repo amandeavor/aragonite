@@ -259,7 +259,7 @@ function driverOf(
 
 /** Asserts the addressed child is the one removed and the emitted path is the chain of local
  *  indices; the fixture avoids chain [0,0] child 0, where local and global indices coincide. */
-export async function checkStripLocalIndexAddressing(
+async function checkStripLocalIndexAddressing(
 	kind: AnyBlockKind,
 	profile: ContainerConformanceProfile
 ): Promise<void> {
@@ -334,7 +334,7 @@ export async function checkStripLocalIndexAddressing(
 
 // ── (b) innermost-first ancestry rebuild ─────────────────────────────────────
 
-export function checkInnermostFirstAncestry(
+function checkInnermostFirstAncestry(
 	kind: AnyBlockKind,
 	profile: ContainerConformanceProfile
 ): void {
@@ -375,7 +375,7 @@ export function reversedAncestryLeavesRootStale(profile: ContainerConformancePro
 
 /** Bubbles an out-of-range ArrowUp through the kind's own focus bundle, under a blockquote at its
  *  top edge, and asserts the root sees it once, catching wiring that re-enters or escapes twice. */
-export async function checkFocusBubbleTermination(
+async function checkFocusBubbleTermination(
 	kind: AnyBlockKind,
 	profile: ContainerConformanceProfile
 ): Promise<void> {
@@ -478,7 +478,7 @@ const TITLE_PROBE = 'probe title';
 
 /** A title keystroke skips an opaque container's metadata re-read, so the row is written through
  *  that keystroke's rebuild and the tree has to match a fresh parse, every metadata key included. */
-export function checkTitleRowFeedsNoMetadata(kind: AnyBlockKind): CellOutcome {
+function checkTitleRowFeedsNoMetadata(kind: AnyBlockKind): CellOutcome {
 	const descriptor = getBlockKindDescriptor(kind);
 	const chromeKind = descriptor.reservedChrome?.kind;
 	if (descriptor.containerContract !== 'opaque' || chromeKind === undefined) {
@@ -661,8 +661,8 @@ function assertContentStartSpaceIsRebuilt(
 	);
 }
 
-/** `container.bodyWrap` is tested, not trusted: `clearRedundantSeparator` reads it to place a freed
- *  blank line, and a kind whose parse disagrees loses the start of its body on reload. */
+/** `container.bodyWrap` is tested, not trusted: the blank-line fix-up reads it to place each blank
+ *  line beside a fence line, and a kind whose parse disagrees gains or loses a block on reload. */
 function assertBodyWrapMatchesParse(kind: AnyBlockKind, descriptor: BlockKindDescriptor): void {
 	if (isGridDescriptor(descriptor)) return;
 	const fixture = descriptor.conformanceFixture;
@@ -713,5 +713,20 @@ function assertBodyWrapMatchesParse(kind: AnyBlockKind, descriptor: BlockKindDes
 		descriptor.bodyWrap?.afterOpenerLine === true,
 		`${kind} container.bodyWrap.afterOpenerLine agrees with what its parse does with a blank ` +
 			`line against the opener`
+	);
+
+	// A closing fence line takes the blank line beside it, so a kind with one reloads a blank last
+	// block as one block fewer. A list's children are its items, which hold no blank block.
+	if (node.children[expected - 1].children !== undefined) return;
+	node.innerPrefix = '';
+	node.innerSuffix = '';
+	node.children.push({ kind: 'paragraph', leadingTrivia: ending, raw: ending });
+	descriptor.rebuildRaw!(node);
+	const keepsBlankTail = findFirstOfKind(parse(node.raw), kind)?.children?.length === expected + 1;
+	assertIs(
+		!keepsBlankTail,
+		descriptor.bodyWrap?.beforeCloserLine === true,
+		`${kind} container.bodyWrap.beforeCloserLine agrees with what its parse does with a blank ` +
+			`line against the closer`
 	);
 }

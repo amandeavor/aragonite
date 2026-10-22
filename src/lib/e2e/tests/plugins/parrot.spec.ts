@@ -1,5 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, activeBlockPath, capturedErrors, roundTripStable } from './helpers';
+import { skipUnlessSupported } from '../../browser-engine';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The bundled party parrot (requirements/plugins/parrot.md), the plugin guide's quickstart built:
@@ -189,7 +191,7 @@ test.describe('the bundled party parrot', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type(' tonight');
 		// Uncommitted until the caret leaves: nothing has reached the document yet.
 		expect(await editor.bridge.getSource()).toBe(SEED);
@@ -206,10 +208,10 @@ test.describe('the bundled party parrot', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		// Two bursts across the batch window: per-keystroke commits would take two undos.
 		await page.keyboard.type(' to');
-		await editor.waitForUndoBatchFlush();
+		await editor.endTypingBatch();
 		await page.keyboard.type('night');
 		await editor.leaveDownward();
 		await editor.bridge.waitForSourceContains('tonight');
@@ -225,7 +227,7 @@ test.describe('the bundled party parrot', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		for (let i = 0; i < ' party responsibly'.length; i++) {
 			await page.keyboard.press('Backspace');
 		}
@@ -240,12 +242,12 @@ test.describe('the bundled party parrot', () => {
 
 	test('the caret walks in from the following paragraph and back out', async ({ page }) => {
 		await editor.getBlock(1).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowLeft');
 		await expect(editor.source).toHaveCount(1);
 		expect(await activeBlockPath(page)).toEqual([0]);
 
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(editor.source).toHaveCount(0);
 		expect(await activeBlockPath(page)).toEqual([1]);
@@ -256,7 +258,7 @@ test.describe('the bundled party parrot', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 
 		// The shape a heading's Enter writes at the same offset, byte for byte.
@@ -273,7 +275,7 @@ test.describe('the bundled party parrot', () => {
 
 	test('Enter after a bare marker commits the emptied caption, then splits', async ({ page }) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		for (let i = 0; i < ' party responsibly'.length; i++) {
 			await page.keyboard.press('Backspace');
 		}
@@ -294,7 +296,7 @@ test.describe('the bundled party parrot', () => {
 
 	test('Enter mid-caption moves the tail into the paragraph below', async ({ page }) => {
 		await editor.revealByClick();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		// Stepped, not clicked: a point taken from a rect falls on whichever side of a glyph the
 		// font metrics put it, and the assertion below is byte-exact.
 		for (let i = 0; i < '%%parrot party'.length; i++) {
@@ -313,7 +315,7 @@ test.describe('the bundled party parrot', () => {
 		page
 	}) => {
 		await editor.getBlock(1).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		for (let i = 0; i < 'After'.length; i++) {
 			await page.keyboard.press('Backspace');
 		}
@@ -349,6 +351,7 @@ test.describe('the bird under reduced motion', () => {
 	test.use({ contextOptions: { reducedMotion: 'reduce' } });
 
 	test('rests on one frame instead of dancing', async ({ page }) => {
+		skipUnlessSupported(page, 'mediaEmulation');
 		const editor = new ParrotPage(page);
 		await editor.gotoSeed();
 

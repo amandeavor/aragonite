@@ -1,7 +1,10 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { nextRow } from './presentation/helpers';
 import type { KeybindingOverride } from '../../schema/keybinding-overrides';
+import { edgeKey, WORD_MODIFIER } from '../platform-keys';
+import { addReplaceIsland } from '../decoration-sources';
 
 async function setKeybindings(editor: EditorPage, overrides: KeybindingOverride[] | undefined) {
 	await editor.page.evaluate((ov) => (window as any).__test.setKeybindings(ov), overrides);
@@ -19,7 +22,7 @@ test.describe('keybinding-override prop', () => {
 		await editor.loadContent('hello\n');
 		await setKeybindings(editor, [{ chord: 'Mod+Y', command: 'history.undo' }]);
 		await editor.page.locator('.text-editable-block').first().click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type(' world');
 		await expect.poll(() => editor.bridge.getSource()).toContain('hello world');
 		await editor.page.keyboard.press('ControlOrMeta+y');
@@ -30,7 +33,7 @@ test.describe('keybinding-override prop', () => {
 		await editor.loadContent('hello\n');
 		await setKeybindings(editor, [{ chord: 'Mod+Z', command: null }]);
 		await editor.page.locator('.text-editable-block').first().click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('X');
 		await editor.page.keyboard.press('ControlOrMeta+z');
 		await expect.poll(() => editor.bridge.getSource()).toContain('helloX');
@@ -51,7 +54,7 @@ test.describe('keybinding-override prop', () => {
 
 		const heading = editor.page.locator('.text-editable-block', { hasText: 'title' });
 		await heading.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('Z');
 		await expect.poll(() => editor.bridge.getSource()).toContain('titleZ');
 		await editor.page.keyboard.press('ControlOrMeta+Alt+y');
@@ -59,7 +62,7 @@ test.describe('keybinding-override prop', () => {
 
 		const para = editor.page.locator('.text-editable-block', { hasText: 'para' });
 		await para.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('Z');
 		await expect.poll(() => editor.bridge.getSource()).toContain('paraZ');
 		await editor.page.keyboard.press('ControlOrMeta+Alt+y'); // unbound here, so no undo
@@ -78,7 +81,7 @@ test.describe('override fires where no block holds focus', () => {
 		await setKeybindings(editor, [{ chord: 'Mod+Alt+U', command: 'history.undo' }]);
 
 		await editor.page.locator('.table-cell').nth(3).click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.type('Z');
 		await expect.poll(() => editor.bridge.getSource()).toContain('dZ');
 
@@ -111,7 +114,7 @@ test.describe('override fires on every leaf dispatch surface', () => {
 				if (i === 0) await editor.loadContent(s.content);
 				else await nextRow(editor, s.content);
 				await editor.page.locator(s.focus).first().click();
-				await editor.page.keyboard.press('End');
+				await editor.page.keyboard.press(edgeKey('lineEnd'));
 				await editor.page.keyboard.type('Z');
 				await expect.poll(() => editor.bridge.getSource()).toContain('Z');
 				await editor.page.keyboard.press('ControlOrMeta+Alt+u');
@@ -119,4 +122,91 @@ test.describe('override fires on every leaf dispatch surface', () => {
 			});
 		}
 	});
+});
+
+/** A soft keyboard's Backspace: the `beforeinput` alone, with no keydown. */
+async function sendKeylessBackspace(editor: EditorPage): Promise<void> {
+	await editor.page.evaluate(() => {
+		const init = { inputType: 'deleteContentBackward', bubbles: true, cancelable: true };
+		document.activeElement!.dispatchEvent(new InputEvent('beforeinput', init));
+	});
+}
+
+// Every delete at a block's edge runs what plain Backspace binds, so it follows a host's binding.
+test.describe("a delete at a block's start follows the Backspace binding", () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+	});
+
+	const routes = [
+		{
+			name: 'the word chord',
+			send: () => editor.page.keyboard.press(`${WORD_MODIFIER}+Backspace`)
+		},
+		{ name: 'Shift+Backspace', send: () => editor.page.keyboard.press('Shift+Backspace') },
+		{ name: 'a soft keyboard', send: () => sendKeylessBackspace(editor) }
+	];
+	const disables: [string, KeybindingOverride][] = [
+		['everywhere', { chord: 'Backspace', command: null }],
+		['on paragraphs', { chord: 'Backspace', command: null, kind: 'paragraph' }]
+	];
+
+	for (const [scope, override] of disables) {
+		for (const route of routes) {
+			test(`Backspace disabled ${scope}: ${route.name} joins nothing`, async () => {
+				await editor.loadContent('abc\n\nnext\n');
+				await setKeybindings(editor, [override]);
+				await editor.focusBlockAtPath([1], 0);
+				await route.send();
+				await editor.page.keyboard.type('x');
+				await editor.bridge.waitForSourceEquals('abc\n\nxnext\n');
+			});
+		}
+	}
+
+	for (const route of routes) {
+		test(`Backspace rebound to a heading: ${route.name} makes one`, async () => {
+			await editor.loadContent('abc\n\nnext\n');
+			await setKeybindings(editor, [{ chord: 'Backspace', command: 'heading.cycle', arg: 1 }]);
+			await editor.focusBlockAtPath([1], 0);
+			await route.send();
+			await editor.bridge.waitForSourceEquals('abc\n\n# next\n');
+		});
+	}
+});
+
+const IMAGE = '![x](/test-fixtures/sample.png)';
+
+// A delete chord's own answers wait for the keymap, so a binding on the chord itself wins over them.
+test.describe('a binding on a delete chord wins over what the chord would take', () => {
+	const places = [
+		{ name: 'beside an image', line: `${IMAGE} bb`, at: 31 },
+		{
+			name: 'beside a replace decoration',
+			line: 'bbHIDDEN',
+			at: 8,
+			decorate: (page: Page) => addReplaceIsland(page, [1], 2, 8)
+		},
+		{ name: "at a paragraph's start", line: 'bb', at: 0 }
+	];
+	for (const chord of ['Shift+Backspace', 'Alt+Backspace']) {
+		for (const place of places) {
+			test(`${chord} ${place.name}`, async ({ page }) => {
+				const editor = new EditorPage(page);
+				await editor.goto();
+				await place.decorate?.(page);
+				await editor.loadContent(`aa\n\n${place.line}\n`);
+				await setKeybindings(editor, [{ chord, command: 'heading.cycle', arg: 1 }]);
+				await editor.focusBlockAtPath([1], place.at);
+				await page.keyboard.press(chord);
+				await editor.bridge.waitForSourceEquals(`aa\n\n# ${place.line}\n`);
+				await editor.waitForRenderFlush();
+				expect(await page.locator('[data-image-overlay], .md-widget-selected').count()).toBe(0);
+				expect(await page.evaluate(() => window.getSelection()?.isCollapsed)).toBe(true);
+			});
+		}
+	}
 });

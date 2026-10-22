@@ -3,6 +3,7 @@ import { EditorPage } from '../../../editor-page';
 import { dragBetweenBoxes, dragBetweenCells } from './helpers';
 import { roundTripStable } from '../../plugins/helpers';
 import { pointAtRaw } from '../../../text-runs';
+import { edgeKey, extendKey } from '../../../platform-keys';
 
 // A cross-block range reaching into a table rewrites its cells. Endpoints inside a grid are cell
 // indices, so every covered cell is marked whole; which cells those are is the grid's own question.
@@ -79,12 +80,12 @@ test.describe('table block: cross-block format toggle', () => {
 	}) => {
 		await editor.loadContent(`${TABLE_2x3}\nafter\n`);
 		await page.locator('.table-cell').nth(5).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Shift+ArrowDown');
 		await editor.waitForCrossBlock(true);
 		// The extend lands the focus at the paragraph's offset 0, where its head span is empty;
 		// carrying on to the document end is what gives the paragraph bytes to mark.
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 
 		await page.keyboard.press('ControlOrMeta+b');
 		await editor.bridge.waitForSourceEquals(

@@ -7,7 +7,7 @@
 	import LinkCard from './LinkCard.svelte';
 	import { createLinkCardCommitter } from './link-card-commit';
 	import type { LinkCardState } from './link-card-state.svelte';
-	import type { MenuPresence } from '../menu/menu-presence.svelte';
+	import type { MenuCloseCause, MenuPresence } from '../menu/menu-presence.svelte';
 	import type { TextMoves } from '../overlays/text-moves';
 	import type { Reading } from '../../schema/reading';
 	import type { CommandDispatchContext } from '../../schema/block-commands';
@@ -86,35 +86,14 @@
 		});
 	});
 
-	// A click outside closes the card and leaves the caret where it landed. Escape is read at the
-	// document because a clicked card sits beside a caret that stays there.
-	$effect(() => {
-		if (!card.getTarget() && !card.getCreateTarget()) return;
-		const onPointerDown = (e: PointerEvent) => {
-			const el = e.target as Element | null;
-			if (el?.closest('[data-link-card]')) return;
-			card.close();
-		};
-		const onKeyDown = (e: KeyboardEvent) => {
-			// A composing Escape cancels the IME's conversion, not the card.
-			if (e.key !== 'Escape' || e.isComposing) return;
-			const inCard = cardEl?.contains(document.activeElement) ?? false;
-			// Only a card that holds the focus takes the key and has to give the caret back;
-			// beside a live caret it just closes, leaving Escape to whatever else was listening.
-			if (inCard) {
-				e.preventDefault();
-				e.stopPropagation();
-			}
-			card.close();
-			if (inCard) void caretRestore.restore();
-		};
-		document.addEventListener('pointerdown', onPointerDown, true);
-		document.addEventListener('keydown', onKeyDown, true);
-		return () => {
-			document.removeEventListener('pointerdown', onPointerDown, true);
-			document.removeEventListener('keydown', onKeyDown, true);
-		};
-	});
+	// Only a card holding the focus takes Escape and gives the caret back; beside a live caret the
+	// key still reaches the document, so a shown source closes on the same press.
+	function closeCard(cause: MenuCloseCause): boolean {
+		const inCard = cause === 'escape-key' && (cardEl?.contains(document.activeElement) ?? false);
+		card.close();
+		if (inCard) void caretRestore.restore();
+		return inCard;
+	}
 
 	function commit(url: string): void {
 		const target = card.getTarget();
@@ -155,7 +134,7 @@
 		<div
 			bind:this={cardEl}
 			class="md-link-card-anchor"
-			{@attach menuPresence.track(() => card.close(), { edits: true })}
+			{@attach menuPresence.track(closeCard, { edits: true })}
 		>
 			{#key `${target.path.join(',')}@${target.sourceStart}`}
 				<LinkCard
@@ -176,7 +155,7 @@
 	<div
 		bind:this={cardEl}
 		class="md-link-card-anchor"
-		{@attach menuPresence.track(() => card.close(), { edits: true })}
+		{@attach menuPresence.track(closeCard, { edits: true })}
 	>
 		{#key `${create.path.join(',')}@${create.start}-${create.end}`}
 			<LinkCard

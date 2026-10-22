@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { waitForFirstImageLoaded } from './image/helpers';
 
 // How a link invites a click, and how it lays out: both need real layout and CSS, and jsdom has
 // no computed cursor, no `:has()` and no element boxes.
@@ -46,12 +47,12 @@ test.describe('link styling + affordance', () => {
 		await expect(autolink).toHaveCSS('cursor', 'text');
 
 		await editor.focusBlockEnd(0);
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await expect(editor.editorContainer).toHaveAttribute('data-mod-active', '');
 		await expect(link).toHaveCSS('cursor', 'pointer');
 		await expect(autolink).toHaveCSS('cursor', 'pointer');
 
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 		await expect(editor.editorContainer).not.toHaveAttribute('data-mod-active', '');
 		await expect(link).toHaveCSS('cursor', 'text');
 		await expect(autolink).toHaveCSS('cursor', 'text');
@@ -77,7 +78,7 @@ test.describe('link styling + affordance', () => {
 		const link = page.locator('a.md-link-content', { hasText: 'Example' });
 
 		await editor.focusBlockEnd(0);
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await expect(editor.editorContainer).toHaveAttribute('data-mod-active', '');
 
 		// The page can lose focus while the modifier is held (an OS shortcut, alt-tab) and the
@@ -88,7 +89,7 @@ test.describe('link styling + affordance', () => {
 		await expect(editor.editorContainer).not.toHaveAttribute('data-mod-active', '');
 		await expect(link).toHaveCSS('cursor', 'text');
 
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 	});
 
 	test('an image wrapped in a link hugs the image, not the full content width', async ({
@@ -109,11 +110,8 @@ test.describe('link styling + affordance', () => {
 		await expect(widget).toBeVisible();
 		const img = widget.locator('img');
 
-		// Measuring before the bitmap decodes would compare two ~0px boxes and pass
-		// vacuously; wait for a real intrinsic size first.
-		await expect
-			.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
-			.toBeGreaterThan(0);
+		// Measuring before the bitmap decodes would compare two ~0px boxes and pass vacuously.
+		await waitForFirstImageLoaded(page);
 
 		const anchor = page.locator('a.md-link-content');
 		await expect(anchor).toHaveCount(1);
@@ -151,9 +149,9 @@ test.describe('link styling + affordance', () => {
 
 		// Holding the modifier must not turn the blocked span into a pointer.
 		await editor.focusBlockEnd(0);
-		await page.keyboard.down('Control');
+		await page.keyboard.down('ControlOrMeta');
 		await expect(editor.editorContainer).toHaveAttribute('data-mod-active', '');
 		await expect(blocked).toHaveCSS('cursor', 'text');
-		await page.keyboard.up('Control');
+		await page.keyboard.up('ControlOrMeta');
 	});
 });

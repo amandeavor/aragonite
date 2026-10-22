@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, capturedErrors } from './helpers';
+import { waitForFirstImageLoaded } from '../blocks/image/helpers';
 
 /**
  * A drag that starts on an emoji selects, like a drag from any other character. The glyph is
@@ -154,9 +155,7 @@ test.describe('the same drag from the emoji’s siblings', () => {
 	test('a drag from an inline image paints no range of its own', async () => {
 		const source = 'Mood ![a|60x40](/test-fixtures/sample.png) today and more words\n';
 		await editor.loadContent(source);
-		await editor.page.waitForFunction(
-			() => !!(document.querySelector('[data-image-widget] img') as HTMLImageElement)?.complete
-		);
+		await waitForFirstImageLoaded(editor.page);
 		await dragOffWidget(editor, '[data-image-widget]', 200);
 
 		expect(await selectedText(editor)).toBe('');

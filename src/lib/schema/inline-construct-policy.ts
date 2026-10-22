@@ -9,7 +9,7 @@ import { isBuiltinInlineKind, type AnyInlineKind } from '../core/nodes';
 import type { AnyCommandId } from './command-id';
 import { isBuiltinCommandId } from './commands';
 import { everyInstalledPlugin } from './plugin-activation';
-import { createInlineKindRegistry } from './plugin-registry';
+import { createInlineKindRegistry } from './plugin-kind';
 
 // ── Policy rows ─────────────────────────────────────────────────────────────
 

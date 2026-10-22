@@ -23,6 +23,7 @@ And a map, so you can jump straight at your question:
 | [Turning warnings into failures](#turning-warnings-into-failures)                                     | Making the editor's dev-mode warnings fail your suite instead of scrolling by                                |
 | [Proving a paste transform is wired](#proving-a-paste-transform-is-wired)                             | Driving the real paste pipeline over a string, no clipboard involved                                         |
 | [Mounting the editor under jsdom](#mounting-the-editor-under-jsdom)                                   | Rendering your component in a simulated browser, and the helper that fills the gaps                          |
+| [One tab stop in reading mode](#one-tab-stop-in-reading-mode-readingtaborderproblem)                  | Checking your mounted block leaves reading mode's Tab to the links and the editor's one stop                 |
 | [The conformance kits](#the-conformance-kits)                                                         | The checks the built-in blocks are held to, pointed at yours, and the vocabulary the three kits share        |
 | [The kind checkup](#the-kind-checkup-runkindconformance)                                              | The checks every block kind has to pass: bytes survive, one edit is one undo step, copying invents nothing   |
 | [The container checkup](#the-container-checkup-runcontainerconformance)                               | Extra checks for a block that holds other blocks, starring the body line that ends the container early       |
@@ -185,6 +186,24 @@ expect(target.querySelector('.parrot-block')).not.toBeNull(); // your component,
 expect(editor.getSource()).toBe(MY_SOURCE);
 ```
 
+### One tab stop in reading mode: `readingTabOrderProblem`
+
+In reading mode Tab is the page's: it walks the document's links and buttons, and the whole editor is one stop in that walk (the block the reader was last in). A block that puts its own element in the tab order makes Tab stop on it like a link. The editable leaf's spread and the whole-block host already take their stop from the editor, so this only bites when your markup adds a `tabindex` of its own somewhere that isn't a control.
+
+`readingTabOrderProblem(root: HTMLElement): string | null`
+
+Mount your kind with `presentationMode: 'reading'` and hand it the editor's root. `null` means only controls and the editor's one stop are in the tab order; otherwise you get the problem, naming every extra stop:
+
+```ts
+import { readingTabOrderProblem } from '@voithos-labs/aragonite/testing';
+
+const editor = mount(Editor, { target, props: { source: MY_SOURCE, plugins, presentationMode: 'reading', scrollMode: 'host' } });
+flushSync();
+expect(readingTabOrderProblem(target.querySelector('.editor')!)).toBeNull();
+// a stray tabindex="0" on your wrapper instead gives:
+// "reading mode has 2 tab stops that aren't controls (div.text-editable-block at [0], div.parrot-box at [1]): ..."
+```
+
 ### The conformance kits
 
 Conformance here means: your kind behaves the way the built-in kinds are required to behave, under the same checks. Three kits ship on the subpath, one per tier (block kind, container, inline syntax), and they share a vocabulary:
@@ -206,9 +225,10 @@ Takes your kind (the value `declaredPluginKind` returns) and executes the headle
 - A `searchPaint: not-supported` cell proves the document scan genuinely finds nothing in your kind.
 - The raw-write cell. It reads your descriptor's `rawWrite` (the rule that makes any bytes written into your block legal, like a fence growing past a body line that would close it) rather than your closure block, so it comes last in the report and carries no `mode`:
   - With no `rawWrite`, it cuts the fixture's closing line and checks the block after it stays its own. It fails if the cut swallows that block (an unclosed fence reads everything below as its body), and the failure asks you to declare the rule.
-  - With one, it drives the rule through a handful of damaging writes: the closing line cut, everything past the first line cut, an empty write, and, for a fixture of two or more lines, the first line cut and the closing line copied into the body. Each result has to come back unchanged from a second pass of the rule and leave the block after it alone, and on a fixture of three or more lines the closing line cut also has to keep your kind.
+  - With one, it drives the rule through a handful of damaging writes: the closing line cut, everything past the first line cut, an empty write, and, for a fixture of two or more lines, the first line cut and the closing line copied into the body. Each result has to come back unchanged from a second pass of the rule and keep every byte the write left alone (a rule may add bytes, never delete ones outside what was written). Every write but the first line cut also has to leave the block after it alone; the first line cut leaves your closing line behind, and that line is allowed to read on the way a reload reads it. On a fixture of three or more lines the closing line cut also has to keep your kind.
   - Your `mapOffset` is checked against `normalize` at every offset of each write: an offset before every byte the rule changed stays put, one after them moves by what the rule added or dropped, and none goes backwards.
   - It's `boundary` for a kind with the rule and no top-level fixture (none at all, or one sitting inside a container), and `exempt` for a kind with neither the rule nor a top-level fixture.
+- The unfinished-reading cell, last, also with no `mode`. If your opener declares `readingNotFinal`, because it backs out without its closer or reads on like a fence ([A reading that isn't final](plugin-guide/parser.md#a-reading-that-isnt-final)), it takes your fixture's last line off and checks `mayClose` says yes to that line, the closer that finishes it. It's `exempt` when your fixture minus its last line doesn't read as waiting, which covers every kind that neither backs out nor reads on. One catch: if your fixture is a fence and your opener declares no `readingNotFinal`, the cell fails and asks for `fenceReading`.
 
 Cells whose mechanism only exists in a browser (focus, selection and search painting, reorder, and the note-taking simulation aragonite runs over its own kinds) are recorded `boundary`; the kit won't fake them green. Covering those is your own browser tests' job. For the parrot, the whole checkup is the test the [guide's quickstart](plugin-guide.md#the-first-fifteen-minutes) ends on:
 
@@ -218,7 +238,7 @@ it('parrot conforms', async () => {
 });
 ```
 
-It resolves with a report, one cell per closure column and then the raw-write cell. For the parrot exactly as the guide declares it:
+It resolves with a report, one cell per closure column and then the raw-write and unfinished-reading cells. For the parrot exactly as the guide declares it:
 
 ```ts
 const report = await runKindConformance(declaredPluginKind(PARROT));
@@ -233,7 +253,8 @@ report.cells.map((c) => `${c.cell}: ${c.status}`);
 //   'undo: boundary',           // implemented too, so the kit can't drive it generically
 //   'clipboard: asserted',      // copy is a raw byte slice
 //   'simOracle: boundary',      // aragonite's own simulation, never this runner
-//   'rawWrite: asserted'        // no rule, and cutting the closing line swallows nothing
+//   'rawWrite: asserted',       // no rule, and cutting the closing line swallows nothing
+//   'unfinishedReading: exempt' // the parrot never backs out
 // ]
 ```
 

@@ -8,6 +8,8 @@
 import type { NodeView } from '../../../core/node-views';
 import type { StoredAs } from '../../../schema/stored-as';
 import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
+import { readNativeSelection } from '../../../selection/native-bridge';
+import { decidedDelete, isDeleteInput } from '../../../caret/delete-extent';
 
 /** The raw-offset lookups a browser range edit needs from the block. */
 export interface LiveEditCursor {
@@ -35,6 +37,8 @@ export function resolveLiveRangeEdit(
 	store: StoredAs
 ): LiveRangeEdit | null {
 	if (!store.reading.hidesDelimitersAtCaret() || !rewritesTargetRange(e)) return null;
+	// A delete at a caret is the editor's own delete step's, which decides it after this one.
+	if (decidedDelete(e.inputType) && cursor.getRawSelection() === null) return null;
 	const target = pendingEditRange(e, cursor);
 	if (!target) return null;
 	const insert = replacementText(e);
@@ -58,9 +62,9 @@ function parkedCaretInsertion(
 	store: StoredAs
 ): LiveRangeEdit | null {
 	if (!insert) return null;
-	const selection = window.getSelection();
-	if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return null;
-	const caret = cursor.rawRangeOf(selection.getRangeAt(0))?.start ?? null;
+	const live = readNativeSelection();
+	if (!live?.collapsed) return null;
+	const caret = cursor.rawRangeOf(live.range)?.start ?? null;
 	if (caret === null || engineTarget >= caret) return null;
 	const edit = replaceRangeInLeaf(node, { start: caret, end: caret }, insert, store);
 	return { kind: 'rewrite', range: edit.range, raw: edit.raw, caret: edit.caret };
@@ -101,7 +105,7 @@ function pendingEditRange(
 function rewritesTargetRange(e: InputEvent): boolean {
 	if (e.isComposing || /composition/i.test(e.inputType)) return false;
 	return (
-		e.inputType.startsWith('delete') ||
+		isDeleteInput(e.inputType) ||
 		e.inputType === 'insertText' ||
 		e.inputType === 'insertReplacementText'
 	);
@@ -110,5 +114,5 @@ function rewritesTargetRange(e: InputEvent): boolean {
 /** What an input writes over its range, or null for `dataTransfer` text, which would skip the paste
  *  transforms (G4.11); consuming the key beats turning a replacement into a delete. */
 function replacementText(e: InputEvent): string | null {
-	return e.inputType.startsWith('delete') ? '' : e.data;
+	return isDeleteInput(e.inputType) ? '' : e.data;
 }

@@ -26,7 +26,7 @@ const IN_CONTEXT = [
 		doc: '- a\n\nabcdef\n',
 		path: [1],
 		typed: '- ',
-		expected: '- a\n\n- Qabcdef\n'
+		expected: '- a\n- Qabcdef\n'
 	},
 	{
 		shape: 'a quote inside a list item',

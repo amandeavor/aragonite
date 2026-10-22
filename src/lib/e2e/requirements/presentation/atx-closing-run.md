@@ -49,8 +49,9 @@ nothing past their text, so no scenario saw the run drawn, and then written, on 
 Miss-analysis: every preview-block scenario left the caret where Shift+Enter put it, so none
 typed with the caret inside a run the page shows.
 
-- live mode, inside a list item: Backspace over the text's last character keeps both markers
-  (`- #  #`), and the next key writes the heading's text between them (`- # k #`)
+- live mode, inside a list item: Backspace over the text's last character leaves an empty
+  paragraph, as it does at the top level (`- `), and the next key writes a plain paragraph
+  (`- k`); the item's marker sits outside the heading's line, so nothing keeps the hidden `#`s
 - live mode: End in an empty heading with a closing run (`#  #`), then a key: the focused heading
   paints both markers, so the key goes past the run (`#  #k`), as in source mode
 - live mode: selecting the whole text and typing a space leaves a paragraph holding the space,
@@ -69,6 +70,12 @@ Miss-analysis for the last two: the emptied-read rows drew the typed key as its 
 inside the run's span where the browser writes it, and the dropped-marker scenarios ran with the
 markers hidden only, so none deleted a shown `# ` on its own.
 
+- live mode: two spaces typed into an empty heading stay in it (`#   `); only blank text typed
+  over the text empties the heading
+
+Miss-analysis: the blank-text row replaced the text with a space, and no scenario typed a space
+into a heading that was already empty.
+
 ## User interactions
 
 - a placed caret, then End, Backspace, Shift+Home, Shift+Enter, a paste and typed keys
@@ -76,3 +83,6 @@ markers hidden only, so none deleted a shown `# ` on its own.
 ## Error cases
 
 - zero `[invariant:…]` console fires across every scenario (automatic via the shared e2e fixture)
+
+Miss-analysis (real Firefox): the emptying scenarios ran on Chromium alone, whose delete drops the
+hidden `#` span; Firefox keeps it, and the read took whatever the browser left.

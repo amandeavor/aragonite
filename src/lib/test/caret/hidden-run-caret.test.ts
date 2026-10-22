@@ -287,13 +287,16 @@ describe('caret writes never caret position a range in hidden marker text', () =
 describe('the caret-in-text guards agree that hidden text holds no caret', () => {
 	it('caretIsInTextContent answers false inside a hidden run, true in visible text', () => {
 		const fx = mount({ mode: 'live' });
-		expect(caretIsInTextContent(fx.block, placeCaret(fx.openMarker, 1))).toBe(false);
-		expect(caretIsInTextContent(fx.block, placeCaret(fx.body, 1))).toBe(true);
+		placeCaret(fx.openMarker, 1);
+		expect(caretIsInTextContent(fx.block)).toBe(false);
+		placeCaret(fx.body, 1);
+		expect(caretIsInTextContent(fx.block)).toBe(true);
 	});
 
 	it('caretIsInTextContent keeps answering true in source mode', () => {
 		const fx = mount();
-		expect(caretIsInTextContent(fx.block, placeCaret(fx.openMarker, 1))).toBe(true);
+		placeCaret(fx.openMarker, 1);
+		expect(caretIsInTextContent(fx.block)).toBe(true);
 	});
 
 	it('the visual-line text-node walks skip hidden runs at both ends', () => {

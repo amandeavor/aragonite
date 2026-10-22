@@ -1,6 +1,7 @@
 /** CST node types for the GFM parser: mutable plain objects. Spec: docs/design/syntax-tree.md. */
 
 import type { BytesView, NodeView } from './node-views';
+import { assertInvariant } from '../assert';
 
 // ── Node Kinds ──────────────────────────────────────────────────────────────
 
@@ -142,8 +143,8 @@ export interface BlockMetadataByKind {
 	listItem: ListItemMetadata;
 }
 
-/** The one allowed metadata cast, for a generic `K` or a full `CstNode` that cannot narrow; prefer
- *  a narrowed node's `node.metadata`. Pass the kind you have already established. */
+/** The metadata of a node the caller knows is a `kind`; dev fails on any other kind. A node that
+ *  might be another kind is read with `metadataIfKind`. */
 export function metadataOf<K extends keyof BlockMetadataByKind>(
 	node: CstNode,
 	kind: K
@@ -156,8 +157,34 @@ export function metadataOf<K extends keyof BlockMetadataByKind>(
 	node: NodeView,
 	kind: K
 ): BlockMetadataByKind[K] {
-	void kind;
+	if (node.kind !== kind) reportMetadataKindMismatch(node.kind, kind);
 	return node.metadata as BlockMetadataByKind[K];
+}
+
+/** A node's metadata as a `kind`'s, or undefined when the node is another kind. */
+export function metadataIfKind<K extends keyof BlockMetadataByKind>(
+	node: CstNode,
+	kind: K
+): BlockMetadataByKind[K] | undefined;
+export function metadataIfKind<K extends keyof BlockMetadataByKind>(
+	node: NodeView,
+	kind: K
+): BytesView<BlockMetadataByKind[K]> | undefined;
+export function metadataIfKind<K extends keyof BlockMetadataByKind>(
+	node: NodeView,
+	kind: K
+): BlockMetadataByKind[K] | undefined {
+	return node.kind === kind ? (node.metadata as BlockMetadataByKind[K]) : undefined;
+}
+
+function reportMetadataKindMismatch(actual: AnyBlockKind, kind: string): void {
+	assertInvariant('metadata-of-kind', () => ({
+		code: 'metadata-kind-mismatch',
+		message:
+			`metadataOf read ${kind} metadata from a ${actual} block;` +
+			' a node that may be another kind is read with metadataIfKind',
+		detail: { actual, kind }
+	}));
 }
 
 /** The one cast bridging a plugin's shape into the built-in `BlockMetadata`. Keep the shape
@@ -199,6 +226,7 @@ interface LeafBlockNodeBase extends BlockNodeBase {
 	innerSuffix?: undefined;
 	childIds?: undefined;
 	childSpans?: undefined;
+	markerWidths?: undefined;
 }
 
 /** A container may be briefly childless mid-edit (G1.5), so every structural field stays optional;
@@ -209,6 +237,8 @@ interface ContainerBlockNodeBase extends BlockNodeBase {
 	innerSuffix?: string;
 	childIds?: string[];
 	childSpans?: Uint32Array;
+	/** A list's items per marker width, its column's size (`core/parsers/list.ts :: MarkerWidths`). */
+	markerWidths?: Uint32Array;
 }
 
 export interface ParagraphNode extends LeafBlockNodeBase {
@@ -286,6 +316,7 @@ export interface PluginBlockNode extends BlockNodeBase {
 	innerSuffix?: string;
 	childIds?: string[];
 	childSpans?: Uint32Array;
+	markerWidths?: Uint32Array;
 }
 
 /** A genuine discriminated union: `switch (node.kind)` narrows `node.metadata` with no cast. */

@@ -4,7 +4,7 @@ GFM table cells cannot carry raw newlines, so Shift+Enter inserts a literal `<br
 
 ## Happy paths
 
-- Shift+Enter at the end of a cell's content inserts `<br>` at the caret, and continued typing lands after the tag; the source round-trips with `Left<br>Right` inside the cell.
+- Shift+Enter inserts `<br>` at the caret, and continued typing lands after the tag: `text-editing/shift-enter-surfaces.md`.
 - The inserted `<br>` renders as a visible `.md-br-widget`, never as literal `<br>` cell text.
 
 ## Edge cases

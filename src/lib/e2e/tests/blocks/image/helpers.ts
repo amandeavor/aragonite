@@ -1,22 +1,40 @@
 import { type Locator, type Page } from '@playwright/test';
+import { isWebKit } from '../../../browser-engine';
+import { clickInPlace } from '../../../click-in-place';
+import { expect } from '../../../fixtures';
 
 // Shared image-widget reads for the image block e2e specs.
 
-// Resolve once the first widget's `<img>` has decoded: a point worked out from the 0x0 placeholder
-// box lands inside the widget afterwards, selecting the image instead of placing a caret near it.
-export async function waitForFirstImageLoaded(page: Page): Promise<void> {
-	await page.waitForFunction(
-		() => !!(document.querySelector('[data-image-widget] img') as HTMLImageElement)?.complete
+const WIDGET_IMAGE = '[data-image-widget] img';
+
+/** At least one `<img>` matches `images` and each has decoded, or the spec fails naming it;
+ *  `complete` and `naturalWidth` also pass for a picture whose pixels never decode. */
+export async function waitForImagesDecoded(images: Locator): Promise<void> {
+	await images.first().waitFor({ state: 'attached' });
+	const undecodable = await images.evaluateAll((imgs) =>
+		Promise.all(
+			(imgs as HTMLImageElement[]).map((img) =>
+				img.decode().then(
+					() => null,
+					(e: Error) => `${img.currentSrc || img.src}: ${e.name}`
+				)
+			)
+		).then((outcomes) => outcomes.filter((outcome) => outcome !== null))
 	);
+	expect(undecodable, 'every image decoded').toEqual([]);
 }
 
-// Every widget decoded: a spec staging one image's reflow against another needs both loaded first.
+// The first widget's picture: a point worked out from the 0x0 placeholder box lands inside the
+// widget afterwards, and a crop starts only over a decoded picture.
+export function waitForFirstImageLoaded(page: Page): Promise<void> {
+	return waitForImagesDecoded(page.locator(WIDGET_IMAGE).first());
+}
+
+// Every widget's picture, none at all included: a spec staging one image's reflow against another
+// needs both decoded, and a row table can run the same wait over a shape with no picture.
 export async function waitForAllImagesLoaded(page: Page): Promise<void> {
-	await page.waitForFunction(() =>
-		Array.from(document.querySelectorAll('[data-image-widget] img')).every(
-			(img) => (img as HTMLImageElement).complete
-		)
-	);
+	const images = page.locator(WIDGET_IMAGE);
+	if ((await images.count()) > 0) await waitForImagesDecoded(images);
 }
 
 /** The document caret: the native range count and the editor's own read of the selection. */
@@ -71,13 +89,17 @@ export async function pointOffImageLine(
  *  keystroke: the range is gone, and the `selectionchange` it fires has been handled. */
 export async function dropNativeCaret(page: Page): Promise<void> {
 	await page.evaluate(
-		() =>
+		(firesEvent) =>
 			new Promise<void>((resolve) => {
 				const sel = window.getSelection();
 				if (!sel || sel.rangeCount === 0) return resolve();
-				document.addEventListener('selectionchange', () => resolve(), { once: true });
+				// WebKit fires no `selectionchange` for the removal, so there is no handler to wait for.
+				if (firesEvent)
+					document.addEventListener('selectionchange', () => resolve(), { once: true });
 				sel.removeAllRanges();
-			})
+				if (!firesEvent) resolve();
+			}),
+		!isWebKit(page)
 	);
 	await page.evaluate(() =>
 		(window as unknown as { __test: { drainTick(): Promise<void> } }).__test.drainTick()
@@ -86,7 +108,9 @@ export async function dropNativeCaret(page: Page): Promise<void> {
 
 /** The toolbar's one field, the alt: click its button, then the input is the one there. */
 export async function openImageField(page: Page, name: 'Alt text' = 'Alt text'): Promise<Locator> {
-	await page.locator('.md-image-properties').getByRole('button', { name, exact: true }).click();
+	await clickInPlace(
+		page.locator('.md-image-properties').getByRole('button', { name, exact: true })
+	);
 	const input = page.locator('.md-image-properties input');
 	await input.waitFor({ state: 'visible' });
 	return input;

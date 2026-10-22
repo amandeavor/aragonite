@@ -21,6 +21,7 @@ import {
 } from './next-insertion';
 import type { AnyCommandId } from '../schema/command-id';
 import { BLOCK_MOVE_COMMAND_IDS } from '../schema/commands';
+import { caretEdgeKey, type EdgeKeys } from '../schema/keybindings';
 import {
 	isInteractionTraceEnabled,
 	traceStickyCapture,
@@ -28,7 +29,7 @@ import {
 } from '../debug/interaction-trace';
 
 /** The part of a keydown the classifiers read. */
-export type CaretKey = Pick<KeyboardEvent, 'key'>;
+export type CaretKey = EdgeKeys;
 
 export interface CaretMemory {
 	/** The editor-relative x a vertical move aims for, or null outside an Up/Down run. */
@@ -204,9 +205,12 @@ export function createCaretMemory(deps: CaretMemoryDeps = {}): CaretMemory {
 			// A block move leaves the caret where it was; the move's own commit forgets the memory.
 			if (command !== null && BLOCK_MOVE_COMMAND_IDS.has(command)) return;
 
-			const columnAction = classifyStickyKey(e.key);
+			// Cmd+Up and Cmd+Down jump to an edge as Mod+Home does, so they end the column too.
+			const columnAction = caretEdgeKey(e) ? 'reset' : classifyStickyKey(e.key);
 			if (columnAction === 'reset') dropColumn();
-			else if (columnAction === 'capture') {
+			// A held column needs no measure, and measuring at a soft wrap asks the browser, which resets
+			// the column Firefox keeps for its own next arrow.
+			else if (columnAction === 'capture' && column === null) {
 				const x = measureX?.();
 				if (x !== null && x !== undefined) captureColumn(x);
 			}

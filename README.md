@@ -8,7 +8,7 @@
 
 This project is an effort (perhaps in vain) to create a markdown editor that is both open source and not crap. In my book, this means that it has to be lossless, extensible, fast, have a graceful ui/ux, and have a hella good plugin interface. So you know, just some simplistic and easy to achieve goals [^1] [^2].
 
-Note that aragonite is a work in progress [^3]. It's written in typescript and svelte [^4] [^5] [^6] [^7] (but usable in react, vue or plain js), and tested on chromium browsers (chrome and edge) [^8]. Yes, there are plans to test in other browsers too. Firefox and safari are next.
+Note that aragonite is a work in progress [^3]. It's written in typescript and svelte [^4] [^5] [^6] [^7] (but usable in react, vue or plain js), and tested on chrome, edge, safari and firefox [^8].
 
 _What does it look like?_ Amazing of course:
 
@@ -32,7 +32,8 @@ npm install @voithos-labs/aragonite
 	import '@voithos-labs/aragonite/styles/editor-theme.css';
 
 	let editor;
-	const source = '# Hello\n';
+	const source =
+		'> That is not dead which can eternal lie,\n> And with strange aeons even death may die.\n';
 </script>
 
 <Editor bind:this={editor} {source} theme="light" />
@@ -211,7 +212,7 @@ Aragonite is fast, and its this way due to one main reason: the editor only moun
 
 In regards to large documents (how an editor fare with 10KB vs 10MB docs), most editors either solved this long ago, or made peace with the lack of ability to deal with it. On the "I have a solution" side, we have editors like CodeMirror 6, which renders only the visible viewport plus a margin while tracking heights for the whole document (this is a big part of why Obsidian holds up on large files). On the other side, we have the editors who threw in the towel. A long Notion page is thousands of block records, users start noticing lag around a thousand blocks, and the community's standing advice is to hide content inside toggles so less of it loads. The ProseMirror lineage mounts the entire document into one contenteditable, and unmounting the middle of a live editing surface breaks selection, IME, and everything else that already makes contenteditable cranky, so virtualization there remains an open forum thread rather than a feature.
 
-On the second other side, aragonite's block model windows for real: blocks outside the viewport genuinely unmount [^14]. This is only possible because every block is its own editing surface; you cannot unmount the middle of one big contenteditable, but you can unmount nine thousand small ones. The rendered slice sits between two spacers sized by a height model, so the native scrollbar, scroll position, and scroll range are all real.
+On the second other side, aragonite's block model windows for real: blocks outside the viewport genuinely unmount [^13]. This is only possible because every block is its own editing surface; you cannot unmount the middle of one big contenteditable, but you can unmount nine thousand small ones. The rendered slice sits between two spacers sized by a height model, so the native scrollbar, scroll position, and scroll range are all real.
 
 ---
 
@@ -269,11 +270,11 @@ The $\Theta(L)$ term is the read-back of the edited block from the DOM, its inli
 
 **Proposition 3 (structural edits and history).** A history snapshot shares every node with the live tree under an epoch mark, and copy-on-write duplicates only the spine actually written. Split, merge, and delete at the top level therefore cost $\Theta(B_t + L)$: the $B_t$ term is pointer-array work (the snapshot's copy of the top-level reference array, plus the id and reference splices), and no node is deep-cloned. At depth, the cost is $\Theta(B_t + P) + A$, where $P = \sum_{i=1}^{D} c_i$ and $c_i$ is the child count of the $i$-th container on the written spine, one shallow copy per level. The history thus holds the live tree plus the written spines, never stack-depth many copies: a push is $\Theta(B_t)$, not $\Theta(B)$, and a restore is a pointer swap of the same order.
 
-Two further passes accompany every structural edit, and every undo and redo, outside the history itself. The map of link reference definitions is re-collected by a $\Theta(B)$ walk over all nodes, since the edit may have added or removed a definition; the walk reads no bytes, and measures between a few milliseconds and approximately 25 ms on the 10 MB fixtures. When the edit changes the set of blocks in a windowed list of $n$ blocks, that list's height table is rebuilt from block ids in $\Theta(n \log n)$. Ordinary keystrokes perform neither pass. For reference, on the 10 MB flat-prose fixture a structural edit measures approximately 115 ms at the median and a keystroke approximately 2.5 ms.
+Two further passes accompany every structural edit, and every undo and redo, outside the history itself. The map of link reference definitions is re-collected by a $\Theta(B)$ walk over all nodes, since the edit may have added or removed a definition; the walk reads no bytes, and measures between a few milliseconds and approximately 25 ms on the 10 MB fixtures. When the edit changes the set of blocks in a windowed list of $n$ blocks, that list's height table is rebuilt from block ids in $\Theta(n \log n)$. Ordinary keystrokes perform neither pass. For reference, on the 10 MB flat-prose fixture a structural edit measures approximately 110 ms at the median and a keystroke approximately 3 ms.
 
 **Proposition 4 (rendering and scroll queries).** Mounting is $\Theta(V)$. Everything outside the mounted slice is represented by two spacer elements, sized from a Fenwick tree over per-block heights (one per windowed list), which answers offset-to-index and index-to-offset queries in $O(\log B)$ and absorbs a height correction in $O(\log B)$.
 
-**Proposition 5 (load).** Load is the one axis windowing does not bound. The parser materializes all $B$ nodes up front (windowing limits what mounts, not what exists), so load is the parse of Proposition 2 plus per-node work. That work is not uniform across nodes: a container assigns its children's block ids only when its component mounts, and a height table is built only for a list that windows. Load therefore scales with the number of blocks in the lists that are actually built, chiefly the top level and any list on screen, rather than with the byte count or the total node count. The 10 MB fixtures, which share a byte budget, show this: the document of 392k top-level paragraphs loads slowest (approximately 2 s), a single list of 271k items follows (approximately 1.7 s), and the nested-containers document, with more nodes in total (586k) spread across many small containers, loads in approximately 1 s. At realistic sizes, load is well under a second.
+**Proposition 5 (load).** Load is the one axis windowing does not bound. The parser materializes all $B$ nodes up front (windowing limits what mounts, not what exists), so load is the parse of Proposition 2 plus per-node work. That work is not uniform across nodes: a container assigns its children's block ids only when its component mounts, and a height table is built only for a list that windows. Load therefore scales with the number of blocks in the lists that are actually built, chiefly the top level and any list on screen, rather than with the byte count or the total node count. The 10 MB fixtures, which share a byte budget, show this: the document of 392k top-level paragraphs loads slowest (approximately 1.8 s), a single list of 271k items follows (approximately 1.75 s), and the nested-containers document, with more nodes in total (586k) spread across many small containers, loads in approximately 1 s. At realistic sizes, load is well under a second.
 
 **Boundary case (reference definitions).** Changing a link reference definition alters the rendering of every link that uses it, which is the closest the system comes to an $O(N)$ edit. The rendering cost remains $\Theta(V)$ eagerly: a counter that changes exactly when the set of definitions changes forms part of the render key of each block containing a `[`, so only mounted blocks re-render immediately, and the remainder is paid lazily as blocks mount. A keystroke inside a definition does, however, pay the $\Theta(B)$ definition walk of Proposition 3 eagerly. Every other edit is confined to the blocks it changes.
 
@@ -289,7 +290,7 @@ the bytes containers store a second time, relative to the document. Measured, $\
 
 ---
 
-Two things though. Loading is O(document), because ofc it is (the tree is materialized up front, which is sub-second at realistic sizes and multi-second only out at the hundreds of thousands of blocks extreme). And a single giant paragraph is O(itself) to edit: windowing windows blocks, not the inside of one block, so the span rebuild scales with paragraph length. This one, though, is transient, a single enter splits it into windowed blocks, and you only meet it by pasting a multi megabyte blob into one block [^15].
+Two things though. Loading is O(document), because ofc it is (the tree is materialized up front, which is sub-second at realistic sizes and multi-second only out at the hundreds of thousands of blocks extreme). And a single giant paragraph is O(itself) to edit: windowing windows blocks, not the inside of one block, so the span rebuild scales with paragraph length. This one, though, is transient, a single enter splits it into windowed blocks, and you only meet it by pasting a multi megabyte blob into one block [^14].
 
 Now let me show you some pretty graphs.
 
@@ -303,7 +304,7 @@ Now let me show you some pretty graphs.
   <img alt="Document load time across the same nine shapes, log scale: load grows roughly linearly with size; every shape loads within a few seconds at 10 MB, the 392,000-block extreme taking the longest." src="docs/assets/perf-load-light.svg">
 </picture>
 
-_Recorded 2026-08-26 on an ordinary desktop (Ryzen 7 7700, 31 GB RAM, Windows 11), on the production build the gate measures (`npm run perf:check` builds, previews, and times that), so read everything relative to that machine. What is gated versus report-only, and where the numbers live, is [performance.md](./docs/design/performance.md)'s subject._ [^16]
+_Recorded 2026-10-22 on an ordinary desktop (Ryzen 7 7700, 31 GB RAM, Windows 11), on the production build the gate measures (`npm run perf:check` builds, previews, and times that), so read everything relative to that machine. What is gated versus report-only, and where the numbers live, is [performance.md](./docs/design/performance.md)'s subject._ [^15]
 
 Now, the numbers here depend on the machine; however, the scale of the numbers and the shape of the graph should tell you the story I want to share.
 
@@ -352,7 +353,7 @@ Aragonite is free software, released under [MPL-2.0](./LICENSE): use it, study i
 
 [^7]: what does vue have that svelte and react don't have? a lower barrier to entry?
 
-[^8]: it might work in safari/firefox, but I did not test them yet
+[^8]: this is, what you might call, a large bug surface... if you see something weird, be a homie and click that "report a bug" button on aragonite.dev
 
 [^9]: Parse then serialize returns the same text every time. Editing is close - usually surrounding regions are kept the same, and the local edited line keeps its spelling too. The exception is footnote definitions and alerts.
 
@@ -362,8 +363,8 @@ Aragonite is free software, released under [MPL-2.0](./LICENSE): use it, study i
 
 [^12]: ProseMirror friends: yes, this means no `StateField`. The forward-mapping problem it solves is downstream of positions being integers into a flat sequence. Ours aren't.
 
-[^14]: before anyone suggests it: CSS `content-visibility` is not this. It skips paint and layout but leaves the components mounted, and the cost that matters here is script, not layout.
+[^13]: before anyone suggests it: CSS `content-visibility` is not this. It skips paint and layout but leaves the components mounted, and the cost that matters here is script, not layout.
 
-[^15]: don't you dare try it lol
+[^14]: don't you dare try it lol
 
-[^16]: the nine shapes, each generated from a fixed seed at 100 KB, 1 MB, and 10 MB: flat prose, nested containers (lists four deep plus nested quotes), many small blocks (392k four-word paragraphs at 10 MB), a single giant paragraph, reference-heavy prose (links plus their definitions), many small tables, one giant list, one giant blockquote, and one giant table. Each chart's band is the nine minus its own villain: the giant paragraph for keystrokes, many small blocks for load.
+[^15]: the nine shapes, each generated from a fixed seed at 100 KB, 1 MB, and 10 MB: flat prose, nested containers (lists four deep plus nested quotes), many small blocks (392k four-word paragraphs at 10 MB), a single giant paragraph, reference-heavy prose (links plus their definitions), many small tables, one giant list, one giant blockquote, and one giant table. Each chart's band is the nine minus its own villain: the giant paragraph for keystrokes, many small blocks for load.

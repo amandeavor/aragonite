@@ -12,6 +12,7 @@ import {
 	type ContentRange
 } from '../../../core/inline';
 import { isAutoPairTrigger } from '../../../core/inline/scan/plugin-syntax';
+import { isCharacterBackspace } from '../../../caret/delete-extent';
 import type { GrammarView } from '../../../schema/block-openers';
 import type { Reading } from '../../../schema/reading';
 import type { BlockAutoPairs } from './auto-pair-record';
@@ -120,7 +121,7 @@ export function resolveDelimiterAutoPair(
  * Inside a construct whose source is showing (`$ab|$`) the partner is the real closer, and typing
  * it means "done": the caret steps past it and the caller hides the source, so it renders at once.
  */
-export function stepsOverRevealedCloser(
+function stepsOverRevealedCloser(
 	text: string,
 	caret: number,
 	typed: string,
@@ -194,7 +195,7 @@ export interface AutoPairSurface {
  */
 export function applyDelimiterAutoPair(e: InputEvent, surface: AutoPairSurface): boolean {
 	const typing = e.inputType === 'insertText';
-	if (!typing && e.inputType !== 'deleteContentBackward') return false;
+	if (!typing && !isCharacterBackspace(e.inputType)) return false;
 	if (e.isComposing || surface.hasSelection()) return false;
 	const at = surface.caret();
 	if (at === null) return false;

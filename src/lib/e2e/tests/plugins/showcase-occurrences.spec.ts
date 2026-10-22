@@ -3,6 +3,8 @@ import { test, expect } from '../../fixtures';
 import { gotoReady } from '../../goto-ready';
 import { repeatedWordInParagraph } from '../../showcase-document';
 import { clickModeButton } from '../../mode-switch';
+import { showInPlace } from '../../click-in-place';
+import { clickShowcaseSetting } from '../../showcase-settings';
 
 // The `/` showcase as a page embedding the editor (requirements/plugins/showcase-occurrences.md):
 // the library gives `.decoration-overlay` geometry and leaves colour to the host, and only `/`
@@ -33,7 +35,7 @@ async function clickWord(page: Page, word: string): Promise<void> {
 	expect(path, `no mounted block repeats "${word}"`).not.toBeNull();
 
 	const host = page.locator(`[data-block-path='${path}']`);
-	await host.scrollIntoViewIfNeeded();
+	await showInPlace(host);
 	// Measured after the scroll, not before: a rect below the viewport aims the click at nothing.
 	const point = await host.evaluate((block, wanted: string) => {
 		const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
@@ -101,7 +103,7 @@ test.describe('/ showcase occurrence highlight', () => {
 		await gotoReady(page, '/');
 	});
 
-	test(`the header toggle is what lights the other "${WORD}"s`, async ({ page }) => {
+	test(`the settings switch is what lights the other "${WORD}"s`, async ({ page }) => {
 		// The demo opens with the highlight off, since it distracts on a page people read, and
 		// using the same gesture in both halves is what keeps the zero honest.
 		await clickWord(page, WORD);
@@ -109,7 +111,7 @@ test.describe('/ showcase occurrence highlight', () => {
 
 		// The plugin list is fixed at mount, so the toggle remounts the editor and the scroll
 		// resets with it, and the click helper finds the paragraph again.
-		await page.getByTestId('occurrences-toggle').click();
+		await clickShowcaseSetting(page, 'occurrences-toggle');
 		await clickWord(page, WORD);
 		await expectMarksPainted(page);
 	});
@@ -117,7 +119,7 @@ test.describe('/ showcase occurrence highlight', () => {
 	// Live is the other mode the showcase presents. Reading has no caret, so it has no occurrence
 	// highlight to paint; decorations/hloccur-memo covers that.
 	test('the marks paint the same with the markers hidden', async ({ page }) => {
-		await page.getByTestId('occurrences-toggle').click();
+		await clickShowcaseSetting(page, 'occurrences-toggle');
 		await clickModeButton(page, 'live');
 
 		await clickWord(page, WORD);

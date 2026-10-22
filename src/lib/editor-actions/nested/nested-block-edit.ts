@@ -92,6 +92,7 @@ export function createNestedBlockEdit(
 
 		updateBlockMetadata: (innerIndex, metadata, options) =>
 			core.updateBlockMetadata(innerIndex, metadata, options),
+		replaceRaw: (innerIndex, raw, caret) => core.replaceRaw(innerIndex, raw, caret),
 
 		async replaceBlock(innerIndex, replacement, focus, options) {
 			if (replacement.length === 0 && takesLastChild()) {

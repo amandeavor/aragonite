@@ -1,5 +1,8 @@
 import { test, expect } from '../../fixtures';
+import { skipUnlessSupported } from '../../browser-engine';
 import { activeBlockPath, PluginsPage, capturedErrors } from './helpers';
+import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 /**
  * The bundled slash-commands plugin on the `inline-menu` seed, typed through the keyboard.
@@ -33,6 +36,7 @@ test.describe('slash commands', () => {
 
 	test.describe('picks', () => {
 		test('Enter right after fast typing on a slowed CPU picks the whole query', async () => {
+			skipUnlessSupported(editor.page, 'cdp');
 			await editor.page.keyboard.press('Enter');
 			await editor.typeText('/');
 			await menu(editor).waitFor({ state: 'visible' });
@@ -122,8 +126,8 @@ test.describe('slash commands', () => {
 			await editor.scrollEditorTo(top + at - view / 2);
 			const fits = await scroller(editor).evaluate((el) => el.scrollHeight > el.clientHeight);
 			expect(fits).toBe(true);
-			await editor.page.locator(`[data-block-path='[${MID}]']`).click();
-			await editor.page.keyboard.press('End');
+			await clickInPlace(editor.page.locator(`[data-block-path='[${MID}]']`));
+			await editor.page.keyboard.press(edgeKey('lineEnd'));
 		});
 
 		/** Types `/quote`, notes `watched`'s top, picks the row, and returns how far it moved. */
@@ -133,7 +137,7 @@ test.describe('slash commands', () => {
 			await editor.waitForRenderFlush();
 			const before = await topOf(editor, watched);
 			if (by === 'key') await editor.page.keyboard.press('Enter');
-			else await menu(editor).locator('[role="option"]').first().click();
+			else await clickInPlace(menu(editor).locator('[role="option"]').first());
 			await expect.poll(() => editor.bridge.getBlockKind(MID + 1)).toBe('blockquote');
 			await editor.waitForRenderFlush();
 			await editor.waitForResizeObserverFlush();
@@ -237,7 +241,7 @@ test.describe('slash commands', () => {
 		test.beforeEach(async () => {
 			await editor.loadContent(TABLE);
 			// Row-major: the empty cell beside `c`.
-			await editor.page.locator('.table-cell').nth(3).click();
+			await clickInPlace(editor.page.locator('.table-cell').nth(3));
 		});
 
 		test('/quote in an empty cell stays text and opens nothing', async () => {

@@ -1,7 +1,7 @@
 /**
  * The ancestor rebuild: raws re-derived up an owned chain of ancestors innermost first, each
  * container's kind re-derived and the joins at its own position checked on the way out
- * (`docs/design/editor.md` § The container `raw` contract).
+ * (`docs/design/structural-edits.md` § The container `raw` contract).
  */
 
 import type { CstNode, Document } from '../core/nodes';

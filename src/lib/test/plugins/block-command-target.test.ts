@@ -1,0 +1,124 @@
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import {
+	blockCommandTarget,
+	dispatchKeyCommand,
+	registerBlockCommand
+} from '#lib/schema/block-commands.js';
+import { normalizeChordStrict } from '#lib/schema/keybindings.js';
+import type { KeybindingOverrideMap } from '#lib/schema/keybinding-overrides.js';
+import { declarePluginKind } from '#lib/schema/plugin-kind.js';
+import type { AnyBlockKind, CstNode, PluginBlockKind } from '#lib/core/nodes.js';
+import type { AnyCommandId } from '#lib/schema/command-id.js';
+import { commandContextWith } from '#lib/test/support/command-context.js';
+
+let leaf: PluginBlockKind;
+let leafAlt: PluginBlockKind;
+beforeEach(() => {
+	leaf = declarePluginKind('demoLeaf');
+	leafAlt = declarePluginKind('demoLeafAlt');
+});
+
+const leafNode = (kind: AnyBlockKind = leaf): CstNode =>
+	({ kind, leadingTrivia: '', raw: '' }) as CstNode;
+
+function bindKindChord(
+	kind: AnyBlockKind,
+	chord: string,
+	command: AnyCommandId
+): KeybindingOverrideMap {
+	const normalized = normalizeChordStrict(chord);
+	if (normalized === null) throw new Error(`unexpected chord normalization for "${chord}"`);
+	return {
+		global: new Map(),
+		byKind: new Map([[kind, new Map([[normalized, { chord: normalized, command }]])]])
+	};
+}
+
+type BuildArgs = Parameters<typeof blockCommandTarget>;
+type CtxOverrides = Partial<Omit<BuildArgs[0], 'getIndex'> & BuildArgs[1]> & {
+	getIndex?: () => number;
+};
+
+// `getNode` stays a function through the builder: the dispatch re-reads it, so capturing what
+// it returned would hide the node swap the case below relies on.
+function buildCtx(over: CtxOverrides = {}) {
+	const {
+		getNode = () => leafNode(),
+		getIndex = () => 0,
+		commandHooks,
+		updateBlockMetadata = vi.fn(),
+		replaceRaw = vi.fn()
+	} = over;
+	return blockCommandTarget(
+		{ getNode, getIndex, commandHooks },
+		{ updateBlockMetadata, replaceRaw }
+	);
+}
+
+describe('the block command target a leaf and a container share', () => {
+	// The index is read when the write runs, so a block that moved since the context was built
+	// writes where it is now.
+	it('routes updateMetadata and replaceRaw to the list at the index read at call time', () => {
+		let index = 1;
+		const updateBlockMetadata = vi.fn();
+		const replaceRaw = vi.fn();
+		const ctx = buildCtx({ getIndex: () => index, updateBlockMetadata, replaceRaw });
+		index = 3;
+
+		ctx.updateMetadata({ code: 'x' });
+		ctx.replaceRaw('%%! x');
+		expect(updateBlockMetadata).toHaveBeenCalledWith(3, { code: 'x' });
+		expect(replaceRaw).toHaveBeenCalledWith(3, '%%! x', undefined);
+	});
+
+	it("hands replaceRaw the leaf's caret as it is when the write runs", () => {
+		const replaceRaw = vi.fn();
+		let caret: number | null = 2;
+		const ctx = blockCommandTarget(
+			{ getNode: () => leafNode(), getIndex: () => 0 },
+			{ updateBlockMetadata: vi.fn(), replaceRaw },
+			() => caret
+		);
+		caret = 5;
+
+		ctx.replaceRaw('%%! x');
+		expect(replaceRaw).toHaveBeenCalledWith(0, '%%! x', 5);
+	});
+
+	it('threads commandHooks so a handler reaches the component; absent → undefined', () => {
+		const hooks = { openEdit: vi.fn() };
+		expect(buildCtx({ commandHooks: () => hooks }).hooks).toBe(hooks);
+		expect(buildCtx().hooks).toBeUndefined();
+	});
+
+	it('reads getNode() live so a node swap is observed (thunks, never values)', () => {
+		let node = leafNode();
+		const build = () => buildCtx({ getNode: () => node });
+
+		expect(build().node).toBe(node);
+		node = leafNode(leafAlt);
+		expect(build().node.kind).toBe(leafAlt);
+	});
+
+	// A key combination on a focused leaf resolves the registered command through the same
+	// dispatch a container uses, and hands it the block's command context, hooks included.
+	it('dispatches a created command on the leaf path with hooks reaching the handler', () => {
+		const hooks = { openFocusView: vi.fn() };
+		const handler = vi.fn((ctx: { hooks?: unknown }) => {
+			(ctx.hooks as { openFocusView(): void } | undefined)?.openFocusView();
+			return true;
+		});
+		const id = registerBlockCommand(leaf, 'leaf.focus', handler);
+		const overrides = bindKindChord(leaf, 'Mod+Shift+K', id);
+		const node = leafNode();
+		const target = {
+			kind: leaf,
+			runCommand: () => false,
+			getCommandContext: () => buildCtx({ getNode: () => node, commandHooks: () => hooks })
+		};
+
+		const handled = dispatchKeyCommand('Mod+Shift+K', target, commandContextWith(overrides));
+		expect(handled).toBe(true);
+		expect(hooks.openFocusView).toHaveBeenCalledTimes(1);
+	});
+});

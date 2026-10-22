@@ -1,5 +1,6 @@
 import { type SimContext } from '../invariants';
 import { waitForNodeCount } from './node-count';
+import { edgeKey } from '../../platform-keys';
 
 // Directive gestures for the `:::name` syntax (plugins route only). Each waits for the block to
 // change kind or for the widget to swap in, then resyncs, since predicting across either would
@@ -26,8 +27,8 @@ export async function insertTextDirective(
 	tracker.resync(await editor.bridge.getSource());
 }
 
-/** The source shows in both states, so the widget count is the one sign it opened; the edit stays
- *  out of the tree until blur, so a source wait before the commit would race the DOM. */
+/** The source shows in both states, so the widget count is the one sign it opened; each key in it
+ *  is written as it lands, and the blur draws the widget again. */
 export async function revealEditTextDirective(
 	ctx: SimContext,
 	stepIn: number,
@@ -77,7 +78,7 @@ export async function editLeafInfo(
 	const before = await editor.bridge.getSource();
 
 	await editor.clickBlock(leafIndex);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type(text);
 	await editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
 	await editor.waitForRenderFlush();
@@ -91,7 +92,7 @@ export async function leafBackspaceAtStart(ctx: SimContext, leafIndex: number): 
 	const before = await editor.bridge.getSource();
 
 	await editor.clickBlock(leafIndex);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await editor.pressDeclined('Backspace');
 
 	const after = await editor.bridge.getSource();
@@ -115,7 +116,7 @@ export async function editContainerBody(
 	const before = await editor.bridge.getSource();
 
 	await editor.clickBlockAtPath(bodyPath, 0);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.type(text);
 	await editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
 	await editor.waitForRenderFlush();

@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { topLevelHostPresent } from '../../../page-probes';
+import { extendKey } from '../../../platform-keys';
 
 const TRANSPARENT_MIDDLE = 'first\n\n![pic](/test-fixtures/sample.png)\n\nthird\n';
 const LIST_ONLY_TRANSPARENT =
@@ -89,7 +90,7 @@ test.describe('selection: keyboard: vertical-skip parity (G1)', () => {
 	test('Ctrl+Shift+End from first block lands on the last text-bearing block when the last is transparent', async () => {
 		await editor.loadContent('start\n\nmid\n\n![pic](/test-fixtures/sample.png)\n');
 		await editor.focusBlockStart(0);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+End');
+		await editor.page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 		const sel = await editor.bridge.getSelectionPaths();
 		expect(sel).not.toBeNull();
@@ -99,7 +100,7 @@ test.describe('selection: keyboard: vertical-skip parity (G1)', () => {
 	test('Ctrl+Shift+Home from last block lands on the first text-bearing block when the first is transparent', async () => {
 		await editor.loadContent('![pic](/test-fixtures/sample.png)\n\nmid\n\nend\n');
 		await editor.focusBlockEnd(2);
-		await editor.page.keyboard.press('ControlOrMeta+Shift+Home');
+		await editor.page.keyboard.press(extendKey('docStart'));
 		await editor.waitForCrossBlock(true);
 		const sel = await editor.bridge.getSelectionPaths();
 		expect(sel).not.toBeNull();
@@ -119,7 +120,7 @@ test.describe('selection: keyboard: vertical-skip parity (G1)', () => {
 		expect(await topLevelHostPresent(page, lastIdx)).toBe(false);
 		expect(await topLevelHostPresent(page, lastTextIdx)).toBe(false);
 
-		await page.keyboard.press('ControlOrMeta+Shift+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await editor.waitForCrossBlock(true);
 
 		const sel = await editor.bridge.getSelectionPaths();

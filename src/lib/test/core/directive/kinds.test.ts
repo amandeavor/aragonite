@@ -10,9 +10,9 @@ import {
 	DIRECTIVE_CONTAINER,
 	DIRECTIVE_LEAF,
 	registerDirectiveKinds,
-	rebuildDirectiveContainerRaw,
-	type DirectiveContainerMetadata
+	rebuildDirectiveContainerRaw
 } from '#lib/core/directive/kinds.js';
+import type { DirectiveContainerMetadata } from '#lib/core/directive/container-shape.js';
 import { testDirectiveViews } from '#lib/test/support/test-view.js';
 
 describe('registerDirectiveKinds', () => {

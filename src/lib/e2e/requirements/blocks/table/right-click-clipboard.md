@@ -23,6 +23,9 @@ caret as it stood when the menu opened, the same as the browser's items would.
 - Paste of a spreadsheet grid (tab-separated rows) fills cells from the clicked cell exactly as
   Ctrl+V does. Miss-analysis: the menu's Paste wrote straight into the cell's text instead of
   firing the paste Ctrl+V fires, and no test gave it a grid, so the skipped grid fill went unseen.
+- Every Paste above works in Firefox too. Miss-analysis: the Paste handed its text over as a
+  constructed paste event, whose `clipboardData` Firefox empties, and the suite ran on Chromium
+  alone (#746).
 
 - Paste picked while the host loads another document (the clipboard read held until the swap
   is done): the text lands nowhere, and the next document is exactly what was loaded

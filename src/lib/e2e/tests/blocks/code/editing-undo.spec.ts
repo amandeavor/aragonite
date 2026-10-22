@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Pure typing/Enter behavior lives in editing-typing-enter.spec.ts.
 
@@ -21,7 +22,7 @@ test.describe('code block editing: user interactions', () => {
 		await editor.bridge.waitForSourceContains('line 3');
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.page.keyboard.press('ArrowDown');
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.typeText('typed below ');
 		await editor.bridge.waitForSourceContains('typed below');
 
@@ -33,7 +34,7 @@ test.describe('code block editing: user interactions', () => {
 	test('edit code then undo reverts the change', async () => {
 		await editor.loadContent('```\noriginal\n```\n');
 		await editor.getBlock(0).click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText(' added');
 		await editor.bridge.waitForSourceContains('original added');
 		await editor.undo();

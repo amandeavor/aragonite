@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Without a closer, the serialized document is an open fence that GFM lazy continuation pulls the
 // blocks below back into on reload, so the live tree stops matching a reparse of its own bytes.
@@ -18,7 +19,7 @@ test.describe('code block: unclosed-fence auto-close on escape', () => {
 		expect(await editor.bridge.getBlockKind(0)).toBe('fencedCode');
 
 		await editor.getBlock(0).click();
-		await editor.page.keyboard.press('Control+End');
+		await editor.page.keyboard.press(edgeKey('blockEnd'));
 		await editor.page.keyboard.press('Enter'); // trailing blank line inside the body
 		await editor.page.keyboard.press('Enter'); // escape to a new paragraph below
 		await editor.typeText('after');
@@ -34,7 +35,7 @@ test.describe('code block: unclosed-fence auto-close on escape', () => {
 	test('a fence opener typed above other blocks closes as it is created', async ({ page }) => {
 		await editor.loadContent('Above\n\ntail\n');
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await editor.typeSlowly('```');
 		await editor.bridge.waitForSourceContains('```\n```');
@@ -50,10 +51,31 @@ test.describe('code block: unclosed-fence auto-close on escape', () => {
 		expect(await editor.bridge.getSource()).toBe('Above\n\n```\ncode\n```\n\ntail\n');
 	});
 
+	// The code block's own closer, or its bare opener, would otherwise close the typed fence, and
+	// a fence further down must not change that.
+	const BELOW: Array<[name: string, below: string, blocks: number]> = [
+		['```js', '```js\ncode\n```\n', 3],
+		['```', '```\ncode\n```\n', 3],
+		['```, another fence further down', '```\ncode\n```\n\n```py\nx\n```\n', 4]
+	];
+	for (const [name, below, blocks] of BELOW) {
+		test(`a fence opener typed above a code block (${name}) leaves it whole`, async ({ page }) => {
+			await editor.loadContent(`Above\n\n${below}`);
+			await editor.getBlock(0).click();
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await page.keyboard.press('Enter');
+			await editor.typeSlowly('```');
+
+			await editor.bridge.waitForSourceEquals(`Above\n\n\`\`\`\n\`\`\`\n\n${below}`);
+			expect(await editor.bridge.getBlockCount()).toBe(blocks);
+			expect(await editor.parseConverged()).toBe(true);
+		});
+	}
+
 	test('one undo restores the open fence and removes the created block', async () => {
 		await editor.loadContent('```\ncode\n');
 		await editor.getBlock(0).click();
-		await editor.page.keyboard.press('Control+End');
+		await editor.page.keyboard.press(edgeKey('blockEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.page.keyboard.press('Enter');
 		await editor.bridge.waitForBlockCount(2);

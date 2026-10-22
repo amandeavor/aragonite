@@ -32,7 +32,7 @@ export function isEditableEventTarget(target: EventTarget | null): boolean {
 
 /** The hidden host is the block's one tab stop, so a declared element that is not an editor
  *  leaves the tab order. Applied on every read, since a later render state supplies a new one. */
-export function demoteDeclaredFromTabOrder(declared: HTMLElement | null): HTMLElement | null {
+function demoteDeclaredFromTabOrder(declared: HTMLElement | null): HTMLElement | null {
 	if (declared && declared.tabIndex >= 0 && !isEditableEventTarget(declared)) {
 		declared.tabIndex = -1;
 	}
@@ -92,9 +92,10 @@ export interface WholeBlockInputProxyDeps {
 	isReading: () => boolean;
 	/** The block's accessible name: the host is the block's tab stop, so it names the block. */
 	getLabel: () => string;
-	/** Commit the bytes the host produced: the same paragraph the keydown path creates. Resolves
-	 *  whether it landed. */
-	mint: (text: string) => Promise<boolean>;
+	/** Holds the host's tabindex for the reading-mode tab stop; returns the release. */
+	holdTabStop: (el: HTMLElement) => () => void;
+	/** Commit the bytes the host produced: the same paragraph the keydown path creates. */
+	mint: (text: string) => void;
 }
 
 export interface WholeBlockInputProxy {
@@ -103,16 +104,11 @@ export interface WholeBlockInputProxy {
 	/** Put DOM focus for a whole-block entry, falling back to `declared` when the plugin owns
 	 *  the caret or the host has not mounted. */
 	focus(declared: HTMLElement): void;
-	/** The block's `typeText`: text typed at the block goes where the host's input goes. */
-	typeText(text: string): Promise<boolean>;
 }
 
 export function createWholeBlockInputProxy(deps: WholeBlockInputProxyDeps): WholeBlockInputProxy {
 	let proxy: HTMLElement | null = null;
-	const hostInput = createCaretHostInput(
-		() => proxy,
-		(text) => void deps.mint(text)
-	);
+	const hostInput = createCaretHostInput(() => proxy, deps.mint);
 
 	/** Every read of the declared element inside the proxy goes through the demotion, so a kind
 	 *  supplying its own `getFocusEl` (without the composed fallback) is held to the rule too. */
@@ -141,10 +137,12 @@ export function createWholeBlockInputProxy(deps: WholeBlockInputProxyDeps): Whol
 	}
 
 	// Read per focus, not per mount: reading mode makes the host inert, and a kind's name can
-	// change while the block stays mounted.
+	// change while the block stays mounted. Reading, it's a named block rather than a field.
 	function syncProxyState(): void {
 		if (!proxy) return;
-		proxy.setAttribute('contenteditable', deps.isReading() ? 'false' : 'true');
+		const reading = deps.isReading();
+		proxy.setAttribute('contenteditable', reading ? 'false' : 'true');
+		proxy.setAttribute('role', reading ? 'group' : 'textbox');
 		proxy.setAttribute('aria-label', deps.getLabel());
 	}
 
@@ -154,12 +152,11 @@ export function createWholeBlockInputProxy(deps: WholeBlockInputProxyDeps): Whol
 		proxy = document.createElement('div');
 		proxy.setAttribute(WHOLE_BLOCK_INPUT_ATTR, '');
 		proxy.className = 'whole-block-input';
-		proxy.setAttribute('role', 'textbox');
 		syncProxyState();
 		proxy.spellcheck = false;
 		// The block's tab stop, because focus belongs here: a declared element left in the tab
 		// order is a second stop Shift+Tab lands on, where no input can arrive.
-		proxy.tabIndex = 0;
+		const releaseTabStop = deps.holdTabStop(proxy);
 		declaredSurface();
 		proxy.addEventListener('beforeinput', hostInput.onBeforeInput as EventListener);
 		proxy.addEventListener('compositionstart', hostInput.onCompositionStart);
@@ -167,6 +164,7 @@ export function createWholeBlockInputProxy(deps: WholeBlockInputProxyDeps): Whol
 		box.addEventListener('focusin', onFocusIn);
 		box.appendChild(proxy);
 		return () => {
+			releaseTabStop();
 			box.removeEventListener('focusin', onFocusIn);
 			proxy?.remove();
 			proxy = null;
@@ -175,7 +173,6 @@ export function createWholeBlockInputProxy(deps: WholeBlockInputProxyDeps): Whol
 
 	return {
 		el: () => proxy,
-		typeText: deps.mint,
 		focus(declared: HTMLElement) {
 			if (!proxy || isEditableEventTarget(declared)) {
 				focusWholeBlockEl(declared);

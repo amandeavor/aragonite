@@ -2,6 +2,7 @@
  * Keeps the caret across a presentation-mode switch. `beforeFlip` captures the caret and blurs
  * the block while the outgoing mode still owns the DOM; `afterFlip` drops the outgoing markers'
  * geometry, has the overlays measure again, and restores the caret through the shared restore path.
+ * Reading mode has no caret, so leaving it puts one where its focus last sat (`reading-focus`).
  */
 
 import { tick } from 'svelte';
@@ -14,7 +15,8 @@ import { rawOffsetAt } from '../../caret/widget-offset';
 import type { EditorEvents } from '../../editor-events';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
 import type { PresentationMode } from '../../presentation-mode';
-import { findSurfacePathForElement } from '../../selection/path-lookup';
+import { surfaceHolding } from '../../selection/path-lookup';
+import { readNativeSelection } from '../../selection/native-bridge';
 import type { EditorSelection } from '../../selection/primitives';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import type { TextMoves } from '../overlays/text-moves';
@@ -30,6 +32,8 @@ export interface ModeFlipDeps {
 	announceSelection(): void;
 	getBlockElByPath: BlockElLookup;
 	isHostChrome(node: Node | null): boolean;
+	/** Where reading mode's focus sat, read and forgotten at each switch (`reading-focus.svelte.ts`). */
+	takeReadingCaret(): FlipCaret | null;
 	caretMemory: Pick<CaretMemory, 'forget'>;
 	layout: Pick<LayoutState, 'forgetMeasuredHeights'>;
 	menus: Pick<MenuPresence, 'closeAll'>;
@@ -70,16 +74,16 @@ export function createModeFlip(deps: ModeFlipDeps): ModeFlip {
 		if (deps.selection.isCrossBlock || deps.selection.gapCaret) return null;
 		const focused = deps.getSelection()?.focus;
 		if (focused) return { path: focused.path, offset: focused.offset };
-		const sel = window.getSelection();
-		const node = sel?.focusNode;
-		if (!node || !deps.editorEl?.contains(node) || deps.isHostChrome(node)) return null;
-		const el = node instanceof Element ? node : node.parentElement;
-		const path = findSurfacePathForElement(el);
-		if (!path) return null;
-		const contentEl = deps.getBlockElByPath(path);
-		if (!contentEl?.contains(node)) return null;
-		const offset = rawOffsetAt(contentEl, node, sel.focusOffset);
-		return { path, offset };
+		const focus = readNativeSelection()?.focus;
+		if (!focus || !deps.editorEl?.contains(focus.node) || deps.isHostChrome(focus.node))
+			return null;
+		const surface = surfaceHolding(focus.node, deps.getBlockElByPath);
+		return (
+			surface && {
+				path: surface.path,
+				offset: rawOffsetAt(surface.contentEl, focus.node, focus.offset)
+			}
+		);
 	}
 
 	// The restore path clamps the offset to one the new mode allows; a focused text field is
@@ -109,8 +113,9 @@ export function createModeFlip(deps: ModeFlipDeps): ModeFlip {
 			preFlipSeenMode = to;
 			deps.holdOutgoingMode(from);
 			try {
-				// Reading keeps its entry snapshot: it has no caret of its own to recapture on the way out.
-				if (from !== 'reading') flipCaret = captureCaret();
+				// Reading keeps its entry snapshot for when nothing in the editor took focus meanwhile.
+				const readingCaret = deps.takeReadingCaret();
+				flipCaret = from === 'reading' ? (readingCaret ?? flipCaret) : captureCaret();
 				blurForFlip();
 			} finally {
 				deps.holdOutgoingMode(null);

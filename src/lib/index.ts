@@ -15,7 +15,13 @@ export type {
 	SyntaxOptions
 } from './editor-props';
 
-export type { EditorDiagnostics, InteractionTraceEntry } from './editor-props';
+export type {
+	EditorDiagnostics,
+	InteractionTraceEntry,
+	InputRecording,
+	InputRecordingHandle,
+	InputRecordingOptions
+} from './editor-props';
 
 export type { BlockComponent } from './block-component';
 export type {

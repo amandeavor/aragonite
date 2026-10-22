@@ -1,6 +1,6 @@
-// A plugin kind that holds its own fence keeps one opener and one closer through a replace, as a
-// code block does: a body line turned into the closer grows the fence, and an opener replaced
-// away takes its stranded closer with it, so the block below stays its own.
+// A plugin kind that holds its own fence keeps its fence through a replace, as a code block does:
+// a body line turned into the closer grows the fence, and an opener replaced away leaves its
+// closer, which a reload reads as an open fence.
 // Miss-analysis (GH #566): every fence replace test drove the built-in code block alone.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse, serialize } from '#lib';
@@ -34,13 +34,13 @@ describe('search/replace into a math fence', () => {
 		expectParseConverged(deps.doc);
 	});
 
-	it('drops the closer a replace over the opener line stranded', async () => {
+	it('keeps the closer a replace over the opener line stranded', async () => {
 		const { deps, sr } = makeSearchReplace('```math\nx\n```\n\npara B\n');
 
 		await sr.replaceAll(scan(deps.doc, '```math\n'), '');
 
-		expect(serialize(deps.doc)).toBe('x\n\npara B\n');
-		expect(reloadKinds(deps.doc)).toEqual(['paragraph', 'paragraph']);
+		expect(serialize(deps.doc)).toBe('x\n```\n\npara B\n');
+		expect(reloadKinds(deps.doc)).toEqual(['paragraph', 'fencedCode']);
 		expectParseConverged(deps.doc);
 	});
 });

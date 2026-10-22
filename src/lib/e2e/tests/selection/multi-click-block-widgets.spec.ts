@@ -1,7 +1,8 @@
 import { test, expect } from '../../fixtures';
-import { documentCaret } from '../blocks/image/helpers';
+import { documentCaret, waitForFirstImageLoaded } from '../blocks/image/helpers';
 import { PluginsPage } from '../plugins/helpers';
-import { multiClick, nativeSelectionText, inlineWidgetCenter } from './multi-click-helpers';
+import { nativeSelectionText, inlineWidgetCenter } from './multi-click-helpers';
+import { multiClick } from '../../multi-click';
 import { textRunCenter } from '../../text-runs';
 
 // Triple-click, the block level of the click order, on a widget-dense paragraph
@@ -54,7 +55,7 @@ test.describe('multi-click: the block inline syntax handler beside inline widget
 			await editor.setPresentationMode(mode);
 			await expect(page.locator('[data-inline-widget]')).toHaveCount(9);
 			const at = await textRunCenter(page, 'possess the energy');
-			await page.mouse.click(at.x, at.y, { clickCount: 3 });
+			await multiClick(page, at, 3);
 			await expect.poll(() => selectionEnds(page)).toEqual(SHOWCASE_ENDS);
 			// The release has already been handled; a caret placed later would drop the range.
 			await page.waitForTimeout(150);
@@ -93,7 +94,7 @@ test.describe('multi-click: the block inline syntax handler beside inline widget
 			await editor.setPresentationMode(mode);
 			await expect(page.locator('[data-inline-widget]')).toHaveCount(1);
 			const at = await textRunCenter(page, 'opens');
-			await page.mouse.click(at.x, at.y, { clickCount: 3 });
+			await multiClick(page, at, 3);
 			// The rendered formula has no stable spelling, so the range is read at its two ends:
 			// it reaches the last word, and it starts far enough back to hold the formula.
 			await expect.poll(() => reachesBothEnds(page, 'opens this line')).toEqual([true, true]);
@@ -120,9 +121,7 @@ test.describe('multi-click: the block inline syntax handler beside inline widget
 			// An image selects whole on its first click and its second opens the crop frame, so the
 			// run is the image's from the start: no range and no caret beside it.
 			await editor.loadContent(IMAGE_PARAGRAPH);
-			await page.waitForFunction(
-				() => (document.querySelector('[data-image-widget] img') as HTMLImageElement)?.complete
-			);
+			await waitForFirstImageLoaded(page);
 			await multiClick(page, await inlineWidgetCenter(page), clicks);
 			await expect(page.locator('[data-image-overlay]')).toHaveCount(1);
 			await page.waitForTimeout(150);
@@ -130,6 +129,9 @@ test.describe('multi-click: the block inline syntax handler beside inline widget
 			// No native caret; the editor's read answers the image's end, where the click left it.
 			const imageEnd = { path: [0], offset: IMAGE_PARAGRAPH.indexOf(')') + 1 };
 			expect(await documentCaret(page)).toEqual([0, { anchor: imageEnd, focus: imageEnd }]);
+			// The open crop holds typing; Escape ends just the crop, and the image stays selected.
+			await page.keyboard.press('Escape');
+			await expect(page.locator('.md-image-crop-surface')).toHaveCount(0);
 			await page.keyboard.press('X');
 			await editor.bridge.waitForSourceContains('X');
 			expect(await editor.bridge.getSource()).toBe('before X after\n');

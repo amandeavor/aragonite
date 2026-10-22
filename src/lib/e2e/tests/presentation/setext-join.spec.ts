@@ -6,6 +6,7 @@ import {
 	focusPath,
 	nextRow
 } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Joining into a setext heading: the joined text lands on the title line and the underline stays
 // under it, in every mode. Where markers hide, the title's end is the block's end; where the
@@ -45,7 +46,7 @@ for (const mode of ['source', 'live', 'preview-inline'] as const) {
 		await test.step('Backspace at the start of the block below makes the same join', async () => {
 			await nextRow(ep, DOC);
 			await clickBlockSettled(ep, 1);
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await ep.waitForRenderFlush();
 
 			await page.keyboard.press('Backspace');
@@ -107,7 +108,7 @@ test('live mode: Delete at a setext heading’s end before a block that is not p
 			const doc = 'Setext\n======\n\n' + next;
 			await nextRow(ep, doc);
 			await clickBlockSettled(ep, 0);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await ep.waitForRenderFlush();
 
 			await page.keyboard.press('Delete');

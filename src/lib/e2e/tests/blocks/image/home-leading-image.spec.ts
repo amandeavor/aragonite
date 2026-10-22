@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { EditorPage } from '../../../editor-page';
 import { clickWordSettled } from '../../presentation/helpers';
 import { waitForFirstImageLoaded } from './helpers';
+import { edgeKey } from '../../../platform-keys';
 
 // Home before an image at the start of a line: the caret can sit before the widget, but no text
 // node holds that position, so the browser puts the caret past the image and typing there is
@@ -17,7 +18,7 @@ async function focusOffset(ep: EditorPage): Promise<number> {
 async function homeThenType(ep: EditorPage, page: Page): Promise<void> {
 	await waitForFirstImageLoaded(page);
 	await clickWordSettled(ep, page, 'tail');
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await ep.waitForRenderFlush();
 	await expect.poll(() => focusOffset(ep)).toBe(0);
 	await page.keyboard.press('Z');

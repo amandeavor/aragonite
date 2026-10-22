@@ -6,6 +6,7 @@
  */
 import type { BlockComponent } from './block-component';
 import type { ScrollOwner } from './windowing/scroll-owner';
+import type { NativeSelectionRead } from './selection/native-bridge';
 
 export interface EditorRects {
 	/** The block's outermost box, or null when it isn't mounted. */
@@ -27,13 +28,14 @@ export interface EditorRects {
 		path: readonly number[],
 		opts?: { block?: 'nearest' | 'center'; hold?: boolean }
 	): Promise<boolean>;
-	/** Mount `path`, scroll there and land the caret at `offset` (default 0) as an edit does, so the
-	 *  next key addresses the document; a closed `<details>` on the way opens. True once in view. */
+	/** Mount `path` (opening a closed `<details>`), scroll there and land the caret at `offset`, default
+	 *  0, as an edit does. Reading mode moves focus there instead. True once in view. */
 	navigateTo(path: readonly number[], offset?: number): Promise<boolean>;
 }
 
 export function createEditorRects(deps: {
-	getBlockElByPath: (path: number[]) => HTMLElement | null;
+	/** The element the block measures as, chrome included. */
+	getBlockBoxByPath: (path: number[]) => HTMLElement | null;
 	getBlockComponent: (path: number[]) => BlockComponent | null;
 	/** Mounts `path`, opening a collapsed body on the way: every caller here is a navigation. */
 	revealPath: (path: number[]) => Promise<unknown>;
@@ -46,10 +48,14 @@ export function createEditorRects(deps: {
 	/** Put a caret at a raw offset in `path` through the caret landing, as a navigation. Injected
 	 *  because this file owns geometry, not the selection model. */
 	landCaretAt: (path: number[], offset: number) => Promise<boolean>;
+	/** The editor's one measure of a collapsed caret, injected as `landCaretAt` is. */
+	caretRectAt: (root: ParentNode, node: Node, offset: number) => DOMRect | null;
+	/** The editor's reader of the browser's selection, injected as `landCaretAt` is. */
+	readSelection: () => NativeSelectionRead | null;
 }): EditorRects {
 	return {
 		blockRect(path) {
-			return deps.getBlockElByPath(path)?.getBoundingClientRect() ?? null;
+			return deps.getBlockBoxByPath(path)?.getBoundingClientRect() ?? null;
 		},
 		rangeRects(path, start, end) {
 			return deps.getBlockComponent(path)?.measurePartialRects?.(start, end) ?? [];
@@ -60,18 +66,22 @@ export function createEditorRects(deps: {
 			if (deps.isCrossBlock()) return null;
 			const root = deps.getEditorRoot();
 			if (!root) return null;
-			const selection = window.getSelection();
-			if (!selection || selection.rangeCount === 0) return null;
-			const range = selection.getRangeAt(0);
+			const range = deps.readSelection()?.range;
+			if (!range) return null;
 			if (!root.contains(range.commonAncestorContainer)) return null;
 			// A caret in the host's header snippet is inside the root but is not a document
 			// caret; reporting it would float caret-following controls over the host's field.
 			if (deps.isHostChrome(range.commonAncestorContainer)) return null;
-			return range.getBoundingClientRect();
+			if (!range.collapsed) return range.getBoundingClientRect();
+			const block = range.startContainer.parentElement?.closest<HTMLElement>('[data-block-path]');
+			return (
+				deps.caretRectAt(block ?? root, range.startContainer, range.startOffset) ??
+				range.getBoundingClientRect()
+			);
 		},
 		async reveal(path) {
 			await deps.revealPath(path);
-			return deps.getBlockElByPath(path) != null;
+			return deps.getBlockBoxByPath(path) != null;
 		},
 		async scrollTo(path, opts) {
 			const p = [...path];

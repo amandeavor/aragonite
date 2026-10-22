@@ -12,7 +12,7 @@ Where to jump:
 - [Unit tests (Vitest)](#unit-tests-vitest): where a file goes, the area scripts, mounting a
   block without the whole editor, and the console-warning gate.
 - [E2E tests (Playwright)](#e2e-tests-playwright): the fixture import rule, the test bridge, the
-  dev server, the area scripts, the plugins route and what's installed on it, the WebKit lane, the
+  app the suite serves, the area scripts, the plugins route and what's installed on it, the browser engines, the
   requirement files, and the gotchas.
 - [The conformance differ](#the-conformance-differ): our inline parser diffed against
   commonmark.js.
@@ -40,7 +40,7 @@ The three commands you'll type most:
 ```bash
 npm test               # full suite: unit, then every e2e project
 npm run test:editor    # all unit tests
-npm run test:e2e       # all E2E tests (auto-starts the dev server)
+npm run test:e2e       # all E2E tests (builds and serves the app first)
 ```
 
 Both layers are also sliced into area scripts for the inner loop, `test:editor:<area>` and
@@ -206,28 +206,19 @@ How a test claims one, four ways from narrowest to widest, is
 claim helpers (`takeDevWarns`, `drainDevWarns`, `allowDevWarns`) import from
 `src/lib/test/support/warn-gate.ts`.
 
-The machinery, for when you're inside it:
+Two rules the gate holds you to:
 
-- Both teardown guards live in `src/lib/test/support/warn-gate.ts`. The per-test `afterEach` is
-  the verdict; the claim helpers sit in file-level `afterEach` hooks that must run before it,
-  which is why `vitest.config.ts` pins `sequence.hooks: 'stack'`. The per-file `afterAll` is the
-  aggregate, next bullet.
-- Two per-file aggregates close what a per-test verdict can't see: an `allowDevWarns` tag that
-  never fired, and a fire arriving after the last test's verdict. Either fails the file.
 - A guard that defers its fire past a tick (`reportContestedClaim`, say) still lands on the test
-  that provoked it: the verdict awaits a tick before reading. That tick lands after the file's own
-  claim helpers, so claim such a fire inside the test (`await tick()`, then `takeDevWarns()`),
-  never with a file-level `allowDevWarns`.
-- A file that swaps the sink out and never restores it fails itself, and the gate re-arms for
-  the next file.
-- Don't mock or spy your way around it. A `vi.mock` of `#lib/dev-warn.js` deletes the emitter,
-  and a `console.warn` spy sees nothing (the sink took the line) while a spy that swallows the
-  call hides the Svelte warnings too. Either one blinds the gate for that whole file, so a source
-  scan (G4.41 in `invariants.md`) fails on both.
+  that provoked it, but after the file's own claim helpers have run. Claim it inside the test
+  (`await tick()`, then `takeDevWarns()`), never with a file-level `allowDevWarns`.
+- Don't mock or spy your way around it. A `vi.mock` of `#lib/dev-warn.js` deletes the emitter, and
+  a `console.warn` spy either sees nothing (the sink took the line) or hides the Svelte warnings
+  too, so a source scan (G4.41 in `invariants/scans.md`) fails both.
 
 ## E2E tests (Playwright)
 
-The editor component driven in real Chromium. No backend needed; it's self-contained.
+The editor component driven in a real browser, Chromium unless you pick another engine
+([Browser engines](#browser-engines)). No backend needed; it's self-contained.
 
 **Every spec imports `test` and `expect` from `src/lib/e2e/fixtures.ts`, never from
 `@playwright/test` directly.** This isn't a style preference, and I will be tedious about it in
@@ -300,24 +291,29 @@ await editor.bridge.getSelectionPaths(); // { anchor: { path: [1], offset: 6 }, 
 await editor.getBlockText(0); // '# Hello', the dimmed marker included
 ```
 
-### One dev server, and isolated runs
+### The app under test is a build
 
-Every Playwright project shares one dev server, started by the Playwright config on port 1420
-and reused when something is already listening there. That reuse is the convenience and the
-trap: an interrupted run leaves a server alive, and the next run serves whatever that tree was
-mid-edit. `E2E_ISOLATED=1` starts the run's own servers instead, on 1430 (and 1431 for the
-`PERF_PROD` preview), reusing neither. `npm run test:e2e:isolated` runs the whole suite that way,
-and anything narrower is the same script with Playwright's own arguments appended.
-`E2E_PORT=1440` picks the isolated port (the preview takes the next one), so two isolated runs on
-one machine, from two worktrees say, never race for 1430:
+Every run starts by building the app (a development build, so every dev check, warning and test
+bridge is still in it) and serves that with `vite preview` on port 1430.
+
+Two things follow from serving a build:
+
+- A run tests the tree as it stood when the run started. Saving a file mid-run changes nothing,
+  and the next run picks it up.
+- Nothing is ever reused. Each run builds its own app into `.svelte-kit/e2e-<port>`, so a server
+  left over from an interrupted run fails the next one loudly (the port is taken) instead of
+  serving it stale code. Kill it and rerun.
+
+`E2E_PORT=1440` moves the run to another port (the perf gate's prod preview takes the next one),
+so two runs on one machine, from two worktrees say, never fight over 1430:
 
 ```
-$ npm run test:e2e:isolated -- --project=e2e-top smoke.spec.ts
+$ node scripts/run-with-env.mjs E2E_PORT=1440 -- npm run test:e2e -- --project=e2e-top smoke.spec.ts
 
-> node scripts/run-with-env.mjs E2E_ISOLATED=1 -- playwright test --project=e2e-top smoke.spec.ts
-
-[WebServer] > vite dev --port 1430 --strictPort
-[WebServer]   ➜  Local:   http://localhost:1430/
+[WebServer] > node scripts/run-with-env.mjs NODE_ENV=development ARAGONITE_E2E_BUILD=1 -- vite build
+[WebServer] ✓ built in …
+[WebServer] > node scripts/run-with-env.mjs ARAGONITE_E2E_BUILD=1 -- vite preview --host 127.0.0.1 --port 1440 --strictPort
+[WebServer]   ➜  Local:   http://127.0.0.1:1440/
 
 Running 1 test using 1 worker
 
@@ -330,9 +326,13 @@ Running 1 test using 1 worker
 Windows shell. Go through the npm script rather than calling it yourself; from a bare shell
 `playwright` isn't on the path.)
 
-**A spec that dies with `Failed to fetch dynamically imported module`** caught the dev server
-finding a package after the page loaded and reloading it. A package the app loads with `import()`
-goes in `optimizeDeps.include` in `vite.config.js`; the unit lint usually tells you first.
+`E2E_SERVER=dev` serves the Vite dev server instead (reusing one already on 1420 unless `E2E_PORT`
+says otherwise), for Playwright's UI and watch modes, which want it to reload when you save.
+
+**A spec that dies with `Failed to fetch dynamically imported module`** under `E2E_SERVER=dev`
+caught the dev server finding a package after the page loaded and reloading it. A package the app
+loads with `import()` goes in `optimizeDeps.include` in `vite.config.js`; the unit lint usually
+tells you first.
 
 ### By area
 
@@ -350,10 +350,11 @@ Specs are organized by feature area at the top level, and per block inside `test
 | `test:e2e:search`         | Find/replace bar and controller behavior                                                                                                                                                                     |
 | `test:e2e:decorations`    | Decoration engine in the browser: mark / widget / block paint, search as its first client                                                                                                                    |
 | `test:e2e:presentation`   | Presentation modes: reading-mode inertness, block- and inline-granular preview reveal, mid-session mode flips                                                                                                |
+| `test:e2e:recordings`     | Replays of the checked-in input recordings (see [Turning a recording into a test](#turning-a-recording-into-a-test))                                                                                         |
 | `test:e2e:simulation`     | The note-taking simulation sessions (their own section below)                                                                                                                                                |
 | `test:e2e:a11y`           | axe over `.editor`: fails on any violation outside the committed allowlist                                                                                                                                   |
 | `test:e2e:vr`             | Virtual rendering on large fixtures: windowing, reveal, table-row windowing, mounted-count ceiling                                                                                                           |
-| `test:e2e:webkit`         | The second-engine lane: a curated slice under the WebKit binary, env-gated; CI runs it on every PR and the release PR can't merge past it (next section)                                                     |
+| `test:e2e:webkit`         | The whole suite in WebKit; `test:e2e:firefox` is the same in Firefox ([Browser engines](#browser-engines))                                                                                                   |
 
 The a11y allowlist and the VR ceilings both fail closed and only shrink. Neither is a perf gate;
 both ride `npm test`.
@@ -372,41 +373,34 @@ decorations a sibling test is counting, or, in the parrot's case, by animating o
 seed table is in `+page.svelte`. What each fixture is for, so you can pick one:
 
 - `callout/`: `:::callout Title` (and `:::aside`, so a kind switch has somewhere to go), a
-  container with a title line the block always keeps, which the editor calls reserved chrome
-  (block furniture rather than content; a range delete or a merge has to step around it).
-  Minimal on purpose, so the `reserved-chrome-*` specs, the chrome unit suites, and the
-  simulation's plugin gestures observe the editor's chrome handling and not a plugin feature
-  (yes, it duplicates admonitions as a product; as a fixture it's what those tests stand on). Its
-  two directive names are claimed by no other plugin, since a contended name resolves by install
-  order, and the dev server installs in a different order than a fresh tab would. Always on.
-- `memo/`: a `%%` leaf you edit as plain text, the one plugin anywhere that builds
-  `createEditableLeaf` in `'plain'` mode (the bundled leaves all use `'render-primary'`), so
-  the `editable-leaf-*` specs drive it. Always on; seed `memo` loads its document.
-- `doc-stats/`: counts blocks and edits per editor and publishes them on `window`. Installed
-  bare here (the no-options path) and with per-editor options on the `multi/` subroute; the
-  working example of `registerGlobalCommand` plus a per-editor context. Always on; seed
-  `docstats`.
-- `ghost-text/`: one decoration widget, drawn by a Svelte component, at the end of the focused
-  paragraph, with no completion backend behind it; its spec proves typing next to the widget never
-  captures the ghost text into the document. Seed `ghost`.
-- `fold/`: `[>hidden<]` ranges collapse to a clickable `…` that reopens on click; the
-  `ReplaceDecoration.widget` fixture, covering a live click handler inside a decoration and
-  decorations inside table cells. Seeds `fold` and `fold-table`.
+  container with a title line it always keeps (reserved chrome: block furniture a range delete or
+  a merge has to step around). Minimal on purpose, for the `reserved-chrome-*` specs, the chrome
+  unit suites and the simulation's plugin gestures. Don't let any other fixture use its two directive
+  names: when two plugins want one name, install order decides, and the shared server installs in a
+  different order than a fresh tab does. Always on.
+- `memo/`: a `%%` leaf you edit as plain text, the only `createEditableLeaf` in `'plain'` mode, for
+  the `editable-leaf-*` specs. Always on; seed `memo`.
+- `doc-stats/`: counts blocks and edits per editor and publishes them on `window`; it's the
+  fixture for `registerGlobalCommand` plus per-editor context. It's installed without options here,
+  and with a label per editor on `multi/`.
+  Always on; seed `docstats`.
+- `ghost-text/`: one Svelte-drawn decoration widget at the end of the focused paragraph, for the
+  spec proving typing beside it never captures the ghost text. Seed `ghost`.
+- `fold/`: `[>hidden<]` ranges collapse to a clickable `…`; the `ReplaceDecoration.widget`
+  fixture, with a live click handler and decorations in table cells. Seeds `fold` and
+  `fold-table`.
 - `block-badge/`: a class plus an `H` badge on every heading at any depth; the
-  `BlockDecoration.badge` fixture, including a badge surviving its heading scrolling out of the
-  window and back. Seed `badge`.
-- `wiki-embed/`: `![[path|width]]` recognized as a built-in image, resize handles and all;
-  covers an inline syntax producing a built-in kind, and `rewriteImage`, without which a resize
-  would write GFM over the embed. Seed `wiki-embed`.
-- `tags/`: tags inside the text on a bare `#` trigger, registered value for value the way
-  limestone (the app aragonite was extracted from) registers them, so these specs hold what that
-  app gets. Seed `tags`.
-- `inline-menu/`: menus under the caret for the inline-menu specs: a document picker on `[[`, and
-  a mention menu on `@` whose commit waits until the spec releases it. Seed `inline-menu` installs
-  them with the demo tag menu and the bundled slash list, so all four triggers have to stay out of
-  each other's way.
-- `hloccur-scan/`: the bundled highlight-occurrences plugin configured with an `onScan` counter
-  on `window`, so its spec can count how often it rescans. Seed `hloccur-memo`.
+  `BlockDecoration.badge` fixture, including a badge that survives scrolling out of the window. Seed
+  `badge`.
+- `wiki-embed/`: `![[path|width]]` read as a built-in image. It pins an inline syntax that
+  produces a built-in kind, and `rewriteImage`. Seed `wiki-embed`.
+- `tags/`: tags on a bare `#` trigger, registered the way limestone (the app aragonite was
+  extracted from) registers them. Seed `tags`.
+- `inline-menu/`: a document picker on `[[` and a mention menu on `@` whose pick doesn't commit
+  until the spec releases it, installed beside the demo tag menu and the bundled slash list so all four triggers share
+  one editor. Seed `inline-menu`.
+- `hloccur-scan/`: the bundled highlight-occurrences plugin with an `onScan` counter on `window`,
+  for counting rescans. Seed `hloccur-memo`.
 - `sim-mark/` and `sim-island/`: standing decoration sources for the simulation (its own section
   below). One marks every whole-word `paragraph`; the other turns three sentinel strings in the
   text into a replace widget, an inline widget, and a block badge. Both under `?seed=sim`, so
@@ -419,61 +413,88 @@ sharing one memo registration, the left with the kind switched off through the h
 `__registryEnablement` prop), and `activation/` (two editors in one process, only the first listing
 the parrot and the block badge, for the per-instance activation spec).
 
-### The WebKit lane
+### Browser engines
 
-A second contenteditable implementation, and a check the release can't merge past.
-`npm run test:e2e:webkit` sets `WEBKIT=1`, and that variable is what makes the `e2e-webkit`
-project exist at all, so `npm test` never runs it. CI carries it instead, and you run it by hand
-when you've touched selection, typing or the clipboard.
+Every e2e project runs in Chromium by default, and the `ENGINE` variable swaps the browser under
+all of them at once:
 
-What it runs: a curated slice of the typing, split/merge, selection and round-trip specs
-(`WEBKIT_LANE` in `playwright.config.ts`), plus everything under `tests/webkit/`, which only this
-lane executes.
+- `chromium`, the default, and the only engine `npm test` runs.
+- `firefox`, the Firefox you have installed (not Playwright's patched build), driven over WebDriver
+  BiDi. Set `FIREFOX_PATH` if yours isn't where Firefox installs by default.
+- `webkit`, Playwright's WebKit build.
 
-**In CI it blocks.** `.github/workflows/webkit.yml` runs the lane on every pull request to `main`
-and to `dev`. On the release PR (`dev` to `main`) its `webkit` check is required, same as the
-`ci.yml` jobs (`scripts/apply-branch-protection.mjs` lists them). On a `dev` PR the lane only
-reports, but a red there is still yours: the release PR runs the same lane over the same commits,
-and it won't merge until that's green. A red the day after a Playwright bump, with no editor
-change in sight, is the engine build moving under the same code (the `@playwright/test` version
-pins it). That's a real finding too, either an engine difference to handle or a flake to
-quarantine.
+The perf rows and the docs captures stay Chromium-only, since their numbers and pixels are
+calibrated there. Everything else runs under every engine, and the project names don't change,
+so any area script works under any engine. The commands are the same in bash and PowerShell:
 
-**Quarantining a flake.** A flake is a spec that reads red on some runs of the lane and green on
-others, same code. Since the lane blocks, one of those can hold a release on a coin toss, so it
-comes out of the lane, and only out of the lane:
+```
+npm run test:e2e:firefox
+npm run test:e2e:webkit
+node scripts/run-with-env.mjs ENGINE=webkit -- npm run test:e2e:clipboard
+```
 
-1. File the issue (`severity: watch` while nothing's confirmed) with what was seen and the
-   command that repeats it, which is the same in bash and PowerShell:
+Run them alone. Firefox and WebKit are slower than Chromium, and a machine already busy with
+another battery makes their timing-sensitive rows flake for a reason the product never had.
 
-   ```
-   node scripts/run-with-env.mjs WEBKIT=1 -- npx playwright test --project=e2e-webkit selection/pointer.spec.ts --repeat-each 10 --trace on
-   ```
+**In CI.** All three engines' full suites run, sharded, on every pull request to `dev` or `main`
+and every push to either. A change that only touches docs skips the e2e and perf work. macOS
+WebKit runs nightly on `dev` and on every pull request to `main` (`webkit-macos.yml`). How the
+shards split and which engine checks block a merge are in the headers of `scripts/e2e-shards.mjs`
+and `scripts/branch-protection-contexts.mjs`.
 
-2. Make the test's first line `test.fixme(browserName === 'webkit', '#<issue>: what it does')`,
-   with `browserName` taken from the test's fixture args. Chromium keeps running the test; the
-   lane reports it as skipped, with the issue number in the reason.
-3. Leave the requirement bullet as it is (the claim still holds under Chromium) and add an
-   indented line under it saying where the skip is, so the two files stay paired (G4.23).
-4. When the issue closes, the `fixme` goes with it.
+To read a red run, open the job summary: it has the pass, fail, flaky and skip counts and every
+failing test, and the job's artifact holds the same rows as `ci-summary.json`. A failure you
+can't match to an open issue is new, and it's yours.
 
-**Running it locally.** Alone, and on a quiet tree: the lane shares the dev server with every
-other project, and a save into `src/` mid-run triggers an SSR reload whose component
-re-registration turns the run red for a reason the product never had.
+**There's no list of expected failures.** A red on one engine is fixed, or skipped where it can't
+mean anything there:
 
-The clipboard and IME helpers branch on the engine behind the same signatures, so a spec never
-needs to know which one it got. On WebKit the clipboard goes through a dispatched clipboard event
-carrying a `DataTransfer` (its real clipboard is out of reach of the paste chord), and the IME
-driver hand-fires the composition sequence, since WebKit has no CDP session. That hand-fired
-sequence is the one exemption a source scan (G4.49 in `invariants.md`) grants, and no spec may
-copy it. So the lane can't check event order or the real paste chord; both stay pinned in
-Chromium.
+- a gesture the driver can't make on that engine (no touch in Firefox, no CDP session outside
+  Chromium) skips through `skipUnlessSupported(page, capability)` in `e2e/browser-engine.ts`,
+  which carries the reason;
+- a behavior where the engines rightly differ (where a click at a line's exact middle lands, say)
+  skips on that engine with `test.skip(browserName === 'firefox', '<what Firefox does instead>')`;
+- a real bug gets an issue and a `test.fixme(browserName === 'firefox', '#<issue>: what it does')`
+  as the test's first line, with `browserName` taken from the test's fixture args. The other
+  engines keep running it.
 
-**What a green run doesn't tell you.** Playwright's WebKit build isn't Safari and isn't a
-WKWebView, just the closest available proxy, and nothing in this repo runs on Apple hardware yet.
-Nor does it say anything about an embedding host (a desktop app's webview, say): clipboard
-retargeting, the host's own accelerator keys and image-src scheme policy are the host's
-decisions, so that class of bug is found by a real host or by a user.
+A flake gets the same `fixme` while its issue is open (`severity: watch` until it's confirmed),
+with the command that repeats it in the issue:
+
+```
+node scripts/run-with-env.mjs ENGINE=webkit -- npx playwright test selection/pointer.spec.ts --repeat-each 10 --trace on
+```
+
+Either way, leave the requirement bullet as it is (the claim still holds on the other engines) and
+add an indented line under it saying where the skip is, so the two files stay paired (G4.23). When
+the issue closes, the `fixme` goes with it.
+
+**Helpers that branch on the engine.** The clipboard and IME helpers keep one signature across
+engines, so a spec never needs to know which one it got. Every clipboard touch goes through them:
+`editor.seedClipboard`, `editor.paste()` and `editor.readClipboard` (or `createClipboardArm(page)`
+from `e2e/clipboard-arm.ts` when there's no `EditorPage`). A spec that presses the paste chord or
+calls `navigator.clipboard` itself fails a source scan (G4.212 in `invariants/scans.md`).
+
+Outside Chromium the real clipboard is out of reach (WebKit refuses the permissions, Firefox
+refuses a write before a user gesture), so the `page` fixture puts an in-page store behind
+`navigator.clipboard` and the copy and cut events, and a paste is a dispatched clipboard event
+carrying what the store holds. The IME driver hand-fires the composition sequence there, since
+only Chromium has a CDP session, and lets the page's microtasks drain after `compositionstart` the
+way a browser does before it writes the composed text. That hand-fired sequence is the one
+exemption another scan (G4.49) grants, and no spec may copy it. So event order and the real paste
+chord stay pinned in Chromium. Firefox over BiDi needs a few more helpers: `e2e/multi-click.ts`
+(BiDi can't send a double click), `e2e/selection-drag.ts` and `e2e/insert-text.ts`. And one that
+bites quietly: over BiDi, every locator action (`click`, `hover`, `scrollIntoViewIfNeeded`)
+scrolls its target to the middle of the screen first, even when it's already showing. So a spec
+that reads or sets the scroll position, and any shared helper, clicks through `e2e/click-in-place.ts`,
+which scrolls only a target that's off screen (G4.228 fails a raw one).
+
+**What a green run doesn't tell you.** Playwright's WebKit isn't Safari and isn't a WKWebView,
+just the closest proxy there is; the macOS run gets nearer (the platform's key bindings and
+fonts), and that's it. Nor does a green run say anything about an embedding host (a desktop app's
+webview, say): clipboard retargeting, a webview that refuses `navigator.clipboard` (the in-page
+store answers every call), the host's own accelerator keys and image-src scheme policy are the
+host's decisions, so that class of bug is found by a real host or by a user.
 
 ### Requirements pair one-to-one with specs
 
@@ -546,6 +567,12 @@ hydrated, since the server-rendered markup shows up well before any click handle
 `reloadReady(page)` is the reload version, and `editor.goto()` already calls `gotoReady` for you.
 A raw `page.goto` or `page.reload` fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
+One navigation per test, though. If a test wants a different URL than its `beforeEach` gave it
+(another mode, a flag in the query), it gets its own `describe` with its own `beforeEach`, instead
+of navigating again inside the test. Mounting in a mode and switching into it after load are
+different code paths, so pick the one the test is actually about.
+`src/lib/e2e/lint/one-navigation-per-test.test.ts` fails a test that navigates again.
+
 A new route gets a row in `src/lib/e2e/goto-ready.ts :: READY_BY_ROUTE`, or `gotoReady` won't
 compile for it. Every route that mounts an editor already sets `__parityDocuments`, so that's the
 usual value. If the specs read a global the route sets for them (`__syntax`, say), that one goes in
@@ -557,7 +584,52 @@ the changelog's buttons take `clickModeButton`). Each one waits until the editor
 A mode that never applied leaves you in source mode, where most live-mode assertions pass anyway,
 so a raw bridge call or toggle click fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
+### Turning a recording into a test
+
+An input recording (the file `getDiagnostics().recordInput()` makes, and the debug panel's Input
+recording section, see [`debugging.md`](debugging.md)) can be a regression test as is. Every file in
+`src/lib/e2e/recordings/` gets a test in `src/lib/e2e/tests/recordings/replay.spec.ts`, named after
+the file. It loads the recording's starting document, replays each step through a real input
+(key presses, inserted text, the IME driver, the clipboard helper), and checks the document hash and
+the selection after every step. It also records the replay and checks the events match, so a red
+says which one moved: different bytes means the editor changed, same bytes with different events
+means the driver did.
+
+To add one:
+
+1. Record it on a small document you made up, with text included (the panel's **include text**
+   box, or `window.__test.startInputRecording({ includeText: true })` on `/test/editor`). A user's
+   report gets re-recorded on a cut-down document first, since the file holds every character.
+2. Save it as `src/lib/e2e/recordings/<what-it-does>.json` and run
+   `npx playwright test --project=e2e-recordings -g <what-it-does>`.
+3. For a bug, change the broken step's `expected` entry (and every one after it) to what should
+   have happened, so the test is red until the fix lands. The hash for a document is
+   `window.__test.getSourceHash()` with that document loaded on `/test/editor`.
+
+Only Chromium replays so far, and only the steps it has a real input for: a click (as setup: the
+replay puts back the selection it left), a key or chord, text with no keydown, a composition and a
+paste. Anything else (a soft keyboard rewriting a word, a drop, undo from a menu) can't replay yet,
+so mark that file `"diagnosticOnly": true` and it's kept for reading. A browser joins
+`src/lib/e2e/recording-fixtures.ts :: REPLAYABLE` after one green run, and a recording opts into it
+with an `engines` list. `src/lib/e2e/lint/recordings.test.ts` (G4.213) fails on a recording that's
+neither replayed nor marked, or whose steps don't chain.
+
+When the editor changes what a recorded step should leave on purpose, re-bless it. That rewrites
+`expected` alone, from the replay, so the file's diff is the review (same command in bash and
+PowerShell):
+
+```sh
+node scripts/run-with-env.mjs RECORDINGS_BLESS=1 -- npx playwright test --project=e2e-recordings -g <name>
+```
+
 ### Patterns and gotchas
+
+**Every test runs on its own.** The suite is `fullyParallel` (the timed perf rows aside), so two
+tests from one file can run at the same time in different workers, in any order, or in different
+CI shards. A test that reads
+something an earlier test in its file left behind (a `let` at the top of a `describe` that one test
+sets and the next reads, say) passes when its file runs top to bottom and fails once the suite
+splits it up. Set it up in `beforeEach` or in the test itself.
 
 **Pace per-character typing with a state settle.** Two input helpers coexist.
 `editor.typeText(text)` fires one `insertText` event, fast and atomic; use it when only the end
@@ -567,6 +639,15 @@ auto-close). Per-character typing is correct **when each character settles** bef
 via a `bridge.waitForSource*` or DOM-count predicate. Unsettled `keyboard.type` in a tight loop
 races the inline re-render's caret restore and can type your text out of order, which is exactly
 as much fun to diagnose as it sounds.
+
+**Undo steps split where the spec says, never on a timer.** A user's typing groups into one
+undo step until they stop for 250 ms, and a spec can't lean on that: a loaded runner fires the
+page's timer late, and Firefox's driver can take longer than that between two keys. So every
+navigation through `gotoReady` holds the pause, and keys typed at any speed stay one undo step until
+the spec calls `editor.endTypingBatch()` (or `endTypingBatch(page)` from `e2e/typing-batch.ts`, when
+there's no `EditorPage` around). An undo, a structural edit like Enter or Tab, and typing in another
+block each end the batch on their own, so none of them needs the call first. A wait in between splits nothing, and G4.232 fails one next to an
+undo anyway. The real pause runs in one spec only, `undo-typing-pause.spec.ts`.
 
 **Container edits need Svelte's reactivity cycle to settle.** After typing inside a list item or
 blockquote, `$effect`s and post-tick commits must flush before `getSource()` reflects the
@@ -608,9 +689,9 @@ focus, type a marker character and assert on _where it appeared_.
 container next to its `SelectionOverlay` sibling, and `getBlock(i)` skips the overlay. Write
 tests against the helpers; reach for raw selectors only when adding a new one.
 
-**Marker prefixes count toward block text.** Headings and list items render their markers as
-dimmed spans inside the contenteditable, and `getBlockText(i)` returns the full text including
-the marker (the `'# Hello'` above).
+**Markers count toward block text.** A heading renders its markers as dimmed spans inside the
+contenteditable, a list item draws its marker in a cell beside it, and `getBlockText(i)` returns
+the full text, markers included (the `'# Hello'` above).
 
 **Geometry reads against an image widget need a decode barrier.** An `<img>` that hasn't decoded
 lays out 0x0, so a rect read too early is degenerate, and a click computed from it lands _inside_
@@ -620,17 +701,19 @@ the widget once the image decodes (selecting the image instead of placing a care
 bare-`boundingBox` read needs a guard first: `waitForFirstImageLoaded`
 (`tests/blocks/image/helpers.ts`), a `waitFor()`/`click()` on the widget, or an explicit fixture
 width (`![alt|120](url)`) when width is the only dimension you need. It only shows up as a
-full-suite flake, since dev-server latency decides whether the image beat your read.
+full-suite flake, since server latency under load decides whether the image beat your read.
 
 **Driving IME composition.** Two complementary halves. For handler-level contract pins (the
 composing gate, the end path, offset capture), use the unit harness:
 `test/harness/editable-surface.ts` drives the real surface skeleton with synthetic event calls,
 simulating the IME's writes by assigning `el.textContent` before firing the end. For browser
-event order and full wiring, drive real sequences in e2e via CDP:
-`page.context().newCDPSession(page)`, then `Input.imeSetComposition` per update and
-`Input.insertText` to commit; see `tests/ime-composition.spec.ts`. Mid-composition there's no
-source change to settle on; settle on the composed text arriving in the focused element's DOM
-instead.
+event order and full wiring, drive real sequences in e2e through `attachIme`
+(`e2e/simulation/ime.ts`): `compose` per update, then `commit`. In Chromium that's CDP's
+`Input.imeSetComposition` and `Input.insertText`; see `tests/ime-composition.spec.ts`. `compose`
+already waits for the composed text to show up in the focused element's DOM, since there's no
+source change mid-composition to wait on. A key pressed while the composition's still open goes
+through `ime.press(key)`: WebKit's real keydown doesn't know about the hand-fired composition, so
+it'd arrive saying `isComposing: false` and the editor would end the composition early.
 
 ## The conformance differ
 
@@ -798,9 +881,8 @@ the bytes came back exactly. A pause that fences the undo batch, then select-del
 copy-paste-undo, each asserting byte-exact restoration of its pre-detour source. They exercise
 undo, selection, and clipboard mid-session while end-state equality still holds for every seed.
 
-**Parallelism.** The `e2e-simulation` project runs `fullyParallel` on four workers, each session
-with its own page and its own seeded PRNG, so a session can't lean on state another one left
-behind.
+**Parallelism.** The `e2e-simulation` project caps itself at four workers, one browser each, and
+every session has its own page and its own seeded PRNG.
 
 ### Running it
 
@@ -812,7 +894,7 @@ behind.
 One session on its own:
 
 ```
-$ npm run test:e2e:isolated -- --project=e2e-simulation fenced-code-image-smoke.spec.ts
+$ npm run test:e2e -- --project=e2e-simulation fenced-code-image-smoke.spec.ts
 
 Running 1 test using 1 worker
 

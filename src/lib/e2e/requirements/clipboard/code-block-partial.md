@@ -22,3 +22,9 @@ clipboard never holds a lone ` ``` `.
 
 - Triple-click / Ctrl+A inside a code block then Ctrl+C: full block including fences on the clipboard.
 - Click in the body, Shift+Arrow across a fence boundary, Ctrl+C: fence is stripped from the boundary of the clipboard text.
+
+## Miss-analysis
+
+- Under Firefox on Windows the Ctrl+A copy wrote the fences and body with CRLF line breaks, since
+  the copy took the browser's selection string as is. The suite ran on Chromium alone, whose
+  string is LF.

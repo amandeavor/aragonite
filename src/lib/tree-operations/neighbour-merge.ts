@@ -7,11 +7,16 @@
 import type { CstNode, Document } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import { isBlankParagraph, readBlocks } from '../core/parser';
-import { firstLineEnding, splitLines, trimTrailingLineEnding } from '../core/lines';
+import {
+	firstLineEnding,
+	ownTrailingLineEnding,
+	splitLines,
+	trimTrailingLineEnding
+} from '../core/lines';
 import { tableTakesLine } from '../core/parsers/table';
 import { assignChildIdsDeep } from '../block-id';
 import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
-import { blockReadingNotFinal, type GrammarView } from '../schema/block-openers';
+import { blockReadingNotFinal, readsOnIn, type GrammarView } from '../schema/block-openers';
 import { ensureEditableContainers } from '../schema/opened-reading';
 import type { SharingState } from './sharing';
 import { spliceMany } from './splice-many';
@@ -50,6 +55,7 @@ export function absorbSeamReading(
 	onBeforeSplice?: () => void
 ): SeamAbsorption {
 	const read = (bytes: string) => readBlocks(bytes, { grammar, scope: 'fragment' });
+	const readsOn = readsOnIn(grammar);
 	const { children } = body;
 	if (seamLeft < 0) return { at: 0, span: 0, eaten: 0, spliced: false };
 	let left = seamLeft;
@@ -70,11 +76,13 @@ export function absorbSeamReading(
 		if (separateTableFollower(body, right, sharing, grammar)) break;
 		// A context-dependent kind has no standalone reading, so a join touching it cannot be asked.
 		if (window.some((node) => tryGetBlockKindDescriptor(node.kind)?.contextDependentKind)) break;
+		// A block that reads on takes the blocks below in one re-read, the unfinished-reading walk's.
+		if (readsOn(children[at + span - 1].raw)) break;
 		if (probe !== undefined && declinesOnHeadLine(window, probe - at, read, grammar)) break;
 		probe = undefined;
 		const bytes = joinedWindowBytes(window, window.length);
 		const reparsed = read(bytes);
-		const blocks = reparsed.children;
+		let blocks = reparsed.children;
 		// Content blocks only: the blank lines an absorbed block held come back as blank blocks.
 		if (blocks.length === 0 || contentCount(blocks) > contentCount(window)) break;
 		// A count that did not drop is still a merge when the head took content from the block
@@ -84,24 +92,140 @@ export function absorbSeamReading(
 		// setext underline below it), so what must survive is the head's own reading, not its kind.
 		if (blocks[0].kind !== window[0].kind && !readsAsItselfAlone(window[0], read)) break;
 		onBeforeSplice?.();
-		absorbFragmentPeel(body, at + window.length, reparsed.suffix, blocks, sharing);
-		blocks[0].leadingTrivia = window[0].leadingTrivia;
-		// The window joins two blocks at least, so its bytes hold the document's line ending.
-		const lineEnding = firstLineEnding(bytes) ?? '\n';
-		for (const block of blocks) {
-			ensureEditableContainers(block, lineEnding);
-			sharing.stamp(block);
-			assignChildIdsDeep(block);
-		}
-		if (tracked) retrackThroughFold(tracked, at, window, blocks);
-		// The merge re-divides the owner's children, which its child spans are laid out against.
-		retireChildSpans(body);
-		spliceMany(children, at, window.length, blocks);
+		blocks = withLowerEdge(body, at + window.length, bytes, reparsed, read, sharing);
+		installReading(body, at, window, blocks, bytes, sharing, tracked);
 		eaten += window.length - blocks.length;
 		span = blocks.length;
 		spliced = true;
 	}
 	return { at, span, eaten, spliced };
+}
+
+/** The blocks a re-read of `window`'s bytes gave, put in its place, the head keeping its line. */
+function installReading(
+	body: BodyParent,
+	at: number,
+	window: readonly CstNode[],
+	blocks: CstNode[],
+	bytes: string,
+	sharing: SharingState,
+	tracked: TrackedPosition | undefined
+): void {
+	blocks[0].leadingTrivia = window[0].leadingTrivia;
+	// The window joins two blocks at least, so its bytes hold the document's line ending.
+	const lineEnding = firstLineEnding(bytes) ?? '\n';
+	for (const block of blocks) {
+		ensureEditableContainers(block, lineEnding);
+		sharing.stamp(block);
+		assignChildIdsDeep(block);
+	}
+	if (tracked) retrackThroughFold(tracked, at, window, blocks);
+	// The merge re-divides the owner's children, which its child spans are laid out against.
+	retireChildSpans(body);
+	spliceMany(body.children, at, window.length, blocks);
+}
+
+// ── The join question ──
+
+/**
+ * How two blocks read flush against each other: as themselves, as the lower folded into the
+ * upper's last paragraph, as something else a blank line would undo, or as one a blank line can't
+ * part (a list taking indented code in across any number of them).
+ */
+export type JoinReading = 'stands' | 'folds' | 'separate' | 'merge';
+
+/** Who left a join: an edit that put a block there, or one that took the block between away. */
+export type JoinOrigin = 'placed' | 'uncovered';
+
+function resolveJoin(prev: CstNode, next: CstNode, grammar: GrammarView): JoinReading {
+	const read = (bytes: string) => readBlocks(bytes, { grammar, scope: 'fragment' }).children;
+	const flush = read(prev.raw + next.raw);
+	if (readsAsPair(flush, prev, next)) return 'stands';
+	// The block above isn't last, so its line ending is the document's.
+	if (!readsAsPair(read(prev.raw + ownTrailingLineEnding(prev.raw) + next.raw), prev, next)) {
+		return 'merge';
+	}
+	// The lower block folds in as itself (two quotes as one) or as prose under a paragraph; a table,
+	// a rule or indented code read as paragraph text would change its kind.
+	const [head] = flush;
+	const tookText = head.kind === prev.kind && head.raw.length > prev.raw.length;
+	const keepsKind = next.kind === prev.kind || (next.kind === 'paragraph' && endsInParagraph(head));
+	return tookText && keepsKind ? 'folds' : 'separate';
+}
+
+/** Keep child `at` apart from the block above with a blank line where its origin asks: placed,
+ *  wherever flush they'd read otherwise; uncovered, only where a block would change its kind. */
+export function separateJoin(
+	body: BodyParent,
+	at: number,
+	origin: JoinOrigin,
+	grammar: GrammarView,
+	sharing: SharingState
+): void {
+	const { children } = body;
+	if (at <= 0 || at >= children.length) return;
+	const prev = children[at - 1];
+	const next = children[at];
+	if (next.leadingTrivia !== '' || isBlankParagraph(prev) || isBlankParagraph(next)) return;
+	const reading = resolveJoin(prev, next, grammar);
+	if (reading === 'separate' || (reading === 'folds' && origin === 'placed')) {
+		mintSeparator(body, at, sharing);
+	}
+}
+
+/** Whether a re-read gave back the window's own blocks, each with its kind and bytes. */
+const readsAsWindow = (blocks: readonly CstNode[], window: readonly CstNode[]): boolean =>
+	blocks.length === window.length &&
+	blocks.every((block, i) => block.kind === window[i].kind && block.raw === window[i].raw);
+
+/** Whether `blocks` are `prev` and `next` again, each with its own bytes and kind. */
+const readsAsPair = (blocks: readonly CstNode[], prev: CstNode, next: CstNode): boolean =>
+	blocks.length === 2 &&
+	blocks[0].kind === prev.kind &&
+	blocks[0].raw === prev.raw &&
+	blocks[1].kind === next.kind &&
+	blocks[1].raw === next.raw;
+
+/** Whether a block's last line sits in a paragraph, at any depth: where lazy text continues. */
+function endsInParagraph(node: CstNode): boolean {
+	if (node.kind === 'paragraph') return true;
+	const last = node.children?.at(-1);
+	return last !== undefined && endsInParagraph(last);
+}
+
+// ── The span re-read ──
+
+/** Re-read children `top` through `bottom` as one span, taken where it reads otherwise: a
+ *  construct backed out at the top that a line at the bottom now finishes (structural-edits.md § Structural operations). */
+export function absorbSpanReading(
+	body: BodyParent,
+	top: number,
+	bottom: number,
+	change: StructuralChange,
+	grammar: GrammarView,
+	sharing: SharingState,
+	tracked?: TrackedPosition
+): SettledSplice {
+	const unchanged = { change, landing: tracked?.index ?? top };
+	const window = body.children.slice(top, bottom + 1);
+	if (window.length < 2) return unchanged;
+	if (window.some((node) => tryGetBlockKindDescriptor(node.kind)?.contextDependentKind)) {
+		return unchanged;
+	}
+	const read = (bytes: string) => readBlocks(bytes, { grammar, scope: 'fragment' });
+	const bytes = joinedWindowBytes(window, window.length);
+	const reparsed = read(bytes);
+	if (reparsed.children.length === 0 || readsAsWindow(reparsed.children, window)) return unchanged;
+	const blocks = withLowerEdge(body, bottom + 1, bytes, reparsed, read, sharing);
+	installReading(body, top, window, blocks, bytes, sharing, tracked);
+	const eaten = window.length - blocks.length;
+	const settled = foldAbsorbIntoChange(change, {
+		at: top,
+		span: blocks.length,
+		eaten,
+		spliced: true
+	});
+	return { change: settled, landing: tracked?.index ?? top };
 }
 
 /**
@@ -357,32 +481,27 @@ function preChangeIndex(
 	return inherited === undefined ? null : change.at + inherited;
 }
 
-/** The fragment parse's trailing blank run stays in the last block's raw at the body's tail and
- *  joins the follower's run elsewhere (`docs/design/syntax-tree.md` § Blank lines). */
-function absorbFragmentPeel(
+/**
+ * The merged blocks once the blank lines at the window's lower edge are read with them: a re-read
+ * that ends in a blank line takes the follower's separator into the same reading, as a reload does.
+ */
+function withLowerEdge(
 	body: BodyParent,
 	followerIndex: number,
-	peel: string,
-	blocks: CstNode[],
+	bytes: string,
+	reparsed: Document,
+	read: (bytes: string) => Document,
 	sharing: SharingState
-): void {
+): CstNode[] {
+	const blocks = reparsed.children;
 	const follower = body.children[followerIndex];
 	if (!follower) {
-		blocks[blocks.length - 1].raw += peel;
-		return;
+		blocks[blocks.length - 1].raw += reparsed.suffix;
+		return blocks;
 	}
-	// Blocks ending blank already hold the run's one separating line, so every line of the
-	// follower's own becomes a blank block of the run instead of a second separator.
-	const runSeparated = isBlankParagraph(blocks[blocks.length - 1]);
-	if (peel === '' && !(runSeparated && follower.leadingTrivia !== '')) return;
-	const lines = blankLinesOf(peel + follower.leadingTrivia);
-	writeSeparator(body, followerIndex, lines.length > 1 || runSeparated ? '' : lines[0], sharing);
-	const first = runSeparated ? 0 : 1;
-	for (let i = first; i < lines.length; i++) {
-		const trivia = !runSeparated && i === 1 ? lines[0] : '';
-		blocks.push({ kind: 'paragraph', leadingTrivia: trivia, raw: lines[i] });
-	}
+	const endsBlank = reparsed.suffix !== '' || isBlankParagraph(blocks[blocks.length - 1]);
+	if (!endsBlank || (follower.leadingTrivia === '' && reparsed.suffix === '')) return blocks;
+	const edge = read(bytes + follower.leadingTrivia);
+	writeSeparator(body, followerIndex, edge.suffix, sharing);
+	return edge.children;
 }
-
-/** A blank run split back into the lines it is made of, each keeping its own ending. */
-const blankLinesOf = (run: string): string[] => run.match(/[^\n]*\n|[^\n]+$/g) ?? [];

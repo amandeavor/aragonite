@@ -1,8 +1,8 @@
 /**
- * Keyboard extension geometry for an intra-table rectangle. Shift+Arrow grows the rectangle
- * cell-by-cell rather than walking the next document-order leaf, which would descend into the
- * table and snap the focus back to cellIdx 0. Vertical extension exits at the row boundary;
- * horizontal extension clamps at the column edges, since a rectangle has no sideways exit.
+ * Keyboard extension geometry for a selection focus on a table cell. Vertical keys step a whole row
+ * rather than walking the next document-order leaf, and exit at the table's first or last row. A
+ * rectangle inside one table also steps sideways, clamped at the column edges, since a rectangle
+ * has no sideways exit.
  */
 
 import type { DocumentView } from '../core/node-views';
@@ -19,16 +19,17 @@ export type TableRectExtension =
 	| { kind: 'cell'; offset: number }
 	| { kind: 'exit'; direction: 'forward' | 'backward'; fromCellPath: number[] };
 
-/** The extension a Shift+Arrow produces for an intra-table rectangle, or null unless the selection
- *  is a same-table pair of cell endpoints (`anchor === focus` is a one-cell rectangle). */
-export function intraTableRectExtension(
+/** What a Shift+Arrow does to a focus on a cell; null off a cell, and for a sideways key unless the
+ *  anchor is a cell of the same table (`anchor === focus` is a one-cell rectangle). */
+export function tableFocusExtension(
 	doc: DocumentView,
 	anchor: SelectionPoint | null,
 	focus: SelectionPoint | null,
 	key: ArrowKey
 ): TableRectExtension | null {
-	if (!anchor?.cellCoordinate || !focus?.cellCoordinate) return null;
-	if (!pathsEqual(anchor.path, focus.path)) return null;
+	if (!focus?.cellCoordinate) return null;
+	const rectangle = !!anchor?.cellCoordinate && pathsEqual(anchor.path, focus.path);
+	if (!rectangle && (key === 'ArrowLeft' || key === 'ArrowRight')) return null;
 	const node = nodeAt(doc, focus.path);
 	if (!node || !countsCells(node)) return null;
 
@@ -37,7 +38,7 @@ export function intraTableRectExtension(
 	if (colCount === 0 || rowCount === 0) return null;
 
 	const path = focus.path;
-	const { row, col } = cellRowCol(cellIndexOf(focus, 'intraTableRectExtension'), colCount);
+	const { row, col } = cellRowCol(cellIndexOf(focus, 'tableFocusExtension'), colCount);
 	const at = (r: number, c: number): TableRectExtension => ({
 		kind: 'cell',
 		offset: rowMajorCellIndex(r, c, colCount)

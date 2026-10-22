@@ -2,11 +2,13 @@ import { test, expect } from '../fixtures';
 import { gotoReady } from '../goto-ready';
 import { SHOWCASE_MD, scanShowcase } from '../showcase-document';
 import { clickModeButton } from '../mode-switch';
+import { edgeKey } from '../platform-keys';
+import { clickInPlace } from '../click-in-place';
+import { clickShowcaseSetting, openShowcaseSettings, showcaseSetting } from '../showcase-settings';
 
-// The `/` showcase header: theme, drag handles, the debug panel, and the table of contents as
-// navigation. This route has no `window.__test` bridge, so the cases read rendered DOM only.
-// The mode toggle and the bundled plugins have their own specs. What the demo document says is
-// read from its bytes, never written out here, since it is rewritten by hand.
+// The `/` showcase bar (its settings popover and links) and the table of contents as navigation,
+// read from rendered DOM since this route has no `window.__test` bridge. The mode toggle and the
+// bundled plugins have their own specs; the demo document is read from its bytes, never quoted.
 // Requirements: e2e/requirements/showcase-chrome.md.
 
 test.describe('/ showcase chrome', () => {
@@ -28,10 +30,10 @@ test.describe('/ showcase chrome', () => {
 		// Light is the showcase's default; the editor's own `theme` default stays dark.
 		await expect(editor).toHaveAttribute('data-editor-theme', 'light');
 
-		await page.getByTestId('theme-toggle').click();
+		await clickShowcaseSetting(page, 'theme-toggle');
 		await expect(editor).toHaveAttribute('data-editor-theme', 'dark');
 
-		await page.getByTestId('theme-toggle').click();
+		await clickShowcaseSetting(page, 'theme-toggle');
 		await expect(editor).toHaveAttribute('data-editor-theme', 'light');
 	});
 
@@ -45,12 +47,12 @@ test.describe('/ showcase chrome', () => {
 		// The prop is read once, so the toggle remounts the editor; an edit made beforehand is
 		// the only way to see whether the route carried the current source across.
 		const intro = page.locator('.block-host [contenteditable]').first();
-		await intro.click();
-		await page.keyboard.press('End');
+		await clickInPlace(intro);
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type(' ZZMARKER');
 		await expect(intro).toContainText('ZZMARKER');
 
-		await page.getByTestId('drag-handles-toggle').click();
+		await clickShowcaseSetting(page, 'drag-handles-toggle');
 		// Not zero: an image's own handle does not answer to the toggle.
 		await expect
 			.poll(() =>
@@ -59,18 +61,21 @@ test.describe('/ showcase chrome', () => {
 			.toBe(0);
 		await expect(page.locator('.editor')).toContainText('ZZMARKER');
 
-		await page.getByTestId('drag-handles-toggle').click();
+		await clickShowcaseSetting(page, 'drag-handles-toggle');
 		await expect.poll(() => handles.count()).toBeGreaterThan(0);
 	});
 
 	test('reading mode disables the drag-handles toggle', async ({ page }) => {
-		const toggle = page.getByTestId('drag-handles-toggle');
-		await expect(toggle).toBeEnabled();
+		await expect(await showcaseSetting(page, 'drag-handles-toggle')).toBeEnabled();
 
 		// The editor turns drag handles off in reading mode; a toggle that stayed enabled would
 		// look active while doing nothing.
 		await clickModeButton(page, 'reading');
+		const toggle = await showcaseSetting(page, 'drag-handles-toggle');
 		await expect(toggle).toBeDisabled();
+		// The reason is the switch's description, so its name stays the two words of its label.
+		await expect(toggle).toHaveAccessibleName('drag handles');
+		await expect(toggle).toHaveAccessibleDescription('Reading mode hides the drag handles');
 	});
 
 	test('hotkey opens the debug panel and the header affordance closes it', async ({ page }) => {
@@ -85,8 +90,30 @@ test.describe('/ showcase chrome', () => {
 			panel.locator('.debug-section[data-section-title="CST tree"] .debug-section-body')
 		).toContainText('heading');
 
-		await page.getByTestId('debug-toggle').click();
+		// The bar pads itself past the open panel, so the settings button is not under it.
+		await clickShowcaseSetting(page, 'debug-toggle');
 		await expect(panel).toHaveCount(0);
+	});
+
+	test('the settings popover closes on Escape, handing focus back, and on a press outside', async ({
+		page
+	}) => {
+		const trigger = page.getByTestId('showcase-settings');
+		await openShowcaseSettings(page);
+		await page.keyboard.press('Escape');
+		await expect(page.getByTestId('theme-toggle')).toHaveCount(0);
+		await expect(trigger).toBeFocused();
+
+		// The bar's empty middle-left takes no focus, so only the press itself can close it.
+		await openShowcaseSettings(page);
+		await clickInPlace(page.locator('.showcase-bar'), { position: { x: 300, y: 26 } });
+		await expect(page.getByTestId('theme-toggle')).toHaveCount(0);
+		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+	});
+
+	test('the wordmark links to the repository', async ({ page }) => {
+		const wordmark = page.getByRole('link', { name: 'aragonite on GitHub' });
+		await expect(wordmark).toHaveAttribute('href', 'https://github.com/voithos-labs/aragonite');
 	});
 
 	test('selecting text in live mode floats the toolbar and its bold button wraps the run', async ({
@@ -103,8 +130,8 @@ test.describe('/ showcase chrome', () => {
 		await expect(page.getByTestId('insert-toolbar')).toHaveCount(1);
 
 		const intro = page.locator('.block-host [contenteditable]').first();
-		await intro.click();
-		await page.keyboard.press('Home');
+		await clickInPlace(intro);
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight');
 		await expect(toolbar).toBeVisible();
 
@@ -114,7 +141,7 @@ test.describe('/ showcase chrome', () => {
 		const header = await page.locator('.showcase-header').boundingBox();
 		expect(bar!.y).toBeGreaterThan(header!.y + header!.height);
 
-		await page.getByTestId('toolbar-format.toggleStrong').click();
+		await clickInPlace(page.getByTestId('toolbar-format.toggleStrong'));
 		// Live mode shows no markers, so the wrap shows up as bold text itself.
 		await expect(intro.locator('strong').first()).toBeVisible();
 
@@ -130,10 +157,10 @@ test.describe('/ showcase chrome', () => {
 		const table = page.getByTestId('insert-table');
 		await expect(table).toBeDisabled();
 
-		await page.locator('.block-host [contenteditable]').first().click();
+		await clickInPlace(page.locator('.block-host [contenteditable]').first());
 		await expect(table).toBeEnabled();
 
-		await table.click();
+		await clickInPlace(table);
 		await expect(page.locator('.table-block').first()).toBeVisible();
 	});
 
@@ -142,7 +169,7 @@ test.describe('/ showcase chrome', () => {
 		expect(await editor.evaluate((el) => el.scrollTop)).toBe(0);
 
 		// The last entry, so the jump is unmistakable whichever sections the document holds.
-		await page.locator('.toc-block-item').last().click();
+		await clickInPlace(page.locator('.toc-block-item').last());
 
 		await expect.poll(() => editor.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 	});
@@ -150,7 +177,7 @@ test.describe('/ showcase chrome', () => {
 	test('the changelog link navigates to the changelog route', async ({ page }) => {
 		// `resolve()` under a configured base path: a wrong href lands on a 404 with a URL that
 		// still looks plausible, so what the destination page shows is the real check.
-		await page.getByRole('link', { name: 'changelog' }).click();
+		await clickInPlace(page.getByRole('link', { name: 'changelog' }));
 		await expect(page).toHaveURL(/\/changelog\/?$/);
 		await expect(page.locator('.changelog-tag')).toBeVisible();
 	});

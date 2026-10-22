@@ -45,8 +45,8 @@ export async function setCalloutKind(ctx: SimContext): Promise<void> {
  * plain blockquote that changes the source and round-trips, and no other check would notice.
  */
 export async function pasteGithubAlert(ctx: SimContext): Promise<void> {
-	await ctx.page.evaluate(() => navigator.clipboard.writeText('> [!TIP]\n> Pasted alert.\n'));
-	await ctx.page.keyboard.press('ControlOrMeta+v');
+	await ctx.editor.seedClipboard('> [!TIP]\n> Pasted alert.\n');
+	await ctx.editor.paste();
 	await ctx.page.waitForFunction(
 		() => {
 			const t = (window as any).__test;

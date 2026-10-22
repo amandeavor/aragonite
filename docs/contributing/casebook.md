@@ -49,7 +49,7 @@ view.raw = 'rewritten\n';
 
 Running JS bypasses types, so a dev integrity check backs it up: it fingerprints each undo entry
 when pushed and re-verifies at every commit and restore, which catches the write at the offending
-commit instead of at the undo. **Spec:** `docs/design/invariants.md` (G1.9).
+commit instead of at the undo. **Spec:** `docs/design/invariants/runtime.md` (G1.9).
 ([rule 1](rules.md#the-five-rules))
 
 ## Reactive state crosses module boundaries as getters, never values
@@ -95,8 +95,8 @@ animation cadence, an undo debounce, a deadline, the drawn caret's paint at the 
 with the reason it isn't sequencing. Any other timer call reds it ([`rules.md`](rules.md) § The bug
 shape to fear: sibling-path parity shows the row).
 
-**Spec:** `docs/design/editor.md` § Undo / redo (the commit's tick step) and § Standing
-directions (how the predecessor died). ([rule 3](rules.md#the-five-rules))
+**Spec:** `docs/design/commit-and-undo.md` § The commit primitive (its tick step).
+([rule 3](rules.md#the-five-rules))
 
 ## Rules live at choke points, not call sites
 
@@ -121,7 +121,7 @@ const composed: DocPath = [0, 1];
 A dev guard before every commit's mutation catches the JS callers the type can't reach (it's the
 guard [`rules.md`](rules.md) shows as its example).
 
-**Spec:** `docs/design/editor.md` § Undo / redo. ([rule 4](rules.md#the-five-rules), and
+**Spec:** `docs/design/commit-and-undo.md` § Undo / redo. ([rule 4](rules.md#the-five-rules), and
 [§ sibling-path parity](rules.md#the-bug-shape-to-fear-sibling-path-parity))
 
 ## DOM to raw offset translation has one home

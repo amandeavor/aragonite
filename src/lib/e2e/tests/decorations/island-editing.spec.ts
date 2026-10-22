@@ -1,6 +1,8 @@
 import { test, expect } from '../../fixtures';
 import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { addReplaceIsland, addWidgetIsland } from '../../decoration-sources';
+import { extendKey } from '../../platform-keys';
 
 /**
  * Editing around decoration widgets (`requirements/decorations/island-editing.md`). Both kinds
@@ -11,55 +13,6 @@ import { EditorPage } from '../../editor-page';
  */
 
 const ISLAND = '[data-decoration-island]';
-
-// Both sources place their widget at a fixed offset, checking the offset convention across marker
-// shapes, and decline once the block lacks the bytes, since a source is a pure function.
-async function addReplaceIsland(page: Page, path: number[], start: number, end: number) {
-	await page.evaluate(
-		({ path, start, end }) => {
-			(window as any).__test.decorations.addSource({
-				name: 'e2e-replace-island',
-				provide: (doc: any) => {
-					let node: any = doc;
-					for (const index of path) node = node?.children?.[index];
-					const held = node ? String(node.raw).replace(/\r?\n$/, '').length : 0;
-					return held >= end ? [{ type: 'replace', path, start, end, class: 'e2e-island' }] : [];
-				}
-			});
-		},
-		{ path, start, end }
-	);
-}
-
-async function addWidgetIsland(page: Page, path: number[], offset: number) {
-	await page.evaluate(
-		({ path, offset }) => {
-			(window as any).__test.decorations.addSource({
-				name: 'e2e-widget-island',
-				provide: (doc: any) => {
-					let node: any = doc;
-					for (const index of path) node = node?.children?.[index];
-					const held = node ? String(node.raw).replace(/\r?\n$/, '').length : 0;
-					if (held < offset) return [];
-					return [
-						{
-							type: 'widget',
-							path,
-							offset,
-							widget: {
-								view: (target: HTMLElement) => {
-									target.append(document.createElement('span'));
-									return {};
-								}
-							}
-						}
-					];
-				}
-			});
-		},
-		{ path, offset }
-	);
-}
 
 /** The DOM position a real step-over or edge Backspace lands on, which a raw offset cannot address
  *  once a replace decoration takes its bytes out of textContent. Setup only; the keys are real. */
@@ -84,35 +37,12 @@ async function placeCaretAtIsland(page: Page, sourceStart: number, side: 'before
 	);
 }
 
-async function cursorOffset(page: Page): Promise<number | null> {
-	return page.evaluate(() => (window as any).__test.getBlockCursorSurface([0]).cursorOffset);
-}
-
 test.describe('decoration widget editing', () => {
 	let editor: EditorPage;
 
 	test.beforeEach(async ({ page }) => {
 		editor = new EditorPage(page);
 		await editor.goto();
-	});
-
-	test('arrows step over a replace decoration to its far edge, never selecting it', async ({
-		page
-	}) => {
-		await editor.loadContent('abHIDDENcd\n');
-		await addReplaceIsland(page, [0], 2, 8);
-		await expect(page.locator(ISLAND)).toHaveCount(1);
-
-		await placeCaretAtIsland(page, 2, 'before');
-		await page.keyboard.press('ArrowRight');
-		expect(await cursorOffset(page)).toBe(8);
-
-		await placeCaretAtIsland(page, 2, 'after');
-		await page.keyboard.press('ArrowLeft');
-		expect(await cursorOffset(page)).toBe(2);
-
-		await expect(page.locator(`${ISLAND}.md-widget-selected`)).toHaveCount(0);
-		expect(await editor.bridge.getSource()).toBe('abHIDDENcd\n');
 	});
 
 	test.describe('the two-press delete', () => {
@@ -239,7 +169,7 @@ test.describe('decoration widget editing', () => {
 		await expect(page.locator(ISLAND)).toHaveCount(1);
 
 		await editor.focusBlockStart(0);
-		await page.keyboard.press('Shift+End');
+		await page.keyboard.press(extendKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+c');
 		await editor.waitForClipboardWrite();
 

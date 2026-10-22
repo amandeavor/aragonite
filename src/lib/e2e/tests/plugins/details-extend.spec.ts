@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { DetailsPage, activeBlockPath, bodyHostCount, capturedErrors } from './details-helpers';
 import { countEditEvents } from '../selection/multi-scope-event-count/helpers';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 /**
  * Growing a selection past a closed `<details>` with Shift+Arrow
@@ -154,12 +155,12 @@ test.describe('plugin container: extending a selection past a closed <details>',
 		await editor.loadContent('Above\n\n' + CLOSED);
 		await editor.focusBlockAtPath([0], 2);
 		// Past the title row's first character: the end then reaches into the hidden body.
-		await page.keyboard.press('Shift+ControlOrMeta+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await expect.poll(() => focusPath(editor)).toEqual({ path: [1, 0], offset: 3 });
 
 		await page.keyboard.press('ControlOrMeta+x');
 		await editor.bridge.waitForSourceEquals('Ab\n');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await editor.paste();
 
@@ -172,7 +173,7 @@ test.describe('plugin container: extending a selection past a closed <details>',
 	}) => {
 		await editor.loadContent('Above\n\n' + CLOSED);
 		await editor.focusBlockAtPath([0], 0);
-		await page.keyboard.press('Shift+ControlOrMeta+End');
+		await page.keyboard.press(extendKey('docEnd'));
 		await expect.poll(() => focusPath(editor)).toEqual({ path: [1, 0], offset: 3 });
 
 		await page.keyboard.press('Backspace');

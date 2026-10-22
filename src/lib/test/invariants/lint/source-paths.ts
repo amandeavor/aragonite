@@ -81,11 +81,13 @@ export const SOURCE = {
 	nativeBridge: 'src/lib/selection/native-bridge.ts',
 	rangeDelete: 'src/lib/selection/range-delete.ts',
 	crossBlockKeydown: 'src/lib/selection/cross-block/keydown.ts',
+	keyboardExtend: 'src/lib/selection/keyboard-extend.ts',
 	pointerPreamble: 'src/lib/selection/cross-block/pointer.ts',
 	rangeReplace: 'src/lib/selection/cross-block/range-replace.ts',
 
 	// ── Caret geometry and windowing ────────────────────────────────────────
 	coordinateBrands: 'src/lib/caret/coordinate-spaces.ts',
+	deleteExtent: 'src/lib/caret/delete-extent.ts',
 	domWalk: 'src/lib/caret/dom-walk.ts',
 	blockContentSelector: 'src/lib/caret/block-content-selector.ts',
 	blockElLookup: 'src/lib/caret/block-el-lookup.ts',
@@ -102,10 +104,12 @@ export const SOURCE = {
 	editorRootGestures: 'src/lib/components/editor-root/gestures.ts',
 	blockList: 'src/lib/components/BlockList.svelte',
 	blockHost: 'src/lib/components/BlockHost.svelte',
+	domBlockView: 'src/lib/components/dom-block-view/DomBlockView.svelte',
 	searchBar: 'src/lib/components/SearchBar.svelte',
 	selectionOverlay: 'src/lib/components/overlays/SelectionOverlay.svelte',
 	editableLeaf: 'src/lib/components/blocks/editable/editable-leaf.ts',
 	surfaceWrite: 'src/lib/components/blocks/editable/surface-write.ts',
+	clipboardStep: 'src/lib/components/blocks/editable/clipboard-step.ts',
 	textBlockComponent: 'src/lib/components/blocks/text/TextEditableBlock.svelte',
 	textClipboard: 'src/lib/components/blocks/text/text-clipboard.ts',
 	edgePolicyDispatch: 'src/lib/components/blocks/text/edge-policy-dispatch.ts',
@@ -121,6 +125,7 @@ export const SOURCE = {
 	imageProperties: 'src/lib/components/image/ImageProperties.svelte',
 	imageWidgetEditing: 'src/lib/components/image/image-widget-editing.ts',
 	linkCard: 'src/lib/components/link-card/LinkCard.svelte',
+	readingFocus: 'src/lib/components/editor-root/reading-focus.svelte.ts',
 	linkCardHost: 'src/lib/components/link-card/LinkCardHost.svelte',
 
 	// ── Bundled plugins and styles ──────────────────────────────────────────
@@ -179,7 +184,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	htmlTagGrammar: 'export type HtmlFormKind',
 	linkReferenceResolver: 'export function normalizeLinkLabel',
 	inlineCache: 'export function getInlineContent',
-	inlineWidgets: 'export function mintWidgetShell',
+	inlineWidgets: 'export function widgetElByStart',
 	inlineVisibility: 'export type MarkerFamily',
 	inlineWalk: 'export function* inlineDescendants',
 	formatToggle: 'export interface InlineFormatEdit',
@@ -206,7 +211,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	unshare: 'export function walkUnsharing',
 	separatorWrites: 'export function writeSeparator',
 	neighbourMerge: 'export function absorbWindowSeams',
-	settle: 'export function clearRedundantSeparator',
+	settle: 'export function settleEdit',
 	contentWrite: 'export interface LegalWrite',
 	nodeOps: 'export interface SplitResult',
 	chainRebuild: 'export function attachedChainPrefix',
@@ -230,11 +235,13 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	nativeBridge: 'export function readNativeCaretInBlock',
 	rangeDelete: 'export interface TableRowSplice',
 	crossBlockKeydown: 'export interface CrossBlockKeydown',
+	keyboardExtend: 'export interface KeyboardExtendContext',
 	pointerPreamble: 'export interface CrossBlockPointer',
 	rangeReplace: 'export type RangeInsertion',
 
 	// ── Caret geometry and windowing ────────────────────────────────────────
 	coordinateBrands: 'export type RawOffset',
+	deleteExtent: 'export const DECIDED_DELETES',
 	domWalk: 'export function* domDescendants',
 	blockContentSelector: 'export const BLOCK_CONTENT_SELECTOR',
 	blockElLookup: 'export function blockContentElAt',
@@ -251,10 +258,12 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	editorRootGestures: 'export function createRootGestures(',
 	blockList: 'function ambientFor(',
 	blockHost: 'function onRenderError(',
+	domBlockView: 'export function viewRef(',
 	searchBar: 'function onFindKeydown(',
 	selectionOverlay: 'function textLineHeight(',
 	editableLeaf: 'export type EditableLeafMode',
 	surfaceWrite: 'export type WriteIntent',
+	clipboardStep: 'export function shownSelectionText(',
 	textBlockComponent: 'const widgetEdgeOwner = {};',
 	textClipboard: 'export interface TextClipboardDeps',
 	edgePolicyDispatch: 'export type EdgePolicy',
@@ -270,6 +279,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	imageProperties: 'function draftFields(',
 	imageWidgetEditing: 'export function imageWidgetOnSelectedKey',
 	linkCard: 'function focusStops(',
+	readingFocus: 'export function createReadingFocus',
 	linkCardHost: 'function opensCard(',
 
 	// ── Bundled plugins and styles ──────────────────────────────────────────
@@ -290,11 +300,11 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 
 	// ── Demo routes and the consumer example ────────────────────────────────
 	appCss: 'Page-chrome tokens for the demo routes',
-	showcaseRoute: 'function toggleOccurrences(',
+	showcaseRoute: 'function mountBar(',
 	calloutReferenceKind: 'export const CALLOUT',
 	memoReferenceBlock: 'class="memo-block"',
 	consumerPluginProbe: 'export const _probe',
-	consumerQuickstartRoute: "const source = '# Hello\\n';",
+	consumerQuickstartRoute: "'> That is not dead which can eternal lie,\\n",
 
 	// ── Build config ────────────────────────────────────────────────────────
 	viteConfig: 'optimizeDeps:',
@@ -329,6 +339,7 @@ export const SOURCE_DIR = {
 	plugins: 'src/lib/plugins/',
 	latexPlugin: 'src/lib/plugins/latex/',
 	testing: 'src/lib/testing/',
+	debug: 'src/lib/debug/',
 	unitTests: 'src/lib/test/',
 	unitPerfTests: 'src/lib/test/perf/',
 	unitLint: 'src/lib/test/invariants/lint/',
@@ -346,7 +357,8 @@ export const SOURCE_DIR = {
 	consumerExample: 'examples/consumer/src/',
 	examples: 'examples/',
 	adapterSuiteTests: 'examples/adapter-suite/tests/',
-	pluginGuidePages: 'docs/guide/plugin-guide/'
+	pluginGuidePages: 'docs/guide/plugin-guide/',
+	invariantCatalog: 'docs/design/invariants/'
 } as const;
 
 /** An entry each directory must hold directly, so a directory entry pointed at a sibling fails. */
@@ -375,6 +387,7 @@ export const SOURCE_DIR_ANCHORS: Record<keyof typeof SOURCE_DIR, string> = {
 	plugins: 'admonitions',
 	latexPlugin: 'math-shape.ts',
 	testing: 'conformance-core.ts',
+	debug: 'input-recorder.ts',
 	unitTests: 'harness',
 	unitPerfTests: 'amplification.test.ts',
 	unitLint: 'source-paths.ts',
@@ -392,5 +405,6 @@ export const SOURCE_DIR_ANCHORS: Record<keyof typeof SOURCE_DIR, string> = {
 	consumerExample: 'plugin-probe.ts',
 	examples: 'consumer',
 	adapterSuiteTests: 'page-contract.spec.ts',
-	pluginGuidePages: 'parrot-frames.md'
+	pluginGuidePages: 'parrot-frames.md',
+	invariantCatalog: 'scans.md'
 };

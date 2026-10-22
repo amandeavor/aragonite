@@ -121,15 +121,19 @@ test.describe('code language chip: when it shows', () => {
 		await expect(rail(page)).toHaveCSS('opacity', '1');
 	});
 
-	test('reading mode shows the chip inert: a click opens no field', async ({ page }) => {
+	test('reading mode names the language as a label: no button, and a click opens no field', async ({
+		page
+	}) => {
 		const editor = new EditorPage(page);
 		await editor.goto('?presentationMode=reading');
 		await editor.loadContent(SOURCE);
 		await expect(editor.editorContainer).toHaveAttribute('data-presentation', 'reading');
 
 		await editor.getBlock(0).hover();
-		await expect(chipButton(page)).toHaveText('js');
-		await chipButton(page).click();
+		const label = page.locator('.code-lang-label');
+		await expect(label).toHaveText('js');
+		await expect(chipButton(page)).toHaveCount(0);
+		await label.click();
 		await expect(chipInput(page)).toHaveCount(0);
 	});
 });

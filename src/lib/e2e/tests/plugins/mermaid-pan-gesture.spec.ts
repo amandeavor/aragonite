@@ -39,8 +39,12 @@ async function dragAcross(editor: MermaidPage, selector: string): Promise<void> 
 	await editor.waitForRenderFlush();
 }
 
+// Parsed, since engines serialize a zero translate differently.
 const canvasTransform = (page: Page, selector: string) =>
-	page.locator(selector).evaluate((el: HTMLElement) => el.style.transform);
+	page.locator(selector).evaluate((el: HTMLElement) => {
+		const m = new DOMMatrix(el.style.transform);
+		return { x: m.e, y: m.f, scale: m.a };
+	});
 
 test.describe('a diagram pan claims its own drag', () => {
 	let editor: MermaidPage;
@@ -56,9 +60,11 @@ test.describe('a diagram pan claims its own drag', () => {
 
 		await dragAcross(editor, '.mermaid-viewport');
 
-		expect(await canvasTransform(page, '.mermaid-viewport .mermaid-canvas')).toBe(
-			'translate(60px, 20px) scale(1)'
-		);
+		expect(await canvasTransform(page, '.mermaid-viewport .mermaid-canvas')).toEqual({
+			x: 60,
+			y: 20,
+			scale: 1
+		});
 		expect(await pressAftermath(editor)).toEqual({
 			crossBlock: false,
 			overlays: 0,
@@ -73,9 +79,11 @@ test.describe('a diagram pan claims its own drag', () => {
 
 		await dragAcross(editor, '.mermaid-overlay-viewport');
 
-		expect(await canvasTransform(page, '.mermaid-overlay-viewport .mermaid-canvas')).toBe(
-			'translate(60px, 20px) scale(1)'
-		);
+		expect(await canvasTransform(page, '.mermaid-overlay-viewport .mermaid-canvas')).toEqual({
+			x: 60,
+			y: 20,
+			scale: 1
+		});
 		expect(await editor.bridge.isCrossBlockActive()).toBe(false);
 	});
 
@@ -91,15 +99,18 @@ test.describe('a diagram pan claims its own drag', () => {
 		await editor.waitForCrossBlock(true);
 		expect(await editor.bridge.isCrossBlockActive()).toBe(true);
 		// Nothing panned: a drag the plugin did not take is not one it also ran.
-		expect(await canvasTransform(page, '.mermaid-viewport .mermaid-canvas')).toBe(
-			'translate(0px, 0px) scale(1)'
-		);
+		expect(await canvasTransform(page, '.mermaid-viewport .mermaid-canvas')).toEqual({
+			x: 0,
+			y: 0,
+			scale: 1
+		});
 	});
 
 	// What decides is the element the plugin declares, not the kind: the error box declares no
 	// gesture, so a drag on it still takes the block whole, as a drag on any rendered block does.
 	test('a drag on the error card still takes the block whole', async () => {
-		await editor.loadDiagram(BROKEN_DOC, 'error');
+		await editor.loadContent(BROKEN_DOC);
+		await editor.settleDiagram('error');
 
 		await dragAcross(editor, '.mermaid-surface');
 

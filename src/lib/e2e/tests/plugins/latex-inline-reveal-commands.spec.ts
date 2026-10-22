@@ -2,11 +2,11 @@ import type { Locator } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { PluginsPage, capturedErrors } from './helpers';
 import { MathRevealPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
- * A block command fired while an inline source is open must run against the committed bytes: the
- * open source holds live bytes the CST has never seen, and every command reads `node.raw`. Each
- * command case has a sibling proving non-command keys changed nothing; Enter's rule is in
+ * A block command fired while an inline source is open runs against the bytes typed into it: each
+ * key in the source is written as it lands, and every command reads `node.raw`. Enter's rule is in
  * `latex-inline-reveal-enter.spec.ts`. The last two cases use other kinds: the rule is the
  * editor's.
  */
@@ -25,10 +25,9 @@ test.describe('block commands against a revealed inline source', () => {
 		await editor.loadContent('above\n\n$x^2$\n');
 		await editor.revealFromTrailingEdge(1);
 
-		// Delete the whole open source one byte at a time. None of this reaches the CST, so
-		// `getSource()` still reads the bytes from before it opened.
+		// Delete the whole open source one byte at a time, each byte leaving the document as it goes.
 		await editor.backspaceRevealed(1, ['$x^2', '$x^', '$x', '$', '']);
-		expect(await editor.bridge.getSource()).toBe('above\n\n$x^2$\n');
+		await editor.bridge.waitForSourceNotContains('$');
 
 		// The caret now sits at offset 0 of an empty block, so this Backspace merges blocks, and
 		// it must merge the empty block rather than the stale `$x^2$` bytes.
@@ -42,16 +41,15 @@ test.describe('block commands against a revealed inline source', () => {
 		await editor.loadContent('above\n\n$x^2$\n');
 		await editor.revealFromTrailingEdge(1);
 
-		// The source still parses as math, so the construct is intact and only the CST is behind:
-		// commit first holds even when the edit breaks nothing.
+		// The source still parses as math, and the typed byte is already in the document.
 		await page.keyboard.press('ArrowLeft');
 		await page.keyboard.type('q');
 		await expect(editor.getBlock(1)).toHaveText('$x^2q$');
-		expect(await editor.bridge.getSource()).toBe('above\n\n$x^2$\n');
+		expect(await editor.bridge.getSource()).toBe('above\n\n$x^2q$\n');
 
 		// Home lands at raw 0, the source's leading edge, still inside the open source, so nothing
-		// closes. Backspace there merges against bytes the CST does not have.
-		await page.keyboard.press('Home');
+		// closes. Backspace there merges the edited bytes.
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForBlockCount(1);
 		expect(await editor.bridge.getSource()).toBe('above$x^2q$\n');
@@ -67,7 +65,7 @@ test.describe('block commands against a revealed inline source', () => {
 		await editor.backspaceRevealed(1, ['$x^2', '$x^']);
 		await expect(editor.mathWidget).toHaveCount(0);
 		expect(await editor.bridge.getBlockCount()).toBe(2);
-		expect(await editor.bridge.getSource()).toBe('above\n\n$x^2$\n');
+		expect(await editor.bridge.getSource()).toBe('above\n\n$x^\n');
 	});
 
 	test('ArrowRight leaves a block whose edited reveal sits at its end', async ({ page }) => {
@@ -120,14 +118,15 @@ test.describe('block commands against a revealed inline source', () => {
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
-	test('Escape still cancels the reveal and discards the ephemeral edit', async ({ page }) => {
+	test('Escape closes the source and keeps the edit', async ({ page }) => {
 		await editor.loadContent('above\n\n$x^2$\n');
 		await editor.revealFromTrailingEdge(1);
-		await editor.backspaceRevealed(1, ['$x^2', '$x^']);
+		await page.keyboard.press('ArrowLeft');
+		await page.keyboard.type('q');
 
 		await page.keyboard.press('Escape');
 		await expect(editor.mathWidget).toHaveCount(1);
-		expect(await editor.bridge.getSource()).toBe('above\n\n$x^2$\n');
+		expect(await editor.bridge.getSource()).toBe('above\n\n$x^2q$\n');
 	});
 });
 

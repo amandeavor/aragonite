@@ -5,6 +5,15 @@
 	import type { CodeRunRequest } from '../../../host-hooks';
 	import { asRawOffset } from '../../../caret/coordinate-spaces';
 	import {
+		decidedDelete,
+		deleteExtent,
+		isDeleteInput,
+		isMoveDelete,
+		type DeleteAnswer,
+		type DeleteIntent
+	} from '../../../caret/delete-extent';
+	import { lineEdgeOffset } from '../../../caret/visual-lines';
+	import {
 		CONTENT_EMPTY_ATTR,
 		holdsOnlyMarkerChrome,
 		type RawRange
@@ -48,6 +57,7 @@
 	import { isInlineFormatCommand } from '../../../schema/built-in-descriptors';
 	import { nodeAt, emptyParagraph } from '../../../tree-operations';
 	import { type CommandId } from '../../../schema/commands';
+	import { writeClipboardText } from '../../../editor-actions/system-clipboard';
 
 	const ELECTRIC_INDENT_UNIT = '\t';
 
@@ -84,6 +94,7 @@
 		...wiring.deps,
 		getEl: () => el ?? null,
 		backend,
+		landCaret: (offset, clamp) => backend.setRaw(asRawOffset(offset), { clamp }),
 		// A caret arriving from outside lands on the body in every mode, by a column or a placed
 		// offset; only a click or an arrow inside the block reaches a fence line the mode paints.
 		columnWindow: () => bodyWindow(node),
@@ -103,6 +114,9 @@
 		readText: () => plainTextOf(el),
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
+		deleteAtCaret: deleteCodeAt,
+		commandTarget: () => keyTarget,
+		handleDeclinedDelete: (e) => void guardFenceRangedEdit(e),
 		removeSelection: (range) => removeRange(range, 'selection-removal') ?? false
 	});
 	export const afterSelectionRemoved = editableSurface.afterSelectionRemoved;
@@ -268,16 +282,8 @@
 		};
 	}
 
-	async function copyBody(): Promise<boolean> {
-		try {
-			await navigator.clipboard.writeText(bodyText());
-			return true;
-		} catch {
-			// A denied or absent clipboard is the host's business, not an editor error: the
-			// affordance simply reports nothing copied.
-			return false;
-		}
-	}
+	// A refused write reports nothing copied.
+	const copyBody = (): Promise<boolean> => writeClipboardText(bodyText());
 
 	// What the language chip writes: the opener's info string, through the surface's write so the
 	// fence rule runs over it, kept apart so no typing on either side joins its undo entry.
@@ -344,13 +350,14 @@
 	}
 
 	function onBeforeInput(e: InputEvent): void {
-		if (guardFenceRangedEdit(e)) return;
-		// Soft break: Shift+Enter, and mobile/IME insertLineBreak without a keydown.
-		// Gated on !composing so an IME emitting it mid-composition does not sync.
+		// A delete the editor decides is `deleteCodeAt`'s, and the fence check sees it only if declined.
+		if (!decidedDelete(e.inputType) && guardFenceRangedEdit(e)) return;
+		// A soft keyboard's line break, with no keydown, is the Shift+Enter command; an IME emitting
+		// one mid-composition writes nothing.
 		if (e.inputType === 'insertLineBreak' && !composing && el) {
 			e.preventDefault();
-			// Input, not a command, so it asks for the selection's removal itself.
-			editableSurface.afterSelectionRemoved(() => writeLineBreak('soft'));
+			// Input, not a key, so it asks for the selection's removal itself.
+			editableSurface.afterSelectionRemoved(() => runCommand('code.softBreak'));
 			return;
 		}
 		if (composing || e.inputType !== 'insertText' || !el) return;
@@ -429,7 +436,7 @@
 
 	// A cut's or a drag's own delete belongs to the clipboard or drop handler.
 	function deletes(e: InputEvent): boolean {
-		return /^delete(?!By)/.test(e.inputType);
+		return isDeleteInput(e.inputType) && !isMoveDelete(e.inputType);
 	}
 
 	function replacesRange(e: InputEvent, range: RawRange): boolean {
@@ -460,7 +467,7 @@
 	/** The text an input type writes over its span, or null to refuse it. A `dataTransfer`
 	 *  payload is refused, since it would skip the paste transforms (G4.11). */
 	function rangedEditInsertion(e: InputEvent, span: RawRange): string | null {
-		if (e.inputType.startsWith('delete')) return '';
+		if (isDeleteInput(e.inputType)) return '';
 		switch (e.inputType) {
 			case 'insertText':
 				return e.data ?? '';
@@ -483,8 +490,7 @@
 
 		if ((await handleSharedKeydown(e, sharedCtx)) || editableSurface.isDetached()) return;
 
-		const target = { kind: node.kind, runCommand, getPath: () => myPath, afterSelectionRemoved };
-		if (wiring.dispatchChord(e, target)) return;
+		if (wiring.dispatchChord(e, keyTarget)) return;
 	}
 
 	// ── Commands ────────────────────────────────────────────────────────
@@ -497,6 +503,8 @@
 			switch (id) {
 				case 'code.newline':
 					return codeNewline(run);
+				case 'code.softBreak':
+					return writeLineBreak('soft');
 				case 'code.indent':
 					shiftSelection('indent');
 					return true;
@@ -513,34 +521,57 @@
 		}
 	);
 
+	const keyTarget = {
+		get kind() {
+			return node.kind;
+		},
+		runCommand,
+		getPath: () => myPath,
+		afterSelectionRemoved
+	};
+
 	function codeBackspace(): boolean {
 		if (!el || backend.getRawSelection() !== null) return false;
 		const offset = backend.getRaw() ?? 0;
 		// Offset 0 always leaves the block; so does the body start, where a native Backspace would
-		// delete the opener's terminating `\n`.
-		if (
-			offset === 0 ||
-			classifyFenceBoundary({ node, offset, forward: false }).kind === 'exitPrev'
-		) {
-			// At the top of an empty fence the key can only mean the block, so it goes; a fence
-			// with a body keeps the step-out, since one keypress must never take code with it.
-			if (isBlankText(bodyText())) {
-				void blockEdit.deleteBlock(index, 'Backspace');
-				return true;
-			}
-			focusActions.moveFocus(index - 1, 'end');
-			return true;
-		}
+		// delete the opener's terminating `\n`. Any other Backspace is `deleteCodeAt`'s.
+		const leaves =
+			offset === 0 || classifyFenceBoundary({ node, offset, forward: false }).kind === 'exitPrev';
+		if (!leaves) return false;
+		// At the top of an empty fence the key can only mean the block, so it goes; a fence with a
+		// body keeps the step-out, since one keypress must never take code with it.
+		if (isBlankText(bodyText())) void blockEdit.deleteBlock(index, 'Backspace');
+		else focusActions.moveFocus(index - 1, 'end');
+		return true;
+	}
 
-		// Pair-delete: remove both halves so the auto-closed companion isn't stranded.
-		// A caret inside a backtick fence run reads as a pair, so it declines there.
+	/** A collapsed delete at `caret`: an empty pair goes whole on Backspace, and anything else takes
+	 *  what the delete rule names, kept to the body while the fence lines hide. */
+	function deleteCodeAt(caret: number, intent: DeleteIntent): DeleteAnswer {
 		const text = getDisplayText();
-		const pairSpan = { start: offset - 1, end: offset + 1 };
-		if (isBetweenEmptyPair(text, offset) && !crossesFenceBoundary(node, pairSpan)) {
-			void writeCode(text.slice(0, offset - 1) + text.slice(offset + 1), offset - 1, 'pair-delete');
-			return true;
+		// Both halves, so the auto-closed companion isn't stranded; a caret inside a backtick fence
+		// run reads as a pair, so the pair rule declines there.
+		const pairSpan = { start: caret - 1, end: caret + 1 };
+		if (
+			intent.unit === 'character' &&
+			intent.direction === 'backward' &&
+			isBetweenEmptyPair(text, caret) &&
+			!crossesFenceBoundary(node, pairSpan)
+		) {
+			void writeCode(text.slice(0, caret - 1) + text.slice(caret + 1), caret - 1, 'pair-delete');
+			return 'taken';
 		}
-		return false;
+		const unit = deleteExtent(intent, {
+			text,
+			caret,
+			bounds: { start: 0, end: text.length },
+			lineEdge: (side) => (el ? lineEdgeOffset(el, caret, side, caretWriter) : null)
+		});
+		const span = unit && editSpan(node, unit, fenceLinesShown);
+		const edit = span && computeRangedEdit(text, span, '');
+		if (!edit) return 'at-edge';
+		void writeCode(edit.newText, edit.newCursor, 'delete');
+		return 'taken';
 	}
 
 	function codeDelete(): boolean {
@@ -639,9 +670,9 @@
 			raw: closedDisplay + lineEnding,
 			metadata: { ...meta, closed: true }
 		};
-		// The blank separator line and the paragraph's own line are both pure line
-		// ending, so both take the one the closer above got.
-		const paragraphBelow = emptyParagraph(lineEnding, lineEnding);
+		// The paragraph's own line takes the ending the closer above got; the commit's fix-up
+		// gives it the blank line above.
+		const paragraphBelow = emptyParagraph('', lineEnding);
 		void blockEdit.replaceBlock(
 			index,
 			[closedFence, paragraphBelow],
@@ -658,6 +689,7 @@
 		getCursorOffset,
 		focusAtColumn,
 		insertMarkdown,
+		insertPlainText,
 		runCommand,
 		afterSelectionRemoved
 	} satisfies BlockComponent);
@@ -721,16 +753,16 @@
 	export function insertMarkdown(md: string): Promise<boolean> {
 		return clipboard.insertMarkdown(md);
 	}
+
+	export function insertPlainText(text: string): Promise<boolean> {
+		return clipboard.insertPlainText(text);
+	}
 </script>
 
-<!-- The textbox role arrives through the spread, where the compiler cannot see it. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	bind:this={el}
-	tabindex="0"
 	class="code-block"
 	contenteditable={readOnly ? 'false' : 'true'}
-	aria-readonly={readOnly ? 'true' : undefined}
 	{...editableSurface.attributes(null)}
 	spellcheck="false"
 	oninput={onInput}

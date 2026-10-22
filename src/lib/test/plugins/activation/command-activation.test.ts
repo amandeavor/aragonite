@@ -18,7 +18,8 @@ const paragraph: KindCommandTarget = {
 	runCommand: () => false,
 	getCommandContext: () => ({
 		node: { kind: 'paragraph', leadingTrivia: '', raw: 'x\n' },
-		updateMetadata: () => {}
+		updateMetadata: () => {},
+		replaceRaw: () => {}
 	})
 };
 

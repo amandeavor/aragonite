@@ -19,6 +19,8 @@ export interface WidgetEdgeSeat {
 	/** The click landed on the widget itself. The browser would put the caret in the text
 	 *  beside it, and that caret is no reason to drop this snap. */
 	inside: boolean;
+	/** The widget sits on the point's row, so no line lies between the point and the edge. */
+	onRow: boolean;
 }
 
 /** The raw offset a point snaps to, ties in document order. Null inside a widget that selects whole
@@ -33,7 +35,7 @@ export function nearestWidgetEdgeSeat(
 		const withinRow = y === null || (rect.top < y && y < rect.bottom);
 		if (rect.left < x && x < rect.right && withinRow) {
 			if (!seatsInside) return null;
-			return { offset: x < (rect.left + rect.right) / 2 ? start : end, inside: true };
+			return { offset: x < (rect.left + rect.right) / 2 ? start : end, inside: true, onRow: true };
 		}
 		// Compare rows before columns: a point past the end of one line must not reach a widget
 		// on another line that happens to sit at the same x.
@@ -47,7 +49,7 @@ export function nearestWidgetEdgeSeat(
 			best = nearer(best, { offset, rowGap, gap: 0 });
 		}
 	}
-	return best === null ? null : { offset: best.offset, inside: false };
+	return best === null ? null : { offset: best.offset, inside: false, onRow: best.rowGap === 0 };
 }
 
 interface Reach {

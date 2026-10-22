@@ -22,10 +22,13 @@ import { applyPasteTransforms } from '../../tree-operations/paste/paste-transfor
 import type { InsertEntry } from '../../schema/insert-catalogue';
 import type { MenuEntry } from '../menu/BlockMenu.svelte';
 import { runClipboardAction, type ClipboardAction } from '../menu/clipboard-actions';
+import type { AimedInsert } from './focused-surface';
 import { blockNoun } from '../menu/default-context-actions';
 import { isProseLeaf } from '../../schema/page-role';
 import type { Reading } from '../../schema/reading';
 import { readBlockPath } from '../../selection/path-lookup';
+import { rangeCoversPoint } from '../../selection/cross-block/pointer';
+import { holdsNativeRange, nativeRangeIn } from '../../selection/native-bridge';
 import { documentLineEnding } from '../../core/lines';
 import { stampWrites, type DocumentStamps } from '../../editor-actions/commit/document-stamp';
 
@@ -44,14 +47,19 @@ export interface RootMenusDeps {
 	get mode(): PresentationMode;
 	getDoc: DocumentGetter;
 	isHostChrome(node: Node | null): boolean;
-	blockEdit: Pick<BlockEditActions, 'deleteBlock'>;
-	/** Rewrite top-level block `index` as one undo entry, apart from any typing before it. */
-	replaceRaw(index: number, raw: string): Promise<void>;
+	blockEdit: Pick<BlockEditActions, 'deleteBlock' | 'replaceRaw'>;
 	/** Where a click on empty space puts the caret, so a right-click on prose acts at the
 	 *  pointer. */
 	placeCaretAtPoint(x: number, y: number): boolean;
+	/** Whether the right button's press landed on a selected range, which picks the menu. */
+	rangeAtContextPress(): boolean;
+	/** Whether the editor holds an inline widget selected, which Cut and Copy act on as on a range. */
+	holdsWidget(): boolean;
 	/** The public insert entry point; a flyout row inserts `below` the block the caret is in. */
 	insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean>;
+	/** An insert at the caret aimed at the block focused now, which a Paste row runs once the
+	 *  clipboard read lands; null with no block focused. */
+	aimInsertAtFocus(): AimedInsert | null;
 	/** The insert entries this editor lists, read fresh per menu. */
 	insertCatalogue(): readonly InsertEntry[];
 	/** The plugins this editor lists, whose block actions and paste transforms the menu offers. */
@@ -72,6 +80,9 @@ export interface RootMenus {
 
 const EDIT_LINK = 'link.edit';
 
+const isBlockHost = (node: EventTarget): node is HTMLElement =>
+	node instanceof HTMLElement && node.matches('.block-host[data-block-path]');
+
 interface Point {
 	x: number;
 	y: number;
@@ -88,7 +99,7 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		};
 	}
 
-	/** Where a paste goes: whatever editable element holds focus inside the root. */
+	/** The editable element holding focus inside the root, whose selection Cut and Copy act on. */
 	function focusedEditable(): HTMLElement | null {
 		const active = document.activeElement;
 		return active instanceof HTMLElement &&
@@ -99,7 +110,7 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 	}
 
 	function clipboardRows(): MenuEntry[] {
-		const selected = !!focusedEditable() && !(window.getSelection()?.isCollapsed ?? true);
+		const selected = deps.holdsWidget() || (!!focusedEditable() && holdsNativeRange());
 		return [
 			{ id: 'clip.cut', label: 'Cut', icon: 'scissors', disabled: !selected },
 			{ id: 'clip.copy', label: 'Copy', icon: 'copy', disabled: !selected },
@@ -110,7 +121,7 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 
 	function runClipboardRow(id: string): boolean {
 		if (!id.startsWith('clip.')) return false;
-		void runClipboardAction(id.slice('clip.'.length) as ClipboardAction, focusedEditable());
+		void runClipboardAction(id.slice('clip.'.length) as ClipboardAction, deps.aimInsertAtFocus());
 		return true;
 	}
 
@@ -163,7 +174,9 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 				deleteBlock: async () => {
 					await deps.blockEdit.deleteBlock(index, 'keyless');
 				},
-				replaceRaw: (raw: string) => deps.replaceRaw(index, raw),
+				replaceRaw: async (raw: string) => {
+					await deps.blockEdit.replaceRaw(index, raw);
+				},
 				transformPaste: (text) => applyPasteTransforms(text, deps.activation),
 				lineEnding: documentLineEnding(deps.getDoc())
 			},
@@ -199,21 +212,27 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		// The keyboard's contextmenu event (Windows fires it on the ContextMenu key's release)
 		// lands on the item the keydown's own menu already focused: that menu is the answer.
 		if (target.closest('.md-menu')) return;
-		const host = target.closest<HTMLElement>('.block-host[data-block-path]');
+		// Read off the press's own path: the caret placed for the menu may have shown a widget's
+		// source, which takes the target out of the page.
+		const host = e.composedPath().find(isBlockHost) ?? null;
 		const path = readBlockPath(host);
 		if (!host || !path) return;
 		const point = { x: e.clientX, y: e.clientY };
-		const native = window.getSelection();
-		const selected = !!native && !native.isCollapsed && root.contains(native.anchorNode);
+		const selected = deps.rangeAtContextPress();
 		// A nested block (a fence inside a list item) gets the clipboard rows.
 		const node = path.length === 1 ? deps.getDoc().children[path[0]] : undefined;
 		const prose = !!node && isProseLeaf(node, deps.reading);
+		// What Safari selected under the pointer stays for the clipboard rows to act on, as a native
+		// right-click's does; anything else, and anything under a block's actions, the caret replaces.
 		if (selected || !node || prose) {
-			if (!selected) deps.placeCaretAtPoint(e.clientX, e.clientY);
+			if (!selected && !rangeCoversPoint(root, e.clientX, e.clientY)) {
+				deps.placeCaretAtPoint(e.clientX, e.clientY);
+			}
 			// Top-level prose is where a sibling block makes sense.
 			openClipboardMenu(point, host, !selected && prose);
 			return;
 		}
+		if (nativeRangeIn(root)) deps.placeCaretAtPoint(e.clientX, e.clientY);
 		openBlockActions(point, host, path, node);
 	}
 

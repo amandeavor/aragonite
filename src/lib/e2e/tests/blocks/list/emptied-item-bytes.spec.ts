@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { extendKey } from '../../../platform-keys';
 
 // Requirements: `e2e/requirements/blocks/list/emptied-item-bytes.md`.
 
@@ -11,7 +12,7 @@ const ROUTES = [
 
 async function selectLeafText(editor: EditorPage, path: number[]): Promise<void> {
 	await editor.focusBlockAtPath(path, 0);
-	await editor.page.keyboard.press('Shift+End');
+	await editor.page.keyboard.press(extendKey('lineEnd'));
 }
 
 /** Opens the editor's own source as a fresh document, the way saving and reopening the file would. */

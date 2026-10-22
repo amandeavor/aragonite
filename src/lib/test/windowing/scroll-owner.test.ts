@@ -15,8 +15,7 @@ import type { EditorDoc, EditorServices } from '../../editor-keys';
 import type { ScrollOwner } from '../../windowing/scroll-owner';
 import { refSlotsOver } from '../../block-lists/child-refs';
 import { createCaretLanding } from '../../selection/caret-landing';
-import { scrollFocusBlockIntoView } from '../../selection/keyboard-extend';
-import { createSelectionState, type SelectionState } from '../../selection/selection-state.svelte';
+import { createSelectionState } from '../../selection/selection-state.svelte';
 import { stubBlockComponent } from '../../testing/headless-actions';
 import {
 	heightsOracle,
@@ -27,6 +26,8 @@ import {
 } from '../harness/list-windowing.svelte';
 import { stubScrollOwner, stubScrollport } from '../harness/stub-scrollport';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { caretRectAt } from '../../caret/visual-lines';
+import { readNativeSelection } from '../../selection/native-bridge';
 
 const COLUMNS = ['host anchoring holds', 'a held placement is live', 'free'] as const;
 type Column = (typeof COLUMNS)[number];
@@ -83,7 +84,7 @@ function fixture(
 		chromeAbove: () => box.header,
 		ownerDeps: {
 			editorCorrects: () => column !== 'host anchoring holds',
-			getBlockElByPath: blockEl
+			getBlockBoxByPath: blockEl
 		}
 	});
 	box.port = scope.port;
@@ -149,19 +150,18 @@ function growHeader(f: Fixture): void {
 	uninstall();
 }
 
-/** A cross-block range whose moving end sits at the start of `path`. */
-const focusOn = (path: number[]) => ({ focus: { path, offset: 0 } }) as unknown as SelectionState;
-
 function scrollToB4(f: Fixture): Promise<boolean> {
 	const rects = createEditorRects({
-		getBlockElByPath: () => null,
+		getBlockBoxByPath: () => null,
 		getBlockComponent: () => null,
 		revealPath: async () => {},
 		getEditorRoot: () => null,
 		scroll: f.owner,
 		isCrossBlock: () => false,
 		isHostChrome: () => false,
-		landCaretAt: async () => true
+		landCaretAt: async () => true,
+		caretRectAt,
+		readSelection: readNativeSelection
 	});
 	return rects.scrollTo([4]);
 }
@@ -186,8 +186,10 @@ async function landOnB4(f: Fixture, as: 'edit' | 'navigation'): Promise<void> {
 			el.getBoundingClientRect = () => ({ top: 600, bottom: 610 }) as DOMRect;
 			return el;
 		},
+		getBlockBoxByPath: (path) => f.blockEl(path),
 		getEditorRoot: () => null,
-		scroll: f.owner
+		scroll: f.owner,
+		isReading: () => false
 	});
 	const pos = { path: docPathFrom([4]), offset: 0 };
 	await (as === 'edit' ? landing.land(pos) : landing.navigate(pos));
@@ -327,19 +329,6 @@ const ROWS: Record<keyof ScrollWrites, Row[]> = {
 			}
 		},
 		{
-			// Not awaited, as the key handler doesn't: b5 measures while the placement runs.
-			name: 'a keyboard extension reaching b4, a block below it measuring',
-			run: (f) => {
-				scrollFocusBlockIntoView(focusOn([4]), f.owner);
-				measureTaller(f, 5);
-			},
-			expect: {
-				'host anchoring holds': placedOnB4(START),
-				'a held placement is live': placedOnB4(START),
-				free: placedOnB4(START)
-			}
-		},
-		{
 			name: 'a navigation landing, held where it landed',
 			run: async (f) => {
 				await landOnB4(f, 'navigation');
@@ -433,7 +422,16 @@ function placedOnB4(top: number): (f: Fixture) => void {
 // ── The census ───────────────────────────────────────────────────────────────
 
 /** The owner's members that write no scroll position; `watchSize`'s callback only records heights. */
-const NON_WRITES = ['port', 'isInView', 'shows', 'release', 'watchSize', 'roundOpen'] as const;
+const NON_WRITES = [
+	'port',
+	'isInView',
+	'shows',
+	'visibleBand',
+	'release',
+	'watchSize',
+	'roundOpen',
+	'pathAt'
+] as const;
 type ScrollWrites = Omit<ScrollOwner, (typeof NON_WRITES)[number]>;
 
 describe('scroll owner: every write has a row under every owner of the position', () => {
@@ -516,6 +514,7 @@ describe('scroll owner: the edges', () => {
 			resolve: () => ({ top: 300, height: 20 }),
 			holdForRound: () => null,
 			mountTop: () => null,
+			pathAt: () => null,
 			syncScrollTop
 		});
 		owner.place([4], { block: 'center', hold: true });
@@ -586,8 +585,10 @@ describe('scroll owner: the edges', () => {
 			selectionState: createSelectionState({ getDoc: () => doc }),
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => el,
+			getBlockBoxByPath: () => el,
 			getEditorRoot: () => null,
-			scroll: f.owner
+			scroll: f.owner,
+			isReading: () => false
 		});
 		measureB2Taller(f);
 		landing.followArrival([5]);

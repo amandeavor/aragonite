@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { gotoReady } from '../../goto-ready';
 import { widgetAimTarget } from '../../text-runs';
+import { clickInPlace } from '../../click-in-place';
 
 // Shared reads for every spec driving the `/test/plugins` harness. They go through `window.__test`
 // by path, because the chained block locator is too slow at this scale.
@@ -88,7 +89,7 @@ async function clickWidgetAt(widget: Locator, xOf: (width: number) => number): P
 	const target = await widgetAimTarget(widget, '.katex-html');
 	const box = await target.boundingBox();
 	if (!box) throw new Error('widget has no bounding box');
-	await target.click({ position: { x: xOf(box.width), y: box.height / 2 } });
+	await clickInPlace(target, { position: { x: xOf(box.width), y: box.height / 2 } });
 }
 
 // Shows a render-first widget's source by clicking it and waiting for the rendered widget to go;

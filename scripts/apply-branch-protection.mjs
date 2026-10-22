@@ -1,38 +1,18 @@
 // One-shot: apply branch protection to `main` (not `dev`, whose history rewrites need a force
 // push). Needs gh authenticated as a repo admin; a private free-plan repo answers 403. The required
-// checks are ci.yml's job names plus the externals below, held in step by
-// `src/lib/test/invariants/lint/branch-protection-contexts.test.ts`. Admins stay exempt, so a
-// maintainer can still merge when the other maintainer is unreachable.
+// checks are the lists in `branch-protection-contexts.mjs`. Admins stay exempt, so a maintainer
+// can still merge when the other maintainer is unreachable.
 import { execFileSync } from 'node:child_process';
+import { CI_CONTEXTS, EXTERNAL_CONTEXTS } from './branch-protection-contexts.mjs';
 
 const REPO = 'voithos-labs/aragonite';
 const BRANCH = 'main';
 
-// Every check ci.yml reports, each matrix job spelled the way GitHub names it.
-const CI_CONTEXTS = [
-	'unit',
-	'e2e (1/4)',
-	'e2e (2/4)',
-	'e2e (3/4)',
-	'e2e (4/4)',
-	'perf',
-	'consumer-smoke',
-	'adapter-smoke',
-	'emoji-table'
-];
-
-// Checks reported from outside ci.yml, each named against the workflow that reports it so the
-// test can hold the pair. An undeclared workflow reporting a required name is a way past the door.
-const EXTERNAL_CONTEXTS = {
-	// The second-engine lane keeps its own workflow so its browser cache and cancel rule stay its own.
-	'webkit.yml': ['webkit']
-};
-
 const protection = {
 	required_status_checks: {
-		// Not strict: a PR need not be rebased onto every push to main first. The matrix costs
-		// ~20 minutes, so strict mode would re-queue every open PR on every merge, and the run on
-		// push to main catches what a stale base lets through.
+		// Not strict: a PR need not be rebased onto every push to main first. A run takes tens of
+		// minutes, so strict mode would re-queue every open PR on every merge, and the run on push
+		// to main catches what a stale base lets through.
 		strict: false,
 		contexts: [...CI_CONTEXTS, ...Object.values(EXTERNAL_CONTEXTS).flat()]
 	},

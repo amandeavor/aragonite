@@ -215,10 +215,18 @@ const cutX = (m: Mounted) => () => {
 	select(m.el, X.start, X.end);
 	cut(m.el);
 };
+// The key's keydown passes, so its delete arrives at `beforeinput`.
 const backspaceAfterX = (m: Mounted) => () => {
 	select(m.el, X.end);
 	m.el.dispatchEvent(
 		new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
+	);
+	m.el.dispatchEvent(
+		new InputEvent('beforeinput', {
+			inputType: 'deleteContentBackward',
+			bubbles: true,
+			cancelable: true
+		})
 	);
 };
 const enterOverX = (m: Mounted) => () => {

@@ -16,8 +16,11 @@ import { captureFocusedCaret } from '../../../caret/focused-caret';
 import {
 	CONTENT_EMPTY_ATTR,
 	holdsOnlyMarkerChrome,
-	type CaretWriter
+	type CaretWriter,
+	type RawRange
 } from '../../../caret/widget-offset';
+import { washShownSource } from '../text/source-wash';
+import { widgetsAmong } from '../text/widget-adjacency';
 import type { IndexedDecoration } from '../../../decorations/buckets';
 import {
 	applyIslandDecorations,
@@ -56,20 +59,29 @@ export interface CellRenderDeps {
 	/** A widget that throws while mounting reports to the editor's `error` event, and still falls
 	 *  back to its raw source. */
 	reportRenderError: (error: unknown) => void;
-	/** The editor's caret writer, which puts the caret back after a rebuild. */
+	/** The editor's caret writer, which puts a carried caret back after a rebuild. A carried caret
+	 *  predates the edit that caused the rebuild, so it opens no widget's source. */
 	caretWriter: CaretWriter;
+	/** The range drawn as a widget's shown source, read in the render pass so opening or closing
+	 *  it re-renders the cell. */
+	shownSource: () => RawRange | null;
 }
 
 export interface CellRender {
 	/** Rebuilds the cell's children, skipping an unchanged key unless `forceRebuild`, which a
 	 *  pending cursor restore passes. */
 	render(opts?: { forceRebuild?: boolean; carryCaret?: boolean }): void;
+	/** The inline widgets the last render drew, read without the inline cache. */
+	renderedWidgets(): InlineNode[];
 	/** Destroy every pooled widget and mounted decoration, called when the cell unmounts. */
 	dispose(): void;
 }
 
 export function createCellRender(deps: CellRenderDeps): CellRender {
 	let lastRenderedKey = '';
+	// Flattened on first read, since an ordinary keystroke's render never asks.
+	let rendered: { content: InlineNode[]; raw: string } | null = null;
+	let widgets: InlineNode[] | null = null;
 	const widgetPool = createViewWidgetPool({
 		reportError: deps.reportRenderError,
 		getTheme: deps.getTheme,
@@ -105,7 +117,9 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 		const mode = deps.reading.mode();
 		const modeKeyPart = mode === 'source' ? '' : mode;
 		const islands = deps.islands;
-		const renderKey = `${node.raw}\0${sig}\0${modeKeyPart}${islandRenderKeyPart(islands)}`;
+		const shown = deps.shownSource();
+		const shownKeyPart = shown ? `${shown.start}-${shown.end}` : '';
+		const renderKey = `${node.raw}\0${sig}\0${modeKeyPart}\0${shownKeyPart}${islandRenderKeyPart(islands)}`;
 		const forceRebuild = opts?.forceRebuild ?? false;
 		if (renderKey === lastRenderedKey && !forceRebuild) {
 			islandViews.update(islands);
@@ -133,9 +147,15 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 				grammar: deps.reading.grammar,
 				// Live mode only: a cell has no per-construct reveal, so in preview-inline its markers
 				// show with the cell's focus, which only an untagged marker does (`widget-offset.ts`).
-				tagConstructMarkers: deps.reading.mode() === 'live'
+				tagConstructMarkers: deps.reading.mode() === 'live',
+				shownSource: shown ?? undefined,
+				retainViewWidget: (widget, raw) =>
+					widgetPool.retain(widget.kind, raw.slice(widget.start, widget.end))
 			})
 		);
+		washShownSource(el, shown);
+		rendered = { content, raw: node.raw };
+		widgets = null;
 		islandViews = applyIslandDecorations(el, node.raw, islands, {
 			contentLength: contentLengthOf(node),
 			mountWidget: (spec, dec, target) =>
@@ -163,6 +183,10 @@ export function createCellRender(deps: CellRenderDeps): CellRender {
 
 	return {
 		render,
+		renderedWidgets: () =>
+			(widgets ??= rendered
+				? widgetsAmong(rendered.content, rendered.raw, deps.reading.grammar)
+				: []),
 		dispose: () => {
 			destroyIslands();
 			widgetPool.dispose();

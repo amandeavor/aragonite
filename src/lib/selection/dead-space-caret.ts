@@ -17,6 +17,7 @@ import {
 	type ProbedHit
 } from './nearest-block';
 import { placeGapCaret } from './place-caret';
+import { holdsNativeRange } from './native-bridge';
 import { canGapStop, type GapStopScope } from './gap-caret';
 import { caretOffsetAtPoint } from '../caret/point-offset';
 import type { CaretPosition, SelectionEndpoint } from './primitives';
@@ -182,8 +183,7 @@ export function createDeadSpaceCaret(deps: DeadSpaceCaretDeps): DeadSpaceCaret {
 			if (!pressed || !isDeadSpace(root, event.target)) return false;
 			// A drag that ended in the margin leaves a native range the user just selected. A
 			// cross-block range leaves the native selection empty, so it is ended below instead.
-			const native = root.ownerDocument.defaultView?.getSelection();
-			if (native && native.rangeCount > 0 && !native.isCollapsed) return false;
+			if (holdsNativeRange()) return false;
 
 			return placeAtPoint(root, event.clientX, event.clientY);
 		},
@@ -260,8 +260,7 @@ function landingFor(hit: BlockHit, probeX: number, probeY: number): CaretTarget 
 	// A leaf with no text (a rule, a rendered equation) reaches here only when clicked on its
 	// own box: the block itself is the target, and its `focus` ignores the offset.
 	if (!hit.charSurface) return { path: [], offset: 0 };
-	// Reading mode turns editing off, so no text is a block's own there. A container that kept
-	// the point has only its children's text, none of it level with the point.
+	// A container that kept the point has only its children's text, none of it level with it.
 	if (!holdsOwnText(hit)) return null;
 	// A block whose box pads its own text (a code block) lands a point in that padding on the
 	// nearest line.

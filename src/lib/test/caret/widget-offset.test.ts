@@ -184,6 +184,26 @@ describe('domTextOffsetAtNode: positions at or inside an atomic widget', () => {
 	});
 });
 
+// Miss-analysis: every landing ran in Chromium, which draws a caret after a node's final `\n` on
+// the next line; WebKit and Firefox draw it on the line the `\n` ends.
+describe('findDomTextOffsetTarget: a line start after a node ending in `\\n`', () => {
+	it('lands at the next text’s start, not after the line break', () => {
+		const el = document.createElement('div');
+		el.innerHTML = '<span>```js\n</span><span>body</span>';
+		const body = el.lastChild!.firstChild!;
+
+		expect(findDomTextOffsetTarget(el, asDomTextOffset(6))).toEqual({ node: body, offset: 0 });
+	});
+
+	it('keeps the end of the line break where no text starts there', () => {
+		const el = document.createElement('div');
+		el.innerHTML = '<span>a\n</span>';
+		const line = el.firstChild!.firstChild!;
+
+		expect(findDomTextOffsetTarget(el, asDomTextOffset(2))).toEqual({ node: line, offset: 2 });
+	});
+});
+
 describe('malformed widget source range', () => {
 	it('widget missing data-source-end contributes zero length and empty raw text', () => {
 		const el = document.createElement('div');

@@ -6,7 +6,7 @@
  */
 
 import type { InlineNode } from '../nodes';
-import { mintWidgetShell } from './inline-widgets';
+import { mintWidgetShell } from './widget-shell';
 
 // Zero-advance categories only: a lone combining mark (`Mn`/`Me`, `&#x301;`) has nothing to
 // combine with and draws nothing, while a spacing mark (`Mc`) has real width and stays a widget.

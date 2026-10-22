@@ -140,6 +140,7 @@ const ROW_TARGETS: Record<string, { kind: AnyBlockKind; commands: CommandId[] }>
 	'Cycle heading level': { kind: 'paragraph', commands: ['heading.cycle'] },
 	'Split a block': { kind: 'paragraph', commands: ['block.split'] },
 	'Hard line break': { kind: 'paragraph', commands: ['block.hardBreak'] },
+	'Code line break, no indent': { kind: 'fencedCode', commands: ['code.softBreak'] },
 	'Merge into the block before / after': {
 		kind: 'paragraph',
 		commands: ['block.mergePrev', 'block.mergeNext']
@@ -166,6 +167,7 @@ const ROW_TARGETS: Record<string, { kind: AnyBlockKind; commands: CommandId[] }>
 	'Move block up / down': { kind: 'paragraph', commands: ['block.moveUp', 'block.moveDown'] },
 	'Move between cells': { kind: 'tableCell', commands: ['cell.tab', 'cell.shiftTab'] },
 	'Next row (or add one)': { kind: 'tableCell', commands: ['cell.enter'] },
+	'Line break in a cell': { kind: 'tableCell', commands: ['cell.lineBreak'] },
 	'Insert row below / above': {
 		kind: 'tableCell',
 		commands: ['table.insertRowBelow', 'table.insertRowAbove']
@@ -375,13 +377,7 @@ interface ClaimRow {
  * The row documenting a keydown claim whose row sits in a keymap family, where no file list can
  * derive it. A claim a token family already rows must not appear here.
  */
-const CLAIM_ROWS: Record<ClaimKey, ClaimRow> = {
-	'Shift+Tab @ components/blocks/table/cell-keydown-plan.ts': {
-		row: 'Move between cells',
-		command: 'cell.shiftTab',
-		kind: 'tableCell'
-	}
-};
+const CLAIM_ROWS: Record<ClaimKey, ClaimRow> = {};
 
 /** Why `entry` does not document the keydown claim `key`, or null when it does. */
 export function claimRowProblem(docRows: DocRow[], key: ClaimKey, entry: ClaimRow): string | null {
@@ -432,14 +428,35 @@ const UNLISTED_BY_DESIGN: Record<ClaimKey, string> = {
 		'components/blocks/table/TableBlock.svelte',
 		'the Tables preamble documents it in prose as the keyboard route to the cell menu'
 	),
-	...unlisted(['Mod+A'], 'schema/keybindings.ts', SELECTION_PREAMBLE),
 	...unlisted(
-		['Mod+Shift+Home', 'Mod+Shift+End', ...SHIFT_ARROWS],
-		'selection/cross-block/keydown.ts',
+		[
+			'Mod+A',
+			'Mod+Shift+Home',
+			'Mod+Shift+End',
+			'Mod+Shift+ArrowUp',
+			'Mod+Shift+ArrowDown',
+			'Shift+PageUp',
+			'Shift+PageDown'
+		],
+		'schema/keybindings.ts',
 		SELECTION_PREAMBLE
 	),
+	...unlisted(SHIFT_ARROWS, 'selection/cross-block/keydown.ts', SELECTION_PREAMBLE),
 	...unlisted(SHIFT_ARROWS, 'selection/shared-keydown.ts', SELECTION_PREAMBLE),
-	...unlisted(['Shift+Home', 'Mod+Home'], 'components/blocks/text/home-key.ts', CARET_MOTION),
+	...unlisted(
+		[
+			'Shift+Home',
+			'Mod+Home',
+			'Mod+End',
+			'Mod+ArrowLeft',
+			'Mod+ArrowRight',
+			'Mod+ArrowUp',
+			'Mod+ArrowDown',
+			'Mod+Shift+ArrowLeft'
+		],
+		'schema/keybindings.ts',
+		CARET_MOTION
+	),
 	...unlisted(
 		['Shift+ArrowUp', 'Shift+ArrowDown'],
 		'components/blocks/table/TableCellBlock.svelte',
@@ -653,7 +670,12 @@ describe('consumer-guide chord coherence: self-tests', () => {
 		expect(claimRowProblem(rows, key, listRow)).toBe(
 			'the row "Indent / outdent a list item" is for listItem, not the tableCell that claims Shift+Tab'
 		);
-		expect(claimRowProblem(rows, key, CLAIM_ROWS[key])).toBeNull();
+		const cellRow = {
+			row: 'Move between cells',
+			command: 'cell.shiftTab' as const,
+			kind: 'tableCell' as const
+		};
+		expect(claimRowProblem(rows, key, cellRow)).toBeNull();
 	});
 
 	it('rejects a chord that is dispatched nowhere', () => {

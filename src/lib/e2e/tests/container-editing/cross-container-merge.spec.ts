@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 test.describe('cross-container merge on Backspace (blockquote prev)', () => {
 	let editor: EditorPage;
@@ -14,7 +15,7 @@ test.describe('cross-container merge on Backspace (blockquote prev)', () => {
 		await editor.loadContent('> text\n\ntext2\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text2$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^> texttext2$/m);
 
@@ -25,7 +26,7 @@ test.describe('cross-container merge on Backspace (blockquote prev)', () => {
 		await editor.loadContent('> text\n\ntext2\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text2$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^> texttext2$/m);
 		await editor.typeText('Z');
@@ -36,7 +37,7 @@ test.describe('cross-container merge on Backspace (blockquote prev)', () => {
 		await editor.loadContent('> first\n>\n> second\n\ntext\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^> secondtext$/m);
 		const source = await editor.bridge.getSource();
@@ -48,7 +49,7 @@ test.describe('cross-container merge on Backspace (blockquote prev)', () => {
 		await editor.loadContent('> > deep\ntext\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceContains('> > deeptext');
 
@@ -59,7 +60,7 @@ test.describe('cross-container merge on Backspace (blockquote prev)', () => {
 		await editor.loadContent('> # Heading\ntext\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/^> # Headingtext$/m);
 
@@ -70,7 +71,7 @@ test.describe('cross-container merge on Backspace (blockquote prev)', () => {
 		await editor.loadContent('> para\n>\n> ```\n> code\n> ```\ntext\n');
 		const para = editor.page.locator('[contenteditable="true"]', { hasText: /^text$/ });
 		await para.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 
 		// The fallback moves focus into the opaque leaf and changes no bytes, so where the next

@@ -50,7 +50,7 @@ export async function dispatchMoveFocus(
 	const retry = (i: number) => dispatchMoveFocus(scope, i, position, caretMemory, options);
 	if (!block?.focusable) {
 		// A child that can't take focus must not stop the move: continue in its direction
-		// (`docs/design/editor.md` § Focus traversal).
+		// (`docs/design/structural-edits.md` § Focus traversal).
 		if (step !== 0) await retry(index + step);
 		return;
 	}
@@ -73,7 +73,7 @@ export function delegateMoveFocus(
  * The direction a FocusPosition implies for traversal. A bare numeric offset is a targeted
  * position with no direction, so 0 tells the caller not to skip.
  */
-export function traversalStep(position: FocusPosition): -1 | 0 | 1 {
+function traversalStep(position: FocusPosition): -1 | 0 | 1 {
 	if (typeof position === 'object') return position.stickyColumnFrom === 'below' ? -1 : 1;
 	if (position === 'start') return 1;
 	if (position === 'end') return -1;

@@ -10,7 +10,10 @@ import type { DocumentView, NodeView } from '../core/node-views';
 import { readBlocks } from '../core/parser';
 import type { GrammarView } from '../schema/block-openers';
 import { documentLineEnding, type LineEnding } from '../core/lines';
-import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
+import { tryGetBlockKindDescriptor, type WriteRule } from '../schema/block-kind-descriptor';
+import { assertInvariant } from '../assert';
+import { isDevChecks } from '../env';
+import { checkWriteRuleKeepsBytes } from '../invariants/write-rule-keeps-bytes';
 import { adoptParsedMetadata } from '../schema/container-raw';
 
 // ── Parent shapes and the kind's write rules ──
@@ -92,11 +95,31 @@ export const forBody = (parent: BodyParentArg, raw: string): string =>
 	normalizeBodyWrite('owner' in parent ? parent.owner : undefined, raw, parentLineEnding(parent));
 
 /**
+ * The write rule `node`'s kind declares, the one way to run it: a rule never deletes bytes outside
+ * the written span (G1.143), which a dev build checks on every write it makes legal.
+ */
+export function kindWriteRule(node: NodeView): WriteRule | undefined {
+	const rule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;
+	// A production build runs the rule bare, so a keystroke pays nothing for the check.
+	if (!rule || !isDevChecks()) return rule;
+	return {
+		...rule,
+		normalize: (raw, ctx) => {
+			const stored = rule.normalize(raw, ctx);
+			assertInvariant('write-rule-keeps-bytes', () =>
+				checkWriteRuleKeepsBytes(ctx.node, raw, stored)
+			);
+			return stored;
+		}
+	};
+}
+
+/**
  * `raw` made legal as `node`'s own bytes before a reparse replaces the node; the rule runs first
  * because it reads the node's metadata as it stands, which the reparse re-derives.
  */
 export function normalizeOwnRaw(node: NodeView, raw: string, lineEnding: LineEnding): string {
-	const rule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;
+	const rule = kindWriteRule(node);
 	return rule ? rule.normalize(raw, { node, mode: 'literal', lineEnding }) : raw;
 }
 

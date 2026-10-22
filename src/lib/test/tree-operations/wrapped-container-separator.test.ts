@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { deleteNode } from '#lib/tree-operations/settle.js';
 import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { firstLineEnding, trailingLineEnding } from '#lib/core/lines.js';
 import { rebuildAncestryRaw } from '#lib/schema/container-raw.js';
@@ -13,6 +12,7 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { fixtureGrammar } from '#lib/test/harness/fixture-grammar.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { testDirectiveViews, testView } from '#lib/test/support/test-view.js';
+import { deleteSettled } from '#lib/test/harness/settle-funnel.js';
 
 // Inside a container whose parse strips the blank line after its opener into `innerPrefix`, the
 // fix-up keeps the line the reload strips, and reads a reserved title child as above the body.
@@ -33,7 +33,7 @@ function deleteBodyChild(
 	at: number
 ): { doc: ReturnType<typeof parse>; raw: string } {
 	const doc = parse(source);
-	deleteNode(bodyParentOf(doc.children[0]), at, defaultGrammarView, createSharingState());
+	deleteSettled(bodyParentOf(doc.children[0]), at, defaultGrammarView, createSharingState());
 	rebuildAncestryRaw(doc.children[0], [], fixtureGrammar);
 	return { doc, raw: serialize(doc) };
 }
@@ -65,7 +65,7 @@ describe('separator settle inside a chrome-wrapped container', () => {
 		const doc = parse(':::callout Title\n\nA\n\nB\n:::\n');
 		expect(doc.children[0].children?.[0].kind).toBe('callout-title');
 
-		deleteNode(bodyParentOf(doc.children[0]), 1, defaultGrammarView, createSharingState());
+		deleteSettled(bodyParentOf(doc.children[0]), 1, defaultGrammarView, createSharingState());
 		rebuildAncestryRaw(doc.children[0], [], fixtureGrammar);
 
 		expect(doc.children[0].children?.[1].leadingTrivia).toBe('');
@@ -77,7 +77,7 @@ describe('separator settle inside a chrome-wrapped container', () => {
 		expect(doc.children[0].children?.map((c) => c.raw)).toEqual(['\n', '\n', 'B\n', 'C\n']);
 
 		// Drop B, leaving the blank head and C, whose separator is then the only spare line.
-		deleteNode(bodyParentOf(doc.children[0]), 2, defaultGrammarView, createSharingState());
+		deleteSettled(bodyParentOf(doc.children[0]), 2, defaultGrammarView, createSharingState());
 		rebuildAncestryRaw(doc.children[0], [], fixtureGrammar);
 
 		expect(doc.children[0].children?.map((c) => c.raw)).toEqual(['\n', '\n', 'C\n']);
@@ -134,17 +134,17 @@ describe('emptying a body block against the wrap’s chrome lines', () => {
 		expectParseConverged(doc);
 	});
 
-	// The standing line is the one the reload strips, so the fix-up keeps it rather than rewriting
-	// a byte-equivalent shape.
-	it('leaves a standing follower separator as the strip line, creating nothing', () => {
+	// The standing line is the one the reload strips, so it moves into the wrap, adding nothing.
+	it('moves a standing follower separator into the wrap, creating nothing', () => {
 		const doc = parse(':::callout Title\n```\nc\n```\n\nBody2\n:::\n');
 		const callout = doc.children[0];
 		expect(callout.children![2].leadingTrivia).toBe('\n');
 
 		emptyBodyChild(callout, 1);
 
-		expect(callout.innerPrefix).toBe('');
-		expect(callout.children![2].leadingTrivia).toBe('\n');
+		expect(callout.innerPrefix).toBe('\n');
+		expect(callout.children![2].leadingTrivia).toBe('');
+		expect(serialize(doc)).toBe(':::callout Title\n\n\nBody2\n:::\n');
 		expectParseConverged(doc);
 	});
 
@@ -181,7 +181,7 @@ describe('separator settle inside a strip container', () => {
 	it('drops the freed separator: a blockquote strips nothing', () => {
 		const doc = parse('> a\n>\n>\n> b\n');
 
-		deleteNode(bodyParentOf(doc.children[0]), 2, defaultGrammarView, createSharingState());
+		deleteSettled(bodyParentOf(doc.children[0]), 2, defaultGrammarView, createSharingState());
 		rebuildAncestryRaw(doc.children[0], [], fixtureGrammar);
 
 		expect(doc.children[0].innerPrefix).toBe('');

@@ -1,6 +1,8 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
-import { documentCaret } from './helpers';
+import { documentCaret, waitForFirstImageLoaded } from './helpers';
+import { multiClickElement } from '../../../multi-click';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('image widget selection', () => {
 	let editor: EditorPage;
@@ -69,8 +71,9 @@ test.describe('image widget selection', () => {
 	for (const { name, opensCrop, selector } of controls) {
 		test(`a press on ${name} of a selected image leaves no native caret`, async ({ page }) => {
 			await editor.loadContent(IMAGE_PARAGRAPH);
+			await waitForFirstImageLoaded(page);
 			const image = page.locator('[data-image-widget]').first();
-			if (opensCrop) await image.dblclick();
+			if (opensCrop) await multiClickElement(image, 2);
 			else await image.click();
 			await page.locator(selector).click();
 			await expect(overlay(page)).toBeVisible();
@@ -84,7 +87,7 @@ test.describe('image widget selection', () => {
 		await editor.loadContent(IMAGE_PARAGRAPH);
 		await page.locator('[data-image-widget]').first().click();
 		await expect(overlay(page)).toBeVisible();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await expect(overlay(page)).toHaveCount(0);
 		await editor.typeText('W');
 		expect(await editor.bridge.getSource()).toBe(

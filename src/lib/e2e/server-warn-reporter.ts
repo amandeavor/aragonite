@@ -2,7 +2,7 @@ import type { FullResult, Reporter, TestCase } from '@playwright/test/reporter';
 import { warnTagOfLine } from '../dev-warn';
 
 /**
- * Fails the run when the dev server's own console carries a dev-warning line: a check or a
+ * Fails the run when the app server's own console carries a dev-warning line: a check or a
  * Svelte runtime warning that fired during server rendering, which no page-side watcher can see
  * because it happened before the browser existed. With `reuseExistingServer` a server Playwright
  * did not launch has no output to read, so this binds only runs that start their own server (CI

@@ -3,7 +3,7 @@ import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
 import { deleteNode, splitNode, updateNodeContent } from '../../tree-operations';
 import { documentBody, emptyParagraph } from '../../tree-operations/node-primitives';
-import { settleSeparatorOnBlank } from '../../tree-operations/settle';
+import { normalizeBlankRuns } from '../../tree-operations/blank-runs';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { settled } from '#lib/test/harness/settle-funnel.js';
 import { fixtureReading } from '../harness/fixture-grammar';
@@ -64,9 +64,10 @@ describe('the folded trailing blank materializes when the tail turns blank (GH #
 		expect(doc.children.map((c) => c.raw)).toEqual(['a\n', '\n', 'b\n']);
 		expect(doc.suffix).toBe('\n');
 
-		const change = settled(doc, (body) =>
-			deleteNode(body, 2, defaultGrammarView, createSharingState())
-		);
+		const change = settled(doc, (body) => ({
+			change: deleteNode(body, 2, createSharingState()),
+			removed: true
+		}));
 
 		expect(doc.children).toHaveLength(3);
 		expect(doc.suffix).toBe('');
@@ -79,9 +80,10 @@ describe('the folded trailing blank materializes when the tail turns blank (GH #
 	it('deleting the only block materializes the folded line rather than emptying the tree', () => {
 		const doc = parse('a\n\n');
 
-		const change = settled(doc, (body) =>
-			deleteNode(body, 0, defaultGrammarView, createSharingState())
-		);
+		const change = settled(doc, (body) => ({
+			change: deleteNode(body, 0, createSharingState()),
+			removed: true
+		}));
 
 		expect(doc.children.map((c) => c.raw)).toEqual(['\n']);
 		expect(doc.suffix).toBe('');
@@ -95,7 +97,7 @@ describe('the folded trailing blank materializes when the tail turns blank (GH #
 		const doc = parse('| H |\n| - |\n\n');
 
 		const change = settled(doc, (body) => {
-			deleteNode(body, 0, defaultGrammarView, createSharingState());
+			deleteNode(body, 0, createSharingState());
 			body.children.push(emptyParagraph('', '\n'));
 			return { op: 'replace', at: 0, count: 1, newCount: 1 };
 		});
@@ -112,7 +114,14 @@ describe('the folded trailing blank materializes when the tail turns blank (GH #
 		const doc = parse('foo bar\n\n');
 		doc.children[0].raw = '\n';
 
-		settleSeparatorOnBlank(documentBody(doc), 0, createSharingState());
+		normalizeBlankRuns(
+			documentBody(doc),
+			0,
+			0,
+			{ op: 'noop' },
+			defaultGrammarView,
+			createSharingState()
+		);
 
 		expect(doc.children).toHaveLength(2);
 		expect(doc.suffix).toBe('');

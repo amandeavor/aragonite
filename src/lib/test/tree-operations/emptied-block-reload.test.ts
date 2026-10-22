@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { deleteNode } from '#lib/tree-operations/settle.js';
 import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { splitNode } from '#lib/tree-operations/node-ops.js';
 import { trailingLineEnding } from '#lib/core/lines.js';
@@ -10,6 +9,7 @@ import type { Document } from '#lib/core/nodes.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { deleteSettled } from '#lib/test/harness/settle-funnel.js';
 
 // A block that turns blank joins the blank run around it, and the run carries exactly the one
 // separating line its reload produces; the reverse of `typed-blank-lines-reload.test.ts`.
@@ -51,9 +51,9 @@ describe('emptying a block settles the run it joins', () => {
 		expectReloadsAsItStands(doc, 'a\n\n\n\nb\n');
 	});
 
-	// A split leaves the separator on the follower, so the run's second line sits two positions
-	// past the block being emptied: a fix-up reaching only `index + 1` finds a blank block with none.
-	it('reaches past a blank follower to the separator a split left below it', () => {
+	// The run below the emptied block already holds a blank block, so its separator sits on that
+	// block, a position past the follower a fix-up reaching only `index + 1` would read.
+	it('reaches past a blank follower to the separator below it', () => {
 		const doc = parse('Hello\n\nSecond\n');
 		splitNode(doc, 0, 5, createSharingState(), fixtureReading());
 		splitNode(doc, 1, 0, createSharingState(), fixtureReading());
@@ -61,8 +61,8 @@ describe('emptying a block settles the run it joins', () => {
 		expect(layout(doc.children)).toEqual([
 			['paragraph', '', 'Hello\n'],
 			['paragraph', '\n', 'x\n'],
-			['paragraph', '', '\n'],
-			['paragraph', '\n', 'Second\n']
+			['paragraph', '\n', '\n'],
+			['paragraph', '', 'Second\n']
 		]);
 
 		empty(doc, 1);
@@ -183,7 +183,7 @@ describe('emptying a block beside indentation-delimited content', () => {
 	it('materializes the trailing blank line on the delete entry point too', () => {
 		const doc = parse('1.   # **b**\n\nmid\n\n     code\n\t\n\n```\n```\n');
 
-		deleteNode(doc, 1, defaultGrammarView, createSharingState());
+		deleteSettled(doc, 1, defaultGrammarView, createSharingState());
 
 		expect(serialize(doc)).toBe('1.   # **b**\n\n     code\n\t\n\n```\n```\n');
 		expectParseConverged(doc);

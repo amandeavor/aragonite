@@ -35,6 +35,11 @@ instead of entering it.
 - reading mode has no caret: the bridge reports no selection while reading, and
   the caret banked on entry comes back on the switch out, where typing resumes at
   it
+- a click while reading moves that caret: the switch out puts it in the clicked
+  block, and the next typed byte lands there
+  (miss-analysis: the only reading row switched straight back out, so a reading
+  mode that moved focus, by a click or a jump, had nothing showing the switch out
+  ignored it and left the caret behind, or nowhere)
 
 ## User interactions
 

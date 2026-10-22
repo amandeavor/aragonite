@@ -65,6 +65,70 @@ export function endsSelectAllRun(e: ChordKeys): boolean {
 	return eventToChord(e) !== null && !isSelectAllChord(e);
 }
 
+// ── Caret-edge keys ──────────────────────────────────────────────────────────
+
+/**
+ * Where a caret-edge key sends the caret: its visual line's edge, the edge of the block's text (a
+ * table cell's, in a cell), or with Shift the document's. `arrow` marks the Cmd+Arrow spelling,
+ * which the browser moves natively on macOS and nowhere else.
+ */
+export type CaretEdgeKey =
+	| {
+			readonly to: 'line';
+			readonly side: 'start' | 'end';
+			readonly extend: boolean;
+			readonly arrow: boolean;
+	  }
+	| { readonly to: 'block' | 'doc'; readonly side: 'start' | 'end'; readonly arrow: boolean };
+
+/** A keydown's key and whichever modifier flags it carries; an absent flag is not held. */
+export type EdgeKeys = Pick<KeyboardEvent, 'key'> &
+	Partial<Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>>;
+
+/**
+ * The one reading of a caret-edge key, from Home and End with their usual modifiers or from
+ * macOS's Cmd+Arrow (`docs/design/editor.md` § Browser engines). Every edge site asks here.
+ */
+export function caretEdgeKey(e: EdgeKeys): CaretEdgeKey | null {
+	if (e.key === 'Home' || e.key === 'End') {
+		const side = e.key === 'Home' ? 'start' : 'end';
+		const mod = e.ctrlKey || e.metaKey;
+		if (mod && e.shiftKey) return { to: 'doc', side, arrow: false };
+		if (e.altKey) return null;
+		return mod
+			? { to: 'block', side, arrow: false }
+			: { to: 'line', side, extend: e.shiftKey === true, arrow: false };
+	}
+	// The raw Meta flag, never `Mod`: Ctrl+Arrow is word motion on Windows and Linux.
+	if (!e.metaKey || e.ctrlKey || e.altKey) return null;
+	switch (e.key) {
+		case 'ArrowLeft':
+			return { to: 'line', side: 'start', extend: e.shiftKey === true, arrow: true };
+		case 'ArrowRight':
+			return { to: 'line', side: 'end', extend: e.shiftKey === true, arrow: true };
+		case 'ArrowUp':
+			return { to: e.shiftKey ? 'doc' : 'block', side: 'start', arrow: true };
+		case 'ArrowDown':
+			return { to: e.shiftKey ? 'doc' : 'block', side: 'end', arrow: true };
+		default:
+			return null;
+	}
+}
+
+/** Which way a page key moves the caret, and whether Shift grows a selection with it. */
+export interface PageKey {
+	readonly direction: 'up' | 'down';
+	readonly extend: boolean;
+}
+
+/** The one reading of PageUp and PageDown; null with Ctrl, Cmd or Alt held, which the browser
+ *  keeps (Ctrl+PageDown switches tabs). */
+export function pageKey(e: EdgeKeys): PageKey | null {
+	if (e.key !== 'PageUp' && e.key !== 'PageDown') return null;
+	if (e.ctrlKey || e.metaKey || e.altKey) return null;
+	return { direction: e.key === 'PageUp' ? 'up' : 'down', extend: e.shiftKey === true };
+}
+
 export function normalizeChord(chord: string): string {
 	const parts = chord.split('+');
 	const key = parts.pop() ?? '';
@@ -82,11 +146,6 @@ function chordDefect(chord: string): string | null {
 	if (key === '') return 'empty key';
 	const bad = parts.find((mod) => !VALID_MODIFIERS.has(mod));
 	return bad === undefined ? null : `unrecognized modifier "${bad}" (use Mod/Alt/Shift)`;
-}
-
-/** Whether a chord is well-formed: Mod/Alt/Shift modifiers and a non-empty key. */
-export function isChordWellFormed(chord: string): boolean {
-	return chordDefect(chord) === null;
 }
 
 /**

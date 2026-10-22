@@ -28,7 +28,6 @@ test.describe('image selection and history', () => {
 		await editor.loadContent(TYPED_BEFORE_IMAGE);
 		await editor.focusBlock(0, 3);
 		await editor.typeSlowly('xyz');
-		await editor.waitForUndoBatchFlush();
 		await page.locator('[data-image-widget]').first().click();
 		await expect(overlay(page)).toBeVisible();
 	}
@@ -70,7 +69,6 @@ test.describe('image selection and history', () => {
 		await editor.loadContent(TYPED_BEFORE_IMAGE);
 		await editor.focusBlock(0, 3);
 		await editor.typeSlowly('xyz');
-		await editor.waitForUndoBatchFlush();
 		await editor.undo();
 		await editor.bridge.waitForSourceContains('abc ![c');
 		await page.locator('[data-image-widget]').first().click();
@@ -138,7 +136,6 @@ test.describe('image selection and history', () => {
 		await editor.loadContent(`${IMAGE}\n\nabc\n`);
 		await editor.focusBlock(1, 1);
 		await editor.typeSlowly('xyz');
-		await editor.waitForUndoBatchFlush();
 		await page.locator('[data-image-widget]').first().click();
 		await expect(overlay(page)).toBeVisible();
 		await editor.undo();

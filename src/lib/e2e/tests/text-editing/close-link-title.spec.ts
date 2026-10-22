@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Typing the closing quote of a title under a link definition hands the paragraph to the
 // definition, as a reload would (`requirements/text-editing/close-link-title.md`).
@@ -23,7 +24,7 @@ test.describe('typing a link title’s closing quote', () => {
 		test(`the definition takes ${label} in`, async ({ page }) => {
 			await editor.loadContent(doc);
 			await editor.clickBlockAtPath([1], 1);
-			await page.keyboard.press('ControlOrMeta+End');
+			await page.keyboard.press(edgeKey('blockEnd'));
 			await page.keyboard.type('"');
 
 			await expectSource(editor, closed);

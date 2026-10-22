@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
-// Every way out of a shown source goes through the one resetReveal, so all of them leave the same
-// idle state and it can be used again afterwards. Anything an exit leaves behind, a `settling`
-// flag stuck true or a stale record, shows up as a broken second cycle.
-import { recordingWrite } from '#lib/test/harness/editor-actions.js';
-import { describe, it, expect } from 'vitest';
+// Every way out of a shown source closes the same range and writes nothing, so all of them leave
+// the same idle state and it can be used again afterwards. Anything an exit leaves behind, a
+// `settling` flag stuck true or a stale range, shows up as a broken second cycle.
+import { describe, it, expect, vi } from 'vitest';
 import { createWidgetInteraction } from '#lib/components/blocks/text/widget-interaction.js';
 import { MATH_INLINE } from '#lib/plugins/latex/latex-kind.js';
 import {
@@ -23,20 +22,16 @@ function mountMathBlock() {
 	const { el, node, inlineWidgets } = mountWidgetBlock('Before $x^2$ after', MATH_INLINE);
 	const math = inlineWidgets[0];
 
-	let revealingMirror = false;
-	const interaction = createWidgetInteraction(
-		widgetInteractionDeps(
-			{ node, el },
-			{
-				blockEdit: { updateBlockContent: recordingWrite() },
-				setPendingCursor: () => {},
-				setRevealing: (v: boolean) => {
-					revealingMirror = v;
-				},
-				isCrossBlock: () => false
-			}
-		)
+	const updateBlockContent = vi.fn();
+	const deps = widgetInteractionDeps(
+		{ node, el },
+		{
+			blockEdit: { updateBlockContent },
+			setPendingCursor: () => {},
+			isCrossBlock: () => false
+		}
 	);
+	const interaction = createWidgetInteraction(deps);
 
 	async function reveal(): Promise<void> {
 		interaction.enterWidget(math, false);
@@ -46,7 +41,8 @@ function mountMathBlock() {
 		interaction,
 		el,
 		reveal,
-		revealingMirror: () => revealingMirror,
+		shownRange: () => deps.shownSource.rangeIn([0], node),
+		writes: () => updateBlockContent.mock.calls.length,
 		sourceNode: () => el.childNodes[1] as Text,
 		trailingText: () => el.childNodes[2] as Text
 	};
@@ -73,16 +69,17 @@ describe('canonical reset: every exit lands in the same idle state', () => {
 	];
 
 	for (const [label, exit] of exits) {
-		it(`${label} clears isRevealing and lifts the input-suppress mirror`, async () => {
+		it(`${label} clears isRevealing and closes the range without a write`, async () => {
 			const b = mountMathBlock();
 			await b.reveal();
 			expect(b.interaction.isRevealing()).toBe(true);
-			expect(b.revealingMirror()).toBe(true);
+			expect(b.shownRange()).toEqual({ start: 7, end: 12 });
 
 			await exit(b);
 
 			expect(b.interaction.isRevealing()).toBe(false);
-			expect(b.revealingMirror()).toBe(false);
+			expect(b.shownRange()).toBeNull();
+			expect(b.writes()).toBe(0);
 		});
 	}
 });
@@ -110,14 +107,14 @@ describe('canonical reset: the machine is reusable after a fold', () => {
 	});
 });
 
-describe('canonical reset: cancel nulls the record before awaiting the shared core restore', () => {
-	it('reads idle synchronously the instant Escape-cancel returns', async () => {
+describe('canonical reset: Escape closes before it awaits the render', () => {
+	it('reads idle synchronously the instant Escape returns', async () => {
 		const b = mountMathBlock();
 		await b.reveal();
 		expect(b.interaction.isRevealing()).toBe(true);
 
-		// resetReveal() runs synchronously before the awaited commit, which keeps showRendered's
-		// selectionchange out of the exit check mid-swap. Observed without awaiting.
+		// The range closes before the awaited render, which keeps the render's selectionchange out
+		// of the exit check. Observed without awaiting.
 		const pending = b.interaction.handleRevealingKeydown(key('Escape'));
 		expect(b.interaction.isRevealing()).toBe(false);
 		await pending;

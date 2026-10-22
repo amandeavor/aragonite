@@ -2,6 +2,7 @@
 	import Section from './Section.svelte';
 	import { type createPanelState, MIN_PANEL_WIDTH, type SectionKey } from './panel-state.svelte';
 	import { enableInteractionTrace } from '#lib/debug/interaction-trace.js';
+	import type { createPanelRecorder } from './panel-recorder.svelte';
 
 	interface Props {
 		/** Kept by the route that mounts the panel, so a header button and Ctrl+Shift+D share it. */
@@ -14,6 +15,7 @@
 		getOpsLog: () => string;
 		getTrace: () => string;
 		opsLogTick: number;
+		recorder: ReturnType<typeof createPanelRecorder>;
 	}
 	let {
 		panel,
@@ -24,8 +26,11 @@
 		getInlineTree,
 		getOpsLog,
 		getTrace,
-		opsLogTick
+		opsLogTick,
+		recorder
 	}: Props = $props();
+
+	let includeText = $state(false);
 
 	const cstText = $derived(getCst());
 	const selectionText = $derived(getSelection());
@@ -169,6 +174,37 @@
 		<Section title="Interaction trace" expanded={panel.isExpanded('trace')} onToggle={toggleTrace}>
 			{traceText || '(recording — interact to capture inline transitions)'}
 		</Section>
+		<Section
+			title="Input recording"
+			expanded={panel.isExpanded('recording')}
+			onToggle={mkToggle('recording')}
+		>
+			<div class="recorder">
+				{#if recorder.recording}
+					<button type="button" class="recorder-btn" onclick={() => recorder.stop()}>Stop</button>
+					<span class="recorder-note">recording{includeText ? ', text included' : ''}</span>
+				{:else}
+					<button type="button" class="recorder-btn" onclick={() => recorder.start(includeText)}
+						>Record</button
+					>
+					<label class="recorder-note">
+						<input type="checkbox" bind:checked={includeText} /> include text
+					</label>
+				{/if}
+			</div>
+			{#if recorder.last && !recorder.recording}
+				<div class="recorder">
+					<span class="recorder-note"
+						>{recorder.last.steps.length} steps{recorder.last.text ? ', with text' : ''}</span
+					>
+					<button type="button" class="recorder-btn" onclick={() => recorder.send()}>Send</button>
+					<button type="button" class="recorder-btn" onclick={() => recorder.download()}
+						>Download</button
+					>
+				</div>
+			{/if}
+			{#if recorder.status}<div class="recorder-note">{recorder.status}</div>{/if}
+		</Section>
 	</aside>
 {/if}
 
@@ -178,6 +214,9 @@
 		top: 0;
 		right: 0;
 		height: 100vh;
+		/* A phone is narrower than the panel's minimum width, and a clipped panel hides its buttons. */
+		max-width: 100vw;
+		box-sizing: border-box;
 		background: var(--color-bg-elevated, #2a2c33);
 		color: var(--color-text-secondary, #d6d9e0);
 		border-left: 1px solid var(--color-border, #3d4047);
@@ -233,6 +272,30 @@
 	.copy-all:hover,
 	.close-btn:hover {
 		background: var(--color-ui-faint, rgba(255, 255, 255, 0.07));
+	}
+	.recorder {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+		white-space: normal;
+	}
+	.recorder + .recorder {
+		margin-top: 6px;
+	}
+	.recorder-btn {
+		all: unset;
+		padding: 2px 10px;
+		cursor: pointer;
+		border-radius: 3px;
+		border: 1px solid var(--color-border, #3d4047);
+		color: var(--color-text-secondary, #d6d9e0);
+	}
+	.recorder-btn:hover {
+		background: var(--color-ui-faint, rgba(255, 255, 255, 0.07));
+	}
+	.recorder-note {
+		color: var(--color-text-muted, #aaaaaa);
 	}
 	.close-btn {
 		font-size: 18px;

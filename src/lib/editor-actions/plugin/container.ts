@@ -16,7 +16,11 @@ import type { NodeView } from '../../core/node-views';
 import type { AmbientPrefix, BlockComponent, ContainerBlockComponent } from '../../block-component';
 import { getBlockKindDescriptor } from '../../schema/block-kind-descriptor';
 import { expandContainerPatch, isCollapsedContainer } from '../../schema/reserved-chrome';
-import type { KindCommandTarget } from '../../schema/block-commands';
+import {
+	blockCommandTarget,
+	type BlockCommandWrites,
+	type KindCommandTarget
+} from '../../schema/block-commands';
 import { commandForKey } from '../../schema/commands';
 import { isReadingMode, type PresentationMode } from '../../presentation-mode';
 import { devWarn } from '../../dev-warn';
@@ -33,7 +37,8 @@ import type { EditorContext } from '../../schema/plugin-install';
 import { componentPluginEditor } from '../../schema/block-kind-plugin';
 import type { WindowResult } from '../../windowing/block-window.svelte';
 import type { RefSlots } from '../../block-lists/child-refs';
-import type { ChildList } from '../../block-lists/child-list';
+import { componentAt, type ChildList } from '../../block-lists/child-list';
+import { findBlockPathForElement } from '../../selection/path-lookup';
 import { useContainerWindowing } from '../../windowing/use-container-windowing.svelte';
 import { createContainerExitOverrides } from '../container-exit-overrides';
 import { delegateMoveFocus } from '../focus/focus-dispatch';
@@ -245,27 +250,21 @@ export function composeCollapseGates(
 /** The kind-command target a plugin container hands to `dispatchKindCommand`. It has no
  *  `runCommand`, since a plugin container owns no built-in kind commands. */
 export function buildContainerKindTarget(
-	deps: Pick<ContainerBlockDeps, 'getNode' | 'commandHooks'>,
-	updateOwnMetadata: ContainerBlock['updateOwnMetadata']
+	deps: Pick<ContainerBlockDeps, 'getNode' | 'getIndex' | 'commandHooks'>,
+	parentBlockEdit: BlockCommandWrites
 ): KindCommandTarget {
 	return {
 		get kind() {
 			return deps.getNode().kind;
 		},
-		getCommandContext: () => ({
-			node: deps.getNode(),
-			updateMetadata: (patch) => {
-				void updateOwnMetadata(patch);
-			},
-			hooks: deps.commandHooks?.()
-		})
+		getCommandContext: () => blockCommandTarget(deps, parentBlockEdit)
 	};
 }
 
 // ── Factory ──────────────────────────────────────────────────────────────────
 
 export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
-	const { caretMemory, caretWriter, selection, scrollOwner, commands, drafts } =
+	const { caretMemory, caretWriter, selection, scrollOwner, commands, drafts, readingFocus } =
 		getContext<EditorServices>(EDITOR_SERVICES_KEY);
 	const { theme: getTheme } = getContext<EditorPolicies>(EDITOR_POLICIES_KEY);
 	const { pluginEditor, reading, doc: getDoc } = getContext<EditorDoc>(EDITOR_DOC_KEY);
@@ -332,7 +331,8 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 				getFocusEl: wholeBlockSurface,
 				isReading: () => isReadingMode(getPresentationMode),
 				getLabel: () => blockAccessibleName(deps.getNode()),
-				mint: (text) => parentBlockEdit.insertParagraph(deps.getIndex() + 1, text)
+				holdTabStop: (proxy) => readingFocus.hold(proxy, deps.getPath),
+				mint: (text) => void parentBlockEdit.insertParagraph(deps.getIndex() + 1, text)
 			})
 		: undefined;
 
@@ -398,7 +398,7 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 		await parentBlockEdit.updateBlockMetadata(deps.getIndex(), patch, options);
 	};
 
-	const kindTarget = buildContainerKindTarget(deps, updateOwnMetadata);
+	const kindTarget = buildContainerKindTarget(deps, parentBlockEdit);
 	// Focused as a whole, the block is the one a reorder chord moves; a key bubbling from an
 	// inner leaf was that leaf's to move.
 	const wholeBlockTarget: KindCommandTarget = {
@@ -409,6 +409,18 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 		getPath: deps.getPath
 	};
 
+	// A key from a block inside runs once that block's shown source is written, so a command that
+	// rewrites this container's bytes keeps the edit.
+	const bubbledTarget = (e: KeyboardEvent): KindCommandTarget => ({
+		...kindTarget,
+		afterSourceCommit: (run) => {
+			const from = findBlockPathForElement(e.target instanceof Element ? e.target : null);
+			const inner = from && componentAt(childList, from.slice(deps.getPath().length));
+			if (inner?.afterSourceCommit) inner.afterSourceCommit(run);
+			else run();
+		}
+	});
+
 	const commandOf = (e: KeyboardEvent) => commandForKey(e, deps.getNode().kind, commands);
 
 	const handleKeydown = (e: KeyboardEvent): void => {
@@ -417,7 +429,7 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 		// Only when this block itself holds focus: a chord bubbling from an inner leaf already
 		// met the global chords there, and running it here would fire it twice.
 		if (ownsFocus && dispatchWholeBlockGlobalChord(e, deps.getNode().kind, commands)) return;
-		const target = ownsFocus ? wholeBlockTarget : kindTarget;
+		const target = ownsFocus ? wholeBlockTarget : bubbledTarget(e);
 		const range = ownsFocus ? null : { selection, getDoc };
 		if (dispatchContainerChord(e, target, commands, range)) return;
 		if (ownsFocus) handleWholeBlockKeydown(e);
@@ -453,6 +465,7 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 			blockEdit: parentBlockEdit,
 			focus: parentFocus,
 			isReading: () => isReadingMode(getPresentationMode),
+			selection,
 			caretMemory,
 			commandOf
 		});

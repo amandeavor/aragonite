@@ -5,8 +5,14 @@
  * code chip's edge). Reads only; the target decides what to draw from these.
  */
 
-import { firstUsefulRect, neighbourCaretRect, type CaretRect } from './visual-lines';
-import { isAtomicInlineWidget, isHiddenMarkerText } from './widget-offset';
+import {
+	caretRectAt,
+	nearestLetter,
+	neighbourCaretRect,
+	softWrapAt,
+	type CaretRect
+} from './visual-lines';
+import { isAtomicInlineWidget } from './widget-offset';
 import type { ClientCaretBox, HostBox, WidgetEdgeBox } from './drawn-caret-target';
 
 export interface CaretMeasure {
@@ -64,14 +70,14 @@ export function widgetEdgeBox(widget: HTMLElement, side: 'before' | 'after'): Wi
 export function measureCaret(surface: HTMLElement, range: Range): CaretMeasure | null {
 	const host = caretHost(surface);
 	if (!host) return null;
-	const own = firstUsefulRect(range);
+	const own = caretRectAt(surface, range.startContainer, range.startOffset);
 	const caret = own ?? neighbourCaretRect(range);
 	return {
 		host,
 		hostBox: hostBox(host),
 		caret: caret && { left: caret.left, top: caret.top, bottom: caret.bottom },
 		besideWidget: own === null && touchesWidget(range),
-		atSoftWrap: own !== null && atSoftWrap(range, surface),
+		atSoftWrap: own !== null && softWrapAt(range, surface) !== null,
 		clipped: caret !== null && clippedBetween(surface, host, caret),
 		chipEdge: codeChipEdge(range, surface)
 	};
@@ -99,55 +105,11 @@ const WIDGET_BAR_WIDTH = 1.5;
 
 const IMAGE_WIDGET = '.md-image-widget';
 
-const WRAP_SPACE = [' ', '\t'];
-
 /** A code span's painted chip. */
 export const CODE_CHIP = '.inline-code-content';
 
 /** How far past a chip's border its outside stop draws. */
 const CHIP_STOP_GAP = 2;
-
-// A line wraps inside a run of spaces, and the range reads one line or the other there whatever
-// line the browser draws on; the letters bounding the run sit on different lines exactly then.
-function atSoftWrap(range: Range, surface: HTMLElement): boolean {
-	const node = range.startContainer;
-	if (!(node instanceof Text)) return false;
-	const first = letterBox(nearestLetter(node, range.startOffset, surface, false));
-	const next = letterBox(nearestLetter(node, range.startOffset, surface, true));
-	return first !== null && next !== null && next.top >= first.bottom - 1;
-}
-
-/** The nearest letter on one side of `at`, across text nodes inside `surface`, past spaces and the
- *  hidden marker text that paints nothing. */
-function nearestLetter(
-	start: Text,
-	at: number,
-	surface: HTMLElement,
-	forward: boolean
-): { node: Text; at: number } | null {
-	const walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT);
-	walker.currentNode = start;
-	let node: Text | null = start;
-	let i = forward ? at : at - 1;
-	while (node) {
-		if (!isHiddenMarkerText(node, surface)) {
-			for (; i >= 0 && i < node.data.length; i += forward ? 1 : -1) {
-				if (!WRAP_SPACE.includes(node.data[i])) return { node, at: i };
-			}
-		}
-		node = (forward ? walker.nextNode() : walker.previousNode()) as Text | null;
-		if (node) i = forward ? 0 : node.data.length - 1;
-	}
-	return null;
-}
-
-function letterBox(letter: { node: Text; at: number } | null): DOMRect | null {
-	if (!letter) return null;
-	const range = document.createRange();
-	range.setStart(letter.node, letter.at);
-	range.setEnd(letter.node, letter.at + 1);
-	return firstUsefulRect(range);
-}
 
 // The caret at a code chip's first or last letter, or in the text just outside the chip.
 export function codeChipEdge(range: Range, surface: HTMLElement): ChipEdge | null {

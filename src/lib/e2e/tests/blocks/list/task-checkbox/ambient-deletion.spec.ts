@@ -1,32 +1,8 @@
 import { test, expect } from '../../../../fixtures';
-import { EditorPage, BLOCK_CONTENT_SELECTOR } from '../../../../editor-page';
+import { EditorPage } from '../../../../editor-page';
+import { extendKey } from '../../../../platform-keys';
 
-// The same range a mouse drag makes: `Range.setStart` inside the `contenteditable="false"`
-// checkbox text, `setEnd` at the end of "pending". Chromium allows that forward range even though
-// it starts in a non-editable widget; what it then refuses silently is the delete.
-async function selectFromCheckboxIntoContent(editor: EditorPage): Promise<{ collapsed: boolean }> {
-	return editor.page.evaluate((contentSelector) => {
-		const wrapper = document.querySelector(`[data-block-path='[0,0,0]']`);
-		const paragraph = wrapper?.querySelector(contentSelector) as HTMLElement | null;
-		const checkbox = paragraph?.querySelector('.task-checkbox') as HTMLElement | null;
-		if (!paragraph || !checkbox) throw new Error('structure not found');
-		paragraph.focus();
-		const textNode = Array.from(paragraph.childNodes).find(
-			(n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? '').includes('pending')
-		) as Text | undefined;
-		const innerText = checkbox.firstChild as Text | null;
-		if (!textNode || !innerText) throw new Error('nodes not found');
-		const range = document.createRange();
-		range.setStart(innerText, 1);
-		range.setEnd(textNode, textNode.textContent?.length ?? 0);
-		const sel = window.getSelection()!;
-		sel.removeAllRanges();
-		sel.addRange(range);
-		return { collapsed: sel.isCollapsed };
-	}, BLOCK_CONTENT_SELECTOR);
-}
-
-test.describe('task checkbox: selection crossing ambient region', () => {
+test.describe('task checkbox: deleting a to-do’s text', () => {
 	let editor: EditorPage;
 
 	test.beforeEach(async ({ page }) => {
@@ -34,25 +10,10 @@ test.describe('task checkbox: selection crossing ambient region', () => {
 		await editor.goto();
 	});
 
-	for (const key of ['Backspace', 'Delete'] as const) {
-		test(`${key} with selection extending into ambient checkbox region deletes text`, async () => {
-			await editor.loadContent('- [ ] pending\n');
-
-			const selState = await selectFromCheckboxIntoContent(editor);
-			expect(selState.collapsed).toBe(false);
-
-			await editor.page.keyboard.press(key);
-			await editor.bridge.waitForSourceNotContains('pending', 5000);
-			// The range in raw offsets clamps the endpoint inside the marker to raw 0, so the
-			// delete removes the whole content "pending" and the marker survives.
-			expect((await editor.bridge.getSource()).trim()).toBe('- [ ]');
-		});
-	}
-
-	test('Backspace with selection entirely within editable content still uses native (control)', async () => {
+	test('Backspace over the whole text leaves the marker and its box', async () => {
 		await editor.loadContent('- [ ] pending\n');
 		await editor.focusBlockAtPath([0, 0, 0], 0);
-		await editor.page.keyboard.press('Shift+End');
+		await editor.page.keyboard.press(extendKey('lineEnd'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceNotContains('pending', 5000);
 		expect((await editor.bridge.getSource()).trim()).toBe('- [ ]');

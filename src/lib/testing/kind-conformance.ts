@@ -8,7 +8,9 @@
 import type { AnyBlockKind, CstNode, Document } from '../core/nodes';
 import {
 	displayLength,
+	displayLines,
 	documentLineEnding,
+	splitLines,
 	ownTrailingLineEnding,
 	trimTrailingLineEnding
 } from '../core/lines';
@@ -47,15 +49,19 @@ import {
 	type KitCell
 } from './conformance-core';
 import { installOwnRaw } from '../tree-operations/node-primitives';
-import { defaultGrammarView } from '../schema/block-openers';
+import { defaultGrammarView, type BlockOpener, type OpenContext } from '../schema/block-openers';
 import { createHeadlessActions } from './headless-actions';
 import { kitReading } from './kit-reading';
 import { assertParseConverged } from './parse-convergence';
+import { checkWriteRuleKeepsBytes } from '../invariants/write-rule-keeps-bytes';
+import { fenceReading } from '../core/parsers/fence-syntax';
+import { writtenSpan } from '../core/written-span';
 
 // ── Report + profile ─────────────────────────────────────────────────────────
 
-/** A closure column, plus `rawWrite`, which reads the descriptor rather than the closure block. */
-export type KindCell = ClosureColumn | 'rawWrite';
+/** A closure column, plus two cells that read the descriptor and the opener rather than the
+ *  closure block: `rawWrite`, and `unfinishedReading`. */
+export type KindCell = ClosureColumn | 'rawWrite' | 'unfinishedReading';
 
 export interface KindCellReport extends CellReport<KindCell> {
 	/** The closure mode the kind declared for the cell; absent on `rawWrite`. */
@@ -117,7 +123,8 @@ export async function runKindConformance(
 					: () => executeCell(column, descriptor.closure[column], run)
 			};
 		}),
-		{ cell: 'rawWrite', run: execRawWrite }
+		{ cell: 'rawWrite', run: execRawWrite },
+		{ cell: 'unfinishedReading', run: execUnfinishedReading }
 	];
 	const reports = await runCells(cells, run, {
 		subject: kind,
@@ -126,7 +133,7 @@ export async function runKindConformance(
 	return {
 		kind,
 		cells: reports.map((report) =>
-			report.cell === 'rawWrite'
+			report.cell === 'rawWrite' || report.cell === 'unfinishedReading'
 				? report
 				: { ...report, mode: descriptor.closure[report.cell].mode }
 		)
@@ -242,7 +249,7 @@ function execRoundTrip(
 	return 'byte round-trip';
 }
 
-/** An independent restatement of the merge-role table (`docs/design/editor.md` § Merge
+/** An independent restatement of the merge-role table (`docs/design/structural-edits.md` § Merge
  *  eligibility: roles, not pairs); derived from `isMergeEligible` it would test nothing. */
 const MERGE_ROLE_EXPECTATION: Record<
 	MergeRole,
@@ -387,6 +394,61 @@ function execRawWrite({ kind, descriptor, parsed: ctx }: KindRun): CellOutcome {
 	return 'five writes, each idempotent, leaving the next block its own, caret map agreeing';
 }
 
+/** An opener that backs out says which lines could finish it, and that has to hold for the closer
+ *  that finishes the kind's own fixture, or a closer typed blocks below goes unasked. */
+function execUnfinishedReading({ parsed: ctx }: KindRun): CellOutcome {
+	if (!ctx) return { status: 'exempt', detail: 'has no conformanceFixture to read a closer from' };
+	const lines = displayLines(trimTrailingLineEnding(ctx.node.raw));
+	const closer = lines[lines.length - 1].text;
+	const opened = ctx.node.raw.slice(0, ctx.node.raw.lastIndexOf(closer));
+	const waiting = defaultGrammarView
+		.orderedOpeners()
+		.filter(
+			(opener) =>
+				lines.length > 1 &&
+				opensKind(opener, ctx.node.raw, ctx.kind) &&
+				opener.readingNotFinal?.notFinal(opened)
+		);
+	if (waiting.length === 0) {
+		// A fence that nothing closes takes in every block below, so its opener has to say so.
+		assert(
+			lines.length < 2 || !fenceReading.notFinal(opened),
+			`${ctx.kind}'s fixture is a fence, but its opener declares no readingNotFinal: declare ` +
+				`fenceReading, or an edit that moves where the fence closes leaves the blocks below ` +
+				`paired the old way`
+		);
+		return {
+			status: 'exempt',
+			detail: 'no opener reads the fixture without its last line as waiting on a closer'
+		};
+	}
+	for (const opener of waiting) {
+		assert(
+			opener.readingNotFinal!.mayClose(closer),
+			`${ctx.kind}'s opener says its fixture without its last line is unfinished, but its ` +
+				`readingNotFinal.mayClose refuses ${show(closer)}, the line that finishes it: mayClose ` +
+				`must accept every closer the opener takes, or a closer typed blocks below is never asked`
+		);
+	}
+	return 'mayClose accepts the closer that finishes the fixture';
+}
+
+/** Whether `opener` reads `raw` alone as a block of `kind`. */
+function opensKind(opener: BlockOpener, raw: string, kind: AnyBlockKind): boolean {
+	const lines = splitLines(raw);
+	const ctx: OpenContext = {
+		lines,
+		index: 0,
+		end: lines.length,
+		line: lines[0],
+		leadingTrivia: '',
+		isDocumentParse: false,
+		depth: 0,
+		grammar: defaultGrammarView
+	};
+	return opener.tryOpen(ctx)?.node.kind === kind;
+}
+
 // ── Exported executors (direct-drive for regression tests) ───────────────────
 
 const TRAILING_SENTINEL = '\n\nclipboard sentinel\n';
@@ -525,7 +587,7 @@ function checkClosingCutNeedsNoRule(kind: AnyBlockKind, fixture: string): void {
 }
 
 /** Drives five writes over `kind`'s fixture through its `rawWrite` rule; each result must be a
- *  fixed point of the rule, leave the next block its own, and have an agreeing caret map. */
+ *  fixed point, keep every byte the write left alone, map carets, and free the next block. */
 export function checkLeafRawWrite(
 	kind: AnyBlockKind,
 	fixture: string,
@@ -533,7 +595,7 @@ export function checkLeafRawWrite(
 ): void {
 	if (!rule) fail(`"${kind}" declares no rawWrite to drive`);
 	const { ending, lines, closingCut } = fixtureLines(fixture);
-	const writes: Array<[label: string, raw: string, keepsKind: boolean]> = [
+	const writes: Array<[label: string, raw: string, keepsKind: boolean, closes?: false]> = [
 		['the closing line cut', closingCut, lines.length > 2],
 		['everything past the first line cut', lines[0] + ending, false],
 		['an empty write', '', false]
@@ -542,19 +604,23 @@ export function checkLeafRawWrite(
 		const closer = lines[lines.length - 1];
 		const closerInBody = [lines[0], closer, ...lines.slice(1)];
 		writes.push(
-			['the first line cut', lines.slice(1).join(ending) + ending, false],
+			// The closing line it leaves reads on as a reload reads it, so it may take the next block.
+			['the first line cut', lines.slice(1).join(ending) + ending, false, false],
 			['the closing line copied into the body', closerInBody.join(ending) + ending, false]
 		);
 	}
-	for (const [label, written, keepsKind] of writes) {
+	for (const [label, written, keepsKind, closes] of writes) {
 		const doc = parse(fixture + ending + RAW_WRITE_SENTINEL);
 		const node = subjectNode(doc, kind, [0], 'the rawWrite fixture');
 		const ctx = { node, mode: 'literal', lineEnding: documentLineEnding(doc) } as const;
 		const legal = rule.normalize(written, ctx);
 		assertIs(rule.normalize(legal, ctx), legal, `"${kind}" rule is idempotent on ${label}`);
+		const deleted = checkWriteRuleKeepsBytes(node, written, legal);
+		assert(deleted === null, `"${kind}" after ${label} (${show(legal)}): ${deleted?.message}`);
 		checkCaretMap(`"${kind}" caret map on ${label}`, written, legal, (offset) =>
 			rule.mapOffset(written, offset, ctx)
 		);
+		if (closes === false) continue;
 
 		const following = parse(legal + ending + RAW_WRITE_SENTINEL).children.at(-1);
 		assertIs(
@@ -579,16 +645,9 @@ function checkCaretMap(
 	legal: string,
 	mapOffset: (offset: number) => number
 ): void {
-	const shorter = Math.min(written.length, legal.length);
-	let prefix = 0;
-	while (prefix < shorter && written[prefix] === legal[prefix]) prefix++;
-	let suffix = 0;
-	while (
-		suffix < shorter - prefix &&
-		written[written.length - 1 - suffix] === legal[legal.length - 1 - suffix]
-	) {
-		suffix++;
-	}
+	const span = writtenSpan(written, legal);
+	const prefix = span.start;
+	const suffix = written.length - span.removedEnd;
 	const grown = legal.length - written.length;
 	let previous = 0;
 	for (let offset = 0; offset <= written.length; offset++) {

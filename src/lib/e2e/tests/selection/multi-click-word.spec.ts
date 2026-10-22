@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage } from '../plugins/helpers';
 import { nativeSelectionText, pastLineEnd } from './multi-click-helpers';
+import { multiClick } from '../../multi-click';
 import { textRunCenter } from '../../text-runs';
 import { nextRow } from '../presentation/helpers';
 
@@ -16,8 +17,7 @@ test.describe('multi-click: the word inline syntax handler', () => {
 	});
 
 	async function doubleClickOn(needle: string): Promise<void> {
-		const at = await textRunCenter(editor.page, needle);
-		await editor.page.mouse.dblclick(at.x, at.y);
+		await multiClick(editor.page, await textRunCenter(editor.page, needle), 2);
 	}
 
 	/** Loads `doc` and double-clicks `needle`, expecting `word` and nothing beside it. */
@@ -52,8 +52,7 @@ test.describe('multi-click: the word inline syntax handler', () => {
 					await wordAt('```\nconst value = 1\n```\n', 'value', 'value');
 
 					await nextRow(editor, 'alpha beta gamma\n');
-					const at = await pastLineEnd(page, 'gamma');
-					await page.mouse.dblclick(at.x, at.y);
+					await multiClick(page, await pastLineEnd(page, 'gamma'), 2);
 					await expect.poll(() => nativeSelectionText(page)).toBe('gamma');
 				});
 			}

@@ -13,8 +13,16 @@
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
 
 	const wiring = wireSurfaceContexts();
-	const { blockEdit, focusActions, caretMemory, caretWriter, selection, reading, commands } =
-		wiring.deps;
+	const {
+		blockEdit,
+		focusActions,
+		caretMemory,
+		caretWriter,
+		selection,
+		reading,
+		commands,
+		readingFocus
+	} = wiring.deps;
 	// Tabindex-focusable independent of contenteditable, so keydown stays live in
 	// reading mode; the edit branches below gate on this instead.
 	const isReading = () => reading.mode() === 'reading';
@@ -28,7 +36,8 @@
 		getFocusEl: () => el,
 		isReading,
 		getLabel: () => blockAccessibleName(node),
-		mint: (text) => blockEdit.insertParagraph(index + 1, text)
+		holdTabStop: (proxy) => readingFocus.hold(proxy, () => myPath),
+		mint: (text) => void blockEdit.insertParagraph(index + 1, text)
 	});
 
 	// ── BlockComponent interface ────────────────────────────────────────
@@ -39,8 +48,6 @@
 	// The block is its own focus target, so the offset means nothing here, but the live
 	// range still has to be ended: nothing below places a DOM caret that would collapse it.
 	export const focus = placeCaret(selection, caretWriter, parkCaret);
-
-	export const typeText = (text: string): Promise<boolean> => inputProxy.typeText(text);
 
 	export function parkCaret(_offset: number): void {
 		if (el) inputProxy.focus(el);
@@ -63,7 +70,6 @@
 		focusable,
 		focus,
 		parkCaret,
-		typeText,
 		getCursorOffset,
 		measurePartialRects
 	} satisfies BlockComponent);
@@ -84,6 +90,7 @@
 			blockEdit,
 			focus: focusActions,
 			isReading,
+			selection,
 			caretMemory,
 			commandOf: (press) => wiring.resolveChord(press, node.kind)
 		});

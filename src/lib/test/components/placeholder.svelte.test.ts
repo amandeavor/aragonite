@@ -111,9 +111,12 @@ describe('placeholder: the function form', () => {
 		expect(hintAt(editor, [0])).toBe('heading [0] document');
 	});
 
+	// Reading mode paints the hint but names no field, so there's no `aria-placeholder` to match.
 	it('is still asked in reading mode, as not editable', () => {
 		const editor = mountEditor({ source: '\n', placeholder: echo, presentationMode: 'reading' });
-		expect(hintAt(editor, [0])).toBe('paragraph [0] document read-only');
+		const el = surfaceAt(editor, [0]);
+		expect(el.getAttribute('data-placeholder')).toBe('paragraph [0] document read-only');
+		expect(el.hasAttribute('aria-placeholder')).toBe(false);
 	});
 
 	it('asks an empty block again only when its own answer can change', async () => {

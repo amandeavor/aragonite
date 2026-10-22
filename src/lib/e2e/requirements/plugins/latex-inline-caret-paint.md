@@ -11,3 +11,7 @@ The rule, how it works and which way the caret is restored live with the image p
 ## Notes
 
 - Playwright screenshots never capture the browser's caret in Chromium unless a test recolours it, so the check reads which carets are live (`caretsShowing`), and the bar's box against the widget's.
+
+Miss-analysis (real Firefox): these scenarios ran on Chromium alone, which never leaves a caret
+inside a widget or stops Mod+End short of one; Firefox does both, and drops text typed right before
+a widget that ends the block.

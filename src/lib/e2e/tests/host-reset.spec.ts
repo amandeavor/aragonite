@@ -2,6 +2,8 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { EditorPage } from '../editor-page';
 import { gotoReady } from '../goto-ready';
+import { edgeKey } from '../platform-keys';
+import { clickInPlace } from '../click-in-place';
 
 // The editor lays out the same on a page with no CSS reset as on `/test/editor`, which has one,
 // and leaves what a host put inside it on the page's own styles.
@@ -68,6 +70,10 @@ function blockBoxes(page: Page): Promise<BlockBox[]> {
 const containerWidth = (page: Page) =>
 	page.locator('.editor').evaluate((el) => el.parentElement!.getBoundingClientRect().width);
 
+/** The editor's own height, which decides whether a classic scrollbar takes width from its blocks. */
+const editorHeight = (page: Page) =>
+	page.locator('.editor').evaluate((el) => el.getBoundingClientRect().height);
+
 async function loadOnNoReset(page: Page, md: string, query = ''): Promise<void> {
 	await gotoReady(page, query ? `/test/no-reset?${query}` : '/test/no-reset');
 	await new EditorPage(page).loadContent(md);
@@ -94,8 +100,8 @@ test.describe('an editor on a page with no CSS reset', () => {
 
 	test('typing at the end of a long line does not scroll the page sideways', async ({ page }) => {
 		await loadOnNoReset(page, LONG_LINE);
-		await page.locator('.editor [contenteditable="true"]').first().click();
-		await page.keyboard.press('ControlOrMeta+End');
+		await clickInPlace(page.locator('.editor [contenteditable="true"]').first());
+		await page.keyboard.press(edgeKey('blockEnd'));
 		await page.keyboard.type(' and on');
 		await expect(page.locator('.editor')).toContainText('wraps. and on');
 
@@ -113,11 +119,13 @@ test.describe('an editor on a page with no CSS reset', () => {
 		await withReset.goto();
 		await withReset.loadContent(SEED);
 		const width = Math.round(await containerWidth(page));
+		const height = Math.round(await editorHeight(page));
 		const expected = await blockBoxes(page);
 
-		await loadOnNoReset(page, SEED, `width=${width}`);
+		await loadOnNoReset(page, SEED, `width=${width}&height=${height}`);
 		// A harness that drifted reads here, before any block is blamed for it.
 		expect(await containerWidth(page)).toBe(width);
+		expect(Math.round(await editorHeight(page))).toBe(height);
 		const actual = await blockBoxes(page);
 
 		expect(actual.map((box) => box.path)).toEqual(expected.map((box) => box.path));
@@ -156,8 +164,8 @@ test.describe('an editor on a page with no CSS reset', () => {
 			['%%', 'dom-row']
 		]) {
 			await test.step(`an inline menu ${name}`, async () => {
-				await page.locator('.editor [contenteditable="true"]').first().click();
-				await page.keyboard.press('End');
+				await clickInPlace(page.locator('.editor [contenteditable="true"]').first());
+				await page.keyboard.press(edgeKey('lineEnd'));
 				await page.keyboard.type(` ${trigger}`);
 				const row = `.inline-menu[data-inline-menu="${name}"] .host-button`;
 				await expect(page.locator(row)).toBeVisible();
@@ -172,7 +180,7 @@ test.describe('an editor on a page with no CSS reset', () => {
 	}) => {
 		const barStyles = async (query: string) => {
 			await loadOnNoReset(page, 'A paragraph.\n', query);
-			await page.locator('.editor [contenteditable="true"]').first().click();
+			await clickInPlace(page.locator('.editor [contenteditable="true"]').first());
 			await page.keyboard.press('ControlOrMeta+f');
 			await expect(page.locator('.search-bar')).toBeVisible();
 			return page.locator('.search-bar').evaluate((bar) =>

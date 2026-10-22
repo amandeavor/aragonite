@@ -1,6 +1,8 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage } from '../plugins/helpers';
 import { FIXTURE_BYTES } from '../perf/vr-helpers';
+import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 /**
  * The `fold` and `block-badge` fixtures (requirements/decorations/fold-and-badge.md). `fold` pins
@@ -28,7 +30,7 @@ test.describe('fold fixture', () => {
 	});
 
 	test('clicking the … widget opens the fold; the source is untouched', async ({ page }) => {
-		await page.locator(`${ISLAND} .fold-ellipsis`).click();
+		await clickInPlace(page.locator(`${ISLAND} .fold-ellipsis`));
 		await expect(page.locator(ISLAND)).toHaveCount(0);
 		await expect(editor.getBlock(0)).toContainText('abc [>HIDDEN SECRET<] def');
 		expect(await editor.bridge.getSource()).toBe(FOLD_SEED);
@@ -71,10 +73,10 @@ test.describe('fold fixture: widgets in table cells', () => {
 
 			// Focus the cell holding the widget without clicking it: its left edge carries the
 			// row's drag handle and the `…` uncovers the range, so enter the next cell and Shift+Tab back.
-			await page.locator('.table-cell').nth(1).click();
+			await clickInPlace(page.locator('.table-cell').nth(1));
 			await page.keyboard.press('Shift+Tab');
 			await expect(page.locator('.table-cell').first()).toBeFocused();
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await page.keyboard.press('ArrowRight'); // past `a`
 			await page.keyboard.press('ArrowRight'); // past the space, to the widget's leading edge
 

@@ -17,9 +17,19 @@ setVerdict; // 'conspiracy.setVerdict', branded as a command id
 registerBlockCommand(conspiracy, 'conspiracy.setVerdict', handler); // throws: already registered
 ```
 
-Metadata survives a reload only when it is in the bytes. A container kind's `rebuildRaw` writes it there; a leaf kind has no `rebuildRaw`, so a top-level leaf's `updateMetadata` is lost on reload and dev builds warn. Keep what must last in the leaf's own text.
+Metadata survives a reload only when it's in the bytes. `updateMetadata` is the container's write: it merges the patch and your kind's `rebuildRaw` writes it into the bytes. A leaf has no `rebuildRaw`, since its metadata is whatever its opener reads out of its bytes, so a leaf's command rewrites the bytes with `ctx.replaceRaw(raw)` and lets the parse work the metadata out. Here's a memo leaf that tags itself, with an opener that sets `{ tagged: true }` on a line starting `%%!`:
 
-A block command's chord fires in two places, the ones that hand it a `BlockCommandContext` (the focused node plus a way to commit its metadata):
+```ts
+const tag = registerBlockCommand(memo, 'memo.tag', (ctx) => {
+	if (ctx.node.raw.startsWith('%%!')) return false; // already tagged
+	ctx.replaceRaw('%%!' + ctx.node.raw.slice(2)); // its own undo entry, even right after typing
+	return true;
+});
+```
+
+Call `updateMetadata` on a leaf and it writes nothing: a dev build warns, and every build reports an `error` event (`origin: 'commit'`) naming `replaceRaw`. One more thing, for a block that shows its source while focused (your leaf, or a block inside your container): press a command's key mid-edit and the command runs once that edit is written, so `ctx.node` holds what the user typed. The key counts as handled then, even if your handler returns `false`.
+
+A block command's chord fires in two places, the ones that hand it a `BlockCommandContext` (the focused node plus the writes that change it):
 
 - a `createEditableLeaf` block, from the focused leaf's keymap;
 - a container-factory block, as a chord bubbles up from a leaf inside it.

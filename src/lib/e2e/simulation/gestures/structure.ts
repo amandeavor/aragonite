@@ -6,6 +6,7 @@ import {
 	settleTypedSource
 } from '../invariants';
 import type { CompositionCase } from './ime';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Structural gestures trigger the editor's own behaviour, so none can be predicted character by
@@ -43,6 +44,22 @@ export async function typeFenceOpener(ctx: SimContext): Promise<void> {
 	}
 	tracker.resync(await editor.bridge.getSource());
 	tracker.holdTwin('\n```');
+}
+
+/** Backspace after the last backtick of the opener of the code block at `blockIndex`: its closer
+ *  stays and pairs with whatever fence below a reload pairs it with. */
+export async function breakFenceOpener(ctx: SimContext, blockIndex: number): Promise<void> {
+	const { page, editor } = ctx;
+	await editor.clickBlock(blockIndex);
+	await page.keyboard.press('ArrowUp');
+	await page.keyboard.press(edgeKey('lineStart'));
+	for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+	await actThenResync(ctx, () => page.keyboard.press('Backspace'));
+}
+
+/** The backtick typed back where {@link breakFenceOpener} left the caret. */
+export async function retypeFenceBacktick(ctx: SimContext): Promise<void> {
+	await actThenResync(ctx, () => ctx.page.keyboard.type('`'));
 }
 
 /** Enter on the fence's empty last line leaves the block, using up the held closing line. */
@@ -121,7 +138,7 @@ async function insertOnBreakLine(ctx: SimContext, follow: BreakFollow): Promise<
  */
 export async function indent(ctx: SimContext): Promise<void> {
 	await actThenResync(ctx, () => ctx.page.keyboard.press('Tab'));
-	await ctx.page.keyboard.press('End');
+	await ctx.page.keyboard.press(edgeKey('lineEnd'));
 	await ctx.editor.waitForRenderFlush();
 }
 
@@ -175,7 +192,7 @@ export async function indentEmptyItem(ctx: SimContext): Promise<void> {
 		baseline,
 		{ timeout: 5000, polling: 16 }
 	);
-	await ctx.page.keyboard.press('End');
+	await ctx.page.keyboard.press(edgeKey('lineEnd'));
 	await ctx.editor.waitForRenderFlush();
 }
 
@@ -196,7 +213,7 @@ export async function outdentEmptyItem(ctx: SimContext): Promise<void> {
 		baseline,
 		{ timeout: 5000, polling: 16 }
 	);
-	await ctx.page.keyboard.press('End');
+	await ctx.page.keyboard.press(edgeKey('lineEnd'));
 	await ctx.editor.waitForRenderFlush();
 }
 
@@ -259,13 +276,13 @@ export async function nestQuote(ctx: SimContext, text: string): Promise<void> {
 	tracker.resync(await editor.bridge.getSource());
 }
 
-/**
- * The selector also matches checkboxes in nested lists, but the item's own renders on its first
- * child paragraph, ahead of them in the DOM, which is why this takes `.first()`.
- */
-export async function toggleTask(ctx: SimContext, listItemPath: number[]): Promise<void> {
-	const pathAttr = JSON.stringify(listItemPath);
-	const checkbox = ctx.page.locator(`[data-block-path='${pathAttr}'] .task-checkbox`).first();
+/** Presses the box of the to-do whose text is the paragraph at `itemTextPath`; the box sits in
+ *  the item's marker cell, beside that paragraph. */
+export async function toggleTask(ctx: SimContext, itemTextPath: number[]): Promise<void> {
+	const checkbox = ctx.page
+		.locator(`[data-block-path='${JSON.stringify(itemTextPath)}']`)
+		.locator('xpath=ancestor::div[contains(@class, "list-item-block")][1]')
+		.locator(':scope > .list-item-marker .task-checkbox');
 	await actThenResync(ctx, () => checkbox.click());
 }
 
@@ -293,10 +310,10 @@ export async function kindChangeUndoInListItem(
 	const { page, editor, tracker } = ctx;
 	const before = await editor.bridge.getSource();
 	// A fresh typing batch, so the one undo covers exactly the two keys below.
-	await editor.waitForUndoBatchFlush();
+	await editor.endTypingBatch();
 	await editor.clickBlockAtPath(itemParagraphPath, 0);
 	await assertFocusBlock(ctx, itemParagraphPath);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	// One call, so no round trip between the keys can outlast the typing pause and split the batch.
 	await editor.typeSlowly('# ');
 	await page

@@ -412,7 +412,11 @@ const RULES: FileRule[] = [
 			'src/lib/e2e/tests/plugins/showcase-occurrences.spec.ts':
 				'drives the `/` showcase, a page with no test bridge, so there is no editor mapping to ask',
 			'src/lib/e2e/tests/plugins/snap-caret-height.spec.ts':
-				'measures the browser’s own caret box in the prose, the reference the drawn caret is held to'
+				'measures the browser’s own caret box in the prose, the reference the drawn caret is held to',
+			'src/lib/e2e/tests/blocks/list/marker-column.spec.ts':
+				'measures the painted width of a list marker’s glyphs, which sit outside the editable text the offset mapping addresses',
+			'src/lib/e2e/tests/blocks/list/item-marker.spec.ts':
+				'finds the first painted glyph of whatever block an item opens with (a fence, a cell, a nested item), to set the marker beside it'
 		},
 		reason:
 			'a text walk in a spec counts widget glyphs and hidden marker text its own way, so its aim point drifts from the offset the editor means: use pointAtRaw or textRunRect from e2e/text-runs.ts',

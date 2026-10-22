@@ -37,15 +37,13 @@ test.describe('inline formatting at a collapsed caret', () => {
 
 	// The toggle breaks the keystroke batch on both sides, so the typing it opened unwinds first and
 	// the pair survives that undo.
-	test('text typed inside the pair unwinds before the toggle does', async ({ page }) => {
+	test('text typed inside the pair unwinds before the toggle does', async () => {
 		await editor.loadContent('Hello \n');
 		await editor.focusBlockEnd(0);
 		await editor.page.keyboard.press('ControlOrMeta+b');
 		await editor.bridge.waitForSourceContains('****');
 		await editor.typeSlowly('bold');
 		await editor.bridge.waitForSourceContains('**bold**');
-		// Past the typing checkpoint's debounce, so the undo below is not racing it.
-		await page.waitForTimeout(700);
 
 		await editor.undo();
 		await editor.bridge.waitForSourceNotContains('bold');

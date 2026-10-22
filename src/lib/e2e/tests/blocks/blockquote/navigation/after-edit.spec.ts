@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 // Traversal after a structural edit rebuilt the quote, where `innerBlockRefs` can go stale.
 // Every fixture's empty middle is built by a real Enter, not loaded: what these guard is the
@@ -17,7 +18,7 @@ test.describe('blockquote navigation: after a structural edit', () => {
 	});
 
 	test('Enter at end of inner paragraph, then ArrowDown from empty paragraph reaches next paragraph', async () => {
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForBlockHostCount(4);
 		await editor.page.keyboard.press('ArrowDown');
@@ -26,7 +27,7 @@ test.describe('blockquote navigation: after a structural edit', () => {
 	});
 
 	test('Enter at end of inner paragraph, then ArrowUp from empty paragraph reaches previous paragraph', async () => {
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForBlockHostCount(4);
 		await editor.page.keyboard.press('ArrowUp');
@@ -35,7 +36,7 @@ test.describe('blockquote navigation: after a structural edit', () => {
 	});
 
 	test('Delete empty middle paragraph, then ArrowDown crosses the gap', async () => {
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForBlockHostCount(4);
 		await editor.page.keyboard.press('Backspace');
@@ -48,7 +49,7 @@ test.describe('blockquote navigation: after a structural edit', () => {
 	});
 
 	test('After U2 unwrap: ArrowDown from lifted block enters the shrunk blockquote', async () => {
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSource((s) => !/^> 1$/m.test(s));
 		await editor.page.keyboard.press('ArrowDown');
@@ -57,7 +58,7 @@ test.describe('blockquote navigation: after a structural edit', () => {
 	});
 
 	test('sequence of unrelated edits does not break final navigation', async () => {
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText(' extra');
 		await editor.bridge.waitForSourceContains(' extra');
 		await editor.page.keyboard.press('Enter');

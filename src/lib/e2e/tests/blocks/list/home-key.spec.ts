@@ -7,6 +7,7 @@ import {
 	focusOffset,
 	landAt
 } from '../../presentation/helpers';
+import { edgeKey, extendKey, isMacOS } from '../../../platform-keys';
 
 // Home in a list item goes to the start of the caret's own line, and only the first line stops
 // after the marker. Requirements: `e2e/requirements/blocks/list/home-key.md`.
@@ -38,7 +39,7 @@ for (const mode of ['source', 'live'] as const) {
 			await clickWordSettled(ep, page, 'def');
 			await landAt(ep, page, 5);
 
-			await page.keyboard.press('Shift+Home');
+			await page.keyboard.press(extendKey('lineStart'));
 			await ep.waitForRenderFlush();
 			expect(await anchorOffset(ep)).toBe(5);
 			expect(await focusOffset(ep)).toBe(0);
@@ -48,7 +49,7 @@ for (const mode of ['source', 'live'] as const) {
 		await test.step('Home on the first line still stops after the marker', async () => {
 			await clickWordSettled(ep, page, 'def');
 
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await ep.waitForRenderFlush();
 			expect(await focusOffset(ep)).toBe(0);
 			await ep.typeText('X');
@@ -59,9 +60,9 @@ for (const mode of ['source', 'live'] as const) {
 
 		await test.step('Shift+Home on the line after a hard break selects that line', async () => {
 			await clickWordSettled(ep, page, 'e.g.');
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 
-			await page.keyboard.press('Shift+Home');
+			await page.keyboard.press(extendKey('lineStart'));
 			await ep.waitForRenderFlush();
 			expect(await anchorOffset(ep)).toBe(13);
 			expect(await focusOffset(ep)).toBe(SECOND_LINE);
@@ -72,18 +73,19 @@ for (const mode of ['source', 'live'] as const) {
 			await clickWordSettled(ep, page, 'def');
 			await landAt(ep, page, 5);
 			await page.keyboard.press('Shift+ArrowDown');
-			await page.keyboard.press('Shift+End');
+			await page.keyboard.press(extendKey('lineEnd'));
 
-			await page.keyboard.press('Shift+Home');
+			await page.keyboard.press(extendKey('lineStart'));
 			await ep.waitForRenderFlush();
-			expect(await anchorOffset(ep)).toBe(5);
-			expect(await focusOffset(ep)).toBe(SECOND_LINE);
+			// A Mac grows a selection's start to its line's start instead, as any Mac text field does.
+			expect(await anchorOffset(ep)).toBe(isMacOS ? 0 : 5);
+			expect(await focusOffset(ep)).toBe(isMacOS ? 13 : SECOND_LINE);
 		});
 
 		await test.step('Home on the line after a hard break lands at that line, and Backspace keeps the item', async () => {
 			await clickWordSettled(ep, page, 'e.g.');
 
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await ep.waitForRenderFlush();
 			expect(await focusOffset(ep)).toBe(SECOND_LINE);
 
@@ -100,7 +102,7 @@ for (const mode of ['source', 'live'] as const) {
 		await clickWordSettled(ep, page, 'word39');
 		const top = await lineTopAfterCaret(page);
 
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		const offset = await focusOffset(ep);
 		expect(offset).toBeGreaterThan(0);

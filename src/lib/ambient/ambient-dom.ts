@@ -7,11 +7,25 @@ import type { AmbientPrefix } from '../block-component';
 import { DRAG_ANCHOR_ATTR } from '../caret/block-content-selector';
 import { devWarn } from '../dev-warn';
 
+/** The box inside the marker prefix span that editor.css sizes to the hanging indent. */
+export const MARKER_BOX_CLASS = 'md-marker-box';
+
+/** The hanging indent a prefix needs when it declares none: one `ch` of its line's font per
+ *  character, the width its bytes take in a monospace face. */
+export function defaultPrefixIndent(text: string): string {
+	return `calc(${text.length} * 1ch)`;
+}
+
 export function buildAmbientSpan(prefix: AmbientPrefix): HTMLSpanElement {
 	const normalized = typeof prefix === 'string' ? { text: prefix } : prefix;
 	const outer = document.createElement('span');
 	outer.className = 'md-marker';
 	outer.setAttribute('contenteditable', 'false');
+	// The hanging indent's width is set on an inline box inside the marker: on the marker itself,
+	// Chromium's End in an empty block puts the caret in the marker's text.
+	const box = document.createElement('span');
+	box.className = MARKER_BOX_CLASS;
+	outer.appendChild(box);
 
 	// Document order, whatever order the host listed them in: the walk below is a single pass.
 	const ranges = [...(normalized.interactive ?? [])].sort((a, b) => a.start - b.start);
@@ -26,27 +40,27 @@ export function buildAmbientSpan(prefix: AmbientPrefix): HTMLSpanElement {
 			continue;
 		}
 		if (range.start > cursor) {
-			outer.appendChild(document.createTextNode(normalized.text.slice(cursor, range.start)));
+			box.appendChild(document.createTextNode(normalized.text.slice(cursor, range.start)));
 		}
-		const inner = document.createElement('span');
-		inner.className = range.className;
-		if (range.role) inner.setAttribute('role', range.role);
+		const span = document.createElement('span');
+		span.className = range.className;
+		if (range.role) span.setAttribute('role', range.role);
 		if (range.ariaChecked !== undefined) {
-			inner.setAttribute('aria-checked', String(range.ariaChecked));
+			span.setAttribute('aria-checked', String(range.ariaChecked));
 		}
-		if (range.label !== undefined) inner.setAttribute('aria-label', range.label);
-		if (range.focusable) inner.tabIndex = 0;
-		if (range.dragAnchor) inner.setAttribute(DRAG_ANCHOR_ATTR, '');
-		inner.textContent = normalized.text.slice(range.start, range.end);
-		inner.addEventListener('click', range.onClick);
+		if (range.label !== undefined) span.setAttribute('aria-label', range.label);
+		if (range.focusable) span.tabIndex = 0;
+		if (range.dragAnchor) span.setAttribute(DRAG_ANCHOR_ATTR, '');
+		span.textContent = normalized.text.slice(range.start, range.end);
+		span.addEventListener('click', range.onClick);
 		const onActivate = range.onActivate;
-		if (onActivate) inner.addEventListener('keydown', (e) => activateOnKey(e, onActivate));
-		outer.appendChild(inner);
+		if (onActivate) span.addEventListener('keydown', (e) => activateOnKey(e, onActivate));
+		box.appendChild(span);
 		cursor = range.end;
 	}
 
 	if (cursor < normalized.text.length) {
-		outer.appendChild(document.createTextNode(normalized.text.slice(cursor)));
+		box.appendChild(document.createTextNode(normalized.text.slice(cursor)));
 	}
 
 	return outer;

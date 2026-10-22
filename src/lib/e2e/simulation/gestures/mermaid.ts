@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { type SimContext } from '../invariants';
+import { edgeKey } from '../../platform-keys';
 
 // Mermaid gestures (plugins route only) for an opaque, childless diagram with
 // `blockFocus: 'whole-block'`: arrows stop on it, a Backspace beside it focuses it before a second
@@ -96,7 +97,7 @@ export async function backspaceTwoStepDeleteUndoMermaid(
 	const before = await editor.bridge.getSource();
 
 	await editor.clickBlock(belowIndex);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 
 	await page.keyboard.press('Backspace');
 	await waitForDiagramFocused(page);

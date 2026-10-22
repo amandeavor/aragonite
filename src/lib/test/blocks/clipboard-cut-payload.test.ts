@@ -61,6 +61,9 @@ async function showEditedSource(editor: Editor, surface: HTMLElement, edited: st
 	);
 	expect(source, 'the widget source is not showing').toBeDefined();
 	source!.textContent = source!.textContent!.replace('$x$', edited);
+	// The edit takes the block's ordinary write, as a typed key in the shown source does.
+	window.getSelection()!.collapse(source!, source!.textContent!.indexOf(edited) + edited.length);
+	surface.dispatchEvent(new InputEvent('input', { bubbles: true }));
 	await editor.settle();
 }
 

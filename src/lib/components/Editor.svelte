@@ -24,6 +24,7 @@
 	import { createCaretMemory } from '../caret/caret-memory';
 	import { createCaretWriter } from '../caret/widget-offset';
 	import { createDrawnCaret } from '../caret/drawn-caret.svelte';
+	import { caretRectAt } from '../caret/visual-lines';
 	import { docPathFrom } from '../caret/coordinate-spaces';
 	import { createAutoPairRecord } from './blocks/text/auto-pair-record';
 	import { createScrollOwner } from '../windowing/scroll-owner';
@@ -38,14 +39,17 @@
 	import { componentAt, type ChildList } from '../block-lists/child-list';
 	import { createSelectionState } from '../selection/selection-state.svelte';
 	import { coverRange, rangeCoverage } from '../selection/range-coverage';
+	import { findSurfacePathForElement } from '../selection/path-lookup';
 	import { createSelectionDescription } from '../selection/selection-description';
 	import { EDITOR_LABEL } from '../a11y-strings';
 	import TailInsert from './TailInsert.svelte';
 	import BlockMenu from './menu/BlockMenu.svelte';
 	import { createMenuPresence } from './menu/menu-presence.svelte';
+	import { createReadingFocus } from './editor-root/reading-focus.svelte';
 	import { createDraftRegistry } from './draft-registry';
+	import { createShownSourceState } from './blocks/text/shown-source.svelte';
 	import { createDocumentStamps } from '../editor-actions/commit/document-stamp';
-	import type { EditorSelection } from '../selection/primitives';
+	import { selectionsEqual, type EditorSelection } from '../selection/primitives';
 	import { widgetSpanAt } from './blocks/text/widget-adjacency';
 	import { assignIds } from '../block-id';
 	import { createDocumentSwap, initDocument } from './editor-root/document-swap';
@@ -74,7 +78,12 @@
 	import { createPasteCoordinator } from '../editor-actions/paste-coordinator';
 	import { createOperationsLog } from '../debug/operations-log';
 	import { createEditorDiagnostics } from '../debug/editor-diagnostics';
-	import { readCurrentSelection } from '../selection/native-bridge';
+	import {
+		holdsNativeRange,
+		readCurrentSelection,
+		readDomPoint,
+		readNativeSelection
+	} from '../selection/native-bridge';
 	import { createCaretRestore, type CaretRestoreDeps } from '../selection/caret-restore';
 	import { createRoundTripRestore } from '../selection/round-trip-restore';
 	import { createCrossBlockHandlers } from '../selection/cross-block/dispatch';
@@ -141,14 +150,13 @@
 	import { createInlineMenuState } from '../inline-menu/inline-menu-state.svelte';
 	import type { InlineMenuRegistry } from '../inline-menu/types';
 	import { createInlineRangeCommit } from '../editor-actions/inline-range-commit';
-	import { replaceBlockRaw } from '../editor-actions/block-edit-core';
 	import { createLinkCardState } from './link-card/link-card-state.svelte';
 	import { runStartupInvariantChecks } from '../invariants/install';
 	import { assertInvariant } from '../assert';
 	import { checkMarkerCssParity } from '../invariants/marker-css-parity';
 	import { checkHostColorsResolve } from '../invariants/theme-stylesheet';
 	import { registerEditorBuiltIns } from './editor-built-ins';
-	import { blockContentElAt, type BlockElLookup } from '../caret/block-el-lookup';
+	import { blockBoxElAt, blockContentElAt, type BlockElLookup } from '../caret/block-el-lookup';
 
 	registerEditorBuiltIns();
 	runStartupInvariantChecks();
@@ -280,6 +288,7 @@
 	// shadow the host's tokens.
 	const inThemedScope = $derived(!!editorEl?.closest('.aragonite-editor-theme'));
 	let headerEl: HTMLDivElement | undefined = $state();
+	let findBarEl: HTMLDivElement | undefined = $state();
 	let typeScaleProbeEl: HTMLDivElement | undefined = $state();
 	let widthProbeEl: HTMLDivElement | undefined = $state();
 	const undoManager = createUndoManager();
@@ -311,7 +320,12 @@
 		selection: selectionState,
 		watchSize: (el, onResize) => scrollOwner.watchSize(el, onResize)
 	});
-	const caretWriter = createCaretWriter(drawnCaret.request);
+	// Reading mode has no caret; one the editor asks for there marks where leaving puts it.
+	const caretWriter = createCaretWriter(drawnCaret.request, (el, raw) => {
+		if (reading.mode() !== 'reading') return false;
+		readingFocus.notePoint(el, raw);
+		return true;
+	});
 
 	// With no live range this reads no document bytes, so a keystroke at a caret costs nothing here.
 	const coverage = $derived.by(() => {
@@ -377,6 +391,13 @@
 	// ── Open menus ──────────────────────────────────────────────────────
 
 	const menuPresence = createMenuPresence({ isReading: () => effectiveMode === 'reading' });
+	const readingFocus = createReadingFocus({
+		isReading: () => effectiveMode === 'reading',
+		isInView: (path) => scrollOwner.isInView(path),
+		getBlockElByPath: (path) => getBlockElByPath(path),
+		isHostChrome,
+		clearSelection: () => caretWriter.clear()
+	});
 	const stamps = createDocumentStamps();
 	// Work still in flight at the unmount stops there: its write is refused at the write gate, its
 	// report reaches no handler, and its caret landing reads no more of the tree.
@@ -387,6 +408,7 @@
 	});
 	// Apart from the menus, so a shown source fires no `menuChange`.
 	const drafts = createDraftRegistry(stamps);
+	const shownSource = createShownSourceState();
 	// Emits on open/close transitions only, so a subscriber's first event is a real menu.
 	let menuWasOpen = false;
 	$effect(() => {
@@ -463,10 +485,9 @@
 	// them. Each refuses a cross-block range; a click also refuses a selection, which create needs.
 	const linkCard = createLinkCardState({
 		onOpen: () => linkCardCaret.saveCurrent(),
-		canOpen: () => !selectionState.isCrossBlock && window.getSelection()?.isCollapsed !== false,
+		canOpen: () => !selectionState.isCrossBlock && !holdsNativeRange(),
 		canEnter: () => !selectionState.isCrossBlock,
-		canOpenCreate: () =>
-			!selectionState.isCrossBlock && window.getSelection()?.isCollapsed === false
+		canOpenCreate: () => !selectionState.isCrossBlock && holdsNativeRange()
 	});
 
 	// ── Hidden-run class check ──────────────────────────────────────────
@@ -523,6 +544,8 @@
 
 	const getBlockElByPath: BlockElLookup = (path) =>
 		editorEl ? blockContentElAt(editorEl, path) : null;
+	const getBlockBoxByPath: BlockElLookup = (path) =>
+		editorEl ? blockBoxElAt(editorEl, path) : null;
 
 	// The root list as a descent reads it; the window's calls go through arrows because
 	// `topWindowing` is declared further down.
@@ -546,7 +569,7 @@
 	const scrollOwner = createScrollOwner({
 		getScrollHost,
 		editorCorrects: ownsScrollCorrection,
-		getBlockElByPath,
+		getBlockBoxByPath,
 		getEditorRoot: () => editorEl ?? null,
 		isHostScroll: () => hostScroll,
 		getClipBounds
@@ -559,8 +582,10 @@
 		caretWriter,
 		caretMemory,
 		getBlockElByPath,
+		getBlockBoxByPath,
 		getEditorRoot: () => editorEl ?? null,
-		scroll: scrollOwner
+		scroll: scrollOwner,
+		isReading: () => reading.mode() === 'reading'
 	});
 
 	const editorActionsDeps: EditorActionsDeps = {
@@ -621,14 +646,16 @@
 	});
 
 	const rects = createEditorRects({
-		getBlockElByPath,
+		getBlockBoxByPath,
 		getBlockComponent,
 		revealPath: (path) => caretLanding.mount(path, { openCollapsed: true }),
 		getEditorRoot: () => editorEl ?? null,
 		scroll: scrollOwner,
 		isCrossBlock: () => selectionState.isCrossBlock,
 		isHostChrome,
-		landCaretAt: navigateCaret
+		landCaretAt: navigateCaret,
+		caretRectAt,
+		readSelection: readNativeSelection
 	});
 
 	const editorId = mintEditorId();
@@ -648,7 +675,8 @@
 		undoStep: (path, offset, run) => controller.undoStep({ path: docPathFrom(path), offset }, run),
 		// A source added outside any plugin's `onEditor` is the editor's own: the base context.
 		ownerOfNewSource: () => pluginContexts.attaching() ?? pluginContexts.get('')!,
-		drafts
+		drafts,
+		showsSource: shownSource.holds
 	});
 	const inlineMenus: InlineMenuRegistry = inlineMenu.registry;
 	$effect(() => () => inlineMenu.dispose());
@@ -712,15 +740,21 @@
 		getBlockElByPath
 	});
 
-	// The document caret while the search bar or link card holds focus; one each, so a card
-	// opened over the search bar cannot overwrite the caret the bar restores.
+	// The document caret while the search bar, the link card or an image's alt field holds focus;
+	// one each, so a card opened over the search bar cannot overwrite the caret the bar restores.
 	const caretRestoreDeps: CaretRestoreDeps = {
 		getEditorEl: () => editorEl ?? null,
-		read: () => getSelection(),
+		// Reading mode keeps no caret, so the block it focused stands in for one.
+		read: () => {
+			const selection = getSelection();
+			const reading = !selection && effectiveMode === 'reading' ? readingFocus.focusCaret() : null;
+			return selection ?? (reading && caretAt(reading.path, reading.offset));
+		},
 		restore: (selection) => roundTripRestore(selection, { reveal: 'into-view' })
 	};
 	const searchCaret = createCaretRestore(caretRestoreDeps);
 	const linkCardCaret = createCaretRestore(caretRestoreDeps);
+	const imageFieldCaret = createCaretRestore(caretRestoreDeps);
 
 	const searchReplace = createSearchReplace(editorActionsDeps, controller);
 	// Find stays live in reading mode; replace is an edit and does nothing here.
@@ -817,9 +851,11 @@
 		commands,
 		menuPresence,
 		drafts,
+		shownSource,
 		stamps,
 		kindCue,
-		textMoves
+		textMoves,
+		readingFocus
 	} satisfies EditorServices);
 
 	setContext(EDITOR_POLICIES_KEY, {
@@ -853,6 +889,7 @@
 		announceSelection: selectionAnnouncer.announce,
 		getBlockElByPath,
 		isHostChrome,
+		takeReadingCaret: readingFocus.takeExitCaret,
 		caretMemory,
 		// Built below; a mode switch runs after init, so the getter reads past the TDZ.
 		get layout() {
@@ -874,6 +911,7 @@
 	$effect(() => {
 		modeFlip.afterFlip(effectiveMode);
 	});
+	rootEffect((root) => readingFocus.install(root));
 
 	// ── Root gestures ───────────────────────────────────────────────────
 
@@ -892,7 +930,8 @@
 		activationClick,
 		presses,
 		linkCard,
-		reading
+		reading,
+		readingFocus
 	});
 	rootEffect((root) => {
 		return removeAll(
@@ -921,10 +960,11 @@
 		getDoc,
 		isHostChrome,
 		blockEdit,
-		replaceRaw: (index, raw) =>
-			replaceBlockRaw({ deps: editorActionsDeps, controller }, [index], raw),
 		placeCaretAtPoint,
+		rangeAtContextPress: () => (editorEl ? rootGestures.rangeAtContextPress(editorEl) : false),
+		holdsWidget: () => selectionState.widget !== null,
 		insertMarkdown,
+		aimInsertAtFocus: () => focusedSurface.aimInsertAtFocus(),
 		insertCatalogue: getInsertCatalogue,
 		activation: activePlugins,
 		reading,
@@ -1002,12 +1042,13 @@
 		getMyPath: () => selectionState.focus?.path ?? [],
 		selection: selectionState,
 		caretWriter,
+		standInCaret: readingFocus.focusCaret,
 		getDoc,
 		getBlockElByPath,
 		caretLanding,
 		getEditorRoot: () => editorEl ?? null,
 		getScrollHost,
-		scrollOwner,
+		scroll: scrollOwner,
 		getEditorLifetime: () => lifetimeController.signal,
 		caretMemory,
 		blockEdit,
@@ -1035,6 +1076,7 @@
 		commands,
 		crossBlock: editorCrossBlock,
 		isHostChrome,
+		isFindBar: (node) => !!node && !!findBarEl?.contains(node),
 		saveSearchCaret: searchCaret.saveCurrent,
 		setReplaceExpanded: (expanded) => (replaceExpanded = expanded)
 	});
@@ -1046,14 +1088,16 @@
 	});
 
 	// ── Editor-root clipboard routing ────────────────────────────────────
-	// Copy, cut and paste that Chromium retargets to <body> when the selection has no text position.
+	// Copy, cut and paste that no block handled: an engine aims them at <body> or a block element
+	// when the selection's end has no text position.
 	const rootClipboard = createEditorRootClipboard({
 		selection: selectionState,
 		getDoc,
 		crossBlock: editorCrossBlock,
 		onPasteImage: () => onPasteImage,
 		events,
-		getBlockComponent
+		getBlockComponent,
+		isHostChrome
 	});
 
 	rootEffect((root) => {
@@ -1181,9 +1225,14 @@
 		return blockNodeAt(doc, path)?.kind ?? null;
 	}
 
-	/** A snapshot of the current selection with copied paths, or null when nothing is focused. */
+	/** A snapshot of the current selection with copied paths, or null when nothing is focused.
+	 *  Reading mode has no caret, so a collapsed one the browser holds for a moment reads as null. */
 	export function getSelection(): EditorSelection | null {
-		return readCurrentSelection(selectionState, blockRefs);
+		const selection = readCurrentSelection(selectionState, blockRefs);
+		if (!selection || reading.mode() !== 'reading') return selection;
+		const { focus } = selection;
+		const isCaret = !focus.cellCoordinate && selectionsEqual(selection, { anchor: focus, focus });
+		return isCaret ? null : selection;
 	}
 
 	function caretAt(path: number[], offset = 0): EditorSelection {
@@ -1191,15 +1240,19 @@
 	}
 
 	// Read off the placed selection, not the requested one: a caret aimed into a hidden body lands
-	// on its title row.
+	// on its title row. Reading mode places none, so the block that took focus answers there.
 	function focusInView(): boolean {
 		const focus = getSelection()?.focus;
-		return !!focus && scrollOwner.isInView(selectionState.cellLandingFor(focus).path);
+		if (focus) return scrollOwner.isInView(selectionState.cellLandingFor(focus).path);
+		const active = effectiveMode === 'reading' ? document.activeElement : null;
+		const path = active && findSurfacePathForElement(active);
+		return !!path && scrollOwner.isInView(path);
 	}
 
+	// Asks of the leaf the landing placed in: reading mode leaves no selection to read it off.
 	async function navigateCaret(path: number[], offset: number): Promise<boolean> {
-		const outcome = await caretLanding.navigate({ path: docPathFrom(path), offset });
-		return outcome === 'placed' && focusInView();
+		const leaf = await caretLanding.navigate({ path: docPathFrom(path), offset });
+		return !!leaf && scrollOwner.isInView(leaf);
 	}
 
 	/** True only if the selection was placed and its focus block is in view; a programmatic
@@ -1280,10 +1333,28 @@
 	}
 
 	export function claimsChord(event: KeyboardEvent): boolean {
-		return chordIsClaimed(event, reservedChords());
+		const chords = collectReservedChords({
+			searchBar,
+			keybindings: overridesMap,
+			activation: activePlugins,
+			cmdEdgeChords: false
+		});
+		return chordIsClaimed(event, chords);
 	}
 
-	const diagnostics = createEditorDiagnostics({ getSelection, getSource, operationsLog });
+	const diagnostics = createEditorDiagnostics({
+		getSelection,
+		getSource,
+		operationsLog,
+		recorder: {
+			root: () => editorEl ?? null,
+			contentVersion: contentVersion.read,
+			presentationMode: () => effectiveMode,
+			caret: () => caret,
+			rawPoint: (node, offset) => (editorEl ? readDomPoint(editorEl, node, offset) : null)
+		}
+	});
+	onDestroy(diagnostics.dispose);
 
 	export function getDiagnostics(): EditorDiagnostics {
 		return diagnostics;
@@ -1359,6 +1430,7 @@
 			class:aragonite-editor-portal={!!searchBarAnchor}
 			class:aragonite-editor-theme={!!searchBarAnchor && inThemedScope}
 			data-editor-theme={searchBarAnchor ? theme : undefined}
+			bind:this={findBarEl}
 			{@attach portalInto(searchBarAnchor)}
 		>
 			<SearchBar
@@ -1411,6 +1483,7 @@
 				getEvents
 			}}
 			root={editorEl}
+			{menuPresence}
 		/>
 	{/if}
 	<ImageOverlayHost
@@ -1421,6 +1494,8 @@
 		getEditorEl={() => editorEl ?? null}
 		lifetime={lifetimeController.signal}
 		{menuPresence}
+		fieldCaret={imageFieldCaret}
+		editorTakesChord={claimsChord}
 	/>
 	<LinkCardHost
 		card={linkCard}
@@ -1442,6 +1517,7 @@
 		{events}
 		{menuPresence}
 		getEditorEl={() => editorEl ?? null}
+		{getBlockElByPath}
 		measureRange={rects.rangeRects}
 	/>
 	<div class="editor-sr-live" role="status" aria-live="polite">{selectionDescription}</div>

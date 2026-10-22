@@ -1,4 +1,5 @@
 import { type SimContext, assertStructuralIntegrity } from '../invariants';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The merge rules, which nothing else in the simulation drives. Whether the block merges or leaves
@@ -9,7 +10,7 @@ export async function mergeBackspaceAtStart(ctx: SimContext, targetPath: number[
 	const { editor, tracker } = ctx;
 	const before = await editor.bridge.getSource();
 	await editor.clickBlockAtPath(targetPath, 0);
-	await editor.page.keyboard.press('Home');
+	await editor.page.keyboard.press(edgeKey('lineStart'));
 	await editor.waitForRenderFlush();
 	await editor.page.keyboard.press('Backspace');
 	await editor.bridge

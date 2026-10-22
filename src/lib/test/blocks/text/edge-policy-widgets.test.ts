@@ -35,7 +35,7 @@ import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 installEdgeDispatchCleanup();
 
 describe('decoration widgets', () => {
-	// Modifier chords stay with the browser, and a printable key at an element-level caret becomes a CST edit.
+	// Delete chords pass the dispatch's keydown, and a printable key at an element-level caret becomes a CST edit.
 
 	interface Harness extends EdgeDispatchHarness {
 		island: HTMLElement;
@@ -48,11 +48,13 @@ describe('decoration widgets', () => {
 		return { ...makeEdgeDispatch(node, el, { hasIslands: () => hasIslands }), island };
 	}
 
-	describe('modifier chords stay native near widgets', () => {
+	// The surface decides a delete chord after the keymap, so a binding on the chord itself wins.
+	describe('delete chords near a decoration pass the dispatch keydown', () => {
 		const chords: Partial<KeyboardEvent>[] = [
 			{ ctrlKey: true },
 			{ altKey: true },
-			{ metaKey: true }
+			{ metaKey: true },
+			{ shiftKey: true }
 		];
 
 		it.each(chords)('%o+Backspace at a replace island trailing edge is not consumed', (mods) => {
@@ -70,9 +72,9 @@ describe('decoration widgets', () => {
 			expect(e.defaultPrevented).toBe(false);
 		});
 
-		it('Ctrl+Backspace at a widget decoration is not consumed (native word-delete)', () => {
+		it.each(chords)('%o+Backspace at a widget decoration is not consumed', (mods) => {
 			const h = mount('hello\n', 3, 3);
-			const e = key('Backspace', { ctrlKey: true });
+			const e = key('Backspace', mods);
 			expect(h.handleKeydown(e, asRawOffset(3))).toBe(false);
 			expect(e.defaultPrevented).toBe(false);
 			expect(h.edits).toHaveLength(0);
@@ -196,22 +198,22 @@ describe('modifier chords', () => {
 		return { dispatch, widget: inlineWidgets[0], entered, edits };
 	}
 
-	describe('a modifier chord at a widget edge is not a widget entry', () => {
+	describe('a modifier chord at a widget edge passes the dispatch keydown', () => {
 		const chords: Partial<KeyboardEvent>[] = [
 			{ ctrlKey: true },
 			{ metaKey: true },
 			{ altKey: true }
 		];
 
-		// Both entry directions and both key families this branch takes: navigation (word-step) and
-		// destructive (word-delete). Each is a platform chord meaning "act on a word".
+		// A word step stays the browser's; a delete chord is the surface's, after the keymap, so a
+		// binding on the chord itself wins.
 		for (const [label, keyName, side] of [
 			['ArrowLeft at the trailing edge', 'ArrowLeft', 'end'],
 			['Backspace at the trailing edge', 'Backspace', 'end'],
 			['ArrowRight at the leading edge', 'ArrowRight', 'start'],
 			['Delete at the leading edge', 'Delete', 'start']
 		] as const) {
-			it.each(chords)(`${label} with %o stays native`, (mods) => {
+			it.each(chords)(`${label} with %o is not consumed`, (mods) => {
 				const b = mount('hello ![a](u) world', 'image');
 				const offset = asRawOffset(side === 'end' ? b.widget.end : b.widget.start);
 				const e = key(keyName, mods);
@@ -453,7 +455,7 @@ describe('pending cursor', () => {
 			caretAfter(b.island);
 
 			expect(b.dispatch.handleKeydown(key('Backspace'), asRawOffset(5))).toBe(true);
-			expect(b.parks).toEqual([{ offset: 4 + SHIFT, source: 'island' }]);
+			expect(b.parks).toEqual([{ offset: 4 + SHIFT, source: 'delete' }]);
 		});
 
 		it('an atomic widget delete', () => {

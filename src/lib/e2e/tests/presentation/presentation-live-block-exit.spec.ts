@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickBlockSettled, enterPresentationMode, focusOffset, focusPath, press } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // A hidden run at a block's edge puts the raw edge out of the caret's reach, so a left or right
 // exit fires at the last offset the caret can occupy instead. The selection bridge is the
@@ -54,7 +55,7 @@ test.describe('live mode: a horizontal exit fires at the reachable bound', () =>
 		page
 	}) => {
 		await clickBlockSettled(ep, BOLD_LEAD);
-		expect(await press(ep, page, 'Home')).toBe(2);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(2);
 		await press(ep, page, 'ArrowLeft');
 		expect(await focusPath(ep)).toEqual([BOLD_MID]);
 		expect(await focusOffset(ep)).toBe(18);
@@ -63,7 +64,7 @@ test.describe('live mode: a horizontal exit fires at the reachable bound', () =>
 	// The opener fence line owns its trailing newline, so the body starts at raw 6.
 	test('a fenced code block exits leftward from its body start', async ({ page }) => {
 		await clickBlockSettled(ep, CODE);
-		expect(await press(ep, page, 'Home')).toBe(6);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(6);
 		await press(ep, page, 'ArrowLeft');
 		expect(await focusPath(ep)).toEqual([BOLD_LEAD]);
 	});
@@ -71,7 +72,7 @@ test.describe('live mode: a horizontal exit fires at the reachable bound', () =>
 	// The closer's fence line owns the newline before it, so the body ends at raw 18.
 	test('a fenced code block exits rightward from its body end', async ({ page }) => {
 		await clickBlockSettled(ep, CODE);
-		expect(await press(ep, page, 'End')).toBe(18);
+		expect(await press(ep, page, edgeKey('lineEnd'))).toBe(18);
 		await press(ep, page, 'ArrowRight');
 		expect((await focusPath(ep))[0]).toBe(LIST);
 	});
@@ -81,14 +82,14 @@ test.describe('live mode: a horizontal exit fires at the reachable bound', () =>
 	test('a list item opening with a hidden run exits leftward', async ({ page }) => {
 		await page.getByText('item').first().click();
 		await ep.waitForRenderFlush();
-		await press(ep, page, 'Home');
+		await press(ep, page, edgeKey('lineStart'));
 		await press(ep, page, 'ArrowLeft');
 		expect(await focusPath(ep)).toEqual([CODE]);
 	});
 
 	test('extending leftward from a reachable start reaches the previous block', async ({ page }) => {
 		await clickBlockSettled(ep, BOLD_LEAD);
-		await press(ep, page, 'Home');
+		await press(ep, page, edgeKey('lineStart'));
 		await page.keyboard.press('Shift+ArrowLeft');
 		await ep.waitForRenderFlush();
 		expect(await focusPath(ep)).toEqual([BOLD_MID]);
@@ -98,7 +99,7 @@ test.describe('live mode: a horizontal exit fires at the reachable bound', () =>
 	// the mode paints nothing.
 	test('a block whose content starts at raw 0 exits from raw 0', async ({ page }) => {
 		await clickBlockSettled(ep, BOLD_MID);
-		expect(await press(ep, page, 'Home')).toBe(0);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(0);
 		await press(ep, page, 'ArrowLeft');
 		expect(await focusPath(ep)).toEqual([0]);
 	});
@@ -115,7 +116,7 @@ test.describe('live mode: a table cell hops at its reachable bound', () => {
 	// the caret can reach in the cell is 5, and the hop must fire there rather than at raw 11.
 	test('a cell ending in a hidden tail hops to the next cell', async ({ page }) => {
 		await clickCell(ep, page, 'text');
-		expect(await press(ep, page, 'End')).toBe(5);
+		expect(await press(ep, page, edgeKey('lineEnd'))).toBe(5);
 		await press(ep, page, 'ArrowRight');
 		expect(await focusPath(ep)).toEqual([TABLE, 1, 1]);
 		expect(await focusOffset(ep)).toBe(0);
@@ -125,7 +126,7 @@ test.describe('live mode: a table cell hops at its reachable bound', () => {
 	// entered at its end; moving by sibling index the way prose does would land in neither.
 	test('a cell opening with a hidden bracket hops to the previous cell', async ({ page }) => {
 		await clickCell(ep, page, 'text');
-		expect(await press(ep, page, 'Home')).toBe(1);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(1);
 		await press(ep, page, 'ArrowLeft');
 		expect(await focusPath(ep)).toEqual([TABLE, 0, 1]);
 		expect(await focusOffset(ep)).toBe(1);
@@ -140,7 +141,7 @@ test.describe('preview-inline: a cell hops at whatever is hidden right now', () 
 		await clickCell(ep, page, 'text');
 		// Which offset End reaches depends on what the nearby caret showed, and that dependence is
 		// the point; the rule is that the hop fires, and by raw 11 it already has.
-		expect(await press(ep, page, 'End')).toBeLessThan(11);
+		expect(await press(ep, page, edgeKey('lineEnd'))).toBeLessThan(11);
 		await press(ep, page, 'ArrowRight');
 		expect(await focusPath(ep)).toEqual([TABLE, 1, 1]);
 	});
@@ -150,14 +151,14 @@ test.describe('source mode: every marker is painted, so nothing moves in', () =>
 	test('the same presses step inside the block', async ({ page }) => {
 		const ep = await enterPresentationMode(page, 'source', DOC);
 		await clickBlockSettled(ep, BOLD_LEAD);
-		expect(await press(ep, page, 'Home')).toBe(0);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(0);
 		await press(ep, page, 'ArrowLeft');
 		expect(await focusPath(ep)).toEqual([BOLD_MID]);
 
 		// Home is line-relative in both modes; the difference is that the painted fence keeps
 		// raw 5 reachable, so the keypress steps into it instead of leaving.
 		await clickBlockSettled(ep, CODE);
-		expect(await press(ep, page, 'Home')).toBe(6);
+		expect(await press(ep, page, edgeKey('lineStart'))).toBe(6);
 		expect(await press(ep, page, 'ArrowLeft')).toBe(5);
 		expect(await focusPath(ep)).toEqual([CODE]);
 	});

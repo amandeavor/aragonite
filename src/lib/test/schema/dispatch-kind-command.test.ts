@@ -21,6 +21,7 @@ describe('container-bubble dispatch over the block-command registry', () => {
 
 	it('runs the registered handler with the command context and the binding arg', () => {
 		const updateMetadata = vi.fn();
+		const replaceRaw = vi.fn();
 		const handler = vi.fn(() => true);
 		const id = registerBlockCommand('listItem', 'demo.setFoo', handler);
 		const overrides = normalizeKeybindingOverrides([
@@ -31,13 +32,23 @@ describe('container-bubble dispatch over the block-command registry', () => {
 
 		const handled = dispatchKindCommand(
 			'Mod+Shift+K',
-			{ kind: 'listItem', runCommand, getCommandContext: () => ({ node, updateMetadata }) },
+			{
+				kind: 'listItem',
+				runCommand,
+				getCommandContext: () => ({ node, updateMetadata, replaceRaw })
+			},
 			commandContextWith(overrides)
 		);
 
 		expect(handled).toBe(true);
 		expect(handler).toHaveBeenCalledTimes(1);
-		expect(handler).toHaveBeenCalledWith({ node, updateMetadata, arg: 42, afterRemoval: false });
+		expect(handler).toHaveBeenCalledWith({
+			node,
+			updateMetadata,
+			replaceRaw,
+			arg: 42,
+			afterRemoval: false
+		});
 		expect(runCommand).not.toHaveBeenCalled();
 	});
 

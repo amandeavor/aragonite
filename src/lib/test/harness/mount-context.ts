@@ -27,7 +27,9 @@ import type { DocumentView } from '#lib/core/node-views.js';
 import { createDecorationEngine } from '#lib/decorations/decoration-state.svelte.js';
 import { createLinkCardState } from '#lib/components/link-card/link-card-state.svelte.js';
 import { createMenuPresence } from '#lib/components/menu/menu-presence.svelte.js';
+import { createReadingFocus } from '#lib/components/editor-root/reading-focus.svelte.js';
 import { createDraftRegistry } from '#lib/components/draft-registry.js';
+import { createShownSourceState } from '#lib/components/blocks/text/shown-source.svelte.js';
 import { createDocumentStamps } from '#lib/editor-actions/commit/document-stamp.js';
 import { defaultRegistryView } from '#lib/schema/registry-view.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
@@ -113,8 +115,11 @@ function stubbedServices(getDoc: () => DocumentView): EditorServices {
 		inlineMenuCombobox: () => null,
 		// Filled in by `editorMountContext`, which reads the mode off the document group.
 		menuPresence: {} as EditorServices['menuPresence'],
+		// Filled in by `editorMountContext`, which reads the mode off the document group.
+		readingFocus: {} as EditorServices['readingFocus'],
 		stamps,
 		drafts: createDraftRegistry(stamps),
+		shownSource: createShownSourceState(),
 		// The members a format toggle or a compositionend reaches on a bare mount; the rest keep the
 		// cast.
 		controller: {
@@ -213,7 +218,7 @@ export function editorMountContext(overrides: MountContextOverrides = {}): Map<s
 		createScrollOwner({
 			getScrollHost: doc.editorRoot,
 			editorCorrects: () => true,
-			getBlockElByPath: doc.blockElLookup,
+			getBlockBoxByPath: doc.blockElLookup,
 			getEditorRoot: doc.editorRoot,
 			isHostScroll: () => false,
 			getClipBounds: () => []
@@ -223,6 +228,15 @@ export function editorMountContext(overrides: MountContextOverrides = {}): Map<s
 	services.menuPresence =
 		overrides.services?.menuPresence ??
 		createMenuPresence({ isReading: () => doc.reading.mode() === 'reading' });
+	services.readingFocus =
+		overrides.services?.readingFocus ??
+		createReadingFocus({
+			isReading: () => doc.reading.mode() === 'reading',
+			isInView: (path) => services.scrollOwner.isInView(path),
+			getBlockElByPath: doc.blockElLookup,
+			isHostChrome: () => false,
+			clearSelection: () => services.caretWriter.clear()
+		});
 	// Read off the selection the test handed in, the way the editor derives it.
 	services.rangeCoverage =
 		overrides.services?.rangeCoverage ??

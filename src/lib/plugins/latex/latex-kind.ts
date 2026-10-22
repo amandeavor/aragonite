@@ -16,6 +16,7 @@ import {
 	simpleLeafClosure,
 	fenceRawWrite,
 	fenceShapeOfRaw,
+	fenceReading,
 	matchFenceInfo,
 	scanFence,
 	OPENER_PRIORITIES,
@@ -36,6 +37,7 @@ import { isFlankingSpace } from './flanking';
 import { registerMathBlockCompleter } from './math-completion';
 import {
 	awaitsMathCloser,
+	isMathFenceLine,
 	legalMathSource,
 	mathBlockLines,
 	mathCloserLine,
@@ -127,10 +129,29 @@ function glyphOffsetInSpan(
 	// `.katex-html` is the half that is painted: the MathML copy beside it is clipped to a
 	// pixel, and measuring both together answers for a point nobody clicked.
 	const glyphs = rendered.querySelector<HTMLElement>('.katex-html');
-	const along = glyphs ? caretOffsetAtPoint(glyphs, clientX, clientY) : null;
+	const point = glyphs && pointOnInk(glyphs, clientX, clientY);
+	const along = glyphs && point ? caretOffsetAtPoint(glyphs, point.x, point.y) : null;
 	const total = glyphs?.textContent?.length ?? 0;
 	if (along === null || total === 0) return null;
 	return span.start + Math.round((along / total) * (span.end - span.start));
+}
+
+// A display equation's box spans the card, and beside the ink the engines answer from KaTeX's
+// empty spacing spans, so the point is moved onto the box the letters paint first.
+function pointOnInk(glyphs: HTMLElement, x: number, y: number): { x: number; y: number } | null {
+	const ink = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+	const walker = document.createTreeWalker(glyphs, NodeFilter.SHOW_TEXT);
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		const box = node.parentElement?.getBoundingClientRect();
+		if (!box || box.width === 0 || box.height === 0) continue;
+		ink.left = Math.min(ink.left, box.left);
+		ink.top = Math.min(ink.top, box.top);
+		ink.right = Math.max(ink.right, box.right);
+		ink.bottom = Math.max(ink.bottom, box.bottom);
+	}
+	if (ink.left === Infinity) return null;
+	const inside = (v: number, low: number, high: number) => Math.min(Math.max(v, low + 1), high - 1);
+	return { x: inside(x, ink.left, ink.right), y: inside(y, ink.top, ink.bottom) };
 }
 
 function mathInlineOffsetAtPoint(
@@ -200,7 +221,7 @@ export function registerMathBlock(view: BlockView): void {
 			// `$$` collides with no built-in matcher, so this number only keeps it from tying.
 			priority: OPENER_PRIORITIES.fencedCode + 5,
 			interruptsParagraph: opensMathBlock,
-			readingNotFinal: awaitsMathCloser,
+			readingNotFinal: { notFinal: awaitsMathCloser, mayClose: isMathFenceLine },
 			tryOpen(ctx) {
 				const closer = mathCloserLine(ctx.lines, ctx.index, ctx.end);
 				// An unclosed fence declines, so its lines read as a paragraph.
@@ -270,6 +291,7 @@ export function registerMathFence(view: BlockView): void {
 			// it, at a priority of its own just below mermaid's.
 			priority: OPENER_PRIORITIES.fencedCode - 4,
 			interruptsParagraph: (line) => matchMathFence(line) !== null,
+			readingNotFinal: fenceReading,
 			tryOpen(ctx) {
 				const fence = matchMathFence(ctx.line.text);
 				if (!fence) return null;

@@ -21,7 +21,7 @@ Two legal outcomes, and each gesture is pinned to exactly one:
   its place.
 - **gesture-landing**: the gesture ended the range, so the key lands where the gesture
   left it pointing: one character at the caret, or the whole block the gesture selected,
-  or (for a reveal) nothing at all until the escape commits it, or (for a gap caret) a
+  or (for a block's reveal) nothing at all until the blur commits it, or (for a gap caret) a
   newly created paragraph at the boundary.
 
 The assertion is byte equality against the pinned outcome, never that the result is one
@@ -47,19 +47,19 @@ select-all anchor is byte 0 of the document, where the keystroke demotes the fir
 block's kind and runs into the deferred lazy-continuation case (issue #21), a failure
 for a reason this family is not about.
 
-| Gesture                | Build       | If the range survived   | If the range ended                         |
-| ---------------------- | ----------- | ----------------------- | ------------------------------------------ |
-| `dead-space-below`     | select-all  | one-char document       | **key at the caret in the last block**     |
-| `dead-space-margin`    | select-all  | one-char document       | **key at the caret at that line's end**    |
-| `place-caret-at-point` | select-all  | one-char document       | **key at the caret in the last block**     |
-| `image-click`          | select-all  | one-char document       | **the selected image block replaced**      |
-| `drag-handle-press`    | prose range | **range span replaced** | key at the caret the press left            |
-| `escape`               | prose range | range span replaced     | **key at the range's anchor**              |
-| `search-round-trip`    | prose range | **range span replaced** | key at the caret the close returned        |
-| `inline-reveal-click`  | select-all  | one-char document       | **no byte moves until the escape commits** |
-| `block-reveal-click`   | select-all  | one-char document       | **no byte moves until the blur commits**   |
-| `toc-entry-click`      | select-all  | one-char document       | **key at the heading it navigated to**     |
-| `gap-caret-click`      | select-all  | one-char document       | **a paragraph created at the boundary**    |
+| Gesture                | Build       | If the range survived   | If the range ended                       |
+| ---------------------- | ----------- | ----------------------- | ---------------------------------------- |
+| `dead-space-below`     | select-all  | one-char document       | **key at the caret in the last block**   |
+| `dead-space-margin`    | select-all  | one-char document       | **key at the caret at that line's end**  |
+| `place-caret-at-point` | select-all  | one-char document       | **key at the caret in the last block**   |
+| `image-click`          | select-all  | one-char document       | **the selected image block replaced**    |
+| `drag-handle-press`    | prose range | **range span replaced** | key at the caret the press left          |
+| `escape`               | prose range | range span replaced     | **key at the range's anchor**            |
+| `search-round-trip`    | prose range | **range span replaced** | key at the caret the close returned      |
+| `inline-reveal-click`  | select-all  | one-char document       | **key inside the shown formula**         |
+| `block-reveal-click`   | select-all  | one-char document       | **no byte moves until the blur commits** |
+| `toc-entry-click`      | select-all  | one-char document       | **key at the heading it navigated to**   |
+| `gap-caret-click`      | select-all  | one-char document       | **a paragraph created at the boundary**  |
 
 Contracts come from watching each gesture over a live range, not from the lint's
 caret/non-caret classification: pinning to that would make this suite a mirror of the
@@ -97,9 +97,8 @@ document's start the only gap boundary this family arrives at by click.
 - TOC entry click: the range ends, the caret lands at the target heading, and the key
   inserts there. The landing goes through `rects.navigateTo`, not through any pointer
   entry point, so it is outside the handlers the caret-gesture lint can see
-- inline reveal click: the range ends, the reveal opens, and the typed key lives only
-  in the DOM: the source holds byte-identical until the caret escapes the reveal, which
-  commits it inside the formula
+- inline reveal click: the range ends, the reveal opens, and the typed key is written
+  inside the formula as it lands; the caret escaping the reveal draws the widget again
 - gap-caret click above a leading table: the range ends, the caret rests at the
   document's own start boundary, and the key creates a paragraph carrying it there.
   Getting the third selection mode under the corruption checks at all is the point,

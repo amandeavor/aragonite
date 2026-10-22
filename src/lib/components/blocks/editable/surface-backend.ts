@@ -13,6 +13,7 @@ import {
 	type CaretClamp,
 	type CaretWriter
 } from '../../../caret/widget-offset';
+import { readNativeSelection } from '../../../selection/native-bridge';
 
 export interface SurfaceBackendDeps {
 	getEl: () => HTMLElement | null;
@@ -122,14 +123,14 @@ type LiveRange =
 
 function readLiveRange(el: HTMLElement | null): LiveRange {
 	if (!el || document.activeElement !== el) return { state: 'inactive' };
-	const sel = window.getSelection();
-	if (!sel || sel.rangeCount === 0) return { state: 'dropped' };
+	const live = readNativeSelection();
+	if (!live) return { state: 'dropped' };
 	const prefix = markerPrefixOf(el);
 	return {
 		state: 'live',
 		el,
-		range: sel.getRangeAt(0),
-		collapsed: sel.isCollapsed,
+		range: live.range,
+		collapsed: live.collapsed,
 		inPrefix: (node) => prefix !== null && prefix.contains(node)
 	};
 }

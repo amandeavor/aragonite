@@ -6,7 +6,7 @@
 import type { BlockKind } from '../nodes';
 import type { BlockOpener } from '../../schema/block-openers';
 import { OPENER_PRIORITIES } from '../../schema/opener-priorities';
-import { matchFenceOpen } from './fence-syntax';
+import { fenceReading, matchFenceOpen } from './fence-syntax';
 import { parseFencedCode } from './fenced-code';
 import { matchHeading } from './heading';
 import { matchThematicBreak } from './thematic-break';
@@ -28,7 +28,8 @@ export const BUILT_IN_OPENERS = {
 			if (!fence) return null;
 			return parseFencedCode(ctx.lines, ctx.index, ctx.end, ctx.leadingTrivia, fence);
 		},
-		interruptsParagraph: (t) => matchFenceOpen(t) !== null
+		interruptsParagraph: (t) => matchFenceOpen(t) !== null,
+		readingNotFinal: fenceReading
 	},
 
 	heading: {
@@ -134,6 +135,7 @@ export const BUILT_IN_OPENERS = {
 			return parseLinkReferenceDefinition(ctx.lines, ctx.index, ctx.end, ctx.leadingTrivia);
 		},
 		interruptsParagraph: false,
-		readingNotFinal: definitionReadingNotFinal
+		// A definition ends at a blank line, so no line past one finishes it.
+		readingNotFinal: { notFinal: definitionReadingNotFinal, mayClose: () => false }
 	}
 } satisfies Partial<Record<BlockKind, BlockOpener>>;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pushChild, spliceChildren } from '../../tree-operations/children';
+import { spliceChildren } from '../../tree-operations/children';
 import type { CstNode } from '../../core/nodes';
 
 function para(raw: string): CstNode {
@@ -18,24 +18,6 @@ function bq(children: CstNode[], childIds?: string[]): CstNode {
 		innerSuffix: ''
 	};
 }
-
-describe('pushChild', () => {
-	it('appends to children and childIds in lockstep', () => {
-		const c = bq([para('a\n')], ['id-a']);
-		pushChild(c, para('b\n'));
-		expect(c.children).toHaveLength(2);
-		expect(c.childIds).toHaveLength(2);
-		expect(c.childIds![0]).toBe('id-a');
-	});
-
-	it('lazy-inits childIds to cover existing children before appending', () => {
-		const c = bq([para('a\n'), para('b\n')]);
-		pushChild(c, para('c\n'));
-		expect(c.children).toHaveLength(3);
-		expect(c.childIds).toHaveLength(3);
-		expect(new Set(c.childIds).size).toBe(3);
-	});
-});
 
 describe('spliceChildren', () => {
 	it.each([

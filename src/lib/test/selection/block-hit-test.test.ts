@@ -4,7 +4,12 @@
 // hit-tests the block wrapper and gets a plausible but wrong offset instead of a refusal. The
 // built-in table declares both hooks, so only test kinds reach every branch.
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
-import { blockAtPoint, endpointAtPoint, type BlockHit } from '#lib/selection/block-hit-test.js';
+import {
+	blockAtPoint,
+	endpointAtPoint,
+	holdsOwnText,
+	type BlockHit
+} from '#lib/selection/block-hit-test.js';
 import { WHOLE_BLOCK_INPUT_ATTR } from '#lib/editor-actions/whole-block-focus-surface.js';
 import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
@@ -126,5 +131,46 @@ describe('endpointAtPoint: what a pointer may address', () => {
 			cellCoordinate: true
 		});
 		expect(endpointAtPoint(hit({ foreignDragHitTest: () => null }), 10, 10)).toBeNull();
+	});
+});
+
+// Miss-analysis: every row ran on an editable surface, so reading mode's non-editable text read as
+// no block's own and a press beside it in reading mode focused the editor itself.
+describe('holdsOwnText: whose text a hit carries', () => {
+	function surfaceIn(path: string, editable: 'true' | 'false'): HTMLElement {
+		const host = document.createElement('div');
+		host.setAttribute('data-block-path', path);
+		const surface = host.appendChild(document.createElement('div'));
+		surface.setAttribute('contenteditable', editable);
+		// Every block's text keeps a tab index; reading mode takes all but one out of the order.
+		surface.tabIndex = -1;
+		return surface;
+	}
+
+	for (const editable of ['true', 'false'] as const) {
+		it(`a block's own text is its own (contenteditable="${editable}")`, () => {
+			const charSurface = surfaceIn('[4]', editable);
+			const host = charSurface.parentElement!;
+
+			expect(holdsOwnText({ path: [4], host, charSurface })).toBe(true);
+		});
+
+		it(`a child's text isn't the container's (contenteditable="${editable}")`, () => {
+			const charSurface = surfaceIn('[4,0]', editable);
+			const host = document.createElement('div');
+			host.appendChild(charSurface.parentElement!);
+
+			expect(holdsOwnText({ path: [4], host, charSurface })).toBe(false);
+		});
+	}
+
+	// A list's bullet comes before its items' text and isn't editable in any mode.
+	it("a marker in the block's own box isn't its text", () => {
+		const host = document.createElement('div');
+		host.setAttribute('data-block-path', '[3]');
+		const charSurface = host.appendChild(document.createElement('span'));
+		charSurface.setAttribute('contenteditable', 'false');
+
+		expect(holdsOwnText({ path: [3], host, charSurface })).toBe(false);
 	});
 });

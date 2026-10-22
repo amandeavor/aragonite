@@ -13,6 +13,7 @@ import type { KindCommandTarget } from '../../schema/block-commands';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
 import type { SelectionState } from '../../selection/selection-state.svelte';
 import { blockNodeAt } from '../../tree-operations/node-primitives';
+import { escapeMarkdownLiteral } from '../../tree-operations/paste/markdown-literal';
 
 export interface FocusedSurfaceDeps {
 	/** A getter, never a value: the root binds after construction. */
@@ -38,6 +39,15 @@ export interface FocusedSurface {
 	/** Routed like a paste event, so the rules live in the block; `below` pastes into a new
 	 *  paragraph after the top-level block. Resolves once the insert has landed. */
 	insertMarkdown(md: string, options?: InsertMarkdownOptions): Promise<boolean>;
+	/** An insert at the caret, aimed now at the focused block and document, for an insert that
+	 *  waits on something first (a menu's clipboard read); null with no block to aim at. */
+	aimInsertAtFocus(): AimedInsert | null;
+}
+
+/** The focused block's two paste entries, each true only when bytes moved into its document. */
+export interface AimedInsert {
+	markdown(md: string): Promise<boolean>;
+	plainText(text: string): Promise<boolean>;
 }
 
 export function createFocusedSurface(deps: FocusedSurfaceDeps): FocusedSurface {
@@ -50,13 +60,30 @@ export function createFocusedSurface(deps: FocusedSurfaceDeps): FocusedSurface {
 
 	// True only when bytes moved into the document the insert was made for: a block answers for
 	// the paste it handled, and a write the commit refused (reading mode, a swap) moves none.
-	async function insertAtFocus(md: string, madeFor: DocumentStamp): Promise<boolean> {
+	function aimAtFocus(madeFor: DocumentStamp): AimedInsert | null {
 		const at = path();
-		if (!at || !madeFor.live) return false;
-		const before = deps.contentVersion();
-		const handled = (await deps.getBlockComponent(at)?.insertMarkdown?.(md)) ?? false;
-		return handled && madeFor.live && deps.contentVersion() !== before;
+		const block = at && deps.getBlockComponent(at);
+		if (!block?.insertMarkdown) return null;
+		const land = async (insert: () => boolean | Promise<boolean> | undefined) => {
+			if (!madeFor.live) return false;
+			const before = deps.contentVersion();
+			const handled = (await insert()) ?? false;
+			return handled && madeFor.live && deps.contentVersion() !== before;
+		};
+		return {
+			markdown: (md) => land(() => block.insertMarkdown?.(md)),
+			// A block that never says how it takes text literally gets the prose answer, escaped.
+			plainText: (text) =>
+				land(() =>
+					block.insertPlainText
+						? block.insertPlainText(text)
+						: block.insertMarkdown?.(escapeMarkdownLiteral(text))
+				)
+		};
 	}
+
+	const insertAtFocus = (md: string, madeFor: DocumentStamp): Promise<boolean> =>
+		aimAtFocus(madeFor)?.markdown(md) ?? Promise.resolve(false);
 
 	async function insertBelow(topIndex: number, md: string, madeFor: DocumentStamp) {
 		let inserted = false;
@@ -95,6 +122,7 @@ export function createFocusedSurface(deps: FocusedSurfaceDeps): FocusedSurface {
 				return Promise.resolve(false);
 			}
 			return insertBelow(at[0], md, madeFor);
-		}
+		},
+		aimInsertAtFocus: () => aimAtFocus(deps.stamps.current())
 	};
 }

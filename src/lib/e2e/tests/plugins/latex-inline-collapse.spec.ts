@@ -88,10 +88,10 @@ test.describe('plugin inline math: reveal collapse scoping', () => {
 		// eq2's closing delimiter.
 		await page.keyboard.type('z');
 		expect(await editor.getBlockText(0)).toContain(`${EQ2.slice(0, -1)}z$`);
-		// Both only changed the view, so the CST holds both originals.
+		// Opening and closing only changed the view; the typed byte is the one edit.
 		const source = await editor.bridge.getSource();
 		expect(source).toContain(EQ1);
-		expect(source).toContain(EQ2);
+		expect(source).toContain(`${EQ2.slice(0, -1)}z$`);
 	});
 
 	test('clicking a different block still folds through the blur path', async () => {

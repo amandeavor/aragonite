@@ -10,6 +10,7 @@ import {
 	CLOSED_WITH_BELOW,
 	OPEN_WITH_BELOW
 } from './details-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The `<details>` collapsible, the second block with an editable title row. Collapsing clamps the
@@ -110,7 +111,6 @@ test.describe('plugin container: <details> collapsible', () => {
 		await editor.focusBlockAtPath([0, 0], 3); // end of "Sum"
 		await editor.typeText('X');
 		await editor.bridge.waitForSourceContains('<summary>SumX</summary>');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.pressDeclined('Enter');
 		// The check consumed Enter: no body block was created, and the caret stays in the summary.
@@ -272,7 +272,7 @@ test.describe('plugin container: <details> collapsible', () => {
 		// holding the truncated summary and the live open flag.
 		await editor.clickBlock(2);
 		await editor.waitForCrossBlock(false);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('<summary>Sum</summary>');
 

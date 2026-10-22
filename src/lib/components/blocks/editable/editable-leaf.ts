@@ -7,7 +7,6 @@
 
 import { onDestroy, tick } from 'svelte';
 import { createAttachmentKey } from 'svelte/attachments';
-import type { BlockEditActions } from '../../../action-contracts';
 import type { EditableLeafBlockApi, StickyColumnDirection } from '../../../block-component';
 import type { NodeView } from '../../../core/node-views';
 import { asRawOffset } from '../../../caret/coordinate-spaces';
@@ -27,9 +26,20 @@ import {
 	chromeFreeText,
 	clampToLandableRaw,
 	holdsOnlyMarkerChrome,
+	landableRawBounds,
 	type RawRange
 } from '../../../caret/widget-offset';
-import { parkFocusOnEditorRoot } from '../../../selection/native-bridge';
+import {
+	decidedDelete,
+	deleteExtent,
+	isDeleteInput,
+	isMoveDelete,
+	type DeleteAnswer,
+	type DeleteIntent
+} from '../../../caret/delete-extent';
+import { lineEdgeOffset } from '../../../caret/visual-lines';
+import { isAtMostOneCharacter } from '../../../core/text-units';
+import { nativeRangeIn, parkFocusOnEditorRoot } from '../../../selection/native-bridge';
 import { assertInvariant } from '../../../assert';
 import { checkRenderedTextFidelity } from '../../../invariants/render-fidelity';
 import { resetForPointerDown } from '../../../selection/cross-block/pointer';
@@ -39,7 +49,11 @@ import { traceRevealOpen, traceRevealFold } from '../../../debug/interaction-tra
 import { isBlankText, trimTrailingLineEnding, type LineEnding } from '../../../core/lines';
 import type { PresentationMode } from '../../../presentation-mode';
 import { tryGetBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
-import { type BlockCommandTarget, type CommandRun } from '../../../schema/block-commands';
+import {
+	blockCommandTarget,
+	type CommandRun,
+	type KindCommandTarget
+} from '../../../schema/block-commands';
 import type { EditorContext } from '../../../schema/plugin-install';
 import { componentPluginEditor, componentPluginOptions } from '../../../schema/block-kind-plugin';
 import { createTextBatch } from '../../../editor-actions/commit/text-batch';
@@ -101,7 +115,6 @@ interface LeafDepsBase {
  * node, so the offset traversal stays exact, and moving focus away on unmount.
  */
 export interface EditableLeafSurfaceProps extends EditableSurfaceAttributes {
-	tabindex: number;
 	/** Reading mode makes a plain leaf's always-mounted source inert. */
 	contenteditable: 'true' | 'false';
 	spellcheck: 'false';
@@ -177,19 +190,6 @@ export interface EditableLeaf {
 	commitSource(edited: string): void;
 }
 
-/** What a plugin block command runs against on a leaf, read through `deps` at dispatch so a
- *  node swap is seen; the leaf's counterpart of `buildContainerKindTarget`. */
-export function buildLeafCommandContext(
-	deps: Pick<LeafDepsBase, 'getNode' | 'getIndex' | 'commandHooks'>,
-	blockEdit: Pick<BlockEditActions, 'updateBlockMetadata'>
-): BlockCommandTarget {
-	return {
-		node: deps.getNode(),
-		updateMetadata: (patch) => void blockEdit.updateBlockMetadata(deps.getIndex(), patch),
-		hooks: deps.commandHooks?.()
-	};
-}
-
 export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 	const mode: EditableLeafMode = deps.mode ?? 'plain';
 	const singleLine = deps.singleLine ?? false;
@@ -246,6 +246,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		// render-primary edits are ephemeral (one commit on blur); plain commits per keystroke.
 		isInputSuppressed: () => mode === 'render-primary',
 		backend,
+		landCaret: (offset, clamp) => backend.setRaw(asRawOffset(offset), { clamp }),
 		getNode: deps.getNode,
 		getMyPath: deps.getPath,
 		getIndex: deps.getIndex,
@@ -266,6 +267,9 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			(e.inputType === 'historyUndo' || e.inputType === 'historyRedo') &&
 			stepSourceHistory(e, e.inputType === 'historyUndo'),
 		handleBeforeInput: onBeforeInput,
+		deleteAtCaret,
+		commandTarget: () => keyTarget,
+		handleDeclinedDelete: spliceTargetRange,
 		removeSelection: (range) => {
 			removeRange(range);
 			return REMOVED_IN_PLACE;
@@ -406,7 +410,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		})();
 	}
 
-	const getCommandContext = () => buildLeafCommandContext(deps, blockEdit);
+	const getCommandContext = () => blockCommandTarget(deps, blockEdit, backend.getRaw);
 
 	// ── View sync ──────────────────────────────────────────────────────────────
 
@@ -514,8 +518,8 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		deps.onSourceEdit?.(entry.text);
 	}
 
-	/** Only a keystroke-shaped edit (one character at most, not a newline) joins a typing burst;
-	 *  anything else takes its own undo entry. */
+	/** Only a keystroke-shaped edit (one character at most, an emoji included, not a line break)
+	 *  joins a typing burst; anything else takes its own undo entry. */
 	function recordSourceEdit(text: string, caret: number, keystroke: boolean): void {
 		if (!keystroke) {
 			sourceBatch.interrupt();
@@ -531,7 +535,10 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 	// cut or paste would inject <div>/<br> elements that vanish from textContent.
 	function spliceSourceText(el: HTMLElement, start: number, end: number, insert: string): void {
 		const text = el.textContent ?? '';
-		const keystroke = end - start <= 1 && insert.length <= 1 && insert !== '\n';
+		const keystroke =
+			isAtMostOneCharacter(text.slice(start, end)) &&
+			isAtMostOneCharacter(insert) &&
+			!/[\r\n]/.test(insert);
 		if (deps.renderSource) recordSourceEdit(text, backend.getRaw() ?? start, keystroke);
 		const spliced = text.slice(0, start) + insert + text.slice(end);
 		// Every edit gets the reshape showing the source does: an emptied body is the same bare
@@ -575,14 +582,16 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 
 	/** Resolve a chord at this leaf's kind and report whether it was consumed. Both views spend
 	 *  it: undo belongs to the block whatever half of the swap holds focus. */
-	const dispatchChord = (e: KeyboardEvent): boolean =>
-		wiring.dispatchChord(e, {
-			kind: deps.getNode().kind,
-			getCommandContext,
-			getPath: deps.getPath,
-			afterSourceCommit,
-			afterSelectionRemoved: editableSurface.afterSelectionRemoved
-		});
+	const keyTarget: KindCommandTarget = {
+		get kind() {
+			return deps.getNode().kind;
+		},
+		getCommandContext,
+		getPath: deps.getPath,
+		afterSourceCommit,
+		afterSelectionRemoved: editableSurface.afterSelectionRemoved
+	};
+	const dispatchChord = (e: KeyboardEvent): boolean => wiring.dispatchChord(e, keyTarget);
 
 	async function handleKeydown(e: KeyboardEvent): Promise<void> {
 		const el = deps.getEl();
@@ -605,7 +614,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			if (
 				offset !== null &&
 				(offset === 0 || /\s/.test(text[offset - 1] ?? '')) &&
-				!hasSelectionIn(el) &&
+				!nativeRangeIn(el) &&
 				isBlankText(chromeFreeText(el))
 			) {
 				e.preventDefault();
@@ -647,27 +656,16 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 	/** A painted source applies text edits itself: the browser's insert replaces a lone `\n` text
 	 *  node and its delete cannot see hidden markers. Clamping keeps edits off hidden fence lines. */
 	function onBeforeInput(e: InputEvent): void {
+		// A delete the editor decides is `deleteAtCaret`'s, and reaches the splice only if declined.
+		if (!decidedDelete(e.inputType)) spliceTargetRange(e);
+	}
+
+	function spliceTargetRange(e: InputEvent): void {
 		if (!deps.renderSource || composing || e.isComposing) return;
 		const el = deps.getEl();
 		if (!el) return;
-		let insert: string;
-		switch (e.inputType) {
-			case 'insertText':
-				insert = e.data ?? '';
-				break;
-			case 'insertLineBreak':
-			case 'insertParagraph':
-				insert = editableSurface.lineEnding();
-				break;
-			case 'deleteContentBackward':
-			case 'deleteContentForward':
-			case 'deleteWordBackward':
-			case 'deleteWordForward':
-				insert = '';
-				break;
-			default:
-				return;
-		}
+		const insert = sourceInsertion(e.inputType, e.data);
+		if (insert === null) return;
 		const target = e.getTargetRanges()[0];
 		const range = target ? backend.rawRangeOf(target) : null;
 		if (!range) return;
@@ -677,9 +675,29 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		spliceSourceText(el, start, end, insert);
 	}
 
-	function hasSelectionIn(el: HTMLElement): boolean {
-		const sel = window.getSelection();
-		return Boolean(sel && !sel.isCollapsed && el.contains(sel.anchorNode));
+	/** What an input writes over its target range in a painted source; null leaves it alone. */
+	function sourceInsertion(inputType: string, data: string | null): string | null {
+		if (isDeleteInput(inputType)) return isMoveDelete(inputType) ? null : '';
+		if (inputType === 'insertText') return data ?? '';
+		const breaks = inputType === 'insertLineBreak' || inputType === 'insertParagraph';
+		return breaks ? editableSurface.lineEnding() : null;
+	}
+
+	/** A collapsed delete takes what the delete rule names in the DOM's text, which a shown
+	 *  render-primary source reaches the node with only on blur, kept off the lines the mode hides. */
+	function deleteAtCaret(caret: number, intent: DeleteIntent): DeleteAnswer {
+		const el = deps.getEl();
+		if (!el) return 'declined';
+		const text = el.textContent ?? '';
+		const span = deleteExtent(intent, {
+			text,
+			caret,
+			bounds: landableRawBounds(el) ?? { start: 0, end: text.length },
+			lineEdge: (side) => lineEdgeOffset(el, caret, side, caretWriter)
+		});
+		if (!span) return 'at-edge';
+		spliceSourceText(el, span.start, span.end, '');
+		return 'taken';
 	}
 
 	function onPointerDown(e: PointerEvent): void {
@@ -729,7 +747,6 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 	// ── Source element props ─────────────────────────────────────────────────────
 
 	const surfaceHandlers = {
-		tabindex: 0,
 		spellcheck: 'false' as const,
 		oninput: (e: Event) => {
 			editableSurface.onInput(e);
@@ -790,6 +807,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			return box ? [box.getBoundingClientRect()] : [];
 		},
 		insertMarkdown: clipboard.insertMarkdown,
+		insertPlainText: clipboard.insertPlainText,
 		typeText: surface.typeText,
 		afterSourceCommit,
 		afterSelectionRemoved: editableSurface.afterSelectionRemoved,

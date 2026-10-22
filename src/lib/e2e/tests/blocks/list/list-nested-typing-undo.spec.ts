@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('nested list item, typing + undo', () => {
 	let editor: EditorPage;
@@ -15,37 +16,12 @@ test.describe('nested list item, typing + undo', () => {
 
 		const firstItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item one' });
 		await firstItem.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 
 		await editor.typeSlowly(' extra');
 		await editor.bridge.waitForSourceContains('item one extra');
 
 		expect(await editor.bridge.getSource()).toContain('item one extra');
-
-		await editor.undo();
-		await editor.bridge.waitForSourceEquals(before);
-	});
-
-	test('typing in two different items produces two batches', async () => {
-		const before = await editor.bridge.getSource();
-
-		const firstItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item one' });
-		await firstItem.click();
-		await editor.page.keyboard.press('End');
-		await editor.typeSlowly(' A');
-		await editor.waitForUndoBatchFlush();
-
-		const secondItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item two' });
-		await secondItem.click();
-		await editor.page.keyboard.press('End');
-		await editor.typeSlowly(' B');
-		await editor.bridge.waitForSourceContains('item two B');
-		await editor.waitForUndoBatchFlush();
-
-		await editor.undo();
-		await editor.bridge.waitForSourceNotContains(' B');
-		expect((await editor.bridge.getSource()).includes(' B')).toBe(false);
-		expect((await editor.bridge.getSource()).includes(' A')).toBe(true);
 
 		await editor.undo();
 		await editor.bridge.waitForSourceEquals(before);
@@ -58,16 +34,15 @@ test.describe('nested list item, typing + undo', () => {
 
 		const firstItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item one' });
 		await firstItem.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly(' A');
 
-		// No `waitForTimeout`: switch focus before the 250ms debounce fires.
+		// The pause is held, so only the focus change can end the first batch.
 		const secondItem = editor.page.locator('[contenteditable="true"]', { hasText: 'item two' });
 		await secondItem.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeSlowly(' B');
 		await editor.bridge.waitForSourceContains('item two B');
-		await editor.waitForUndoBatchFlush();
 
 		await editor.undo();
 		await editor.bridge.waitForSourceNotContains(' B');

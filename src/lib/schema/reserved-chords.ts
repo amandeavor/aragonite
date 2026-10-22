@@ -10,7 +10,8 @@ import { GLOBAL_KEYMAP, kindKeymap, pluginGlobalChords, reservedUiChords } from 
 import type { KeybindingOverrideMap } from './keybinding-overrides';
 import type { PluginActivation } from './plugin-activation';
 import { kindEnablementFor } from './registry-view';
-import { eventToChord } from './keybindings';
+import { caretEdgeKey, eventToChord } from './keybindings';
+import { usesMacEditingConventions } from './platform-conventions';
 
 // ── The hardcoded-chord list ─────────────────────────────────────────────────
 
@@ -42,8 +43,14 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 	{
 		file: 'components/editor-root/keydown.ts',
 		chords: [],
-		keys: ['Escape', 'H'],
-		note: 'Escape closes the find bar, and Mod+H picks the replace row as the bar opens (reserved UI chords, enumerated). The modifier read is a refusal: an unchorded character over a live range is written as text, a chorded one goes to the handlers below it.'
+		keys: ['Backspace', 'Escape', 'H'],
+		note: "Escape closes the find bar, and Mod+H picks the replace row as the bar opens (reserved UI chords, enumerated). Backspace outside a text field only loses the browser's own default (a step back in history, in some engines) and still reaches every handler. The modifier read is a refusal: an unchorded character over a live range is written as text, a chorded one goes to the handlers below it."
+	},
+	{
+		file: 'debug/input-recorder.ts',
+		chords: [],
+		keys: ['Process'],
+		note: 'An input recording copies the modifier flags of every key it records, and reads an IME keydown (`Process`) to group a composition: no keystroke is consumed.'
 	},
 	{
 		file: 'selection/selection-drop.ts',
@@ -56,6 +63,12 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		chords: [],
 		keys: [],
 		note: 'A modified multi-click is left to the browser (Shift extends, Mod activates): no keystroke is consumed.'
+	},
+	{
+		file: 'selection/widget-press.ts',
+		chords: [],
+		keys: [],
+		note: "Control with the primary button is a Mac's right-click, read off a press: no keystroke is consumed."
 	},
 	{
 		file: 'components/GapCaret.svelte',
@@ -88,18 +101,18 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		file: 'components/link-card/LinkCard.svelte',
 		chords: ['Shift+Tab'],
 		keys: ['Enter', 'Tab'],
-		note: "Backwards step of the open card's focus trap. The chord that opens the card is swallowed there too, resolved through the keymap like everywhere else. Escape lives on the host, which must also close a card the document still holds the caret for."
+		note: "Backwards step of the open card's focus trap. The chord that opens the card is swallowed there too, resolved through the keymap like everywhere else. Escape is the menu presence's, which also closes a card the document still holds the caret for."
 	},
 	{
 		file: 'components/menu/BlockMenu.svelte',
 		chords: [],
-		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Enter', 'Escape'],
-		note: 'The open block menu steps and picks; the modifier read is the guard that leaves every chord to the editor.'
+		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Enter'],
+		note: 'The open block menu steps and picks; the modifier read is the guard that leaves every chord to the editor. Escape is the menu presence’s.'
 	},
 	{
 		file: 'components/blocks/table/TableActionMenu.svelte',
 		chords: ['Shift+Tab'],
-		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'End', 'Escape', 'Home', 'Tab'],
+		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'End', 'Home', 'Tab'],
 		note: "Backwards step of the open menu's focus trap."
 	},
 	{
@@ -116,20 +129,15 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 	},
 	{
 		file: 'components/blocks/table/cell-keydown-plan.ts',
-		chords: ['Shift+Tab'],
-		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Backspace', 'Delete', 'Enter', 'Tab']
+		chords: [],
+		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Backspace', 'Delete'],
+		note: 'Arrows and Backspace or Delete at a cell edge move between cells, Shift declining; Tab and Enter are the keymap’s.'
 	},
 	{
 		file: 'components/blocks/text/TextEditableBlock.svelte',
 		chords: [],
 		keys: [],
 		note: 'Its modifier read is on a pointer event (Shift extends a selection instead of dragging a widget), so it consumes no keystroke.'
-	},
-	{
-		file: 'components/blocks/text/home-key.ts',
-		chords: ['Shift+Home', 'Mod+Home'],
-		keys: ['Home'],
-		note: "Taken only behind a marker or a leading widget, on the first line: Shift+Home extends to the text's start, and Mod+Home goes there from any line."
 	},
 	{
 		file: 'components/blocks/text/click-snap-guard.ts',
@@ -153,7 +161,7 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		file: 'components/blocks/text/pending-break-keys.ts',
 		chords: [],
 		keys: ['ArrowLeft', 'Backspace', 'Delete'],
-		note: 'A plain Backspace or ArrowLeft ends the pending break and stops there; with a modifier the key ends it and runs as usual.'
+		note: 'A plain Backspace or ArrowLeft, and any Delete, ends the pending break and stops there; Backspace or ArrowLeft with a modifier ends it and runs as usual.'
 	},
 	{
 		file: 'components/blocks/text/widget-interaction.ts',
@@ -166,13 +174,9 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 			'ArrowUp',
 			'Backspace',
 			'Delete',
-			'End',
-			'Escape',
-			'Home',
-			'PageDown',
-			'PageUp'
+			'Escape'
 		],
-		note: 'Extends a selection into a widget. A modified arrow is also swallowed while a widget is selected, but that is a caret-coherence guard in a transient state, not a binding; a plain vertical arrow, Home, End or page key places a caret and declines.'
+		note: 'Extends a selection into a widget. A modified arrow is also swallowed while a widget is selected, but that is a caret-coherence guard in a transient state, not a binding; a plain vertical arrow, a line-edge key or a page key places a caret and declines.'
 	},
 	{
 		file: 'components/image/ImageResizeHandles.svelte',
@@ -245,20 +249,39 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 	},
 	{
 		file: 'schema/keybindings.ts',
-		chords: ['Mod+A'],
-		keys: ['A'],
-		note: 'The normalizer every other site reads, and the select-all predicate every block asks.'
+		chords: [
+			'Mod+A',
+			'Shift+Home',
+			'Mod+Home',
+			'Mod+End',
+			'Mod+Shift+Home',
+			'Mod+Shift+End',
+			'Mod+ArrowLeft',
+			'Mod+ArrowRight',
+			'Mod+ArrowUp',
+			'Mod+ArrowDown',
+			'Mod+Shift+ArrowLeft',
+			'Mod+Shift+ArrowUp',
+			'Mod+Shift+ArrowDown',
+			'Shift+PageUp',
+			'Shift+PageDown'
+		],
+		keys: [
+			'A',
+			'ArrowDown',
+			'ArrowLeft',
+			'ArrowRight',
+			'ArrowUp',
+			'End',
+			'Home',
+			'PageDown',
+			'PageUp'
+		],
+		note: "The normalizer every other site reads, the select-all predicate every block asks, the caret-edge reader every edge site asks, and the page-key reader, which leaves Ctrl, Cmd and Alt with a page key to the browser. Its sites take Shift+Home and Mod+Home behind a marker or a leading widget, Mod+End before a trailing widget, Cmd+Right past a code chip and Cmd+Left from a selected widget; Mod+Shift+Home and Mod+Shift+End always extend to the document's edge. The Arrow chords are Cmd's alone (macOS's Home and End), which the chord form cannot tell from Ctrl."
 	},
 	{
 		file: 'selection/cross-block/keydown.ts',
-		chords: [
-			'Mod+Shift+Home',
-			'Mod+Shift+End',
-			'Shift+ArrowUp',
-			'Shift+ArrowDown',
-			'Shift+ArrowLeft',
-			'Shift+ArrowRight'
-		],
+		chords: ['Shift+ArrowUp', 'Shift+ArrowDown', 'Shift+ArrowLeft', 'Shift+ArrowRight'],
 		keys: [
 			'ArrowDown',
 			'ArrowLeft',
@@ -268,9 +291,7 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 			'Backspace',
 			'Delete',
 			'E',
-			'End',
 			'Escape',
-			'Home',
 			'I',
 			'K',
 			'Tab',
@@ -299,12 +320,24 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 		file: 'selection/shared-keydown.ts',
 		chords: ['Shift+ArrowUp', 'Shift+ArrowDown', 'Shift+ArrowLeft', 'Shift+ArrowRight'],
 		keys: ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp'],
-		note: 'Extends across a block boundary once the native extend runs out of room.'
+		note: 'Extends across a block boundary once the native extend runs out of room. Its block-edge chords are read by caretEdgeKey (schema/keybindings.ts).'
 	}
 ];
 
+/** The edge sites' Cmd+Arrow chords (macOS's Home and End), listed only where Cmd is the command
+ *  key: the chord form folds in Ctrl+Arrow, which is word motion elsewhere. */
+const CMD_EDGE_CHORDS: ReadonlySet<string> = new Set([
+	'Mod+ArrowLeft',
+	'Mod+ArrowRight',
+	'Mod+ArrowUp',
+	'Mod+ArrowDown',
+	'Mod+Shift+ArrowLeft',
+	'Mod+Shift+ArrowUp',
+	'Mod+Shift+ArrowDown'
+]);
+
 const HARDCODED_CHORDS: ReadonlySet<string> = new Set(
-	HARDCODED_CHORD_SITES.flatMap((site) => site.chords)
+	HARDCODED_CHORD_SITES.flatMap((site) => site.chords).filter((c) => !CMD_EDGE_CHORDS.has(c))
 );
 
 // ── Composition ──────────────────────────────────────────────────────────────
@@ -318,6 +351,9 @@ export interface ReservedChordOptions {
 	/** The plugins this instance activated: a chord another editor's plugin bound is not this
 	 *  editor's. */
 	activation: PluginActivation;
+	/** Whether the set holds the Cmd+Arrow edge chords; by default where Cmd is the platform's
+	 *  command key (macOS, iOS), the one platform read here. */
+	cmdEdgeChords?: boolean;
 }
 
 /**
@@ -340,16 +376,17 @@ export function collectReservedChords(options: ReservedChordOptions): ReadonlySe
 	for (const chord of globallyDisabledChords(options.keybindings)) {
 		if (!HARDCODED_CHORDS.has(chord)) claimed.delete(chord);
 	}
+	if (options.cmdEdgeChords ?? usesMacEditingConventions())
+		for (const chord of CMD_EDGE_CHORDS) claimed.add(chord);
 	return claimed;
 }
 
-/**
- * True when `chords` holds this keystroke, under the editor's own normalization: Ctrl and Cmd
- * both become `Mod`, so a consumer never re-derives the platform rule.
- */
+/** True when `chords` holds this keystroke, Ctrl and Cmd both read as `Mod`; a Cmd+Arrow edge
+ *  chord is read off the keystroke, so pass a set built with `cmdEdgeChords: false`. */
 export function chordIsClaimed(event: KeyboardEvent, chords: ReadonlySet<string>): boolean {
 	const chord = eventToChord(event);
-	return chord !== null && chords.has(chord);
+	if (chord === null) return false;
+	return chords.has(chord) || (CMD_EDGE_CHORDS.has(chord) && caretEdgeKey(event)?.arrow === true);
 }
 
 /** Modifier-carrying, so the fixed-order normal form puts something before the key. */

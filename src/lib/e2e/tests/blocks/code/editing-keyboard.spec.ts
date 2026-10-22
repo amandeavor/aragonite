@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 test.describe('code block keyboard: beyond parity', () => {
 	let editor: EditorPage;
@@ -63,7 +64,7 @@ test.describe('code block keyboard: beyond parity', () => {
 		);
 
 		await editor.getBlock(0).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 20; i++) {
 			await page.keyboard.press('ArrowRight');
 		}
@@ -81,17 +82,6 @@ test.describe('code block keyboard: beyond parity', () => {
 		const xIndex = lastParagraph.indexOf('X');
 		expect(xIndex).toBeGreaterThanOrEqual(15);
 		expect(xIndex).toBeLessThanOrEqual(25);
-	});
-
-	test('Shift+Enter inserts \\n, not <br>', async ({ page }) => {
-		await editor.loadContent('```\nfirst line\n```\n');
-		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
-		await page.keyboard.press('Shift+Enter');
-		await editor.typeText('second line');
-		await editor.bridge.waitForSourceContains('first line\nsecond line');
-
-		expect(await editor.getBlock(0).locator('br').count()).toBe(0);
 	});
 
 	for (const [key, source, keyed, typed] of [

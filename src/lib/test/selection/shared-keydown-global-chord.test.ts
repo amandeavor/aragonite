@@ -30,9 +30,11 @@ function makeCtx(): SharedKeydownContext {
 	const el = document.createElement('div');
 	return {
 		caretWriter: testCaretWriter,
+		caretLanding: { restore: async () => 'applied' as const, showSelectionEnd: async () => {} },
 		// No plugins stood up here, so every installed one is active.
 		commands: commandContext(),
 		reading: fixtureReading(),
+		scroll: { visibleBand: () => null, showRect: () => {} },
 		getEl: () => el,
 		getCursorOffset: () => 0,
 		getFocusOffset: () => null,
@@ -45,7 +47,7 @@ function makeCtx(): SharedKeydownContext {
 		history: { requestUndo() {}, requestRedo() {} } as unknown as SharedKeydownContext['history'],
 		focus: {} as FocusActions,
 		getDoc: () => ({ kind: 'document', children: [] }) as never,
-		scrollOwner: { place: () => ({ scroll: async () => true }) }
+		caretUnits: { beside: () => null, crossed: () => {} }
 	};
 }
 

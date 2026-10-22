@@ -11,8 +11,30 @@ import { prebuiltExternals } from './pack-manifest.mjs';
 
 const PREBUILT_DIR = 'dist/prebuilt';
 
-// Gzipped bytes, a little above the measured 506,849 of JS and 21,498 of CSS.
-const BUDGET = { js: 525_000, css: 23_000 };
+// Gzipped bytes per entry, each a little above what it measured, and 23,265 of CSS. A group owns
+// the files its entry loads that no earlier group does. Measured: index 466,886, plugin 9,198,
+// svelte 645, admonitions 4,547, details 3,970, emoji 16,372, footnotes 4,358, highlight-occurrences
+// 1,587, latex 7,556, mermaid 6,938, parrot 4,323, slash-commands 1,971, toc 2,842, testing 17,612.
+/** @type {{ js: Record<string, number>, css: number }} */
+const BUDGET = {
+	js: {
+		index: 467_600,
+		plugin: 9_300,
+		svelte: 750,
+		'plugins/admonitions': 4_650,
+		'plugins/details': 4_100,
+		'plugins/emoji': 16_500,
+		'plugins/footnotes': 4_450,
+		'plugins/highlight-occurrences': 1_700,
+		'plugins/latex': 7_900,
+		'plugins/mermaid': 7_050,
+		'plugins/parrot': 4_450,
+		'plugins/slash-commands': 2_100,
+		'plugins/toc': 2_950,
+		testing: 17_750
+	},
+	css: 23_800
+};
 
 /**
  * Every failed check, as a message; an empty list means the prebuilt passed.
@@ -39,7 +61,7 @@ export async function verifyPrebuilt() {
 	}
 	failures.push(...(await loadsWithoutDom(entries, imports)));
 	failures.push(...(await sharesOneRegistry(entries)));
-	failures.push(...overBudget(scripts, files));
+	failures.push(...overBudget(files));
 	return failures;
 }
 
@@ -120,19 +142,85 @@ async function sharesOneRegistry(entries) {
 }
 
 /**
- * @param {string[]} scripts
+ * Each budgeted group owns the files its entries load that no earlier group loads, so a failure
+ * names the entry that grew.
  * @param {string[]} files
  */
-function overBudget(scripts, files) {
-	const js = gzippedBytes(scripts);
+function overBudget(files) {
+	const groups = budgetGroups(files);
+	const failures = [];
+	let js = 0;
+	for (const [name, owned] of groups) {
+		const bytes = gzippedBytes(owned);
+		js += bytes;
+		const budget = BUDGET.js[name];
+		console.log(`verify-prebuilt: ${name} ${bytes} B of JS, gzipped`);
+		if (budget === undefined) failures.push(`the prebuilt entry "${name}" has no JS budget`);
+		else if (bytes > budget)
+			failures.push(`the prebuilt ${name} JS is ${bytes} B gzipped, over its ${budget} B budget`);
+	}
+	for (const name of Object.keys(BUDGET.js)) {
+		if (!groups.has(name)) failures.push(`the JS budget for "${name}" matches no prebuilt entry`);
+	}
 	const css = gzippedBytes(files.filter((file) => file.endsWith('.css')));
 	console.log(`verify-prebuilt: ${js} B of JS and ${css} B of CSS, gzipped`);
-	const failures = [];
-	if (js > BUDGET.js)
-		failures.push(`the prebuilt JS is ${js} B gzipped, over its ${BUDGET.js} B budget`);
 	if (css > BUDGET.css)
 		failures.push(`the prebuilt CSS is ${css} B gzipped, over its ${BUDGET.css} B budget`);
 	return failures;
+}
+
+/**
+ * Budget name to the JS files it owns: the root closure, then /plugin, /svelte, each bundled plugin
+ * and /testing, each owning what no earlier group loads.
+ * @param {string[]} files
+ * @returns {Map<string, string[]>}
+ */
+function budgetGroups(files) {
+	const scripts = files.filter((file) => file.endsWith('.js'));
+	const at = (/** @type {string} */ name) => `${PREBUILT_DIR}/${name}`;
+	const plugins = scripts
+		.filter((file) => /\/plugins\/[^/]+\/index\.js$/.test(file))
+		.map((file) => file.split('/')[3])
+		.sort();
+	/** @type {[string, string[]][]} */
+	const order = [
+		['index', [at('index.js')]],
+		['plugin', [at('plugin.js')]],
+		['svelte', [at('svelte.js')]],
+		...plugins.map(
+			(name) =>
+				/** @type {[string, string[]]} */ ([
+					`plugins/${name}`,
+					scripts.filter((file) => file.startsWith(at(`plugins/${name}/`)))
+				])
+		),
+		['testing', [at('testing.js')]]
+	];
+	const claimed = new Set();
+	const groups = new Map();
+	for (const [name, roots] of order) {
+		const owned = [...loadClosure(roots)].filter((file) => !claimed.has(file));
+		owned.forEach((file) => claimed.add(file));
+		groups.set(name, owned);
+	}
+	const stray = scripts.filter((file) => !claimed.has(file));
+	if (stray.length > 0) groups.set('unreached', stray);
+	return groups;
+}
+
+/**
+ * The files reachable from `roots` through relative imports, dynamic ones included.
+ * @param {string[]} roots
+ */
+function loadClosure(roots) {
+	const seen = new Set(roots);
+	for (const file of seen) {
+		const source = readFileSync(file, 'utf8');
+		for (const match of source.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*)["'](\.[^"']+)["']/g)) {
+			seen.add(path.posix.join(path.posix.dirname(file), match[1]));
+		}
+	}
+	return seen;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

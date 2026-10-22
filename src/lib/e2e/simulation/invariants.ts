@@ -217,17 +217,16 @@ export async function assertCheckpoint(
 // ── Undo and redo check ─────────────────────────────────────────────────────
 
 /**
- * Waits out the typing pause on both sides of the gesture, or one Ctrl+Z reaches into the
- * previous batch and the check reports a false failure.
+ * Ends the typing batch before the gesture, or one Ctrl+Z reaches into the previous batch and the
+ * check reports a false failure.
  */
 export async function undoRedoDifferential(
 	ctx: SimContext,
 	gesture: () => Promise<void>
 ): Promise<void> {
-	await ctx.editor.waitForUndoBatchFlush();
+	await ctx.editor.endTypingBatch();
 	const before = await ctx.editor.bridge.getSource();
 	await gesture();
-	await ctx.editor.waitForUndoBatchFlush();
 	const after = await ctx.editor.bridge.getSource();
 
 	await ctx.editor.undo();
@@ -260,9 +259,8 @@ export async function revertingDetour(
 	gesture: () => Promise<void>
 ): Promise<void> {
 	const before = await ctx.editor.bridge.getSource();
-	await ctx.editor.waitForUndoBatchFlush();
+	await ctx.editor.endTypingBatch();
 	await gesture();
-	await ctx.editor.waitForUndoBatchFlush();
 	await ctx.editor.undo();
 	await ctx.editor.bridge.waitForSourceEquals(before, 3000);
 	ctx.tracker.resync(before);

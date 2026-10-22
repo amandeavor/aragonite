@@ -66,6 +66,26 @@ describe('list tree: where a block sits', () => {
 	});
 });
 
+// A page key finds the block a page away here, before that block is mounted.
+describe('list tree: the block at a place in the content', () => {
+	it('finds a top-level block, clamped to the first and last', () => {
+		const { tree } = treeWith({});
+		expect(tree.pathAt(150)).toEqual([1]);
+		expect(tree.pathAt(-40)).toEqual([0]);
+		expect(tree.pathAt(9999)).toEqual([3]);
+	});
+
+	it('goes down a mounted container, past its own top', () => {
+		const { tree } = treeWith({});
+		expect(tree.pathAt(200 + CHROME + 150)).toEqual([2, 1]);
+		expect(tree.pathAt(205)).toEqual([2, 0]);
+	});
+
+	it('stops at a container whose list is not mounted', () => {
+		expect(treeWith({ inner: null }).tree.pathAt(200 + CHROME + 150)).toEqual([2]);
+	});
+});
+
 describe('list tree: the block a round holds', () => {
 	/** How far the held block moved once `change` has run. */
 	function movedAfter(

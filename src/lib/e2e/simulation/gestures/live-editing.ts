@@ -1,6 +1,7 @@
 import { actThenResync, settleTypedSource, type SimContext } from '../invariants';
 import { textRunCenter, textRunEnd } from '../../text-runs';
 import { clickModeToggle } from '../../mode-switch';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Live-mode editing gestures. Each switches into live mode through the header toggle, drives one
@@ -33,7 +34,7 @@ async function inLiveMode(ctx: SimContext, run: () => Promise<void>): Promise<vo
 	const { page, editor, tracker } = ctx;
 	// Gives this gesture's edit its own undo entry, so the single undo it closes with reverses
 	// exactly that rather than reaching back into whatever was typed before.
-	await editor.waitForUndoBatchFlush();
+	await editor.endTypingBatch();
 	const before = await editor.bridge.getSource();
 	await clickModeToggle(page, 'live');
 	try {
@@ -160,7 +161,7 @@ export async function liveDemoteHeading(ctx: SimContext, blockIndex: number): Pr
 			throw new Error(`[${ctx.label}] block ${blockIndex} is not an ATX heading: ${raw}`);
 		}
 		await ctx.editor.clickBlock(blockIndex);
-		await ctx.page.keyboard.press('Home');
+		await ctx.page.keyboard.press(edgeKey('lineStart'));
 		await ctx.editor.waitForRenderFlush();
 		await ctx.page.keyboard.press('Backspace');
 		await ctx.editor.bridge.waitForSourceWith((s, prev) => s !== prev, before);
@@ -306,9 +307,9 @@ export async function liveListHomeSeat(ctx: SimContext, itemText: string): Promi
 		const { page, editor } = ctx;
 		const before = await editor.bridge.getSource();
 		await clickText(ctx, itemText.split(' ')[0]);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await editor.waitForRenderFlush();
 		const at = await caretOffset(ctx);
 		if (at !== 0) {
@@ -329,7 +330,7 @@ export async function liveExtendIntoTablePark(ctx: SimContext): Promise<void> {
 		const before = await editor.bridge.getSource();
 		const { proseIndex, tableIndex } = await proseAboveTable(ctx);
 		await editor.clickBlock(proseIndex);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 
 		let entered = false;
@@ -409,7 +410,7 @@ async function typedOpener(
 		const { page, editor, tracker } = ctx;
 		const depth = await ctx.editor.bridge.getUndoDepth();
 		await editor.clickBlock(blockIndex);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.waitForRenderFlush();
 		const hosts = await page.evaluate(() => document.querySelectorAll('.block-host').length);
 		await page.keyboard.press('Enter');

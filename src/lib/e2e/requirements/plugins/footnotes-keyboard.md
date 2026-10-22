@@ -13,9 +13,10 @@ jump has to mount its target.
 
 - **Reading mode, reference:** Tab from the referencing paragraph focuses the reference, named
   `Footnote 1`; Enter mounts its definition and brings it into view
-- **Reading mode, the way back:** Tab from the definition's text focuses its marker, named
-  `Back to reference a` after the label it shows; Enter mounts the referencing block and brings it
-  into view
+- **Reading mode, the way back:** where focus lands after each jump, and where Tab goes from
+  there, is in `reading-jump-focus.md`
+- **Reading mode, from a click:** Tab from a click in the definition's text focuses its marker,
+  on every engine: the click leaves no caret for Firefox and WebKit to start Tab from
 - **Reading mode, axe:** a document holding references and definitions has no new violations
 
 ## Edge cases

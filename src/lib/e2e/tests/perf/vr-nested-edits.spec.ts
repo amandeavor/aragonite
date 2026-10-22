@@ -10,6 +10,8 @@ import {
 	settleAll,
 	type ScrollMode
 } from './vr-nested-fixtures';
+import { insertText } from '../../insert-text';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // A change inside a container that holds the viewport's top, whatever makes it, is corrected
 // with one scroll write: the block you're looking at stays put.
@@ -73,6 +75,7 @@ const TYPED = Array.from({ length: 70 }, () => 'typed words').join(' ');
 test('typing into a block above the top of a 40-paragraph blockquote holding it', async ({
 	page
 }) => {
+	skipUnlessSupported(page, 'insertWithoutScroll');
 	const nested = await openNested(page, 'self', docWith(quoteOf(40, 'Quoted one.')));
 	await nested.topInside([CONTAINER, 1]);
 	await nested.editor.focusBlockAtPath([CONTAINER, 1], 3);
@@ -80,7 +83,7 @@ test('typing into a block above the top of a 40-paragraph blockquote holding it'
 	const before = (await nested.screenTop([CONTAINER, 6]))!;
 	const writes = await nested.countWrites();
 
-	await page.keyboard.insertText(TYPED);
+	await insertText(page, TYPED);
 	await settleAll(nested.editor);
 
 	expect(Math.abs((await nested.screenTop([CONTAINER, 6]))! - before)).toBeLessThanOrEqual(1);
@@ -96,7 +99,7 @@ test('typing into a block above the top inside a list holding it', async ({ page
 	const grownFrom = await nested.contentBox(typedIn);
 	const writes = await nested.countWrites();
 
-	await page.keyboard.insertText(TYPED);
+	await insertText(page, TYPED);
 	await settleAll(nested.editor);
 
 	const grownTo = await nested.contentBox(typedIn);

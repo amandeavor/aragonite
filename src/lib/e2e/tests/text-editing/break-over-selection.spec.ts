@@ -1,8 +1,8 @@
 import { test, expect } from '../../fixtures';
 import { enterPresentationMode, nextRow } from '../presentation/helpers';
 
-// The browser turns Shift+Enter into an input event no key handler sees, so these two rows need a
-// real browser. Every other break key is pinned in `break-over-selection.test.ts`.
+// Shift+Enter over a selection in a code block and a table cell, through a real browser's keys and
+// selection. Every other break key is pinned in `break-over-selection.test.ts`.
 const NATIVE_ROWS = [
 	['a code block', '```\nalpha\n```\n\nnext\n', [0], 5, '```\na\nha\n```\n\nnext\n'],
 	[

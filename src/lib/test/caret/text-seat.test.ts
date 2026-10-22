@@ -30,13 +30,13 @@ describe('caretIsInTextContent', () => {
 	});
 
 	it('returns true when caret is inside a real text node within the editable', () => {
-		const sel = placeCaretAt(textNode, 2);
-		expect(caretIsInTextContent(el, sel)).toBe(true);
+		placeCaretAt(textNode, 2);
+		expect(caretIsInTextContent(el)).toBe(true);
 	});
 
 	it('returns false when caret is at element-level offset of the editable (no text node)', () => {
-		const sel = placeCaretAt(el, 0);
-		expect(caretIsInTextContent(el, sel)).toBe(false);
+		placeCaretAt(el, 0);
+		expect(caretIsInTextContent(el)).toBe(false);
 	});
 
 	it('returns false when caret is at element-level between two CE=false children', () => {
@@ -45,17 +45,21 @@ describe('caretIsInTextContent', () => {
 		widget2.setAttribute('contenteditable', 'false');
 		widget2.dataset.imageWidget = '';
 		el.insertBefore(widget2, widget);
-		const sel = placeCaretAt(el, 1);
-		expect(caretIsInTextContent(el, sel)).toBe(false);
+		placeCaretAt(el, 1);
+		expect(caretIsInTextContent(el)).toBe(false);
+	});
+
+	// Miss-analysis: no row put the caret in a widget's own text, where Firefox's End leaves it.
+	it('returns false when caret is in a widget’s own text', () => {
+		widget.textContent = 'x2';
+		placeCaretAt(widget.firstChild!, 1);
+		widget.dataset.inlineWidget = '';
+		expect(caretIsInTextContent(el)).toBe(false);
 	});
 
 	it('returns false when no selection is present', () => {
 		window.getSelection()?.removeAllRanges();
-		expect(caretIsInTextContent(el, window.getSelection())).toBe(false);
-	});
-
-	it('returns false when selection is null', () => {
-		expect(caretIsInTextContent(el, null)).toBe(false);
+		expect(caretIsInTextContent(el)).toBe(false);
 	});
 
 	it('returns false when caret is in a text node outside the editable', () => {
@@ -64,8 +68,8 @@ describe('caretIsInTextContent', () => {
 		outside.appendChild(outsideText);
 		document.body.appendChild(outside);
 		try {
-			const sel = placeCaretAt(outsideText, 1);
-			expect(caretIsInTextContent(el, sel)).toBe(false);
+			placeCaretAt(outsideText, 1);
+			expect(caretIsInTextContent(el)).toBe(false);
 		} finally {
 			outside.remove();
 		}

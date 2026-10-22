@@ -86,7 +86,11 @@ const ROUTES: AnchorRoute[] = [
 		mode: 'source',
 		source: '```\n()\n```\n',
 		place: caretAt(5),
-		gesture: (el) => pressKey(el, { key: 'Backspace' })
+		// The key's keydown passes, so the pair goes at its `beforeinput`.
+		gesture: async (el) => {
+			const key = await pressKey(el, { key: 'Backspace' });
+			if (!key.defaultPrevented) beforeInput(el, 'deleteContentBackward');
+		}
 	},
 	{
 		name: 'a soft break',

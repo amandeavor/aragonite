@@ -1,7 +1,8 @@
 /**
- * Bridges the browser's Selection API and `SelectionPoint`. Callers provide the elements and
- * paths; nothing here walks the tree. A `SelectionPoint` offset counts raw bytes, and every
- * conversion goes through `caret/widget-offset.ts`.
+ * Bridges the browser's Selection API and `SelectionPoint`, and holds the readers every file
+ * outside the caret and selection modules reads the live selection through (G4.222). Callers
+ * provide the elements and paths; nothing here walks the tree. A `SelectionPoint` offset counts
+ * raw bytes, and every conversion goes through `caret/widget-offset.ts`.
  */
 
 import { cellPoint, type SelectionPoint, type EditorSelection } from './primitives';
@@ -9,7 +10,57 @@ import type { SelectionState } from './selection-state.svelte';
 import type { BlockComponent } from '../block-component';
 import { assertInvariant } from '../assert';
 import { checkPlacementEndsWidget } from '../invariants/placement-ends-widget';
-import { rawOffsetAt, type CaretWriter } from '../caret/widget-offset';
+import { rawOffsetAt, type CaretWriter, type DomPosition } from '../caret/widget-offset';
+import type { RawOffset } from '../caret/coordinate-spaces';
+import { blockContentElAt } from '../caret/block-el-lookup';
+import { findBlockPathForElement, findCellPathForElement } from './path-lookup';
+
+// ── Read the live selection ─────────────────────────────────────────────────
+
+/** One read of the browser's selection; `range` is its first range, still live. */
+export interface NativeSelectionRead {
+	anchor: DomPosition;
+	focus: DomPosition;
+	collapsed: boolean;
+	range: Range;
+}
+
+/** The live selection, or null when the browser holds no range. */
+export function readNativeSelection(): NativeSelectionRead | null {
+	const sel = window.getSelection();
+	if (!sel || sel.rangeCount === 0 || !sel.anchorNode || !sel.focusNode) return null;
+	return {
+		anchor: { node: sel.anchorNode, offset: sel.anchorOffset },
+		focus: { node: sel.focusNode, offset: sel.focusOffset },
+		collapsed: sel.isCollapsed,
+		range: sel.getRangeAt(0)
+	};
+}
+
+/** The live selection's range ends in raw offsets inside `el`, in document order, each null where
+ *  that end sits outside `el`; null only when the browser holds no range. */
+export function rawSelectionIn(
+	el: HTMLElement
+): { start: RawOffset | null; end: RawOffset | null; collapsed: boolean } | null {
+	const live = readNativeSelection();
+	if (!live) return null;
+	const { range, collapsed } = live;
+	const rawAt = (node: Node, offset: number) =>
+		el.contains(node) ? rawOffsetAt(el, node, offset) : null;
+	const start = rawAt(range.startContainer, range.startOffset);
+	return { start, end: collapsed ? start : rawAt(range.endContainer, range.endOffset), collapsed };
+}
+
+/** Whether the browser holds a selected range anywhere in the document. */
+export function holdsNativeRange(): boolean {
+	return window.getSelection()?.isCollapsed === false;
+}
+
+/** Whether the browser holds a selected range that starts inside `root`. */
+export function nativeRangeIn(root: HTMLElement): boolean {
+	const live = readNativeSelection();
+	return !!live && !live.collapsed && root.contains(live.anchor.node);
+}
 
 // ── Read native → SelectionPoint ────────────────────────────────────────────
 
@@ -30,6 +81,16 @@ export function readNativeCaretInBlock(
 	return { path: path.slice(), offset: rawOffsetAt(blockEl, node, nodeOffset) };
 }
 
+/** Any live DOM position under `root` as a raw-offset point (a table cell's included); null
+ *  outside every block's content. */
+export function readDomPoint(root: HTMLElement, node: Node, offset: number): SelectionPoint | null {
+	const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element);
+	const path = findCellPathForElement(el) ?? findBlockPathForElement(el);
+	const contentEl = path ? blockContentElAt(root, path) : null;
+	if (!path || !contentEl?.contains(node)) return null;
+	return { path, offset: rawOffsetAt(contentEl, node, offset) };
+}
+
 // ── Apply SelectionPoint → native ───────────────────────────────────────────
 
 /** Places a collapsed native caret at a `SelectionPoint`, clamped as `parkCaret` clamps: never
@@ -43,10 +104,14 @@ export function applyCollapsedCaret(
 }
 
 // A restore's caret; the restore's reveal policy decides the scroll.
-function restoreCollapsedCaret(target: RestoreTarget, point: SelectionPoint): boolean {
+function restoreCollapsedCaret(
+	target: RestoreTarget,
+	point: SelectionPoint,
+	place: (blockEl: HTMLElement) => void
+): boolean {
 	const blockEl = target.getBlockElByPath(point.path);
 	if (!blockEl) return false;
-	applyCollapsedCaret(target.caretWriter, blockEl, point);
+	place(blockEl);
 	blockEl.focus({ preventScroll: true });
 	return true;
 }
@@ -149,6 +214,9 @@ export interface RestoreTarget {
 	/** Takes focus for a block held whole, which has no text for a caret, as a drag leaves it. */
 	getEditorRoot: () => HTMLElement | null;
 	caretWriter: CaretWriter;
+	/** Puts a caret down through its block's own landing, which opens the source of a widget the
+	 *  offset falls inside; false where the block has none, leaving it to the caret write. */
+	landCaret: (point: SelectionPoint) => boolean;
 }
 
 /** Restores an `EditorSelection` to the DOM in one `SelectionState` batch, so the single
@@ -175,7 +243,10 @@ function placeRestoredSelection(selection: EditorSelection, target: RestoreTarge
 
 	if (route === 'collapsed') {
 		selectionState.clear();
-		return restoreCollapsedCaret(target, target.caretAt(selection.anchor));
+		const caret = target.caretAt(selection.anchor);
+		return restoreCollapsedCaret(target, caret, (blockEl) => {
+			if (!target.landCaret(caret)) applyCollapsedCaret(writer, blockEl, caret);
+		});
 	}
 
 	if (route === 'whole-block') {
@@ -202,8 +273,11 @@ function placeRestoredSelection(selection: EditorSelection, target: RestoreTarge
 	// and key events a target, since Chromium otherwise routes paste to <body>.
 	selectionState.enterCrossBlock(selection.anchor, selection.focus);
 	// The stored focus, which normalization may have turned into a cell index.
-	const focus = selectionState.focus ?? selection.focus;
-	if (restoreCollapsedCaret(target, target.caretAt(focus))) {
+	const focus = target.caretAt(selectionState.focus ?? selection.focus);
+	// That caret is an event target under the painted range, so no source opens around it.
+	if (
+		restoreCollapsedCaret(target, focus, (blockEl) => applyCollapsedCaret(writer, blockEl, focus))
+	) {
 		return true;
 	}
 	writer.clear();

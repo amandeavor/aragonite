@@ -67,26 +67,6 @@ test.describe('selection: overlay: edge cases', () => {
 			editor.page.locator("[data-block-path='[2]'] .selection-overlay-endpoint").first()
 		).toBeAttached();
 	});
-
-	test('a drag into a closed title row paints the details as one box, the row end to end', async ({
-		page
-	}) => {
-		const plugins = new PluginsPage(page);
-		await plugins.gotoPlugins('details');
-		await plugins.loadContent(
-			'Above\n\n<details>\n<summary>Sum</summary>\n\nHidden\n\n</details>\n'
-		);
-		await plugins.dragFromTo([0], 2, [1, 0], 2);
-		await plugins.waitForCrossBlock(true);
-
-		const box = page.locator("[data-block-path='[1]'] > .selection-overlay-middle");
-		await expect(box).toHaveCount(1);
-		await expect(page.locator("[data-block-path='[1,0]'] .selection-overlay")).toHaveCount(0);
-		const painted = (await box.boundingBox())!;
-		const row = (await page.locator("[data-block-path='[1,0]']").boundingBox())!;
-		expect(painted.x).toBeLessThanOrEqual(row.x);
-		expect(painted.x + painted.width).toBeGreaterThanOrEqual(row.x + row.width);
-	});
 });
 
 interface Box {
@@ -253,7 +233,9 @@ function paintedOver(painted: Box[], words: Box): Box[] {
 	return painted.filter((rect) => {
 		const w = Math.min(rect.right, words.right) - Math.max(rect.left, words.left);
 		const h = Math.min(rect.bottom, bottom) - Math.max(rect.top, top);
-		return w > 0.5 && h > 0.5;
+		// WebKit's box for a run starts up to a pixel before the caret x at its first letter
+		// (measured 1.0), and the paint ends at that caret.
+		return w > 1.5 && h > 0.5;
 	});
 }
 
@@ -380,4 +362,32 @@ test.describe('selection: overlay: an end paints its whole line, not its glyphs'
 			expect(doubledPaint(await paintedRects(page))).toEqual([]);
 		});
 	}
+});
+
+test.describe('selection: overlay: a details block', () => {
+	test.beforeEach(async ({ page }) => {
+		await new PluginsPage(page).gotoPlugins('details');
+	});
+
+	test('a drag into a closed title row paints the details as one box, the row end to end', async ({
+		page
+	}) => {
+		const plugins = new PluginsPage(page);
+		await plugins.loadContent(
+			'Above\n\n<details>\n<summary>Sum</summary>\n\nHidden\n\n</details>\n'
+		);
+		await plugins.dragFromTo([0], 2, [1, 0], 2);
+		await plugins.waitForCrossBlock(true);
+
+		const box = page.locator("[data-block-path='[1]'] > .selection-overlay-middle");
+		await expect(box).toHaveCount(1);
+		await expect(page.locator("[data-block-path='[1,0]'] .selection-overlay")).toHaveCount(0);
+		const painted = (await box.boundingBox())!;
+		const row = (await page.locator("[data-block-path='[1,0]']").boundingBox())!;
+		// Whole pixels: Firefox reports the two boxes' right edges a float fraction apart.
+		expect(Math.round(painted.x)).toBeLessThanOrEqual(Math.round(row.x));
+		expect(Math.round(painted.x + painted.width)).toBeGreaterThanOrEqual(
+			Math.round(row.x + row.width)
+		);
+	});
 });

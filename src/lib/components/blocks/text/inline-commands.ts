@@ -53,10 +53,10 @@ export interface InlineCommands {
 	/** Edit link at the caret; `selection` is the range a new link would wrap, null where the block
 	 *  creates none. */
 	enterLinkCard(selection: RawRange | null): void;
-	/** Runs `run` once a shown source is hidden and its edit written; the caret stays at `offset`,
-	 *  which stays valid since the written text is the DOM text. */
+	/** Runs `run` once a shown source is closed and its widget drawn again, with the caret parked
+	 *  at `offset`. */
 	afterSourceCommit(run: () => void, offset?: number): void;
-	/** Runs a command's write after the shown source is written, as an undo step of its own. */
+	/** Runs a command's write after any shown source closes, as an undo step of its own. */
 	perform(id: CommandId, write: () => void, offset: number): void;
 }
 
@@ -138,7 +138,7 @@ export function createInlineCommands(deps: InlineCommandsDeps): InlineCommands {
 	function perform(id: CommandId, write: () => void, offset: number): void {
 		afterSourceCommit(() => {
 			// A command never writes while a source is shown, so a failure means a route skipped
-			// hiding it (G1.26).
+			// closing it (G1.26).
 			assertInvariant('reveal-transition', () =>
 				deps.widgets.isRevealing()
 					? { code: 'command-during-reveal', message: `${id} mutated the block with a reveal open` }

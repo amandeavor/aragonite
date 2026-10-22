@@ -2,6 +2,7 @@
 	import { getContext, setContext } from 'svelte';
 	import type { ListContext } from '../../../action-contracts';
 	import type { NodeView } from '../../../core/node-views';
+	import { markerWidthsOf } from '../../../core/parsers/list';
 	import { EDITOR_SERVICES_KEY, LIST_CONTEXT_KEY, type EditorServices } from '../../../editor-keys';
 	import { createListContext } from '../../../editor-actions/list-context';
 	import { createListOverrides } from '../../../editor-actions/list-overrides';
@@ -11,6 +12,8 @@
 	import { createContainerActions } from '../../../editor-actions/nested/container-actions';
 	import { createContainerBlockComponent } from '../../../editor-actions/container-block-component';
 	import ListItemBlock from './ListItemBlock.svelte';
+	import { markerColumn } from './marker-column';
+	import { hidesMarkers } from '../../../presentation-mode';
 	import type { ChildList } from '../../../block-lists/child-list';
 
 	let { node, index, myPath = [] }: { node: NodeView; index: number; myPath?: number[] } = $props();
@@ -67,6 +70,8 @@
 	);
 	let bounds = $derived(sliceWindow((node.children ?? []).length, win));
 
+	const column = $derived(markerColumn(markerWidthsOf(node), hidesMarkers(reading.mode())));
+
 	const childList: ChildList = {
 		count: () => node.children?.length ?? 0,
 		refs: listState.refSlots,
@@ -90,7 +95,7 @@
 </script>
 
 <!-- The items reorder among themselves, which the drag reads off this mark. -->
-<div class="list-block" data-reorder-scope bind:this={boxEl}>
+<div class="list-block" data-reorder-scope style:--md-list-column={column} bind:this={boxEl}>
 	{#if win.active}
 		<div class="vr-spacer" style="height: {win.topSpacerPx}px"></div>
 	{/if}

@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { deferImage } from '../../page-probes';
 import { count, findInput } from './helpers';
+import { clickInPlace } from '../../click-in-place';
 
 // A bounded editor, so it scrolls inside its own box and the correction runs.
 test.use({ viewport: { width: 1000, height: 700 } });
@@ -70,7 +71,7 @@ test('find next onto a match already on screen keeps it there while an image abo
 	// The branch this test is about: the image is mounted, and above the viewport's top.
 	expect(await topInView(page, imageHost)).toBeLessThan(0);
 
-	await page.locator(matchBlock).click();
+	await clickInPlace(page.locator(matchBlock));
 	await page.keyboard.press('ControlOrMeta+f');
 	await findInput(page).waitFor({ state: 'visible' });
 	await page.keyboard.type('zebra');

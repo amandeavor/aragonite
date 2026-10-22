@@ -54,10 +54,10 @@ test.describe('a chip selected by Mod+K', () => {
 			await editor.bridge.waitForSourceContains(SEED.replace(` ${host.chip}`, ' '));
 		});
 
-		test(`in ${host.name}, Ctrl+V replaces the chip`, async ({ page }) => {
+		test(`in ${host.name}, Ctrl+V replaces the chip`, async () => {
 			await selectChip(host.path, host.after);
 			await editor.seedClipboard('Q');
-			await page.keyboard.press('ControlOrMeta+v');
+			await editor.paste();
 
 			await editor.bridge.waitForSourceContains(SEED.replace(host.chip, 'Q'));
 		});

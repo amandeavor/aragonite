@@ -17,7 +17,9 @@ import {
 	recordInlineCompute,
 	recordHeightTableBuild,
 	recordNeighbourPass,
+	recordSettlePass,
 	recordIslandKeyScan,
+	recordDeleteWindow,
 	recordIslandRebuild,
 	recordParse,
 	recordRebuildDepth,
@@ -40,6 +42,8 @@ const EMPTY: PerfSnapshot = {
 	containerReparseBytes: 0,
 	openerLineReads: 0,
 	stripLinesRead: 0,
+	joinedChildReads: 0,
+	listMarkerReads: 0,
 	parseCount: 0,
 	parseMsTotal: 0,
 	parseBlockCount: 0,
@@ -59,6 +63,8 @@ const EMPTY: PerfSnapshot = {
 	caretLookComputes: 0,
 	caretLookNodeVisits: 0,
 	caretLookOffsetWalks: 0,
+	caretCanonicalSteps: 0,
+	caretCanonicalWalks: 0,
 	caretLookPreviews: 0,
 	caretLookParses: 0,
 	blockRenderPaths: [],
@@ -66,8 +72,12 @@ const EMPTY: PerfSnapshot = {
 	decorationRuns: 0,
 	islandRebuilds: 0,
 	islandKeyScans: 0,
+	deleteWindowUnits: 0,
 	heightTableBuilds: [],
-	neighbourPasses: 0
+	neighbourPasses: 0,
+	settlePasses: 0,
+	unfinishedWalks: 0,
+	unfinishedBlocksAsked: 0
 };
 
 function recordOneOfEach(): void {
@@ -82,8 +92,10 @@ function recordOneOfEach(): void {
 	recordDecorationRun();
 	recordIslandRebuild();
 	recordIslandKeyScan();
+	recordDeleteWindow(8);
 	recordHeightTableBuild([0, 1], 640);
 	recordNeighbourPass();
+	recordSettlePass();
 	markKeystrokeStart();
 	markKeystrokeSettle();
 	markCaretRequest();

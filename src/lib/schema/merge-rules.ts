@@ -1,7 +1,7 @@
 /**
  * Merge eligibility and target resolution for Backspace at the start of a block: the role-pair
  * rules and the walk that finds the target. Each kind's `MergeRole` is declared on
- * `BlockKindDescriptor` (`docs/design/editor.md` § Merge eligibility: roles, not pairs).
+ * `BlockKindDescriptor` (`docs/design/structural-edits.md` § Merge eligibility: roles, not pairs).
  */
 
 import type { CstNode } from '../core/nodes';

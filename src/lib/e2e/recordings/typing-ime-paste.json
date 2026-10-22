@@ -1,0 +1,1906 @@
+{
+	"format": "aragonite-input-recording/1",
+	"editor": {
+		"version": "0.11.1",
+		"presentationMode": "source",
+		"caret": "auto"
+	},
+	"text": true,
+	"env": {
+		"userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+		"uaData": {
+			"platform": "Windows",
+			"mobile": false,
+			"brands": [
+				"Not:A-Brand 8",
+				"Chromium 156",
+				"HeadlessChrome 156"
+			]
+		},
+		"inputMethod": "playwright-cdp",
+		"pointer": "fine",
+		"viewport": [
+			1280,
+			720
+		],
+		"dpr": 1
+	},
+	"initial": {
+		"source": "alpha\n",
+		"hash": "1o9ql2f51fh",
+		"selection": null
+	},
+	"steps": [
+		{
+			"family": "pointer",
+			"before": {
+				"version": 1,
+				"hash": "1o9ql2f51fh",
+				"selection": null
+			},
+			"after": {
+				"version": 1,
+				"hash": "1o9ql2f51fh",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 5
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 5
+					}
+				},
+				"splice": [
+					6,
+					6,
+					""
+				]
+			},
+			"events": [
+				{
+					"type": "pointerdown",
+					"dt": 15,
+					"trusted": true,
+					"pointerType": "mouse",
+					"verdict": false
+				},
+				{
+					"type": "pointerup",
+					"dt": 3,
+					"trusted": true,
+					"pointerType": "mouse",
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 5,
+					"trusted": true,
+					"dom": {
+						"text": "alpha",
+						"sel": [
+							5,
+							5
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 1,
+				"hash": "1o9ql2f51fh",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 5
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 5
+					}
+				}
+			},
+			"after": {
+				"version": 1,
+				"hash": "1o9ql2f51fh",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 5
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 5
+					}
+				},
+				"splice": [
+					6,
+					6,
+					""
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 31,
+					"trusted": true,
+					"key": "End",
+					"code": "End",
+					"keyCode": 35,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "keyup",
+					"dt": 3,
+					"trusted": true,
+					"key": "End",
+					"code": "End",
+					"keyCode": 35,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 1,
+				"hash": "1o9ql2f51fh",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 5
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 5
+					}
+				}
+			},
+			"after": {
+				"version": 2,
+				"hash": "1kci6cremz5",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 6
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 6
+					}
+				},
+				"splice": [
+					5,
+					5,
+					" "
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 32,
+					"trusted": true,
+					"key": " ",
+					"code": "Space",
+					"keyCode": 32,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": " ",
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									0
+								],
+								5,
+								[
+									0
+								],
+								5
+							],
+							"dom": [
+								5,
+								5
+							]
+						}
+					],
+					"dom": {
+						"text": "alpha",
+						"sel": [
+							5,
+							5
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 1,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": " ",
+					"dom": {
+						"text": "alpha ",
+						"sel": [
+							6,
+							6
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "keyup",
+					"dt": 6,
+					"trusted": true,
+					"key": " ",
+					"code": "Space",
+					"keyCode": 32,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 8,
+					"trusted": true,
+					"dom": {
+						"text": "alpha ",
+						"sel": [
+							6,
+							6
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 2,
+				"hash": "1kci6cremz5",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 6
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 6
+					}
+				}
+			},
+			"after": {
+				"version": 3,
+				"hash": "1bouuebsmfq",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 7
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 7
+					}
+				},
+				"splice": [
+					6,
+					6,
+					"b"
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 17,
+					"trusted": true,
+					"key": "b",
+					"code": "KeyB",
+					"keyCode": 66,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "b",
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									0
+								],
+								6,
+								[
+									0
+								],
+								6
+							],
+							"dom": [
+								6,
+								6
+							]
+						}
+					],
+					"dom": {
+						"text": "alpha ",
+						"sel": [
+							6,
+							6
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 1,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "b",
+					"dom": {
+						"text": "alpha b",
+						"sel": [
+							7,
+							7
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "keyup",
+					"dt": 2,
+					"trusted": true,
+					"key": "b",
+					"code": "KeyB",
+					"keyCode": 66,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 14,
+					"trusted": true,
+					"dom": {
+						"text": "alpha b",
+						"sel": [
+							7,
+							7
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 3,
+				"hash": "1bouuebsmfq",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 7
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 7
+					}
+				}
+			},
+			"after": {
+				"version": 4,
+				"hash": "1qeqkuy7rt4",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 8
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 8
+					}
+				},
+				"splice": [
+					7,
+					7,
+					"e"
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 16,
+					"trusted": true,
+					"key": "e",
+					"code": "KeyE",
+					"keyCode": 69,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "e",
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									0
+								],
+								7,
+								[
+									0
+								],
+								7
+							],
+							"dom": [
+								7,
+								7
+							]
+						}
+					],
+					"dom": {
+						"text": "alpha b",
+						"sel": [
+							7,
+							7
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "e",
+					"dom": {
+						"text": "alpha be",
+						"sel": [
+							8,
+							8
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "keyup",
+					"dt": 2,
+					"trusted": true,
+					"key": "e",
+					"code": "KeyE",
+					"keyCode": 69,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 15,
+					"trusted": true,
+					"dom": {
+						"text": "alpha be",
+						"sel": [
+							8,
+							8
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 4,
+				"hash": "1qeqkuy7rt4",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 8
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 8
+					}
+				}
+			},
+			"after": {
+				"version": 5,
+				"hash": "vb9grhae6m",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 9
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 9
+					}
+				},
+				"splice": [
+					8,
+					8,
+					"t"
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 17,
+					"trusted": true,
+					"key": "t",
+					"code": "KeyT",
+					"keyCode": 84,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "t",
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									0
+								],
+								8,
+								[
+									0
+								],
+								8
+							],
+							"dom": [
+								8,
+								8
+							]
+						}
+					],
+					"dom": {
+						"text": "alpha be",
+						"sel": [
+							8,
+							8
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 1,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "t",
+					"dom": {
+						"text": "alpha bet",
+						"sel": [
+							9,
+							9
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "keyup",
+					"dt": 2,
+					"trusted": true,
+					"key": "t",
+					"code": "KeyT",
+					"keyCode": 84,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 13,
+					"trusted": true,
+					"dom": {
+						"text": "alpha bet",
+						"sel": [
+							9,
+							9
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 5,
+				"hash": "vb9grhae6m",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 9
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 9
+					}
+				}
+			},
+			"after": {
+				"version": 6,
+				"hash": "17al2a398c7",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 10
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 10
+					}
+				},
+				"splice": [
+					9,
+					9,
+					"a"
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 18,
+					"trusted": true,
+					"key": "a",
+					"code": "KeyA",
+					"keyCode": 65,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "a",
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									0
+								],
+								9,
+								[
+									0
+								],
+								9
+							],
+							"dom": [
+								9,
+								9
+							]
+						}
+					],
+					"dom": {
+						"text": "alpha bet",
+						"sel": [
+							9,
+							9
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 1,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "a",
+					"dom": {
+						"text": "alpha beta",
+						"sel": [
+							10,
+							10
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "keyup",
+					"dt": 2,
+					"trusted": true,
+					"key": "a",
+					"code": "KeyA",
+					"keyCode": 65,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 13,
+					"trusted": true,
+					"dom": {
+						"text": "alpha beta",
+						"sel": [
+							10,
+							10
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 6,
+				"hash": "17al2a398c7",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 10
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 10
+					}
+				}
+			},
+			"after": {
+				"version": 7,
+				"hash": "25r9wsmcqpl",
+				"selection": {
+					"anchor": {
+						"path": [
+							1
+						],
+						"offset": 0
+					},
+					"focus": {
+						"path": [
+							1
+						],
+						"offset": 0
+					}
+				},
+				"splice": [
+					11,
+					11,
+					"\n\n"
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 17,
+					"trusted": true,
+					"key": "Enter",
+					"code": "Enter",
+					"keyCode": 13,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": true
+				},
+				{
+					"type": "keyup",
+					"dt": 9,
+					"trusted": true,
+					"key": "Enter",
+					"code": "Enter",
+					"keyCode": 13,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 8,
+					"trusted": true,
+					"dom": {
+						"text": "",
+						"sel": [
+							0,
+							0
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 7,
+				"hash": "25r9wsmcqpl",
+				"selection": {
+					"anchor": {
+						"path": [
+							1
+						],
+						"offset": 0
+					},
+					"focus": {
+						"path": [
+							1
+						],
+						"offset": 0
+					}
+				}
+			},
+			"after": {
+				"version": 8,
+				"hash": "ez20y4hyi9",
+				"selection": {
+					"anchor": {
+						"path": [
+							1
+						],
+						"offset": 1
+					},
+					"focus": {
+						"path": [
+							1
+						],
+						"offset": 1
+					}
+				},
+				"splice": [
+					12,
+					12,
+					"x"
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 17,
+					"trusted": true,
+					"key": "x",
+					"code": "KeyX",
+					"keyCode": 88,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "x",
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									1
+								],
+								0,
+								[
+									1
+								],
+								0
+							],
+							"dom": [
+								0,
+								0
+							]
+						}
+					],
+					"dom": {
+						"text": "",
+						"sel": [
+							0,
+							0
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 1,
+					"trusted": true,
+					"inputType": "insertText",
+					"isComposing": false,
+					"data": "x",
+					"dom": {
+						"text": "x",
+						"sel": [
+							1,
+							1
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "keyup",
+					"dt": 3,
+					"trusted": true,
+					"key": "x",
+					"code": "KeyX",
+					"keyCode": 88,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 13,
+					"trusted": true,
+					"dom": {
+						"text": "x",
+						"sel": [
+							1,
+							1
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 8,
+				"hash": "ez20y4hyi9",
+				"selection": {
+					"anchor": {
+						"path": [
+							1
+						],
+						"offset": 1
+					},
+					"focus": {
+						"path": [
+							1
+						],
+						"offset": 1
+					}
+				}
+			},
+			"after": {
+				"version": 9,
+				"hash": "25r9wsmcqpl",
+				"selection": {
+					"anchor": {
+						"path": [
+							1
+						],
+						"offset": 0
+					},
+					"focus": {
+						"path": [
+							1
+						],
+						"offset": 0
+					}
+				},
+				"splice": [
+					12,
+					13,
+					""
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 17,
+					"trusted": true,
+					"key": "Backspace",
+					"code": "Backspace",
+					"keyCode": 8,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 1,
+					"trusted": true,
+					"inputType": "deleteContentBackward",
+					"isComposing": false,
+					"data": null,
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									1
+								],
+								0,
+								[
+									1
+								],
+								1
+							],
+							"dom": [
+								0,
+								1
+							]
+						}
+					],
+					"dom": {
+						"text": "x",
+						"sel": [
+							1,
+							1
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 1,
+					"trusted": true,
+					"inputType": "deleteContentBackward",
+					"isComposing": false,
+					"data": null,
+					"dom": {
+						"text": "",
+						"sel": [
+							0,
+							0
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "keyup",
+					"dt": 3,
+					"trusted": true,
+					"key": "Backspace",
+					"code": "Backspace",
+					"keyCode": 8,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 13,
+					"trusted": true,
+					"dom": {
+						"text": "",
+						"sel": [
+							0,
+							0
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "key",
+			"before": {
+				"version": 9,
+				"hash": "25r9wsmcqpl",
+				"selection": {
+					"anchor": {
+						"path": [
+							1
+						],
+						"offset": 0
+					},
+					"focus": {
+						"path": [
+							1
+						],
+						"offset": 0
+					}
+				}
+			},
+			"after": {
+				"version": 10,
+				"hash": "17al2a398c7",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 10
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 10
+					}
+				},
+				"splice": [
+					11,
+					13,
+					""
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 17,
+					"trusted": true,
+					"key": "Backspace",
+					"code": "Backspace",
+					"keyCode": 8,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": true
+				},
+				{
+					"type": "keyup",
+					"dt": 5,
+					"trusted": true,
+					"key": "Backspace",
+					"code": "Backspace",
+					"keyCode": 8,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 12,
+					"trusted": true,
+					"dom": {
+						"text": "alpha beta",
+						"sel": [
+							10,
+							10
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "composition",
+			"before": {
+				"version": 10,
+				"hash": "17al2a398c7",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 10
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 10
+					}
+				}
+			},
+			"after": {
+				"version": 11,
+				"hash": "2b3yj38fkk4",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 11
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 11
+					}
+				},
+				"splice": [
+					10,
+					10,
+					"漢"
+				]
+			},
+			"events": [
+				{
+					"type": "compositionstart",
+					"dt": 20,
+					"trusted": true,
+					"data": "",
+					"dom": {
+						"text": "alpha beta",
+						"sel": [
+							10,
+							10
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "compositionupdate",
+					"dt": 0,
+					"trusted": true,
+					"data": "か",
+					"dom": {
+						"text": "alpha beta",
+						"sel": [
+							10,
+							10
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertCompositionText",
+					"isComposing": true,
+					"data": "か",
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									0
+								],
+								10,
+								[
+									0
+								],
+								10
+							],
+							"dom": [
+								10,
+								10
+							]
+						}
+					],
+					"dom": {
+						"text": "alpha beta",
+						"sel": [
+							10,
+							10
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 8,
+					"trusted": true,
+					"inputType": "insertCompositionText",
+					"isComposing": true,
+					"data": "か",
+					"dom": {
+						"text": "alpha betaか",
+						"sel": [
+							11,
+							11
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 0,
+					"trusted": true,
+					"dom": {
+						"text": "alpha betaか",
+						"sel": [
+							11,
+							11
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "compositionupdate",
+					"dt": 4,
+					"trusted": true,
+					"data": "かん",
+					"dom": {
+						"text": "alpha betaか",
+						"sel": [
+							10,
+							11
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertCompositionText",
+					"isComposing": true,
+					"data": "かん",
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									0
+								],
+								10,
+								[
+									0
+								],
+								11
+							],
+							"dom": [
+								10,
+								11
+							]
+						}
+					],
+					"dom": {
+						"text": "alpha betaか",
+						"sel": [
+							10,
+							11
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 1,
+					"trusted": true,
+					"inputType": "insertCompositionText",
+					"isComposing": true,
+					"data": "かん",
+					"dom": {
+						"text": "alpha betaかん",
+						"sel": [
+							12,
+							12
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 0,
+					"trusted": true,
+					"dom": {
+						"text": "alpha betaかん",
+						"sel": [
+							12,
+							12
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "compositionupdate",
+					"dt": 3,
+					"trusted": true,
+					"data": "漢",
+					"dom": {
+						"text": "alpha betaかん",
+						"sel": [
+							10,
+							12
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "beforeinput",
+					"dt": 0,
+					"trusted": true,
+					"inputType": "insertCompositionText",
+					"isComposing": true,
+					"data": "漢",
+					"targetRanges": [
+						{
+							"raw": [
+								[
+									0
+								],
+								10,
+								[
+									0
+								],
+								12
+							],
+							"dom": [
+								10,
+								12
+							]
+						}
+					],
+					"dom": {
+						"text": "alpha betaかん",
+						"sel": [
+							10,
+							12
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "input",
+					"dt": 12,
+					"trusted": true,
+					"inputType": "insertCompositionText",
+					"isComposing": true,
+					"data": "漢",
+					"dom": {
+						"text": "alpha beta漢",
+						"sel": [
+							11,
+							11
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "compositionend",
+					"dt": 0,
+					"trusted": false,
+					"data": "漢",
+					"dom": {
+						"text": "alpha beta漢",
+						"sel": [
+							11,
+							11
+						]
+					},
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 3,
+					"trusted": true,
+					"dom": {
+						"text": "alpha beta漢",
+						"sel": [
+							11,
+							11
+						]
+					},
+					"verdict": false
+				}
+			]
+		},
+		{
+			"family": "paste",
+			"before": {
+				"version": 11,
+				"hash": "2b3yj38fkk4",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 11
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 11
+					}
+				}
+			},
+			"after": {
+				"version": 12,
+				"hash": "1060pxxlqk2",
+				"selection": {
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 18
+					},
+					"focus": {
+						"path": [
+							0
+						],
+						"offset": 18
+					}
+				},
+				"splice": [
+					11,
+					11,
+					" pasted"
+				]
+			},
+			"events": [
+				{
+					"type": "keydown",
+					"dt": 34,
+					"trusted": true,
+					"key": "Control",
+					"code": "ControlLeft",
+					"keyCode": 17,
+					"mods": "C",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "keydown",
+					"dt": 1,
+					"trusted": true,
+					"key": "v",
+					"code": "KeyV",
+					"keyCode": 86,
+					"mods": "C",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "paste",
+					"dt": 1,
+					"trusted": true,
+					"clipboard": {
+						"text/plain": " pasted"
+					},
+					"verdict": true
+				},
+				{
+					"type": "keyup",
+					"dt": 5,
+					"trusted": true,
+					"key": "v",
+					"code": "KeyV",
+					"keyCode": 86,
+					"mods": "C",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "keyup",
+					"dt": 1,
+					"trusted": true,
+					"key": "Control",
+					"code": "ControlLeft",
+					"keyCode": 17,
+					"mods": "",
+					"repeat": false,
+					"isComposing": false,
+					"verdict": false
+				},
+				{
+					"type": "selectionchange",
+					"dt": 7,
+					"trusted": true,
+					"dom": {
+						"text": "alpha beta漢 pasted",
+						"sel": [
+							18,
+							18
+						]
+					},
+					"verdict": false
+				}
+			]
+		}
+	],
+	"expected": [
+		{
+			"hash": "1o9ql2f51fh",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 5
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 5
+				}
+			}
+		},
+		{
+			"hash": "1o9ql2f51fh",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 5
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 5
+				}
+			}
+		},
+		{
+			"hash": "1kci6cremz5",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 6
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 6
+				}
+			}
+		},
+		{
+			"hash": "1bouuebsmfq",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 7
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 7
+				}
+			}
+		},
+		{
+			"hash": "1qeqkuy7rt4",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 8
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 8
+				}
+			}
+		},
+		{
+			"hash": "vb9grhae6m",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 9
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 9
+				}
+			}
+		},
+		{
+			"hash": "17al2a398c7",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 10
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 10
+				}
+			}
+		},
+		{
+			"hash": "25r9wsmcqpl",
+			"selection": {
+				"anchor": {
+					"path": [
+						1
+					],
+					"offset": 0
+				},
+				"focus": {
+					"path": [
+						1
+					],
+					"offset": 0
+				}
+			}
+		},
+		{
+			"hash": "ez20y4hyi9",
+			"selection": {
+				"anchor": {
+					"path": [
+						1
+					],
+					"offset": 1
+				},
+				"focus": {
+					"path": [
+						1
+					],
+					"offset": 1
+				}
+			}
+		},
+		{
+			"hash": "25r9wsmcqpl",
+			"selection": {
+				"anchor": {
+					"path": [
+						1
+					],
+					"offset": 0
+				},
+				"focus": {
+					"path": [
+						1
+					],
+					"offset": 0
+				}
+			}
+		},
+		{
+			"hash": "17al2a398c7",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 10
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 10
+				}
+			}
+		},
+		{
+			"hash": "2b3yj38fkk4",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 11
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 11
+				}
+			}
+		},
+		{
+			"hash": "1060pxxlqk2",
+			"selection": {
+				"anchor": {
+					"path": [
+						0
+					],
+					"offset": 18
+				},
+				"focus": {
+					"path": [
+						0
+					],
+					"offset": 18
+				}
+			}
+		}
+	]
+}

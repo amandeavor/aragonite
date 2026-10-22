@@ -37,7 +37,6 @@ export type SharedSurfaceDeps = Pick<
 	| 'caretLanding'
 	| 'getEditorRoot'
 	| 'getScrollHost'
-	| 'scrollOwner'
 	| 'getEditorLifetime'
 	| 'caretMemory'
 	| 'blockEdit'
@@ -51,6 +50,8 @@ export type SharedSurfaceDeps = Pick<
 	| 'commands'
 	| 'placeholder'
 	| 'onPasteImage'
+	| 'readingFocus'
+	| 'scrollOwner'
 >;
 
 export interface SurfaceWiring {
@@ -84,8 +85,9 @@ export function wireSurfaceContexts(): SurfaceWiring {
 		activePlugins,
 		events,
 		commands,
-		scrollOwner,
-		kindCue
+		kindCue,
+		readingFocus,
+		scrollOwner
 	} = services;
 	const {
 		blockElLookup: getBlockElByPath,
@@ -107,7 +109,6 @@ export function wireSurfaceContexts(): SurfaceWiring {
 		caretLanding,
 		getEditorRoot,
 		getScrollHost,
-		scrollOwner,
 		getEditorLifetime: () => editorLifetime ?? null,
 		caretMemory,
 		blockEdit,
@@ -120,7 +121,9 @@ export function wireSurfaceContexts(): SurfaceWiring {
 		reading,
 		commands,
 		placeholder,
-		onPasteImage
+		onPasteImage,
+		readingFocus,
+		scrollOwner
 	};
 
 	const dispatchChord = (e: KeyboardEvent, target: KindCommandTarget): boolean => {

@@ -129,7 +129,8 @@ export type AmbientPrefix =
 			interactive?: AmbientInteractiveRange[];
 			/**
 			 * The hanging indent the rendered prefix needs, when its painted width is not its text
-			 * width (a task item's `- [ ] ` paints as one box). Defaults to one `ch` per character.
+			 * width (a task item's `- [ ] ` paints as one box). Defaults to one `ch` of the line's
+			 * font per character. The marker draws exactly this wide, at its line's size.
 			 */
 			indent?: string;
 	  };
@@ -146,7 +147,7 @@ export interface BlockComponentProps {
 	node: NodeView;
 	index: number;
 	myPath: number[];
-	/** Container-contributed read-only prefix rendered before the block's own raw (a list item's `- `). */
+	/** Container-contributed read-only prefix rendered before the block's own raw (a footnote's `[^label]: `). */
 	ambientPrefix: AmbientPrefix;
 	/** The root document, readonly by type; changing it is the commit path's business. */
 	document?: DocumentView;
@@ -262,7 +263,8 @@ export interface BlockComponent {
 	 */
 	runCommand?(id: AnyCommandId, arg?: unknown, run?: CommandRun): boolean;
 	/** What a plugin's block command runs against at this block, for a command the editor runs
-	 *  here itself (a key over a selection, after the selection's removal). */
+	 *  here itself (a key over a selection, after the selection's removal). Its `replaceRaw`
+	 *  rewrites the block's bytes in the block's own list. */
 	getCommandContext?(): BlockCommandTarget;
 	/**
 	 * Whether the command's toggle reads on at this block's own caret or selection: the read
@@ -304,10 +306,16 @@ export interface BlockComponent {
 	 */
 	insertMarkdown?(md: string): boolean | Promise<boolean>;
 	/**
+	 * Paste `text` as plain text at this block's caret: escaped where the block reads Markdown, as
+	 * is where it takes text literally (a code body). The block half of the menu's Paste as plain
+	 * text; resolves as `insertMarkdown` does. Omitted by non-editable blocks.
+	 */
+	insertPlainText?(text: string): boolean | Promise<boolean>;
+	/**
 	 * Type `text` at raw `offset` as a keystroke would: the write a typed character makes, with the
 	 * name a new block kind gets and the line an on-type completer finishes. The editor calls it
 	 * for a character typed over a range, once the range is removed. Resolves once it lands.
-	 * Omitted by a block that takes no text; one focused whole takes it in a paragraph after itself.
+	 * Omitted by a block that takes no text.
 	 */
 	typeText?(text: string, offset: number): Promise<boolean>;
 	/**
@@ -353,6 +361,7 @@ export type ContainerBlockComponent = BlockComponent &
  *  the editable leaf alike: each is an entry point a route reaches only through the instance. */
 export const EDITABLE_SURFACE_MEMBERS = [
 	'insertMarkdown',
+	'insertPlainText',
 	'typeText',
 	'afterSelectionRemoved'
 ] as const satisfies readonly (keyof BlockComponent)[];
@@ -386,15 +395,21 @@ export type BlockComponentExports =
 	| { readonly blockApi: EditableLeafBlockApi }
 	| { readonly containerApi: ContainerBlockComponent };
 
+/** What a component BlockHost renders publishes: a block component's exports, or a DOM view
+ *  host's `viewRef`, whose ref arrives once the view has mounted. */
+export type HostedBlockExports =
+	BlockComponentExports | { readonly viewRef: () => BlockComponent | undefined };
+
 /**
  * The `BlockComponent` behind a published instance: the one place that knows a factory's object
- * sits under `blockApi` or `containerApi`. Returns the object it was handed, never a wrapper,
- * because `publishRefSlot` compares identity and a new object would overwrite the stored one.
+ * sits under `blockApi` or `containerApi`, and a DOM view's behind `viewRef`. Returns the object it
+ * was handed, never a wrapper, because `publishRefSlot` compares identity.
  */
 export function resolveBlockSurface(
-	exports: BlockComponentExports | undefined
+	exports: HostedBlockExports | undefined
 ): BlockComponent | undefined {
 	if (!exports) return undefined;
+	if ('viewRef' in exports) return exports.viewRef();
 	if ('blockApi' in exports) return exports.blockApi;
 	return 'containerApi' in exports ? exports.containerApi : exports;
 }

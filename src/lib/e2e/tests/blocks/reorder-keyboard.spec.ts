@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Reorder finds the block from the caret path and moves it among its siblings. Focus lands at
 // offset 0 of the moved block, so a character typed after the move goes in front of the text,
@@ -51,6 +52,18 @@ test.describe('keyboard reorder', () => {
 		});
 	}
 
+	for (const { item, expected } of [
+		{ item: 2, expected: '8. a\n9. c\n10. b\n' },
+		{ item: 1, expected: '8. b\n9. a\n10. c\n' }
+	]) {
+		test(`Alt+ArrowUp on item ${item} keeps a list that starts at 8 starting at 8`, async () => {
+			await editor.loadContent('8. a\n9. b\n10. c\n');
+			await editor.focusBlockAtPath([0, item, 0], 1);
+			await editor.page.keyboard.press('Alt+ArrowUp');
+			await editor.bridge.waitForSourceEquals(expected);
+		});
+	}
+
 	test('Alt+ArrowUp moves a blockquote child up; single undo restores', async () => {
 		await editor.loadContent('> a\n>\n> b\n');
 		await editor.page.locator('[contenteditable="true"]', { hasText: 'b' }).click();
@@ -78,12 +91,24 @@ test.describe('keyboard reorder', () => {
 		await editor.bridge.waitForSourceMatches(/---[\s\S]*lead/);
 	});
 
+	test('Alt+ArrowUp on a heading flush between a paragraph and a table keeps the table', async () => {
+		await editor.loadContent('a\n# h\n| A | B |\n| --- | --- |\n| 1 | 2 |\n');
+		await editor.page.locator('[contenteditable="true"]', { hasText: 'h' }).first().click();
+		await editor.page.keyboard.press('Alt+ArrowUp');
+
+		await expect
+			.poll(() => editor.bridge.getSource())
+			.toBe('# h\na\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n');
+		expect(await editor.bridge.getBlockKind(2)).toBe('table');
+		expect(await editor.parseConverged()).toBe(true);
+	});
+
 	// A move with no sibling in that direction must change nothing and add no undo entry, or it
 	// silently eats a Ctrl+Z; the clamp's unit test skips the keymap dispatch.
 	test('Alt+Arrow at a boundary is a no-op and creates no undo entry', async () => {
 		await editor.loadContent('A\n\nB\n');
 		await editor.page.locator('[contenteditable="true"]', { hasText: 'A' }).click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.type('X');
 		await editor.bridge.waitForSourceEquals('XA\n\nB\n');
 

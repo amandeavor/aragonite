@@ -13,7 +13,7 @@ import {
 	highlightOccurrencesPlugin,
 	type HighlightOccurrencesOptions
 } from '#lib/plugins/highlight-occurrences/index.js';
-import { TYPING_PAUSE_MS } from '#lib/plugins/highlight-occurrences/highlight-occurrences-plugin.js';
+import { TYPING_PAUSE_MS } from '#lib/plugins/highlight-occurrences/typing-pause.js';
 import { OCCURRENCE_CLASS } from '#lib/plugins/highlight-occurrences/occurrences.js';
 import { onEditorCallbacks } from '#lib/schema/plugin-install.js';
 

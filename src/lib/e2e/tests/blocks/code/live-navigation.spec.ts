@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 // Every way the caret enters and leaves a fence whose lines the mode hides: the offsets it can sit
 // at are the body's, and no key at an edge may reach a hidden fence line.
@@ -88,7 +89,7 @@ test.describe('code block in live mode: line extremes and the fence lines', () =
 		await test.step('Home on the first body line puts the caret at its column 0, not in the hidden opener', async () => {
 			await editor.loadContent(DOC);
 			await editor.focusBlockAtPath([1], BODY_START + 4);
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await page.keyboard.type('X');
 			await editor.bridge.waitForSourceContains('```js\nXconst x = 1;');
 		});
@@ -96,7 +97,7 @@ test.describe('code block in live mode: line extremes and the fence lines', () =
 		await test.step('End on the last body line puts the caret after its last byte, not past the hidden closer', async () => {
 			await editor.loadContent(DOC);
 			await editor.focusBlockAtPath([1], LINE_TWO + 2);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.type('X');
 			await editor.bridge.waitForSourceContains('foo();X\n```');
 		});

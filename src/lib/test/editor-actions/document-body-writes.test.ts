@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { serialize } from '#lib/core/serializer.js';
-import { displayLength } from '#lib/core/lines.js';
+import { displayLength, documentLineEnding } from '#lib/core/lines.js';
 import { asDocPath } from '#lib/selection/path-math.js';
-import { updateNodeContent } from '#lib/tree-operations/content-write.js';
+import { writeNodeContent } from '#lib/tree-operations/content-write.js';
 import { ensureUnsharedChild } from '#lib/tree-operations/unshare.js';
 import { stampStructuralChange } from '#lib/tree-operations/structural-change.js';
 import { makeTopHarness, type TopHarness } from '#lib/test/harness/editor-actions.js';
@@ -21,6 +21,8 @@ const SOURCES = [
 	'a\n\n```\nc\n```\n\n'
 ];
 
+const ending = (h: TopHarness) => documentLineEnding(h.deps.doc);
+
 /** The structural edits a user can make at the last block, which no trial reparse checks. */
 const TAIL_EDITS: [string, (h: TopHarness, last: number) => Promise<boolean>][] = [
 	['delete', (h, last) => h.actions.deleteBlock(last, 'keyless')],
@@ -37,8 +39,12 @@ const TAIL_EDITS: [string, (h: TopHarness, last: number) => Promise<boolean>][] 
 		'replace with nothing',
 		(h, last) => h.actions.replaceBlock(last, [], undefined, { snapshotOffset: 0 })
 	],
-	['update to blank', (h, last) => h.actions.updateBlockContent(last, '\n', 'authored', 0)],
-	['update to text', (h, last) => h.actions.updateBlockContent(last, 'z\n', 'authored', 0)]
+	// Each write ends in the document's own line ending, as every route that writes a line does.
+	['update to blank', (h, last) => h.actions.updateBlockContent(last, ending(h), 'authored', 0)],
+	[
+		'update to text',
+		(h, last) => h.actions.updateBlockContent(last, `z${ending(h)}`, 'authored', 0)
+	]
 ];
 
 describe('a structural edit at the last block, with a trailing blank line', () => {
@@ -89,7 +95,8 @@ describe('the document scope of a multi-scope commit', () => {
 			mutate: ([scope]) => {
 				ensureUnsharedChild(scope, 1, scope.sharing);
 				const grammar = h.deps.reading.grammar;
-				const { change } = updateNodeContent(scope.body, 1, '\n', grammar, scope.sharing);
+				const { change, written } = writeNodeContent(scope.body, 1, '\n', grammar, scope.sharing);
+				scope.describeEdit({ written });
 				stampStructuralChange(scope.children, change, scope.sharing);
 				return [change];
 			},

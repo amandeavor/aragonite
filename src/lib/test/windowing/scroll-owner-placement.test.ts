@@ -45,7 +45,7 @@ function makeOwner(scripts: Record<string, number[]> = {}, opts: { withRoot?: bo
 	root.getBoundingClientRect = () => ({ top: 0, bottom: ROOT_BOTTOM }) as DOMRect;
 	const port = stubScrollport({ viewportHeight: ROOT_BOTTOM });
 	const owner = stubScrollOwner(port, {
-		getBlockElByPath: elFor,
+		getBlockBoxByPath: elFor,
 		getEditorRoot: () => (opts.withRoot ? root : null)
 	});
 	const rootList = owner.resolveTargetsWith({
@@ -55,6 +55,7 @@ function makeOwner(scripts: Record<string, number[]> = {}, opts: { withRoot?: bo
 		},
 		holdForRound: () => null,
 		mountTop: () => null,
+		pathAt: () => null,
 		syncScrollTop: () => {}
 	});
 

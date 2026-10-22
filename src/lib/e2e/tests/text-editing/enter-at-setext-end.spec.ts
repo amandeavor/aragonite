@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Enter in a setext title keeps the trailing underline with the heading half: a plain cut of
 // the raw text demotes it and turns the underline into a thematic break below
@@ -44,7 +45,7 @@ test.describe('text editing: Enter at the end of a setext title', () => {
 	test('real click + End + Enter, typing lands in the empty block below', async () => {
 		await editor.loadContent('Title\n=====\n');
 		await editor.clickBlockAtPath([0], 1);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForBlockHostCount(2);
 

@@ -4,7 +4,7 @@ import type { StoredAs } from '../schema/stored-as';
 import type { ChildSlot } from './list/task-paragraph';
 import type { PasteCommitCoordinator } from './paste/paste-deps';
 import type { PluginActivation } from '../schema/plugin-activation';
-import { createBlockKindRegistry } from '../schema/plugin-registry';
+import { createBlockKindRegistry } from '../schema/plugin-kind';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

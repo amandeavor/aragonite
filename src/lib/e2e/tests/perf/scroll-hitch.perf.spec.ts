@@ -11,6 +11,7 @@ import {
 	type Pass,
 	type Profile
 } from './scroll-harness';
+import { clickInPlace } from '../../click-in-place';
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -145,7 +146,7 @@ test.describe('scroll hitch: a wheel tick in live mode over heavy blocks', () =>
 		}) => {
 			await gotoReady(page, '/');
 			const editor = new EditorPage(page);
-			if (focused) await page.locator('.editor [data-block-path]').first().click();
+			if (focused) await clickInPlace(page.locator('.editor [data-block-path]').first());
 			await measure(page, editor, focused ? 'showcase-focused' : 'showcase', DOWN_UP);
 		});
 	}

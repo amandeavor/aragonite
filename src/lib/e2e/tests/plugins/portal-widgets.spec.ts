@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { clickWidgetCenter, clickWidgetEnd } from './helpers';
 import { MathRevealPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * What mounting a component into the text promises: a keyed pool keeps one live instance per
@@ -52,7 +53,7 @@ test.describe('component-portal inline widgets', () => {
 		// Clicked at the formula's end, so the caret sits inside the closing `$`: insert there,
 		// then step the caret out of the source, which is what commits an edited one.
 		await page.keyboard.type('y');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		await expect(editor.mathWidget).toHaveCount(1);
 		await editor.bridge.waitForSourceContains('$x^2y$');
@@ -122,18 +123,26 @@ test.describe('component-portal inline widgets', () => {
 		// The bytes did not move: cancelling touched no source.
 		expect(await editor.bridge.getSource()).toContain('Twice $x^2$ and $x^2$ again');
 	});
+});
+
+test.describe('component-portal inline widgets in a table cell', () => {
+	let editor: PortalPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new PortalPage(page);
+		await editor.gotoPlugins('mathtable');
+	});
 
 	test('table cell: a widget renders and keeps its mount id while typing in the cell', async ({
 		page
 	}) => {
-		await editor.gotoPlugins('mathtable');
 		await expect(editor.mathWidget).toHaveCount(1);
 		const idBefore = await editor.mountId();
 
 		// A table cell's render uses the same pool, so type after the cell's widget.
 		const cell = page.locator('.table-cell', { has: editor.mathWidget });
 		await cell.click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('Z');
 		await editor.bridge.waitForSourceContains('x^2$Z');
 		await editor.waitForRenderFlush();

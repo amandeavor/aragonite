@@ -11,39 +11,28 @@ import type { PresentationMode } from '../../presentation-mode';
 import type { ActivationClick, ClickInput } from '../../activation-click';
 import { isLiveHtmlTag, buildLiveHtmlWidget } from './raw-html-widget';
 import { entityRendersGlyph, buildEntityWidget } from './entity-widget';
-import { createInlineKindRegistry } from '../../schema/plugin-registry';
+import { createInlineKindRegistry } from '../../schema/plugin-kind';
 import { registerAsCore } from '../../schema/plugin-install';
 import type { GrammarView } from '../../schema/block-openers';
 import { inlineDescendants } from './walk';
 import type { PluginView } from '../../plugin-view';
 
-/**
- * The shell every inline widget is drawn in. Its `data-*` attributes are the only handle the
- * DOM-to-offset traversal has, so the shell is created here once and builders add only the body.
- */
-export function mintWidgetShell(node: InlineNode, className?: string): HTMLSpanElement {
-	const shell = document.createElement('span');
-	if (className) shell.className = className;
-	shell.dataset.inlineWidget = '';
-	shell.dataset.sourceStart = String(node.start);
-	shell.dataset.sourceEnd = String(node.end);
-	shell.setAttribute('contenteditable', 'false');
-	return shell;
-}
-
-/** The raw byte range a shell carries, or null when the attributes are absent or malformed:
- *  {@link mintWidgetShell}'s inverse, kept beside it so the two move together. */
-export function widgetSourceRange(el: Element): { start: number; end: number } | null {
-	const start = parseInt(el.getAttribute('data-source-start') ?? '', 10);
-	const end = parseInt(el.getAttribute('data-source-end') ?? '', 10);
-	if (Number.isNaN(start) || Number.isNaN(end)) return null;
-	return { start, end };
-}
-
 /** The inline-widget element whose source starts at `start`, or null. The only place this
  *  selector is written: a mistyped copy would fail silently as a null `querySelector`. */
 export function widgetElByStart(el: HTMLElement, start: number): HTMLElement | null {
 	return el.querySelector<HTMLElement>(`[data-inline-widget][data-source-start="${start}"]`);
+}
+
+/** The tab stop of the widget in `el` whose source ends at `offset`: what a reading-mode landing
+ *  at `offset` focuses, so a jump back to a reference lands on the reference. */
+export function widgetTabStopEndingAt(el: HTMLElement, offset: number): HTMLElement | null {
+	const widget = el.querySelector(`[data-inline-widget][data-source-end="${offset}"]`);
+	if (!widget) return null;
+	return (
+		[widget, ...widget.querySelectorAll('*')].find(
+			(node): node is HTMLElement => node instanceof HTMLElement && node.tabIndex >= 0
+		) ?? null
+	);
 }
 
 /**
@@ -88,9 +77,11 @@ export const ON_EDGE_POLICIES = ['select', 'step-over'] as const;
  * stepping over it like a character.
  */
 export interface InlineWidgetEditingPolicy {
+	/** Show the widget's source for editing when the caret enters it, or when an edit leaves the
+	 *  caret inside it (a `#` typed before `tag`). Without it, such a caret lands past the widget. */
 	revealSource?: boolean;
-	/** The editable content's offsets in the source span (`$x$` gives `{ start: 1, end: 2 }`),
-	 *  bounding the caret; a click with no mapped point lands at `end`. Absent: the start edge. */
+	/** Where the caret may sit in the source (`$x$` gives `{ start: 1, end: 2 }`); a click with no
+	 *  mapped point lands at `end`. Absent: anywhere in it, and such a click lands at the start. */
 	revealContentSpan?: (source: string) => { start: number; end: number } | null;
 	/** The `source` offset under a click, so the caret goes where the user clicked; only the kind
 	 *  can map its render (KaTeX glyphs) back to bytes. Null keeps the fallback. */

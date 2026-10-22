@@ -88,7 +88,7 @@ const PINNED: Record<string, Pin> = {
 			rebuildUnsharedAncestry: 2,
 			rebuildUnsharedChain: 1,
 			rebuildContainerRawIfContainer: 1,
-			'.rebuildRaw': 7
+			'.rebuildRaw': 8
 		},
 		why: 'the conformance kit drives rebuilds directly, outside any commit'
 	},

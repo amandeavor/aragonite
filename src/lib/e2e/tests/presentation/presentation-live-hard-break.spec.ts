@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { clickBlockSettled, enterPresentationMode, focusOffset, focusPath } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // Where markers are hidden, a hard break is a line break and nothing more. Source mode marks the
 // trailing-space form, whose bytes are blank there too.
@@ -28,10 +29,10 @@ test.describe('a hard break where markers are hidden', () => {
 	}) => {
 		const ep = await enterPresentationMode(page, 'live', 'start\n');
 		await clickBlockSettled(ep, 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
-		await page.evaluate(() => navigator.clipboard.writeText('one  \ntwo\n'));
-		await page.keyboard.press('ControlOrMeta+v');
+		await ep.seedClipboard('one  \ntwo\n');
+		await ep.paste();
 		await ep.bridge.waitForSourceContains('one  \ntwo');
 
 		expect(await drawnGlyphs(page)).toBe(0);
@@ -40,7 +41,7 @@ test.describe('a hard break where markers are hidden', () => {
 		expect(await ep.bridge.getSource()).toBe('start\n\none  \ntwo\n');
 
 		// The paste leaves the caret after `two`; Home is the start of its own line.
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		expect(await focusOffset(ep)).toBe(6);
 		await page.keyboard.press('ArrowLeft');
@@ -68,7 +69,7 @@ test.describe('a hard break where markers are hidden', () => {
 		test(`${mode}: the line Shift+Enter opens at the end draws no glyph`, async ({ page }) => {
 			const ep = await enterPresentationMode(page, mode, 'abc\n');
 			await clickBlockSettled(ep, 0);
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('Shift+Enter');
 			await ep.waitForRenderFlush();
 

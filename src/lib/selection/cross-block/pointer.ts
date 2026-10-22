@@ -5,7 +5,7 @@ import type { SelectionState } from '../selection-state.svelte';
 import type { CaretMemory } from '../../caret/caret-memory';
 import { handleShiftClick } from '../keyboard-extend';
 import { findBlockPathForElement } from '../path-lookup';
-import { applyCollapsedCaret } from '../native-bridge';
+import { applyCollapsedCaret, nativeRangeIn, readNativeSelection } from '../native-bridge';
 import type { CaretWriter } from '../../caret/widget-offset';
 import { isInPaddingRow, offsetFromViewportPoint } from '../../caret/point-offset';
 import { installDragListener } from '../drag-pointer';
@@ -73,7 +73,8 @@ function handlePointerDown(
 			e.clientX,
 			e.clientY,
 			prevFocusEl,
-			prevFocusPath
+			prevFocusPath,
+			ctx.standInCaret()
 		);
 		if (handled) {
 			e.preventDefault();
@@ -163,21 +164,23 @@ function armPaddingPress(
 	return { offset, placed: () => placed };
 }
 
-/** A right-click places a collapsed caret where a primary click would, before a menu reads it.
- *  Bound in the capture phase at the editor root, so it runs ahead of every block's own menu. */
-export function placeContextPress(
-	selection: SelectionState,
-	writer: CaretWriter,
-	e: MouseEvent
-): void {
-	if (e.button !== 2 || selection.isCrossBlock) return;
+/** A right-click in a surface's padding rows puts a collapsed caret where a primary click would,
+ *  for a press that landed on no range. */
+export function placePaddingPress(writer: CaretWriter, e: MouseEvent): void {
 	const surface = editingHostOf(e.target);
 	if (!surface || !isInPaddingRow(surface, e.clientX, e.clientY)) return;
-	// A right-click inside a range keeps it for the menu, as the browser does.
-	if (!(window.getSelection()?.isCollapsed ?? true)) return;
 	const offset = offsetFromViewportPoint(surface, e.clientX, e.clientY);
 	const path = findBlockPathForElement(surface);
 	if (offset !== null && path) applyCollapsedCaret(writer, surface, { path, offset });
+}
+
+/** Whether the browser's selected range inside `root` covers the viewport point. */
+export function rangeCoversPoint(root: HTMLElement, x: number, y: number): boolean {
+	const live = readNativeSelection();
+	if (!live || !nativeRangeIn(root)) return false;
+	return Array.from(live.range.getClientRects()).some(
+		(r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+	);
 }
 
 function editingHostOf(target: EventTarget | null): HTMLElement | null {

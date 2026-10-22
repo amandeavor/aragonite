@@ -1,4 +1,5 @@
 import { type SimContext, actThenResync } from '../invariants';
+import { edgeKey } from '../../platform-keys';
 
 // Table gestures resync rather than predict: a row the editor adds takes the padded spelling, and
 // a cell edit lands mid-source, neither being the append the expected answer predicts. Typed pipe
@@ -16,7 +17,7 @@ async function clickCell(ctx: SimContext, cellIndex: number): Promise<void> {
  */
 export async function editCell(ctx: SimContext, cellIndex: number, text: string): Promise<void> {
 	await clickCell(ctx, cellIndex);
-	await ctx.page.keyboard.press('End');
+	await ctx.page.keyboard.press(edgeKey('lineEnd'));
 	await actThenResync(ctx, () => ctx.page.keyboard.type(text));
 }
 

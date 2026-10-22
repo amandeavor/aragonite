@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { EditorPage } from '../../editor-page';
 import { clickWordSettled, enterPresentationMode, landAt } from './helpers';
 import { clickModeToggle } from '../../mode-switch';
+import { textRunCenter } from '../../text-runs';
 
 // The caret half of the mode-switch rules: a mode change moves no byte, so the caret the user
 // had comes back on the other side, saved across reading mode, which has no caret.
@@ -51,6 +52,24 @@ test.describe('mode flips: the caret comes back', () => {
 
 		await page.keyboard.type('X');
 		await ep.bridge.waitForSourceContains('boXld');
+	});
+
+	test('a click while reading moves the caret the flip out puts back', async ({ page }) => {
+		const ep = await enterPresentationMode(page, 'source', DOC);
+		await clickWordSettled(ep, page, 'bold');
+		await landAt(ep, page, SEAT);
+		await clickModeToggle(page, 'reading');
+		await ep.waitForRenderFlush();
+
+		// Reading mode keeps no caret, so the click has none to settle; it focuses the block.
+		const title = await textRunCenter(page, 'Title');
+		await page.mouse.click(title.x, title.y);
+		await ep.waitForRenderFlush();
+		await clickModeToggle(page, 'reading');
+		await expect.poll(async () => (await focusPoint(ep))?.path).toEqual([0]);
+
+		await page.keyboard.type('X');
+		await expect.poll(() => ep.bridge.getSource()).toMatch(/^# T\w*X\w*\n/);
 	});
 
 	// A cell keys its DOM on the mode, so a mode change rebuilds every mounted cell and runs the

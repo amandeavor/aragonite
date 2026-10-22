@@ -6,6 +6,7 @@
  */
 
 import { asDomTextOffset } from '../caret/coordinate-spaces';
+import { wordSegmenter } from '../core/text-units';
 import { caretOffsetAtPoint } from '../caret/point-offset';
 import type { UserScrollport } from '../windowing/scroll-ancestors';
 import {
@@ -33,18 +34,6 @@ export interface Span {
 
 // ── The word rule ────────────────────────────────────────────────────────────
 
-let segmenter: Intl.Segmenter | null | undefined;
-
-function wordSegmenter(): Intl.Segmenter | null {
-	if (segmenter === undefined) {
-		segmenter =
-			typeof Intl.Segmenter === 'function'
-				? new Intl.Segmenter(undefined, { granularity: 'word' })
-				: null;
-	}
-	return segmenter;
-}
-
 /** The segment at `offset`: the word ending there if there is one, else the segment starting
  *  there, as the browser takes it. Null on a platform with no segmenter. */
 export function wordSpanAt(text: string, offset: number): Span | null {
@@ -66,7 +55,7 @@ function spanOf(segment: Intl.SegmentData): Span {
 
 /** The raw span `granularity` takes around a raw offset in `surface`; null where the word rule
  *  has nothing to read. */
-export function spanAround(
+function spanAround(
 	surface: HTMLElement,
 	granularity: ClickGranularity,
 	rawOffset: number

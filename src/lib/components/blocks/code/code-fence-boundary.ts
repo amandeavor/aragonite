@@ -1,8 +1,8 @@
 /**
  * Pure decisions that keep a caret and an edit off a fenced code block's fence lines where the
  * mode hides them; there, editable content is the body plus the opener's info string. Where the
- * mode paints them, edits land and the fence write rule keeps one opener and one closer. Every
- * route that writes a range asks `editSpan`. Display-text coordinates throughout.
+ * mode paints them, edits land as typed and the fence write rule squares them with the grammar.
+ * Every route that writes a range asks `editSpan`. Display-text coordinates throughout.
  */
 
 import type { NodeView } from '../../../core/node-views';

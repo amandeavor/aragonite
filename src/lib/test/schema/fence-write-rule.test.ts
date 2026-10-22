@@ -40,11 +40,11 @@ describe('the fence rule: the caret follows the bytes', () => {
 		expect(fencedCodeWrite.mapOffset(written, written.length, closed)).toBe(16);
 	});
 
-	it('lands a caret inside a dropped stranded closer where that closer was', () => {
+	it('keeps every offset when a stranded closer stays', () => {
 		const written = 'dy\n```\n';
-		expect(fencedCodeWrite.normalize(written, closed)).toBe('dy\n');
+		expect(fencedCodeWrite.normalize(written, closed)).toBe(written);
 		expect([0, 2, 3, 5, 6, 7].map((at) => fencedCodeWrite.mapOffset(written, at, closed))).toEqual([
-			0, 2, 2, 2, 2, 3
+			0, 2, 3, 5, 6, 7
 		]);
 	});
 

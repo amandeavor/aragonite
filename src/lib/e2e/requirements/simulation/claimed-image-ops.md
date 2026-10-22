@@ -29,8 +29,8 @@ and round-trip cleanly, so the reparse comparison runs at every checkpoint.
 - the node is a built-in `image` kind whose bytes only the plugin's handler can serialize,
   so the round-trip check is what tells a good resize from a bad one: a resize that wrote
   GFM bytes would still render an image and still pass a count check
-- gestures are separated by real pauses so each commit lands as its own undo batch rather
-  than coalescing into the previous one
+- gestures are separated by pauses that end the typing batch, so each commit lands as its own
+  undo batch rather than coalescing into the previous one
 
 ## User interactions
 

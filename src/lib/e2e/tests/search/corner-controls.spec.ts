@@ -4,13 +4,18 @@ import { EditorPage } from '../../editor-page';
 import { MermaidPage, MERMAID_FENCE } from '../plugins/mermaid-helpers';
 import { BlockMathPage } from '../plugins/latex-reveal-helpers';
 import { findInput, openFind, openReplace, replaceInput } from './helpers';
+import { clickInPlace, hoverInPlace } from '../../click-in-place';
 
 // A block's hover controls in its top-right corner (`requirements/search/corner-controls.md`):
 // the open find bar moves only the ones it covers below itself.
 
 const host = (page: Page, index: number) => page.locator(`[data-block-path='[${index}]']`);
-// The left edge of the block's first line, clear of the bar on the right.
-const hover = (page: Page, index: number) => host(page, index).hover({ position: { x: 20, y: 8 } });
+// The left edge of the block's first line, clear of the bar on the right. A plain move, since
+// Firefox's `hover` scrolls a block already in view and carries it out from under the bar.
+const hover = async (page: Page, index: number) => {
+	const box = (await host(page, index).boundingBox())!;
+	await page.mouse.move(box.x + 20, box.y + 8);
+};
 
 const areaUnderBar = (control: Locator) =>
 	control.evaluate((el) => {
@@ -41,7 +46,7 @@ test.describe('the find bar beside a code block', () => {
 	const expandReplace = async (editor: EditorPage) => {
 		await openFind(editor);
 		await hover(editor.page, TOP);
-		await editor.page.getByRole('button', { name: 'Toggle replace' }).click();
+		await clickInPlace(editor.page.getByRole('button', { name: 'Toggle replace' }));
 		await replaceInput(editor.page).waitFor({ state: 'visible' });
 	};
 
@@ -114,14 +119,14 @@ test.describe('the find bar over a code block scrolling under it', () => {
 		await openFind(editor);
 		const block = host(page, 1);
 		// Inside the block's text, one element, so the scroll brings no new element under the pointer.
-		await block.hover({ position: { x: 40, y: 200 } });
+		await hoverInPlace(block, { position: { x: 40, y: 200 } });
 		const rail = block.locator(':scope > .code-rail');
 		await expect.poll(() => areaUnderBar(rail)).toBe(0);
 
 		const barTop = () =>
 			page.locator('.search-bar').evaluate((el) => el.getBoundingClientRect().top);
 		const blockTop = () => block.evaluate((el) => el.getBoundingClientRect().top);
-		await page.mouse.wheel(0, (await blockTop()) - (await barTop()));
+		await page.mouse.wheel(0, Math.round((await blockTop()) - (await barTop())));
 		await expect.poll(async () => Math.abs((await blockTop()) - (await barTop()))).toBeLessThan(8);
 		await expect.poll(() => areaUnderBar(rail)).toBe(0);
 	});
@@ -138,7 +143,7 @@ test.describe('the find bar in a consumer anchor', () => {
 		await hover(page, 0);
 		await expect.poll(() => areaUnderBar(rail)).toBe(0);
 
-		await page.getByTestId('anchor-toggle').click();
+		await clickInPlace(page.getByTestId('anchor-toggle'));
 		await expect(page.locator('.editor .search-bar')).toBeVisible();
 		await hover(page, 0);
 		await expect.poll(() => areaUnderBar(rail)).toBe(0);

@@ -15,6 +15,9 @@ Entering a code block via ArrowDown from the block above and via ArrowUp from th
 
 ## Edge cases
 
+- ArrowDown at column 0 of the paragraph above lands at the body's start, not one letter in: the
+  body's first offset is measured on the body line
+
 - Landing body offset (not just pixel X) matches both directions: a typed character lands at the same byte position in the serialized body whichever direction the caret came from
 - `DEFAULT_CONTENT` js code block from the `/test/editor` harness: matched sticky X from above and below produces symmetric landing X. The two neighbours have different end columns, so their clicks quantize to different character boundaries; the bound is one measured character cell widened by exactly that gap, and it is asserted on every run whatever the gap measures
 
@@ -27,3 +30,7 @@ The `DEFAULT_CONTENT` scenario clicked the block above the fence at its top edge
 The fence-line scenario typed a character and read the source, and the fence write rule moved a
 stray byte into the body before the source was read, so dropping the body window left it green.
 It now reads where the caret landed first, before anything is typed.
+
+Column 0 landed one letter into the body in Chromium too: Chromium measures no box for a caret at
+the end of the opener's `\n` text, so the body's first offset was never a candidate, and every row
+entered at column 20, where that offset is never the nearest.

@@ -26,5 +26,31 @@ test.describe('text editing, a last line erased to nothing', () => {
 			await expect.poll(() => editor.bridge.getSource()).toBe('Plan\nx\n');
 			expect(await editor.parseConverged()).toBe(true);
 		});
+
+		test(`the emptied line above a blank line keeps one blank line (${mode})`, async ({ page }) => {
+			await editor.setPresentationMode(mode);
+			await editor.loadContent('Plan\nmore\n\nnext\n');
+			await editor.focusBlockEnd(0);
+			for (let i = 0; i < 4; i++) await page.keyboard.press('Backspace');
+			await expect.poll(() => editor.bridge.getSource()).toBe('Plan\n\nnext\n');
+			expect(await editor.parseConverged()).toBe(true);
+
+			await page.keyboard.press('Backspace');
+			await expect.poll(() => editor.bridge.getSource()).toBe('Plan\n\nnext\n');
+			expect(await editor.bridge.getBlockCount()).toBe(2);
+			expect(await editor.parseConverged()).toBe(true);
+		});
 	}
+
+	test('a setext underline erased above a blank line keeps one blank line (source)', async ({
+		page
+	}) => {
+		await editor.setPresentationMode('source');
+		await editor.loadContent('Plan\n===\n\nb\n');
+		await editor.focusBlockEnd(0);
+		for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace');
+
+		await expect.poll(() => editor.bridge.getSource()).toBe('Plan\n\nb\n');
+		expect(await editor.parseConverged()).toBe(true);
+	});
 });

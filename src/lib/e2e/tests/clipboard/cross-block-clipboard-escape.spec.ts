@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { openImageField } from '../blocks/image/helpers';
 
 // A cross-block clipboard event landing on `document.body` rather than a block's editable
 // element (`requirements/clipboard/cross-block-clipboard-escape.md`). The trigger is a focus
@@ -117,6 +118,19 @@ test.describe('cross-block clipboard with a caret-less focus endpoint', () => {
 
 			expect(await editor.readClipboard()).toBe('needle');
 		});
+	});
+
+	test('copying from a selected image’s alt field copies the field, not the image', async () => {
+		await editor.loadContent('first para\n\n![cat](/test-fixtures/sample.png)\n');
+		await editor.seedClipboard('UNTOUCHED');
+		await editor.page.locator('[data-image-widget]').first().click();
+		const alt = await openImageField(editor.page);
+		await alt.fill('field text');
+		await editor.page.keyboard.press('ControlOrMeta+a');
+		await editor.page.keyboard.press('ControlOrMeta+c');
+		await editor.waitForClipboardContains('field text');
+
+		expect(await editor.readClipboard()).toBe('field text');
 	});
 
 	test('a copy a block surface does receive is still written once', async () => {

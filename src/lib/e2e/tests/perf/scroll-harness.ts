@@ -174,7 +174,7 @@ export interface Profile {
 }
 
 /** CPU time by function over the scroll, so a stutter names what caused it. Readable on the
- *  dev server only, since the production bundle renames functions. */
+ *  development build only, since the production bundle renames functions. */
 export function topSelfTime(profile: Profile, n: number): Array<{ fn: string; ms: number }> {
 	const byNode = new Map<number, number>();
 	for (let i = 0; i < profile.samples.length; i++) {

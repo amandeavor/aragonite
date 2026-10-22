@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { bundledPluginDirs } from '../invariants/lint/scan-source';
-import { declaredPluginKind } from '#lib/plugin.js';
 import { isBuiltinBlockKind } from '#lib/core/nodes.js';
 import { DIRECTIVE_CONTAINER, DIRECTIVE_LEAF } from '#lib/core/directive/kinds.js';
 import {
@@ -28,6 +27,17 @@ import { parrotPlugin, PARROT } from '#lib/plugins/parrot/index.js';
 import { installPlugins } from '#lib';
 import { testView } from '#lib/test/support/test-view.js';
 import type { BlockView } from '#lib/schema/block-view.js';
+import type { UnfinishedReading } from '#lib/schema/block-openers.js';
+import { OPENER_PRIORITIES } from '#lib/schema/opener-priorities.js';
+import {
+	declaredPluginKind,
+	fenceRawWrite,
+	fenceReading,
+	fenceShapeOfRaw,
+	matchFenceInfo,
+	scanFence
+} from '#lib/plugin.js';
+import { testLeaf } from '#lib/test/harness/test-kinds.js';
 
 // The generic battery pointed at real plugin kinds, which exist only once their setup installs
 // them, so each case resets and re-installs.
@@ -71,9 +81,53 @@ describe('kind conformance: plugin kinds enroll', () => {
 		for (const k of registered) {
 			const report = await runKindConformance(k);
 			expect(new Set(report.cells.map((c) => c.cell))).toEqual(
-				new Set([...Object.keys(getBlockKindDescriptor(k).closure), 'rawWrite'])
+				new Set([
+					...Object.keys(getBlockKindDescriptor(k).closure),
+					'rawWrite',
+					'unfinishedReading'
+				])
 			);
 		}
+	});
+});
+
+// ── A fence kind's reading ───────────────────────────────────────────────────
+
+/** A plugin kind claiming ```demo fences, its opener declaring `reading` or nothing. */
+function demoFence(name: string, reading?: UnfinishedReading) {
+	const match = matchFenceInfo('demo');
+	return testLeaf(name, (kind) => ({
+		conformanceFixture: '```demo\nx\n```\n',
+		rawWrite: fenceRawWrite(fenceShapeOfRaw),
+		opener: {
+			priority: OPENER_PRIORITIES.fencedCode - 6,
+			interruptsParagraph: (line) => match(line) !== null,
+			readingNotFinal: reading,
+			tryOpen(ctx) {
+				const fence = match(ctx.line.text);
+				if (!fence) return null;
+				const scan = scanFence(ctx, fence);
+				return {
+					node: { kind, leadingTrivia: ctx.leadingTrivia, raw: scan.raw },
+					consumed: scan.consumed
+				};
+			}
+		}
+	}));
+}
+
+// Miss-analysis: the cell reported a fence kind with no reading as exempt, so a plugin fence
+// that omitted it lost the re-pairing below an edited opener without a red anywhere.
+describe('kind conformance: a fence kind declares the fence reading', () => {
+	it('fails a fence kind whose opener declares no readingNotFinal', async () => {
+		await expect(runKindConformance(demoFence('demo-fence-bare'))).rejects.toThrow(
+			/declares no readingNotFinal: declare fenceReading/
+		);
+	});
+
+	it('asserts a fence kind declaring fenceReading', async () => {
+		const report = await runKindConformance(demoFence('demo-fence-read', fenceReading));
+		expect(statusOf(report, 'unfinishedReading')).toBe('asserted');
 	});
 });
 
@@ -107,7 +161,11 @@ describe('kind conformance: bundled plugin kinds enroll', () => {
 				const report = await runKindConformance(k);
 				// One recorded cell per declared closure column plus the raw-write cell, so none is dropped.
 				expect(new Set(report.cells.map((c) => c.cell))).toEqual(
-					new Set([...Object.keys(getBlockKindDescriptor(k).closure), 'rawWrite'])
+					new Set([
+						...Object.keys(getBlockKindDescriptor(k).closure),
+						'rawWrite',
+						'unfinishedReading'
+					])
 				);
 			}
 			const report = await runKindConformance(declaredPluginKind(kind));

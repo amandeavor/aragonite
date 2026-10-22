@@ -17,7 +17,9 @@ import {
 	type MountedEditor
 } from '#lib/test/harness/mount-editor.svelte.js';
 import { pressKey } from '#lib/test/harness/settle.js';
+import type { EditorPlugin } from '#lib/plugin.js';
 import { cellAt, installTableLayoutStubs } from './table/mount-table';
+import { TAG_KEY, tagLeafPlugin } from './fixtures/tag-leaf';
 
 beforeAll(() => {
 	installLayoutStubs();
@@ -38,6 +40,7 @@ interface CommandCaller {
 	name: string;
 	source: string;
 	mode: PresentationMode;
+	plugins?: EditorPlugin[];
 	surface(editor: MountedEditor): HTMLElement;
 	/** The editable element's whole text once the burst is typed; the caret ends after it. */
 	typed: string;
@@ -46,7 +49,7 @@ interface CommandCaller {
 	afterCommand: string;
 }
 
-// One row per block that writes a command's bytes through `isolateUndoEntry`.
+// One row per block that writes a command's bytes.
 const CALLERS: CommandCaller[] = [
 	{
 		name: 'a heading chord in a paragraph',
@@ -87,6 +90,17 @@ const CALLERS: CommandCaller[] = [
 		},
 		afterTyping: '```js\nconst x = 12\n```\n',
 		afterCommand: '```ts\nconst x = 12\n```\n'
+	},
+	{
+		name: "a plugin leaf's command rewriting its bytes",
+		source: '%% ab\n',
+		mode: 'source',
+		plugins: [tagLeafPlugin()],
+		surface: (editor) => surfaceAt(editor, [0]),
+		typed: '%% abc',
+		command: (_editor, el) => pressKey(el, TAG_KEY),
+		afterTyping: '%% abc\n',
+		afterCommand: '%%! abc\n'
 	}
 ];
 
@@ -95,7 +109,11 @@ const CALLERS: CommandCaller[] = [
 describe('one Mod+Z after typing then a command takes back the command alone', () => {
 	for (const caller of CALLERS) {
 		it(caller.name, async () => {
-			const editor = mountEditor({ source: caller.source, presentationMode: caller.mode });
+			const editor = mountEditor({
+				source: caller.source,
+				presentationMode: caller.mode,
+				plugins: caller.plugins
+			});
 			typeInto(caller.surface(editor), caller.typed);
 			await editor.settle();
 			expect(editor.source()).toBe(caller.afterTyping);

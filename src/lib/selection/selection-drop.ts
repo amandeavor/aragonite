@@ -12,6 +12,7 @@ import { emitClipboardError, type EditorEvents } from '../editor-events';
 import { rawOffsetAt, rawRangeToDomRange } from '../caret/widget-offset';
 import { documentLineEnding, trailingLineEnding, trimTrailingLineEnding } from '../core/lines';
 import { blockContentElAt } from '../caret/block-el-lookup';
+import { caretRectAt } from '../caret/visual-lines';
 import {
 	blockNodeAt,
 	emptyParagraph,
@@ -26,6 +27,7 @@ import { parseReplacement } from '../tree-operations/paste/replacement-parse';
 import { slotReaderAt } from '../tree-operations/list/task-paragraph';
 import { blockNearPoint } from './nearest-block';
 import { findSurfaceForElement } from './path-lookup';
+import { readNativeSelection } from './native-bridge';
 import { charOffsetOf } from './primitives';
 import { storedAsAt } from '../tree-operations/stored-as';
 import { docPathFrom } from '../caret/coordinate-spaces';
@@ -207,9 +209,9 @@ function readSelectionSource(
 	deps: SelectionDropDeps,
 	dragged: EventTarget | null
 ): DragStash | null {
-	const sel = window.getSelection();
-	if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null;
-	const range = sel.getRangeAt(0);
+	const live = readNativeSelection();
+	if (!live || live.collapsed) return null;
+	const { range } = live;
 	// An element that is draggable on its own (a rendered link, an image) is not this gesture,
 	// even with a range painted elsewhere: a selection drag starts on a node the range covers.
 	if (!(dragged instanceof Node) || !range.intersectsNode(dragged)) return null;
@@ -245,7 +247,8 @@ function dropCaretRect(root: HTMLElement, path: number[], offset: number): DropC
 	const el = blockContentElAt(root, path);
 	if (!el) return null;
 	const at = charOffsetOf({ path, offset }, 'selection-drop:caret');
-	const rect = rawRangeToDomRange(el, at, at)?.getBoundingClientRect();
+	const range = rawRangeToDomRange(el, at, at);
+	const rect = range && caretRectAt(el, range.startContainer, range.startOffset);
 	if (rect && rect.height > 0) return { left: rect.left, top: rect.top, height: rect.height };
 	const box = el.getBoundingClientRect();
 	return box.height > 0 ? { left: box.left, top: box.top, height: box.height } : null;

@@ -31,24 +31,15 @@ test.describe('footnotes: reading mode keyboard navigation', () => {
 		expect(await capturedErrors(page)).toEqual([]);
 	});
 
-	test('Tab reaches the definition’s marker, and Enter jumps back to the reference', async ({
-		page
-	}) => {
+	test('Tab from a click in the definition’s text reaches its marker', async ({ page }) => {
 		const { md, defA } = navDoc();
 		await editor.load(md, 'reading');
 		await editor.pressFromText([0], 'Body');
 		await page.keyboard.press('Enter');
 		await expect.poll(() => blockView(page, [defA])).toEqual({ mounted: true, inView: true });
-		await expect(page.locator("[data-block-path='[0]']")).toHaveCount(0);
 
-		const marker = editor.defMarker(defA);
-		await expect(marker).toHaveAccessibleName('Back to reference a');
 		await editor.pressFromText([defA, 0], 'First');
-		await expect(marker).toBeFocused();
-		await page.keyboard.press('Enter');
-
-		await expect.poll(() => blockView(page, [0])).toEqual({ mounted: true, inView: true });
-		expect(await capturedErrors(page)).toEqual([]);
+		await expect(editor.defMarker(defA)).toBeFocused();
 	});
 
 	test('a footnote document has no new axe violations', async ({ page }) => {

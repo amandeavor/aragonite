@@ -5,7 +5,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRootMenus, type BlockMenuModel } from '#lib/components/editor-root/menus.js';
 import { serialize } from '#lib/core/serializer.js';
-import { replaceBlockRaw } from '#lib/editor-actions/block-edit-core.js';
 import { createHistoryActions } from '#lib/editor-actions/commit/history.js';
 import { registerBuiltinBlockContextActions } from '#lib/schema/context-actions.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
@@ -50,10 +49,11 @@ async function typeThenRewrite() {
 		getDoc: () => editor.doc,
 		isHostChrome: () => false,
 		blockEdit: editor.actions,
-		replaceRaw: (index, raw) =>
-			replaceBlockRaw({ deps: editor.deps, controller: editor.controller }, [index], raw),
 		placeCaretAtPoint: () => true,
+		rangeAtContextPress: () => false,
+		holdsWidget: () => false,
 		insertMarkdown: async () => true,
+		aimInsertAtFocus: () => null,
 		insertCatalogue: () => [],
 		activation: everyInstalledPlugin,
 		reading: fixtureReading(),

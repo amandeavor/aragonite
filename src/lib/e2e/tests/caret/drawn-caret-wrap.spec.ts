@@ -1,8 +1,10 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
-import { oneCaretOnTheBrowsersLine } from '../../carets-showing';
+import { caretsShowing, oneCaretOnTheBrowsersLine } from '../../carets-showing';
 import { textRunRect } from '../../text-runs';
+import { engineSupports, skipUnlessSupported } from '../../browser-engine';
+import { edgeKey } from '../../platform-keys';
 
 // The drawn caret where a line soft-wraps (requirements/caret/drawn-caret-wrap.md). The range at
 // the offset a line wraps reads the first line's end, whichever line the browser draws on, so
@@ -21,29 +23,48 @@ test.describe('the drawn caret at a soft wrap', () => {
 
 	test('End on a wrapped line: the browser’s own caret, at the wrap', async ({ page }) => {
 		await editor.focusBlock(0, 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		expect(await oneCaretOnTheBrowsersLine(page)).toBe('native');
 	});
 
 	test('Home on the second visual line: the browser’s own caret, at the wrap', async ({ page }) => {
 		await editor.focusBlock(0, 0);
 		await page.keyboard.press('ArrowDown');
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		expect(await oneCaretOnTheBrowsersLine(page)).toBe('native');
 	});
 
-	test('ArrowRight across a wrap: the drawn caret, on the browser’s line', async ({ page }) => {
+	test('ArrowRight across a wrap: the drawn caret, on the browser’s line', async ({
+		page,
+		browserName
+	}) => {
+		test.skip(
+			browserName === 'firefox',
+			'Firefox spends one ArrowRight moving the caret across the wrap at the same offset'
+		);
 		await editor.focusBlock(0, 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		expect(await oneCaretOnTheBrowsersLine(page)).toBe('drawn');
 	});
 
 	test('typing at a wrap: one caret, on the browser’s line', async ({ page }) => {
+		skipUnlessSupported(page, 'caretScreenshot');
 		await editor.focusBlock(0, 0);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('x');
 		await oneCaretOnTheBrowsersLine(page);
+	});
+
+	test('Home on a line after a hard line break: the drawn caret, on the browser’s line', async ({
+		page
+	}) => {
+		await editor.loadContent('alpha line one\nbeta line two\n');
+		await editor.focusBlock(0, 'alpha line one\n'.length + 4);
+		await page.keyboard.press(edgeKey('lineStart'));
+		await expect.poll(() => caretsShowing(page)).toEqual({ native: false, drawn: 1 });
+		if (engineSupports(page, 'caretScreenshot'))
+			expect(await oneCaretOnTheBrowsersLine(page)).toBe('drawn');
 	});
 });
 
@@ -99,7 +120,7 @@ for (const mode of ['source', 'live'] as const) {
 				}
 				expect(point.wrapped, 'the formatted word starts the second visual line').toBe(true);
 				await page.mouse.click(point.x, point.y);
-				await page.keyboard.press('Home');
+				await page.keyboard.press(edgeKey('lineStart'));
 				expect(await oneCaretOnTheBrowsersLine(page)).toBe('native');
 			});
 		}

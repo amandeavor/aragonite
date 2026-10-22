@@ -1,5 +1,5 @@
 import { type ConsoleMessage, type Page, type Request, type Response } from '@playwright/test';
-import { UNDO_DEBOUNCE_MS } from '../editor-actions/commit/text-batch';
+import { TYPING_PAUSE_MS } from '../plugins/highlight-occurrences/typing-pause';
 
 // Page-level checks shared across the e2e suites. Whether a spec asserts on what a probe
 // collected is its own decision: this module hands it back and never asserts.
@@ -61,8 +61,8 @@ export async function freezeInPageClock(page: Page): Promise<void> {
 	await page.clock.pauseAt(FROZEN_UNTIL);
 }
 
-/** Advance a frozen clock by this to elapse the editor's typing pause, with a margin past it. */
-export const PAST_TYPING_PAUSE_MS = UNDO_DEBOUNCE_MS + 50;
+/** Advance a frozen clock by this to elapse the occurrence plugin's typing pause, with a margin. */
+export const PAST_OCCURRENCE_PAUSE_MS = TYPING_PAUSE_MS + 50;
 
 // Whether the top-level block at `index` has a mounted host: false once windowing unmounts it.
 export function topLevelHostPresent(page: Page, index: number): Promise<boolean> {
@@ -85,20 +85,6 @@ export function focusedBlockSurface(
 			isSurface: active?.getAttribute('contenteditable') === 'true'
 		};
 	});
-}
-
-/** Make the page's next clipboard read wait until `releaseClipboardRead`, so a spec can swap the
- *  document while a paste is still reading, with no timing in the spec. */
-export async function holdClipboardRead(page: Page): Promise<void> {
-	await page.evaluate(() => {
-		navigator.clipboard.readText = () =>
-			new Promise<string>((resolve) => ((window as any).__releaseClipboardRead = resolve));
-	});
-}
-
-/** Resolve the held clipboard read with `text`. */
-export async function releaseClipboardRead(page: Page, text: string): Promise<void> {
-	await page.evaluate((t) => (window as any).__releaseClipboardRead(t), text);
 }
 
 /** Holds every image under `https://e2e-deferred.test/` until the returned call, then serves

@@ -4,6 +4,9 @@ import { EditorPage } from '../../editor-page';
 import { gotoReady } from '../../goto-ready';
 import { pointAtRaw, textRunRect, type Point, type TextRunRect } from '../../text-runs';
 import { FIXTURE_BYTES } from '../perf/vr-helpers';
+import { skipUnlessSupported } from '../../browser-engine';
+import { multiClick } from '../../multi-click';
+import { isMacOS } from '../../platform-keys';
 
 /**
  * Mark hover (requirements/decorations/mark-hover.md). Each source records its `onHover` calls on
@@ -289,7 +292,7 @@ test.describe('mark hover', () => {
 		await addHoverSource(page, 'word', [{ path: [0], start: 0, end: 5, cls: 'hv-word' }]);
 		const at = center(await textRunRect(page, 'hello', { path: [0] }));
 
-		await page.mouse.dblclick(at.x, at.y);
+		await multiClick(page, at, 2);
 		await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('hello');
 	});
 
@@ -303,10 +306,11 @@ test.describe('mark hover', () => {
 
 		await page.mouse.click(at.x, at.y, { button: 'right' });
 		await expect(page.getByRole('menu', { name: 'Block actions' })).toBeVisible();
-		expect(await page.evaluate(() => (window as any).__test.getSelection()?.focus)).toEqual({
-			path: [0],
-			offset: 3
-		});
+		// macOS selects the word under a right-click, as Safari does, and the menu keeps it.
+		const word = { anchor: { path: [0], offset: 0 }, focus: { path: [0], offset: 5 } };
+		expect(await page.evaluate(() => (window as any).__test.getSelection())).toMatchObject(
+			isMacOS ? word : { focus: { path: [0], offset: 3 } }
+		);
 	});
 
 	test('a hover-only mark shows the text cursor, not a hand', async ({ page }) => {
@@ -496,17 +500,20 @@ test.describe('mark hover under touch', () => {
 	test.use({ hasTouch: true });
 
 	test('a touch tap on a hover mark places the caret and starts no hover', async ({ page }) => {
+		skipUnlessSupported(page, 'touch');
 		const editor = new EditorPage(page);
 		await editor.goto();
 		await editor.loadContent('hello world\n\nsecond\n');
 		await addHoverSource(page, 'tap', [{ path: [0], start: 0, end: 5, cls: 'hv-tap' }]);
 		await editor.focusBlockEnd(1);
-		const at = await pointAtRaw(page, [0], 3);
+		// Inside the mark's last glyph, where a click's nearest boundary and WebKit's tap, which
+		// lands on a word edge, agree.
+		const at = await pointAtRaw(page, [0], 5, 'before');
 
 		await page.touchscreen.tap(at.x, at.y);
 		await expect
 			.poll(() => page.evaluate(() => (window as any).__test.getSelection()?.focus))
-			.toEqual({ path: [0], offset: 3 });
+			.toEqual({ path: [0], offset: 5 });
 		expect(await settledHovers(page)).toEqual([]);
 	});
 });

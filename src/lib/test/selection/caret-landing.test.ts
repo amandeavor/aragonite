@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // The caret landing on its own: resolve, mount, the tree-swap check, the placement, and the one
 // scroll it may write. Headless blocks, with the scroll as a recording fake.
 import { describe, it, expect } from 'vitest';
@@ -18,6 +19,7 @@ import {
 } from '../../selection/caret-landing';
 import { createSelectionState } from '../../selection/selection-state.svelte';
 import { stubBlockComponent } from '../../testing/headless-actions';
+import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { stubScrollport } from '../harness/stub-scrollport';
 import { takeDevWarns } from '../support/warn-gate';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
@@ -97,11 +99,19 @@ function landingOver(source: string, over: Partial<CaretLandingDeps> = {}) {
 		caretMemory,
 		// A stand-in element, so the scroll half has something to bring into view.
 		getBlockElByPath: () => STAND_IN,
+		getBlockBoxByPath: () => STAND_IN,
 		getEditorRoot: () => null,
 		scroll: null,
+		isReading: () => false,
 		...over
 	};
-	return { landing: createCaretLanding(deps), placements, caretMemory, doc };
+	return {
+		landing: createCaretLanding(deps),
+		placements,
+		caretMemory,
+		doc,
+		selectionState: deps.selectionState
+	};
 }
 
 const at = (path: number[], offset: number) => ({ path: docPathFrom(path), offset });
@@ -138,8 +148,10 @@ describe('landing a caret', () => {
 			selectionState: createSelectionState({ getDoc: () => doc }),
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => null,
+			getBlockBoxByPath: () => null,
 			getEditorRoot: () => null,
-			scroll: null
+			scroll: null,
+			isReading: () => false
 		});
 		expect(await box.landing.land(at([1], 0))).toBe('stale');
 		expect(placements).toEqual([]);
@@ -221,8 +233,10 @@ describe('bringing a landing into view', () => {
 			selectionState: createSelectionState({ getDoc: () => doc }),
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => STAND_IN,
+			getBlockBoxByPath: () => STAND_IN,
 			getEditorRoot: () => null,
-			scroll: { ...scroll, port: () => port }
+			scroll: { ...scroll, port: () => port },
+			isReading: () => false
 		});
 		await landing.land(at([0], 0));
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['invariant:landing-focus-scrolls-nothing']);
@@ -260,17 +274,137 @@ describe('the other entry points', () => {
 			selectionState,
 			caretMemory: createCaretMemory(),
 			getBlockElByPath: () => null,
+			getBlockBoxByPath: () => null,
 			getEditorRoot: () => null,
-			scroll: null
+			scroll: null,
+			isReading: () => false
 		});
 
 		expect(await box.landing.restore({ gapCaret: { parentPath: [], index: 1 } })).toBe('unplaced');
 		expect(selectionState.gapCaret).toBeNull();
 	});
 
+	// Parking moves focus to the end's block, and a rule's own keys would then win over the range's.
+	it('showing a range end mounts it and shows it, the caret left where the range began', async () => {
+		installEditorDomStubsForTests();
+		const { scroll, calls } = recordingScroll(false);
+		const { landing, placements, selectionState } = landingOver('a\n\nbc\n\n---\n', {
+			scroll,
+			// A real element, since the end is measured at its raw offset inside the block.
+			getBlockElByPath: () => document.createElement('div')
+		});
+		for (const focus of [
+			{ path: [1], offset: 2 },
+			{ path: [2], offset: 3 }
+		]) {
+			selectionState.enterCrossBlock({ path: [0], offset: 1 }, focus);
+			await landing.showSelectionEnd();
+		}
+		expect(placements).toEqual([]);
+		expect(selectionState.isCrossBlock).toBe(true);
+		expect(calls).toEqual(['showRect', 'showRect']);
+	});
+
+	// Miss-analysis: GH #111; the suite pinned the text branch's offset, never the cell branch's.
+	// Miss-analysis: an end only mounted left IME nothing to compose in once the start block windowed out.
+	it.each([
+		{
+			end: 'a text end',
+			focus: { path: [1], offset: 2 },
+			parked: [{ path: [1], offset: 2, parked: true }]
+		},
+		{
+			end: 'a cell end',
+			focus: { path: [2], offset: 0 },
+			parked: [{ path: [2, 0, 0], offset: CURSOR_START, parked: true }]
+		},
+		{ end: 'a rule end', focus: { path: [3], offset: 0 }, parked: [] }
+	])(
+		'once the caret has left the editor, $end parks the caret, a block with no text excepted',
+		async ({ focus, parked }) => {
+			const source = 'a\n\nbc\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n---\n';
+			const held = landingOver(source, { getEditorRoot: () => document.body });
+			held.selectionState.enterCrossBlock({ path: [0], offset: 1 }, focus);
+			await held.landing.showSelectionEnd();
+			expect(held.placements.filter((p) => p.parked)).toEqual([]);
+
+			const lost = landingOver(source, { getEditorRoot: () => document.createElement('div') });
+			lost.selectionState.enterCrossBlock({ path: [0], offset: 1 }, focus);
+			await lost.landing.showSelectionEnd();
+			expect(lost.placements.filter((p) => p.parked)).toEqual(parked);
+		}
+	);
+
 	it('mount hands back the component without placing a caret', async () => {
 		const { landing, placements } = landingOver('- a\n');
 		expect(await landing.mount([0, 0])).not.toBeNull();
 		expect(placements).toEqual([]);
+	});
+});
+
+describe('a landing in reading mode', () => {
+	/** A mounted paragraph `See [^a] here.` whose focus puts a caret down, as a block's does. */
+	function readingBlock(clear?: () => void) {
+		const el = document.createElement('div');
+		el.tabIndex = 0;
+		el.innerHTML =
+			'See <span data-inline-widget data-source-start="4" data-source-end="8"><sup tabindex="0">1</sup></span> here.';
+		document.body.replaceChildren(el);
+		const doc = parse('See [^a] here.\n');
+		const block = stubBlockComponent({
+			focus: () => {
+				el.focus();
+				getSelection()!.collapse(el.lastChild!, 1);
+			}
+		});
+		const landing = createCaretLanding({
+			caretWriter: clear ? { ...testCaretWriter, clear } : testCaretWriter,
+			getDoc: () => doc,
+			root: {
+				count: () => 1,
+				refs: refSlotsOver([block]),
+				windowing: { revealChild: async () => {}, isInWindow: () => true }
+			},
+			selectionState: createSelectionState({ getDoc: () => doc }),
+			caretMemory: createCaretMemory(),
+			getBlockElByPath: () => el,
+			getBlockBoxByPath: () => el,
+			getEditorRoot: () => document.body,
+			scroll: null,
+			isReading: () => true
+		});
+		return { landing, el, sup: el.querySelector('sup')! };
+	}
+
+	// Miss-analysis: every landing test ran outside reading mode, so a caret left behind there,
+	// which Firefox starts Tab from, had nothing to fail.
+	it('focuses the widget ending at the landing point, else the block, and leaves no caret', async () => {
+		const { landing, el, sup } = readingBlock();
+		expect(await landing.navigate(at([0], 8))).toEqual([0]);
+		expect(document.activeElement).toBe(sup);
+		expect(getSelection()!.rangeCount).toBe(0);
+
+		await landing.navigate(at([0], 4));
+		expect(document.activeElement).toBe(el);
+		expect(getSelection()!.rangeCount).toBe(0);
+	});
+
+	it('a caret still there after the landing fails the reading-landing check', async () => {
+		const { landing } = readingBlock(() => {});
+		await landing.navigate(at([0], 0));
+		expect(takeDevWarns().map((w) => w.tag)).toEqual(['invariant:reading-landing-leaves-no-caret']);
+	});
+
+	// Miss-analysis: the check read the whole editor, so a click elsewhere during the jump's
+	// scroll failed a landing that left nothing behind, and no test placed a caret outside the leaf.
+	it('a caret a click put in another block during the scroll passes the check', async () => {
+		const other = document.createElement('p');
+		other.textContent = 'Elsewhere.';
+		const { landing } = readingBlock(() => {
+			document.body.append(other);
+			getSelection()!.collapse(other.firstChild!, 2);
+		});
+		await landing.navigate(at([0], 0));
+		expect(takeDevWarns()).toEqual([]);
 	});
 });

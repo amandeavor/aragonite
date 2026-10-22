@@ -5,9 +5,10 @@ import { serialize } from '../../core/serializer';
 import { getInlineContent } from '../../core/inline/inline-cache';
 import type { CstNode } from '../../core/nodes';
 import { assignIds } from '../../block-id';
-import { deleteNode, updateNodeContent } from '../../tree-operations';
+import { updateNodeContent } from '../../tree-operations';
 import { replacePreservingFirst } from '../../tree-operations/structural-change';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
+import { deleteSettled } from '#lib/test/harness/settle-funnel.js';
 
 describe('updateNodeContent', () => {
 	it('updates the raw text of a node', () => {
@@ -217,7 +218,7 @@ describe('deleteNode', () => {
 		const source = 'A\n\nB\n\nC\n';
 		const doc = parse(source);
 		const ids = ['id-1', 'id-2', 'id-3'];
-		const change = deleteNode(doc, 1, defaultGrammarView, createSharingState());
+		const change = deleteSettled(doc, 1, defaultGrammarView, createSharingState());
 		expect(change).toEqual({ op: 'delete', at: 1, count: 1 });
 		if (change.op !== 'delete') throw new Error('expected delete');
 		ids.splice(change.at, change.count);
@@ -232,7 +233,7 @@ describe('deleteNode', () => {
 		const doc = parse(source);
 		const triviaB = doc.children[1].leadingTrivia;
 		const triviaC = doc.children[2].leadingTrivia;
-		deleteNode(doc, 1, defaultGrammarView, createSharingState());
+		deleteSettled(doc, 1, defaultGrammarView, createSharingState());
 		// Not triviaB + triviaC: the successor keeps its own separator, since a second blank
 		// line would reload as an empty paragraph the delete never left behind.
 		expect(triviaB).not.toBe('');
@@ -245,7 +246,7 @@ describe('deleteNode edge cases', () => {
 		const source = 'Hello\n';
 		const doc = parse(source);
 		const ids = ['id-1'];
-		const change = deleteNode(doc, 0, defaultGrammarView, createSharingState());
+		const change = deleteSettled(doc, 0, defaultGrammarView, createSharingState());
 		if (change.op !== 'delete') throw new Error('expected delete');
 		ids.splice(change.at, change.count);
 		expect(doc.children).toHaveLength(0);
@@ -255,7 +256,7 @@ describe('deleteNode edge cases', () => {
 	it('deleting the first node transfers blank lines correctly', () => {
 		const source = 'A\n\nB\n';
 		const doc = parse(source);
-		deleteNode(doc, 0, defaultGrammarView, createSharingState());
+		deleteSettled(doc, 0, defaultGrammarView, createSharingState());
 		expect(doc.children).toHaveLength(1);
 		expect(doc.children[0].raw).toBe('B\n');
 	});
@@ -263,7 +264,7 @@ describe('deleteNode edge cases', () => {
 	it('deleting the last node does not crash', () => {
 		const source = 'A\n\nB\n';
 		const doc = parse(source);
-		deleteNode(doc, 1, defaultGrammarView, createSharingState());
+		deleteSettled(doc, 1, defaultGrammarView, createSharingState());
 		expect(doc.children).toHaveLength(1);
 		expect(doc.children[0].raw).toBe('A\n');
 	});
@@ -271,7 +272,7 @@ describe('deleteNode edge cases', () => {
 	it('returns noop for out-of-bounds index', () => {
 		const source = 'A\n';
 		const doc = parse(source);
-		const change = deleteNode(doc, 5, defaultGrammarView, createSharingState());
+		const change = deleteSettled(doc, 5, defaultGrammarView, createSharingState());
 		expect(change).toEqual({ op: 'noop' });
 		expect(doc.children).toHaveLength(1);
 	});

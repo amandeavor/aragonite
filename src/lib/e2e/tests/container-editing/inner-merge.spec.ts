@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // Each row's trailing paragraph merges into the deepest prose leaf above it, and the typed `!`
 // says where the caret landed: at the join, never at the container's end.
@@ -38,7 +39,7 @@ test.describe('inner container+paragraph merge inside a container', () => {
 	async function backspaceAtStartOfTrailing(): Promise<void> {
 		const trailing = editor.page.locator('[contenteditable="true"]', { hasText: /^trailing$/ });
 		await trailing.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 	}
 
@@ -46,7 +47,7 @@ test.describe('inner container+paragraph merge inside a container', () => {
 		await editor.loadContent('> one\n>\n> > nested\n>\n> three\n');
 		const three = editor.page.locator('[contenteditable="true"]', { hasText: /^three$/ });
 		await three.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.bridge.waitForSourceMatches(/nestedthree/);
 

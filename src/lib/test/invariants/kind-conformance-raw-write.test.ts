@@ -104,6 +104,18 @@ describe('kind conformance: the raw-write cell fails a broken rule', () => {
 		);
 	});
 
+	// Miss-analysis (GH #768): the cell held the next block its own after every write, so a rule that
+	// deleted the closer a first line cut stranded passed it.
+	it('fails a rule that deletes a stranded closer', () => {
+		const dropsStranded = keepsOffsets((raw, ctx) => {
+			const legal = fencedCodeWrite.normalize(raw, ctx);
+			return legal.startsWith('```') ? legal : legal.replace(/```\n$/, '');
+		});
+		expect(() => checkLeafRawWrite('fencedCode', fixture, dropsStranded)).toThrow(
+			/the first line cut .*deleted bytes the write left alone, from "```\\n" on/
+		);
+	});
+
 	it('fails a rule that repairs nothing', () => {
 		expect(() =>
 			checkLeafRawWrite(

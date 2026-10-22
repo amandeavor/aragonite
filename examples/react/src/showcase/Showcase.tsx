@@ -1,19 +1,20 @@
 // The showcase in React: the shell around `examples/showcase/`, which holds the document, the
-// plugins and the controls the Svelte and Vue showcases share.
-import { useState } from 'react';
+// plugins, the controls and the top bar the Svelte and Vue showcases share.
+import { useEffect, useRef, useState } from 'react';
 import { Aragonite } from '@voithos-labs/aragonite-react';
+import type { EditorHandle } from '@voithos-labs/aragonite';
 import SHOWCASE_DOCUMENT from '../../../showcase/showcase-content.md?raw';
+import { INITIAL_STATE, showsSelectionMenu } from '../../../showcase/controls';
 import {
-	HANDLES_GATED_TITLE,
-	INITIAL_STATE,
-	PRESENTATION_MODES,
-	TOGGLES,
-	handlesGated,
-	showsSelectionMenu,
-	type ShowcaseToggle
-} from '../../../showcase/controls';
+	mountShowcaseBar,
+	type ShowcaseBar,
+	type ShowcaseBarState,
+	type ToggleKey
+} from '../../../showcase/top-bar';
 import { showcasePlugins } from '../../../showcase/plugins';
 import { demoPasteImage, resolveDemoImageUrl } from '../../../showcase/image-store';
+
+const CHANGELOG_URL = 'https://github.com/voithos-labs/aragonite/blob/main/docs/changelog.md';
 
 export function Showcase() {
 	const [source, setSource] = useState(SHOWCASE_DOCUMENT);
@@ -23,66 +24,56 @@ export function Showcase() {
 	const [selectionMenu, setSelectionMenu] = useState(INITIAL_STATE.selectionMenu);
 	const [occurrences, setOccurrences] = useState(INITIAL_STATE.occurrences);
 	const [showSource, setShowSource] = useState(INITIAL_STATE.showSource);
-	const handlesOff = handlesGated(presentationMode);
+	const editor = useRef<EditorHandle>(null);
+	const header = useRef<HTMLElement>(null);
+	const bar = useRef<ShowcaseBar | null>(null);
+
+	const barState: ShowcaseBarState = {
+		mode: presentationMode,
+		pressed: {
+			theme: theme === 'dark',
+			dragHandles,
+			selectionMenu,
+			occurrences,
+			source: showSource
+		}
+	};
+
+	useEffect(() => {
+		const flips: Partial<Record<ToggleKey, () => void>> = {
+			theme: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
+			dragHandles: () => setDragHandles((on) => !on),
+			selectionMenu: () => setSelectionMenu((on) => !on),
+			occurrences: () => setOccurrences((on) => !on),
+			source: () => setShowSource((on) => !on)
+		};
+		bar.current = mountShowcaseBar(
+			header.current!,
+			{
+				framework: 'React',
+				changelogHref: CHANGELOG_URL,
+				tools: ['source'],
+				onMode: setPresentationMode,
+				onToggle: (key) => flips[key]?.(),
+				editor: () => editor.current
+			},
+			barState
+		);
+		return () => bar.current?.destroy();
+		// Mounted once; the effect below hands the bar every later state.
+	}, []);
+
+	useEffect(() => bar.current?.update(barState));
 
 	return (
 		<div className="showcase aragonite-editor-theme" data-editor-theme={theme}>
-			<header className="showcase-header">
-				<span className="showcase-title">aragonite</span>
-				<span className="showcase-tag">showcase in React</span>
-				<Toggle
-					toggle={TOGGLES.theme}
-					on={theme === 'light'}
-					onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-				/>
-				<Toggle
-					toggle={TOGGLES.dragHandles}
-					on={dragHandles}
-					disabled={handlesOff}
-					title={handlesOff ? HANDLES_GATED_TITLE : undefined}
-					onClick={() => setDragHandles(!dragHandles)}
-				/>
-				<Toggle
-					toggle={TOGGLES.selectionMenu}
-					on={selectionMenu}
-					onClick={() => setSelectionMenu(!selectionMenu)}
-				/>
-				<Toggle
-					toggle={TOGGLES.occurrences}
-					on={occurrences}
-					onClick={() => setOccurrences(!occurrences)}
-				/>
-				<Toggle
-					toggle={TOGGLES.source}
-					on={showSource}
-					onClick={() => setShowSource(!showSource)}
-				/>
-				<span className="showcase-hint">Mod+F to search</span>
-				<div className="showcase-modes" role="group" aria-label="Presentation mode">
-					{PRESENTATION_MODES.map((mode) => (
-						<button
-							key={mode}
-							type="button"
-							className={`showcase-mode${presentationMode === mode ? ' active' : ''}`}
-							data-mode={mode}
-							onClick={() => setPresentationMode(mode)}
-						>
-							{mode}
-						</button>
-					))}
-				</div>
-				<a
-					className="showcase-link"
-					href="https://github.com/voithos-labs/aragonite/tree/main/docs"
-				>
-					docs
-				</a>
-			</header>
+			<header className="showcase-header" ref={header} />
 			<div className="showcase-body">
 				{/* The plugin set is read at mount, so the occurrences toggle remounts the editor; the
 				    controlled value carries the document across. */}
 				<Aragonite
 					key={String(occurrences)}
+					ref={editor}
 					className="showcase-editor"
 					value={source}
 					onChange={setSource}
@@ -102,27 +93,5 @@ export function Showcase() {
 				)}
 			</div>
 		</div>
-	);
-}
-
-function Toggle(props: {
-	toggle: ShowcaseToggle;
-	on: boolean;
-	onClick: () => void;
-	disabled?: boolean;
-	title?: string;
-}) {
-	return (
-		<button
-			type="button"
-			className={`showcase-toggle${props.on ? ' active' : ''}`}
-			data-testid={props.toggle.testId}
-			aria-pressed={props.on}
-			disabled={props.disabled}
-			title={props.title ?? props.toggle.title}
-			onClick={props.onClick}
-		>
-			{props.toggle.label}
-		</button>
 	);
 }

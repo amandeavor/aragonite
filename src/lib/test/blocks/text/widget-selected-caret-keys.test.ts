@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-// A selected widget leaves vertical arrows, Home, End and the page keys to the shared caret move.
+// A selected widget leaves vertical arrows, Home, End and the page keys, with Shift too, to the
+// shared caret move.
 // Miss-analysis: key cases were chords or edit keys, and e2e never stepped from a selected image.
 import { describe, it, expect } from 'vitest';
 import { harness } from './widget-selected-fixture';
@@ -35,12 +36,26 @@ describe('handleSelectedWidgetKeydown: a plain caret-moving key leaves the widge
 		expect(e.defaultPrevented).toBe(false);
 	});
 
-	it('Shift+ArrowDown stays swallowed with the widget still selected', async () => {
-		const { interaction, selection, carets } = selectedImage();
-		const e = press('ArrowDown', true);
-		expect(await interaction.handleSelectedWidgetKeydown(e)).toBe(true);
-		expect(carets).toEqual([]);
-		expect(selection.widget).not.toBeNull();
-		expect(e.defaultPrevented).toBe(true);
-	});
+	it.each([
+		['ArrowDown', [0, 7]],
+		['PageUp', [7, 0]]
+	])(
+		'Shift+%s selects the widget from its far edge, clears the selection and declines',
+		async (key, range) => {
+			const ranges: number[][] = [];
+			const el = document.createElement('div');
+			const h = harness('![a](x) tail\n', 0, undefined, {
+				getEl: () => el,
+				caretWriter: {
+					selectRawRange: (_: HTMLElement, anchor: number, focus: number) =>
+						ranges.push([anchor, focus])
+				} as never
+			});
+			const e = press(key, true);
+			expect(await h.interaction.handleSelectedWidgetKeydown(e)).toBe(false);
+			expect(ranges).toEqual([range]);
+			expect(h.selection.widget).toBeNull();
+			expect(e.defaultPrevented).toBe(false);
+		}
+	);
 });

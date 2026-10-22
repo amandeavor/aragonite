@@ -11,6 +11,7 @@ import type { ScrollOwner } from '../../windowing/scroll-owner';
 import type { SelectionState } from '../selection-state.svelte';
 import type { CaretMemory } from '../../caret/caret-memory';
 import type { CaretWriter } from '../../caret/widget-offset';
+import type { SelectionPoint } from '../primitives';
 import type { CaretLanding } from '../caret-landing';
 import type { CommitController } from '../../action-contracts';
 import type { CommandDispatchContext } from '../../schema/block-commands';
@@ -33,16 +34,18 @@ export interface CrossBlockDispatchContext {
 	selection: SelectionState;
 	/** The editor's caret writer, which every caret and range the dispatch puts down goes through. */
 	caretWriter: CaretWriter;
+	/** Where reading mode, which keeps no caret, would have one; null where the browser keeps it. */
+	standInCaret: () => SelectionPoint | null;
 	getDoc: DocumentGetter;
 	getBlockElByPath: BlockElLookup;
-	/** Where a collapse, an extend's parked caret and a command's target block are put down. */
-	caretLanding: Pick<CaretLanding, 'restore' | 'park' | 'mount'>;
+	/** Where a collapse, an extended end and a command's target block are put down. */
+	caretLanding: Pick<CaretLanding, 'restore' | 'mount' | 'showSelectionEnd'>;
 	getEditorRoot: () => HTMLElement | null;
 	/** What autoscrolls a drag-select that reaches an edge: the root, the host's scroller, or the
 	 *  window. See `windowing/scroll-ancestors`. */
 	getScrollHost: () => UserScrollport | null;
-	/** Brings the endpoint a keyboard extend reached to the nearest edge. */
-	scrollOwner: Pick<ScrollOwner, 'place'>;
+	/** The editor's scroll, which a page key steps by and finds the block a page away in. */
+	scroll: Pick<ScrollOwner, 'port' | 'visibleBand' | 'showRect' | 'pathAt'>;
 	/** Aborted when the owning editor unmounts. See the document facet's `lifetime`. */
 	getEditorLifetime: () => AbortSignal | null;
 	caretMemory: CaretMemory;

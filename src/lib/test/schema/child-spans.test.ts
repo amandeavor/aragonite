@@ -2,7 +2,7 @@
 // region check that refuses a stale span, the dev check behind it, and the entry points that drop it.
 import { describe, it, expect } from 'vitest';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
-import { pushChild, spliceChildren } from '#lib/tree-operations/children.js';
+import { spliceChildren } from '#lib/tree-operations/children.js';
 import { reorderChildren } from '#lib/tree-operations/reorder.js';
 import {
 	container,
@@ -51,7 +51,7 @@ describe('the dev belt behind a splice', () => {
 });
 
 describe('the children entry points drop the spans they invalidate', () => {
-	it('drops on a splice and on a push', () => {
+	it('drops on a replacing splice and on an appending one', () => {
 		const node = container('blockquote', [paragraph('a\n'), paragraph('b\n')]);
 		// A typed array, not a plain one: Svelte proxies plain arrays, and the shift would create a
 		// reactive source per element, the per-child cost the spans exist to remove.
@@ -60,7 +60,7 @@ describe('the children entry points drop the spans they invalidate', () => {
 		spliceChildren(node, 1, 1, [paragraph('c\n')]);
 		expect(node.childSpans).toBeUndefined();
 		rebuild(node);
-		pushChild(node, paragraph('d\n'));
+		spliceChildren(node, 2, 0, [paragraph('d\n')]);
 		expect(node.childSpans).toBeUndefined();
 		rebuild(node);
 		expect(node.raw).toBe('> a\n> c\n> d\n');

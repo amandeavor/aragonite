@@ -16,19 +16,17 @@ which the owner rewrites by hand.
 - Nothing pans sideways: neither the page (`documentElement.scrollWidth` against
   `innerWidth`) nor the editor (`scrollWidth` against `clientWidth`). Blocks wider than the
   column scroll inside their own box, so the prose beside them stays where it was.
-- Every presentation-mode pill lies fully inside the viewport, and a tap on `live`, the
-  far end of the group and the one a strip that cannot wrap loses first, switches the editor
-  to that mode.
+- The segmented mode switcher does not fit, so a chip names the mode: a tap opens the list,
+  every presentation mode in it lies fully inside the viewport, and a tap on `reading` (not
+  `live`, which the showcase opens in) switches the editor and closes the list.
 - The find bar opens fully inside the viewport, and a tap on its field followed by typed
   text reports matches.
 - With the drag-handles toggle on, the handles are opaque with nothing hovering them, and a
   tap lands on the handle rather than falling through to the editor.
-- Every header button and link, and every find-bar button, clears 24 CSS px on both axes, the WCAG
-  2.2 AA minimum. 44 is not the target: the header carries eleven controls, and 44 apiece
-  puts back over the document every row the condensed header saves.
-- The header leaves the document at least three quarters of the screen. A quarter, not the
-  fifth the condensed header alone reaches: thumb-sized controls cost two rows back, and a
-  header nobody can operate is not a saved row.
+- Every drawn bar button and link, every row of the open settings popover (its switches and,
+  on a phone, the docs and changelog links), and every find-bar button clears 24 CSS px on both
+  axes, the WCAG 2.2 AA minimum.
+- The bar stays one row on a phone, inside the quarter of the screen the document lends it.
 
 ## User interactions
 

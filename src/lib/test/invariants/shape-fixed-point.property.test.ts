@@ -4,16 +4,10 @@ import fc from 'fast-check';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import { isBlankParagraph, parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import {
-	deleteNode,
-	mergeIntoPrevDeepLeaf,
-	mergeWithNext,
-	splitNode,
-	updateNodeContent
-} from '#lib/tree-operations/index.js';
+import { mergeWithNext, splitNode, updateNodeContent } from '#lib/tree-operations/index.js';
 import { isMergeEligible } from '#lib/schema/merge-rules.js';
-import { describeConvergence } from '#lib/test/harness/parse-converged.js';
-import { settled } from '#lib/test/harness/settle-funnel.js';
+import { describeConvergence, describeRunDivergence } from '#lib/test/harness/parse-converged.js';
+import { settled, mergePrevSettled, deleteSettled } from '#lib/test/harness/settle-funnel.js';
 import { keepsEveryByte } from '#lib/test/harness/live-oracles.js';
 import {
 	arbBlankSeparatedGfmDoc,
@@ -97,7 +91,7 @@ function applyGesture(doc: Document, gesture: Gesture, mode: PresentationMode | 
 			}
 			return;
 		case 'delete':
-			settled(doc, (body) => deleteNode(body, at, defaultGrammarView, createSharingState()));
+			deleteSettled(doc, at);
 			return;
 		case 'update':
 			// Typing into the block, keeping its kind: the shape still has to reload as it stands.
@@ -131,13 +125,12 @@ function applyMerge(doc: Document, at: number, op: 'mergePrev' | 'mergeNext'): v
 	);
 	if (pairs.length === 0) return;
 	const i = pairs[at % pairs.length];
-	settled(doc, (body) =>
-		op === 'mergePrev'
-			? (mergeIntoPrevDeepLeaf(body, i, createSharingState(), fixtureReading())?.change ?? {
-					op: 'noop'
-				})
-			: mergeWithNext(body, i - 1, fixtureReading(), createSharingState()).change
-	);
+	if (op === 'mergePrev') mergePrevSettled(doc, i, createSharingState(), fixtureReading());
+	else
+		settled(
+			doc,
+			(body) => mergeWithNext(body, i - 1, fixtureReading(), createSharingState()).change
+		);
 }
 
 /** A prose leaf plus the container holding it and the ancestors whose raw the write rebuilds. */
@@ -296,7 +289,7 @@ function divergenceAfterEdit(
 	applyGesture(doc, gesture, mode);
 	const divergence = gesture.op.startsWith('merge')
 		? joinDivergence(doc)
-		: describeConvergence(doc);
+		: (describeConvergence(doc) ?? describeRunDivergence(doc));
 	if (divergence) return `${divergence} — after ${gesture.op}@${gesture.at}`;
 	const bytes = serialize(doc);
 	if (serialize(parse(bytes)) !== bytes) return `bytes not a round-trip: ${JSON.stringify(bytes)}`;

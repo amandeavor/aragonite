@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 test.describe('list Backspace: delete empty item', () => {
 	let editor: EditorPage;
@@ -23,7 +24,7 @@ test.describe('list Backspace: delete empty item', () => {
 		await editor.loadContent('- First\n- Second\n');
 		const second = editor.page.locator('[contenteditable="true"]', { hasText: 'Second' });
 		await second.click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		await editor.waitForListItemCount(3);
 		await editor.page.keyboard.press('Backspace');

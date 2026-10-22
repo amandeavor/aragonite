@@ -20,9 +20,7 @@ import {
 import type { Document } from '#lib/core/nodes.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { installEditorDomStubsForTests } from '#lib/testing.js';
 import { makeEditorActionsDeps } from '../../harness/editor-actions';
-import { stubScrollOwner, stubScrollport } from '../../harness/stub-scrollport';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import { commandContextWith } from '../../support/command-context';
@@ -33,18 +31,11 @@ export interface KeydownEnvOptions {
 	/** The component the mount resolves to, the post-delete command dispatch target. */
 	revealTo?: BlockComponent | null;
 	myPath?: number[];
-	/**
-	 * Paths that are windowed out: `getBlockElByPath` reports null for them until a mount brings
-	 * them in, the only way to reach the caret-placing branch of `revealActiveEndpoint`.
-	 */
-	offWindowPaths?: number[][];
 	/** The consumer's `keybindings` prop, which the caret memory reads a chord through. */
 	keybindings?: KeybindingOverride[];
 }
 
 export function makeKeydownEnv(source: string | Document, opts: KeydownEnvOptions = {}) {
-	// The extend branches scroll the moved endpoint into view; jsdom has no layout.
-	installEditorDomStubsForTests();
 	// One reading for the dispatch and the commits, as the editor hands both the same one.
 	const reading = fixtureReading({}, opts.presentationMode);
 	const harness = makeEditorActionsDeps(typeof source === 'string' ? parse(source) : source, {
@@ -57,10 +48,8 @@ export function makeKeydownEnv(source: string | Document, opts: KeydownEnvOption
 
 	// One element per path: the extend walk reads element identity, never geometry.
 	const blockEls = new Map<string, HTMLElement>();
-	const offWindow = new Set((opts.offWindowPaths ?? []).map((path) => JSON.stringify(path)));
 	const getBlockElByPath = (path: number[]): HTMLElement | null => {
 		const key = JSON.stringify(path);
-		if (offWindow.has(key)) return null;
 		if (!blockEls.has(key)) blockEls.set(key, document.createElement('div'));
 		return blockEls.get(key)!;
 	};
@@ -68,21 +57,15 @@ export function makeKeydownEnv(source: string | Document, opts: KeydownEnvOption
 	const revealed: number[][] = [];
 	const revealPath = vi.fn(async (path: number[]) => {
 		revealed.push(path.slice());
-		// A mount brings in what it scrolled to, so the path stops being windowed out, which is
-		// what lets the scroll after the caret placement be observed at all.
-		offWindow.delete(JSON.stringify(path));
 		return opts.revealTo ?? null;
 	});
+	// What a key that moved an end asks the caret landing for; its own suite covers what it does.
+	const showSelectionEnd = vi.fn(async () => {});
 	// A stand-in for the caret landing whose every call mounts through `revealPath`, so a test
 	// reads each mount in one list.
 	const caretLanding: CrossBlockDispatchContext['caretLanding'] = {
 		mount: (path) => revealPath([...path]),
-		async park(pos) {
-			const ref = await revealPath([...pos.path]);
-			if (!ref?.parkCaret) return false;
-			ref.parkCaret(pos.offset);
-			return true;
-		},
+		showSelectionEnd,
 		async restore(selection) {
 			if ('gapCaret' in selection) return 'unplaced';
 			await revealPath(selection.focus.path.slice());
@@ -107,8 +90,6 @@ export function makeKeydownEnv(source: string | Document, opts: KeydownEnvOption
 		caretWriter: testCaretWriter,
 		getDoc: () => harness.deps.doc,
 		getBlockElByPath,
-		// Real, so a scroll to a mounted endpoint reaches that element's `scrollIntoView`.
-		scrollOwner: stubScrollOwner(stubScrollport({ viewportHeight: 500 }), { getBlockElByPath }),
 		caretLanding,
 		caretMemory,
 		controller,
@@ -134,6 +115,7 @@ export function makeKeydownEnv(source: string | Document, opts: KeydownEnvOption
 		ctx,
 		revealed,
 		revealPath,
+		showSelectionEnd,
 		crossBlockCommands,
 		onCommandError,
 		keydown: createCrossBlockKeydown(ctx),

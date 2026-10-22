@@ -19,7 +19,9 @@
 	import { imageFieldsFromInline } from '../../core/inline/image-source-bytes';
 	import type { MenuPresence } from '../menu/menu-presence.svelte';
 	import { pressLeavesImage } from './image-press';
+	import { isSecondaryPress, pressesSelectedWidget } from '../../selection/widget-press';
 	import type { WidgetTarget } from '../../selection/primitives';
+	import type { CaretRestore } from '../../selection/caret-restore';
 
 	// Mounted unconditionally by Editor: the effects below must observe the selected widget
 	// changing, so the overlay's {#if} lives here.
@@ -30,7 +32,9 @@
 		getContentVersion,
 		getEditorEl,
 		lifetime,
-		menuPresence
+		menuPresence,
+		fieldCaret,
+		editorTakesChord
 	}: {
 		inlineRange: InlineRangeCommit;
 		events: EditorEvents;
@@ -39,6 +43,10 @@
 		getEditorEl: () => HTMLElement | null;
 		menuPresence: MenuPresence;
 		lifetime: AbortSignal;
+		/** Puts focus back on the selected image once its alt field, which borrows it, closes. */
+		fieldCaret: CaretRestore;
+		/** The editor's own chords, which a crop keeps from writing over the image. */
+		editorTakesChord: (e: KeyboardEvent) => boolean;
 	} = $props();
 
 	let imageOverlayEl: HTMLDivElement | undefined = $state();
@@ -64,6 +72,8 @@
 		const root = getEditorEl();
 		if (!root) return;
 		const handlePointerDown = (e: PointerEvent) => {
+			// A right-click on the held widget keeps it for the menu's rows, as one on a range does.
+			if (isSecondaryPress(e) && pressesSelectedWidget(selection, e.target)) return;
 			if (pressLeavesImage(e, root)) selection.clearWidget();
 		};
 		root.addEventListener('pointerdown', handlePointerDown);
@@ -143,6 +153,8 @@
 				maxFrameWidth={imageEdit.getEditorContentWidth}
 				{menuPresence}
 				{caretWriter}
+				{fieldCaret}
+				{editorTakesChord}
 				bind:cropping
 			/>
 		{/key}

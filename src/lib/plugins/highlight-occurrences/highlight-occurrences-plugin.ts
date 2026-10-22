@@ -6,15 +6,13 @@
 
 import { definePlugin, type EditorPlugin } from '#lib/plugin.js';
 import { createOccurrenceSource } from './occurrence-source';
+import { TYPING_PAUSE_MS } from './typing-pause';
 
 export interface HighlightOccurrencesOptions {
 	/** Called when the word index is rebuilt (a document change, not a caret move) with how many
 	 *  blocks it tokenized; public so a test can check this wiring's caching. */
 	onScan?: (stats: { tokenizedLeaves: number }) => void;
 }
-
-/** How long typing stops before the marks come back: this plugin's own quarter second. */
-export const TYPING_PAUSE_MS = 250;
 
 export function highlightOccurrencesPlugin(
 	options: HighlightOccurrencesOptions = {}

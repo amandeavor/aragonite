@@ -52,6 +52,7 @@ export function makeRenderHarness(
 	let policy: ImageLoadPolicy = overrides.imageLoadPolicy ?? 'auto';
 	let version = 0;
 	const deps: TextRenderDeps = {
+		shownSource: () => null,
 		caretWriter: testCaretWriter,
 		get el() {
 			return el;

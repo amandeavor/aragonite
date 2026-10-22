@@ -9,6 +9,7 @@
 	import InlineMenuRowView from './InlineMenuRowView.svelte';
 	import type { MenuPresence } from './menu-presence.svelte';
 	import { eventToChord } from '../../schema/keybindings';
+	import type { BlockElLookup } from '../../caret/block-el-lookup';
 
 	// Mounted unconditionally by Editor: the key handling and the anchoring must observe the session
 	// opening, so the open/closed `{#if}` lives here rather than at the mount site.
@@ -16,6 +17,7 @@
 		menu,
 		events,
 		getEditorEl,
+		getBlockElByPath,
 		measureRange,
 		menuPresence
 	}: {
@@ -23,6 +25,7 @@
 		events: EditorEvents;
 		menuPresence: MenuPresence;
 		getEditorEl: () => HTMLElement | null;
+		getBlockElByPath: BlockElLookup;
 		measureRange: (path: number[], start: number, end: number) => DOMRect[];
 	} = $props();
 
@@ -77,14 +80,13 @@
 		const root = getEditorEl();
 		if (!showing || !root) return;
 		const onKeyDown = (e: KeyboardEvent) => {
-			// A composing Enter or Escape belongs to the IME's candidate window.
+			// A composing Enter belongs to the IME's candidate window.
 			if (e.isComposing) return;
 			// The bare key alone: a chorded arrow (Shift to extend, Mod to jump) stays the document's.
 			const chord = eventToChord(e);
 			if (chord === 'ArrowDown') menu.move(1);
 			else if (chord === 'ArrowUp') menu.move(-1);
 			else if (chord === 'Enter' || chord === 'Tab') menu.commit();
-			else if (chord === 'Escape') menu.close();
 			else return;
 			e.preventDefault();
 			e.stopPropagation();
@@ -103,7 +105,8 @@
 		return () => root.removeEventListener('beforeinput', onBeforeInput, true);
 	});
 
-	// Focus leaving the editor ends the session; the list itself never takes focus.
+	// Focus leaving the editor ends the session, as the caret goes with it; the list itself never
+	// takes focus.
 	$effect(() => {
 		const root = getEditorEl();
 		if (view === null || !root) return;
@@ -114,6 +117,17 @@
 		root.addEventListener('focusout', onFocusOut);
 		return () => root.removeEventListener('focusout', onFocusOut);
 	});
+
+	// The menu presence closes the list on Escape and on a press outside the block being typed in;
+	// a press inside it is the caret's to judge, and ends the session only by leaving the query.
+	function dismiss(): boolean {
+		menu.close();
+		return true;
+	}
+	function openBlockEl(): HTMLElement | null {
+		const open = menu.getOpen();
+		return open ? getBlockElByPath([...open.path]) : null;
+	}
 
 	// Takes the name now: a row's `destroy` can reject after the menu, and its derived name, are gone.
 	function rowReporter(source: string): (error: unknown) => void {
@@ -147,7 +161,7 @@
 		id={menu.listboxId}
 		class="md-menu inline-menu"
 		role="listbox"
-		{@attach menuPresence.track(() => menu.close(), { edits: true })}
+		{@attach menuPresence.track(dismiss, { edits: true, inside: () => [openBlockEl()] })}
 		tabindex="-1"
 		aria-label={INLINE_MENU_LABEL}
 		data-inline-menu={sourceName}

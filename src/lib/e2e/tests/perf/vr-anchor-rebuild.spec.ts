@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { editorScrollHeight, progressiveScrollTo, spacerCount } from './vr-helpers';
+import { clickInPlace } from '../../click-in-place';
 
 // Measured heights must survive a structural rebuild. List items and table rows reach the height
 // table only through their parent's total, so unless that total is stored by id, a count change
@@ -126,7 +127,7 @@ test('structural edit in a windowed non-uniform table keeps the viewport stable'
 	const scrollHeightBefore = await editorScrollHeight(page);
 
 	// Ctrl+Enter inserts a row, which is what makes TableBlock rebuild.
-	await page.locator(`[data-table-row-idx="${view.editIdx}"] .table-cell`).first().click();
+	await clickInPlace(page.locator(`[data-table-row-idx="${view.editIdx}"] .table-cell`).first());
 	await page.keyboard.press('ControlOrMeta+Enter');
 	await waitForChildCount(editor, rowCount + 1);
 	await editor.waitForRenderFlush();

@@ -88,6 +88,7 @@ const TEXT_EDITABLE_KEYMAP: KeyBinding[] = [
 // miss. Plain arrows depend on the caret's position, so `cell-keydown-plan.ts` handles them.
 const TABLE_CELL_KEYMAP: KeyBinding[] = [
 	{ chord: 'Enter', command: 'cell.enter' },
+	{ chord: 'Shift+Enter', command: 'cell.lineBreak' },
 	{ chord: 'Tab', command: 'cell.tab' },
 	{ chord: 'Shift+Tab', command: 'cell.shiftTab' },
 	...INLINE_FORMAT_KEYMAP,
@@ -311,6 +312,7 @@ function registerBuiltIns(): void {
 		rawWrite: fencedCodeWrite,
 		keymap: [
 			{ chord: 'Enter', command: 'code.newline' },
+			{ chord: 'Shift+Enter', command: 'code.softBreak' },
 			{ chord: 'Tab', command: 'code.indent' },
 			{ chord: 'Shift+Tab', command: 'code.dedent' },
 			{ chord: 'Backspace', command: 'code.backspace' },
@@ -596,7 +598,7 @@ function registerBuiltIns(): void {
 				firstChildBackspace: 'list-item-cascade',
 				middleChildBackspace: 'list-item-cascade'
 			},
-			reorderChildren: { renumberMarkers: true }
+			reorderChildren: {}
 		},
 		conformanceFixture: '- item\n',
 		closure: containerClosure({

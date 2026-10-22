@@ -95,7 +95,8 @@ describe('rangeDelete: end-container post-end siblings preservation', () => {
 	it('end inside first item of ordered list preserves later items', () => {
 		const src = '## H\n\n1. one\n2. two\n3. three\n';
 		const { source } = run(src, { path: [0], offset: 4 }, { path: [1, 0, 0], offset: 4 });
-		expect(source).toBe('## H\n2. two\n3. three\n');
+		// The list keeps its start, which the new first item takes.
+		expect(source).toBe('## H\n1. two\n2. three\n');
 	});
 
 	it('end inside first paragraph of multi-paragraph blockquote preserves later paragraphs', () => {

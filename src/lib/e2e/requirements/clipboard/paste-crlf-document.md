@@ -3,7 +3,8 @@
 Every paste entry point hands the clipboard on as LF, which is what the paste rules and a
 plugin's paste transforms read. The document keeps its own line ending, so the lines a paste
 writes into it take the ending of the line the caret is on. Driven on `/test/editor` with the
-system clipboard and a real `Mod+V`; the source is compared byte for byte, CR included.
+system clipboard and a real `Mod+V`; the source is compared with its line endings spelled out, so
+a lone CR shows in the diff.
 
 ## Happy paths
 
@@ -17,3 +18,5 @@ system clipboard and a real `Mod+V`; the source is compared byte for byte, CR in
 - GH #448: every clipboard spec normalized the source to LF before comparing, so a document
   holding both endings read the same as one holding only LF; the unit mirror check compared only
   the separators a paste created and left the pasted lines out on purpose.
+- GH #744: in WebKit and Firefox the caret after End sat between the CR and the LF, so the paste
+  split the pair; the comparison printed the CR invisibly, and only Chromium gated.

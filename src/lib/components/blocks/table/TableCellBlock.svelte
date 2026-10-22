@@ -34,18 +34,17 @@
 	import { resetForPointerDown } from '../../../selection/cross-block/pointer';
 	import type { PointerPressOptions } from '../../../selection/cross-block/dispatch';
 	import { publishRefSlot, type RefSlots } from '../../../block-lists/child-refs';
-	import {
-		selectWholeDocument,
-		extendFocusToNextBlock,
-		extendFocusToPreviousBlock
-	} from '../../../selection/keyboard-extend';
-	import { intraTableRectExtension } from '../../../selection/table-rect-extend';
+	import { selectWholeDocument, extendFromCell } from '../../../selection/keyboard-extend';
 	import { isAtFirstVisualLine, isAtLastVisualLine } from '../../../caret/visual-lines';
-	import { cellKeydownPlan, type CellKeyPlan, type CellKeyState } from './cell-keydown-plan';
+	import {
+		cellCommandPlan,
+		cellKeydownPlan,
+		type CellKeyPlan,
+		type CellKeyState
+	} from './cell-keydown-plan';
 	import { tableAxisCommand } from './cell-table-commands';
 	import { cellPoint } from '../../../selection/primitives';
 	import type { ClipboardAction } from './table-menu-model';
-	import { pasteTextInto } from '../../menu/clipboard-actions';
 	import {
 		installCellDragListener,
 		handleCellShiftClick,
@@ -57,11 +56,13 @@
 	import type { IndexedDecoration } from '../../../decorations/buckets';
 	import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 	import { createWidgetInteraction } from '../text/widget-interaction';
+	import type { LandsRestoredCaret } from '../../../selection/restored-caret';
 	import { createEdgePolicyDispatch } from '../text/edge-policy-dispatch';
 	import { createEdgeStep } from '../text/edge-step';
 	import { createTypedPlacement } from '../text/edge-seat';
 	import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 	import { getInlineWidgetEditing, widgetElByStart } from '../../../core/inline/inline-widgets';
+	import { readClipboardText } from '../../../editor-actions/system-clipboard';
 
 	type ExitDirection = 'up' | 'down';
 
@@ -102,7 +103,8 @@
 		getBlockElByPath,
 		getEditorRoot,
 		events: editorEvents,
-		reading
+		reading,
+		caretLanding
 	} = wiring.deps;
 	const { grammar } = reading;
 	// Made per gesture, never derived: a derived value would subscribe the cell to the tree.
@@ -114,7 +116,7 @@
 		rects,
 		decorations: decorationEngine,
 		rangeCoverage,
-		drafts,
+		shownSource,
 		presses,
 		textMoves
 	} = wiring.services;
@@ -138,9 +140,6 @@
 	});
 
 	let composing = $state(false);
-	// A widget's shown source lives only in the DOM, so `onInput` skips the per-keystroke CST
-	// commit and the cell commits once when it is hidden, as TextEditableBlock does.
-	let revealing = $state(false);
 	let pendingCursorOffset = $state<number | null>(null);
 
 	// The only writer of `pendingCursorOffset` besides the render's clear. The offset counts
@@ -166,7 +165,8 @@
 		getCaret: () => (cursor.getRawSelection() ? null : cursor.getRaw()),
 		isReading: () => readOnly,
 		reading,
-		caretMemory
+		caretMemory,
+		caretWriter
 	});
 
 	const typedPlacement = createTypedPlacement({
@@ -181,7 +181,8 @@
 	const editableSurface = createEditableSurface({
 		...wiring.deps,
 		getEl: () => el ?? null,
-		isInputSuppressed: () => revealing,
+		showsSource: () => widgetInteraction.isRevealing(),
+		landCaret: (offset, clamp) => widgetInteraction.restoreCaret(offset, clamp),
 		backend: cursor,
 		getNode: () => node,
 		getMyPath: () => myPath,
@@ -195,14 +196,18 @@
 		getFocusOffset: () => getRawFocusOffset(),
 		getTextLen: () => (el ? containerDomTextLength(el) : 0),
 		stepEdge: edgeStep.step,
+		inlineUnits: () => edgeDispatch.inlineUnits,
 		readText: () => readCellText(),
 		placement: typedPlacement,
 		getInlines: () => resolvedInlineContent(node, reading),
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
+		deleteAtCaret: (caret, intent) => edgeDispatch.deleteAtCaret(caret, intent),
+		deleteBeside: (caret, direction) => edgeDispatch.deleteBeside(caret, direction),
+		commandTarget: () => keyTarget,
 		removeSelection: (range) =>
 			writeText({
-				...rangeWrite(replaceRangeInLeaf(node, range, '', storedAs())),
+				...rangeWrite(node, replaceRangeInLeaf(node, range, '', storedAs())),
 				intent: 'command',
 				mode: 'authored',
 				source: 'selection-removal'
@@ -236,13 +241,10 @@
 		focusActions,
 		setSnapTarget: () => {},
 		setPendingCursor: parkCursor,
-		readRawText: () => readCellText(),
 		activationClick,
-		setRevealing: (value) => {
-			revealing = value;
-		},
 		isCrossBlock: () => selection.isCrossBlock,
-		drafts,
+		shownSource,
+		renderedWidgets: () => cellRender.renderedWidgets(),
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
 		textMoves,
@@ -362,6 +364,7 @@
 		reading,
 		ownPairs,
 		writeText,
+		edges: edgeDispatch,
 		text: () => readCellText(),
 		content: () => ({ start: 0, end: readCellText().length })
 	});
@@ -381,18 +384,9 @@
 			return () =>
 				void tableContext[axisCommand.action](axisCommand.axis === 'row' ? rowIdx : colIdx);
 		}
+		if (id === 'cell.lineBreak') return writeLineBreak;
 		if (id !== 'cell.enter' && id !== 'cell.tab' && id !== 'cell.shiftTab') return null;
-		const plan = cellKeydownPlan(
-			{
-				key: id === 'cell.enter' ? 'Enter' : 'Tab',
-				ctrlKey: false,
-				metaKey: false,
-				shiftKey: id === 'cell.shiftTab',
-				altKey: false
-			},
-			cellPlanState(cursor.getRaw() ?? 0)
-		);
-		if (plan.kind === 'native' || plan.kind === 'select-all-step') return null;
+		const plan = cellCommandPlan(id, cellPlanState(cursor.getRaw() ?? 0));
 		return () => void applyCellPlan(plan);
 	}
 
@@ -407,6 +401,16 @@
 		commands.perform(id, perform, offset);
 		return true;
 	});
+
+	const keyTarget = {
+		get kind() {
+			return node.kind;
+		},
+		runCommand,
+		getPath: () => myPath,
+		afterSourceCommit,
+		afterSelectionRemoved: editableSurface.afterSelectionRemoved
+	};
 
 	// The row mounts this cell without `bind:this`, so this registered reference is the only way
 	// a caller reaches it (G4.38).
@@ -429,10 +433,12 @@
 			applyMenuClipboard,
 			snapCaretToPoint,
 			insertMarkdown: clipboard.insertMarkdown,
+			insertPlainText: clipboard.insertPlainText,
 			claimRootClipboard: clipboard.claimRootClipboard,
 			typeText: editableSurface.surface.typeText,
-			afterSelectionRemoved: editableSurface.afterSelectionRemoved
-		} satisfies BlockComponent;
+			afterSelectionRemoved: editableSurface.afterSelectionRemoved,
+			landRestoredCaret: (offset: number) => widgetInteraction.restoreCaret(offset, 'reachable')
+		} satisfies BlockComponent & LandsRestoredCaret;
 		return publishRefSlot(slots, index, self, el);
 	});
 
@@ -459,7 +465,8 @@
 		},
 		reportRenderError: (error) =>
 			editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } }),
-		caretWriter
+		caretWriter,
+		shownSource: () => shownSource.rangeIn(myPath, node)
 	});
 
 	$effect(() => {
@@ -469,10 +476,9 @@
 			carryCaret: pendingCursorOffset === null
 		});
 		if (pendingCursorOffset !== null) {
-			consumePendingRestore(el, pendingCursorOffset, (offset) => {
-				if (!widgetInteraction.revealInterior(offset))
-					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
-			});
+			consumePendingRestore(el, pendingCursorOffset, (offset) =>
+				widgetInteraction.restoreCaret(offset, 'exact')
+			);
 			pendingCursorOffset = null;
 		}
 	});
@@ -507,7 +513,7 @@
 
 	const onInput = editableSurface.onInput;
 	// Callers guard `el` first.
-	function cellPlanState(offset: number): CellKeyState {
+	function cellPlanState(offset: number | null): CellKeyState {
 		// A cell has no marker prefix, so these are raw offsets; they follow what is on screen,
 		// not the mode, since a cell's move follows what the user sees.
 		const bounds = landableDomTextBounds(el!);
@@ -538,8 +544,8 @@
 		// The source-showing and selection handlers run before the plan, which would otherwise
 		// read an ArrowUp or ArrowDown inside a shown source as cell navigation.
 		if ((await widgetInteraction.handleRevealingKeydown(e)) || editableSurface.isDetached()) return;
-		// Enter is a cell's exception: prose splits, a cell moves a row, and moving would
-		// carry the uncommitted edit out of the cell that owns it. Commit and stay put.
+		// Enter is a cell's exception: prose splits, a cell moves a row, and inside a shown source
+		// Enter only leaves it, so the caret stays in the cell.
 		if (widgetInteraction.isRevealing() && e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
 			e.preventDefault();
 			widgetInteraction.foldRevealBeforeMutation();
@@ -547,19 +553,12 @@
 		}
 		if ((await widgetInteraction.handleSelectedWidgetKeydown(e)) || editableSurface.isDetached())
 			return;
-		if (widgetInteraction.handleShiftArrowIntoWidget(e)) return;
 
-		const caretBeforeKey = cursor.getRaw() ?? 0;
+		const caretBeforeKey = cursor.getRaw();
 
 		// Before the plan, whose edge branches ignore modifiers and would eat a column move. A move
 		// from a cell moves the whole table, since a table's grid rows are not reorderable children.
-		const target = {
-			kind: node.kind,
-			runCommand,
-			getPath: () => myPath,
-			afterSourceCommit
-		};
-		if (wiring.dispatchChord(e, target)) return;
+		if (wiring.dispatchChord(e, keyTarget)) return;
 
 		// Ahead of the plan, which reads an arrow at the cell's edge as a move to the next cell:
 		// a construct closing the cell has a hidden edge to cross first.
@@ -578,7 +577,7 @@
 					!e.ctrlKey &&
 					!e.metaKey &&
 					(e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
-					startIntraTableRect(e.key, caretBeforeKey)
+					startIntraTableRect(e.key, caretBeforeKey ?? 0)
 				) {
 					e.preventDefault();
 					return;
@@ -599,8 +598,6 @@
 				return;
 			default:
 				e.preventDefault();
-				// Reading mode keeps navigation and consumes the structural plans.
-				if (readOnly && plan.kind !== 'focus-cell' && plan.kind !== 'exit') return;
 				await applyCellPlan(plan);
 				return;
 		}
@@ -631,74 +628,40 @@
 		const bounds = landableDomTextBounds(el);
 		const atEdge =
 			key === 'ArrowDown'
-				? isAtLastVisualLine(el, offset, bounds)
-				: isAtFirstVisualLine(el, offset, bounds);
+				? isAtLastVisualLine(el, offset, bounds, caretWriter)
+				: isAtFirstVisualLine(el, offset, bounds, caretWriter);
 		if (!atEdge) return false;
 
-		const tablePath = myPath.slice(0, -2);
-		const anchor = cellPoint(tablePath, rowMajorCellIndex(rowIdx, colIdx, columnCount));
-		const ext = intraTableRectExtension(getDoc(), anchor, anchor, key);
-		if (!ext) return false;
-
-		if (ext.kind === 'cell') {
-			selection.enterCrossBlock(anchor, cellPoint(tablePath, ext.offset));
-			return true;
-		}
-		// Recorded before the block-level extend answers, so a refusal (no block past the table)
-		// takes it back: left behind, the next Backspace would delete a whole cell through it.
-		selection.enterCrossBlock(anchor, cellPoint(tablePath, anchor.offset));
-		const extended =
-			ext.direction === 'forward'
-				? extendFocusToNextBlock(
-						selection,
-						caretWriter,
-						getDoc(),
-						grammar,
-						el,
-						ext.fromCellPath,
-						'vertical'
-					)
-				: extendFocusToPreviousBlock(
-						selection,
-						caretWriter,
-						getDoc(),
-						grammar,
-						el,
-						ext.fromCellPath,
-						'start'
-					);
-		if (!extended) {
-			selection.collapse();
-			return false;
-		}
-		return true;
+		const anchor = cellPoint(myPath.slice(0, -2), rowMajorCellIndex(rowIdx, colIdx, columnCount));
+		return extendFromCell(
+			{ selection, caretWriter, getDoc, reading, caretLanding },
+			el,
+			anchor,
+			key
+		);
 	}
 
 	function exitWithStickyX(direction: ExitDirection): void {
 		if (!el) return;
-		const x = getCurrentCursorEditorRelativeX(el) ?? 0;
+		const x = getCurrentCursorEditorRelativeX(el, caretWriter) ?? 0;
 		if (direction === 'up') tableContext.exitUpward(x);
 		else tableContext.exitDownward(x);
 	}
 
-	async function onBeforeInput(e: InputEvent): Promise<void> {
+	function onBeforeInput(e: InputEvent): void {
 		if (typedInput(e)) return;
+		// A soft keyboard's line break, with no keydown, is the Shift+Enter command.
 		if (e.inputType === 'insertLineBreak') {
-			// GFM cells can't carry raw newlines, so a line break is a literal `<br>`,
-			// which the inline-HTML pipeline renders as a live widget.
 			e.preventDefault();
-			if (!el) return;
-			// Both reads below happen after the source is hidden: the committed text is what
-			// the offset they splice must be measured against.
-			const fold = widgetInteraction.foldRevealBeforeMutation();
-			if (fold) await fold.settled;
-			// A line break arrives as input, not as a command, so it asks for the removal itself.
-			editableSurface.afterSelectionRemoved(writeLineBreak);
+			// Input, not a key, so it asks for the removal itself.
+			editableSurface.afterSelectionRemoved(() => runCommand('cell.lineBreak'));
 			return;
 		}
 	}
 
-	function writeLineBreak(): boolean {
+	/** GFM cells can't carry raw newlines, so a line break is a literal `<br>`, which the inline-HTML
+	 *  pipeline renders as a live widget. */
+	function writeLineBreak(): void {
 		const offset = cursor.getRaw() ?? 0;
 		const text = readCellText();
 		const inserted = '<br>';
@@ -709,7 +672,6 @@
 			mode: 'authored',
 			source: 'cell-line-break'
 		});
-		return true;
 	}
 
 	function onPointerDown(e: PointerEvent): void {
@@ -804,8 +766,6 @@
 		selection,
 		setPendingCursor: parkCursor,
 		foldRevealBeforeMutation: () => widgetInteraction.foldRevealBeforeMutation(),
-		isRevealing: () => widgetInteraction.isRevealing(),
-		readRevealedText: () => readCellText(),
 		get reading() {
 			return reading;
 		},
@@ -813,9 +773,12 @@
 	});
 	const { onCopy, onCut, onPaste } = clipboard;
 
-	// ── Right-click menu clipboard (no ClipboardEvent) ──────────────────────
+	// ── Right-click menu clipboard ──────────────────────────────────────────
 
 	function getSelectionOffsets(): { start: number; end: number } | null {
+		// A widget the editor holds selected is the selection the menu acts on, as a range is.
+		const held = selection.widgetRange();
+		if (held && pathsEqual(held.path, myPath)) return { start: held.start, end: held.end };
 		const range = cursor.getRawSelection();
 		if (range) return range;
 		const caret = cursor.getRaw();
@@ -840,20 +803,13 @@
 		caretMemory.forget();
 		el.focus({ preventScroll: true });
 		if (action === 'paste') {
-			let raw: string;
-			try {
-				// Fired un-awaited from the menu onclick, so a denied read would surface as
-				// an unhandled rejection; degrade to a no-op.
-				raw = await navigator.clipboard.readText();
-			} catch {
-				return;
-			}
+			const raw = await readClipboardText();
 			// The cell can unmount while the read waits (a delete, a `source` swap).
 			if (!el || !raw) return;
 			// A live range stays as it is; otherwise the paste replaces what the menu was opened on.
 			if (!selection.isCrossBlock) setSelection(sel.start, sel.end);
-			// As a paste event, so it takes the route Ctrl+V does.
-			pasteTextInto(el, raw);
+			// The same paste step Ctrl+V runs.
+			await clipboard.insertMarkdown(raw);
 			return;
 		}
 		if (!hasRect) setSelection(sel.start, sel.end);
@@ -894,11 +850,8 @@
 	}
 </script>
 
-<!-- The cell is an editing host, which the compiler cannot see through a role it has to compute. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	bind:this={el}
-	tabindex="0"
 	class={['table-cell', ...blockDecorations.classes]}
 	contenteditable={readOnly ? 'false' : 'true'}
 	role={isHeaderRow ? 'columnheader' : 'cell'}
@@ -915,7 +868,7 @@
 	onblur={onBlur}
 	oncompositionstart={editableSurface.onCompositionStart}
 	oncompositionend={editableSurface.onCompositionEnd}
-	{@attach editableSurface.caretSource}
+	{@attach editableSurface.registerSurface}
 ></div>
 
 <style>

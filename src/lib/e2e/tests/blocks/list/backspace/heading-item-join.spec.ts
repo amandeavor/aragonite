@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 // Backspace at the start of an item whose previous item is a heading joins the two in live mode.
 // Requirements: `e2e/requirements/blocks/list/backspace/heading-item-join.md`.
@@ -32,7 +33,7 @@ test.describe('list Backspace: joining into a heading item', () => {
 		test(`Backspace at the start of the next item joins it into ${title}`, async ({ page }) => {
 			await editor.loadContent(before);
 			await page.locator('[contenteditable="true"]', { hasText: 'next' }).click();
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await page.keyboard.press('Backspace');
 			await editor.bridge.waitForSourceEquals(joined);
 

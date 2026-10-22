@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, readContainer, waitForContainer, roundTripStable } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // The generic `:::name` container: an unregistered directive falls back to
 // `DirectiveContainerBlock`, a dimmed read-only `:::name` marker over a nested editable BlockList.
@@ -38,7 +39,7 @@ test.describe('plugin container: generic :::name directive', () => {
 		await editor.loadContent(SEED);
 
 		await page.locator('.directive-block [contenteditable="true"]', { hasText: /^hello$/ }).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText(' world');
 
 		const state = await waitForContainer(page, 0, (s) => s.childTexts[0] === 'hello world');
@@ -57,7 +58,7 @@ test.describe('plugin container: generic :::name directive', () => {
 		await editor.loadContent(SEED);
 
 		await page.locator('.directive-block [contenteditable="true"]', { hasText: /^hello$/ }).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 
 		// Enter inside the container must add to the container's children, never to the document
 		// root; a broken container would push a sibling to the root (rootCount === 2).

@@ -18,6 +18,14 @@ and the new block arrive as one undo entry.
 - a fence opener typed on a block that has blocks below it is closed as it is created: the
   neighbours stay their own blocks, `parseConverged()` holds, and the caret is still on the
   opener line so the next keystrokes reach the info string
+- a fence opener typed right above a code block, with or without a language, closes as it is
+  created, and the code block below stays whole (miss-analysis: the rows typed above a paragraph
+  or a bare-fenced block, never above one whose closer is the first line that could close the
+  typed fence)
+- a fence typed on its own line gets its own closer whatever fences sit further down: typed above
+  a bare-fenced block with another fence below it, the bare block and the one below stay whole
+  (miss-analysis: no fresh-fence row had a second fence further down, so a rule that read to the
+  end of the document passed them all)
 
 ## Edge cases
 

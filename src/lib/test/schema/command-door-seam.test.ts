@@ -46,7 +46,11 @@ describe('runCommandById level order', () => {
 		const surface: KindCommandTarget = {
 			kind: 'paragraph',
 			runCommand: () => false,
-			getCommandContext: () => ({ node: { raw: '' } as never, updateMetadata: () => {} })
+			getCommandContext: () => ({
+				node: { raw: '' } as never,
+				updateMetadata: () => {},
+				replaceRaw: () => {}
+			})
 		};
 
 		expect(runCommandById(id, undefined, surface, context())).toBe(true);

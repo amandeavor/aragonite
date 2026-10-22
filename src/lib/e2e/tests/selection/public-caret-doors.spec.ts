@@ -55,8 +55,8 @@ test.describe('public caret entry points with a cross-block range live', () => {
 		expect(source).toContain('third para');
 	});
 
-	// `revealActiveEndpoint` calls `parkCaret` while an extend is still growing the range, so it must
-	// not end one.
+	// The caret landing parks a range's end in a table cell while the extend is still growing the
+	// range, so `parkCaret` must not end one.
 	test('BlockComponent.parkCaret leaves the range live', async () => {
 		const parked = await editor.page.evaluate(() =>
 			(

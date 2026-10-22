@@ -31,11 +31,7 @@ export function isModifiedClick(click: ClickInput): boolean {
 	return click.ctrlKey || click.metaKey;
 }
 
-export function followsClick(
-	modified: boolean,
-	mode: PresentationMode,
-	linkClick: LinkClick
-): boolean {
+function followsClick(modified: boolean, mode: PresentationMode, linkClick: LinkClick): boolean {
 	// Reading mode has no caret for a click to place.
 	if (modified || mode === 'reading') return true;
 	// A plain click edits wherever the caret's block shows syntax to edit.

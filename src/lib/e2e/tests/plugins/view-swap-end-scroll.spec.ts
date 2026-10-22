@@ -2,6 +2,8 @@ import { type Locator, type Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { gotoReady } from '../../goto-ready';
 import { MermaidPage } from './mermaid-helpers';
+import { multiClick } from '../../multi-click';
+import { clickInPlace } from '../../click-in-place';
 
 /**
  * A block that swaps to a shorter view at the end of a windowed document costs the reader only the
@@ -125,7 +127,7 @@ const EDIT_BUTTON: Swap = {
 		// The click focuses the block, which brings up the hover-only toolbar.
 		const at = await diagramTop(block);
 		await page.mouse.click(at.x, at.y);
-		await block.getByTestId('mermaid-edit').click();
+		await clickInPlace(block.getByTestId('mermaid-edit'));
 		await expect(block.getByTestId('mermaid-source')).toBeFocused();
 	}
 };
@@ -136,8 +138,7 @@ const DIAGRAM_DOUBLE_CLICK: Swap = {
 	block: '.mermaid-block',
 	settle: diagramSettle,
 	async run(page, block) {
-		const at = await diagramTop(block);
-		await page.mouse.dblclick(at.x, at.y);
+		await multiClick(page, await diagramTop(block), 2);
 		await expect(block.getByTestId('mermaid-source')).toBeFocused();
 	}
 };
@@ -149,7 +150,7 @@ const DETAILS_COLLAPSE: Swap = {
 	settle: (page) => expect(page.locator('.details-block').last()).toBeVisible(),
 	async run(page, block) {
 		const toggle = block.locator('.details-toggle').first();
-		await toggle.click();
+		await clickInPlace(toggle);
 		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 	}
 };

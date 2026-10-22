@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { reorderChildrenWithTrivia } from '#lib/tree-operations/reorder.js';
 import { documentBody } from '#lib/tree-operations/node-primitives.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { reorderSettled } from '#lib/test/harness/settle-funnel.js';
 
 // An HTML block ends only at a blank line, so a move that takes away the block holding that line
 // writes the blank line rather than leave the HTML flush above its new follower.
@@ -13,7 +13,7 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 
 function move(markdown: string, from: number, to: number) {
 	const doc = parse(markdown);
-	reorderChildrenWithTrivia(documentBody(doc), from, to, createSharingState(), defaultGrammarView);
+	reorderSettled(documentBody(doc), from, to, createSharingState(), defaultGrammarView);
 	return doc;
 }
 

@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { EditorPage } from '../../editor-page';
 import type { Page } from '@playwright/test';
 import { clickBlockSettled, enterPresentationMode, extendTo, landAt, nextRow } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // A block whose only bytes are its own markers has no content to stand behind them, so they paint:
 // a caret can land on them and a typed byte goes after them. A destructive key at the block's own
@@ -38,7 +39,7 @@ const INSIDE_PAIR = 2;
 async function emptyBlockBelow(ep: EditorPage, page: Page): Promise<void> {
 	await nextRow(ep, 'lorem\n');
 	await clickBlockSettled(ep, OPENER);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await ep.waitForRenderFlush();
 	await page.keyboard.press('Enter');
 	await ep.bridge.waitForBlockCount(2);
@@ -147,7 +148,7 @@ test.describe('live mode: a typed block opener paints until it has content', () 
 		await test.step('at its start, Backspace drops the construct in one press', async () => {
 			await emptyBlockBelow(ep, page);
 			await typeSettled(ep, page, '# ');
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await ep.waitForRenderFlush();
 
 			await page.keyboard.press('Backspace');
@@ -168,11 +169,11 @@ test('live mode: a key typed on a painted empty heading lands at the caret', asy
 	const ep = await enterPresentationMode(page, 'live', '\n');
 
 	for (const [source, path, pressed, key, written] of [
-		['# \n\nnext\n', [0], ['Home'], '#', '## \n\nnext\n'],
-		['> ## \n\nnext\n', [0, 0], ['Home'], '#', '> ### \n\nnext\n'],
-		['#  #\n\nnext\n', [0], ['Home'], '#', '##  #\n\nnext\n'],
-		['#\n\nnext\n', [0], ['Home'], 'a', 'a#\n\nnext\n'],
-		['# \n\nnext\n', [0], ['End', 'ArrowLeft'], 'x', '#x \n\nnext\n']
+		['# \n\nnext\n', [0], [edgeKey('lineStart')], '#', '## \n\nnext\n'],
+		['> ## \n\nnext\n', [0, 0], [edgeKey('lineStart')], '#', '> ### \n\nnext\n'],
+		['#  #\n\nnext\n', [0], [edgeKey('lineStart')], '#', '##  #\n\nnext\n'],
+		['#\n\nnext\n', [0], [edgeKey('lineStart')], 'a', 'a#\n\nnext\n'],
+		['# \n\nnext\n', [0], [edgeKey('lineEnd'), 'ArrowLeft'], 'x', '#x \n\nnext\n']
 	] as const) {
 		await test.step(`${JSON.stringify(source)}, ${pressed.join(' ')}, then ${JSON.stringify(key)}`, async () => {
 			await nextRow(ep, source);
@@ -243,7 +244,7 @@ for (const mode of ['live', 'source'] as const) {
 
 		await test.step('Backspace at the end takes one byte', async () => {
 			await row();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await ep.waitForRenderFlush();
 
 			await page.keyboard.press('Backspace');
@@ -252,7 +253,7 @@ for (const mode of ['live', 'source'] as const) {
 
 		await test.step('Delete at the start takes one byte', async () => {
 			await row();
-			await page.keyboard.press('Home');
+			await page.keyboard.press(edgeKey('lineStart'));
 			await ep.waitForRenderFlush();
 
 			await page.keyboard.press('Delete');
@@ -261,7 +262,7 @@ for (const mode of ['live', 'source'] as const) {
 
 		await test.step('a letter typed at the end appends', async () => {
 			await row();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await ep.waitForRenderFlush();
 
 			await page.keyboard.type('a');
@@ -354,7 +355,7 @@ test('painted chrome inside a construct the cut leaves open', async ({ page }) =
 test('Backspace below painted chrome concatenates the two blocks literally', async ({ page }) => {
 	const ep = await enterPresentationMode(page, 'live', PAINTED_LINK_DOC);
 	await clickBlockSettled(ep, 1);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await ep.waitForRenderFlush();
 
 	await page.keyboard.press('Backspace');

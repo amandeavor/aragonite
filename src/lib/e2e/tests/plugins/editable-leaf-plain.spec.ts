@@ -1,6 +1,9 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { roundTripStable, waitForDoc, activeBlockPath } from './helpers';
 import { MemoPage } from './memo-helpers';
+import { insertText } from '../../insert-text';
+import { edgeKey, extendKey } from '../../platform-keys';
 
 /**
  * A plain-mode editable leaf (requirements/plugins/editable-leaf-plain.md): the `%%` memo harness
@@ -8,6 +11,21 @@ import { MemoPage } from './memo-helpers';
  * text block has, through the public factory alone: typing, moving the caret, undo batching,
  * cross-block selection and the clipboard.
  */
+
+const FAMILY = String.fromCodePoint(0x1f468, 0x200d, 0x1f469, 0x200d, 0x1f467);
+
+/** A soft keyboard's Backspace: the `beforeinput` alone, no keydown. */
+async function sendKeylessBackspace(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		document.activeElement!.dispatchEvent(
+			new InputEvent('beforeinput', {
+				inputType: 'deleteContentBackward',
+				bubbles: true,
+				cancelable: true
+			})
+		);
+	});
+}
 
 test.describe('plain-mode editable leaf: the %% memo kind', () => {
 	let editor: MemoPage;
@@ -19,7 +37,7 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 
 	test('typing commits per keystroke and round-trips', async ({ page }) => {
 		await editor.memo.click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('!');
 
 		await editor.bridge.waitForSourceContains('%% memo text!');
@@ -31,7 +49,7 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 		await page.keyboard.press('ArrowRight');
 		expect(await activeBlockPath(page)).toEqual([1]);
 
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		expect(await activeBlockPath(page)).toEqual([2]);
 
@@ -43,7 +61,7 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 
 	test('a typed burst undoes in one step (prose-like batching)', async ({ page }) => {
 		await editor.memo.click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type(' abc');
 		await editor.bridge.waitForSourceContains('%% memo text abc');
 
@@ -51,6 +69,22 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 		await editor.bridge.waitForSourceNotContains('abc');
 		expect(await editor.bridge.getSource()).toContain('%% memo text');
 	});
+
+	// The editor writes the delete, so a soft keyboard's (the `beforeinput` alone) takes what the
+	// key takes.
+	for (const route of ['key', 'soft keyboard'] as const) {
+		test(`Backspace by ${route} takes an emoji whole`, async ({ page }) => {
+			await editor.memo.click();
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await insertText(page, FAMILY);
+			await editor.bridge.waitForSourceContains(`%% memo text${FAMILY}`);
+
+			if (route === 'key') await page.keyboard.press('Backspace');
+			else await sendKeylessBackspace(page);
+			await page.keyboard.type('z');
+			await editor.bridge.waitForSourceContains('%% memo textz');
+		});
+	}
 
 	test('a cross-block selection sweeps through the memo', async ({ page }) => {
 		await editor.focusBlockEnd(0);
@@ -69,7 +103,7 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 
 	test('a character typed over a range ending in the memo replaces the range', async ({ page }) => {
 		await editor.memo.click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Shift+ArrowUp');
 		await editor.waitForCrossBlock(true);
 		expect(await activeBlockPath(page)).toEqual([1]);
@@ -85,7 +119,7 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 
 	test('Enter + text re-splits the memo through the commit core', async ({ page }) => {
 		await editor.memo.click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await page.keyboard.type('tail');
 
@@ -102,15 +136,8 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 		page
 	}) => {
 		await editor.memo.click();
-		await page.keyboard.press('End');
-		await page.evaluate(async () => {
-			await navigator.clipboard.write([
-				new ClipboardItem({
-					'text/plain': new Blob(['a\nb'], { type: 'text/plain' }),
-					'text/html': new Blob(['<b>a</b><br><i>b</i>'], { type: 'text/html' })
-				})
-			]);
-		});
+		await page.keyboard.press(edgeKey('lineEnd'));
+		await editor.seedClipboard({ 'text/plain': 'a\nb', 'text/html': '<b>a</b><br><i>b</i>' });
 		await editor.paste();
 
 		// The text/plain payload lands verbatim, its newline splitting off a paragraph; without the
@@ -124,8 +151,8 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 
 	test('cross-block copy anchored in the memo reaches the shared collector', async ({ page }) => {
 		await editor.memo.click();
-		await page.keyboard.press('Home');
-		await page.keyboard.press('Shift+End'); // select the memo line (single-block, native)
+		await page.keyboard.press(edgeKey('lineStart'));
+		await page.keyboard.press(extendKey('lineEnd')); // select the memo line (single-block, native)
 		await page.keyboard.press('Shift+ArrowDown'); // extend into After → cross-block
 		await editor.waitForCrossBlock(true);
 		await editor.seedClipboard('SENTINEL');
@@ -140,8 +167,8 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 		page
 	}) => {
 		await editor.memo.click();
-		await page.keyboard.press('Home');
-		await page.keyboard.press('Shift+End');
+		await page.keyboard.press(edgeKey('lineStart'));
+		await page.keyboard.press(extendKey('lineEnd'));
 		await page.keyboard.press('Shift+ArrowDown');
 		await editor.waitForCrossBlock(true);
 		await editor.seedClipboard('SENTINEL');
@@ -161,7 +188,7 @@ test.describe('plain-mode editable leaf: the %% memo kind', () => {
 
 		test('clears it and lands the text', async ({ page }) => {
 			await editor.memo.click();
-			await page.keyboard.press('End');
+			await page.keyboard.press(edgeKey('lineEnd'));
 			await page.keyboard.press('Shift+ArrowDown');
 			await editor.waitForCrossBlock(true);
 			await editor.seedClipboard('INSERTED');

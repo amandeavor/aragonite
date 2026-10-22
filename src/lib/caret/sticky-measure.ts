@@ -20,22 +20,39 @@ import {
 	widgetSpanContainingOffset
 } from './widget-offset';
 import {
-	firstUsefulRect,
-	lineAfterEnding,
+	caretRectAt,
+	focusCaretAtWrap,
 	movingEnd,
 	neighbourCaretRect,
 	sameLineTolerance,
-	type CaretRect
+	type CaretRect,
+	type LineRead
 } from './visual-lines';
 
-export function getCurrentCursorEditorRelativeX(el: HTMLElement): EditorX | null {
+export function getCurrentCursorEditorRelativeX(
+	el: HTMLElement,
+	lineRead: LineRead
+): EditorX | null {
 	const sel = window.getSelection();
 	if (!sel || sel.rangeCount === 0) return null;
 	const range = movingEnd(sel);
 
-	const rect = firstUsefulRect(range) ?? neighbourCaretRect(range);
+	const rect =
+		focusCaretAtWrap(el, range, lineRead) ??
+		caretRectAt(el, range.startContainer, range.startOffset) ??
+		neighbourCaretRect(range);
 	const viewportX = asViewportX(rect ? rect.left : el.getBoundingClientRect().left);
 	return toEditorX(viewportX, editorLeftOf(el));
+}
+
+/** The editor-relative x of viewport x `viewportX`, for a column measured off a rect. */
+export function editorXOf(el: HTMLElement, viewportX: number): EditorX {
+	return toEditorX(asViewportX(viewportX), editorLeftOf(el));
+}
+
+/** The viewport x an editor-relative column sits at. */
+export function viewportXOf(el: HTMLElement, x: EditorX): number {
+	return toViewportX(x, editorLeftOf(el));
 }
 
 export interface CaretProbe {
@@ -52,20 +69,9 @@ export function caretBoxAt(container: HTMLElement, offset: DomTextOffset): Caret
 	const landing = findDomTextLanding(container, offset);
 	if (!landing) return null;
 	const pos = landing.position;
-	const range = document.createRange();
-	try {
-		range.setStart(pos.node, pos.offset);
-	} catch {
-		return null;
-	}
-	range.collapse(true);
-	// A caret after a final line ending sits on the empty line below it.
-	const after =
-		pos.node instanceof Text && pos.offset === pos.node.length
-			? lineAfterEnding(pos.node, container)
-			: null;
-	const measured = after ?? firstUsefulRect(range);
-	const rect = measured ?? neighbourCaretRect(range);
+	const measured = caretRectAt(container, pos.node, pos.offset);
+	const rect =
+		measured ?? neighbourCaretRect({ startContainer: pos.node, startOffset: pos.offset });
 	if (!rect) return null;
 	return {
 		offset: landing.inTextAtTarget ? offset : domTextOffsetAtNode(container, pos.node, pos.offset),

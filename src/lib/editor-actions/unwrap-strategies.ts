@@ -1,6 +1,6 @@
 /**
  * The Backspace unwrap strategies a container's declared `unwrapRole` selects, run from the
- * container's blockEdit (`docs/design/editor.md` § Container unwrap).
+ * container's blockEdit (`docs/design/structural-edits.md` § Container unwrap).
  */
 
 import { CURSOR_END, CURSOR_START } from '../block-component';
@@ -13,7 +13,6 @@ import {
 	plainQuote,
 	sameContainer,
 	mergeListItemIntoPrevious,
-	renumberOrderedList,
 	isItemUserEmpty
 } from '../tree-operations';
 import type { BlockListState } from '../block-lists/block-list-state.svelte';
@@ -28,8 +27,8 @@ export interface UnwrapStrategyDeps {
 	state: BlockListState;
 }
 
-/** Drop an empty item and renumber from its index; the caret lands at `landAt`, an item of this
- *  list after the delete, at `offset`. */
+/** Drop an empty item; the caret lands at `landAt`, an item of this list after the delete, at
+ *  `offset`. */
 async function deleteEmptyItem(
 	{ deps, state }: UnwrapStrategyDeps,
 	itemIndex: number,
@@ -41,9 +40,8 @@ async function deleteEmptyItem(
 		state,
 		snapshot: { path: extendDocPath(deps.path, itemIndex), offset: 0 },
 		mutate: (scope) => {
-			const change = performDelete(scope.body, itemIndex, deps.reading.grammar, scope.sharing);
-			renumberOrderedList(scope.node, itemIndex, scope.sharing);
-			return change;
+			scope.describeEdit({ removed: true });
+			return performDelete(scope.body, itemIndex, scope.sharing);
 		},
 		op: { kind: 'delete', eventPath: extendDocPath(deps.path, itemIndex) },
 		landing: () => ({ path: extendDocPath(deps.path, landAt.item), offset: landAt.offset })

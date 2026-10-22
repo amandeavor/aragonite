@@ -1,6 +1,7 @@
 import { test as base, expect, type ConsoleMessage } from '@playwright/test';
 import { getContainerParityMismatches } from './container-parity';
 import { warnTagOfLine } from '../dev-warn';
+import { installClipboard } from './clipboard-arm';
 
 // The shared e2e `test`, with two checks at teardown. Every tagged console warning or uncaught
 // page error must be one the spec declares below, and each declared one must fire. The
@@ -42,7 +43,7 @@ function fireOf(m: ConsoleMessage): { tag: string; text: string } | null {
 	const tag = warnTagOfLine(m.text());
 	if (tag === null) return null;
 	if (!tag.startsWith('svelte:')) return { tag, text };
-	// Under the dev server every Svelte warning reports Vite's console proxy as its origin, which
+	// Under the Vite dev server every Svelte warning reports Vite's console proxy as its origin, which
 	// names nothing, so the code inside the text is all there is to go on.
 	const at = m.location();
 	const origin = at.url.includes('@vite/client')
@@ -80,6 +81,7 @@ export const test = base.extend<WarnFixtures>({
 		page.on('console', onConsole);
 		page.on('pageerror', onPageError);
 		await page.addInitScript(relayWindowErrors);
+		await installClipboard(page);
 		await use(page);
 
 		// Each declared list carries its own prefix, so all four share one tag space and one watch.

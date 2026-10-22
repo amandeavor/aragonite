@@ -1,8 +1,11 @@
 name: CI
 on:
+  # Every dev push runs the Linux matrix, so a Linux or engine red shows on the merge that made it.
+  # macOS WebKit is its own workflow, webkit-macos.yml.
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
+    branches: [main, dev]
   workflow_dispatch:
 
 # No job needs to write anything back through GITHUB_TOKEN; actions/cache
@@ -10,26 +13,38 @@ on:
 permissions:
   contents: read
 
-# Cancel superseded PR runs — three pushes to an open PR otherwise run three full
-# matrices. Push runs (main) are NOT cancelled: main's pass/fail record per commit
-# is the thing the branch is protected on.
+# A newer push to a PR or to dev supersedes the run in progress. Main's runs are never cancelled:
+# each main commit keeps its own pass/fail record, the thing the branch is protected on.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Third-party actions are pinned to commit SHAs with the version in a trailing
 # comment: a major tag is mutable, so a repoint silently changes what every job
 # runs. Bump the SHA and the comment together.
 #
-# Parallel jobs: the fast static+unit gate, the sharded Playwright e2e battery,
-# the prod-build perf gate, the external-consumer realism gate (packs the
-# library, installs the tarball into examples/consumer, and runs its
-# SSR-no-crash + hydration smoke), the framework realism gate (the same for the React and Vue
-# wrappers, through the shared adapter suite), and the emoji-table provenance gate.
-# e2e shards run every Playwright project via the dev webServer the playwright
-# config starts (the e2e-perf specs self-skip there unless PERF_GATE/PERF is
-# set; the dedicated perf job is what runs them, against the prod build).
+# Parallel jobs: the static and unit gate, the e2e suite sharded once per browser engine by
+# measured time (`scripts/e2e-shards.mjs`) and the census over its shards, the prod-build perf
+# gate, the consumer and framework smokes (the packed library installed into example apps), and
+# the emoji-table provenance gate. The Chromium e2e shards run every Playwright project (the perf
+# rows skip themselves there; the perf job runs them against the prod build).
 jobs:
+  # Whether the change touches more than docs; a docs-only one skips the e2e and perf work. A
+  # gating matrix job skips its steps, not itself: skipped whole, it reports one check under its bare
+  # job name, and its required per-shard checks would wait forever.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/ci-code-changed.mjs "$BASE" >> "$GITHUB_OUTPUT"
+
   unit:
     runs-on: ubuntu-latest
     steps:
@@ -61,6 +76,7 @@ jobs:
       - run: npm run test:editor
 
   e2e:
+    needs: changes
     runs-on: ubuntu-latest
     strategy:
       # One red shard must not cancel the others — a full failure map per run
@@ -69,23 +85,107 @@ jobs:
       matrix:
         shard: ['1/4', '2/4', '3/4', '4/4']
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: ./.github/actions/e2e-setup
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      # Cache the browser download (~100MB per run); `playwright install` skips
-      # re-downloading a cached build and still installs the OS deps.
-      - run: echo "PLAYWRIGHT_VERSION=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_ENV"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+          engine: chromium
+      - if: needs.changes.outputs.code == 'true'
+        env:
+          E2E_SHARD: ${{ matrix.shard }}
+          E2E_SHARD_PLAN: ${{ runner.temp }}/shard-list.txt.plan.json
+        run: |
+          node scripts/e2e-shards.mjs "$E2E_SHARD" "$RUNNER_TEMP/shard-list.txt"
+          npx playwright test --test-list "$RUNNER_TEMP/shard-list.txt"
+      - if: always() && needs.changes.outputs.code == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --shard=${{ matrix.shard }}
+          name: e2e-chromium-${{ strategy.job-index }}
+          path: test-results/ci-summary.json
+
+  # The same correctness suite in WebKit and Firefox (docs/contributing/testing.md § Browser
+  # engines). Their checks are required, so a docs-only change skips the steps, not the job.
+  e2e-webkit:
+    needs: changes
+    runs-on: ubuntu-latest
+    env:
+      ENGINE: webkit
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/5', '2/5', '3/5', '4/5', '5/5']
+    steps:
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: ./.github/actions/e2e-setup
+        with:
+          engine: webkit
+      - if: needs.changes.outputs.code == 'true'
+        env:
+          E2E_SHARD: ${{ matrix.shard }}
+          E2E_SHARD_PLAN: ${{ runner.temp }}/shard-list.txt.plan.json
+        run: |
+          node scripts/e2e-shards.mjs "$E2E_SHARD" "$RUNNER_TEMP/shard-list.txt"
+          npx playwright test --test-list "$RUNNER_TEMP/shard-list.txt"
+      - if: always() && needs.changes.outputs.code == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-webkit-${{ strategy.job-index }}
+          path: test-results/ci-summary.json
+
+  e2e-firefox:
+    needs: changes
+    runs-on: ubuntu-latest
+    env:
+      ENGINE: firefox
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/8', '2/8', '3/8', '4/8', '5/8', '6/8', '7/8', '8/8']
+    steps:
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: ./.github/actions/e2e-setup
+        with:
+          engine: firefox
+      # One worker per core. Firefox is CPU-bound against the build: six and eight workers made each
+      # test slower without finishing the shard sooner. Two against four hasn't been measured.
+      - if: needs.changes.outputs.code == 'true'
+        env:
+          E2E_SHARD: ${{ matrix.shard }}
+          E2E_SHARD_PLAN: ${{ runner.temp }}/shard-list.txt.plan.json
+        run: |
+          node scripts/e2e-shards.mjs "$E2E_SHARD" "$RUNNER_TEMP/shard-list.txt"
+          npx playwright test --test-list "$RUNNER_TEMP/shard-list.txt" --workers=4
+      - if: always() && needs.changes.outputs.code == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-firefox-${{ strategy.job-index }}
+          path: test-results/ci-summary.json
+
+  # Every test the tree lists ran in exactly one shard per engine. Its steps skip on a docs-only
+  # change, like the engine jobs', so its required check still reports.
+  e2e-census:
+    needs: [changes, e2e, e2e-webkit, e2e-firefox]
+    # A red shard still counts; a cancelled run has nothing to count.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: e2e-*
+          path: e2e-summaries
+      - if: needs.changes.outputs.code == 'true'
+        run: node scripts/e2e-census.mjs e2e-summaries chromium webkit firefox
 
   perf:
+    needs: changes
     runs-on: ubuntu-latest
     env:
       # Runners measured ~2.2x the calibration machine (runs 29177807039 /
@@ -93,23 +193,18 @@ jobs:
       # unscaled gate stays the tight one.
       PERF_RUNNER_SCALE: '2.5'
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.code == 'true'
+        uses: ./.github/actions/e2e-setup
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: echo "PLAYWRIGHT_VERSION=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_ENV"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
-      - run: npx playwright install --with-deps chromium
+          engine: chromium
       # perf:check builds and previews the app, then gates the keystroke rows against
       # that prod build (the e2e-perf-prod project) — a dev-server run would measure vite
       # transform overhead, not the editor. The report-only rows exclude themselves via
       # their own PERF_GATE skip, so this needs no row filter.
-      - run: npm run perf:check
+      - if: needs.changes.outputs.code == 'true'
+        run: npm run perf:check
 
   consumer-smoke:
     runs-on: ubuntu-latest

@@ -2,12 +2,14 @@ import { test, expect } from '../../fixtures';
 import { roundTripStable, activeBlockPath } from './helpers';
 import { MermaidPage } from './mermaid-helpers';
 import { wholeBlockInput } from '../../whole-block-input';
+import { multiClickElement } from '../../multi-click';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The mermaid reference plugin: a render-first block whose editing the plugin owns
  * (requirements/plugins/mermaid.md). Seed `?seed=mermaid`: a heading, two valid diagrams, one
  * invalid diagram, a ```js fence and a trailing paragraph. The first SVG wait is generous, since
- * the renderer loads through a dynamic import the dev server transforms on first use.
+ * the renderer is a large module the page fetches on first use.
  */
 
 const SEED = [
@@ -162,7 +164,7 @@ test.describe('mermaid reference plugin', () => {
 		await expect(error).toContainText('Mermaid error');
 
 		await editor.getBlock(5).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type(' ok');
 		expect(await editor.getBlockText(5)).toBe('After ok');
 	});
@@ -181,7 +183,7 @@ test.describe('mermaid reference plugin', () => {
 		await expect(editor.firstInputHost).toBeFocused();
 		await expect(editor.textarea).toHaveCount(0);
 
-		await editor.firstViewport.dblclick();
+		await multiClickElement(editor.firstViewport, 2);
 		await expect(editor.textarea).toHaveValue(FIRST_CODE);
 	});
 
@@ -189,7 +191,7 @@ test.describe('mermaid reference plugin', () => {
 		await editor.clickToolbar('mermaid-edit');
 		await expect(editor.textarea).toHaveValue(FIRST_CODE);
 
-		await page.keyboard.press('ControlOrMeta+Home');
+		await page.keyboard.press(edgeKey('blockStart'));
 		await page.keyboard.press('Tab');
 
 		await expect(editor.textarea).toHaveValue('\t' + FIRST_CODE);

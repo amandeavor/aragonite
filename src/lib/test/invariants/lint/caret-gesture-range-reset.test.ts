@@ -59,6 +59,8 @@ const CARET_GESTURE_DOORS: Record<string, Door> = {
 /** Click handlers that place no caret. A new click-handling file joins this map or the one
  *  above; there is no third answer. */
 const NON_CARET_PRESS_FILES: Record<string, string> = {
+	'src/lib/debug/input-recorder.ts': 'records the press into an input recording; places no caret',
+	'src/lib/debug/input-recording.ts': 'names the press a recorded step opened on; places no caret',
 	'src/lib/components/TailInsert.svelte':
 		'swallows the press so no caret seats under it; the paragraph it mints focuses itself',
 	'src/lib/components/menu/BlockMenu.svelte':
@@ -77,8 +79,6 @@ const NON_CARET_PRESS_FILES: Record<string, string> = {
 		'notes that a button is down so the preview modes paint markers on release; touches no caret',
 	'src/lib/selection/multi-click.ts':
 		'the second and third presses of a click run select the word or the surface under them: a selection gesture whose first press already went through the door',
-	'src/lib/components/blocks/table/TableActionMenu.svelte':
-		'document-capture dismiss-on-outside-press for the menu',
 	'src/lib/components/blocks/table/TableBlock.svelte':
 		'the add-row and add-column strips swallow their press so the cell keeps the caret that pinned them',
 	'src/lib/components/blocks/code/CodeBlockRail.svelte':
@@ -87,9 +87,9 @@ const NON_CARET_PRESS_FILES: Record<string, string> = {
 		'widget selection + overlay placement; the caret stays where it was',
 	'src/lib/components/image/ImageProperties.svelte':
 		'document-capture dismiss-on-outside-press for the properties popover',
+	'src/lib/components/menu/menu-presence.svelte.ts':
+		'closes an open menu on a press outside it; the press places its own caret through the ordinary door',
 	'src/lib/components/image/ImageResizeHandles.svelte': 'starts a resize drag',
-	'src/lib/components/link-card/LinkCardHost.svelte':
-		'document-capture dismiss-on-outside-press for the link card; the press that dismisses places its own caret through the ordinary door',
 	'src/lib/editor-actions/reorder-drag.ts': 'starts a block reorder drag off the handle',
 	'src/lib/plugins/details/DetailsBlock.svelte':
 		'preventDefault on the summary so the disclosure toggle takes no focus',
@@ -109,7 +109,7 @@ const NON_CARET_PRESS_FILES: Record<string, string> = {
  *  extend is growing a range; anything else wants `focus`. */
 const PARK_DOOR_CALLERS: Record<string, string> = {
 	'src/lib/selection/caret-landing.ts':
-		"park — the extend's endpoint (cross-block/keydown.ts :: revealActiveEndpoint), mounted and given the dispatch caret while the extend still owns the range",
+		'park — a range end a key moved (showSelectionEnd), given the caret once windowing unmounted the block holding it, while the extend still owns the range',
 	'src/lib/editor-actions/container-block-component.ts':
 		"implementation: the container walk lands through its child's park door",
 	'src/lib/components/blocks/editable/editable-leaf.ts':
@@ -199,9 +199,12 @@ describeManifests(
 			id: 'G2.12 every container publishes its surface as one containerApi instance export',
 			matches: (file) =>
 				CONTAINER_SEAM_RE.test(file.code) && !CONTAINER_API_EXPORT_RE.test(file.code),
-			declared: Object.fromEntries(
-				CONTAINER_SEAM_MODULES.map((relPath) => [relPath, 'builds the editable element itself'])
-			),
+			declared: {
+				...Object.fromEntries(
+					CONTAINER_SEAM_MODULES.map((relPath) => [relPath, 'builds the editable element itself'])
+				),
+				[SOURCE.domBlockView]: 'publishes the factory’s containerApi whole, through viewRef'
+			},
 			reason:
 				'a container calls the shared caret factory but publishes no `containerApi` instance export. ' +
 				'BlockHost resolves a container ref through that one export, so without it the block ' +

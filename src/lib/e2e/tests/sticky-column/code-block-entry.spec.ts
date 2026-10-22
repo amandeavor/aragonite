@@ -3,6 +3,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage, BLOCK_CONTENT_SELECTOR } from '../../editor-page';
 import { DEFAULT_CONTENT } from '../../test-content';
+import { edgeKey } from '../../platform-keys';
 
 const PIXEL_TOLERANCE = 2;
 
@@ -14,7 +15,7 @@ const CURSOR_COL = 20;
 async function captureEntry(editor: EditorPage, codeBlockIndex: number, from: 'above' | 'below') {
 	const neighbour = from === 'above' ? codeBlockIndex - 1 : codeBlockIndex + 1;
 	await editor.page.locator('[contenteditable="true"]').nth(neighbour).click();
-	await editor.page.keyboard.press('Home');
+	await editor.page.keyboard.press(edgeKey('lineStart'));
 	for (let i = 0; i < CURSOR_COL; i++) await editor.page.keyboard.press('ArrowRight');
 	const sourceX = await editor.getCaretPixelX();
 
@@ -102,13 +103,23 @@ test.describe('sticky column: code block entry symmetry', () => {
 		}
 	});
 
+	test('ArrowDown at column 0 lands at the body’s start', async () => {
+		await editor.loadContent(SINGLE_BODY_LINE);
+		await editor.page.locator('[contenteditable="true"]').nth(0).click();
+		await editor.page.keyboard.press(edgeKey('lineStart'));
+		await editor.page.keyboard.press('ArrowDown');
+		await editor.waitForRenderFlush();
+		// The body starts past "```\n".
+		expect((await editor.bridge.getSelectionPaths())?.focus).toEqual({ path: [1], offset: 4 });
+	});
+
 	test('landing body offset (not just X) matches from both directions', async () => {
 		// A 2px X-match could still hide a one-offset discrepancy; compare byte positions instead.
 		await editor.loadContent(SINGLE_BODY_LINE);
 
 		const above = editor.page.locator('[contenteditable="true"]').nth(0);
 		await above.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < CURSOR_COL; i++) await editor.page.keyboard.press('ArrowRight');
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.waitForRenderFlush();
@@ -120,7 +131,7 @@ test.describe('sticky column: code block entry symmetry', () => {
 
 		const below = editor.page.locator('[contenteditable="true"]').nth(2);
 		await below.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < CURSOR_COL; i++) await editor.page.keyboard.press('ArrowRight');
 		await editor.page.keyboard.press('ArrowUp');
 		await editor.waitForRenderFlush();

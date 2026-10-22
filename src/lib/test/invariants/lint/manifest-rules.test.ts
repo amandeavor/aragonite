@@ -44,7 +44,7 @@ const TRANSFORMS_CALL = /(?<!function\s)\bapplyPasteTransforms\s*\(/;
 /** Pulling a payload off a clipboard or a drop, keyed on the read and the carrier type rather
  *  than a receiver's name; `!.` tolerated, since that is how a new route is most often written. */
 const CLIPBOARD_READ_RE =
-	/[!?]?\.\s*getData\s*\(|[!?]?\.\s*files\b|\bDataTransfer\b|clipboard\s*[!?]?\s*\.\s*read(?:Text)?\s*\(/;
+	/[!?]?\.\s*getData\s*\(|[!?]?\.\s*files\b|\bDataTransfer\b|clipboard\s*[!?]?\s*\.\s*read(?:Text)?\s*\(|\breadClipboardText\s*\(/;
 
 /** Each site reading external text, and the name that carries its text to a declared route.
  *  `editor-root/clipboard.ts` forwards the carrier and reads no payload of its own. */
@@ -53,17 +53,21 @@ const READ_SITE_ROUTES: Record<string, { handoff: string; why: string }> = {
 		handoff: 'pasteTail',
 		why: 'the shared paste handler hands the text to the block’s pasteTail, which dispatches through the paste tree-op'
 	},
+	'src/lib/editor-actions/system-clipboard.ts': {
+		handoff: 'return await navigator.clipboard.readText()',
+		why: 'the one reader of the system clipboard outside a paste event; it returns the text to the read sites below, each carrying its own handoff'
+	},
 	'src/lib/components/menu/default-context-actions.ts': {
 		handoff: 'transformPaste',
 		why: 'the block menu’s "Replace with clipboard" reads through navigator.clipboard and runs the editor’s transforms (`BlockActionContext.transformPaste`) before writing the block’s bytes'
 	},
 	'src/lib/components/menu/clipboard-actions.ts': {
-		handoff: 'pasteTextInto',
-		why: 'the menu paste reads through navigator.clipboard and re-dispatches the text as a paste event on the focused surface, whose handler is the editable-surface route above'
+		handoff: 'paste.markdown(text)',
+		why: 'the menu paste reads through navigator.clipboard and hands the text to the focused block’s `insertMarkdown` or `insertPlainText`, the editable-surface route above'
 	},
 	'src/lib/components/blocks/table/TableCellBlock.svelte': {
-		handoff: 'pasteTextInto',
-		why: 'the cell’s right-click menu paste reads through navigator.clipboard and re-dispatches the text as a paste event on the cell, whose handler is the editable-surface route above'
+		handoff: 'clipboard.insertMarkdown(raw)',
+		why: 'the cell’s right-click menu paste reads through navigator.clipboard and hands the text to the cell’s `insertMarkdown`, the editable-surface route above'
 	},
 	'src/lib/components/paste-image-arm.ts': {
 		handoff: 'handlePaste',
@@ -79,6 +83,12 @@ const readSiteRoles = Object.fromEntries(
 	Object.entries(READ_SITE_ROUTES).map(([relPath, route]) => [relPath, route.why])
 );
 
+/** Sites that read a clipboard or drop payload only to report it, never to write it. */
+const REPORT_ONLY_READS: Record<string, string> = {
+	'src/lib/debug/input-recorder.ts':
+		'copies a paste or drop payload (or its length) into an input recording; nothing is written'
+};
+
 // ── G4.45 the bare tree-op primitives ────────────────────────────────────────
 
 /** Keyed on the import rather than the call, so an alias (`splitNode as performSplit`) still
@@ -89,7 +99,7 @@ const IMPORTS_BARE_PRIMITIVE =
 /** The commit entries that fix up the neighbours afterwards, plus the two fix-up functions
  *  themselves; a leading dot is the norm, since they are reached on a controller or a scope. */
 const REACHES_SETTLE =
-	/\b(commitStructural|commitMultiScope|commitContainer|settleSeparator|spliceChildrenSettled)\s*\(|\.\s*commit\s*\(/;
+	/\b(commitStructural|commitMultiScope|commitContainer|settleEdit|spliceChildrenSettled)\s*\(|\.\s*commit\s*\(/;
 
 const BARE_PRIMITIVE_CALLERS: Record<string, string> = {
 	'src/lib/editor-actions/block-edit-core.ts':
@@ -293,8 +303,8 @@ const PLAIN_READS: Record<string, string> = {
 		'installs after backfill: re-reads a body-rule container’s escaped child; no list item declares a body rule',
 	'src/lib/tree-operations/paste/dispatch.ts':
 		'hands on: reads the clipboard’s own blocks to pick the paste strategy, which a childless container steers; the routes that land them fill in at the splice',
-	'src/lib/tree-operations/reorder.ts':
-		'probe: asks whether two neighbours still read as a pair, and installs nothing',
+	'src/lib/tree-operations/blank-runs.ts':
+		'probe: asks whether a leaf’s own reading leaves its trailing blank line out, and installs nothing',
 	'src/lib/tree-operations/neighbour-merge.ts':
 		'installs after backfill: merges a window of whole sibling blocks by how their joined bytes read, comparing block counts on the plain read',
 	'src/lib/tree-operations/list/list-builders.ts':
@@ -309,6 +319,8 @@ const PLAIN_READS: Record<string, string> = {
 		'installs after backfill: the survivor of a range delete is read at its slot and given its paragraph before the splice',
 	'src/lib/invariants/node-shape.ts':
 		'probe: G1.1 and G1.12 compare a container’s bytes with its children’s bytes, which the empty paragraph would hide; G1.42 compares block kinds and reads through `readAsOpened`',
+	'src/lib/invariants/settled-window-reads-back.ts':
+		'probe: G1.145 compares a settled window’s blocks with how their joined bytes read, as the neighbour merge reads them, and installs nothing',
 	'src/lib/plugins/admonitions/convert-document.ts':
 		'probe: converts a document’s alerts to admonitions as text, headless; no editor holds the nodes'
 };
@@ -418,7 +430,11 @@ const MANIFESTS: ManifestRule[] = [
 			'src/lib/caret/widget-offset.ts': 'defines it',
 			'src/lib/decorations/island-dom.ts':
 				'inserts and replaces decoration widgets in a built fragment',
-			'src/lib/selection/selection-drop.ts': "measures the drop caret's rect"
+			'src/lib/selection/selection-drop.ts': "measures the drop caret's rect",
+			'src/lib/caret/visual-lines.ts': 'measures the caret at a raw offset',
+			'src/lib/components/blocks/text/source-wash.ts': 'tints a shown widget source',
+			'src/lib/components/blocks/text/widget-interaction.ts':
+				'measures a shown source for the double-click that selects it'
 		},
 		reason:
 			'a range from raw offsets is for measuring or decorating; a caret goes through the editor’s caret writer',
@@ -509,7 +525,7 @@ const MANIFESTS: ManifestRule[] = [
 	{
 		id: 'G4.11 every clipboard or drop read site is a declared route to the transforms',
 		matches: CLIPBOARD_READ_RE,
-		declared: readSiteRoles,
+		declared: { ...readSiteRoles, ...REPORT_ONLY_READS },
 		reason:
 			'a read that reaches parse() without a handoff to a declared route drops every plugin paste transform on that route',
 		hits: [
@@ -519,7 +535,8 @@ const MANIFESTS: ManifestRule[] = [
 			"e.dataTransfer?.getData('text/plain')",
 			"e.clipboardData!.getData('text/plain')",
 			'await navigator.clipboard!.readText()',
-			'const items = await navigator.clipboard.read();'
+			'const items = await navigator.clipboard.read();',
+			'const text = await readClipboardText();'
 		],
 		// `deps.readText()` is `el.textContent`, not a clipboard read.
 		misses: ['const text = deps.readText();']
@@ -715,7 +732,7 @@ const OBLIGATIONS: FileRule[] = [
 		misses: [
 			at(
 				'src/lib/components/menu/clipboard-actions.ts',
-				'navigator.clipboard.readText(); pasteTextInto(el, text);'
+				'navigator.clipboard.readText(); await paste.markdown(text);'
 			)
 		]
 	},

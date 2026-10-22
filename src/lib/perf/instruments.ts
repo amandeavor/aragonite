@@ -19,6 +19,10 @@ export interface PerfSnapshot {
 	openerLineReads: number;
 	/** Lines a quote or list item rebuild read through its line syntax, each reading counted. */
 	stripLinesRead: number;
+	/** Children a list's full rebuild joined, one pass over its items. */
+	joinedChildReads: number;
+	/** List items whose marker the marker-width counts read, the column's own cost. */
+	listMarkerReads: number;
 	parseCount: number;
 	parseMsTotal: number;
 	parseBlockCount: number;
@@ -48,6 +52,9 @@ export interface PerfSnapshot {
 	caretLookNodeVisits: number;
 	/** Reads of the caret's raw offset from the DOM the look made. */
 	caretLookOffsetWalks: number;
+	/** Ancestors the check for a caret the browser left off its spot climbed, and the walks it made. */
+	caretCanonicalSteps: number;
+	caretCanonicalWalks: number;
 	/** Dry runs of the next insertion the look made, and the parses of their results. */
 	caretLookPreviews: number;
 	caretLookParses: number;
@@ -56,11 +63,18 @@ export interface PerfSnapshot {
 	decorationRuns: number;
 	islandRebuilds: number;
 	islandKeyScans: number;
+	/** Code units a collapsed delete segmented around the caret, summed over deletes. */
+	deleteWindowUnits: number;
 	/** One entry per windowing height table built: the list's path and the width it estimated at. */
 	heightTableBuilds: { path: string; width: number }[];
 	/** Checks of whether a change moved the focused block past a neighbour, which only a rebuilt
 	 *  height table pays for. */
 	neighbourPasses: number;
+	/** Blank-line and neighbour fix-up passes run over a body after an edit. */
+	settlePasses: number;
+	/** Walks up or down from a written line for a construct it could finish, and the blocks read. */
+	unfinishedWalks: number;
+	unfinishedBlocksAsked: number;
 }
 
 let enabled = false;
@@ -77,6 +91,8 @@ function emptySnapshot(): PerfSnapshot {
 		containerReparseBytes: 0,
 		openerLineReads: 0,
 		stripLinesRead: 0,
+		joinedChildReads: 0,
+		listMarkerReads: 0,
 		parseCount: 0,
 		parseMsTotal: 0,
 		parseBlockCount: 0,
@@ -96,6 +112,8 @@ function emptySnapshot(): PerfSnapshot {
 		caretLookComputes: 0,
 		caretLookNodeVisits: 0,
 		caretLookOffsetWalks: 0,
+		caretCanonicalSteps: 0,
+		caretCanonicalWalks: 0,
 		caretLookPreviews: 0,
 		caretLookParses: 0,
 		blockRenderPaths: [],
@@ -103,8 +121,12 @@ function emptySnapshot(): PerfSnapshot {
 		decorationRuns: 0,
 		islandRebuilds: 0,
 		islandKeyScans: 0,
+		deleteWindowUnits: 0,
 		heightTableBuilds: [],
-		neighbourPasses: 0
+		neighbourPasses: 0,
+		settlePasses: 0,
+		unfinishedWalks: 0,
+		unfinishedBlocksAsked: 0
 	};
 }
 
@@ -168,6 +190,16 @@ export function recordStripLinesRead(lines: number): void {
 	counters.stripLinesRead += lines;
 }
 
+export function recordJoinedChildReads(children: number): void {
+	if (!enabled) return;
+	counters.joinedChildReads += children;
+}
+
+export function recordListMarkerReads(items: number): void {
+	if (!enabled) return;
+	counters.listMarkerReads += items;
+}
+
 export function recordParse(ms: number, blockCount: number, bytes: number): void {
 	if (!enabled) return;
 	counters.parseCount++;
@@ -227,6 +259,11 @@ export function recordIslandKeyScan(): void {
 	counters.islandKeyScans++;
 }
 
+export function recordDeleteWindow(units: number): void {
+	if (!enabled) return;
+	counters.deleteWindowUnits += units;
+}
+
 export function recordHeightTableBuild(path: readonly number[], width: number): void {
 	if (!enabled) return;
 	counters.heightTableBuilds.push({ path: path.join(','), width });
@@ -235,6 +272,17 @@ export function recordHeightTableBuild(path: readonly number[], width: number): 
 export function recordNeighbourPass(): void {
 	if (!enabled) return;
 	counters.neighbourPasses++;
+}
+
+export function recordSettlePass(): void {
+	if (!enabled) return;
+	counters.settlePasses++;
+}
+
+export function recordUnfinishedWalk(blocksAsked: number): void {
+	if (!enabled) return;
+	counters.unfinishedWalks++;
+	counters.unfinishedBlocksAsked += blocksAsked;
 }
 
 export function incMountedBlocks(): void {
@@ -281,6 +329,13 @@ export function recordCaretLook(
 		| 'caretLookOffsetWalks'
 		| 'caretLookPreviews'
 		| 'caretLookParses'
+): void {
+	if (!enabled) return;
+	counters[what]++;
+}
+
+export function recordCanonicalCaretCheck(
+	what: 'caretCanonicalSteps' | 'caretCanonicalWalks'
 ): void {
 	if (!enabled) return;
 	counters[what]++;

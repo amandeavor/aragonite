@@ -8,7 +8,7 @@
 import { isDevChecks } from '../env';
 import { makeBlockNode, type CstNode } from '../core/nodes';
 import { assertInvariant } from '../assert';
-import { perfEnabled } from '../perf/instruments';
+import { perfEnabled, recordJoinedChildReads } from '../perf/instruments';
 import { isBlankText } from '../core/lines';
 
 /** The child a rebuild is re-rendering, and the bytes its region currently holds. */
@@ -32,11 +32,17 @@ export function dropChildSpans(node: CstNode): void {
 
 // ── Rebuilds ─────────────────────────────────────────────────────────────────
 
-/** A container whose raw is its children's bytes joined (list). */
-export function rebuildConcatRaw(node: CstNode, changed?: ChildRawChange): void {
+/** A container whose raw is its children's bytes joined (list); true when only the changed
+ *  child's region was rewritten. `joined` sees each child a full rebuild joins, in that pass. */
+export function rebuildConcatRaw(
+	node: CstNode,
+	changed?: ChildRawChange,
+	joined?: (child: CstNode) => void
+): boolean {
 	const children = node.children!;
-	if (changed && spliceVerbatimChild(node, changed, rebuildConcatRaw)) return;
+	if (changed && spliceVerbatimChild(node, changed, rebuildConcatRaw)) return true;
 
+	recordJoinedChildReads(children.length);
 	const spans = new Uint32Array(children.length * 2);
 	let out = '';
 	for (let i = 0; i < children.length; i++) {
@@ -45,9 +51,11 @@ export function rebuildConcatRaw(node: CstNode, changed?: ChildRawChange): void 
 		spans[i * 2] = out.length;
 		out += child.leadingTrivia + child.raw;
 		spans[i * 2 + 1] = out.length;
+		joined?.(child);
 	}
 	node.raw = out;
 	node.childSpans = spans;
+	return false;
 }
 
 /**

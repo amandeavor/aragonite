@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, readDoc, waitForDoc, roundTripStable } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // The generic `::name` leaf: a two-colon fence with no registered plugin falls back to
 // `directiveLeaf`, a single editable line drawn by the built-in text block with the `::name` fence
@@ -42,7 +43,7 @@ test.describe('plugin leaf: generic ::name directive', () => {
 		await editor.loadContent('::toc info\n');
 
 		await page.locator('.directive-leaf[contenteditable="true"]').click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await editor.typeText(' more');
 
 		const state = await waitForDoc(page, (s) => s.texts[0] === '::toc info more');
@@ -60,7 +61,7 @@ test.describe('plugin leaf: generic ::name directive', () => {
 		await editor.loadContent('::toc info\n');
 
 		await page.locator('.directive-leaf[contenteditable="true"]').click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 
 		// A new paragraph joins the document root (rootCount 2) and the leaf keeps its single
@@ -87,7 +88,7 @@ test.describe('plugin leaf: generic ::name directive', () => {
 		expect(state.kinds).toEqual(['paragraph', 'directiveLeaf']);
 
 		await page.locator('.directive-leaf[contenteditable="true"]').click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 
 		// Not mergeable: Backspace moves focus but never joins the text, since a merge would
 		// collapse the two blocks into one and rewrite the source.

@@ -64,11 +64,11 @@ flowchart LR
     C & D --> E["container node"]
 ```
 
-So serialization **never recurses**. It writes the document's prefix, then each top-level child's `leadingTrivia + raw`, then the suffix, and stops; the subtree is already in there (`core/serializer.ts` is a handful of lines, and `editor.md` § 12 shows it).
+So serialization **never recurses**. It writes the document's prefix, then each top-level child's `leadingTrivia + raw`, then the suffix, and stops; the subtree is already in there (`core/serializer.ts` is a handful of lines, and `editor.md` § Serialization shows it).
 
 The flip side: an edit _inside_ a container means nothing until the container's `raw` is written back from its children. That's `rebuildRaw`, on the container's descriptor (the per-kind record saying how a kind merges, edits and renders), run up the whole chain of enclosing containers. Skip it and `raw` quietly disagrees with the children, and the document you save is the one you had before the edit. So, don't.
 
-That rebuild is the price of the redundancy, and it's paid in bytes, not depth. A structural edit rewrites every enclosing container's bytes, which in a document nested d deep comes to roughly d/2 copies of the outermost one. Typing pays less: a container that knows which child changed rewrites only that child's stretch of its `raw` (`editor.md` § 9). Real documents don't stack megabytes at every level, so in practice a keystroke inside a list costs what a keystroke anywhere costs. The measurements, and why the redundancy was kept, are in `performance.md` § Two architectural decisions, if you're curious.
+That rebuild is the price of the redundancy, and it's paid in bytes, not depth. A structural edit rewrites every enclosing container's bytes, which in a document nested d deep comes to roughly d/2 copies of the outermost one. Typing pays less: a container that knows which child changed rewrites only that child's stretch of its `raw` (`structural-edits.md` § The container `raw` contract). Real documents don't stack megabytes at every level, so in practice a keystroke inside a list costs what a keystroke anywhere costs. The measurements, and why the redundancy was kept, are in `performance.md` § Two architectural decisions, if you're curious.
 
 ### Node shape
 
@@ -79,7 +79,8 @@ A node's **kind** is the string on it that says what block it is (`'heading'`, `
 ```ts
 const h = parse('## Title\n').children[0];
 isBuiltinBlockNode(h); // true
-metadataOf(h, 'heading'); // { level: 2 }: the typed read, without narrowing first
+metadataOf(h, 'heading'); // { level: 2 }: the typed read, for a node you know is a heading
+metadataIfKind(h, 'list'); // undefined: the read for a node that might be another kind
 headingLevel(h); // 2
 makeBlockNode({ kind: 'paragraph', leadingTrivia: '', raw: 'x\n' });
 // { kind: 'paragraph', leadingTrivia: '', raw: 'x\n' }
@@ -87,7 +88,7 @@ makeBlockNode({ kind: 'paragraph', leadingTrivia: '', raw: 'x\n' });
 
 Two rules keep the union honest:
 
-- A block changing kind (paragraph to heading as you type `## `) never has `kind` rewritten in place. The re-parse makes a fresh node and puts it in the old one's slot (`editor.md` § 8), so no node ever carries one branch's kind with another branch's metadata.
+- A block changing kind (paragraph to heading as you type `## `) never has `kind` rewritten in place. The re-parse makes a fresh node and puts it in the old one's slot (`structural-edits.md` § Structural operations), so no node ever carries one branch's kind with another branch's metadata.
 - Building a node from a kind only known at runtime goes through `makeBlockNode`, the one allowed cast.
 
 The fields, by category:
@@ -102,7 +103,8 @@ The fields, by category:
 | `innerSuffix`          | containers                                                    | Whitespace inside the container, after its last child.                                                                                                                                                                                                |
 | `childIds`             | containers                                                    | Stable per-child IDs for keyed rendering (so Svelte reuses each child's component by ID, not by position). Carried on the node, so undo restores them with `children`.                                                                                |
 | `childSpans`           | containers                                                    | Where each child's bytes sit inside the container's own `raw`, so rewriting one child re-emits one region. Derived; dropped whenever the children change shape.                                                                                       |
-| `ownerEpoch`           | every node                                                    | Whether an undo snapshot still shares this node, so a write copies it first. See `editor.md` § Undo / redo.                                                                                                                                           |
+| `markerWidths`         | lists                                                         | How many items open with a marker of each width, which sizes the list's marker column without reading every item. Derived; the parse fills it and the list's rebuild keeps it.                                                                        |
+| `ownerEpoch`           | every node                                                    | Whether an undo snapshot still shares this node, so a write copies it first. See `commit-and-undo.md` § Undo / redo.                                                                                                                                  |
 
 `innerPrefix` is the one field you won't see on a built-in. With the bundled admonitions plugin installed:
 
@@ -118,7 +120,7 @@ parse(':::note My title\n\nbody\n:::\n').children[0];
 // }
 ```
 
-`childIds`, `childSpans` and `ownerEpoch` are editor bookkeeping, not facts about the source. They play no part in the round trip, and if all you do is parse, you can ignore them. The split even has a type: code outside the tree-editing layers holds node views (`core/node-views.ts`) whose serialized fields are readonly while the bookkeeping stays writable.
+`childIds`, `childSpans`, `markerWidths` and `ownerEpoch` are editor bookkeeping, not facts about the source. They play no part in the round trip, and if all you do is parse, you can ignore them. The split even has a type: code outside the tree-editing layers holds node views (`core/node-views.ts`) whose serialized fields are readonly while the bookkeeping stays writable.
 
 **Inline content is not a node field.** Prose kinds get an inline tree (§ 4), but it's computed from `raw` when something reads it, and never stored on the node (`editor.md` § Reactive state plumbing says why).
 
@@ -148,7 +150,7 @@ parse('- [ ]  b\n').children[0].children[0].metadata.taskMarker; // '[ ]  '
 parse('> > a\n').children[0].metadata; // { quoteDepth: 2 }
 ```
 
-An edit that leaves spaces between an item's marker and its text keeps exactly those bytes, so the item reads the same in the editor as it will after a reload. How, and what it costs, is in `editor.md` § The container `raw` contract.
+An edit that leaves spaces between an item's marker and its text keeps exactly those bytes, so the item reads the same in the editor as it will after a reload. How, and what it costs, is in `structural-edits.md` § The container `raw` contract.
 
 Only `'strip'` carries that equation as a checked invariant. `'grid'` and `'opaque'` are exempt from it, for different reasons and with different consequences:
 
@@ -228,7 +230,7 @@ parse('```\nx\n').children[0];
 //   metadata: { fenceMarker: '`', fenceLength: 3, info: '', closed: false } }
 ````
 
-The fence grammar lives in one file, `core/parsers/fence-syntax.ts`, and everything that reads a fence goes through it. The parser finds a closer with `findFenceCloser` (via `core/parsers/fenced-code.ts :: scanFence`), and the code block's renderer and caret rules read a block's opener, body and closer with `fenceAnatomy`. The fence write rule (`schema/fenced-code-raw.ts`) keeps that shape legal, one opener line and one closer line, through every write into the block, typing included. The plugin kinds with a fence of their own (the math fence, mermaid) declare the same rule as their `rawWrite`, so a closer-shaped line typed into their body can't split them either.
+The fence grammar lives in one file, `core/parsers/fence-syntax.ts`, and everything that reads a fence goes through it. The parser finds a closer with `findFenceCloser` (via `core/parsers/fenced-code.ts :: scanFence`), and the code block's renderer and caret rules read a block's opener, body and closer with `fenceAnatomy`. The fence write rule (`schema/fenced-code-raw.ts`) keeps that shape legal through every write into the block, typing included: a cut closer comes back, and a closer whose opener went stays, reading on the way a reload reads it. The plugin kinds with a fence of their own (the math fence, mermaid) declare the same rule as their `rawWrite`, so a closer-shaped line typed into their body can't split them either.
 
 ### Blank lines
 
@@ -258,34 +260,36 @@ Why bother? Because it makes the tree's **shape** survive a save and reload, not
 
 That means a blank block does two jobs at once: it's a block, and it's the separating line of the block below it. What follows from that:
 
-- **The two hold exactly one separator between them, and it can sit in either of two places.** A load puts it on the blank block's own `leadingTrivia` and gives the follower none (the snippet above); an Enter split puts it on the follower and gives the blank block none. Both serialize to the same bytes and reload to the same tree. Carrying it twice would reload as a second empty paragraph, and carrying it nowhere would swallow the blank block.
-- **When a blank block gets text, its slot and its follower each need a separator of their own**, since the one line was doing both jobs.
+- **The two hold exactly one separator between them, on the first block of the run.** That's where a load puts it (the snippet above), and every edit leaves it there too, so the tree after an edit matches a reload line for line, not just block for block. Carrying it twice would reload as a second empty paragraph, and carrying it nowhere would swallow the blank block.
+- **A line you erase to nothing stays the block's own.** Backspace through `b` in `a\nb\n\nc` leaves `a` with an empty line and the caret on it, and that empty line is the run's separator now, so `c` gives its own up: `a\n\nc`, which reloads as the same two blocks. Erase the empty line too and the separator goes back to `c`.
+- **When a blank block gets text, its slot and its follower each need a separator of their own**, since the one line was doing both jobs. The exception is text that makes it a list item right next to a list of the same type: the separator on that side goes and the two lists become one, so a to-do typed on a new line over a to-do list lands in that list. "Same type" is what GitHub reads as one list: the same bullet (`-`, `*`, `+`) or the same ordered delimiter (`.`, `)`), and a to-do counts as a bullet. It's the same when a paste or an inserted block fills the line, or when you turn a line that already has text into a list item.
 - **When a block turns blank, the run it joins gives one separator back.** The count belongs to the whole run, not to one pair: a run of blank blocks and the block below it hold exactly one separator between them.
 - A run at the top of the document, or at the top of a plain container's body, holds none, because there's nothing above it to separate from. A title or fence line above a body counts as something, so under one the run keeps its separator.
 
 #### The last line
 
-The last line is the one line allowed to have no line ending, and a file saved without a final line break keeps it that way through any structural edit and through typing (an inline paste still adds one, for now). The commit ends the lines of every block an edit places, then takes the break back off whichever block ends up last (`docs/design/editor.md` § The commit primitive).
+The last line is the one line allowed to have no line ending, and a file saved without a final line break keeps it that way through any structural edit and through typing (an inline paste still adds one, for now). The commit ends the lines of every block an edit places, then takes the break back off whichever block ends up last (`docs/design/commit-and-undo.md` § The commit primitive).
 
 One exception, on purpose: when the new last line is blank, it keeps its break, since a blank line is nothing but its break and dropping it would drop the block too. That covers Enter at the very end, ArrowDown past the last block, an empty inserted paragraph, and the empty line Enter leaves in a last quote or list item.
 
 #### Where the separators get fixed up
 
-`tree-operations/settle.ts` holds the helpers that re-derive separators after a splice:
+One function does the counting: `tree-operations/blank-runs.ts :: normalizeBlankRuns` takes every run an edit touched and lays it out the way a reload would. It keeps what you can see (the run's blank blocks, and a block's own erased last line) and rewrites the rest: each separator, the lines a container's fence lines take (below), and the document's trailing blank line, which becomes a blank block once one stands above it. The layout it writes is the parser's own, `core/parser.ts :: layoutBlankRun`, so the two can't drift apart.
 
-- clear a separator that became redundant
-- drop a doubled one
+Around it, `tree-operations/settle.ts` keeps the steps a count can't infer, since they depend on what the edit did rather than what's left:
+
 - give a slot its own separator back when a blank block in it gets text
-- give the follower its separator back after a blank line took it
-- hand one back to the run when a block turns blank
+- give the follower its separator back after a blank line took it, whether a blank block or a block's own erased line
+- take the separator back off a list an edit made next to a list of the same type
+- give back the line a blank last block borrowed from a closing fence line, once that block is filled or removed
 
-Every splice that changes what sits above a block goes through them. A primitive that writes its own trivia, like `splitNode`'s separator or `deleteNode` handing a deleted block's separator down, still runs them afterwards.
+An edit splices and writes, and then the commit runs one fix-up, `settleEdit`, over each child list it wrote: it calls these steps around the edited stretch and finishes with the run layout. A few edits still call a step themselves (the gap-caret insert, and the list moves that leave an empty-marker sublist), and `docs/contributing/codebase-map.md` § Blank lines and separators says why for each. A write, a move or a removal tells the commit what it did first, since each asks a step of its own before the separators get recomputed (a removed block's separator going to the block that takes its place, for one). A write that no commit follows, like the keystroke written in place, runs the write's part of that fix-up itself.
 
 Three separators have nothing to re-derive from, so the edits that need them write them on purpose:
 
 1. **A list whose first item is empty, right under a paragraph.** A list marker with nothing after it can't interrupt a paragraph (GFM § 5.2), so an item reading `- x` followed by an indented bare `- ` reloads as `x` with a `-` underline, which is a setext heading; `para` over an emptied `- ` reloads the same way. The marker is the only evidence the item ever existed, and there's no neighbouring line to merge it into. So every path that reaches that shape (the Enter-then-Tab nesting move, emptying the first item, a replace or splice that lands such a list) writes a blank line above the list. That's why nesting an empty item leaves a loose list (a list whose items render with paragraph spacing, because a blank line sits inside it).
 2. **A block an edit turns into text right under a table.** A table takes any line below it that opens no other block as one more row (GFM example 201). It decides that in the editor's grammar: a `$$` block with its closing line opens one, an indented line with indented code switched off opens none. So unwrapping a quote there, turning a heading into text, or deleting the block in between would hand the text to the table. Instead, the merge that joins the neighbours writes a blank line above the block: the edit made a paragraph, and your next key belongs in it.
-3. **The line between the two blocks a move leaves side by side.** If a blank line separated either of them from the block that moved, the move writes one between them whenever the two, flush, would reload as something else: an HTML block reading every line below it as its own, a table or a rule under a paragraph read as its continuation or its setext underline, two quotes read as one. Two blocks that were flush against both sides of the moved block end up flush against each other, same as deleting it would leave them.
+3. **The line between the two blocks a move leaves side by side.** If a blank line separated either of them from the block that moved, the move writes one between them whenever the two, flush, would reload as something else: an HTML block reading every line below it as its own, a table or a rule under a paragraph read as its continuation or its setext underline, two quotes read as one. Two blocks that were flush against both sides of the moved block end up flush against each other, same as deleting it would leave them, unless being flush would change one of their kinds (a table read as paragraph text, a rule as a setext underline). Then they get the line too, and a delete writes it the same way.
 
 #### Inside containers
 
@@ -293,7 +297,7 @@ A container inherits all of this through strip-and-recurse, with two wrinkles an
 
 **A body that ends where its indentation ends** (a list item, a footnote definition) owns any whitespace-only line indented to the body. So when a rebuild writes a blank line at the end of the body, it indents it if it's a block's own line (an empty block, or the line a paragraph keeps after you erase its underline), and leaves it bare if it's a separator, the way the parser reads it. A blank line that was already there keeps its bytes, bare or indented, as long as the body still ends where the parser would end it.
 
-**A body between two lines of the container's own** (`:::note` ... `:::`, `<summary>` ... `</details>`) treats the blank line against either of those lines as a separator like any other: it lands in `innerPrefix` or `innerSuffix`, and the rest of the run becomes blocks. The kind declares the wrap it parses with (`bodyWrap`), and the separator helpers read that declaration, so this is part of the plugin API rather than a per-kind branch in the parser. Inside a wrap, a line the helpers free up above the body's first block belongs to the wrap, not to the run. And a run that is the whole body sits against both lines and has to give one to each, since a reload strips both before it turns any line into a block.
+**A body between two lines of the container's own** (`:::note` ... `:::`, `<summary>` ... `</details>`) treats the blank line against either of those lines as a separator like any other: it lands in `innerPrefix` or `innerSuffix`, and the rest of the run becomes blocks. The kind declares the wrap it parses with (`bodyWrap`), and the run layout reads that declaration, so this is part of the plugin API rather than a per-kind branch in the parser. Inside a wrap, a blank line above the body's first block belongs to the wrap, not to the run. And a run that is the whole body sits against both lines and has to give one to each, since a reload strips both before it turns any line into a block.
 
 **Tabs.** A body's indentation counts in columns, and a tab reaches the next multiple of four, as CommonMark expands it. The document keeps its tabs. Where a body's content column cuts through a tab, or leaves one off a multiple of four, the child holds those columns as spaces, so a child's bytes read on their own the way they read in the body. An edit doesn't touch those tabs: every line it didn't change keeps its bytes. A line you rewrite keeps its tab too when the tab still lands its text in the same place, and gets spaces only when the content column cut through it.
 

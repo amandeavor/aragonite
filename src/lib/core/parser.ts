@@ -3,6 +3,8 @@
  * Per-kind parsers live in parsers/; this file holds dispatch and shared utilities only.
  */
 
+/*! @voithos-labs/aragonite | MPL-2.0 */
+
 import { isDevChecks } from '../env';
 import type { CstNode, Document } from './nodes';
 import { isBlankLine, isBlankText, splitLines, type ParsedLine } from './lines';
@@ -155,17 +157,53 @@ export function parseContainerBody(
 	let prefix = '';
 	let suffix = '';
 
-	if (wrap.afterOpenerLine && last - first >= 2 && isBlankLine(lines[first].text)) {
+	if (wrap.afterOpenerLine && fenceTakesBlankLine(last - first) && isBlankLine(lines[first].text)) {
 		prefix = lines[first].raw;
 		first++;
 	}
-	if (wrap.beforeCloserLine && last - first >= 2 && isBlankLine(lines[last - 1].text)) {
+	if (
+		wrap.beforeCloserLine &&
+		fenceTakesBlankLine(last - first) &&
+		isBlankLine(lines[last - 1].text)
+	) {
 		last--;
 		suffix = lines[last].raw;
 	}
 
 	const inner = parseBlocks(lines, first, last, opts);
 	return { kind: 'document', prefix, children: inner.children, suffix: inner.suffix + suffix };
+}
+
+/** A container's fence line takes the blank line beside it only while the body keeps another. */
+const fenceTakesBlankLine = (bodyLines: number): boolean => bodyLines >= 2;
+
+/** What borders a run of blank lines in a body: a block, a fence line of the container's own, or
+ *  the body's start or end with neither. */
+export type RunEdge = 'content' | 'fence' | 'none';
+
+/** How a reload reads a run of blank lines: the line each fence line takes, the separator under
+ *  the block above, and the blank blocks the rest become. */
+export interface BlankRunLayout {
+	fencePrefix: boolean;
+	separator: boolean;
+	fenceSuffix: boolean;
+	blocks: number;
+}
+
+/** {@link parseContainerBody} and {@link parseBlocks} on a run of `lines` blank lines, for code
+ *  that has to write a run the way a reload reads it. */
+export function layoutBlankRun(lines: number, above: RunEdge, below: RunEdge): BlankRunLayout {
+	// A body of nothing but the run has no other line to keep beside a fence line.
+	const bodyLines = above === 'content' || below === 'content' ? Infinity : lines;
+	let rest = lines;
+	const fencePrefix = above === 'fence' && rest > 0 && fenceTakesBlankLine(bodyLines);
+	if (fencePrefix) rest--;
+	const fenceSuffix =
+		below === 'fence' && rest > 0 && fenceTakesBlankLine(bodyLines - Number(fencePrefix));
+	if (fenceSuffix) rest--;
+	const separator = above === 'content' && rest > 0;
+	if (separator) rest--;
+	return { fencePrefix, separator, fenceSuffix, blocks: rest };
 }
 
 // ── Dispatch ────────────────────────────────────────────────────────────

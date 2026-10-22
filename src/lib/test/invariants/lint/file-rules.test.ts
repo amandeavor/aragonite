@@ -387,6 +387,20 @@ const ONE_VIEW_WRAPPER: FileRule = {
 	]
 };
 
+// ── G4.221 the selection's shown text ────────────────────────────────────────
+
+const SELECTION_STRING_RE = /(?:\bgetSelection\(\)|\bsel(?:ection)?)\s*[!?]?\.toString\s*\(/;
+const SELECTION_BINDING_RE = /\b(?:const|let|var)\s+(\w+)\s*=\s*(?:\w+\.)?getSelection\(\)/g;
+
+/** A selection's string read inline, through a `sel`-style name, or through any name bound to a
+ *  `getSelection()` result in the same file. */
+function readsSelectionString(file: SourceFile): boolean {
+	if (SELECTION_STRING_RE.test(file.code)) return true;
+	return [...file.code.matchAll(SELECTION_BINDING_RE)].some(([, name]) =>
+		new RegExp(String.raw`\b${name}\s*[!?]?\.toString\s*\(`).test(file.code)
+	);
+}
+
 // ── The rules ────────────────────────────────────────────────────────────────
 
 /** A file the G4.80 population holds, for its probes. */
@@ -424,6 +438,42 @@ const RULES: FileRule[] = [
 		misses: [
 			'clearTimeout(id);\ncancelAnimationFrame(raf);\nlet t: ReturnType<typeof setTimeout> | null = null;'
 		]
+	},
+	{
+		id: 'G4.240 every ResizeObserver is made in observe-resize.ts',
+		matches: /\bnew\s+(?:(?:globalThis|window|self)\s*\.\s*)?ResizeObserver\b/,
+		allowed: {
+			'src/lib/windowing/observe-resize.ts':
+				'the one home of size observation: its entry points own when observing starts and how reports arrive'
+		},
+		reason:
+			'how the browser delivers size reports (an element observed mid-delivery is skipped, a size changed mid-delivery is a loop error) is handled once; watch through `observeResize`, `observeResizeNow` or the shared watch',
+		hits: [
+			'const o = new ResizeObserver(cb);',
+			'new  ResizeObserver(() => {})',
+			'new globalThis.ResizeObserver(cb)',
+			'new window.ResizeObserver(cb)'
+		],
+		misses: ['let o: ResizeObserver | null = null;', "typeof ResizeObserver !== 'function'"]
+	},
+	{
+		id: 'G4.245 a kind’s write rule runs through kindWriteRule',
+		matches: /\.rawWrite\b|\{[^}=]*\brawWrite\b[^}=]*\}\s*=[^=>]/,
+		allowed: {
+			'src/lib/tree-operations/node-primitives.ts':
+				'`kindWriteRule`: the one reader, which checks that a rule deletes no byte the write left alone',
+			'src/lib/invariants/leaf-text.ts': 'reads the rule’s `text`, a block’s text, not a write',
+			'src/lib/testing/kind-conformance.ts':
+				'the conformance kit drives a plugin kind’s rule directly against its fixture'
+		},
+		reason:
+			'a rule run outside `kindWriteRule` skips the dev check that it deletes no byte outside the written span (G1.143); read it through `kindWriteRule`',
+		hits: [
+			'const rule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;',
+			'getBlockKindDescriptor(kind).rawWrite!.normalize(raw, ctx)',
+			'const { rawWrite } = descriptor;'
+		],
+		misses: ['registerBlockKind(kind, { rawWrite: fencedCodeWrite });', 'rawWrite: mathBlockWrite,']
 	},
 	{
 		id: 'G4.194 a block reaches the clipboard steps and the inline paste through its surface',
@@ -479,6 +529,124 @@ const RULES: FileRule[] = [
 			"page.locator('.md-widget-selected');",
 			'// paints `md-widget-selected` here\nconst a = 1;',
 			':global(.md-widget-selected) { outline: none; }'
+		]
+	},
+	{
+		id: 'G4.209 a list item draws its marker in its own cell, never through a child’s prefix',
+		matches: /\bambientPrefixForFirst\b/,
+		allowed: {
+			'src/lib/components/BlockList.svelte':
+				'hands a plugin container’s prefix to its first text child',
+			'src/lib/editor-actions/plugin/container.ts': 'offers a plugin container’s declared prefix'
+		},
+		reason:
+			'a prefix handed to a child paints only on a text block, so an item opening with any other block draws no marker and hides its bytes; a list item draws its marker in its own cell (`ListItemBlock`)',
+		hits: [
+			'ambientPrefixForFirst={buildTaskItemAmbient(meta, toggle, drawsBox)}',
+			'get ambientPrefixForFirst() {'
+		],
+		misses: ['// ambientPrefixForFirst goes to text only\nconst a = 1;', 'const ambientPrefix = 1;']
+	},
+	{
+		id: 'G4.214 a caret’s box is measured in one place',
+		matches:
+			/(?:\b\w*[rR]ange\??|\bgetRangeAt\([^)]*\))\.get(?:ClientRects|BoundingClientRect)\s*\(/,
+		allowed: {
+			'src/lib/caret/visual-lines.ts':
+				'`caretRectAt`, the one measure of a caret, and the character and line boxes it reads',
+			'src/lib/components/overlays/rects.ts': 'the boxes of a span between two offsets',
+			'src/lib/components/blocks/text/widget-interaction.ts':
+				'a shown source’s whole box, for a double-click’s hit test',
+			'src/lib/editor-rects.ts': 'a selection’s box; a collapsed one goes through `caretRectAt`',
+			'src/lib/selection/cross-block/pointer.ts':
+				'whether a selected range covers a right-click; a collapsed one is never measured'
+		},
+		reason:
+			'WebKit and Firefox measure a caret right after a `\\n` on the line the `\\n` ends, so a caret measured anywhere else reads the wrong line at every line start: call `caretRectAt`, or `charRect` for one character',
+		hits: [
+			'const rects = range.getClientRects();',
+			'return sel.getRangeAt(0).getBoundingClientRect();',
+			'const box = probeRange?.getBoundingClientRect();'
+		],
+		misses: ['const box = el.getBoundingClientRect();', 'const rects = block.getClientRects();']
+	},
+	{
+		id: 'G4.243 the browser moves a selection in one place, the caret writer',
+		matches: /\.modify\s*\(/,
+		allowed: {
+			'src/lib/caret/widget-offset.ts':
+				'the caret writer: its line-edge moves, and the read of which line a caret at a soft wrap shows on'
+		},
+		reason:
+			'a `Selection.modify` moves the caret where the writer never recorded it, so the drawn caret and `canonicalizeCaret` misread it: move through `moveCaretToLineEdge` or `extendToLineEdge`, or ask `focusEndsLine`',
+		hits: [
+			"sel.modify('move', 'forward', 'line');",
+			"window.getSelection()!.modify ('extend', 'left', 'lineboundary');"
+		],
+		misses: ['const modified = view.modifiedAt;', 'modify(node);']
+	},
+	{
+		id: 'G4.243 the caret’s line is decided through the soft-wrap read',
+		matches: /\bcaretRectAt(?:Raw)?\s*\(/,
+		allowed: {
+			'src/lib/caret/visual-lines.ts':
+				'`caretRectAt` itself, and the line decisions, which ask the browser at a soft wrap first',
+			'src/lib/caret/sticky-measure.ts':
+				'the column: the caret’s own x after the soft-wrap read, and the column search over offsets that are no caret',
+			'src/lib/caret/drawn-caret-measure.ts':
+				'the drawn caret’s box, which steps aside for the browser’s own caret at a soft wrap',
+			'src/lib/selection/caret-landing.ts':
+				'the box scrolled into view, where a line off at a soft wrap still shows the caret',
+			'src/lib/selection/selection-drop.ts':
+				'the drop caret, at a point the pointer chose, not the caret',
+			'src/lib/selection/page-step.ts':
+				'the line a page step starts from, a line high at a soft wrap (ledger: a page step from a soft wrap starts a line high)',
+			'src/lib/editor-rects.ts':
+				'`rects.caretRect()` for a consumer, the measured line at a soft wrap (ledger: `caretRect()` at a soft wrap reports the measured line)'
+		},
+		reason:
+			'at a soft wrap a caret’s one DOM position is on two lines and a measure reads one of them whatever the browser shows, so a line decided off `caretRectAt` is wrong there: use `isAtFirstVisualLine`, `isAtLastVisualLine`, `lineEdgeOffset` or `focusCaretAtWrap`, which ask the browser',
+		hits: [
+			'const top = caretRectAt(el, node, offset)?.top;',
+			'const box = caretRectAtRaw(el, raw);',
+			'deps.caretRectAt(root, n, o)'
+		],
+		misses: ['import { caretRectAt } from "./visual-lines";', 'caretRectAt,']
+	},
+	{
+		id: 'G4.221 a paste with no paste event calls the paste step, never a constructed event',
+		matches: /\bnew\s+(?:\w+\.)?ClipboardEvent\s*\(/,
+		allowed: {},
+		reason:
+			'Firefox empties `clipboardData` on a constructed `ClipboardEvent`, so a paste dispatched as one pastes nothing: hand the text to the focused block’s `insertMarkdown`',
+		hits: [
+			"el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data }));",
+			"const e = new ClipboardEvent ('copy');",
+			"target.dispatchEvent(new window.ClipboardEvent('paste'));"
+		],
+		misses: ['function onPaste(e: ClipboardEvent): void {}', 'const e = event as ClipboardEvent;']
+	},
+	{
+		id: 'G4.221 the shown text of a selection is read in one place',
+		matches: readsSelectionString,
+		allowed: {
+			[SOURCE.clipboardStep]:
+				'`shownSelectionText`: LF line breaks, and nothing for an empty block’s placeholder `<br>`'
+		},
+		reaches: [SOURCE.clipboardStep],
+		reason:
+			'Firefox on Windows writes a selection’s line breaks as CRLF and an empty block’s placeholder `<br>` as one, so the text read straight off the selection differs by engine: call `shownSelectionText`',
+		hits: [
+			"const text = window.getSelection()?.toString() ?? '';",
+			'return sel.toString();',
+			'document.getSelection()!.toString()',
+			'selection?.toString()',
+			"const live = window.getSelection();\nreturn live?.toString() ?? '';"
+		],
+		misses: [
+			'const n = range.toString().length;',
+			'const s = (5).toString();',
+			'const live = window.getSelection();\nconst n = live?.rangeCount ?? id.toString();'
 		]
 	},
 	{
@@ -674,10 +842,8 @@ const RULES: FileRule[] = [
 				'plugin-leaf surface: zero-prefix DOM-text mutations brand raw offsets in place',
 			'src/lib/components/blocks/code/CodeBlock.svelte':
 				'code surface: zero-prefix DOM-text mutations brand raw offsets in place',
-			'src/lib/components/blocks/text/TextEditableBlock.svelte':
-				'pending-caret restore holds a plain number field',
 			'src/lib/components/blocks/table/TableCellBlock.svelte':
-				'zero-prefix cell: pending-caret restore + focus-offset walk read brand across the identity',
+				'zero-prefix cell: a widget edge offset brands across the identity',
 			'src/lib/components/blocks/table/TableBlock.svelte':
 				'table sticky-X exit re-enters the editor column state',
 			'src/lib/components/blocks/text/widget-interaction.ts':
@@ -1304,7 +1470,8 @@ const RULES: FileRule[] = [
 		matches: LIST_MARKER_READ,
 		allowed: {
 			'src/lib/schema/container-rebuilders.ts': 'writes the marker back in front of the item',
-			'src/lib/tree-operations/list/ordered-markers.ts': 'renumbers an ordered list',
+			'src/lib/tree-operations/list/ordered-markers.ts':
+				'renumbers an ordered list, and asks whether two items read as one list',
 			'src/lib/tree-operations/list/task-paragraph.ts':
 				'measures how far a new item’s first line widens its marker, for the item to take it',
 			'src/lib/editor-actions/list-context.ts': 'gives a new item the next marker',
@@ -1374,6 +1541,142 @@ const RULES: FileRule[] = [
 			'const dragged = Math.abs(e.clientY - down.y) > SLOP;'
 		],
 		misses: ['if (presses.travelled(e)) return;', 'const dx = Math.abs(width - startWidth);']
+	},
+	{
+		id: 'G4.229 a key moves a selection end through keyboard-extend, which shows it',
+		matches: /\.(?:extendFocus|enterCrossBlock|extendSelectionToRaw)\s*\(/,
+		allowed: {
+			[SOURCE.keyboardExtend]:
+				'every key that moves an end, which shows it; also the select-all and Shift+click writes',
+			'src/lib/selection/drag-pointer.ts': 'a pointer drag, whose end is under the pointer',
+			'src/lib/components/blocks/table/cell-pointer.ts':
+				'a pointer drag across cells, whose end is under the pointer',
+			'src/lib/selection/native-bridge.ts': 'the restore, whose landing shows the caret itself',
+			'src/lib/selection/cross-block/range-indent.ts':
+				'an indent keeping a block held whole, which moves no end',
+			'src/lib/testing/kind-conformance.ts': 'the conformance kit, which sets up a range'
+		},
+		reaches: [SOURCE.keyboardExtend],
+		reason:
+			'an end a key moves has to land on screen through the scroll owner: write it through `selection/keyboard-extend.ts`, whose writes call `showSelectionEnd`',
+		hits: [
+			'selection.extendFocus(cellPoint(path, 3));',
+			'ctx.selection.enterCrossBlock(anchor, focus);',
+			'deps.caretWriter.extendSelectionToRaw(el, bounds.start);',
+			'selection.extendFocus (point);'
+		],
+		misses: [
+			'extendWithinBlock(deps.extend, el, bounds.start);',
+			'extendFocusToNextBlock(ctx, el, path);',
+			'extendFocus(point: SelectionEndpoint): void;'
+		]
+	},
+	{
+		id: 'G4.225 the drag session hears a release before anything else on the page',
+		// Any phase counts, since a capture flag held in a variable is invisible to a scan.
+		matches:
+			/(?:\b(?:window|defaultView|globalThis|self)\b[^;]*?\.|(?<![\w$.]))addEventListener\(\s*['"]pointer(?:up|cancel)['"]|\b(?:onRoot|on)\(\s*(?:window|globalThis|self|[\w.?]*defaultView[^,]*),\s*['"]pointer(?:up|cancel)['"]|<svelte:window[^>]*\bonpointer(?:up|cancel)/,
+		allowed: {
+			'src/lib/selection/pointer-session.ts': 'the drag session, which resolves the release first'
+		},
+		reason:
+			'a window-level release listener can run before the drag session and change the page (show a popover under the pointer) before the drag hit-tests its last point: listen on the document or below',
+		hits: [
+			"window.addEventListener('pointerup', onUp, true);",
+			"window.addEventListener('pointerup', onUp, opts);",
+			"doc.defaultView?.addEventListener('pointercancel', onUp, { capture: true });",
+			"globalThis.addEventListener('pointerup', onUp, true);",
+			"addEventListener('pointerup', onUp, true);",
+			"onRoot(window, 'pointerup', endPress, { capture: true }),",
+			"on(window, 'pointercancel', endPress);",
+			'<svelte:window onpointerupcapture={onUp} />',
+			'<svelte:window onpointerup={onUp} />'
+		],
+		misses: [
+			"document.addEventListener('pointerup', up, true);",
+			"root.addEventListener('pointerup', armFrame, on);",
+			"window.removeEventListener('pointerup', onUp, true);",
+			"window.addEventListener('pointermove', onMove, true);",
+			"onRoot(doc, 'pointerup', endPress, { capture: true }),",
+			"onRoot(doc.defaultView ?? window, 'blur', endPress)"
+		]
+	},
+	{
+		id: 'G4.234 a delete input type is named only where the editor decides deletes',
+		matches:
+			/['"`]delete(?:Content|Word|SoftLine|HardLine|EntireSoftLine|By|Composition)\w*['"`]|\.startsWith\(\s*['"`]delete['"`]|\/\^delete/,
+		allowed: {
+			[SOURCE.deleteExtent]:
+				'the one list of delete input types, which says what each takes and which the editor writes'
+		},
+		reaches: [SOURCE.deleteExtent],
+		reason:
+			'a branch on a delete input type is a second opinion on which deletes the editor writes: ask `caret/delete-extent.ts` (`decidedDelete`, `isDeleteInput`, `isMoveDelete`)',
+		hits: [
+			"if (e.inputType !== 'deleteContentBackward') return false;",
+			"case 'deleteWordForward':",
+			"return e.inputType.startsWith('delete') ? '' : e.data;",
+			'return /^delete(?!By)/.test(e.inputType);',
+			'const cut = inputType === "deleteByCut";'
+		],
+		misses: [
+			'if (!isCharacterBackspace(e.inputType)) return false;',
+			"blockEdit.deleteBlock(index, 'Backspace');",
+			"case 'table.deleteRow':",
+			"['deleteRow', 'Delete row', canDeleteRow(rowIdx, rowCount)]"
+		]
+	},
+	{
+		id: 'G4.239 no block runs a merge by its id',
+		// A keymap row (`command:`) binds a merge and a handler (`case`) answers one; neither runs it.
+		matches: /(?<!command:\s*|case\s+)['"`]block\.merge(?:Prev|Next)['"`]/,
+		allowed: {
+			[SOURCE.commands]: 'the list of built-in command ids'
+		},
+		reaches: [SOURCE.commands],
+		reason:
+			'a delete at a block’s edge runs what plain Backspace or Delete binds, through `collapsed-delete.ts` and the keymap; a merge run by its id skips the host’s `keybindings`',
+		hits: [
+			"void runCommand(direction === 'backward' ? 'block.mergePrev' : 'block.mergeNext');",
+			"editor.runCommand('block.mergeNext');"
+		],
+		misses: [
+			"{ chord: 'Backspace', command: 'block.mergePrev' },",
+			"case 'block.mergeNext':",
+			'if (target) dispatchKeyCommand(key, target, deps.commands);'
+		]
+	},
+	{
+		id: 'G4.234 an editable block hears beforeinput through its editable surface',
+		matches:
+			/addEventListener\(\s*['"]beforeinput['"]|\bonbeforeinput(?:capture)?\s*[=:]\s*\{?\s*(?!editableSurface\.onBeforeInput\b|\(\w+:\s*InputEvent\)\s*=>\s*void)[\w$(]|\[[^\]]*['"]beforeinput['"][^\]]*\]\s*\.(?:map|forEach)\(|\bon(?:Root)?\([^)]*['"]beforeinput['"]/,
+		allowed: {
+			'src/lib/components/menu/InlineMenuHost.svelte':
+				'a capture listener on the root that takes the inline menu’s baseline and writes nothing',
+			'src/lib/components/editor-root/listeners.ts':
+				'a capture listener on the root that ends the undo step and writes nothing',
+			'src/lib/components/GapCaret.svelte':
+				'the gap caret, which is no block’s text and refuses every input but its one character',
+			'src/lib/editor-actions/whole-block-focus-surface.ts':
+				'the proxy a block focused whole types into, which refuses every input but its one character'
+		},
+		reason:
+			'every editable block hears `beforeinput` through `editableSurface.onBeforeInput`, whose last step decides a collapsed delete (`collapsed-delete.ts`); a handler bound around it lets the browser delete on its own. A binding through an event-name variable is invisible here',
+		hits: [
+			"root.addEventListener('beforeinput', onBeforeInput, true);",
+			'<div contenteditable onbeforeinput={onBeforeInput}></div>',
+			'onbeforeinput: handleInput,',
+			'onbeforeinput: (e) => handle(e),',
+			"const removers = ['keydown', 'beforeinput'].map((type) => onRoot(win, type, handler));",
+			"onRoot(win, 'beforeinput', handler, { capture: true })"
+		],
+		misses: [
+			'onbeforeinput={editableSurface.onBeforeInput}',
+			'onbeforeinput: editableSurface.onBeforeInput,',
+			'onbeforeinput: (e: InputEvent) => void;',
+			"if (e.type === 'beforeinput') return true;",
+			"root.removeEventListener('beforeinput', onBeforeInput, true);"
+		]
 	}
 ];
 
@@ -1600,16 +1903,6 @@ const BARE_FOCUSES: ManifestRule[] = [
 		id: 'G4.91 a focus call that may scroll is declared',
 		matches: BARE_FOCUS_RE,
 		declared: {
-			'src/lib/components/blocks/text/widget-interaction.ts':
-				'a click that reveals a widget’s source focuses the surface under the pointer, already on screen',
-			'src/lib/caret/reveal-source.ts':
-				'the revealed source takes focus where the click that revealed it landed',
-			'src/lib/components/GapCaret.svelte':
-				'an arrow move arriving on a gap caret keeps the browser’s own scroll to it',
-			'src/lib/selection/keyboard-extend.ts':
-				'a native range re-made in a block the keyboard is already on',
-			'src/lib/plugins/mermaid/MermaidBlock.svelte':
-				'the diagram’s own surface takes focus back after a redraw or an edit, and the focus view its overlay',
 			'src/lib/components/blocks/code/CodeBlockRail.svelte':
 				'the rail’s menu button takes focus back as its popout closes',
 			'src/lib/components/blocks/table/TableActionMenu.svelte':
@@ -1933,6 +2226,64 @@ function describeOwnerWrites(sources: SourceFile[]): void {
 	});
 }
 
+// ── G4.229 inside the extend module, which functions write an end ────────────
+
+const KEYBOARD_END_WRITES: Record<string, { calls: number; reason: string }> = {
+	'src/lib/selection/keyboard-extend.ts :: moveFocusTo :: focus': {
+		calls: 1,
+		reason: 'every key that moves a focus, which shows it or restores the fold'
+	},
+	'src/lib/selection/keyboard-extend.ts :: enterCrossBlockFromKeyboard :: pair': {
+		calls: 1,
+		reason: 'a pair at the caret, whose focus `moveFocusTo` moves next'
+	},
+	'src/lib/selection/keyboard-extend.ts :: extendFromCell :: pair': {
+		calls: 1,
+		reason: 'a pair at the cell, whose focus `moveFocusTo` moves next'
+	},
+	'src/lib/selection/keyboard-extend.ts :: extendWithinBlock :: in block': {
+		calls: 1,
+		reason: 'a key inside one block, which shows what it wrote'
+	},
+	'src/lib/selection/keyboard-extend.ts :: selectWholeDocument :: pair': {
+		calls: 1,
+		reason: 'the second Mod+A, whose ends are the document edges'
+	},
+	'src/lib/selection/keyboard-extend.ts :: handleShiftClick :: focus': {
+		calls: 1,
+		reason: 'a Shift+click, whose end is under the pointer'
+	},
+	'src/lib/selection/keyboard-extend.ts :: enterRangeAtPress :: pair': {
+		calls: 1,
+		reason: 'a Shift+click, whose end is under the pointer'
+	}
+};
+
+const END_WRITE_KINDS: CallKind[] = [
+	{ kind: 'focus', callee: 'extendFocus', counts: () => true },
+	{ kind: 'pair', callee: 'enterCrossBlock', counts: () => true },
+	{ kind: 'in block', callee: 'extendSelectionToRaw', counts: () => true }
+];
+
+function describeKeyboardEndWrites(sources: SourceFile[]): void {
+	describe('G4.229 inside `keyboard-extend.ts`, only the declared functions write an end', () => {
+		it('the writes are exactly the declared ones', () => {
+			const found = Object.fromEntries(
+				sources
+					.filter((file) => file.relPath === SOURCE.keyboardExtend)
+					.flatMap((file) => [...callSites(file, END_WRITE_KINDS)])
+			);
+			const declared = Object.fromEntries(
+				Object.entries(KEYBOARD_END_WRITES).map(([site, { calls }]) => [site, calls])
+			);
+			expect(
+				found,
+				'a key that writes its end here directly skips the show: go through `moveFocusTo` or `extendWithinBlock`, or declare it here with why'
+			).toEqual(declared);
+		});
+	});
+}
+
 // ── G4.94 the editor's own selection has one store and three writers ─────────
 
 const SELECTION_WRITERS: ManifestRule[] = [
@@ -2086,6 +2437,8 @@ const RANGE_INDENT: ManifestRule[] = [
 				'the container dispatch, which leaves a key a live range owns to the range, whose handler claims it only after an await',
 			'src/lib/components/blocks/editable/surface-wiring.svelte.ts':
 				'a leaf’s own chords, which the leaf runs once the range’s handler has passed on the key',
+			'src/lib/components/blocks/editable/editable-surface.ts':
+				'a delete at a leaf’s edge, which runs what plain Backspace or Delete binds there',
 			'src/lib/selection/cross-block/keydown.ts':
 				'the range’s own handler: what the caret memory notes, whether a key indents, and a format chord over the range',
 			'src/lib/selection/cross-block/range-indent.ts':
@@ -2484,6 +2837,10 @@ const DOM_PRESENCE: Record<string, { branches: number; reason: string }> = {
 		reason:
 			'with no media queries (no DOM, or jsdom) there is no pointer to ask, so `auto` leaves the browser’s caret alone'
 	},
+	'src/lib/debug/input-recorder.ts :: environment': {
+		branches: 1,
+		reason: 'with no media queries (jsdom) a recording names its pointer `none`'
+	},
 	'src/lib/testing/mount-dom-stubs.ts :: installEditorDomStubsForTests': {
 		branches: 2,
 		reason: 'with no DOM there is no element or range prototype to fill in'
@@ -2758,6 +3115,7 @@ describeManifests(BARE_FOCUSES, SOURCES);
 describeFileRules([HELD_BRANDS], SOURCES);
 describeCorrections(SOURCES);
 describeOwnerWrites(SOURCES);
+describeKeyboardEndWrites(SOURCES);
 describeMeasureWrites(SOURCES);
 describeManifests([MEASURE_CHANNEL], SOURCES);
 describeManifests([MARK_HANDLER_CALLERS], SOURCES);

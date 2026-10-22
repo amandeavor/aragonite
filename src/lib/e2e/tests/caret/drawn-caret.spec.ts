@@ -16,6 +16,8 @@ import { MemoPage } from '../plugins/memo-helpers';
 import { clickPastImageRightEdge, waitForFirstImageLoaded } from '../blocks/image/helpers';
 import { PluginsPage } from '../plugins/helpers';
 import { TABLE_THEN_FENCE, arriveAtBoundary } from '../selection/gap-caret-fixtures';
+import { skipUnlessSupported } from '../../browser-engine';
+import { edgeKey } from '../../platform-keys';
 
 // The drawn caret against the browser's own (requirements/caret/drawn-caret.md): exactly one caret
 // shows in every row, and where the bar draws, it sits on the browser's caret position.
@@ -24,7 +26,8 @@ const ONE_DRAWN = { native: false, drawn: 1 };
 const ONE_NATIVE = { native: true, drawn: 0 };
 const NONE = { native: false, drawn: 0 };
 
-/** Within a pixel, the rect a user would see as the same caret. */
+/** Each edge within a pixel, the rect a user would see as the same caret. Edges, not height: the
+ *  bar snaps both ends outward to the device grid, 1.4px taller on Firefox's 25.6px empty line. */
 function expectSameBox(drawn: CaretBox | null, native: CaretBox | null): void {
 	expect(drawn, 'the drawn caret draws').not.toBeNull();
 	expect(native, 'the browser holds a measurable caret').not.toBeNull();
@@ -36,7 +39,12 @@ function expectSameBox(drawn: CaretBox | null, native: CaretBox | null): void {
 		Math.abs(drawn!.top - native!.top),
 		`y ${drawn!.top} vs ${native!.top}`
 	).toBeLessThanOrEqual(1);
-	expect(Math.abs(drawn!.height - native!.height)).toBeLessThanOrEqual(1);
+	const drawnBottom = drawn!.top + drawn!.height;
+	const nativeBottom = native!.top + native!.height;
+	expect(
+		Math.abs(drawnBottom - nativeBottom),
+		`bottom ${drawnBottom} vs ${nativeBottom}`
+	).toBeLessThanOrEqual(1);
 }
 
 /** Exactly one caret shows, and if it is the drawn one, on the browser's caret position. */
@@ -91,7 +99,7 @@ test.describe('the drawn caret', () => {
 				'| a | b |\n| - | - |\n| cell | d |\n',
 				async (ep, page) => {
 					await page.locator('.table-cell').nth(2).click();
-					await page.keyboard.press('End');
+					await page.keyboard.press(edgeKey('lineEnd'));
 				}
 			],
 			['in a code block', '```\ncode\n```\n', (ep) => ep.focusBlock(0, 6)],
@@ -117,14 +125,6 @@ test.describe('the drawn caret', () => {
 				await expectOneCaretOnTheRange(page);
 			});
 		}
-
-		test('in a plugin’s editable leaf', async ({ page }) => {
-			const memo = new MemoPage(page);
-			await memo.gotoSeed();
-			await memo.memo.click();
-			await page.keyboard.press('End');
-			await expectOneCaretOnTheRange(page);
-		});
 	});
 
 	test('focus leaving the editor shows no caret, and a click brings the drawn one back', async ({
@@ -230,6 +230,7 @@ test.describe('the drawn caret', () => {
 	});
 
 	test('reduced motion draws a caret that doesn’t blink', async ({ page }) => {
+		skipUnlessSupported(page, 'mediaEmulation');
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await editor.loadContent('hello world\n');
 		await editor.focusBlock(0, 3);
@@ -245,6 +246,7 @@ test.describe('the drawn caret', () => {
 	});
 
 	test('reduced motion draws the widget and gap bars without a blink', async ({ page }) => {
+		skipUnlessSupported(page, 'mediaEmulation');
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		const animation = async () => {
 			const bar = await drawnBar(page);
@@ -268,6 +270,7 @@ test.describe('the drawn caret', () => {
 		test.skip(({ browserName }) => browserName === 'webkit', 'no forced-colors mode in WebKit');
 
 		test('forced colors keep the browser’s caret', async ({ page }) => {
+			skipUnlessSupported(page, 'mediaEmulation');
 			await page.emulateMedia({ forcedColors: 'active' });
 			await editor.loadContent('hello world\n');
 			await editor.focusBlock(0, 3);
@@ -275,23 +278,12 @@ test.describe('the drawn caret', () => {
 			await expect.poll(() => caretsShowing(page)).toEqual(ONE_NATIVE);
 		});
 
-		// The browser shows its own caret beside a text-height widget and in the gap proxy under forced
-		// colors, so the editor's bar there would be a second one.
-		test('forced colors show one caret beside a text-height widget and at a gap', async ({
-			page
-		}) => {
+		// The browser shows its own caret in the gap proxy under forced colors, so the editor's bar
+		// there would be a second one.
+		test('forced colors show one caret at a gap', async ({ page }) => {
 			await page.emulateMedia({ forcedColors: 'active' });
-			const plugins = new PluginsPage(page);
-			await plugins.gotoPlugins('emoji');
-			await plugins.loadContent('Some prose on this line :tada:\n');
-			const widget = (await page.locator('[data-inline-widget]').boundingBox())!;
-			await page.mouse.click(widget.x + widget.width + 30, widget.y + widget.height / 2);
-			const around = { x: widget.x - 10, y: widget.y - 10, width: widget.width + 60, height: 40 };
-			expect(await caretsUnderForcedColors(page, around)).toBe(1);
-
-			await plugins.goto();
-			await plugins.loadContent(TABLE_THEN_FENCE);
-			await arriveAtBoundary(plugins);
+			await editor.loadContent(TABLE_THEN_FENCE);
+			await arriveAtBoundary(editor);
 			const gap = (await page.locator('[data-gap-caret]').boundingBox())!;
 			const across = { x: gap.x - 10, y: gap.y - 20, width: 600, height: 40 };
 			expect(await caretsUnderForcedColors(page, across)).toBe(1);
@@ -341,9 +333,45 @@ test.describe('the drawn caret', () => {
 		test.use({ hasTouch: true });
 
 		test('keeps the browser’s caret', async ({ page }) => {
+			skipUnlessSupported(page, 'touch');
 			await editor.loadContent('hello world\n');
 			await editor.focusBlock(0, 3);
 			await expect.poll(() => caretsShowing(page)).toEqual(ONE_NATIVE);
 		});
+	});
+});
+
+test.describe('the drawn caret in a plugin’s editable leaf', () => {
+	let memo: MemoPage;
+
+	test.beforeEach(async ({ page }) => {
+		memo = new MemoPage(page);
+		await memo.gotoSeed();
+	});
+
+	test('sits on the browser’s caret position', async ({ page }) => {
+		await memo.memo.click();
+		await page.keyboard.press(edgeKey('lineEnd'));
+		await expectOneCaretOnTheRange(page);
+	});
+});
+
+test.describe('the drawn caret beside a text-height widget, under forced colors', () => {
+	// WebKit has no forced-colors mode (the query always matches none); Playwright only flips it.
+	test.skip(({ browserName }) => browserName === 'webkit', 'no forced-colors mode in WebKit');
+
+	test.beforeEach(async ({ page }) => {
+		await new PluginsPage(page).gotoPlugins('emoji');
+	});
+
+	// The browser shows its own caret beside a text-height widget under forced colors, so the
+	// editor's bar there would be a second one.
+	test('shows one caret', async ({ page }) => {
+		await page.emulateMedia({ forcedColors: 'active' });
+		await new PluginsPage(page).loadContent('Some prose on this line :tada:\n');
+		const widget = (await page.locator('[data-inline-widget]').boundingBox())!;
+		await page.mouse.click(widget.x + widget.width + 30, widget.y + widget.height / 2);
+		const around = { x: widget.x - 10, y: widget.y - 10, width: widget.width + 60, height: 40 };
+		expect(await caretsUnderForcedColors(page, around)).toBe(1);
 	});
 });

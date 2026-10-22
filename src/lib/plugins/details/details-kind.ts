@@ -200,7 +200,7 @@ export function registerDetailsKind(view: BlockView): void {
 			// Redundant with htmlBlock's type-6 interrupt, which details wins on re-dispatch; kept
 			// so this opener's paragraph behavior does not depend on that priority order.
 			interruptsParagraph: (line) => OPEN_LINE.test(line),
-			readingNotFinal: awaitsClosingTag,
+			readingNotFinal: { notFinal: awaitsClosingTag, mayClose: (line) => CLOSE_LINE.test(line) },
 			tryOpen(ctx) {
 				const openMatch = ctx.line.text.match(OPEN_LINE);
 				if (!openMatch) return null;

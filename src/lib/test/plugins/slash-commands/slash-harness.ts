@@ -111,6 +111,7 @@ function harness(initial: string, attach: (host: HarnessHost) => EditorContext) 
 			focus: { path: [0], offset: caret }
 		}),
 		getMode: () => 'source',
+		showsSource: () => false,
 		events,
 		editorId: 'editor-slash',
 		reading: fixtureReading(),

@@ -121,9 +121,7 @@ const RULES: CallSiteRule[] = [
 			'src/lib/components/blocks/text/text-clipboard.ts :: removeWidget':
 				'a cut of a selected widget, moving with the other clipboard edits',
 			'src/lib/components/blocks/text/text-clipboard.ts :: removeRange':
-				'a cut in a text block or a table cell, moving with the other clipboard edits',
-			'src/lib/components/blocks/text/widget-interaction.ts :: commitReveal':
-				'an inline widget’s shown source, moving with the fold that closes it'
+				'a cut in a text block or a table cell, moving with the other clipboard edits'
 		},
 		reason:
 			'`surface-write.ts :: writeText` records the caret from before the gesture as undo’s, keeps the block’s line ending and puts the caret back; a direct write picks its own undo caret',
@@ -161,9 +159,7 @@ const RULES: CallSiteRule[] = [
 			'src/lib/components/blocks/editable/editable-leaf.ts :: copyRange':
 				'a plugin leaf’s copy of its own range',
 			'src/lib/selection/cross-block/clipboard.ts :: copyCrossBlock':
-				'the copy of a range across blocks, a cell rectangle included',
-			'src/lib/components/menu/clipboard-actions.ts :: pasteTextInto':
-				'the data a menu’s paste event carries in, not a copy’s payload'
+				'the copy of a range across blocks, a cell rectangle included'
 		},
 		reason:
 			'a payload is written by a `ClipboardArm`’s `copy`, which a cut reuses before anything awaits; written anywhere else, a cut’s payload can differ from the copy’s, or land after a scripted cut’s data has closed',
@@ -197,7 +193,7 @@ const RULES: CallSiteRule[] = [
 				'Shift+Enter types a new line',
 			'src/lib/components/blocks/editable/editable-leaf.ts :: breakLine':
 				'Enter in a multi-line plugin source types a new line',
-			'src/lib/components/blocks/editable/editable-leaf.ts :: onBeforeInput':
+			'src/lib/components/blocks/editable/editable-leaf.ts :: sourceInsertion':
 				'a line break with no key in a painted plugin source types a new line',
 			'src/lib/components/blocks/text/TextEditableBlock.svelte :: completesLine':
 				'asks whether a completion is planned, and writes nothing'

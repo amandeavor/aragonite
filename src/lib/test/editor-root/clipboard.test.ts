@@ -11,9 +11,10 @@ import type { PasteImageHook } from '#lib/host-hooks.js';
 import type { CrossBlockHandlers } from '#lib/selection/cross-block/dispatch.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { WHOLE_BLOCK_INPUT_ATTR } from '#lib/editor-actions/whole-block-focus-surface.js';
 
-// Chromium retargets a clipboard event to <body> when the selection has no caret, at a cross-block
-// endpoint or a selected widget; driven through `target`, since a block still holds focus.
+// Chromium aims a clipboard event at <body> and Firefox at a block element when the selection's end
+// has no caret, at a cross-block endpoint or a selected widget; driven through `target`.
 
 interface HarnessOptions {
 	onPasteImage?: PasteImageHook;
@@ -58,13 +59,15 @@ function harness(options: HarnessOptions = {}) {
 	const errors: EditorError[] = [];
 	events.on('error', (e) => errors.push(e));
 
+	const header = document.createElement('header');
 	const clipboard = createEditorRootClipboard({
 		selection,
 		getDoc: () => doc,
 		crossBlock,
 		onPasteImage: () => options.onPasteImage,
 		events,
-		getBlockComponent: (path) => (path[0] === 0 ? (options.widgetBlock ?? null) : null)
+		getBlockComponent: (path) => (path[0] === 0 ? (options.widgetBlock ?? null) : null),
+		isHostChrome: (node) => !!node && header.contains(node)
 	});
 
 	function fire(
@@ -95,7 +98,7 @@ function harness(options: HarnessOptions = {}) {
 		return { written, preventCount };
 	}
 
-	return { root, selection, clipboard, fire, pasted, deleted, errors };
+	return { root, header, selection, clipboard, fire, pasted, deleted, errors };
 }
 
 const pngFile = () => new File([new Uint8Array([137, 80])], 'shot.png', { type: 'image/png' });
@@ -127,15 +130,84 @@ describe('editor-root clipboard routing', () => {
 		expect(h.fire('copy', document.body, { prevented: true }).written.size).toBe(0);
 	});
 
-	it('declines a target inside the editor that is not the root', () => {
-		const h = harness();
-		h.selection.enterCrossBlock({ path: [0], offset: 0 }, { path: [1], offset: 5 });
-		// The search bar's input and a host header field both live here and own their
-		// own clipboard; taking "anywhere inside the root" would swallow them.
-		const input = document.createElement('input');
-		h.root.append(input);
+	// Miss-analysis: every row fired at the root or the body, where Chromium aims these events; Firefox aims them at the block.
+	describe('a target inside the editor', () => {
+		function blockElement(root: HTMLElement): HTMLElement {
+			const block = document.createElement('div');
+			block.className = 'thematic-break-block';
+			root.append(block);
+			return block;
+		}
 
-		expect(h.fire('copy', input).written.size).toBe(0);
+		it('takes a copy, a cut and a paste aimed at a block element that left it alone', async () => {
+			const h = harness();
+			h.selection.enterCrossBlock({ path: [0], offset: 0 }, { path: [1], offset: 5 });
+			const block = blockElement(h.root);
+
+			expect(h.fire('copy', block).written.get('text/plain')).toContain('hello');
+			expect(h.fire('cut', block).written.get('text/plain')).toContain('hello');
+			await vi.waitFor(() => expect(h.deleted).toHaveBeenCalledOnce());
+			h.fire('paste', block);
+			expect(h.pasted).toEqual([undefined]);
+		});
+
+		it('forwards one aimed at a block element to the block holding a selected widget', () => {
+			const seen: string[] = [];
+			const widgetBlock = {
+				claimRootClipboard: (e: ClipboardEvent) => void seen.push(e.type)
+			} as unknown as BlockComponent;
+			const h = harness({ widgetBlock });
+
+			h.fire('copy', blockElement(h.root));
+
+			expect(seen).toEqual(['copy']);
+		});
+
+		// A block focused whole holds focus on its hidden input, editable outside reading mode, and
+		// sends Mod+C over a range across blocks to the copy event.
+		for (const editable of ['true', 'false']) {
+			it(`takes a copy aimed at a block's whole-block input (contenteditable=${editable})`, () => {
+				const h = harness();
+				h.selection.enterCrossBlock({ path: [0], offset: 0 }, { path: [1], offset: 5 });
+				const input = blockElement(h.root);
+				input.setAttribute(WHOLE_BLOCK_INPUT_ATTR, '');
+				input.setAttribute('contenteditable', editable);
+
+				expect(h.fire('copy', input).written.get('text/plain')).toContain('hello');
+			});
+		}
+
+		// The search bar's input, a host header field and a plugin's own editable keep their
+		// clipboard; the editor's block surfaces mark theirs handled first.
+		const FIELDS: Record<string, () => HTMLElement> = {
+			'an input': () => document.createElement('input'),
+			'a textarea': () => document.createElement('textarea'),
+			'an editable outside every block': () => {
+				const editable = document.createElement('div');
+				editable.setAttribute('contenteditable', 'true');
+				return editable;
+			}
+		};
+		for (const [name, make] of Object.entries(FIELDS)) {
+			it(`declines ${name}, which keeps its own clipboard`, () => {
+				const h = harness();
+				h.selection.enterCrossBlock({ path: [0], offset: 0 }, { path: [1], offset: 5 });
+				const field = make();
+				h.root.append(field);
+
+				expect(h.fire('copy', field).written.size).toBe(0);
+			});
+		}
+
+		it('declines one aimed into the host header', () => {
+			const h = harness();
+			h.selection.enterCrossBlock({ path: [0], offset: 0 }, { path: [1], offset: 5 });
+			h.root.append(h.header);
+			const button = document.createElement('button');
+			h.header.append(button);
+
+			expect(h.fire('copy', button).written.size).toBe(0);
+		});
 	});
 
 	it('declines when the selection is not cross-block', () => {
@@ -195,7 +267,7 @@ describe('editor-root clipboard routing', () => {
 			});
 		}
 
-		it('declines a target that is not dead space, widget selected or not', () => {
+		it('declines a text field that keeps its own clipboard, widget selected or not', () => {
 			const { block, seen } = widgetBlock();
 			const h = harness({ widgetBlock: block });
 			const input = document.createElement('input');

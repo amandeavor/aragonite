@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { pollAutoscrollPast } from '../../autoscroll';
+import { hoverInPlace } from '../../click-in-place';
 
 // The drop index depends on direction, since removing the dragged block shifts later indices, so
 // down, up and a drag within one container are all covered to catch an off-by-one. The top-level
@@ -19,7 +20,7 @@ test.describe('drag to reorder', () => {
 		srcText: string
 	): Promise<{ x: number; y: number }> {
 		const src = editor.page.locator(srcSelector, { hasText: srcText }).first();
-		await src.hover();
+		await hoverInPlace(src);
 		const hb = await src.locator('.block-drag-handle').first().boundingBox();
 		if (!hb) throw new Error('missing handle bounding box');
 		return { x: hb.x + hb.width / 2, y: hb.y + hb.height / 2 };
@@ -53,23 +54,6 @@ test.describe('drag to reorder', () => {
 		await editor.loadContent('```\nA\n```\n\n```\nB\n```\n\n```\nC\n```\n');
 		await dragHandle('.block-host', 'C', '.block-host', 'A', false);
 		await editor.bridge.waitForSourceMatches(/C[\s\S]*A[\s\S]*B/);
-	});
-
-	// Miss-analysis: the handles-off row only counted the picture's handle and never dragged it,
-	// while the drag finds its block and every drop target by a class that followed the prop.
-	test('with blockDragHandles=false a picture still drags past a paragraph', async () => {
-		await editor.goto('?dragHandles=false');
-		await editor.loadContent('![cat|200](/test-fixtures/sample.png)\n\nplain\n');
-		const picture = editor.page.locator('.block-host[data-block-path="[0]"]');
-		await picture.hover();
-		const hb = await picture.locator(':scope > .block-drag-handle').boundingBox();
-		const db = await editor.page.locator('.block-host', { hasText: 'plain' }).last().boundingBox();
-		if (!hb || !db) throw new Error('missing bounding box');
-		await editor.page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
-		await editor.page.mouse.down();
-		await editor.page.mouse.move(db.x + db.width / 2, db.y + db.height - 2, { steps: 14 });
-		await editor.page.mouse.up();
-		await editor.bridge.waitForSourceMatches(/^plain\n\n!\[cat/);
 	});
 
 	test('drag a list item within its list', async () => {
@@ -168,7 +152,7 @@ test.describe('drag to reorder', () => {
 	test('a drop focuses nothing it dropped', async ({ page }) => {
 		await editor.loadContent('```js\nfirst\n```\n\n```js\nsecond\n```\n\ntail\n');
 		const first = page.locator('.block-host[data-block-kind="fencedCode"]').first();
-		await first.hover();
+		await hoverInPlace(first);
 		const hb = (await first.locator(':scope > .block-drag-handle svg').boundingBox())!;
 		const dst = (await page
 			.locator('.block-host[data-block-kind="fencedCode"]')
@@ -190,7 +174,7 @@ test.describe('drag to reorder', () => {
 	test('the ghost names a table rather than sampling its cells', async ({ page }) => {
 		await editor.loadContent('| A | B |\n| --- | --- |\n| 1 | 2 |\n\ntail\n');
 		const table = page.locator('.block-host[data-block-kind="table"]').first();
-		await table.hover();
+		await hoverInPlace(table);
 		const hb = (await table.locator(':scope > .block-drag-handle svg').boundingBox())!;
 		await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
 		await page.mouse.down();
@@ -265,5 +249,30 @@ test.describe('drag to reorder', () => {
 		await editor.bridge.waitForSourceMatches(/para 1[\s\S]*\npara 0\n```/);
 		// And the document is intact: no block dropped or duplicated.
 		expect(await editor.bridge.getBlockCount()).toBe(150);
+	});
+});
+
+test.describe('reorder drag with the handles turned off', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?dragHandles=false');
+	});
+
+	// Miss-analysis: the handles-off row only counted the picture's handle and never dragged it,
+	// while the drag finds its block and every drop target by a class that followed the prop.
+	test('with blockDragHandles=false a picture still drags past a paragraph', async () => {
+		await editor.loadContent('![cat|200](/test-fixtures/sample.png)\n\nplain\n');
+		const picture = editor.page.locator('.block-host[data-block-path="[0]"]');
+		await hoverInPlace(picture);
+		const hb = await picture.locator(':scope > .block-drag-handle').boundingBox();
+		const db = await editor.page.locator('.block-host', { hasText: 'plain' }).last().boundingBox();
+		if (!hb || !db) throw new Error('missing bounding box');
+		await editor.page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+		await editor.page.mouse.down();
+		await editor.page.mouse.move(db.x + db.width / 2, db.y + db.height - 2, { steps: 14 });
+		await editor.page.mouse.up();
+		await editor.bridge.waitForSourceMatches(/^plain\n\n!\[cat/);
 	});
 });

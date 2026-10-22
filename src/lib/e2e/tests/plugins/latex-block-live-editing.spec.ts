@@ -1,6 +1,8 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
+import { insertText } from '../../insert-text';
 
 // Editing keys at the edges of an open `$$` source whose fence lines live mode hides: the ends of
 // the line, Enter, Backspace and Tab must all stay inside the body.
@@ -8,6 +10,8 @@ import { BlockMathPage } from './latex-reveal-helpers';
 
 const BODY = '\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}';
 const DOC = `Before\n\n$$\n${BODY}\n$$\n\nAfter\n`;
+
+const FAMILY = String.fromCodePoint(0x1f468, 0x200d, 0x1f469, 0x200d, 0x1f467);
 
 test.describe('block math editing edges (live)', () => {
 	let editor: BlockMathPage;
@@ -20,14 +24,14 @@ test.describe('block math editing edges (live)', () => {
 
 	const enterFromAbove = async (page: BlockMathPage['page']) => {
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(editor.source).toBeFocused();
 	};
 
 	const enterFromBelow = async (page: BlockMathPage['page']) => {
 		await editor.getBlock(2).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowLeft');
 		await expect(editor.source).toBeFocused();
 	};
@@ -38,7 +42,7 @@ test.describe('block math editing edges (live)', () => {
 		await enterFromAbove(page);
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.type('X');
 		await expect.poll(() => editor.sourceText()).toBe(`$$\nX${BODY}\n$$`);
 	});
@@ -49,7 +53,7 @@ test.describe('block math editing edges (live)', () => {
 		await enterFromBelow(page);
 		await page.keyboard.press('ArrowLeft');
 		await page.keyboard.press('ArrowLeft');
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('X');
 		await expect.poll(() => editor.sourceText()).toBe(`$$\n${BODY}X\n$$`);
 	});
@@ -74,6 +78,22 @@ test.describe('block math editing edges (live)', () => {
 		await editor.getBlock(2).click();
 		await expect(editor.source).toHaveCount(0);
 		expect(await editor.bridge.getSource()).toBe(DOC);
+	});
+
+	// The shown source reaches the tree only on blur, so the delete reads the text on screen.
+	test('Backspace after text typed into the shown source takes what was typed, one undo after the blur', async ({
+		page
+	}) => {
+		await enterFromAbove(page);
+		await insertText(page, `XY${FAMILY}`);
+		await page.keyboard.press('Backspace');
+		await page.keyboard.press('Backspace');
+		await expect.poll(() => editor.sourceText()).toBe(`$$\nX${BODY}\n$$`);
+
+		await editor.getBlock(2).click();
+		await editor.bridge.waitForSourceEquals(`Before\n\n$$\nX${BODY}\n$$\n\nAfter\n`);
+		await editor.undo();
+		await editor.bridge.waitForSourceEquals(DOC);
 	});
 
 	test('Delete at the body end deletes nothing and keeps the fence', async ({ page }) => {
@@ -126,7 +146,7 @@ test.describe('a range out of the body keeps the block (live)', () => {
 		await editor.revealByClick();
 		// Six real steps out of the body and into the paragraph below, so the range ends where
 		// keyboard extension actually put it rather than at a computed offset.
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 6; i++) await page.keyboard.press('Shift+ArrowRight');
 	});
 

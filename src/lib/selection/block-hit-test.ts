@@ -11,6 +11,7 @@ import { cellPoint, type SelectionEndpoint } from './primitives';
 import { caretOffsetAtPoint, offsetFromViewportPoint } from '../caret/point-offset';
 import { readBlockPath } from './path-lookup';
 import { pathsEqual } from './path-math';
+import { BLOCK_TEXT_SELECTOR } from '../caret/block-content-selector';
 
 export interface BlockHit {
 	path: number[];
@@ -63,11 +64,11 @@ export function blockAtPoint(
 	return null;
 }
 
-/** Whether the hit's editable text belongs to the block itself, not to a child inside it (a
- *  quote's first line is its first child's). False where editing is off, as in reading mode. */
+/** Whether the hit's text belongs to the block itself, not to a child inside it (a quote's first
+ *  line is its first child's), in every mode. */
 export function holdsOwnText(hit: BlockHit): boolean {
 	const surface = hit.charSurface;
-	if (!surface?.matches('[contenteditable="true"]')) return false;
+	if (!surface?.matches(BLOCK_TEXT_SELECTOR)) return false;
 	const owner = readBlockPath(surface.closest('[data-block-path]'));
 	return owner !== null && pathsEqual(owner, hit.path);
 }

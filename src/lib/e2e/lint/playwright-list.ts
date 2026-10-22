@@ -62,8 +62,7 @@ export function listPlaywrightTests(): { tests: ListedTest[]; errors: string[] }
 	const run = spawnSync(
 		process.execPath,
 		[resolveModule('@playwright/test/cli'), 'test', '--list', '--reporter=json'],
-		// The WebKit lane's specs belong to no other project, so they list only with it on.
-		{ encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, env: { ...process.env, WEBKIT: '1' } }
+		{ encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }
 	);
 	if (!run.stdout) throw new Error(`playwright test --list printed nothing: ${run.stderr}`);
 	const report = JSON.parse(run.stdout) as ListReport;

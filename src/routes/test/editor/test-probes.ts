@@ -1,13 +1,20 @@
 import { tick } from 'svelte';
-import type { PastedImage, PresentationMode } from '#lib';
+import type {
+	InputRecording,
+	InputRecordingHandle,
+	InputRecordingOptions,
+	PastedImage,
+	PresentationMode
+} from '#lib';
 import type { Editor, EditorProps } from '#lib/svelte.js';
 import { readBlocks } from '#lib/core/parser.js';
+import { hashSource } from '#lib/debug/input-recording.js';
 import type { GrammarView } from '#lib/schema/block-openers.js';
 import { serialize } from '#lib/core/serializer.js';
 import { parseConverges } from '#lib/testing/parse-convergence.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
 import { spliceChildren } from '#lib/tree-operations/children.js';
-import { getStateForNode } from '#lib/block-lists/state-registry.js';
+import { getStateForNode, isUnmountedBlockListState } from '#lib/block-lists/state-registry.js';
 import type { CstNode, Document, PluginBlockKind } from '#lib/core/nodes.js';
 import type { GapCaretPosition } from '#lib/selection/gap-caret.js';
 import type { EditorSelection } from '#lib/selection/primitives.js';
@@ -337,6 +344,8 @@ interface StateDrift {
 	childrenLen: number;
 	idsLen: number;
 	refsLen: number;
+	/** The registry handed back a state whose container has unmounted. */
+	unmounted?: true;
 }
 
 /** `raw` is the focus block's source when the event fired, so a spec can tell an announcement
@@ -403,6 +412,7 @@ export function installTestProbes({
 	// A reinstall means a new editor instance, and a session still open is subscribed to
 	// the previous instance's events.
 	const remounted = 'the editor remounted while the session was open';
+	let inputRecording: InputRecordingHandle | null = null;
 	editOpProbe.invalidate(remounted);
 	errorProbe.invalidate(remounted);
 	menuProbe.invalidate(remounted);
@@ -650,7 +660,9 @@ export function installTestProbes({
 			caretRect: (): DOMRect | null => editor.getRects().caretRect(),
 			reveal: (path: number[]): Promise<boolean> => editor.getRects().reveal(path),
 			scrollTo: (path: number[], opts?: { block?: 'nearest' | 'center' }): Promise<boolean> =>
-				editor.getRects().scrollTo(path, opts)
+				editor.getRects().scrollTo(path, opts),
+			navigateTo: (path: number[], offset?: number): Promise<boolean> =>
+				editor.getRects().navigateTo(path, offset)
 		},
 		// ── Cross-block caretRect timing probe ─────────────────────────────
 		// Read inside the synchronous handler, before the data-cross-block attribute updates, so
@@ -702,6 +714,17 @@ export function installTestProbes({
 		// it lives.
 		serializeDiagnostics: (opts?: { includeSource?: boolean }) =>
 			editor.getDiagnostics().serializeDiagnostics(opts),
+		// A page evaluation can't hand back a handle, so the bridge holds the one recording.
+		startInputRecording: (options?: InputRecordingOptions): void => {
+			inputRecording?.stop();
+			inputRecording = editor.getDiagnostics().recordInput(options);
+		},
+		getSourceHash: (): string => hashSource(editor.getSource()),
+		stopInputRecording: (): InputRecording | null => {
+			const recording = inputRecording?.stop() ?? null;
+			inputRecording = null;
+			return recording;
+		},
 		// ── The debug dumps ───────────────────────────────────────────────
 		dumpTree: (opts?: Parameters<typeof dumpTree>[1]) =>
 			dumpTree(editor.__test.getDocument(), opts),
@@ -824,7 +847,17 @@ export function installTestProbes({
 				if (!node.children) return;
 				containers++;
 				const state = getStateForNode(node);
-				if (state) {
+				if (state && isUnmountedBlockListState(state)) {
+					// Its getters read the dead component's props, so nothing else is read off it.
+					violations.push({
+						path: [...path],
+						kind: node.kind,
+						childrenLen: node.children.length,
+						idsLen: node.childIds?.length ?? 0,
+						refsLen: 0,
+						unmounted: true
+					});
+				} else if (state) {
 					resolved++;
 					const childrenLen = node.children.length;
 					const idsLen = state.innerBlockIds.length;

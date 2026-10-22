@@ -85,7 +85,6 @@ test.describe('plugin container: reveal expands a collapsed <details>', () => {
 	test('one undo collapses it back to the original bytes', async ({ page }) => {
 		await editor.entry('Buried Heading').click();
 		await editor.bridge.waitForSourceContains('<details open>');
-		await editor.waitForUndoBatchFlush();
 
 		// Straight to Ctrl+Z with no click first: the navigation puts the caret in the heading it
 		// mounted, so the gesture that made the edit leaves focus where its undo can be typed.

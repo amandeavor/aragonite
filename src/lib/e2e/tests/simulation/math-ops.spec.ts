@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage } from '../plugins/helpers';
+import { settleDiagrams } from '../plugins/mermaid-helpers';
 import { Gestures } from '../../simulation/gestures';
 import { attachErrorCollector } from '../../simulation/error-collector';
 import { makeRng } from '../../simulation/rng';
@@ -100,9 +101,9 @@ test.describe('math-ops simulation', () => {
 
 		await editor.loadContent(MERMAID_DOC);
 		await editor.waitForRenderFlush();
-		// The diagram renders through a dynamic import the dev server compiles on first use, so
+		// The diagram renders through a large module the page fetches on first use, so
 		// wait for the SVG before driving the focus gestures.
-		await expect(page.locator('.mermaid-viewport svg')).toHaveCount(1, { timeout: 30_000 });
+		await settleDiagrams(page);
 
 		const ctx = await makeSimContext(page, editor, 'mermaid-focus', { errors });
 		const g = new Gestures(ctx, makeRng(1));

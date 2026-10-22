@@ -30,7 +30,7 @@ import {
 	type ItemMoveCommits
 } from '../tree-operations/list/item-moves';
 import type { BlockListState } from '../block-lists/block-list-state.svelte';
-import { expectStateForNode } from '../block-lists/state-registry';
+import { expectStateForNode, getStateForNode } from '../block-lists/state-registry';
 import type { NodeScope } from './nested/nested-actions';
 
 export interface ListContextDeps {
@@ -65,10 +65,10 @@ export function createListContext(deps: ListContextDeps): ListContext {
 		offset
 	});
 
-	// A caret's own key moves items in containers that are mounted, so a missing state is a bug.
+	// A neighbour item can sit outside a long list's window while the caret's own item stays pinned.
 	const itemMoves: ItemMoveCommits = {
 		commitMultiScope: (args) => deps.controller.commitMultiScope(args),
-		resolveState: expectStateForNode
+		resolveState: getStateForNode
 	};
 	const ownScope = (): MultiScopeTarget => ({
 		node: deps.scope.node,

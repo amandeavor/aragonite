@@ -1,5 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, clickWidgetCenter, clickWidgetEnd } from './helpers';
+import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 /**
  * Acceptance coverage for the LaTeX extension, each test labelled with the spec's axis id. These
@@ -133,7 +135,7 @@ test.describe('latex acceptance axes', () => {
 
 		// Leave past the bottom edge, a view change with no edit: the scroll still holds and the
 		// re-rendered display sits exactly where it started, with no net shift.
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(editor.blockRender).toHaveCount(1);
 		await editor.waitForScrollSettle();
@@ -145,9 +147,9 @@ test.describe('latex acceptance axes', () => {
 		);
 	});
 
-	// A1 for an inline formula: after showing the source and committing, a typed character lands past
-	// the widget, and the block below does not move vertically.
-	test('A1: inline reveal→edit→commit preserves the caret with no vertical shift', async ({
+	// A1 for an inline formula: after showing the source, editing it and leaving it, the caret is
+	// where the key that left put it, and the block below does not move vertically.
+	test('A1: inline reveal→edit→leave preserves the caret with no vertical shift', async ({
 		page
 	}) => {
 		await editor.loadContent(INLINE_MATH);
@@ -159,15 +161,14 @@ test.describe('latex acceptance axes', () => {
 		await clickWidgetEnd(editor.inlineWidget);
 		await expect(editor.inlineWidget).toHaveCount(0);
 		await page.keyboard.type('z');
-		// Moving the caret out is what commits; Enter splits the block instead.
-		await page.keyboard.press('End');
+		// Moving the caret out closes the source; Enter splits the block instead.
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await expect(editor.inlineWidget).toHaveCount(1);
 
-		// The commit left the caret at the widget's trailing edge, so the next character lands
-		// right after it, showing the caret survived the re-render.
+		// End's caret survives the widget drawing again, so the next character ends the line.
 		await page.keyboard.type('!');
-		await editor.bridge.waitForSourceContains('$x^2z$! after');
-		expect(await editor.bridge.getSource()).toContain('Before $x^2z$! after');
+		await editor.bridge.waitForSourceContains('after!');
+		expect(await editor.bridge.getSource()).toContain('Before $x^2z$ after!');
 
 		const nextTopAfter = (await editor.getBlock(1).boundingBox())?.y ?? NaN;
 		expect(Math.abs(nextTopAfter - nextTopBefore)).toBeLessThanOrEqual(GEOMETRY_TOLERANCE);
@@ -189,11 +190,11 @@ test.describe('latex acceptance axes', () => {
 		// paragraph; getBlock(4) is "Para 2.".
 		await clickWidgetCenter(editor.blockRender.nth(1));
 		await expect(editor.blockSource).toHaveCount(1);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('z');
-		await editor.getBlock(4).click();
+		await clickInPlace(editor.getBlock(4));
 
 		await editor.bridge.waitForSourceContains('$$zb^2$$');
 		await expect(editor.blockRender).toHaveCount(3);

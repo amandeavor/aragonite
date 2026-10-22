@@ -102,9 +102,11 @@ test.describe('live mode: markers never reveal', () => {
 
 		const bulletAmbient = page.locator(`[data-list-marker='bullet'] ${AMBIENT_MARKER}`).first();
 		// toBeHidden here on purpose: the bullet's span is not display:none but emptied and repainted
-		// by a `::before`, and its presence is asserted below.
+		// by its box's `::before`, and its presence is asserted below.
 		await expect(bulletAmbient).toBeHidden();
-		const painted = await bulletAmbient.evaluate((el) => getComputedStyle(el, '::before').content);
+		const painted = await bulletAmbient.evaluate(
+			(el) => getComputedStyle(el.querySelector('.md-marker-box')!, '::before').content
+		);
 		expect(painted).toContain('•');
 	});
 

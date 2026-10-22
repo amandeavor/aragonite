@@ -1,8 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-	buildTaskItemAmbient,
-	TASK_HANGING_INDENT
-} from '#lib/components/blocks/list/task-checkbox.js';
+import { buildTaskItemAmbient } from '#lib/components/blocks/list/task-checkbox.js';
 import type { ListItemMetadata } from '#lib/core/nodes.js';
 import { takeDevWarns } from '../../support/warn-gate';
 
@@ -50,8 +47,7 @@ describe('buildTaskItemAmbient', () => {
 					onClick: onToggle
 				},
 				{ start: 0, end: 2, className: 'task-list-marker', onClick: expect.any(Function) }
-			],
-			indent: TASK_HANGING_INDENT
+			]
 		});
 	});
 

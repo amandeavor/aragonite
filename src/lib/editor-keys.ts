@@ -7,6 +7,7 @@
 
 import type { MenuPresence } from './components/menu/menu-presence.svelte';
 import type { DraftRegistry } from './components/draft-registry';
+import type { ShownSourceState } from './components/blocks/text/shown-source.svelte';
 import type { DocumentStamps } from './editor-actions/commit/document-stamp';
 import type { Document } from './core/nodes';
 import type { ImageLoadPolicy } from './core/inline-render';
@@ -39,6 +40,7 @@ import type { InlineMenuCombobox } from './inline-menu/inline-menu-state.svelte'
 import type { LinkCardState } from './components/link-card/link-card-state.svelte';
 import type { KindCue } from './components/kind-cue.svelte';
 import type { TextMoves } from './components/overlays/text-moves';
+import type { ReadingFocus } from './components/editor-root/reading-focus.svelte';
 import type { PlaceholderPolicy } from './components/blocks/placeholder-hint.svelte';
 import type { BlockElLookup } from './caret/block-el-lookup';
 import type {
@@ -141,6 +143,8 @@ export interface EditorServices {
 	menuPresence: MenuPresence;
 	/** Edits held outside the document until they commit; a swap drops them (`draft-registry.ts`). */
 	drafts: DraftRegistry;
+	/** The one inline widget showing its source in this editor, which its block draws as bytes. */
+	shownSource: ShownSourceState;
 	/** Which document each write was made for; `BlockHost` stamps its block's write handles. */
 	stamps: DocumentStamps;
 	/** The label a typed kind change leaves on its block for a moment (`kind-cue.svelte.ts`). */
@@ -148,6 +152,9 @@ export interface EditorServices {
 	/** Where a change that moves text without resizing its block is reported, so the overlays
 	 *  over that text measure again. */
 	textMoves: TextMoves;
+	/** The editor's one tab stop in reading mode; each block's focus element takes its tabindex
+	 *  from it. */
+	readingFocus: ReadingFocus;
 }
 
 /** Host-supplied render/behavior policies. The getter members read live editor state

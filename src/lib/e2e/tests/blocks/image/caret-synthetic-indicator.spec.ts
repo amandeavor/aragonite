@@ -6,7 +6,8 @@ import {
 	dropNativeCaret,
 	pointPastImageRightEdge,
 	waitForAllImagesLoaded,
-	waitForFirstImageLoaded
+	waitForFirstImageLoaded,
+	waitForImagesDecoded
 } from './helpers';
 import {
 	caretsShowing,
@@ -15,6 +16,7 @@ import {
 	expectBarBesideWidget
 } from '../../../carets-showing';
 import { filler } from '../../selection/gap-caret-fixtures';
+import { clickInPlace } from '../../../click-in-place';
 
 const ONE_DRAWN = { native: false, drawn: 1 };
 const NONE = { native: false, drawn: 0 };
@@ -90,7 +92,7 @@ test.describe('synthetic caret indicator at widget boundary', () => {
 		await page.evaluate(() => (window as any).__test.rects.scrollTo([151], { block: 'center' }));
 		await expect(page.locator('[data-block-path="[0]"]')).toHaveCount(0);
 		const imageB = page.locator('[data-block-path="[151]"] [data-image-widget]');
-		await expect.poll(() => imageB.evaluate((w) => w.querySelector('img')!.complete)).toBe(true);
+		await waitForImagesDecoded(imageB.locator('img'));
 		await clickPastWidget(page, imageB);
 		await expect.poll(() => caretsShowing(page)).toEqual(ONE_DRAWN);
 		await expectBarBesideWidget(page, imageB, 'image');
@@ -242,7 +244,7 @@ test.describe('synthetic caret indicator at widget boundary', () => {
 		await expect.poll(() => paintedCarets(page)).toEqual(['[0,0,0]']);
 
 		const followingPara = page.locator('[contenteditable="true"]').nth(1);
-		await followingPara.click();
+		await clickInPlace(followingPara);
 		await expect.poll(() => paintedCarets(page)).toEqual([]);
 		await expect.poll(() => caretsShowing(page)).toEqual(ONE_DRAWN);
 	});

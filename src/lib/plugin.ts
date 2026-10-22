@@ -84,17 +84,40 @@ export type {
 export { simpleLeafClosure, containerClosure } from './schema/closure';
 
 // ── Block views ──────────────────────────────────────────────────────────────
-// What draws a kind, the registration's `view`. `BlockView` is opaque: `svelteBlockView` on
-// `/svelte` makes one from a component.
-export type { BlockView } from './schema/block-view';
-// The editor's plain editable text block, for a kind drawn as plain text and for a host that
-// doesn't compile Svelte; `blockClass` lands on its element.
+// What draws a kind, the registration's `view`: `defineBlockView` draws into an element the
+// editor makes, and `svelteBlockView` on `/svelte` draws with a component.
+export { defineBlockView } from './schema/block-view';
+export type {
+	BlockView,
+	BlockSurface,
+	BlockViewSpec,
+	HandBuiltViewSpec,
+	LeafViewSpec,
+	ContainerViewSpec,
+	BlockViewState,
+	BlockViewContext,
+	LeafViewContext,
+	ContainerViewContext,
+	LeafSurface,
+	ContainerSurface,
+	BlockViewHandle,
+	LeafViewHandle,
+	HandBuiltViewHandle,
+	HandBuiltBlock
+} from './schema/block-view';
+// The editor's plain editable text block, for a kind drawn as plain text; `blockClass` lands on
+// its element.
 export { textBlockView } from './components/blocks/text/text-block-view';
 export type { BlockComponent, BlockComponentExports, BlockComponentProps } from './block-component';
 
 // ── Parser openers ───────────────────────────────────────────────────────────
 // A registration's `opener`: how the block parser recognizes the kind from a line.
-export type { BlockOpener, BlockOpenerResult, OpenContext } from './schema/block-openers';
+export type {
+	BlockOpener,
+	BlockOpenerResult,
+	OpenContext,
+	UnfinishedReading
+} from './schema/block-openers';
 // The shared "does this line start a block at the outer level" gate, so a container opener
 // scanning its own extent ends it where cmark-gfm does instead of forking the rule.
 export { lineStartsOuterBlock } from './schema/block-openers';
@@ -203,13 +226,14 @@ export type { ContainerBodyWrap } from './core/parser';
 
 // ── Fence grammar (pre-freeze) ───────────────────────────────────────────────
 // The CommonMark fence grammar, so a plugin taking over a fence (```mermaid) never reimplements
-// it: `fenceRawWrite` serves as its `rawWrite`, and `escalatedFenceLength` sizes a rebuilt fence.
+// it: `fenceRawWrite` is its `rawWrite`, `fenceReading` its opener's `readingNotFinal`.
 export {
 	matchFenceOpen,
 	matchFenceClose,
 	escalatedFenceLength,
 	findFenceCloser,
 	fenceAnatomy,
+	fenceReading,
 	matchFenceInfo
 } from './core/parsers/fence-syntax';
 export type { FenceOpen, FenceRun, FenceAnatomy } from './core/parsers/fence-syntax';
@@ -298,7 +322,7 @@ export type { DirectiveTier, DirectiveFence, DirectiveAttributes } from './core/
 export { createDirectiveRebuild } from './editor-actions/plugin/directive-container';
 // The wrap every `:::` body parses with; a directive kind declares it as its `container.bodyWrap`
 // so the editor's blank-line fix-up knows the blank line against the fence belongs to the fence.
-export { DIRECTIVE_BODY_WRAP } from './core/directive/kinds';
+export { DIRECTIVE_BODY_WRAP } from './core/directive/container-shape';
 
 // ── Renderer utilities (pre-freeze) ──────────────────────────────────────────
 // Where an injected renderer is set and cached per theme, with the plugin's own fallback when it's

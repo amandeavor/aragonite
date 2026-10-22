@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import type { EditorPage } from '../../editor-page';
 import { clickBlockSettled, enterPresentationMode, nextRow } from './helpers';
+import { edgeKey, WORD_MODIFIER } from '../../platform-keys';
 
 // A caret key on the line Shift+Enter opened at a block's end moves from that line, where the
 // caret is drawn, and the line goes once the caret leaves it. Each test walks its rows as steps,
@@ -18,7 +19,7 @@ async function keyThenZ(
 	drawn?: number
 ): Promise<void> {
 	await clickBlockSettled(ep, index);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.press('Shift+Enter');
 	await ep.waitForRenderFlush();
 	await page.keyboard.press(key);
@@ -40,8 +41,8 @@ for (const mode of ['source', 'live'] as const) {
 			['ArrowUp', 'first\n\nzabc\n\nnext\n', 0],
 			['ArrowDown', 'first\n\nabc\n\nznext\n', 0],
 			['ArrowRight', 'first\n\nabc\n\nznext\n', 0],
-			['Home', 'first\n\nabc\\\nz\n\nnext\n', 2],
-			['End', 'first\n\nabc\\\nz\n\nnext\n', 2]
+			[edgeKey('lineStart'), 'first\n\nabc\\\nz\n\nnext\n', 2],
+			[edgeKey('lineEnd'), 'first\n\nabc\\\nz\n\nnext\n', 2]
 		] as const) {
 			await test.step(`${key} moves from the open line`, async () => {
 				await nextRow(ep, DOC);
@@ -74,7 +75,7 @@ test('source mode: the open line of an empty paragraph: ArrowLeft drops the line
 }) => {
 	const ep = await enterPresentationMode(page, 'source', 'first\n');
 	await clickBlockSettled(ep, 0);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.press('Enter');
 	await ep.waitForRenderFlush();
 
@@ -82,3 +83,43 @@ test('source mode: the open line of an empty paragraph: ArrowLeft drops the line
 
 	await expect.poll(() => ep.bridge.getSource()).toBe('first\n\nz\n');
 });
+
+/** A soft keyboard's delete: the `beforeinput` alone, with no keydown in front. */
+async function sendKeylessDelete(page: Page, inputType: string): Promise<void> {
+	await page.evaluate((inputType) => {
+		(document.activeElement as HTMLElement).dispatchEvent(
+			new InputEvent('beforeinput', { inputType, bubbles: true, cancelable: true })
+		);
+	}, inputType);
+}
+
+for (const mode of ['source', 'live'] as const) {
+	test(`${mode} mode: a delete on the open line takes the line, never the text above`, async ({
+		page
+	}) => {
+		const ep = await enterPresentationMode(page, mode, DOC);
+		const deletes: [string, () => Promise<void>][] = [
+			['Shift+Backspace', () => page.keyboard.press('Shift+Backspace')],
+			['Delete', () => page.keyboard.press('Delete')],
+			['a word Delete', () => page.keyboard.press(`${WORD_MODIFIER}+Delete`)],
+			['a soft keyboard’s Backspace', () => sendKeylessDelete(page, 'deleteContentBackward')],
+			['a soft keyboard’s Delete', () => sendKeylessDelete(page, 'deleteContentForward')]
+		];
+		for (const [name, press] of deletes) {
+			await test.step(name, async () => {
+				await nextRow(ep, DOC);
+				await clickBlockSettled(ep, 1);
+				await page.keyboard.press(edgeKey('lineEnd'));
+				await page.keyboard.press('Shift+Enter');
+				await ep.waitForRenderFlush();
+				await press();
+				await ep.waitForRenderFlush();
+				await expect(
+					page.locator('.block-host').nth(1).locator('br[data-caret-anchor="break"]')
+				).toHaveCount(0);
+				await ep.typeSlowly('z');
+				await expect.poll(() => ep.bridge.getSource()).toBe('first\n\nabcz\n\nnext\n');
+			});
+		}
+	});
+}

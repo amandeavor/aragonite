@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { PluginsPage, revealWidget, roundTripStable } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * The inline directive widget: `:name[label]{attrs}` renders as one atomic `.directive-text-widget`
@@ -47,7 +48,7 @@ test.describe('plugin inline directive: caret-entry / click reveal-source editin
 
 	test('ArrowRight left of the widget reveals its source at the leading edge', async ({ page }) => {
 		await editor.getBlock(0).click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		// "see " is 4 characters, so 4 steps reach the widget's leading edge and the fifth enters
 		// it, which shows the source in place rather than selecting it invisibly first.
 		for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
@@ -65,7 +66,7 @@ test.describe('plugin inline directive: caret-entry / click reveal-source editin
 		page
 	}) => {
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		// " here" is 5 chars: 5 steps reach the widget's trailing edge; the 6th enters.
 		for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowLeft');
 		await page.keyboard.press('ArrowLeft');
@@ -81,7 +82,7 @@ test.describe('plugin inline directive: caret-entry / click reveal-source editin
 		page
 	}) => {
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowLeft');
 		await page.keyboard.press('Backspace');
 
@@ -133,15 +134,14 @@ test.describe('plugin inline directive: caret-entry / click reveal-source editin
 		await editor.bridge.waitForSourceNotContains('XHTML');
 	});
 
-	test('Escape discards the source edit and restores the rendered widget', async ({ page }) => {
+	test('Escape closes the source and keeps the edit', async ({ page }) => {
 		await editor.revealByClick();
 		for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('X');
-		// Escape renders the widget again from the untouched raw, discarding the edit.
+		// The typed byte is already in the document, so Escape only draws the widget again.
 		await page.keyboard.press('Escape');
 
 		await expect(editor.widget).toHaveCount(1);
-		expect(await editor.bridge.getSource()).toContain('see :abbr[HTML] here');
-		expect(await editor.bridge.getSource()).not.toContain('XHTML');
+		expect(await editor.bridge.getSource()).toContain('see :abbr[XHTML] here');
 	});
 });

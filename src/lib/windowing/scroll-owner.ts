@@ -42,6 +42,8 @@ export interface TargetResolver {
 	holdForRound(): (() => number) | null;
 	/** Where to scroll so the block at `path` mounts in its list. */
 	mountTop(path: readonly number[]): number | null;
+	/** The block at `top` in the scroll content, as deep as the mounted lists reach. */
+	pathAt(top: number): number[] | null;
 	/** A scripted `scrollTop` write fires no `scroll` event in time, so the root window re-reads it. */
 	syncScrollTop(): void;
 }
@@ -65,6 +67,8 @@ export interface ScrollOwner {
 	/** Whether a viewport rect sits wholly inside what the editor shows, so a caret there needs no
 	 *  scroll. */
 	shows(rect: DOMRectReadOnly): boolean;
+	/** The client-coordinate band the editor shows, or null before the root mounts. */
+	visibleBand(): { top: number; bottom: number } | null;
 	/** Scroll the least distance that shows the rect `read` returns (a caret's line, a cell), read
 	 *  after an open round's correction; null shows nothing. Holds nothing, and ends an older hold. */
 	showRect(read: () => DOMRectReadOnly | null): void;
@@ -82,6 +86,9 @@ export interface ScrollOwner {
 	place(path: readonly number[], opts: PlaceOptions): ScrollPlacement;
 	/** Scroll so the block at `path` leads the viewport, to mount it there. */
 	scrollToMount(path: readonly number[]): void;
+	/** The block at `top` in the scroll content, from the height tables, as deep as the mounted
+	 *  lists reach; null before the root list mounts. */
+	pathAt(top: number): number[] | null;
 	/** Read the position now; the returned call puts it back after a view swap renders. */
 	keep(): () => Promise<void>;
 	/** A keydown, pointerdown or wheel on the scroll container: drop any held placement. */
@@ -99,7 +106,8 @@ export interface ScrollOwnerDeps {
 	/** False while the browser's own scroll anchoring holds the user's place (host mode, root not
 	 *  windowing): two writers on one position correct it twice. */
 	editorCorrects(): boolean;
-	getBlockElByPath: BlockElLookup;
+	/** The element a block is placed and shown by, chrome included. */
+	getBlockBoxByPath: BlockElLookup;
 	getEditorRoot(): HTMLElement | null;
 	/** True when an ancestor owns the scroll: the root then spans the whole document, so
 	 *  intersecting a block with it says nothing about visibility. */
@@ -292,7 +300,7 @@ export function createScrollOwner(deps: ScrollOwnerDeps): ScrollOwner {
 	}
 
 	function landedInView(path: number[]): boolean {
-		const el = deps.getBlockElByPath(path);
+		const el = deps.getBlockBoxByPath(path);
 		const root = deps.getEditorRoot();
 		return el != null && (!root || elementInView(el, root));
 	}
@@ -301,13 +309,14 @@ export function createScrollOwner(deps: ScrollOwnerDeps): ScrollOwner {
 		port: writable,
 		isInView(path) {
 			const root = deps.getEditorRoot();
-			const el = deps.getBlockElByPath([...path]);
+			const el = deps.getBlockBoxByPath([...path]);
 			return !!root && !!el && elementInView(el, root);
 		},
 		shows(rect) {
 			const band = visibleBand();
 			return !!band && bandShows(band, rect);
 		},
+		visibleBand,
 		showRect(read) {
 			writeScroll(() => {
 				// A newer scroll into view, like a newer placement: an older hold must not drag it back.
@@ -344,7 +353,7 @@ export function createScrollOwner(deps: ScrollOwnerDeps): ScrollOwner {
 					// Checked first: a placement another scroll took over during a long mount wait
 					// would otherwise yank the viewport once.
 					if (token.superseded) return false;
-					const el = deps.getBlockElByPath(p);
+					const el = deps.getBlockBoxByPath(p);
 					// A fully visible target stays put under `'nearest'`: the browser moves nothing.
 					writeScroll(() => el && { reveal: el, block });
 					if (el && placement === mine) recordLanding(mine, el);
@@ -357,6 +366,7 @@ export function createScrollOwner(deps: ScrollOwnerDeps): ScrollOwner {
 				}
 			};
 		},
+		pathAt: (top) => resolver?.pathAt(top) ?? null,
 		scrollToMount(path) {
 			writeScroll(() => {
 				const top = resolver?.mountTop(path) ?? null;

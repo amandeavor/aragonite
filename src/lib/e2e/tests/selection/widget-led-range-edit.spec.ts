@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { PluginsPage } from '../plugins/helpers';
 import { textRunCenter } from '../../text-runs';
 import { nextRow } from '../presentation/helpers';
+import { multiClick } from '../../multi-click';
 
 // An edit key over a whole-block range whose first inline node is a widget the caret cannot
 // enter (`requirements/selection/widget-led-range-edit.md`). The range is what the key edits;
@@ -20,8 +21,7 @@ async function selectWholeBlock(
 		await editor.selectAll();
 		return;
 	}
-	const at = await textRunCenter(page, 'opens');
-	await page.mouse.click(at.x, at.y, { clickCount: 3 });
+	await multiClick(page, await textRunCenter(page, 'opens'), 3);
 }
 
 test.describe('editing a whole-block range that opens with a widget', () => {
@@ -42,7 +42,6 @@ test.describe('editing a whole-block range that opens with a widget', () => {
 					expect(await editor.bridge.getSource()).toBe('X\n');
 
 					// One undo restores the bytes whole: the replacement was a single commit.
-					await editor.waitForUndoBatchFlush();
 					await editor.undo();
 					await editor.bridge.waitForSourceEquals(MATH_LINE);
 				});

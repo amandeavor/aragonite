@@ -10,6 +10,8 @@ import {
 	stepTo
 } from './helpers';
 import { attachIme } from '../../simulation/ime';
+import { insertText } from '../../insert-text';
+import { edgeKey } from '../../platform-keys';
 
 // A toggle at a collapsed caret in live mode writes no bytes; the next insertion carries the
 // mark. The source is the reference, because live paints no delimiter, so nothing on screen
@@ -51,7 +53,7 @@ const code = (page: Page) => page.keyboard.press('ControlOrMeta+e');
 async function atEndOfPlain(ep: EditorPage, page: Page): Promise<void> {
 	await nextRow(ep, DOC);
 	await clickBlockSettled(ep, PLAIN);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await ep.waitForRenderFlush();
 }
 
@@ -127,7 +129,7 @@ test('live mode: the marks beyond bold and italic', async ({ page }) => {
 	const atGap = async (): Promise<void> => {
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, GAP);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		await stepTo(ep, page, 'ArrowRight', 4);
 	};
@@ -172,7 +174,7 @@ test('live mode: the marks beyond bold and italic', async ({ page }) => {
 		// Home lands past the hidden opener, so the steps are counted from the content start.
 		await nextRow(ep, DOC);
 		await clickBlockSettled(ep, STRUCK);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		await stepTo(ep, page, 'ArrowRight', 4);
 
@@ -211,7 +213,7 @@ test('live mode: Mod+B inside an autolink’s URL types plain and leaves the lin
 }) => {
 	const ep = await enterLive(page);
 	await clickBlockSettled(ep, AUTOLINK);
-	await page.keyboard.press('Home');
+	await page.keyboard.press(edgeKey('lineStart'));
 	await ep.waitForRenderFlush();
 	await stepTo(ep, page, 'ArrowRight', 10);
 
@@ -310,7 +312,7 @@ test('live mode: one Mod+Z after a burst, a toggle and a keystroke returns the b
 }) => {
 	const ep = await enterLive(page);
 	await clickBlockSettled(ep, PLAIN);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await ep.waitForRenderFlush();
 
 	await page.keyboard.type('abc');
@@ -326,7 +328,7 @@ test('live mode: one Mod+Z after a burst, a toggle and a keystroke returns the b
 test('live mode: an IME commit after Mod+B lands wrapped, like a keystroke', async ({ page }) => {
 	const ep = await enterLive(page);
 	await clickBlockSettled(ep, PLAIN);
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await ep.waitForRenderFlush();
 
 	await bold(page);
@@ -351,7 +353,7 @@ test('live mode: a paste or a soft keyboard’s text after Mod+B lands wrapped',
 	await test.step('text with no key behind it', async () => {
 		await atEndOfPlain(ep, page);
 		await bold(page);
-		await page.keyboard.insertText('X');
+		await insertText(page, 'X');
 		await ep.bridge.waitForSourceContains('plain**X**');
 	});
 });
@@ -382,7 +384,7 @@ test('live mode: a pending mark beside an inline widget', async ({ page }) => {
 		// Stepped rather than placed directly: the widget is one atomic stop, so five keypresses
 		// from the line start clear it, and a DOM offset cannot address the far side of a widget.
 		await ep.clickBlock(0);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
 		await ep.waitForRenderFlush();

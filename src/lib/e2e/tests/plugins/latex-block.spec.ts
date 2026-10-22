@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Block `$$…$$` display math, rendered first and showing its source on focus, driven by real mouse
@@ -69,7 +70,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		page
 	}) => {
 		await editor.render.click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Backspace');
 		await editor.getBlock(0).click();
 		await editor.bridge.waitForSourceEquals('Before\n\n$$x^2$$\n\nAfter\n');
@@ -117,15 +118,8 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('End');
-		await page.evaluate(async () => {
-			await navigator.clipboard.write([
-				new ClipboardItem({
-					'text/plain': new Blob([' plain'], { type: 'text/plain' }),
-					'text/html': new Blob(['<b>BOLD</b>'], { type: 'text/html' })
-				})
-			]);
-		});
+		await page.keyboard.press(edgeKey('lineEnd'));
+		await editor.seedClipboard({ 'text/plain': ' plain', 'text/html': '<b>BOLD</b>' });
 		await editor.paste();
 
 		// The uncommitted source edit takes the text/plain payload, not the HTML markup: without
@@ -155,24 +149,6 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		expect(await editor.getBlockText(0)).toBe('Before');
 	});
 
-	test('A7: a multiline aligned fence renders and reveals byte-for-byte across its spans', async () => {
-		await editor.gotoMathSeed('mathblock-multiline');
-		// Renders despite the internal newlines.
-		await expect(editor.renderedKatex).toHaveCount(1);
-
-		await editor.revealByClick();
-		// Drawn as fence lines and highlight tokens, so what keeps the offsets exact is the rule
-		// that textContent matches the raw: every internal `\n` survives and nothing is added.
-		const shape = await editor.sourceShape();
-		expect(shape.spans).toBeGreaterThan(1);
-		expect(shape.text).toBe('$$\n\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}\n$$');
-
-		// Blur with no edit only changes the view, and the bytes survive.
-		await editor.getBlock(2).click();
-		await expect(editor.renderedKatex).toHaveCount(1);
-		expect(await roundTripStable(editor.page)).toBe(true);
-	});
-
 	test('ArrowRight from the previous block reveals; ArrowRight past the end folds and moves on', async ({
 		page
 	}) => {
@@ -180,7 +156,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		expect(await editor.sourceCaretOffset()).toBe(0);
 
 		// End of the single-line source, then one more step exits to the next block.
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowRight');
 		await expect(editor.source).toHaveCount(0);
 		await expect(editor.render).toHaveCount(1);
@@ -189,7 +165,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 
 	test('ArrowLeft at the source start folds and moves to the previous block', async ({ page }) => {
 		await editor.revealByClick();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowLeft');
 		await expect(editor.source).toHaveCount(0);
 		await expect(editor.render).toHaveCount(1);
@@ -218,7 +194,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		page
 	}) => {
 		await editor.revealByClick();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		// Shift+ArrowLeft at the source start extends into the paragraph above.
 		await page.keyboard.press('Shift+ArrowLeft');
 
@@ -245,7 +221,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		await editor.bridge.waitForSourceContains('$$ax^2$$');
 
 		await editor.revealByClick();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('b');
@@ -279,7 +255,7 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 		await editor.bridge.waitForSourceContains('$$ax^2$$');
 
 		await editor.revealByClick();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.type('b');
@@ -293,6 +269,32 @@ test.describe('plugin block math: render-primary, source-on-focus', () => {
 
 		await editor.getBlock(2).click();
 		expect(await editor.bridge.getSource()).toBe('Before\n\n$$ax^2$$\n\nAfter\n');
+		expect(await roundTripStable(editor.page)).toBe(true);
+	});
+});
+
+test.describe('plugin block math: a multiline fence', () => {
+	let editor: BlockMathCaretPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new BlockMathCaretPage(page);
+		await editor.gotoMathSeed('mathblock-multiline');
+	});
+
+	test('A7: a multiline aligned fence renders and reveals byte-for-byte across its spans', async () => {
+		// Renders despite the internal newlines.
+		await expect(editor.renderedKatex).toHaveCount(1);
+
+		await editor.revealByClick();
+		// Drawn as fence lines and highlight tokens, so what keeps the offsets exact is the rule
+		// that textContent matches the raw: every internal `\n` survives and nothing is added.
+		const shape = await editor.sourceShape();
+		expect(shape.spans).toBeGreaterThan(1);
+		expect(shape.text).toBe('$$\n\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}\n$$');
+
+		// Blur with no edit only changes the view, and the bytes survive.
+		await editor.getBlock(2).click();
+		await expect(editor.renderedKatex).toHaveCount(1);
 		expect(await roundTripStable(editor.page)).toBe(true);
 	});
 });

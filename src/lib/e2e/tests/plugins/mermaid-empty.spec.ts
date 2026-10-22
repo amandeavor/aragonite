@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
-import { MermaidPage } from './mermaid-helpers';
+import { MermaidPage, settleDiagrams } from './mermaid-helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * An empty mermaid fence (requirements/plugins/mermaid-empty.md): the edit box is all there is to
@@ -33,7 +34,7 @@ test.describe('mermaid empty diagram', () => {
 	}) => {
 		await editor.loadContent('Above\n\ntail\n');
 		await editor.getBlock(0).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await page.keyboard.type('```mermaid');
 
@@ -72,7 +73,7 @@ test.describe('mermaid empty diagram', () => {
 		// A valid diagram beside it, whose SVG is what the test waits for: it shows the renderer
 		// ran, so the missing error box below is really missing rather than not drawn yet.
 		await editor.loadContent('```mermaid\n   \n```\n\n```mermaid\ngraph TD\n```\n');
-		await expect(page.locator('.mermaid-viewport svg')).toHaveCount(1, { timeout: 30_000 });
+		await settleDiagrams(page);
 
 		await expect(editor.textarea).toHaveCount(1);
 		await expect(editor.error).toHaveCount(0);

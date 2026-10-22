@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { getContext, onDestroy, untrack } from 'svelte';
 	import { CURSOR_START, type AmbientPrefix, type BlockComponent } from '../../../block-component';
-	import { ambientHoldsTaskBox } from '../list/task-checkbox';
+	import { isTaskItemText } from '../list/task-checkbox';
+	import { defaultPrefixIndent } from '../../../ambient/ambient-dom';
 	import type { DocumentView, NodeView } from '../../../core/node-views';
 	import type { EditorRects } from '../../../editor-rects';
 	import { LIST_CONTEXT_KEY } from '../../../editor-keys';
@@ -36,10 +37,15 @@
 	import { createTypedInput } from './typed-input';
 	import { createTextRender } from './text-render';
 	import { createWidgetInteraction } from './widget-interaction';
+	import type { LandsRestoredCaret } from '../../../selection/restored-caret';
 	import { createEdgePolicyDispatch } from './edge-policy-dispatch';
 	import { createEdgeStep } from './edge-step';
 	import { createTypedPlacement } from './edge-seat';
-	import { handlePendingBreakKey, type PendingBreakKeyDeps } from './pending-break-keys';
+	import {
+		takeBackOpenLine,
+		handlePendingBreakKey,
+		type PendingBreakKeyDeps
+	} from './pending-break-keys';
 	import { handleHomeKey, type HomeKeyDeps } from './home-key';
 	import { storedAsAt } from '../../../tree-operations/stored-as';
 	import { replaceRangeInLeaf } from '../../../tree-operations/leaf-range';
@@ -48,18 +54,17 @@
 	import { widgetsIn } from './widget-adjacency';
 	import { widgetElByStart } from '../../../core/inline/inline-widgets';
 	import { caretLandableBounds, handleSharedKeydown } from '../../../selection/shared-keydown';
+	import { rawSelectionIn } from '../../../selection/native-bridge';
 	import { createEditableSurface, consumePendingRestore } from '../editable/editable-surface';
 	import { rangeWrite } from '../editable/surface-write';
 	import type { ContentWrite } from '../../../action-contracts';
 	import { wireSurfaceContexts, useParkFocusOnUnmount } from '../editable/surface-wiring.svelte';
 	import {
-		rawOffsetAt,
 		rawTextOfContent,
 		revealsNoMarkers,
 		rawSelectionFocus,
 		caretOnPendingBreakLine
 	} from '../../../caret/widget-offset';
-	import { asRawOffset } from '../../../caret/coordinate-spaces';
 	import { createSurfaceBackend } from '../editable/surface-backend';
 	import { type CommandId } from '../../../schema/commands';
 	import type { CommandRun } from '../../../schema/block-commands';
@@ -98,11 +103,11 @@
 	const ambientPrefixText = $derived(
 		typeof ambientPrefix === 'string' ? ambientPrefix : ambientPrefix.text
 	);
-	// The hanging indent is how wide the prefix draws: its text width by default, or what a
-	// prefix that draws itself, such as the task checkbox, declares.
+	// The hanging indent the prefix's marker fills (editor.css): what a prefix that draws itself,
+	// such as the task checkbox, declares, or its text's default.
 	const ambientIndent = $derived(
 		(typeof ambientPrefix === 'string' ? undefined : ambientPrefix.indent) ??
-			`${ambientPrefixText.length}ch`
+			defaultPrefixIndent(ambientPrefixText)
 	);
 
 	const wiring = wireSurfaceContexts();
@@ -115,7 +120,8 @@
 		getDoc,
 		getEditorRoot,
 		events: editorEvents,
-		reading
+		reading,
+		caretLanding
 	} = wiring.deps;
 	const { grammar } = reading;
 	// Made per gesture, never derived: a derived value would subscribe the block to the tree.
@@ -127,7 +133,7 @@
 		linkCard,
 		inlineMenuCombobox,
 		decorations: decorationEngine,
-		drafts,
+		shownSource,
 		drawnCaret,
 		presses,
 		textMoves
@@ -150,9 +156,6 @@
 	const NO_ISLANDS: IndexedDecoration<WidgetDecoration | ReplaceDecoration>[] = [];
 	let el: HTMLDivElement | undefined = $state();
 	let composing = $state(false);
-	// A widget's shown source lives only in the DOM, so `onInput` and IME `compositionend`
-	// skip the per-keystroke CST commit and the block commits once when it is hidden.
-	let revealing = $state(false);
 	/** Cursor offset to restore after the next $effect render. Null = don't touch cursor. */
 	let pendingCursorOffset = $state<number | null>(null);
 	// The drawn caret holds the widget edge a click meant under this block's own key, which survives
@@ -183,7 +186,8 @@
 			pendingBreak.at() !== null || cursor.getRawSelection() ? null : cursor.getRaw(),
 		isReading: () => readOnly,
 		reading,
-		caretMemory
+		caretMemory,
+		caretWriter
 	});
 	const typedPlacement = createTypedPlacement({
 		getEl: () => el ?? null,
@@ -204,7 +208,7 @@
 		resolveRangeEdit: (range, typed) => {
 			const edit = replaceRangeInLeaf(node, range, typed, storedAs());
 			if (edit.matchesBrowserEdit) return null;
-			const { text, caretAfter } = rangeWrite(edit);
+			const { text, caretAfter } = rangeWrite(node, edit);
 			return { raw: text, caret: caretAfter };
 		}
 	});
@@ -212,8 +216,9 @@
 	const editableSurface = createEditableSurface({
 		...wiring.deps,
 		getEl: () => el ?? null,
-		isInputSuppressed: () => revealing,
+		showsSource: () => widgetInteraction.isRevealing(),
 		backend: cursor,
+		landCaret: (offset, clamp) => widgetInteraction.restoreCaret(offset, clamp),
 		getNode: () => node,
 		getMyPath: () => myPath,
 		getIndex: () => index,
@@ -226,6 +231,7 @@
 		getFocusOffset: () => (el ? rawSelectionFocus(el) : null),
 		getTextLen: () => caretReach(),
 		stepEdge: edgeStep.step,
+		inlineUnits: () => edgeDispatch.inlineUnits,
 		readText: () => readRawText(),
 		compositionSeat,
 		placement: typedPlacement,
@@ -240,13 +246,17 @@
 		},
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
+		deleteAtCaret: (caret, intent) =>
+			takeBackOpenLine(pendingBreakKeyDeps) ? 'taken' : edgeDispatch.deleteAtCaret(caret, intent),
+		deleteBeside: (caret, direction) => edgeDispatch.deleteBeside(caret, direction),
+		commandTarget: () => keyTarget,
 		// After a shown source is written: until then the selected text lives in the DOM only.
 		removeSelection: (range) =>
 			new Promise<ContentWrite>((written) =>
 				afterSourceCommit(() =>
 					written(
 						writeText({
-							...rangeWrite(replaceRangeInLeaf(node, range, '', storedAs())),
+							...rangeWrite(node, replaceRangeInLeaf(node, range, '', storedAs())),
 							intent: 'command',
 							mode: 'authored',
 							source: 'selection-removal'
@@ -282,12 +292,9 @@
 		focusActions,
 		setSnapTarget: holdWidgetEdge,
 		setPendingCursor: (offset) => setPendingCursorOffset(offset, 'widget'),
-		readRawText: () => readRawText(),
-		setRevealing: (value) => {
-			revealing = value;
-		},
 		isCrossBlock: () => selection.isCrossBlock,
-		drafts,
+		shownSource,
+		renderedWidgets: () => textRender.renderedWidgets(),
 		caretMemory,
 		pinChipSide: edgeStep.pinChipSide,
 		textMoves,
@@ -316,8 +323,6 @@
 		selection,
 		setPendingCursor: (offset) => setPendingCursorOffset(offset, 'clipboard'),
 		foldRevealBeforeMutation: () => widgetInteraction.foldRevealBeforeMutation(),
-		isRevealing: () => widgetInteraction.isRevealing(),
-		readRevealedText: () => readRawText(),
 		get reading() {
 			return reading;
 		}
@@ -358,8 +363,10 @@
 		reading,
 		ownPairs,
 		writeText,
-		// While a source is shown the caret counts into the DOM text.
-		text: () => (widgetInteraction.isRevealing() ? readRawText() : getDisplayText()),
+		edges: {
+			typeBeforeClosingWidget: (caret, typed) => edgeDispatch.typeBeforeClosingWidget(caret, typed)
+		},
+		text: () => getDisplayText(),
 		content: () => getContentRange(node),
 		completesLine
 	});
@@ -378,7 +385,8 @@
 		},
 		getEl: () => el ?? null,
 		isCrossBlock: () => selection.isCrossBlock,
-		textMoves
+		textMoves,
+		caretWriter
 	});
 
 	// Every caret-edge key goes through this one dispatch (G4.12); entering a widget stays in
@@ -445,7 +453,8 @@
 		brokenUrlCache,
 		reportRenderError: (error) =>
 			editorEvents?.emit('error', { origin: 'render', error, context: { path: myPath } }),
-		caretWriter
+		caretWriter,
+		shownSource: () => shownSource.rangeIn(myPath, node)
 	});
 
 	$effect(() => () => textRender.dispose());
@@ -474,15 +483,13 @@
 
 	export const claimRootClipboard = clipboardHandlers.claimRootClipboard;
 	export const insertMarkdown = clipboardHandlers.insertMarkdown;
+	export const insertPlainText = clipboardHandlers.insertPlainText;
 
 	export function snapCaretToPoint(clientX: number, clientY: number): void {
 		widgetInteraction.snapClickToWidgetEdge(clientX, clientY);
 	}
 
-	/** The length the caret counts against: the DOM's while a source is shown, since the CST has
-	 *  not seen that edit. */
 	function caretReach(): number {
-		if (widgetInteraction.isRevealing()) return readRawText().length;
 		return getDisplayText().length;
 	}
 
@@ -591,7 +598,7 @@
 						if (!cycled) return;
 						// Text after a task box is the to-do's own text, so a written `# ` would stay
 						// text there; replacing the block makes the heading and gives the box up.
-						if (ambientHoldsTaskBox(ambientPrefix)) {
+						if (isTaskItemText(blockNodeAt(getDoc(), myPath.slice(0, -1)), index)) {
 							const heading = readAsOpened(cycled.newRaw, { grammar, scope: 'fragment' }).children;
 							const focus = { replacementIndex: 0, offset: cycled.caretOffset };
 							void blockEdit.replaceBlock(index, heading, focus, { snapshotOffset: offset });
@@ -634,6 +641,21 @@
 	export const afterSourceCommit = commands.afterSourceCommit;
 	export const isCommandActive = commands.isCommandActive;
 
+	const keyTarget = {
+		get kind() {
+			return node.kind;
+		},
+		runCommand,
+		getPath: () => myPath,
+		afterSourceCommit,
+		afterSelectionRemoved
+	};
+
+	export function landRestoredCaret(offset: number): void {
+		widgetInteraction.restoreCaret(offset, 'reachable');
+	}
+	void ({ landRestoredCaret } satisfies LandsRestoredCaret);
+
 	void ({
 		editable,
 		focusable,
@@ -645,6 +667,7 @@
 		enterEdgeWidget,
 		claimRootClipboard,
 		insertMarkdown,
+		insertPlainText,
 		snapCaretToPoint,
 		runCommand,
 		afterSourceCommit,
@@ -677,10 +700,9 @@
 		if (pendingCursorOffset !== null) {
 			// Restored only while this block has focus: a commit on blur also sets a pending offset,
 			// and restoring it would pull the selection back. Cleared either way.
-			const applied = consumePendingRestore(el ?? null, pendingCursorOffset, (offset) => {
-				if (!widgetInteraction.revealInterior(offset))
-					cursor.setRaw(asRawOffset(offset), { clamp: 'exact' });
-			});
+			const applied = consumePendingRestore(el ?? null, pendingCursorOffset, (offset) =>
+				widgetInteraction.restoreCaret(offset, 'exact')
+			);
 			tracePendingCursorConsume(pendingCursorOffset, applied);
 			pendingCursorOffset = null;
 		}
@@ -702,16 +724,12 @@
 	function clearSnapTargetIfMoved(root: HTMLElement): void {
 		const held = drawnCaret.widgetEdgeFor(widgetEdgeOwner);
 		if (held === null) return;
-		const sel = window.getSelection();
+		const live = rawSelectionIn(root);
 		// With no range there is nothing to compare the edge against, and this function only clears:
 		// the gestures that move the caret elsewhere clear it through their own handlers.
-		if (!sel || sel.rangeCount === 0) return;
-		const range = sel.getRangeAt(0);
-		if (!root.contains(range.startContainer)) {
-			holdWidgetEdge(null);
-			return;
-		}
-		if (rawOffsetAt(root, range.startContainer, range.startOffset) !== held) holdWidgetEdge(null);
+		if (!live) return;
+		// A range starting outside the block reads null, which no held edge equals.
+		if (live.start !== held) holdWidgetEdge(null);
 	}
 
 	/** The drawn caret's bar beside the widget that starts or ends at `offset`. */
@@ -765,7 +783,7 @@
 		getFocusOffset: () => cursor.getFocusOffset(),
 		// Not offset 0: the start value is the one a caret placement clamps past hidden markers.
 		focusContentStart: () => focus(CURSOR_START),
-		caretWriter
+		extend: { caretWriter, caretLanding }
 	};
 
 	async function onKeyDown(e: KeyboardEvent): Promise<void> {
@@ -787,10 +805,6 @@
 		if ((await widgetInteraction.handleSelectedWidgetKeydown(e)) || editableSurface.isDetached())
 			return;
 
-		// The browser default, with `user-select: none` on the widget, collapses the selection
-		// instead of stepping past it.
-		if (widgetInteraction.handleShiftArrowIntoWidget(e)) return;
-
 		if ((await handleSharedKeydown(e, sharedCtx)) || editableSurface.isDetached()) return;
 
 		// Every caret-edge construct goes through this one dispatch, keeping contenteditable
@@ -799,22 +813,20 @@
 
 		if (handleHomeKey(e, homeKeyDeps)) return;
 
-		const target = {
-			kind: node.kind,
-			runCommand,
-			getPath: () => myPath,
-			afterSourceCommit,
-			afterSelectionRemoved
-		};
-		if (wiring.dispatchChord(e, target)) return;
+		if (wiring.dispatchChord(e, keyTarget)) return;
 	}
 
 	function onBeforeInput(e: InputEvent): void {
 		if (typedInput(e)) return;
-		// An `insertLineBreak` from a soft keyboard or IME got past `onKeyDown`: consume it, since
-		// Shift+Enter is what makes a hard break.
+		// A soft keyboard's line break, with no keydown, is the Shift+Enter command; the browser's
+		// own would put a bare newline in the DOM, and one mid-composition writes nothing.
 		if (e.inputType === 'insertLineBreak') {
 			e.preventDefault();
+			if (composing || e.isComposing) return;
+			// Input, not a key, so it asks for the selection's removal itself.
+			editableSurface.afterSelectionRemoved((afterRemoval) =>
+				runCommand('block.hardBreak', undefined, { afterRemoval })
+			);
 			return;
 		}
 	}
@@ -896,18 +908,16 @@
 	}
 </script>
 
-<!-- Reading mode turns contenteditable off, ruling out every browser edit; tabindex keeps focus
-	and arrow traversal. Both roles the spread sets are interactive, which the compiler cannot see. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- Reading mode turns contenteditable off, ruling out every browser edit; the spread's tab stop
+	keeps the block focusable for arrow traversal. -->
 <div
 	bind:this={el}
-	tabindex="0"
 	class="text-editable-block {blockClass}"
 	contenteditable={readOnly ? 'false' : 'true'}
-	aria-readonly={readOnly ? 'true' : undefined}
 	{...editableSurface.attributes(combobox)}
-	style:text-indent={ambientPrefixText ? `calc(-1 * ${ambientIndent})` : null}
-	style:padding-left={ambientPrefixText ? ambientIndent : null}
+	style:--md-prefix-indent={ambientPrefixText ? ambientIndent : null}
+	style:text-indent={ambientPrefixText ? 'calc(-1 * var(--md-prefix-indent))' : null}
+	style:padding-left={ambientPrefixText ? 'var(--md-prefix-indent)' : null}
 	oninput={onInput}
 	onkeydown={editableSurface.onKeyDown}
 	onbeforeinput={editableSurface.onBeforeInput}
@@ -933,30 +943,30 @@
 	}
 
 	.text-editable-block.heading-1 {
-		font-size: 2em;
-		font-weight: bold;
+		font-size: var(--md-heading-1-size);
+		font-weight: var(--md-heading-weight);
 		line-height: 1.2;
 	}
 	.text-editable-block.heading-2 {
-		font-size: 1.5em;
-		font-weight: bold;
+		font-size: var(--md-heading-2-size);
+		font-weight: var(--md-heading-weight);
 		line-height: 1.3;
 	}
 	.text-editable-block.heading-3 {
-		font-size: 1.25em;
-		font-weight: bold;
+		font-size: var(--md-heading-3-size);
+		font-weight: var(--md-heading-weight);
 	}
 	.text-editable-block.heading-4 {
-		font-size: 1.1em;
-		font-weight: bold;
+		font-size: var(--md-heading-4-size);
+		font-weight: var(--md-heading-weight);
 	}
 	.text-editable-block.heading-5 {
-		font-size: 1em;
-		font-weight: bold;
+		font-size: var(--md-heading-5-size);
+		font-weight: var(--md-heading-weight);
 	}
 	.text-editable-block.heading-6 {
-		font-size: 0.9em;
-		font-weight: bold;
+		font-size: var(--md-heading-6-size);
+		font-weight: var(--md-heading-weight);
 	}
 
 	.text-editable-block.raw-block {

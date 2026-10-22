@@ -4,7 +4,7 @@
 		resolveBlockSurface,
 		type AmbientPrefix,
 		type BlockComponent,
-		type BlockComponentExports
+		type HostedBlockExports
 	} from '../block-component';
 	import type { NodeView } from '../core/node-views';
 	import { useBlockDecorations } from '../decorations/use-block-decorations.svelte';
@@ -13,7 +13,7 @@
 	import BlockDragHandle from './BlockDragHandle.svelte';
 	import { showsDragHandle } from './drag-handle';
 	import { defaultRegistryView } from '../schema/registry-view';
-	import { svelteBlockEntry } from './svelte-block-view';
+	import { blockViewEntry } from './block-view-entry';
 	import { RAW_TEXT_VIEW } from './blocks/text/text-block-view';
 	import { isGridDescriptor } from '../schema/block-kind-descriptor';
 	import { FAILED_BLOCK_LABEL } from '../a11y-strings';
@@ -90,7 +90,7 @@
 
 	let hostEl: HTMLElement | null = $state(null);
 	// The one place a block's published interface is resolved; every reader of the ref gets it.
-	let instance: BlockComponentExports | undefined = $state();
+	let instance: HostedBlockExports | undefined = $state();
 	let ref: BlockComponent | undefined = $derived(resolveBlockSurface(instance));
 
 	// Both halves count: a hand-written container can lack `measurePartialRects`, or have children
@@ -100,7 +100,7 @@
 	);
 
 	let view = $derived(registryView.blockView(node.kind));
-	let entry = $derived(svelteBlockEntry(view ?? RAW_TEXT_VIEW));
+	let entry = $derived(blockViewEntry(view ?? RAW_TEXT_VIEW));
 
 	$effect(() => {
 		if (!view) devWarn('block-host', 'no view for kind, rendering raw', node.kind);

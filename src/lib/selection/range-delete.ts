@@ -15,12 +15,9 @@ import { caretPointFor, type RemovalGesture } from './caret-target';
 import { docPathFrom } from '../caret/coordinate-spaces';
 import {
 	blockNodeAt,
-	bodyUnder,
-	nodeAt,
 	normalizeBodyWrite,
 	normalizeOwnRaw
 } from '../tree-operations/node-primitives';
-import { settleSeparatorOnBlank } from '../tree-operations/settle';
 import { displayLength, documentLineEnding } from '../core/lines';
 import { isProseKind } from '../core/inline';
 import { isMergeEligible } from '../schema/merge-rules';
@@ -31,7 +28,7 @@ import {
 	applyPlannedDeletion,
 	installSurvivor,
 	planCrossBlockDeletion,
-	rebuildSharedAncestries
+	rebuildAfterDeletion
 } from './range-delete-ceremony';
 import { ensureUnsharedPath } from '../tree-operations/unshare';
 import { rebuildUnsharedAncestry } from '../tree-operations/chain-rebuild';
@@ -134,8 +131,8 @@ function joinedRangeDelete(
 	const startCut = charOffsetOf(start, 'rangeDelete:prose-merge-start');
 	const endOffset = charOffsetOf(end, 'rangeDelete:prose-merge-end');
 
-	// A cross-block join runs the end slice through the end block's own write rule, or a cut from
-	// its head would leave its closer stranded; a same-block merge takes the rule once, below.
+	// A cross-block join runs the end slice through the end block's own write rule, which reads the
+	// end block's shape; a same-block merge takes the rule once, below.
 	const join = sameBlock
 		? {
 				raw: startRaw.slice(0, startCut) + startRaw.slice(endOffset),
@@ -168,13 +165,6 @@ function joinedRangeDelete(
 		// May be nested in a blockquote/list/listItem whose raw depends on this leaf.
 		ensureUnsharedPath(doc, start.path, sharing);
 		const shift = installSurvivor(doc, start.path, startBlock, joined.raw, sharing, reading);
-		// Before the rebuild, which reads the blank lines: a selection covering a block's whole
-		// text leaves it blank, and a blank block is the separating line of the one below it.
-		const parent = nodeAt(doc, start.path.slice(0, -1));
-		if (parent) {
-			const body = bodyUnder(parent, documentLineEnding(doc));
-			settleSeparatorOnBlank(body, start.path[start.path.length - 1], sharing);
-		}
 		rebuildUnsharedAncestry(doc, start.path, sharing, null, grammar);
 		const joinAt = { path: start.path.slice(), offset: Math.max(0, joined.seam + shift) };
 		return { newDoc: doc, caret: () => joinAt };
@@ -187,7 +177,7 @@ function joinedRangeDelete(
 	applyPlannedDeletion(doc, plan, grammar);
 	const shift = installSurvivor(doc, start.path, startBlock, joined.raw, sharing, reading);
 	rebuildUnsharedAncestry(doc, start.path, sharing, null, grammar);
-	rebuildSharedAncestries(doc, plan, sharing, grammar);
+	rebuildAfterDeletion(doc, plan, sharing, grammar);
 
 	// The reparse can turn the survivor into a container (a list marker joined to text), whose own
 	// element holds no caret, so the join point resolves to the leaf that holds it.

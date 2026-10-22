@@ -14,9 +14,10 @@ import { assertInvariant } from '../../assert';
 import { docPathFrom } from '../../caret/coordinate-spaces';
 import { assignIds } from '../../block-id';
 import { replaceRefs } from '../../block-lists/child-refs';
+import { isUnmountedBlockListState } from '../../block-lists/state-registry';
 import { documentBody, nodeAt } from '../../tree-operations/node-primitives';
-import { settleSeparator } from '../../tree-operations/settle';
-import { endWindowLines, keepOpenTail } from '../../tree-operations/open-tail';
+import { settleEdit, type EditKind, type SettledEdit } from '../../tree-operations/settle';
+import { keepOpenTail } from '../../tree-operations/open-tail';
 import { keepOneBlock } from '../../tree-operations/keep-one-block';
 import { ensureUnsharedPath, rebuildOwnedContainer } from '../../tree-operations/unshare';
 import type { SharingState } from '../../tree-operations/sharing';
@@ -46,6 +47,7 @@ import {
 } from '../../tree-operations/structural-change';
 import type { BlockListState } from '../../block-lists/block-list-state.svelte';
 import { assertIdsInLockstep, assertTopLevelUntouched } from '../../invariants/install';
+import { checkSettledOnce, startCommitSettles } from '../../invariants/settle-once';
 import { dropChildSpans } from '../../schema/child-spans';
 import { perfEnabled } from '../../perf/instruments';
 
@@ -123,7 +125,7 @@ export function createStructuralCommit(
 			entry: 'commitStructural',
 			scopes: [getDocScope()],
 			snapshot: args.snapshot,
-			mutate: ([doc]) => [args.mutate(doc.children)],
+			mutate: ([doc]) => [args.mutate(doc.children, doc)],
 			op: args.op,
 			landing: args.landing,
 			reveal: args.reveal,
@@ -169,18 +171,27 @@ export function createStructuralCommit(
 		/** The bytes before mutate; without them `serialize()` emits a half-applied document. None at
 		 *  the document, whose rollback is its saved array, so a commit there costs no per-block copy. */
 		savedRaws: SavedRaw[];
+		/** What the mutation said it did beyond its splice, and the fix-up's result once it ran. */
+		edit: EditKind;
+		settled: SettledEdit | null;
 	}
 
 	interface SavedRaw {
 		node: CstNode;
 		raw: string;
 		metadata: CstNode['metadata'];
+		markerWidths: CstNode['markerWidths'];
 	}
 
-	/** The bytes at risk, with the metadata a rebuild re-reads from them: the copied ancestors plus
-	 *  direct children, matching `savedChildren`. */
+	/** The bytes at risk, with the metadata and marker counts a rebuild re-reads from them: the
+	 *  copied ancestors plus direct children, matching `savedChildren`. */
 	function captureScopeRaws(chain: CstNode[], owned: CstNode): SavedRaw[] {
-		const save = (node: CstNode): SavedRaw => ({ node, raw: node.raw, metadata: node.metadata });
+		const save = (node: CstNode): SavedRaw => ({
+			node,
+			raw: node.raw,
+			metadata: node.metadata,
+			markerWidths: node.markerWidths
+		});
 		return [...chain.map(save), ...(owned.children ?? []).map(save)];
 	}
 
@@ -198,6 +209,19 @@ export function createStructuralCommit(
 						code: 'multi-scope-commit-path',
 						message: `commit: path [${s.path.join(',')}] does not resolve to scope node (${s.node.kind})`
 					}
+		);
+	}
+
+	// The registry drops an unmounted container, so a state found there is live; one a caller held
+	// across an await may not be, and its getters read the dead component's props.
+	function assertScopeStateMounted(s: MultiScopeTarget): void {
+		assertInvariant('block-list-state-mounted', () =>
+			isUnmountedBlockListState(s.state)
+				? {
+						code: 'block-list-state-mounted',
+						message: `commit: the ${s.node.kind} at [${s.path.join(',')}] was handed the state of a container that has unmounted`
+					}
+				: null
 		);
 	}
 
@@ -240,7 +264,7 @@ export function createStructuralCommit(
 		// Off the tree's `$state` proxy, where every index a splice shifts is a tracked write.
 		const children = isDoc ? [...topLevelBefore] : owned.children!;
 		const lineEnding = documentLineEnding(deps.doc);
-		return {
+		const prepared: PreparedScope = {
 			target: s,
 			isDoc,
 			chain,
@@ -262,6 +286,10 @@ export function createStructuralCommit(
 							: null
 					);
 					rebuildOwnedContainer(node);
+				},
+				describeEdit: (edit) => {
+					prepared.edit = { ...prepared.edit, ...edit };
+					return () => prepared.settled;
 				}
 			},
 			ids,
@@ -270,8 +298,11 @@ export function createStructuralCommit(
 			savedChildIds,
 			savedStateIds,
 			savedStateRefs,
-			savedRaws
+			savedRaws,
+			edit: {},
+			settled: null
 		};
+		return prepared;
 	}
 
 	/**
@@ -317,7 +348,7 @@ export function createStructuralCommit(
 	async function commitScopes<const S extends readonly MultiScopeTarget[]>(
 		args: ScopedCommitArgs<S>
 	): Promise<boolean> {
-		const { scopes, snapshot, mutate, op, discardIfNoop, trackCaret } = args;
+		const { scopes, snapshot, mutate, op, discardIfNoop, trackCaret, fixesUpOwnWrites } = args;
 		const prepared: PreparedScope[] = [];
 		// Top-level blocks a container scope copied into the tree's own array, with what stood there.
 		const replacedSlots: [index: number, node: CstNode][] = [];
@@ -335,7 +366,11 @@ export function createStructuralCommit(
 			entry: args.entry,
 			snapshot,
 			mutate: (wasOpen) => {
-				for (const s of scopes) assertScopeIdentity(s);
+				startCommitSettles();
+				for (const s of scopes) {
+					assertScopeStateMounted(s);
+					assertScopeIdentity(s);
+				}
 				if (scopes.slice(1).some(isDocScope)) {
 					throw new Error('commitMultiScope: the document scope goes first');
 				}
@@ -364,19 +399,21 @@ export function createStructuralCommit(
 					);
 				}
 				for (let i = 0; i < prepared.length; i++) {
-					endWindowLines(prepared[i].view.body, changeList[i], deps.sharing, deps.reading.grammar);
-				}
-				for (let i = 0; i < prepared.length; i++) {
+					const p = prepared[i];
+					const reportsEdit = () => changeList[i].op !== 'noop' || Object.keys(p.edit).length > 0;
+					assertInvariant('settle-once', () =>
+						fixesUpOwnWrites ? null : checkSettledOnce(p.view.body.children, reportsEdit())
+					);
 					// `savedChildren` is the scope's array from before the mutation, so the blank-line
 					// fix-up reads which blocks were blank off it.
-					changeList[i] = settleSeparator(
-						prepared[i].view.body,
-						prepared[i].savedChildren ?? [],
-						changeList[i],
+					p.settled = settleEdit(
+						p.view.body,
+						{ change: changeList[i], before: p.savedChildren ?? [], ...p.edit },
 						deps.reading.grammar,
 						deps.sharing,
 						trackCaret?.[i]
 					);
+					changeList[i] = p.settled.change;
 					// Before the tail step, which reads the block now last; the empty paragraph is blank, so
 					// that step leaves its line ending as it is.
 					if (prepared[i].isDoc) {
@@ -467,11 +504,12 @@ export function createStructuralCommit(
 				for (const p of prepared) {
 					p.owned.children = p.savedChildren;
 					p.owned.childIds = p.savedChildIds;
-					// The chain rebuild rewrote these bytes and the metadata it read from them, and both have
-					// to match the children restored above.
-					for (const { node, raw, metadata } of p.savedRaws) {
+					// The chain rebuild rewrote these bytes and what it read from them, and all of it has to
+					// match the children restored above.
+					for (const { node, raw, metadata, markerWidths } of p.savedRaws) {
 						node.raw = raw;
 						node.metadata = metadata;
+						if (node.markerWidths !== markerWidths) node.markerWidths = markerWidths;
 						dropChildSpans(node);
 					}
 					// Without this, the ids and refs written before the throw keep reflecting it.

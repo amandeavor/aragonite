@@ -19,7 +19,8 @@ import {
 } from '../schema/block-commands';
 import type { Reading } from '../schema/reading';
 import { eventToChord, isCharacterKey } from '../schema/keybindings';
-import { displayLength, trimTrailingLineEnding } from '../core/lines';
+import { displayLength } from '../core/lines';
+import { copyBlockToClipboard } from './system-clipboard';
 import { isVerticallyTransparentNode } from '../core/inline/transparency';
 import type { CaretMemory } from '../caret/caret-memory';
 import type { AnyCommandId } from '../schema/command-id';
@@ -32,7 +33,6 @@ import {
 	holdsWholeBlockFocus,
 	type WholeBlockInputProxy
 } from './whole-block-focus-surface';
-import { devWarn } from '../dev-warn';
 
 /** Undo, redo and plugin-global chords for a block focused as a whole, which neither an inner leaf
  *  nor the editor root runs. Consumed in reading mode too, or the browser runs its own undo. */
@@ -84,6 +84,7 @@ export interface WholeBlockKeyDeps extends BlockEdgeExitDeps {
 	getRaw: () => string;
 	blockEdit: Pick<BlockEditActions, 'splitBlock' | 'deleteBlock' | 'insertParagraph'>;
 	isReading: () => boolean;
+	selection: Pick<SelectionState, 'isCrossBlock'>;
 	caretMemory: Pick<CaretMemory, 'noteKey'>;
 	/** What the keypress resolves to at this block's kind, overrides included. */
 	commandOf: (e: KeyboardEvent) => AnyCommandId | null;
@@ -110,9 +111,10 @@ export function handleWholeBlockKeys(e: KeyboardEvent, deps: WholeBlockKeyDeps):
 		return;
 	}
 
-	// Mod+C and Mod+X copy the block's own markdown: a keydown carries no ClipboardEvent,
-	// and preventDefault suppresses the native copy, so writeText is the only writer.
+	// Mod+C and Mod+X copy the block's own Markdown through writeText, since a keydown carries no
+	// ClipboardEvent; a range across blocks is left to the copy event the editor's handlers take.
 	if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'c' || e.key === 'x')) {
+		if (deps.selection.isCrossBlock) return;
 		e.preventDefault();
 		void copyFocusedWholeBlock(deps, e.key === 'x');
 		return;
@@ -131,14 +133,9 @@ export function handleWholeBlockKeys(e: KeyboardEvent, deps: WholeBlockKeyDeps):
 }
 
 // Copy is a read, so it is never blocked; cut's delete is blocked in reading mode and only
-// runs once the clipboard write resolves, so a rejected write leaves the block in place.
+// runs once the clipboard write lands, so a refused write leaves the block in place.
 async function copyFocusedWholeBlock(deps: WholeBlockKeyDeps, cut: boolean): Promise<void> {
-	try {
-		await navigator.clipboard.writeText(trimTrailingLineEnding(deps.getRaw()));
-	} catch (err) {
-		devWarn('container-block', 'whole-block clipboard write rejected', err);
-		return;
-	}
+	if (!(await copyBlockToClipboard(deps.getRaw()))) return;
 	if (cut && !deps.isReading()) void deps.blockEdit.deleteBlock(deps.getIndex(), 'cut');
 }
 
@@ -210,7 +207,6 @@ export function createContainerBlockComponent(
 			walkInto(offset, (child, at) => child.focus(at))
 		),
 		parkCaret,
-		...(deps.inputProxy ? { typeText: deps.inputProxy.typeText } : {}),
 		getCursorOffset() {
 			const focusEl = deps.getFocusEl?.();
 			if (focusEl) return holdsWholeBlockFocus(focusEl, deps.inputProxy?.el()) ? 0 : null;

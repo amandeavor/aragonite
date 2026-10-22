@@ -32,7 +32,7 @@ const TRIVIA_WRITERS: Record<string, string> = {
 	'src/lib/tree-operations/list/sublist-separator.ts':
 		'the settle door for an empty-marker sublist, whose line no splice window can infer: the write lands on the list, the edit two levels below it',
 	'src/lib/tree-operations/list/item-partition.ts':
-		'same head normalization, per promoted item and the item’s first block, plus the lines a dissolving item’s blocks take where no splice probe can infer them: above each list it leaves, which the paragraph above decides, above a paragraph under the items before it, and one blank line shared by a blank paragraph and its follower',
+		'same head normalization, per promoted item and the item’s first block, plus the lines a dissolving item’s blocks take where no splice probe can infer them: above each list it leaves, which the paragraph above decides, and above a paragraph under the items before it',
 	'src/lib/tree-operations/list/item-moves.ts':
 		'a block carried in after a lifted item’s sublist takes the line it needs to read back where it now stands',
 	'src/lib/tree-operations/paste/list-break-out.ts': 'head normalization inside the built halves',
@@ -45,27 +45,63 @@ const TRIVIA_WRITERS: Record<string, string> = {
 
 /** Files that may name one of those functions directly rather than the shared one. */
 const HAND_SETTLE_CALLERS: Record<string, string> = {
-	'src/lib/tree-operations/settle.ts': 'defines them, and the funnel entries beside them',
-	'src/lib/tree-operations/reorder.ts':
-		'a rotation reseats blank lines by position, so each reseated run is asked the one-line rule',
-	'src/lib/tree-operations/content-write.ts':
-		'the content door’s two blank transitions settle by hand, ahead of the seam ask',
-	'src/lib/tree-operations/index.ts': 're-exports the two the gap-caret mint still needs',
+	'src/lib/tree-operations/settle.ts': 'defines them, and `settleEdit`, the one fix-up beside them',
+	'src/lib/tree-operations/blank-runs.ts': 'defines the run layout every fix-up ends with',
+	'src/lib/tree-operations/index.ts': 're-exports the one the gap-caret mint still needs',
 	'src/lib/tree-operations/list/sublist-separator.ts': 'defines the empty-marker sublist door',
 	'src/lib/tree-operations/chain-rebuild.ts':
 		'the chain rebuild is where a list rebuilt down to an empty marker becomes visible',
 	'src/lib/editor-actions/block-edit-core.ts':
-		'the gap-caret paragraph is a block of its own on both sides, which a splice window cannot say',
+		'the gap-caret paragraph is a block of its own on both sides, which a splice window cannot say: the displaced follower’s line is the join rule’s placed row',
 	'src/lib/tree-operations/list/item-moves.ts':
-		'the nesting move settles the sublist it creates, and a lift the blocks it carries in',
-	'src/lib/selection/range-delete.ts':
-		'its same-block arm writes bytes rather than splicing, so it settles as the content door does'
+		'the nesting move settles the sublist it creates, and a lift the blocks it carries in'
+};
+
+/** G4.208: the commit's one fix-up and the write's own fix-up, each named only by its callers. */
+const FIX_UP_CALLERS: Record<string, string> = {
+	'src/lib/tree-operations/settle.ts': 'defines both, and the write’s is the head of the commit’s',
+	'src/lib/editor-actions/commit/structural-commit.ts':
+		'the commit, once over each body it wrote, after the mutation reports what it did',
+	'src/lib/tree-operations/content-write.ts':
+		'`updateNodeContent`, for a write no commit settles: in place, the trial, a body below a scope'
+};
+
+/** G4.241: where a run is laid out and a join asked, which is the one fix-up and its two helpers. */
+const LAYOUT_AND_JOIN_CALLERS: Record<string, string> = {
+	'src/lib/tree-operations/settle.ts':
+		'`settleEdit` and the write’s fix-up, plus `spliceChildrenSettled` for a body no commit owns',
+	'src/lib/tree-operations/blank-runs.ts': 'defines the run layout',
+	'src/lib/tree-operations/neighbour-merge.ts': 'defines the join question and the span re-read',
+	'src/lib/tree-operations/unfinished-readings.ts':
+		'the fix-up’s step for a construct a written line finishes, re-read through the span'
+};
+
+/** The ops whose fix-up runs a step of its own (a content write, a removal, a move), named only
+ *  where the mutation reports that kind through `describeEdit`; unreported, the step is skipped. */
+const KIND_REPORTING_CALLERS: Record<string, string> = {
+	'src/lib/tree-operations/content-write.ts': 'defines `writeNodeContent`',
+	'src/lib/tree-operations/settle.ts': 'defines `deleteNode`',
+	'src/lib/tree-operations/node-ops.ts': 'defines the join, whose delete its caller reports',
+	'src/lib/tree-operations/reorder.ts': 'defines the move',
+	'src/lib/tree-operations/index.ts': 're-exports the delete and the join',
+	'src/lib/editor-actions/block-edit-core.ts':
+		'`commitLeafText` reports `written`; the delete, the join and the neighbour delete report `removed`',
+	'src/lib/editor-actions/unwrap-strategies.ts': 'the emptied item’s delete reports `removed`',
+	'src/lib/editor-actions/reorder-action.ts': 'both moves report `moved`'
+};
+
+/** The commits whose mutation fixes up its own writes, so the settle-once check skips them. */
+const OWN_FIX_UP_COMMITS: Record<string, string> = {
+	'src/lib/action-contracts.ts': 'declares the field',
+	'src/lib/editor-actions/commit/structural-commit.ts': 'reads it',
+	'src/lib/selection/cross-block/format-toggle.ts':
+		'a format toggle writes several leaves at any depth and rebuilds their chains inside its mutation, so it settles each write there'
 };
 
 const writesTrivia = /\.leadingTrivia\s*\+?=(?!=)/;
 
 const namesHandSettle =
-	/(?<![\w'"])(clearRedundantSeparator|dropDoubledSeparator|restoreSeparatorOnFill|restoreSeparatorAfterBlank|settleSeparatorOnBlank|settleSublistSeparator)\b/;
+	/(?<![\w'"])(normalizeBlankRuns|restoreSeparatorOnFill|restoreSeparatorAfterBlank|settleSublistSeparator|joinListsMadeBeside)\b/;
 
 describeManifests(
 	[
@@ -90,9 +126,57 @@ describeManifests(
 				'a file names a settle function directly: use the shared one, or declare why it cannot',
 			hits: [
 				'restoreSeparatorOnFill(parent, i + 1, sharing);',
-				"import { dropDoubledSeparator } from '../tree-operations';"
+				"import { normalizeBlankRuns } from '../tree-operations/blank-runs';"
 			],
-			misses: ['// dropDoubledSeparator is the run-level twin']
+			misses: ['// normalizeBlankRuns lays out the run']
+		},
+		{
+			id: 'G4.208 the fix-up after an edit is run by the commit or the write no commit settles',
+			matches: /(?<![\w'"])(settleEdit|settleContentWrite)\b/,
+			declared: FIX_UP_CALLERS,
+			reason:
+				'a file runs the fix-up itself: report the edit to the commit (`describeEdit`), or write through `updateNodeContent` where no commit settles the body',
+			hits: [
+				'settleEdit(body, { change, before }, grammar, sharing);',
+				"import { settleContentWrite } from '../tree-operations/settle';"
+			],
+			misses: ['// settleEdit runs once per body', 'const settleEditLater = 1;']
+		},
+		{
+			id: 'G4.208 an op whose fix-up runs a step of its own is called where its kind is reported',
+			matches:
+				/(?<![\w'"])(writeNodeContent|deleteNode|mergeIntoPrevDeepLeaf|reorderChildrenWithTrivia)\b/,
+			declared: KIND_REPORTING_CALLERS,
+			reason:
+				'the commit runs this op’s own fix-up step only when told: report it through `describeEdit` (`written`, `removed` or `moved`) and declare the file, or write through `updateNodeContent` where no commit settles the body',
+			hits: [
+				'const { change, written } = writeNodeContent(body, i, write, grammar, sharing);',
+				"import { deleteNode as performDelete } from '../tree-operations';",
+				'const moved = reorderChildrenWithTrivia(scope.body, from, to, sharing);'
+			],
+			misses: ['// writeNodeContent leaves the fix-up to the commit', 'const deleteNodeLater = 1;']
+		},
+		{
+			id: 'G4.241 the run layout and the join question are asked by the fix-up alone',
+			matches:
+				/(?<![\w'"])(normalizeBlankRuns|resolveJoin|separateJoin|finishUnfinishedReadings|absorbSpanReading)\b/,
+			declared: LAYOUT_AND_JOIN_CALLERS,
+			reason:
+				'an op asks a join or lays out a run itself, where the commit’s fix-up asks every edit the same way: report the edit through `describeEdit` (a move’s uncovered join included) and let `settleEdit` ask',
+			hits: [
+				'separateJoin(body, at, "placed", grammar, sharing);',
+				"import { normalizeBlankRuns } from '../tree-operations/blank-runs';"
+			],
+			misses: ['// resolveJoin reads the flush pair', 'const resolveJoinLater = 1;']
+		},
+		{
+			id: 'G4.208 a commit skips the settle-once check only where its mutation fixes up its own writes',
+			matches: /(?<![\w'"])fixesUpOwnWrites\b/,
+			declared: OWN_FIX_UP_COMMITS,
+			reason:
+				'a commit claims its mutation fixes up its own writes, which lets the commit settle those bodies twice: report the writes instead, or declare why it can’t',
+			hits: ['landing: () => restored,\n\tfixesUpOwnWrites: true'],
+			misses: ['// fixesUpOwnWrites is the format toggle’s']
 		}
 	],
 	collectEditorSources()
@@ -161,7 +245,7 @@ describe('every separator entry point retires the child spans it invalidates', (
 	 *  or a splice changes the child count, refusing a region rewrite. */
 	const ANSWERED_ELSEWHERE: Record<string, string> = {
 		installMergedLeaf: 'writes the survivor’s line inside a merge splice; the count moves',
-		absorbSeamReading: 'writes a fresh block’s line, then splices; the count moves',
+		installReading: 'writes a fresh block’s line, then splices; the count moves',
 		writeParsedContent: 'carries the target’s line onto its own fresh reparse',
 		installReplacement: 'carries the line onto the replacement, byte for byte',
 		spliceSpill: 'carries the line onto the first block of a splice; the count moves',

@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 test.describe('blockquote editing', () => {
 	let editor: EditorPage;
@@ -42,7 +43,7 @@ test.describe('blockquote editing', () => {
 		await editor.loadContent('> Line one.\n>\n> Line two.\n');
 		const editables = editor.getBlock(0).locator('[contenteditable="true"]');
 		await editables.last().click();
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 		await editor.page.keyboard.press('Enter');
 		// The split's blank-line separator plus the empty paragraph it made.
 		await editor.bridge.waitForSourceMatches(/> Line two\.\n>\n>\n$/);

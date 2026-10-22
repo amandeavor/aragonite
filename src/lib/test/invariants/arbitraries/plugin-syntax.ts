@@ -113,6 +113,42 @@ export const arbPluginBlockSource = withDrawnLineEnding(
 	)
 );
 
+// ── Bodies between fence lines ───────────────────────────────────────────────
+
+/** A container body's lines: runs of blank lines at either edge or filling the body, and text
+ *  that runs over several lines, so an erased last line can leave a blank one in a leaf. */
+const bodyLines = fc.array(fc.constantFrom('one', 'two words', 'three', '', '', '# head'), {
+	maxLength: 5
+});
+
+const fencedBody = fc.oneof(
+	bodyLines.map(
+		(lines) => '> [!NOTE]\n' + lines.map((l) => (l === '' ? '>\n' : `> ${l}\n`)).join('')
+	),
+	bodyLines.map(
+		(lines) =>
+			'<details>\n<summary>S</summary>\n' + lines.map((l) => l + '\n').join('') + '</details>\n'
+	),
+	bodyLines.map((lines) => ':::note\n' + lines.map((l) => l + '\n').join('') + ':::\n')
+);
+
+/** Blank-separated documents of fenced and opener-only bodies beside multi-line paragraphs; needs
+ *  the admonitions and details plugins installed. */
+export const arbFencedBodyDoc = withDrawnLineEnding(
+	fc
+		.array(
+			fc.oneof(
+				fencedBody,
+				bodyLines.map((lines) => lines.filter(Boolean).join('\n') + '\n')
+			),
+			{
+				minLength: 1,
+				maxLength: 4
+			}
+		)
+		.map((blocks) => blocks.filter((b) => b.trim() !== '').join('\n'))
+);
+
 /**
  * A GFM document with plugin block syntax mixed in. The unterminated and malformed cases carry
  * the weight: an opener that wrongly declines still has to leave the refused bytes as authored.

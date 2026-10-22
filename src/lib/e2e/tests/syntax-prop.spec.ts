@@ -1,6 +1,8 @@
 import { test, expect } from '../fixtures';
 import { type Page } from '@playwright/test';
 import { gotoReady } from '../goto-ready';
+import { createClipboardArm } from '../clipboard-arm';
+import { edgeKey } from '../platform-keys';
 
 // Two editors over one seed, one with `syntax={{ indentedCode: false, setextHeading: false }}`.
 // Requirements: `e2e/requirements/syntax-prop.md`.
@@ -22,7 +24,7 @@ const kindsIn = (page: Page, pane: Pane) =>
 /** An empty paragraph under `Loaded`, focused: End on the first block, then Enter. */
 async function openLineUnderFirst(page: Page, pane: Pane): Promise<void> {
 	await paneOf(page, pane).getByText('Loaded').click();
-	await page.keyboard.press('End');
+	await page.keyboard.press(edgeKey('lineEnd'));
 	await page.keyboard.press('Enter');
 }
 
@@ -68,7 +70,7 @@ test.describe('the syntax prop switches a syntax off in one editor', () => {
 
 	test('typing into the loaded `Plan` leaves the divider under it a divider', async ({ page }) => {
 		await paneOf(page, 'off').getByText('Plan').click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('s');
 
 		expect(await sourceOf(page, 'off')).toBe('Loaded\n\n\tcode\n\nPlans\n---\n');
@@ -78,7 +80,7 @@ test.describe('the syntax prop switches a syntax off in one editor', () => {
 
 	test('Enter before the tab of the loaded `code` line leaves a paragraph', async ({ page }) => {
 		await paneOf(page, 'off').getByText('code').click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Enter');
 
 		expect(await sourceOf(page, 'off')).toBe('Loaded\n\n\n\tcode\n\nPlan\n---\n');
@@ -91,7 +93,7 @@ test.describe('the syntax prop switches a syntax off in one editor', () => {
 		page
 	}) => {
 		await paneOf(page, 'off').getByText('code').click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Enter');
 		await page.keyboard.press('ArrowUp');
 		await page.keyboard.press('Delete');
@@ -106,10 +108,11 @@ test.describe('the syntax prop switches a syntax off in one editor', () => {
 	test('`Plan` over `---` pasted is text and a divider in one editor, a heading in the other', async ({
 		page
 	}) => {
+		const clipboard = createClipboardArm(page);
 		for (const pane of ['off', 'on'] as const) {
 			await openLineUnderFirst(page, pane);
-			await page.evaluate(() => navigator.clipboard.writeText('Plan\n---\n'));
-			await page.keyboard.press('ControlOrMeta+v');
+			await clipboard.seed('Plan\n---\n');
+			await clipboard.paste();
 		}
 
 		expect(await sourceOf(page, 'off')).toBe('Loaded\n\nPlan\n---\n\n\tcode\n\nPlan\n---\n');

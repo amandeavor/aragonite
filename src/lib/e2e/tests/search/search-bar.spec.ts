@@ -9,6 +9,9 @@ import {
 	replaceInput,
 	typeQuery
 } from './helpers';
+import { skipUnlessSupported } from '../../browser-engine';
+import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 test.describe('search: open and close', () => {
 	let editor: EditorPage;
@@ -99,8 +102,8 @@ test.describe('search: closing returns to the caret', () => {
 		await editor.goto();
 		await editor.loadContent(LONG);
 		const home = page.locator("[data-block-path='[12]']");
-		await home.locator('[contenteditable="true"]').click();
-		await page.keyboard.press('End');
+		await clickInPlace(home.locator('[contenteditable="true"]'));
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');
@@ -127,8 +130,8 @@ test.describe('search: closing returns to the caret', () => {
 			).join('\n\n') + '\n'
 		);
 		const home = page.locator("[data-block-path='[1]']");
-		await home.locator('[contenteditable="true"]').click();
-		await page.keyboard.press('End');
+		await clickInPlace(home.locator('[contenteditable="true"]'));
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ControlOrMeta+f');
 		await findInput(page).waitFor({ state: 'visible' });
 		await typeQuery(editor, 'zebra');
@@ -164,7 +167,7 @@ test.describe('search: toggles', () => {
 			await typeQuery(editor, 'alpha');
 			await expect(count(page)).toHaveText(/1\s+of\s+3/);
 
-			await page.getByRole('button', { name: 'Match case' }).click();
+			await clickInPlace(page.getByRole('button', { name: 'Match case' }));
 			await expect(count(page)).toHaveText(/1\s+of\s+1/);
 		});
 
@@ -175,7 +178,7 @@ test.describe('search: toggles', () => {
 			await typeQuery(editor, 'cat');
 			await expect(count(page)).toHaveText(/1\s+of\s+4/);
 
-			await page.getByRole('button', { name: 'Whole word' }).click();
+			await clickInPlace(page.getByRole('button', { name: 'Whole word' }));
 			await expect(count(page)).toHaveText(/1\s+of\s+2/);
 		});
 
@@ -187,7 +190,7 @@ test.describe('search: toggles', () => {
 			// As a literal, the bracket query matches nothing.
 			await expect(count(page)).toHaveText(/No results/);
 
-			await page.getByRole('button', { name: 'Regex' }).click();
+			await clickInPlace(page.getByRole('button', { name: 'Regex' }));
 			await expect(count(page)).toHaveText(/1\s+of\s+3/);
 		});
 
@@ -216,12 +219,13 @@ test.describe('search: forced colors', () => {
 	test('the focused bar shows a highlight edge and a pressed toggle still reads as pressed', async ({
 		page
 	}) => {
+		skipUnlessSupported(page, 'mediaEmulation');
 		const editor = new EditorPage(page);
 		await editor.goto();
 		await page.emulateMedia({ forcedColors: 'active' });
 		await editor.loadContent('alpha\n');
 		await openFind(editor);
-		await page.getByRole('button', { name: 'Match case' }).click();
+		await clickInPlace(page.getByRole('button', { name: 'Match case' }));
 
 		// The pointer stays on the toggle it pressed, so this reads the hovered pressed state, and
 		// the toggle holds focus inside the bar.

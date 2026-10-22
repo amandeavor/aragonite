@@ -1,7 +1,33 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 const PIXEL_TOLERANCE = 5;
+
+/** The caret sits on a letter boundary nearest `sourceX`: no boundary beside it is closer. A fixed
+ *  band can't hold this, since a column falling midway between two boundaries may take either. */
+async function expectNearestColumn(editor: EditorPage, sourceX: number): Promise<void> {
+	const xs = await editor.page.evaluate(() => {
+		const sel = window.getSelection()!;
+		const node = sel.focusNode!;
+		const at = sel.focusOffset;
+		const xAt = (offset: number) => {
+			if (!(node instanceof Text) || offset < 0 || offset > node.length) return null;
+			const range = document.createRange();
+			range.setStart(node, offset);
+			return range.getClientRects()[0]?.left ?? null;
+		};
+		return { here: xAt(at), beside: [xAt(at - 1), xAt(at + 1)] };
+	});
+	expect(xs.here, 'the caret sits in text').not.toBeNull();
+	const off = Math.abs(xs.here! - sourceX);
+	for (const x of xs.beside) {
+		if (x !== null)
+			expect(off, `${xs.here} vs ${x} for ${sourceX}`).toBeLessThanOrEqual(
+				Math.abs(x - sourceX) + 0.5
+			);
+	}
+}
 
 test.describe('sticky column: container traversal', () => {
 	let editor: EditorPage;
@@ -18,7 +44,7 @@ test.describe('sticky column: container traversal', () => {
 
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 20; i++) await editor.page.keyboard.press('ArrowRight');
 
 		const sourceX = await editor.getCaretPixelX();
@@ -30,8 +56,7 @@ test.describe('sticky column: container traversal', () => {
 
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.waitForRenderFlush();
-		const afterX = await editor.getCaretPixelX();
-		expect(Math.abs(afterX - sourceX)).toBeLessThan(PIXEL_TOLERANCE);
+		await expectNearestColumn(editor, sourceX);
 	});
 
 	test('through list preserves column', async () => {
@@ -41,7 +66,7 @@ test.describe('sticky column: container traversal', () => {
 
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 15; i++) await editor.page.keyboard.press('ArrowRight');
 
 		const sourceX = await editor.getCaretPixelX();
@@ -55,8 +80,7 @@ test.describe('sticky column: container traversal', () => {
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.waitForRenderFlush();
 
-		const targetX = await editor.getCaretPixelX();
-		expect(Math.abs(targetX - sourceX)).toBeLessThan(PIXEL_TOLERANCE);
+		await expectNearestColumn(editor, sourceX);
 	});
 });
 
@@ -75,8 +99,10 @@ test.describe('sticky column: transparent blocks', () => {
 
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
-		for (let i = 0; i < 25; i++) await editor.page.keyboard.press('ArrowRight');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
+		// Inside the words both paragraphs open with, so one boundary below is nearest the column
+		// and a caret a letter off either way is caught.
+		for (let i = 0; i < 10; i++) await editor.page.keyboard.press('ArrowRight');
 
 		const sourceX = await editor.getCaretPixelX();
 
@@ -86,8 +112,7 @@ test.describe('sticky column: transparent blocks', () => {
 		await editor.page.keyboard.press('ArrowDown');
 		await editor.waitForRenderFlush();
 
-		const targetX = await editor.getCaretPixelX();
-		expect(Math.abs(targetX - sourceX)).toBeLessThan(PIXEL_TOLERANCE);
+		await expectNearestColumn(editor, sourceX);
 	});
 });
 
@@ -128,7 +153,7 @@ test.describe('sticky column: edge cases', () => {
 
 		const first = editor.page.locator('[contenteditable="true"]').nth(0);
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		for (let i = 0; i < 20; i++) await editor.page.keyboard.press('ArrowRight');
 
 		await editor.page.keyboard.press('ArrowDown');
@@ -138,7 +163,7 @@ test.describe('sticky column: edge cases', () => {
 		await editor.waitForRenderFlush();
 
 		await first.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		const postRefocusX = await editor.getCaretPixelX();
 
 		await editor.page.keyboard.press('ArrowDown');

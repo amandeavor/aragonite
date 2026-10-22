@@ -1,8 +1,12 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
 
 // A paste into a CRLF document writes its own lines in CRLF, whatever ending the clipboard held.
 // Requirements: e2e/requirements/clipboard/paste-crlf-document.md.
+
+/** The source with `\r` and `\n` spelled out, so a diff shows a lone one. */
+const escaped = (source: string) => JSON.stringify(source);
 
 test.describe('a paste into a CRLF document', () => {
 	let editor: EditorPage;
@@ -12,7 +16,7 @@ test.describe('a paste into a CRLF document', () => {
 		await editor.goto();
 		await editor.loadContent('abc\r\nAfter\r\n');
 		await editor.focusBlockAtPath([0], 0);
-		await editor.page.keyboard.press('End');
+		await editor.page.keyboard.press(edgeKey('lineEnd'));
 	});
 
 	test('two paragraphs land with CRLF between and inside them', async () => {
@@ -20,7 +24,9 @@ test.describe('a paste into a CRLF document', () => {
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('y');
 
-		expect(await editor.bridge.getSource()).toBe('abc\r\n\r\nx\r\n\r\ny\r\nAfter\r\n');
+		expect(escaped(await editor.bridge.getSource())).toBe(
+			escaped('abc\r\n\r\nx\r\n\r\ny\r\nAfter\r\n')
+		);
 		expect(await editor.parseConverged()).toBe(true);
 	});
 
@@ -29,6 +35,6 @@ test.describe('a paste into a CRLF document', () => {
 		await editor.paste();
 		await editor.bridge.waitForSourceContains('y');
 
-		expect(await editor.bridge.getSource()).toBe('abcx\r\ny\r\nAfter\r\n');
+		expect(escaped(await editor.bridge.getSource())).toBe(escaped('abcx\r\ny\r\nAfter\r\n'));
 	});
 });

@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { GIANT_LIST_OR_TABLE_BYTES } from '../../perf/vr-helpers';
+import { clickInPlace } from '../../../click-in-place';
 
 // Entering a row-windowed table with a sticky column must read the column geometry from a mounted
 // row, not a hardcoded row 0: an unmounted row 0 gives no rects and `columnNearestX` collapses the
@@ -41,7 +42,7 @@ test.describe('table block: sticky-column entry into a row-windowed table', () =
 		// Click the rightmost cell (col 2 of the 3-column fixture): the sticky x then maps
 		// clearly to col 2, so a landing in col 0 stands out.
 		const rightCol = 2;
-		await page.locator(`[data-table-row-idx="${lastRow}"] .table-cell`).nth(rightCol).click();
+		await clickInPlace(page.locator(`[data-table-row-idx="${lastRow}"] .table-cell`).nth(rightCol));
 
 		// ArrowDown exits to the paragraph below, capturing the sticky x at col 2. No
 		// typing in between: input events reset the sticky column.

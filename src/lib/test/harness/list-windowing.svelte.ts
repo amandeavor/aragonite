@@ -123,6 +123,7 @@ export function mountListWindowing(options: MountListWindowingOptions): MountedL
 		resolve: tree.resolve,
 		holdForRound: tree.holdForRound,
 		mountTop: tree.mountTop,
+		pathAt: tree.pathAt,
 		syncScrollTop: () => windowing.syncScrollTop()
 	});
 	flushSync();

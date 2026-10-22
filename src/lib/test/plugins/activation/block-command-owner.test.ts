@@ -4,13 +4,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { definePlugin, installPlugins, type EditorContext } from '#lib/schema/plugin-install.js';
 import { declarePluginKind, declaredPluginKind } from '#lib/schema/plugin-kind.js';
 import {
+	blockCommandTarget,
 	registerBlockCommand,
 	runCommandById,
 	type BlockCommandContext,
 	type KindCommandTarget
 } from '#lib/schema/block-commands.js';
 import type { AnyCommandId } from '#lib/schema/command-id.js';
-import { buildLeafCommandContext } from '#lib/components/blocks/editable/editable-leaf.js';
 import { buildContainerKindTarget } from '#lib/editor-actions/plugin/container.js';
 import { createEditorEvents, emitCommandError } from '#lib/editor-events.js';
 import type { CstNode } from '#lib/core/nodes.js';
@@ -37,20 +37,17 @@ beforeEach(() => {
 });
 
 const node = (): CstNode => ({ kind: declaredPluginKind(KIND), leadingTrivia: '', raw: '' });
+const writes = { updateBlockMetadata: async () => true, replaceRaw: async () => true };
 
 const targets: [string, () => KindCommandTarget][] = [
 	[
 		'a leaf',
 		() => ({
 			kind: declaredPluginKind(KIND),
-			getCommandContext: () =>
-				buildLeafCommandContext(
-					{ getNode: node, getIndex: () => 0 },
-					{ updateBlockMetadata: async () => true }
-				)
+			getCommandContext: () => blockCommandTarget({ getNode: node, getIndex: () => 0 }, writes)
 		})
 	],
-	['a container', () => buildContainerKindTarget({ getNode: node }, async () => {})]
+	['a container', () => buildContainerKindTarget({ getNode: node, getIndex: () => 0 }, writes)]
 ];
 
 describe('a block command answers to the plugin that registered it, on another plugin’s kind', () => {

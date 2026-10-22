@@ -9,9 +9,9 @@ import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import {
 	rebuildDirectiveContainerRaw,
 	DIRECTIVE_CONTAINER,
-	DIRECTIVE_TEXT,
-	type DirectiveContainerMetadata
+	DIRECTIVE_TEXT
 } from '#lib/core/directive/kinds.js';
+import type { DirectiveContainerMetadata } from '#lib/core/directive/container-shape.js';
 import { registerDirective, type ParsedDirective } from '#lib/core/directive/registry.js';
 import { arbGfmDoc, freshOrFixedSeed } from '../../invariants/arbitraries';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';

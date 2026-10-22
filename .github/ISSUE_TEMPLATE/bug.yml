@@ -27,5 +27,11 @@ body:
     id: where
     attributes:
       label: Version, browser, mode
-      description: Optional, but it saves a round trip. Only Chromium is tested so far, so Firefox and Safari reports are extra welcome.
-      placeholder: 0.10.8, Firefox 145 on Windows 11, live mode
+      description: Optional, but good lord please include it - saves me a few roundtrips lol
+      placeholder: 0.11.1, Firefox 158 on Windows 11, live mode
+
+  - type: textarea
+    id: recording
+    attributes:
+      label: Recording
+      description: Optional. The demo's "report a bug" button puts a recording of what you typed on your clipboard to paste here (the document's text included), so we can replay it.

@@ -24,8 +24,11 @@ export function createFocusActions(
 		caretWriter: deps.caretWriter,
 		getPresentationMode: deps.reading.mode
 	};
-	const gapStopAt = (parentPath: number[], boundaryIndex: number) =>
-		tryGapStop(gapScope, parentPath, boundaryIndex);
+	function gapStopAt(parentPath: number[], boundaryIndex: number): boolean {
+		const stopped = tryGapStop(gapScope, parentPath, boundaryIndex);
+		if (stopped) void deps.caretLanding.showGap();
+		return stopped;
+	}
 
 	/** Past the last block a move appends a paragraph (outside reading mode); before the first
 	 *  it stops. */
@@ -36,10 +39,10 @@ export function createFocusActions(
 	): Promise<void> {
 		// Reading mode writes nothing, so a move past the last block just stops there.
 		if (step < 0 || options?.append === false || isReadingMode(deps.reading.mode)) return;
-		// Appended through a commit so it is in undo history and edit events; the blank line
-		// and the paragraph's own line both take the document's line ending.
+		// Appended through a commit so it is in undo history and edit events, whose fix-up gives the
+		// empty line the blank line above it.
 		const lineEnding = documentLineEnding(deps.doc);
-		const newBlock = emptyParagraph(lineEnding, lineEnding);
+		const newBlock = emptyParagraph('', lineEnding);
 		// The appended index (one past the end) is the path for both the event and the
 		// undo restore fallback: it names the block this creates.
 		const appendPath = docPathFrom([deps.doc.children.length]);

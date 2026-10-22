@@ -25,13 +25,16 @@ import { createStructuralCommit, type CommitArgs } from './structural-commit';
 import { admitsSnapshot, admitsWrite } from './reading-write-gate';
 import type { EditorActionsDeps, UndoController } from '../deps';
 import type { CommitLanding, HeldLanding, CommitSnapshotArg } from '../../action-contracts';
-import { toEditEvent } from '../../editor-events';
+import { emitCommitError, toEditEvent } from '../../editor-events';
 import {
 	assertCommitPaths,
 	assertCommittedNodes,
 	assertKeepsABlock,
 	assertLastLineKept,
+	assertLineEndingPairsKept,
+	assertListMarkerWidths,
 	assertReadsBack,
+	documentLineEndings,
 	assertUndoTopIntegrity
 } from '../../invariants/install';
 import {
@@ -258,13 +261,9 @@ export function createUndoController(
 		};
 	}
 
-	/** The one path to the `error` event, so every throw site reports alike (`docs/design/editor.md` § The event channel). */
+	/** The one path to the `error` event, so every throw site reports alike (`docs/design/commit-and-undo.md` § The event channel). */
 	function reportCommitError(args: CommitArgs, error: unknown): void {
-		deps.events.emit('error', {
-			origin: 'commit',
-			error,
-			context: { op: args.op?.kind, path: args.op?.eventPath }
-		});
+		emitCommitError(deps.events, { error, op: args.op?.kind, path: args.op?.eventPath });
 	}
 
 	/** `discarded` is a `discardIfNoop` commit that changed nothing: no write, but it still lands. */
@@ -296,6 +295,7 @@ export function createUndoController(
 			pushCommitSnapshot(args.snapshot.path, args.snapshot.offset);
 			lastCommitEntry = deps.undoManager.peekUndo() ?? null;
 			const wasOpen = endsOpen(deps.doc);
+			const endings = documentLineEndings(deps.doc);
 			const changed = args.mutate(wasOpen);
 			if (args.discardIfNoop && !changed) {
 				// The mutation ran but no scope changed: unwind as a throw would.
@@ -305,8 +305,10 @@ export function createUndoController(
 				const written = args.written();
 				assertCommittedNodes(written.nodes, deps.reading.grammar);
 				assertLastLineKept(deps.doc, wasOpen);
+				assertLineEndingPairsKept(deps.doc, endings);
 				assertKeepsABlock(deps.doc, written.nodes);
 				assertReadsBack(written.tops, deps.reading.grammar);
+				assertListMarkerWidths(written.tops);
 			}
 			if (!discarded && isDevChecks()) {
 				// A missed copy before write corrupts the newest undo entry, so the commit catches it

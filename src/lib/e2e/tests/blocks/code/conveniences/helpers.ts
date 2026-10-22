@@ -1,15 +1,17 @@
 import { expect } from '@playwright/test';
 import { EditorPage } from '../../../../editor-page';
+import { clickInPlace } from '../../../../click-in-place';
+import { edgeKey } from '../../../../platform-keys';
 
 export async function focusCodeBlockAtEnd(editor: EditorPage) {
-	await editor.getBlock(0).click();
-	await editor.page.keyboard.press('End');
+	await clickInPlace(editor.getBlock(0));
+	await editor.page.keyboard.press(edgeKey('lineEnd'));
 }
 
 // Step to `column` of the code body by keyboard: a click computed from a rect cannot land on an
 // exact offset. The four leading arrows clear a 3-character opener and its newline in the text.
 export async function focusCodeBody(editor: EditorPage, column = 0) {
-	await editor.getBlock(0).click();
+	await clickInPlace(editor.getBlock(0));
 	await editor.focusBlockStart(0);
 	for (let i = 0; i < 4 + column; i++) await editor.page.keyboard.press('ArrowRight');
 }

@@ -51,9 +51,21 @@ export interface BlockOpener {
 	tryOpen(ctx: OpenContext): BlockOpenerResult | null;
 	/** Whether a line of this kind interrupts an open paragraph (GFM continuation rules); `false` = never. */
 	interruptsParagraph: ((lineText: string) => boolean) | false;
-	/** Given a block's own bytes: my reading of these bytes is not final, more lines could change it
-	 *  (a lone `$$` still awaiting its closer). Absent: no line below changes what this opener read. */
-	readingNotFinal?: (raw: string) => boolean;
+	/** For an opener whose reading a line below can still change (a lone `$$` backs out to a
+	 *  paragraph, an open fence takes in what follows): which blocks, and which lines. Absent: none. */
+	readingNotFinal?: UnfinishedReading;
+}
+
+/** The two halves of {@link BlockOpener.readingNotFinal}, declared together. */
+export interface UnfinishedReading {
+	/** Given a block's own bytes: my reading of them isn't final, a line below could change it. */
+	notFinal: (raw: string) => boolean;
+	/** Whether a line could be the one that changes it. A cheap candidate test, not a match: true
+	 *  for every line this opener accepts as its closer, wider is fine, narrower breaks the edit. */
+	mayClose: (lineText: string) => boolean;
+	/** The block takes in every line below it until its closer, as an unclosed fence does: it never
+	 *  stands above another block, and with no closer below it reads to the body's end. */
+	readsOn?: boolean;
 }
 
 type OpenerRecord = RegistryRecord<AnyBlockKind, BlockOpener>;
@@ -134,7 +146,45 @@ export function lineInterruptsParagraph(lineText: string): boolean {
 /** Whether an opener in `grammar` says a block with these bytes may still read differently once
  *  more lines follow it, which a one-line read of the block below can't settle. */
 export function blockReadingNotFinal(raw: string, grammar: GrammarView): boolean {
-	return grammar.orderedOpeners().some((opener) => opener.readingNotFinal?.(raw) === true);
+	return readingNotFinalIn(grammar)(raw);
+}
+
+/** {@link blockReadingNotFinal} with the grammar's openers read once, for a walk over many blocks. */
+export function readingNotFinalIn(grammar: GrammarView): (raw: string) => boolean {
+	const readings = unfinishedReadings(grammar);
+	return (raw) => readings.some((reading) => reading.notFinal(raw));
+}
+
+/** Whether a block with these bytes waits on a closer and takes in every line below until then. */
+export function readsOnIn(grammar: GrammarView): (raw: string) => boolean {
+	const readings = unfinishedReadings(grammar).filter((reading) => reading.readsOn);
+	return (raw) => readings.some((reading) => reading.notFinal(raw));
+}
+
+/** Whether an opener in `grammar` says this line could finish a reading it left unfinished. */
+export function lineMayFinishReading(lineText: string, grammar: GrammarView): boolean {
+	return unfinishedReadings(grammar).some((reading) => reading.mayClose(lineText));
+}
+
+/** {@link lineMayFinishReading} for a block above the line, which a reading that reads on never is. */
+export function lineMayFinishReadingAbove(lineText: string, grammar: GrammarView): boolean {
+	return unfinishedReadings(grammar).some(
+		(reading) => !reading.readsOn && reading.mayClose(lineText)
+	);
+}
+
+// Kept against the grammar's opener list, which a walk up a long body reads once per block.
+const readingsByOpeners = new WeakMap<readonly BlockOpener[], UnfinishedReading[]>();
+
+function unfinishedReadings(grammar: GrammarView): readonly UnfinishedReading[] {
+	const openers = grammar.orderedOpeners();
+	let readings = readingsByOpeners.get(openers);
+	if (!readings) {
+		// Kinds sharing one grammar (every fence) share one reading, asked once.
+		readings = [...new Set(openers.flatMap((opener) => opener.readingNotFinal ?? []))];
+		readingsByOpeners.set(openers, readings);
+	}
+	return readings;
 }
 
 /**

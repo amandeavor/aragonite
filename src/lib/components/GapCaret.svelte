@@ -45,10 +45,10 @@
 	});
 
 	// Mounted only while the gap is live; focusing the contenteditable gives it a caret, so no
-	// range is set by hand.
+	// range is set by hand. The route that placed the gap asks the scroll owner to show it.
 	$effect(() => {
 		if (!proxyEl) return;
-		proxyEl.focus();
+		proxyEl.focus({ preventScroll: true });
 	});
 
 	// The move that leaves must not be re-captured by the boundary it is leaving.

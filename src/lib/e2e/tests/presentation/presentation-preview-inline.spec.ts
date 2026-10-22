@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
 import { textRunCenter } from '../../text-runs';
 import { clickModeToggle } from '../../mode-switch';
+import { edgeKey } from '../../platform-keys';
 
 // Inline-granular live preview: inside the focused block, each construct's markers stay hidden
 // until the caret enters its range, edges included. Editing scenarios live in
@@ -99,7 +100,7 @@ test.describe('preview-inline: markers by caret proximity', () => {
 		// text, and the caret must visit every raw offset exactly once.
 		const markers = ep.getBlock(2).locator('[data-construct-start]');
 		await ep.clickBlock(2);
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		expect((await ep.bridge.getSelectionPaths())?.focus.offset).toBe(0);
 
@@ -125,7 +126,7 @@ test.describe('preview-inline: markers by caret proximity', () => {
 		await ep.clickBlock(4);
 		// Home lands on the first visible position, since raw 0 is the emphasis's hidden `*`, so
 		// read where it landed and step to each target one checked step at a time.
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await ep.waitForRenderFlush();
 		let offset = (await ep.bridge.getSelectionPaths())?.focus.offset ?? -1;
 		expect(offset).toBeGreaterThanOrEqual(0);

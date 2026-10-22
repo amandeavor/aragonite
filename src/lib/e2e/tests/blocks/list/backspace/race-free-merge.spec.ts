@@ -1,5 +1,6 @@
 import { test } from '../../../../fixtures';
 import { EditorPage } from '../../../../editor-page';
+import { edgeKey } from '../../../../platform-keys';
 
 // A character typed straight after Backspace must land at the merge boundary, not on a stale
 // block from before the parent merge was written to state.
@@ -14,7 +15,7 @@ test.describe('list Backspace: race-free merge then type', () => {
 		await editor.loadContent('- Outer\n  - Inner one\n  - Inner two\n');
 		const innerTwo = editor.page.locator('[contenteditable="true"]', { hasText: 'Inner two' });
 		await innerTwo.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.typeText('Z');
 		await editor.bridge.waitForSourceContains('Inner oneZInner two');
@@ -24,7 +25,7 @@ test.describe('list Backspace: race-free merge then type', () => {
 		await editor.loadContent('- Alpha\n- Beta\n');
 		const beta = editor.page.locator('[contenteditable="true"]', { hasText: 'Beta' });
 		await beta.click();
-		await editor.page.keyboard.press('Home');
+		await editor.page.keyboard.press(edgeKey('lineStart'));
 		await editor.page.keyboard.press('Backspace');
 		await editor.typeText('Z');
 		await editor.bridge.waitForSourceContains('AlphaZBeta');

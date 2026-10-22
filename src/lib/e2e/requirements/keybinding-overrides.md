@@ -19,6 +19,23 @@ mutating the global tables.
 - a modified variant of an undo/redo chord (e.g. Mod+Alt+Y) is not swallowed as redo and
   reaches its own override (regression guard: a loose `key==='y'` check used to catch it)
 
+## A delete at a block's edge follows Backspace
+
+A word chord, Shift+Backspace or a soft keyboard's Backspace at a paragraph's start runs what plain
+Backspace binds there:
+
+- `Backspace` disabled everywhere, then each route at the start of `next` and a typed `x`: no
+  merge, `xnext`
+- `Backspace` disabled on paragraphs only: the same
+- `Backspace` rebound to `heading.cycle` with level 1: each route makes `next` a heading
+- Miss-analysis: a soft keyboard ran the merge by its id and the chords ran nothing, and no row
+  pressed a delete at an edge with Backspace rebound
+
+A binding on the delete chord itself wins over what the chord would do. `Shift+Backspace` or
+`Alt+Backspace` rebound to `heading.cycle` with level 1, then that chord right after an image,
+right after a replace decoration, or at a paragraph's start: the paragraph becomes a heading, and
+nothing is taken or selected.
+
 ## Override scope
 
 - a `kind:'heading'` override fires when a heading is focused but not on a paragraph

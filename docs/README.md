@@ -17,18 +17,20 @@ Everything else hangs off those four. The folders are split by **audience**, not
 
 ## `design/`: how it works
 
-One spec per subsystem, for anyone changing the editor's insides. Start with `editor.md` whatever the task, and open another only when your task touches its subsystem. Working through all ten up front is a great way to feel productive without becoming useful; let the other nine be somebody else's afternoon.
+One spec per subsystem, for anyone changing the editor's insides. Start with `editor.md` whatever the task, and open another only when your task touches its subsystem. Working through all twelve up front is a great way to feel productive without becoming useful; let the other eleven be somebody else's afternoon.
 
 | Doc                                                          | Scope                                                                                                                    |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| [`design/editor.md`](design/editor.md)                       | The whole system in one spec: **start here**                                                                             |
+| [`design/editor.md`](design/editor.md)                       | The orientation point: the whole system's shape, and where each subsystem's spec lives. **Start here**                   |
+| [`design/structural-edits.md`](design/structural-edits.md)   | Split, merge, delete, move, the keys that trigger them, and the containers (quotes, lists, tables) that nest blocks      |
+| [`design/commit-and-undo.md`](design/commit-and-undo.md)     | The commit every structural edit runs through, the undo stack, and the events a host can subscribe to                    |
 | [`design/syntax-tree.md`](design/syntax-tree.md)             | The document tree, where every node keeps its exact source bytes: the node model, the parser, the Markdown covered       |
 | [`design/inline-parsing.md`](design/inline-parsing.md)       | How the text inside a block (`**bold**` and friends) becomes styled spans, markers still visible                         |
 | [`design/virtual-rendering.md`](design/virtual-rendering.md) | Why a 10 MB document types like a small one: only the blocks on screen are rendered                                      |
 | [`design/live-mode.md`](design/live-mode.md)                 | The fully rendered mode that stays editable: the rules for editing around markers nobody can see                         |
 | [`design/caret-placement.md`](design/caret-placement.md)     | How a click becomes a caret, and what the caret does on the next key: nine stages, one file each                         |
 | [`design/selection.md`](design/selection.md)                 | Selecting across blocks, the caret the editor draws, the caret between two blocks, find and replace, copy, cut and paste |
-| [`design/invariants.md`](design/invariants.md)               | The rules that would cost someone their file, each numbered and each with a check that fails when it breaks              |
+| [`design/invariants.md`](design/invariants.md)               | Every rule the repo checks with code, numbered, and where each is checked                                                |
 | [`design/plugin-contract.md`](design/plugin-contract.md)     | What the plugin API promises: the shapes already settled, the ones still moving before 1.0, what was left out            |
 | [`design/performance.md`](design/performance.md)             | Why typing cost does not grow with document size, the exceptions, and the checks that enforce the numbers                |
 
@@ -39,6 +41,8 @@ The published pack. This folder ships inside the npm package (the only docs fold
 | Doc                                                                                          | Scope                                                                                                                                   |
 | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | [`guide/consumer-guide.md`](guide/consumer-guide.md)                                         | Embedding the editor in Svelte, React, Vue or plain JavaScript: props, events, theming, and everything else a host app touches          |
+| [`guide/consumer-guide/recipes.md`](guide/consumer-guide/recipes.md)                         | Worked UI built from the public calls: jump to a block, a selection toolbar, an insert toolbar, a `#` or `[[` menu, a bulk rewrite      |
+| [`guide/consumer-guide/shipping.md`](guide/consumer-guide/shipping.md)                       | Running inside a desktop shell (Tauri, Electron), and getting a bug report out of a user's session                                      |
 | [`guide/plugin-guide.md`](guide/plugin-guide.md)                                             | Teaching the editor your own blocks and inline syntax: a first working plugin, the model behind it, and a map of the recipe pages below |
 | [`guide/plugin-guide/per-editor.md`](guide/plugin-guide/per-editor.md)                       | Per-editor state, events and options, for a page with more than one editor on it                                                        |
 | [`guide/plugin-guide/container-walkthrough.md`](guide/plugin-guide/container-walkthrough.md) | The biggest worked example, a `:::conspiracy` box end to end, then the `closure` checklist every block kind fills in                    |
@@ -57,7 +61,7 @@ The published pack. This folder ships inside the npm package (the only docs fold
 | [`guide/directives.md`](guide/directives.md)                                                 | The `:::name` fence: a named box in Markdown, and how a plugin claims a name                                                            |
 | [`guide/plugin-guide/parrot-frames.md`](guide/plugin-guide/parrot-frames.md)                 | All ten party-parrot frames, ready to paste over the quickstart's two                                                                   |
 
-The pack is the whole `guide/` folder as is, subfolders included (a doc's gifs live in a folder named after it, and so do the plugin guide's recipe pages), so a markdown link inside it may only point at a file the pack carries. Name any other doc as inline code instead. `npm run lint` fails on a link that'd dangle once the pack leaves the repo.
+The pack is the whole `guide/` folder as is, subfolders included (a doc's gifs live in a folder named after it, and so do the plugin guide's recipe pages and the consumer guide's two extra pages), so a markdown link inside it may only point at a file the pack carries. Name any other doc as inline code instead. `npm run lint` fails on a link that'd dangle once the pack leaves the repo.
 
 ## `contributing/`: how we work
 

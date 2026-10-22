@@ -10,8 +10,7 @@ describe('resolveReorderUnit', () => {
 		expect(resolveReorderUnit(doc, [1])).toEqual({
 			parentPath: [],
 			index: 1,
-			scope: 'document',
-			renumberMarkers: false
+			scope: 'document'
 		});
 	});
 
@@ -20,8 +19,7 @@ describe('resolveReorderUnit', () => {
 		expect(resolveReorderUnit(doc, [0, 1, 0])).toEqual({
 			parentPath: [0],
 			index: 1,
-			scope: 'container',
-			renumberMarkers: true
+			scope: 'container'
 		});
 	});
 
@@ -30,8 +28,7 @@ describe('resolveReorderUnit', () => {
 		expect(resolveReorderUnit(doc, [0, 1])).toEqual({
 			parentPath: [0],
 			index: 1,
-			scope: 'container',
-			renumberMarkers: false
+			scope: 'container'
 		});
 	});
 
@@ -41,8 +38,7 @@ describe('resolveReorderUnit', () => {
 		expect(resolveReorderUnit(doc, [0, 2])).toEqual({
 			parentPath: [0],
 			index: 2,
-			scope: 'container',
-			renumberMarkers: true
+			scope: 'container'
 		});
 	});
 
@@ -52,8 +48,7 @@ describe('resolveReorderUnit', () => {
 		expect(resolveReorderUnit(doc, [0, 0, 0])).toEqual({
 			parentPath: [],
 			index: 0,
-			scope: 'document',
-			renumberMarkers: false
+			scope: 'document'
 		});
 	});
 
@@ -76,8 +71,7 @@ describe('resolveReorderUnit', () => {
 		expect(resolveReorderUnit(doc, [0, 0])).toEqual({
 			parentPath: [],
 			index: 0,
-			scope: 'document',
-			renumberMarkers: false
+			scope: 'document'
 		});
 	});
 });
@@ -131,8 +125,7 @@ describe('resolveReorderUnit: plugin (opaque) container', () => {
 		expect(resolveReorderUnit(doc, [1, 1, 1])).toEqual({
 			parentPath: [1, 1],
 			index: 1,
-			scope: 'container',
-			renumberMarkers: false
+			scope: 'container'
 		});
 	});
 });

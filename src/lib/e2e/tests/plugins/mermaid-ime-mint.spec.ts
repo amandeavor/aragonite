@@ -1,9 +1,20 @@
+import { type Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { readDoc, waitForDoc } from './helpers';
+import { skipUnlessSupported } from '../../browser-engine';
 import { attachIme } from '../../simulation/ime';
 import { MermaidPage, STANDARD_DIAGRAM_DOC } from './mermaid-helpers';
+import { multiClickElement } from '../../multi-click';
+import { edgeKey } from '../../platform-keys';
 
 // Requirements: `e2e/requirements/plugins/mermaid-ime-mint.md`.
+
+/** The shape an AltGr character arrives in: a bare `insertText` on the editing host. */
+async function insertAltGr(page: Page): Promise<void> {
+	skipUnlessSupported(page, 'cdp');
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('Input.insertText', { text: '€' });
+}
 
 class MermaidImePage extends MermaidPage {
 	async focusDiagram(): Promise<void> {
@@ -25,8 +36,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	}) => {
 		await editor.focusDiagram();
 
-		const cdp = await page.context().newCDPSession(page);
-		await cdp.send('Input.insertText', { text: '€' });
+		await insertAltGr(page);
 
 		await waitForDoc(page, (s) => s.rootCount === 4);
 		const doc = await readDoc(page);
@@ -49,9 +59,9 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	// The element the plugin declares is replaced on every redraw, which is why the element that
 	// takes focus sits in the frame: anything mounted inside the diagram would be lost here.
 	test('the host survives a redraw and still creates', async ({ page }) => {
-		await editor.viewport.dblclick();
+		await multiClickElement(editor.viewport, 2);
 		await expect(editor.page.getByTestId('mermaid-source')).toBeFocused();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('\n\tB --> C[Done]');
 		await page.keyboard.press('ControlOrMeta+Enter');
 
@@ -69,9 +79,9 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	// The redraw hands focus back only for an arrival not from the outer element; a broader hand-off
 	// leaves focus on the diagram, where the next AltGr or composition drops, seen only here.
 	test('focus settles on the host after the redraw, not on the new viewport', async ({ page }) => {
-		await editor.viewport.dblclick();
+		await multiClickElement(editor.viewport, 2);
 		await expect(editor.page.getByTestId('mermaid-source')).toBeFocused();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.type('\n\tB --> C[Done]');
 		await page.keyboard.press('ControlOrMeta+Enter');
 
@@ -80,8 +90,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 		await editor.waitForRenderFlush();
 
 		await expect(editor.inputHost).toBeFocused();
-		const cdp = await page.context().newCDPSession(page);
-		await cdp.send('Input.insertText', { text: '€' });
+		await insertAltGr(page);
 		await waitForDoc(page, (s) => s.rootCount === 4);
 		expect((await readDoc(page)).texts[2]).toBe('€');
 	});
@@ -95,8 +104,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 		await editor.viewport.click();
 
 		await expect(editor.inputHost).toBeFocused();
-		const cdp = await page.context().newCDPSession(page);
-		await cdp.send('Input.insertText', { text: '€' });
+		await insertAltGr(page);
 		await waitForDoc(page, (s) => s.rootCount === 4);
 		expect((await readDoc(page)).texts[2]).toBe('€');
 	});
@@ -105,7 +113,7 @@ test.describe('mermaid whole-block focus: AltGr and IME input', () => {
 	// typed, since the CDP driver waits on `textContent`, which a textarea lacks.
 	test('the edit textarea keeps its own caret', async ({ page }) => {
 		const before = await editor.bridge.getSource();
-		await editor.viewport.dblclick();
+		await multiClickElement(editor.viewport, 2);
 		const textarea = page.getByTestId('mermaid-source');
 		await expect(textarea).toBeFocused();
 

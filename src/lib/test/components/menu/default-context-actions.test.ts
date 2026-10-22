@@ -157,11 +157,21 @@ describe('the default context actions', () => {
 		const ctx = context(node);
 		const [copy, replace, remove] = actionsFor(node);
 		await copy.run(ctx);
-		expect(written).toEqual([FENCE]);
+		// Without the closing line ending, as whole-block Mod+C writes it.
+		expect(written).toEqual([FENCE.slice(0, -1)]);
 		await remove.run(ctx);
 		expect(ctx.deleted).toBe(1);
 		await replace.run(ctx);
 		expect(ctx.replaced).toEqual(['pasted\n']);
+	});
+
+	it('copy resolves when the clipboard refuses the write', async () => {
+		Object.defineProperty(navigator, 'clipboard', {
+			value: { writeText: async () => Promise.reject(new Error('denied')) },
+			configurable: true
+		});
+		const node = block(FENCE);
+		await expect(actionsFor(node)[0].run(context(node))).resolves.toBeUndefined();
 	});
 
 	it('terminates a replacement that arrives without its line ending, and declines a blank one', async () => {

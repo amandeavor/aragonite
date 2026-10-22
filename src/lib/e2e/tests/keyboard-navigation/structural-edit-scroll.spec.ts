@@ -3,6 +3,8 @@
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
+import { edgeKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 const TALL = `p20 ${'tall '.repeat(90)}`.trim();
 const LABELS = Array.from({ length: 40 }, (_, i) => (i === 20 ? TALL : `p${i} split here`));
@@ -46,7 +48,7 @@ test.describe('a keyboard edit mid-screen keeps your place', () => {
 	});
 
 	const clickInto = (page: Page, label: string) =>
-		page.locator('[contenteditable="true"]', { hasText: `${label} split here` }).click();
+		clickInPlace(page.locator('[contenteditable="true"]', { hasText: `${label} split here` }));
 
 	test('Alt+ArrowUp moves the block up past its tall sibling and leaves the page', async ({
 		page
@@ -77,7 +79,7 @@ test.describe('a keyboard edit mid-screen keeps your place', () => {
 		const scrollTop = await scrollTopOf(page);
 		const line = (await boxOf(page, 'p21')).top;
 
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('Enter');
 		await editor.bridge.waitForBlockCount(LABELS.length + 1);
 		await settle(editor);
@@ -106,8 +108,8 @@ test.describe('a keyboard edit mid-screen keeps your place', () => {
 	});
 
 	for (const [where, walk] of [
-		['at the start of the line', ['Home']],
-		['in the middle of the line', ['Home', 'ArrowRight', 'ArrowRight', 'ArrowRight']]
+		['at the start of the line', [edgeKey('lineStart')]],
+		['in the middle of the line', [edgeKey('lineStart'), 'ArrowRight', 'ArrowRight', 'ArrowRight']]
 	] as const) {
 		test(`Enter ${where} leaves the line above where it was`, async ({ page }) => {
 			await clickInto(page, 'p22');
@@ -127,8 +129,8 @@ test.describe('a keyboard edit mid-screen keeps your place', () => {
 		page
 	}) => {
 		// Delete the tall block by keyboard: clear its text, then join the empty line up.
-		await page.locator('[contenteditable="true"]', { hasText: 'p20 tall' }).click();
-		await page.keyboard.press('Control+a');
+		await clickInPlace(page.locator('[contenteditable="true"]', { hasText: 'p20 tall' }));
+		await page.keyboard.press('ControlOrMeta+a');
 		await page.keyboard.press('Backspace');
 		await page.keyboard.press('Backspace');
 		await editor.bridge.waitForBlockCount(LABELS.length - 1);
@@ -140,7 +142,7 @@ test.describe('a keyboard edit mid-screen keeps your place', () => {
 		);
 		const caretLine = (await boxOf(page, 'p24')).top;
 
-		await page.keyboard.press('Control+z');
+		await page.keyboard.press('ControlOrMeta+z');
 		await editor.bridge.waitForBlockCount(LABELS.length);
 		await settle(editor);
 
@@ -186,7 +188,9 @@ test.describe('a reorder inside a container whose top is above the viewport leav
 			);
 			expect(containerTop).toBeLessThan(viewTop);
 
-			await page.locator('[contenteditable="true"]', { hasText: `${moving} split here` }).click();
+			await clickInPlace(
+				page.locator('[contenteditable="true"]', { hasText: `${moving} split here` })
+			);
 			await settle(editor);
 			const scrollTop = await scrollTopOf(page);
 			const moved = await boxOf(page, moving);

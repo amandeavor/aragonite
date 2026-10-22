@@ -1,6 +1,7 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { attachIme } from '../../../simulation/ime';
+import { insertText } from '../../../insert-text';
 
 // Where the mode hides a code block's fence lines (live mode here), every gesture over a range
 // applies only to the part of the selection inside the body, so neither hidden fence line can be
@@ -85,7 +86,7 @@ const REPLACEMENTS: Array<[name: string, select: Step, replace: Step, body: stri
 		'Q' + REST
 	],
 	['a typed key over Shift+Arrow', shiftAcross, typeQ, 'Q' + REST],
-	['an emoji over Shift+Arrow', shiftAcross, (e) => e.page.keyboard.insertText('😀'), '😀' + REST],
+	['an emoji over Shift+Arrow', shiftAcross, (e) => insertText(e.page, '😀'), '😀' + REST],
 	['an IME composition over Shift+Arrow', shiftAcross, composeA, 'あ' + REST],
 	['an IME composition over the whole body', (e) => selectFrom(e, 6, 26), composeA, 'あ'],
 	[

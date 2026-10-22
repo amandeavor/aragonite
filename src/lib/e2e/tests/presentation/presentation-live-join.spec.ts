@@ -62,7 +62,7 @@ test.describe('live mode: a selection out of one construct and into another', ()
 
 		await page.keyboard.press('ControlOrMeta+x');
 		await ep.bridge.waitForSourceContains('Some **bo***alic* words');
-		await page.keyboard.press('ControlOrMeta+v');
+		await ep.paste();
 		await ep.bridge.waitForSourceContains('Some **bold** and *italic* words');
 		await expect(ep.getBlock(MIXED)).toHaveText('Some bold and italic words', {
 			useInnerText: true

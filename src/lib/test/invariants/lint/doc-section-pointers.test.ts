@@ -102,8 +102,14 @@ describe('§ pointer resolution: self-tests', () => {
 		expect(resolvesAgainst(editorHeadings, 'reactive-state-plumbing-carries-the-incident')).toBe(
 			true
 		);
-		expect(resolvesAgainst(editorHeadings, 'container-unwrap')).toBe(true);
-		expect(resolvesAgainst(editorHeadings, 'undo-redo')).toBe(true);
+		expect(resolvesAgainst(editorHeadings, 'block-identity')).toBe(true);
+		expect(resolvesAgainst(editorHeadings, 'cst-dom-synchronization')).toBe(true);
+	});
+
+	// A number names a section only in a doc that numbers its headings.
+	it('fails a numbered pointer into a doc whose headings carry no numbers', () => {
+		expect(resolvesAgainst(editorHeadings, sectionFragment('8). Merge, unwrap')!)).toBe(false);
+		expect(resolvesAgainst(headingKeys('4. The editing surface'), '4')).toBe(true);
 	});
 
 	// One heading the doc carries, and one it only sounds like.

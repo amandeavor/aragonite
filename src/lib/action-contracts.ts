@@ -10,8 +10,9 @@ import type { StructuralChange } from './tree-operations/structural-change';
 import type { TrackedPosition } from './tree-operations/neighbour-merge';
 import type { SharingState } from './tree-operations/sharing';
 import type { BodyParent } from './tree-operations/node-primitives';
+import type { EditKind, SettledEdit } from './tree-operations/settle';
 import type { BlockComponent, FocusPosition } from './block-component';
-import type { OperationDetailMap, ScopedOpDescriptor } from './schema/operations';
+import type { OperationDetailMap, OperationKind, ScopedOpDescriptor } from './schema/operations';
 import type { WriteMode } from './schema/block-kind-descriptor';
 import type { DocPath } from './selection/path-math';
 import type { CaretPosition, Landing } from './selection/primitives';
@@ -119,13 +120,16 @@ export interface BlockEditActions {
 	/** Replace the block with the structure an on-type completer makes of its line (a typed `$$`),
 	 *  with `caret` where the typing left it; false when no completer takes the line. */
 	completeLineOnType(blockIndex: number, caret: number): Promise<boolean>;
-	/** Shallow-merges metadata the kind's rebuild writes into its bytes (a checkbox toggle). A key no
-	 *  parse gives back is dropped at the next re-read; a heading's level goes through the text. */
+	/** Shallow-merges metadata a container's rebuild writes into its bytes (a checkbox toggle). A
+	 *  leaf's metadata comes from its bytes, so a leaf refuses it and writes nothing. */
 	updateBlockMetadata(
 		blockIndex: number,
 		metadata: Record<string, unknown>,
 		options?: { caret?: BlockCaret }
 	): Promise<boolean>;
+	/** Rewrite the block's bytes (the document's line ending, this list's write rules) as its own
+	 *  undo entry; `caret`, an offset in the bytes before the write, stays on the text it was on. */
+	replaceRaw(blockIndex: number, raw: string, caret?: number): Promise<boolean>;
 	/** Replace the block with zero or more blocks (none is `deleteBlock`). `focus.path` addresses a
 	 *  caret inside the replacement; `snapshotOffset` is the undo entry's caret. */
 	replaceBlock(
@@ -180,6 +184,9 @@ export interface ContainerScope {
 	/** Rebuilds `node`'s raw as the commit does, for a node the commit won't rebuild whose bytes
 	 *  the mutation reads before it returns; never the scope, which the commit rebuilds once. */
 	rebuild(node: CstNode): void;
+	/** Tells the commit's fix-up what the mutation did beyond its splice (a content write, a move, a
+	 *  removal); the reader returns the fix-up's result for this list once the commit has run. */
+	describeEdit(edit: EditKind): () => SettledEdit | null;
 }
 
 // ── Multi-scope commit ──────────────────────────────────────────────────────
@@ -220,11 +227,14 @@ export interface CommitMultiScopeArgs<
 	/** Caret positions each list's fix-up updates in place, parallel to `scopes`, since a collapsing
 	 *  container moves the bytes under them; the landing reads them back off the same objects. */
 	trackCaret?: readonly (TrackedPosition | undefined)[];
+	/** The mutation fixes up each leaf it writes itself, at any depth, before the commit's own pass
+	 *  runs over the same lists: a format toggle's several writes. The settle-once check skips it. */
+	fixesUpOwnWrites?: true;
 }
 
 export interface CommitStructuralArgs {
 	snapshot: CommitSnapshotArg;
-	mutate: (children: CstNode[]) => StructuralChange;
+	mutate: (children: CstNode[], scope: ContainerScope) => StructuralChange;
 	op?: ScopedOpDescriptor;
 	landing?: CommitLanding;
 	reveal?: RevealPolicy;
@@ -327,6 +337,8 @@ export interface ContainerEditActions {
 	land(pos: CaretPosition): Promise<LandingOutcome>;
 	/** Where the caret goes once the block at `removedPath` is gone, read on the document now. */
 	survivorAfterRemoval(removedPath: DocPath, gesture: RemovalGesture): CaretPosition | null;
+	/** Report a write refused before its commit to the editor's `error` event. */
+	reportCommitError(error: unknown, op: OperationKind, path: DocPath): void;
 }
 
 export type InPlaceResult =

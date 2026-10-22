@@ -1,5 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { EditorPage } from '../../editor-page';
+import { skipUnlessSupported } from '../../browser-engine';
+import { listEdgeKey } from '../../platform-keys';
 
 const TABLE = '| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n';
 
@@ -24,6 +26,7 @@ test.describe('table action menu: keyboard + announcements', () => {
 	});
 
 	test('the ContextMenu key opens the menu at the focused cell', async ({ page }) => {
+		skipUnlessSupported(page, 'contextMenuKey');
 		await page.locator('.table-cell').nth(2).click();
 		await page.keyboard.press('ContextMenu');
 
@@ -122,7 +125,7 @@ test.describe('table action menu: keyboard + announcements', () => {
 		await expect(page.getByRole('menu')).toBeVisible();
 
 		const focused = page.locator('[role="menu"] :focus');
-		await page.keyboard.press('End'); // last stop = the right alignment segment
+		await page.keyboard.press(listEdgeKey('last')); // last stop = the right alignment segment
 		await expect(focused).toHaveAttribute('aria-label', 'Right');
 		await page.keyboard.press('ArrowLeft');
 		await expect(focused).toHaveAttribute('aria-label', 'Center');

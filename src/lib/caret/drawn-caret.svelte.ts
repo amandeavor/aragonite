@@ -38,7 +38,7 @@ export type CaretMode = 'auto' | 'native' | 'drawn';
 /** An editable the drawn caret may draw for, registered while it is mounted. */
 export interface CaretSource {
 	readonly el: HTMLElement;
-	/** False while a composition or a shown inline source owns the caret: the native one shows. */
+	/** False while a composition or a leaf's painted source owns the caret: the native one shows. */
 	drawable(): boolean;
 	/** How an editable with inline widgets draws the caret beside one; absent where it has none. */
 	readonly widgetEdge?: WidgetEdgeSource;

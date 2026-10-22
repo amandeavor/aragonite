@@ -196,16 +196,23 @@ export async function browserCaret(page: Page): Promise<PaintedCaret> {
 	await page.addStyleTag({
 		content: '.editor [contenteditable] { caret-color: rgb(255, 0, 0) !important; }'
 	});
-	// On whole pixels, where the screenshot crops, so a found column offsets from the clip exactly.
+	// On whole pixels, where the screenshot crops, so a found column offsets from the clip exactly;
+	// cut to the viewport, since a long line's box runs far past what a caret can show in.
 	const clip = await page.evaluate(() => {
 		const r = (document.activeElement as HTMLElement).getBoundingClientRect();
-		const x = Math.floor(r.left) - 4;
-		const y = Math.floor(r.top) - 4;
-		return { x, y, width: Math.ceil(r.right) + 4 - x, height: Math.ceil(r.bottom) + 4 - y };
+		const x = Math.max(0, Math.floor(r.left) - 4);
+		const y = Math.max(0, Math.floor(r.top) - 4);
+		const right = Math.min(innerWidth, Math.ceil(r.right) + 4);
+		const bottom = Math.min(innerHeight, Math.ceil(r.bottom) + 4);
+		return { x, y, width: right - x, height: bottom - y };
 	});
 	let found: PaintedCaret | null = null;
+	// A steady interval, so the samples can't fall into step with the blink.
 	await expect
-		.poll(async () => (found = await paintedRedCaret(page, clip)), { timeout: 5000 })
+		.poll(async () => (found = await paintedRedCaret(page, clip)), {
+			timeout: 5000,
+			intervals: [100]
+		})
 		.not.toBeNull();
 	return found!;
 }

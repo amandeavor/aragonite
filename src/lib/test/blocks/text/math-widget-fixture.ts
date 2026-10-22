@@ -8,14 +8,17 @@ import { registerMathInline } from '#lib/plugins/latex/latex-kind.js';
 import { parse } from '#lib/core/parser.js';
 import { computeInlineContent } from '#lib/core/inline/index.js';
 import { trimTrailingLineEnding } from '#lib/core/lines.js';
-import { rawTextOfNode } from '#lib/caret/widget-offset.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import type { WidgetInteractionDeps } from '#lib/components/blocks/text/widget-interaction.js';
 import type { CstNode, InlineNode } from '#lib/core/nodes.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
-import { createDraftRegistry } from '#lib/components/draft-registry.js';
-import { createDocumentStamps } from '#lib/editor-actions/commit/document-stamp.js';
+import {
+	createShownSourceState,
+	type ShownSourceState
+} from '#lib/components/blocks/text/shown-source.svelte.js';
+import { flattenInlineWidgets } from '#lib/core/inline/inline-widgets.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { createSurfaceBackend } from '#lib/components/blocks/editable/surface-backend.js';
 
 export function stampMathWidget(node: InlineNode): HTMLElement {
 	const wrapper = document.createElement('span');
@@ -83,6 +86,29 @@ export function mountWidgetBlock(source: string, kind: string): MountedWidgetBlo
 	return { el, node, widgets, inlineWidgets };
 }
 
+// The shown-source state with the block's render folded in: opening swaps the widget element for
+// its bytes and closing puts it back, as TextEditableBlock's render does around the range.
+function renderedShownSource(base: { node: CstNode; el: HTMLElement }): ShownSourceState {
+	const state = createShownSourceState();
+	let swapped: { text: Text; widget: HTMLElement } | null = null;
+	return {
+		...state,
+		open(path, node, range) {
+			state.open(path, node, range);
+			const widget = base.el.querySelector<HTMLElement>(`[data-source-start="${range.start}"]`);
+			if (!widget) return;
+			const text = document.createTextNode(node.raw.slice(range.start, range.end));
+			widget.replaceWith(text);
+			swapped = { text, widget };
+		},
+		close(path) {
+			state.close(path);
+			if (swapped?.text.isConnected) swapped.text.replaceWith(swapped.widget);
+			swapped = null;
+		}
+	};
+}
+
 // A base `WidgetInteractionDeps` that does nothing. Every behaviour a test asserts on has to come
 // from the caller's `overrides`, or a test could end up asserting against this stub.
 export function widgetInteractionDeps(
@@ -103,18 +129,20 @@ export function widgetInteractionDeps(
 		getEditorContentWidth: () => 800,
 		selection: createSelectionState(),
 		caretWriter: testCaretWriter,
-		drafts: createDraftRegistry(createDocumentStamps()),
-		setSnapTarget: () => {},
-		readRawText: () =>
-			Array.from(base.el.childNodes).reduce(
-				(acc, child) => acc + rawTextOfNode(child, base.node.raw),
-				''
+		cursor: createSurfaceBackend({ getEl: () => base.el, caretWriter: testCaretWriter }),
+		shownSource: renderedShownSource(base),
+		renderedWidgets: () =>
+			flattenInlineWidgets(
+				computeInlineContent(base.node, undefined, defaultGrammarView),
+				base.node.raw,
+				defaultGrammarView
 			),
+		setSnapTarget: () => {},
 		grammar: defaultGrammarView,
 		get reading() {
 			return fixtureReading();
 		},
-		caretMemory: { noteOutside: () => {} },
+		caretMemory: { noteOutside: () => {}, forget: () => {} },
 		textMoves: { movedWithin: () => {} },
 		...overrides
 	} as unknown as WidgetInteractionDeps;

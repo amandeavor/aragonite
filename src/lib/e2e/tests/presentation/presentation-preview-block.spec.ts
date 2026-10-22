@@ -74,12 +74,9 @@ test.describe('preview-block: markers by focus', () => {
 	});
 
 	test('containment: the focused list item shows its marker, siblings stay rendered', async () => {
-		const firstAmbient = ep.page.locator(
-			`[data-block-path='[3,0,0]'] .md-marker[contenteditable='false']`
-		);
-		const secondAmbient = ep.page.locator(
-			`[data-block-path='[3,1,0]'] .md-marker[contenteditable='false']`
-		);
+		const items = ep.page.locator(`[data-block-path='[3]'] .list-item-block`);
+		const firstAmbient = items.nth(0).locator(':scope > .list-item-marker > .md-marker');
+		const secondAmbient = items.nth(1).locator(':scope > .list-item-marker > .md-marker');
 		// Focus the first item's paragraph.
 		await ep.clickBlockAtPath([3, 0, 0], 0);
 		await expect(firstAmbient).toBeVisible(); // its `- ` reads as source
@@ -87,7 +84,8 @@ test.describe('preview-block: markers by focus', () => {
 
 		// The focused item's rendered bullet is suppressed, so there is no doubled `- •`, while
 		// the sibling still paints one; this guards the order the two `::before` rules resolve in.
-		const before = (el: Element) => getComputedStyle(el, '::before').content;
+		const before = (el: Element) =>
+			getComputedStyle(el.querySelector('.md-marker-box')!, '::before').content;
 		expect(await firstAmbient.evaluate(before)).not.toContain('•');
 		expect(await secondAmbient.evaluate(before)).toContain('•');
 	});

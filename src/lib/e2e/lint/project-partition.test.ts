@@ -1,13 +1,9 @@
 /**
  * No spec file runs in two Playwright projects, read from what Playwright lists rather than from
  * a copy of the config's globs (G4.17). A spec no project collects is the lockstep lint's catch.
- * The WebKit lane re-runs part of the tree in a second browser, so it never counts as a second
- * project.
  */
 import { describe, it, expect } from 'vitest';
 import { listPlaywrightTests, type ListedTest } from './playwright-list';
-
-const SECOND_ENGINE = 'e2e-webkit';
 
 /** Each listed spec file whose projects break the partition, with the projects that list it. */
 export function partitionBreaks(tests: readonly ListedTest[]): string[] {
@@ -18,7 +14,7 @@ export function partitionBreaks(tests: readonly ListedTest[]): string[] {
 		projectsByFile.set(test.file, projects);
 	}
 	return [...projectsByFile]
-		.filter(([, projects]) => [...projects].filter((p) => p !== SECOND_ENGINE).length > 1)
+		.filter(([, projects]) => projects.size > 1)
 		.map(([file, projects]) => `${file} (${[...projects].sort().join(', ')})`)
 		.sort();
 }
@@ -32,7 +28,7 @@ describe('G4.17 no spec runs in two Playwright projects', () => {
 		expect([...files].some((file) => file.endsWith('.perf.spec.ts'))).toBe(true);
 	});
 
-	it('no spec runs in two first-engine projects', () => {
+	it('no spec runs in two projects', () => {
 		expect(partitionBreaks(tests)).toEqual([]);
 	});
 });
@@ -46,14 +42,12 @@ describe('G4.17 partition self-tests', () => {
 		column: 1
 	});
 
-	it('reports a spec two projects collect, and spares the WebKit lane re-running one', () => {
+	it('reports a spec two projects collect, and only that spec', () => {
 		expect(
 			partitionBreaks([
 				row('perf/vr-a.spec.ts', 'e2e-vr'),
 				row('perf/vr-a.spec.ts', 'e2e-perf'),
-				row('smoke.spec.ts', 'e2e-top'),
-				row('smoke.spec.ts', SECOND_ENGINE),
-				row('webkit/paste.spec.ts', SECOND_ENGINE)
+				row('smoke.spec.ts', 'e2e-top')
 			])
 		).toEqual(['perf/vr-a.spec.ts (e2e-perf, e2e-vr)']);
 	});

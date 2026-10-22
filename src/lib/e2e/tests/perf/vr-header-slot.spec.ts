@@ -8,8 +8,10 @@ import {
 	spacerCount,
 	TOP_LEVEL_HOSTS,
 	topVisibleHostTop,
-	UNWINDOWED_PROSE
+	UNWINDOWED_PROSE,
+	type VisibleHost
 } from './vr-helpers';
+import { clickInPlace } from '../../click-in-place';
 
 // The `header` slot: the app's own content inside the editor's scroll container, mounted beside
 // `.block-list` so windowing's arithmetic is untouched while the title still scrolls away. A header
@@ -20,6 +22,16 @@ const WINDOWED_BYTES = 500_000;
 
 const headerEl = (page: Page) => page.locator('[data-testid="harness-header"]');
 
+// Positions are taken from the scroll container's top: the harness page's own controls above it
+// reflow when the toggle's label changes (16px in WebKit), which moves the container itself.
+const editorTop = (page: Page) =>
+	page.locator('.editor').evaluate((el) => el.getBoundingClientRect().top);
+
+async function topVisibleInEditor(page: Page): Promise<VisibleHost | null> {
+	const host = await topVisibleHostTop(page, { selector: TOP_LEVEL_HOSTS });
+	return host && { ...host, top: host.top - (await editorTop(page)) };
+}
+
 async function gotoWithHeader(page: Page): Promise<EditorPage> {
 	const editor = new EditorPage(page);
 	await editor.goto('?header=on');
@@ -29,7 +41,7 @@ async function gotoWithHeader(page: Page): Promise<EditorPage> {
 /** Click the page header's control, outside the scroll container, and let the resize reach
  *  the observer that corrects the scroll. */
 async function toggleHeaderHeight(editor: EditorPage): Promise<void> {
-	await editor.page.locator('[data-testid="header-height-toggle"]').click();
+	await clickInPlace(editor.page.locator('[data-testid="header-height-toggle"]'));
 	await editor.waitForResizeObserverFlush();
 	await editor.waitForRenderFlush();
 }
@@ -88,7 +100,7 @@ test('a header height change while scrolled deep holds the first visible block i
 
 	// Both which block it is and where it sits: a correction that overshot into the next block
 	// would still leave "some block" at about the same place.
-	const before = await topVisibleHostTop(page, { selector: TOP_LEVEL_HOSTS });
+	const before = await topVisibleInEditor(page);
 	expect(before).not.toBeNull();
 	expect(await headerEl(page).evaluate((el) => el.getBoundingClientRect().height)).toBeCloseTo(
 		80,
@@ -100,13 +112,13 @@ test('a header height change while scrolled deep holds the first visible block i
 		240,
 		0
 	);
-	const grown = await topVisibleHostTop(page, { selector: TOP_LEVEL_HOSTS });
+	const grown = await topVisibleInEditor(page);
 	expect(grown!.ref).toBe(before!.ref);
 	expect(Math.abs(grown!.top - before!.top)).toBeLessThanOrEqual(1);
 
 	// The shrinking case: the same correction runs with a negative difference.
 	await toggleHeaderHeight(editor); // from 240 to 80
-	const shrunk = await topVisibleHostTop(page, { selector: TOP_LEVEL_HOSTS });
+	const shrunk = await topVisibleInEditor(page);
 	expect(shrunk!.ref).toBe(before!.ref);
 	expect(Math.abs(shrunk!.top - before!.top)).toBeLessThanOrEqual(1);
 });
@@ -115,13 +127,13 @@ test('at the top of the document a header height change pushes content down', as
 	const editor = await gotoWithHeader(page);
 	await editor.loadContent(`${UNWINDOWED_PROSE}\n`);
 
-	const before = (await editor.getBlock(0).boundingBox())!;
+	const before = (await editor.getBlock(0).boundingBox())!.y - (await editorTop(page));
 	await toggleHeaderHeight(editor); // 80 → 240
-	const after = (await editor.getBlock(0).boundingBox())!;
+	const after = (await editor.getBlock(0).boundingBox())!.y - (await editorTop(page));
 
 	// The header is on screen here, so content being pushed down is what should happen:
 	// correcting for it would quietly scroll the user away from the top.
-	expect(after.y - before.y).toBeCloseTo(160, 0);
+	expect(after - before).toBeCloseTo(160, 0);
 	expect(await editor.editorContainer.evaluate((el) => el.scrollTop)).toBe(0);
 });
 
@@ -145,7 +157,7 @@ test('a plain click on a link in the header follows it', async ({ page }) => {
 
 	// The app's content is not document content, so the editor's modifier-click rule for links stops
 	// at the header; otherwise the root handler would cancel this.
-	await page.locator('[data-testid="hero-link"]').click();
+	await clickInPlace(page.locator('[data-testid="hero-link"]'));
 	expect(await page.evaluate(() => location.hash)).toBe('#hero-link');
 });
 
@@ -157,14 +169,14 @@ test('a text field in the header keeps its own Find chord', async ({ page }) => 
 
 	// Focus inside the root does not mean focus in this editor's content, so an app field in the
 	// header keeps the shortcuts the editor reserves.
-	await page.locator('[data-testid="hero-title"]').click();
+	await clickInPlace(page.locator('[data-testid="hero-title"]'));
 	await page.keyboard.press('ControlOrMeta+f');
 	await expect(page.locator('.search-bar')).toHaveCount(0);
 	expect(await focusedTestId()).toBe('hero-title');
 
 	// The same field mounted outside the root already behaves this way, so the check above is about
 	// the header.
-	await page.locator('[data-testid="outside-title"]').click();
+	await clickInPlace(page.locator('[data-testid="outside-title"]'));
 	await page.keyboard.press('ControlOrMeta+f');
 	await expect(page.locator('.search-bar')).toHaveCount(0);
 	expect(await focusedTestId()).toBe('outside-title');
@@ -182,7 +194,7 @@ test('a caret in the header is not reported as the document caret', async ({ pag
 
 	// The app's field puts a browser range inside the root, but `caretRect` is documented as
 	// the document's caret; reporting it would float the app's own UI over its title.
-	await page.locator('[data-testid="hero-note"]').click();
+	await clickInPlace(page.locator('[data-testid="hero-note"]'));
 	expect(await caretRect()).toBeNull();
 });
 
@@ -192,7 +204,7 @@ test('switching to reading mode leaves a focused header field focused', async ({
 
 	// Reading mode drops the editor's own caret; it has no business dropping the app's, which
 	// switching mode would do in the middle of an edit.
-	await page.locator('[data-testid="hero-title"]').click();
+	await clickInPlace(page.locator('[data-testid="hero-title"]'));
 	await editor.setPresentationMode('reading');
 	expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))).toBe(
 		'hero-title'
@@ -240,7 +252,7 @@ test('a host-mode header renders above the first block and never writes the ance
 	await page.waitForTimeout(120);
 	const before = await flowScrollTop(page);
 
-	await page.locator('[data-testid="flow-header-toggle"]').click();
+	await clickInPlace(page.locator('[data-testid="flow-header-toggle"]'));
 	await page.waitForTimeout(120); // one round of ResizeObserver callbacks
 
 	// Proves something: the header really did grow, so "scrollTop unchanged" is about the
@@ -254,7 +266,7 @@ test('the host-mode find bar sits at the editor top edge, over the header', asyn
 	await gotoFlow(page);
 	const entry = page.locator('[data-testid="entry-header"]');
 
-	await entry.locator('[contenteditable]').first().click();
+	await clickInPlace(entry.locator('[contenteditable]').first());
 	await page.keyboard.press('ControlOrMeta+f');
 	await expect(entry.locator('.search-bar')).toHaveCount(1);
 

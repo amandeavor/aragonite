@@ -18,6 +18,12 @@ import {
 import type { AnyBlockKind, CstNode } from '#lib/core/nodes.js';
 import { makeShimDeps, makeTopHarness } from '#lib/test/harness/editor-actions.js';
 
+/** The tab stop the editor's reading focus would hold: the host stays in the tab order. */
+const holdTabStop = (el: HTMLElement) => {
+	el.tabIndex = 0;
+	return () => {};
+};
+
 // The proxy factory mounts its host in `onMount`; outside a component the test runs the callback.
 const mountCallbacks = vi.hoisted(() => [] as (() => unknown)[]);
 vi.mock('svelte', async (original) => ({
@@ -115,8 +121,7 @@ describe('container shim routing through the host', () => {
 		const host = proxyIn(boxEl);
 		const proxy: WholeBlockInputProxy = {
 			el: () => host,
-			focus: (d) => landed.push(d),
-			typeText: async () => true
+			focus: (d) => landed.push(d)
 		};
 
 		shim(boxEl, proxy).focus(0);
@@ -133,8 +138,7 @@ describe('container shim routing through the host', () => {
 		const host = proxyIn(boxEl);
 		const shimApi = shim(boxEl, {
 			el: () => host,
-			focus: () => host.focus(),
-			typeText: async () => true
+			focus: () => host.focus()
 		});
 
 		host.focus();
@@ -157,8 +161,9 @@ describe('the editing host names its block', () => {
 			getBoxEl: () => boxEl,
 			getFocusEl: () => declared,
 			isReading: () => false,
+			holdTabStop,
 			getLabel: () => label,
-			mint: async () => true
+			mint: () => {}
 		});
 		mountCallbacks.forEach((run) => run());
 		expect(proxy.el()?.getAttribute('aria-label')).toBe('Chart');
@@ -180,8 +185,9 @@ describe('the editing host in reading mode', () => {
 			getBoxEl: () => boxEl,
 			getFocusEl: () => null,
 			isReading: () => true,
+			holdTabStop,
 			getLabel: () => 'Divider',
-			mint: (text) => editor.actions.insertParagraph(1, text)
+			mint: (text) => void editor.actions.insertParagraph(1, text)
 		});
 		mountCallbacks.forEach((run) => run());
 		expect(proxy.el()?.getAttribute('contenteditable')).toBe('false');
@@ -207,8 +213,9 @@ describe('a paste that reaches the editing host', () => {
 			getBoxEl: () => box(),
 			getFocusEl: () => null,
 			isReading: () => false,
+			holdTabStop,
 			getLabel: () => 'Divider',
-			mint: async (text) => minted.push(text) > 0
+			mint: (text) => void minted.push(text)
 		});
 		mountCallbacks.forEach((run) => run());
 

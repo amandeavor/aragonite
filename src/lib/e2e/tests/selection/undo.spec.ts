@@ -119,7 +119,8 @@ test.describe('selection undo: cross-block restore', () => {
 		await editor.undo();
 		await editor.bridge.waitForSourceEquals(before);
 
-		// Drag down through the first column of the table.
+		// Drag down the first column from the left of its first cell, clear of the selection toolbar
+		// the restored range shows.
 		const tableInfo = await page.evaluate(() => {
 			const tableEl = document.querySelector('[role="table"]') as HTMLElement | null;
 			if (!tableEl) return null;
@@ -131,35 +132,22 @@ test.describe('selection undo: cross-block restore', () => {
 			const r = firstCell?.getBoundingClientRect();
 			const r2 = lastFirstCell?.getBoundingClientRect();
 			return r && r2
-				? {
-						startX: r.x + 30,
-						startY: r.y + r.height / 2,
-						endY: r2.y + r2.height / 2
-					}
+				? { startX: r.x + 30, startY: r.y + r.height / 2, endY: r2.y + r2.height / 2 }
 				: null;
 		});
-		expect(tableInfo).not.toBeNull();
-
-		await page.mouse.move(tableInfo!.startX, tableInfo!.startY);
+		if (!tableInfo) throw new Error('missing table cell boxes');
+		await page.mouse.move(tableInfo.startX, tableInfo.startY);
 		await page.mouse.down();
-		await page.mouse.move(tableInfo!.startX, tableInfo!.endY, { steps: 15 });
-		await page.waitForFunction(
-			() => {
-				const s = (window as any).__test?.getSelectionPaths?.();
-				return s && s.focus.offset > 0;
-			},
-			null,
-			{ timeout: 5000, polling: 16 }
-		);
-
-		const sel = await editor.bridge.getSelectionPaths();
+		await page.mouse.move(tableInfo.startX, tableInfo.endY, { steps: 15 });
 		await page.mouse.up();
 
-		// A selection inside the table: `anchor.path` equals `focus.path` with cell-index
-		// offsets, not a cross-block jump into the next paragraph.
-		expect(sel).not.toBeNull();
-		expect(sel!.anchor.path).toEqual(sel!.focus.path);
-		expect(sel!.anchor.offset).toBe(0);
-		expect(sel!.focus.offset).toBeGreaterThan(0);
+		// Read after the release: mid-drag, the press's own caret in the first cell already has a
+		// nonzero offset. A cell rectangle on the table's path, not a jump past the table.
+		await expect
+			.poll(() => page.evaluate(() => (window as any).__test.getSelection()))
+			.toEqual({
+				anchor: { path: [5], offset: 0, cellCoordinate: true },
+				focus: { path: [5], offset: 4, cellCoordinate: true }
+			});
 	});
 });

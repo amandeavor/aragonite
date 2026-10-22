@@ -22,6 +22,8 @@ pointer aims at the text the mark covers, through Playwright's mouse.
   down; crossing another hover mark while pressed starts no hover
 - A double-click inside a hover-only mark selects the word
 - A right-click inside a hover-only mark places the caret there and opens the editor's menu
+  - On macOS the right-click selects the word under it instead, as Safari does, and the menu keeps
+    that selection
 - The cursor over a hover-only mark is the text cursor, not a hand
 - A touch tap on a hover mark places the caret and starts no hover
   - Miss-analysis: the first rows drove hover through the overlay elements, so none clicked,

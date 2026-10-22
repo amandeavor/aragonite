@@ -7,6 +7,7 @@ import {
 	waitForContainer,
 	waitForDoc
 } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 /**
  * Native GitHub alerts: a `> [!TYPE]` blockquote renders as a styled alert box with its bytes
@@ -61,7 +62,7 @@ test.describe('plugin github alerts', () => {
 		await editor.loadContent('> [!TIP]\n> hello there\n');
 		const inner = page.locator('.admonition [contenteditable="true"]').first();
 		await inner.click();
-		await page.keyboard.press('Home');
+		await page.keyboard.press(edgeKey('lineStart'));
 		await page.keyboard.press('Backspace');
 
 		// The body block lifts out and the marker goes: no alert remains, the content is a plain

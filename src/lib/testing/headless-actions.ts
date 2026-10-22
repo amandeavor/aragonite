@@ -85,6 +85,7 @@ export function stubBlockEdit(): BlockEditActions {
 		completeLineOnType: wroteNothing,
 		completeMarker: wroteNothing,
 		updateBlockMetadata: wroteNothing,
+		replaceRaw: wroteNothing,
 		replaceBlock: wroteNothing
 	};
 }
@@ -190,7 +191,10 @@ export function createHeadlessActions(
 			...(options.onSelectionChange ? { onChange: options.onSelectionChange } : {})
 		}),
 		// A headless suite has no drawn caret to repaint.
-		caretWriter: createCaretWriter(() => {}),
+		caretWriter: createCaretWriter(
+			() => {},
+			() => deps.reading.mode() === 'reading'
+		),
 		getBlockElByPath: () => null,
 		get caretLanding() {
 			return caretLanding;
@@ -218,8 +222,10 @@ export function createHeadlessActions(
 				noteOutside: () => deps.caretMemory.noteOutside()
 			},
 			getBlockElByPath: (path) => deps.getBlockElByPath(path),
+			getBlockBoxByPath: (path) => deps.getBlockElByPath(path),
 			getEditorRoot: () => null,
-			scroll: null
+			scroll: null,
+			isReading: () => deps.reading.mode() === 'reading'
 		}),
 		() => doc,
 		landings

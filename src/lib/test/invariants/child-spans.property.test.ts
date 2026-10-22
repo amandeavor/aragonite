@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { makeBlockNode, type BlockMetadata, type CstNode } from '#lib/core/nodes.js';
 import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
-import { pushChild, spliceChildren } from '#lib/tree-operations/children.js';
+import { spliceChildren } from '#lib/tree-operations/children.js';
 
 import { makeNestedHarness } from '#lib/test/harness/editor-actions.js';
 import { allowDevWarns } from '#lib/test/support/warn-gate.js';
@@ -137,7 +137,7 @@ function applyEdit(node: CstNode, edit: Edit): boolean {
 	const children = node.children!;
 	const rebuild = rebuilderFor(node);
 	if (edit.op === 'push') {
-		pushChild(node, paragraph('', edit.body));
+		spliceChildren(node, children.length, 0, [paragraph('', edit.body)]);
 		rebuild(node);
 		return false;
 	}

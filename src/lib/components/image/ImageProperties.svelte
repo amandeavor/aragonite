@@ -13,9 +13,13 @@
 		IMAGE_REMOVE
 	} from '../../a11y-strings';
 	import MenuIcon from '../menu/MenuIcon.svelte';
-	import type { MenuPresence } from '../menu/menu-presence.svelte';
+	import type { MenuCloseCause, MenuPresence } from '../menu/menu-presence.svelte';
 	import type { CaretWriter } from '../../caret/widget-offset';
+	import type { CaretRestore } from '../../selection/caret-restore';
 	import { DEFAULT_CROP, applyCropToWidget, panCrop, zoomCrop, type Size } from './image-crop';
+	import { eventToChord } from '../../schema/keybindings';
+	import { isReservedUiChord } from '../../schema/commands';
+	import { isPlainTypingKey } from '../blocks/text/click-snap-guard';
 
 	let {
 		target,
@@ -28,6 +32,8 @@
 		maxFrameWidth,
 		menuPresence,
 		caretWriter,
+		fieldCaret,
+		editorTakesChord,
 		cropping = $bindable(false)
 	}: {
 		target: WidgetTarget;
@@ -47,6 +53,11 @@
 		menuPresence: MenuPresence;
 		/** Drops the native range a double click leaves across the image before a crop. */
 		caretWriter: CaretWriter;
+		/** The alt field borrows focus from the image's paragraph and gives it back through here. */
+		fieldCaret: CaretRestore;
+		/** Whether the editor acts on this chord itself (`claimsChord`): during a crop, those are the
+		 *  chords that would write over the image. */
+		editorTakesChord: (e: KeyboardEvent) => boolean;
 		cropping?: boolean;
 	} = $props();
 
@@ -117,8 +128,12 @@
 	}
 
 	function toggleField() {
-		if (fieldOpen) closeField(true);
-		else fieldOpen = true;
+		if (fieldOpen) {
+			void endField(true);
+		} else {
+			fieldCaret.saveCurrent();
+			fieldOpen = true;
+		}
 	}
 
 	function closeField(commit: boolean) {
@@ -127,15 +142,33 @@
 		fieldOpen = false;
 	}
 
+	// A close from the toolbar or the field's keys hands focus back to the image's paragraph, the
+	// image still selected, where Mod+Z and Escape reach it as after a click on the image.
+	function endField(commit: boolean): Promise<void> {
+		closeField(commit);
+		return fieldCaret.restore();
+	}
+
 	function onFieldKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
 			e.preventDefault();
-			closeField(true);
-		} else if (e.key === 'Escape') {
-			e.preventDefault();
-			e.stopPropagation();
-			closeField(false);
+			void endField(true);
 		}
+	}
+
+	// Escape drops the draft and a swap lands after the new document is in, so neither saves it;
+	// every other close does. A press elsewhere or a mode change leaves focus where it lands.
+	function dismissField(cause: MenuCloseCause): boolean {
+		if (cause === 'escape-key') void endField(false);
+		else closeField(cause !== 'document-swap');
+		return true;
+	}
+
+	// The field's focus comes back before the image goes, so the removal lands as it does with the
+	// field closed.
+	async function removeImage() {
+		if (fieldOpen) await endField(false);
+		onRemove(target);
 	}
 
 	// ── Crop ───────────────────────────────────────────────────────────────────
@@ -158,7 +191,7 @@
 		const widget = getWidgetEl();
 		const img = widget?.querySelector('img') ?? null;
 		if (!widget || !img || img.naturalWidth === 0) return;
-		if (fieldOpen) closeField(true);
+		if (fieldOpen) void endField(true);
 		const box = widget.getBoundingClientRect();
 		frame = { width: box.width, height: box.height };
 		natural = { width: img.naturalWidth, height: img.naturalHeight };
@@ -287,19 +320,52 @@
 		return () => document.removeEventListener('dblclick', onDoubleClick);
 	});
 
+	// Escape cancels through the editor's menu closing, which keeps the key from also reaching the
+	// image's paragraph, where it would dismiss the image.
+	function closeCrop(): boolean {
+		cancelCrop();
+		return true;
+	}
+
+	// A crop is a mode over the selected image, like an open dialog: Enter applies, Escape cancels,
+	// and whatever would write over the image does nothing. Every other key works as usual.
 	$effect(() => {
 		if (!cropping) return;
+		// The bare page counts as the editor; the host's own controls keep their keys.
+		const aimedAtEditor = (t: EventTarget | null): boolean =>
+			t === document.body ||
+			(t instanceof Node && !!getWidgetEl()?.closest('.editor')?.contains(t));
+		// Typing and deleting over the selected image, and the editor's own chords, minus the find bar's.
+		const writes = (e: KeyboardEvent): boolean => {
+			if (isPlainTypingKey(e) || e.key === 'Backspace' || e.key === 'Delete') return true;
+			const chord = eventToChord(e);
+			return chord !== null && !isReservedUiChord(chord) && editorTakesChord(e);
+		};
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				e.preventDefault();
-				cancelCrop();
-			} else if (e.key === 'Enter') {
-				e.preventDefault();
-				applyCrop();
-			}
+			if (e.key === 'Escape' || e.key === 'Tab' || !aimedAtEditor(e.target)) return;
+			// A focused crop button takes its own Enter and Space.
+			const t = e.target;
+			if (t instanceof Element && t.closest('button') && rootEl?.contains(t)) return;
+			if (e.key !== 'Enter' && !writes(e)) return;
+			// Prevented too: the browser's own default for these would edit the paragraph.
+			e.preventDefault();
+			e.stopPropagation();
+			if (e.key === 'Enter') applyCrop();
+		};
+		// A cut or a paste would land on the image however it was asked for.
+		const onClipboard = (e: ClipboardEvent) => {
+			if (!aimedAtEditor(e.target)) return;
+			e.preventDefault();
+			e.stopPropagation();
 		};
 		document.addEventListener('keydown', onKey, true);
-		return () => document.removeEventListener('keydown', onKey, true);
+		document.addEventListener('cut', onClipboard, true);
+		document.addEventListener('paste', onClipboard, true);
+		return () => {
+			document.removeEventListener('keydown', onKey, true);
+			document.removeEventListener('cut', onClipboard, true);
+			document.removeEventListener('paste', onClipboard, true);
+		};
 	});
 
 	// ── Placement ──────────────────────────────────────────────────────────────
@@ -334,6 +400,13 @@
 		if (rect.right > window.innerWidth - 8) node.classList.add('flipped');
 	}
 
+	// A press on the toolbar keeps focus on the image's paragraph, whichever element an engine
+	// would focus; only the alt field's input takes it.
+	function keepFocusOffToolbar(e: MouseEvent) {
+		if (!(e.target instanceof Element && e.target.closest('.md-image-field'))) e.preventDefault();
+	}
+
+	// Reached when keyboard focus sits on the toolbar.
 	function onRootKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape' && !fieldOpen && !cropping) {
 			e.preventDefault();
@@ -346,6 +419,7 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="md-image-crop-surface"
+		{@attach menuPresence.trackUncounted(closeCrop, { inside: () => [rootEl] })}
 		onpointerdown={onCropPointerDown}
 		onpointermove={onCropPointerMove}
 		onpointerup={onCropPointerUp}
@@ -373,6 +447,7 @@
 	aria-label={IMAGE_PROPERTIES_LABEL}
 	tabindex="-1"
 	onkeydown={onRootKeydown}
+	onmousedown={keepFocusOffToolbar}
 	{@attach keepBesideImage}
 >
 	{#if cropping}
@@ -421,19 +496,18 @@
 			class="md-image-btn"
 			aria-label={IMAGE_REMOVE}
 			title={IMAGE_REMOVE}
-			onclick={() => onRemove(target)}
+			onclick={removeImage}
 		>
 			<MenuIcon name="trash" />
 		</button>
 	{/if}
-	<!-- A mode change saves the draft, as every close but Escape does; a swap drops it, since the
-		new document is already in place. -->
 	{#if fieldOpen}
 		<label
 			class="md-image-field"
 			{@attach keepFieldOnScreen}
-			{@attach menuPresence.track((cause) => closeField(cause === 'mode-change'), {
-				edits: true
+			{@attach menuPresence.track(dismissField, {
+				edits: true,
+				inside: () => [rootEl, getWidgetEl()?.closest('.editor')]
 			})}
 		>
 			<span class="md-image-field-label">Alt</span>

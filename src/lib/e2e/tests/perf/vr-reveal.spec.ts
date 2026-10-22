@@ -3,6 +3,8 @@ import { type Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { FIXTURE_BYTES, GIANT_LIST_OR_TABLE_BYTES, cstBlockCount, spacerCount } from './vr-helpers';
 import { topLevelHostPresent } from '../../page-probes';
+import { extendKey } from '../../platform-keys';
+import { clickInPlace } from '../../click-in-place';
 
 // Reaching an unmounted block: Ctrl+Shift+End, a scroll and a collapse must each mount the
 // target and put the caret in a block or cell that was unmounted at load, for flat prose, for
@@ -32,7 +34,7 @@ test('Ctrl+Shift+End reveals and edits the off-window last block', async ({ page
 	expect(await topLevelHostPresent(page, last)).toBe(false);
 
 	await editor.focusBlockStart(0);
-	await page.keyboard.press('ControlOrMeta+Shift+End');
+	await page.keyboard.press(extendKey('docEnd'));
 	await editor.waitForCrossBlock(true);
 	await page.keyboard.press('ArrowRight'); // collapse the range to its end
 	await editor.typeText('VR_MARKER');
@@ -50,7 +52,7 @@ test('undo of an off-window block edit reverts cleanly and restores focus', asyn
 	await editor.focusBlockStart(0);
 	await editor.typeText('ALPHA_MARK');
 	await editor.bridge.waitForSourceContains('ALPHA_MARK');
-	await editor.waitForUndoBatchFlush();
+	await editor.endTypingBatch();
 
 	// All the way down: the focused block is kept mounted for up to pinExtensionCap blocks, so
 	// scrolling by one viewport would not unmount block 0.
@@ -106,7 +108,7 @@ test('reveals a deep off-window nested item and lands the caret there', async ({
 
 	// A click in the first item starts the selection the way a user does, from a caret they placed.
 	await editor.clickBlockAtPath([0, 0, 0], 0);
-	await page.keyboard.press('ControlOrMeta+Shift+End');
+	await page.keyboard.press(extendKey('docEnd'));
 	await editor.waitForCrossBlock(true);
 	await page.keyboard.press('ArrowRight'); // collapse the range to its newly mounted end
 	await editor.typeText('DEEP_VR_MARKER');
@@ -132,7 +134,7 @@ test('collapsing a Ctrl+Shift+End list selection to start lands the caret in the
 	expect(await spacerCount(page)).toBeGreaterThan(0);
 
 	await editor.clickBlockAtPath([0, 0, 0], 0);
-	await page.keyboard.press('ControlOrMeta+Shift+End');
+	await page.keyboard.press(extendKey('docEnd'));
 	await editor.waitForCrossBlock(true);
 	// Unmounted here, so the collapse below has to mount it again rather than reuse a block.
 	expect(
@@ -196,7 +198,7 @@ test('reveals an off-window table cell by scroll and edits it (phase 4)', async 
 	expect(target).not.toBeNull();
 	expect(target!).toBeGreaterThan(initialMaxRow + 10);
 
-	await page.locator(`[data-table-row-idx="${target}"] .table-cell`).first().click();
+	await clickInPlace(page.locator(`[data-table-row-idx="${target}"] .table-cell`).first());
 	await editor.typeText('CELL_VR_MARKER');
 	await editor.bridge.waitForSourceContains('CELL_VR_MARKER', 10_000);
 
@@ -230,8 +232,8 @@ test('Ctrl+Shift+End in a table reveals and mounts the off-window focus cell (ph
 
 	// The focus ends up as a cell position on the table block; an extend that ignores the cell
 	// scrolls to the top of the table and never mounts the last row.
-	await page.locator('[data-table-row-idx="0"] .table-cell').first().click();
-	await page.keyboard.press('ControlOrMeta+Shift+End');
+	await clickInPlace(page.locator('[data-table-row-idx="0"] .table-cell').first());
+	await page.keyboard.press(extendKey('docEnd'));
 	await editor.waitForCrossBlock(true);
 
 	// [data-cross-block] is added in enterCrossBlock, before the scroll finishes, so wait for
@@ -262,8 +264,8 @@ test('collapsing a Ctrl+Shift+End table selection lands the caret in the reveale
 		await page.evaluate((r) => !!document.querySelector(`[data-table-row-idx="${r}"]`), lastRow)
 	).toBe(false);
 
-	await page.locator('[data-table-row-idx="0"] .table-cell').first().click();
-	await page.keyboard.press('ControlOrMeta+Shift+End');
+	await clickInPlace(page.locator('[data-table-row-idx="0"] .table-cell').first());
+	await page.keyboard.press(extendKey('docEnd'));
 	await editor.waitForCrossBlock(true);
 	await page.keyboard.press('ArrowRight'); // collapse to the newly mounted end
 	await editor.typeText('TABLE_END_MARKER');
@@ -300,8 +302,8 @@ test('collapsing a Ctrl+Shift+End table selection to start does not wipe the tab
 
 	// The collapse is async: typing on the keypress alone would race the still-active
 	// selection into a destructive type-replace.
-	await page.locator('[data-table-row-idx="0"] .table-cell').first().click();
-	await page.keyboard.press('ControlOrMeta+Shift+End');
+	await clickInPlace(page.locator('[data-table-row-idx="0"] .table-cell').first());
+	await page.keyboard.press(extendKey('docEnd'));
 	await editor.waitForCrossBlock(true);
 	await page.keyboard.press('ArrowLeft'); // collapse to the start
 	await editor.waitForCrossBlock(false);
@@ -340,7 +342,7 @@ test("undo fires after the caret's block is windowed out (F2)", async ({ page })
 	await editor.focusBlockStart(0);
 	await editor.typeText('WINDOWED_MARK');
 	await editor.bridge.waitForSourceContains('WINDOWED_MARK');
-	await editor.waitForUndoBatchFlush();
+	await editor.endTypingBatch();
 
 	// Past the limit on keeping the focused block mounted, focus leaves the editable entirely.
 	const scrollHeight = await page.evaluate(

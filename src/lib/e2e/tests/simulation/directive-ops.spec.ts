@@ -6,6 +6,7 @@ import { attachErrorCollector } from '../../simulation/error-collector';
 import { makeRng } from '../../simulation/rng';
 import { assertCheckpoint } from '../../simulation/invariants';
 import { makeSimContext, topLevelIndexOf } from './helpers';
+import { edgeKey } from '../../platform-keys';
 
 // The `:::name` syntax, run in the default gate: an opaque container, a block that cannot merge
 // and an inline widget, through both parser paths. A registered name (`:::callout`) resolves to the
@@ -111,7 +112,7 @@ test.describe('directive-ops simulation', () => {
 		await g.copySelection();
 
 		await g.clickToReposition([tipIndex + 1]);
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await g.pasteHere();
 		await page.waitForFunction(
 			(n) => document.querySelectorAll('.directive-block').length > n,

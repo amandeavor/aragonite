@@ -8,6 +8,7 @@ import {
 	spacerCount,
 	topVisibleBlockInViewport
 } from './vr-helpers';
+import { waitForImagesDecoded } from '../blocks/image/helpers';
 
 // Who keeps the user's place when content above them grows late, in a page that does the
 // scrolling. While windowing runs the editor corrects the scroll itself and opts its blocks out of
@@ -44,10 +45,7 @@ async function scrollPastImageBlock(page: Page): Promise<void> {
 /** Waits for the image at `selector` to get its own size and the reflow after it, and reports the
  *  height it ended up with. */
 async function decodedHeight(page: Page, selector: string): Promise<number> {
-	await page.waitForFunction(
-		(sel) => ((document.querySelector(sel) as HTMLImageElement | null)?.naturalHeight ?? 0) > 0,
-		selector
-	);
+	await waitForImagesDecoded(page.locator(selector));
 	await settleFrames(page);
 	return page.evaluate(
 		(sel) => document.querySelector(sel)!.getBoundingClientRect().height,

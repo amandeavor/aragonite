@@ -22,6 +22,7 @@ makes the pattern backtrack catastrophically.
 
 - the deadline overrun: the count readout shows its error state and reads "Regex too slow", no
   match overlay is painted, and the terminated scan raises no page error (it is a handled state,
-  never an unhandled rejection)
+  never an unhandled rejection); a regex engine that gives up on the backtracking itself (WebKit's)
+  reads "No results" instead, with no overlay either
 - recovery after an overrun: replacing the query with a cheap pattern clears the too-slow state and
   matches again, so the bar is not stuck

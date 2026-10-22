@@ -43,7 +43,7 @@ Pick the closest reference and read it fully before you start. It'll answer more
 - `components/blocks/`: the reference components.
 - `schema/`: the registries you'll touch.
 - `editor-actions/`, `block-lists/` and `windowing/`: the primitives a container builds on.
-- `ambient/`: the DOM for the dimmed marker a container lends its first child (a list item's `- `).
+- `ambient/`: the DOM for a container's dimmed marker, lent to its first child (a footnote definition's `[^label]: `) or drawn in a list item's own cell.
 - `caret/`: caret geometry, offsets across that marker included (`caret/widget-offset.ts`).
 
 ## Registration
@@ -117,7 +117,7 @@ What you have to declare:
 
 `gapEdges` names the edges of your block that may host a gap caret (a caret parked between two blocks, where neither surface can hold one) because your own surface can't host a sibling-paragraph insertion there: `'before'`, `'after'`, `'both'`, or `'none'`. A boundary only opens when both blocks facing it declare it, and an edge some gesture of yours already covers stays undeclared, which is why the thematic break above says `'before'` and not `'both'`; `docs/design/selection.md` § The gap caret has the semantics.
 
-`mergeRole` is one of `prose`, `prose-absorber`, `container`, `self-merge`, `not-mergeable`, and `docs/design/editor.md` § "Merge eligibility: roles, not pairs" says which roles merge with which.
+`mergeRole` is one of `prose`, `prose-absorber`, `container`, `self-merge`, `not-mergeable`, and `docs/design/structural-edits.md` § "Merge eligibility: roles, not pairs" says which roles merge with which.
 
 `pageRole` is how the block reads on the page. A `'prose'` block (a paragraph, a heading, a quote) gets no drag handle, and right-clicking its text opens the clipboard rows. An `'object'` (code, a table, a divider) gets a handle and its own block menu. There's one exception you don't declare: a paragraph holding nothing but images counts as an object whatever its kind says (`src/lib/schema/page-role.ts`).
 
@@ -130,20 +130,7 @@ The `closure` block is the kind's written answer to every cross-cutting editor s
 - `proseLeafClosure`, file-local to `built-in-descriptors.ts`: the prose trio (paragraph, heading, setext heading).
 - Anything else writes its cells by hand, like the thematic break above. A missing cell is a compile error either way.
 
-The optional fields, every one of them (the pinned inventory, container fields included, is `docs/design/plugin-contract.md` § The descriptor field reference):
-
-| Field                   | For                                                                                                                                                                          |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `keymap`                | Declarative chord → command bindings; see [Commands](#commands)                                                                                                              |
-| `conformanceFixture`    | Source that parses to your kind. **The field the conformance kit enrols on** ([Testing](#testing))                                                                           |
-| `contentStart`          | `{ range, backspace? }`: `range` when the editable span is narrower than raw (a heading's `# `); `backspace: 'demote-first'` drops those markers on Backspace before a merge |
-| `blockFocus`            | `'whole-block'`: an opaque childless block joins the focus-then-delete model (arrows stop on it; Backspace focuses, a second press deletes); needs `supportsInline: false`   |
-| `contextDependentKind`  | Kinds with no standalone line recognizer, whose container owns their syntax (a table cell)                                                                                   |
-| `rawWrite`              | Make a written raw legal as this kind's own bytes, and map a caret through it; the fenced code's rule is `schema/fenced-code-raw.ts`                                         |
-| `renderImagesAsWidgets` | `false` opts out of image widgets (a table cell renders the alt text instead)                                                                                                |
-| `foreignDragHitTest`    | Custom drop-target geometry: the _exact_ hit, declining off-target                                                                                                           |
-| `caretTargetAtPoint`    | Where a caret-placing gesture lands inside the block: the _nearest_ target                                                                                                   |
-| `dragLabel`             | What the drag ghost calls the block when its text makes a bad label (code shows `Code`, not its first line)                                                                  |
+Every other field is optional, and they're all in `docs/design/plugin-contract.md` § The descriptor field reference, with what leaving each one out means. A lint holds that table to the descriptor type, so read it there rather than from a copy here.
 
 A container declares its container-only fields as one `container` group, and `isContainer` is derived from the group's presence, so a leaf carrying container fields won't compile. The blockquote's group:
 
@@ -162,20 +149,15 @@ container: {
 },
 ```
 
-Required, together:
+`contract` and `rebuildRaw` are the two the group can't do without, since together they say how the container re-derives its own bytes from its children. Which of `'strip'`, `'grid'` and `'opaque'` yours is, and what each promises, is `docs/design/syntax-tree.md` § The container contract. The one thing it asks of a built-in specifically is that an opaque `rebuildRaw` be deterministic, since a dev check runs it twice and compares.
 
-- `contract` and `rebuildRaw`: how the container re-derives its own bytes from its children. Which of `'strip'`, `'grid'` and `'opaque'` yours is, and what each promises, is `docs/design/syntax-tree.md` § The container contract; the one thing it asks of you specifically is that an opaque `rebuildRaw` be deterministic, since a DEV probe runs it twice and compares. Implementations live in `schema/container-rebuilders.ts`.
+Where the code behind the fields lives, for when yours needs a new one:
 
-Optional, each earning its place:
-
-- `reservedChrome`: child 0 is a title leaf whose bytes live in the container's own raw (chrome: the parts of a block that are furniture, not content). Register the chrome kind itself through `registerChromeLeaf`. Backspace at the title's start always keeps it, so a container with one declares only `unwrapRole.middleChildBackspace`.
-- `containerPaste`: kind-specific paste routing, for a clipboard whose top block is your kind landing inside a same-kind ancestor.
-- `unwrapRole`: the Backspace-at-start strategy; see `editor-actions/unwrap-strategies.ts`.
-- `lastLineChild`: which child holds the container's last line, or `-1` when its own bytes do (a header-only table's delimiter row). Declare it only when the default (a strip's last child unless an inner suffix comes after it, a grid's last row, an opaque container's own bytes) is wrong for your kind.
-- `bodyWrap`: for a container whose body sits between its own opener and closer lines (a `:::note` fence, say). Pass the same wrap your opener parsed the body with, and the parser then moves the blank line next to the chrome into the wrap instead of into a body block.
-- `bodyWrite`: for a container with a fixed closing line (`</details>`) that a body edit could accidentally type. `normalize` escapes it out of a child's raw, and `mapOffset` says where the caret lands after the escape.
-- `contentStartSpace: 'complete-marker'`: the first space typed at the start of a child whose marker lacks its space (an empty child, or text right after a bare marker) belongs to the marker. When text already follows the marker, the editor writes that space into your container's line itself; when the child is empty it writes nothing and leaves the spelling to you. So declare it only if your `rebuildRaw` does both: keeps a line the editor wrote the space into as it is, and spells an empty line that gains text with the space.
-- `reorderChildren`: this container's direct children reorder among themselves, by drag or Alt+↑/↓; `{ renumberMarkers: true }` for an ordered list. See `tree-operations/reorder-unit.ts`.
+- `rebuildRaw` implementations: `schema/container-rebuilders.ts`.
+- `unwrapRole` strategies: `editor-actions/unwrap-strategies.ts`.
+- `reorderChildren`: `tree-operations/reorder-unit.ts`.
+- A `rawWrite` rule to copy: the fenced code's, `schema/fenced-code-raw.ts`.
+- `reservedChrome`'s title leaf registers its own kind through `registerChromeLeaf`.
 
 ### 2. The component
 
@@ -192,7 +174,7 @@ const BUILT_IN_VIEWS = {
 
 function headingExtraProps(node: NodeView): Record<string, unknown> {
 	// ...
-	const level = metadataOf(node, 'heading')?.level ?? 1;
+	const level = headingLevel(node) ?? 1;
 	return { blockClass: `heading-${level}` };
 }
 ```
@@ -377,10 +359,10 @@ Undo snapshots share the live tree's nodes. So a container commit hands its `mut
 
 ```ts
 // wrong: `node` (the component prop) may still be shared with an undo entry
-mutate: (scope) => deleteNode(node, index, scope.sharing);
+mutate: (scope) => deleteNode({ children: node.children!, owner: node, lineEnding }, index);
 
 // right: the scope view is yours to mutate
-mutate: (scope) => deleteNode(scope.node, index, scope.sharing);
+mutate: (scope) => deleteNode(scope.body, index);
 ```
 
 A whole commit, from the table inserting a row:
@@ -467,12 +449,12 @@ Copy from `ListBlock.svelte` (direct-each) or `TableBlock.svelte` (row windowing
 
 ### Interactive ambient markers
 
-A container's `ambientPrefix` (the read-only marker a container lends its first child, like a list's `- `) is either inert text, the default, or carries interactive character ranges, meaning clickable regions inside the read-only prefix. The shape is `AmbientPrefix` in `src/lib/block-component.ts`, and the contract is `docs/design/editor.md` § Ambient markers.
+A container's `ambientPrefix` (the read-only marker a container lends its first child, like a footnote definition's `[^label]: `) is either inert text, the default, or carries interactive character ranges, meaning clickable regions inside the read-only prefix. The shape is `AmbientPrefix` in `src/lib/block-component.ts`, and the contract is `docs/design/structural-edits.md` § Ambient markers.
 
-- **Inert:** return a string, the list item's `- `. (The blockquote passes no prefix at all; its `> ` markers render as border-only chrome.)
+- **Inert:** return a string, the way a plain list item's marker is `- `. (The blockquote passes no prefix at all; its `> ` markers render as border-only chrome.)
 - **Interactive:** return the object form: `text` plus one or more ranges, each a character span, a class name and a click handler, plus optionally a role and ARIA state, an accessible name, a tab stop, and an Enter/Space handler.
 
-Keep the component thin: a pure `buildXAmbient(metadata, onAction)` helper beside it, called from the prefix getter. The task checkbox is the shipped example, and the list item hands it to its `BlockList` as `ambientPrefixForFirst={buildTaskItemAmbient(metadataOf(node, 'listItem'), toggleTask)}`:
+Keep the component thin: a pure `buildXAmbient(metadata, onAction)` helper beside it, called from the prefix getter. The task checkbox is the shipped example. The list item draws it in its own marker cell, with `buildAmbientSpan(buildTaskItemAmbient(metadataOf(node, 'listItem'), toggleFromBox))`:
 
 ```ts
 // components/blocks/list/task-checkbox.ts

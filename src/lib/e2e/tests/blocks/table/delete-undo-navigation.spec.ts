@@ -1,5 +1,6 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
+import { edgeKey } from '../../../platform-keys';
 
 const FIXTURE = `Above paragraph.
 
@@ -37,7 +38,7 @@ test.describe('table block: delete + undo + arrow navigation', () => {
 		await editor.bridge.waitForSourceContains('| A | B | C |');
 
 		await page.locator('[contenteditable="true"]', { hasText: 'Above paragraph' }).click();
-		await page.keyboard.press('End');
+		await page.keyboard.press(edgeKey('lineEnd'));
 		await page.keyboard.press('ArrowDown');
 		await page.keyboard.type('X');
 

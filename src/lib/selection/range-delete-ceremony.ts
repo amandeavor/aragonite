@@ -2,7 +2,7 @@
  * The deletion steps every `rangeDelete` branch shares: the subtrees `rangeCoverage` holds whole
  * are spliced out in reverse document order, each only while it still holds the node captured up
  * front, then every ancestor left empty goes, up to the document. A kept edge is truncated and
- * reinstalled the way a reload would parse it.
+ * reinstalled the way a reload would parse it, and an ordered list that lost items keeps its start.
  */
 
 import type { GrammarView } from '../schema/block-openers';
@@ -40,6 +40,8 @@ import {
 	writeKeepingTaskMarker
 } from '../tree-operations/list/reconcile-task';
 import { ensureEditableContainers } from '../schema/opened-reading';
+import { holdOrderedNumbering } from '../tree-operations/list/ordered-markers';
+
 /** Deletes in reverse order, each path only while it holds its captured node (cleanup can move a
  *  survivor there); the caller copies parent chains first so the check compares copies (G1.9). */
 function deleteSubtreesIdentityGated(
@@ -124,12 +126,12 @@ export function installSurvivor(
 }
 
 /** Truncates the start endpoint in place, after the planned deletion, and returns the caret's
- *  offset. `isChrome` must be read before any splice moved the tree. */
+ *  offset. `isReservedChrome` must be read before any splice moved the tree. */
 export function truncateStartInPlace(
 	doc: Document,
 	start: SelectionPoint,
 	startBlock: CstNode,
-	isChrome: boolean,
+	isReservedChrome: boolean,
 	reading: Reading,
 	sharing: SharingState,
 	tag: string
@@ -137,7 +139,7 @@ export function truncateStartInPlace(
 	const cut = charOffsetOf(start, tag);
 	const ending = documentLineEnding(doc);
 	const lineEnding = trailingLineEnding(startBlock.raw, ending);
-	if (isChrome) {
+	if (isReservedChrome) {
 		startBlock.raw = terminateLine(startBlock.raw.slice(0, cut), lineEnding);
 		return cut;
 	}
@@ -159,13 +161,13 @@ export function truncateEndInPlace(
 	doc: Document,
 	end: SelectionPoint,
 	endBlock: CstNode,
-	isChrome: boolean,
+	isReservedChrome: boolean,
 	reading: Reading,
 	sharing: SharingState,
 	tag: string
 ): CstNode | null {
 	const cut = charOffsetOf(end, tag);
-	if (isChrome) {
+	if (isReservedChrome) {
 		endBlock.raw =
 			endBlock.raw.slice(cut) || trailingLineEnding(endBlock.raw, documentLineEnding(doc));
 		return endBlock;
@@ -184,6 +186,8 @@ export interface DeletionPlan {
 	/** Each deletion path's parent chain, copied before any splice, for the rebuild after it. */
 	parentChains: CstNode[][];
 	chromeClearChain: CstNode[] | null;
+	/** Each ordered list on a parent chain, with its numbering read before any splice. */
+	listNumbering: Map<CstNode, (sharing: SharingState) => void>;
 	/** The sharing state the plan was collected against; the apply step's splices copy their
 	 *  chains through it, so no branch has to pass it again. */
 	sharing: SharingState;
@@ -212,7 +216,14 @@ export function planCrossBlockDeletion(
 	const parentChains = deletionPaths.map((path) =>
 		ensureUnsharedPath(doc, path.slice(0, -1), sharing)
 	);
-	return { deletionPaths, parentChains, chromeClearChain, sharing };
+	// Read once every chain is copied, so a later chain's copy cannot replace an item read here.
+	const listNumbering = new Map<CstNode, (sharing: SharingState) => void>();
+	for (const node of parentChains.flat()) {
+		if (node.kind === 'list' && !listNumbering.has(node)) {
+			listNumbering.set(node, holdOrderedNumbering(node));
+		}
+	}
+	return { deletionPaths, parentChains, chromeClearChain, listNumbering, sharing };
 }
 
 /** Applies the plan: clears a surviving end container's covered title line (a raw write, never a
@@ -227,17 +238,21 @@ export function applyPlannedDeletion(
 	deleteSubtreesIdentityGated(doc, plan.deletionPaths, plan.sharing, grammar);
 }
 
-/** Rebuilds what is still attached of each removed subtree's parent chain, then the cleared title
- *  line's container, so every surviving container re-emits its raw. */
-export function rebuildSharedAncestries(
+/** Renumbers each attached ordered list the deletion took items from, then rebuilds every
+ *  attached container on the removed subtrees' chains and the cleared title line's container. */
+export function rebuildAfterDeletion(
 	doc: Document,
 	plan: DeletionPlan,
 	sharing: SharingState,
 	grammar: GrammarView
 ): void {
-	for (const chain of plan.parentChains) {
-		const attached = attachedChainPrefix(doc, chain);
-		if (attached.length > 0) rebuildUnsharedChain(doc, attached, sharing, null, grammar);
+	const attachedChains = plan.parentChains.map((chain) => attachedChainPrefix(doc, chain));
+	if (plan.listNumbering.size > 0) {
+		const attached = new Set(attachedChains.flat());
+		for (const [list, renumber] of plan.listNumbering) if (attached.has(list)) renumber(sharing);
+	}
+	for (const chain of attachedChains) {
+		if (chain.length > 0) rebuildUnsharedChain(doc, chain, sharing, null, grammar);
 	}
 	if (plan.chromeClearChain)
 		rebuildUnsharedChain(doc, plan.chromeClearChain, sharing, null, grammar);

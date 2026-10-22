@@ -10,14 +10,14 @@ import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
 
 // Restoring an undo entry that holds a gap caret: the boundary is clamped into the tree it
-// lands in, and the block it sits against is mounted and brought into view before the caret.
+// lands in, the block it sits against is mounted before the caret, and the caret is shown after.
 
 const DOC = '| a |\n| - |\n\n```\nx\n```\n\n> para\n>\n> ```\n> y\n> ```\n';
 
 function harness(overrides: Partial<GapCaretRestoreDeps> = {}) {
 	const doc = parse(DOC);
 	const revealed: number[][] = [];
-	const inView: number[][] = [];
+	let shown = 0;
 	const selectionState = createSelectionState({ getDoc: () => doc });
 	const deps: GapCaretRestoreDeps = {
 		getDoc: () => doc,
@@ -28,19 +28,19 @@ function harness(overrides: Partial<GapCaretRestoreDeps> = {}) {
 			revealed.push(path);
 			return stubBlockComponent();
 		},
-		reveal: async (path) => {
-			// Before the caret, so the gap it lands at renders in view.
-			expect(selectionState.gapCaret).toBeNull();
-			inView.push(path);
+		show: async () => {
+			// After the caret, since the gap has nothing to show until it renders.
+			expect(selectionState.gapCaret).not.toBeNull();
+			shown++;
 		},
 		current: () => true,
 		...overrides
 	};
-	return { doc, deps, revealed, inView, selectionState };
+	return { doc, deps, revealed, shown: () => shown, selectionState };
 }
 
 describe('restoreGapCaret', () => {
-	it('puts the caret the boundary and reveals the block it sits before', async () => {
+	it('puts the caret at the boundary, mounts the block it sits before, then shows the caret', async () => {
 		const h = harness();
 
 		const outcome = await restoreGapCaret({ parentPath: [], index: 1 }, h.deps);
@@ -48,7 +48,7 @@ describe('restoreGapCaret', () => {
 		expect(outcome).toBe('applied');
 		expect(h.selectionState.gapCaret).toEqual({ parentPath: [], index: 1 });
 		expect(h.revealed).toEqual([[1]]);
-		expect(h.inView).toEqual([[1]]);
+		expect(h.shown()).toBe(1);
 	});
 
 	// A restored gap caret is placed, not arrived at by a key, like any restored caret.
@@ -105,13 +105,14 @@ describe('restoreGapCaret', () => {
 	});
 
 	// The mount is best effort; the caret is still placed, as it is for an endpoint pair.
-	it('reports unplaced but still puts the caret when the reveal misses', async () => {
+	it('reports unplaced but still puts the caret when the mount misses', async () => {
 		const h = harness({ mount: async () => null });
 
 		const outcome = await restoreGapCaret({ parentPath: [], index: 1 }, h.deps);
 
 		expect(outcome).toBe('unplaced');
 		expect(h.selectionState.gapCaret).toEqual({ parentPath: [], index: 1 });
+		expect(h.shown()).toBe(0);
 	});
 
 	it('ends a live cross-block range, as every other caret landing does', async () => {

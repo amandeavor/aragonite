@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { collectReservedChords, HARDCODED_CHORD_SITES } from '#lib/schema/reserved-chords.js';
 import { registerBuiltInDescriptors } from '#lib/schema/built-in-descriptors.js';
-import { isChordWellFormed } from '#lib/schema/keybindings.js';
+import { registeredChord } from '#lib/schema/keybindings.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { collectEditorSources, EDITOR_SRC, type SourceFile } from './scan-source';
 import { SOURCE, SOURCE_DIR } from './source-paths';
@@ -80,7 +80,10 @@ describe('G4.29 hardcoded-chord manifest ↔ library keydown sites', () => {
 
 	it.each(HARDCODED_CHORD_SITES)('$file: every claimed chord is evidenced', (site) => {
 		for (const chord of site.chords) {
-			expect(isChordWellFormed(chord), `${site.file}: malformed chord "${chord}"`).toBe(true);
+			expect(
+				() => registeredChord(chord, site.file),
+				`${site.file}: malformed chord`
+			).not.toThrow();
 			const key = chord.split('+').pop()!;
 			const evidenced = site.keys.some(
 				(recorded) =>
@@ -141,6 +144,6 @@ describe('G4.29 scan non-vacuity', () => {
 
 	it('the evidence assertion can fail', () => {
 		const site = HARDCODED_CHORD_SITES.find((s) => s.file === libRelative(SOURCE.keybindings))!;
-		expect(harvestKeys(byPath.get(site.file)!.code)).not.toContain('ArrowUp');
+		expect(harvestKeys(byPath.get(site.file)!.code)).not.toContain('Escape');
 	});
 });

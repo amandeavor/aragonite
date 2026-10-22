@@ -44,3 +44,10 @@ to type in block 3.
 ## Error cases
 
 - no `[invariant:…]` console messages across the battery (asserted through `capturedErrors`)
+
+## Miss-analysis
+
+- Typing `#` before existing words made a tag around the caret and pushed the caret past it, so the
+  next key landed after the tag: this battery typed a tag only at a line's end (` #fresh`), never an opening
+  byte in front of a body. `widget-reveal-caret.md` holds the rows, for every kind that can show
+  its source.

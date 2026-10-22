@@ -27,7 +27,6 @@ import {
 	normalizeReplacementTrivia,
 	rebuildUnsharedChain,
 	restoreSeparatorOnFill,
-	dropDoubledSeparator,
 	emptyParagraph,
 	paragraphNode,
 	landAtTaskStart,
@@ -40,6 +39,7 @@ import {
 	type StructuralChange
 } from '../tree-operations/structural-change';
 import { spliceMany } from '../tree-operations/splice-many';
+import type { TrackedPosition } from '../tree-operations/neighbour-merge';
 import type { TaskStartLanding } from '../tree-operations/list/reconcile-task';
 import { isMergeEligible, isBlockEditable } from '../schema/merge-rules';
 import { getBlockKindDescriptor } from '../schema/block-kind-descriptor';
@@ -56,7 +56,7 @@ import type {
 import {
 	legalizeWrite,
 	settledCaretPosition,
-	updateNodeContent,
+	writeNodeContent,
 	type LegalWrite,
 	type SettledContent
 } from '../tree-operations/content-write';
@@ -65,11 +65,12 @@ import type { EditorRoot } from './deps';
 import { docPathFrom, extendDocPath } from '../caret/coordinate-spaces';
 import { mergedElseNext, mergedElsePrevious } from './merge-fallback';
 import { previewContentReparse, unlessFocusMoved } from './replacement-focus';
-import type { Landing } from '../selection/primitives';
+import type { CaretPosition, Landing } from '../selection/primitives';
 import type { RevealPolicy } from '../selection/caret-landing';
 import type { RemovalGesture } from '../selection/caret-target';
 import { admitsWrite } from './commit/reading-write-gate';
 import { refusedWrite, withStoredCaret } from './stored-caret';
+import { assertInvariant } from '../assert';
 
 /** What both merge directions do when the neighbour cannot merge; `dir` names its side. */
 async function handleIneligibleNeighbor(
@@ -93,7 +94,10 @@ async function handleIneligibleNeighbor(
 		snapshot: { index: i, offset: dir < 0 ? 0 : CURSOR_END },
 		eventTarget: neighbor,
 		op: { kind: 'delete' },
-		mutate: (view) => performDelete(view.body, neighbor, view.reading.grammar, view.sharing),
+		mutate: (view) => {
+			view.describeEdit({ removed: true });
+			return performDelete(view.body, neighbor, view.sharing);
+		},
 		// The block the key was pressed in, which a delete above has moved up to `neighbor`.
 		landing: () => scope.at(dir < 0 ? neighbor : i, [], dir < 0 ? CURSOR_START : CURSOR_END),
 		discardIfNoop: true
@@ -156,10 +160,11 @@ export async function commitLeafText(
 		reveal?: RevealPolicy;
 	}
 ): Promise<LeafWriteResult> {
-	let settled: SettledContent = { change: { op: 'noop' }, textStart: 0 };
+	let readSettled = (): SettledContent | null => null;
 	let landed: LeafWriteLanded | null = null;
 	// Read after the commit: the list's fix-up can move the written block.
 	const readLanded = (): LeafWriteLanded => {
+		const settled = readSettled() ?? { change: { op: 'noop' }, textStart: 0 };
 		const { change } = settled;
 		const at = settledCaretPosition(settled, index, opts.caret, scope.children());
 		const replaced = change.op === 'replace';
@@ -183,10 +188,18 @@ export async function commitLeafText(
 		touchedNodes,
 		mutate: (view) => {
 			view.unshareChild(index);
-			settled = updateNodeContent(view.body, index, write, view.reading.grammar, view.sharing);
+			const { change, written } = writeNodeContent(
+				view.body,
+				index,
+				write,
+				view.reading.grammar,
+				view.sharing
+			);
+			const settled = view.describeEdit({ written });
+			readSettled = () => settled()?.written ?? null;
 			touchedNodes.push(view.body.children[index]);
-			stampStructuralChange(view.body.children, settled.change, view.sharing);
-			return settled.change;
+			stampStructuralChange(view.body.children, change, view.sharing);
+			return change;
 		},
 		landing: () => {
 			landed ??= readLanded();
@@ -221,28 +234,6 @@ export async function commitLeafTextAt(
 	});
 }
 
-/**
- * A command's rewrite of the block at `path` in the document's line ending, its own undo entry
- * whatever typing came before; the caret moves to the block's start only when new blocks land.
- */
-export async function replaceBlockRaw(
-	root: EditorRoot,
-	path: readonly number[],
-	raw: string
-): Promise<void> {
-	const scope = createPathScope(root, docPathFrom(path.slice(0, -1)));
-	const index = path[path.length - 1];
-	if (!scope || !scope.children()[index]) return;
-	const target = scope.target();
-	const lineEnding = 'lineEnding' in target ? target.lineEnding : documentLineEnding(target);
-	const write = legalizeWrite(target, index, withLineEnding(raw, lineEnding), 'literal');
-	await commitLeafText(scope, index, write, {
-		snapshotOffset: 0,
-		caret: 0,
-		landing: (landed) => (landed.replaced ? unlessFocusMoved(landed) : null)
-	});
-}
-
 /** Each edit resolves to whether bytes landed. */
 export interface BlockEditCore {
 	split(i: number, offset: number): Promise<boolean>;
@@ -256,6 +247,7 @@ export interface BlockEditCore {
 		metadata: Record<string, unknown>,
 		options?: { caret?: BlockCaret }
 	): Promise<boolean>;
+	replaceRaw(i: number, raw: string, caret?: number): Promise<boolean>;
 	/** Resolves to how many blocks landed in the position, or null when nothing was written. */
 	replaceBlock(
 		i: number,
@@ -295,6 +287,32 @@ function landedFocus(
 	if (!atTaskStart) return { ...focus, replacementIndex: index };
 	const moved = atTaskStart.caretAt(index, focus.offset);
 	return { replacementIndex: moved.index, offset: moved.offset };
+}
+
+/** A leaf's metadata is what its opener reads from its bytes, so a metadata write there could not
+ *  survive a reload; it is refused, in every build, before anything is written (G1.110). */
+function refuseLeafMetadata(scope: CommitScope, i: number, kind: string): void {
+	const message =
+		`updateBlockMetadata wrote nothing: '${kind}' is a leaf, whose metadata comes from its ` +
+		"bytes. A leaf's command rewrites them with replaceRaw.";
+	assertInvariant('metadata-without-rebuild', () => ({
+		code: 'metadata-without-rebuild',
+		message
+	}));
+	scope.reportCommitError(new Error(`aragonite: ${message}`), 'metadataUpdate', i);
+}
+
+/** Where an offset in `before` sits in `after`: on the same text when it is outside the span the
+ *  rewrite changed, else at the end of what replaced that span. */
+function offsetThroughRewrite(before: string, after: string, offset: number): number {
+	const shorter = Math.min(before.length, after.length);
+	let head = 0;
+	while (head < shorter && before[head] === after[head]) head++;
+	let tail = 0;
+	while (tail < shorter - head && before.at(-1 - tail) === after.at(-1 - tail)) tail++;
+	if (offset <= head) return offset;
+	if (offset >= before.length - tail) return offset + after.length - before.length;
+	return after.length - tail;
 }
 
 export function createBlockEditCore(scope: CommitScope): BlockEditCore {
@@ -362,9 +380,8 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 					const change: StructuralChange = { op: 'insert', at: i, count: 1 };
 					stampStructuralChange(view.body.children, change, view.sharing);
 					// The commit's blank-line fix-up cannot infer that the displaced sibling, pushed off
-					// the first position, needs a separator, or that an empty paragraph is a blank line.
+					// the first position, needs a separator.
 					restoreSeparatorOnFill(view.body, i + 1, view.sharing);
-					dropDoubledSeparator(view.body, i, view.sharing);
 					return change;
 				},
 				landing: () => scope.at(i, [], displayLength(text))
@@ -379,22 +396,26 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 			if (!isMergeEligible(prevKind, currKind)) return handleIneligibleNeighbor(scope, i, -1);
 
 			let mergeResult: ReturnType<typeof mergeIntoPrevDeepLeaf> = null;
+			const tracked: TrackedPosition = { index: -1, offset: 0 };
+			const joinedAt = (): CaretPosition | null => {
+				if (!mergeResult) return null;
+				const join = mergeResult.landing(scope.children());
+				return scope.at(join.index, join.targetPath, join.joinOffset);
+			};
 			return scope.commit({
 				snapshot: { index: i, offset: 0 },
 				eventTarget: i,
 				op: { kind: 'merge', detail: { direction: 'prev' } },
 				mutate: (view) => {
-					mergeResult = mergeIntoPrevDeepLeaf(view.body, i, view.sharing, view.reading);
-					return mergeResult?.change ?? { op: 'noop' };
+					mergeResult = mergeIntoPrevDeepLeaf(view.body, i, view.sharing, view.reading, tracked);
+					if (!mergeResult) return { op: 'noop' };
+					view.describeEdit({ removed: true });
+					return mergeResult.change;
 				},
+				trackCaret: tracked,
 				// The primitive's answer, since the fix-up after the delete can merge the joined
 				// block into the one above it.
-				landing: () =>
-					mergedElsePrevious(
-						mergeResult &&
-							scope.at(mergeResult.index, mergeResult.targetPath, mergeResult.joinOffset),
-						extendDocPath(scope.path, i - 1)
-					),
+				landing: () => mergedElsePrevious(joinedAt(), extendDocPath(scope.path, i - 1)),
 				// A merge with no target changes nothing; discard the undo entry, and the landing
 				// still moves the caret.
 				discardIfNoop: true
@@ -435,7 +456,10 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 				snapshot: { index: i, offset: 0 },
 				eventTarget: i,
 				op: { kind: 'delete' },
-				mutate: (view) => performDelete(view.body, i, view.reading.grammar, view.sharing),
+				mutate: (view) => {
+					view.describeEdit({ removed: true });
+					return performDelete(view.body, i, view.sharing);
+				},
 				landing: () => scope.survivor(i, gesture),
 				discardIfNoop: true
 			});
@@ -446,6 +470,10 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 			if (i < 0 || i >= children.length) return false;
 			const fields = Object.keys(metadata);
 			if (fields.length === 0) return false;
+			if (!getBlockKindDescriptor(children[i].kind).isContainer) {
+				refuseLeafMetadata(scope, i, children[i].kind);
+				return false;
+			}
 			// `mutate` returns noop, so the stale-raw check needs the changed node named; the copy
 			// exists only after unshareChild, so the commit reads this array after mutate.
 			const touchedNodes: CstNode[] = [];
@@ -474,6 +502,24 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 					return caret ? scope.at(i, caret.path, caret.offset) : null;
 				}
 			});
+		},
+
+		async replaceRaw(i, raw, caret) {
+			const node = scope.children()[i];
+			if (!node) return false;
+			const target = scope.target();
+			const lineEnding = 'lineEnding' in target ? target.lineEnding : documentLineEnding(target);
+			const text = withLineEnding(raw, lineEnding);
+			const write = legalizeWrite(target, i, text, 'literal');
+			const kept = caret === undefined ? undefined : offsetThroughRewrite(node.raw, text, caret);
+			// With no caret to keep, only a block that became new blocks takes one, at its start.
+			const landed = await commitLeafText(scope, i, write, {
+				snapshotOffset: caret ?? 0,
+				caret: kept === undefined ? 0 : write.storedOffset(kept),
+				landing: (written) =>
+					kept !== undefined || written.replaced ? unlessFocusMoved(written) : null
+			});
+			return landed.wrote;
 		},
 
 		async replaceBlock(i, given, focus, options) {

@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { reorderChildrenWithTrivia } from '#lib/tree-operations/reorder.js';
 import { documentBody } from '#lib/tree-operations/node-primitives.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { reorderSettled } from '#lib/test/harness/settle-funnel.js';
 
 // Moving a block out from between two keeps a blank line in the join when either side of it had
 // one; a pair flush on both sides rejoins, as deleting the moved block would leave it.
@@ -23,7 +23,7 @@ const BLOCKS = {
 
 function moveHeadingUp(markdown: string) {
 	const doc = parse(markdown);
-	reorderChildrenWithTrivia(documentBody(doc), 1, 0, createSharingState(), defaultGrammarView);
+	reorderSettled(documentBody(doc), 1, 0, createSharingState(), defaultGrammarView);
 	return doc;
 }
 

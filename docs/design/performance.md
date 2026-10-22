@@ -4,7 +4,7 @@ The tour:
 
 1. [The one idea](#the-one-idea): why typing cost doesn't grow with document size, and the exceptions this doc refuses to hide.
 2. [Scale claims](#scale-claims): what a keystroke and a load cost, qualitatively.
-3. [The four axes windowing does not bound](#the-four-axes-windowing-does-not-bound): the exceptions, current numbers first.
+3. [The four axes windowing does not bound](#the-four-axes-windowing-does-not-bound): the exceptions, and what each one costs.
 4. [Costs beside the keystroke rows](#costs-beside-the-keystroke-rows): selection coverage, toolbar reads, and kind re-derivation.
 5. [The numbers and the gate](#the-numbers-and-the-gate): where the exact numbers live, the three commands, what's gated versus report-only, and why a red run on your machine is expected.
 6. [Two architectural decisions](#two-architectural-decisions): why containers store their full source, and why windowing is the only lever that matters.
@@ -13,7 +13,7 @@ The tour:
 
 Typing costs the same in a 10KB document and a 10MB one, because the editor only mounts the blocks you can see (`docs/design/virtual-rendering.md`). Nearly every property below follows from that.
 
-There are exceptions, and windowing reaches none of them: loading a document, editing inside one enormous block, and any derivation that walks the CST rather than the mounted set. Every one of them is called out below, with its numbers.
+There are exceptions, and windowing reaches none of them: loading a document, editing inside one enormous block, and any derivation that walks the CST rather than the mounted set. Every one of them is called out below, with what it costs.
 
 ## Scale claims
 
@@ -32,13 +32,13 @@ A single block's span rebuild scales with paragraph length, because windowing wi
 
 ### 2. Typing inside a large container
 
-A container's `raw` (its verbatim source bytes, children included) holds its full outer source, so every keystroke inside the container has to keep that copy honest. The rebuild rewrites the changed child's region alone (`editor.md` § 9), reading one child instead of all of them. On the production build that's **3.3 ms** per keystroke for a 1MB single giant list, **3.0 ms** for a giant blockquote, **4.1 ms** for a giant table and **5.4 ms** for the 10MB list. The `giant-single-{list,blockquote,table}-interior` rows type inside the container and gate it. What's left on this axis is the tail join, the fourth axis below.
+A container's `raw` (its verbatim source bytes, children included) holds its full outer source, so every keystroke inside the container has to keep that copy honest. The rebuild rewrites the changed child's region alone (`structural-edits.md` § The container `raw` contract), reading one child instead of all of them. The `giant-single-{list,blockquote,table}-interior` rows type inside the container and gate it. What's left on this axis is the tail join, the fourth axis below.
 
 ### 3. A live whole-document derivation
 
 A reader keyed on the editor's **content version** (the counter that ticks whenever the document's bytes change) walks the CST, not the mounted set, so windowing can't bound it. The bundled footnote reference is the only reader today, and it's the reader that pays: with no `[^label]` widget mounted the cost is zero. O(document shape) rather than O(viewport). Measured, not gated.
 
-The `rung-bracket-dense-footnotes` report rows type into a bracket-dense document with reference widgets in the viewport: **4.1 ms** p50 per keystroke at 100KB and **11.7 ms** at 1MB, against **2.7 ms** at both sizes for the identical bytes on the plain editor route, where no inline handler is installed. The mounted widget count is 20 at both sizes, since windowing bounds the mount, so the growth is the document, not the readers. Those rows were measured while the content version still came from a walk over every node (about 1.8 ms at 100KB and 18 ms at 1MB on its own), so read them as a ceiling for today's cost.
+The `rung-bracket-dense-footnotes` report rows type into a bracket-dense document with reference widgets in the viewport, at 100KB and 1MB, beside the same bytes on the plain editor route, where no inline handler is installed. Windowing mounts the same number of widgets at both sizes, so whatever grows between the two sizes comes from the document, not from the widgets.
 
 The reader keeps it this small by memoizing each top-level subtree's references against that subtree's `raw`, which is a sound witness because the `raw` of a container holds everything under it. So a keystroke re-parses the edited subtree and re-reads two fields per sibling (`raw`, `kind`): O(top-level count + edited subtree) instead of an inline parse per prose leaf.
 
@@ -46,7 +46,9 @@ The reader keeps it this small by memoizing each top-level subtree's references 
 
 When an edit may have moved a join (where two blocks meet, blank lines or not), the editor asks whether they're still the blocks a reload reads there. That ask parses the block above the join whole, and the block below gets its first line read and no more. If a block opens on that line, it opens there in the full parse too, unless the block above's reading isn't final yet (next paragraph). A big table or a long paragraph right under a heading costs one line a keystroke, and so does one under a paragraph starting with a link or a closed `$$` block; `src/lib/test/perf/flush-join-read-cost.test.ts` pins those.
 
-A reading isn't final when more lines could still change it. A lone `$$` hunts for its closing `$$` and turns into a paragraph without one, and a link definition with no title yet takes one from the next lines if a quote opens and closes there. So `$$` over `<div>` reads as two blocks, while `$$` over `<div>` and another `$$` reads as one math block, and cutting after one line gets that wrong. Each opener answers this for a block's own bytes (`readingNotFinal` on its registration), checking its first line before it scans the rest, and when the block above a join answers yes, the block below gets parsed whole. A closed `$$` block, a titled definition and `[a](b)` all answer no.
+A reading isn't final when more lines could still change it. A lone `$$` hunts for its closing `$$` and turns into a paragraph without one, and a link definition with no title yet takes one from the next lines if a quote opens and closes there. So `$$` over `<div>` reads as two blocks, while `$$` over `<div>` and another `$$` reads as one math block, and cutting after one line gets that wrong. Each opener answers this for a block's own bytes (`readingNotFinal.notFinal` on its registration), checking its first line before it scans the rest, and when the block above a join answers yes, the block below gets parsed whole. A closed `$$` block, a titled definition and `[a](b)` all answer no.
+
+The closing line can also land several blocks below the construct it finishes. Finding it means walking up the body, one first-line check per block, so only a write whose changed lines could close something pays for that. Each opener says which lines could (`readingNotFinal.mayClose`), and a letter typed into ordinary text matches none. `src/lib/test/perf/unfinished-walk-cost.test.ts` pins both halves: no walk for a plain keystroke, one walk for a typed `$`. When an edit leaves a block waiting, the walk goes down instead and reads every line below until one could close it, so typing the first line of an unclosed `:::note` at the top of a long document pays for the whole document on every key. The same file pins that row too, and two for fences. A ` ``` ` typed at the end of a long document walks nowhere, since an open fence takes in everything below it and can't be waiting above anything. And breaking an opener over a long document rereads what's below once, not once per block it swallows.
 
 So a keystroke pays for the size of whatever sits right above the join it touches, plus a line. Two routes pay a lot of it today:
 
@@ -184,7 +186,7 @@ The undo gauge is push-sampled: it updates only when a snapshot is pushed, and u
 
 ### One caveat on every non-gate number
 
-The bench and browser layers run under DEV (Vitest / dev server) with invariant assertions active, so every timing they print is a conservative upper bound on production, not a production latency. The real thing is faster than what you're reading, never slower. The gate is the exception: `perf:check` measures the production build.
+The bench and browser layers run under DEV (Vitest, and a development build in the browser) with invariant assertions active, so every timing they print is a conservative upper bound on production, not a production latency. The real thing is faster than what you're reading, never slower. The gate is the exception: `perf:check` measures the production build.
 
 ## Two architectural decisions
 

@@ -478,7 +478,8 @@
 		const rowRef = rowsState.innerBlockRefs[rowIdx];
 		const subPos = rowRef?.getCursorPosition?.();
 		if (subPos) return { path: [rowIdx, ...subPos.path], offset: subPos.offset };
-		return { path: [rowIdx, colIdx], offset: 0 };
+		// Reading mode has no caret, so a cell it focused (a jump, a Tab) reports none.
+		return readOnly ? null : { path: [rowIdx, colIdx], offset: 0 };
 	}
 
 	export function measurePartialRects(start: number, end: number): DOMRect[] {

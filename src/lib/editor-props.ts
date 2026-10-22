@@ -25,10 +25,13 @@ import type { InsertEntry } from './schema/insert-catalogue';
 import type { EditorPluginEntry } from './schema/plugin-install';
 import type { SyntaxOptions } from './schema/registry-view';
 import type { InteractionTraceEntry } from './debug/interaction-trace';
+import type { InputRecordingHandle, InputRecordingOptions } from './debug/input-recorder';
 
 export type { EditorPluginEntry } from './schema/plugin-install';
 export type { SyntaxOptions } from './schema/registry-view';
 export type { InteractionTraceEntry } from './debug/interaction-trace';
+export type { InputRecordingHandle, InputRecordingOptions } from './debug/input-recorder';
+export type { InputRecording } from './debug/input-recording';
 
 /** Every editor prop but `header`, whose type depends on how the editor is mounted. */
 export interface EditorOptions {
@@ -187,22 +190,24 @@ export interface EditorInstance {
 	getBlockKindAt(path: number[]): AnyBlockKind | null;
 	/**
 	 * The live selection, or null when nothing is focused. While an image is selected whole it is
-	 * a caret at the image's edge its selection came from (its end after a click).
+	 * a caret at the image's edge its selection came from (its end after a click). Reading mode
+	 * has no caret, so there it's null unless a range is selected.
 	 */
 	getSelection(): EditorSelection | null;
 	/**
 	 * Restore a `getSelection()` snapshot. Async because the target is scrolled into view first,
 	 * and true means it got there, not merely that it mounted. Never throws: an out-of-range
-	 * offset clamps in its own coordinate space (a table's cell index to the last cell), and an
-	 * unresolvable path, or a scroll that never arrives, resolves false. A caret at the start of a
-	 * list lands in its first item; one inside a closed body lands on its title row.
+	 * offset clamps in its own coordinate space, and an unresolvable path, or a scroll that never
+	 * arrives, resolves false. A caret at a list's start lands in its first item, one inside a
+	 * closed body on its title row, and in reading mode one lands as focus on its block.
 	 */
 	setSelection(selection: EditorSelection): Promise<boolean>;
 	/**
 	 * Put the caret at a viewport point exactly as a click there would: the point clamps into the
 	 * nearest block's box, the block under it picks the spot, and a live cross-block range ends
-	 * first. A host decides which of its clicks come here. False when no focusable position
-	 * resolves; a point past an unmounted tail lands there once that mounts.
+	 * first, and in reading mode the block takes focus instead. A host decides which of its clicks
+	 * come here. False when no focusable position resolves; a point past an unmounted tail lands
+	 * there once that mounts.
 	 */
 	placeCaretAtPoint(x: number, y: number): boolean;
 	/**
@@ -276,4 +281,11 @@ export interface EditorDiagnostics {
 	 * document source is left out by default; pass `{ includeSource: true }` to opt in.
 	 */
 	serializeDiagnostics(opts?: { includeSource?: boolean }): string;
+	/**
+	 * Records this editor's input until `stop()`, which returns the recording as JSON-ready data:
+	 * each step's events, bytes hash and selection. Text (typed characters, key codes, event data,
+	 * clipboard and DOM text) is left out unless `includeText` is set. The format is a diagnostics
+	 * file, not a stable contract before 1.0. Recordings run independently of each other.
+	 */
+	recordInput(options?: InputRecordingOptions): InputRecordingHandle;
 }

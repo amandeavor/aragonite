@@ -118,8 +118,10 @@ describe.each(COMMIT_ROUTES)('a landing across an undo, through %s', (_route, co
 			selectionState: h.deps.selectionState,
 			caretMemory: h.deps.caretMemory,
 			getBlockElByPath: () => null,
+			getBlockBoxByPath: () => null,
 			getEditorRoot: () => null,
-			scroll: null
+			scroll: null,
+			isReading: () => false
 		});
 		Object.defineProperty(h.deps, 'caretLanding', { value: landing });
 		const history = createHistoryActions(h.deps, h.controller);
