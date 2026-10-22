@@ -149,7 +149,7 @@ container: {
 },
 ```
 
-`contract` and `rebuildRaw` are the two the group can't do without: how the container re-derives its own bytes from its children. Which of `'strip'`, `'grid'` and `'opaque'` yours is, and what each promises, is `docs/design/syntax-tree.md` § The container contract. The one thing it asks of a built-in specifically is that an opaque `rebuildRaw` be deterministic, since a dev probe runs it twice and compares.
+`contract` and `rebuildRaw` are the two the group can't do without, since together they say how the container re-derives its own bytes from its children. Which of `'strip'`, `'grid'` and `'opaque'` yours is, and what each promises, is `docs/design/syntax-tree.md` § The container contract. The one thing it asks of a built-in specifically is that an opaque `rebuildRaw` be deterministic, since a dev check runs it twice and compares.
 
 Where the code behind the fields lives, for when yours needs a new one:
 

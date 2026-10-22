@@ -375,13 +375,14 @@ seed table is in `+page.svelte`. What each fixture is for, so you can pick one:
 - `callout/`: `:::callout Title` (and `:::aside`, so a kind switch has somewhere to go), a
   container with a title line it always keeps (reserved chrome: block furniture a range delete or
   a merge has to step around). Minimal on purpose, for the `reserved-chrome-*` specs, the chrome
-  unit suites and the simulation's plugin gestures. Keep its two directive names unclaimed by any
-  other fixture: a contended name resolves by install order, and the shared server installs in a
-  different order than a fresh tab. Always on.
+  unit suites and the simulation's plugin gestures. Don't let any other fixture use its two directive
+  names: when two plugins want one name, install order decides, and the shared server installs in a
+  different order than a fresh tab does. Always on.
 - `memo/`: a `%%` leaf you edit as plain text, the only `createEditableLeaf` in `'plain'` mode, for
   the `editable-leaf-*` specs. Always on; seed `memo`.
-- `doc-stats/`: counts blocks and edits per editor and publishes them on `window`, the
-  `registerGlobalCommand` plus per-editor context fixture. Bare here, with options on `multi/`.
+- `doc-stats/`: counts blocks and edits per editor and publishes them on `window`; it's the
+  fixture for `registerGlobalCommand` plus per-editor context. It's installed without options here,
+  and with a label per editor on `multi/`.
   Always on; seed `docstats`.
 - `ghost-text/`: one Svelte-drawn decoration widget at the end of the focused paragraph, for the
   spec proving typing beside it never captures the ghost text. Seed `ghost`.
@@ -389,14 +390,14 @@ seed table is in `+page.svelte`. What each fixture is for, so you can pick one:
   fixture, with a live click handler and decorations in table cells. Seeds `fold` and
   `fold-table`.
 - `block-badge/`: a class plus an `H` badge on every heading at any depth; the
-  `BlockDecoration.badge` fixture, a badge surviving a scroll out of the window included. Seed
+  `BlockDecoration.badge` fixture, including a badge that survives scrolling out of the window. Seed
   `badge`.
-- `wiki-embed/`: `![[path|width]]` read as a built-in image; pins an inline syntax producing a
-  built-in kind, and `rewriteImage`. Seed `wiki-embed`.
+- `wiki-embed/`: `![[path|width]]` read as a built-in image. It pins an inline syntax that
+  produces a built-in kind, and `rewriteImage`. Seed `wiki-embed`.
 - `tags/`: tags on a bare `#` trigger, registered the way limestone (the app aragonite was
   extracted from) registers them. Seed `tags`.
-- `inline-menu/`: a document picker on `[[` and a mention menu on `@` whose commit waits for the
-  spec, installed beside the demo tag menu and the bundled slash list so all four triggers share
+- `inline-menu/`: a document picker on `[[` and a mention menu on `@` whose pick doesn't commit
+  until the spec releases it, installed beside the demo tag menu and the bundled slash list so all four triggers share
   one editor. Seed `inline-menu`.
 - `hloccur-scan/`: the bundled highlight-occurrences plugin with an `onScan` counter on `window`,
   for counting rescans. Seed `hloccur-memo`.
