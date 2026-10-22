@@ -146,12 +146,11 @@ jobs:
           name: e2e-webkit-${{ strategy.job-index }}
           path: test-results/ci-summary.json
 
+  # On the runner, not in Playwright's image: the pinned Mozilla build ships as .tar.xz and the image
+  # has no xz. Firefox's own OS packages are few, so the mirror costs it little.
   e2e-firefox:
     needs: changes
     runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
-      options: --user 1001
     env:
       ENGINE: firefox
     strategy:
