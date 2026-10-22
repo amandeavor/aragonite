@@ -260,7 +260,7 @@ deletes or replaces a blank block has to restore a separator somebody else was r
 wrong and the document saves fine but reloads as a different number of blocks. Read
 `docs/design/syntax-tree.md` § Blank lines before touching any of this.
 
-The count itself is one function, `src/lib/tree-operations/blank-runs.ts` :: `normalizeBlankRuns`,
+One function does the counting, `src/lib/tree-operations/blank-runs.ts` :: `normalizeBlankRuns`,
 which lays out each run of blank lines an edit touched the way a reload reads it. The steps that
 depend on what the edit did sit at the head of `src/lib/tree-operations/settle.ts`
 (`restoreSeparatorOnFill`, `restoreSeparatorAfterBlank`). Each takes a `BodyParent`
@@ -282,7 +282,7 @@ Almost nothing calls them by hand. An edit splices and writes, and the fix-up af
 - **`spliceChildrenSettled`**, which the path-addressed helpers in
   `src/lib/tree-operations/path-mutate.ts` and `src/lib/tree-operations/cleanup.ts` splice through.
 
-The one caller that still carries a helper by hand, saying why at the site:
+The one caller that still runs a step by hand, with the reason at the call site:
 
 - `insertParagraph` in `src/lib/editor-actions/block-edit-core.ts` (the gap caret, the trailing
   insert row, insert-below, a character typed on a block focused whole).

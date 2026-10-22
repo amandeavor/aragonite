@@ -32,8 +32,8 @@ its own fence. Paste it straight into a bug report or an AI conversation.
 ### Recording a session on a phone
 
 The input recording is how a bug on a device you don't have at your desk gets back to you. It's
-the same file `getDiagnostics().recordInput()` makes (the Recording input section of the consumer
-guide's `docs/guide/consumer-guide/shipping.md` has every field). Tick **include text** only for a document you don't mind sharing, since without
+the same file `getDiagnostics().recordInput()` makes (the Recording input section of
+`docs/guide/consumer-guide/shipping.md` has every field). Tick **include text** only for a document you don't mind sharing, since without
 it the file can't be replayed, only read.
 
 The catch on a phone is getting the file off it: the clipboard and the share sheet both want a
