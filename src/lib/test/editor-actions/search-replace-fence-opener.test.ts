@@ -5,31 +5,32 @@ import { expectParseConverged } from '#lib/test/harness/parse-converged.js';
 import { makeSearchReplace, scanCompiled } from '#lib/test/harness/search-replace.js';
 
 // Find and replace is the one write that can take a code block's opener without a selection
-// endpoint: a match spanning the opener line substitutes it away and strands the closer,
-// which then absorbs the heading below.
+// endpoint: a match spanning the opener line substitutes it away and strands the closer, which
+// stays and, as a reload reads it, opens a fence over the heading below.
 // Miss-analysis (GH #58): replace tests drove matches ending on the closer, never above the opener.
+// Miss-analysis (GH #768): the #58 rows pinned the closer's drop, losing a line nobody matched.
 
 const scan = (doc: Document, query: string) => scanCompiled(doc, query, { caseSensitive: true });
 
 const BACKTICKS = '```';
 
 describe('search/replace that consumes a fenced code opener', () => {
-	it('drops the closer a replacement over the opener and body stranded', async () => {
+	it('keeps the closer a replacement over the opener and body stranded', async () => {
 		const { deps, sr } = makeSearchReplace('```js\nbody\n```\n\n# Heading\n');
 
 		await sr.replaceAll(scan(deps.doc, `${BACKTICKS}js\nbody`), 'x');
 
-		expect(serialize(deps.doc)).toBe('x\n\n# Heading\n');
-		expect(deps.doc.children.map((c) => c.kind)).toEqual(['paragraph', 'heading']);
+		expect(serialize(deps.doc)).toBe('x\n```\n\n# Heading\n');
+		expect(deps.doc.children.map((c) => c.kind)).toEqual(['paragraph', 'fencedCode']);
 		expectParseConverged(deps.doc);
 	});
 
-	it('drops it when the match is the opener line alone', async () => {
+	it('keeps it when the match is the opener line alone', async () => {
 		const { deps, sr } = makeSearchReplace('```js\nbody\n```\n\n# Heading\n');
 
 		await sr.replaceAll(scan(deps.doc, `${BACKTICKS}js\n`), '');
 
-		expect(serialize(deps.doc)).toBe('body\n\n# Heading\n');
+		expect(serialize(deps.doc)).toBe('body\n```\n\n# Heading\n');
 		expectParseConverged(deps.doc);
 	});
 

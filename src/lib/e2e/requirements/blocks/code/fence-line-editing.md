@@ -5,10 +5,10 @@ text wherever the mode paints them: always in source mode, and on the focused bl
 preview modes. A caret arriving from another block still lands in the body; a click or an arrow
 inside the block reaches the fence lines.
 
-One stray keystroke on a fence line can break the fence: a closer that stops matching leaves the
-block open, and an opener that stops matching strands the closer, which then opens a fence over
-everything below. So every edit here goes through the fence write rule, which keeps exactly one
-opener line and one closer line, and the block after the code block always stays its own.
+One stray keystroke on a fence line can break the fence. A closer that stops matching would leave
+the block open, so the fence write rule puts a closer back. An opener that stops matching strands
+the closer, which stays: it opens a fence over everything below, as a reload of the same bytes
+reads it, and putting the opener back closes it again.
 
 Where the mode hides the fence lines, edits clamp to the body instead: `fence-ranged-edit.md`.
 
@@ -22,8 +22,14 @@ Where the mode hides the fence lines, edits clamp to the body instead: `fence-ra
 
 - Backspace inside the closer run: the shortened run becomes a body line and a full closer
   follows it, so the block stays closed
-- Backspace inside the opener run: the block demotes to a paragraph and the closer goes with
-  it, so nothing below is absorbed
+- a character typed at the opener's offset 0, 1 or 2, or Backspace after its first, second or
+  third backtick: the block demotes to a paragraph, the closer and every byte below it stay, and
+  the old closer opens a fence over the paragraph below (miss-analysis: the Backspace row pinned
+  the closer's drop as intended, and no check compared the bytes a write rule kept against the
+  bytes the edit left alone)
+- the same keystroke through an IME composition keeps the same bytes
+- a backspaced opener backtick typed back restores the document byte for byte: the retyped opener
+  takes the old closer back instead of writing a second one
 - a backtick typed right after the opener's marker run widens the fence: the closer grows by
   the same backtick, so the block stays closed (miss-analysis: every opener edit here deleted or
   replaced, and the unit case for this keystroke pinned the dropped backtick as intended)

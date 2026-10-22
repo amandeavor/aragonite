@@ -78,12 +78,13 @@ describe('a $$ write reads the shape the painter and the parser read', () => {
 		expect(rule.mapOffset('$$x^2\n$$\n', 2, ctx)).toBe(3);
 	});
 
-	// As text, a lone `$$` line opens a block that runs to the next `$$` anywhere below.
+	// A lone `$$` line reads as text until a later `$$` closes it, so the rule leaves it there.
+	// Miss-analysis (GH #768): these rows pinned the stranded closer's drop as intended.
 	it.each([
-		['the opener’s dollar deleted', '$$\nx^2\n$$\n', '$\nx^2\n$$\n', '$\nx^2\n'],
-		['a closer typed mid-body', '$$\nx\n$$\n', '$$\nx\n$$\nb\n$$\n', '$$\nx\n$$\nb\n']
-	])('drops the closer stranded by %s', (_case, source, written, expected) => {
-		expect(write(source, written)).toBe(expected);
+		['the opener’s dollar deleted', '$$\nx^2\n$$\n', '$\nx^2\n$$\n'],
+		['a closer typed mid-body', '$$\nx\n$$\n', '$$\nx\n$$\nb\n$$\n']
+	])('keeps the closer stranded by %s', (_case, source, written) => {
+		expect(write(source, written)).toBe(written);
 	});
 });
 
@@ -103,8 +104,8 @@ describe('a truncating write of a ```math fence gets its closing line back', () 
 	});
 
 	// Miss-analysis: no test wrote the two shapes the built-in code block repairs (GH #566).
-	it('drops the closer a write stranded by taking the opener line', () => {
-		expect(write('```math\nx^2\n```\n', 'x^2\n```\n')).toBe('x^2\n');
+	it('keeps the closer a write stranded by taking the opener line', () => {
+		expect(write('```math\nx^2\n```\n', 'x^2\n```\n')).toBe('x^2\n```\n');
 	});
 
 	it('grows the fence past a body line that reads as the closer', () => {

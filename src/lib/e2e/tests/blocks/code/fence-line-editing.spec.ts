@@ -1,10 +1,11 @@
 import { test, expect } from '../../../fixtures';
 import { EditorPage } from '../../../editor-page';
 import { edgeKey } from '../../../platform-keys';
+import { attachIme } from '../../../simulation/ime';
 
 // Where the mode paints a code block's fence lines (source mode, and the preview modes on the
-// focused block), they're editable text, and the fence write rule keeps exactly one opener and
-// one closer, so the paragraph below always stays its own. Requirements: `fence-line-editing.md`.
+// focused block), they're editable text, and the fence write rule keeps the fence whole while it
+// opens, and every byte the edit didn't touch. Requirements: `fence-line-editing.md`.
 
 // Block 0's display text "```js\nconst x = 1\n```":
 // opener text [0,5) · body [6,17) · closer text [18,21).
@@ -20,6 +21,14 @@ async function selectFrom(editor: EditorPage, start: number, presses: number) {
 async function openFence(editor: EditorPage, source = SOURCE) {
 	await editor.loadContent(source);
 	await editor.getBlock(0).click();
+}
+
+/** A click on the body of the code block at [1], then up to its opener and right `offset` times. */
+async function reachOpenerOffset(editor: EditorPage, offset: number) {
+	await editor.clickBlock(1);
+	await editor.page.keyboard.press('ArrowUp');
+	await editor.page.keyboard.press(edgeKey('lineStart'));
+	for (let i = 0; i < offset; i++) await editor.page.keyboard.press('ArrowRight');
 }
 
 async function sourceEditor(page: EditorPage['page']): Promise<EditorPage> {
@@ -54,16 +63,6 @@ test.describe('code block: fence lines the mode paints', () => {
 			expect(await editor.bridge.getBlockKind(1)).toBe('paragraph');
 		});
 
-		await test.step('an opener backtick deleted demotes the block, and its closer goes with it', async () => {
-			await openFence(editor);
-			await editor.focusBlock(0, 3);
-			await editor.page.keyboard.press('Backspace');
-
-			await editor.bridge.waitForSourceEquals('``js\nconst x = 1\n\nafter\n');
-			expect(await editor.bridge.getBlockKind(0)).toBe('paragraph');
-			expect(await editor.bridge.getBlockKind(1)).toBe('paragraph');
-		});
-
 		// The demotion reparses the block into a paragraph, so the caret the edit left has to land in
 		// that paragraph where the typed character went, or the next key lands somewhere else.
 		await test.step('the caret stays put after a character typed before the opener demotes the block', async () => {
@@ -95,6 +94,64 @@ test.describe('code block: fence lines the mode paints', () => {
 
 			await editor.bridge.waitForSourceEquals('js\nconst x\n');
 		});
+	});
+
+	// Each edit breaks the opener, so the closer line opens a fence over the paragraph below, as a
+	// reload of the same bytes reads it.
+	const BETWEEN = 'para\n\n```js\ncode\n```\n\nafter\n';
+	const withOpener = (opener: string) => `para\n\n${opener}\ncode\n\`\`\`\n\nafter\n`;
+	const OPENER = '```js';
+	const openerEdits = [
+		...[0, 1, 2].map((offset) => ({
+			name: `a character typed at opener offset ${offset}`,
+			offset,
+			key: (editor: EditorPage) => editor.page.keyboard.type('X'),
+			expected: withOpener(OPENER.slice(0, offset) + 'X' + OPENER.slice(offset))
+		})),
+		...[1, 2, 3].map((offset) => ({
+			name: `Backspace after opener backtick ${offset}`,
+			offset,
+			key: (editor: EditorPage) => editor.page.keyboard.press('Backspace'),
+			expected: withOpener(OPENER.slice(0, offset - 1) + OPENER.slice(offset))
+		}))
+	];
+
+	for (const { name, offset, key, expected } of openerEdits) {
+		test(`${name} keeps the closer and every byte below`, async ({ page }) => {
+			const editor = await sourceEditor(page);
+			await editor.loadContent(BETWEEN);
+			await reachOpenerOffset(editor, offset);
+			await key(editor);
+
+			await expect.poll(() => editor.bridge.getSource()).toBe(expected);
+			expect(await editor.parseConverged()).toBe(true);
+		});
+	}
+
+	test('an IME composition on the opener line keeps the closer and every byte below', async ({
+		page
+	}) => {
+		const editor = await sourceEditor(page);
+		await editor.loadContent(BETWEEN);
+		await reachOpenerOffset(editor, 0);
+		const ime = await attachIme(editor.page);
+		await ime.compose('あ');
+		await ime.commit('あ');
+
+		await expect.poll(() => editor.bridge.getSource()).toBe(withOpener('あ```js'));
+		expect(await editor.parseConverged()).toBe(true);
+	});
+
+	test('a backspaced opener backtick typed back restores the document', async ({ page }) => {
+		const editor = await sourceEditor(page);
+		await editor.loadContent(BETWEEN);
+		await reachOpenerOffset(editor, 3);
+		await editor.page.keyboard.press('Backspace');
+		await expect.poll(() => editor.bridge.getSource()).toBe(withOpener('``js'));
+		await editor.page.keyboard.type('`');
+
+		await expect.poll(() => editor.bridge.getSource()).toBe(BETWEEN);
+		expect(await editor.parseConverged()).toBe(true);
 	});
 
 	// A bare opener has nothing after its run, where a typed backtick would otherwise auto-pair.
