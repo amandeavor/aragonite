@@ -99,7 +99,7 @@ export async function handleSharedKeydown(
 	const el = ctx.getEl();
 	if (!el) return false;
 
-	// Before the key note, which measures a vertical arrow's column at the caret this leaves.
+	// Before the key note, which measures a vertical arrow's column at the collapsed caret.
 	const collapsedRange = collapseRangeForArrow(e, ctx, el);
 
 	ctx.caretMemory.noteKey(e, commandAtBlock(e, ctx), () =>

@@ -35,3 +35,18 @@ paragraphs, then `Q`:
   block (in live mode, after the heading's hidden `## `)
 - ArrowLeft over a range right after a decoded entity (live) stops at the range start instead of
   crossing the entity
+
+## A range ending at a hidden marker (live)
+
+A paragraph whose line holds `**bold**` mid-line, with the selection's moving end right beside a
+hidden `**`. Each row types `Z` and compares the source with the same key pressed from a caret at
+that end:
+
+- ArrowUp over a forward range ending beside the closer: `Z` lands on the line above, at that end's
+  column
+- ArrowDown over a backward range ending beside the opener: `Z` lands on the line below, at that
+  end's column
+- ArrowUp over a forward range ending beside the closer, on the document's first line: `Z` lands at
+  that end instead of replacing the range
+  - Miss-analysis: the Up and Down rows above it all used plain text, so nothing showed the
+    collapsed caret beside a hidden marker moving the way a placed caret there does

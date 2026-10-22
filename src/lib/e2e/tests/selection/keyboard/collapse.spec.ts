@@ -175,3 +175,71 @@ for (const mode of ['source', 'live'] as const) {
 		}
 	});
 }
+
+// The `**` runs are hidden in live mode. Three Shift+Arrow presses from inside `bold` stop beside
+// one: on THREE_LINES' middle line, raw 18 to 20 is the opener's run and 24 to 26 the closer's.
+const THREE_LINES = 'efghijklmnopq\\\nab **bold** cd\\\nefghijklmnopq\n';
+const ONE_LINE = 'ab **bold** cd\n';
+
+test.describe('selection: keyboard: Up and Down over a range ending at a hidden marker (live)', () => {
+	let editor: EditorPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto('?presentationMode=live');
+	});
+
+	/** The source after `key` from a caret at `from` in `doc`, extended by `steps` Shift+Arrow
+	 *  presses first (negative: leftward), then a typed `Z`. */
+	async function landing(doc: string, from: number, steps: number, key: string) {
+		await editor.loadContent(doc);
+		await selectFrom(editor, [0], from, steps);
+		const focus = (await editor.bridge.getSelectionPaths())!.focus.offset;
+		await editor.page.keyboard.press(key);
+		await editor.page.keyboard.type('Z');
+		await expect.poll(() => editor.bridge.getSource()).toContain('Z');
+		return { focus, source: await editor.bridge.getSource() };
+	}
+
+	// Each range's moving end is the end its key doesn't name, so a collapse to the other end lands
+	// in another column. With no line above, the caret stays at the moving end.
+	for (const { name, key, doc, from, steps, beside, line } of [
+		{
+			name: 'to the line above',
+			key: 'ArrowUp',
+			doc: THREE_LINES,
+			from: 21,
+			steps: 3,
+			beside: [24, 26],
+			line: 0
+		},
+		{
+			name: 'to the line below',
+			key: 'ArrowDown',
+			doc: THREE_LINES,
+			from: 23,
+			steps: -3,
+			beside: [18, 20],
+			line: 2
+		},
+		{
+			name: 'on the first line',
+			key: 'ArrowUp',
+			doc: ONE_LINE,
+			from: 6,
+			steps: 3,
+			beside: [9, 11],
+			line: 0
+		}
+	]) {
+		test(`${key} ${name} lands where a caret at the moving end would`, async () => {
+			const overRange = await landing(doc, from, steps, key);
+			expect(overRange.focus).toBeGreaterThanOrEqual(beside[0]);
+			expect(overRange.focus).toBeLessThanOrEqual(beside[1]);
+
+			const fromCaret = await landing(doc, overRange.focus, 0, key);
+			expect(fromCaret.source.split('\n')[line]).toContain('Z');
+			expect(overRange.source).toBe(fromCaret.source);
+		});
+	}
+});
