@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { resetPluginPlatformForTests } from '#lib/testing.js';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { activationFor } from '#lib/schema/plugin-activation.js';
-import { createBlockKindRegistry, createPluginRegistry } from '#lib/schema/plugin-registry.js';
+import { createPluginRegistry } from '#lib/schema/plugin-registry.js';
+import { createBlockKindRegistry } from '#lib/schema/plugin-kind.js';
 
 const registry = createPluginRegistry<string, string>({
 	label: 'registerProbe',

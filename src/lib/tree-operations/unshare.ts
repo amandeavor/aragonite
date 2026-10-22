@@ -92,14 +92,6 @@ export function ensureUnsharedChild(
 	return parent.children![index];
 }
 
-/**
- * A standalone copy of a node moving out of a parent the snapshot keeps, for the caller to attach;
- * a node no snapshot shares passes through as it is.
- */
-export function ensureUnsharedNode(node: NodeView, sharing: SharingState): CstNode {
-	return sharing.isShared(node) ? copyNode(node, sharing) : (node as CstNode);
-}
-
 /** Unshare every direct child of an owned parent (e.g. table rows before a whole-table rebuild). */
 export function ensureUnsharedChildren(parent: CstNode, sharing: SharingState): void {
 	const count = parent.children?.length ?? 0;

@@ -11,7 +11,7 @@ import {
 	hidesDelimitersAtCaret,
 	type PresentationMode
 } from '../presentation-mode';
-import { widgetSourceRange } from '../core/inline/inline-widgets';
+import { widgetSourceRange } from '../core/inline/widget-shell';
 import { isLineEndingPair, splitsLineEndingPair } from '../core/line-ending-pairs';
 import { displayLength, isBlankText } from '../core/lines';
 import {
@@ -72,7 +72,7 @@ export function markerPrefixOf(container: ParentNode): HTMLElement | null {
 }
 
 /** The marker prefix's walk length: what a raw offset adds to become a walk offset. */
-export function markerPrefixLength(container: ParentNode): number {
+function markerPrefixLength(container: ParentNode): number {
 	return markerPrefixOf(container)?.textContent?.length ?? 0;
 }
 

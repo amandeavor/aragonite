@@ -1,6 +1,6 @@
 /** What a pointer press means for the inline widget the editor holds selected. */
 
-import { widgetSourceRange } from '../core/inline/inline-widgets';
+import { widgetSourceRange } from '../core/inline/widget-shell';
 import { findSurfacePathForElement } from './path-lookup';
 import type { SelectionState } from './selection-state.svelte';
 

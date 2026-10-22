@@ -14,8 +14,6 @@ import {
 import { resolvesIn, type PluginActivation } from './plugin-activation';
 import { registerOnce } from './register-once';
 import { enrollTestReset } from './registry-reset';
-// Last: `plugin-kind` builds its registries at load, so everything they call must be loaded first.
-import { pluginInlineKindOwner, pluginKindOwner } from './plugin-kind';
 
 export interface RegistryRecord<K, V> {
 	readonly key: K;
@@ -73,27 +71,9 @@ export function createPluginRegistry<K, V>(
 	return buildRegistry<K, V>(options, (_key, registrant) => registrant);
 }
 
-export function createBlockKindRegistry<V>(
-	options: PluginRegistryOptions<AnyBlockKind>
-): KindRegistry<AnyBlockKind, V> {
-	return buildRegistry<AnyBlockKind, V>(
-		options,
-		(key, registrant) => pluginKindOwner(key) ?? registrant
-	);
-}
-
-export function createInlineKindRegistry<V>(
-	options: PluginRegistryOptions<AnyInlineKind>
-): KindRegistry<AnyInlineKind, V> {
-	return buildRegistry<AnyInlineKind, V>(
-		options,
-		(key, registrant) => pluginInlineKindOwner(key) ?? registrant
-	);
-}
-
 // ── Internal ─────────────────────────────────────────────────────────────────
 
-type AnswersTo<K> = (key: K, registrant: string | null) => string | null;
+export type AnswersTo<K> = (key: K, registrant: string | null) => string | null;
 
 interface Entry<V> {
 	value: V;
@@ -102,7 +82,7 @@ interface Entry<V> {
 }
 
 // Creating a registry enrolls its reset, so no registry can be left out of the reset.
-function buildRegistry<K, V>(
+export function buildRegistry<K, V>(
 	options: PluginRegistryOptions<K>,
 	answersTo: AnswersTo<K>
 ): PluginRegistry<K, V> {

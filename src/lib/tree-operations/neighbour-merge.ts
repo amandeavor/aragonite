@@ -134,7 +134,7 @@ export type JoinReading = 'stands' | 'folds' | 'separate' | 'merge';
 /** Who left a join: an edit that put a block there, or one that took the block between away. */
 export type JoinOrigin = 'placed' | 'uncovered';
 
-export function resolveJoin(prev: CstNode, next: CstNode, grammar: GrammarView): JoinReading {
+function resolveJoin(prev: CstNode, next: CstNode, grammar: GrammarView): JoinReading {
 	const read = (bytes: string) => readBlocks(bytes, { grammar, scope: 'fragment' }).children;
 	const flush = read(prev.raw + next.raw);
 	if (readsAsPair(flush, prev, next)) return 'stands';

@@ -55,7 +55,7 @@ function spanOf(segment: Intl.SegmentData): Span {
 
 /** The raw span `granularity` takes around a raw offset in `surface`; null where the word rule
  *  has nothing to read. */
-export function spanAround(
+function spanAround(
 	surface: HTMLElement,
 	granularity: ClickGranularity,
 	rawOffset: number

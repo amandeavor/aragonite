@@ -7,7 +7,8 @@
 import { isBuiltinBlockKind, type AnyBlockKind } from '../core/nodes';
 import type { GrammarView } from './block-openers';
 import { resolvesIn } from './plugin-activation';
-import { createBlockKindRegistry, type RegistryRecord } from './plugin-registry';
+import { createBlockKindRegistry } from './plugin-kind';
+import type { RegistryRecord } from './plugin-registry';
 
 /**
  * The replacement, as lines with no line endings: the Enter handler attaches the block's own, else

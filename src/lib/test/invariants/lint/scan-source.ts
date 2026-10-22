@@ -827,12 +827,6 @@ function partOfOperator(code: string, i: number): boolean {
 	return code[i - 1] === ch || code[i + 1] === ch || code[i + 1] === '=';
 }
 
-/** The last top-level argument of a call's argument text: the slot the threading scans read. */
-export function lastArgument(args: string): string {
-	const parts = callArguments(args);
-	return parts[parts.length - 1];
-}
-
 // ── Import specifiers ────────────────────────────────────────────────────────
 
 export interface ImportSpecifier {

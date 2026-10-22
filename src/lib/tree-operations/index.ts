@@ -12,7 +12,6 @@ export type { MergeIntoPrevResult, MergeResult, SplitResult } from './node-ops';
 export { splitNode, assertSingleNodeSink, mergeWithNext, mergeIntoPrevDeepLeaf } from './node-ops';
 
 export { unwrapFirstItemFromList, mergeListItemIntoPrevious } from './list/unwrap-merge';
-export { renumberOrderedList, normalizeItemMarkerToList } from './list/ordered-markers';
 export { isItemUserEmpty } from './list/empty-check';
 export { buildExitReplacement } from './list/exit-replacement';
 export { landAtTaskStart, writeKeepingTaskMarker } from './list/reconcile-task';
@@ -20,28 +19,11 @@ export { landAtTaskStart, writeKeepingTaskMarker } from './list/reconcile-task';
 export { plainQuote } from './blockquote';
 export { liftFirstChild, sameContainer } from './container-lift';
 
-export {
-	insertEmptyRow,
-	insertEmptyColumn,
-	deleteRow,
-	deleteColumn,
-	cycleAlignment
-} from './table-mutations';
-export { copyRectangleAsSubTable } from './sub-table-copy';
 export type { CellPos } from './sub-table-copy';
 
 export { cascadeCleanupEmptyAncestors } from './cleanup';
 
-export {
-	ensureUnsharedPath,
-	ensureUnsharedChild,
-	ensureUnsharedNode,
-	ensureUnsharedChildren,
-	ensureUnsharedSubtree,
-	rebuildOwnedContainer
-} from './unshare';
-export { rebuildUnsharedChain, rebuildUnsharedAncestry } from './chain-rebuild';
+export { ensureUnsharedPath, ensureUnsharedChild } from './unshare';
+export { rebuildUnsharedChain } from './chain-rebuild';
 
 export { buildPastedReplacement } from './paste/paste-replacement';
-
-export { cloneDocument, cloneNode } from './clone';

@@ -38,7 +38,7 @@ export interface PlaceholderHint {
 }
 
 /** The string form shows only on an editable empty document; a function answers for itself. */
-export function decidePlaceholder(
+function decidePlaceholder(
 	hint: PlaceholderPolicy['hint'],
 	block: PlaceholderBlock
 ): string | null {
@@ -48,7 +48,7 @@ export function decidePlaceholder(
 
 /** Whether nothing is typed in `node`: its fenced body where the kind declares one, else its
  *  content range. A fence with no body line has nowhere to type, so it is not empty. */
-export function isEmptyBlock(node: NodeView): boolean {
+function isEmptyBlock(node: NodeView): boolean {
 	const { bodyRange } = getBlockKindDescriptor(node.kind);
 	const range = bodyRange ? bodyRange(node) : getContentRange(node);
 	return range !== null && range.start === range.end;

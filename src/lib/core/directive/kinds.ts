@@ -15,34 +15,18 @@ import type { BlockView } from '../../schema/block-view';
 import { containerClosure } from '../../schema/closure';
 import type { KeyBinding } from '../../schema/keybindings';
 import { getPluginMetadata, type CstNode, type InlineNode } from '../nodes';
-import type { ContainerBodyWrap } from '../parser';
 import type { NodeView } from '../node-views';
 import { displayLength, ownTrailingLineEnding, trimTrailingLineEnding } from '../lines';
 import { concatChildren as serializeChildren } from '../serializer';
-import { registerCoreInlineWidget, mintWidgetShell } from '../inline/inline-widgets';
+import { registerCoreInlineWidget } from '../inline/inline-widgets';
+import { mintWidgetShell } from '../inline/widget-shell';
 import { matchDirectiveOpener, serializeDirective } from './grammar';
 import { directiveContainerOpener } from './container-opener';
+import { DIRECTIVE_BODY_WRAP, type DirectiveContainerMetadata } from './container-shape';
 
 export const DIRECTIVE_CONTAINER = 'directiveContainer';
 export const DIRECTIVE_LEAF = 'directiveLeaf';
 export const DIRECTIVE_TEXT = 'directiveText';
-
-/** The `:::` opener and closer bracket every directive body, whatever kind the name maps to. */
-export const DIRECTIVE_BODY_WRAP: ContainerBodyWrap = {
-	afterOpenerLine: true,
-	beforeCloserLine: true
-};
-
-/** Fence bytes a container node round-trips through `rebuildDirectiveContainerRaw`. */
-export interface DirectiveContainerMetadata {
-	name: string;
-	colonCount: number;
-	info: string;
-	closerColonCount: number;
-	closerNewline: boolean;
-	/** Authored line ending for the opener and closer fence lines. */
-	lineEnding: string;
-}
 
 /** What draws the two generic directive kinds; core can't import components, so they arrive here. */
 export interface DirectiveViews {

@@ -259,7 +259,7 @@ function driverOf(
 
 /** Asserts the addressed child is the one removed and the emitted path is the chain of local
  *  indices; the fixture avoids chain [0,0] child 0, where local and global indices coincide. */
-export async function checkStripLocalIndexAddressing(
+async function checkStripLocalIndexAddressing(
 	kind: AnyBlockKind,
 	profile: ContainerConformanceProfile
 ): Promise<void> {
@@ -334,7 +334,7 @@ export async function checkStripLocalIndexAddressing(
 
 // ── (b) innermost-first ancestry rebuild ─────────────────────────────────────
 
-export function checkInnermostFirstAncestry(
+function checkInnermostFirstAncestry(
 	kind: AnyBlockKind,
 	profile: ContainerConformanceProfile
 ): void {
@@ -375,7 +375,7 @@ export function reversedAncestryLeavesRootStale(profile: ContainerConformancePro
 
 /** Bubbles an out-of-range ArrowUp through the kind's own focus bundle, under a blockquote at its
  *  top edge, and asserts the root sees it once, catching wiring that re-enters or escapes twice. */
-export async function checkFocusBubbleTermination(
+async function checkFocusBubbleTermination(
 	kind: AnyBlockKind,
 	profile: ContainerConformanceProfile
 ): Promise<void> {
@@ -478,7 +478,7 @@ const TITLE_PROBE = 'probe title';
 
 /** A title keystroke skips an opaque container's metadata re-read, so the row is written through
  *  that keystroke's rebuild and the tree has to match a fresh parse, every metadata key included. */
-export function checkTitleRowFeedsNoMetadata(kind: AnyBlockKind): CellOutcome {
+function checkTitleRowFeedsNoMetadata(kind: AnyBlockKind): CellOutcome {
 	const descriptor = getBlockKindDescriptor(kind);
 	const chromeKind = descriptor.reservedChrome?.kind;
 	if (descriptor.containerContract !== 'opaque' || chromeKind === undefined) {

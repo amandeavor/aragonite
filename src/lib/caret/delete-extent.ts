@@ -136,7 +136,7 @@ export function deleteExtent(intent: DeleteIntent, context: DeleteContext): Dele
  *  of the word it takes, leaving the space after it. */
 export type ForwardWordReach = 'next-word' | 'word-end';
 
-export function forwardWordReach(): ForwardWordReach {
+function forwardWordReach(): ForwardWordReach {
 	return usesMacEditingConventions() ? 'word-end' : 'next-word';
 }
 

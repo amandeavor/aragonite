@@ -1,14 +1,15 @@
 // Miss-analysis: a kind registry's owner was an option each registry passed by hand, and the two
 // inline registries left it out, so no test ran the owner rule through one shared constructor.
-import {
-	createBlockKindRegistry,
-	createInlineKindRegistry,
-	createPluginRegistry
-} from '#lib/schema/plugin-registry.js';
+import { createPluginRegistry } from '#lib/schema/plugin-registry.js';
 import { describe, expect, it } from 'vitest';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { activationFor } from '#lib/schema/plugin-activation.js';
-import { declarePluginInlineKind, declarePluginKind } from '#lib/schema/plugin-kind.js';
+import {
+	createBlockKindRegistry,
+	createInlineKindRegistry,
+	declarePluginInlineKind,
+	declarePluginKind
+} from '#lib/schema/plugin-kind.js';
 import type { AnyBlockKind, AnyInlineKind } from '#lib/core/nodes.js';
 
 // ── Compile-time pins ───────────────────────────────────────────────────────

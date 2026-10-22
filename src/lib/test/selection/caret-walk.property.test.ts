@@ -21,13 +21,45 @@ import {
 	lastLeafAtOrBefore,
 	lastPath,
 	nextCaretPath,
-	nextPath,
-	previousCaretPath,
-	previousPath
+	previousCaretPath
 } from '../../selection/path-lookup';
 import { caretTargetFor, survivorAfterRemoval } from '../../selection/caret-target';
 import { registerChromePluginsForTests } from './chrome-plugins';
 import { freshOrFixedSeed } from '../invariants/arbitraries/property-seed';
+
+/** Block immediately after `path` in doc order (children before siblings), else null. */
+function nextPath(doc: Document, path: number[]): number[] | null {
+	const node = nodeAt(doc, path);
+	if (node && 'children' in node && node.children && node.children.length > 0) {
+		return [...path, 0];
+	}
+	let p = path.slice();
+	while (p.length > 0) {
+		const parentPath = p.slice(0, -1);
+		const parent = nodeAt(doc, parentPath);
+		if (!parent || !parent.children) return null;
+		const idx = p[p.length - 1];
+		if (idx + 1 < parent.children.length) {
+			return [...parentPath, idx + 1];
+		}
+		p = parentPath;
+	}
+	return null;
+}
+
+/** Block immediately before `path` in doc order (deepest last descendant first), else null. */
+function previousPath(doc: Document, path: number[]): number[] | null {
+	if (path.length === 0) return null;
+	const parentPath = path.slice(0, -1);
+	const parent = nodeAt(doc, parentPath);
+	if (!parent || !parent.children) return null;
+	const idx = path[path.length - 1];
+	if (idx > 0) {
+		return lastLeafAtOrBefore(doc, [...parentPath, idx - 1]);
+	}
+	if (parentPath.length === 0) return null;
+	return parentPath;
+}
 
 const PARAMS = { numRuns: 40, seed: freshOrFixedSeed(483001) } as const;
 

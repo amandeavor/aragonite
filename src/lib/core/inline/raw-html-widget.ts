@@ -5,7 +5,7 @@
  */
 
 import type { InlineNode } from '../nodes';
-import { mintWidgetShell } from './inline-widgets';
+import { mintWidgetShell } from './widget-shell';
 
 /** A tag from GFM §6.11's disallowed-raw-HTML list must never be added here. */
 const LIVE_HTML_TAGS: ReadonlySet<string> = new Set(['br']);

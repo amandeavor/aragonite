@@ -154,7 +154,7 @@ export function commandOverRange(
 
 /** What a command at `kind` does over a selection inside its block: a built-in in
  *  `AFTER_SELECTION_REMOVAL_COMMAND_IDS`, or a plugin command registered with `overSelection`. */
-export function commandOverSelection(
+function commandOverSelection(
 	kind: AnyBlockKind,
 	id: AnyCommandId,
 	activation: PluginActivation

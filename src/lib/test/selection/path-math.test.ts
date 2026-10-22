@@ -3,7 +3,6 @@ import {
 	pathHasPrefix,
 	isStrictAncestorOf,
 	pathsEqual,
-	sharedPrefixLength,
 	isPathBetween,
 	asDocPath
 } from '../../selection/path-math';
@@ -64,23 +63,6 @@ describe('pathsEqual', () => {
 
 	it('returns false on element mismatch', () => {
 		expect(pathsEqual([1, 2], [1, 3])).toBe(false);
-	});
-});
-
-describe('sharedPrefixLength', () => {
-	it('returns 0 when first elements differ', () => {
-		expect(sharedPrefixLength([1], [2])).toBe(0);
-		expect(sharedPrefixLength([1, 2], [3, 2])).toBe(0);
-	});
-
-	it('returns the count of shared leading indices', () => {
-		expect(sharedPrefixLength([1, 2, 3], [1, 2, 9])).toBe(2);
-		expect(sharedPrefixLength([1, 2], [1, 2, 3])).toBe(2);
-	});
-
-	it('returns 0 for empty inputs', () => {
-		expect(sharedPrefixLength([], [1, 2])).toBe(0);
-		expect(sharedPrefixLength([1, 2], [])).toBe(0);
 	});
 });
 

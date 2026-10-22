@@ -419,10 +419,7 @@ export function handleShiftClick(
 
 /** The edge of a selected widget a shift-click grows from: the one away from the click, so the
  *  range covers the widget and everything up to the click. */
-export function widgetShiftAnchor(
-	widget: SelectedWidgetRange,
-	press: SelectionPoint
-): SelectionPoint {
+function widgetShiftAnchor(widget: SelectedWidgetRange, press: SelectionPoint): SelectionPoint {
 	const order = comparePaths(press.path, widget.path);
 	const pressAfter = order > 0 || (order === 0 && press.offset > widget.start);
 	return { path: widget.path.slice(), offset: pressAfter ? widget.start : widget.end };

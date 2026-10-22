@@ -11,10 +11,10 @@ import { inlineReaderFor } from '../../core/inline';
 import {
 	getInlineWidgetEditing,
 	getInlineWidgetView,
-	mintWidgetShell,
 	widgetActivates,
 	type InlineWidgetComponentProps
 } from '../../core/inline/inline-widgets';
+import { mintWidgetShell } from '../../core/inline/widget-shell';
 import type { ActivationClick, ClickInput } from '../../activation-click';
 import type { Reading } from '../../schema/reading';
 import { tracePoolPass } from '../../debug/interaction-trace';
