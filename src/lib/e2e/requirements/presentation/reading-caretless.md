@@ -35,6 +35,9 @@ there's no caret to move inside one.
 ## User interactions
 
 - **A double click** still selects its word, for copy
+- **An arrow over a double-clicked word** steps blocks like any other arrow, leaving no caret
+  - Miss-analysis: the reading arrow specs all started from a click, which leaves no selection, so
+    an arrow over a word left in place (ArrowLeft and ArrowRight did nothing) went unseen
 - **Shift+click after a click** selects nothing, since there's no caret to extend from; focus moves
   to the block it landed on (a pinned delta: keyboard and Shift+click selection are gone in
   reading mode, while a drag, a double click and select-all still select)

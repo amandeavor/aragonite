@@ -100,6 +100,19 @@ test.describe('reading mode: a click keeps no caret', () => {
 		expect(await page.evaluate(() => getSelection()?.toString().trim())).toBe('gamma');
 	});
 
+	test('ArrowLeft over a double-clicked word steps to the block above, leaving no caret', async ({
+		page
+	}) => {
+		skipUnlessSupported(page, 'nativeWordSelect');
+		await loadReading(page, DOC);
+
+		await multiClick(page, await textRunCenter(page, 'para', { path: [1] }), 2);
+		await page.keyboard.press('ArrowLeft');
+
+		await expect.poll(() => focusName(page)).toContain('[0]');
+		expect(await holdsCaret(page)).toBe(false);
+	});
+
 	// Keyboard selection extends from a caret, and reading mode keeps none: a pinned delta.
 	test('Shift+click after a click focuses the block it lands on and selects nothing', async ({
 		page
