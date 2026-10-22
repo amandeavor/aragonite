@@ -35,6 +35,9 @@ there's no caret to move inside one.
 ## User interactions
 
 - **A double click** still selects its word, for copy
+- **An arrow over a double-clicked word** steps blocks like any other arrow, leaving no caret
+  - Miss-analysis: the reading arrow specs all started from a click, which leaves no selection, so
+    an arrow over a word left in place (ArrowLeft and ArrowRight did nothing) went unseen
 - **Shift+click after a click** selects from the clicked point to the Shift+click and moves focus
   there, as it does while editing, and still draws no caret (Shift+Arrow selects nothing, since
   there's no caret to move; `requirements/presentation/reading-selection.md` has the rest of the

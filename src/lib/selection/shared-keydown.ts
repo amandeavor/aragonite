@@ -12,8 +12,8 @@ import type { SelectionState } from './selection-state.svelte';
 import type { CaretWriter } from '../caret/widget-offset';
 import type { CrossBlockHandlers } from './cross-block/dispatch';
 import type { CommandDispatchContext } from '../schema/block-commands';
-import { commandAtBlock } from './cross-block/keydown';
-import { holdsNativeRange } from './native-bridge';
+import { commandAtBlock, isArrowKey } from './cross-block/keydown';
+import { holdsNativeRange, rawSelectionIn } from './native-bridge';
 import type { Reading } from '../schema/reading';
 import {
 	extendFocusToNextBlock,
@@ -99,9 +99,19 @@ export async function handleSharedKeydown(
 	const el = ctx.getEl();
 	if (!el) return false;
 
+	// Before the key note, which measures a vertical arrow's column at the collapsed caret.
+	const collapsedRange = collapseRangeForArrow(e, ctx, el);
+
 	ctx.caretMemory.noteKey(e, commandAtBlock(e, ctx), () =>
 		getCurrentCursorEditorRelativeX(el, ctx.caretWriter)
 	);
+
+	const horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+	// A horizontal arrow over a range only collapses it; a vertical one moves on from there.
+	if (collapsedRange && horizontal) {
+		e.preventDefault();
+		return true;
+	}
 
 	// Ctrl+Y fires no `historyRedo` beforeinput in Chromium and WebView2, so every chord with a
 	// native history default is suppressed here; the block's own dispatch runs the command.
@@ -118,7 +128,6 @@ export async function handleSharedKeydown(
 
 	// The moving end, read once for the span step and the boundary check: with Shift the focus, since
 	// a forward range's start is its anchor, which extends across blocks while the focus contracts.
-	const horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
 	const stepOffset = !horizontal ? null : e.shiftKey ? ctx.getFocusOffset() : ctx.getCursorOffset();
 
 	// After the key note, so the press still resets the sticky column as any horizontal step does.
@@ -206,6 +215,27 @@ export async function handleSharedKeydown(
 	return false;
 }
 
+/** A plain arrow over a range in the block collapses it ahead of every check that could leave the
+ *  block: Left to its start, Right to its end, Up and Down to its moving end. True if it did. */
+function collapseRangeForArrow(
+	e: KeyboardEvent,
+	ctx: SharedKeydownContext,
+	el: HTMLElement
+): boolean {
+	if (!isArrowKey(e.key) || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) {
+		return false;
+	}
+	// A caret, the common case, costs no walk of the block.
+	if (!holdsNativeRange()) return false;
+	const range = rawSelectionIn(el);
+	if (!range || range.collapsed || range.start === null || range.end === null) return false;
+	const at =
+		e.key === 'ArrowLeft' ? range.start : e.key === 'ArrowRight' ? range.end : ctx.getFocusOffset();
+	if (at === null) return false;
+	// Reading mode declines the caret and drops the range, leaving the arrow at the block's edge.
+	return ctx.caretWriter.placeCaretAtRaw(el, at, { clamp: 'reachable' });
+}
+
 /** ArrowDown with no caret in a block running past the editor's bottom edge scrolls one line
  *  instead of leaving it, so a reader reads the whole block. True when it scrolled. */
 function scrollsThroughBlock(ctx: SharedKeydownContext, el: HTMLElement): boolean {
@@ -251,8 +281,6 @@ function handleUnitStep(
 		return false;
 	}
 	const extending = e.shiftKey;
-	// A plain arrow over a range collapses it, which is the browser's.
-	if (!extending && holdsNativeRange()) return false;
 	if (offset === null) return false;
 	const direction = e.key === 'ArrowRight' ? 'forward' : 'backward';
 	const unit = ctx.caretUnits.beside(offset, direction, extending);

@@ -290,7 +290,7 @@ function isTabKey(e: KeyboardEvent): boolean {
 	return e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey;
 }
 
-const isArrowKey = (key: string): key is ArrowKey =>
+export const isArrowKey = (key: string): key is ArrowKey =>
 	key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight';
 
 /** Chords the range handles itself, swallowed before the browser's bold or Ctrl+K kill-line runs.

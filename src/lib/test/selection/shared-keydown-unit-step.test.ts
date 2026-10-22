@@ -116,19 +116,17 @@ describe('handleSharedKeydown: a span the caret cannot stop inside is crossed in
 	});
 
 	it('leaves every other press to the browser', async () => {
-		const declined: [string, KeyboardEventInit, number, number?][] = [
+		const declined: [string, KeyboardEventInit, number][] = [
 			['ArrowRight', { ctrlKey: true }, 1],
 			['ArrowRight', { altKey: true }, 1],
 			['ArrowRight', { metaKey: true }, 1],
 			['ArrowRight', { isComposing: true }, 1],
 			['ArrowRight', {}, 2],
-			['ArrowLeft', {}, 1],
-			// A plain arrow over a range collapses it.
-			['ArrowRight', {}, 0, 1]
+			['ArrowLeft', {}, 1]
 		];
-		for (const [key, over, anchor, focus] of declined) {
+		for (const [key, over, at] of declined) {
 			const h = mount();
-			h.select(anchor, focus ?? anchor);
+			h.select(at);
 			const e = press(key, over);
 			expect(await handleSharedKeydown(e, h.ctx), `${key} ${JSON.stringify(over)}`).toBe(false);
 			expect(e.defaultPrevented).toBe(false);
