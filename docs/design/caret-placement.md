@@ -69,7 +69,7 @@ The probe, for the curious:
 
 `src/lib/selection/place-caret.ts` :: `placeCaret`. Every caret the editor places (as opposed to the browser) goes through one of two verbs:
 
-- `focus` ends whatever the editor had selected (a live range, a gap caret, a widget selected whole), then places the caret. It also announces where it put it, so a `selectionChange` subscriber hears the arrival before anything can be typed there (`editor.md` § 12).
+- `focus` ends whatever the editor had selected (a live range, a gap caret, a widget selected whole), then places the caret. It also announces where it put it, so a `selectionChange` subscriber hears the arrival before anything can be typed there (`commit-and-undo.md` § The event channel).
 - `parkCaret` only places. It's reserved for the selection-extend paths, where the range has to stay live while an endpoint moves, and its callers are an allowlist.
 
 Edits' carets come through here too. The commit hands its position to `src/lib/selection/caret-landing.ts`, which mounts the block, calls its `focus`, and scrolls it into view if it's off screen. A stored selection (undo, `setSelection`, a collapsing range) comes back through the same file's `restore`, at its exact bytes rather than through `focus`, and the moving end of a Shift+Arrow range through its `park`.

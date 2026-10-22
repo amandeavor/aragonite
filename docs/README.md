@@ -17,11 +17,13 @@ Everything else hangs off those four. The folders are split by **audience**, not
 
 ## `design/`: how it works
 
-One spec per subsystem, for anyone changing the editor's insides. Start with `editor.md` whatever the task, and open another only when your task touches its subsystem. Working through all ten up front is a great way to feel productive without becoming useful; let the other nine be somebody else's afternoon.
+One spec per subsystem, for anyone changing the editor's insides. Start with `editor.md` whatever the task, and open another only when your task touches its subsystem. Working through all twelve up front is a great way to feel productive without becoming useful; let the other eleven be somebody else's afternoon.
 
 | Doc                                                          | Scope                                                                                                                    |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| [`design/editor.md`](design/editor.md)                       | The whole system in one spec: **start here**                                                                             |
+| [`design/editor.md`](design/editor.md)                       | The orientation point: the whole system's shape, and where each subsystem's spec lives. **Start here**                   |
+| [`design/structural-edits.md`](design/structural-edits.md)   | Split, merge, delete, move, the keys that trigger them, and the containers (quotes, lists, tables) that nest blocks      |
+| [`design/commit-and-undo.md`](design/commit-and-undo.md)     | The commit every structural edit runs through, the undo stack, and the events a host can subscribe to                    |
 | [`design/syntax-tree.md`](design/syntax-tree.md)             | The document tree, where every node keeps its exact source bytes: the node model, the parser, the Markdown covered       |
 | [`design/inline-parsing.md`](design/inline-parsing.md)       | How the text inside a block (`**bold**` and friends) becomes styled spans, markers still visible                         |
 | [`design/virtual-rendering.md`](design/virtual-rendering.md) | Why a 10 MB document types like a small one: only the blocks on screen are rendered                                      |

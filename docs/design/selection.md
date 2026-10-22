@@ -1,6 +1,6 @@
 # Selection, search, clipboard
 
-How the editor selects things (inside one block, across blocks, a widget selected whole, the caret parked between two blocks, and the caret bar it draws for itself), plus find and replace, and copy, cut and paste. It's for whoever's about to change any of that, and it leans on the terms [`editor.md`](editor.md) §§ 1 to 3 set up, so prob read those first.
+How the editor selects things (inside one block, across blocks, a widget selected whole, the caret parked between two blocks, and the caret bar it draws for itself), plus find and replace, and copy, cut and paste. It's for whoever's about to change any of that, and it leans on the terms [`editor.md`](editor.md) sets up in its first three sections, so prob read those first.
 
 1. Right below this list, with no heading of its own: selection inside one block, the clicks the editor takes over from the browser, a widget selected whole, and dragging a selection somewhere else.
 2. [The drawn caret](#the-drawn-caret): the caret bar the editor paints itself, where it hands the job back to the browser, and what asks it to repaint.
@@ -74,7 +74,7 @@ Same path on both means single-block, and the browser handles it; different path
   - Tab and Shift+Tab are taken over a range even when nothing indents, so focus never wanders off to the next control on the page. The range stays over the same text afterwards, and each press is one undo entry.
   - A selection inside one block asks its block the same question (`bindsIndentAt`), so prose takes the key and changes nothing rather than getting a tab typed over the selected text.
 - **Restoring it:** one route (`selection/caret-landing.ts` :: `restore`) serves the undo swap (a gap caret it recorded included), the consumer's `setSelection`, a mode switch, an arrow that collapses the range, a Shift+Arrow that folds it back into one block, and the find bar or link card handing back the caret it borrowed.
-  - It resolves and clamps both endpoints, mounts what the caret will park at, then writes the state and places the caret inside one change-notification batch, so no notification reports a selection the restore is about to move (`editor.md` § Serialization and the event channel).
+  - It resolves and clamps both endpoints, mounts what the caret will park at, then writes the state and places the caret inside one change-notification batch, so no notification reports a selection the restore is about to move (`commit-and-undo.md` § The event channel).
   - The caret goes where one can sit: a point on a list's own path goes into its first item, a point in a closed `<details>` body onto its title row (nothing opens), and a pair spanning a block with no text (a rule) comes back held whole, focus on the editor root.
   - Then, unless it's a mode switch (which keeps its own scroll), a caret off screen comes in to the nearest edge.
 
@@ -120,10 +120,10 @@ The root's trailing boundary is excluded, since the move-past-end append already
 
 Find/replace is a **read-only view over the tree**: it renders nothing itself and mutates nothing until you ask it to.
 
-- **Scan** (`search/`) walks the document by path, matching each _editable leaf's_ `raw`. Containers are skipped, not because they lack text but because their `raw` duplicates their children's (`editor.md` § Containers); the one exception, a childless opaque container, has no children to duplicate and scans its own `raw` as a leaf. Literal, whole-word, case-sensitive, and regex modes compile to one matcher interface, and an invalid pattern surfaces as an error string, never a throw.
+- **Scan** (`search/`) walks the document by path, matching each _editable leaf's_ `raw`. Containers are skipped, not because they lack text but because their `raw` duplicates their children's (`structural-edits.md` § The container `raw` contract); the one exception, a childless opaque container, has no children to duplicate and scans its own `raw` as a leaf. Literal, whole-word, case-sensitive, and regex modes compile to one matcher interface, and an invalid pattern surfaces as an error string, never a throw.
 - **Paint.** Matches are published as mark decorations (source `editor:search`) and the shared decoration overlay paints them; search was the engine's first client. The scan is memoized on the engine's edit epoch plus query and options, so an edit re-scans while navigation only remaps the active highlight. Decorations are bucketed by owning path once per run, so an overlay reads only its own bucket, and windowing follows for free: an unmounted block simply doesn't paint.
 - **Navigate.** The active match is revealed through the same reveal primitive focus uses ([`virtual-rendering.md`](virtual-rendering.md) § Doing something to a block you can't see), so a match thousands of blocks away mounts, scrolls in, and highlights.
-- **Replace** reparses only the affected _top-level_ subtrees and commits once per subtree, O(affected subtrees) rather than O(document), with one edit event for the batch (`editor.md` § Serialization and the event channel). Replace-all lands under a single undo entry, and a replacement into a table cell escapes the delimiters the cell's `raw` reserves, so it can't split the row.
+- **Replace** reparses only the affected _top-level_ subtrees and commits once per subtree, O(affected subtrees) rather than O(document), with one edit event for the batch (`commit-and-undo.md` § The event channel). Replace-all lands under a single undo entry, and a replacement into a table cell escapes the delimiters the cell's `raw` reserves, so it can't split the row.
 - **Cost when idle: zero.** The decoration source lives only while the bar is open (opening registers it, closing disposes it), and the post-commit re-run is deferred off the commit path, never a synchronous per-keystroke scan.
 
 The bar is on by default and switchable off (`searchBar` prop), bound to Mod+F / Mod+H; a consumer can drive the same controller headlessly through `getSearch()` on the editor instance.
@@ -157,7 +157,7 @@ The text is then parsed and routed by a single dispatcher (`src/lib/tree-operati
 
 Three byte-level rules ride the splice:
 
-1. **The pasted blocks end their lines**, list items included, so a clipboard with no trailing newline can't mash its last item into the next one. The commit does that for every block a paste places (`editor.md` § Undo / redo).
+1. **The pasted blocks end their lines**, list items included, so a clipboard with no trailing newline can't mash its last item into the next one. The commit does that for every block a paste places (`commit-and-undo.md` § The commit primitive).
 2. **A clipboard's trailing blank line is content**, not packaging. It survives the paste as a separation, spent only where nothing in the splice already stands for it. The clipboard says _whether_ a line lands, never which one; the bytes are the document's own ending.
 3. **The pasted lines take the document's ending**, its first line break (`src/lib/core/lines.ts` :: `documentLineEnding`). Every entry point normalizes the clipboard to LF, which is what the transforms and the inline hooks read, and the dispatcher writes the document's ending where the text becomes its bytes, so a CRLF document stays CRLF.
 

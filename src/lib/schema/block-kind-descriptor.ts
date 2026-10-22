@@ -23,7 +23,7 @@ import type { RegistryRecord } from './plugin-registry';
 import type { BlockOpener } from './block-openers';
 
 /**
- * The Backspace-merge roles (`docs/design/editor.md` § Merge eligibility: roles, not pairs).
+ * The Backspace-merge roles (`docs/design/structural-edits.md` § Merge eligibility: roles, not pairs).
  * The runtime role check reads its list from this tuple, so the type and the check agree (G1.30).
  */
 export const MERGE_ROLES = [

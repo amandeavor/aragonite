@@ -50,7 +50,7 @@ export async function dispatchMoveFocus(
 	const retry = (i: number) => dispatchMoveFocus(scope, i, position, caretMemory, options);
 	if (!block?.focusable) {
 		// A child that can't take focus must not stop the move: continue in its direction
-		// (`docs/design/editor.md` § Focus traversal).
+		// (`docs/design/structural-edits.md` § Focus traversal).
 		if (step !== 0) await retry(index + step);
 		return;
 	}

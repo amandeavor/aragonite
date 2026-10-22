@@ -1,7 +1,7 @@
 /**
  * Where a cut through a heading leaves its structure: the marker in front of the text and the
  * bytes past it (a closing `#` run, a setext underline) stay with the text. Every split, paste
- * and join that divides a block at a caret cuts through here (`docs/design/editor.md` § 8).
+ * and join that divides a block at a caret cuts through here (`docs/design/structural-edits.md` § Structural operations).
  */
 
 import { headingLevel } from '../core/nodes';

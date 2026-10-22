@@ -261,7 +261,7 @@ export function createUndoController(
 		};
 	}
 
-	/** The one path to the `error` event, so every throw site reports alike (`docs/design/editor.md` § The event channel). */
+	/** The one path to the `error` event, so every throw site reports alike (`docs/design/commit-and-undo.md` § The event channel). */
 	function reportCommitError(args: CommitArgs, error: unknown): void {
 		emitCommitError(deps.events, { error, op: args.op?.kind, path: args.op?.eventPath });
 	}

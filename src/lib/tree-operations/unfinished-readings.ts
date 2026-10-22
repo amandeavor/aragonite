@@ -2,7 +2,7 @@
  * A construct that backed out (a `$$` or `:::note` with no closer reads as a paragraph) can be
  * finished by a line any number of blocks below it, so an edit that writes such a line, or leaves
  * a block waiting on one, re-reads the span between them. A cheap line test decides whether to
- * look at all, which keeps a plain keystroke from walking the body (`docs/design/editor.md` § 8).
+ * look at all, which keeps a plain keystroke from walking the body (`docs/design/structural-edits.md` § Structural operations).
  */
 
 import type { NodeView } from '../core/node-views';

@@ -1,7 +1,7 @@
 /**
  * Unwrapping a list's first item, and merging a later item into the deepest text leaf of the one
  * before it. Both rewrite the item's marker line only; every other line keeps its bytes, and the
- * ordered-marker sequence runs on (`docs/design/editor.md` § Container unwrap).
+ * ordered-marker sequence runs on (`docs/design/structural-edits.md` § Container unwrap).
  */
 
 import type { CstNode } from '../../core/nodes';

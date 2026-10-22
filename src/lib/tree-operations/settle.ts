@@ -312,7 +312,7 @@ function settleWrittenSlot(
 		change = normalizeBlankRuns(body, index, lastWritten, change, grammar, sharing);
 	}
 	// Same-kind typing asks the join above only when it's flush, the indent moved, or a blank line
-	// stays blank (editor.md § 8); a construct a written line finishes above is asked apart.
+	// stays blank (structural-edits.md § Structural operations); a construct a written line finishes above is asked apart.
 	if (change.op === 'noop' && !wasBlank && !indentMoved && !flushAbove(children, index)) {
 		// The join below is asked whatever parts it: an HTML block left open reads on past blank lines.
 		if (index + 1 >= children.length && !asks.above) return { change, textStart: 0 };
