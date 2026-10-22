@@ -9,7 +9,6 @@ import type { NodeView } from '../core/node-views';
 import { getContentRange, structuralSuffix } from '../core/inline';
 import {
 	displayLength,
-	isBlankLine,
 	ownTrailingLineEnding,
 	snapToScalarBoundary,
 	trimTrailingLineEnding
@@ -78,9 +77,13 @@ export function joinKeepingSuffix(
 			? absorbed.raw.slice(end, textEnd) + ownTrailingLineEnding(absorbed.raw)
 			: absorbed.raw.slice(end)
 	);
-	const joined = survivor.raw.slice(0, start) + trimTrailingLineEnding(tail);
-	// The range covers the survivor's suffix, which stays only under a title line still holding text.
-	const titleLine = joined.slice(joined.lastIndexOf('\n') + 1);
-	const suffix = isBlankLine(titleLine) ? '' : kept;
-	return { raw: joined + suffix + ownTrailingLineEnding(tail), start, end };
+	return {
+		raw:
+			survivor.raw.slice(0, start) +
+			trimTrailingLineEnding(tail) +
+			kept +
+			ownTrailingLineEnding(tail),
+		start,
+		end
+	};
 }

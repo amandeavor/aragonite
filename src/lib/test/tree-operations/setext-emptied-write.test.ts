@@ -1,7 +1,6 @@
-// A content write that leaves a setext title's last line blank keeps the underline, whichever
+// A content write that leaves a setext title's last line blank drops the underline, whichever
 // gesture computed the bytes: the text read from the screen, a cut, or a paste over the title.
 // Miss-analysis: every erase test typed the title away, never cut or pasted over it.
-// Miss-analysis (GH #768): these rows pinned the underline's drop, a line the write never touched.
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
@@ -13,23 +12,23 @@ import { createSharingState } from '#lib/tree-operations/sharing.js';
 
 describe('a content write that empties a setext title', () => {
 	it.each([
-		['a cut of the whole title', 'Plan\n---\n\nnext\n', '\n---\n', 'thematicBreak'],
-		['a cut under a === underline', 'Plan\n===\n\nnext\n', '\n===\n', 'paragraph'],
-		['a space pasted over the title', 'Plan\n---\n\nnext\n', ' \n---\n', 'thematicBreak'],
-		['CRLF endings', 'Plan\r\n===\r\n\r\nnext\r\n', '\r\n===\r\n', 'paragraph'],
-		['the last line of a two-line title', 'Plan\nmore\n---\n', 'Plan\n\n---\n', 'thematicBreak']
-	])('%s keeps the underline, read as a reload reads it', (_label, source, written, underline) => {
+		['a cut of the whole title', 'Plan\n---\n\nnext\n', '\n---\n', '\nnext\n'],
+		['a cut under a === underline', 'Plan\n===\n\nnext\n', '\n===\n', '\nnext\n'],
+		['a space pasted over the title', 'Plan\n---\n\nnext\n', ' \n---\n', ' \nnext\n'],
+		['CRLF endings', 'Plan\r\n===\r\n\r\nnext\r\n', '\r\n===\r\n', '\r\nnext\r\n'],
+		['the last line of a two-line title', 'Plan\nmore\n---\n', 'Plan\n\n---\n', 'Plan\n\n']
+	])('%s leaves a paragraph and no underline', (_label, source, written, result) => {
 		const doc = parse(source);
-		const rest = source.slice(doc.children[0].raw.length);
 
 		updateNodeContent(doc, 0, written, defaultGrammarView, createSharingState());
 
-		expect(serialize(doc)).toBe(written + rest);
-		expect(doc.children.map((c) => c.kind)).toContain(underline);
+		expect(serialize(doc)).toBe(result);
+		expect(doc.children.map((c) => c.kind)).not.toContain('thematicBreak');
+		expect(doc.children[0].kind).toBe('paragraph');
 		expect(describeConvergence(doc)).toBeNull();
 	});
 
-	it('inside a quote, keeps the underline', () => {
+	it('inside a quote, leaves a paragraph and no underline', () => {
 		const doc = parse('> Plan\n> ---\n');
 		const quote = doc.children[0];
 
@@ -45,8 +44,8 @@ describe('a content write that empties a setext title', () => {
 			createSharingState()
 		);
 
-		expect(quote.children!.map((c) => c.leadingTrivia + c.raw).join('')).toBe('\n---\n');
-		expect(quote.children!.map((c) => c.kind)).toEqual(['paragraph', 'thematicBreak']);
+		expect(quote.children!.map((c) => c.kind)).toEqual(['paragraph']);
+		expect(quote.children![0].raw).toBe('\n');
 	});
 
 	it.each([

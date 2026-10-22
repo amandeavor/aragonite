@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // A setext heading's DOM holds its title and its underline, drawn as a marker. A write from the
-// text the block reads back carries the underline once, and keeps it under a blank title line.
+// text the block reads back carries the underline once, and drops it when the title's last line
+// is left empty.
 // Miss-analysis: prose blocks had no mount-level typing tests, and none erased a setext title.
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
@@ -55,13 +56,14 @@ describe.each(MODES)('%s mode: typing into a setext heading keeps its underline'
 	});
 });
 
-// Current behaviour: a read that leaves no title text empties the whole block, underline included.
-describe.each(MODES)('%s mode: erasing a setext title to nothing empties the block', (mode) => {
+describe.each(MODES)('%s mode: erasing a setext title drops its underline', (mode) => {
 	it.each([
 		['a === underline', 'Plan\n===\n', '', '\n'],
 		['a --- underline', 'Plan\n---\n', '', '\n'],
 		['a long underline', 'Plan\n----------\n', '', '\n'],
-		['CRLF endings', 'Plan\r\n===\r\n', '', '\r\n']
+		['CRLF endings', 'Plan\r\n===\r\n', '', '\r\n'],
+		['a title left as a space', 'Plan\n===\n', ' ', ' \n'],
+		['the last line of a two-line title', 'Plan\nmore\n---\n', 'Plan\n', 'Plan\n\n']
 	])('%s', async (_label, source, left, written) => {
 		mounted = mountEditor({ source, presentationMode: mode });
 
@@ -70,20 +72,6 @@ describe.each(MODES)('%s mode: erasing a setext title to nothing empties the blo
 		expect(mounted.source()).toBe(written);
 		expect(mounted.target.textContent).not.toMatch(/[-=]{3}/);
 		expect(mounted.target.querySelector('hr')).toBeNull();
-	});
-});
-
-// Miss-analysis (GH #768): these rows pinned the underline's drop, a line the edit never touched.
-describe.each(MODES)('%s mode: a setext title left blank keeps its underline', (mode) => {
-	it.each([
-		['a title left as a space', 'Plan\n===\n', ' ', ' \n===\n'],
-		['the last line of a two-line title', 'Plan\nmore\n---\n', 'Plan\n', 'Plan\n\n---\n']
-	])('%s', async (_label, source, left, written) => {
-		mounted = mountEditor({ source, presentationMode: mode });
-
-		await retitle(surfaceAt(mounted, [0]), left);
-
-		expect(mounted.source()).toBe(written);
 	});
 });
 

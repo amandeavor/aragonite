@@ -92,17 +92,15 @@ const ROWS: Row[] = [
 		caret: 2,
 		matchesBrowserEdit: false
 	},
-	// Current behaviour: the kept underline would show as text once the title empties, so the
-	// cleanup finds no reading matching the screen and keeps the plain cut, runs and all.
 	{
 		source: '- **a**\n  ===\n',
 		leaf: [0, 0, 0],
 		mode: 'live',
 		range: [2, 3],
 		typed: '',
-		display: '****\n===',
-		caret: 2,
-		matchesBrowserEdit: true
+		display: '\n===',
+		caret: 0,
+		matchesBrowserEdit: false
 	},
 	{
 		source: '- [ ] ## `a` ##\n',

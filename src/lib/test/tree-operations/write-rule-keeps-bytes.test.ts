@@ -1,7 +1,7 @@
-// An edit to a block's first line keeps every byte below it, on every route into a kind's write rule:
-// a stranded closing fence or underline stays, read as a reload reads it.
-// Miss-analysis (GH #768): the fence, `$$` and setext rules each pinned their drop as intended, and
-// no check compared what a rule kept against what the write left alone.
+// An edit to a fenced block's opener keeps every byte below it, on every route into a kind's
+// write rule: the stranded closing line stays, read as a reload reads it.
+// Miss-analysis (GH #768): the fence and `$$` rules each pinned their drop as intended, and no
+// check compared what a rule kept against what the write left alone.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { serialize } from '#lib/core/serializer.js';
 import { parse } from '#lib/core/parser.js';
@@ -31,15 +31,7 @@ const KINDS: Array<{ kind: string; raw: string; cut: number; query: string; skip
 	{ kind: 'mathFence', raw: '```math\nx\n```\n', cut: 1, query: '```math' },
 	// A replace into a diagram applies only when the kind survives it.
 	{ kind: 'mermaid', raw: '```mermaid\nA\n```\n', cut: 1, query: '```mermaid', skip: 'a replace' },
-	{ kind: 'mathBlock', raw: '$$\nx\n$$\n', cut: 1, query: '$$\nx' },
-	// A join takes the paragraph's kind, so the heading's underline leaves with its kind.
-	{
-		kind: 'setextHeading',
-		raw: 'Title\n=====\n',
-		cut: 5,
-		query: 'Title',
-		skip: 'a range delete from the block above'
-	}
+	{ kind: 'mathBlock', raw: '$$\nx\n$$\n', cut: 1, query: '$$\nx' }
 ];
 
 const sourceOf = (raw: string) => `para\n\n${raw}\nafter\n`;

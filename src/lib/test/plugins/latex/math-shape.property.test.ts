@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// After one edit to a `$` source, the painted source, the bytes its blur writes and a reload
-// agree on the block and its body, and the blocks below read as before unless a `$` line was
+// After one edit to a `$$` source, the painted source, the bytes its blur writes and a reload
+// agree on the block and its body, and the blocks below read as before unless a `$$` line was
 // left to pair with one of theirs.
 // Miss-analysis: the painter, the write rule and the parser each had their own fixtures.
 import { describe, it, expect, beforeEach } from 'vitest';

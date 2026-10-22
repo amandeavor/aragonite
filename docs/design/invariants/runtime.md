@@ -101,7 +101,7 @@ These checks run in three kinds of place:
 | G1.138 | A commit never addresses a container state whose component has unmounted                   | A·N     |
 | G1.139 | Each run of blank lines a fix-up touched reads on reload as the tree holds it              | A·P·N   |
 | G1.141 | Asking which line a caret at a soft wrap is on leaves the selection's focus where it was   | A·N     |
-| G1.143 | A kind's write rule never deletes bytes outside the written span                           | A·N     |
+| G1.143 | A kind's write rule never deletes bytes outside the written span, but an emptied marker    | A·N     |
 
 ### The entries
 
@@ -599,8 +599,8 @@ then puts back by hand, losing that side. `checkLineReadRestored` · `line-read-
 `caret-line-at-wrap.spec.ts`.
 
 **G1.143 · A kind's write rule never deletes bytes outside the written span**
-(`write-rule-keeps-bytes`). A kind's `rawWrite` may put bytes back (a closer, a longer fence run)
-and take bytes out of what the write changed, but every byte the write shares with the block before
-and after that span stays, in order. An edit to a fence's opener keeps its closer, which reads on as
-a reload reads it. Dev checks every rule run, through `kindWriteRule`, the one way to run one
-(G4.245). `checkWriteRuleKeepsBytes` · `node-primitives.ts` · `write-rule-keeps-bytes.test.ts`.
+(`write-rule-keeps-bytes`). A `rawWrite` may add bytes (a closer, a longer run), but every byte the
+write shares with the block around the span stays, in order, so a broken fence opener keeps its
+closer. One exception: a block the write emptied gives up its own marker, as a blank setext title
+loses its underline. Dev checks every run through `kindWriteRule` (G4.245).
+`checkWriteRuleKeepsBytes` · `node-primitives.ts` · `write-rule-keeps-bytes.test.ts`.

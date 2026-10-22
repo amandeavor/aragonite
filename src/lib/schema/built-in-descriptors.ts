@@ -22,7 +22,7 @@ import {
 } from './container-rebuilders';
 import { tableCellWrite } from './table-cell-raw';
 import { fencedCodeWrite } from './fenced-code-raw';
-import { setextHeadingContentRange } from './setext-raw';
+import { setextHeadingContentRange, setextHeadingWrite } from './setext-raw';
 import { registerInlineConstructPolicy } from './inline-construct-policy';
 import { registerAsCore } from './plugin-install';
 import { registerBuiltInRangeIndent } from './range-indent-forms';
@@ -290,6 +290,7 @@ function registerBuiltIns(): void {
 		editable: true,
 		supportsInline: true,
 		contentStart: { range: setextHeadingContentRange, backspace: 'demote-first' },
+		rawWrite: setextHeadingWrite,
 		keymap: TEXT_EDITABLE_KEYMAP,
 		conformanceFixture: 'Title\n===\n',
 		closure: proseLeafClosure({

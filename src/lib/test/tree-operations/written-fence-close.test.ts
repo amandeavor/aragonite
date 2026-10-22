@@ -47,14 +47,3 @@ describe('closing a fence a write leaves open', () => {
 		expect(type(0, '```\n')).toBe('```\n```\n\n```\nx\n```\n');
 	});
 });
-
-describe('a setext title blanked and typed back', () => {
-	// Current behaviour: filling the blank line gives the kept underline its separator back (the
-	// blank-run rule), so the two read as paragraphs, not the heading.
-	it('keeps the underline, and the retyped title stays a paragraph above it (current behaviour)', () => {
-		const { type } = typingOver('para\n\nTitle\n=====\n\nafter\n');
-
-		expect(type(1, '\n=====\n')).toBe('para\n\n\n=====\n\nafter\n');
-		expect(type(1, 'Title\n')).toBe('para\n\nTitle\n\n=====\n\nafter\n');
-	});
-});
