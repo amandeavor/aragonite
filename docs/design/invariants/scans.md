@@ -200,7 +200,7 @@ unguarded.
 | G4.237 | A test never navigates a page its `beforeEach` already navigated                                 | L       |
 | G4.239 | No block runs a merge by its id; a delete at an edge runs the plain key's binding                | L       |
 | G4.240 | Every `ResizeObserver` is made in `windowing/observe-resize.ts`                                  | L       |
-| G4.241 | A run is laid out and a join asked by the fix-up alone                                           | L       |
+| G4.241 | Only the fix-up in `settle.ts` lays out blank runs and checks joins                              | L       |
 | G4.243 | Only the caret writer calls `Selection.modify`; a caret's line is read through one step          | L       |
 | G4.245 | A kind's write rule is run through `kindWriteRule`                                               | L       |
 
@@ -1351,15 +1351,15 @@ reported as a loop error. So every observer is made in `windowing/observe-resize
 points say when observing starts. `file-rules.test.ts`.
 
 **G4.241 · The fix-up asks the joins.** `normalizeBlankRuns`, `resolveJoin`, `separateJoin`,
-`finishUnfinishedReadings` and `absorbSpanReading` are named only where they live and in `settle.ts`,
-so an op reports what it did (a move's uncovered join included) and the commit's one fix-up lays
-out the runs and asks the joins for every edit alike. `lint/separator-write-doors.test.ts`.
+`finishUnfinishedReadings` and `absorbSpanReading` are called only from their own files and
+`settle.ts`. So an edit reports what it did (the join a move uncovered included), and the commit's
+one fix-up lays out the blank runs and checks the joins the same way for every edit. `lint/separator-write-doors.test.ts`.
 
 **G4.243 · One read of the caret's line.** At a soft wrap a caret's one DOM position is on two
-lines, and `caretRectAt` reads one of them whatever the browser shows. So the line decisions in
-`caret/visual-lines.ts` ask the browser there, through the caret writer, the one file allowed
-`Selection.modify`; every other `caretRectAt` caller is listed with why a line off at a wrap is
-harmless or known. `lint/file-rules.test.ts`.
+lines, and `caretRectAt` reads one of them whatever the browser shows. So at a wrap the line
+checks in `caret/visual-lines.ts` ask the browser, through the caret writer, the one file allowed
+to call `Selection.modify`. Every other `caretRectAt` caller is listed with why getting the line
+wrong at a wrap is harmless or a known gap. `lint/file-rules.test.ts`.
 
 **G4.245 · One way to run a write rule.** A kind's `rawWrite` is read only by
 `tree-operations/node-primitives.ts :: kindWriteRule`, which checks every run against G1.143. The

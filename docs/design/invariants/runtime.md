@@ -587,15 +587,15 @@ props. `isUnmountedBlockListState` · `state-registry-lifetime.svelte.test.ts`,
 `range-edit-unmounted-container.spec.ts`.
 
 **G1.139 · Blank runs are laid out** (`blank-runs-laid-out`). Once `settleEdit` or a write's own
-fix-up has run, every run of blank lines touching the edit holds the blank blocks a reload reads
-and each hidden line where a reload puts it: one separator, on the run's first block, and the
-line a fence line takes in that line's slot. A route that writes a separator after the layout fails it.
+fix-up has run, every run of blank lines the edit touched is laid out the way a reload lays it
+out: the same blank blocks, one separator on the run's first block, and any line a fence line
+takes in that fence line's slot. A route that writes a separator after the layout fails it.
 `checkBlankRunsLaidOut` · `blank-run-layout.test.ts`, `blank-runs.property.test.ts`.
 
 **G1.141 · Asking for the caret's line moves nothing** (`line-read-restores-focus`). At a soft wrap
 the caret writer's `focusEndsLine` moves the focus to its line's end and back, which keeps the side
-of the wrap the browser shows it on. Dev fails a focus the move back didn't return, which the writer
-then puts back by hand, losing that side. `checkLineReadRestored` · `line-read-restores.test.ts`,
+of the wrap the browser shows it on. Dev fails when the move back doesn't return the focus, since
+the writer then puts it back by hand and loses that side. `checkLineReadRestored` · `line-read-restores.test.ts`,
 `caret-line-at-wrap.spec.ts`.
 
 **G1.143 · A kind's write rule never deletes bytes outside the written span**
