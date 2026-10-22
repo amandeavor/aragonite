@@ -55,6 +55,7 @@ import { kitReading } from './kit-reading';
 import { assertParseConverged } from './parse-convergence';
 import { checkWriteRuleKeepsBytes } from '../invariants/write-rule-keeps-bytes';
 import { fenceReading } from '../core/parsers/fence-syntax';
+import { writtenSpan } from '../core/written-span';
 
 // ── Report + profile ─────────────────────────────────────────────────────────
 
@@ -644,16 +645,9 @@ function checkCaretMap(
 	legal: string,
 	mapOffset: (offset: number) => number
 ): void {
-	const shorter = Math.min(written.length, legal.length);
-	let prefix = 0;
-	while (prefix < shorter && written[prefix] === legal[prefix]) prefix++;
-	let suffix = 0;
-	while (
-		suffix < shorter - prefix &&
-		written[written.length - 1 - suffix] === legal[legal.length - 1 - suffix]
-	) {
-		suffix++;
-	}
+	const span = writtenSpan(written, legal);
+	const prefix = span.start;
+	const suffix = written.length - span.removedEnd;
 	const grown = legal.length - written.length;
 	let previous = 0;
 	for (let offset = 0; offset <= written.length; offset++) {

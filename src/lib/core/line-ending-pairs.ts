@@ -4,6 +4,8 @@
  * {@link keepLineEndingPairs} before it becomes bytes.
  */
 
+import { writtenSpan } from './written-span';
+
 /** Whether `before` and `after`, the bytes on either side of a position, are a CRLF pair. */
 export function isLineEndingPair(before: string | undefined, after: string | undefined): boolean {
 	return before === '\r' && after === '\n';
@@ -77,17 +79,8 @@ interface EditWindow {
 }
 
 function editWindow(before: string, after: string): EditWindow {
-	const shorter = Math.min(before.length, after.length);
-	let prefix = 0;
-	while (prefix < shorter && before[prefix] === after[prefix]) prefix++;
-	let suffix = 0;
-	while (
-		suffix < shorter - prefix &&
-		before[before.length - 1 - suffix] === after[after.length - 1 - suffix]
-	) {
-		suffix++;
-	}
-	return { start: prefix, end: before.length - suffix, inserted: after.length - suffix - prefix };
+	const span = writtenSpan(before, after);
+	return { start: span.start, end: span.removedEnd, inserted: span.end - span.start };
 }
 
 /** A pure insertion or deletion slides left while the byte before it repeats the run's last byte,

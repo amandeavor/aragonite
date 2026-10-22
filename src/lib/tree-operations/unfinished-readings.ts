@@ -7,6 +7,7 @@
 
 import type { NodeView } from '../core/node-views';
 import { displayLines } from '../core/lines';
+import { writtenSpan } from '../core/written-span';
 import { recordUnfinishedWalk } from '../perf/instruments';
 import {
 	lineMayFinishReading,
@@ -39,8 +40,10 @@ export function asksOfWrite(
 	divided: boolean,
 	grammar: GrammarView
 ): UnfinishedAsks {
-	const changed = changedLines(before, after);
-	const lost = changedLines(after, before);
+	if (before === after) return { above: false, below: divided };
+	const span = writtenSpan(before, after);
+	const changed = linesAround(after, span.start, span.end);
+	const lost = linesAround(before, span.start, span.removedEnd);
 	const above = changed.lines.some((line) => lineMayFinishReadingAbove(line, grammar));
 	const startsBlock = changed.fromFirst || divided;
 	const below = startsBlock || lost.lines.some((line) => lineMayFinishReading(line, grammar));
@@ -131,23 +134,16 @@ function firstCandidateBelow(body: BodyParent, from: number, grammar: GrammarVie
 	return -1;
 }
 
-/** The lines of `after` that differ from `before`, whole, and whether the first line is one. */
-function changedLines(before: string, after: string): { lines: string[]; fromFirst: boolean } {
-	const shorter = Math.min(before.length, after.length);
-	let start = 0;
-	while (start < shorter && before[start] === after[start]) start++;
-	let end = 0;
-	while (
-		end < shorter - start &&
-		before[before.length - 1 - end] === after[after.length - 1 - end]
-	) {
-		end++;
-	}
-	if (before === after) return { lines: [], fromFirst: false };
-	const from = after.lastIndexOf('\n', start - 1) + 1;
-	const stop = after.indexOf('\n', after.length - end);
+/** The whole lines of `text` around `[start, end)`, and whether they begin at its first line. */
+function linesAround(
+	text: string,
+	start: number,
+	end: number
+): { lines: string[]; fromFirst: boolean } {
+	const from = text.lastIndexOf('\n', start - 1) + 1;
+	const stop = text.indexOf('\n', end);
 	return {
-		lines: textLines(after.slice(from, stop < 0 ? after.length : stop)),
+		lines: textLines(text.slice(from, stop < 0 ? text.length : stop)),
 		fromFirst: from === 0
 	};
 }
