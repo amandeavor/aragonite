@@ -26,13 +26,20 @@ beforeEach(() => {
 });
 
 /** Block 1 of each fixture loses its first `cut` bytes; `query` is a match that holds them. */
-const KINDS: Array<{ kind: string; raw: string; cut: number; query: string; replaces?: false }> = [
+const KINDS: Array<{ kind: string; raw: string; cut: number; query: string; skip?: string }> = [
 	{ kind: 'fencedCode', raw: '```js\ncode\n```\n', cut: 1, query: '```js' },
 	{ kind: 'mathFence', raw: '```math\nx\n```\n', cut: 1, query: '```math' },
 	// A replace into a diagram applies only when the kind survives it.
-	{ kind: 'mermaid', raw: '```mermaid\nA\n```\n', cut: 1, query: '```mermaid', replaces: false },
+	{ kind: 'mermaid', raw: '```mermaid\nA\n```\n', cut: 1, query: '```mermaid', skip: 'a replace' },
 	{ kind: 'mathBlock', raw: '$$\nx\n$$\n', cut: 1, query: '$$\nx' },
-	{ kind: 'setextHeading', raw: 'Title\n=====\n', cut: 5, query: 'Title' }
+	// A join takes the paragraph's kind, so the heading's underline leaves with its kind.
+	{
+		kind: 'setextHeading',
+		raw: 'Title\n=====\n',
+		cut: 5,
+		query: 'Title',
+		skip: 'a range delete from the block above'
+	}
 ];
 
 const sourceOf = (raw: string) => `para\n\n${raw}\nafter\n`;
@@ -83,7 +90,7 @@ const ROUTES: Array<[string, Route, (raw: string, cut: number) => string]> = [
 describe('a write rule keeps the bytes below an edited first line', () => {
 	for (const fixture of KINDS) {
 		for (const [route, run, expected] of ROUTES) {
-			if (route === 'a replace' && fixture.replaces === false) continue;
+			if (route === fixture.skip) continue;
 			it(`${fixture.kind}, ${route}`, async () => {
 				const doc = await run(sourceOf(fixture.raw), fixture);
 

@@ -1,8 +1,8 @@
 /**
- * The rule for writing a fenced block's bytes, declared on the kind as `rawWrite`: it restores or
- * drops fence lines a write broke, grows the marker runs past a body line that would close them,
- * and keeps backticks out of a backtick fence's info string, moving the caret with every byte. A
- * fence the user is still typing (open, `authored`) is left alone.
+ * The rule for writing a fenced block's bytes, declared on the kind as `rawWrite`: it restores a
+ * closer a write removed, grows the marker runs past a body line that would close them, and keeps
+ * backticks out of a backtick fence's info string, moving the caret with every byte. A fence the
+ * user is still typing (open, `authored`) is left alone.
  */
 
 import { metadataOf } from '../core/nodes';
@@ -23,8 +23,7 @@ import {
 	escalatedFenceLength,
 	fenceAnatomy,
 	fenceRunLength,
-	matchFenceClose,
-	matchFenceOpen
+	matchFenceClose
 } from '../core/parsers/fence-syntax';
 
 export interface FenceShape {
@@ -204,8 +203,8 @@ function splitOpener(line: string, fence: FenceShape): OpenerParts | null {
 }
 
 /**
- * A fence left open swallows every block below it, so a write that removed one fence line gets its
- * closer back (its own opener still on line 0) or loses the closer it stranded.
+ * A fence left open swallows every block below it, so a write that removed the closer gets it back.
+ * One that broke the opener keeps the closer, which reads on as a reload reads it.
  */
 function reconcileFenceLines(
 	written: FenceWriteResult,
@@ -214,22 +213,12 @@ function reconcileFenceLines(
 ): FenceWriteResult {
 	if (!fence.closed) return written;
 	const lines = displayLines(written.display);
-	const opener = ownOpener(lines, fence);
-	if (!opener) return droppedStrandedCloser(lines, fence, written.caret) ?? written;
+	// Line 0 read at the run `writtenFence` sized; a lone bare run is the opener, closed again.
+	const opener = splitOpener(lines[0].text, fence);
+	if (!opener) return written;
 	const restored = restoredCloser(lines, fence, opener, blockEnding);
 	// The closer goes in after every written byte, so no offset moves.
 	return restored === null ? written : { display: restored, caret: written.caret };
-}
-
-/**
- * Line 0 read as the block's own opener, at the run {@link writtenFence} sized. A write whose
- * only line reads as this fence's closer is not one: an opener never doubles as a closer.
- */
-function ownOpener(lines: DisplayLine[], fence: FenceShape): OpenerParts | null {
-	const opener = splitOpener(lines[0].text, fence);
-	if (!opener) return null;
-	if (lines.length === 1 && matchFenceClose(lines[0].text, fence.marker, fence.length)) return null;
-	return opener;
 }
 
 /**
@@ -245,44 +234,6 @@ function restoredCloser(
 	if (lastCloserIndex(lines, fence) !== -1) return null;
 	const closer = opener.indent + fence.marker.repeat(fence.length);
 	return joinDisplayLines(lines) + blockEnding + closer;
-}
-
-/**
- * Drops the closer a write stranded by removing the opener, since as text it would open a fence
- * below. Null when there is none, or a line above opens a same-marker run it would close.
- */
-function droppedStrandedCloser(
-	lines: DisplayLine[],
-	fence: FenceShape,
-	caret: number
-): FenceWriteResult | null {
-	const closer = lastCloserIndex(lines, fence, 0);
-	if (closer === -1) return null;
-	const run = /^ {0,3}([`~]+)/.exec(lines[closer].text)![1].length;
-	const claimed = (line: DisplayLine): boolean => {
-		const open = matchFenceOpen(line.text);
-		return open !== null && open.marker === fence.marker && open.length <= run;
-	};
-	if (lines.slice(0, closer).some(claimed)) return null;
-	return withoutLine(lines, closer, caret);
-}
-
-/**
- * The lines with one removed; dropping the last line takes the ending above it too. A caret inside
- * the removed span lands where the span was.
- */
-function withoutLine(lines: DisplayLine[], index: number, caret: number): FenceWriteResult {
-	let from = lineStartOffset(joinDisplayLines(lines), index);
-	let to = from + lines[index].text.length + lines[index].ending.length;
-	const kept = lines.slice(0, index).concat(lines.slice(index + 1));
-	if (index === lines.length - 1 && kept.length > 0) {
-		const above = kept[kept.length - 1];
-		from -= above.ending.length;
-		to = from + above.ending.length + lines[index].text.length;
-		kept[kept.length - 1] = { ...above, ending: '' };
-	}
-	const moved = caret <= from ? caret : Math.max(from, caret - (to - from));
-	return { display: joinDisplayLines(kept), caret: moved };
 }
 
 function sanitizeInfoString(input: FenceWriteInput): FenceWriteResult {

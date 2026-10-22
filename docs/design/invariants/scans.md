@@ -202,6 +202,7 @@ unguarded.
 | G4.240 | Every `ResizeObserver` is made in `windowing/observe-resize.ts`                                  | L       |
 | G4.241 | A run is laid out and a join asked by the fix-up alone                                           | L       |
 | G4.243 | Only the caret writer calls `Selection.modify`; a caret's line is read through one step          | L       |
+| G4.245 | A kind's write rule is run through `kindWriteRule`                                               | L       |
 
 ### The entries
 
@@ -1359,3 +1360,8 @@ lines, and `caretRectAt` reads one of them whatever the browser shows. So the li
 `caret/visual-lines.ts` ask the browser there, through the caret writer, the one file allowed
 `Selection.modify`; every other `caretRectAt` caller is listed with why a line off at a wrap is
 harmless or known. `lint/file-rules.test.ts`.
+
+**G4.245 · One way to run a write rule.** A kind's `rawWrite` is read only by
+`tree-operations/node-primitives.ts :: kindWriteRule`, which checks every run against G1.143. The
+leaf-text reader (it reads the rule's `text`) and the conformance kit are the listed exceptions.
+`lint/file-rules.test.ts`.

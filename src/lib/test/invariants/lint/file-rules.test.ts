@@ -457,6 +457,25 @@ const RULES: FileRule[] = [
 		misses: ['let o: ResizeObserver | null = null;', "typeof ResizeObserver !== 'function'"]
 	},
 	{
+		id: 'G4.245 a kind’s write rule runs through kindWriteRule',
+		matches: /\.rawWrite\b|\{[^}=]*\brawWrite\b[^}=]*\}\s*=[^=>]/,
+		allowed: {
+			'src/lib/tree-operations/node-primitives.ts':
+				'`kindWriteRule`: the one reader, which checks that a rule deletes no byte the write left alone',
+			'src/lib/invariants/leaf-text.ts': 'reads the rule’s `text`, a block’s text, not a write',
+			'src/lib/testing/kind-conformance.ts':
+				'the conformance kit drives a plugin kind’s rule directly against its fixture'
+		},
+		reason:
+			'a rule run outside `kindWriteRule` skips the dev check that it deletes no byte outside the written span (G1.143); read it through `kindWriteRule`',
+		hits: [
+			'const rule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;',
+			'getBlockKindDescriptor(kind).rawWrite!.normalize(raw, ctx)',
+			'const { rawWrite } = descriptor;'
+		],
+		misses: ['registerBlockKind(kind, { rawWrite: fencedCodeWrite });', 'rawWrite: mathBlockWrite,']
+	},
+	{
 		id: 'G4.194 a block reaches the clipboard steps and the inline paste through its surface',
 		matches: /(?<!function\s)\b(?:createClipboardHandlers|pasteDispatch)\s*\(/,
 		allowed: {

@@ -17,11 +17,13 @@ import {
 import {
 	displayLines,
 	documentLineEnding,
+	firstDisplayLine,
 	joinDisplayLines,
 	ownTrailingLineEnding,
 	type LineEnding
 } from '../core/lines';
 import { openLinesAtEnd } from '../core/inline';
+import { writtenSpan } from '../core/written-span';
 import { assignChildIdsDeep, idsAcrossReread } from '../block-id';
 import {
 	getBlockKindDescriptor,
@@ -41,6 +43,7 @@ import {
 	NEXT_PROSE_LINE,
 	asBody,
 	installOwnRaw,
+	kindWriteRule,
 	type BodyParent,
 	type BodyParentArg,
 	type NodeParent
@@ -88,7 +91,7 @@ export function legalizeWrite(
 	const lineEnding = 'lineEnding' in parent ? parent.lineEnding : documentLineEnding(parent);
 	const dropped = droppedOpenLines(node, text);
 	const prose = dropped ? dropped.text + text.slice(dropped.end) : text;
-	const ownRule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;
+	const ownRule = kindWriteRule(node);
 	const ownCtx: WriteContext = { node, mode, lineEnding };
 	const own = ownRule ? ownRule.normalize(prose, ownCtx) : prose;
 	const bodyRule = owner ? tryGetBlockKindDescriptor(owner.kind)?.bodyWrite : undefined;
@@ -194,12 +197,28 @@ function closeWrittenConstruct(
 	read: FragmentReader
 ): { text: string; parsed: Document } {
 	const parsed = read(text);
-	if (blockIndex + 1 >= parent.children.length) return { text, parsed };
+	const next = parent.children[blockIndex + 1];
+	if (!next) return { text, parsed };
 	if (parsed.children.length === 1 && parsed.children[0].kind === oldKind) return { text, parsed };
 	const terminator = openConstructTerminator(text, parsed.children, read);
-	if (!terminator) return { text, parsed };
+	// An opener the write only exposed reads on as a reload reads it, closer and all.
+	if (!terminator || !opensOnWrittenLine(parent.children[blockIndex].raw, text, parsed)) {
+		return { text, parsed };
+	}
+	// A typed opener the block below already closes (a backtick typed back) takes that closer.
+	const joined = text + next.leadingTrivia + next.raw;
+	if (!openConstructTerminator(joined, read(joined).children, read)) return { text, parsed };
 	const closed = text + terminator;
 	return { text: closed, parsed: read(closed) };
+}
+
+/** Whether the last block of `parsed` opens on a line the write changed in `before`. */
+function opensOnWrittenLine(before: string, text: string, parsed: Document): boolean {
+	const last = parsed.children[parsed.children.length - 1];
+	const start = text.length - parsed.suffix.length - last.raw.length;
+	const lineEnd = start + firstDisplayLine(last.raw).text.length;
+	const span = writtenSpan(before, text);
+	return span.start <= lineEnd && span.end >= start;
 }
 
 /**

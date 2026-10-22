@@ -53,6 +53,7 @@ import { defaultGrammarView, type BlockOpener, type OpenContext } from '../schem
 import { createHeadlessActions } from './headless-actions';
 import { kitReading } from './kit-reading';
 import { assertParseConverged } from './parse-convergence';
+import { checkWriteRuleKeepsBytes } from '../invariants/write-rule-keeps-bytes';
 
 // ── Report + profile ─────────────────────────────────────────────────────────
 
@@ -577,7 +578,7 @@ function checkClosingCutNeedsNoRule(kind: AnyBlockKind, fixture: string): void {
 }
 
 /** Drives five writes over `kind`'s fixture through its `rawWrite` rule; each result must be a
- *  fixed point of the rule, leave the next block its own, and have an agreeing caret map. */
+ *  fixed point, keep every byte the write left alone, map carets, and free the next block. */
 export function checkLeafRawWrite(
 	kind: AnyBlockKind,
 	fixture: string,
@@ -585,7 +586,7 @@ export function checkLeafRawWrite(
 ): void {
 	if (!rule) fail(`"${kind}" declares no rawWrite to drive`);
 	const { ending, lines, closingCut } = fixtureLines(fixture);
-	const writes: Array<[label: string, raw: string, keepsKind: boolean]> = [
+	const writes: Array<[label: string, raw: string, keepsKind: boolean, closes?: false]> = [
 		['the closing line cut', closingCut, lines.length > 2],
 		['everything past the first line cut', lines[0] + ending, false],
 		['an empty write', '', false]
@@ -594,19 +595,23 @@ export function checkLeafRawWrite(
 		const closer = lines[lines.length - 1];
 		const closerInBody = [lines[0], closer, ...lines.slice(1)];
 		writes.push(
-			['the first line cut', lines.slice(1).join(ending) + ending, false],
+			// The closing line it leaves reads on as a reload reads it, so it may take the next block.
+			['the first line cut', lines.slice(1).join(ending) + ending, false, false],
 			['the closing line copied into the body', closerInBody.join(ending) + ending, false]
 		);
 	}
-	for (const [label, written, keepsKind] of writes) {
+	for (const [label, written, keepsKind, closes] of writes) {
 		const doc = parse(fixture + ending + RAW_WRITE_SENTINEL);
 		const node = subjectNode(doc, kind, [0], 'the rawWrite fixture');
 		const ctx = { node, mode: 'literal', lineEnding: documentLineEnding(doc) } as const;
 		const legal = rule.normalize(written, ctx);
 		assertIs(rule.normalize(legal, ctx), legal, `"${kind}" rule is idempotent on ${label}`);
+		const deleted = checkWriteRuleKeepsBytes(node, written, legal);
+		assert(deleted === null, `"${kind}" after ${label} (${show(legal)}): ${deleted?.message}`);
 		checkCaretMap(`"${kind}" caret map on ${label}`, written, legal, (offset) =>
 			rule.mapOffset(written, offset, ctx)
 		);
+		if (closes === false) continue;
 
 		const following = parse(legal + ending + RAW_WRITE_SENTINEL).children.at(-1);
 		assertIs(

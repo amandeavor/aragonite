@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-// After one line break or deleted character in a `$$` source, the painted source, the bytes its
-// blur writes and a reload agree on the block and its body, and every block below reads as before.
-// Miss-analysis: the painter, the write rule and the parser each had their own fixtures, never
-// one edited source handed to all three.
+// After one edit to a `$` source, the painted source, the bytes its blur writes and a reload
+// agree on the block and its body, and the blocks below read as before unless a `$` line was
+// left to pair with one of theirs.
+// Miss-analysis: the painter, the write rule and the parser each had their own fixtures.
 import { describe, it, expect, beforeEach } from 'vitest';
 import fc from 'fast-check';
 import { parse } from '#lib';
@@ -50,6 +50,15 @@ function applyEdit(text: string, edit: Edit, eol: LineEnding): { text: string; c
 const blocksOf = (source: string) =>
 	parse(source).children.map((c) => ({ kind: c.kind, raw: c.raw }));
 
+/** Whether `bytes` hold a `$$` fence line that no math block of their own reading holds. */
+function strandsFence(bytes: string): boolean {
+	const fenceLines = (raw: string) => raw.split(/\r?\n/).filter((line) => line === '$$').length;
+	const held = parse(bytes)
+		.children.filter((c) => c.kind === 'mathBlock')
+		.reduce((sum, c) => sum + fenceLines(c.raw), 0);
+	return fenceLines(bytes) > held;
+}
+
 /** The source after one edit, painted, written on blur, and read back with what sits below;
  *  returns which shape the edit made, for the generator's coverage check. */
 function checkEdit(block: string, eol: LineEnding, edit: Edit): string {
@@ -64,14 +73,19 @@ function checkEdit(block: string, eol: LineEnding, edit: Edit): string {
 
 	const below = blocksOf(source).slice(1);
 	const now = blocksOf(reload);
-	expect(now.slice(now.length - below.length), `${label}: the blocks below moved`).toEqual(below);
+	// A `$$` line the edit left outside the block pairs with the next one below, as a reload reads it.
+	if (!strandsFence(written)) {
+		expect(now.slice(now.length - below.length), `${label}: the blocks below moved`).toEqual(below);
+	}
 	// The same bytes arriving whole (a paste, a replace) mustn't move them either.
 	const literal = legalizeWrite(doc, 0, text + ownTrailingLineEnding(node.raw), 'literal').text;
 	const pasted = blocksOf(literal + source.slice(node.raw.length));
-	expect(
-		pasted.slice(pasted.length - below.length),
-		`${label}: a literal write moved them`
-	).toEqual(below);
+	if (!strandsFence(literal)) {
+		expect(
+			pasted.slice(pasted.length - below.length),
+			`${label}: a literal write moved them`
+		).toEqual(below);
+	}
 
 	// A break before the opener moves the whole block down a line, which no painter reads.
 	if (text.startsWith(eol)) return 'moved down';
