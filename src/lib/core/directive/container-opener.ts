@@ -24,7 +24,7 @@ import {
 } from '../lines';
 import { matchDirectiveOpener, isDirectiveCloser } from './grammar';
 import { resolveBlockDirectiveFactory, resolveDirective, type ParsedDirective } from './registry';
-import { DIRECTIVE_BODY_WRAP, type DirectiveContainerMetadata } from './kinds';
+import { DIRECTIVE_BODY_WRAP, type DirectiveContainerMetadata } from './container-shape';
 
 /** The opener the generic directive container registers with; it opens leaves too. */
 export function directiveContainerOpener(

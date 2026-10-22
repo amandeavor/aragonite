@@ -10,7 +10,7 @@ import type { LineEnding } from '../core/lines';
 import type { ContainerBodyWrap } from '../core/parser';
 import { enqueueRegistrationCheck } from './registration-pending';
 import { currentInstallingPlugin } from './plugin-install';
-import { createBlockKindRegistry } from './plugin-registry';
+import { createBlockKindRegistry } from './plugin-kind';
 import type { ChildRawChange } from './child-spans';
 import type { StripRebuild } from './strip-rebuild';
 import type { ClosureBlock } from './closure';

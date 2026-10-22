@@ -1,16 +1,23 @@
 /**
  * Declaring the names plugin kinds take, block and inline, and which plugin declared each: a
  * kind's owner is the plugin whose setup declared it, and it decides where the kind resolves.
+ * The registries keyed by a kind are built here, since they answer to that owner.
  */
 import {
 	BLOCK_KIND_TABLE,
 	isBuiltinInlineKind,
+	type AnyBlockKind,
 	type AnyInlineKind,
 	type PluginBlockKind,
 	type PluginInlineKind
 } from '../core/nodes';
 import { isValidPluginName } from './plugin-name';
-import { createPluginRegistry } from './plugin-registry';
+import {
+	buildRegistry,
+	createPluginRegistry,
+	type KindRegistry,
+	type PluginRegistryOptions
+} from './plugin-registry';
 
 const declaredPluginKinds = createPluginRegistry<string, true>({
 	label: 'declarePluginKind',
@@ -101,4 +108,24 @@ export function pluginInlineKindOwner(kind: string): string | null {
 /** Whether an inline kind name is declared, for the editor's own checks. */
 export function isInlineKindDeclared(name: string): boolean {
 	return declaredPluginInlineKinds.has(name);
+}
+
+// ── Registries keyed by a kind ───────────────────────────────────────────────
+
+export function createBlockKindRegistry<V>(
+	options: PluginRegistryOptions<AnyBlockKind>
+): KindRegistry<AnyBlockKind, V> {
+	return buildRegistry<AnyBlockKind, V>(
+		options,
+		(key, registrant) => pluginKindOwner(key) ?? registrant
+	);
+}
+
+export function createInlineKindRegistry<V>(
+	options: PluginRegistryOptions<AnyInlineKind>
+): KindRegistry<AnyInlineKind, V> {
+	return buildRegistry<AnyInlineKind, V>(
+		options,
+		(key, registrant) => pluginInlineKindOwner(key) ?? registrant
+	);
 }

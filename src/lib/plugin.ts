@@ -321,7 +321,7 @@ export type { DirectiveTier, DirectiveFence, DirectiveAttributes } from './core/
 export { createDirectiveRebuild } from './editor-actions/plugin/directive-container';
 // The wrap every `:::` body parses with; a directive kind declares it as its `container.bodyWrap`
 // so the editor's blank-line fix-up knows the blank line against the fence belongs to the fence.
-export { DIRECTIVE_BODY_WRAP } from './core/directive/kinds';
+export { DIRECTIVE_BODY_WRAP } from './core/directive/container-shape';
 
 // ── Renderer utilities (pre-freeze) ──────────────────────────────────────────
 // Where an injected renderer is set and cached per theme, with the plugin's own fallback when it's

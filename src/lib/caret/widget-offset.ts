@@ -11,7 +11,7 @@ import {
 	hidesDelimitersAtCaret,
 	type PresentationMode
 } from '../presentation-mode';
-import { widgetSourceRange } from '../core/inline/inline-widgets';
+import { widgetSourceRange } from '../core/inline/widget-shell';
 import { isLineEndingPair, splitsLineEndingPair } from '../core/line-ending-pairs';
 import { displayLength, isBlankText } from '../core/lines';
 import {

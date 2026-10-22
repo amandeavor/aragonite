@@ -137,7 +137,11 @@ const ALLOWLIST: Record<string, Exemption> = {
 			'body wrap and the registration entry points only'
 	},
 	'src/lib/test/plugins/emoji/widget.test.ts': {
-		specifiers: ['#lib/core/inline/inline-widgets.js', '#lib/schema/block-openers.js'],
+		specifiers: [
+			'#lib/core/inline/inline-widgets.js',
+			'#lib/core/inline/widget-shell.js',
+			'#lib/schema/block-openers.js'
+		],
 		reason:
 			'no registry read-back: a widget kind registers its editing policy but never reads it, ' +
 			'and the read takes a grammar no entry point publishes'

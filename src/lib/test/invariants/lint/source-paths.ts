@@ -184,7 +184,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	htmlTagGrammar: 'export type HtmlFormKind',
 	linkReferenceResolver: 'export function normalizeLinkLabel',
 	inlineCache: 'export function getInlineContent',
-	inlineWidgets: 'export function mintWidgetShell',
+	inlineWidgets: 'export function widgetElByStart',
 	inlineVisibility: 'export type MarkerFamily',
 	inlineWalk: 'export function* inlineDescendants',
 	formatToggle: 'export interface InlineFormatEdit',

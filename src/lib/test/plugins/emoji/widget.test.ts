@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { InlineNode } from '#lib';
 import {
 	getInlineWidgetEditing,
-	mintWidgetShell,
 	type InlineWidgetComponentProps
 } from '#lib/core/inline/inline-widgets.js';
+import { mintWidgetShell } from '#lib/core/inline/widget-shell.js';
 import { registerEmoji, drawEmoji, EMOJI_KIND } from '#lib/plugins/emoji/emoji-recognizer.js';
 
 // The glyph is what the widget shows; the shell the editor hands it keeps the source bytes on

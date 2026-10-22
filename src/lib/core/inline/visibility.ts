@@ -7,7 +7,7 @@
 
 import type { InlineNode } from '../nodes';
 import { renderInlineNodes, type RenderInlineOptions } from '../inline-render';
-import { widgetSourceRange } from './inline-widgets';
+import { widgetSourceRange } from './widget-shell';
 import { type PresentationMode } from '../../presentation-mode';
 import { recordScreenRead } from '../../perf/instruments';
 
