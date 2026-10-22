@@ -20,6 +20,7 @@ import {
 	firstDisplayLine,
 	joinDisplayLines,
 	ownTrailingLineEnding,
+	trimTrailingLineEnding,
 	type LineEnding
 } from '../core/lines';
 import { openLinesAtEnd } from '../core/inline';
@@ -205,21 +206,24 @@ function closeWrittenConstruct(
 	if (!terminator || !opensOnWrittenLine(parent.children[blockIndex].raw, text, parsed)) {
 		return { text, parsed };
 	}
-	if (takesCloserBelow(text, parent.children.slice(blockIndex + 1), read)) return { text, parsed };
+	if (takesCloserBelow(text, parsed, next, read)) return { text, parsed };
 	const closed = text + terminator;
 	return { text: closed, parsed: read(closed) };
 }
 
-/** Whether the block below starts with the written fence's closer (a backtick typed back) and taking
- *  it leaves no fence open to the body's end, as one typed over a bare-fenced block would. */
-function takesCloserBelow(text: string, below: readonly NodeView[], read: FragmentReader): boolean {
-	const closed = (bytes: string) => !openConstructTerminator(bytes, read(bytes).children, read);
-	const [next] = below;
-	const head = next.leadingTrivia + firstDisplayLine(next.raw).text + ownTrailingLineEnding(text);
-	if (!closed(text + head)) return false;
-	let rest = text;
-	for (const block of below) rest += block.leadingTrivia + block.raw;
-	return closed(rest);
+/** Whether an opener typed back onto its body takes the closer flush beneath it; a fence typed
+ *  on its own line, or with a blank line under it, gets a closer of its own. */
+function takesCloserBelow(
+	text: string,
+	parsed: Document,
+	next: NodeView,
+	read: FragmentReader
+): boolean {
+	const opened = parsed.children[parsed.children.length - 1];
+	const hasBody = trimTrailingLineEnding(opened.raw).includes('\n');
+	if (!hasBody || next.leadingTrivia !== '') return false;
+	const head = text + firstDisplayLine(next.raw).text + ownTrailingLineEnding(text);
+	return !openConstructTerminator(head, read(head).children, read);
 }
 
 /** Whether the last block of `parsed` opens on a line the write changed in `before`. */

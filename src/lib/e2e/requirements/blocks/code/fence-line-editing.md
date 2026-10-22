@@ -28,8 +28,10 @@ Where the mode hides the fence lines, edits clamp to the body instead: `fence-ra
   the closer's drop as intended, and no check compared the bytes a write rule kept against the
   bytes the edit left alone)
 - the same keystroke through an IME composition keeps the same bytes
-- a backspaced opener backtick typed back restores the document byte for byte: the retyped opener
-  takes the old closer back instead of writing a second one
+- a backspaced opener backtick typed back restores the document byte for byte: an opener typed
+  back onto its body takes the closer still flush beneath it instead of writing a second one. An
+  opener over an empty body has nothing to tell it from a fresh fence, so it gets a closer of its
+  own, and one undo takes the backtick back
 - a backtick typed right after the opener's marker run widens the fence: the closer grows by
   the same backtick, so the block stays closed (miss-analysis: every opener edit here deleted or
   replaced, and the unit case for this keystroke pinned the dropped backtick as intended)

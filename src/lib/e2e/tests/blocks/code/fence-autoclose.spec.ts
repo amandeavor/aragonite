@@ -51,11 +51,15 @@ test.describe('code block: unclosed-fence auto-close on escape', () => {
 		expect(await editor.bridge.getSource()).toBe('Above\n\n```\ncode\n```\n\ntail\n');
 	});
 
-	// The code block's own closer, or its bare opener, would otherwise close the typed fence.
-	for (const below of ['```js\ncode\n```\n', '```\ncode\n```\n']) {
-		test(`a fence opener typed above a code block (${below.split('\n')[0]}) leaves it whole`, async ({
-			page
-		}) => {
+	// The code block's own closer, or its bare opener, would otherwise close the typed fence, and
+	// a fence further down must not change that.
+	const BELOW: Array<[name: string, below: string, blocks: number]> = [
+		['```js', '```js\ncode\n```\n', 3],
+		['```', '```\ncode\n```\n', 3],
+		['```, another fence further down', '```\ncode\n```\n\n```py\nx\n```\n', 4]
+	];
+	for (const [name, below, blocks] of BELOW) {
+		test(`a fence opener typed above a code block (${name}) leaves it whole`, async ({ page }) => {
 			await editor.loadContent(`Above\n\n${below}`);
 			await editor.getBlock(0).click();
 			await page.keyboard.press(edgeKey('lineEnd'));
@@ -63,7 +67,7 @@ test.describe('code block: unclosed-fence auto-close on escape', () => {
 			await editor.typeSlowly('```');
 
 			await editor.bridge.waitForSourceEquals(`Above\n\n\`\`\`\n\`\`\`\n\n${below}`);
-			expect(await editor.bridge.getBlockCount()).toBe(3);
+			expect(await editor.bridge.getBlockCount()).toBe(blocks);
 			expect(await editor.parseConverged()).toBe(true);
 		});
 	}

@@ -34,23 +34,58 @@ describe('closing a fence a write leaves open', () => {
 		});
 	}
 
-	it('still closes a fresh opener typed above other blocks', () => {
-		const { type } = typingOver('para\n\nafter\n');
+	// A fence typed on its own line gets its own closer, whatever fences sit further down.
+	// Miss-analysis: no fresh-fence row had a second fence further down.
+	const FRESH: Array<[name: string, source: string, written: string, expected: string]> = [
+		['above other blocks', 'para\n\nafter\n', '```\n', '```\n```\n\nafter\n'],
+		['above a bare-fenced block', 'para\n\n```\nx\n```\n', '```\n', '```\n```\n\n```\nx\n```\n'],
+		[
+			'above a bare-fenced block, another fence further down',
+			'para\n\n```\nx\n```\n\n```py\ny\n```\n',
+			'```\n',
+			'```\n```\n\n```\nx\n```\n\n```py\ny\n```\n'
+		],
+		[
+			'above a code block with a language',
+			'para\n\n```js\ncode\n```\n',
+			'```\n',
+			'```\n```\n\n```js\ncode\n```\n'
+		],
+		[
+			'above a fence flush beneath it, as a loaded file can have',
+			'``\n```\nx\n```\n\n```py\ny\n```\n',
+			'```\n',
+			'```\n```\n```\nx\n```\n\n```py\ny\n```\n'
+		],
+		[
+			'onto a paragraph of two lines, a fence below',
+			'a\nb\n\n```\nx\n```\n\n```py\ny\n```\n',
+			'```a\nb\n',
+			'```a\nb\n```\n\n```\nx\n```\n\n```py\ny\n```\n'
+		]
+	];
+	for (const [name, source, written, expected] of FRESH) {
+		it(`closes a fence typed ${name}`, () => {
+			const { type } = typingOver(source);
 
-		expect(type(0, '```\n')).toBe('```\n```\n\nafter\n');
+			expect(type(0, written)).toBe(expected);
+		});
+	}
+
+	it('restores a broken opener whose document ends in an open fence, which stays open', () => {
+		const source = 'para\n\n```js\ncode\n```\n\ntext\n\n```\nopen tail\n';
+		const { type } = typingOver(source);
+
+		type(1, '``js\ncode\n```\n');
+		expect(type(1, '```js\ncode\n')).toBe(source);
 	});
 
-	// The bare opener below would close the typed one and strand its own closer under `x`.
-	it('still closes a fresh opener typed above a bare-fenced code block', () => {
-		const { type } = typingOver('para\n\n```\nx\n```\n');
+	// The accepted edge: with no body under the retyped opener it reads as a fresh fence, so it
+	// gets a closer of its own and the stranded closer reads on; one undo takes the backtick back.
+	it('gives a retyped opener with an empty body a closer of its own', () => {
+		const { type } = typingOver('para\n\n```js\n```\n\nafter\n');
 
-		expect(type(0, '```\n')).toBe('```\n```\n\n```\nx\n```\n');
-	});
-
-	// The closer of the block below would close the typed fence, taking that block in as its body.
-	it('still closes a fresh opener typed above a code block with a language', () => {
-		const { type } = typingOver('para\n\n```js\ncode\n```\n');
-
-		expect(type(0, '```\n')).toBe('```\n```\n\n```js\ncode\n```\n');
+		type(1, '``js\n```\n');
+		expect(type(1, '```js\n')).toBe('para\n\n```js\n```\n```\n\nafter\n');
 	});
 });
