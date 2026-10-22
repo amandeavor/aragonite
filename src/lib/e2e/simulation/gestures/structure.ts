@@ -46,6 +46,22 @@ export async function typeFenceOpener(ctx: SimContext): Promise<void> {
 	tracker.holdTwin('\n```');
 }
 
+/** Backspace after the last backtick of the opener of the code block at `blockIndex`: its closer
+ *  stays and pairs with whatever fence below a reload pairs it with. */
+export async function breakFenceOpener(ctx: SimContext, blockIndex: number): Promise<void> {
+	const { page, editor } = ctx;
+	await editor.clickBlock(blockIndex);
+	await page.keyboard.press('ArrowUp');
+	await page.keyboard.press(edgeKey('lineStart'));
+	for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+	await actThenResync(ctx, () => page.keyboard.press('Backspace'));
+}
+
+/** The backtick typed back where {@link breakFenceOpener} left the caret. */
+export async function retypeFenceBacktick(ctx: SimContext): Promise<void> {
+	await actThenResync(ctx, () => ctx.page.keyboard.type('`'));
+}
+
 /** Enter on the fence's empty last line leaves the block, using up the held closing line. */
 export async function exitFence(ctx: SimContext): Promise<void> {
 	await actThenResync(ctx, () => ctx.page.keyboard.press('Enter'));
