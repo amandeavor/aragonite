@@ -51,6 +51,23 @@ test.describe('code block: unclosed-fence auto-close on escape', () => {
 		expect(await editor.bridge.getSource()).toBe('Above\n\n```\ncode\n```\n\ntail\n');
 	});
 
+	// The code block's own closer, or its bare opener, would otherwise close the typed fence.
+	for (const below of ['```js\ncode\n```\n', '```\ncode\n```\n']) {
+		test(`a fence opener typed above a code block (${below.split('\n')[0]}) leaves it whole`, async ({
+			page
+		}) => {
+			await editor.loadContent(`Above\n\n${below}`);
+			await editor.getBlock(0).click();
+			await page.keyboard.press(edgeKey('lineEnd'));
+			await page.keyboard.press('Enter');
+			await editor.typeSlowly('```');
+
+			await editor.bridge.waitForSourceEquals(`Above\n\n\`\`\`\n\`\`\`\n\n${below}`);
+			expect(await editor.bridge.getBlockCount()).toBe(3);
+			expect(await editor.parseConverged()).toBe(true);
+		});
+	}
+
 	test('one undo restores the open fence and removes the created block', async () => {
 		await editor.loadContent('```\ncode\n');
 		await editor.getBlock(0).click();
