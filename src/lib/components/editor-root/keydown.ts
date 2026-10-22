@@ -81,6 +81,13 @@ export function createEditorRootKeydown(deps: EditorRootKeydownDeps): EditorRoot
 		return active === root || (noElementFocused && claimsBodyChord(root));
 	}
 
+	/** WebKit goes back in history on a Backspace outside a text field, and in reading mode every
+	 *  block is outside one. */
+	function keepPageOnBackspace(event: KeyboardEvent, root: HTMLElement, active: Element | null) {
+		if (event.key !== 'Backspace' || isTextEntrySurface(active)) return;
+		if (focusInEditor(root, active) || ownsWindowedOutCaret(root, active)) event.preventDefault();
+	}
+
 	/** Editor chrome (a toolbar button, a menu item) holds focus and has no keymap, so the editor's
 	 *  global chords answer there; a field owns its own Mod+Z, and a block that took the key ran it. */
 	function chromeHoldsFocus(event: KeyboardEvent, root: HTMLElement, active: Element | null) {
@@ -103,6 +110,7 @@ export function createEditorRootKeydown(deps: EditorRootKeydownDeps): EditorRoot
 			// The host's header owns its keystrokes; `isForeignTextEntry` cannot tell, since the
 			// header is inside the editor.
 			if (deps.isHostChrome(active)) return;
+			keepPageOnBackspace(event, root, active);
 
 			if (handleSearchChords(event, root, chord, active)) return;
 			const ownsCaret = ownsWindowedOutCaret(root, active);
