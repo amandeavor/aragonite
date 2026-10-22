@@ -189,7 +189,7 @@ test.describe('asking the browser where the line ends', () => {
 		// since how many letters fit a line depends on the platform's font.
 		let starts: number[] = [];
 		for (let length = 10; length < 80 && !(starts.length === 2 && starts[1] === 5); length++) {
-			const text = `Tiny ${'abcdefghij'.repeat(8).slice(0, length)} end`;
+			const text = `Tiny ${'abcdefghij'.repeat(8).slice(0, length)}`;
 			await editor.loadContent(`before\n\n${text}\n\nafter\n`);
 			starts = await lineStarts(page, [1], text.length);
 		}
