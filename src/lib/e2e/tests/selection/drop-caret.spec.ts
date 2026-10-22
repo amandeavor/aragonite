@@ -5,6 +5,7 @@ import { textRunCenter, textRunStart, pointAtRaw } from '../../text-runs';
 import { multiClick } from '../../multi-click';
 import { holdSelectionDrag } from '../../selection-drag';
 import { COPY_DRAG_MODIFIERS } from '../../platform-keys';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // The caret shown while a dragged selection is held over the editor
 // (`requirements/selection/drop-caret.md`). Aim points are a run's first glyph, whose
@@ -151,6 +152,7 @@ test.describe('the caret a held drag shows', () => {
 
 	// A copy leaves its source in place, so it can write inside the range a move could not.
 	test('a copy held over a landing inside the dragged range shows one', async ({ page }) => {
+		skipUnlessSupported(page, 'modifierDrop');
 		await editor.clickBlockAtPath([0], 0);
 		// "alpha beta", whose "beta" starts strictly inside it.
 		for (let i = 0; i < 10; i++) await page.keyboard.press('Shift+ArrowRight');

@@ -6,6 +6,7 @@
 
 // Playwright resolves `ControlOrMeta` by this same test-process platform.
 export const isMacOS = process.platform === 'darwin';
+export const isWindows = process.platform === 'win32';
 
 /** Where a caret key moves the caret: its visual line's edge, or the edge of its block's text
  *  (a table cell's, in a cell). */

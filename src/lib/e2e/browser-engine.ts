@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { focusWalkKey } from './platform-keys';
+import { focusWalkKey, isWindows } from './platform-keys';
 
 /** Which browser is running, for the harness helpers whose path differs by engine (the clipboard,
  *  the IME driver, dropping the native caret). */
@@ -27,12 +27,14 @@ export type EngineCapability =
 	| 'insertWithoutScroll'
 	| 'inertBackspace'
 	| 'syntheticTargetRanges'
-	| 'nativeWordSelect';
+	| 'nativeWordSelect'
+	| 'modifierDrop';
 
 /** Firefox over BiDi and Playwright's WebKit each lack a few gestures; `SKIP_REASONS` says which
  *  and why. */
 export function engineSupports(page: Page, capability: EngineCapability): boolean {
 	if (capability === 'cdp') return isChromium(page);
+	if (capability === 'modifierDrop') return !(isWebKit(page) && isWindows);
 	if (capability === 'inertBackspace' || capability === 'syntheticTargetRanges') {
 		return !isWebKit(page);
 	}
@@ -52,7 +54,9 @@ const SKIP_REASONS: Record<EngineCapability, string> = {
 	syntheticTargetRanges:
 		'WebKit reports no target ranges for an InputEvent a script builds, whatever it was given',
 	nativeWordSelect:
-		"Firefox over BiDi fires no native double click, so the browser selects no word in text the editor doesn't select itself"
+		"Firefox over BiDi fires no native double click, so the browser selects no word in text the editor doesn't select itself",
+	modifierDrop:
+		"Playwright's WebKit on Windows drops a held Ctrl or Alt from dragover and drop (dragstart keeps it); Linux and macOS WebKit carry it"
 };
 
 /** Skip the running test on an engine that lacks `capability`. */

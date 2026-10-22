@@ -5,6 +5,7 @@ import { pointAtRaw, textOutsideMarkers, textRunCenter, textRunStart } from '../
 import { multiClick } from '../../multi-click';
 import { dragSelection } from '../../selection-drag';
 import { COPY_DRAG_MODIFIERS, edgeKey } from '../../platform-keys';
+import { skipUnlessSupported } from '../../browser-engine';
 
 // Dragging a selection and dropping it (`requirements/selection/selection-drag-drop.md`). Drops
 // aim past a line's end or at its first glyph: the two points whose offset no font metric moves.
@@ -103,6 +104,7 @@ test.describe('dragging a selection', () => {
 
 	for (const modifier of COPY_DRAG_MODIFIERS) {
 		test(`a word released with ${modifier} held is copied, the source kept`, async ({ page }) => {
+			skipUnlessSupported(page, 'modifierDrop');
 			const beta = await doubleClickOn('beta');
 			const target = await textRunStart(page, 'second para here');
 			await dragSelection(page, beta, target, { copyWith: modifier });
