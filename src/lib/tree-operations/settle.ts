@@ -16,6 +16,7 @@ import { assertInvariant } from '../assert';
 import { checkStructuralDescriptor } from '../invariants/structural-descriptor';
 import { noteBodySettled } from '../invariants/settle-once';
 import { checkBlankRunsLaidOut } from '../invariants/blank-runs';
+import { checkSettledWindowReadsBack } from '../invariants/settled-window-reads-back';
 import { endWindowLines } from './open-tail';
 import type { SharingState } from './sharing';
 import { lacksSublistSeparator } from './list/sublist-separator';
@@ -191,7 +192,8 @@ export function settleContentWrite(
 	return settled;
 }
 
-/** G1.139 over the window a fix-up reports, or the written block when it reports none. */
+/** G1.139 over the window a fix-up reports, or the written block when it reports none, and G1.145
+ *  over a reported window. */
 function checkRunsLaidOut(
 	body: BodyParent,
 	change: StructuralChange,
@@ -203,6 +205,11 @@ function checkRunsLaidOut(
 	const lo = window?.at ?? written!;
 	const hi = window ? window.at + window.added - 1 : written!;
 	assertInvariant('blank-runs-laid-out', () => checkBlankRunsLaidOut(body, lo, hi, grammar));
+	// G1.145 reads the window again, so a write that kept its block in place skips it.
+	if (!window) return;
+	assertInvariant('settled-window-reads-back', () =>
+		checkSettledWindowReadsBack(body, lo, hi, grammar)
+	);
 }
 
 function settleEditHead(

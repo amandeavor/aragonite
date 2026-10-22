@@ -319,6 +319,8 @@ const PLAIN_READS: Record<string, string> = {
 		'installs after backfill: the survivor of a range delete is read at its slot and given its paragraph before the splice',
 	'src/lib/invariants/node-shape.ts':
 		'probe: G1.1 and G1.12 compare a container’s bytes with its children’s bytes, which the empty paragraph would hide; G1.42 compares block kinds and reads through `readAsOpened`',
+	'src/lib/invariants/settled-window-reads-back.ts':
+		'probe: G1.145 compares a settled window’s blocks with how their joined bytes read, as the neighbour merge reads them, and installs nothing',
 	'src/lib/plugins/admonitions/convert-document.ts':
 		'probe: converts a document’s alerts to admonitions as text, headless; no editor holds the nodes'
 };

@@ -44,7 +44,7 @@ const KINDS: Array<{ kind: string; raw: string; later: string; bare: string }> =
 	{ kind: 'htmlBlock', raw: '<!--\nx\n-->\n', later: '<!--\ny\n-->\n', bare: '<!--\ny\n-->\n' }
 ];
 
-const TAIL = Array.from({ length: 50 }, (_, i) => `paragraph ${i}\n`).join('\n');
+const TAIL = Array.from({ length: 500 }, (_, i) => `paragraph ${i}\n`).join('\n');
 
 describe('a write that moves a closer re-pairs the blocks below as a reload does', () => {
 	for (const { kind, raw, later, bare } of KINDS) {
@@ -73,7 +73,9 @@ describe('a write that moves a closer re-pairs the blocks below as a reload does
 			resetPerfInstruments();
 
 			expect(type(1, raw.slice(1))).toBe(source.replace(raw, () => raw.slice(1)));
-			expect(perfSnapshot().parseBytes).toBeLessThan(4 * source.length);
+			// One pass over the tail, plus the dev checks' own reads; swallowing it block by block reads it
+			// once per block.
+			expect(perfSnapshot().parseBytes).toBeLessThan(8 * source.length);
 		});
 	}
 
