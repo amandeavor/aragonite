@@ -5,6 +5,7 @@ import { fenceReading } from '#lib/core/parsers/fence-syntax.js';
 describe('a fence reading that a line below could still change', () => {
 	it.each([
 		['an opener alone', '```\n'],
+		['an opener with no line ending', '```'],
 		['an opener and a body', '```js\ncode\n'],
 		['a body ending in a blank line', '~~~\ncode\n\n'],
 		['a closer shorter than the opener', '````\ncode\n```\n'],
@@ -15,6 +16,8 @@ describe('a fence reading that a line below could still change', () => {
 
 	it.each([
 		['a closed fence', '```\ncode\n```\n'],
+		['a closer with no line ending', '```\ncode\n```'],
+		['CRLF endings', '```\r\ncode\r\n```\r\n\r\n'],
 		['a trailing blank line in the raw', '```\ncode\n```\n\n'],
 		['a closer longer than the opener', '```\ncode\n`````\n'],
 		['a closer indented three spaces', '```\ncode\n   ```\n'],

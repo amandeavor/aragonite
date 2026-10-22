@@ -7,7 +7,6 @@
 import { escalateTerminatorRun } from '../terminator-escalation';
 import type { UnfinishedReading } from '../../schema/block-openers';
 import {
-	displayLines,
 	firstDisplayLine,
 	isBlankLine,
 	OPTIONAL_LINE_ENDING,
@@ -165,8 +164,14 @@ export const fenceReading: UnfinishedReading = {
 function awaitsFenceCloser(raw: string): boolean {
 	const fence = matchFenceOpen(firstDisplayLine(raw).text);
 	if (!fence) return false;
-	const lines = displayLines(raw);
-	let last = lines.length - 1;
-	while (last > 0 && isBlankLine(lines[last].text)) last--;
-	return last === 0 || !matchFenceClose(lines[last].text, fence.marker, fence.length);
+	// Read back from the end, line by line, so a long body costs its last lines only.
+	const bodyStart = raw.indexOf('\n') + 1;
+	let end = raw.length;
+	while (bodyStart > 0 && end > bodyStart) {
+		const start = raw.lastIndexOf('\n', end - 2) + 1;
+		const line = raw.slice(start, end).replace(/\r?\n$/, '');
+		if (!isBlankLine(line)) return !matchFenceClose(line, fence.marker, fence.length);
+		end = start;
+	}
+	return true;
 }
