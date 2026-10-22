@@ -2234,8 +2234,8 @@ const KEYBOARD_END_WRITES: Record<string, { calls: number; reason: string }> = {
 		calls: 1,
 		reason: 'a Shift+click, whose end is under the pointer'
 	},
-	'src/lib/selection/keyboard-extend.ts :: handleShiftClick :: pair': {
-		calls: 2,
+	'src/lib/selection/keyboard-extend.ts :: enterRangeAtPress :: pair': {
+		calls: 1,
 		reason: 'a Shift+click, whose end is under the pointer'
 	}
 };

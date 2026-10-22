@@ -2,11 +2,13 @@ import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 import { EditorPage } from '../../editor-page';
 import { pointAtRaw } from '../../text-runs';
+import { focusName } from '../../reading-focus-probes';
 
 // Selecting and copying with the mouse works the same in reading mode as in an editing mode
 // (requirements/presentation/reading-selection.md): every row runs in both.
 
 const DOC = 'alpha one\n\nbeta two\n\ngamma\n';
+const IMAGE_DOC = 'lead ![cat](/test-fixtures/sample.png) tail\n\nbeta two\n';
 const MODES = ['reading', 'source'] as const;
 
 async function load(page: Page, mode: string, md = DOC): Promise<EditorPage> {
@@ -33,7 +35,9 @@ async function copied(editor: EditorPage, expected: string): Promise<string> {
 
 for (const mode of MODES) {
 	test.describe(`${mode} mode: Shift+click`, () => {
-		test('extends from a click into another block', async ({ page }) => {
+		test('extends from a click into another block, and focus follows the press', async ({
+			page
+		}) => {
 			const editor = await load(page, mode);
 
 			await editor.clickBlockAtPath([0], 2);
@@ -43,6 +47,22 @@ for (const mode of MODES) {
 				anchor: { path: [0], offset: 2 },
 				focus: { path: [1], offset: 4 }
 			});
+			expect(await focusName(page)).toContain('[1]');
+		});
+
+		test('grows from an image selected whole into another block, and focus follows', async ({
+			page
+		}) => {
+			const editor = await load(page, mode, IMAGE_DOC);
+
+			await page.locator('[data-image-widget]').first().click();
+			await editor.shiftClickBlock([1], 4);
+
+			expect(await editor.bridge.getSelection()).toEqual({
+				anchor: { path: [0], offset: 'lead '.length },
+				focus: { path: [1], offset: 4 }
+			});
+			expect(await focusName(page)).toContain('[1]');
 		});
 
 		test('extends from a click inside the same block', async ({ page }) => {

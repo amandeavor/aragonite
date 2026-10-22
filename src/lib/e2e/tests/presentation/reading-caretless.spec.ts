@@ -100,7 +100,7 @@ test.describe('reading mode: a click keeps no caret', () => {
 		expect(await page.evaluate(() => getSelection()?.toString().trim())).toBe('gamma');
 	});
 
-	test('Shift+click after a click selects from the clicked word, and still draws no caret', async ({
+	test('Shift+click after a click selects from the clicked word, focuses its block, and still draws no caret', async ({
 		page
 	}) => {
 		const editor = await loadReading(page, DOC);
@@ -115,6 +115,7 @@ test.describe('reading mode: a click keeps no caret', () => {
 			anchor: { path: [0], offset: 'Alpha beta '.length },
 			focus: { path: [1], offset: 'Second '.length }
 		});
+		expect(await focusName(page)).toContain('[1]');
 		expect(await holdsCaret(page)).toBe(false);
 	});
 

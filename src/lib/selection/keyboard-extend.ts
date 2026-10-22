@@ -396,8 +396,7 @@ export function handleShiftClick(
 			applySingleBlockRange(writer, clickedBlockEl, anchor.offset, focusPoint.offset);
 			return true;
 		}
-		selection.enterCrossBlock(anchor, focusPoint);
-		applyCollapsedCaret(writer, clickedBlockEl, focusPoint);
+		enterRangeAtPress(selection, writer, clickedBlockEl, anchor, focusPoint);
 		return true;
 	}
 
@@ -413,11 +412,24 @@ export function handleShiftClick(
 		return true;
 	}
 
-	selection.enterCrossBlock(anchor, focusPoint);
-	// A collapsed caret for paste dispatch (see `enterCrossBlockFromKeyboard`); the click's
-	// default is not relied on.
-	applyCollapsedCaret(writer, clickedBlockEl, focusPoint);
+	enterRangeAtPress(selection, writer, clickedBlockEl, anchor, focusPoint);
 	return true;
+}
+
+/** A range across blocks from `anchor` to a press, with a collapsed caret at the press for paste
+ *  dispatch (see `enterCrossBlockFromKeyboard`) and focus on the pressed block. */
+function enterRangeAtPress(
+	selection: SelectionState,
+	writer: CaretWriter,
+	pressedBlockEl: HTMLElement,
+	anchor: SelectionPoint,
+	press: SelectionPoint
+): void {
+	selection.enterCrossBlock(anchor, press);
+	applyCollapsedCaret(writer, pressedBlockEl, press);
+	// The handled press cancels the browser's focus move, and reading mode declines the caret
+	// that would otherwise carry focus there.
+	pressedBlockEl.focus({ preventScroll: true });
 }
 
 /** The edge of a selected widget a shift-click grows from: the one away from the click, so the

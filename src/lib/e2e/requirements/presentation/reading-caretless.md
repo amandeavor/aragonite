@@ -35,9 +35,10 @@ there's no caret to move inside one.
 ## User interactions
 
 - **A double click** still selects its word, for copy
-- **Shift+click after a click** selects from the clicked point to the Shift+click, as it does
-  while editing, and still draws no caret (Shift+Arrow selects nothing, since there's no caret to
-  move; `requirements/presentation/reading-selection.md` has the rest of the mouse's selection)
+- **Shift+click after a click** selects from the clicked point to the Shift+click and moves focus
+  there, as it does while editing, and still draws no caret (Shift+Arrow selects nothing, since
+  there's no caret to move; `requirements/presentation/reading-selection.md` has the rest of the
+  mouse's selection)
 - **Backspace and Shift+Backspace after a click** do nothing: the page stays (WebKit would go back
   in history), focus stays on the clicked block and the document is unchanged
 
