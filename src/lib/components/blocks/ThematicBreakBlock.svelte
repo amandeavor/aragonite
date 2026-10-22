@@ -90,6 +90,7 @@
 			blockEdit,
 			focus: focusActions,
 			isReading,
+			selection,
 			caretMemory,
 			commandOf: (press) => wiring.resolveChord(press, node.kind)
 		});

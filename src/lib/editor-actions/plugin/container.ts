@@ -465,6 +465,7 @@ export function createContainerBlock(deps: ContainerBlockDeps): ContainerBlock {
 			blockEdit: parentBlockEdit,
 			focus: parentFocus,
 			isReading: () => isReadingMode(getPresentationMode),
+			selection,
 			caretMemory,
 			commandOf
 		});

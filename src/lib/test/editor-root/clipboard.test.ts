@@ -11,6 +11,7 @@ import type { PasteImageHook } from '#lib/host-hooks.js';
 import type { CrossBlockHandlers } from '#lib/selection/cross-block/dispatch.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
+import { WHOLE_BLOCK_INPUT_ATTR } from '#lib/editor-actions/whole-block-focus-surface.js';
 
 // Chromium aims a clipboard event at <body> and Firefox at a block element when the selection's end
 // has no caret, at a cross-block endpoint or a selected widget; driven through `target`.
@@ -161,6 +162,20 @@ describe('editor-root clipboard routing', () => {
 
 			expect(seen).toEqual(['copy']);
 		});
+
+		// A block focused whole holds focus on its hidden input, editable outside reading mode, and
+		// sends Mod+C over a range across blocks to the copy event.
+		for (const editable of ['true', 'false']) {
+			it(`takes a copy aimed at a block's whole-block input (contenteditable=${editable})`, () => {
+				const h = harness();
+				h.selection.enterCrossBlock({ path: [0], offset: 0 }, { path: [1], offset: 5 });
+				const input = blockElement(h.root);
+				input.setAttribute(WHOLE_BLOCK_INPUT_ATTR, '');
+				input.setAttribute('contenteditable', editable);
+
+				expect(h.fire('copy', input).written.get('text/plain')).toContain('hello');
+			});
+		}
 
 		// The search bar's input, a host header field and a plugin's own editable keep their
 		// clipboard; the editor's block surfaces mark theirs handled first.

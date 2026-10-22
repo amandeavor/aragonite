@@ -43,8 +43,8 @@ export const HARDCODED_CHORD_SITES: readonly HardcodedChordSite[] = [
 	{
 		file: 'components/editor-root/keydown.ts',
 		chords: [],
-		keys: ['Escape', 'H'],
-		note: 'Escape closes the find bar, and Mod+H picks the replace row as the bar opens (reserved UI chords, enumerated). The modifier read is a refusal: an unchorded character over a live range is written as text, a chorded one goes to the handlers below it.'
+		keys: ['Backspace', 'Escape', 'H'],
+		note: "Escape closes the find bar, and Mod+H picks the replace row as the bar opens (reserved UI chords, enumerated). Backspace outside a text field only loses the browser's own default (a step back in history, in some engines) and still reaches every handler. The modifier read is a refusal: an unchorded character over a live range is written as text, a chorded one goes to the handlers below it."
 	},
 	{
 		file: 'debug/input-recorder.ts',

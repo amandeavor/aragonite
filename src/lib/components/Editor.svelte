@@ -1042,6 +1042,7 @@
 		getMyPath: () => selectionState.focus?.path ?? [],
 		selection: selectionState,
 		caretWriter,
+		standInCaret: readingFocus.focusCaret,
 		getDoc,
 		getBlockElByPath,
 		caretLanding,

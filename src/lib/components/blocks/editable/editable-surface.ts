@@ -247,8 +247,9 @@ export interface EditableSurfaceDeps {
 	placeholder: () => PlaceholderPolicy | null;
 	/** A prose block's view of the pair the auto-pair wrote; omitted where nothing pairs. */
 	ownPairs?: BlockAutoPairs;
-	/** The editor's reading-mode tab stop, which the element takes its tabindex from. */
-	readingFocus: Pick<ReadingFocus, 'hold'>;
+	/** The editor's reading-mode tab stop, which the element takes its tabindex from, and the caret
+	 *  reading mode stands in for, which a Shift+click grows from. */
+	readingFocus: Pick<ReadingFocus, 'hold' | 'focusCaret'>;
 	/** What the editor shows, for an arrow in a block taller than that with no caret, and where a
 	 *  page key steps to. */
 	scrollOwner: Pick<ScrollOwner, 'port' | 'visibleBand' | 'showRect' | 'pathAt'>;
@@ -389,6 +390,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 		getMyPath: deps.getMyPath,
 		selection: deps.selection,
 		caretWriter: deps.caretWriter,
+		standInCaret: () => deps.readingFocus.focusCaret(),
 		getDoc: deps.getDoc,
 		getBlockElByPath: deps.getBlockElByPath,
 		caretLanding: deps.caretLanding,
