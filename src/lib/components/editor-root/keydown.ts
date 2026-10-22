@@ -81,10 +81,11 @@ export function createEditorRootKeydown(deps: EditorRootKeydownDeps): EditorRoot
 		return active === root || (noElementFocused && claimsBodyChord(root));
 	}
 
-	/** WebKit goes back in history on a Backspace outside a text field, and in reading mode every
-	 *  block is outside one. */
+	/** WebKit goes back in history on a Backspace outside a field, and in reading mode every block
+	 *  is outside one. Any input keeps the key, since a date input deletes on it too. */
 	function keepPageOnBackspace(event: KeyboardEvent, root: HTMLElement, active: Element | null) {
 		if (event.key !== 'Backspace' || isTextEntrySurface(active)) return;
+		if (active instanceof HTMLInputElement) return;
 		if (focusInEditor(root, active) || ownsWindowedOutCaret(root, active)) event.preventDefault();
 	}
 
