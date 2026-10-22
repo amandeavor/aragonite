@@ -3,34 +3,15 @@
 // Miss-analysis (GH #768): the auto-close rows typed fresh openers only, so none retyped a broken
 // opener whose old closer still stood below.
 import { describe, it, expect, beforeEach } from 'vitest';
-import { serialize } from '#lib/core/serializer.js';
-import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
-import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createLeafTyping } from '#lib/editor-actions/leaf-write.js';
-import { legalizeWrite } from '#lib/tree-operations/content-write.js';
-import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
-import { expectParseConverged } from '#lib/test/harness/parse-converged.js';
 import { registerMathBlock } from '#lib/plugins/latex/latex-kind.js';
 import { registerMermaidKind } from '#lib/plugins/mermaid/mermaid-kind.js';
 import { testView } from '#lib/test/support/test-view.js';
+import { typingOver } from '#lib/test/harness/typing.js';
 
 beforeEach(() => {
 	registerMathBlock(testView());
 	registerMermaidKind(testView());
 });
-
-/** A typing session over `source`: each call writes block `index` through the keystroke route. */
-function typingOver(source: string) {
-	const { deps } = makeEditorActionsDeps(source);
-	const typing = createLeafTyping(deps, createUndoController(deps));
-	const type = (index: number, text: string) => {
-		const write = legalizeWrite(deps.doc, index, text, 'authored');
-		expect(typing.writeLeafInPlace(docPathFrom([index]), write, 0).wrote).toBe(true);
-		expectParseConverged(deps.doc);
-		return serialize(deps.doc);
-	};
-	return { doc: deps.doc, type };
-}
 
 describe('closing a fence a write leaves open', () => {
 	// Each fence kind, and the `$$` block, loses its opener's first marker byte and gets it back.

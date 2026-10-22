@@ -1,0 +1,23 @@
+// A typing session over a document: each call writes one block's bytes through the keystroke route
+// and its settle, and fails on a live tree that a reload would read differently.
+
+import { expect } from 'vitest';
+import { serialize } from '#lib/core/serializer.js';
+import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
+import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
+import { createLeafTyping } from '#lib/editor-actions/leaf-write.js';
+import { legalizeWrite } from '#lib/tree-operations/content-write.js';
+import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
+import { expectParseConverged } from '#lib/test/harness/parse-converged.js';
+
+export function typingOver(source: string) {
+	const { deps } = makeEditorActionsDeps(source);
+	const typing = createLeafTyping(deps, createUndoController(deps));
+	const type = (index: number, text: string): string => {
+		const write = legalizeWrite(deps.doc, index, text, 'authored');
+		expect(typing.writeLeafInPlace(docPathFrom([index]), write, 0).wrote).toBe(true);
+		expectParseConverged(deps.doc);
+		return serialize(deps.doc);
+	};
+	return { doc: deps.doc, type };
+}
