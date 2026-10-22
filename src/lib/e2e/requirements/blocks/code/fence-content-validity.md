@@ -27,19 +27,15 @@ lines itself when it must.
 
 ## The three rules
 
-- **The fence lines are repaired, in whichever direction the write broke them.** An
-  unclosed fence absorbs every block below it at the next parse, and a write cut short can
-  leave one from either half, so the surviving first line decides which repair applies. With
-  the block's own opener still there, a missing closer is restored, on the block's own run
-  length, indent and line ending (the block's ending, since the written slice may carry
-  none), because the node still says it is a closed fence and the structure on screen is
-  what the bytes are made legal for. Without that opener, a surviving line reading as this
-  fence's closer is left-over syntax the write stranded: nothing says there is a block to
-  size a fence to, and read as text the run would open one over the live siblings below, so
-  it is dropped and the body fragment merges as prose. The drop is skipped when an opener
-  above could close on the run (same marker, no longer than it), since that run is then a
-  live block's terminator; an open line with a different marker or a longer run is body text
-  the run never terminated.
+- **A missing closer comes back; a stranded one stays.** An unclosed fence absorbs every
+  block below it at the next parse, and a write cut short can leave one from either half, so
+  the surviving first line decides. With the block's own opener still there, a missing closer
+  is restored, on the block's own run length, indent and line ending (the block's ending,
+  since the written slice may carry none), because the node still says it is a closed fence
+  and the structure on screen is what the bytes are made legal for. Without that opener, a
+  surviving closer line is a line the write never touched, so it stays: read as text it opens
+  a fence over the blocks below, which is how a reload reads the same bytes, and putting the
+  opener back closes it again.
   On a write cut short the restore and the growth cannot both fire: the fence grows on a
   body line that reads as this block's closer, which is the very line the restore reads as
   the closer, and cutting a write short only removes bytes.
@@ -104,16 +100,13 @@ rule sat at two of the block's ten commit sites, and both produce the same corru
   paragraph-guarded merges, and the branches of delete that clear a block's markers or a
   table cell: none reaches a position a `fencedCode` can occupy, so none of them can drop
   a closer today.
-- **A bare fence's lone surviving line is read as the closer.** ` ``` ` with no info
+- **A bare fence's lone surviving line is read as the opener.** ` ``` ` with no info
   string reads as this block's opener and as its closer alike, so a write leaving only that
-  line is ambiguous: a cut from the head meant to keep an empty code block, a cut from the
-  tail to leave a remnant behind. It is dropped, since nothing owns the run either way and
-  restoring would build a block out of a remnant, so an emptied bare fence disappears rather
-  than surviving empty. A fence with an info string, or a stranded run longer than the
-  block's own, is unambiguous and takes its own branch.
+  line is ambiguous. It gets its closer back, so an emptied bare fence survives as an empty
+  code block rather than opening a fence over the blocks below.
 - **The writes that land in place keep a kind their bytes no longer describe.** The branch
   of range delete that stays inside one block writes raw with no reparse behind it and
-  nothing works the kind out again afterwards, so a drop that turns a code block into prose
+  nothing works the kind out again afterwards, so a write that turns a code block into prose
   leaves the node still calling itself `fencedCode`. That holds for every kind and is not the
   fence rule's doing (a heading losing its `#` on the same branch does it too); the bytes are
   correct, so nothing is absorbed on reload.
@@ -136,8 +129,9 @@ rule sat at two of the block's ten commit sites, and both produce the same corru
   code block with the blocks below it still siblings, through every branch of range delete
   (inside one block, the cross-block merge, the stop at a block's own markers, a table endpoint)
 - a selection running from an earlier block into a code body, deleted, leaves the surviving
-  body fragment as prose and the blocks below it still siblings, through those same four
-  branches, including a code block nested in a blockquote
+  body fragment as prose and keeps the closer, which opens a fence over the blocks below as a
+  reload reads it, through those same four branches, including a code block nested in a
+  blockquote
 
 ## Edge cases
 
@@ -146,16 +140,14 @@ rule sat at two of the block's ten commit sites, and both produce the same corru
   left in the DOM (pinned at the component level, `code-fence-write-commit.test.ts`)
 - a restored closer carries the block's own run length, opener indent and line ending:
   a four-backtick block gets four back, a CRLF block a CRLF, including when the document's
-  last block has no trailing newline and the slice carries no ending at all; a drop rejoins
-  the surviving lines on that same ending rather than leaving half a separator
-- a delete that consumes the opener drops the survivor's fence run, whether that is a lone
-  closer line or one longer than the opener the delete took (legal GFM, and what loaded
-  markdown supplies): the fence is gone, not broken
-- a delete that consumes both fence lines repairs nothing: no run survives to drop and
-  nothing survives to restore from
+  last block has no trailing newline and the slice carries no ending at all
+- a delete that consumes the opener keeps the survivor's fence run, whether that is one longer
+  than the opener the delete took (legal GFM, and what loaded markdown supplies) or a lone bare
+  line, which gets its closer back
+- a delete that consumes both fence lines repairs nothing: nothing survives to restore from
 - a find/replace whose match runs from the body through the closer line gets the closer
-  back, and one that runs from the opener line down drops the closer it strands, so either
-  way the block below it stays a sibling
+  back, and one that runs from the opener line down keeps the closer it strands, which opens
+  a fence over the block below as a reload reads it
 - a replacement that pushes text above a surviving opener keeps the closer that opener
   owns, rather than leaving a live block unclosed
 - the collapsed caret keeps the offset the shortened write gave it: the closer lands after
@@ -168,6 +160,10 @@ rule sat at two of the block's ten commit sites, and both produce the same corru
   refusal on a stranded closer read as a deliberate limit rather than as half a rule; and
   a test cutting from the other end would have reached no fence rule at all, since the
   shared merge normalized the joined raw against the first block's rule alone (issue #58).
+
+- The stranded-closer rows pinned the closer's drop as the fix for #58, so a typed or
+  deleted opener character silently lost a line nobody touched; no check compared what a
+  write rule kept against what the write left alone (issue #768, now G1.143).
 
 - The typed-closer case kept a byte expectation from before blank lines moved onto the
   blocks (a lone blank line was a prefix on the document, so it stayed above the typed block)
