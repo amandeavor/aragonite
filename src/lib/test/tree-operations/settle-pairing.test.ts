@@ -50,8 +50,9 @@ describe('a write that moves a closer re-pairs the blocks below as a reload does
 	for (const { kind, raw, later, bare } of KINDS) {
 		const name = `${kind} (${raw.slice(0, 3)})`;
 
+		// The stranded closer pairs with the bare opener, whose own closer pairs with the next one.
 		it(`${name}: a broken opener typed back restores the document`, () => {
-			const source = `para\n\n${raw}\ntext\n\n${later}\nafter\n`;
+			const source = `para\n\n${raw}\ntext\n\n${bare}\nmid\n\n${later}\nafter\n`;
 			const { doc, type } = typingOver(source);
 
 			expect(type(1, raw.slice(1))).toBe(source.replace(raw, () => raw.slice(1)));

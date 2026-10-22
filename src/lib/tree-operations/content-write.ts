@@ -205,19 +205,21 @@ function closeWrittenConstruct(
 	if (!terminator || !opensOnWrittenLine(parent.children[blockIndex].raw, text, parsed)) {
 		return { text, parsed };
 	}
-	if (takesCloserBelow(text, next, read)) return { text, parsed };
+	if (takesCloserBelow(text, parent.children.slice(blockIndex + 1), read)) return { text, parsed };
 	const closed = text + terminator;
 	return { text: closed, parsed: read(closed) };
 }
 
-/**
- * Whether the block below starts with the written fence's own closer (a backtick typed back onto a
- * broken opener) and the bytes below that closer read whole without it.
- */
-function takesCloserBelow(text: string, next: NodeView, read: FragmentReader): boolean {
+/** Whether the block below starts with the written fence's closer (a backtick typed back) and taking
+ *  it leaves no fence open to the body's end, as one typed over a bare-fenced block would. */
+function takesCloserBelow(text: string, below: readonly NodeView[], read: FragmentReader): boolean {
 	const closed = (bytes: string) => !openConstructTerminator(bytes, read(bytes).children, read);
+	const [next] = below;
 	const head = next.leadingTrivia + firstDisplayLine(next.raw).text + ownTrailingLineEnding(text);
-	return closed(text + head) && closed(text + next.leadingTrivia + next.raw);
+	if (!closed(text + head)) return false;
+	let rest = text;
+	for (const block of below) rest += block.leadingTrivia + block.raw;
+	return closed(rest);
 }
 
 /** Whether the last block of `parsed` opens on a line the write changed in `before`. */
