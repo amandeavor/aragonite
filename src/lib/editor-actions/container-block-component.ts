@@ -84,6 +84,7 @@ export interface WholeBlockKeyDeps extends BlockEdgeExitDeps {
 	getRaw: () => string;
 	blockEdit: Pick<BlockEditActions, 'splitBlock' | 'deleteBlock' | 'insertParagraph'>;
 	isReading: () => boolean;
+	selection: Pick<SelectionState, 'isCrossBlock'>;
 	caretMemory: Pick<CaretMemory, 'noteKey'>;
 	/** What the keypress resolves to at this block's kind, overrides included. */
 	commandOf: (e: KeyboardEvent) => AnyCommandId | null;
@@ -110,9 +111,10 @@ export function handleWholeBlockKeys(e: KeyboardEvent, deps: WholeBlockKeyDeps):
 		return;
 	}
 
-	// Mod+C and Mod+X copy the block's own markdown: a keydown carries no ClipboardEvent,
-	// and preventDefault suppresses the native copy, so writeText is the only writer.
+	// Mod+C and Mod+X copy the block's own Markdown through writeText, since a keydown carries no
+	// ClipboardEvent; a range across blocks is left to the copy event the editor's handlers take.
 	if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'c' || e.key === 'x')) {
+		if (deps.selection.isCrossBlock) return;
 		e.preventDefault();
 		void copyFocusedWholeBlock(deps, e.key === 'x');
 		return;

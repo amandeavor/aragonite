@@ -145,15 +145,16 @@ export interface ClipboardHandlers {
 }
 
 export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHandlers {
-	const arms: readonly ClipboardArm[] = [
+	// The selections the editor holds itself, which copy the same in every mode.
+	const editorSelectionArms: readonly ClipboardArm[] = [
 		...(deps.selectionArms ?? []),
 		crossBlockClipboardArm({
 			selection: deps.selection,
 			getDoc: deps.getDoc,
 			crossBlock: deps.crossBlock
-		}),
-		deps.rangeArm
+		})
 	];
+	const arms: readonly ClipboardArm[] = [...editorSelectionArms, deps.rangeArm];
 	const imageArm = createImagePasteArm({
 		onPasteImage: deps.onPasteImage,
 		events: deps.events,
@@ -163,8 +164,10 @@ export function createClipboardHandlers(deps: ClipboardSurfaceDeps): ClipboardHa
 	function onCopy(e: ClipboardEvent): void {
 		deps.caretMemory.forget();
 		e.preventDefault();
-		// Reading mode, and a copy no `ClipboardArm` takes, copy what the user sees.
-		if (deps.isReadOnly() || takeCopy(e, arms) === null) writeShownSelection(e);
+		// A range inside one block copies what the user sees in reading mode, as does a copy no
+		// `ClipboardArm` takes.
+		if (takeCopy(e, deps.isReadOnly() ? editorSelectionArms : arms) === null)
+			writeShownSelection(e);
 	}
 
 	function onCut(e: ClipboardEvent): Promise<void> {
