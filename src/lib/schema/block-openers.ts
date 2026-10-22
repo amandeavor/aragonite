@@ -51,8 +51,8 @@ export interface BlockOpener {
 	tryOpen(ctx: OpenContext): BlockOpenerResult | null;
 	/** Whether a line of this kind interrupts an open paragraph (GFM continuation rules); `false` = never. */
 	interruptsParagraph: ((lineText: string) => boolean) | false;
-	/** For an opener that can back out (a lone `$$` reads as a paragraph until its closer comes):
-	 *  which blocks a line below could still change, and which lines could. Absent: none can. */
+	/** For an opener whose reading a line below can still change (a lone `$$` backs out to a
+	 *  paragraph, an open fence takes in what follows): which blocks, and which lines. Absent: none. */
 	readingNotFinal?: UnfinishedReading;
 }
 
