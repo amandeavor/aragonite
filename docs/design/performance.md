@@ -32,7 +32,7 @@ A single block's span rebuild scales with paragraph length, because windowing wi
 
 ### 2. Typing inside a large container
 
-A container's `raw` (its verbatim source bytes, children included) holds its full outer source, so every keystroke inside the container has to keep that copy honest. The rebuild rewrites the changed child's region alone (`structural-edits.md` § The container `raw` contract), reading one child instead of all of them. The `giant-single-{list,blockquote,table}-interior` rows type inside the container and gate it, and their numbers are in `src/lib/test/perf/baseline.json`. What's left on this axis is the tail join, the fourth axis below.
+A container's `raw` (its verbatim source bytes, children included) holds its full outer source, so every keystroke inside the container has to keep that copy honest. The rebuild rewrites the changed child's region alone (`structural-edits.md` § The container `raw` contract), reading one child instead of all of them. The `giant-single-{list,blockquote,table}-interior` rows type inside the container and gate it. What's left on this axis is the tail join, the fourth axis below.
 
 ### 3. A live whole-document derivation
 
