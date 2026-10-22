@@ -100,21 +100,47 @@ test.describe('reading mode: a click keeps no caret', () => {
 		expect(await page.evaluate(() => getSelection()?.toString().trim())).toBe('gamma');
 	});
 
-	// Keyboard selection extends from a caret, and reading mode keeps none: a pinned delta.
-	test('Shift+click after a click focuses the block it lands on and selects nothing', async ({
+	test('Shift+click after a click selects from the clicked word, and still draws no caret', async ({
 		page
 	}) => {
 		const editor = await loadReading(page, DOC);
 
 		await clickWord(page, [0], 'gamma');
-		const at = await textRunCenter(page, 'para', { path: [1] });
+		const at = await textRunStart(page, 'para', { path: [1] });
 		await page.keyboard.down('Shift');
 		await page.mouse.click(at.x, at.y);
 		await page.keyboard.up('Shift');
 
+		expect(await editor.bridge.getSelection()).toEqual({
+			anchor: { path: [0], offset: 'Alpha beta '.length },
+			focus: { path: [1], offset: 'Second '.length }
+		});
+		expect(await holdsCaret(page)).toBe(false);
+	});
+
+	// WebKit runs history back on a Backspace outside a text field, a default the editor must
+	// cancel; the window hears the key after the editor's own listener, so it reads the verdict.
+	test('Backspace after a click keeps the page and the focused block', async ({ page }) => {
+		// A page in the history to go back to.
+		await new EditorPage(page).goto('?presentationMode=source');
+		const editor = await loadReading(page, DOC);
+		const url = page.url();
+		await page.evaluate(() => {
+			const w = window as any;
+			w.__backspaceDefaults = [];
+			window.addEventListener('keydown', (e) => {
+				if (e.key === 'Backspace') w.__backspaceDefaults.push(!e.defaultPrevented);
+			});
+		});
+
+		await clickWord(page, [1], 'para');
+		await page.keyboard.press('Backspace');
+		await page.keyboard.press('Shift+Backspace');
+
+		expect(await page.evaluate(() => (window as any).__backspaceDefaults)).toEqual([false, false]);
+		expect(page.url()).toBe(url);
 		expect(await focusName(page)).toContain('[1]');
-		expect(await page.evaluate(() => getSelection()?.toString() ?? '')).toBe('');
-		expect(await editor.bridge.getSelection()).toBeNull();
+		expect(await editor.bridge.getSource()).toBe(DOC);
 	});
 
 	test('leaving reading mode puts the caret where the click was', async ({ page }) => {
