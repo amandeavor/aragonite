@@ -16,19 +16,27 @@ export function checkWriteRuleKeepsBytes(
 	written: string,
 	stored: string
 ): InvariantViolation | null {
-	if (keepsUntouched(node, written, stored)) return null;
+	const lost = lostUntouched(node, written, stored);
+	if (lost === null) return null;
 	const emptied = withoutEmptiedMarker(node, written);
-	if (emptied !== null && keepsUntouched(node, emptied, stored)) return null;
+	if (emptied !== null && lostUntouched(node, emptied, stored) === null) return null;
 	return {
 		code: 'write-rule-keeps-bytes',
-		message: `${node.kind}'s write rule deleted bytes the write left alone`,
+		message: `${node.kind}'s write rule deleted bytes the write left alone, from ${JSON.stringify(lost)} on`,
 		detail: { written, stored }
 	};
 }
 
-function keepsUntouched(node: NodeView, written: string, stored: string): boolean {
+/** The bytes outside the written span from the first one `stored` lacks, or null when it keeps
+ *  them all, in order. */
+function lostUntouched(node: NodeView, written: string, stored: string): string | null {
 	const span = writtenSpan(node.raw, written);
-	return keepsInOrder(written.slice(0, span.start) + written.slice(span.end), stored);
+	const kept = written.slice(0, span.start) + written.slice(span.end);
+	let at = 0;
+	for (let i = 0; i < stored.length && at < kept.length; i++) {
+		if (stored[i] === kept[at]) at++;
+	}
+	return at === kept.length ? null : kept.slice(at);
 }
 
 /** `written` less the block's own trailing marker when the line above it is left blank; null
@@ -40,13 +48,4 @@ function withoutEmptiedMarker(node: NodeView, written: string): string | null {
 	const title = display.slice(0, display.length - marker.length);
 	if (!isBlankLine(title.slice(title.lastIndexOf('\n') + 1))) return null;
 	return title + ownTrailingLineEnding(written);
-}
-
-/** Whether every character of `kept` appears in `stored`, in order. */
-function keepsInOrder(kept: string, stored: string): boolean {
-	let at = 0;
-	for (let i = 0; i < stored.length && at < kept.length; i++) {
-		if (stored[i] === kept[at]) at++;
-	}
-	return at === kept.length;
 }

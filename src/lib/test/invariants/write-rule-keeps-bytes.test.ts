@@ -27,6 +27,7 @@ describe('G1.143 a write rule keeps the bytes the write left alone', () => {
 			'X```js\ncode\n'
 		);
 		expect(violation?.code).toBe('write-rule-keeps-bytes');
+		expect(violation?.message).toContain('from "```\\n" on');
 	});
 
 	describe('the one exception: the marker of the block the write emptied', () => {

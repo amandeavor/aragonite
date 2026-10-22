@@ -112,7 +112,7 @@ describe('kind conformance: the raw-write cell fails a broken rule', () => {
 			return legal.startsWith('```') ? legal : legal.replace(/```\n$/, '');
 		});
 		expect(() => checkLeafRawWrite('fencedCode', fixture, dropsStranded)).toThrow(
-			/the first line cut .*deleted bytes the write left alone/
+			/the first line cut .*deleted bytes the write left alone, from "```\\n" on/
 		);
 	});
 
