@@ -29,6 +29,8 @@ import {
 	typeFreshItem,
 	typeFenceOpener,
 	exitFence,
+	breakFenceOpener,
+	retypeFenceBacktick,
 	breakAtEndThen,
 	type BreakFollow
 } from './gestures/structure';
@@ -254,6 +256,16 @@ export class Gestures {
 	/** Enter on the fence's empty last line leaves the block. */
 	exitFence(): Promise<void> {
 		return exitFence(this.ctx);
+	}
+
+	/** Backspace on the last backtick of a code block's opener. */
+	breakFenceOpener(blockIndex: number): Promise<void> {
+		return breakFenceOpener(this.ctx, blockIndex);
+	}
+
+	/** The backtick typed back after {@link breakFenceOpener}. */
+	retypeFenceBacktick(): Promise<void> {
+		return retypeFenceBacktick(this.ctx);
 	}
 
 	async hardBreakAt(blockPath: number[], offset: number): Promise<void> {

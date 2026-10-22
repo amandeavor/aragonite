@@ -86,17 +86,17 @@ export function reshapeMathSource(text: string, caret: number): MathEdit | null 
 	return ending ? onOwnLines(source.body, caret, ending) : null;
 }
 
-/** A source made legal as bytes: reshaped, closed, and rid of a lone fence line past the block. A
- *  literal write's lines stay their own blocks unless the last one is exactly `$$`. */
+/** A source made legal as bytes: reshaped and closed. A literal write's lines stay their own blocks
+ *  unless the last one is exactly `$$`. */
 export function legalMathSource(
 	text: string,
 	caret: number,
 	write: { authored: boolean; closerEnding: LineEnding }
 ): MathEdit {
 	const joined = !write.authored && broughtLines(text);
-	if (joined) return withoutStrandedFence(closedOnLineZero(text, caret));
+	if (joined) return closedOnLineZero(text, caret);
 	const reshaped = reshapeMathSource(text, caret) ?? { text, caret };
-	return withoutStrandedFence(withCloser(reshaped, write.closerEnding));
+	return withCloser(reshaped, write.closerEnding);
 }
 
 // ── Internal ───────────────────────────────────────────────────────────────
@@ -155,31 +155,4 @@ function withCloser({ text, caret }: MathEdit, closerEnding: LineEnding): MathEd
 	if (isMathFenceLine(lines[0].text)) return { text: text + closerEnding + BLOCK_FENCE, caret };
 	if (lines.length === 1) return { text: text + BLOCK_FENCE, caret };
 	return onOwnLines(source.body, caret, lines[0].ending as LineEnding);
-}
-
-/** Drops the fence line past the block that no later one pairs with: as text, it would open a
- *  block running to the next `$$` anywhere below. */
-function withoutStrandedFence({ text, caret }: MathEdit): MathEdit {
-	const lines = displayLines(text);
-	const source = readMathSource(text);
-	const blockEnd = source ? text.length - source.after.length : 0;
-	let open = -1;
-	for (let i = 0, offset = 0; i < lines.length; i++) {
-		if (offset >= blockEnd && isMathFenceLine(lines[i].text)) open = open === -1 ? i : -1;
-		offset += lines[i].text.length + lines[i].ending.length;
-	}
-	return open === -1 ? { text, caret } : withoutLine(lines, open, caret);
-}
-
-/** The lines with one removed; the last line takes the ending above it along. */
-function withoutLine(lines: Line[], index: number, caret: number): MathEdit {
-	let from = lineStart(lines, index);
-	let to = from + lines[index].text.length + lines[index].ending.length;
-	if (index === lines.length - 1 && index > 0) {
-		from -= lines[index - 1].ending.length;
-		to = from + lines[index - 1].ending.length + lines[index].text.length;
-	}
-	const text = lines.map((line) => line.text + line.ending).join('');
-	const moved = caret <= from ? caret : Math.max(from, caret - (to - from));
-	return { text: text.slice(0, from) + text.slice(to), caret: moved };
 }

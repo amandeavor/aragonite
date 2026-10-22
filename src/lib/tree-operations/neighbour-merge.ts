@@ -16,7 +16,7 @@ import {
 import { tableTakesLine } from '../core/parsers/table';
 import { assignChildIdsDeep } from '../block-id';
 import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
-import { blockReadingNotFinal, type GrammarView } from '../schema/block-openers';
+import { blockReadingNotFinal, readsOnIn, type GrammarView } from '../schema/block-openers';
 import { ensureEditableContainers } from '../schema/opened-reading';
 import type { SharingState } from './sharing';
 import { spliceMany } from './splice-many';
@@ -55,6 +55,7 @@ export function absorbSeamReading(
 	onBeforeSplice?: () => void
 ): SeamAbsorption {
 	const read = (bytes: string) => readBlocks(bytes, { grammar, scope: 'fragment' });
+	const readsOn = readsOnIn(grammar);
 	const { children } = body;
 	if (seamLeft < 0) return { at: 0, span: 0, eaten: 0, spliced: false };
 	let left = seamLeft;
@@ -75,6 +76,8 @@ export function absorbSeamReading(
 		if (separateTableFollower(body, right, sharing, grammar)) break;
 		// A context-dependent kind has no standalone reading, so a join touching it cannot be asked.
 		if (window.some((node) => tryGetBlockKindDescriptor(node.kind)?.contextDependentKind)) break;
+		// A block that reads on takes the blocks below in one re-read, the unfinished-reading walk's.
+		if (readsOn(children[at + span - 1].raw)) break;
 		if (probe !== undefined && declinesOnHeadLine(window, probe - at, read, grammar)) break;
 		probe = undefined;
 		const bytes = joinedWindowBytes(window, window.length);

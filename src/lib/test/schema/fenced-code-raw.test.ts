@@ -130,8 +130,9 @@ describe('reconcileFenceWrite: info-string sanitization', () => {
 // Typed edits reach the fence lines where the mode paints them, so the typed path keeps one opener
 // and one closer too: a fence line left alone would read every block below as its body.
 describe('reconcileFenceWrite: a typed edit keeps one opener and one closer', () => {
-	it('drops the closer an edit to the opener stranded', () => {
-		expect(write('js\ncode\n```', backtick()).display).toBe('js\ncode');
+	// Miss-analysis (GH #768): this row pinned the stranded closer's drop as intended.
+	it('keeps the closer an edit to the opener stranded', () => {
+		expect(write('js\ncode\n```', backtick()).display).toBe('js\ncode\n```');
 	});
 
 	it('puts back a closer an edit removed', () => {

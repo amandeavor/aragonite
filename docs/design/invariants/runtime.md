@@ -101,6 +101,8 @@ These checks run in three kinds of place:
 | G1.138 | A commit never addresses a container state whose component has unmounted                   | A·N     |
 | G1.139 | Each run of blank lines a fix-up touched reads on reload as the tree holds it              | A·P·N   |
 | G1.141 | Asking which line a caret at a soft wrap is on leaves the selection's focus where it was   | A·N     |
+| G1.143 | A kind's write rule never deletes bytes outside the written span, but an emptied marker    | A·N     |
+| G1.145 | The blocks a fix-up re-divided read back as themselves, with the block after them          | A·N     |
 
 ### The entries
 
@@ -596,3 +598,17 @@ the caret writer's `focusEndsLine` moves the focus to its line's end and back, w
 of the wrap the browser shows it on. Dev fails when the move back doesn't return the focus, since
 the writer then puts it back by hand and loses that side. `checkLineReadRestored` · `line-read-restores.test.ts`,
 `caret-line-at-wrap.spec.ts`.
+
+**G1.143 · A kind's write rule never deletes bytes outside the written span**
+(`write-rule-keeps-bytes`). A `rawWrite` may add bytes (a closer, a longer run), but every byte the
+write shares with the block around the span stays, in order, so a broken fence opener keeps its
+closer. One exception: a block the write emptied gives up its own marker, as a blank setext title
+loses its underline. Dev checks every run through `kindWriteRule` (G4.245).
+`checkWriteRuleKeepsBytes` · `node-primitives.ts` · `write-rule-keeps-bytes.test.ts`.
+
+**G1.145 · A settled window reads back as itself** (`settled-window-reads-back`). Once a fix-up
+reports a window, its blocks and the one after them, read again as one stretch of bytes, give the
+same blocks, so a fence whose closer moved can't leave the blocks below paired the old way. Blank
+lines are G1.139's, and a block that reads otherwise alone (a list item) is skipped. A write that
+keeps its block in place reports no window and pays nothing.
+`checkSettledWindowReadsBack` · `settle.ts` · `settled-window-reads-back.test.ts`, `settle-pairing.test.ts`.

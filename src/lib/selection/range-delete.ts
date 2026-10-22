@@ -131,8 +131,8 @@ function joinedRangeDelete(
 	const startCut = charOffsetOf(start, 'rangeDelete:prose-merge-start');
 	const endOffset = charOffsetOf(end, 'rangeDelete:prose-merge-end');
 
-	// A cross-block join runs the end slice through the end block's own write rule, or a cut from
-	// its head would leave its closer stranded; a same-block merge takes the rule once, below.
+	// A cross-block join runs the end slice through the end block's own write rule, which reads the
+	// end block's shape; a same-block merge takes the rule once, below.
 	const join = sameBlock
 		? {
 				raw: startRaw.slice(0, startCut) + startRaw.slice(endOffset),

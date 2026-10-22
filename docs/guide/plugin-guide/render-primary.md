@@ -27,7 +27,7 @@ matchMermaid('```mermaid'); // { marker: '`', length: 3, info: 'mermaid', indent
 matchMermaid('  ~~~ mermaid title'); // { marker: '~', length: 3, info: 'mermaid title', indent: '  ', ... }
 matchMermaid('```js'); // null: the code block keeps it
 scanFence(ctx, fence); // { closer: 3, consumed: 4, raw: '```mermaid\n...```\n', body: '...' }
-fenceRawWrite(fenceShapeOfRaw).normalize('graph TD\n```\n', ctx); // 'graph TD\n': the stranded closer goes
+fenceRawWrite(fenceShapeOfRaw).normalize('```mermaid\ngraph TD\n', ctx); // '```mermaid\ngraph TD\n```\n': the cut closer comes back
 
 const diagrams = createAsyncRendererSlot<string, { svg?: string; error?: string }>({
 	key: (code) => code,

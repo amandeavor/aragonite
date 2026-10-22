@@ -48,17 +48,17 @@ describe('range delete inside a fenced code block', () => {
 });
 
 // Miss-analysis: GH #58; the fence pins only drove ranges that start in a code body.
+// Miss-analysis (GH #768): these rows pinned the closer's drop, a line the range never covered.
 describe('range delete that consumes a fenced code opener', () => {
 	const FENCE = 'para\n\n```js\nbody\n```\n\ntail\n';
 
-	it('drops the closer the cross-block merge stranded', () => {
+	it('keeps the closer the cross-block merge stranded, which opens a fence over the rest', () => {
 		const doc = parse(FENCE);
 
 		const { caret } = deleteRange(doc, at([0], 2), at([1], 8));
 
-		expect(serialize(doc)).toBe('pady\n\ntail\n');
-		expect(kindsOf(doc)).toEqual(['paragraph', 'paragraph']);
-		// The drop shrinks the end slice past the join, so the caret keeps the start offset.
+		expect(serialize(doc)).toBe('pady\n```\n\ntail\n');
+		expect(kindsOf(doc)).toEqual(['paragraph', 'fencedCode']);
 		expect(caret(doc)).toEqual({ path: [0], offset: 2 });
 		expectParseConverged(doc);
 	});
@@ -69,48 +69,43 @@ describe('range delete that consumes a fenced code opener', () => {
 			'past a foreign-marker open line in the surviving body',
 			'para\n\n```js\n~~~\nbody\n```\n\ntail\n',
 			at([1], 6),
-			'pa~~~\nbody\n\ntail\n'
+			'pa~~~\nbody\n```\n\ntail\n'
 		],
 		// Loaded markdown can close with a longer run than the opener the range took.
 		[
 			'a stranded closer longer than the deleted opener’s run',
 			'para\n\n~~~js\nbody\n~~~~~\n\ntail\n',
 			at([1], 8),
-			'pady\n\ntail\n'
+			'pady\n~~~~~\n\ntail\n'
 		],
 		[
 			'on the block’s own line ending (G4.20)',
 			'para\r\n\r\n```js\r\nbody\r\n```\r\n\r\ntail\r\n',
 			at([1], 9),
-			'pady\r\n\r\ntail\r\n'
+			'pady\r\n```\r\n\r\ntail\r\n'
 		],
 		[
 			'when the code block sits inside a blockquote',
 			'para\n\n> ```js\n> body\n> ```\n\ntail\n',
 			at([1, 0], 8),
-			'pady\n\ntail\n'
+			'pady\n```\n\ntail\n'
 		],
 		// Taking both fence lines leaves no run to strand and no metadata to restore from.
 		['nothing when the range took both fence lines', FENCE, at([1], 14), 'pa\n\ntail\n']
-	])('drops %s', (_, source, end, left) => expectDeleted(source, at([0], 2), end, left));
+	])('keeps %s', (_, source, end, left) => expectDeleted(source, at([0], 2), end, left));
 
 	// The same-block branch writes raw in place with no reparse, so the node keeps a stale kind as
-	// any kind would; the fence rule has to give bytes that stop absorbing the sibling.
-	it('drops it on a range confined to the code block, freeing the sibling', () => {
-		const doc = parse('```js\nbody\n```\n\ntail\n');
-
-		deleteRange(doc, at([0], 0), at([0], 8));
-
-		expect(serialize(doc)).toBe('dy\n\ntail\n');
-		expect(kindsOf(parse(serialize(doc)))).toEqual(['paragraph', 'paragraph']);
+	// any kind would; the bytes have to read back as the blocks the tree holds.
+	it('keeps it on a range confined to the code block', () => {
+		expectDeleted('```js\nbody\n```\n\ntail\n', at([0], 0), at([0], 8), 'dy\n```\n\ntail\n');
 	});
 
-	it('drops it when the range starts in a table', () => {
+	it('keeps it when the range starts in a table', () => {
 		const doc = parse('| a | b |\n| --- | --- |\n| c | d |\n\n```js\nbody\n```\n\ntail\n');
 
 		deleteRange(doc, cellPoint([0], 0), at([1], 8));
 
-		expect(kindsOf(doc)).toEqual(['paragraph', 'paragraph']);
+		expect(serialize(doc)).toBe('dy\n```\n\ntail\n');
 		expectParseConverged(doc);
 	});
 
@@ -119,24 +114,19 @@ describe('range delete that consumes a fenced code opener', () => {
 
 		const CALLOUT = ':::callout Title\nInside\n:::\n\n```js\nbody\n```\n\ntail\n';
 
-		it('drops it on the end truncation, which takes the opener and not the closer', () => {
-			const doc = parse(CALLOUT);
-
-			deleteRange(doc, at([0, 0], 2), at([1], 8));
-
-			expect(kindsOf(doc)).toEqual(['callout', 'paragraph', 'paragraph']);
-			expect(doc.children[1].raw).toBe('dy\n');
-			expectParseConverged(doc);
+		it('keeps it on the end truncation, which takes the opener and not the closer', () => {
+			expectDeleted(CALLOUT, at([0, 0], 2), at([1], 8), ':::callout Ti\n:::\n\ndy\n```\n\ntail\n');
 		});
 
-		// The whole surviving tail is the closer line, so dropping it empties the endpoint; the
-		// wall keeps that position rather than merging it away, so a placeholder holds the caret.
-		it('drops a tail that is exactly the closer line', () => {
+		// The whole surviving tail is the closer line, which reads as a bare opener and gets its
+		// closer back, so the wall's kept position holds an empty code block.
+		it('closes a tail that is exactly the closer line again', () => {
 			const doc = parse(CALLOUT);
 
 			deleteRange(doc, at([0, 0], 2), at([1], 11));
 
-			expect(kindsOf(doc)).toEqual(['callout', 'paragraph', 'paragraph']);
+			expect(serialize(doc)).toBe(':::callout Ti\n:::\n\n```\n```\n\ntail\n');
+			expect(kindsOf(doc)).toEqual(['callout', 'fencedCode', 'paragraph']);
 			expectParseConverged(doc);
 		});
 	});

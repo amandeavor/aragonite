@@ -16,6 +16,7 @@ import { assertInvariant } from '../assert';
 import { checkStructuralDescriptor } from '../invariants/structural-descriptor';
 import { noteBodySettled } from '../invariants/settle-once';
 import { checkBlankRunsLaidOut } from '../invariants/blank-runs';
+import { checkSettledWindowReadsBack } from '../invariants/settled-window-reads-back';
 import { endWindowLines } from './open-tail';
 import type { SharingState } from './sharing';
 import { lacksSublistSeparator } from './list/sublist-separator';
@@ -191,7 +192,8 @@ export function settleContentWrite(
 	return settled;
 }
 
-/** G1.139 over the window a fix-up reports, or the written block when it reports none. */
+/** G1.139 over the window a fix-up reports, or the written block when it reports none, and G1.145
+ *  over a reported window. */
 function checkRunsLaidOut(
 	body: BodyParent,
 	change: StructuralChange,
@@ -203,6 +205,11 @@ function checkRunsLaidOut(
 	const lo = window?.at ?? written!;
 	const hi = window ? window.at + window.added - 1 : written!;
 	assertInvariant('blank-runs-laid-out', () => checkBlankRunsLaidOut(body, lo, hi, grammar));
+	// G1.145 reads the window again, so a write that kept its block in place skips it.
+	if (!window) return;
+	assertInvariant('settled-window-reads-back', () =>
+		checkSettledWindowReadsBack(body, lo, hi, grammar)
+	);
 }
 
 function settleEditHead(
@@ -264,7 +271,12 @@ function settleMove(
 	}
 	const laidOut = normalizeBlankRuns(body, lo, hi, change, grammar, sharing);
 	const settled = absorbAndLayOut(body, lo, hi - lo + 1, to, laidOut, grammar, sharing);
-	return { change: settled.change, moved: settled.landing };
+	// The moved block may now wait on a closer below it, or be one for a block above.
+	const tracked: TrackedPosition = { index: settled.landing, offset: 0 };
+	const asks = asksOfPlaced([body.children[settled.landing]], grammar);
+	const at = settled.landing;
+	const finished = finishAndLayOut(body, at, at, asks, settled.change, grammar, sharing, tracked);
+	return { change: finished.change, moved: tracked.index };
 }
 
 // ── A content write's joins ──
@@ -445,8 +457,9 @@ function settleSplicedWindow(
 		// refused on that block's first line alone; a wider window names no single block.
 		added === 1 ? at : undefined
 	).change;
-	const window = splicedWindow(absorbed);
-	if (!window || window.added === 0) return absorbed;
+	// A splice outside a commit reports no change of its own, yet the blocks it placed still ask.
+	const window = splicedWindow(absorbed) ?? { at, added };
+	if (window.added === 0) return absorbed;
 	const last = window.at + window.added - 1;
 	return finishAndLayOut(body, window.at, last, asks, absorbed, grammar, sharing, tracked).change;
 }

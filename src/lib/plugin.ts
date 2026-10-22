@@ -226,13 +226,14 @@ export type { ContainerBodyWrap } from './core/parser';
 
 // ── Fence grammar (pre-freeze) ───────────────────────────────────────────────
 // The CommonMark fence grammar, so a plugin taking over a fence (```mermaid) never reimplements
-// it: `fenceRawWrite` serves as its `rawWrite`, and `escalatedFenceLength` sizes a rebuilt fence.
+// it: `fenceRawWrite` is its `rawWrite`, `fenceReading` its opener's `readingNotFinal`.
 export {
 	matchFenceOpen,
 	matchFenceClose,
 	escalatedFenceLength,
 	findFenceCloser,
 	fenceAnatomy,
+	fenceReading,
 	matchFenceInfo
 } from './core/parsers/fence-syntax';
 export type { FenceOpen, FenceRun, FenceAnatomy } from './core/parsers/fence-syntax';
