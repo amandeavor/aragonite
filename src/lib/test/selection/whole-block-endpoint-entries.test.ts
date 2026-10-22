@@ -40,7 +40,7 @@ describe('whole-block endpoints arriving from an entry path', () => {
 		clickOffset.mockReturnValue(1);
 		anchorCaret.mockReturnValue({ path: [0], offset: 6 });
 
-		expect(handleShiftClick(s, testCaretWriter, el(), [1], 0, 0, el(), [0])).toBe(true);
+		expect(handleShiftClick(s, testCaretWriter, el(), [1], 0, 0, el(), [0], null)).toBe(true);
 		expect(s.focus).toEqual({ path: [1], offset: 3 });
 	});
 
