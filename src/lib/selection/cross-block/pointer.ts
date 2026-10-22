@@ -73,7 +73,8 @@ function handlePointerDown(
 			e.clientX,
 			e.clientY,
 			prevFocusEl,
-			prevFocusPath
+			prevFocusPath,
+			ctx.standInCaret()
 		);
 		if (handled) {
 			e.preventDefault();

@@ -35,9 +35,12 @@ there's no caret to move inside one.
 ## User interactions
 
 - **A double click** still selects its word, for copy
-- **Shift+click after a click** selects nothing, since there's no caret to extend from; focus moves
-  to the block it landed on (a pinned delta: keyboard and Shift+click selection are gone in
-  reading mode, while a drag, a double click and select-all still select)
+- **Shift+click after a click** selects from the clicked point to the Shift+click and moves focus
+  there, as it does while editing, and still draws no caret (Shift+Arrow selects nothing, since
+  there's no caret to move; `requirements/presentation/reading-selection.md` has the rest of the
+  mouse's selection)
+- **Backspace and Shift+Backspace after a click** do nothing: the page stays (WebKit would go back
+  in history), focus stays on the clicked block and the document is unchanged
 
 ## Error cases
 
@@ -52,5 +55,10 @@ there's no caret to move inside one.
 - The click rows read `getSelection()` after the click, never what `selectionChange` said during
   it, and Chromium reports the click's caret only once it's cleared, so the caret Firefox and
   WebKit announced went unseen; no row listened for focus events around the editor either.
+- The Shift+click row pinned what the browser did once the click's caret was cleared, so it
+  encoded the lost selection as the contract; no row compared reading mode's mouse selection with
+  an editing mode's.
+- No row pressed Backspace in reading mode on WebKit, the one engine whose default for it leaves the
+  page.
 - No row opened an overlay in reading mode after a click, so the overlay restore that read no
   caret, and dropped focus to the editor's root, went unseen.

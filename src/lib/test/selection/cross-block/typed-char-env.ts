@@ -45,6 +45,7 @@ export function makeHandlers(
 	const stubEl = document.createElement('div');
 	return createCrossBlockHandlers({
 		caretWriter: testCaretWriter,
+		standInCaret: () => null,
 		getEl: () => stubEl,
 		getMyPath: () => myPath,
 		selection: env.selectionState,

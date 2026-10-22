@@ -364,8 +364,8 @@ export function selectWholeDocument(
 
 // ── Shift+Click ────────────────────────────────────────────────────────────
 
-/** Shift+click on a block: extends the range, grows one from a widget selected whole, or enters
- *  cross-block mode from the last caret. False for a same-block click, left to the browser. */
+/** Shift+click: extends the range, or grows one from a widget selected whole or the browser's caret,
+ *  else `standInCaret`. False in the browser caret's own block, where its Shift+click makes it. */
 export function handleShiftClick(
 	selection: SelectionState,
 	writer: CaretWriter,
@@ -374,7 +374,8 @@ export function handleShiftClick(
 	clickedX: number,
 	clickedY: number,
 	previouslyFocusedBlockEl: HTMLElement | null,
-	previouslyFocusedBlockPath: number[] | null
+	previouslyFocusedBlockPath: number[] | null,
+	standInCaret: SelectionPoint | null
 ): boolean {
 	// While a widget is selected whole there is no caret to grow from, so the widget is the
 	// anchor, its span read before the click ends that selection.
@@ -395,26 +396,40 @@ export function handleShiftClick(
 			applySingleBlockRange(writer, clickedBlockEl, anchor.offset, focusPoint.offset);
 			return true;
 		}
-		selection.enterCrossBlock(anchor, focusPoint);
-		applyCollapsedCaret(writer, clickedBlockEl, focusPoint);
+		enterRangeAtPress(selection, writer, clickedBlockEl, anchor, focusPoint);
 		return true;
 	}
 
-	if (!previouslyFocusedBlockEl || !previouslyFocusedBlockPath) return false;
-	// Nothing below a table carries a path, so a caret in a cell would read as the table's path
-	// with a character offset, which the endpoint snap can't tell from a cell index.
-	const anchorPath = findCellPathForElement(previouslyFocusedBlockEl) ?? previouslyFocusedBlockPath;
-	const anchor = readNativeCaretInBlock(previouslyFocusedBlockEl, anchorPath);
+	const nativeAnchor = previouslyFocusedBlockEl
+		? readCaretOfBlock(previouslyFocusedBlockEl, previouslyFocusedBlockPath)
+		: null;
+	const anchor = nativeAnchor ?? standInCaret;
 	if (!anchor) return false;
 
-	// Same block: the browser's own shift-click already made the range.
-	if (comparePaths(anchor.path, focusPoint.path) === 0) return false;
+	if (comparePaths(anchor.path, focusPoint.path) === 0) {
+		if (nativeAnchor) return false;
+		applySingleBlockRange(writer, clickedBlockEl, anchor.offset, focusPoint.offset);
+		return true;
+	}
 
-	selection.enterCrossBlock(anchor, focusPoint);
-	// A collapsed caret for paste dispatch (see `enterCrossBlockFromKeyboard`); the click's
-	// default is not relied on.
-	applyCollapsedCaret(writer, clickedBlockEl, focusPoint);
+	enterRangeAtPress(selection, writer, clickedBlockEl, anchor, focusPoint);
 	return true;
+}
+
+/** A range across blocks from `anchor` to a press, with a collapsed caret at the press for paste
+ *  dispatch (see `enterCrossBlockFromKeyboard`) and focus on the pressed block. */
+function enterRangeAtPress(
+	selection: SelectionState,
+	writer: CaretWriter,
+	pressedBlockEl: HTMLElement,
+	anchor: SelectionPoint,
+	press: SelectionPoint
+): void {
+	selection.enterCrossBlock(anchor, press);
+	applyCollapsedCaret(writer, pressedBlockEl, press);
+	// The handled press cancels the browser's focus move, and reading mode declines the caret
+	// that would otherwise carry focus there.
+	pressedBlockEl.focus({ preventScroll: true });
 }
 
 /** The edge of a selected widget a shift-click grows from: the one away from the click, so the
@@ -426,6 +441,13 @@ function widgetShiftAnchor(widget: SelectedWidgetRange, press: SelectionPoint): 
 }
 
 // ── Internal ───────────────────────────────────────────────────────────────
+
+/** The browser's caret in `blockEl`, on its cell's path: a cell caret read on the table's path
+ *  would look like a cell index to the endpoint snap. */
+function readCaretOfBlock(blockEl: HTMLElement, path: number[] | null): SelectionPoint | null {
+	const anchorPath = findCellPathForElement(blockEl) ?? path;
+	return anchorPath && readNativeCaretInBlock(blockEl, anchorPath);
+}
 
 function isTransparent(doc: Document, grammar: GrammarView, path: number[]): boolean {
 	const node = nodeAt(doc, path);

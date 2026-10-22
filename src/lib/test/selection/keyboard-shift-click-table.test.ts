@@ -66,7 +66,8 @@ describe('handleShiftClick out of a table cell', () => {
 				0,
 				0,
 				cells[0][0],
-				[0]
+				[0],
+				null
 			)
 		).toBe(true);
 
@@ -89,7 +90,8 @@ describe('handleShiftClick out of a table cell', () => {
 				0,
 				0,
 				cells[2][1],
-				[0]
+				[0],
+				null
 			)
 		).toBe(true);
 
@@ -106,7 +108,7 @@ describe('handleShiftClick out of a table cell', () => {
 
 		// The cell is its own editable element, so its `getMyPath()` is the cell path.
 		expect(
-			handleShiftClick(s, testCaretWriter, cells[1][2], [0, 1, 2], 0, 0, cells[1][2], [0])
+			handleShiftClick(s, testCaretWriter, cells[1][2], [0, 1, 2], 0, 0, cells[1][2], [0], null)
 		).toBe(false);
 		expect(s.isCrossBlock).toBe(false);
 	});
@@ -126,7 +128,8 @@ describe('handleShiftClick out of a table cell', () => {
 				0,
 				0,
 				paragraph,
-				[1]
+				[1],
+				null
 			)
 		).toBe(true);
 		expect(s.anchor).toEqual({ path: [1], offset: 5 });

@@ -15,6 +15,7 @@ import { emitClipboardError, type EditorEvents } from '../../editor-events';
 import { createImagePasteArm } from '../paste-image-arm';
 import { runClipboardCut, takeCopy } from '../blocks/editable/clipboard-step';
 import { crossBlockClipboardArm } from '../../selection/cross-block/clipboard';
+import { isWholeBlockInputProxy } from '../../editor-actions/whole-block-focus-surface';
 
 export interface EditorRootClipboardDeps {
 	selection: SelectionState;
@@ -53,12 +54,13 @@ export function createEditorRootClipboard(deps: EditorRootClipboardDeps): Editor
 		crossBlock: deps.crossBlock
 	});
 
-	/** Inside this root, or on the body with this instance holding the chord; a text field (the
-	 *  search input, a plugin's own editable) and the host's header keep their own clipboard. */
+	/** Inside this root, or on the body with this instance holding the chord; a text field other
+	 *  than a block's whole-block input, and the host's header, keep their own clipboard. */
 	function aimedAtRoot(root: HTMLElement, target: EventTarget | null): boolean {
 		if (target === null || target === root.ownerDocument.body) return claimsBodyChord(root);
 		if (!(target instanceof Node) || !root.contains(target)) return false;
-		if (target instanceof Element && isTextEntrySurface(target)) return false;
+		if (target instanceof Element && isTextEntrySurface(target) && !isWholeBlockInputProxy(target))
+			return false;
 		return !deps.isHostChrome(target);
 	}
 

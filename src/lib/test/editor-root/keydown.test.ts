@@ -606,6 +606,61 @@ describe('editor-root keydown: search chord branches', () => {
 	});
 });
 
+// ── Backspace keeps the page ─────────────────────────────────────────────────
+
+// Miss-analysis: the Backspace guard's rows pressed it on a block only, never on a field that
+// deletes on it, so a plugin's date input losing its Backspace went unseen.
+describe('editor-root keydown: Backspace leaves the page only to a field', () => {
+	const input = (type?: string) => () => {
+		const el = document.createElement('input');
+		if (type) el.type = type;
+		return el;
+	};
+	const editable = () => {
+		const el = document.createElement('div');
+		el.setAttribute('contenteditable', 'true');
+		// jsdom focuses no editable on its own.
+		el.tabIndex = 0;
+		return el;
+	};
+	const block = () => {
+		const el = document.createElement('div');
+		el.tabIndex = -1;
+		return el;
+	};
+	const rows: [string, 'root' | 'find bar' | 'page', () => HTMLElement, boolean][] = [
+		['a block with no caret (reading mode)', 'root', block, true],
+		['a chrome button', 'root', () => document.createElement('button'), true],
+		['an editable block', 'root', editable, false],
+		["the find bar's field", 'find bar', input(), false],
+		["the image's alt field or the link card's URL", 'root', input('text'), false],
+		["a plugin's textarea", 'root', () => document.createElement('textarea'), false],
+		["a plugin's date input", 'root', input('date'), false],
+		["the host's own input", 'page', input('text'), false],
+		["the host's own button", 'page', () => document.createElement('button'), false]
+	];
+
+	for (const [name, where, make, prevented] of rows) {
+		it(`${name}: ${prevented ? 'the default is cancelled' : 'the key keeps its default'}`, () => {
+			const h = harness();
+			registerEditor(h.root);
+			const el = make();
+			({ root: h.root, 'find bar': h.findBar, page: document.body })[where].append(el);
+			el.focus();
+			expect(document.activeElement).toBe(el);
+
+			expect(h.press('Backspace').defaultPrevented).toBe(prevented);
+		});
+	}
+
+	it('with nothing focused, only the editor holding body chords cancels it', () => {
+		const h = harness();
+		expect(h.press('Backspace').defaultPrevented).toBe(false);
+		registerEditor(h.root);
+		expect(h.press('Backspace').defaultPrevented).toBe(true);
+	});
+});
+
 // ── Non-vacuity ──────────────────────────────────────────────────────────────
 
 describe('editor-root keydown: the harness can observe a miss', () => {
