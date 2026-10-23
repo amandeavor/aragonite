@@ -5,9 +5,9 @@ import { textRunStart } from '../../text-runs';
 
 /**
  * A press means what was under it when it went down. With a formula's source open, the press moves
- * the caret out of it, the formula folds back to its render, and the line reflows before the click
+ * the caret out of it, the formula draws again, and the line moves under the pointer before the click
  * or the context menu is handled. The rendered formula here is far wider than its source, so a
- * point read against the folded line lands inside it whatever the fonts.
+ * point read against the redrawn line lands inside it whatever the fonts.
  */
 
 const WIDE = '$\\Huge WWWWWWWWWW$';
@@ -42,7 +42,7 @@ async function openWideFormula(page: Page, host: Host): Promise<PluginsPage> {
 	return editor;
 }
 
-/** A press held as long as a person holds one, which lets the fold land before the release. */
+/** A press held as long as a person holds one, which lets the source close before the release. */
 async function heldPress(page: Page, at: Point, button: 'left' | 'right'): Promise<void> {
 	await page.mouse.move(at.x, at.y);
 	await page.mouse.down({ button });

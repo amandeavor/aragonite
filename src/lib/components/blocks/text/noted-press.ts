@@ -26,13 +26,13 @@ export function createNotedPress<T>(): NotedPress<T> {
 		const onRelease = (e: PointerEvent) => {
 			if (!(e.target instanceof Node && surface.contains(e.target))) clear();
 		};
-		window.addEventListener('pointerup', onRelease, true);
-		window.addEventListener('pointercancel', clear, true);
-		window.addEventListener('pointerdown', clear, true);
+		document.addEventListener('pointerup', onRelease, true);
+		document.addEventListener('pointercancel', clear, true);
+		document.addEventListener('pointerdown', clear, true);
 		unwatch = () => {
-			window.removeEventListener('pointerup', onRelease, true);
-			window.removeEventListener('pointercancel', clear, true);
-			window.removeEventListener('pointerdown', clear, true);
+			document.removeEventListener('pointerup', onRelease, true);
+			document.removeEventListener('pointercancel', clear, true);
+			document.removeEventListener('pointerdown', clear, true);
 		};
 	}
 
