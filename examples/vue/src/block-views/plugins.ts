@@ -1,0 +1,21 @@
+// The page's plugin, built once the app exists so the blocks render in its context.
+import type { App } from 'vue';
+import { vueBlockView } from '@voithos-labs/aragonite-vue';
+import { blockViewsPlugin } from '../../../adapter-suite/block-view-kinds';
+import Memo from './Memo.vue';
+import Label from './Label.vue';
+import Box from './Box.vue';
+
+export function blockViewPlugins(app: App) {
+	return [
+		blockViewsPlugin({
+			memo: vueBlockView(Memo, { surface: 'leaf', singleLine: true, className: 'memo', app }),
+			label: vueBlockView(Label, {
+				surface: 'render-primary',
+				singleLine: true,
+				className: 'label'
+			}),
+			box: vueBlockView(Box, { surface: 'container', className: 'box' })
+		})
+	];
+}
