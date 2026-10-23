@@ -22,12 +22,24 @@ shape Chromium always measures; the e2e runs crossed only image blocks, where en
 replaces the caret, so nothing ever pressed Down on a caret placed beside a widget with no
 rectangle.
 
+Miss-analysis: every object-block row held a picture standing alone, so the vertical check read a
+picture inside a link as a link (text, so a caret stop) while the edge entry, which looks inside a
+link whose markers are hidden, would have selected it. On Chromium the caret placed there was
+dropped, and the next key did nothing.
+
 ## Happy paths
 
 - ArrowUp from below a details-wrapped image up to the paragraph above, then the same number of
   ArrowDowns: the caret returns to the paragraph it started in.
 - ArrowDown from the paragraph above an entity-only paragraph stops in it once and leaves on the
   next keypress; ArrowUp from below takes the same two keypresses.
+
+- A paragraph holding only a linked picture, in live and preview-inline mode, where the link's
+  markers stay hidden until the caret is inside it: ArrowDown from above, ArrowUp from below,
+  ArrowRight from the end of the block above and ArrowLeft from the start of the block below each
+  select the picture, and a typed key replaces it inside the link (`[Q](https://x.y)`).
+- The same paragraph in preview-block mode, which paints the markers once the block has the
+  caret: ArrowDown lands a caret in the link's text, and a typed key leaves the picture alone.
 
 ## Edge cases
 

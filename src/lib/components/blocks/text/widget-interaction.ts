@@ -543,7 +543,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 	function isVerticallyTransparent(): boolean {
 		// Resolver-free, matching the off-window keyboard-extend path, so the vertical-skip
 		// decision is uniform everywhere. Other widget reads stay resolver-aware.
-		return isVerticallyTransparentNode(deps.node, deps.reading.grammar);
+		return isVerticallyTransparentNode(deps.node, deps.reading);
 	}
 
 	// A caret written inside this block rather than through the caret placement entry point:

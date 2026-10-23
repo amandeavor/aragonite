@@ -46,6 +46,12 @@ export function hidesDelimitersAtCaret(mode: PresentationMode): boolean {
 	return !paintsFocusedMarkers(mode);
 }
 
+/** Whether a block the caret arrives in still hides a construct's markers: live hides them always,
+ *  preview-inline until the caret is inside the construct. An arrival reads a block by this. */
+export function hidesMarkersOnArrival(mode: PresentationMode): boolean {
+	return hidesDelimitersAtCaret(mode) || tagsConstructMarkers(mode);
+}
+
 /** The modes whose render tags construct markers with their raw range: preview-inline reveals a
  *  construct by them. */
 export function tagsConstructMarkers(mode: PresentationMode): boolean {

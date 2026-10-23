@@ -16,7 +16,6 @@ import {
 import { isItemUserEmpty } from '#lib/tree-operations/list/empty-check.js';
 import { lacksSublistSeparator } from '#lib/tree-operations/list/sublist-separator.js';
 import { findContainerMatchingUnwrap } from '#lib/tree-operations/paste/container-match.js';
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { makeStubBlockEdit, makeStubFocus } from '#lib/test/harness/editor-actions.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 
@@ -88,8 +87,8 @@ describe('a non-breaking space counts as content to', () => {
 
 	it('vertical traversal, which skips an image-only block', () => {
 		const block = (source: string) => parse(source).children[0];
-		expect(isVerticallyTransparentNode(block(`![a](u)${NBSP}\n`), defaultGrammarView)).toBe(false);
-		expect(isVerticallyTransparentNode(block('![a](u) \n'), defaultGrammarView)).toBe(true);
+		expect(isVerticallyTransparentNode(block(`![a](u)${NBSP}\n`), fixtureReading())).toBe(false);
+		expect(isVerticallyTransparentNode(block('![a](u) \n'), fixtureReading())).toBe(true);
 	});
 
 	it('the widget edge reads', () => {
