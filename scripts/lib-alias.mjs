@@ -126,14 +126,15 @@ export function aliasSpecifier(relPath) {
 
 /**
  * Each published JavaScript entry point in package.json `exports`, with both of its builds (a
- * self-import subpath is not one). Throws on
- * an entry whose `default` is not its `svelte` path moved under `dist/prebuilt/` (G4.174).
+ * self-import subpath is not one). Throws on an entry whose `default` is not its `svelte` path
+ * moved under `dist/prebuilt/` (G4.174).
+ * @param {{ exports?: Record<string, any> }} [pkg] The manifest to read, this repo's by default.
  * @returns {EntryPoint[]}
  */
-export function publishedEntryPoints() {
+export function publishedEntryPoints(pkg = PACKAGE) {
 	/** @type {EntryPoint[]} */
 	const out = [];
-	for (const [subpath, target] of Object.entries(PACKAGE.exports ?? {})) {
+	for (const [subpath, target] of Object.entries(pkg.exports ?? {})) {
 		if (typeof target !== 'object' || SOURCE_CONDITION in target) continue;
 		const svelte = repoPath(target.svelte ?? '');
 		const prebuilt = repoPath(target.default ?? '');
