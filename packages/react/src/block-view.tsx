@@ -17,23 +17,42 @@ import { createRoot } from 'react-dom/client';
 import {
 	defineBlockView,
 	type BlockView,
+	type BlockViewContext,
 	type BlockViewSpec,
 	type BlockViewState,
+	type ContainerSurface,
 	type ContainerViewContext,
 	type ContainerViewSpec,
+	type LeafSurface,
 	type LeafViewContext,
 	type LeafViewSpec,
+	type RenderPrimarySurface,
 	type RenderPrimaryViewContext,
 	type RenderPrimaryViewSpec
 } from '@voithos-labs/aragonite/plugin';
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
+// A component's `ctx` leaves out the calls that hand the editor an element, which `LeafContent`,
+// `BlockChildren` and the helper itself make.
 interface Surfaces {
-	leaf: { spec: LeafViewSpec; ctx: LeafViewContext };
-	'render-primary': { spec: RenderPrimaryViewSpec; ctx: RenderPrimaryViewContext };
-	container: { spec: ContainerViewSpec; ctx: ContainerViewContext };
+	leaf: {
+		spec: LeafViewSpec;
+		ctx: BlockViewContext & { readonly leaf: Omit<LeafSurface, 'attach'> };
+	};
+	'render-primary': {
+		spec: RenderPrimaryViewSpec;
+		ctx: BlockViewContext & {
+			readonly leaf: Omit<RenderPrimarySurface, 'attach' | 'attachRendered'>;
+		};
+	};
+	container: {
+		spec: ContainerViewSpec;
+		ctx: BlockViewContext & { readonly container: Omit<ContainerSurface, 'mountChildren'> };
+	};
 }
+
+type MountContext = LeafViewContext | RenderPrimaryViewContext | ContainerViewContext;
 
 /** What the editor builds into a framework-drawn block: editable text, shown always or behind a
  *  rendered view until a click, or child blocks. */
@@ -66,7 +85,7 @@ export function reactBlockView<S extends FrameworkSurface>(
 	const { className, afterInput, wrap, ...spec } = options;
 	return defineBlockView({
 		...spec,
-		mount(target: HTMLElement, ctx: Surfaces[S]['ctx']) {
+		mount(target: HTMLElement, ctx: MountContext) {
 			if (className) target.className = className;
 			if (spec.surface === 'render-primary') {
 				(ctx as RenderPrimaryViewContext).leaf.attachRendered(target);
@@ -76,7 +95,7 @@ export function reactBlockView<S extends FrameworkSurface>(
 			const draw = (state: BlockViewState) => {
 				const block = (
 					<HandOverContext.Provider value={handOver}>
-						<Component state={state} ctx={ctx} />
+						<Component state={state} ctx={ctx as Surfaces[S]['ctx']} />
 					</HandOverContext.Provider>
 				);
 				flushSync(() => root.render(wrap ? wrap(block) : block));
@@ -122,7 +141,7 @@ interface HandOver {
 
 const HandOverContext = createContext<HandOver | null>(null);
 
-function handOverFor(ctx: BlockViewProps<FrameworkSurface>['ctx']): HandOver {
+function handOverFor(ctx: MountContext): HandOver {
 	const handOver: HandOver = {
 		live: true,
 		attach(el) {

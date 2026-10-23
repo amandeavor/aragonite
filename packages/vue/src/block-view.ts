@@ -18,23 +18,42 @@ import {
 import {
 	defineBlockView,
 	type BlockView,
+	type BlockViewContext,
 	type BlockViewSpec,
 	type BlockViewState,
+	type ContainerSurface,
 	type ContainerViewContext,
 	type ContainerViewSpec,
+	type LeafSurface,
 	type LeafViewContext,
 	type LeafViewSpec,
+	type RenderPrimarySurface,
 	type RenderPrimaryViewContext,
 	type RenderPrimaryViewSpec
 } from '@voithos-labs/aragonite/plugin';
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
+// A component's `ctx` leaves out the calls that hand the editor an element, which `LeafContent`,
+// `BlockChildren` and the helper itself make.
 interface Surfaces {
-	leaf: { spec: LeafViewSpec; ctx: LeafViewContext };
-	'render-primary': { spec: RenderPrimaryViewSpec; ctx: RenderPrimaryViewContext };
-	container: { spec: ContainerViewSpec; ctx: ContainerViewContext };
+	leaf: {
+		spec: LeafViewSpec;
+		ctx: BlockViewContext & { readonly leaf: Omit<LeafSurface, 'attach'> };
+	};
+	'render-primary': {
+		spec: RenderPrimaryViewSpec;
+		ctx: BlockViewContext & {
+			readonly leaf: Omit<RenderPrimarySurface, 'attach' | 'attachRendered'>;
+		};
+	};
+	container: {
+		spec: ContainerViewSpec;
+		ctx: BlockViewContext & { readonly container: Omit<ContainerSurface, 'mountChildren'> };
+	};
 }
+
+type MountContext = LeafViewContext | RenderPrimaryViewContext | ContainerViewContext;
 
 /** What the editor builds into a framework-drawn block: editable text, shown always or behind a
  *  rendered view until a click, or child blocks. */
@@ -64,7 +83,7 @@ export function vueBlockView<S extends FrameworkSurface>(
 	const { className, afterInput, app, ...spec } = options;
 	return defineBlockView({
 		...spec,
-		mount(target: HTMLElement, ctx: Surfaces[S]['ctx']) {
+		mount(target: HTMLElement, ctx: MountContext) {
 			if (className) target.className = className;
 			if (spec.surface === 'render-primary') {
 				(ctx as RenderPrimaryViewContext).leaf.attachRendered(target);
@@ -122,8 +141,8 @@ export const BlockChildren = defineComponent({
 
 // ── Internal ────────────────────────────────────────────────────────────────
 
-/** One per mount, so each function ref keeps its identity across renders: a new one would be
- *  called with null first, and the editor empties an element handed back to it. */
+/** One per mount: it holds the mount's `ctx`, and drops a ref call that lands after `destroy`.
+ *  Vue calls a function ref again on each re-render; the editor ignores an element it already has. */
 interface HandOver {
 	live: boolean;
 	attach(el: unknown): void;
@@ -132,7 +151,7 @@ interface HandOver {
 
 const HAND_OVER: InjectionKey<HandOver> = Symbol('aragonite block view');
 
-function handOverFor(ctx: BlockViewProps<FrameworkSurface>['ctx']): HandOver {
+function handOverFor(ctx: MountContext): HandOver {
 	const handOver: HandOver = {
 		live: true,
 		attach(el) {
