@@ -1099,7 +1099,7 @@ Two props decide how the editor sits in your page: who owns the scroll, and what
 
 By default the editor root is the scrollport (the box that scrolls), and it fills the element you put it in. Give that element a height and the editor scrolls inside it. If the element holds more than the editor (a toolbar above it, say), make it a flex column too, and the editor takes whatever room is left.
 
-`scrollMode='host'` is the embedded alternative: the root stops scrolling and grows to its content, and an ancestor of yours scrolls it. A shell that stacks several documents in one scroller (a journal, a comment thread) wants this; a whole-file editor doesn't. It's also the one you want when your page does the scrolling. A default editor with no height anywhere grows with the document too, but it keeps every block mounted, which a long document will feel.
+`scrollMode='host'` is the embedded alternative: the root stops scrolling and grows to its content, and an ancestor of yours scrolls it. Reach for it when your page does the scrolling, or a shell of yours that stacks several documents in one scroller (a journal, a comment thread); an editor with a pane of its own doesn't need it. A default editor with no height anywhere grows with the document too, but it keeps every block mounted, which a long document will feel.
 
 **Virtual rendering follows the scroll.** The editor windows against whatever actually scrolls it, so a large document inside a page-scrolled shell stays as fast as a standalone one. Windowing only turns on once a document is a few screens tall, so a small embedded entry never windows.
 
