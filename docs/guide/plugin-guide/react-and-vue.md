@@ -45,7 +45,7 @@ export const memoView = reactBlockView(Memo, { surface: 'leaf', singleLine: true
 Two rules make a framework block behave:
 
 - **Style the block's element with `className`, and keep your component's own root margin-free** (a fragment, like the memo, is easiest). The editor measures the element it made as the block, and a margin on a wrapper inside sits outside what the editor measures, so the selection highlight and the drag handle come out a little off.
-- **Let `<LeafContent>` and `<BlockChildren>` stay mounted while they're shown.** Showing and hiding one is fine (that's how the click-to-edit block below works), but a fresh `key` per render, say, hands the element back and forth, and an element handed back to the editor comes back empty.
+- **Let `<LeafContent>` and `<BlockChildren>` stay mounted while they're shown.** Showing and hiding `<LeafContent>` is fine (that's how the click-to-edit block below works), but a fresh `key` per render, say, hands the element back and forth, and an element handed back to the editor comes back empty. `<BlockChildren>` stays for the block's whole life, since the editor has no way to take the children back.
 
 ## What your component gets
 
@@ -90,7 +90,7 @@ export const labelView = reactBlockView(Label, {
 
 A click anywhere in the block flips `state.revealed` on, your component swaps in `<LeafContent>`, and the caret lands in the source (at the spot your kind's `caretTargetAtPoint` names, or the first byte without one). Typing edits the source without committing anything; moving the caret out of the block commits the whole edit as one undo step and flips `revealed` back off. So reveal, type, click away, Ctrl+Z, and the old label is back in one go.
 
-If you want a live preview while the source is open (block math's shape), `afterInput` hears the text as it's typed.
+Your component re-renders when the edit commits, not as each key lands, so on its own it can't follow the typing. `afterInput(text, ctx)` hears every change while the source is open, but it runs outside your component. A live preview (block math's side-by-side layout) has to carry that text over itself, say through a store keyed on `ctx`, which is one object per mounted block and the same one your component gets.
 
 ## A block that holds blocks
 
