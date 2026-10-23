@@ -70,10 +70,9 @@ A block that edits through an element of its own instead of this factory (the bu
 
 **A painted source.** By default the source is one text node. Give the factory a `renderSource(text)` dep and it paints the source as DOM instead: fence lines the marker-hiding modes collapse, highlight tokens, whatever your kind draws. `renderFencedSource` draws a fenced source the way the code block does, with `highlightCode` as its tokenizer. The factory checks `textContent === text` on every paint, so a painter that drops a byte fails loudly in dev rather than corrupting a commit.
 
-A painted source takes its plain-text edits from the leaf, not the browser: typing, Enter, deletes and pastes splice the text and repaint. Undo inside the open reveal walks those edits back before it reaches the document's history, whether you pressed the undo key or picked Undo from the browser's menu. Three more pieces go with a painter:
+A painted source takes its plain-text edits from the leaf, not the browser: typing, Enter, deletes and pastes splice the text and repaint. Undo inside the open reveal walks those edits back before it reaches the document's history, whether you pressed the undo key or picked Undo from the browser's menu. An edit the browser makes itself (an IME commit) gets repainted too. Two more pieces go with a painter:
 
-- **`onSourceEdit(text)`**, a dep, hears each of those edits, so a live preview can follow the text before it's committed.
-- **`leaf.repaintSource()`** re-runs the painter after an edit the browser made itself (an IME commit).
+- **`onSourceEdit(text)`**, a dep, hears each of those edits once, the browser's included, so a live preview can follow the text before it's committed. It stays quiet mid-composition.
 - **`reshapeSource(text, caret, lineEnding)`**, a dep, lets your kind put an edited source back in the shape it keeps. It's asked as the source is revealed and again after every edit, the browser's included, with `caret` where the caret sits in `text` right then. Answer the new text and the caret's place in it, or null to leave both alone.
 
 Block math uses `reshapeSource` twice:

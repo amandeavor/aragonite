@@ -206,6 +206,7 @@ unguarded.
 | G4.247 | A production build of the published package carries no dev check                                 | harness |
 | G4.248 | Dev-only code reads one switch, in `dev-checks.ts`, imported by its package name                 | L       |
 | G4.249 | A measured height enters the height table only through `applyMeasured`                           | L       |
+| G4.251 | The bundled blocks that build a render-primary leaf in Svelte are listed                         | L       |
 
 ### The entries
 
@@ -1387,3 +1388,9 @@ otherwise). `lint/file-rules.test.ts`.
 height table and the estimator only by `windowing/list-windowing.svelte.ts :: applyMeasured`, which
 holds a height within a pixel of its record as that record, so a block remounting a fraction of a
 pixel off moves no scroll. `lint/file-rules.test.ts`.
+
+**G4.251 · The bundled Svelte reveal blocks are listed.** Every bundled plugin file that builds a
+render-primary leaf in Svelte (`mode: 'render-primary'`) is on a declared list: block math, the
+outline and the parrot today. It's there so moving them onto `defineBlockView` starts from a list,
+not a grep. It's an allowlist of files, so it guards nothing inside a listed file; don't read it
+as a guard on how those blocks are built. `lint/file-rules.test.ts`.
