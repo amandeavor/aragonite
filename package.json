@@ -126,6 +126,7 @@
 		"./dev-checks": {
 			"aragonite-source": "./src/lib/dev-checks.ts",
 			"types": "./dist/dev-checks.d.ts",
+			"production": "./dist/dev-checks-stripped.js",
 			"default": "./dist/dev-checks.js"
 		},
 		"./styles/editor-theme.css": "./dist/styles/editor-theme.css",

@@ -16,6 +16,7 @@ export const SOURCE = {
 	blockComponentApi: 'src/lib/block-component.ts',
 	actionContracts: 'src/lib/action-contracts.ts',
 	devChecks: 'src/lib/dev-checks.ts',
+	devChecksStripped: 'src/lib/dev-checks-stripped.ts',
 	pluginView: 'src/lib/plugin-view.ts',
 
 	// ── Parsing and the inline pipeline ─────────────────────────────────────
@@ -169,6 +170,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	blockComponentApi: 'export interface BlockComponent ',
 	actionContracts: 'export type CommitSnapshotArg',
 	devChecks: 'export let devChecksOn',
+	devChecksStripped: 'export const devChecksOn',
 	pluginView: 'export function mountPluginView',
 
 	// ── Parsing and the inline pipeline ─────────────────────────────────────
