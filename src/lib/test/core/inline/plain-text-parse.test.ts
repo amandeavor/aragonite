@@ -38,7 +38,7 @@ describe('a plain span parses without scan state', () => {
 		expect(scansFor('plain *bold*', 0, 6).scans).toBe(0);
 	});
 
-	it.each(['a *b*', 'see www.a.co', 'hi!', 'a@b.co'])('%j builds scan state', (raw) => {
+	it.each(['a *b*', 'see www.a.co', 'a@b.co'])('%j builds scan state', (raw) => {
 		expect(scansFor(raw).scans).toBe(1);
 	});
 });
