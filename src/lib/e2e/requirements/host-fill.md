@@ -13,7 +13,8 @@ test ever gave it a plain box with a height; the React and Vue wrappers mount in
 
 - A host with a fixed height and a long document: the editor's scroll container is no taller than
   the host, a wheel over it scrolls the editor and not the page, and fewer blocks are mounted than
-  the document holds (windowing is on).
+  the document holds (windowing is on). Counted by mounted blocks: the root's `data-windowing`
+  reads `active` even when every block fits.
 
 ## Edge cases
 

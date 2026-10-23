@@ -12,4 +12,5 @@ any box, and the one long document (`?block-views`) sat in a flex column the pag
 
 - A host with a fixed height and a long document: the editor's scroll container is no taller than
   the host, a wheel over it scrolls the editor and not the page, and fewer blocks are mounted than
-  the document holds (windowing is on).
+  the document holds (windowing is on). Counted by mounted blocks: the root's `data-windowing`
+  reads `active` even when every block fits.
