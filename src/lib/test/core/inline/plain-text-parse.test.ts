@@ -9,6 +9,7 @@ import {
 	perfSnapshot,
 	resetPerfInstruments
 } from '#lib/perf/instruments.js';
+import { expectBoundedGrowth, measureScanGrowth } from '../../harness/scan-growth';
 
 beforeEach(() => {
 	resetPerfInstruments();
@@ -44,25 +45,15 @@ describe('a plain span parses without scan state', () => {
 });
 
 // Miss-analysis: every row parsed a range ending at or near its string's end, so a search
-// running on to the block's end cost nothing any row could see.
-describe('a range parse reads nothing past the range end', () => {
-	/** Median microseconds per parse of `[0, range.length)`, alone and at the head of `raw`. */
-	const microsPerParse = (raw: string, end: number) => {
-		const reps = 40;
-		const samples: number[] = [];
-		for (let sample = 0; sample < 7; sample++) {
-			const started = performance.now();
-			for (let i = 0; i < reps; i++) parseInline(raw, 0, end);
-			samples.push(((performance.now() - started) * 1000) / reps);
+// running on past the range cost nothing any row could see.
+describe('a long block parsed span by span reads each span once', () => {
+	const spanBySpan = (source: string) => {
+		for (let at = 0; at < source.length; at += 64) {
+			parseInline(source, at, Math.min(at + 64, source.length));
 		}
-		return samples.sort((a, b) => a - b)[3];
 	};
-	// A plain tail with no character the parse reads, so a search past the range finds nothing.
-	const tail = ' plain words'.repeat(400_000);
 
-	it.each(['plain words only', 'a *b* and c'])('%j costs the same at the head of 4 MB', (range) => {
-		const alone = microsPerParse(range, range.length);
-		const atHead = microsPerParse(range + tail, range.length);
-		expect(atHead / Math.max(alone, 0.05)).toBeLessThan(10);
-	});
+	it('a plain block grows linearly', () => {
+		expectBoundedGrowth(measureScanGrowth(spanBySpan, ' plain words', [16, 64]));
+	}, 300_000);
 });
