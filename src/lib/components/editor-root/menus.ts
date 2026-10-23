@@ -212,8 +212,8 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		// The keyboard's contextmenu event (Windows fires it on the ContextMenu key's release)
 		// lands on the item the keydown's own menu already focused: that menu is the answer.
 		if (target.closest('.md-menu')) return;
-		// Read off the press's own path: the caret placed for the menu may have shown a widget's
-		// source, which takes the target out of the page.
+		// Read off the event's path, fixed at dispatch: the caret placed for the menu may have shown
+		// a widget's source, which takes the target out of the page.
 		const host = e.composedPath().find(isBlockHost) ?? null;
 		const path = readBlockPath(host);
 		if (!host || !path) return;
