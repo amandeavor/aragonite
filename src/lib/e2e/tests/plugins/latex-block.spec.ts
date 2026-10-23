@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures';
 import { roundTripStable } from './helpers';
 import { BlockMathPage } from './latex-reveal-helpers';
 import { edgeKey } from '../../platform-keys';
+import { attachIme } from '../../simulation/ime';
 
 /**
  * Block `$$…$$` display math, rendered first and showing its source on focus, driven by real mouse
@@ -296,5 +297,30 @@ test.describe('plugin block math: a multiline fence', () => {
 		await editor.getBlock(2).click();
 		await expect(editor.renderedKatex).toHaveCount(1);
 		expect(await roundTripStable(editor.page)).toBe(true);
+	});
+});
+
+test.describe('plugin block math: an IME commit in the shown source', () => {
+	let editor: BlockMathCaretPage;
+
+	test.beforeEach(async ({ page }) => {
+		editor = new BlockMathCaretPage(page);
+		await editor.gotoMathSeed('mathblock');
+		await editor.loadContent('Before\n\n$$\nx\n$$\n');
+	});
+
+	// Chromium ends a commit on an input still marked composing, then fires compositionend, so the
+	// commit itself is what has to redraw the source and the preview beside it.
+	test('the preview shows the committed text once the commit lands', async ({ page }) => {
+		await editor.revealByClick();
+		await page.keyboard.press(edgeKey('lineEnd'));
+		const ime = await attachIme(page);
+
+		await ime.compose('\\alpha');
+		await ime.commit('\\alpha');
+
+		await expect(editor.source).toHaveText('$$\nx\\alpha\n$$');
+		await expect(editor.render).toContainText('α');
+		expect(await editor.bridge.getSource()).toBe('Before\n\n$$\nx\n$$\n');
 	});
 });

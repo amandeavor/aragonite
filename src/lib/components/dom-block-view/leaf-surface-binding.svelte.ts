@@ -11,8 +11,6 @@ export interface LeafSurfaceBinding {
 	getEl(): HTMLElement | null;
 	/** Read on each use: the bundle is rebuilt as the attributes change. */
 	props(): Record<string | symbol, unknown>;
-	/** Runs after the bundle's own `input` listener. */
-	afterInput?(el: HTMLElement, e: Event): void;
 }
 
 export function bindLeafSurface(binding: LeafSurfaceBinding): void {
@@ -67,8 +65,6 @@ function bindListeners(binding: LeafSurfaceBinding): void {
 			}
 			offs.push(on(el, key.slice(2), value));
 		}
-		const after = binding.afterInput;
-		if (after) offs.push(on(el, 'input', (e) => after(el, e)));
 		return () => offs.forEach((off) => off());
 	});
 }

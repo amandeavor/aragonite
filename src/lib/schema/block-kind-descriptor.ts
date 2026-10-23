@@ -511,7 +511,7 @@ function rejectSurfaceMismatch(kind: AnyBlockKind, view: BlockView, isContainer:
 	throw new TypeError(
 		`registerBlockKind: "${kind}" ${isContainer ? 'is a container' : 'has no container group'}, ` +
 			`but its view's surface is '${surface}': a container kind takes ` +
-			"`defineBlockView({ surface: 'container', ... })`, any other kind 'none' or 'leaf'"
+			"`defineBlockView({ surface: 'container', ... })`, any other kind 'none', 'leaf' or 'render-primary'"
 	);
 }
 

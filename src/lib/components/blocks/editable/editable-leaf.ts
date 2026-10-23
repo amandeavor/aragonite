@@ -5,7 +5,7 @@
  * synchronously during initialisation. `plugin-guide/editable-content.md` § The editable leaf.
  */
 
-import { onDestroy, tick } from 'svelte';
+import { onDestroy, tick, untrack } from 'svelte';
 import { createAttachmentKey } from 'svelte/attachments';
 import type { EditableLeafBlockApi, StickyColumnDirection } from '../../../block-component';
 import type { NodeView } from '../../../core/node-views';
@@ -96,8 +96,8 @@ interface LeafDepsBase {
 	/** Draws the source as DOM (hidden fence lines, highlight tokens) instead of one text node.
 	 *  Must keep `fragment.textContent === text`, or caret offsets drift (G1.28). */
 	renderSource?(text: string): DocumentFragment;
-	/** The source text after each edit the leaf applies itself, for a live preview: the CST sees
-	 *  a render-primary edit only on blur, and a cancelled `beforeinput` fires no `input`. */
+	/** The shown source's text once after each change, the browser's included, never mid-composition:
+	 *  a live preview reads it, since the CST sees a render-primary edit only on blur. */
 	onSourceEdit?(text: string): void;
 	/** The source as the kind keeps it, asked on show and after every edit, with the caret carried
 	 *  (a markers-only `$$$$` gains a body line); an added line takes `lineEnding`. Null keeps it. */
@@ -155,12 +155,6 @@ export interface EditableLeaf {
 
 	/** The block's source minus its trailing line ending, which is the editable text. */
 	readonly sourceText: string;
-
-	/**
-	 * Run `renderSource` again over the element's current text, keeping the caret, for a host
-	 * that repaints as the user types (highlighting goes stale otherwise). No-op without it.
-	 */
-	repaintSource(): void;
 
 	/** The source element in one spread: attributes, handlers and the two attachments. */
 	surfaceProps: EditableLeafSurfaceProps;
@@ -321,15 +315,23 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		return deps.reshapeSource?.(text, caret, editableSurface.lineEnding()) ?? null;
 	}
 
+	// A source handed over after the render that showed it (a view drawn outside Svelte) gets the
+	// caret when it attaches.
+	let pendingReveal: number | null = null;
+
 	// Every open goes through here, so the kind reshapes its source however it was opened.
 	async function revealSource(atSourceOffset = 0): Promise<void> {
 		await revealKernel.reveal(atSourceOffset);
 		const el = deps.getEl();
-		if (!el || !isRevealed() || isReading()) return;
+		if (!isRevealed() || isReading()) return;
+		if (!el) {
+			pendingReveal = atSourceOffset;
+			return;
+		}
 		const reshaped = reshapeSource(el.textContent ?? '', atSourceOffset);
 		if (!reshaped) return;
 		paintSource(el, reshaped.text);
-		deps.onSourceEdit?.(reshaped.text);
+		reportSourceEdit(reshaped.text);
 		setCaret(reshaped.caret);
 	}
 
@@ -428,12 +430,33 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			el.textContent = text;
 		}
 		anchorTrailingNewline(el);
+		reported = text;
 		noteShownSource();
+	}
+
+	// The text the view last saw, painted or reported, so one change reports once whatever order
+	// an engine fires a commit's `compositionend` and `input` in.
+	let reported: string | null = null;
+	function reportSourceEdit(text: string): void {
+		reported = text;
+		deps.onSourceEdit?.(text);
+	}
+
+	// The browser's own edits (an IME commit, a drop) skip the leaf's splice, so they repaint and
+	// report here.
+	function afterNativeEdit(): void {
+		const el = deps.getEl();
+		if (!el || composing || (el.textContent ?? '') === reported) return;
+		repaintSource();
+		reportSourceEdit(el.textContent ?? '');
 	}
 
 	// Every open and fold goes through here; a folded source is gone, so the hint judges the node.
 	function setRevealed(value: boolean): void {
-		if (!value) editableSurface.noteShownSource(null);
+		if (!value) {
+			pendingReveal = null;
+			editableSurface.noteShownSource(null);
+		}
 		deps.setRevealed?.(value);
 	}
 
@@ -515,7 +538,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		to.push({ text: el.textContent ?? '', caret: backend.getRaw() ?? 0 });
 		paintSource(el, entry.text);
 		setCaret(entry.caret);
-		deps.onSourceEdit?.(entry.text);
+		reportSourceEdit(entry.text);
 	}
 
 	/** Only a keystroke-shaped edit (one character at most, an emoji included, not a line break)
@@ -546,7 +569,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		const reshaped = reshapeSource(spliced, start + insert.length);
 		const next = reshaped?.text ?? spliced;
 		paintSource(el, next);
-		deps.onSourceEdit?.(next);
+		reportSourceEdit(next);
 		setCaret(reshaped?.caret ?? start + insert.length);
 		// Started after the edit, so the pause measured is the one the user leaves.
 		if (deps.renderSource && keystroke) sourceBatch.armPause();
@@ -751,6 +774,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		oninput: (e: Event) => {
 			editableSurface.onInput(e);
 			noteShownSource();
+			if (!(e as InputEvent).isComposing) afterNativeEdit();
 		},
 		onbeforeinput: editableSurface.onBeforeInput,
 		onkeydown: editableSurface.onKeyDown,
@@ -760,13 +784,19 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		onpointerdown: onPointerDown,
 		onfocusout: () => void commitReveal(),
 		oncompositionstart: editableSurface.onCompositionStart,
-		oncompositionend: editableSurface.onCompositionEnd
+		oncompositionend: () => {
+			editableSurface.onCompositionEnd();
+			afterNativeEdit();
+		}
 	};
 
 	// Mirrors a raw change from outside (undo, a structural replace) into the source; nothing moves
 	// a shown render-primary source's raw before blur.
 	const syncAttachment = () => {
 		syncSource();
+		const at = pendingReveal;
+		pendingReveal = null;
+		if (at !== null) untrack(() => void revealSource(at));
 	};
 	// Its own stable attachment, so recomputing the spread never moves focus mid-edit.
 	const parkAttachment = (el: HTMLElement) => () => parkFocusOnEditorRoot(el, getEditorRoot());
@@ -819,8 +849,6 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		get sourceText() {
 			return sourceText();
 		},
-		repaintSource,
-
 		get surfaceProps() {
 			return buildSurfaceProps();
 		},
