@@ -9,12 +9,12 @@ Dead space is the root and the block lists inside it: a host that widens or pads
 the block list moves the whole visible side gutter onto the list, so a handler
 that takes only root-targeted clicks leaves that strip dead.
 
-The whole rule, in order. Outside reading mode, a press in dead space near a block
-ends any live range first. Then the click goes to a gap caret if it falls between two
-top-level blocks whose facing edges both take one (or above a first block that takes
-one at its top), to the nearest line if the nearest block has text lines, and to
-nothing at all if that block has none (a table, an equation, a rule): no caret, no
-focus.
+The whole rule, in order. Outside reading mode, a plain press in dead space near a
+block ends any live range first. Then the click goes to a gap caret if it falls
+between two top-level blocks whose facing edges both take one (or above a first block
+that takes one at its top), to the nearest line if the nearest block has text lines,
+and to nothing at all if that block has none (a table, an equation, a rule): no caret,
+no focus.
 
 ## Happy paths
 
