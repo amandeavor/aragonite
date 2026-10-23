@@ -62,6 +62,9 @@ export type FrameworkSurface = keyof Surfaces;
 export interface BlockViewProps<S extends FrameworkSurface = 'leaf'> {
 	state: BlockViewState;
 	ctx: Surfaces[S]['ctx'];
+	/** A render-primary block's text as typed, before it commits, for a live preview; null while
+	 *  folded, before the first edit, and on the other surfaces. */
+	draft: string | null;
 }
 
 export type ReactBlockViewOptions<S extends FrameworkSurface> = Omit<
@@ -92,10 +95,12 @@ export function reactBlockView<S extends FrameworkSurface>(
 			}
 			const handOver = handOverFor(ctx);
 			const root = createRoot(target);
-			const draw = (state: BlockViewState) => {
+			let draft: string | null = null;
+			const draw = (state: BlockViewState, typed = state.revealed ? draft : null) => {
+				draft = typed;
 				const block = (
 					<HandOverContext.Provider value={handOver}>
-						<Component state={state} ctx={ctx as Surfaces[S]['ctx']} />
+						<Component state={state} ctx={ctx as Surfaces[S]['ctx']} draft={draft} />
 					</HandOverContext.Provider>
 				);
 				flushSync(() => root.render(wrap ? wrap(block) : block));
@@ -103,7 +108,10 @@ export function reactBlockView<S extends FrameworkSurface>(
 			draw(ctx.state());
 			return {
 				update: draw,
-				afterInput: afterInput && ((text: string) => afterInput(text, ctx as never)),
+				afterInput(text: string) {
+					if (spec.surface === 'render-primary') draw(ctx.state(), text);
+					afterInput?.(text, ctx as never);
+				},
 				destroy() {
 					handOver.live = false;
 					// React refuses to unmount a root inside its own commit, where the host app's

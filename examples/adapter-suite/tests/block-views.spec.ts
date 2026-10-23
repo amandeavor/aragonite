@@ -64,6 +64,24 @@ test('a click-to-edit block opens on a click, and its edit is one undo step', as
 	await expect(page.locator('.label-text')).toHaveText('a label');
 });
 
+test('a click-to-edit block previews its source key by key, before anything commits', async ({
+	page
+}) => {
+	await page.locator('.label-text').click();
+	const preview = page.locator('.label-preview');
+	await expect(preview).toHaveText('a label');
+	await page.keyboard.press('End');
+	await page.keyboard.type(' xy');
+	await expect(preview).toHaveText('a label xy');
+	await page.keyboard.press('Backspace');
+	await expect(preview).toHaveText('a label x');
+	expect(await mirror(page).textContent()).toBe(BLOCK_VIEWS_SOURCE);
+
+	await caretAtEnd(page, 'after the blocks');
+	await expect(preview).toHaveCount(0);
+	await expect(page.locator('.label-text')).toHaveText('a label x');
+});
+
 test('a container holds editable children: typing and Enter land inside it', async ({ page }) => {
 	await caretAtEnd(page, 'inside the box');
 	await page.keyboard.type(' typed');

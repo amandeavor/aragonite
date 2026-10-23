@@ -49,7 +49,7 @@ Two rules make a framework block behave:
 
 ## What your component gets
 
-Two props: `state` and `ctx`.
+Three props: `state`, `ctx` and, for a click-to-edit block, `draft` ([below](#a-click-to-edit-block)).
 
 `state` is the block as it is right now, and your component re-renders whenever one of these changes:
 
@@ -90,7 +90,20 @@ export const labelView = reactBlockView(Label, {
 
 A click anywhere in the block flips `state.revealed` on, your component swaps in `<LeafContent>`, and the caret lands in the source (at the spot your kind's `caretTargetAtPoint` names, or the first byte without one). Typing edits the source without committing anything; moving the caret out of the block commits the whole edit as one undo step and flips `revealed` back off. So reveal, type, click away, Ctrl+Z, and the old label is back in one go.
 
-Your component re-renders when the edit commits, not as each key lands, so on its own it can't follow the typing. `afterInput(text, ctx)` hears every change while the source is open, but it runs outside your component. A live preview (block math's side-by-side layout) has to carry that text over itself, say through a store keyed on `ctx`, which is one object per mounted block and the same one your component gets.
+Want a live preview while the source is open (block math's side-by-side layout)? That's `draft`: the source as it's typed, before anything commits, and your component re-renders with it on every key. It's null while the block is folded and before the first edit, so fall back to the node:
+
+```tsx
+function Label({ state, draft }: BlockViewProps<'render-primary'>) {
+	const caption = (draft ?? state.node.raw).slice('@@ '.length).trim();
+	if (!state.revealed) return <strong>{caption}</strong>;
+	return (
+		<>
+			<LeafContent className="label-source" />
+			<em>{caption}</em>
+		</>
+	);
+}
+```
 
 ## A block that holds blocks
 

@@ -20,6 +20,9 @@ console error, page error or console warning, not only the editor's own.
 - Typing at the end of the memo reaches the mirror; Ctrl+Z takes it back.
 - A click on the label opens its source with the caret in it; End and typing edit it, and clicking
   into the paragraph below commits the edit once. One Ctrl+Z restores the old label whole.
+- With the label open, a preview beside its source follows each key typed and each Backspace
+  (the component's `draft`) while the mirror stays unchanged; clicking away commits, folds the
+  label and removes the preview.
 - Typing in the box's child, then Enter and more typing, lands inside the box; Ctrl+Z takes the
   last typing back. The box's `BlockChildren` carries an attribute that changes with each edit, so
   it re-renders as the child is typed in. Miss: a Vue element ref runs again on every re-render

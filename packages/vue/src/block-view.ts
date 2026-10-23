@@ -63,6 +63,9 @@ export type FrameworkSurface = keyof Surfaces;
 export interface BlockViewProps<S extends FrameworkSurface = 'leaf'> {
 	state: BlockViewState;
 	ctx: Surfaces[S]['ctx'];
+	/** A render-primary block's text as typed, before it commits, for a live preview; null while
+	 *  folded, before the first edit, and on the other surfaces. */
+	draft: string | null;
 }
 
 export type VueBlockViewOptions<S extends FrameworkSurface> = Omit<Surfaces[S]['spec'], 'mount'> & {
@@ -91,21 +94,29 @@ export function vueBlockView<S extends FrameworkSurface>(
 			const handOver = handOverFor(ctx);
 			// One root component per mount, so each `render` patches the same tree.
 			const Root = defineComponent({
-				props: { state: { type: Object as PropType<BlockViewState>, required: true } },
+				props: {
+					state: { type: Object as PropType<BlockViewState>, required: true },
+					draft: { type: String as PropType<string | null>, default: null }
+				},
 				setup(props) {
 					provide(HAND_OVER, handOver);
-					return () => h(component, { state: props.state, ctx });
+					return () => h(component, { state: props.state, ctx, draft: props.draft });
 				}
 			});
-			const draw = (state: BlockViewState) => {
-				const root = h(Root, { state });
+			let draft: string | null = null;
+			const draw = (state: BlockViewState, typed = state.revealed ? draft : null) => {
+				draft = typed;
+				const root = h(Root, { state, draft });
 				root.appContext = app?._context ?? null;
 				render(root, target);
 			};
 			draw(ctx.state());
 			return {
 				update: draw,
-				afterInput: afterInput && ((text: string) => afterInput(text, ctx as never)),
+				afterInput(text: string) {
+					if (spec.surface === 'render-primary') draw(ctx.state(), text);
+					afterInput?.(text, ctx as never);
+				},
 				destroy() {
 					handOver.live = false;
 					render(null, target);

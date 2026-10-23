@@ -1,11 +1,17 @@
-<!-- A click-to-edit label: the text shows only while the caret is in it. -->
+<!-- A click-to-edit label: the text shows only while the caret is in it, beside a preview that
+     follows it as it's typed. -->
 <script setup lang="ts">
+import { computed } from 'vue';
 import { LeafContent, type BlockViewProps } from '@voithos-labs/aragonite-vue';
 
-defineProps<BlockViewProps<'render-primary'>>();
+const props = defineProps<BlockViewProps<'render-primary'>>();
+const caption = computed(() => (props.draft ?? props.state.node.raw).slice('@@ '.length).trim());
 </script>
 
 <template>
-	<LeafContent v-if="state.revealed" class="label-source" />
-	<span v-else class="label-text">{{ state.node.raw.slice('@@ '.length).trim() }}</span>
+	<template v-if="state.revealed">
+		<LeafContent class="label-source" />
+		<span class="label-preview">{{ caption }}</span>
+	</template>
+	<span v-else class="label-text">{{ caption }}</span>
 </template>

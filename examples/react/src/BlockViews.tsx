@@ -28,9 +28,16 @@ function Memo(_: BlockViewProps<'leaf'>) {
 	);
 }
 
-function Label({ state }: BlockViewProps<'render-primary'>) {
-	if (state.revealed) return <LeafContent className="label-source" />;
-	return <span className="label-text">{state.node.raw.slice('@@ '.length).trim()}</span>;
+// While open, a preview follows the source as it's typed, block math's side-by-side shape.
+function Label({ state, draft }: BlockViewProps<'render-primary'>) {
+	const caption = (draft ?? state.node.raw).slice('@@ '.length).trim();
+	if (!state.revealed) return <span className="label-text">{caption}</span>;
+	return (
+		<>
+			<LeafContent className="label-source" />
+			<span className="label-preview">{caption}</span>
+		</>
+	);
 }
 
 // `data-length` changes per edit in the box, so `BlockChildren` re-renders while it's typed in.
