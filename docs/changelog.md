@@ -8,7 +8,7 @@ A word on the numbers. Everything before 0.10.1 was a working number: the label 
 
 ## [0.11](changelog/0.11.md)
 
-- [0.11.2](changelog/0.11.md#0112-list-items-that-sit-by-their-marker-in-source-mode): a list item sits right after its marker in source mode, to-dos or not
+- [0.11.2](changelog/0.11.md#0112-plugin-blocks-in-react-and-vue-an-editor-that-fills-its-box-and-clicks-that-land-where-you-pressed): plugin blocks drawn with React or Vue components, click-to-edit blocks without Svelte, an editor that stays as tall as its host, clicks that land where you pressed, a CommonMark-faithful inline parser that no paste can freeze, and production builds without the dev checks
 - [0.11.1](changelog/0.11.md#0111-deletes-the-editor-decides-lists-that-line-up-and-reading-mode-as-a-page): Backspace and Delete take the same text in every browser, lists keep one column, and reading mode works like a page
 - [0.11.0](changelog/0.11.md#0110-react-and-vue-no-svelte-required-and-a-caret-like-the-browsers): React and Vue packages, no Svelte required in your app, and a caret that looks like the browser's again
 
