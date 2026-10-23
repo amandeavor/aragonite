@@ -26,7 +26,12 @@ import { DelimiterStack, type Delimiter } from './emphasis';
 import { matchCharRef } from './entities';
 import { labelEnd, labelKey, readInlineTail, STILL_OPEN } from './link-grammar';
 import { rawHtmlReader } from './raw-html';
-import { handlersFor, registeredTriggers, registryVersion } from './plugin-syntax';
+import {
+	handlersFor,
+	registeredTriggers,
+	registryVersion,
+	type InlineHandler
+} from './plugin-syntax';
 import { readSizeHint } from './size-hint';
 import { closeWrapper, openWrapper, token, type Token } from './token';
 
@@ -145,17 +150,27 @@ export class Scan {
 
 	/** The first handler on this character that claims, or 0. */
 	private claim(pos: number): number {
+		const claimed = this.handlerClaim(pos);
+		if (!claimed) return 0;
+		checkClaim(claimed.node, claimed.handler.prefix, pos, this.end);
+		stampClaim(claimed.node, claimed.handler);
+		return this.leaf(claimed.node);
+	}
+
+	private handlerClaim(pos: number): { node: InlineNode; handler: InlineHandler } | null {
 		for (const handler of handlersFor(this.raw[pos])) {
 			const { prefix } = handler;
 			if (pos + prefix.length > this.end || !this.raw.startsWith(prefix, pos)) continue;
-			if (!resolvesIn(this.grammar.activation, handler.owner)) continue;
+			if (!this.reads(handler)) continue;
 			const node = handler.recognizer(this.raw, pos, this.end, this.grammar);
-			if (!node) continue;
-			checkClaim(node, prefix, pos, this.end);
-			stampClaim(node, handler);
-			return this.leaf(node);
+			if (node) return { node, handler };
 		}
-		return 0;
+		return null;
+	}
+
+	/** Whether this editor reads the handler's plugin. */
+	private reads(handler: InlineHandler): boolean {
+		return resolvesIn(this.grammar.activation, handler.owner);
 	}
 
 	private read(pos: number): number {
@@ -384,6 +399,7 @@ export class Scan {
 
 	/** Where a bare url continues past `at`, or -1 where a construct that ends it starts. */
 	private urlAdvance(at: number): number {
+		if (this.handlerClaim(at)) return -1;
 		switch (this.raw[at]) {
 			case '[':
 				return this.mayOpenLink(at) ? -1 : at + 1;
@@ -406,12 +422,21 @@ export class Scan {
 		const { raw, end, resolver } = this;
 		const close = labelEnd(raw, at, end);
 		if (close === STILL_OPEN) return false;
-		// A nested bracket, a long label, or a code span or tag inside: only the bracket reading knows.
-		if (close < 0 || /[`<]/.test(raw.slice(at, close))) return true;
+		// A nested bracket, a long label, or a code span, tag or plugin syntax inside, any of which
+		// may hide the label's `]`: only the bracket reading knows.
+		if (close < 0 || this.mayHideBracket(at + 1, close - 1)) return true;
 		if (raw[close] === '(' && readInlineTail(raw, close, end)) return true;
 		if (!resolver) return false;
 		if (raw[close] === '[' && labelEnd(raw, close, end) > 0) return true;
 		return resolver(raw.slice(at + 1, close - 1)) !== undefined;
+	}
+
+	private mayHideBracket(from: number, to: number): boolean {
+		for (let i = from; i < to; i++) {
+			const c = this.raw[i];
+			if (c === '`' || c === '<' || handlersFor(c).some((h) => this.reads(h))) return true;
+		}
+		return false;
 	}
 
 	private email(at: number): number {
