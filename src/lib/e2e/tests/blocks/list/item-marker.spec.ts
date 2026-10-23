@@ -238,6 +238,26 @@ test.describe('the caret at an item’s start', () => {
 		}
 	}
 
+	// Source pads `9. ` out to the list's column, so the press lands in the padding, not on a glyph.
+	test('a press past a to-do’s `9.`, before its `[ ]`, lands before the text, source', async ({
+		page
+	}) => {
+		const editor = await openIn(page, 'source', '9. [ ] alpha\n10. b\n');
+		const at = await page.evaluate(() => {
+			const span = document.querySelector('.editor .task-list-marker')!;
+			const glyphs = document.createRange();
+			glyphs.selectNodeContents(span);
+			const box = span.getBoundingClientRect();
+			return {
+				x: (glyphs.getBoundingClientRect().right + box.right) / 2,
+				y: (box.top + box.bottom) / 2
+			};
+		});
+		await page.mouse.click(at.x, at.y);
+		await editor.typeSlowly('X');
+		await editor.bridge.waitForSourceEquals('9. [ ] Xalpha\n10. b\n');
+	});
+
 	// Level with a row, the press picks that row's first cell, and the marker side is its start.
 	const TABLE_ITEM = '- | a | b |\n  | - | - |\n  | 1 | 2 |\n';
 	for (const mode of EDITING_MODES) {

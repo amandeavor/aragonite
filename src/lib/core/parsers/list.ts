@@ -262,10 +262,10 @@ function wouldKeepParagraphOpen(strippedText: string): boolean {
 // ── Marker widths ────────────────────────────────────────────────────────────
 
 /**
- * How many of a list's items open with a marker of each width: plain items at `2 * width`, to-dos
- * (marker and box together) at `2 * width + 1`, no trailing zeros. What its marker column is sized
- * from; the parse stores it on the list node and the list's rebuild keeps it, so no key rereads
- * the items. Never written in place: an undo entry may hold the array.
+ * How many of a list's items open with a list marker of each width (a to-do's `[ ] ` not counted):
+ * plain items at `2 * width`, to-dos at `2 * width + 1`, no trailing zeros. What its marker column
+ * is sized from; the parse stores it on the list node and the list's rebuild keeps it, so no key
+ * rereads the items. Never written in place: an undo entry may hold the array.
  */
 export type MarkerWidths = Uint32Array;
 
@@ -322,7 +322,7 @@ export function markerWidthsOf(list: NodeView): MarkerWidths {
 	return markerWidthCounts(items);
 }
 
-/** The widest plain marker and the widest to-do opener, in characters, and whether any to-do. */
+/** The widest list marker of a plain item and of a to-do, in characters, and whether any to-do. */
 export function widestMarkers(counts: MarkerWidths): {
 	plain: number;
 	task: number;
@@ -340,8 +340,7 @@ export function widestMarkers(counts: MarkerWidths): {
 
 function slotOf(shape: ItemLineShape | null): number | null {
 	if (!shape) return null;
-	const task = shape.taskMarker !== null;
-	return 2 * (shape.marker.length + (shape.taskMarker?.length ?? 0)) + (task ? 1 : 0);
+	return 2 * shape.marker.length + (shape.taskMarker !== null ? 1 : 0);
 }
 
 function bump(counts: number[], slot: number, by: number): void {
