@@ -17,6 +17,7 @@ import type { BlockComponent } from '#lib/block-component.js';
 import type { UndoEntry } from '#lib/undo/types.js';
 import {
 	REVEAL_LEAF_FORMS,
+	domRevealLeaf,
 	revealLeafPlugin,
 	type RevealLeafForm
 } from '../blocks/fixtures/reveal-leaf';
@@ -214,6 +215,39 @@ describe('a DOM render-primary view', () => {
 
 		expect(shownSource(editor)?.textContent).toBe('@@ abcd');
 		expect(takeDevWarns().map((w) => w.tag)).not.toContain('invariant:dom-view-content');
+	});
+
+	// Miss-analysis: the report rows edited inside the source, and none let the document's undo refill it.
+	it('runs afterInput once with the text the document’s undo fills a shown source with', async () => {
+		const seen: string[] = [];
+		const { editor } = mount(domRevealLeaf({ onSourceEdit: (text) => void seen.push(text) }));
+		await editor.settle();
+		await click(editor, rendered(editor)!);
+		await editAndBlur(editor, '@@ abcdX');
+		await click(editor, rendered(editor)!);
+		const el = shownSource(editor)!;
+		el.textContent = '@@ abcdXY';
+		el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromDrop' }));
+		await pressKey(el, { key: 'z', ctrlKey: true });
+
+		expect(shownSource(editor)?.textContent).toBe('@@ abcd');
+		expect(seen).toEqual(['@@ abcdX', '@@ abcdXY', '@@ abcd']);
+	});
+
+	it('runs no afterInput for a reveal, after an undo changed the text while it was folded', async () => {
+		const seen: string[] = [];
+		const { editor } = mount(domRevealLeaf({ onSourceEdit: (text) => void seen.push(text) }));
+		await editor.settle();
+		await click(editor, rendered(editor)!);
+		await editAndBlur(editor, '@@ abcdX');
+		await pressKey(hostAt(editor, [0]).querySelector<HTMLElement>('[contenteditable]')!, {
+			key: 'z',
+			ctrlKey: true
+		});
+		await click(editor, rendered(editor)!);
+
+		expect(shownSource(editor)?.textContent).toBe('@@ abcd');
+		expect(seen).toEqual(['@@ abcdX']);
 	});
 
 	it('warns when its rendered element sits outside the element it was given', async () => {

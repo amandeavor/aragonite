@@ -416,6 +416,14 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 
 	// ── View sync ──────────────────────────────────────────────────────────────
 
+	// The text the view knows the source shows: the node's, which a fresh element is filled with, or
+	// the last one reported. One change reports once, whatever order an engine fires its events in.
+	let reported: string | null = null;
+	function reportSourceEdit(text: string): void {
+		reported = text;
+		deps.onSourceEdit?.(text);
+	}
+
 	// Every painter's output passes here, so the text check covers them all (G1.28). A markers-only
 	// source takes the code block's empty-content attribute, so its markers show while focused.
 	function paintSource(el: HTMLElement, text: string): void {
@@ -434,14 +442,6 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		noteShownSource();
 	}
 
-	// The text the view last saw, painted or reported, so one change reports once whatever order
-	// an engine fires a commit's `compositionend` and `input` in.
-	let reported: string | null = null;
-	function reportSourceEdit(text: string): void {
-		reported = text;
-		deps.onSourceEdit?.(text);
-	}
-
 	// The browser's own edits (an IME commit, a drop) skip the leaf's splice, so they repaint and
 	// report here.
 	function afterNativeEdit(): void {
@@ -455,6 +455,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 	function setRevealed(value: boolean): void {
 		if (!value) {
 			pendingReveal = null;
+			reported = null;
 			editableSurface.noteShownSource(null);
 		}
 		deps.setRevealed?.(value);
@@ -485,7 +486,10 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		const pending = pendingCursor;
 		pendingCursor = null;
 		if ((el.textContent ?? '') !== text) {
+			const heard = reported;
 			paintSource(el, text);
+			// An undo over text the view has heard is a change to it; a fresh element's fill is not.
+			if (heard !== null && heard !== text) reportSourceEdit(text);
 			// The local entries were taken against bytes an external rewrite just replaced.
 			clearSourceHistory();
 			// Restore only while a caret is live: a rewrite from outside (undo, structural

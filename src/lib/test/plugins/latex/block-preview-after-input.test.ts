@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// Block math's live preview beside a shown source follows the browser's own edits: a native input,
-// and an IME commit whatever order its events arrive in.
+// Block math's live preview beside a shown source follows every change to it: a native input, an
+// IME commit whatever order its events arrive in, and the document's undo filling it.
 // Miss-analysis: Chromium ends a commit on a composing input, and no row composed in a shown math source.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { installEditorDomStubsForTests } from '#lib/testing.js';
@@ -12,16 +12,22 @@ import {
 	placeCaret,
 	type MountedEditor
 } from '#lib/test/harness/mount-editor.svelte.js';
+import { pressKey } from '#lib/test/harness/settle.js';
 
-let rendered: string[] = [];
-const renderer: MathRenderer = (source) => {
-	rendered.push(source);
-	return { dom: document.createElement('span') };
-};
+// Draws the formula as its own text, so the preview reads back what it was asked to draw.
+const renderer: MathRenderer = (source) => ({
+	dom: Object.assign(document.createElement('span'), { textContent: source })
+});
+const preview = (editor: MountedEditor) =>
+	editor.target.querySelector<HTMLElement>('.math-block-render')?.textContent;
 
 async function openSource(): Promise<{ editor: MountedEditor; el: HTMLElement }> {
 	const editor = mountEditor({ source: '$$\nx\n$$\n', plugins: [latexPlugin({ renderer })] });
 	await editor.settle();
+	return reveal(editor);
+}
+
+async function reveal(editor: MountedEditor): Promise<{ editor: MountedEditor; el: HTMLElement }> {
 	const render = editor.target.querySelector<HTMLElement>('.math-block-render')!;
 	const at = { bubbles: true, cancelable: true };
 	render.dispatchEvent(new PointerEvent('pointerdown', at));
@@ -41,7 +47,6 @@ const input = (inputType: string, isComposing = false) =>
 	new InputEvent('input', { bubbles: true, inputType, isComposing });
 
 beforeEach(() => {
-	rendered = [];
 	installEditorDomStubsForTests();
 	// A press runs the editor root's hit test, which jsdom lacks.
 	document.elementFromPoint ??= () => null;
@@ -59,7 +64,7 @@ describe('block math’s preview while its source is shown', () => {
 		el.dispatchEvent(composition('compositionend'));
 		await editor.settle();
 
-		expect(rendered.at(-1)).toBe('xy');
+		expect(preview(editor)).toBe('xy');
 	});
 
 	it('draws the edited formula after a native input', async () => {
@@ -68,6 +73,22 @@ describe('block math’s preview while its source is shown', () => {
 		el.dispatchEvent(input('insertFromDrop'));
 		await editor.settle();
 
-		expect(rendered.at(-1)).toBe('xz');
+		expect(preview(editor)).toBe('xz');
+	});
+
+	// Miss-analysis: every row edited inside the source, and none let the document's undo refill it.
+	it('draws the restored formula when the document’s undo fills the shown source', async () => {
+		const { editor, el } = await openSource();
+		edit(el, 'xy');
+		el.dispatchEvent(input('insertFromDrop'));
+		el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+		await editor.settle();
+		const { el: reopened } = await reveal(editor);
+		edit(reopened, 'xyz');
+		reopened.dispatchEvent(input('insertFromDrop'));
+		await pressKey(reopened, { key: 'z', ctrlKey: true });
+
+		expect(reopened.textContent).toBe('$$\nx\n$$');
+		expect(preview(editor)).toBe('x');
 	});
 });

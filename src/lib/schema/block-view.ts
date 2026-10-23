@@ -165,7 +165,7 @@ export interface BlockViewHandle {
 
 export interface LeafViewHandle extends BlockViewHandle {
 	/** After each change to the attached element's text (typing, a delete, a paste, an IME
-	 *  commit), once, with that text; never mid-composition. A throw is reported on `error`. */
+	 *  commit, an undo), once, with that text; never mid-composition. A throw is reported on `error`. */
 	afterInput?(text: string): void;
 }
 

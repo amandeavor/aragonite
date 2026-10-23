@@ -1391,6 +1391,5 @@ pixel off moves no scroll. `lint/file-rules.test.ts`.
 
 **G4.251 · The bundled Svelte reveal blocks are listed.** Every bundled plugin file that builds a
 render-primary leaf in Svelte (`mode: 'render-primary'`) is on a declared list: block math, the
-outline and the parrot today. It's there so moving them onto `defineBlockView` starts from a list,
-not a grep. It's an allowlist of files, so it guards nothing inside a listed file; don't read it
-as a guard on how those blocks are built. `lint/file-rules.test.ts`.
+outline and the parrot. It's there so moving them onto `defineBlockView` starts from a list, not
+a grep, and it guards nothing inside a listed file. `lint/file-rules.test.ts`.
