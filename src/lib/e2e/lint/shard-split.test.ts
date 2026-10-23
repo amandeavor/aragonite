@@ -177,7 +177,7 @@ describe('the census job', () => {
 		expect(downloads, 'the census downloads the summaries by a name prefix').not.toBe('');
 		expect(expected?.sort()).toEqual(sharded.map(([, body]) => engineOf(body)).sort());
 		for (const [id, body] of sharded) {
-			expect(body, id).toMatch(/^ {10}path: test-results\/ci-summary\.json$/m);
+			expect(body, id).toMatch(/^( {10}path: | {12})test-results\/ci-summary\.json$/m);
 			expect(/^ {10}name: (.+)$/m.exec(body)?.[1].startsWith(downloads), id).toBe(true);
 		}
 	});
