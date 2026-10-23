@@ -77,6 +77,19 @@ describe.each(ORDERS)('two handlers matching one trigger, %s', (_name, order) =>
 	});
 });
 
+describe('a claiming handler and the bare urls around it', () => {
+	it.each([
+		['a www link', 'w', 'go www.a.co', ['text', 'mark', 'mark', 'mark', 'text']],
+		['an email', '@', 'me@a.co', ['text', 'mark', 'text']]
+	])('takes the bytes %s would have linked', (_name, trigger, raw, kinds) => {
+		expect(kindsWith(raw, [claiming('mark', trigger)])).toEqual(kinds);
+	});
+
+	it('leaves a bare url outside its claim linked', () => {
+		expect(kindsWith('$ www.a.co', [claiming('mark', '$')])).toEqual(['mark', 'text', 'autolink']);
+	});
+});
+
 describe('a handler on a character the editor parses itself', () => {
 	it('claims ahead of the built-in reading when its prefix matches', () => {
 		const handler = claiming('note', '[', {
