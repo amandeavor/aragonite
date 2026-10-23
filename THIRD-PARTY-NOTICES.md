@@ -4,7 +4,14 @@ aragonite is licensed under MPL-2.0. It includes the third-party materials below
 
 ## commonmark.js (BSD-2-Clause)
 
-`src/lib/core/inline/scan/emphasis.ts` ports the `processEmphasis` algorithm from commonmark.js (<https://github.com/commonmark/commonmark.js>).
+These files in `src/lib/core/inline/scan/` port code from commonmark.js 0.31.2 (<https://github.com/commonmark/commonmark.js>):
+
+- `emphasis.ts`: the `processEmphasis` delimiter algorithm, with its per-kind `openers_bottom` bounds.
+- `scan.ts`: the bracket stack of `parseOpenBracket` and `parseCloseBracket`, with link deactivation.
+- `link-grammar.ts`: the link label, destination and title readers, and `normalizeReference`'s case fold.
+- `autolinks.ts`: the `reEmailAutolink` and `reAutolink` patterns.
+- `raw-html.ts`: the HTML tag grammar of `common.js`.
+- `entities.ts`: `unescapeString` and its `reEntityOrEscapedChar` pattern, from `common.js`.
 
 ```
 Copyright (c) 2014, John MacFarlane
@@ -33,6 +40,35 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+## mdurl (MIT)
+
+`src/lib/core/inline/scan/url.ts` ports the `encode` function of mdurl 1.0.1 (<https://github.com/markdown-it/mdurl>), which commonmark.js runs link destinations through.
+
+```
+Copyright (c) 2015 Vitaly Puzrin, Alex Kocharin.
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ## gemoji (MIT)
