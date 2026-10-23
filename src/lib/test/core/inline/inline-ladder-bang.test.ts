@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InlineNode } from '../../../core/nodes';
 import { parseInline } from '../../../core/inline';
-import {
-	registerInlineSyntax,
-	type InlineSyntaxRecognizer
-} from '../../../core/inline/scan/plugin-syntax';
+import { registerInlineSyntax, type InlineSyntaxRecognizer } from '#lib/plugin.js';
 import {
 	assertConstructCoverage,
 	assertTotalCoverage,

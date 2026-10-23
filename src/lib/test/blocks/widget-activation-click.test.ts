@@ -7,7 +7,7 @@ import { svelteView } from '#lib/svelte-view.svelte.js';
 import { describe, it, expect } from 'vitest';
 import { createViewWidgetPool } from '#lib/components/blocks/widget-portal.js';
 import { createWidgetInteraction } from '#lib/components/blocks/text/widget-interaction.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 import { bindActivationClick, createPressTracker, type LinkClick } from '#lib/activation-click.js';

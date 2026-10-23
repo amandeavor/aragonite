@@ -2,7 +2,7 @@
 import { appendView } from '#lib/test/harness/views.js';
 import { describe, it, expect } from 'vitest';
 import { createCellRender } from '../../../components/blocks/table/cell-render';
-import { INLINE_PRIORITIES, registerInlineSyntax } from '../../../core/inline/scan/plugin-syntax';
+import { INLINE_PRIORITIES, registerInlineSyntax } from '#lib/plugin.js';
 import type { CstNode } from '../../../core/nodes';
 import type { ResolveLinkUrl } from '../../../host-hooks';
 import type { IndexedDecoration } from '../../../decorations/buckets';

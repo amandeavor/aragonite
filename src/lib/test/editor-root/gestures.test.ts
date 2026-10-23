@@ -13,7 +13,7 @@ import { asEditorX } from '#lib/caret/coordinate-spaces.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 import { bindActivationClick, createPressTracker, type LinkClick } from '#lib/activation-click.js';
 import { ACTIVATION_CLICK_CASES } from '#lib/test/support/activation-click-cases.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';

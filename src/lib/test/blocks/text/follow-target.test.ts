@@ -5,7 +5,7 @@
 // but the arrow keys, and no test asked what Mod+K does beside one.
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 import { followTargetAt } from '#lib/components/blocks/text/link-at-point.js';
