@@ -8,7 +8,7 @@ import { inlineDescendants, parseInline } from '../../core/inline';
 import { flattenInlineWidgets } from '../../core/inline/inline-widgets';
 import { buildLinkReferenceMap } from '../../core/inline/link-reference-resolver';
 import { CONTENT_VISIBILITY, visibleRuns, renderedText } from '../../core/inline/visibility';
-import { registerInlineSyntax } from '../../core/inline/scan/plugin-syntax';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { renderOptions } from '../harness/fixture-grammar';
 
 // Assumes the default V8 stack; raising `--stack-size` turns these pins green against a

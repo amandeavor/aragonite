@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseInline } from '../../../core/inline';
 import type { InlineNode } from '../../../core/nodes';
-import { INLINE_PRIORITIES, registerInlineSyntax } from '../../../core/inline/scan/plugin-syntax';
+import { INLINE_PRIORITIES, registerInlineSyntax } from '#lib/plugin.js';
 
 const RAW = '@tag@ trailing';
 const SHORT_END = 5; // `@tag@` — the block offers only this much

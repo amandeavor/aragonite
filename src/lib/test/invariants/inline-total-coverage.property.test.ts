@@ -1,10 +1,9 @@
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { describe, it, expect } from 'vitest';
+
 import fc from 'fast-check';
-import type { InlineNode, InlineNodeKind } from '../../core/nodes';
-import { scanInline } from '../../core/inline/scan';
+import type { InlineNode, InlineNodeKind } from '#lib';
 import { isInlineKindDeclared } from '../../schema/plugin-kind';
-import { installPlugins } from '#lib';
+import { installPlugins, parseInline } from '#lib';
 import { footnotesPlugin, FOOTNOTE_REF_KIND } from '#lib/plugins/footnotes/index.js';
 import { emojiPlugin, EMOJI_KIND } from '#lib/plugins/emoji/index.js';
 import { latexPlugin, MATH_INLINE } from '#lib/plugins/latex/index.js';
@@ -57,7 +56,7 @@ function assertKindVocabulary(nodes: InlineNode[]): void {
 
 /** The tiling half: every byte covered once, constructs covering their parent. */
 function assertScanContract(raw: string, start: number, end: number): void {
-	const nodes = scanInline(raw, start, end, undefined, defaultGrammarView);
+	const nodes = parseInline(raw, start, end);
 	assertTotalCoverage(nodes, start, end);
 	assertConstructCoverage(nodes);
 	assertKindVocabulary(nodes);

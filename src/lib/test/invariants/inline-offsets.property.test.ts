@@ -1,8 +1,8 @@
 import { describe, it } from 'vitest';
 import fc from 'fast-check';
-import type { InlineNode } from '../../core/nodes';
-import { parseInline } from '../../core/inline';
-import { arbInlineSource, freshOrFixedSeed } from './arbitraries';
+import { parseInline, type InlineNode } from '#lib';
+import { arbInlineSource } from './arbitraries/inline';
+import { freshOrFixedSeed } from './arbitraries/property-seed';
 
 // The inline tree tiles the content range, which cursor mapping depends on (G2.5). The tiling is
 // not leaf-exhaustive: a wrapped node's markers live in the edge gaps its children leave, where

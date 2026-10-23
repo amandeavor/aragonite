@@ -1,10 +1,10 @@
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { describe, it, expect } from 'vitest';
+import { parseInline } from '#lib';
 import fc from 'fast-check';
-import { scanInline } from '../../../core/inline/scan';
-import { INLINE_PRIORITIES, registerInlineSyntax } from '../../../core/inline/scan/plugin-syntax';
+import { INLINE_PRIORITIES, registerInlineSyntax } from '#lib/plugin.js';
 import { resetPluginPlatformForTests } from '#lib/testing.js';
-import { arbInlineSource, freshOrFixedSeed } from '../../invariants/arbitraries';
+import { arbInlineSource } from '../../invariants/arbitraries/inline';
+import { freshOrFixedSeed } from '../../invariants/arbitraries/property-seed';
 
 // Plugin-trigger tokens interleaved with adversarial content: arbInlineSource alone rarely
 // emits `[^` (rules.md: a generator that cannot produce the bug class proves nothing), and a
@@ -28,12 +28,12 @@ const arbLadderSource = fc
 
 const PARAMS = { numRuns: 1000, seed: freshOrFixedSeed(717171) } as const;
 
-describe('inline priority order: all-decline recognizers leave scanInline byte-identical', () => {
+describe('inline priority order: all-decline recognizers leave parseInline byte-identical', () => {
 	it('bare-`:`, `[^`-prefix and `![[`-prefix decliners never perturb the scan output', () => {
 		fc.assert(
 			fc.property(arbLadderSource, (source) => {
 				resetPluginPlatformForTests();
-				const clean = scanInline(source, 0, source.length, undefined, defaultGrammarView);
+				const clean = parseInline(source, 0, source.length);
 				registerInlineSyntax(':', () => null);
 				registerInlineSyntax('[', () => null, {
 					prefix: '[^',
@@ -43,7 +43,7 @@ describe('inline priority order: all-decline recognizers leave scanInline byte-i
 					prefix: '![[',
 					priority: INLINE_PRIORITIES.prefixOverride
 				});
-				expect(scanInline(source, 0, source.length, undefined, defaultGrammarView)).toEqual(clean);
+				expect(parseInline(source, 0, source.length)).toEqual(clean);
 			}),
 			PARAMS
 		);

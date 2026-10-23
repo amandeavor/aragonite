@@ -1,7 +1,6 @@
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { describe, it, expect } from 'vitest';
+import { parseInline } from '#lib';
 import type { InlineNode } from '../../../../core/nodes';
-import { scanInline } from '../../../../core/inline/scan';
 import {
 	assertConstructCoverage,
 	assertTotalCoverage,
@@ -15,7 +14,7 @@ import {
 
 /** The whole input parses as exactly one bracket node spanning it; returns the node. */
 function scanWholeInputBracket(input: string, kind: 'link' | 'image' = 'link'): InlineNode {
-	const nodes = scanInline(input, 0, input.length, undefined, defaultGrammarView);
+	const nodes = parseInline(input, 0, input.length);
 	assertTotalCoverage(nodes, 0, input.length);
 	assertConstructCoverage(nodes);
 	const found = [...collectKind(nodes, 'link'), ...collectKind(nodes, 'image')];
@@ -96,7 +95,7 @@ describeUrlCases('url processing chain', [
 describe('title placement', () => {
 	it('all three title forms parse, across softbreak lines', () => {
 		const raw = '[link](/url "title")\n[link](/url \'title\')\n[link](/url (title))';
-		const nodes = scanInline(raw, 0, raw.length, undefined, defaultGrammarView);
+		const nodes = parseInline(raw, 0, raw.length);
 		assertTotalCoverage(nodes, 0, raw.length);
 		const links = collectKind(nodes, 'link');
 		expect(links.map((l) => [l.url, l.title])).toEqual([
@@ -108,7 +107,7 @@ describe('title placement', () => {
 
 	it('quote-split sweep exemplar: quote starts the destination', () => {
 		const raw = "[中 ]('b)_𐄀`&b";
-		const nodes = scanInline(raw, 0, raw.length, undefined, defaultGrammarView);
+		const nodes = parseInline(raw, 0, raw.length);
 		assertTotalCoverage(nodes, 0, raw.length);
 		expect(collectKind(nodes, 'link')).toEqual([linkNode(0, 8, [textNode(1, 3, '中 ')], "'b")]);
 	});
@@ -139,7 +138,7 @@ describe('invalid destination or title forms fall back to literal', () => {
 	];
 	for (const [name, input] of literalInputs) {
 		it(name, () => {
-			const nodes = scanInline(input, 0, input.length, undefined, defaultGrammarView);
+			const nodes = parseInline(input, 0, input.length);
 			assertTotalCoverage(nodes, 0, input.length);
 			expect(collectKind(nodes, 'link')).toEqual([]);
 			expect(collectKind(nodes, 'image')).toEqual([]);

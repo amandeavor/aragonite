@@ -4,7 +4,7 @@ import type { PluginView } from '#lib/plugin-view.js';
 import type { EditorError } from '#lib/editor-events.js';
 import type { InlineWidgetComponentProps } from '#lib/core/inline/inline-widgets.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 import type { Decoration, DecorationSourceHandle } from '#lib/decorations/types.js';
 import type { InlineMenuRowProps } from '#lib/inline-menu/types.js';

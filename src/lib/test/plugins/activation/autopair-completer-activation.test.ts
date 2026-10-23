@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { completeLineOnType, registerBlockCompleter } from '#lib/schema/block-completions.js';
 import { resolveDelimiterAutoPair } from '#lib/components/blocks/text/delimiter-autopair.js';
 import { defaultGrammarView, type GrammarView } from '#lib/schema/block-openers.js';

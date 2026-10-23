@@ -8,10 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InlineNode } from '../../../core/nodes';
 import { parseInline } from '../../../core/inline';
-import {
-	registerInlineSyntax,
-	type InlineSyntaxRecognizer
-} from '../../../core/inline/scan/plugin-syntax';
+import { registerInlineSyntax, type InlineSyntaxRecognizer } from '#lib/plugin.js';
 
 // The same minimal embed stand-in `inline-ladder-bang.test.ts` drives; its extension gate
 // is what declines the `![[a]](u)` overlap with the built-in image grammar.
