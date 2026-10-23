@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRootGestures } from '#lib/components/editor-root/gestures.js';
 import { installPressTracker } from '#lib/components/editor-root/listeners.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import { parse } from '#lib/core/parser.js';
 import type { BlockComponent } from '#lib/block-component.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
@@ -137,7 +137,7 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 	const doc = parse(
 		'---\n\nafter\n\na [link](https://example.com/) b\n\nplain words here\n\nx %%w%% y\n'
 	);
-	const refs = buildLinkReferenceMap(doc.children);
+	const refs = definitionsOf(doc.children);
 	const startDragAtPoint = vi.fn(() => true);
 	const focus = vi.fn();
 	const component = { focusable: true, focus, startDragAtPoint } as unknown as BlockComponent;

@@ -26,7 +26,7 @@ import { setextHeadingContentRange, setextHeadingWrite } from './setext-raw';
 import { registerInlineConstructPolicy } from './inline-construct-policy';
 import { registerAsCore } from './plugin-install';
 import { registerBuiltInRangeIndent } from './range-indent-forms';
-import { wrapAsCodeSpan } from '../core/inline/backticks';
+import { asCodeSpan } from '../core/inline/scan/code-span';
 import {
 	containerEstimate,
 	proseEstimate,
@@ -171,7 +171,7 @@ function registerBuiltInInlinePolicies(): void {
 			edge: 'boxed',
 			markerBytes: '`',
 			command: 'format.toggleCode',
-			wrapBytes: wrapAsCodeSpan
+			wrapBytes: asCodeSpan
 		}
 	] as const;
 	marks.forEach(({ kind, edge, ...mark }, nestingRank) => {

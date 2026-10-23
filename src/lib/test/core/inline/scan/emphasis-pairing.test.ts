@@ -25,10 +25,7 @@ describe('multiple-of-3 rule (CommonMark §6.2)', () => {
 		const source = '**foo*bar**baz*';
 		const nodes = parseInline(source, 0, source.length);
 		assertConstructCoverage(nodes);
-		const strong = nodes.find((n) => n.kind === 'strong');
-		expect(strong).toBeDefined();
-		expect(strong!.children?.some((c) => c.kind === 'text' && c.text === '*')).toBe(true);
-		expect(nodes.filter((n) => n.kind === 'emphasis')).toHaveLength(0);
+		expect(shapeOf(nodes, source)).toBe('<strong>foo*bar</strong>baz*');
 	});
 
 	// The rule applies to original run lengths, not the unconsumed remainder after partial

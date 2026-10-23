@@ -18,12 +18,14 @@ import { normalEqual, normalizeAragonite, normalizeReference, type NormalNode } 
 
 const DEFINITION_LINE = /^ {0,3}\[[^\]]+\]:/m;
 
-// GFM label matching, written here so the resolver is the test's own, not the editor's.
+// Label matching as commonmark.js does it, case fold included, written here so the resolver is
+// the test's own, not the editor's.
 const normalizeLabel = (label: string) =>
 	label
 		.replace(/[ \t\n\v\f\r]+/g, ' ')
 		.replace(/^ | $/g, '')
-		.toLowerCase();
+		.toLowerCase()
+		.toUpperCase();
 
 /** The first definition of each label wins, nested ones included, in document order. */
 function resolverFor(blocks: CstNode[]) {
@@ -67,10 +69,7 @@ const examples = [...loadSpecExamples(), ...loadDefinitionExamples()].filter(
 
 // Known divergences, each awaiting the owner's ruling; a fixed one must leave this list.
 const DEVIATIONS: Record<number, string> = {
-	540: 'labels match by lowercasing, not Unicode case folding, so [ẞ] misses [SS]',
-	545: 'a full reference with no definition is one opaque node, so its escapes stay unread',
-	569: 'a full reference with no definition is one opaque node, so its second label never pairs',
-	571: 'a full reference with no definition is one opaque node, so its second label never pairs'
+	545: 'a full reference with no definition is one opaque node, so its escapes stay unread'
 };
 
 interface Comparison {

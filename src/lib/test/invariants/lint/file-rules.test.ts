@@ -187,7 +187,7 @@ const GRAMMAR_FILES: string[] = [
 	SOURCE.lineSplitter,
 	SOURCE.autolinkGrammar,
 	SOURCE.htmlTagGrammar,
-	SOURCE.linkReferenceResolver
+	SOURCE.linkGrammar
 ];
 
 const PARSER_PROBE = `${SOURCE_DIR.blockParsers}probe.ts`;

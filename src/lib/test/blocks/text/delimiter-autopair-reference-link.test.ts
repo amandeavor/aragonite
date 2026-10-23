@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resolveDelimiterAutoPair } from '#lib/components/blocks/text/delimiter-autopair.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import { parse } from '#lib/core/parser.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 
@@ -8,7 +8,7 @@ import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 // link is not taken for the closer of a `*` outside it.
 // Miss-analysis: GH #455, the auto-pair suites typed beside inline links, never reference ones.
 
-const resolver = buildLinkReferenceMap(parse('[ref]: https://x.com\n').children).resolve;
+const resolver = definitionsOf(parse('[ref]: https://x.com\n').children).resolve;
 const withDefinitions = fixtureReading({ resolver: resolver });
 
 const type = (text: string, caret: number, typed: string) =>

@@ -6,10 +6,8 @@ import fc from 'fast-check';
 import type { InlineNode } from '#lib/core/nodes.js';
 import { parseInline } from '#lib/core/inline/index.js';
 import { listInlineMarks } from '#lib/schema/inline-construct-policy.js';
-import {
-	normalizeLinkLabel,
-	type LinkReferenceResolver
-} from '#lib/core/inline/link-reference-resolver.js';
+import { labelKey } from '#lib/core/inline/scan/link-grammar.js';
+import { type LinkReferenceResolver } from '#lib/core/inline/scan/definitions.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { installLayoutStubs, mountEditor } from '#lib/test/harness/mount-editor.svelte.js';
 import { pressKey } from '#lib/test/harness/settle.js';
@@ -66,7 +64,7 @@ const leaf = fc.oneof(
 const DEFINITION = '\n[foo*]: /u\n[foo\\]b*]: /u\n';
 const DEFINED = new Set(['foo*', 'foo\\]b*']);
 const RESOLVE_DEFINED: LinkReferenceResolver = (label) =>
-	DEFINED.has(normalizeLinkLabel(label)) ? { url: '/u' } : undefined;
+	DEFINED.has(labelKey(label)) ? { url: '/u' } : undefined;
 
 const { inline } = fc.letrec<{ inline: string; wrapped: string; joined: string }>((tie) => ({
 	inline: fc.oneof(

@@ -29,6 +29,8 @@ export interface PerfSnapshot {
 	/** Bytes every block parse read; what a keystroke's join ask costs. */
 	parseBytes: number;
 	inlineComputeCount: number;
+	/** Inline parses that built scan state: the ones plain text could not skip. */
+	inlineScanCount: number;
 	/** Inline-format coverage reads that actually parsed: what a toolbar's pressed state costs. */
 	formatCoverageReads: number;
 	/** Renders of inline content read back for what the screen shows: what a hidden edge costs. */
@@ -98,6 +100,7 @@ function emptySnapshot(): PerfSnapshot {
 		parseBlockCount: 0,
 		parseBytes: 0,
 		inlineComputeCount: 0,
+		inlineScanCount: 0,
 		formatCoverageReads: 0,
 		screenReads: 0,
 		markerRunReads: 0,
@@ -211,6 +214,11 @@ export function recordParse(ms: number, blockCount: number, bytes: number): void
 export function recordInlineCompute(): void {
 	if (!enabled) return;
 	counters.inlineComputeCount++;
+}
+
+export function recordInlineScan(): void {
+	if (!enabled) return;
+	counters.inlineScanCount++;
 }
 
 export function recordFormatCoverageRead(): void {

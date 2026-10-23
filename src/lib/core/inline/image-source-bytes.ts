@@ -3,7 +3,7 @@
 
 import { encodeDestination, escapeTitle } from './destination-bytes';
 import type { ImageFields, InlineNode } from '../nodes';
-import { buildDimSuffix } from './image-dimensions';
+import { writeSizeHint } from './scan/size-hint';
 import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // ── Where the bytes are written ─────────────────────────────────────────────
@@ -63,7 +63,7 @@ export function sameImageFields(a: ImageFields, b: ImageFields): boolean {
 /** The inverse of the built-in grammar; call `buildImageEditBytes`, which decides whether the
  *  bytes are GFM's to write. */
 export function buildImageSourceBytes(fields: ImageFields): string {
-	const dimSuffix = buildDimSuffix(fields.width, fields.height, fields.crop);
+	const dimSuffix = writeSizeHint(fields.width, fields.height, fields.crop);
 	const altSegment = escapeAlt(fields.alt) + dimSuffix;
 	// A reference image's url and title belong to its link reference definition.
 	if (fields.label !== undefined) {

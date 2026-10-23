@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { matchCharacterReference } from '../../../core/inline/character-refs';
+import { matchCharRef } from '../../../core/inline/scan/entities';
 
-const matchAll = (raw: string) => matchCharacterReference(raw, 0, raw.length);
+const matchAll = (raw: string) => matchCharRef(raw, 0, raw.length);
 
-describe('matchCharacterReference', () => {
+describe('matchCharRef', () => {
 	it('decodes representative named entities', () => {
 		const cases: Array<[string, string]> = [
 			['&copy;', '©'],

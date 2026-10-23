@@ -5,7 +5,7 @@
  */
 
 import type { NodeView } from '../core/node-views';
-import { parseImageDimensions } from '../core/inline/image-dimensions';
+import { readSizeHint } from '../core/inline/scan/size-hint';
 import { isGridKind } from './block-kind-descriptor';
 
 /** What an estimate reads besides the block: the editor's width and its type metrics, in px. */
@@ -47,7 +47,7 @@ function imageHeights(raw: string, env: HeightEstimateEnv): number {
 	IMAGE_ALT.lastIndex = 0;
 	let m: RegExpExecArray | null;
 	while ((m = IMAGE_ALT.exec(raw)) !== null) {
-		total += parseImageDimensions(m[1]).height ?? env.imageBlockMinHeight;
+		total += readSizeHint(m[1]).height ?? env.imageBlockMinHeight;
 	}
 	return total;
 }

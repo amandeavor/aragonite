@@ -57,10 +57,7 @@
 	import { defaultLinkActivation } from '../core/url-policy';
 	import { bindActivationClick, createPressTracker } from '../activation-click';
 	import { advanceSignatureEpoch, lrdMapCouldChange } from './link-reference-map';
-	import {
-		buildLinkReferenceMap,
-		type LinkReferenceResolver
-	} from '../core/inline/link-reference-resolver';
+	import { definitionsOf, type LinkReferenceResolver } from '../core/inline/scan/definitions';
 	import { createUndoManager } from '../undo/manager';
 	import { createSharingState } from '../tree-operations/sharing';
 	import { createEditorEvents, emitBlockedLinkError, emitCommandError } from '../editor-events';
@@ -366,7 +363,7 @@
 			// A fresh resolver only on a real signature change: one per edit would re-render
 			// every block that read it.
 			if (lrdMapCouldChange(doc, e)) {
-				const newMap = buildLinkReferenceMap(doc.children);
+				const newMap = definitionsOf(doc.children);
 				const next = advanceSignatureEpoch(currentSignature, signatureEpoch, newMap.signature);
 				if (next.epoch !== signatureEpoch) {
 					currentResolver = newMap.resolve;

@@ -5,10 +5,7 @@
 
 import type { Document } from '../../core/nodes';
 import type { GrammarView } from '../../schema/block-openers';
-import {
-	buildLinkReferenceMap,
-	type LinkReferenceResolver
-} from '../../core/inline/link-reference-resolver';
+import { definitionsOf, type LinkReferenceResolver } from '../../core/inline/scan/definitions';
 import type { CaretMemory } from '../../caret/caret-memory';
 import type { LayoutState } from '../../windowing/layout-state.svelte';
 import type { SelectionState } from '../../selection/selection-state.svelte';
@@ -35,7 +32,7 @@ export function initDocument(source: string, grammar: GrammarView): ParsedDocume
 		// there is no authored ending to inherit and LF is the whole answer.
 		doc.children.push(emptyParagraph('', '\n'));
 	}
-	const refs = buildLinkReferenceMap(doc.children);
+	const refs = definitionsOf(doc.children);
 	return { doc, resolver: refs.resolve, signature: refs.signature };
 }
 

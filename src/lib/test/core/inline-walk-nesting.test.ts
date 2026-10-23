@@ -6,7 +6,7 @@ import type { CstNode, InlineNode } from '../../core/nodes';
 import { parse, MAX_NESTING_DEPTH } from '../../core/parser';
 import { inlineDescendants, parseInline } from '../../core/inline';
 import { flattenInlineWidgets } from '../../core/inline/inline-widgets';
-import { buildLinkReferenceMap } from '../../core/inline/link-reference-resolver';
+import { definitionsOf } from '../../core/inline/scan/definitions';
 import { CONTENT_VISIBILITY, visibleRuns, renderedText } from '../../core/inline/visibility';
 import { registerInlineSyntax } from '#lib/plugin.js';
 import { renderOptions } from '../harness/fixture-grammar';
@@ -96,7 +96,7 @@ describe('inline tree walks at input-controlled nesting depth', () => {
 		const source = '>'.repeat(MAX_NESTING_DEPTH - 1) + ' [a]: /u\n';
 		const doc = parse(source, { scope: 'document' });
 
-		expect(buildLinkReferenceMap(doc.children as CstNode[]).resolve('a')).toEqual({ url: '/u' });
+		expect(definitionsOf(doc.children as CstNode[]).resolve('a')).toEqual({ url: '/u' });
 	});
 
 	// `renderedText` reads through `visibleRuns`, whose depth pin is `inline-walk-nesting.deep.test.ts`.

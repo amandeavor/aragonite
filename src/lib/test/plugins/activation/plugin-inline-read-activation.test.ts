@@ -16,7 +16,7 @@ import { tocPlugin } from '#lib/plugins/toc/index.js';
 import { collectHeadings } from '#lib/plugins/toc/heading-outline.js';
 import type { EditorContext } from '#lib/plugin.js';
 import { inlineReaderFor } from '#lib/core/inline/index.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import type { GrammarView } from '#lib/schema/block-openers.js';
 import type { Reading } from '#lib/schema/reading.js';
 import { kitReading } from '#lib/testing/kit-reading.js';
@@ -116,8 +116,8 @@ describe('an editor context’s reader follows the document’s definitions', ()
 		const grammar = grammarListing(['footnotes']);
 		const doc = parse('a [t [^x]][q] b [^y]\n', { grammar }) as DocumentView;
 		const definitions = [
-			buildLinkReferenceMap([]),
-			buildLinkReferenceMap(parse('[q]: /z\n', { grammar }).children)
+			definitionsOf([]),
+			definitionsOf(parse('[q]: /z\n', { grammar }).children)
 		];
 		let epoch = 0;
 		const reading: Reading = {

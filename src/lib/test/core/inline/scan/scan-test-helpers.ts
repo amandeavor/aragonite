@@ -195,15 +195,41 @@ export type LinkReferenceResolver = (label: string) => ResolvedReference | undef
 // GFM whitespace (spec 2.1), ASCII only: a no-break space is label content.
 const GFM_SPACE = /[ \t\n\v\f\r]+/g;
 
-/** GFM label matching: trimmed, inner whitespace runs collapsed, case-folded. */
+/** Label matching: trimmed, inner whitespace runs collapsed, Unicode case folded. */
 export function normalizeLabel(label: string): string {
-	return label.replace(GFM_SPACE, ' ').replace(/^ | $/g, '').toLowerCase();
+	return label
+		.replace(GFM_SPACE, ' ')
+		.replace(/^ | $/g, '')
+		.toLowerCase()
+		.toUpperCase()
+		.toLowerCase();
 }
 
 /** Resolver over a fixed label to reference map, matching labels as GFM does. */
 export function resolverOf(entries: Record<string, ResolvedReference>): LinkReferenceResolver {
 	const map = new Map(Object.entries(entries).map(([k, v]) => [normalizeLabel(k), v]));
 	return (label) => map.get(normalizeLabel(label));
+}
+
+// ── Text runs ───────────────────────────────────────────────────────────────
+
+/** Touching text nodes joined at every depth: a parse may split a text run or not. */
+export function joinedText(nodes: InlineNode[]): InlineNode[] {
+	const out: InlineNode[] = [];
+	for (const node of nodes) {
+		const prev = out[out.length - 1];
+		if (node.kind === 'text' && prev?.kind === 'text' && prev.end === node.start) {
+			out[out.length - 1] = { ...prev, end: node.end, text: (prev.text ?? '') + (node.text ?? '') };
+		} else {
+			out.push(node.children ? { ...node, children: joinedText(node.children) } : node);
+		}
+	}
+	return out;
+}
+
+/** The parse, compared with touching text nodes joined. */
+export function parsed(...args: Parameters<typeof parseInline>): InlineNode[] {
+	return joinedText(parseInline(...args));
 }
 
 // ── Case runner ─────────────────────────────────────────────────────────────
@@ -214,7 +240,7 @@ export function resolverOf(entries: Record<string, ResolvedReference>): LinkRefe
  */
 export function scanClean(raw: string, end = raw.length): InlineNode[] {
 	resetPluginPlatformForTests();
-	return parseInline(raw, 0, end);
+	return parsed(raw, 0, end);
 }
 
 export type ScanCase = [name: string, raw: string, expected: InlineNode[]];
@@ -231,7 +257,7 @@ export function describeScanCases(
 				const nodes = parseInline(raw, 0, raw.length, resolver);
 				assertTotalCoverage(nodes, 0, raw.length);
 				assertConstructCoverage(nodes);
-				expect(nodes).toEqual(expected);
+				expect(joinedText(nodes)).toEqual(joinedText(expected));
 			});
 		}
 	});
