@@ -53,6 +53,8 @@ focus.
   or in the host's own padding around it. The click still resets a live range, as every
   margin click does, and nothing lands on the nearest cell, which would focus a table the
   user never clicked.
+- With a range live, a click beside a table ends the range and focuses nothing, so a
+  typed character changes nothing at all: no replaced range, no letter in a cell.
 - A kind that addresses its own internals but declares no caret landing still declines.
   The landing decision itself ends no range, so a declined point leaves the selection as
   it found it; the press is what ends a live range. That half is a unit row
