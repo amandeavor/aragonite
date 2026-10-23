@@ -26,4 +26,12 @@ describe('markerColumn', () => {
 			'max(calc(3 * 1ch), var(--md-task-indent))'
 		);
 	});
+
+	it('is the drawn box alone for a list of only to-dos, whatever their openers', () => {
+		for (const source of ['- [ ] a\n- [x] b\n', '9. [ ] a\n10. [ ] b\n', '- [ ]\tx\n']) {
+			expect(markerColumn(countsOf(source), true), source).toBe(
+				'max(calc(0 * 1ch), var(--md-task-indent))'
+			);
+		}
+	});
 });
