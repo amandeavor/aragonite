@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures';
 import { PluginsPage, clickWidgetCenter, type Point } from './helpers';
 import { textRunStart } from '../../text-runs';
+import { isMacOS } from '../../platform-keys';
 
 /**
  * A press means what was under it when it went down. With a formula's source open, the press moves
@@ -98,5 +99,6 @@ test('a right-click on prose past the open formula puts the menu caret at the pr
 	const editor = await openWideFormula(page, PARAGRAPH);
 	await heldPress(page, await textRunStart(page, 'and', { path: [0] }), 'right');
 	await page.keyboard.press('Escape');
-	expect(await typeMarker(page, editor)).toContain('Qand');
+	// macOS selects the word under a right-click, so the marker replaces the word pressed.
+	expect(await typeMarker(page, editor)).toContain(isMacOS ? `${WIDE} Q &copy;` : 'Qand');
 });

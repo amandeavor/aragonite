@@ -12,7 +12,7 @@ person's is, which lets the source close before the release on every engine that
 - The same click in a table cell: the same outcome, through the cell's own click route.
 - A right-click on a widget after the open formula (`&copy;`): the menu's caret goes beside that widget, and the formula stays rendered.
 - A right-click in the paragraph's top padding over text after the open formula: the caret goes at the column under the pointer, before the word there.
-- A right-click on prose after the open formula: the caret goes where the press was, before the word under it.
+- A right-click on prose after the open formula: the caret goes where the press was, before the word under it (on macOS, which selects the word under a right-click, that word is selected).
 
 ## Regression
 
