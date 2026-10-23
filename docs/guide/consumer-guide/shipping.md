@@ -4,7 +4,16 @@ Part of the [consumer guide](../consumer-guide.md). What changes once the editor
 
 ## A production build
 
-Build for production and the editor's dev checks drop out, about 15 KB gzipped: the invariant checks and the `[aragonite:…]` console warnings a dev build gives you. That takes a bundler that resolves the `production` export condition. Vite and webpack 5 do on their own; with esbuild or Rollup, add `production` to its conditions. A build that doesn't still works, it just ships the checks, normally switched off at runtime. The swap rides on a package `exports` subpath the editor imports by its own name (`@voithos-labs/aragonite/dev-checks`, the editor's and not one to import yourself), so your toolchain has to read `exports` maps, which any bundler from the last few years does.
+Build for production and the editor's dev checks drop out of your bundle. Those are the invariant checks and the `[aragonite:…]` console warnings a dev build gives you, and under Vite they're about 15 KB gzipped.
+
+It takes a bundler that resolves the `production` export condition:
+
+- **Vite, webpack 5**: nothing to do, a production build resolves it on its own.
+- **esbuild, Rollup**: add `production` to the bundler's conditions. esbuild drops the checks but keeps a few helpers only they used, so it saves more like 5 KB.
+
+A build that doesn't resolve it still works. It just ships the checks, switched off at runtime.
+
+The swap goes through an `exports` subpath the editor imports by its own package name, `@voithos-labs/aragonite/dev-checks`, so your toolchain has to read `exports` maps (any bundler from the last few years does). That subpath's the editor's, not one to import yourself.
 
 ## Embedding in a webview shell
 

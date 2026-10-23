@@ -85,7 +85,8 @@ export default defineConfig({
 		sveltekit(e2eBuild ? { adapter: previewOnly, outDir: e2eOutDir } : { adapter: staticSite }),
 		posixScanEntries
 	],
-	// The app runs the library from source, the dev checks included, in every build of its own.
+	// The app loads the library from source in every build of its own, so its production build
+	// carries the real dev-checks module (switched off), not the stripped copy a consumer gets.
 	resolve: { conditions: [SOURCE_CONDITION, ...defaultClientConditions] },
 	ssr: { resolve: { conditions: [SOURCE_CONDITION, ...defaultServerConditions] } },
 	// Readable stack traces in a failing spec's page errors.
