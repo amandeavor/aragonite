@@ -186,15 +186,15 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 				return;
 			}
 			const pressed = boxPress;
+			const placeOnBox = boxPlan;
 			boxPress = marginDrag = false;
+			boxPlan = null;
 			// A double or triple click places no caret: the multi-click select painted its range.
 			if (e.detail >= 2) return;
 			if (pressed && deps.presses.travelled(e)) return;
 			if (deadSpaceCaret.handleClick(root, e)) return;
 			// A still click on a block's own box (a rule, a closed equation's face) places the caret
 			// there as empty space does; reading mode declines the caret and the block keeps focus.
-			const placeOnBox = boxPlan;
-			boxPlan = null;
 			if (pressed && placeOnBox && !deadSpaceCaret.isDeadSpaceTarget(root, e.target)) {
 				placeOnBox();
 				return;
@@ -208,6 +208,7 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		// selection fights the drag, and `click` still fires.
 		const startMarginDrag = (e: PointerEvent) => {
 			boxPress = marginDrag = false;
+			boxPlan = null;
 			if (e.button !== 0 || e.shiftKey || isModifiedClick(e) || e.altKey) return;
 			if (!dragStartsHere(root, e.target)) return;
 			const anchor = deadSpaceCaret.anchorAtPoint(root, e.clientX, e.clientY);
@@ -270,14 +271,17 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 			}),
 			onRoot(root, 'pointerdown', startMarginDrag),
 			onRoot(root, 'mousedown', handleMouseDown),
-			// Every press writes the record: a widget that shows its source cancels the pointerdown,
-			// so no mousedown follows, and a mousedown rewrites it after the block's own pointerdown.
-			onRoot<PointerEvent>(root, 'pointerdown', (e) => (contextPress = notePress(root, e)), {
+			// Every pointerdown writes the record, since a widget showing its source cancels it and no
+			// mousedown follows; a mousedown re-reads only the range, after the block's own pointerdown.
+			onRoot<PointerEvent>(root, 'pointerdown', (e) => (contextPress = notePress(root, e, null)), {
 				capture: true
 			}),
-			onRoot<MouseEvent>(root, 'mousedown', (e) => (contextPress = notePress(root, e)), {
-				capture: true
-			}),
+			onRoot<MouseEvent>(
+				root,
+				'mousedown',
+				(e) => (contextPress = notePress(root, e, contextPress)),
+				{ capture: true }
+			),
 			onRoot(root, 'keydown', () => (contextPress = null), { capture: true }),
 			onRoot<MouseEvent>(root, 'contextmenu', placeCaretForMenu, {
 				capture: true
@@ -285,7 +289,12 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		);
 	}
 
-	function notePress(root: HTMLElement, e: MouseEvent): ContextPress | null {
+	/** `planned` is the record this press's pointerdown wrote, whose caret plans it keeps. */
+	function notePress(
+		root: HTMLElement,
+		e: MouseEvent,
+		planned: ContextPress | null
+	): ContextPress | null {
 		if (!isSecondaryPress(e)) return null;
 		// A widget the editor holds selected is the user's own selection, as a range is. A range
 		// across blocks is painted by the editor, so the browser's rectangles don't show it.
@@ -295,6 +304,7 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 				? nativeRangeIn(root)
 				: rangeCoversPoint(root, e.clientX, e.clientY));
 		const onWidget = e.target instanceof Element && !!e.target.closest('[data-inline-widget]');
+		if (planned) return { ...planned, range, onWidget };
 		return {
 			range,
 			onWidget,
