@@ -238,6 +238,9 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --user 1001
     env:
       # Runners measured ~2.2x the calibration machine (runs 29177807039 /
       # 29178211384); 2.5 keeps this job a gross-regression net while the local
