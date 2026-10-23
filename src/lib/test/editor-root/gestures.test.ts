@@ -140,7 +140,13 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 	const refs = definitionsOf(doc.children);
 	const startDragAtPoint = vi.fn(() => true);
 	const focus = vi.fn();
-	const component = { focusable: true, focus, startDragAtPoint } as unknown as BlockComponent;
+	const readSnapAtPoint = vi.fn(() => () => {});
+	const component = {
+		focusable: true,
+		focus,
+		startDragAtPoint,
+		readSnapAtPoint
+	} as unknown as BlockComponent;
 	const activateLink = vi.fn();
 	const caretMemory = createCaretMemory();
 	const reading = fixtureReading(
@@ -192,6 +198,7 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 		gestures,
 		startDragAtPoint,
 		focus,
+		readSnapAtPoint,
 		activateLink,
 		withRange,
 		press: (target: EventTarget, init?: MouseEventInit) => fire('pointerdown', target, init),
@@ -411,6 +418,15 @@ describe('editor-root gestures: the right-click press record', () => {
 			const h = harness();
 			h.press(h.widgetLink, { ...AT, button: 2 });
 			h.widgetLink.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, ...AT }));
+			expect(h.focus).toHaveBeenCalledOnce();
+		});
+
+		it('is read once, at its pointerdown, for the menu its mousedown and contextmenu follow', () => {
+			const h = harness();
+			h.press(h.widgetLink, { ...AT, button: 2 });
+			h.mouseDown(h.widgetLink, { ...AT, button: 2 });
+			h.widgetLink.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, ...AT }));
+			expect(h.readSnapAtPoint).toHaveBeenCalledOnce();
 			expect(h.focus).toHaveBeenCalledOnce();
 		});
 

@@ -19,8 +19,6 @@ interface Row {
 	landed: { path: number[]; kind: string };
 	/** The kept block: its path and kind once the text landed. */
 	kept: { path: number[]; kind: string };
-	/** A gesture this row still fails, with the open defect that fails it. */
-	fixme?: Partial<Record<Gesture, string>>;
 }
 
 const TABLE = '| c |\n| - |\n\n';
@@ -95,10 +93,7 @@ const ROWS: Row[] = [
 		kind: 'setextHeading'
 	}),
 	joins('quote', '> q', (text) => `> ${text}q`, { path: [0, 0], kind: 'paragraph' }),
-	{
-		...joins('list', '- li', (text) => `- ${text}li`, { path: [0, 0, 0], kind: 'paragraph' }),
-		fixme: { composition: "a composition carried into a list item's paragraph drops its text" }
-	}
+	joins('list', '- li', (text) => `- ${text}li`, { path: [0, 0, 0], kind: 'paragraph' })
 ];
 
 const GESTURES: Gesture[] = ['type', 'paste', 'composition'];
@@ -132,7 +127,6 @@ for (const mode of ['source', 'live'] as const) {
 			test(`${row.name} (${mode}): ${gesture} over the range lands where the range was`, async ({
 				page
 			}) => {
-				test.fixme(row.fixme?.[gesture] !== undefined, row.fixme?.[gesture]);
 				const editor = row.plugin ? new PluginsPage(page) : new EditorPage(page);
 				if (editor instanceof PluginsPage) await editor.gotoPlugins(row.plugin);
 				else await editor.goto();

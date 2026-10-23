@@ -267,6 +267,27 @@ export function flattenInlineWidgets(
 	return out;
 }
 
+/** The inline nodes a block draws, in order: where `opensConstructs`, a construct with hidden
+ *  markers draws only its content, so its children stand in for it. A widget is drawn whole. */
+export function drawnInlines(
+	nodes: ReadonlyArray<InlineNode>,
+	raw: string,
+	grammar: GrammarView,
+	opensConstructs: boolean
+): InlineNode[] {
+	const out: InlineNode[] = [];
+	const pending = [...nodes].reverse();
+	while (pending.length > 0) {
+		const node = pending.pop()!;
+		if (opensConstructs && node.children && !isInlineWidget(node, raw, grammar)) {
+			for (let i = node.children.length - 1; i >= 0; i--) pending.push(node.children[i]);
+		} else {
+			out.push(node);
+		}
+	}
+	return out;
+}
+
 export interface WidgetBuildOptions {
 	/** The shell holding a plugin kind's mounted view, from the block's widget pool. Absent (a render
 	 *  nobody sees, which only measures) or null draws the widget as its raw source. */

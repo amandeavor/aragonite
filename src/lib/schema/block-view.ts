@@ -200,7 +200,7 @@ export const MEMBER_SOURCES = {
 	getCursorPosition: 'container-surface',
 	enterEdgeWidget: 'container-surface',
 	isVerticallyTransparent: 'container-surface',
-	snapCaretToPoint: 'editor',
+	readSnapAtPoint: 'editor',
 	startDragAtPoint: 'editor',
 	cellRect: 'editor',
 	mountedRowWindow: 'editor',

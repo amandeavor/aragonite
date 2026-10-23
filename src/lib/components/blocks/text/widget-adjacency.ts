@@ -3,7 +3,12 @@
 import type { AnyInlineKind, InlineNode } from '../../../core/nodes';
 import type { DocumentView, NodeView } from '../../../core/node-views';
 import { isBlankText } from '../../../core/lines';
-import { isInlineWidget, flattenInlineWidgets } from '../../../core/inline/inline-widgets';
+import {
+	drawnInlines,
+	isInlineWidget,
+	flattenInlineWidgets
+} from '../../../core/inline/inline-widgets';
+import { hidesMarkersOnArrival } from '../../../presentation-mode';
 import { resolvedInlineContent, type InlineReading } from '../../../core/inline/inline-cache';
 import { blockNodeAt } from '../../../tree-operations/node-primitives';
 import type { Reading } from '../../../schema/reading';
@@ -84,8 +89,8 @@ export function widgetSpanAt(
 	return block && widgetSpanIn(block, target.sourceStart, reading);
 }
 
-/** What the edge readers ask: the inline reading, and whether the mode hides markers at the caret. */
-export type EdgeReading = InlineReading & Pick<Reading, 'hidesDelimitersAtCaret'>;
+/** What the edge readers ask: the inline reading, and the mode, which decides what a link draws. */
+export type EdgeReading = InlineReading & Pick<Reading, 'mode'>;
 
 /** The widget `node` draws first, past blank text; null once anything else draws ahead of it. */
 export function findFirstEdgeWidget(node: NodeView, reading: EdgeReading): InlineNode | null {
@@ -97,23 +102,20 @@ export function findLastEdgeWidget(node: NodeView, reading: EdgeReading): Inline
 	return edgeWidget(resolvedInlineContent(node, reading), node.raw, reading, 'last');
 }
 
+// The transparency check (`core/inline/transparency.ts`) reads the block through the same walk.
 function edgeWidget(
 	inlines: ReadonlyArray<InlineNode>,
 	raw: string,
 	reading: EdgeReading,
 	edge: 'first' | 'last'
 ): InlineNode | null {
-	let level: ReadonlyArray<InlineNode> | null = inlines;
-	while (level) {
-		const fromEdge: ReadonlyArray<InlineNode> = edge === 'first' ? level : [...level].reverse();
-		level = null;
-		for (const inline of fromEdge) {
-			if (isInlineWidget(inline, raw, reading.grammar)) return inline;
-			if (inline.kind === 'text' && isBlankText(inline.text ?? '')) continue;
-			// A construct whose markers stay hidden draws only its content, a picture a link wraps.
-			if (inline.children && reading.hidesDelimitersAtCaret()) level = inline.children;
-			break;
-		}
+	const opens = hidesMarkersOnArrival(reading.mode());
+	const drawn = drawnInlines(inlines, raw, reading.grammar, opens);
+	if (edge === 'last') drawn.reverse();
+	for (const inline of drawn) {
+		if (isInlineWidget(inline, raw, reading.grammar)) return inline;
+		if (inline.kind === 'text' && isBlankText(inline.text ?? '')) continue;
+		return null;
 	}
 	return null;
 }

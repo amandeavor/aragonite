@@ -106,7 +106,8 @@ async function editorShowsSource(
 	detail: number
 ): Promise<boolean> {
 	const { interaction } = mountInteraction(kind, linkClick, mode);
-	interaction.snapClickToWidgetEdge(20, 5, {
+	interaction.notePress({ clientX: 20, clientY: 5, button: 0 });
+	interaction.snapClickToWidgetEdge({
 		click: { ctrlKey: modified, metaKey: false, detail },
 		clickCount: detail
 	});

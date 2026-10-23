@@ -13,7 +13,7 @@ import type { DocumentGetter } from '../../editor-keys';
 import type { BlockElLookup } from '../../caret/block-el-lookup';
 import { BLOCK_TEXT_SELECTOR } from '../../caret/block-content-selector';
 import {
-	placePaddingPress,
+	planPaddingPress,
 	rangeCoversPoint,
 	resetForPointerDown
 } from '../../selection/cross-block/pointer';
@@ -63,10 +63,16 @@ export interface RootGesturesDeps {
 	readingFocus: Pick<ReadingFocus, 'noteClick'>;
 }
 
-/** Whether a secondary press landed on the user's own range, and on an inline widget. */
+/** What a secondary press means, read at the press: it can move the caret out of a shown source,
+ *  which redraws the line before `contextmenu` arrives. */
 interface ContextPress {
+	/** The press landed on the user's own range. */
 	range: boolean;
 	onWidget: boolean;
+	/** The caret for the press's point, as a click there would place it. */
+	atPoint: (() => void) | null;
+	/** The caret for a press in a surface's padding row, at the column under it. */
+	inPadding: (() => void) | null;
 }
 
 export interface RootGestures {
@@ -74,6 +80,9 @@ export interface RootGestures {
 	install(root: HTMLElement): () => void;
 	/** Where a click on empty space puts the caret, for a point the caller chose to answer. */
 	placeCaretAtPoint(root: HTMLElement, x: number, y: number): boolean;
+	/** The caret a context menu opens over: where its press pointed, read at the press, or at the
+	 *  menu event's point when no press opened it (the keyboard's menu key). */
+	placeMenuCaret(root: HTMLElement, x: number, y: number): boolean;
 	/** Whether a context menu's press landed on a selected range (Safari selects the word under a
 	 *  right-click before `contextmenu`); a menu the keyboard opened asks of the live selection. */
 	rangeAtContextPress(root: HTMLElement): boolean;
@@ -148,6 +157,7 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		// Per install: rebinding the root starts with no click in progress. A press on a block's own
 		// box or the margin counts in every mode; only an editing mode runs the drag from it.
 		let boxPress = false;
+		let boxPlan: (() => void) | null = null;
 		let marginDrag = false;
 		let marginSession: { dispose(): void } | null = null;
 
@@ -176,15 +186,18 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 				return;
 			}
 			const pressed = boxPress;
+			const placeOnBox = boxPlan;
 			boxPress = marginDrag = false;
+			boxPlan = null;
 			// A double or triple click places no caret: the multi-click select painted its range.
 			if (e.detail >= 2) return;
 			if (pressed && deps.presses.travelled(e)) return;
 			if (deadSpaceCaret.handleClick(root, e)) return;
 			// A still click on a block's own box (a rule, a closed equation's face) places the caret
 			// there as empty space does; reading mode declines the caret and the block keeps focus.
-			if (pressed && !deadSpaceCaret.isDeadSpaceTarget(root, e.target)) {
-				if (deadSpaceCaret.placeAtPoint(root, e.clientX, e.clientY)) return;
+			if (pressed && placeOnBox && !deadSpaceCaret.isDeadSpaceTarget(root, e.target)) {
+				placeOnBox();
+				return;
 			}
 			// A click on nothing still ends the edit in progress, since the margin click suppressed
 			// the browser's own blur.
@@ -195,11 +208,16 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 		// selection fights the drag, and `click` still fires.
 		const startMarginDrag = (e: PointerEvent) => {
 			boxPress = marginDrag = false;
+			boxPlan = null;
 			if (e.button !== 0 || e.shiftKey || isModifiedClick(e) || e.altKey) return;
 			if (!dragStartsHere(root, e.target)) return;
 			const anchor = deadSpaceCaret.anchorAtPoint(root, e.clientX, e.clientY);
 			if (!anchor) return;
 			boxPress = true;
+			// Read at the press, as every click's point is (`dead-space-caret.ts`).
+			boxPlan = deadSpaceCaret.isDeadSpaceTarget(root, e.target)
+				? null
+				: deadSpaceCaret.planAtPoint(root, e.clientX, e.clientY);
 			// Reading mode places no caret, and the browser's own drag selects there.
 			if (deps.reading.mode() === 'reading') return;
 			marginDrag = true;
@@ -253,22 +271,30 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 			}),
 			onRoot(root, 'pointerdown', startMarginDrag),
 			onRoot(root, 'mousedown', handleMouseDown),
-			// Every press writes the record: a widget that shows its source cancels the pointerdown,
-			// so no mousedown follows, and a mousedown rewrites it after the block's own pointerdown.
-			onRoot<PointerEvent>(root, 'pointerdown', (e) => (contextPress = notePress(root, e)), {
+			// Every pointerdown writes the record, since a widget showing its source cancels it and no
+			// mousedown follows; a mousedown re-reads only the range, after the block's own pointerdown.
+			onRoot<PointerEvent>(root, 'pointerdown', (e) => (contextPress = notePress(root, e, null)), {
 				capture: true
 			}),
-			onRoot<MouseEvent>(root, 'mousedown', (e) => (contextPress = notePress(root, e)), {
-				capture: true
-			}),
+			onRoot<MouseEvent>(
+				root,
+				'mousedown',
+				(e) => (contextPress = notePress(root, e, contextPress)),
+				{ capture: true }
+			),
 			onRoot(root, 'keydown', () => (contextPress = null), { capture: true }),
-			onRoot<MouseEvent>(root, 'contextmenu', (e) => placeCaretForMenu(root, e), {
+			onRoot<MouseEvent>(root, 'contextmenu', placeCaretForMenu, {
 				capture: true
 			})
 		);
 	}
 
-	function notePress(root: HTMLElement, e: MouseEvent): ContextPress | null {
+	/** `planned` is the record this press's pointerdown wrote, whose caret plans it keeps. */
+	function notePress(
+		root: HTMLElement,
+		e: MouseEvent,
+		planned: ContextPress | null
+	): ContextPress | null {
 		if (!isSecondaryPress(e)) return null;
 		// A widget the editor holds selected is the user's own selection, as a range is. A range
 		// across blocks is painted by the editor, so the browser's rectangles don't show it.
@@ -278,16 +304,22 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 				? nativeRangeIn(root)
 				: rangeCoversPoint(root, e.clientX, e.clientY));
 		const onWidget = e.target instanceof Element && !!e.target.closest('[data-inline-widget]');
-		return { range, onWidget };
+		if (planned) return { ...planned, range, onWidget };
+		return {
+			range,
+			onWidget,
+			atPoint: deadSpaceCaret.planAtPoint(root, e.clientX, e.clientY),
+			inPadding: planPaddingPress(deps.caretWriter, e)
+		};
 	}
 
 	// Before any menu reads the caret: Safari's word select stays for the clipboard rows, while a
 	// widget it selected whole gives way to the caret every other engine puts beside it.
-	function placeCaretForMenu(root: HTMLElement, e: MouseEvent): void {
+	function placeCaretForMenu(): void {
 		if (!contextPress || contextPress.range || deps.selection.isCrossBlock) return;
 		if (deps.reading.mode() === 'reading') return;
-		if (contextPress.onWidget) deadSpaceCaret.placeAtPoint(root, e.clientX, e.clientY);
-		else placePaddingPress(deps.caretWriter, e);
+		if (contextPress.onWidget) contextPress.atPoint?.();
+		else contextPress.inPadding?.();
 	}
 
 	function rangeAtContextPress(root: HTMLElement): boolean {
@@ -297,6 +329,11 @@ export function createRootGestures(deps: RootGesturesDeps): RootGestures {
 	return {
 		install,
 		placeCaretAtPoint: (root, x, y) => deadSpaceCaret.placeAtPoint(root, x, y),
+		placeMenuCaret: (root, x, y) => {
+			const place = contextPress ? contextPress.atPoint : deadSpaceCaret.planAtPoint(root, x, y);
+			place?.();
+			return place !== null;
+		},
 		rangeAtContextPress
 	};
 }

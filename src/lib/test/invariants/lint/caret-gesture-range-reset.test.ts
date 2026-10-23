@@ -69,6 +69,8 @@ const NON_CARET_PRESS_FILES: Record<string, string> = {
 		'swallows the press on its rows so the caret the pick writes at keeps focus',
 	'src/lib/components/menu/SelectionToolbar.svelte':
 		'swallows the press on its buttons so the selection they act on survives it; the release is only heard to place the bar',
+	'src/lib/components/blocks/text/noted-press.ts':
+		'ends a press reading when the next press starts; places no caret',
 	'src/lib/components/SearchBar.svelte':
 		'a press on the find bar between its controls focuses the field in that row; the document caret stays put',
 	'src/lib/components/editor-root/listeners.ts':

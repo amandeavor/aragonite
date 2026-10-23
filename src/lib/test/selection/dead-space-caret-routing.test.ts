@@ -40,14 +40,16 @@ describe('createDeadSpaceCaret routing', () => {
 		focusByPath = vi.fn(() => {});
 		leafSnap = vi.fn(() => {});
 		ownSnap = vi.fn(() => {});
-		leaf = { snapCaretToPoint: leafSnap } as unknown as BlockComponent;
+		leaf = {
+			readSnapAtPoint: (x: number, y: number) => () => leafSnap(x, y)
+		} as unknown as BlockComponent;
 		component = {
 			editable: true,
 			focusable: true,
 			focus: vi.fn(),
 			getCursorOffset: () => null,
 			focusByPath,
-			snapCaretToPoint: ownSnap
+			readSnapAtPoint: (x: number, y: number) => () => ownSnap(x, y)
 		} as unknown as BlockComponent & { focus: ReturnType<typeof vi.fn> };
 		resetSelectionForClick = vi.fn(() => {});
 	});
@@ -65,7 +67,7 @@ describe('createDeadSpaceCaret routing', () => {
 			lastBlockIndex: () => 0,
 			land: async () => 'placed'
 		});
-		const press = { target: root, button: 0 } as unknown as MouseEvent;
+		const press = { target: root, button: 0, clientX, clientY } as unknown as MouseEvent;
 		caret.notePress(root, press);
 		const click = { target: root, clientX, clientY } as unknown as MouseEvent;
 		return caret.handleClick(root, click);

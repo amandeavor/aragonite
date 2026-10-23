@@ -148,11 +148,6 @@
 		pendingCursorOffset = offset;
 	}
 
-	// Y matters for the hit test: a click at the same column on another visual line
-	// must not open a source.
-	let lastClickClientX: number | null = null;
-	let lastClickClientY: number | null = null;
-
 	const cursor = createSurfaceBackend({
 		getEl: () => el ?? null,
 		caretWriter
@@ -431,7 +426,7 @@
 			afterSourceCommit,
 			getSelectionOffsets,
 			applyMenuClipboard,
-			snapCaretToPoint,
+			readSnapAtPoint: widgetInteraction.readSnapAtPoint,
 			insertMarkdown: clipboard.insertMarkdown,
 			insertPlainText: clipboard.insertPlainText,
 			claimRootClipboard: clipboard.claimRootClipboard,
@@ -679,11 +674,9 @@
 		// The clear + drag-install below would collapse an active rectangle before
 		// contextmenu fires, leaving the menu's Cut/Copy nothing to act on.
 		if (e.button === 2) return;
-		lastClickClientX = e.clientX;
-		lastClickClientY = e.clientY;
 		// A click on a widget that can show its source is this editor's gesture: cancel the
 		// browser's caret default and skip the drag so nothing races its own placement.
-		if (widgetInteraction.isPointOnRevealWidget(e.clientX, e.clientY)) {
+		if (widgetInteraction.notePress(e)) {
 			e.preventDefault();
 			return;
 		}
@@ -820,20 +813,12 @@
 	// A click past a widget leaves the caret with no text to sit in, so it moves to the
 	// nearest widget edge.
 	function onClick(e: MouseEvent): void {
-		const x = lastClickClientX;
-		const y = lastClickClientY;
-		lastClickClientX = null;
-		lastClickClientY = null;
-		widgetInteraction.snapClickToWidgetEdge(x, y, {
+		widgetInteraction.snapClickToWidgetEdge({
 			click: e,
 			clickCount: e.detail,
 			// A release that travelled ends a drag, whose range a shown source would unmount.
 			moved: presses.travelled(e)
 		});
-	}
-
-	function snapCaretToPoint(clientX: number, clientY: number): void {
-		widgetInteraction.snapClickToWidgetEdge(clientX, clientY);
 	}
 
 	function onFocus(): void {

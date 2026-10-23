@@ -485,9 +485,7 @@
 	export const insertMarkdown = clipboardHandlers.insertMarkdown;
 	export const insertPlainText = clipboardHandlers.insertPlainText;
 
-	export function snapCaretToPoint(clientX: number, clientY: number): void {
-		widgetInteraction.snapClickToWidgetEdge(clientX, clientY);
-	}
+	export const readSnapAtPoint = widgetInteraction.readSnapAtPoint;
 
 	function caretReach(): number {
 		return getDisplayText().length;
@@ -668,7 +666,7 @@
 		claimRootClipboard,
 		insertMarkdown,
 		insertPlainText,
-		snapCaretToPoint,
+		readSnapAtPoint,
 		runCommand,
 		afterSourceCommit,
 		afterSelectionRemoved
@@ -831,11 +829,6 @@
 		}
 	}
 
-	// `onClick` snaps from the press point to the nearest widget edge. Y is kept too: a click at
-	// the same column on another visual line must not open a source.
-	let lastClickClientX: number | null = null;
-	let lastClickClientY: number | null = null;
-
 	/** The browser starts no drag from a non-editable inline widget, so the editor paints the range
 	 *  itself from the widget's edge on the press's side. */
 	function islandPress(e: PointerEvent): { paintSameBlock: boolean; anchorOffset?: number } {
@@ -847,12 +840,10 @@
 
 	function onPointerDown(e: PointerEvent): void {
 		if (crossBlock.handlePointerDown(e, islandPress(e))) return;
-		lastClickClientX = e.clientX;
-		lastClickClientY = e.clientY;
 		holdWidgetEdge(null);
 		// A click on a widget that can show its source is this editor's gesture: cancelling the
 		// browser's caret default leaves that code as the only writer of the selection.
-		if (widgetInteraction.isPointOnRevealWidget(e.clientX, e.clientY)) e.preventDefault();
+		if (widgetInteraction.notePress(e)) e.preventDefault();
 	}
 
 	function onBlur(e: FocusEvent): void {
@@ -893,12 +884,8 @@
 		// An inline widget's own handler runs first, and a jump it starts can unmount this
 		// block before the click reaches it; nothing below applies to a block that is gone.
 		if (!el) return;
-		const x = lastClickClientX;
-		const y = lastClickClientY;
-		lastClickClientX = null;
-		lastClickClientY = null;
 		cursor.clampOutOfMarkerPrefix();
-		widgetInteraction.snapClickToWidgetEdge(x, y, {
+		widgetInteraction.snapClickToWidgetEdge({
 			click: e,
 			clickCount: e.detail,
 			// A release that travelled ends a drag rather than a click: showing the source there

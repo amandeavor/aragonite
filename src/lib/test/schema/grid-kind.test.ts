@@ -1,8 +1,8 @@
 // Miss-analysis: every grid reader named `table`, so no test held the grid fact itself.
 import { describe, expect, it } from 'vitest';
 import { isGridKind } from '#lib/schema/block-kind-descriptor.js';
+import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { isVerticallyTransparentNode } from '#lib/core/inline/transparency.js';
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { gridOf, registerPluginGrid } from '../selection/cross-block/plugin-grid-kind';
 
 describe('isGridKind', () => {
@@ -25,6 +25,6 @@ describe('isGridKind', () => {
 describe('vertical transparency reads the grid contract', () => {
 	it('is false for a plugin grid whose cells are all image-only', () => {
 		const grid = gridOf(registerPluginGrid(), [['![a](/a.png)', '![b](/b.png)']]);
-		expect(isVerticallyTransparentNode(grid, defaultGrammarView)).toBe(false);
+		expect(isVerticallyTransparentNode(grid, fixtureReading())).toBe(false);
 	});
 });
