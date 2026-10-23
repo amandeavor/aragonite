@@ -75,9 +75,10 @@ export interface EditorOptions {
 	 *  ignored while `searchBar` is false. Positioning inside it is the element's own business. */
 	searchBarAnchor?: HTMLElement | null;
 	/** Who owns the scroll, set once at mount. `'self'` (default) makes the editor root its own
-	 *  scroll container. `'host'` lets an ancestor scroll it, and the editor windows against that
-	 *  scroller instead, so the mounted set stays O(viewport) either way. The one behavioural
-	 *  difference is scroll anchoring; the consumer guide's scrollMode section has the trade. */
+	 *  scroll container, filling the element it sits in; give that element a height, or every block
+	 *  stays mounted. `'host'` lets an ancestor scroll it, and the editor windows against that
+	 *  scroller instead. The one behavioural difference is scroll anchoring; the consumer guide's
+	 *  scrollMode section has the trade. */
 	scrollMode?: 'self' | 'host';
 	/** Theme name reflected to `data-editor-theme` on the editor root. Built-ins:
 	 *  `'dark'` (default) and `'light'`; any other value activates a consumer's

@@ -8,6 +8,7 @@ const uncontrolled = useRequestURL().searchParams.has('uncontrolled');
 
 const FIRST = '# First note\n\nHello from the first note.\n';
 const SECOND = '# Second note\n\nA different document.\n';
+const LONG = Array.from({ length: 300 }, (_, i) => `Paragraph ${i + 1}.`).join('\n\n') + '\n';
 
 const loaded = ref(FIRST);
 const value = ref(FIRST);
@@ -27,6 +28,7 @@ function load() {
 	<main>
 		<p data-testid="framework-version">{{ version }}</p>
 		<button data-testid="load" @click="load">Load another doc</button>
+		<button data-testid="load-long" @click="value = LONG">Load a long doc</button>
 		<button data-testid="revert" @click="value = loaded">Revert</button>
 		<button data-testid="theme" @click="theme = theme === 'light' ? 'dark' : 'light'">Theme</button>
 		<button data-testid="drop-theme" @click="themed = !themed">

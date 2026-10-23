@@ -179,7 +179,7 @@ The props are the editor's [props](#props), in kebab-case if you like (`presenta
 - `v-model` keeps the document in your state, and you get the whole Markdown after every edit (undo and redo included). The editor holds the document while you type, so the bound value only does something when it changes. Hand back what you got and nothing happens. Set it to anything else and it loads as a new document, which clears undo and takes the caret out of the editor, so don't reshape the text on its way back through `v-model` (do it when you save).
 - `default-value` is the document to start with if you'd rather not bind one. `@update:model-value` still reports every edit.
 - The `header` slot renders above the first block.
-- `class` and `style` land on the element the editor mounts into.
+- `class` and `style` land on the element the editor mounts into. Give it a height and the editor scrolls inside it, same as in React.
 - A boolean option you leave out keeps the editor's default, and a bare attribute (`search-bar`) means `true`.
 
 A template ref on it holds `handle`, the same handle `createEditor` returns (`editor.value?.handle?.getSource()`), and it's `null` until the editor mounts. `plugins` may come from reactive state. In Nuxt, use it as is, no `<ClientOnly>` needed: the server renders an empty container and the editor mounts in the browser. The two stylesheets go in `nuxt.config`'s `css` array.
@@ -192,7 +192,7 @@ A template ref on it holds `handle`, the same handle `createEditor` returns (`ed
 createEditor(target: HTMLElement, options?: CreateEditorOptions): EditorHandle
 ```
 
-- `target` is the element to mount into. The editor appends itself there, and `destroy` takes it back out.
+- `target` is the element to mount into. The editor appends itself there, and `destroy` takes it back out. Give `target` a height and the editor scrolls inside it (or let your page scroll it, see [Host scroll mode](#host-scroll-mode)).
 - `options` are the [props](#props), with one change: `header` is an element of yours instead of a Svelte snippet.
 
 ```ts
@@ -1097,7 +1097,9 @@ Two props decide how the editor sits in your page: who owns the scroll, and what
 
 ### Host scroll mode
 
-By default the editor root is the scrollport (the box that scrolls). `scrollMode='host'` is the embedded alternative: the root stops scrolling and grows to its content, and an ancestor of yours scrolls it. A shell that stacks several documents in one scroller (a journal, a comment thread) wants this; a whole-file editor doesn't.
+By default the editor root is the scrollport (the box that scrolls), and it fills the element you put it in. Give that element a height and the editor scrolls inside it. If the element holds more than the editor (a toolbar above it, say), make it a flex column too, and the editor takes whatever room is left.
+
+`scrollMode='host'` is the embedded alternative: the root stops scrolling and grows to its content, and an ancestor of yours scrolls it. Reach for it when your page does the scrolling, or a shell of yours that stacks several documents in one scroller (a journal, a comment thread); an editor with a pane of its own doesn't need it. A default editor with no height anywhere grows with the document too, but it keeps every block mounted, which a long document will feel.
 
 **Virtual rendering follows the scroll.** The editor windows against whatever actually scrolls it, so a large document inside a page-scrolled shell stays as fast as a standalone one. Windowing only turns on once a document is a few screens tall, so a small embedded entry never windows.
 
