@@ -89,11 +89,17 @@ export interface ListWindowing {
 	dispose(): void;
 }
 
+/** Whether a measured height is a real change from a recorded one: engines lay a block out a
+ *  fraction of a pixel differently by where it sits, and that noise must not move the scroll. */
+function heightMoved(recorded: number, observed: number): boolean {
+	return Math.abs(recorded - observed) >= 1;
+}
+
 /** Whether a resize is worth re-measuring: only when the height differs from the one this list
  *  applied. With none applied yet, the batched pass owns the first measure. */
 export function shouldRemeasureOnResize(recorded: number | undefined, observed: number): boolean {
 	if (observed <= 0 || recorded === undefined) return false;
-	return Math.abs(recorded - observed) >= 1;
+	return heightMoved(recorded, observed);
 }
 
 interface RegisteredChild extends MeasureEntry {
@@ -269,7 +275,9 @@ export function createListWindowing(deps: ListWindowingDeps): ListWindowing {
 
 	// The one write of a child's height into this table. An index that now holds another block
 	// keeps its height; the next build reads this id's measurement.
-	function applyMeasured(index: number, id: string, height: number): void {
+	function applyMeasured(index: number, id: string, measured: number): void {
+		const recorded = deps.oracle.measured(id);
+		const height = recorded !== undefined && !heightMoved(recorded, measured) ? recorded : measured;
 		deps.oracle.recordMeasured(id, height);
 		// A height the table already holds moves nothing, so a keystroke that doesn't re-wrap opens
 		// no round.
