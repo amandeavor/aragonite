@@ -36,7 +36,7 @@ import {
 	type PluginBlockKind,
 	type PluginInlineKind
 } from '#lib/plugin.js';
-import { devWarn } from '#lib/dev-warn.js';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { installPlugins, onEditorCallbacks } from '#lib/schema/plugin-install.js';
 import { pluginGlobalBinding } from '#lib/schema/commands.js';
 import { getBlockCommand } from '#lib/schema/block-commands.js';
@@ -46,7 +46,7 @@ import { insertCatalogue } from '#lib/schema/insert-catalogue.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { isInlineWidget } from '#lib/core/inline/inline-widgets.js';
-import { getInlineRungs } from '#lib/core/inline/scan/plugin-syntax.js';
+import { handlersFor } from '#lib/core/inline/scan/plugin-syntax.js';
 import { isBlockKindRegistered } from '#lib/schema/block-kind-descriptor.js';
 import { declaredPluginKind, isInlineKindDeclared } from '#lib/schema/plugin-kind.js';
 import { completeTypedLine } from '#lib/schema/block-completions.js';
@@ -139,7 +139,7 @@ const PROBES: { entry: string; register(): void; registered(): boolean }[] = [
 	{
 		entry: 'registerInlineSyntax',
 		register: () => registerInlineSyntax('⌘', () => null),
-		registered: () => getInlineRungs('⌘').length > 0
+		registered: () => handlersFor('⌘').length > 0
 	},
 	{
 		entry: 'registerInlineWidgetKind',

@@ -4,7 +4,7 @@
  */
 
 import type { AnyBlockKind } from '../core/nodes';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkCommandLanding(
 	claimed: AnyBlockKind,

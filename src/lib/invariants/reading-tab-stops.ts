@@ -4,7 +4,7 @@
  * editable) instead of taking the stop's, and Tab walks it like a link. The host's header is its own.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 const CONTROL =
 	'a[href], button, input, select, textarea, summary, [role="link"], [role="button"], [role="checkbox"], [role="switch"], [role="tab"], [role="menuitem"], [role="option"]';

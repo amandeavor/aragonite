@@ -5,7 +5,7 @@
  * holds none (G1.116).
  */
 
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import type { EditorSelection } from '../selection/primitives';
 import { ARAGONITE_VERSION } from '../version';
 import {

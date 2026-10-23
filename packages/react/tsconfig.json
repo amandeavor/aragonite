@@ -12,7 +12,10 @@
 		"rootDir": "src",
 		"outDir": "dist",
 		// This checkout's own core build, wherever npm linked the package from.
-		"paths": { "@voithos-labs/aragonite": ["../../dist/index.d.ts"] }
+		"paths": {
+			"@voithos-labs/aragonite": ["../../dist/index.d.ts"],
+			"@voithos-labs/aragonite/plugin": ["../../dist/plugin.d.ts"]
+		}
 	},
 	"include": ["src"]
 }

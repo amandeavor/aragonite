@@ -6,7 +6,7 @@
  */
 
 import type { ImageFields, InlineNode } from '../../core/nodes';
-import { registerInlineSyntax, INLINE_PRIORITIES } from '../../core/inline/scan/plugin-syntax';
+import { registerInlineSyntax, INLINE_PRIORITIES } from '#lib/plugin.js';
 
 const WIKI_EMBED = /^!\[\[([^\]|]+?)(?:\|(\d+))?\]\]/;
 // The two grammars overlap (`![[a]](u)` is a built-in image whose alt is `[a]`), and

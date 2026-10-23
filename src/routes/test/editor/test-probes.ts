@@ -59,7 +59,7 @@ import { domDescendants } from '#lib/caret/dom-walk.js';
 import { isHiddenMarkerText } from '#lib/caret/widget-offset.js';
 import { childIdDrifts } from '#lib/invariants/child-id-parity.js';
 import { isProseLeaf } from '#lib/schema/page-role.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import ThrowOnRenderBlock from './ThrowOnRenderBlock.svelte';
 
 type EditorInstance = ReturnType<typeof Editor>;
@@ -493,7 +493,7 @@ export function installTestProbes({
 			const doc = editor.__test.getDocument();
 			const node = doc.children[index];
 			if (!node) return false;
-			const refs = buildLinkReferenceMap(doc.children);
+			const refs = definitionsOf(doc.children);
 			const grammar = editor.__test.getGrammar();
 			return isProseLeaf(node, {
 				grammar,

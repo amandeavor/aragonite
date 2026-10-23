@@ -5,7 +5,7 @@
  * at the write, so the caller that skipped the refusal is the one named.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkSingleNodeSink(sink: string, installed: number): InvariantViolation | null {
 	if (installed <= 1) return null;

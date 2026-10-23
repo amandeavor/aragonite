@@ -16,13 +16,13 @@ export function stateAt(doc: Document, path: number[]) {
 
 export const el = () => document.createElement('div');
 
-/** The keyboard extend's context over `doc`, with the default grammar and the test caret writer. */
+/** The keyboard extend's context over `doc`, with the default grammar in source mode and the test caret writer. */
 export function extendCtx(selection: SelectionState, doc: Document): KeyboardExtendContext {
 	return {
 		selection,
 		caretWriter: testCaretWriter,
 		getDoc: () => doc,
-		reading: { grammar: defaultGrammarView },
+		reading: { grammar: defaultGrammarView, mode: () => 'source' },
 		caretLanding: { restore: async () => 'applied', showSelectionEnd: async () => {} }
 	};
 }

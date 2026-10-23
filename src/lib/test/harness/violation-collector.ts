@@ -2,7 +2,7 @@
  * Collects what an invariant check reports, tagged by the call site that ran it, so a suite can
  * assert that a check fired for a given reason rather than reading the console.
  */
-import type { InvariantViolation } from '../../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export interface TaggedViolation {
 	tag: string;

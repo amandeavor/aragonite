@@ -8,14 +8,14 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 const require = createRequire(import.meta.url);
 const libraryManifest = require.resolve('@voithos-labs/aragonite/package.json');
-/** @type {Record<string, string | { svelte: string }>} */
+/** @type {Record<string, string | { svelte?: string }>} */
 const libraryExports = JSON.parse(readFileSync(libraryManifest, 'utf8')).exports;
 // The files this app's bundler loads, through the `svelte` condition; resolving the package from
 // Node here would pick `default`, the prebuilt build a Svelte app never loads.
 const libraryEntries = new Set(
 	Object.values(libraryExports)
-		.filter((target) => typeof target === 'object')
-		.map((target) => path.resolve(path.dirname(libraryManifest), target.svelte))
+		.flatMap((target) => (typeof target === 'object' && target.svelte ? [target.svelte] : []))
+		.map((entry) => path.resolve(path.dirname(libraryManifest), entry))
 );
 
 export default defineConfig({

@@ -5,7 +5,7 @@ import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import { selectWidgetWhole } from '#lib/selection/place-caret.js';
 import { serialize } from '#lib/core/serializer.js';
 import type { Document } from '#lib/core/nodes.js';
-import type { LinkReferenceResolver } from '#lib/core/inline/link-reference-resolver.js';
+import type { LinkReferenceResolver } from '#lib/core/inline/scan/definitions.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { createRegistryView } from '#lib/schema/registry-view.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';

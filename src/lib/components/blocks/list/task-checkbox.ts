@@ -1,7 +1,7 @@
 import type { AmbientPrefix } from '../../../block-component';
 import { metadataOf, type ListItemMetadata } from '../../../core/nodes';
 import type { NodeView } from '../../../core/node-views';
-import { devWarn } from '../../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 function isTaskMarkerChecked(taskMarker: string): boolean {
 	const c = taskMarker[1];
@@ -46,8 +46,8 @@ export function buildTaskItemAmbient(
 				dragAnchor: true,
 				onClick: onToggle
 			},
-			// The list marker gets a span of its own so the rendered modes can collapse it:
-			// GitHub draws the box at the margin, not indented under a bullet that is not there.
+			// The list marker gets a span of its own: the rendered modes collapse it, as GitHub draws
+			// the box at the margin, and source mode pads it to the list's marker column.
 			{ start: 0, end: boxStart, className: 'task-list-marker', onClick: () => {} }
 		]
 	};

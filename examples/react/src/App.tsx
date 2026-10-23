@@ -4,6 +4,7 @@ import { Aragonite, type EditorHandle } from '@voithos-labs/aragonite-react';
 
 const FIRST = '# First note\n\nHello from the first note.\n';
 const SECOND = '# Second note\n\nA different document.\n';
+const LONG = Array.from({ length: 300 }, (_, i) => `Paragraph ${i + 1}.`).join('\n\n') + '\n';
 
 export function App({ uncontrolled }: { uncontrolled: boolean }) {
 	const [loaded, setLoaded] = useState(FIRST);
@@ -24,6 +25,9 @@ export function App({ uncontrolled }: { uncontrolled: boolean }) {
 			<p data-testid="framework-version">{version}</p>
 			<button data-testid="load" onClick={load}>
 				Load another doc
+			</button>
+			<button data-testid="load-long" onClick={() => setValue(LONG)}>
+				Load a long doc
 			</button>
 			<button data-testid="revert" onClick={() => setValue(loaded)}>
 				Revert

@@ -48,9 +48,9 @@ export interface RootMenusDeps {
 	getDoc: DocumentGetter;
 	isHostChrome(node: Node | null): boolean;
 	blockEdit: Pick<BlockEditActions, 'deleteBlock' | 'replaceRaw'>;
-	/** Where a click on empty space puts the caret, so a right-click on prose acts at the
-	 *  pointer. */
-	placeCaretAtPoint(x: number, y: number): boolean;
+	/** The caret the menu opens over: where the right-click's press pointed, so a right-click on
+	 *  prose acts at the pointer; the event's point when no press opened the menu. */
+	placeMenuCaret(x: number, y: number): boolean;
 	/** Whether the right button's press landed on a selected range, which picks the menu. */
 	rangeAtContextPress(): boolean;
 	/** Whether the editor holds an inline widget selected, which Cut and Copy act on as on a range. */
@@ -212,8 +212,8 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		// The keyboard's contextmenu event (Windows fires it on the ContextMenu key's release)
 		// lands on the item the keydown's own menu already focused: that menu is the answer.
 		if (target.closest('.md-menu')) return;
-		// Read off the press's own path: the caret placed for the menu may have shown a widget's
-		// source, which takes the target out of the page.
+		// Read off the event's path, fixed at dispatch: the caret placed for the menu may have shown
+		// a widget's source, which takes the target out of the page.
 		const host = e.composedPath().find(isBlockHost) ?? null;
 		const path = readBlockPath(host);
 		if (!host || !path) return;
@@ -226,13 +226,13 @@ export function createRootMenus(deps: RootMenusDeps): RootMenus {
 		// right-click's does; anything else, and anything under a block's actions, the caret replaces.
 		if (selected || !node || prose) {
 			if (!selected && !rangeCoversPoint(root, e.clientX, e.clientY)) {
-				deps.placeCaretAtPoint(e.clientX, e.clientY);
+				deps.placeMenuCaret(e.clientX, e.clientY);
 			}
 			// Top-level prose is where a sibling block makes sense.
 			openClipboardMenu(point, host, !selected && prose);
 			return;
 		}
-		if (nativeRangeIn(root)) deps.placeCaretAtPoint(e.clientX, e.clientY);
+		if (nativeRangeIn(root)) deps.placeMenuCaret(e.clientX, e.clientY);
 		openBlockActions(point, host, path, node);
 	}
 

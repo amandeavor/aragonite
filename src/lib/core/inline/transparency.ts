@@ -8,13 +8,17 @@
 import type { NodeView } from '../node-views';
 import { isBlankText } from '../lines';
 import { getInlineContent } from './inline-cache';
-import { isInlineWidget, isCharacterLikeWidget } from './inline-widgets';
-import type { GrammarView } from '../../schema/block-openers';
+import { drawnInlines, isInlineWidget, isCharacterLikeWidget } from './inline-widgets';
+import type { Reading } from '../../schema/reading';
+import { hidesMarkersOnArrival } from '../../presentation-mode';
 import { isGridKind, tryGetBlockKindDescriptor } from '../../schema/block-kind-descriptor';
+
+/** What the check reads a block by: the grammar, and the mode, which decides what a link draws. */
+export type ArrivalReading = Pick<Reading, 'grammar' | 'mode'>;
 
 export function isVerticallyTransparentNode(
 	node: NodeView | null | undefined,
-	grammar: GrammarView
+	reading: ArrivalReading
 ): boolean {
 	if (!node) return false;
 	// An explicit stack: container depth is input-controlled, so recursion could overflow.
@@ -29,26 +33,31 @@ export function isVerticallyTransparentNode(
 			// An empty container carries a caret position.
 			if (current.children.length === 0) return false;
 			for (const child of current.children) pending.push(child);
-		} else if (!isTransparentLeaf(current, grammar)) {
+		} else if (!isTransparentLeaf(current, reading)) {
 			return false;
 		}
 	}
 	return true;
 }
 
-function isTransparentLeaf(node: NodeView, grammar: GrammarView): boolean {
+// The same walk the edge-widget readers take (`widget-adjacency.ts`), so a block passed over
+// always has a widget at its edge for the arrival to enter.
+function isTransparentLeaf(node: NodeView, reading: ArrivalReading): boolean {
+	const { grammar } = reading;
 	// No resolver, since the path-walking callers hold none: a paragraph of only reference-style
 	// images reads as opaque, while a direct `![](url)` is unaffected.
 	const inlines = getInlineContent(node, undefined, '', grammar);
-	if (inlines.length === 0) return false;
-	for (const inline of inlines) {
+	const drawn = drawnInlines(inlines, node.raw, grammar, hidesMarkersOnArrival(reading.mode()));
+	let drawsWidget = false;
+	for (const inline of drawn) {
 		if (isInlineWidget(inline, node.raw, grammar)) {
 			// A character-like widget carries a column, so it reads as text.
 			if (isCharacterLikeWidget(inline.kind, grammar)) return false;
+			drawsWidget = true;
 			continue;
 		}
 		if (inline.kind === 'text' && isBlankText(inline.text ?? '')) continue;
 		return false;
 	}
-	return true;
+	return drawsWidget;
 }

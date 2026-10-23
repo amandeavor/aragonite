@@ -7,11 +7,11 @@ import { getBlockKindDescriptor } from '../../schema/block-kind-descriptor';
 // The built-in descriptors register before any read, with or without a mounted editor; the call
 // is explicit because a bare side-effect import is tree-shaken from the production build.
 import { registerBuiltInDescriptors } from '../../schema/built-in-descriptors';
-import type { LinkReferenceResolver } from './link-reference-resolver';
 import type { Reading } from '../../schema/reading';
 import { defaultGrammarView, type GrammarView } from '../../schema/block-openers';
-import { scanInline } from './scan';
-import { codeSpanFence } from './scan/code-spans';
+import { readInline } from './scan';
+import { codeFenceWidth } from './scan/code-span';
+import type { LinkReferenceResolver } from './scan/definitions';
 import { inlineDescendants } from './walk';
 import { recordInlineCompute } from '../../perf/instruments';
 
@@ -119,7 +119,7 @@ export function constructContentRange(node: InlineNode): ContentRange | null {
 			: { start: node.start, end: node.end };
 	}
 	// A code span carries its content as `text` rather than children.
-	const fence = node.kind === 'inlineCode' ? codeSpanFence(node) : 0;
+	const fence = node.kind === 'inlineCode' ? codeFenceWidth(node) : 0;
 	return fence > 0 ? { start: node.start + fence, end: node.end - fence } : null;
 }
 
@@ -176,22 +176,7 @@ export function parseInline(
 	return readInline(raw, start, end, resolver, grammar ?? defaultGrammarView);
 }
 
-/** Both bounds are checked at runtime: a caller outside the type checker that passes only the
- *  source would get one whole-string text node, wrong output that looks like a result. */
-export function readInline(
-	raw: string,
-	start: number,
-	end: number,
-	resolver: LinkReferenceResolver | undefined,
-	grammar: GrammarView
-): InlineNode[] {
-	if (!Number.isFinite(start) || !Number.isFinite(end)) {
-		throw new TypeError(
-			'parseInline requires both scan bounds: to scan a whole string, call parseInline(src, 0, src.length)'
-		);
-	}
-	return scanInline(raw, start, end, resolver, grammar);
-}
+export { readInline };
 
 // ── Inline Tree Walks ──────────────────────────────────────────────────────
 

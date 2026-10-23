@@ -1,9 +1,15 @@
 import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { defineConfig, searchForWorkspaceRoot } from 'vite';
+import {
+	defaultClientConditions,
+	defaultServerConditions,
+	defineConfig,
+	searchForWorkspaceRoot
+} from 'vite';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { SOURCE_CONDITION } from './scripts/lib-alias.mjs';
 
 // E2E broken-image tests hit /test-fixtures/nonexistent.png on purpose, and SvelteKit's
 // static handler logs every miss; answering early keeps the dev and Playwright stdout clean.
@@ -79,6 +85,10 @@ export default defineConfig({
 		sveltekit(e2eBuild ? { adapter: previewOnly, outDir: e2eOutDir } : { adapter: staticSite }),
 		posixScanEntries
 	],
+	// The app loads the library from source in every build of its own, so its production build
+	// carries the real dev-checks module (switched off), not the stripped copy a consumer gets.
+	resolve: { conditions: [SOURCE_CONDITION, ...defaultClientConditions] },
+	ssr: { resolve: { conditions: [SOURCE_CONDITION, ...defaultServerConditions] } },
 	// Readable stack traces in a failing spec's page errors.
 	...(e2eBuild ? { build: { minify: false, sourcemap: true } } : {}),
 	// Per checkout when the deps live outside it, or sibling worktrees' dev servers

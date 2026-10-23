@@ -5,7 +5,7 @@
 // were never handed a throw, so it escaped and failed the whole block.
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import type { EditorError } from '#lib/editor-events.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import {
 	registerInlineWidgetKind,
 	type InlineWidgetDescriptor

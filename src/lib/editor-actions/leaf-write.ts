@@ -7,7 +7,7 @@
 import type { ContainerEditActions, InPlaceResult, Relanding } from '../action-contracts';
 import type { CstNode } from '../core/nodes';
 import { documentLineEnding } from '../core/lines';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import {
 	assertLeafLineEndingPairsKept,
 	assertListMarkerWidths,

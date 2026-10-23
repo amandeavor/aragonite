@@ -6,8 +6,7 @@
  */
 
 import { splitLines } from '../../core/lines';
-import { devWarn } from '../../dev-warn';
-import { editorEnv } from '../../env';
+import { devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { isReadingMode } from '../../presentation-mode';
 import type { Reading } from '../../schema/reading';
 import type { DocumentStamps } from './document-stamp';
@@ -31,7 +30,7 @@ export function admitsWrite(
 ): boolean {
 	if (!madeForLiveDocument(gate)) return false;
 	if (!isReadOnly(gate.reading)) return true;
-	if (editorEnv.isDev) {
+	if (devChecksOn) {
 		const kind = kindOf?.();
 		const on = kind ? `on a '${kind}' block, ` : '';
 		devWarn(

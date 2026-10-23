@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getInlineRungs } from '#lib/core/inline/scan/plugin-syntax.js';
+import { handlersFor } from '#lib/core/inline/scan/plugin-syntax.js';
 import { registerCalloutKind } from '../../../routes/test/plugins/callout/callout-kind';
 import { testView } from '#lib/test/support/test-view.js';
 
@@ -8,8 +8,8 @@ import { testView } from '#lib/test/support/test-view.js';
 // registry, leaving registerCalloutKind the only thing that can take `:`.
 describe('registerCalloutKind activates the inline text level', () => {
 	it('registers the `:` inline recognizer, not just the `:::` opener', () => {
-		expect(getInlineRungs(':')).toHaveLength(0);
+		expect(handlersFor(':')).toHaveLength(0);
 		registerCalloutKind(testView());
-		expect(getInlineRungs(':').length).toBeGreaterThan(0);
+		expect(handlersFor(':').length).toBeGreaterThan(0);
 	});
 });

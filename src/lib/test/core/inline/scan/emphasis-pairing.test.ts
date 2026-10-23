@@ -1,6 +1,5 @@
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { describe, it, expect } from 'vitest';
-import { scanInline } from '../../../../core/inline/scan';
+import { parseInline } from '#lib';
 import { expectBoundedGrowth, measureScanGrowth } from '../../../harness/scan-growth';
 import {
 	assertConstructCoverage,
@@ -14,7 +13,7 @@ import {
 describe('multiple-of-3 rule (CommonMark §6.2)', () => {
 	it('nested run produces emphasis wrapping strong, not a flat pair', () => {
 		const source = 'foo***bar***baz';
-		const nodes = scanInline(source, 0, source.length, undefined, defaultGrammarView);
+		const nodes = parseInline(source, 0, source.length);
 		assertConstructCoverage(nodes);
 		const em = nodes.find((n) => n.kind === 'emphasis');
 		expect(em).toBeDefined();
@@ -24,12 +23,9 @@ describe('multiple-of-3 rule (CommonMark §6.2)', () => {
 	it('asymmetric run leaves the surplus inner delimiter literal', () => {
 		// The multiple-of-3 rule stops the inner `*` pairing across the `**` close.
 		const source = '**foo*bar**baz*';
-		const nodes = scanInline(source, 0, source.length, undefined, defaultGrammarView);
+		const nodes = parseInline(source, 0, source.length);
 		assertConstructCoverage(nodes);
-		const strong = nodes.find((n) => n.kind === 'strong');
-		expect(strong).toBeDefined();
-		expect(strong!.children?.some((c) => c.kind === 'text' && c.text === '*')).toBe(true);
-		expect(nodes.filter((n) => n.kind === 'emphasis')).toHaveLength(0);
+		expect(shapeOf(nodes, source)).toBe('<strong>foo*bar</strong>baz*');
 	});
 
 	// The rule applies to original run lengths, not the unconsumed remainder after partial
@@ -45,7 +41,7 @@ describe('multiple-of-3 rule (CommonMark §6.2)', () => {
 
 	for (const { source, shape } of originalRunLengthCases) {
 		it(`gates on original run lengths: ${JSON.stringify(source)}`, () => {
-			const nodes = scanInline(source, 0, source.length, undefined, defaultGrammarView);
+			const nodes = parseInline(source, 0, source.length);
 			assertTotalCoverage(nodes, 0, source.length);
 			assertConstructCoverage(nodes);
 			expect(shapeOf(nodes, source)).toBe(shape);
@@ -71,14 +67,14 @@ describe('openers_bottom (§6.2 phase 2 optimization)', () => {
 		// Openers interleaved with closers that can never match: without the openers_bottom
 		// lower bound every closer re-walks the whole opener stack.
 		const growth = measureScanGrowth(
-			(source) => void scanInline(source, 0, source.length, undefined, defaultGrammarView),
+			(source) => void parseInline(source, 0, source.length),
 			'_a* ',
 			[32, 128]
 		);
 		expectBoundedGrowth(growth);
 
 		const raw = '_a* '.repeat(150000);
-		const nodes = scanInline(raw, 0, raw.length, undefined, defaultGrammarView);
+		const nodes = parseInline(raw, 0, raw.length);
 		assertTotalCoverage(nodes, 0, raw.length);
 		expect(nodes).toEqual([textNode(0, raw.length, raw)]);
 	}, 300_000);

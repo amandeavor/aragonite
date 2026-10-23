@@ -4,13 +4,12 @@
  * controller builds it and hands it the commit sequence every write runs through.
  */
 
-import { isDevChecks } from '../../env';
+import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import type { BlockComponent } from '../../block-component';
 import type { CstNode } from '../../core/nodes';
 import { documentLineEnding } from '../../core/lines';
 import type { NodeView } from '../../core/node-views';
 import type { RevealPolicy } from '../../selection/caret-landing';
-import { assertInvariant } from '../../assert';
 import { docPathFrom } from '../../caret/coordinate-spaces';
 import { assignIds } from '../../block-id';
 import { replaceRefs } from '../../block-lists/child-refs';
@@ -387,7 +386,7 @@ export function createStructuralCommit(
 					prepared.push(prepareScopeView(s, topLevel));
 				}
 				if (hasDoc) prepared.unshift(prepareScopeView(scopes[0], topLevel));
-				const treeAtMutate = hasDoc && isDevChecks() && !perfEnabled() ? [...topLevel] : null;
+				const treeAtMutate = hasDoc && devChecksOn && !perfEnabled() ? [...topLevel] : null;
 				const changes = mutate(prepared.map((p) => p.view) as { [K in keyof S]: ContainerScope });
 				if (treeAtMutate) assertTopLevelUntouched(deps.doc.children, topLevel, treeAtMutate);
 				// A scope array built at runtime loses the tuple type, so this runtime check

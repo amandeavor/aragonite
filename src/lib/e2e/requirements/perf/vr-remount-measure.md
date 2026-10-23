@@ -18,12 +18,20 @@ after a scroll settles, and the anchor suites assert the correction for a
 height that really changed; none counted the writes a scroll made, so a
 correction undone a frame later read as a block held still.
 
+Miss-analysis (sub-pixel remount): the one-pixel noise rule was unit-tested on
+the resize route only, and the runner's fonts lay every block out at whole pixels,
+so a remount a sixteenth of a pixel off only showed under the fonts in Playwright's
+Linux image.
+
 ## Happy paths
 
 - real wheel ticks down through the document and back up never write the scroll:
   first mounts land below the held block, and a block re-entering above it
   at the height recorded on the way down needs no correction, the blockquote
   included, whose box is measured only after its children rendered
+- a block that remounts a fraction of a pixel off the height recorded for it (WebKit
+  lays a block out slightly differently by where it sits) keeps the recorded height,
+  so the scroll is not corrected for it
 
 ## Error cases
 

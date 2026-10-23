@@ -4,7 +4,7 @@
  * image looking selected while the keys go to the caret.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import type { WidgetTarget } from '../selection/primitives';
 
 export function checkPlacementEndsWidget(widget: WidgetTarget | null): InvariantViolation | null {

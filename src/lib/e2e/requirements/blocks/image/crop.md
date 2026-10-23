@@ -2,7 +2,7 @@
 
 limestone's cover crop on an inline image. The toolbar's crop button turns the selected image
 into an area the user can pan; the tick writes the result into the `|WxH` hint as `@X,Y[,Z]`,
-this editor's own addition to the Obsidian-style size hint (`image-dimensions.ts`,
+this editor's own addition to the Obsidian-style size hint (`scan/size-hint.ts`,
 `image-source-bytes.ts`).
 
 ## Model

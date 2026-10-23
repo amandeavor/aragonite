@@ -4,8 +4,11 @@
  * its join rewrites.
  */
 
-import { assertInvariant, type InvariantViolation } from '../assert';
-import { isDevChecks } from '../env';
+import {
+	assertInvariant,
+	devChecksOn,
+	type InvariantViolation
+} from '@voithos-labs/aragonite/dev-checks';
 import { sameTexts } from './leaf-text';
 
 export function checkListMoveKeepsOrder(
@@ -28,7 +31,7 @@ export function keepingListOrder<T>(
 	move: () => T,
 	after: (result: T) => readonly string[] = () => before()
 ): T {
-	const texts = isDevChecks() ? before() : null;
+	const texts = devChecksOn ? before() : null;
 	const result = move();
 	if (texts) {
 		assertInvariant('list-move-keeps-order', () => checkListMoveKeepsOrder(texts, after(result)));

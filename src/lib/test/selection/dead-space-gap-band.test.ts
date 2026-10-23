@@ -71,9 +71,9 @@ describe('a dead-space y between two root bands', () => {
 			lastBlockIndex: () => 1,
 			land: async () => 'placed'
 		});
-		const press = { target: root, button: 0 } as unknown as MouseEvent;
-		caret.notePress(root, press);
-		const click = { target: root, clientX: 20, clientY: BETWEEN_Y } as unknown as MouseEvent;
+		const at = { target: root, clientX: 20, clientY: BETWEEN_Y };
+		caret.notePress(root, { ...at, button: 0 } as unknown as MouseEvent);
+		const click = at as unknown as MouseEvent;
 		return caret.handleClick(root, click);
 	}
 

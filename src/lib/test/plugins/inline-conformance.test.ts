@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { installPlugins } from '#lib';
 import { activateDirectiveGrammar } from '#lib/core/directive/activate.js';
 import { DIRECTIVE_TEXT } from '#lib/core/directive/kinds.js';
-import { INLINE_PRIORITIES } from '#lib/core/inline/scan/plugin-syntax.js';
+import { INLINE_PRIORITIES } from '#lib/plugin.js';
 import { declaredPluginInlineKind } from '#lib/plugin.js';
 import { runInlineKindConformance } from '#lib/testing.js';
 import type { InlineConformanceProfile } from '#lib/testing.js';

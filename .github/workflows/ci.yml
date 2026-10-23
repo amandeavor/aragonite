@@ -34,8 +34,10 @@ jobs:
   # job name, and its required per-shard checks would wait forever.
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      playwright: ${{ steps.playwright.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,15 +46,20 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node scripts/ci-code-changed.mjs "$BASE" >> "$GITHUB_OUTPUT"
+      # The e2e jobs run in Playwright's image for this exact version, which ships every browser
+      # and its OS packages, so no job installs them from the Ubuntu mirror.
+      - id: playwright
+        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
 
   unit:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The commit-message door below reads the PR's own commits.
           fetch-depth: 0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -78,6 +85,10 @@ jobs:
   e2e:
     needs: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --user 1001
     strategy:
       # One red shard must not cancel the others — a full failure map per run
       # beats re-running to discover the next failure.
@@ -89,6 +100,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - if: needs.changes.outputs.code == 'true'
         uses: ./.github/actions/e2e-setup
+        timeout-minutes: 10
         with:
           engine: chromium
       - if: needs.changes.outputs.code == 'true'
@@ -102,13 +114,19 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-chromium-${{ strategy.job-index }}
-          path: test-results/ci-summary.json
+          path: |
+            test-results/ci-summary.json
+            test-results/**/error-context.md
 
   # The same correctness suite in WebKit and Firefox (docs/contributing/testing.md § Browser
   # engines). Their checks are required, so a docs-only change skips the steps, not the job.
   e2e-webkit:
     needs: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --user 1001
     env:
       ENGINE: webkit
     strategy:
@@ -120,6 +138,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - if: needs.changes.outputs.code == 'true'
         uses: ./.github/actions/e2e-setup
+        timeout-minutes: 10
         with:
           engine: webkit
       - if: needs.changes.outputs.code == 'true'
@@ -133,11 +152,38 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-webkit-${{ strategy.job-index }}
-          path: test-results/ci-summary.json
+          path: |
+            test-results/ci-summary.json
+            test-results/**/error-context.md
 
-  e2e-firefox:
+  # Mozilla ships Firefox as .tar.xz and Playwright's image has no xz, so the runner unpacks it once
+  # and hands the shards a .tar.gz.
+  firefox:
     needs: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FIREFOX_VERSION: '158.0'
+    steps:
+      - if: needs.changes.outputs.code == 'true'
+        run: |
+          curl -fsSL "https://ftp.mozilla.org/pub/firefox/releases/$FIREFOX_VERSION/linux-x86_64/en-US/firefox-$FIREFOX_VERSION.tar.xz" | tar -xJ
+          tar -czf firefox.tar.gz firefox
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: firefox-linux
+          path: firefox.tar.gz
+          compression-level: 0
+          retention-days: 1
+
+  e2e-firefox:
+    needs: [changes, firefox]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --user 1001
     env:
       ENGINE: firefox
     strategy:
@@ -149,6 +195,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - if: needs.changes.outputs.code == 'true'
         uses: ./.github/actions/e2e-setup
+        timeout-minutes: 10
         with:
           engine: firefox
       # One worker per core. Firefox is CPU-bound against the build: six and eight workers made each
@@ -164,7 +211,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-firefox-${{ strategy.job-index }}
-          path: test-results/ci-summary.json
+          path: |
+            test-results/ci-summary.json
+            test-results/**/error-context.md
 
   # Every test the tree lists ran in exactly one shard per engine. Its steps skip on a docs-only
   # change, like the engine jobs', so its required check still reports.
@@ -173,11 +222,12 @@ jobs:
     # A red shard still counts; a cancelled run has nothing to count.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - if: needs.changes.outputs.code == 'true'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: e2e-*
           path: e2e-summaries
@@ -187,6 +237,10 @@ jobs:
   perf:
     needs: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --user 1001
     env:
       # Runners measured ~2.2x the calibration machine (runs 29177807039 /
       # 29178211384); 2.5 keeps this job a gross-regression net while the local
@@ -197,6 +251,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - if: needs.changes.outputs.code == 'true'
         uses: ./.github/actions/e2e-setup
+        timeout-minutes: 10
         with:
           engine: chromium
       # perf:check builds and previews the app, then gates the keystroke rows against
@@ -208,9 +263,10 @@ jobs:
 
   consumer-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -221,9 +277,10 @@ jobs:
   # dev. Next, Nuxt and the oldest supported React and Vue run per release, in adapter-suite.yml.
   adapter-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -237,9 +294,10 @@ jobs:
   # is deterministic — a red here means the table changed, not that upstream did.
   emoji-table:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
       - run: node scripts/verify-emoji-table.mjs

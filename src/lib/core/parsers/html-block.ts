@@ -6,7 +6,7 @@
 import { WHITESPACE_CLASS, type ParsedLine } from '../lines';
 import { joinRaw, isBlankLine } from '../parser';
 import type { BlockOpenerResult } from '../../schema/block-openers';
-import { OPEN_TAG_SOURCE, CLOSE_TAG_SOURCE } from '../inline/html-tag-grammar';
+import { CLOSE_TAG_PATTERN, OPEN_TAG_PATTERN } from '../inline/scan/raw-html';
 
 export type HtmlBlockType = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -45,7 +45,7 @@ export function htmlBlockTagLineMatcher(
 // CommonMark §6.6's complete-tag grammar at line scope, from the inline raw-HTML sources. Last in
 // priority, so types 1 and 6 take their tag names first, as the spec requires.
 const TYPE_7_OPEN = new RegExp(
-	`^ {0,3}(?:${OPEN_TAG_SOURCE}|${CLOSE_TAG_SOURCE})${WHITESPACE_CLASS}*$`
+	`^ {0,3}(?:${OPEN_TAG_PATTERN}|${CLOSE_TAG_PATTERN})${WHITESPACE_CLASS}*$`
 );
 
 export function matchHtmlBlock(text: string): HtmlBlockType | null {

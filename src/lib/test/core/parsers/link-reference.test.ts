@@ -3,7 +3,7 @@ import { parseLinkReferenceDefinition } from '../../../core/parsers/link-referen
 import { splitLines } from '../../../core/lines';
 import { parse } from '../../../core/parser';
 import { serialize } from '../../../core/serializer';
-import { buildLinkReferenceMap } from '../../../core/inline/link-reference-resolver';
+import { definitionsOf } from '../../../core/inline/scan/definitions';
 import { parseInline } from '../../../core/inline/index';
 import { metadataOf } from '../../../core/nodes';
 import { describeRoundTrips } from '#lib/test/support/round-trip.js';
@@ -90,7 +90,7 @@ describe('parseLinkReferenceDefinition, invalidating tails and interruptions', (
 	it('garbage-tail definition falls through to a paragraph, registering no reference', () => {
 		const doc = parse('[foo]: /url junk\n\nSee [foo] here.\n');
 		expect(doc.children.map((n) => n.kind)).toEqual(['paragraph', 'paragraph']);
-		const map = buildLinkReferenceMap(doc.children);
+		const map = definitionsOf(doc.children);
 		expect(map.resolve('foo')).toBeUndefined();
 	});
 
@@ -131,7 +131,7 @@ describe('parseLinkReferenceDefinition: whitespace-only label', () => {
 		const source = '[ ]: /url\n\nsee [ ]\n';
 		const doc = parse(source);
 		expect(doc.children.map((n) => n.kind)).toEqual(['paragraph', 'paragraph']);
-		expect(buildLinkReferenceMap(doc.children).resolve(' ')).toBeUndefined();
+		expect(definitionsOf(doc.children).resolve(' ')).toBeUndefined();
 		expect(serialize(doc)).toBe(source);
 	});
 
@@ -166,7 +166,7 @@ describe('reference resolution with escaped brackets in label', () => {
 	it('resolves an inline shortcut reference whose label contains \\]', () => {
 		const source = '[foo\\]bar]: /url\n\nSee [foo\\]bar] here.\n';
 		const doc = parse(source);
-		const map = buildLinkReferenceMap(doc.children);
+		const map = definitionsOf(doc.children);
 		expect(map.resolve('foo\\]bar')).toEqual({ url: '/url' });
 
 		const para = doc.children.find((n) => n.kind === 'paragraph');
@@ -193,9 +193,7 @@ describe('a definition reads its destination and title the way an inline link do
 
 	it('resolves an escaped destination to what the inline form resolves to', () => {
 		const doc = parse('[foo]: /url\\*\n');
-		expect(buildLinkReferenceMap(doc.children).resolve('foo')).toEqual(
-			inlineTarget('[foo](/url\\*)')
-		);
+		expect(definitionsOf(doc.children).resolve('foo')).toEqual(inlineTarget('[foo](/url\\*)'));
 		expect(inlineTarget('[foo](/url\\*)').url).toBe('/url*');
 	});
 
@@ -276,11 +274,11 @@ describe('a definition reads its label the way a reference link does', () => {
 		expect(doc.children.map((n) => n.kind)).toEqual(['linkReferenceDefinition', 'paragraph']);
 		expect(doc.children[0].raw).toBe('[\nfoo\n]: /url\n');
 		expect(serialize(doc)).toBe(source);
-		expect(buildLinkReferenceMap(doc.children).resolve('foo')).toEqual({ url: '/url' });
+		expect(definitionsOf(doc.children).resolve('foo')).toEqual({ url: '/url' });
 	});
 
 	it('matches a label split across indented lines to its one-line reference', () => {
 		const doc = parse('[Foo\n   BAR]: /url\n');
-		expect(buildLinkReferenceMap(doc.children).resolve('foo bar')).toEqual({ url: '/url' });
+		expect(definitionsOf(doc.children).resolve('foo bar')).toEqual({ url: '/url' });
 	});
 });

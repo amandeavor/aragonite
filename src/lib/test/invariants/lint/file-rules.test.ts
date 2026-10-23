@@ -187,7 +187,7 @@ const GRAMMAR_FILES: string[] = [
 	SOURCE.lineSplitter,
 	SOURCE.autolinkGrammar,
 	SOURCE.htmlTagGrammar,
-	SOURCE.linkReferenceResolver
+	SOURCE.linkGrammar
 ];
 
 const PARSER_PROBE = `${SOURCE_DIR.blockParsers}probe.ts`;
@@ -650,16 +650,37 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
-		id: 'every dev-only check reads the build flag through env.ts',
-		matches: /from\s*['"]esm-env['"]/,
+		id: 'G4.248 every dev-only check reads the build flag through the dev-checks module',
+		matches: /from\s*['"]esm-env['"]|\bNODE_ENV\b/,
 		allowed: {
-			'src/lib/env.ts': 'the one reader: isDevChecks() answers for every dev-only check'
+			[SOURCE.devChecks]: 'the one reader: devChecksOn answers for every dev-only check'
 		},
 		reason:
-			'a check reading DEV itself stays off under configureEditorEnv({ isDev: true }), so a suite on a toolchain resolving no export conditions runs without it: call isDevChecks()',
-		reaches: [SOURCE.envFlags],
-		hits: ["import { DEV } from 'esm-env';", 'import { BROWSER, DEV } from "esm-env";'],
-		misses: ["import { isDevChecks } from '../env';"]
+			'a check reading DEV or NODE_ENV itself ships in a production build and stays off under configureEditorEnv({ isDev: true }): read devChecksOn from @voithos-labs/aragonite/dev-checks',
+		reaches: [SOURCE.devChecks],
+		hits: [
+			"import { DEV } from 'esm-env';",
+			'import { BROWSER, DEV } from "esm-env";',
+			"if (process.env.NODE_ENV !== 'production') warn();"
+		],
+		misses: ["import { devChecksOn } from '@voithos-labs/aragonite/dev-checks';"]
+	},
+	{
+		id: 'G4.248 the dev-checks module is imported by its package name alone',
+		matches:
+			/['"`](?:(?:\.{1,2}\/[^'"`]*|#lib\/)dev-checks|[^'"`]*dev-checks-stripped)(?:\.(?:js|ts))?['"`]/,
+		reason:
+			'svelte-package turns a relative or #lib spelling into a file path, so a production build never swaps in the stripped copy and ships every check: import @voithos-labs/aragonite/dev-checks',
+		atLeast: 100,
+		hits: [
+			"import { devWarn } from '../dev-checks';",
+			"import { devWarn } from '#lib/dev-checks.js';",
+			"import { devChecksOn } from './dev-checks-stripped';"
+		],
+		misses: [
+			"import { devWarn } from '@voithos-labs/aragonite/dev-checks';",
+			"import { x } from './dev-checks-panel';"
+		]
 	},
 	{
 		id: 'the document is handed to a write as a body in one place',
@@ -1273,6 +1294,18 @@ const RULES: FileRule[] = [
 			"import { registerAsCore as runUnowned } from './plugin-install';"
 		],
 		misses: ['grammars.registerCore(key, language);', 'registerAsCoreLater();']
+	},
+	{
+		id: 'G4.249 a measured height enters the height table and the estimator only through applyMeasured',
+		matches: /\.(?:recordMeasured|setHeight)\s*\(/,
+		allowed: {
+			'src/lib/windowing/list-windowing.svelte.ts':
+				'`applyMeasured`, which holds a height within a pixel of its record as that record'
+		},
+		reason:
+			'a height written around it skips the sub-pixel noise rule, and a block that remounts a fraction of a pixel off moves the scroll under the reader: call the list’s `applyHeight`',
+		hits: ['deps.oracle.recordMeasured(id, h);', 'table.model.setHeight (i, h);'],
+		misses: ['recordMeasured(id: string, height: number): void;', 'oracle.measured(id);']
 	},
 	{
 		id: 'G4.78 the editor’s built-in bootstraps run only through registerEditorBuiltIns',
@@ -2357,6 +2390,31 @@ const TYPED_WRITE_ASKS: ManifestRule[] = [
 	}
 ];
 
+// ── G4.251 the bundled reveal blocks still drawn by Svelte ─────────────────
+
+const REVEAL_BLOCKS_IN_SVELTE: ManifestRule[] = [
+	{
+		id: 'G4.251 the bundled blocks that build a render-primary leaf in Svelte are listed',
+		population: under(SOURCE_DIR.plugins),
+		matches: /\bmode:\s*['"]render-primary['"]/,
+		declared: {
+			[SOURCE.latexBlockMath]: 'block math, with its layout toggle and live preview',
+			'src/lib/plugins/toc/TocBlock.svelte': 'the outline, whose list follows the headings',
+			'src/lib/plugins/parrot/ParrotBlock.svelte': 'the plugin guide’s quickstart block'
+		},
+		reason:
+			'a bundled block that shows a rendered view until clicked can be a `defineBlockView({ surface: "render-primary" })` view; this list is where moving them starts, and it guards nothing inside a listed file',
+		hits: [at('src/lib/plugins/x/XBlock.svelte', "mode: 'render-primary',")],
+		misses: [
+			at(
+				'src/lib/plugins/x/x-kind.ts',
+				"focus: { mode: 'implemented', via: 'render-primary reveal' },"
+			),
+			at('src/lib/plugins/x/x-view.ts', "surface: 'render-primary',")
+		]
+	}
+];
+
 // ── G4.108 one replace for every destructive gesture over a range ──────────
 
 const ROGUE_RANGE_ROUTE = `${SOURCE_DIR.crossBlock}rogue.ts`;
@@ -2842,8 +2900,8 @@ const DOM_PRESENCE: Record<string, { branches: number; reason: string }> = {
 		reason: 'with no media queries (jsdom) a recording names its pointer `none`'
 	},
 	'src/lib/testing/mount-dom-stubs.ts :: installEditorDomStubsForTests': {
-		branches: 2,
-		reason: 'with no DOM there is no element or range prototype to fill in'
+		branches: 3,
+		reason: 'with no DOM there is no element, range prototype or document to fill in'
 	}
 };
 
@@ -3110,6 +3168,7 @@ describeManifests(ITEM_PIECES, SOURCES);
 describeManifests(RANGE_REPLACE, SOURCES);
 describeManifests(RANGE_INDENT, SOURCES);
 describeManifests(TYPED_WRITE_ASKS, SOURCES);
+describeManifests(REVEAL_BLOCKS_IN_SVELTE, SOURCES);
 describeManifests(SCROLL_WRITERS, SOURCES);
 describeManifests(BARE_FOCUSES, SOURCES);
 describeFileRules([HELD_BRANDS], SOURCES);

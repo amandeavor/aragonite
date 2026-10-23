@@ -3,7 +3,7 @@
  * and report; the commit recomputes the separators around them.
  */
 
-import { isDevChecks } from '../env';
+import { assertInvariant, devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import type { CstNode } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import { isBlankParagraph, readBlocks } from '../core/parser';
@@ -20,7 +20,6 @@ import {
 	trailingLineEnding,
 	type LineEnding
 } from '../core/lines';
-import { devWarn } from '../dev-warn';
 import { recordSettlePass } from '../perf/instruments';
 import { assignChildIdsDeep } from '../block-id';
 import { findMergeTarget } from '../schema/merge-rules';
@@ -33,7 +32,6 @@ import {
 import type { SharingState } from './sharing';
 import { ensureUnsharedPath } from './unshare';
 import { replacePreservingFirst, type StructuralChange } from './structural-change';
-import { assertInvariant } from '../assert';
 import { checkSingleNodeSink } from '../invariants/single-node-sink';
 import {
 	NEXT_PROSE_LINE,
@@ -152,7 +150,7 @@ export function splitNode(
 		stores.second.readWritten,
 		lineEnding
 	);
-	if (isDevChecks() && first.nodes.length > 1) {
+	if (devChecksOn && first.nodes.length > 1) {
 		// Legal, since the result carries the caret index, but rare enough to keep visible.
 		devWarn('tree-ops', `splitNode: the first half parsed to ${first.nodes.length} blocks`);
 	}
@@ -250,7 +248,7 @@ function separatorSplitsOffNextLine(
 	lineEnding: string,
 	grammar: GrammarView
 ): boolean {
-	if (isDevChecks() && !probeLineOpensAsProse(grammar)) {
+	if (devChecksOn && !probeLineOpensAsProse(grammar)) {
 		devWarn(
 			'tree-ops',
 			`a registered opener claims ${JSON.stringify(NEXT_PROSE_LINE)}, so the split-separator probe no longer stands in for prose`

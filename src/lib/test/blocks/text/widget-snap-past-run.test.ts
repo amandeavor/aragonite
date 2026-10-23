@@ -53,14 +53,16 @@ describe('a click beside a run of widgets', () => {
 	it('moves a text caret the browser parked before the run to the run’s far edge', () => {
 		const b = mountRun();
 		caretInText(b.el.firstChild!, 4);
-		b.interaction.snapClickToWidgetEdge(84, 5);
+		b.interaction.notePress({ clientX: 84, clientY: 5, button: 0 });
+		b.interaction.snapClickToWidgetEdge({});
 		expect(b.snapped).toEqual([10]);
 	});
 
 	it('leaves a text caret already at the edge the click is nearest', () => {
 		const b = mountRun();
 		caretInText(b.el.lastChild!, 0);
-		b.interaction.snapClickToWidgetEdge(84, 5);
+		b.interaction.notePress({ clientX: 84, clientY: 5, button: 0 });
+		b.interaction.snapClickToWidgetEdge({});
 		expect(b.snapped).toEqual([]);
 	});
 
@@ -69,7 +71,8 @@ describe('a click beside a run of widgets', () => {
 	it('leaves a text caret clicked on a line the run isn’t on', () => {
 		const b = mountRun();
 		caretInText(b.el.firstChild!, 0);
-		b.interaction.snapClickToWidgetEdge(84, 25);
+		b.interaction.notePress({ clientX: 84, clientY: 25, button: 0 });
+		b.interaction.snapClickToWidgetEdge({});
 		expect(b.snapped).toEqual([]);
 	});
 });

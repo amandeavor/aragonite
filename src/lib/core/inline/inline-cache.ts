@@ -6,7 +6,7 @@
  */
 import type { InlineNode } from '../nodes';
 import type { NodeView } from '../node-views';
-import type { LinkReferenceResolver } from './link-reference-resolver';
+import type { LinkReferenceResolver } from './scan/definitions';
 import type { GrammarView } from '../../schema/block-openers';
 import type { Reading } from '../../schema/reading';
 import { computeInlineContent, isProseKind } from './index';

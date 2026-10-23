@@ -1,7 +1,7 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import { installPlugins, parse, serialize } from '#lib';
 import { resetPluginPlatformForTests } from '#lib/testing.js';
-import { getInlineRungs } from '#lib/core/inline/scan/plugin-syntax.js';
+import { handlersFor } from '#lib/core/inline/scan/plugin-syntax.js';
 import { roundTripCases } from '#lib/test/support/round-trip.js';
 import { registerMathBlock, MATH_BLOCK } from '#lib/plugins/latex/latex-kind.js';
 import { latexPlugin } from '#lib/plugins/latex/index.js';
@@ -71,12 +71,12 @@ describe('latexPlugin reinstall after a platform reset', () => {
 	it('re-registers the block kind and leaves the inline path intact', () => {
 		installPlugins([latexPlugin()]);
 		expect(parse('$$\nx^2\n$$\n').children[0].kind).toBe(MATH_BLOCK);
-		expect(getInlineRungs('$').length).toBeGreaterThan(0);
+		expect(handlersFor('$').length).toBeGreaterThan(0);
 
 		resetPluginPlatformForTests();
 		installPlugins([latexPlugin()]);
 
 		expect(parse('$$\nx^2\n$$\n').children[0].kind).toBe(MATH_BLOCK);
-		expect(getInlineRungs('$').length).toBeGreaterThan(0);
+		expect(handlersFor('$').length).toBeGreaterThan(0);
 	});
 });

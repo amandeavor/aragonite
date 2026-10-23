@@ -3,7 +3,7 @@
  * child that reached a list further up would write a height table that doesn't index it.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkMeasuresInOwnList(
 	childPath: readonly number[],

@@ -5,7 +5,7 @@
  * The resolver and the mode change while the editor lives: read them at use, never copy them.
  */
 
-import type { LinkReferenceResolver } from '../core/inline/link-reference-resolver';
+import type { LinkReferenceResolver } from '../core/inline/scan/definitions';
 import type { PresentationMode } from '../presentation-mode';
 import type { GrammarView } from './block-openers';
 

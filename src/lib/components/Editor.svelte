@@ -57,10 +57,7 @@
 	import { defaultLinkActivation } from '../core/url-policy';
 	import { bindActivationClick, createPressTracker } from '../activation-click';
 	import { advanceSignatureEpoch, lrdMapCouldChange } from './link-reference-map';
-	import {
-		buildLinkReferenceMap,
-		type LinkReferenceResolver
-	} from '../core/inline/link-reference-resolver';
+	import { definitionsOf, type LinkReferenceResolver } from '../core/inline/scan/definitions';
 	import { createUndoManager } from '../undo/manager';
 	import { createSharingState } from '../tree-operations/sharing';
 	import { createEditorEvents, emitBlockedLinkError, emitCommandError } from '../editor-events';
@@ -152,7 +149,7 @@
 	import { createInlineRangeCommit } from '../editor-actions/inline-range-commit';
 	import { createLinkCardState } from './link-card/link-card-state.svelte';
 	import { runStartupInvariantChecks } from '../invariants/install';
-	import { assertInvariant } from '../assert';
+	import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 	import { checkMarkerCssParity } from '../invariants/marker-css-parity';
 	import { checkHostColorsResolve } from '../invariants/theme-stylesheet';
 	import { registerEditorBuiltIns } from './editor-built-ins';
@@ -366,7 +363,7 @@
 			// A fresh resolver only on a real signature change: one per edit would re-render
 			// every block that read it.
 			if (lrdMapCouldChange(doc, e)) {
-				const newMap = buildLinkReferenceMap(doc.children);
+				const newMap = definitionsOf(doc.children);
 				const next = advanceSignatureEpoch(currentSignature, signatureEpoch, newMap.signature);
 				if (next.epoch !== signatureEpoch) {
 					currentResolver = newMap.resolve;
@@ -960,7 +957,8 @@
 		getDoc,
 		isHostChrome,
 		blockEdit,
-		placeCaretAtPoint,
+		placeMenuCaret: (x: number, y: number) =>
+			editorEl ? rootGestures.placeMenuCaret(editorEl, x, y) : false,
 		rangeAtContextPress: () => (editorEl ? rootGestures.rangeAtContextPress(editorEl) : false),
 		holdsWidget: () => selectionState.widget !== null,
 		insertMarkdown,
@@ -1545,6 +1543,8 @@
 <style>
 	.editor {
 		width: 100%;
+		/* Fills a host that has a height, and grows with its content in one that has none. */
+		height: 100%;
 		flex: 1;
 		/* Wider on the left to hold the drag handle's gutter. */
 		padding: 1rem 1rem 1rem 1.5rem;
@@ -1571,6 +1571,7 @@
 		overflow-y: visible;
 		overflow-anchor: auto;
 		min-height: 0;
+		height: auto;
 		flex: none;
 		border: none;
 		padding: 0;

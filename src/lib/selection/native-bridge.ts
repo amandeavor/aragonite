@@ -8,7 +8,7 @@
 import { cellPoint, type SelectionPoint, type EditorSelection } from './primitives';
 import type { SelectionState } from './selection-state.svelte';
 import type { BlockComponent } from '../block-component';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkPlacementEndsWidget } from '../invariants/placement-ends-widget';
 import { rawOffsetAt, type CaretWriter, type DomPosition } from '../caret/widget-offset';
 import type { RawOffset } from '../caret/coordinate-spaces';

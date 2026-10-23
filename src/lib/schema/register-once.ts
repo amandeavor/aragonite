@@ -3,12 +3,11 @@
  * register-once). A plugin's setup runs once per process, so only the editor's own entries meet a
  * duplicate, when a dev server re-evaluates an editor module; there the entry is replaced and warned.
  */
-import { editorEnv } from '../env';
-import { devWarn } from '../dev-warn';
+import { devChecksOn, devWarn, isTestProcess } from '@voithos-labs/aragonite/dev-checks';
 
 /** True only on a dev server, not in production and not in a test run: the one case that replaces. */
 function devReplacesRegistration(): boolean {
-	return editorEnv.isDev && !editorEnv.isTest;
+	return devChecksOn && !isTestProcess;
 }
 
 /**

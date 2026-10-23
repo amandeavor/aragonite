@@ -2,7 +2,48 @@
 
 Part of the [plugin guide](../plugin-guide.md).
 
-A block component gets its own node, which is fine right up until it isn't: a table-of-contents block needs the headings above it, and a cross-reference needs an id defined somewhere else entirely. `BlockComponentProps.document` delivers the read-only root document to every component, at any nesting depth:
+A block view gets its own node, which is fine right up until it isn't: a table-of-contents block needs the headings above it, and a cross-reference needs an id defined somewhere else entirely. Set `watchDocument: true` and your view's `update` runs on every change to the document, not just to its own block; the document itself is `ctx.editor.document`, read-only and always current:
+
+```ts
+import {
+	defineBlockView,
+	getContentRange,
+	walkBlocks,
+	type DocumentView
+} from '@voithos-labs/aragonite/plugin';
+
+function headingsOf(document: DocumentView): string[] {
+	const found: string[] = [];
+	walkBlocks(document, (block) => {
+		if (block.kind !== 'heading' && block.kind !== 'setextHeading') return;
+		const { start, end } = getContentRange(block); // drop the `#` / underline markers
+		found.push(block.raw.slice(start, end));
+	});
+	return found;
+}
+
+export const contentsView = defineBlockView({
+	surface: 'none',
+	watchDocument: true,
+	mount(target, ctx) {
+		const draw = () =>
+			target.replaceChildren(
+				...headingsOf(ctx.editor.document).map((text) => {
+					const row = document.createElement('div');
+					row.textContent = text;
+					return row;
+				})
+			);
+		draw();
+		// A list to read, not a place for the caret, so focus never lands here.
+		return { update: draw, focusable: false, focus() {}, getCursorOffset: () => null };
+	}
+});
+```
+
+Every edit anywhere now redraws the list, so keep the walk cheap (this one is). The React and Vue helpers don't take `'none'`, so a list like this one stays a `defineBlockView`. A block of theirs with text or children can still pass `watchDocument: true` and read `ctx.editor.document` in its component ([React and Vue blocks](react-and-vue.md#what-your-component-gets)).
+
+**Already in Svelte?** `BlockComponentProps.document` delivers the same document to every component, at any nesting depth, and a `$derived` over it re-runs only when it changes:
 
 ```svelte
 <script lang="ts">
@@ -30,7 +71,7 @@ A block component gets its own node, which is fine right up until it isn't: a ta
 </nav>
 ```
 
-`document` is a **`DocumentView`**, read-only by type ([Views](../plugin-guide.md#views-what-you-read-what-you-own)).
+Either way the document is a **`DocumentView`**, read-only by type ([Views](../plugin-guide.md#views-what-you-read-what-you-own)).
 
 Reading `document.children` gets you the top-level blocks and nothing else, so a heading inside a quote or a list item would go missing. That's what `walkBlocks` is for.
 
@@ -63,4 +104,4 @@ getContentRange(parse('plain text\n').children[0]); // { start: 0, end: 10 }: a 
 await rects.navigateTo([1, 0]); // true once the quoted heading is in view with the caret at its start
 ```
 
-A block that needs to _navigate_ to what it read (a table-of-contents entry jumping to its heading) gets the editor's geometry as **`BlockComponentProps.rects`**, the same object `EditorContext.rects` hands your per-instance callback. `rects.navigateTo(path, offset?)` scrolls to the target and lands the caret there; an affordance that only scrolled would leave focus on its own button, where the editor's chords don't reach. Use `scrollTo(path)` where the viewport should move but the selection shouldn't. Both work in reading mode too. The bundled **toc** plugin is this recipe end to end.
+A block that needs to _navigate_ to what it read (a table-of-contents entry jumping to its heading) gets the editor's geometry as **`ctx.editor.rects`** (a Svelte component also gets it as `BlockComponentProps.rects`), the same object your per-instance callback gets. `rects.navigateTo(path, offset?)` scrolls to the target and lands the caret there; an affordance that only scrolled would leave focus on its own button, where the editor's chords don't reach. Use `scrollTo(path)` where the viewport should move but the selection shouldn't. Both work in reading mode too. The bundled **toc** plugin is this recipe end to end.

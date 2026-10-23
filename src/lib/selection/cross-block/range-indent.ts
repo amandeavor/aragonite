@@ -21,8 +21,7 @@ import {
 	type RangeIndentForm,
 	type RangeLineShift
 } from '../../schema/range-indent-forms';
-import { assertInvariant } from '../../assert';
-import { isDevChecks } from '../../env';
+import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import { checkIndentKeepsText, leafText } from '../../invariants/range-indent-keeps-text';
 
 export type RangeIndentContext = Pick<
@@ -52,7 +51,7 @@ export async function indentRange(ctx: RangeIndentContext, e: KeyboardEvent): Pr
 	if (plan.items.length === 0 && plan.lines.length === 0) return;
 
 	const tops = [coverage.range.start.path[0], coverage.range.end.path[0]] as const;
-	const before = isDevChecks() ? leafText(doc, tops) : null;
+	const before = devChecksOn ? leafText(doc, tops) : null;
 	const unit = ctx.selection.wholeUnitPath;
 	let shifted: Shifted = { ends: { anchor, focus }, wrote: false };
 	// Seeded with the range, so one Ctrl+Z puts it back as it stood.

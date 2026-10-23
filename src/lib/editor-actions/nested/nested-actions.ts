@@ -13,7 +13,7 @@ import type {
 } from '../../action-contracts';
 import type { NodeView } from '../../core/node-views';
 import { BLOCK_EDIT_KEY, CONTAINER_EDIT_KEY, FOCUS_KEY, HISTORY_KEY } from '../../editor-keys';
-import { assertInvariant } from '../../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkNoContainerHistoryKey } from '../../invariants/context-keys';
 import type { CaretMemory } from '../../caret/caret-memory';
 import type { BlockListState } from '../../block-lists/block-list-state.svelte';

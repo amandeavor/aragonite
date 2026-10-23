@@ -1,6 +1,6 @@
 import type { CstNode, Document } from '../core/nodes';
 import type { DocumentView, NodeView } from '../core/node-views';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkCloneSafeMetadata } from '../invariants/node-shape';
 
 // ── Document ────────────────────────────────────────────────────────────────

@@ -79,3 +79,36 @@ describe('GFM autolink pass bounds', () => {
 		expect(tiles(source)).toBe(source);
 	}, 120_000);
 });
+
+// Each opener without its closer must not search to the end of the text.
+// Miss-analysis: the bounds rows flooded entities, parens and backticks, never an HTML opener.
+describe('unclosed raw HTML openers', () => {
+	it.each(['<!--', '<?', '<!A'])(
+		'a %j flood scans within a bounded growth ratio',
+		(opener) => {
+			expectBoundedGrowth(measureScanGrowth(scan, opener, [4, 16]));
+		},
+		300_000
+	);
+});
+
+// A bare url asks at each `[` whether a link opens there, so that question must stay local.
+describe('brackets inside a bare url', () => {
+	it.each([
+		[
+			'unclosed brackets',
+			(bytes: number, salt: string) => 'http://a.co/' + salt + '['.repeat(bytes)
+		],
+		[
+			'nested brackets',
+			(bytes: number, salt: string) =>
+				'www.a.co/' + salt + '['.repeat(bytes >> 1) + ']'.repeat(bytes >> 1)
+		]
+	])(
+		'%s scan within a bounded growth ratio',
+		(_name, shape) => {
+			expectBoundedGrowth(measureScanGrowth(scan, shape, [16, 64]));
+		},
+		300_000
+	);
+});

@@ -53,3 +53,8 @@ prove.
   fills the source again; the blur after that commits nothing stale
 - Redo after that restore is the document's: the draft's own redo entries were taken against
   bytes the document has replaced, so they are gone rather than painted back
+- An IME commit in the shown source (compose `\alpha` after `x`, then commit) leaves the source
+  reading `$$\nx\alpha\n$$` and the preview beside it drawing the committed formula, before any
+  further key and before the source closes; the document's bytes stay as they were until blur
+  - Miss-analysis: Chromium ends a commit on an input still marked composing, and no row composed
+    in a shown math source, so the redraw that skipped composing inputs never ran after a commit

@@ -7,10 +7,7 @@ import {
 	releaseTypingPausesForTests,
 	UNDO_DEBOUNCE_MS
 } from '#lib/editor-actions/commit/text-batch.js';
-
-// The suite runs in a dev build, so the one production row turns dev checks off here.
-const env = vi.hoisted(() => ({ devChecks: true }));
-vi.mock('#lib/env.js', () => ({ isDevChecks: () => env.devChecks }));
+import { configureEditorEnv, resetEditorEnv } from '@voithos-labs/aragonite/dev-checks';
 
 function harness() {
 	const pushSnapshot = vi.fn();
@@ -102,7 +99,7 @@ describe('text-batch test control', () => {
 		endTypingBatchesForTests();
 	});
 	afterEach(() => {
-		env.devChecks = true;
+		resetEditorEnv();
 		releaseTypingPausesForTests();
 		vi.useRealTimers();
 	});
@@ -154,7 +151,8 @@ describe('text-batch test control', () => {
 	});
 
 	it('outside dev checks the hold is refused and the pause still ends a batch', () => {
-		env.devChecks = false;
+		// The suite runs in a dev build, so the production row turns dev checks off.
+		configureEditorEnv({ isDev: false });
 		expect(holdTypingPausesForTests()).toBe(false);
 		const { batch, onEnd } = harness();
 		batch.keystroke([0], 0);

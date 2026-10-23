@@ -13,14 +13,14 @@ import {
 	registerDefaultContextActions
 } from '#lib/components/menu/default-context-actions.js';
 import { isProseLeaf } from '#lib/schema/page-role.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 
 const block = (md: string): NodeView => parse(md).children[0];
 // The document's own link definitions, as the editor's reading carries them.
 const readingOf = (md: string) => {
-	const refs = buildLinkReferenceMap(parse(md).children);
+	const refs = definitionsOf(parse(md).children);
 	return fixtureReading({ resolver: refs.resolve, resolverSignature: refs.signature });
 };
 const noun = (md: string) => blockNoun(block(md), readingOf(md));

@@ -94,16 +94,17 @@ computeInlineContent(h);
 
 ### Pipeline
 
-A single left-to-right scan, the commonmark.js reference architecture, fronted by a **plain-text fast bail**: content containing no construct-starting character short-circuits to one text node, which keeps the per-keystroke hot path O(n) with no allocation. (The bail also probes the plugin trigger registry, but only when something is registered; an empty registry leaves the scan byte-identical to the built-in grammar.)
+A single left-to-right pass in the shape of commonmark.js, with a shortcut in front: one regex search for anything the parse might read (a construct's first character, a `www.` or `http://`, a registered plugin trigger). A span with none of those comes back as one text node without building any scan state, and that's the span most keystrokes land in.
 
 ```ts
 parseInline('plain text', 0, 10); // [{ kind: 'text', start: 0, end: 10, text: 'plain text' }]
 ```
 
-- **Character dispatch.** Each construct-starting character runs its handler; handlers append completed nodes (code spans, escapes, entities, spec autolinks (the `<url>` form), raw HTML, hard breaks) and advance the scan. Unclaimed bytes accumulate as pending text. The characters and their handlers are one table, `core/inline/scan/triggers.ts :: BUILTIN_TRIGGERS`, which the fast bail and the plugin tier below both read. The scan itself dispatches through a `switch` (a table lookup measured slower on the hot path), so a new built-in trigger needs a row and a case, and a test fails when the two disagree.
-- **Delimiter stack.** `*` / `_` / `~~` runs are classified as opener or closer by the CommonMark flanking rules (the spec's test for whether a run can open or close emphasis) and pushed. Pairing is deferred.
-- **Bracket stack.** `[` and `![` push a candidate; `]` attempts an inline or reference link/image and, on success, pairs emphasis over the construct's interior. Links never contain links. A reference-form label with no matching definition commits to an `unresolvedReference` node rather than falling apart. The label, destination and title are read by the grammar the block parser's link reference definitions use too (see [One grammar per construct](#one-grammar-per-construct), below).
-- **Deferred passes.** GFM bare autolinks claim maximal text runs outside a link's text, as cmark-gfm does (a delimiter absorbed into a URL can never pair), then emphasis pairing consumes the remaining delimiter stack, then adjacent text nodes merge. A bare autolink starts only after a GFM boundary, read off the source byte before it (so `<http://a.com>www.b.com` links just the first one), and a `<` ends it.
+- **Handlers, then the built-in reading.** At each position the search stops on, the plugin handlers for that character are asked first, then the built-in reading runs. Leaves (code spans, escapes, entities, `<url>` autolinks, raw HTML, hard breaks, a handler's claim) become tokens, and the bytes between them stay pending text. The characters the parse reads itself are `BUILT_IN_TRIGGERS` in `core/inline/scan/plugin-syntax.ts`.
+- **Delimiter stack.** `*` / `_` / `~~` runs are classified as opener or closer by the CommonMark flanking rules (the spec's test for whether a run can open or close emphasis) and pushed. Pairing waits for a `]` that makes a link, or the end of the span.
+- **Bracket stack.** `[` and `![` push a candidate; `]` attempts an inline or reference link/image and, on success, pairs emphasis over the construct's interior. Links never contain links. Labels resolve exactly as CommonMark does first, and only a full or collapsed reference that CommonMark leaves literal becomes an `unresolvedReference` node (`[x][]` with no `[x]` defined, say). The label, destination and title are read by the grammar the block parser's link reference definitions use too (see [One grammar per construct](#one-grammar-per-construct), below).
+- **Bare urls and emails** are read where they start, in the same pass. A bare autolink starts only after a GFM boundary, read off the source byte before it (so `<http://a.com>www.b.com` links just the first one), and runs to whitespace or `<`. It stops early only where another construct would take the bytes: a code span, an entity, an escape, a plugin handler's claim (so `https://a.co[^1]` keeps its footnote), or a `[` that may open a link. A bracket no link takes stays in the url, as on GitHub, so `https://example.com/search?tags[]=a` links whole. A delimiter inside a url never pairs.
+- **The tree** is built at the end: emphasis pairs what's left on the delimiter stack, then one walk over the tokens nests the wrappers and joins touching text. The walk keeps its own stack, so 20,000 nested images don't reach the call stack.
 
 **Precedence is positional.** The construct that completes earliest claims its bytes, and the scan never re-enters a claimed range, so code spans, autolinks, and raw HTML are mutually inert with no occupied-range bookkeeping. Sibling overlap is structurally unrepresentable rather than defended against, which is the nicest kind of bug to not have.
 
@@ -111,9 +112,9 @@ parseInline('plain text', 0, 10); // [{ kind: 'text', start: 0, end: 10, text: '
 
 A construct's syntax is read in one place, and the code that writes it back sits right beside that reader. Two copies of a grammar drift apart, and then the editor writes bytes its own parser reads differently.
 
-- **Link labels, destinations and titles**: `core/inline/link-destination.ts`. Inline links, reference links and link reference definitions all read through it, so `[a](/u\*)` and `[a]: /u\*` both resolve to `/u*`. Each reader returns where its span ends plus the processed value (escapes and entities resolved, a destination percent-encoded). Its inverse is `core/inline/destination-bytes.ts`, which writes a destination or title that reads back as the same value.
-- **Code spans**: `core/inline/scan/code-spans.ts :: codeSpanFence` gives the width of a span's backtick runs, for the renderer and for anything asking for the span's content range (the format toggle, say).
-- **Link and image edits**: the bytes the link card and the image controls (resize, crop, the popover) write come from `core/inline/link-source-bytes.ts` and `core/inline/image-source-bytes.ts`, next to the readers those bytes have to satisfy. An image's size hint is written by `core/inline/image-dimensions.ts`, the same file that reads it.
+- **Link labels, destinations and titles**: `core/inline/scan/link-grammar.ts`. Inline links, reference links and link reference definitions all read through it, so `[a](/u\*)` and `[a]: /u\*` both resolve to `/u*`. Each reader returns where its span ends (a destination also returns its processed value, escapes and entities resolved and percent-encoded), and a label or title that reaches the end of the text still open says so, so the definition reader can carry on into the next line. Labels match by `labelKey`, which collapses whitespace and case folds the way commonmark.js does (`[ẞ]` finds `[SS]`). The inverse is `core/inline/destination-bytes.ts`, which writes a destination or title that reads back as the same value.
+- **Code spans**: `core/inline/scan/code-span.ts :: codeFenceWidth` gives the width of a span's backtick runs, for the renderer and for anything asking for the span's content range (the format toggle, say). `asCodeSpan` in the same file wraps text in a fence that reads back as that text.
+- **Link and image edits**: the bytes the link card and the image controls (resize, crop, the popover) write come from `core/inline/link-source-bytes.ts` and `core/inline/image-source-bytes.ts`, next to the readers those bytes have to satisfy. An image's size hint is written by `core/inline/scan/size-hint.ts`, the same file that reads it.
 
 ### The plugin tier
 
@@ -135,28 +136,25 @@ parseInline('a %x% b', 0, 7);
 // ]
 ```
 
-Whether a trigger can outrank a built-in depends on whether it has a row in the trigger table (`BUILTIN_TRIGGERS`, above):
+Whether a trigger can outrank a built-in depends on whether the parse reads that character itself (`BUILT_IN_TRIGGERS`, above):
 
-- A character with no row dispatches from the switch's **default case**, after every built-in construct. That's the `%` above, and inline math, emoji shortcodes, and the inline `:name:` directive all ship this way.
-- A **reserved** trigger, one with a row (``\ ` & * _ ~ [ ] ! <`` and the newline), is reachable only through a multi-character **prefix handler** registered at a priority below the built-in boundary, which the scanner consults _ahead_ of its switch and only when the prefix matches at the cursor. Footnotes' `[^` beats `[` this way while a plain `[` still opens a link.
-- A bare registration on a reserved trigger throws, rather than accepting a recognizer that could never fire. So does a prefix handler at a priority at or above the boundary.
-- Each row also says when the fast bail looks for its character. It never looks for `]` (which only matters inside a `[` range), so a prefix handler there throws too. It **probes `!` on demand**, only while a handler is registered on it, which is what lets `![[…]]` outrank the image case without making every prose `!` special.
+- Any other character is free. A bare handler on it is asked wherever it appears, and the search above starts stopping on it the moment it's registered. That's the `%` above, and inline math, emoji shortcodes, and the inline `:name:` directive all ship this way.
+- A **built-in** trigger (``\ ` & * _ ~ [ ] ! <`` and the newline) is reachable only through a multi-character **prefix handler** registered at a priority below the built-in boundary, which the parse asks _ahead_ of its own reading and only when the prefix matches at that position. Footnotes' `[^` beats `[` this way while a plain `[` still opens a link, and `![[…]]` outranks the image case the same way.
+- A bare registration on a built-in trigger throws, rather than accepting a recognizer that could never fire. So does a prefix handler at a priority at or above the boundary, and any handler on `]`, which the parse only ever meets closing a `[`.
 
 What those throws look like, so you recognize them when you meet one:
 
 ```ts
 const recognizer = () => null;
 registerInlineSyntax('[', recognizer);
-// Error: registerInlineSyntax: "[" is claimed by the built-in scanner, which dispatches it
-// before the plugin registry ... the recognizer would never fire
+// Error: registerInlineSyntax: trigger "[" is built in and needs a prefix
 registerInlineSyntax('[', recognizer, { prefix: '[^', priority: 100 });
-// Error: registerInlineSyntax: reserved trigger "[" needs a priority below the built-in
-// boundary (50) so its prefix outranks the built-in scanner; got 100
+// Error: registerInlineSyntax: priority 100 on built-in trigger "[" is not below the built-in reading
 registerInlineSyntax('%%', recognizer);
-// Error: registerInlineSyntax: trigger must be a single character
+// Error: registerInlineSyntax: trigger "%%" is not one UTF-16 unit
 ```
 
-The contract is deliberately narrow: a recognizer that returns a node not starting at the trigger, or that fails to advance, throws right there (`inline-syntax "^" started at 3, expected 2`) rather than producing a tree with a gap or an overlap in its coverage.
+The contract is deliberately narrow: a recognizer that returns a node not starting at the trigger, or that fails to advance, throws right there (`inline-syntax "^" returned a node starting at 3, not at its trigger 2`) rather than producing a tree with a gap or an overlap in its coverage.
 
 ### Separation from the block parser
 

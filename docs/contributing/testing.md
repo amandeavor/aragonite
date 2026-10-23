@@ -179,9 +179,10 @@ GFM instead (your `$$` fence is a paragraph now). Install in `beforeEach` or ins
 registration at load, in a `describe` body or in `beforeAll`. A test about the reset itself calls
 `resetPluginPlatformForTests` in the test body.
 
-The editor's environment flags (`editorEnv`: is this a dev build, is this a test process) get
-the same treatment. The warning gate (next section) resets them after every test, so a suite
-that configures them does it per test; a `beforeAll` override is gone by the second case.
+The editor's environment flags (`devChecksOn` and `isTestProcess`: is this a dev build, is this a
+test process) get the same treatment. The warning gate (next section) resets them after every
+test, so a suite that configures them does it per test; a `beforeAll` override is gone by the
+second case.
 
 ### A dev warning fails its test
 
@@ -211,7 +212,7 @@ Two rules the gate holds you to:
 - A guard that defers its fire past a tick (`reportContestedClaim`, say) still lands on the test
   that provoked it, but after the file's own claim helpers have run. Claim it inside the test
   (`await tick()`, then `takeDevWarns()`), never with a file-level `allowDevWarns`.
-- Don't mock or spy your way around it. A `vi.mock` of `#lib/dev-warn.js` deletes the emitter, and
+- Don't mock or spy your way around it. A `vi.mock` of `@voithos-labs/aragonite/dev-checks` deletes the emitter, and
   a `console.warn` spy either sees nothing (the sink took the line) or hides the Svelte warnings
   too, so a source scan (G4.41 in `invariants/scans.md`) fails both.
 

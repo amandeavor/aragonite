@@ -6,7 +6,7 @@
  */
 
 import type { NodeView } from '../core/node-views';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import type { GrammarView } from '../schema/block-openers';
 import { describeShapeDivergence } from '../core/shape-divergence';
 import { readAsOpened } from '../schema/opened-reading';

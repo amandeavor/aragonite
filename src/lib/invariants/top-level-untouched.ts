@@ -4,7 +4,7 @@
  * is a plain copy the commit installs afterwards.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkTopLevelUntouched(
 	live: readonly unknown[],

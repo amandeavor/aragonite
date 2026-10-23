@@ -29,7 +29,7 @@ import {
 } from '../../../decorations/island-dom';
 import type { ReplaceDecoration, WidgetDecoration } from '../../../decorations/types';
 import { mountDecorationWidget } from '../../../decorations/widget-dom';
-import { devWarn } from '../../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { getBlockKindDescriptor } from '../../../schema/block-kind-descriptor';
 import { createViewWidgetPool } from '../widget-portal';
 import type { Reading } from '../../../schema/reading';

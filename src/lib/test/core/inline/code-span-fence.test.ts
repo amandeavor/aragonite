@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { constructContentRange, parseInline } from '#lib/core/inline/index.js';
 import { renderInlineNodes } from '#lib/core/inline-render.js';
 import type { InlineNode } from '#lib/core/nodes.js';
-import { codeSpanFence } from '#lib/core/inline/scan/code-spans.js';
+import { codeFenceWidth } from '#lib/core/inline/scan/code-span.js';
 import { renderOptions } from '../../harness/fixture-grammar';
 
 /** The code span as the page draws it: the marker text on each side of the `<code>`. */
@@ -49,7 +49,7 @@ describe('the page and the edit code read one fence off a code span', () => {
 	});
 });
 
-describe('codeSpanFence', () => {
+describe('codeFenceWidth', () => {
 	it.each([
 		['a scanned double fence is 2 wide', parseInline('`` a`b ``', 0, 9)[0], 2],
 		['a plugin-made span is 2 wide', { kind: 'inlineCode', start: 0, end: 5, text: 'x' }, 2],
@@ -60,6 +60,6 @@ describe('codeSpanFence', () => {
 			0
 		]
 	] as [string, InlineNode, number][])('%s', (_label, node, fence) => {
-		expect(codeSpanFence(node)).toBe(fence);
+		expect(codeFenceWidth(node)).toBe(fence);
 	});
 });

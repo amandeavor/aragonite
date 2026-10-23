@@ -1,10 +1,10 @@
 import { describe, it } from 'vitest';
 import fc from 'fast-check';
-import type { InlineNode } from '../../core/nodes';
-import { parseInline } from '../../core/inline';
-import { arbInlineSource, freshOrFixedSeed } from './arbitraries';
+import { parseInline, type InlineNode } from '#lib';
+import { arbInlineSource } from './arbitraries/inline';
+import { freshOrFixedSeed } from './arbitraries/property-seed';
 
-// The inline tree tiles the content range, which cursor mapping depends on (G2.5). The tiling is
+// The inline tree tiles the content range, which cursor mapping depends on. The tiling is
 // not leaf-exhaustive: a wrapped node's markers live in the edge gaps its children leave, where
 // the renderer reads them. Only the top level has no edge gap.
 
@@ -54,7 +54,7 @@ function assertLevel(nodes: InlineNode[]): void {
 	}
 }
 
-describe('G2.5 inline-tree offset partition', () => {
+describe('inline-tree offset partition', () => {
 	it('siblings contiguous, parents contain children, top level covers content', () => {
 		fc.assert(
 			fc.property(arbInlineSource, (source) => {
@@ -80,7 +80,7 @@ describe('G2.5 inline-tree offset partition', () => {
 
 // A link destination ending inside a code span ends the link mid-span, which would leave
 // overlapping top-level siblings.
-describe('G2.5 pinned counterexamples', () => {
+describe('pinned counterexamples', () => {
 	const cases = ['[a](u`)`)', '![a](u`)`)'];
 
 	for (const source of cases) {
@@ -93,7 +93,7 @@ describe('G2.5 pinned counterexamples', () => {
 
 // The partition is blind to which pair a shared delimiter run binds to, so the four spellings the
 // shared generator draws at random get a deterministic minimum of their own.
-describe('G2.5 asterisk delimiter nesting', () => {
+describe('asterisk delimiter nesting', () => {
 	const cases = ['*a *b* c*', '**a **b** c**', '**a *b** c*', '*a **b* c**'];
 
 	for (const source of cases) {

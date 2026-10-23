@@ -3,7 +3,7 @@
  * the page's own declarations. With neither, the menus and find bar paint with no colors at all.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkHostColorsResolve(root: HTMLElement): InvariantViolation | null {
 	const style = getComputedStyle(root);

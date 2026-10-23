@@ -3,9 +3,7 @@
 import type { SelectionState } from './selection-state.svelte';
 import type { SelectedWidgetRange, SelectionPoint } from './primitives';
 import type { Document } from '../core/nodes';
-import type { GrammarView } from '../schema/block-openers';
-import type { Reading } from '../schema/reading';
-import { isVerticallyTransparentNode } from '../core/inline/transparency';
+import { isVerticallyTransparentNode, type ArrivalReading } from '../core/inline/transparency';
 import type { CaretLanding } from './caret-landing';
 import {
 	readNativeCaretInBlock,
@@ -87,7 +85,7 @@ export interface KeyboardExtendContext {
 	selection: SelectionState;
 	caretWriter: CaretWriter;
 	getDoc(): Document;
-	reading: Pick<Reading, 'grammar'>;
+	reading: ArrivalReading;
 	/** Shows each end a key moves; a range folded back into one block goes down through `restore`. */
 	caretLanding: Pick<CaretLanding, 'restore' | 'showSelectionEnd'>;
 }
@@ -270,7 +268,7 @@ export function extendFocusToNextBlock(
 	const doc = ctx.getDoc();
 	const leafTarget =
 		axis === 'vertical'
-			? firstNonTransparentLeafAfter(doc, ctx.reading.grammar, currentBlockPath)
+			? firstNonTransparentLeafAfter(doc, ctx.reading, currentBlockPath)
 			: nextCaretPath(doc, currentBlockPath);
 	if (!leafTarget) return false;
 	if (!enterFromCaret(ctx, currentBlockEl, currentBlockPath)) return false;
@@ -289,7 +287,7 @@ export function extendFocusToPreviousBlock(
 	const doc = ctx.getDoc();
 	const leafTarget =
 		side === 'start'
-			? lastNonTransparentLeafBefore(doc, ctx.reading.grammar, currentBlockPath)
+			? lastNonTransparentLeafBefore(doc, ctx.reading, currentBlockPath)
 			: previousCaretPath(doc, currentBlockPath);
 	if (!leafTarget) return false;
 	if (!enterFromCaret(ctx, currentBlockEl, currentBlockPath)) return false;
@@ -307,15 +305,15 @@ export function extendFocusToDocEdge(
 	to: 'start' | 'end'
 ): boolean {
 	const doc = ctx.getDoc();
-	const grammar = ctx.reading.grammar;
+	const reading = ctx.reading;
 	const edge =
 		to === 'start' ? firstCaretLeaf(doc, [0]) : lastCaretLeaf(doc, [doc.children.length - 1]);
 	if (!edge) return false;
 
-	const target = isTransparent(doc, grammar, edge)
+	const target = isTransparent(doc, reading, edge)
 		? to === 'start'
-			? firstNonTransparentLeafFrom(doc, grammar, edge)
-			: lastNonTransparentLeafFrom(doc, grammar, edge)
+			? firstNonTransparentLeafFrom(doc, reading, edge)
+			: lastNonTransparentLeafFrom(doc, reading, edge)
 		: edge;
 	if (!target) return false;
 	if (!enterFromCaret(ctx, currentBlockEl, currentBlockPath)) return false;
@@ -449,19 +447,19 @@ function readCaretOfBlock(blockEl: HTMLElement, path: number[] | null): Selectio
 	return anchorPath && readNativeCaretInBlock(blockEl, anchorPath);
 }
 
-function isTransparent(doc: Document, grammar: GrammarView, path: number[]): boolean {
+function isTransparent(doc: Document, reading: ArrivalReading, path: number[]): boolean {
 	const node = nodeAt(doc, path);
 	// nodeAt returns the Document for an empty path; narrow it out (Document has no `raw`).
-	return node !== null && 'raw' in node && isVerticallyTransparentNode(node, grammar);
+	return node !== null && 'raw' in node && isVerticallyTransparentNode(node, reading);
 }
 
 function firstNonTransparentLeafAfter(
 	doc: Document,
-	grammar: GrammarView,
+	reading: ArrivalReading,
 	fromPath: number[]
 ): number[] | null {
 	let leaf = nextCaretPath(doc, fromPath);
-	while (leaf && isTransparent(doc, grammar, leaf)) {
+	while (leaf && isTransparent(doc, reading, leaf)) {
 		leaf = nextCaretPath(doc, leaf);
 	}
 	return leaf;
@@ -469,11 +467,11 @@ function firstNonTransparentLeafAfter(
 
 function lastNonTransparentLeafBefore(
 	doc: Document,
-	grammar: GrammarView,
+	reading: ArrivalReading,
 	fromPath: number[]
 ): number[] | null {
 	let leaf = previousCaretPath(doc, fromPath);
-	while (leaf && isTransparent(doc, grammar, leaf)) {
+	while (leaf && isTransparent(doc, reading, leaf)) {
 		leaf = previousCaretPath(doc, leaf);
 	}
 	return leaf;
@@ -483,20 +481,20 @@ function lastNonTransparentLeafBefore(
  *  `previousCaretPath`, which step away from their start. */
 function firstNonTransparentLeafFrom(
 	doc: Document,
-	grammar: GrammarView,
+	reading: ArrivalReading,
 	startPath: number[]
 ): number[] | null {
-	if (!isTransparent(doc, grammar, startPath)) return startPath;
-	return firstNonTransparentLeafAfter(doc, grammar, startPath);
+	if (!isTransparent(doc, reading, startPath)) return startPath;
+	return firstNonTransparentLeafAfter(doc, reading, startPath);
 }
 
 function lastNonTransparentLeafFrom(
 	doc: Document,
-	grammar: GrammarView,
+	reading: ArrivalReading,
 	startPath: number[]
 ): number[] | null {
-	if (!isTransparent(doc, grammar, startPath)) return startPath;
-	return lastNonTransparentLeafBefore(doc, grammar, startPath);
+	if (!isTransparent(doc, reading, startPath)) return startPath;
+	return lastNonTransparentLeafBefore(doc, reading, startPath);
 }
 
 function leafOffsetEnd(doc: Document, path: number[]): number {

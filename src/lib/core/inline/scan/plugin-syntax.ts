@@ -1,15 +1,12 @@
 /**
- * Registry for plugin inline syntax: a trigger character plus an optional prefix beginning with
- * it, tried lowest priority first (numbered as `OPENER_PRIORITIES`), so a longer prefix can outrank
- * a built-in trigger (footnotes' `[^` beating `[`). An `InlineRung` is one handler. A reserved
- * trigger is one the scanner handles itself (./triggers.ts); its plugin handlers run first.
+ * Plugin inline syntax handlers: a trigger character plus an optional longer prefix, consulted
+ * lowest priority first at every position the parse reads. A handler on a built-in trigger runs
+ * before the built-in reading there, so it must decline the built-in construct it also opens.
  */
-
-import type { ImageSyntaxRewriter, InlineNode, InlineSyntaxClaim } from '../../nodes';
+import type { ImageSyntaxRewriter, InlineNode } from '../../nodes';
 import type { GrammarView } from '../../../schema/block-openers';
 import { resolvesIn } from '../../../schema/plugin-activation';
 import { createPluginRegistry } from '../../../schema/plugin-registry';
-import { BUILTIN_TRIGGERS } from './triggers';
 
 /**
  * Inspect `raw` at `pos` (the trigger) within `[pos, end)`. Return a node with `start === pos`
@@ -39,11 +36,11 @@ export interface InlineSyntaxOptions {
 	 *  their edits rather than write GFM over your syntax. Return `null` for what it can't hold. */
 	rewriteImage?: ImageSyntaxRewriter;
 	/** Typing the trigger (`$…$`) inserts its closer after the caret, so the opener pairs with it
-	 *  rather than a later formula's delimiter (`delimiter-autopair.ts`). Bare triggers only. */
+	 *  rather than a later formula's delimiter. Bare triggers only. */
 	autoPair?: boolean;
 }
 
-/** The scan hands its grammar on as a fourth argument, which only the core text directive reads. */
+/** The parse hands its grammar on as a fourth argument, which only the core text directive reads. */
 type ScopedRecognizer = (
 	raw: string,
 	pos: number,
@@ -51,184 +48,107 @@ type ScopedRecognizer = (
 	grammar: GrammarView
 ) => InlineNode | null;
 
-export interface InlineRung extends InlineSyntaxClaim {
-	recognizer: ScopedRecognizer;
+export interface InlineHandler {
+	prefix: string;
 	priority: number;
+	recognizer: ScopedRecognizer;
+	rewriteImage?: ImageSyntaxRewriter;
 	/** The plugin whose setup registered the handler; null for a core one. */
 	owner: string | null;
 }
 
-const NO_RUNGS: readonly InlineRung[] = [];
-
-interface RegisteredHandler {
+interface Registration extends Omit<InlineHandler, 'owner'> {
 	trigger: string;
-	recognizer: ScopedRecognizer;
-	prefix: string;
-	priority: number;
-	rewriteImage?: ImageSyntaxRewriter;
 	autoPair: boolean;
 }
 
-// One entry per (trigger, prefix, priority); the dispatch maps below are derived from it.
-const handlers = createPluginRegistry<string, RegisteredHandler>({
+const BUILT_IN_TRIGGERS = new Set(['\\', '`', '&', '\n', '*', '_', '~', '[', ']', '!', '<']);
+
+const registrations = createPluginRegistry<string, Registration>({
 	label: 'registerInlineSyntax',
 	isBuiltin: () => false,
-	onChange: rebuildDispatch
+	onChange: rebuild
 });
 
-// Reserved and unreserved handlers are consulted at different points of the scan, so each
-// point reads one map and its empty check is one `size` read.
-const reservedRegistry = new Map<string, InlineRung[]>();
-const unreservedRegistry = new Map<string, InlineRung[]>();
+// Derived from the registrations on every change, in the order the parse consults them.
+const handlers = new Map<string, InlineHandler[]>();
+const autoPairOwners = new Map<string, (string | null)[]>();
+let version = 0;
 
-// Triggers that close themselves as they are typed (`autoPair`), each with every plugin that asked
-// (null for a registration outside a plugin); the built-in backtick is not here.
-const autoPairTriggers = new Map<string, Set<string | null>>();
-
-// Triggers the fast bail (`needsScan`, scan/index.ts) checks only while a plugin handler is
-// registered on them; a trigger it always checks is never added.
-const scanProbeTriggers = new Set<string>();
-
-// ── Registration ───────────────────────────────────────────────────────────────
+function rebuild(): void {
+	handlers.clear();
+	autoPairOwners.clear();
+	for (const { value, owner } of registrations.records()) {
+		const { trigger, autoPair, ...handler } = value;
+		handlers.set(trigger, [...(handlers.get(trigger) ?? []), { ...handler, owner }]);
+		if (autoPair) autoPairOwners.set(trigger, [...(autoPairOwners.get(trigger) ?? []), owner]);
+	}
+	for (const list of handlers.values()) {
+		list.sort(
+			(a, b) =>
+				a.priority - b.priority ||
+				b.prefix.length - a.prefix.length ||
+				(a.prefix < b.prefix ? -1 : a.prefix > b.prefix ? 1 : 0)
+		);
+	}
+	version++;
+}
 
 export function registerInlineSyntax(
 	trigger: string,
 	recognizer: InlineSyntaxRecognizer,
 	options?: InlineSyntaxOptions
 ): void {
-	if (trigger.length !== 1) {
-		throw new Error('registerInlineSyntax: trigger must be a single character');
-	}
 	const { prefix, priority = INLINE_PRIORITIES.plugin, rewriteImage, autoPair } = options ?? {};
+	const refuse = (why: string) => {
+		throw new Error(`registerInlineSyntax: ${why}`);
+	};
+	const quoted = JSON.stringify;
+	if (trigger.length !== 1) refuse(`trigger ${quoted(trigger)} is not one UTF-16 unit`);
 	if (prefix !== undefined && (prefix.length < 2 || !prefix.startsWith(trigger))) {
-		throw new Error(
-			`registerInlineSyntax: prefix ${JSON.stringify(prefix)} must begin with the trigger ` +
-				`${JSON.stringify(trigger)} and be at least two characters`
-		);
+		refuse(`prefix ${quoted(prefix)} is not ${quoted(trigger)} plus more`);
 	}
-
-	const builtin = BUILTIN_TRIGGERS.get(trigger);
-	if (builtin) {
-		// A test pins this message verbatim. A reserved trigger is reachable only through a
-		// prefix with a priority below `builtin`.
-		if (prefix === undefined) {
-			throw new Error(
-				`registerInlineSyntax: ${JSON.stringify(trigger)} is claimed by the built-in scanner, ` +
-					`which dispatches it before the plugin registry; the recognizer would never fire`
-			);
-		}
-		if (builtin.scanned === 'never') {
-			throw new Error(
-				`registerInlineSyntax: reserved trigger ${JSON.stringify(trigger)} is skipped by the ` +
-					`scanner's fast bail (it matters only inside "["-bearing ranges), so a prefix ` +
-					`inline syntax handler on it would never fire in plain text; make the trigger ` +
-					`scan-visible or scan-probed in scan/triggers.ts before registering`
-			);
-		}
+	if (trigger === ']') refuse(`trigger "]" can never be reached`);
+	if (isBuiltInTrigger(trigger)) {
+		if (prefix === undefined) refuse(`trigger ${quoted(trigger)} is built in and needs a prefix`);
 		if (priority >= INLINE_PRIORITIES.builtin) {
-			throw new Error(
-				`registerInlineSyntax: reserved trigger ${JSON.stringify(trigger)} needs a priority ` +
-					`below the built-in boundary (${INLINE_PRIORITIES.builtin}) so its prefix outranks ` +
-					`the built-in scanner; got ${priority}`
+			refuse(
+				`priority ${priority} on built-in trigger ${quoted(trigger)} is not below the built-in reading`
 			);
 		}
 	}
-
-	if (autoPair && prefix !== undefined) {
-		throw new Error(
-			`registerInlineSyntax: autoPair pairs the bare trigger ${JSON.stringify(trigger)} with ` +
-				`itself, so it cannot be combined with a prefix`
-		);
-	}
-
+	if (autoPair && prefix !== undefined) refuse(`autoPair cannot go with prefix ${quoted(prefix)}`);
 	const effectivePrefix = prefix ?? trigger;
-	handlers.register(
-		JSON.stringify([trigger, effectivePrefix, priority]),
+	registrations.register(
+		quoted([trigger, effectivePrefix, priority]),
 		{
 			trigger,
-			recognizer,
 			prefix: effectivePrefix,
 			priority,
-			rewriteImage,
+			recognizer: recognizer as ScopedRecognizer,
+			...(rewriteImage ? { rewriteImage } : {}),
 			autoPair: autoPair ?? false
 		},
-		`registerInlineSyntax: ${JSON.stringify(trigger)} already registered at prefix ` +
-			`${JSON.stringify(effectivePrefix)}, priority ${priority}`
+		`registerInlineSyntax: ${quoted(effectivePrefix)} at priority ${priority} is already registered`
 	);
 }
 
-function rebuildDispatch(): void {
-	reservedRegistry.clear();
-	unreservedRegistry.clear();
-	autoPairTriggers.clear();
-	scanProbeTriggers.clear();
-	for (const { value, owner } of handlers.records()) {
-		const { trigger, autoPair, ...rung } = value;
-		const builtin = BUILTIN_TRIGGERS.get(trigger);
-		const registry = builtin ? reservedRegistry : unreservedRegistry;
-		registry.set(trigger, [...(registry.get(trigger) ?? []), { ...rung, owner }]);
-		// A handler on a trigger the fast bail would skip must make the scan check it, or the
-		// recognizer is the silent no-op this registry refuses to accept.
-		if (!builtin || builtin.scanned === 'when-registered') scanProbeTriggers.add(trigger);
-		if (autoPair)
-			autoPairTriggers.set(trigger, (autoPairTriggers.get(trigger) ?? new Set()).add(owner));
-	}
-	for (const rungs of [...reservedRegistry.values(), ...unreservedRegistry.values()]) {
-		rungs.sort(compareRungs);
-	}
-}
+const NO_HANDLERS: readonly InlineHandler[] = [];
 
-// Dispatch order is sorted, so it does not depend on registration order.
-function compareRungs(a: InlineRung, b: InlineRung): number {
-	if (a.priority !== b.priority) return a.priority - b.priority;
-	if (a.prefix.length !== b.prefix.length) return b.prefix.length - a.prefix.length;
-	return a.prefix < b.prefix ? -1 : a.prefix > b.prefix ? 1 : 0;
-}
+export const handlersFor = (trigger: string): readonly InlineHandler[] =>
+	handlers.get(trigger) ?? NO_HANDLERS;
 
-// ── Dispatch accessors ───────────────────────────────────────────────────────────
+export const registeredTriggers = () => handlers.keys();
 
-/** Whether the built-in scanner handles `trigger` itself. A plugin handler on one runs before the
- *  built-in handler, so it must decline the overlap itself. */
-export function isReservedInlineTrigger(trigger: string): boolean {
-	return BUILTIN_TRIGGERS.has(trigger);
-}
+/** Bumped on every registry change, so the parse can cache what it derives from the registry. */
+export const registryVersion = () => version;
 
-/** The handlers for a trigger in dispatch order, from whichever map holds it. Empty when none. */
-export function getInlineRungs(trigger: string): readonly InlineRung[] {
-	const registry = BUILTIN_TRIGGERS.has(trigger) ? reservedRegistry : unreservedRegistry;
-	return registry.get(trigger) ?? NO_RUNGS;
-}
+export const isBuiltInTrigger = (char: string) => BUILT_IN_TRIGGERS.has(char);
 
-export function getUnreservedRungs(char: string): InlineRung[] | undefined {
-	return unreservedRegistry.get(char);
-}
+/** Whether the parse visits a bare handler's own character in plain prose. */
+export const isWatchedTrigger = (char: string) =>
+	!isBuiltInTrigger(char) && handlersFor(char).some((h) => h.prefix === char);
 
-export function getPrefixRungs(char: string): InlineRung[] | undefined {
-	return reservedRegistry.get(char);
-}
-
-export function hasInlineSyntax(): boolean {
-	return unreservedRegistry.size > 0;
-}
-
-/** Read once per scan, so with no probed trigger `needsScan` pays nothing extra per character. */
-export function hasScanProbeRungs(): boolean {
-	return scanProbeTriggers.size > 0;
-}
-
-export function isScanProbeTrigger(char: string): boolean {
-	return scanProbeTriggers.has(char);
-}
-
-/** Whether any plugin the editor's grammar lists asked for `char` to close itself as it is typed. */
-export function isAutoPairTrigger(char: string, grammar: GrammarView): boolean {
-	const owners = autoPairTriggers.get(char);
-	if (!owners) return false;
-	for (const owner of owners) if (resolvesIn(grammar.activation, owner)) return true;
-	return false;
-}
-
-/** False costs the scan loop nothing. */
-export function hasPrefixRungs(): boolean {
-	return reservedRegistry.size > 0;
-}
+/** Whether a plugin the grammar lists asked for `char` to close itself as it is typed. */
+export const pairsItself = (char: string, grammar: GrammarView) =>
+	(autoPairOwners.get(char) ?? []).some((owner) => resolvesIn(grammar.activation, owner));

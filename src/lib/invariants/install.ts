@@ -6,7 +6,7 @@
 import type { CstNode, Document } from '../core/nodes';
 import type { GrammarView } from '../schema/block-openers';
 import type { DocPath } from '../selection/path-math';
-import { assertInvariant } from '../assert';
+import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import { checkCommitPathAddressable } from './commit-paths';
 import {
 	flushPendingRegistrationChecks,
@@ -28,7 +28,6 @@ import { checkLastLineKept } from './open-tail';
 import { checkKeepsABlock } from './keeps-a-block';
 import { checkReadsBack, READ_BACK_LIMIT } from './reads-back';
 import { checkListMarkerWidths } from './list-marker-widths';
-import { isDevChecks } from '../env';
 import { perfEnabled } from '../perf/instruments';
 import { checkTopLevelUntouched } from './top-level-untouched';
 import { checkLineEndingPairsKept, type LineEndingCounts } from './line-ending-pairs';
@@ -96,7 +95,7 @@ export function assertLeafLineEndingPairsKept(before: string, after: string): vo
 /** The document's line-ending counts for G1.117; null outside dev and under the perf instruments,
  *  since it reads the whole document. */
 export function documentLineEndings(doc: Document): LineEndingCounts | null {
-	if (!isDevChecks() || perfEnabled()) return null;
+	if (!devChecksOn || perfEnabled()) return null;
 	return lineEndingCounts(doc.prefix + concatChildren(doc.children) + doc.suffix);
 }
 
@@ -108,14 +107,14 @@ export function assertLastLineKept(doc: Document, wasOpen: boolean): void {
 /** G1.55, after a keystroke's or a commit's rebuild: each top-level block in `tops`, the ones now
  *  holding what the edit wrote, reads back as itself. Off under the perf instruments. */
 export function assertReadsBack(tops: readonly CstNode[], grammar: GrammarView): void {
-	if (!isDevChecks() || perfEnabled()) return;
+	if (!devChecksOn || perfEnabled()) return;
 	for (const top of tops) assertInvariant('reads-back', () => checkReadsBack(top, grammar));
 }
 
 /** G1.118, at the same moments as G1.55 and under the same size limit: each list in `tops` keeps
  *  the marker-width counts its items give. */
 export function assertListMarkerWidths(tops: readonly CstNode[]): void {
-	if (!isDevChecks() || perfEnabled()) return;
+	if (!devChecksOn || perfEnabled()) return;
 	for (const top of tops) {
 		if (top.raw.length > READ_BACK_LIMIT) continue;
 		assertInvariant('list-marker-widths', () => checkListMarkerWidths(top));

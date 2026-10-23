@@ -6,10 +6,7 @@ import {
 	toggleInlineFormat,
 	type InlineFormatEdit
 } from '#lib/core/inline/format-toggle.js';
-import {
-	buildLinkReferenceMap,
-	type LinkReferenceResolver
-} from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf, type LinkReferenceResolver } from '#lib/core/inline/scan/definitions.js';
 import { parse } from '#lib/core/parser.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { planCrossBlockFormat } from '#lib/selection/cross-block/format-range.js';
@@ -21,7 +18,7 @@ import { coverRange } from '#lib/selection/range-coverage.js';
 // Miss-analysis (GH #455): every toggle fixture used inline links, never a reference link.
 
 const DEFINITION = '[ref]: https://x.com\n';
-const resolver: LinkReferenceResolver = buildLinkReferenceMap(parse(DEFINITION).children).resolve;
+const resolver: LinkReferenceResolver = definitionsOf(parse(DEFINITION).children).resolve;
 
 function editOf(
 	display: string,

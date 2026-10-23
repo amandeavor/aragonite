@@ -896,6 +896,13 @@
 	overflow: hidden;
 }
 
+/* Source mode: a to-do's list marker fills the list's column, so its `[ ] ` starts where a plain
+   item's text does. */
+:where(.editor):not([data-presentation]) .list-item-marker .task-list-marker {
+	display: inline-block;
+	min-width: var(--md-list-column);
+}
+
 :where(.editor):is(
 		[data-presentation='reading'],
 		[data-presentation^='preview-'],

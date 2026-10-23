@@ -5,9 +5,8 @@
  * falls back to the full rebuild; a `Uint32Array` because Svelte proxies plain arrays.
  */
 
-import { isDevChecks } from '../env';
+import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import { makeBlockNode, type CstNode } from '../core/nodes';
-import { assertInvariant } from '../assert';
 import { perfEnabled, recordJoinedChildReads } from '../perf/instruments';
 import { isBlankText } from '../core/lines';
 
@@ -90,7 +89,7 @@ export type RegionRewrite = (region: string, at: RegionAt) => string | null;
  * spans cannot reach the document (G1.38). Skipped under the perf instruments, which would time it.
  */
 export function spliceIsFaithful(node: CstNode, rebuildFull: (scratch: CstNode) => void): boolean {
-	if (!isDevChecks() || perfEnabled()) return true;
+	if (!devChecksOn || perfEnabled()) return true;
 	const scratch = makeBlockNode({
 		kind: node.kind,
 		leadingTrivia: node.leadingTrivia,

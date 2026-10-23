@@ -5,8 +5,8 @@ import { assertConstructCoverage, assertTotalCoverage, collectKind } from './sca
 
 const scan = (raw: string) => parseInline(raw, 0, raw.length);
 
-// Pairing is amortized (openers_bottom), so the list surgery that moves a pair's interior is
-// what these rows hold linear: a splice there grows as pairs squared on a paragraph of pairs.
+// A paragraph of many pairs must parse in linear time; work per pair that grows with the
+// paragraph turns it quadratic.
 describe('emphasis pairing bounds', () => {
 	// 24KB because a few KB of pairs scans under the harness's noise floor, and a declared size
 	// under the floor is one the harness only ever replaces.
@@ -15,15 +15,15 @@ describe('emphasis pairing bounds', () => {
 		expectBoundedGrowth(growth);
 	}, 300_000);
 
-	// Two marker characters per side go through the same surgery, so a bound that held only
+	// Two marker characters per side are a case of their own, so a bound that held only
 	// for the one-character run would miss a regression in the two-character path.
 	it('a strong and strikethrough flood scans within a bounded growth ratio', () => {
 		const growth = measureScanGrowth(scan, '**a** ~~b~~ ', [24, 96]);
 		expectBoundedGrowth(growth);
 	}, 300_000);
 
-	// A `]` resolves the emphasis inside its label, so this row catches a per-pass setup
-	// cost scaled to the whole working list instead of to the label.
+	// Emphasis inside each link label pairs inside that label, so cost per label must not grow
+	// with the paragraph.
 	it('emphasis nested in a link flood scans within a bounded growth ratio', () => {
 		const growth = measureScanGrowth(scan, '[*a*](u) ', [24, 96]);
 		expectBoundedGrowth(growth);
@@ -41,7 +41,7 @@ describe('emphasis pairing bounds', () => {
 		expect(nodes.filter((n) => n.kind !== 'emphasis').every((n) => n.kind === 'text')).toBe(true);
 	}, 120_000);
 
-	// Nesting shares the same splice: an inner pair's wrap node must land back in
+	// Nesting is the same case: an inner pair must land back in
 	// the list where the outer pair can still collect it as a child.
 	it('nests a pair flood without losing a level', () => {
 		const depth = 2000;

@@ -2,7 +2,7 @@ import type { CstNode } from '../core/nodes';
 import { displayLength } from '../core/lines';
 import { getBlockKindDescriptor } from '../schema/block-kind-descriptor';
 import { getContentRange, type ContentRange } from '../core/inline';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 /** G1.8: a content range stays inside its raw bytes, for every kind that declares one, since
  *  callers use the range unchecked. `getRange` is a parameter so a test can inject a bad range. */

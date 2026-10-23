@@ -102,7 +102,7 @@ import {
 	traceCompositionStart,
 	traceKeydownVerdict
 } from '../../../debug/interaction-trace';
-import { assertInvariant } from '../../../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
 import { checkDeleteDecided } from '../../../invariants/collapsed-delete';
 import type {

@@ -4,7 +4,7 @@
  */
 
 import type { DocumentView, NodeView } from '../core/node-views';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { leafTexts, sameTexts } from './leaf-text';
 
 export function leafText(doc: DocumentView, tops: readonly [number, number]): string[] {

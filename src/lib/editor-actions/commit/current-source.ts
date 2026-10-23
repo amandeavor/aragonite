@@ -5,7 +5,7 @@
  */
 
 import { untrack } from 'svelte';
-import { assertInvariant } from '../../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import type { Document } from '../../core/nodes';
 import { serialize } from '../../core/serializer';
 import { checkCurrentSource } from '../../invariants/current-source';

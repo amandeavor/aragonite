@@ -9,7 +9,7 @@ import Editor from './components/Editor.svelte';
 import { EDITOR_OPTION_SPECS, type EditorInstance, type EditorOptions } from './editor-props';
 import type { EditorProps } from './components/editor-component-props';
 import { createReactiveProps } from './reactive-props';
-import { devWarn } from './dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
@@ -28,7 +28,8 @@ export interface EditorHandle extends EditorInstance {
 	destroy(): void;
 }
 
-/** Mounts an editor into `target` and returns its handle. Call `destroy` before dropping `target`. */
+/** Mounts an editor into `target`, filling its height when it has one, and returns its handle.
+ *  Call `destroy` before dropping `target`. */
 export function createEditor(target: HTMLElement, options: CreateEditorOptions = {}): EditorHandle {
 	const initial: Record<string, unknown> = {};
 	for (const key of propKeys(options)) initial[key] = propValue(key, options[key]);

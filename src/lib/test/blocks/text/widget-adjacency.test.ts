@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { InlineNode } from '#lib/core/nodes.js';
+import type { PresentationMode } from '#lib/presentation-mode.js';
 import {
 	widgetAtCursor,
 	widgetNodeIn,
@@ -10,6 +11,7 @@ import {
 	rawHasNoTextAfter
 } from '#lib/components/blocks/text/widget-adjacency.js';
 import { parse } from '#lib/core/parser.js';
+import { isVerticallyTransparentNode } from '#lib/core/inline/transparency.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
 
 function image(start: number, end: number): InlineNode {
@@ -112,7 +114,7 @@ describe('widgetNodeIn', () => {
 // Where the mode hides a construct's markers, the construct draws only its content, so a picture
 // a link or emphasis wraps is the block's edge too.
 describe('findFirstEdgeWidget / findLastEdgeWidget', () => {
-	const edges = (source: string, mode: 'source' | 'live') => {
+	const edges = (source: string, mode: PresentationMode) => {
 		const node = parse(source).children[0];
 		const reading = fixtureReading({}, mode);
 		const span = (w: InlineNode | null) => w && [w.start, w.end];
@@ -140,11 +142,45 @@ describe('findFirstEdgeWidget / findLastEdgeWidget', () => {
 				[1, 12]
 			]
 		],
+		[
+			'a picture a link wraps, preview-inline',
+			'[![a](x.png)](y)\n',
+			'preview-inline',
+			[
+				[1, 12],
+				[1, 12]
+			]
+		],
+		['a picture a link wraps, preview-block', '[![a](x.png)](y)\n', 'preview-block', [null, null]],
 		['a picture a link wraps, source', '[![a](x.png)](y)\n', 'source', [null, null]],
 		['a link holding a picture and text, live', '[![a](x.png) b](y)\n', 'live', [[1, 12], null]]
 	] as const)('%s', (_, source, mode, expected) => {
 		expect(edges(source, mode)).toEqual(expected);
 	});
+});
+
+// A vertical arrival passes a transparent block only through its edge widget, so a block the
+// transparency check passes with no edge widget to enter leaves the caret nowhere.
+describe('a transparent block has an edge widget, in every mode', () => {
+	const SHAPES = [
+		'![a](x.png)\n',
+		'[![a](x.png)](y)\n',
+		'*![a](x.png)*\n',
+		'[![a](x.png) b](y)\n',
+		'  ![a](x.png) ![b](z.png)  \n',
+		'**[![a](x.png)](y)**\n'
+	];
+	const MODES: PresentationMode[] = ['source', 'preview-block', 'preview-inline', 'live'];
+	it.each(MODES.flatMap((mode) => SHAPES.map((source) => [mode, source] as const)))(
+		'%s: %j',
+		(mode, source) => {
+			const node = parse(source).children[0];
+			const reading = fixtureReading({}, mode);
+			if (!isVerticallyTransparentNode(node, reading)) return;
+			expect(findFirstEdgeWidget(node, reading)).not.toBeNull();
+			expect(findLastEdgeWidget(node, reading)).not.toBeNull();
+		}
+	);
 });
 
 describe('rawHasNoTextBefore / rawHasNoTextAfter', () => {

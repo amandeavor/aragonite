@@ -15,7 +15,7 @@
 	import { headingLevel, metadataOf } from '../../../core/nodes';
 	import { shownKind } from '../../../core/parsers/heading';
 	import { buildAmbientSpan } from '../../../ambient/ambient-dom';
-	import { assertInvariant } from '../../../assert';
+	import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 	import { checkItemMarkerBytes } from '../../../invariants/item-marker-bytes';
 	import { hidesMarkers } from '../../../presentation-mode';
 	import { useContainerWindowing } from '../../../windowing/use-container-windowing.svelte';

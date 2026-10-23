@@ -13,7 +13,7 @@ describe('autolink interactions with other constructs', () => {
 	});
 
 	it('autolink does not start inside a code span', () => {
-		// The code span claims those bytes before the autolink scanner runs.
+		// The code span takes those bytes, so no autolink starts inside them.
 		const raw = 'pre `https://x.com` post';
 		const nodes = inlineOf(raw);
 		const autolinks = nodes.filter((n) => n.kind === 'autolink');
@@ -23,8 +23,7 @@ describe('autolink interactions with other constructs', () => {
 	});
 
 	it('entity inside angle-bracket inner is not interpreted', () => {
-		// The angle scanner regex-tests its sliced inner without re-invoking the entity
-		// scanner, so `&copy;` stays literal inside the failed-match angle pair.
+		// A failed angle form leaves its bytes to the rest of the parse, so `&copy;` decodes.
 		const raw = 'see <foo&copy;bar> end';
 		const nodes = inlineOf(raw);
 		const autolinks = nodes.filter((n) => n.kind === 'autolink');
@@ -35,25 +34,8 @@ describe('autolink interactions with other constructs', () => {
 	});
 });
 
-describe('parseInline: fast-bail output shape', () => {
-	// Both cases open by asserting the autolink is there: without that precondition a
-	// degenerate single-text-node output would satisfy both shape checks vacuously.
-	it('fast path output has no adjacent text siblings', () => {
-		const input = 'before  \nhttps://example.com after';
-		const nodes = inlineOf(input);
-		expect(nodes.some((n) => n.kind === 'autolink')).toBe(true);
-		for (let i = 1; i < nodes.length; i++) {
-			const prev = nodes[i - 1];
-			const cur = nodes[i];
-			if (cur.kind === 'text' && prev.kind === 'text') {
-				throw new Error(
-					`adjacent text nodes at indices ${i - 1}, ${i}: ${JSON.stringify([prev, cur])}`
-				);
-			}
-		}
-	});
-
-	it('fast path: text+autolink+text reconstructs raw', () => {
+describe('parseInline: plain prose around a url', () => {
+	it('text, autolink, text reconstructs raw', () => {
 		const input = 'pre https://example.com post';
 		const nodes = inlineOf(input);
 		expect(nodes.map((n) => n.kind)).toEqual(['text', 'autolink', 'text']);

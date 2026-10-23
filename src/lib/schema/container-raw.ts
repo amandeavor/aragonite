@@ -10,7 +10,7 @@ import { describeMetadataDivergence } from '../core/metadata-parity';
 import { readBlocks } from '../core/parser';
 import { ownTrailingLineEnding, trimTrailingLineEnding } from '../core/lines';
 import { assignChildIdsDeep, idsAcrossReread } from '../block-id';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { perfEnabled, recordContainerKindReparse, recordOpenerLineRead } from '../perf/instruments';
 import {
 	isGridDescriptor,

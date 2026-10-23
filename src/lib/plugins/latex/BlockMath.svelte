@@ -72,15 +72,6 @@
 	let layout = $state<MathLayout>(leaf.getOptions<LatexEditorOptions>().blockLayout);
 	const previewOpen = $derived(layout !== 'source');
 
-	// The browser's own edits (an IME composition committing) skip `onSourceEdit`, so the
-	// highlighting is repainted here, after the leaf's handler has done its IME bookkeeping.
-	function onSourceInput(e: Event): void {
-		leaf.surfaceProps.oninput(e);
-		if ((e as InputEvent).isComposing) return;
-		leaf.repaintSource();
-		draft = sourceEl?.textContent ?? null;
-	}
-
 	// ── View rendering ──────────────────────────────────────────────────────────
 
 	// Re-runs on a remount of the render div, a source change and a theme switch; the
@@ -121,7 +112,6 @@
 			<div
 				bind:this={sourceEl}
 				{...leaf.surfaceProps}
-				oninput={onSourceInput}
 				class="math-block-source md-source-surface"
 				aria-label="Math source"
 			></div>

@@ -6,7 +6,7 @@
 import type { DocumentView, NodeView } from '../core/node-views';
 import { ownTrailingLineEnding } from '../core/lines';
 import { holdsBlankLastLine } from '../tree-operations/open-tail';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { childHoldingLastLine, lineChildren } from '../schema/container-raw';
 
 export function checkLastLineKept(doc: DocumentView, wasOpen: boolean): InvariantViolation | null {

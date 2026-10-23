@@ -8,7 +8,7 @@ import type { CstNode } from '../core/nodes';
 import type { NodeParentView, NodeView } from '../core/node-views';
 import type { SharingState } from './sharing';
 import type { NodeParent } from './node-primitives';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkCloneSafeMetadata } from '../invariants/node-shape';
 import { rebuildContainerRawIfContainer } from '../schema/container-raw';
 import type { ChildRawChange } from '../schema/child-spans';

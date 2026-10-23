@@ -7,7 +7,7 @@
  */
 
 import { onMount } from 'svelte';
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { createCaretHostInput } from './caret-host-input';
 
 // ── Editable-target guards ───────────────────────────────────────────────────

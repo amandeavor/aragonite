@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { buildDimSuffix, parseImageDimensions } from '../../../core/inline/image-dimensions';
+import { writeSizeHint, readSizeHint } from '../../../core/inline/scan/size-hint';
 import { freshOrFixedSeed } from '../../invariants/arbitraries';
 
-describe('parseImageDimensions', () => {
+describe('readSizeHint', () => {
 	it.each([
 		[
 			'plain alt',
@@ -86,11 +86,11 @@ describe('parseImageDimensions', () => {
 			{ displayAlt: 'alt|400@30,60', width: undefined, height: undefined, crop: undefined }
 		]
 	])('parses %s correctly', (input, expected) => {
-		expect(parseImageDimensions(input)).toEqual(expected);
+		expect(readSizeHint(input)).toEqual(expected);
 	});
 });
 
-describe('buildDimSuffix', () => {
+describe('writeSizeHint', () => {
 	const arbSize = fc.integer({ min: 1, max: 10000 });
 	const arbCrop = fc.record({
 		x: fc.integer({ min: 0, max: 100 }),
@@ -105,7 +105,7 @@ describe('buildDimSuffix', () => {
 	it('writes a suffix the reader gives back unchanged', () => {
 		fc.assert(
 			fc.property(fc.string({ maxLength: 8 }), arbHint, (alt, hint) => {
-				const read = parseImageDimensions(alt + buildDimSuffix(hint.width, hint.height, hint.crop));
+				const read = readSizeHint(alt + writeSizeHint(hint.width, hint.height, hint.crop));
 				expect(read).toEqual({ displayAlt: alt, ...hint });
 			}),
 			{ numRuns: 500, seed: freshOrFixedSeed(4021) }
@@ -113,6 +113,6 @@ describe('buildDimSuffix', () => {
 	});
 
 	it('writes nothing without a width', () => {
-		expect(buildDimSuffix(undefined, 300, undefined)).toBe('');
+		expect(writeSizeHint(undefined, 300, undefined)).toBe('');
 	});
 });

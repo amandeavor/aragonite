@@ -18,7 +18,7 @@ import {
 import { ensureUnsharedChildren } from '../tree-operations/unshare';
 import { blockNodeAt } from '../tree-operations/node-primitives';
 import { docPathFrom } from '../caret/coordinate-spaces';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import type { GridCoverage } from './range-coverage';
 import type { CrossBlockMutationContext } from './cross-block/range-replace';
 
