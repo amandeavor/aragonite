@@ -187,6 +187,8 @@
 
 	const containerSurface: ContainerSurface | null = container && {
 		mountChildren(box) {
+			// The box they're already in: remounting would drop the caret and every child's state.
+			if (children && box === childBox) return;
 			unmountChildren();
 			childBox = box;
 			// Passed, never inherited: a view may mount its children from an event handler.
