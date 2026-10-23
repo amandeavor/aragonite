@@ -156,12 +156,34 @@ jobs:
             test-results/ci-summary.json
             test-results/**/error-context.md
 
-  # On the runner, not in Playwright's image: the pinned Mozilla build ships as .tar.xz and the image
-  # has no xz. Firefox's own OS packages are few, so the mirror costs it little.
-  e2e-firefox:
+  # Mozilla ships Firefox as .tar.xz and Playwright's image has no xz, so the runner unpacks it once
+  # and hands the shards a .tar.gz.
+  firefox:
     needs: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FIREFOX_VERSION: '158.0'
+    steps:
+      - if: needs.changes.outputs.code == 'true'
+        run: |
+          curl -fsSL "https://ftp.mozilla.org/pub/firefox/releases/$FIREFOX_VERSION/linux-x86_64/en-US/firefox-$FIREFOX_VERSION.tar.xz" | tar -xJ
+          tar -czf firefox.tar.gz firefox
+      - if: needs.changes.outputs.code == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: firefox-linux
+          path: firefox.tar.gz
+          compression-level: 0
+          retention-days: 1
+
+  e2e-firefox:
+    needs: [changes, firefox]
+    runs-on: ubuntu-latest
     timeout-minutes: 45
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --user 1001
     env:
       ENGINE: firefox
     strategy:
