@@ -1,2 +1,10 @@
 export { Aragonite, type AragoniteInstance, type AragoniteProps } from './aragonite.js';
+export {
+	vueBlockView,
+	LeafContent,
+	BlockChildren,
+	type BlockViewProps,
+	type FrameworkSurface,
+	type VueBlockViewOptions
+} from './block-view.js';
 export type { EditorHandle } from '@voithos-labs/aragonite';

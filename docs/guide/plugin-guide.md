@@ -16,8 +16,9 @@ This page is the first read: [a working plugin in fifteen minutes](#the-first-fi
 | [One process, many editors](plugin-guide/per-editor.md)                                      | Your plugin keeps state per editor, listens for edits, or takes options that differ between two editors on one page                                  |
 | [Walkthrough: a `:::conspiracy` container end to end](plugin-guide/container-walkthrough.md) | Your block holds other blocks (a callout, a box with a title), or you're filling in a descriptor's `closure` cells. It's the biggest worked example  |
 | [Teaching the parser](plugin-guide/parser.md)                                                | Your syntax needs an opener of its own: its place among the built-ins, a construct that spans lines, one that only counts at the top of the document |
-| [Editable-content tiers](plugin-guide/editable-content.md)                                   | You're picking how your block hosts editable content, or building a text block on `createEditableLeaf` (block math's shape)                          |
+| [Editable-content tiers](plugin-guide/editable-content.md)                                   | You're picking how your block hosts editable content, or building a text block (block math's shape)                                                  |
 | [Recipe: a render-primary block](plugin-guide/render-primary.md)                             | Your block is a picture (a diagram, a chart) that's edited through your own UI                                                                       |
+| [React and Vue blocks](plugin-guide/react-and-vue.md)                                        | Your app is React or Vue, and you'd rather draw your blocks with its components                                                                      |
 | [Presentation modes](plugin-guide/presentation-modes.md)                                     | Your block has to render right in reading, preview, or live mode, or owns a button that should go inert there                                        |
 | [Recipe: reading the document above your block](plugin-guide/reading-the-document.md)        | Your block is built from the rest of the document, like a table of contents                                                                          |
 | [Inline kinds](plugin-guide/inline-kinds.md)                                                 | Your syntax lives mid-paragraph (`:shortcode:`, `[^1]`, `$x$`)                                                                                       |
@@ -29,6 +30,8 @@ This page is the first read: [a working plugin in fifteen minutes](#the-first-fi
 ## The first fifteen minutes
 
 All four import paths (`/plugin`, `/svelte`, `/testing` and the root) come with `@voithos-labs/aragonite` itself, so there's nothing else to install.
+
+The parrot below draws itself with a Svelte component, which is how the bundled one ships. Not in Svelte? Everything except the component carries over as is, and the block can be drawn with plain DOM through `defineBlockView` ([Block views](plugin-api.md#block-views)) or with your own components in React or Vue ([React and Vue blocks](plugin-guide/react-and-vue.md)).
 
 The plugin we're about to build is an homage to `curl parrot.live`: a line that starts with `%%parrot` renders as an animated ASCII party parrot, and any text after the marker becomes the parrot's caption.
 
@@ -468,17 +471,16 @@ After the freeze the version number carries the promise: a breaking change to a 
 
 Two shapes draw everything a plugin puts on screen. (Not to be confused with the read-only node types in [Views](#views-what-you-read-what-you-own), below; same word, different job.)
 
-- **A block draws through a `BlockView`**, the `view` its `registerBlockKind` call takes. `defineBlockView` makes one with no framework involved: it fills an element the editor made for the block, and its `surface` says whether the editor wires editable text (always shown, or behind a rendered view until a click, as block math does) or child blocks into it ([Block views](plugin-api.md#block-views) has the shapes). `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component, and `textBlockView()` is the editor's own plain text block.
+- **A block draws through a `BlockView`**, the `view` its `registerBlockKind` call takes. `defineBlockView` makes one with no framework involved: it fills an element the editor made for the block, and its `surface` says whether the editor wires editable text (always shown, or behind a rendered view until a click, as block math does) or child blocks into it ([Block views](plugin-api.md#block-views) has the shapes). `svelteBlockView(YourComponent)`, from `@voithos-labs/aragonite/svelte`, makes one from a Svelte component, and `textBlockView()` is the editor's own plain text block. In a React or Vue app, `reactBlockView` and `vueBlockView` (from `@voithos-labs/aragonite-react` and `-vue`) make one from your own components ([React and Vue blocks](plugin-guide/react-and-vue.md)).
 - **Everything else draws through a `PluginView`**: an inline widget, a decoration's widget or badge, and an inline menu row. It's a plain function, `(target, props) => ({ update?, destroy? })`, that fills an element the editor made for it ([Rendering it as a widget](plugin-guide/inline-kinds.md#rendering-it-as-a-widget) walks one through). Already writing Svelte? `svelteView(Component)`, also from `/svelte`, turns a component into one for any of those slots.
 
 Which apps can run your plugin follows from that. An app whose bundler compiles Svelte (a Svelte app, say) compiles the editor from source, along with your components. An app whose bundler doesn't (most React, Vue and plain JavaScript apps) runs a prebuilt copy with its own Svelte compiled in, and a Svelte component of yours can't run on that copy's Svelte. So:
 
-| Your plugin draws with                                                                                                                    | It runs in                                               |
-| ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Plain DOM widget, decoration and menu-row views, or nothing at all (syntax, commands, paste transforms, decorations, menus with DOM rows) | Every app                                                |
-| A block, or any Svelte component                                                                                                          | An app whose bundler compiles Svelte (a Svelte app, say) |
-
-A `defineBlockView` block is plain DOM and built to run on the prebuilt copy too, but nothing has run one there yet, so count on it in an app that compiles Svelte for now.
+| Your plugin draws with                                                                                                              | It runs in                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Plain DOM views (`defineBlockView` blocks, widgets, decorations, menu rows), or nothing at all (syntax, commands, paste transforms) | Every app                                                |
+| React or Vue components, through `reactBlockView` or `vueBlockView`                                                                 | Every app with that framework installed                  |
+| Any Svelte component                                                                                                                | An app whose bundler compiles Svelte (a Svelte app, say) |
 
 The bundled plugins run everywhere, since they're compiled into the prebuilt copy. Mount a Svelte component of yours in an app that doesn't compile Svelte, and it fails the way any throwing view does: a block shows a "block failed to render" notice above its source, a widget shows just its source. In a dev build the notice and the console name the cause: the component was compiled against a different copy of Svelte.
 

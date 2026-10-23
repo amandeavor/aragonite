@@ -1,16 +1,18 @@
 // Fails a test on any console error, page error, aragonite dev warning or Vue warning the page
-// produced.
+// produced; with `anyWarning`, on every console warning.
 import { test as base, expect, type Page } from '@playwright/test';
 
 const WARNINGS = /\[aragonite:|\[Vue warn\]/;
 
-export const test = base.extend<{ problems: string[] }>({
+export const test = base.extend<{ problems: string[]; anyWarning: boolean }>({
+	anyWarning: [false, { option: true }],
 	problems: [
-		async ({ page }, use) => {
+		async ({ page, anyWarning }, use) => {
 			const problems: string[] = [];
 			page.on('pageerror', (error) => problems.push(String(error)));
 			page.on('console', (message) => {
-				const warned = message.type() === 'warning' && WARNINGS.test(message.text());
+				const warned =
+					message.type() === 'warning' && (anyWarning || WARNINGS.test(message.text()));
 				if (message.type() === 'error' || warned) problems.push(message.text());
 			});
 			await use(problems);
