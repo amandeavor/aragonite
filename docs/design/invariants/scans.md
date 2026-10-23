@@ -207,6 +207,7 @@ unguarded.
 | G4.248 | Dev-only code reads one switch, in `dev-checks.ts`, imported by its package name                 | L       |
 | G4.249 | A measured height enters the height table only through `applyMeasured`                           | L       |
 | G4.251 | The bundled blocks that build a render-primary leaf in Svelte are listed                         | L       |
+| G4.252 | A press's point is read at the press, in `readPress`                                             | L       |
 
 ### The entries
 
@@ -1386,3 +1387,5 @@ pixel off moves no scroll. `lint/file-rules.test.ts`.
 render-primary leaf in Svelte (`mode: 'render-primary'`) is on a declared list: block math, the
 outline and the parrot. It's there so moving them onto `defineBlockView` starts from a list, not
 a grep, and it guards nothing inside a listed file. `lint/file-rules.test.ts`.
+
+**G4.252 · A press is read at the press.** The prose blocks' point readers (the source-widget hit, its seat, the click side, the widget edge, the shown-source test) are called only in `widget-interaction.ts` :: `readPress` and `islandDragAnchor`, both at pointer-down. By the click, the press may have folded a shown source and reflowed the line under the point. `lint/call-site-rules.test.ts`.

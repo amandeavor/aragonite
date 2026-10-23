@@ -50,7 +50,8 @@ describe('widget edge-snap over a painted range', () => {
 		const b = mountSnapBlock();
 		paintWholeSurface(b.el);
 
-		b.interaction.snapClickToWidgetEdge(50, 5);
+		b.interaction.notePress({ clientX: 50, clientY: 5, button: 0 });
+		b.interaction.snapClickToWidgetEdge({});
 
 		expect(b.snapped).toEqual([]);
 		expect(window.getSelection()?.isCollapsed).toBe(false);
@@ -66,7 +67,8 @@ describe('widget edge-snap over a painted range', () => {
 		sel.removeAllRanges();
 		sel.addRange(range);
 
-		b.interaction.snapClickToWidgetEdge(50, 5);
+		b.interaction.notePress({ clientX: 50, clientY: 5, button: 0 });
+		b.interaction.snapClickToWidgetEdge({});
 
 		expect(b.snapped).toEqual([9]);
 	});

@@ -164,14 +164,15 @@ function armPaddingPress(
 	return { offset, placed: () => placed };
 }
 
-/** A right-click in a surface's padding rows puts a collapsed caret where a primary click would,
- *  for a press that landed on no range. */
-export function placePaddingPress(writer: CaretWriter, e: MouseEvent): void {
+/** Where a right-click in a surface's padding rows puts a collapsed caret, as a primary click
+ *  would, read at the press and placed when the returned call runs; null off the padding. */
+export function planPaddingPress(writer: CaretWriter, e: MouseEvent): (() => void) | null {
 	const surface = editingHostOf(e.target);
-	if (!surface || !isInPaddingRow(surface, e.clientX, e.clientY)) return;
+	if (!surface || !isInPaddingRow(surface, e.clientX, e.clientY)) return null;
 	const offset = offsetFromViewportPoint(surface, e.clientX, e.clientY);
 	const path = findBlockPathForElement(surface);
-	if (offset !== null && path) applyCollapsedCaret(writer, surface, { path, offset });
+	if (offset === null || !path) return null;
+	return () => applyCollapsedCaret(writer, surface, { path, offset });
 }
 
 /** Whether the browser's selected range inside `root` covers the viewport point. */

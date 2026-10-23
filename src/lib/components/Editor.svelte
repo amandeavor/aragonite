@@ -957,7 +957,8 @@
 		getDoc,
 		isHostChrome,
 		blockEdit,
-		placeCaretAtPoint,
+		placeMenuCaret: (x: number, y: number) =>
+			editorEl ? rootGestures.placeMenuCaret(editorEl, x, y) : false,
 		rangeAtContextPress: () => (editorEl ? rootGestures.rangeAtContextPress(editorEl) : false),
 		holdsWidget: () => selectionState.widget !== null,
 		insertMarkdown,

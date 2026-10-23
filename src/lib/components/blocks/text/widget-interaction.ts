@@ -29,9 +29,14 @@ import {
 	type RawRange
 } from '../../../caret/widget-offset';
 import { createSourceReveal, type SourceReveal } from '../../../caret/reveal-source';
-import { nearestWidgetEdgeSeat, type WidgetEdgeCandidate } from '../../../caret/widget-edge-snap';
+import {
+	nearestWidgetEdgeSeat,
+	type WidgetEdgeCandidate,
+	type WidgetEdgeSeat
+} from '../../../caret/widget-edge-snap';
 import type { CaretMemory } from '../../../caret/caret-memory';
-import { clickSide } from './click-side';
+import { clickSide, type ClickSide } from './click-side';
+import { createNotedPress } from './noted-press';
 import {
 	traceRevealOpen,
 	traceRevealFold,
@@ -128,9 +133,15 @@ export interface WidgetInteraction {
 	/** Arriving from another block: a widget at the near edge that can show its source
 	 *  opens it, any other is selected. Returns whether an edge widget was entered. */
 	enterEdgeWidget(side: 'start' | 'end'): boolean;
-	/** Move a click that landed outside any text node to the nearest widget edge, or open the
-	 *  source of a widget it hit. */
-	snapClickToWidgetEdge(clickX: number | null, clickY: number | null, press?: WidgetPress): void;
+	/** Read a press at pointerdown, for its click, before anything redraws the line under it. True
+	 *  on a widget that shows its source, whose caret is the editor's, not the browser's. */
+	notePress(press: Pick<PointerEvent, 'clientX' | 'clientY' | 'button'>): boolean;
+	/** The click that ended the noted press: move a caret that landed outside any text node to the
+	 *  nearest widget edge, or open the source of a widget the press hit. */
+	snapClickToWidgetEdge(press: WidgetPress): void;
+	/** Read a point now and return the snap that applies it once a caret is placed there, since
+	 *  placing it can close a shown source and redraw the line. */
+	readSnapAtPoint(x: number, y: number): () => void;
 	/** Put an edit's or an arrival's caret at `offset`. Strictly inside a widget that can show its
 	 *  source (a typed `#` before a word) that source opens there; inside any other, it lands past. */
 	restoreCaret(offset: number, clamp: CaretClamp): void;
@@ -149,9 +160,6 @@ export interface WidgetInteraction {
 	/** Close the source when the caret leaves it but stays inside the block; blur handles
 	 *  the case where focus leaves the block. */
 	foldRevealIfSelectionEscaped(): void;
-	/** The point sits on a widget that can show its source. `pointerdown` then cancels the
-	 *  browser's own caret placement so nothing races this one. */
-	isPointOnRevealWidget(x: number, y: number): boolean;
 	/** Where a press on an inline widget anchors a drag: the widget's raw edge on the point's side.
 	 *  Null over no widget, or over one with a pointer gesture of its own. */
 	islandDragAnchor(x: number, y: number): number | null;
@@ -402,8 +410,7 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		return span && span.end >= 0 && span.end <= source.length ? span.end : 0;
 	}
 
-	/** The offset a click names inside a widget's source. Read against the layout from before
-	 *  any source was hidden: hiding one reflows the line, and the point then means nothing. */
+	/** The offset a point names inside a widget's source, against the layout the widget draws in. */
 	function seatFromPoint(el: HTMLElement, inline: InlineNode, x: number, y: number): number | null {
 		const widget = widgetElByStart(el, inline.start);
 		const atPoint = widgetEditing(inline.kind)?.revealOffsetAtPoint;
@@ -434,11 +441,6 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		return null;
 	}
 
-	function isPointOnRevealWidget(x: number, y: number): boolean {
-		const el = deps.getEl();
-		return el !== null && hitTestRevealWidget(el, x, y) !== null;
-	}
-
 	function islandDragAnchor(x: number, y: number): number | null {
 		const el = deps.getEl();
 		if (!el) return null;
@@ -446,42 +448,71 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		return seat?.inside ? seat.offset : null;
 	}
 
+	// ── What a press means ─────────────────────────────────────────────────────
+	// Every read of the point happens here, at the press: by the click, the press itself may have
+	// moved the caret out of a shown source, which closes it and reflows the line under the point.
+
+	interface PressReading {
+		/** A widget under the point that shows its source, and the source offset the point names. */
+		reveal: { inline: InlineNode; seat: number | null } | null;
+		/** The point is on the shown source's text: a double-click's second press selects it. */
+		onShownSource: boolean;
+		/** What the press means at a hidden edge, for a press that doesn't travel. */
+		side: ClickSide;
+		edgeSeat: WidgetEdgeSeat | null;
+	}
+
+	function readPress(el: HTMLElement, x: number, y: number): PressReading {
+		const hit = hitTestRevealWidget(el, x, y);
+		return {
+			reveal: hit && { inline: hit.inline, seat: seatFromPoint(el, hit.inline, x, y) },
+			onShownSource: pointOnShownSource(el, x, y),
+			side: clickSide(el, x, y, false),
+			edgeSeat: nearestWidgetEdgeSeat(measuredWidgets(el), x, y)
+		};
+	}
+
+	function pointOnShownSource(el: HTMLElement, x: number, y: number): boolean {
+		const shown = shownRange();
+		const range = showing && shown && rawRangeToDomRange(el, shown.start, shown.end);
+		if (!range) return false;
+		return Array.from(range.getClientRects()).some(
+			(r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+		);
+	}
+
+	const notedPress = createNotedPress<PressReading>();
+
+	function notePress(press: Pick<PointerEvent, 'clientX' | 'clientY' | 'button'>): boolean {
+		const el = deps.getEl();
+		if (!el) return false;
+		const reading = readPress(el, press.clientX, press.clientY);
+		// Only a primary press ends in the click that reads it.
+		if (press.button === 0) notedPress.note(reading, el);
+		return reading.reveal !== null;
+	}
+
+	function readSnapAtPoint(x: number, y: number): () => void {
+		const el = deps.getEl();
+		const reading = el && readPress(el, x, y);
+		return () => snapToPress(reading, {});
+	}
+
 	// Selecting the whole token belongs to the double-click that opened the source, and nothing
 	// in the second click's own shape tells it apart from a later one inside that source.
 	let revealOpenedByLastClick = false;
 
-	// The target is resolved before closing the current source, which reflows the line the click
-	// was read against; closing writes nothing, so its offsets still hold after.
-	function revealFromClick(clickX: number, clickY: number): void {
-		const el = deps.getEl();
-		if (!el) return;
-		const hit = hitTestRevealWidget(el, clickX, clickY);
-		if (!hit) return;
-		const seat = seatFromPoint(el, hit.inline, clickX, clickY);
-		// Not awaited: closing writes nothing, and a caret the click lands meanwhile would open
-		// the target first.
+	// Closing the current source writes nothing, so the offsets the press read still hold after.
+	function revealFromPress(el: HTMLElement, reveal: NonNullable<PressReading['reveal']>): void {
+		// Not awaited: a caret the click lands meanwhile would open the target first.
 		if (showing) closeShownSource('no-edit', null);
 		const target = widgetsOf().find(
-			(n) => n.start === hit.inline.start && widgetEditing(n.kind)?.revealSource
+			(n) => n.start === reveal.inline.start && widgetEditing(n.kind)?.revealSource
 		);
 		if (!target) return;
 		el.focus({ preventScroll: true });
 		revealOpenedByLastClick = true;
-		void startReveal(target, seat ?? insideEndOffset(target));
-	}
-
-	/** Select the whole shown token if the double-click landed on it. Decided from the point: the
-	 *  editor root's word-select runs first and may have moved the selection off the source. */
-	function selectRevealedSource(x: number, y: number | null): boolean {
-		const el = deps.getEl();
-		const shown = shownRange();
-		if (!showing || !shown || !el || y === null) return false;
-		const range = rawRangeToDomRange(el, shown.start, shown.end);
-		if (!range) return false;
-		const onSource = Array.from(range.getClientRects()).some(
-			(r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
-		);
-		return onSource && deps.caretWriter.selectRawRange(el, shown.start, shown.end);
+		void startReveal(target, reveal.seat ?? insideEndOffset(target));
 	}
 
 	function isRevealing(): boolean {
@@ -733,48 +764,43 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		return true;
 	}
 
-	function snapClickToWidgetEdge(
-		clickX: number | null,
-		clickY: number | null,
-		press: WidgetPress = {}
-	): void {
+	function snapClickToWidgetEdge(press: WidgetPress): void {
+		// A click with no press of its own (the keyboard's, a scripted one) reads nothing.
+		if (press.clickCount === 0) {
+			deps.setSnapTarget(null);
+			return;
+		}
+		snapToPress(notedPress.take(), press);
+	}
+
+	function snapToPress(reading: PressReading | null, press: WidgetPress): void {
 		deps.setSnapTarget(null);
 		const clickCount = press.clickCount ?? 1;
 		// Every double-click starts with a single click, so that first click is where the flag
 		// is set and any flag left over from an earlier gesture is cleared.
 		if (clickCount === 1) revealOpenedByLastClick = false;
 		const el = deps.getEl();
-		if (!el || clickX === null) return;
+		if (!el || !reading) return;
 		// A third click selects the block (`selection/multi-click.ts`), and showing a source under
 		// it would place a caret over the range it just painted.
-		if (clickY !== null && clickCount < 3) {
-			const hit = press.moved ? null : hitTestRevealWidget(el, clickX, clickY);
-			if (hit) {
-				// Returns rather than falls through: the edge-snap below would focus this block and
-				// place a caret, stealing back what the widget's own navigation just landed.
-				if (
-					widgetActivates(
-						widgetEditing(hit.inline.kind),
-						press.click ?? PLAIN_CLICK,
-						deps.activationClick
-					)
-				) {
-					return;
-				}
-				revealFromClick(clickX, clickY);
-				return;
-			}
+		if (reading.reveal && clickCount < 3 && !press.moved) {
+			// Returns rather than falls through: the edge-snap below would focus this block and
+			// place a caret, stealing back what the widget's own navigation just landed.
+			const editing = widgetEditing(reading.reveal.inline.kind);
+			if (widgetActivates(editing, press.click ?? PLAIN_CLICK, deps.activationClick)) return;
+			revealFromPress(el, reading.reveal);
+			return;
 		}
 		// The first click of a double-click showed the source, and the browser's word rule would take
 		// `[` or `$` alone, so the second click selects the whole token.
-		if (clickCount === 2 && revealOpenedByLastClick && selectRevealedSource(clickX, clickY)) return;
+		if (clickCount === 2 && revealOpenedByLastClick && selectShownSource(el, reading)) return;
 		// The snap below places a caret, so it does nothing while this block shows a selected
 		// range, which it would collapse; `clampOutOfMarkerPrefix` already holds that rule.
 		if (surfaceHoldsRange(el)) return;
-		const side = clickY === null ? null : clickSide(el, clickX, clickY, press.moved === true);
+		const side = press.moved ? null : reading.side;
 		if (side === 'fresh') deps.caretMemory.noteOutside();
 		else if (side) deps.pinChipSide(side === 'chip-inside' ? 'inside' : 'outside');
-		const seat = nearestWidgetEdgeSeat(measuredWidgets(el), clickX, clickY);
+		const seat = reading.edgeSeat;
 		if (seat === null) return;
 		// A click beside a widget leaves a visible caret alone, unless a widget on the click's line
 		// separates the two (Firefox puts a click past a run in the text before it); one on it can't.
@@ -789,6 +815,14 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		deps.cursor.setRaw(asRawOffset(seat.offset), { clamp: 'reachable' });
 		// `setRaw` may have landed in a trailing text node, where the browser draws a caret.
 		if (!caretIsInTextContent(el)) deps.setSnapTarget(seat.offset);
+	}
+
+	/** Select the whole shown token, decided from the press: the editor root's word-select runs
+	 *  first and may have moved the selection off the source. */
+	function selectShownSource(el: HTMLElement, reading: PressReading): boolean {
+		const shown = shownRange();
+		if (!showing || !shown || !reading.onShownSource) return false;
+		return deps.caretWriter.selectRawRange(el, shown.start, shown.end);
 	}
 
 	/** Whether a widget lies whole between the live caret and the widget edge a click is nearest. */
@@ -828,16 +862,18 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		enterWidget,
 		restoreCaret,
 		enterEdgeWidget,
+		notePress,
 		snapClickToWidgetEdge,
+		readSnapAtPoint,
 		isRevealing,
 		handleRevealingKeydown,
 		commitRevealOnBlur,
 		dispose: () => {
+			notedPress.dispose();
 			if (showing) closeRange();
 		},
 		foldRevealBeforeMutation,
 		foldRevealIfSelectionEscaped,
-		isPointOnRevealWidget,
 		islandDragAnchor
 	};
 }

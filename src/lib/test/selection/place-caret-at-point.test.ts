@@ -47,7 +47,9 @@ describe('placeCaretAtPoint landing walk', () => {
 			getCursorOffset: () => null,
 			focusByPath
 		} as unknown as BlockComponent;
-		leaf = { snapCaretToPoint: leafSnap } as unknown as BlockComponent;
+		leaf = {
+			readSnapAtPoint: (x: number, y: number) => () => leafSnap(x, y)
+		} as unknown as BlockComponent;
 		resetSelectionForClick = vi.fn(() => {});
 	});
 
@@ -80,6 +82,20 @@ describe('placeCaretAtPoint landing walk', () => {
 		expect(placeAt(TABLE_BOX.left + 200, TABLE_BOX.top + 20)).toBe(true);
 		expect(focusByPath).toHaveBeenCalledWith([0, 1], CURSOR_END);
 		expect(resetSelectionForClick).toHaveBeenCalledOnce();
+	});
+
+	// Miss-analysis: every placement test asserted where the caret went, none when the leaf read
+	// its point, so a snap read after a placement that redraws the line went unseen.
+	it('reads the leaf’s point before placing the caret, which can redraw the line', () => {
+		const order: string[] = [];
+		leaf = {
+			readSnapAtPoint: () => (order.push('read'), () => order.push('snap'))
+		} as unknown as BlockComponent;
+		focusByPath.mockImplementation(() => {
+			order.push('place');
+		});
+		expect(placeAt(TABLE_BOX.left + 200, TABLE_BOX.top + 20)).toBe(true);
+		expect(order).toEqual(['read', 'place', 'snap']);
 	});
 
 	// A margin point reaches an editable element only once clamped into the block's box, and the

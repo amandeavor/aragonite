@@ -22,6 +22,10 @@ function isFunctionArgument(arg: string): boolean {
 const ROGUE_BLOCK = `${SOURCE_DIR.blocks}x/rogue.ts`;
 const at = (relPath: string, code: string): Probe => ({ relPath, code });
 
+// ── G4.252 a press's point ───────────────────────────────────────────────────
+
+const WIDGETS = 'src/lib/components/blocks/text/widget-interaction.ts';
+
 // ── The rules ────────────────────────────────────────────────────────────────
 
 const RULES: CallSiteRule[] = [
@@ -208,6 +212,37 @@ const RULES: CallSiteRule[] = [
 			at(ROGUE_BLOCK, 'const ending = parent.containerEdit.lineEnding();'),
 			at(ROGUE_BLOCK, 'const raw = withOwnEnding(node, display);'),
 			at('src/lib/editor-actions/rogue.ts', 'const raw = display + editableSurface.lineEnding();')
+		]
+	},
+	{
+		id: 'G4.252 a press’s point is read at the press',
+		calls: [
+			'hitTestRevealWidget',
+			'seatFromPoint',
+			'clickSide',
+			'nearestWidgetEdgeSeat',
+			'pointOnShownSource'
+		],
+		holds: () => false,
+		allowed: {
+			[`${WIDGETS} :: readPress`]: 'reads a press at pointerdown, for the click that ends it',
+			[`${WIDGETS} :: islandDragAnchor`]: 'reads where a drag anchors, at its pointerdown'
+		},
+		reason:
+			'by the click, the press may have moved the caret out of a shown source, which redraws the line under the point; read it in `readPress` (`caret-placement.md` § 4)',
+		hits: [
+			at(WIDGETS, 'function snapToPress(el) {\n\tconst hit = hitTestRevealWidget(el, x, y);\n}'),
+			at(
+				ROGUE_BLOCK,
+				'function onClick(e) {\n\tconst side = clickSide(el, e.clientX, e.clientY);\n}'
+			)
+		],
+		misses: [
+			at(WIDGETS, 'function readPress(el, x, y) {\n\treturn clickSide(el, x, y, false);\n}'),
+			at(
+				WIDGETS,
+				'function islandDragAnchor(x, y) {\n\treturn nearestWidgetEdgeSeat(seats, x, y);\n}'
+			)
 		]
 	}
 ];

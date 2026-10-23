@@ -50,7 +50,7 @@ function harness(
 		deleteBlock: vi.fn(async () => true),
 		replaceRaw: vi.fn(async () => true)
 	};
-	const placeCaretAtPoint = vi.fn(() => true);
+	const placeMenuCaret = vi.fn(() => true);
 	const insertMarkdown = vi.fn(async () => true);
 	const aimedInserts: string[] = [];
 	const aimInsertAtFocus = vi.fn(() => ({
@@ -58,7 +58,7 @@ function harness(
 		plainText: async (text: string) => (aimedInserts.push(`plain:${text}`), true)
 	}));
 	const order: string[] = [];
-	placeCaretAtPoint.mockImplementation(() => (order.push('place'), true));
+	placeMenuCaret.mockImplementation(() => (order.push('place'), true));
 	const editLinkAtCaret = vi.fn();
 	const menus = createRootMenus({
 		get editorEl() {
@@ -70,7 +70,7 @@ function harness(
 		getDoc: () => doc,
 		isHostChrome: (node) => !!node && header.contains(node),
 		blockEdit,
-		placeCaretAtPoint,
+		placeMenuCaret,
 		rangeAtContextPress: () => opts.rangeAtPress ?? !(window.getSelection()?.isCollapsed ?? true),
 		holdsWidget: () => false,
 		insertMarkdown,
@@ -105,7 +105,7 @@ function harness(
 		menuRow,
 		menus,
 		blockEdit,
-		placeCaretAtPoint,
+		placeMenuCaret,
 		insertMarkdown,
 		aimInsertAtFocus,
 		aimedInserts,
@@ -140,7 +140,7 @@ describe('editor-root menus: the right-click', () => {
 	it('prose places the caret at the press and gets the clipboard rows plus the insert flyout', async () => {
 		const h = harness();
 		h.rightClick(h.prose.firstElementChild!);
-		expect(h.placeCaretAtPoint).toHaveBeenCalledWith(30, 40);
+		expect(h.placeMenuCaret).toHaveBeenCalledWith(30, 40);
 		expect(h.ids()).toEqual([
 			'clip.cut',
 			'clip.copy',
@@ -187,7 +187,7 @@ describe('editor-root menus: the right-click', () => {
 		const h = harness();
 		selectInside(h.prose.firstElementChild!);
 		h.rightClick(h.prose.firstElementChild!);
-		expect(h.placeCaretAtPoint).not.toHaveBeenCalled();
+		expect(h.placeMenuCaret).not.toHaveBeenCalled();
 		expect(h.ids()).not.toContain('insert');
 	});
 
@@ -200,7 +200,7 @@ describe('editor-root menus: the right-click', () => {
 		expect(h.menu()?.label).toBe(BLOCK_ACTIONS_LABEL);
 		expect(h.ids()).toContain('block.remove');
 		// The caret replaces the word, which would otherwise linger under the block's actions.
-		expect(h.placeCaretAtPoint).toHaveBeenCalledWith(30, 40);
+		expect(h.placeMenuCaret).toHaveBeenCalledWith(30, 40);
 	});
 
 	it.each([
@@ -217,14 +217,14 @@ describe('editor-root menus: the right-click', () => {
 		} finally {
 			Range.prototype.getClientRects = original;
 		}
-		expect(h.placeCaretAtPoint).toHaveBeenCalledTimes(covers ? 0 : 1);
+		expect(h.placeMenuCaret).toHaveBeenCalledTimes(covers ? 0 : 1);
 		expect(h.ids()).toContain('insert');
 	});
 
 	it('a nested block gets the clipboard rows without the insert flyout', () => {
 		const h = harness();
 		h.rightClick(h.nested.firstElementChild!);
-		expect(h.placeCaretAtPoint).toHaveBeenCalledOnce();
+		expect(h.placeMenuCaret).toHaveBeenCalledOnce();
 		expect(h.ids()).toContain('clip.paste');
 		expect(h.ids()).not.toContain('insert');
 	});

@@ -172,7 +172,8 @@ describe('reveal switch, clicking widget B while A is revealed', () => {
 		const b = mountTwoMathBlock();
 		await b.revealFirst();
 
-		await b.interaction.snapClickToWidgetEdge(110, 5);
+		b.interaction.notePress({ clientX: 110, clientY: 5, button: 0 });
+		await b.interaction.snapClickToWidgetEdge({});
 
 		expect(b.interaction.isRevealing()).toBe(true);
 		expect(b.commits).toEqual([]);

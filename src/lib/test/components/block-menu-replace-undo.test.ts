@@ -49,7 +49,7 @@ async function typeThenRewrite() {
 		getDoc: () => editor.doc,
 		isHostChrome: () => false,
 		blockEdit: editor.actions,
-		placeCaretAtPoint: () => true,
+		placeMenuCaret: () => true,
 		rangeAtContextPress: () => false,
 		holdsWidget: () => false,
 		insertMarkdown: async () => true,
