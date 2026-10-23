@@ -105,7 +105,7 @@ export function LeafContent({ as: Tag = 'div', ...attributes }: ContentProps) {
 	return <Tag {...attributes} ref={useHandOver('LeafContent').attach} />;
 }
 
-/** The element the editor mounts the block's children into, after anything you render beside. */
+/** The element the editor mounts the block's children into. It renders empty: chrome goes beside it. */
 export function BlockChildren({ as: Tag = 'div', ...attributes }: ContentProps) {
 	return <Tag {...attributes} ref={useHandOver('BlockChildren').mountChildren} />;
 }

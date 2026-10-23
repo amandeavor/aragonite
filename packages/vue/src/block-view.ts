@@ -110,7 +110,7 @@ export const LeafContent = defineComponent({
 	}
 });
 
-/** The element the editor mounts the block's children into, after anything you render beside. */
+/** The element the editor mounts the block's children into. It renders empty: chrome goes beside it. */
 export const BlockChildren = defineComponent({
 	name: 'BlockChildren',
 	props: contentProps,

@@ -91,6 +91,28 @@ describe('plugin-api § API reference catalogs the whole aragonite/svelte surfac
 	});
 });
 
+// The wrappers' component is the consumer guide's; everything else they export draws plugin blocks.
+const WRAPPER_COMPONENT = ['Aragonite', 'AragoniteProps', 'AragoniteInstance', 'EditorHandle'];
+
+describe.each(['react', 'vue'])(
+	'plugin-api § API reference catalogs the %s wrapper’s block-view exports',
+	(framework) => {
+		const exportNames = barrelExports(`packages/${framework}/src/index.ts`).filter(
+			(name) => !WRAPPER_COMPONENT.includes(name)
+		);
+		const section = guideSection(CATALOG_DOC, CATALOG_HEADING);
+
+		it('finds the block-view exports', () => {
+			expect(exportNames).toContain('LeafContent');
+			expect(exportNames).toContain(`${framework}BlockView`);
+		});
+
+		it('lists every one verbatim in the catalog', () => {
+			expect(undocumented(exportNames, section)).toEqual([]);
+		});
+	}
+);
+
 describe('plugin-testing § Verifying your plugin names every aragonite/testing callable', () => {
 	const exportNames = barrelExports('src/lib/testing.ts', true);
 	const section = guideSection(TESTING_DOC, TESTING_HEADING);

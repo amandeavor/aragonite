@@ -32,8 +32,7 @@ import {
 	type EditorPlugin,
 	type ParsedDirective
 } from '@voithos-labs/aragonite/plugin';
-import { svelteBlockView } from '@voithos-labs/aragonite/svelte';
-import ConspiracyBlock from './ConspiracyBlock.svelte'; // the component built in the next section
+import { conspiracyView } from './conspiracy-view'; // the view built in the next section
 
 const CONSPIRACY = 'conspiracy';
 const CONSPIRACY_TITLE = 'conspiracy-title';
@@ -175,7 +174,7 @@ function registerConspiracy(view: BlockView): void {
 export function conspiracyPlugin(): EditorPlugin {
 	return definePlugin({
 		name: 'conspiracy',
-		setup: () => registerConspiracy(svelteBlockView(ConspiracyBlock))
+		setup: () => registerConspiracy(conspiracyView)
 	});
 }
 ```
@@ -209,7 +208,77 @@ That nine-column `closure` literal gets its own section, [The closure block](#th
 
 ## The component
 
-Your component supplies only its own chrome: the border, the title styling, an icon if you like. Chrome may read the node it dresses: the verdict comes off the metadata through `getPluginMetadata`, and the stamp follows it. `createContainerBlock` handles everything else, the child list and its windowing (the editor only mounts the blocks in view) included. Pass `node`, `index`, and `path` as **thunks**, meaning `getNode` / `getIndex` / `getPath` functions the factory calls to read the live value each time; a captured value would be a stale snapshot, and the type won't accept one.
+Your view supplies only its own chrome: the border, the title styling, an icon if you like. Chrome may read the node it dresses: the verdict comes off the metadata through `getPluginMetadata`, and the stamp follows it. The editor handles everything else, the child list and its windowing (the editor only mounts the blocks in view) included, once you tell it where the children go with `ctx.container.mountChildren`.
+
+```ts
+// conspiracy-view.ts
+import { defineBlockView, getPluginMetadata, type BlockViewState } from '@voithos-labs/aragonite/plugin';
+import type { ConspiracyMetadata } from './conspiracy-kind';
+import './conspiracy.css';
+
+export const conspiracyView = defineBlockView({
+	surface: 'container',
+	mount(target, ctx) {
+		target.classList.add('conspiracy-block');
+		ctx.container.mountChildren(target);
+		// The verdict is read off the node, so the stamp lands the moment the command commits.
+		const draw = ({ node }: BlockViewState) => {
+			const verdict = getPluginMetadata<ConspiracyMetadata>(node)?.name;
+			target.classList.toggle('debunked', verdict === 'debunked');
+		};
+		draw(ctx.state());
+		return { update: draw };
+	}
+});
+```
+
+```css
+/* conspiracy.css */
+.conspiracy-block {
+	/* the corkboard, with one piece of red string */
+	position: relative;
+	border: 1px solid var(--color-ui-muted);
+	border-left: 3px solid var(--color-error);
+	border-radius: 6px;
+	padding: 8px 12px;
+}
+.conspiracy-block .conspiracy-title {
+	font-weight: 600;
+}
+/* debunked: the string comes down, the theory gets crossed out, the stamp lands */
+.conspiracy-block.debunked {
+	border-left-color: var(--color-ui-muted);
+}
+.conspiracy-block.debunked .conspiracy-title {
+	text-decoration: line-through;
+}
+.conspiracy-block.debunked::after {
+	content: 'DEBUNKED';
+	position: absolute;
+	top: 6px;
+	right: 12px;
+	transform: rotate(-12deg);
+	font: 600 0.75em monospace;
+	letter-spacing: 0.12em;
+	color: var(--color-error);
+	border: 2px solid currentColor;
+	border-radius: 3px;
+	padding: 1px 6px;
+}
+```
+
+`update` runs whenever the block's bytes change, and for a container that's every keystroke in a child, so keep it as cheap as this one. Mind what it returns, too: `false` tells the editor to throw the view away and mount a fresh one, which is why `draw` has a body instead of returning `toggle`'s answer.
+
+Two rules for that view, each earned the hard way:
+
+- **`target` is the block.** The editor measures the element it hands you for the selection highlight and the drag handle, so put your classes on it and fill it, rather than wrapping a second box inside (and never `display: contents`, which measures as nothing).
+- **Chrome CSS reads the editor's theme tokens**, plain (`var(--color-ui-muted)`). Inside the editor every one of them has a value, the host's own or the built-in palette's for the current `theme`, so a read needs no fallback. The stable token set by role is the [consumer guide's theme-token manifest](../consumer-guide.md#theme-tokens).
+
+The children mount after anything you've already put in the box you hand `mountChildren` (`target` here, or an element inside it). In React or Vue, `<BlockChildren>` does the handing over ([React and Vue blocks](react-and-vue.md#a-block-that-holds-blocks)).
+
+### Already in Svelte?
+
+The same box as a component, on `createContainerBlock` from `@voithos-labs/aragonite/svelte`. Pass `node`, `index`, and `path` as **thunks**, meaning `getNode` / `getIndex` / `getPath` functions the factory calls to read the live value each time; a captured value would be a stale snapshot, and the type won't accept one.
 
 ```svelte
 <!-- ConspiracyBlock.svelte -->
@@ -274,39 +343,37 @@ Your component supplies only its own chrome: the border, the title styling, an i
 </style>
 ```
 
-Three rules for that file, each earned the hard way:
+Register it with `svelteBlockView(ConspiracyBlock)` in place of `conspiracyView`, and keep two more rules:
 
 - **`export { containerApi }` is the whole publication.** It's how the editor talks to your container (a caret walking in descends through it, for one), and the name is fixed. Leave it out and your typecheck (svelte-check, or `tsc` on a plain-TypeScript plugin) fails at the call that makes the view (`svelteBlockView` here). The factory's `containerApi` is always complete; a hand-rolled one can annotate itself `satisfies ContainerBlockComponent` to get a missing member reported at the definition instead.
 - **`BlockList` stays a _direct_ child of your box**, so the container's windowing finds it. Other chrome (an icon, a toggle button) may sit beside it.
-- **Chrome CSS reads the editor's theme tokens**, plain (`var(--color-ui-muted)`). Inside the editor every one of them has a value, the host's own or the built-in palette's for the current `theme`, so a read needs no fallback. The stable token set by role is the [consumer guide's theme-token manifest](../consumer-guide.md#theme-tokens).
 
-The factory returns more than the walkthrough destructures:
+A container's `ctx` carries more than the conspiracy uses. The Svelte factory returns the same things under its own names (`updateOwnMetadata`, `getPresentationMode()`, `getTheme()`, `getOptions()`, `getEditor()`, and so on):
 
-| Return                  | When you reach for it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `updateOwnMetadata`     | Your component writes its own node's metadata (a collapse toggle, an edited setting). The supported commit path; in reading mode, which writes no bytes, it declines as a no-op and dev builds warn. If the edit should move the caret (a collapse hiding the child it sat in), pass `{ caret: { path, offset } }` and the commit puts it there once it renders. `path` is child indices from your block (`[]` for the block itself, `[0]` for its first child), and `offset` is a character offset into that child's text, or `CURSOR_END` for its end. Don't focus anything yourself afterwards |
-| `moveFocusOut`          | A plugin-owned editing surface whose caret ran off its own edge; hands the caret to whatever a plain arrow would have landed on                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `getPresentationMode`   | Your rendering or a gesture needs the live presentation mode ([Presentation modes](presentation-modes.md#presentation-modes))                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `getTheme`              | Your content's colors are painted by an engine rather than styled by CSS; token-styled chrome needs neither this nor `getPresentationMode`, it rethemes through the cascade                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `getOptions`            | This editor's options for the plugin that owns your kind, your `defaults` included, typed `unknown` (it's shorthand for `getEditor()?.options`). It's how a value differs per editor, which a factory argument can't do ([the options recipe](per-editor.md#recipe-per-instance-options-and-the-factory-closure-trap))                                                                                                                                                                                                                                                                            |
-| `getEditor`             | This editor's `EditorContext` for the plugin that owns your kind, undefined only in a bare test harness. Its `computeInlineContent` reads the syntax this editor draws. If your helper's reader defaults to the free `computeInlineContent`, pass it `getEditor()?.computeInlineContent` and it still parses in a bare harness (the bundled toc and footnotes do exactly this)                                                                                                                                                                                                                    |
-| `captureScrollPosition` | Your component is about to swap its view for one of a different height (a tall diagram for its short source card) and the reader is scrolled right at it. Call it before the swap, await what it hands back after, and the page stays where the reader left it instead of clamping to the shorter layout in between                                                                                                                                                                                                                                                                               |
-| `openDraft`             | Your component holds an edit outside the document, like a textarea's text. It's `EditorContext.openDraft`, passed through so a component needs no context ([What your own editing surface has to do](render-primary.md#what-your-own-editing-surface-has-to-do))                                                                                                                                                                                                                                                                                                                                  |
+| Call                                  | When you reach for it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ctx.container.updateOwnMetadata`     | Your component writes its own node's metadata (a collapse toggle, an edited setting). The supported commit path; in reading mode, which writes no bytes, it declines as a no-op and dev builds warn. If the edit should move the caret (a collapse hiding the child it sat in), pass `{ caret: { path, offset } }` and the commit puts it there once it renders. `path` is child indices from your block (`[]` for the block itself, `[0]` for its first child), and `offset` is a character offset into that child's text, or `CURSOR_END` for its end. Don't focus anything yourself afterwards |
+| `ctx.container.moveFocusOut`          | A plugin-owned editing surface whose caret ran off its own edge; hands the caret to whatever a plain arrow would have landed on                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `ctx.state().presentationMode`        | Your rendering or a gesture needs the live presentation mode ([Presentation modes](presentation-modes.md#presentation-modes))                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `ctx.state().theme`                   | Your content's colors are painted by an engine rather than styled by CSS; token-styled chrome needs neither this nor `getPresentationMode`, it rethemes through the cascade                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `ctx.editor.options`                  | This editor's options for the plugin that owns your kind, your `defaults` included, typed `unknown`. It's how a value differs per editor, which a factory argument can't do ([the options recipe](per-editor.md#recipe-per-instance-options-and-the-factory-closure-trap))                                                                                                                                                                                                                                                                                                                        |
+| `ctx.editor`                          | This editor's `EditorContext` for the plugin that owns your kind (the factory's `getEditor()` is undefined in a bare test harness). Its `computeInlineContent` reads the syntax this editor draws. If your helper's reader defaults to the free `computeInlineContent`, pass it this one, and from the factory `getEditor()?.computeInlineContent`, which still parses in a bare harness (the bundled toc and footnotes do exactly this)                                                                                                                                                          |
+| `ctx.container.captureScrollPosition` | Your component is about to swap its view for one of a different height (a tall diagram for its short source card) and the reader is scrolled right at it. Call it before the swap, await what it hands back after, and the page stays where the reader left it instead of clamping to the shorter layout in between                                                                                                                                                                                                                                                                               |
+| `ctx.container.openDraft`             | Your component holds an edit outside the document, like a textarea's text. It's `EditorContext.openDraft`, passed through so a component needs no context ([What your own editing surface has to do](render-primary.md#what-your-own-editing-surface-has-to-do))                                                                                                                                                                                                                                                                                                                                  |
 
 ```ts
-const { updateOwnMetadata, getPresentationMode, getTheme, getOptions, captureScrollPosition } =
-	createContainerBlock(deps);
-updateOwnMetadata({ name: 'debunked' }); // one undo entry; rebuildRaw re-emits the opener line as :::debunked
-updateOwnMetadata({ open: false }, { caret: { path: [0], offset: 0 } }); // ...and the caret lands on child 0's start
-getPresentationMode(); // 'source'
-getTheme(); // 'dark'
-getOptions(); // your defaults with this editor's { plugin, options } entry merged over them
-const restore = captureScrollPosition(); // before the swap...
-editing = true;
+const { container } = ctx;
+container.updateOwnMetadata({ name: 'debunked' }); // one undo entry; rebuildRaw re-emits the opener line as :::debunked
+container.updateOwnMetadata({ open: false }, { caret: { path: [0], offset: 0 } }); // ...and the caret lands on child 0's start
+ctx.state().presentationMode; // 'source'
+ctx.state().theme; // 'dark'
+ctx.editor.options; // your defaults with this editor's { plugin, options } entry merged over them
+const restore = container.captureScrollPosition(); // before the swap...
+showSourceCard();
 await restore(); // ...and after; a no-op when nothing moved
 ```
 
-One more dep, for a container whose first line starts with a marker the way a list item's `- ` does (a footnote definition's `[^label]: `, say): **`getAmbientPrefix`**. Its first child paints that prefix as a dimmed, read-only run before its own bytes, and the caret skips it the way it skips a list marker.
+One more is the Svelte factory's alone for now (a DOM view has no way to ask for it yet). It's a dep, for a container whose first line starts with a marker the way a list item's `- ` does (a footnote definition's `[^label]: `, say): **`getAmbientPrefix`**. Its first child paints that prefix as a dimmed, read-only run before its own bytes, and the caret skips it the way it skips a list marker.
 
 - Return a string, read live, so a marker derived from metadata re-renders after an edit.
 - Or return `{ text, interactive }` to make ranges of it clickable. Each range gets its own span, class and click handler (that's how a footnote definition's `[^label]` takes the click back to its reference).

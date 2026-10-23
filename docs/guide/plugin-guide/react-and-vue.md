@@ -1,0 +1,165 @@
+# React and Vue blocks
+
+Part of the [plugin guide](../plugin-guide.md). It assumes you've met `registerBlockKind` in [the quickstart](../plugin-guide.md#the-first-fifteen-minutes), since this page only swaps out the part that draws the block.
+
+If your app is React or Vue, you can draw a plugin block with your own components. The packages that give you the `<Aragonite>` component, `@voithos-labs/aragonite-react` and `@voithos-labs/aragonite-vue`, each carry a helper that turns a component into a block view: `reactBlockView` and `vueBlockView`. Under the hood they're `defineBlockView` with your component rendered into the element the editor makes for the block, so they run wherever the editor runs, the prebuilt copy a React or Vue app installs included.
+
+Sections: [a memo in React](#a-memo-in-react) · [what your component gets](#what-your-component-gets) · [a click-to-edit block](#a-click-to-edit-block) · [a block that holds blocks](#a-block-that-holds-blocks) · [the same in Vue](#the-same-in-vue) · [providers and app context](#providers-and-app-context) · [what the helpers don't do](#what-the-helpers-dont-do)
+
+## A memo in React
+
+A memo here is a line starting `%% `, drawn with a little badge beside its text. The text is ordinary editable text: the editor owns the caret, IME, undo and the clipboard in it, and your component only says where it goes.
+
+```tsx
+// memo-view.tsx
+import { LeafContent, reactBlockView, type BlockViewProps } from '@voithos-labs/aragonite-react';
+
+function Memo(_: BlockViewProps<'leaf'>) {
+	return (
+		<>
+			<span className="memo-badge">memo</span>
+			<LeafContent className="memo-text" />
+		</>
+	);
+}
+
+export const memoView = reactBlockView(Memo, { surface: 'leaf', singleLine: true, className: 'memo' });
+```
+
+`memoView` goes in the `view` field of your `registerBlockKind` call, the same slot the quickstart filled with `svelteBlockView(ParrotBlock)`. Everything else in the registration (the opener, the descriptor, the closure) doesn't care what drew the block.
+
+**`reactBlockView(Component, options)`** takes the component and the options `defineBlockView` takes, minus `mount`:
+
+| Option                          | What it does                                                                                                                                                      |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `surface`                       | `'leaf'` (editable text, always shown), `'render-primary'` (a rendered view until a click opens the text) or `'container'` (child blocks)                         |
+| `singleLine`                    | Leaf surfaces: the bytes are one line, so Enter ends the block instead of typing a newline                                                                        |
+| `renderSource`, `reshapeSource` | Render-primary: draw the shown text as DOM, and put an edited text back in the shape your kind keeps ([the editable leaf](editable-content.md#the-editable-leaf)) |
+| `watchDocument`                 | Re-render on every change to the document, not just to this block (a table of contents wants this)                                                                |
+| `className`                     | Classes for the element the editor made for the block                                                                                                             |
+| `afterInput(text, ctx)`         | Leaf surfaces: hears each change to the shown text once, never mid-composition, before anything is committed                                                      |
+| `wrap(block)`                   | Wraps your component, for providers ([below](#providers-and-app-context))                                                                                         |
+
+`<LeafContent>` is the element the editor edits your text in. It renders empty, and it has to stay that way: the editor puts its own text node in there, so your badge, icon or whatever else goes beside it, never inside. It takes the usual HTML attributes plus `as` (`'div'` by default, or `'span'`, `'p'`, `'pre'`).
+
+Two rules make a framework block behave:
+
+- **Style the block's element with `className`, and keep your component's own root margin-free** (a fragment, like the memo, is easiest). The editor measures the element it made as the block, and a margin on a wrapper inside sits outside what the editor measures, so the selection highlight and the drag handle come out a little off.
+- **Let `<LeafContent>` and `<BlockChildren>` stay mounted while they're shown.** Showing and hiding one is fine (that's how the click-to-edit block below works), but a fresh `key` per render, say, hands the element back and forth, and an element handed back to the editor comes back empty.
+
+## What your component gets
+
+Two props: `state` and `ctx`.
+
+`state` is the block as it is right now, and your component re-renders whenever one of these changes:
+
+```ts
+state.node; // { kind: 'memo', leadingTrivia: '', raw: '%% buy milk\n' }, read-only
+state.path; // [2]: where the block sits in the document
+state.presentationMode; // 'source'
+state.theme; // 'dark'
+state.revealed; // a render-primary block's text is showing; false on the other surfaces
+```
+
+On a plain leaf every keystroke commits, so `state.node.raw` changes, and the memo re-renders, once per key. Keep the render cheap.
+
+`ctx` is the editor's side. `ctx.editor` is your plugin's `EditorContext` in the editor drawing the block (its options, its document, its events, the same object the [per-editor recipes](per-editor.md#one-process-many-editors) use). The rest depends on the surface:
+
+| Surface            | `ctx` also has                                                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `'leaf'`           | `ctx.leaf.reveal(offset?)` to put the caret in the text, `ctx.leaf.commitSource(text)` to replace it as one undo step                                                                                  |
+| `'render-primary'` | the same `ctx.leaf` calls                                                                                                                                                                              |
+| `'container'`      | `ctx.container.updateOwnMetadata(patch)`, `moveFocusOut(event)`, `captureScrollPosition()` and `openDraft(spec)`, the container helpers the [walkthrough](container-walkthrough.md#the-component) uses |
+
+## A click-to-edit block
+
+A render-primary block shows something rendered (a caption, a formula, a chart) until you click it, then shows its source to edit. This one is a `@@ ` line that shows as a bold label:
+
+```tsx
+function Label({ state }: BlockViewProps<'render-primary'>) {
+	if (state.revealed) return <LeafContent className="label-source" />;
+	return <strong>{state.node.raw.slice('@@ '.length).trim()}</strong>;
+}
+
+export const labelView = reactBlockView(Label, {
+	surface: 'render-primary',
+	singleLine: true,
+	className: 'label'
+});
+```
+
+A click anywhere in the block flips `state.revealed` on, your component swaps in `<LeafContent>`, and the caret lands in the source (at the spot your kind's `caretTargetAtPoint` names, or the first byte without one). Typing edits the source without committing anything; moving the caret out of the block commits the whole edit as one undo step and flips `revealed` back off. So reveal, type, click away, Ctrl+Z, and the old label is back in one go.
+
+If you want a live preview while the source is open (block math's shape), `afterInput` hears the text as it's typed.
+
+## A block that holds blocks
+
+A container's children are real document blocks: the editor mounts them, windows them, and runs selection, undo and everything else through them. You say where they go with `<BlockChildren>`:
+
+```tsx
+function Box(_: BlockViewProps<'container'>) {
+	return (
+		<>
+			<span className="box-badge">box</span>
+			<BlockChildren className="box-children" />
+		</>
+	);
+}
+
+export const boxView = reactBlockView(Box, { surface: 'container', className: 'box' });
+```
+
+`<BlockChildren>` renders empty, like `<LeafContent>`, and the children land in it, so your chrome goes beside it. The kind itself is the container from [the walkthrough](container-walkthrough.md#the-registration-module): its registration doesn't change, only its `view` does.
+
+## The same in Vue
+
+`vueBlockView(component, options)` takes the same options, and the package has its own `LeafContent` and `BlockChildren`. The memo, as a single-file component:
+
+```vue
+<!-- Memo.vue -->
+<script setup lang="ts">
+import { LeafContent, type BlockViewProps } from '@voithos-labs/aragonite-vue';
+
+defineProps<BlockViewProps<'leaf'>>();
+</script>
+
+<template>
+	<span class="memo-badge">memo</span>
+	<LeafContent class="memo-text" />
+</template>
+```
+
+```ts
+import { vueBlockView } from '@voithos-labs/aragonite-vue';
+import Memo from './Memo.vue';
+
+export const memoView = vueBlockView(Memo, { surface: 'leaf', singleLine: true, className: 'memo' });
+```
+
+The click-to-edit label is a `v-if` on `state.revealed`, and the box puts `<BlockChildren>` where its children go:
+
+```vue
+<template>
+	<LeafContent v-if="state.revealed" class="label-source" />
+	<strong v-else>{{ state.node.raw.slice('@@ '.length).trim() }}</strong>
+</template>
+```
+
+## Providers and app context
+
+Each block renders in a root of its own (a React root, or a Vue render tree outside your app), so a provider in your app (a theme, a store, i18n) doesn't reach it on its own. Each helper has one way to hand it over:
+
+- **React: `wrap`.** It gets the block's element tree and returns it wrapped, so `wrap: (block) => <StoreProvider store={store}>{block}</StoreProvider>`. It runs on every render, so hand it something built once (a module-level store), not a fresh object per call.
+- **Vue: `app`.** Pass your app and the block sees everything it set up: `provide`, global components, plugins like Pinia. That means building the view once the app exists, and your plugin from there:
+
+```ts
+const app = createApp(App);
+app.use(pinia);
+const memoView = vueBlockView(Memo, { surface: 'leaf', singleLine: true, app });
+app.mount('#app');
+```
+
+## What the helpers don't do
+
+- **A block you draw entirely yourself** (no editable text, no children, like an embed with its own buttons) publishes `focus` and friends from its view, which a component can't hand over. Use `defineBlockView({ surface: 'none' })` for that one ([Block views](../plugin-api.md#block-views)).
+- **A block with its own editing surface** (the bundled diagram block's textarea, with whole-block focus) still needs `createContainerBlock`, from `@voithos-labs/aragonite/svelte` ([the render-primary recipe](render-primary.md#recipe-a-render-primary-block)).

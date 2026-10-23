@@ -165,7 +165,7 @@ The editor's event surface (`edit`, `selectionChange`, `presentationModeChange`,
 
 ## The pre-freeze surface
 
-Everything a plugin author reaches today comes through the `@voithos-labs/aragonite/plugin` subpath, or through `/svelte` for whatever names a Svelte type (the factories, `BlockList`, `svelteBlockView` and the other view helpers). Every one of those exports freezes at the release cut, and [the plugin API reference](../guide/plugin-api.md) is the list, tagging the groups still unstable. This section is the decisions behind each piece.
+Everything a plugin author reaches today comes through the `@voithos-labs/aragonite/plugin` subpath, or through `/svelte` for whatever names a Svelte type (the factories, `BlockList`, `svelteBlockView` and the other view helpers), and a React or Vue author reaches two more helpers through the wrapper packages ([Block views](#block-views)). Every one of those exports freezes at the release cut, and [the plugin API reference](../guide/plugin-api.md) is the list, tagging the groups still unstable. This section is the decisions behind each piece.
 
 One packaging fact first: the tarball carries every internal module's `.d.ts`, on purpose. Encapsulation is the exports map's job. It lists the barrels and nothing else, so a deep runtime import doesn't resolve, while the shipped declarations stay a greppable types reference.
 
@@ -257,6 +257,26 @@ registerBlockCompleter(MATH_BLOCK, {
 Register-once per kind, consulted in kind-name order, so which completer claims a line is a pure function of the declarations and never of install order (the openers' rule minus a priority no conflict has asked for). A claim whose result would paint nothing is declined, so a completer can't fabricate an invisible block.
 
 What freezes is `CompletionResult`'s shape. Its `lines` carry **no line endings**: the completion machinery attaches the block's own, which is what keeps a completion from downgrading a CRLF document. Its caret is `{ path, line, column }`, not a byte offset; `path` is child indices inside the new block (empty for the block itself). It's line-relative because the line ending is picked after the claim, so an offset-shaped caret would drift a byte per line in a CRLF document. Growth is fields on the result, never a second registry.
+
+### Block views
+
+A kind's `view` is what draws it, and the editor never talks to whatever drew it. `BlockHost` turns every view into one `BlockComponent` ref (the object focus dispatch, the overlays, the clipboard and the command router all call), so a view is just one way to fill that ref. There are three ways in. `defineBlockView` takes a plain DOM spec, `svelteBlockView` takes a Svelte component that `BlockHost` renders inline the way it renders a built-in block, and `textBlockView` is the editor's own text block.
+
+**The DOM shape.** `mount(target, ctx)` fills an element the editor made and hands back optional `update(state)` and `destroy()`. The editor measures `target` as the block (rects, the drag handle), so the view fills it rather than wrapping a second box inside (G1.136). `update` runs when the block's bytes, path, presentation mode, theme or `revealed` change, plus every content version for a view that sets `watchDocument`. Returning `false` from it throws the view away and mounts a fresh one, the same way ProseMirror's `update(node)` declines.
+
+**The surface says what the editor builds in.** `'none'` builds nothing, and the view's handle publishes the block's members itself. `'leaf'`, `'render-primary'` and `'container'` run the editable-leaf or container factory inside the editor's own runtime (`DomBlockView.svelte`), publish its ref, and only then call `mount`. The view never wires a handler: it hands the editor an element (`ctx.leaf.attach`, `ctx.leaf.attachRendered`, `ctx.container.mountChildren`) and the editor puts its caret, IME, undo and windowing there, as ProseMirror does with `contentDOM`. That keeps the leaf's handler list out of the public contract, so a view can't forget `compositionend` and break IME without anyone noticing. A render-primary view attaches its source from inside the `update` that reveals it, since that's when the reveal looks for the caret's element; one that arrives later still gets the caret, with a dev warning (G1.147).
+
+**Where each member comes from.** Every `BlockComponent` member has exactly one source, recorded in `MEMBER_SOURCES` (`src/lib/schema/block-view.ts`), and a member added to `BlockComponent` without one fails `npm run check` (G3.18):
+
+| Source            | Members                                                                                                       | Why there                                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| view              | `focus`, `getCursorOffset` and `focusable` (required), plus the optional caret, selection and command members | What a hand-built `'none'` view can answer from its own DOM; `HAND_BUILT_MEMBERS` is the list its handle may publish |
+| host              | `editable`                                                                                                    | The kind's registration declares it, so no view reports it                                                           |
+| leaf surface      | `insertMarkdown`, `typeText` and the other insert and commit hooks                                            | A view that wants them has built a text editor, and should ask for the leaf instead                                  |
+| container surface | `childList`, `focusByPath` and the rest of the child walk                                                     | `childList` returns the editor's own ref slots and windowing, which no outside view can make                         |
+| editor            | the point-snap, drag, cell, row-window, selection-offset and clipboard members                                | Only the text block and the table implement them, so they stay off the published view type                           |
+
+**Framework helpers live outside the core.** `reactBlockView` and `vueBlockView` ship in the wrapper packages (`packages/react`, `packages/vue`), import `defineBlockView` from `/plugin`, and never get imported by the core, so the core's types and its prebuilt copy name no framework. Each one renders its component into `target` synchronously (React's `flushSync`, Vue's `render`, since a Vue state change re-renders a microtask late), because the render-primary reveal needs its source element inside the `update`. A block renders in a root of its own, so a host app's providers reach it only through the helper's `wrap` (React) or `app` (Vue) option. Neither helper takes the `'none'` surface: its handle members can't come out of a component at mount, and `defineBlockView` already covers it.
 
 ### Container authoring
 
@@ -444,7 +464,7 @@ A handler throw is contained at the dispatch boundary and surfaces as an `error`
 
 ### The root document, in a component
 
-`BlockComponentProps.document` delivers the read-only root document to every block component at any nesting depth; a component otherwise sees only its own node. A table-of-contents block reads the headings above it through this prop (the bundled `toc` validates it, nested). It's a **read-only** view, and mutation stays a commit's job.
+`BlockComponentProps.document` delivers the read-only root document to every block component at any nesting depth; a component otherwise sees only its own node. A table-of-contents block reads the headings above it through this prop (the bundled `toc` validates it, nested). It's a **read-only** view, and mutation stays a commit's job. A DOM view reads the same document off `ctx.editor.document`, and sets `watchDocument` to hear when it changes.
 
 ### Decorations
 
