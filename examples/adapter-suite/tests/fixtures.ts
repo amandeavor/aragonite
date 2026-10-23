@@ -26,8 +26,6 @@ export { expect };
 
 export const FIRST = '# First note\n\nHello from the first note.\n';
 export const SECOND = '# Second note\n\nA different document.\n';
-/** The paragraphs in the document every app's `load-long` button loads. */
-export const LONG_BLOCKS = 300;
 
 /** The editable holding `text`, with the caret placed at its end by a click and End. */
 export async function caretAtEnd(page: Page, text: string): Promise<void> {
