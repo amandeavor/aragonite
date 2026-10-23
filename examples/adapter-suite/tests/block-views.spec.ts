@@ -1,5 +1,5 @@
 import { test, expect, caretAtEnd, mirror } from './fixtures';
-import { BLOCK_VIEWS_SOURCE } from '../block-views-source';
+import { BLOCK_VIEWS_SOURCE, LONG_SOURCE } from '../block-views-source';
 import type { Page } from '@playwright/test';
 
 // Blocks drawn by the app's own framework components, on the editor the app installed (the
@@ -87,6 +87,30 @@ test('loading another document from a click swaps the views', async ({ page }) =
 	await caretAtEnd(page, '%% another memo');
 	await page.keyboard.type('!');
 	await expectMirror(page, '%% another memo!\n\nplain text\n');
+});
+
+test('a block scrolled out of the window and back mounts again and takes typing', async ({
+	page
+}) => {
+	await page.getByTestId('load-long').click();
+	const memo = page.locator('.memo');
+	await expect(memo).toHaveCount(1);
+	await page.locator('.editor').hover();
+
+	// Scrolled far enough, the editor unmounts the blocks at the top, destroying their views.
+	await expect(async () => {
+		await page.mouse.wheel(0, 4000);
+		await expect(memo).toHaveCount(0, { timeout: 250 });
+	}).toPass();
+	await expect(async () => {
+		await page.mouse.wheel(0, -4000);
+		await expect(memo).toHaveCount(1, { timeout: 250 });
+	}).toPass();
+
+	await expect(page.locator('.box .box-children')).toContainText('inside the box');
+	await caretAtEnd(page, '%% a memo');
+	await page.keyboard.type('!');
+	await expectMirror(page, LONG_SOURCE.replace('a memo', 'a memo!'));
 });
 
 test('unmounting the editor and mounting it again leaves the blocks working', async ({ page }) => {

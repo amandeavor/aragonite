@@ -8,7 +8,11 @@ import {
 	reactBlockView,
 	type BlockViewProps
 } from '@voithos-labs/aragonite-react';
-import { BLOCK_VIEWS_SOURCE, blockViewsPlugin } from '../../adapter-suite/block-view-kinds';
+import {
+	BLOCK_VIEWS_SOURCE,
+	LONG_SOURCE,
+	blockViewsPlugin
+} from '../../adapter-suite/block-view-kinds';
 
 const ANOTHER = '%% another memo\n\nplain text\n';
 
@@ -29,11 +33,12 @@ function Label({ state }: BlockViewProps<'render-primary'>) {
 	return <span className="label-text">{state.node.raw.slice('@@ '.length).trim()}</span>;
 }
 
-function Box(_: BlockViewProps<'container'>) {
+// `data-length` changes per edit in the box, so `BlockChildren` re-renders while it's typed in.
+function Box({ state }: BlockViewProps<'container'>) {
 	return (
 		<>
 			<span className="box-badge">box by react</span>
-			<BlockChildren className="box-children" />
+			<BlockChildren className="box-children" data-length={state.node.raw.length} />
 		</>
 	);
 }
@@ -64,10 +69,21 @@ export function BlockViews() {
 			<button data-testid="load" onClick={() => setValue(ANOTHER)}>
 				Load another doc
 			</button>
+			<button data-testid="load-long" onClick={() => setValue(LONG_SOURCE)}>
+				Load a long doc
+			</button>
 			<button data-testid="unmount" onClick={() => setShown(!shown)}>
 				{shown ? 'Unmount' : 'Mount'}
 			</button>
-			{shown && <Aragonite value={value} onChange={setValue} plugins={plugins} theme="light" />}
+			{shown && (
+				<Aragonite
+					value={value}
+					onChange={setValue}
+					plugins={plugins}
+					theme="light"
+					className="block-views-editor"
+				/>
+			)}
 			<pre data-testid="mirror">{value}</pre>
 		</main>
 	);

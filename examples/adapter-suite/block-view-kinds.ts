@@ -22,7 +22,7 @@ import {
 	type ParsedDirective
 } from '@voithos-labs/aragonite/plugin';
 
-export { BLOCK_VIEWS_SOURCE } from './block-views-source';
+export { BLOCK_VIEWS_SOURCE, LONG_SOURCE } from './block-views-source';
 
 export interface BlockViews {
 	memo: BlockView;
