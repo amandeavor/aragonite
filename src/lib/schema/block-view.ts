@@ -125,7 +125,7 @@ export interface ContainerViewContext extends BlockViewContext {
 
 export interface LeafSurface {
 	/** The element inside `target` the editor edits the block's text in, holding no element of
-	 *  the view's own (chrome goes beside it); null detaches it. */
+	 *  the view's own (chrome goes beside it); null hands it back empty. */
 	attach(el: HTMLElement | null): void;
 	/** Focus the text with the caret at `offset`. */
 	reveal(offset?: number): Promise<void>;

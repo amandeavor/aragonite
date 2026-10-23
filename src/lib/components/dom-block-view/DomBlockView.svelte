@@ -150,6 +150,8 @@
 
 	const leafSurface: LeafSurface | null = leaf && {
 		attach(el) {
+			// The editor's text leaves with it, so an element attached again holds nothing yet.
+			if (leafEl !== el) leafEl?.replaceChildren();
 			leafEl?.removeAttribute(VIEW_TEXT_ATTR);
 			el?.setAttribute(VIEW_TEXT_ATTR, '');
 			leafEl = el;

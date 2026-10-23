@@ -182,6 +182,40 @@ describe('a DOM render-primary view', () => {
 		expect(takeDevWarns().map((w) => w.tag)).toContain('invariant:render-primary-attach');
 	});
 
+	it('reattaches one painted source element across reveals without a warning', async () => {
+		const reused = defineBlockView({
+			surface: 'render-primary',
+			renderSource: (text) => {
+				const frag = document.createDocumentFragment();
+				frag.appendChild(document.createElement('span')).textContent = text;
+				return frag;
+			},
+			mount(target, ctx) {
+				ctx.leaf.attachRendered(target);
+				const render = target.appendChild(document.createElement('div'));
+				render.className = 'reveal-leaf-render';
+				const source = document.createElement('div');
+				source.className = 'reveal-leaf-source';
+				return {
+					update(state) {
+						target.replaceChildren(state.revealed ? source : render);
+						ctx.leaf.attach(state.revealed ? source : null);
+					}
+				};
+			}
+		});
+		const { editor } = mount(reused);
+		await editor.settle();
+		await click(editor, rendered(editor)!);
+		expect(shownSource(editor)?.querySelector('span')).not.toBeNull();
+		shownSource(editor)!.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+		await editor.settle();
+		await click(editor, rendered(editor)!);
+
+		expect(shownSource(editor)?.textContent).toBe('@@ abcd');
+		expect(takeDevWarns().map((w) => w.tag)).not.toContain('invariant:dom-view-content');
+	});
+
 	it('warns when its rendered element sits outside the element it was given', async () => {
 		const stray = defineBlockView({
 			surface: 'render-primary',
