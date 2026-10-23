@@ -9,7 +9,7 @@ Build for production and the editor's dev checks drop out of your bundle. Those 
 It takes a bundler that resolves the `production` export condition:
 
 - **Vite, webpack 5**: nothing to do, a production build resolves it on its own.
-- **esbuild, Rollup**: add `production` to the bundler's conditions. esbuild drops the checks but keeps a few helpers only they used, so it saves more like 5 KB.
+- **esbuild, Rollup**: add `production` to the bundler's conditions. esbuild drops most of the checks but keeps a couple, plus a few helpers only they use, so it saves more like 5 KB.
 
 A build that doesn't resolve it still works. It just ships the checks, switched off at runtime.
 
