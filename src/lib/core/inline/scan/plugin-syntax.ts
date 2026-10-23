@@ -39,7 +39,7 @@ export interface InlineSyntaxOptions {
 	 *  their edits rather than write GFM over your syntax. Return `null` for what it can't hold. */
 	rewriteImage?: ImageSyntaxRewriter;
 	/** Typing the trigger (`$…$`) inserts its closer after the caret, so the opener pairs with it
-	 *  rather than a later formula's delimiter (`delimiter-autopair.ts`). Bare triggers only. */
+	 *  rather than a later formula's delimiter. Bare triggers only. */
 	autoPair?: boolean;
 }
 
