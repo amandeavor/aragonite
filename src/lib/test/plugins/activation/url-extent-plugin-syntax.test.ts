@@ -45,6 +45,14 @@ describe('a bare url ends where plugin syntax the editor reads starts', () => {
 	});
 
 	it.each([
+		['http://a.co/[a:b] x', 'http://a.co/[a:b]'],
+		['http://a.co/[a$b] x', 'http://a.co/[a$b]'],
+		['http://a.co/[a:smile:b] x', 'http://a.co/[a']
+	])('%j keeps a bracket no plugin syntax runs over', (raw, url) => {
+		expect(read(raw, ALL)[0]).toEqual({ kind: 'autolink', bytes: url });
+	});
+
+	it.each([
 		['see https://a.co/?q=$x$ y', 'https://a.co/?q=$x$'],
 		['Visit https://example.com[^1] now', 'https://example.com[^1]'],
 		['see www.a.co/a:smile: y', 'www.a.co/a:smile'],

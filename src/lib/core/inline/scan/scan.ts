@@ -422,8 +422,7 @@ export class Scan {
 		const { raw, end, resolver } = this;
 		const close = labelEnd(raw, at, end);
 		if (close === STILL_OPEN) return false;
-		// A nested bracket, a long label, or a code span, tag or plugin syntax inside, any of which
-		// may hide the label's `]`: only the bracket reading knows.
+		// A nested bracket, a long label, or a `]` something inside may hide: only the bracket reading knows.
 		if (close < 0 || this.mayHideBracket(at + 1, close - 1)) return true;
 		if (raw[close] === '(' && readInlineTail(raw, close, end)) return true;
 		if (!resolver) return false;
@@ -431,10 +430,13 @@ export class Scan {
 		return resolver(raw.slice(at + 1, close - 1)) !== undefined;
 	}
 
-	private mayHideBracket(from: number, to: number): boolean {
-		for (let i = from; i < to; i++) {
-			const c = this.raw[i];
-			if (c === '`' || c === '<' || handlersFor(c).some((h) => this.reads(h))) return true;
+	/** Whether a code span, a tag or plugin syntax starting in `[from, bracket)` may run over the
+	 *  `]` at `bracket`. */
+	private mayHideBracket(from: number, bracket: number): boolean {
+		for (let i = from; i < bracket; i++) {
+			if (this.raw[i] === '`' || this.raw[i] === '<') return true;
+			const claimed = this.handlerClaim(i);
+			if (claimed && claimed.node.end > bracket) return true;
 		}
 		return false;
 	}
