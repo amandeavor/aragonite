@@ -52,7 +52,7 @@ function fireOf(m: ConsoleMessage): { tag: string; text: string } | null {
 	return { tag, text: `${text}${origin}` };
 }
 
-export const test = base.extend<WarnFixtures>({
+const watchedTest = base.extend<WarnFixtures>({
 	expectInvariants: [[], { option: true }],
 	expectWarns: [[], { option: true }],
 	expectSvelteWarns: [[], { option: true }],
@@ -122,5 +122,28 @@ export const test = base.extend<WarnFixtures>({
 		}
 	}
 });
+
+// What `scripts/fixme-recheck.mjs` reads off a fixme row that ran anyway.
+const FIXME_RERUN = 'fixme-rerun';
+
+/** Under `E2E_RERUN_FIXME`, an in-test `test.fixme(condition, reason)` records its reason and lets
+ *  the test run; every other form of `test.fixme` keeps Playwright's behavior. */
+function runningFixmeRows(test: typeof watchedTest): typeof watchedTest {
+	const fixme = test.fixme as (...args: unknown[]) => void;
+	const insideTest = () => {
+		try {
+			return test.info() !== undefined;
+		} catch {
+			return false;
+		}
+	};
+	test.fixme = ((...args: unknown[]) => {
+		if (typeof args[0] !== 'boolean' || !insideTest()) return fixme(...args);
+		if (args[0]) test.info().annotations.push({ type: FIXME_RERUN, description: String(args[1]) });
+	}) as typeof test.fixme;
+	return test;
+}
+
+export const test = process.env.E2E_RERUN_FIXME ? runningFixmeRows(watchedTest) : watchedTest;
 
 export { expect };
