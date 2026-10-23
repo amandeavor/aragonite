@@ -1542,6 +1542,8 @@
 <style>
 	.editor {
 		width: 100%;
+		/* Fills a host that has a height, and grows with its content in one that has none. */
+		height: 100%;
 		flex: 1;
 		/* Wider on the left to hold the drag handle's gutter. */
 		padding: 1rem 1rem 1rem 1.5rem;
@@ -1568,6 +1570,7 @@
 		overflow-y: visible;
 		overflow-anchor: auto;
 		min-height: 0;
+		height: auto;
 		flex: none;
 		border: none;
 		padding: 0;

@@ -1,8 +1,9 @@
 // The framework apps the suite drives: where each lives, how it serves, the framework version its
 // page must report (a prefix), the specs it runs, and whether it gates every PR or only a release.
 // `scripts/adapter-smoke.mjs` builds and runs whatever this lists.
-const REACT = ['page-contract'];
-const VUE = ['page-contract', 'vue'];
+const EVERY_APP = ['page-contract', 'host-fill'];
+const REACT = [...EVERY_APP];
+const VUE = [...EVERY_APP, 'vue'];
 // The example apps also serve the showcase (`showcase.html`) and a page of framework-drawn plugin
 // blocks (`?block-views`); the meta-framework apps do not.
 const EXAMPLE = ['showcase', 'block-views'];
@@ -61,7 +62,7 @@ export const APPS = {
 		command: 'npm start',
 		port: 1496,
 		version: '3.',
-		specs: ['page-contract', 'ssr'],
+		specs: [...EVERY_APP, 'ssr'],
 		perPr: false
 	},
 	vue33: {

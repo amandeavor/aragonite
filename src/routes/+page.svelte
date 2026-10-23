@@ -155,8 +155,6 @@
 	   where a drag can start; the reading column is the root's padding. */
 	.showcase-editor {
 		flex: 1;
-		display: flex;
-		flex-direction: column;
 		width: 100%;
 		min-width: 0;
 		min-height: 0;

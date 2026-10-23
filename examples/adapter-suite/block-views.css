@@ -1,9 +1,6 @@
 /* The `?block-views` page's blocks, the same in every app. */
-/* A flex column, since the editor fills its mount element through `flex: 1`. */
 .block-views-editor {
 	height: 60vh;
-	display: flex;
-	flex-direction: column;
 }
 .memo,
 .label,

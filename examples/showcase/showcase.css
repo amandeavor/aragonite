@@ -68,8 +68,6 @@ body {
    drag can start; the reading column is the editor root's padding. */
 .showcase-editor {
 	flex: 1;
-	display: flex;
-	flex-direction: column;
 	min-width: 0;
 	min-height: 0;
 }
