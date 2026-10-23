@@ -23,11 +23,14 @@ export const SOURCE_CONDITION = 'aragonite-source';
 /** Each subpath the library imports by its own package name (an `exports` entry carrying the
  *  source condition), from specifier to source file. */
 const SELF_IMPORTS = new Map(
-	Object.entries(PACKAGE.exports ?? {}).flatMap(([subpath, target]) =>
-		typeof target === 'object' && typeof target[SOURCE_CONDITION] === 'string'
-			? [[`${PACKAGE.name}${subpath.slice(1)}`, repoPath(target[SOURCE_CONDITION])]]
-			: []
-	)
+	Object.entries(PACKAGE.exports ?? {}).flatMap(([subpath, target]) => {
+		if (typeof target !== 'object' || typeof target[SOURCE_CONDITION] !== 'string') return [];
+		// Conditions match in key order, so behind `types` or `production` the source would lose.
+		if (Object.keys(target)[0] !== SOURCE_CONDITION) {
+			throw new Error(`package.json exports["${subpath}"] must list "${SOURCE_CONDITION}" first`);
+		}
+		return [[`${PACKAGE.name}${subpath.slice(1)}`, repoPath(target[SOURCE_CONDITION])]];
+	})
 );
 
 /** Make this Node process resolve the source condition too, so a test runner that loads library

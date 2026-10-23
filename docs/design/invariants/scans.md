@@ -1376,7 +1376,7 @@ the swap can prove the switch off. `test/dev-checks-stripped.test.ts` holds the 
 module's names and to the side-effect annotations esbuild needs.
 
 **G4.248 · One dev-check switch, imported by name.** `esm-env` is imported only by
-`src/lib/dev-checks.ts`, and every module reaches it as `@voithos-labs/aragonite/dev-checks`.
-`svelte-package` rewrites a relative or `#lib` spelling into a file path, which the production
-swap never sees. The repo's own Vite, Vitest, svelte-check and Playwright resolve the name to the
-source file through the `aragonite-source` condition. `lint/file-rules.test.ts`.
+`src/lib/dev-checks.ts`, and every module reaches it as `@voithos-labs/aragonite/dev-checks`, since
+`svelte-package` turns a relative or `#lib` spelling into a path the production swap never sees.
+The repo's own tools resolve the name to source through the `aragonite-source` condition, which
+must be the entry's first key (`scripts/lib-alias.mjs` refuses to load otherwise). `lint/file-rules.test.ts`.
