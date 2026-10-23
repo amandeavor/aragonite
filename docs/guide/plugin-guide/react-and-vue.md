@@ -37,7 +37,7 @@ export const memoView = reactBlockView(Memo, { surface: 'leaf', singleLine: true
 | `renderSource`, `reshapeSource` | Render-primary: draw the shown text as DOM, and put an edited text back in the shape your kind keeps ([the editable leaf](editable-content.md#the-editable-leaf)) |
 | `watchDocument`                 | Re-render on every change to the document, not just to this block (a table of contents wants this)                                                                |
 | `className`                     | Classes for the element the editor made for the block                                                                                                             |
-| `afterInput(text, ctx)`         | Leaf surfaces: hears each change to the shown text once, never mid-composition, before anything is committed                                                      |
+| `afterInput(text, ctx)`         | Leaf surfaces: hears each change to the shown text once, never mid-composition; on a click-to-edit block that's before anything is committed                      |
 | `wrap(block)`                   | Wraps your component, for providers ([below](#providers-and-app-context))                                                                                         |
 
 `<LeafContent>` is the element the editor edits your text in. It renders empty, and it has to stay that way: the editor puts its own text node in there, so your badge, icon or whatever else goes beside it, never inside. It takes the usual HTML attributes plus `as` (`'div'` by default, or `'span'`, `'p'`, `'pre'`).

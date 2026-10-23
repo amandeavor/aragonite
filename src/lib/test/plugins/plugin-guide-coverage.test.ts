@@ -110,6 +110,11 @@ describe.each(['react', 'vue'])(
 		it('lists every one verbatim in the catalog', () => {
 			expect(undocumented(exportNames, section)).toEqual([]);
 		});
+
+		it('is not vacuous: a dropped catalog entry is detected', () => {
+			const withoutOne = section.replaceAll('`BlockChildren`', '`__dropped__`');
+			expect(undocumented(exportNames, withoutOne)).toEqual(['BlockChildren']);
+		});
 	}
 );
 

@@ -1,5 +1,5 @@
 import { test, expect, caretAtEnd, mirror } from './fixtures';
-import { BLOCK_VIEWS_SOURCE } from '../block-view-kinds';
+import { BLOCK_VIEWS_SOURCE } from '../block-views-source';
 import type { Page } from '@playwright/test';
 
 // Blocks drawn by the app's own framework components, on the editor the app installed (the

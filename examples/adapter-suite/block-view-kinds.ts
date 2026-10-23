@@ -22,8 +22,7 @@ import {
 	type ParsedDirective
 } from '@voithos-labs/aragonite/plugin';
 
-export const BLOCK_VIEWS_SOURCE =
-	'%% a memo\n\n@@ a label\n\n:::box The box\ninside the box\n:::\n\nafter the blocks\n';
+export { BLOCK_VIEWS_SOURCE } from './block-views-source';
 
 export interface BlockViews {
 	memo: BlockView;
