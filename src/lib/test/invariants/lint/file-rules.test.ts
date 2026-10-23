@@ -651,14 +651,18 @@ const RULES: FileRule[] = [
 	},
 	{
 		id: 'G4.248 every dev-only check reads the build flag through the dev-checks module',
-		matches: /from\s*['"]esm-env['"]/,
+		matches: /from\s*['"]esm-env['"]|\bNODE_ENV\b/,
 		allowed: {
 			[SOURCE.devChecks]: 'the one reader: devChecksOn answers for every dev-only check'
 		},
 		reason:
-			'a check reading DEV itself ships in a production build and stays off under configureEditorEnv({ isDev: true }): read devChecksOn from @voithos-labs/aragonite/dev-checks',
+			'a check reading DEV or NODE_ENV itself ships in a production build and stays off under configureEditorEnv({ isDev: true }): read devChecksOn from @voithos-labs/aragonite/dev-checks',
 		reaches: [SOURCE.devChecks],
-		hits: ["import { DEV } from 'esm-env';", 'import { BROWSER, DEV } from "esm-env";'],
+		hits: [
+			"import { DEV } from 'esm-env';",
+			'import { BROWSER, DEV } from "esm-env";',
+			"if (process.env.NODE_ENV !== 'production') warn();"
+		],
 		misses: ["import { devChecksOn } from '@voithos-labs/aragonite/dev-checks';"]
 	},
 	{
