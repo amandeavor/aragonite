@@ -4,7 +4,7 @@ import { resetPluginPlatformForTests } from '#lib/testing.js';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import {
 	INLINE_PRIORITIES,
-	isAutoPairTrigger,
+	pairsItself,
 	registerInlineSyntax
 } from '#lib/core/inline/scan/plugin-syntax.js';
 import { defaultGrammarView } from '#lib/schema/block-openers.js';
@@ -35,7 +35,7 @@ describe('a trigger two plugins pair belongs to both', () => {
 	];
 	for (const [listed, pairs] of cases) {
 		it(`${pairs ? 'pairs' : 'does not pair'} under [${listed.join(', ')}]`, () => {
-			expect(isAutoPairTrigger('%', grammarListing(listed))).toBe(pairs);
+			expect(pairsItself('%', grammarListing(listed))).toBe(pairs);
 		});
 	}
 });
@@ -43,6 +43,6 @@ describe('a trigger two plugins pair belongs to both', () => {
 describe('the platform reset', () => {
 	it('drops every owner of the trigger', () => {
 		resetPluginPlatformForTests();
-		expect(isAutoPairTrigger('%', defaultGrammarView)).toBe(false);
+		expect(pairsItself('%', defaultGrammarView)).toBe(false);
 	});
 });

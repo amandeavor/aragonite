@@ -3,6 +3,8 @@
 	"compilerOptions": {
 		// svelte-package copies an import specifier into dist verbatim, and dist holds no `.ts` file.
 		"allowImportingTsExtensions": false,
+		// Resolves `@voithos-labs/aragonite/dev-checks` to its source file (package.json `exports`).
+		"customConditions": ["aragonite-source"],
 		"sourceMap": true,
 		"strict": true
 	},

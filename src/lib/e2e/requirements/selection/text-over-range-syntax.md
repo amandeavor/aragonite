@@ -31,8 +31,11 @@ Where the caret is on text, the text joins the block there. Every row runs in so
 
 - The same range down into a paragraph, a setext heading, a quote or a list: the caret is on the
   block's text, so the text joins it there (`xplain`, `xHead` over `===`, `> xq`, `- xli`).
-- The composition row into the list item's paragraph is skipped: a composition there drops its
-  text, a defect of its own.
+- A composition over the range into the list item's paragraph lands its text there too
+  (`- 漢li`).
+  Miss-analysis: the row was skipped while the list marker was editable text inside the
+  paragraph, where the composed text landed and the read-back dropped it; the marker's own cell
+  fixed it, and the skipped row hid that it passed.
 - An abandoned composition (compose `か`, commit nothing) over the table and the heading below
   leaves the removal and the empty paragraph it opened.
 

@@ -4,6 +4,7 @@
 // tree, so a new plugin subpath flows into both automatically.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { SOURCE_CONDITION, selfImportSpecifiers } from './lib-alias.mjs';
 
 // Shipped, but named by no `exports` entry: the `/svelte` entry re-exports `Editor.svelte`, which
 // imports `editor.css`. Package-root-relative to match `npm pack --json` file paths.
@@ -16,7 +17,10 @@ const EXTRA_PATHS = ['dist/components/Editor.svelte', 'dist/styles/editor.css'];
 export function collectLeafStrings(value, out) {
 	if (typeof value === 'string') out.push(value);
 	else if (value && typeof value === 'object') {
-		for (const nested of Object.values(value)) collectLeafStrings(nested, out);
+		// The source condition names a repo file, which the tarball doesn't carry.
+		for (const [key, nested] of Object.entries(value)) {
+			if (key !== SOURCE_CONDITION) collectLeafStrings(nested, out);
+		}
 	}
 }
 
@@ -35,11 +39,12 @@ export function requiredPackPaths() {
 
 /**
  * The packages the prebuilt build leaves to the host: every dependency and peer but Svelte, which
- * it compiles in so a host without a Svelte toolchain needs no Svelte at all.
+ * it compiles in so a host without a Svelte toolchain needs no Svelte at all, and the library's
+ * own self-imports, which the host resolves by its build's conditions.
  * @returns {string[]}
  */
 export function prebuiltExternals() {
 	const pkg = JSON.parse(readFileSync(path.resolve('package.json'), 'utf8'));
 	const names = Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies });
-	return names.filter((name) => name !== 'svelte').sort();
+	return [...names.filter((name) => name !== 'svelte'), ...selfImportSpecifiers()].sort();
 }

@@ -140,7 +140,7 @@ describe('G4.122 the directory graph reads each import shape', () => {
 
 	it('names a top-level directory, or a root file as its own node', () => {
 		expect(layerOf(SOURCE.settle)).toBe('tree-operations');
-		expect(layerOf(SOURCE.envFlags)).toBe('env.ts');
+		expect(layerOf(SOURCE.devChecks)).toBe('dev-checks.ts');
 		expect(layerOf(SOURCE.showcaseRoute)).toBeNull();
 	});
 
@@ -148,7 +148,9 @@ describe('G4.122 the directory graph reads each import shape', () => {
 		expect(graphOf(`import { x } from '${aliasSpecifier(SOURCE.commands)}';`).runtime).toEqual([
 			edge(from, SOURCE.commands)
 		]);
-		expect(graphOf("import { x } from '../env';").runtime).toEqual([edge(from, SOURCE.envFlags)]);
+		expect(graphOf("import { x } from '../dev-checks';").runtime).toEqual([
+			edge(from, SOURCE.devChecks)
+		]);
 		expect(graphOf("import { x } from '#lib/editor-actions/index.js';").runtime).toEqual([
 			edge(from, SOURCE_DIR.editorActions)
 		]);

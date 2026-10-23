@@ -103,6 +103,7 @@ These checks run in three kinds of place:
 | G1.141 | Asking which line a caret at a soft wrap is on leaves the selection's focus where it was   | A·N     |
 | G1.143 | A kind's write rule never deletes bytes outside the written span, but an emptied marker    | A·N     |
 | G1.145 | The blocks a fix-up re-divided read back as themselves, with the block after them          | A·N     |
+| G1.147 | A render-primary DOM view's rendered half sits in its element; its text comes in time      | A·N     |
 
 ### The entries
 
@@ -612,3 +613,10 @@ same blocks, so a fence whose closer moved can't leave the blocks below paired t
 lines are G1.139's, and a block that reads otherwise alone (a list item) is skipped. A write that
 keeps its block in place reports no window and pays nothing.
 `checkSettledWindowReadsBack` · `settle.ts` · `settled-window-reads-back.test.ts`, `settle-pairing.test.ts`.
+
+**G1.147 · A render-primary view hands over both halves in time** (`render-primary-attach`). A
+`defineBlockView({ surface: 'render-primary' })` view's rendered element sits inside the element
+it was given, since that's where a click opens the text and a chord runs at the block. Its text
+element arrives inside the `update` that reveals it. One that arrives later still gets the caret,
+but only when it attaches, so dev warns. `checkRenderedInTarget`, `checkRevealAttached` ·
+`DomBlockView.svelte` · `block-view-render-primary.test.ts`.

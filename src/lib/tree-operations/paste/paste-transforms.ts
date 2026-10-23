@@ -5,8 +5,7 @@
  */
 import type { PluginActivation } from '../../schema/plugin-activation';
 import { createPluginRegistry } from '../../schema/plugin-registry';
-import { devWarn } from '../../dev-warn';
-import { editorEnv } from '../../env';
+import { devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { normalizeLineEndings } from '../../core/lines';
 
 export interface PasteTransform {
@@ -72,7 +71,7 @@ function runContained(
 // A transform whose own output feeds back into a further rewrite drives a paste feedback
 // loop, so in dev it is re-run on its result: it must decline or reproduce it.
 function warnIfNonIdempotent(transform: PasteTransform, result: string): void {
-	if (!editorEnv.isDev) return;
+	if (!devChecksOn) return;
 	const again = runContained(transform, result, 'probe');
 	if (again !== null && again !== result) {
 		devWarn(

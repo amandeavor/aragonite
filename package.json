@@ -3,11 +3,15 @@
 	"version": "0.11.1",
 	"description": "cute svelte-based markdown editor lib with actual rich markdown editing",
 	"keywords": [
-		"editor",
-		"framework-agnostic",
-		"rich-text",
-		"wysiwyg",
+		"markdown-editor",
 		"markdown",
+		"gfm",
+		"wysiwyg",
+		"rich-text-editor",
+		"block-editor",
+		"live-preview",
+		"lossless",
+		"contenteditable",
 		"svelte",
 		"react",
 		"vue",
@@ -122,6 +126,12 @@
 			"types": "./dist/testing.d.ts",
 			"svelte": "./dist/testing.js",
 			"default": "./dist/prebuilt/testing.js"
+		},
+		"./dev-checks": {
+			"aragonite-source": "./src/lib/dev-checks.ts",
+			"types": "./dist/dev-checks.d.ts",
+			"production": "./dist/dev-checks-stripped.js",
+			"default": "./dist/dev-checks.js"
 		},
 		"./styles/editor-theme.css": "./dist/styles/editor-theme.css",
 		"./style.css": "./dist/prebuilt/style.css",

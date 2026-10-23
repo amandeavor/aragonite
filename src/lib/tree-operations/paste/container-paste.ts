@@ -8,7 +8,7 @@
 import type { AnyBlockKind } from '../../core/nodes';
 import type { BlockKindDescriptor } from '../../schema/block-kind-descriptor';
 import { tryGetBlockKindDescriptor } from '../../schema/block-kind-descriptor';
-import { devWarn } from '../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 export type ContainerPasteDeclaration = NonNullable<BlockKindDescriptor['containerPaste']>;
 

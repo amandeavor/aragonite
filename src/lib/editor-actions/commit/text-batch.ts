@@ -4,7 +4,7 @@
  * fires at its own write (`leaf-write.ts`). Snapshot capture stays with the controller, injected.
  */
 
-import { isDevChecks } from '../../env';
+import { devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 
 export interface TextBatchDeps {
 	/** Capture the pre-edit snapshot for the first keystroke of a batch. */
@@ -54,7 +54,7 @@ export function createTextBatch(deps: TextBatchDeps): TextBatch {
 				deps.pushSnapshot(leafPath, offset);
 				lastBatchKey = key;
 				needsCheckpoint = false;
-				if (isDevChecks()) openBatches.add(batch);
+				if (devChecksOn) openBatches.add(batch);
 			}
 		},
 		armPause() {
@@ -80,7 +80,7 @@ export function createTextBatch(deps: TextBatchDeps): TextBatch {
 /** Test-only, and refused outside dev checks: while held, a typing batch never ends on a pause,
  *  only when a test ends it or the editor interrupts it. Returns whether the hold took. */
 export function holdTypingPausesForTests(): boolean {
-	if (!isDevChecks()) return false;
+	if (!devChecksOn) return false;
 	pausesHeld = true;
 	return true;
 }

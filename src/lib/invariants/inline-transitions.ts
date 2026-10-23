@@ -3,7 +3,7 @@
  * begin/sweep bracket, the source-length rule for a revealed construct, and the window during
  * which an IME composition is open.
  */
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export type PoolBracketAction = 'acquire' | 'retain' | 'beginPass' | 'sweep';
 

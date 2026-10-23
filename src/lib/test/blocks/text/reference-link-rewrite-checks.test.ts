@@ -3,10 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { parseInline } from '#lib/core/inline/index.js';
 import { screenVisibility } from '#lib/core/inline/visibility.js';
-import {
-	buildLinkReferenceMap,
-	type LinkReferenceResolver
-} from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf, type LinkReferenceResolver } from '#lib/core/inline/scan/definitions.js';
 import { resolveMarkedInsertion } from '#lib/components/blocks/text/pending-mark-insert.js';
 import { hiddenEdges } from '#lib/components/blocks/text/edge-seat.js';
 import {
@@ -26,7 +23,7 @@ type StoredKind = 'paragraph' | 'tableCell';
 const LIVE = screenVisibility('live', { chromePaints: false });
 
 function resolverFor(display: string): LinkReferenceResolver {
-	return buildLinkReferenceMap(parse(`${display}\n\n[ref]: https://x.com\n`).children).resolve;
+	return definitionsOf(parse(`${display}\n\n[ref]: https://x.com\n`).children).resolve;
 }
 
 function drawn(display: string) {

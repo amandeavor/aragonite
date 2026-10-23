@@ -6,7 +6,7 @@ import type { InlineNode } from '../../core/nodes';
 import type { ImageLoadPolicy } from '../../core/inline-render';
 import { isAllowedImageSrcScheme } from '../../core/url-policy';
 import { findSurfacePathForElement } from '../../selection/path-lookup';
-import { devWarn } from '../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { applyCropToWidget } from './image-crop';
 
 export interface BuildImageWidgetOpts {

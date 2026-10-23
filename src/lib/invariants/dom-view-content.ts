@@ -2,9 +2,10 @@
  * G1.136: a DOM block view fills the element the editor made for it, in place under the block's
  * host and never `display: contents`, since rects and the drag handle measure it as the block. A
  * leaf's text element sits inside it and holds no element of its own: the editor owns its text.
+ * G1.147: a render-primary view's rendered half sits inside it too, and its text arrives on time.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { BLOCK_CONTENT_SELECTOR } from '../caret/block-content-selector';
 
 const violation = (message: string): InvariantViolation => ({ code: 'dom-view-content', message });
@@ -39,4 +40,28 @@ export function checkDomViewContent(
 		return violation('a DOM leaf view attached an element outside the one it was given');
 	}
 	return checkAttachedLeaf(leafEl);
+}
+
+const renderPrimaryViolation = (message: string): InvariantViolation => ({
+	code: 'render-primary-attach',
+	message
+});
+
+/** The rendered half a render-primary view handed over, inside the element it was given. */
+export function checkRenderedInTarget(
+	target: HTMLElement,
+	rendered: HTMLElement | null
+): InvariantViolation | null {
+	if (!rendered || target.contains(rendered)) return null;
+	return renderPrimaryViolation(
+		'a render-primary view attached a rendered element outside the one it was given, so a click there opens nothing'
+	);
+}
+
+/** After the update that revealed it: the text element is attached, or the caret waits for it. */
+export function checkRevealAttached(source: HTMLElement | null): InvariantViolation | null {
+	if (source) return null;
+	return renderPrimaryViolation(
+		'a render-primary view did not attach its source inside the update that revealed it; the caret lands only when it does'
+	);
 }

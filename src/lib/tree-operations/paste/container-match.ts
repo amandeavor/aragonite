@@ -5,7 +5,7 @@
  */
 
 import { CURSOR_END } from '../../block-component';
-import { devWarn } from '../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import type { CstNode, Document } from '../../core/nodes';
 import {
 	documentLineEnding,

@@ -9,7 +9,7 @@ import type { DocumentView, NodeView } from '../core/node-views';
 import { displayLength } from '../core/lines';
 import { isWholeBlockUnit } from '../schema/whole-block-unit';
 import { countsCells, tableCellCount } from '../schema/block-kind-descriptor';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 /**
  * A plain structural point, not `selection/`'s `SelectionPoint`: no check in `invariants/` depends

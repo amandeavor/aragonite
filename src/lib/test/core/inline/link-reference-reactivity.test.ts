@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { parse } from '../../../core/parser';
 import { parseInline } from '../../../core/inline';
 import { getInlineContent } from '../../../core/inline/inline-cache';
-import { buildLinkReferenceMap } from '../../../core/inline/link-reference-resolver';
+import { definitionsOf } from '../../../core/inline/scan/definitions';
 import type { CstNode, InlineNode } from '../../../core/nodes';
 
 /**
@@ -14,7 +14,7 @@ describe('link-reference reactivity pipeline', () => {
 	// The signature keys the cache, so re-resolving the same node after a definition change
 	// (identical raw, new signature) must thread the fresh map through.
 	function firstProseInlineContent(doc: { children: CstNode[] }): InlineNode[] {
-		const map = buildLinkReferenceMap(doc.children);
+		const map = definitionsOf(doc.children);
 		return getInlineContent(doc.children[0], map.resolve, map.signature, defaultGrammarView);
 	}
 
@@ -44,14 +44,14 @@ describe('link-reference reactivity pipeline', () => {
 
 	it('changing an LRD url updates resolved references and signature', () => {
 		const doc = parse('See [click][go]\n\n[go]: https://old.com\n');
-		const before = buildLinkReferenceMap(doc.children);
+		const before = definitionsOf(doc.children);
 		expect((firstProseInlineContent(doc).find((n) => n.kind === 'link') as InlineNode).url).toBe(
 			'https://old.com'
 		);
 
 		const lrd = doc.children[1];
 		(lrd.metadata as { url?: string }).url = 'https://new.com';
-		const after = buildLinkReferenceMap(doc.children);
+		const after = definitionsOf(doc.children);
 		expect(after.signature).not.toBe(before.signature);
 		expect((firstProseInlineContent(doc).find((n) => n.kind === 'link') as InlineNode).url).toBe(
 			'https://new.com'
@@ -62,8 +62,8 @@ describe('link-reference reactivity pipeline', () => {
 		// The render-memo key rides the signature, so an unchanged set of definitions must not
 		// invalidate a reference block's render.
 		const doc = parse('Just text.\n\n[go]: https://example.com\n');
-		const m1 = buildLinkReferenceMap(doc.children);
-		const m2 = buildLinkReferenceMap(doc.children);
+		const m1 = definitionsOf(doc.children);
+		const m2 = definitionsOf(doc.children);
 		expect(m1.signature).toBe(m2.signature);
 	});
 
@@ -71,7 +71,7 @@ describe('link-reference reactivity pipeline', () => {
 		// Mirrors TextEditableBlock's local re-parse: drop the resolver from the dep chain
 		// and the re-parse silently produces no link nodes.
 		const doc = parse('Click [here][go] now.\n\n[go]: https://example.com\n');
-		const map = buildLinkReferenceMap(doc.children);
+		const map = definitionsOf(doc.children);
 
 		const para = doc.children[0];
 		const content = parseInline(para.raw, 0, para.raw.length, map.resolve);

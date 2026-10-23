@@ -1,16 +1,26 @@
 // @vitest-environment jsdom
+// A click on a render-primary leaf's rendered half, over both forms of the leaf.
 // Miss-analysis: reveals came only through `parkCaret`, and no fixture spread `renderProps`.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { unmount } from 'svelte';
 import type { BlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
 import { installLayoutStubs } from '#lib/test/harness/mount-editor.svelte.js';
 import { settleEditor } from '#lib/test/harness/settle.js';
-import { leafDocument, mountRevealLeaf, registerRevealLeafKind } from './fixtures/reveal-leaf';
+import {
+	REVEAL_LEAF_FORMS,
+	leafDocument,
+	mountRevealLeaf,
+	registerRevealLeafKind,
+	type RevealLeafForm
+} from './fixtures/reveal-leaf';
 
 const KIND = 'reveal-point-leaf';
 const RAW = '@@ one two\n';
 
-function mountLeaf(caretTargetAtPoint?: BlockKindDescriptor['caretTargetAtPoint']) {
+function mountLeaf(
+	form: RevealLeafForm,
+	caretTargetAtPoint?: BlockKindDescriptor['caretTargetAtPoint']
+) {
 	const kind = registerRevealLeafKind(KIND, { caretTargetAtPoint });
 	// Every caller of `caretTargetAtPoint` binds the hook to BlockHost's `data-block-path`
 	// element, not the component's own root.
@@ -19,6 +29,7 @@ function mountLeaf(caretTargetAtPoint?: BlockKindDescriptor['caretTargetAtPoint'
 	document.body.appendChild(host);
 	const history = { requestUndo: vi.fn(), requestRedo: vi.fn() };
 	const mounted = mountRevealLeaf(leafDocument(kind, RAW), {
+		form,
 		target: host,
 		overrides: {
 			history,
@@ -58,18 +69,18 @@ afterEach(async () => {
 	document.body.innerHTML = '';
 });
 
-describe('a reveal click on a render-primary leaf', () => {
+describe.each(REVEAL_LEAF_FORMS)('a reveal click on a render-primary leaf drawn by %s', (form) => {
 	it('lands the caret where the kind’s caretTargetAtPoint names', async () => {
-		mounted = mountLeaf(() => ({ path: [], offset: 6 }));
+		mounted = mountLeaf(form, () => ({ path: [], offset: 6 }));
 
 		await mounted.clickRendered(40, 12);
 
-		expect(mounted.instance.blockApi.getCursorOffset()).toBe(6);
+		expect(mounted.blockApi.getCursorOffset()).toBe(6);
 	});
 
 	it('hands the hook the block host and the pressed point', async () => {
 		const hook = vi.fn(() => ({ path: [], offset: 3 }));
-		mounted = mountLeaf(hook);
+		mounted = mountLeaf(form, hook);
 
 		await mounted.clickRendered(40, 12);
 
@@ -77,26 +88,26 @@ describe('a reveal click on a render-primary leaf', () => {
 	});
 
 	it('reveals at the source start for a kind declaring no hook', async () => {
-		mounted = mountLeaf();
+		mounted = mountLeaf(form);
 
 		await mounted.clickRendered(40, 12);
 
-		expect(mounted.instance.blockApi.getCursorOffset()).toBe(0);
+		expect(mounted.blockApi.getCursorOffset()).toBe(0);
 	});
 
 	it('reveals at the source start when the hook declines the point', async () => {
-		mounted = mountLeaf(() => null);
+		mounted = mountLeaf(form, () => null);
 
 		await mounted.clickRendered(40, 12);
 
-		expect(mounted.instance.blockApi.getCursorOffset()).toBe(0);
+		expect(mounted.blockApi.getCursorOffset()).toBe(0);
 	});
 });
 
-describe('the folded surface’s spread while the source is up', () => {
+describe.each(REVEAL_LEAF_FORMS)('the rendered half’s handlers on %s', (form) => {
 	it('leaves a press inside the source to the source', async () => {
 		const hook = vi.fn(() => ({ path: [], offset: 3 }));
-		mounted = mountLeaf(hook);
+		mounted = mountLeaf(form, hook);
 		const source = await mounted.revealAtEnd();
 
 		source.dispatchEvent(
@@ -107,8 +118,20 @@ describe('the folded surface’s spread while the source is up', () => {
 		expect(hook).not.toHaveBeenCalled();
 	});
 
+	it('spends a chord pressed on the folded view once, at this block', async () => {
+		mounted = mountLeaf(form);
+		const rendered = mounted.host.querySelector<HTMLElement>('.reveal-leaf-render')!;
+
+		rendered.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })
+		);
+		await settleEditor();
+
+		expect(mounted.history.requestUndo).toHaveBeenCalledTimes(1);
+	});
+
 	it('spends a chord from the source once, not twice on the way up', async () => {
-		mounted = mountLeaf();
+		mounted = mountLeaf(form);
 		const source = await mounted.revealAtEnd();
 
 		source.dispatchEvent(

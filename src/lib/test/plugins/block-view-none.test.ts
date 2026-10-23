@@ -172,7 +172,7 @@ describe('registering a DOM view', () => {
 	});
 
 	it.each([
-		['an unknown surface', { surface: 'render-primary', mount: () => ({}) }],
+		['an unknown surface', { surface: 'popover', mount: () => ({}) }],
 		['no surface', { mount: () => ({}) }],
 		['a mount that is not a function', { surface: 'none', mount: 'draw' }]
 	])('refuses %s', (_name, spec) => {

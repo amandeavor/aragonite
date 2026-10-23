@@ -2,6 +2,7 @@
  *  function that builds a view brands one, and registration refuses anything unbranded. */
 
 import type { BlockComponent } from '../block-component';
+import type { LineEnding } from '../core/lines';
 import type { NodeView } from '../core/node-views';
 import type { PresentationMode } from '../presentation-mode';
 import type { Draft, DraftSpec } from './drafts';
@@ -34,7 +35,8 @@ export function blockViewForm(view: BlockView): BlockViewForm {
 
 // ── DOM block views ─────────────────────────────────────────────────────────
 
-/** What the editor builds around a DOM view: nothing, an editable text leaf, or child blocks. */
+/** What the editor builds around a DOM view: nothing, an editable text leaf (shown always, or
+ *  behind a rendered view until a click), or child blocks. */
 export type BlockSurface = BlockViewSpec['surface'];
 
 /**
@@ -42,7 +44,8 @@ export type BlockSurface = BlockViewSpec['surface'];
  * children) and never wraps a second box inside, because the editor measures `target` as the
  * block. `surface` says what the editor wires in: a leaf's editable text, a container's children.
  */
-export type BlockViewSpec = HandBuiltViewSpec | LeafViewSpec | ContainerViewSpec;
+export type BlockViewSpec =
+	HandBuiltViewSpec | LeafViewSpec | RenderPrimaryViewSpec | ContainerViewSpec;
 
 interface ViewSpecBase {
 	/** Calls `update` on every change to the document, not only to this block. */
@@ -63,6 +66,28 @@ export interface LeafViewSpec extends ViewSpecBase {
 	mount(target: HTMLElement, ctx: LeafViewContext): LeafViewHandle;
 }
 
+/**
+ * A block that shows a rendered view until a click opens its text, block math's shape. The view
+ * swaps its halves on `state.revealed` and commits nothing itself: the shown text is written as
+ * one undo entry when focus leaves it.
+ */
+export interface RenderPrimaryViewSpec extends ViewSpecBase {
+	surface: 'render-primary';
+	/** The kind's bytes are one line: Enter splits the block rather than typing a newline. */
+	singleLine?: boolean;
+	/** Draws the shown text as DOM (hidden fence lines, highlight tokens); must keep
+	 *  `fragment.textContent === text`, or caret offsets drift. */
+	renderSource?(text: string): DocumentFragment;
+	/** The text as the kind keeps it, asked on show and after every edit, with the caret carried;
+	 *  an added line takes `lineEnding`. Null keeps it. */
+	reshapeSource?(
+		text: string,
+		caret: number,
+		lineEnding: LineEnding
+	): { text: string; caret: number } | null;
+	mount(target: HTMLElement, ctx: RenderPrimaryViewContext): LeafViewHandle;
+}
+
 /** A block holding child blocks, which the editor mounts into the box the view names. */
 export interface ContainerViewSpec extends ViewSpecBase {
 	surface: 'container';
@@ -75,6 +100,8 @@ export interface BlockViewState {
 	path: readonly number[];
 	presentationMode: PresentationMode;
 	theme: string;
+	/** A render-primary block's text is showing; false on every other surface. */
+	revealed: boolean;
 }
 
 export interface BlockViewContext {
@@ -88,13 +115,17 @@ export interface LeafViewContext extends BlockViewContext {
 	readonly leaf: LeafSurface;
 }
 
+export interface RenderPrimaryViewContext extends BlockViewContext {
+	readonly leaf: RenderPrimarySurface;
+}
+
 export interface ContainerViewContext extends BlockViewContext {
 	readonly container: ContainerSurface;
 }
 
 export interface LeafSurface {
 	/** The element inside `target` the editor edits the block's text in, holding no element of
-	 *  the view's own (chrome goes beside it); null detaches it. */
+	 *  the view's own (chrome goes beside it); null hands it back empty. */
 	attach(el: HTMLElement | null): void;
 	/** Focus the text with the caret at `offset`. */
 	reveal(offset?: number): Promise<void>;
@@ -102,9 +133,17 @@ export interface LeafSurface {
 	commitSource(text: string): void;
 }
 
+/** A render-primary leaf: call `attach` from inside the `update` that reveals, so the caret lands
+ *  with the render, and `attach(null)` when it folds. */
+export interface RenderPrimarySurface extends LeafSurface {
+	/** The rendered half, `target` or inside it: a click there opens the text where the kind's
+	 *  `caretTargetAtPoint` says, and a chord pressed there runs at this block. */
+	attachRendered(el: HTMLElement | null): void;
+}
+
 export interface ContainerSurface {
-	/** Mount the child blocks into `box`, `target` or an element inside it, after the view's own
-	 *  children; a chord bubbling from a child resolves against the kind's keymap there. */
+	/** Mount the child blocks into `box` (`target` or inside it, after the view's children; the box
+	 *  they're already in changes nothing); a child's chord resolves against the kind's keymap. */
 	mountChildren(box: HTMLElement): void;
 	/** Commit a shallow metadata patch as one undo entry, through the kind's `rebuildRaw`. */
 	updateOwnMetadata(
@@ -125,8 +164,8 @@ export interface BlockViewHandle {
 }
 
 export interface LeafViewHandle extends BlockViewHandle {
-	/** After the editor handled an input in the attached element (an IME commit included), with
-	 *  its text. A throw here is reported on the `error` event; the block keeps drawing. */
+	/** After each change to the attached element's text (typing, a delete, a paste, an IME
+	 *  commit, an undo), once, with that text; never mid-composition. A throw is reported on `error`. */
 	afterInput?(text: string): void;
 }
 
@@ -161,7 +200,7 @@ export const MEMBER_SOURCES = {
 	getCursorPosition: 'container-surface',
 	enterEdgeWidget: 'container-surface',
 	isVerticallyTransparent: 'container-surface',
-	snapCaretToPoint: 'editor',
+	readSnapAtPoint: 'editor',
 	startDragAtPoint: 'editor',
 	cellRect: 'editor',
 	mountedRowWindow: 'editor',
@@ -184,7 +223,7 @@ export type HandBuiltBlock = Pick<BlockComponent, HandBuiltMember>;
 
 export type HandBuiltViewHandle = BlockViewHandle & HandBuiltBlock;
 
-const SURFACES: readonly BlockSurface[] = ['none', 'leaf', 'container'];
+const SURFACES: readonly BlockSurface[] = ['none', 'leaf', 'render-primary', 'container'];
 
 /** A block view drawn by `spec`. Throws on a `surface` or `mount` it can't use. */
 export function defineBlockView(spec: BlockViewSpec): BlockView {

@@ -1,6 +1,6 @@
 import { test as base, expect, type ConsoleMessage } from '@playwright/test';
 import { getContainerParityMismatches } from './container-parity';
-import { warnTagOfLine } from '../dev-warn';
+import { warnTagOfLine } from '../warn-tags';
 import { installClipboard } from './clipboard-arm';
 
 // The shared e2e `test`, with two checks at teardown. Every tagged console warning or uncaught

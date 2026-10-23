@@ -11,7 +11,7 @@ Fun (?) fact, every guard is catalogued in [`../design/invariants.md`](../design
 
 ## One prefix to rule them all
 
-Every dev warning the editor emits goes through `devWarn` (`src/lib/dev-warn.ts`) and comes out under one head:
+Every dev warning the editor emits goes through `devWarn` (`src/lib/dev-checks.ts`) and comes out under one head:
 
 ```
 [aragonite:<tag>] <message>
@@ -30,9 +30,9 @@ fyi:
 | Diagnostic     | `[aragonite:<subsystem>]`      | A subsystem refused something and degraded gracefully. Usually a defect upstream of it, occasionally benign.                                                                                                                                       |
 | Svelte runtime | `[svelte] <code>`              | Svelte's own runtime complaining about how the editor drives it (a derived read past its owner's death, a raw object compared against its proxy, and so on). Every code is gated; the one you'll meet most is in "The proxy-versus-raw one" below. |
 
-To find **guards**, understand that guard sites use `assertInvariant` in `src/lib/assert.ts`. Also note that guards don't throw, because we don't want a false positive to crash the editor.
+To find **guards**, understand that guard sites use `assertInvariant` in `src/lib/dev-checks.ts`. Also note that guards don't throw, because we don't want a false positive to crash the editor.
 
-**Diagnostics**, on the other hand, calls `devWarn` from `src/lib/dev-warn.ts` directly. They carry the tag of the subsystem that refused (e.g. `reorder`, `tree-ops`, `decorations`, `registry`, etc.) (to get the list of diagnostic sites and the available subsystems, use `grep -r 'devWarn(' src/lib` or `Get-ChildItem src/lib -Recurse -Include *.ts,*.svelte | Select-String -SimpleMatch 'devWarn('`).
+**Diagnostics**, on the other hand, calls `devWarn` from `src/lib/dev-checks.ts` directly. They carry the tag of the subsystem that refused (e.g. `reorder`, `tree-ops`, `decorations`, `registry`, etc.) (to get the list of diagnostic sites and the available subsystems, use `grep -r 'devWarn(' src/lib` or `Get-ChildItem src/lib -Recurse -Include *.ts,*.svelte | Select-String -SimpleMatch 'devWarn('`).
 
 ## The proxy-versus-raw one
 
@@ -56,7 +56,7 @@ One mechanism to know before the table: under Vitest the console line never happ
 Though, two consequences of the sink:
 
 - a `console.warn` spy sees no `devWarn` fire, and a spy that swallows the call takes the Svelte channel off the gate too
-- `vi.mock`ing `#lib/dev-warn.js` deletes the emitter entirely
+- `vi.mock`ing `@voithos-labs/aragonite/dev-checks` deletes the emitter entirely
 
 Either one blinds the gate for that whole file, so a source scan fails on both.
 

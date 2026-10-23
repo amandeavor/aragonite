@@ -1,11 +1,10 @@
 /** Find a mounted container's `BlockListState` by its node (a view works too). A container the
  *  window unmounted has no entry, so a caller falls back to the node's own ids. */
 
-import { isDevChecks } from '../env';
+import { devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { tick } from 'svelte';
 import type { NodeView } from '../core/node-views';
 import type { BlockListState } from './block-list-state.svelte';
-import { devWarn } from '../dev-warn';
 
 // Every live claim on a node, latest last, so a remount resolves to the newest mount whichever of
 // the outgoing teardown and the incoming registration runs first.
@@ -17,7 +16,7 @@ export function registerBlockListState(node: NodeView, state: BlockListState): (
 	const held = claims.get(node) ?? [];
 	const existing = held[held.length - 1];
 	claims.set(node, [...held.filter((s) => s !== state), state]);
-	if (isDevChecks() && existing && existing !== state) {
+	if (devChecksOn && existing && existing !== state) {
 		void reportContestedClaim(node, existing, state);
 	}
 	return () => {

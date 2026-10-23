@@ -4,7 +4,7 @@
  * write paths cannot change a url or title the user did not edit.
  */
 
-import { matchCharacterReference } from './character-refs';
+import { matchCharRef } from './scan/entities';
 
 // ── Destinations ────────────────────────────────────────────────────────────
 
@@ -56,5 +56,5 @@ export function escapeTitle(title: string): string {
 /** The backslash an `&` needs when the text after it would read as a character reference. */
 function escapedAmpersand(text: string, at: number): string {
 	if (text[at] !== '&') return '';
-	return matchCharacterReference(text, at, text.length)?.decoded !== undefined ? '\\' : '';
+	return matchCharRef(text, at, text.length)?.decoded !== undefined ? '\\' : '';
 }

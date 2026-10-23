@@ -34,7 +34,7 @@ unguarded.
 | G4.15  | Coordinate brands are created only at their home modules                                         | L       |
 | G4.16  | Bundled plugins import only the public authoring barrels                                         | L       |
 | G4.17  | No spec is collected by two Playwright projects                                                  | L       |
-| G4.18  | The scan switch matches the trigger table; prefix handlers run from one site                     | L       |
+| G4.18  | _Retired_: the inline handler-order and registration rows hold what the trigger table did        | L       |
 | G4.19  | _Retired upward_: reading mode is refused where bytes are written, not per dispatch site (G4.52) | L       |
 | G4.20  | A new line takes the document's ending; per-line work reads no `\r`                              | L·N     |
 | G4.21  | Image bytes are written only through the one image byte module                                   | L       |
@@ -57,7 +57,7 @@ unguarded.
 | G4.38  | Every editable surface publishes each of `EDITABLE_SURFACE_MEMBERS`                              | L       |
 | G4.39  | Every text-surface component publishes `runCommand`                                              | L       |
 | G4.40  | The three rewrite-claim lists are one set                                                        | N       |
-| G4.41  | No test file mocks `dev-warn` or spies `console.warn`                                            | L       |
+| G4.41  | No test file mocks `dev-checks` or spies `console.warn`                                          | L       |
 | G4.42  | No module writes a sibling's `leadingTrivia` by hand                                             | L       |
 | G4.43  | Every `splitNode` call reads the index the split returned                                        | L       |
 | G4.44  | Every prose surface resolves native ranged edits through the one resolver                        | L       |
@@ -203,6 +203,11 @@ unguarded.
 | G4.241 | Only the fix-up in `settle.ts` lays out blank runs and checks joins                              | L       |
 | G4.243 | Only the caret writer calls `Selection.modify`; a caret's line is read through one step          | L       |
 | G4.245 | A kind's write rule is run through `kindWriteRule`                                               | L       |
+| G4.247 | A production build of the published package carries no dev check                                 | harness |
+| G4.248 | Dev-only code reads one switch, in `dev-checks.ts`, imported by its package name                 | L       |
+| G4.249 | A measured height enters the height table only through `applyMeasured`                           | L       |
+| G4.251 | The bundled blocks that build a render-primary leaf in Svelte are listed                         | L       |
+| G4.252 | A press's point is read at the press, in `readPress`                                             | L       |
 
 ### The entries
 
@@ -297,13 +302,6 @@ or comment is no edge. `lint/plugin-import-boundary.test.ts`.
 depth rules are Playwright's own; a spec no project collects is G4.23's.
 `e2e/lint/project-partition.test.ts`.
 
-**G4.18 · Inline-trigger parity.** The characters the inline scanner handles itself live in
-`BUILTIN_TRIGGERS` (`core/inline/scan/triggers.ts`): a handler per row, plus when the fast bail
-(which lets plain prose skip the scan) looks for it. A new built-in trigger is one row there and one
-case in the scan loop's `switch` (a lookup measured slower). `builtin-trigger-dispatch.test.ts`
-checks each ASCII character runs its row's handler; `lint/inline-prefix-consultation.test.ts` keeps
-the plugin prefix check before the switch, at one site.
-
 **G4.20 · One document line ending.** New lines take `documentLineEnding` (the document's first
 break), and per-line work reads lines without endings (`displayLines`, both `core/lines.ts`).
 `trailingLineEnding(raw, fallback)` requires the fallback: the document's ending if in reach (a
@@ -336,8 +334,8 @@ went through `legalizeWrite`, or plain text it runs through it.
 
 **G4.25 · No `import.meta` env reads.** Nowhere under `src/lib`, test tree included: it's
 Vite-only, so the library wouldn't load under another bundler (and `svelte-package` warns on it
-wherever it sits). Toolchain flags come from `esm-env`, imported only by `src/lib/env.ts` (a row of
-`lint/file-rules.test.ts`), and every dev-only check asks `isDevChecks()`, so
+wherever it sits). Toolchain flags come from `esm-env`, imported only by `src/lib/dev-checks.ts`
+(G4.248), and every dev-only check reads `devChecksOn` from there, so
 `configureEditorEnv({ isDev: true })` turns the checks and the dev warnings on together. The
 reference plugins and the consumer example are Vite apps and exempt. `lint/suite-file-rules.test.ts`.
 
@@ -441,7 +439,7 @@ and the chords `selection/cross-block/keydown.ts` claims; each rewrite id sits o
 two dispatch lists. Membership is listed by hand, not by prefix (`link.openCard` isn't `format.`).
 `test/selection/cross-block/rewrite-claim-parity.test.ts`.
 
-**G4.41 · Warn-gate bypasses.** No file under `src/lib` mocks `dev-warn` or spies `console.warn`:
+**G4.41 · Warn-gate bypasses.** No file under `src/lib` mocks `dev-checks` or spies `console.warn`:
 a mocked `devWarn` never reaches the sink, a console spy reads a channel the sink silences, and a
 spy that swallows the call hides Svelte's runtime warnings too, so the gate goes blind for that file.
 The one file whose subject is `devWarn`'s console output is allowlisted.
@@ -900,7 +898,7 @@ bare-package `import()` under `src/lib` or `src/routes` missing from the list.
 
 **G4.127 · A check that skips without a DOM says so.** Most unit tests run in plain Node with no
 `document`, so code asking whether one exists picks what they run. A dev check that would do more
-with a DOM asks `documentForCheck` (`src/lib/assert.ts`), which warns `needs-dom` and fails the test
+with a DOM asks `documentForCheck` (`src/lib/dev-checks.ts`), which warns `needs-dom` and fails the test
 (add the jsdom docblock). Any other DOM branch gets a row in this id's table in
 `lint/file-rules.test.ts`, by file and function, saying what runs without one; it fails when a
 function's count of DOM tests (`typeof document` and the like) moves off its row.
@@ -1365,3 +1363,29 @@ wrong at a wrap is harmless or a known gap. `lint/file-rules.test.ts`.
 `tree-operations/node-primitives.ts :: kindWriteRule`, which checks every run against G1.143. The
 leaf-text reader (it reads the rule's `text`) and the conformance kit are the listed exceptions.
 `lint/file-rules.test.ts`.
+
+**G4.247 · A production build carries no dev check.** Under the `production` condition the editor's
+dev-checks import gets `dev-checks-stripped.ts`: a constant-`false` switch and empty reporters.
+`scripts/verify-dev-strip.mjs` (run by verify-pack) builds a page through both builds with Vite and
+fails on any check tag the production build keeps; the page imports `configureEditorEnv`, so only
+the swap can prove the switch off. `test/dev-checks-stripped.test.ts` holds the copy to the real
+module's names and to the side-effect annotations esbuild needs.
+
+**G4.248 · One dev-check switch, imported by name.** Nothing reads `NODE_ENV`, `esm-env` is
+imported only by `src/lib/dev-checks.ts`, and every module reaches that as
+`@voithos-labs/aragonite/dev-checks`: `svelte-package` turns a relative or `#lib` spelling into a
+path the production swap never sees. The repo's tools resolve the name to source through the
+`aragonite-source` condition, the entry's first key (`scripts/lib-alias.mjs` refuses to load
+otherwise). `lint/file-rules.test.ts`.
+
+**G4.249 · One way into the height table.** A block's measured height is written to the list's
+height table and the estimator only by `windowing/list-windowing.svelte.ts :: applyMeasured`, which
+holds a height within a pixel of its record as that record, so a block remounting a fraction of a
+pixel off moves no scroll. `lint/file-rules.test.ts`.
+
+**G4.251 · The bundled Svelte reveal blocks are listed.** Every bundled plugin file that builds a
+render-primary leaf in Svelte (`mode: 'render-primary'`) is on a declared list: block math, the
+outline and the parrot. It's there so moving them onto `defineBlockView` starts from a list, not
+a grep, and it guards nothing inside a listed file. `lint/file-rules.test.ts`.
+
+**G4.252 · A press is read at the press.** The prose blocks' point readers (the widget hit, the source offset it names, the click side, the nearest widget edge, the shown-source test) are called only in `widget-interaction.ts` :: `readPress` and `islandDragAnchor`, which a press runs at pointer-down (`readPress` also serves `placeCaretAtPoint` and the keyboard menu, where no press moves anything). By the click, the press may have closed a shown source and moved the line under the point. `lint/call-site-rules.test.ts`.

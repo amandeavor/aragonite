@@ -1,4 +1,4 @@
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import type { OperationKind } from '../schema/operations';
 
 export interface OperationEntry {

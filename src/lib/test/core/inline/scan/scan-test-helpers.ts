@@ -1,14 +1,8 @@
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
+// Reaches the inline parser through published entries only, so these helpers judge any
+// implementation of it.
 import { describe, it, expect } from 'vitest';
-import type { InlineNode } from '../../../../core/nodes';
-import { parseInline } from '../../../../core/inline';
-import { scanInline } from '../../../../core/inline/scan';
-import {
-	normalizeLinkLabel,
-	type LinkReferenceResolver,
-	type ResolvedReference
-} from '../../../../core/inline/link-reference-resolver';
-import { __resetSchemaRegistriesForTests } from '#lib/schema/registry-reset.js';
+import { parseInline, type InlineNode } from '#lib';
+import { resetPluginPlatformForTests } from '#lib/testing.js';
 
 // ── Coverage assertions ─────────────────────────────────────────────────────
 // Each check runs as plain code and calls `expect` only where it fails: on a flood of tens of
@@ -195,10 +189,47 @@ export function unresolvedRefNode(
 
 // ── Resolver fixture ────────────────────────────────────────────────────────
 
-/** Resolver over a fixed label→reference map, normalizing like the production map. */
+export type ResolvedReference = Readonly<{ url: string; title?: string }>;
+export type LinkReferenceResolver = (label: string) => ResolvedReference | undefined;
+
+// GFM whitespace (spec 2.1), ASCII only: a no-break space is label content.
+const GFM_SPACE = /[ \t\n\v\f\r]+/g;
+
+/** Label matching: trimmed, inner whitespace runs collapsed, Unicode case folded. */
+export function normalizeLabel(label: string): string {
+	return label
+		.replace(GFM_SPACE, ' ')
+		.replace(/^ | $/g, '')
+		.toLowerCase()
+		.toUpperCase()
+		.toLowerCase();
+}
+
+/** Resolver over a fixed label to reference map, matching labels as GFM does. */
 export function resolverOf(entries: Record<string, ResolvedReference>): LinkReferenceResolver {
-	const map = new Map(Object.entries(entries).map(([k, v]) => [normalizeLinkLabel(k), v]));
-	return (label) => map.get(normalizeLinkLabel(label));
+	const map = new Map(Object.entries(entries).map(([k, v]) => [normalizeLabel(k), v]));
+	return (label) => map.get(normalizeLabel(label));
+}
+
+// ── Text runs ───────────────────────────────────────────────────────────────
+
+/** Touching text nodes joined at every depth: a parse may split a text run or not. */
+export function joinedText(nodes: InlineNode[]): InlineNode[] {
+	const out: InlineNode[] = [];
+	for (const node of nodes) {
+		const prev = out[out.length - 1];
+		if (node.kind === 'text' && prev?.kind === 'text' && prev.end === node.start) {
+			out[out.length - 1] = { ...prev, end: node.end, text: (prev.text ?? '') + (node.text ?? '') };
+		} else {
+			out.push(node.children ? { ...node, children: joinedText(node.children) } : node);
+		}
+	}
+	return out;
+}
+
+/** The parse, compared with touching text nodes joined. */
+export function parsed(...args: Parameters<typeof parseInline>): InlineNode[] {
+	return joinedText(parseInline(...args));
 }
 
 // ── Case runner ─────────────────────────────────────────────────────────────
@@ -208,13 +239,13 @@ export function resolverOf(entries: Record<string, ResolvedReference>): LinkRefe
  * measured against. Resets first, so a caller can register after taking it.
  */
 export function scanClean(raw: string, end = raw.length): InlineNode[] {
-	__resetSchemaRegistriesForTests();
-	return parseInline(raw, 0, end);
+	resetPluginPlatformForTests();
+	return parsed(raw, 0, end);
 }
 
 export type ScanCase = [name: string, raw: string, expected: InlineNode[]];
 
-/** Runs scanInline over the whole input, asserting coverage plus exact nodes. */
+/** Parses the whole input, asserting coverage plus exact nodes. */
 export function describeScanCases(
 	family: string,
 	cases: ScanCase[],
@@ -223,10 +254,10 @@ export function describeScanCases(
 	describe(family, () => {
 		for (const [name, raw, expected] of cases) {
 			it(name, () => {
-				const nodes = scanInline(raw, 0, raw.length, resolver, defaultGrammarView);
+				const nodes = parseInline(raw, 0, raw.length, resolver);
 				assertTotalCoverage(nodes, 0, raw.length);
 				assertConstructCoverage(nodes);
-				expect(nodes).toEqual(expected);
+				expect(joinedText(nodes)).toEqual(joinedText(expected));
 			});
 		}
 	});

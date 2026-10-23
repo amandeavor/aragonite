@@ -6,7 +6,7 @@
  */
 
 import type { NodeView } from '../core/node-views';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export interface ChildIdDrift {
 	/** Child indices from the checked node down to the container out of step. */

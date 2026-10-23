@@ -21,6 +21,6 @@ GFM. Seed `wiki-embed`: block 0 `Before`, block 1 the embed at width 400, block 
 
 ## Error cases
 
-- The overlapping case it declines is a unit concern (`inline-ladder-claim.test.ts`): the
+- The overlapping case it declines is a unit concern (`handler-claims.test.ts`): the
   handler declines `![[a]](u)`, which is a built-in image the editor still owns. Both resize
   gestures assert that no console errors were captured.

@@ -200,12 +200,12 @@ export interface BlockComponent {
 	/** Cascade focus down a path of child indices to reach a leaf at the given offset. */
 	focusByPath?(path: number[], offset: number): void;
 	/**
-	 * Apply this block's own snap for a viewport point inside its box, once the caret has been
-	 * placed. A caret that fell at the edge of an inline widget has nothing to draw there, so
-	 * the prose block moves it onto the edge and paints the indicator Chromium leaves out; one
-	 * that landed in real text is left alone. Omitted by blocks with no such snap.
+	 * Read a viewport point inside this block now, and return the block's own snap to run once a
+	 * caret is placed there: placing it can close a shown source and redraw the line. A caret at an
+	 * inline widget's edge moves onto the edge, where the block draws it; one in real text stays.
+	 * Omitted by blocks with no such snap.
 	 */
-	snapCaretToPoint?(clientX: number, clientY: number): void;
+	readSnapAtPoint?(clientX: number, clientY: number): () => void;
 	/**
 	 * A click beside the block (the editor's margin, the host's own padding) that may become a
 	 * drag: start the block's own drag from the leaf nearest the point, a table's cell rectangle

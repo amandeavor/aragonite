@@ -4,7 +4,7 @@ import { svelteView } from '#lib/svelte-view.svelte.js';
 import { afterEach, describe, it, expect } from 'vitest';
 import { flushSync } from 'svelte';
 import { createCellRender, type CellRender } from '#lib/components/blocks/table/cell-render.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 import type { CstNode } from '#lib/core/nodes.js';

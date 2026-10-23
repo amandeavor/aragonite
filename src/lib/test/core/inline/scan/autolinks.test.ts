@@ -1,7 +1,7 @@
 import { angleAutolinkNode, describeScanCases, textNode } from './scan-test-helpers';
 
 // Spec autolinks (CommonMark §6.5). `url` carries the reference's percent-encoded
-// destination byte-for-byte — mdurl encode, see core/inline/scan/url.ts.
+// destination byte for byte (commonmark.js's mdurl encoding).
 
 describeScanCases('uri autolinks', [
 	['plain https uri', '<https://x.y>', [angleAutolinkNode(0, 13, 'https://x.y')]],

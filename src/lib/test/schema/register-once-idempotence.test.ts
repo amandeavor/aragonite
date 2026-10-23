@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { declarePluginKind } from '#lib/schema/plugin-kind.js';
 import { registerBlockCommand, getBlockCommand } from '#lib/schema/block-commands.js';
 import type { AnyCommandId } from '#lib/schema/command-id.js';
-import {
-	registerInlineSyntax,
-	type InlineSyntaxRecognizer
-} from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax, type InlineSyntaxRecognizer } from '#lib/plugin.js';
 import { everyInstalledPlugin } from '#lib/schema/plugin-activation.js';
 
 const recognizer = (): InlineSyntaxRecognizer => () => null;

@@ -160,3 +160,57 @@ test.describe('vertical travel past an entity-only paragraph', () => {
 		}
 	});
 });
+
+// A picture inside a link is the only thing its block draws while the link's markers are hidden,
+// so an arrival takes the picture as an object, the way it takes a picture standing alone.
+
+const LINKED = 'para\n\n[![alt](/test-fixtures/sample.png)](https://x.y)\n\nafter\n';
+const REPLACED = 'para\n\n[Q](https://x.y)\n\nafter\n';
+
+const ARRIVALS = [
+	{ key: 'ArrowDown', from: 0, edge: 'end' },
+	{ key: 'ArrowUp', from: 2, edge: 'start' },
+	{ key: 'ArrowRight', from: 0, edge: 'end' },
+	{ key: 'ArrowLeft', from: 2, edge: 'start' }
+] as const;
+
+test.describe('an arrival at a paragraph holding only a linked picture', () => {
+	for (const mode of ['live', 'preview-inline'] as const) {
+		for (const { key, from, edge } of ARRIVALS) {
+			test(`${key} in ${mode} selects the picture, and a typed key replaces it`, async ({
+				page
+			}) => {
+				const editor = new EditorPage(page);
+				await editor.goto();
+				await editor.setPresentationMode(mode);
+				await editor.loadContent(LINKED);
+				await expect(page.locator('[data-image-widget]')).toHaveCount(1);
+				if (edge === 'end') await editor.focusBlockEnd(from);
+				else await editor.focusBlockStart(from);
+
+				await page.keyboard.press(key);
+				await expect(page.locator('[data-image-overlay]')).toHaveCount(1);
+				await page.keyboard.type('Q');
+				await editor.bridge.waitForSourceEquals(REPLACED);
+			});
+		}
+	}
+
+	// The markers paint once the block takes the caret, so the link has a column to land in.
+	test('ArrowDown in preview-block lands a caret in the link, keeping the picture', async ({
+		page
+	}) => {
+		const editor = new EditorPage(page);
+		await editor.goto();
+		await editor.setPresentationMode('preview-block');
+		await editor.loadContent(LINKED);
+		await editor.focusBlockEnd(0);
+
+		await page.keyboard.press('ArrowDown');
+		await page.keyboard.type('Q');
+		await editor.bridge.waitForSourceContains('Q');
+		const source = await editor.bridge.getSource();
+		expect(source).toContain('![alt](/test-fixtures/sample.png)');
+		expect(source.split('\n\n')[1]).toContain('Q');
+	});
+});

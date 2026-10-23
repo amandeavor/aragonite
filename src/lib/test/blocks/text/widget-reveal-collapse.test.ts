@@ -28,7 +28,7 @@ function mountTwoMathBlock() {
 	const [firstWidget, secondWidget] = widgets;
 	const [first] = inlineWidgets;
 	// jsdom lays out nothing: hand the second widget a real box so the click
-	// hit-test in snapClickToWidgetEdge can land inside it.
+	// hit-test in readPress can land inside it.
 	secondWidget.getBoundingClientRect = () =>
 		({ left: 100, right: 120, top: 0, bottom: 10, width: 20, height: 10, x: 100, y: 0 }) as DOMRect;
 
@@ -172,7 +172,8 @@ describe('reveal switch, clicking widget B while A is revealed', () => {
 		const b = mountTwoMathBlock();
 		await b.revealFirst();
 
-		await b.interaction.snapClickToWidgetEdge(110, 5);
+		b.interaction.notePress({ clientX: 110, clientY: 5, button: 0 });
+		await b.interaction.snapClickToWidgetEdge({});
 
 		expect(b.interaction.isRevealing()).toBe(true);
 		expect(b.commits).toEqual([]);

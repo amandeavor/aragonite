@@ -5,7 +5,7 @@
  * sets its own.
  */
 
-import { isDevChecks } from '../../env';
+import { devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { getContext } from 'svelte';
 import type { ComponentProps } from 'svelte';
 // Type only, erased at build: no runtime import of `components/` here. It is for the
@@ -23,7 +23,6 @@ import {
 } from '../../schema/block-commands';
 import { commandForKey } from '../../schema/commands';
 import { isReadingMode, type PresentationMode } from '../../presentation-mode';
-import { devWarn } from '../../dev-warn';
 import { blockAccessibleName } from '../../a11y-strings';
 import {
 	EDITOR_DOC_KEY,
@@ -170,7 +169,7 @@ export function composeCollapseProbe(
 	return () => {
 		const value = explicit();
 		if (
-			isDevChecks() &&
+			devChecksOn &&
 			value !== isCollapsedContainer(getNode()) &&
 			!isReadingMode(getPresentationMode)
 		) {

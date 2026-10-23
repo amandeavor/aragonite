@@ -4,15 +4,14 @@
  * the commit run its fix-up over that body a second time.
  */
 
-import type { InvariantViolation } from '../assert';
-import { isDevChecks } from '../env';
+import { devChecksOn, type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 /** The bodies settled since the latest commit began, by their children arrays; null in production. */
 let settledInCommit: WeakSet<readonly unknown[]> | null = null;
 
 /** Called as a commit's mutation begins, so the check reads only what that mutation settled. */
 export function startCommitSettles(): void {
-	settledInCommit = isDevChecks() ? new WeakSet() : null;
+	settledInCommit = devChecksOn ? new WeakSet() : null;
 }
 
 /** Called by a fix-up that runs outside the commit's own pass. */

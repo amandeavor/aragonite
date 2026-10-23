@@ -2,7 +2,7 @@
 // processes only, and nothing here may import a test runner: the kits run inside an author's
 // own case, so failures come back as plain `Error`s.
 
-import { editorEnv } from './env';
+import { isTestProcess } from '@voithos-labs/aragonite/dev-checks';
 import { __resetSchemaRegistriesForTests } from './schema/registry-reset';
 import { activationFor, everyInstalledPlugin } from './schema/plugin-activation';
 import { applyPasteTransforms as runPasteTransforms } from './tree-operations/paste/paste-transforms';
@@ -14,7 +14,7 @@ import { applyPasteTransforms as runPasteTransforms } from './tree-operations/pa
  * (undo stack, selection, DOM/CST) survive. Throws outside a detected test environment.
  */
 export function resetPluginPlatformForTests(): void {
-	if (!editorEnv.isTest) {
+	if (!isTestProcess) {
 		throw new Error(
 			'resetPluginPlatformForTests() is test-only: it wipes the process-global plugin ' +
 				'registries, which is corruption in a running editor. No test environment was ' +
@@ -29,7 +29,7 @@ export function resetPluginPlatformForTests(): void {
 // What the reset's own error message points to: a runner other than Vitest declares itself
 // a test environment here, and `resetEditorEnv` puts the detected defaults back.
 
-export { configureEditorEnv, resetEditorEnv } from './env';
+export { configureEditorEnv, resetEditorEnv } from '@voithos-labs/aragonite/dev-checks';
 
 // ── Mounting the editor under a non-browser DOM ──────────────────────────────
 
@@ -52,8 +52,8 @@ export function applyPasteTransforms(text: string, plugins?: readonly string[]):
 // The channel every editor dev warning reaches, for a suite's own fail-on-warning check: register
 // a callback, empty it per case, fail on leftovers. Registering one silences the console line.
 
-export { setDevWarnSink } from './dev-warn';
-export type { DevWarnEntry, DevWarnSink } from './dev-warn';
+export { setDevWarnSink } from '@voithos-labs/aragonite/dev-checks';
+export type { DevWarnEntry, DevWarnSink } from '@voithos-labs/aragonite/dev-checks';
 
 // ── Conformance kits: the shared vocabulary ──────────────────────────────────
 // Every kit reports a cell as a `CellReport`; the container and inline profiles declare each

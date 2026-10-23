@@ -14,8 +14,7 @@ import {
 } from '../../../core/lines';
 import { fenceAnatomy, type FenceRun } from '../../../core/parsers/fence-syntax';
 import { createCaretAnchor } from '../../../caret/widget-offset';
-import { devWarn } from '../../../dev-warn';
-import { assertInvariant } from '../../../assert';
+import { assertInvariant, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { checkRenderedTextFidelity } from '../../../invariants/render-fidelity';
 import hljs from 'highlight.js/lib/core';
 import type { LanguageFn } from 'highlight.js';

@@ -2,7 +2,7 @@ import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { getInlineContent } from '../../core/inline/inline-cache';
-import { buildLinkReferenceMap } from '../../core/inline/link-reference-resolver';
+import { definitionsOf } from '../../core/inline/scan/definitions';
 import type { CstNode } from '../../core/nodes';
 
 function firstProse(src: string): CstNode {
@@ -60,7 +60,7 @@ describe('getInlineContent', () => {
 	it('forwards the resolver so a reference-style link resolves to a link node', () => {
 		const src = 'see [text][ref]\n\n[ref]: https://example.com\n';
 		const doc = parse(src);
-		const map = buildLinkReferenceMap(doc.children);
+		const map = definitionsOf(doc.children);
 
 		const resolved = getInlineContent(
 			doc.children[0],
@@ -84,7 +84,7 @@ describe('getInlineContent', () => {
 	it('does not evict across interleaved plain and resolved reads on a bracket block', () => {
 		const doc = parse('see [a][x]\n\n[x]: https://example.com\n');
 		const node = doc.children[0];
-		const map = buildLinkReferenceMap(doc.children);
+		const map = definitionsOf(doc.children);
 
 		const a1 = getInlineContent(node, undefined, undefined, defaultGrammarView);
 		const b1 = getInlineContent(node, map.resolve, map.signature, defaultGrammarView);
@@ -98,7 +98,7 @@ describe('getInlineContent', () => {
 	it('recomputes both slots after a raw change', () => {
 		const doc = parse('see [a][x]\n\n[x]: https://example.com\n');
 		const node = doc.children[0];
-		const map = buildLinkReferenceMap(doc.children);
+		const map = definitionsOf(doc.children);
 
 		const plainBefore = getInlineContent(node, undefined, undefined, defaultGrammarView);
 		const resolvedBefore = getInlineContent(node, map.resolve, map.signature, defaultGrammarView);
@@ -114,7 +114,7 @@ describe('getInlineContent', () => {
 	it('recomputes only the resolved slot when the signature changes', () => {
 		const doc = parse('see [a][x]\n\n[x]: https://example.com\n');
 		const node = doc.children[0];
-		const map = buildLinkReferenceMap(doc.children);
+		const map = definitionsOf(doc.children);
 
 		const plainRead = getInlineContent(node, undefined, undefined, defaultGrammarView);
 		const resolvedRead = getInlineContent(node, map.resolve, map.signature, defaultGrammarView);

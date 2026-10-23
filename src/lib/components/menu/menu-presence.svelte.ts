@@ -7,8 +7,7 @@
 
 import { tick, untrack } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
-import { assertInvariant } from '../../assert';
-import { devWarn } from '../../dev-warn';
+import { assertInvariant, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { checkMenuClosed } from '../../invariants/menu-closes';
 
 /** Why a menu is closing. A swap runs once the new document is in place, so a menu holding a draft

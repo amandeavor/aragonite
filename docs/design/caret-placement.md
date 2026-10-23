@@ -37,10 +37,16 @@ flowchart TD
 Every editable surface's pointer-down, a plugin's included, goes through `handlePointerDown` in the same file. Mostly the browser places the caret itself, as any contenteditable does, and the editor refines it afterwards. Three presses the editor takes away from the browser:
 
 - **A plain click in the surface's top or bottom padding.** Chromium on Mac and Linux would put that caret at the line's start or end, so the editor places it at the column under the pointer (through stage 2's probe) and cancels the mousedown. Not the pointer-down, since cancelling that swallows the mousedown a double-click needs; a double or triple click stays the multi-click gesture's.
-- **A right-click in the same padding**, which moves the caret before any menu opens. `placePaddingPress` in the same file puts it back at the column, called from the editor root's capture-phase listener (`src/lib/components/editor-root/gestures.ts` :: `placeCaretForMenu`), which runs ahead of every block's own menu.
+- **A right-click in the same padding**, which moves the caret before any menu opens. `planPaddingPress` in the same file reads the column at the press, and the editor root's capture-phase listener (`src/lib/components/editor-root/gestures.ts` :: `placeCaretForMenu`) puts the caret back there, ahead of every block's own menu.
 - **A right-click on an inline widget.** Safari selects the widget whole, so that same root listener puts the caret beside it, where every other engine leaves it, and the menu offers what the widget offers (Edit link, for one that goes somewhere). A widget the editor already holds selected stays selected, and the menu's Cut and Copy act on it.
 
-A text block's own pointer-down (`src/lib/components/blocks/text/TextEditableBlock.svelte`) also remembers the point for stage 4, and on a widget that shows its source when clicked (an inline formula) it suppresses the browser's caret, so the reveal is the only thing placing one.
+A text block's own pointer-down (`src/lib/components/blocks/text/TextEditableBlock.svelte`) also reads what the press means for stage 4, and on a widget that shows its source when clicked (an inline formula) it suppresses the browser's caret, so the reveal is the only thing placing one.
+
+A press is read when it goes down, not at the click or the menu that comes after it. The press itself can move the caret out of an open formula source, which closes it. The formula draws again, the rest of the line shifts, and by the time the click arrives there's something else under the pointer. Firefox always closes the source before the click, and Chromium does too when the press is held about as long as a person holds one. Three places measure at pointer-down and act later:
+
+- the text block's reading for stage 4 (`widget-interaction.ts` :: `notePress`, guarded by G4.252);
+- the root's right-click record (`gestures.ts` :: `notePress`), which places the menu's caret;
+- the dead-space click (`dead-space-caret.ts` :: `planAtPoint`), which also reads the block's own snap before it places a caret.
 
 ## 2. Which block, and where in it
 
@@ -84,7 +90,7 @@ Below the verbs:
 
 ## 4. The snap
 
-`src/lib/components/blocks/text/widget-interaction.ts` :: `snapClickToWidgetEdge`, on the click event that follows the pointer-down. The browser's caret is wrong in exactly two places:
+`src/lib/components/blocks/text/widget-interaction.ts` :: `snapClickToWidgetEdge`, on the click event that follows the pointer-down, acting on what that pointer-down read. The browser's caret is wrong in exactly two places:
 
 - A click on a widget that reveals its source (inline math) should open that source at the point, not put a caret next to it.
 - A click on or beside an atomic widget (an image, an emoji, a decoded entity) lands the browser's caret somewhere in the neighbouring text, since there's no text node under the point.

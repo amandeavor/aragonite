@@ -7,7 +7,7 @@
 
 import { tick, untrack } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
-import { assertInvariant } from '../../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkReadingTabStops } from '../../invariants/reading-tab-stops';
 import { rawOffsetAt } from '../../caret/widget-offset';
 import type { BlockElLookup } from '../../caret/block-el-lookup';

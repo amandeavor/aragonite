@@ -1,7 +1,8 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { existsSync, readFileSync } from 'fs';
-import type { Plugin } from 'vite';
+import { defaultServerConditions, type Plugin } from 'vite';
+import { SOURCE_CONDITION } from './scripts/lib-alias.mjs';
 
 const DEEP_STACK = 'src/lib/**/*.deep.test.ts';
 // Files that hand objects to a native addon, which rejects objects made in another VM context.
@@ -35,8 +36,11 @@ export default defineConfig({
 	resolve: {
 		// Client svelte build, so unit tests can drive the runes graph. The default node
 		// resolution picks the server build, where effects are no-ops.
-		conditions: ['browser']
+		conditions: ['browser', SOURCE_CONDITION]
 	},
+	// The source condition maps `@voithos-labs/aragonite/dev-checks` to its source file, in both
+	// environments a test file runs in.
+	ssr: { resolve: { conditions: [SOURCE_CONDITION, ...defaultServerConditions] } },
 	test: {
 		setupFiles: [
 			'./src/lib/test/support/plugin-platform.ts',

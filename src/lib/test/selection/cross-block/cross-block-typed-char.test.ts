@@ -1,23 +1,23 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { lrdMapCouldChange } from '#lib/components/link-reference-map.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import { serialize } from '#lib/core/serializer.js';
 import { createHistoryActions } from '#lib/editor-actions/commit/history.js';
 import { makeEnv, makeHandlers, selectAcross, makeBeforeInputEvent } from './typed-char-env';
 import { fixtureReading } from '../../harness/fixture-grammar';
 import type { CstNode } from '#lib/core/nodes.js';
 import type { EditEvent } from '#lib/editor-events.js';
-import type { LinkReferenceResolver } from '#lib/core/inline/link-reference-resolver.js';
+import type { LinkReferenceResolver } from '#lib/core/inline/scan/definitions.js';
 
 /**
  * Mirrors the shell's `edit` subscriber (`Editor.svelte`): rebuilds the link-reference map whenever
  * the gate says a commit could have changed the definitions, from the live post-commit document.
  */
 function trackLrdResolver(env: ReturnType<typeof makeEnv>): () => LinkReferenceResolver {
-	let resolve = buildLinkReferenceMap(env.doc.children).resolve;
+	let resolve = definitionsOf(env.doc.children).resolve;
 	env.events.on('edit', (e) => {
-		if (lrdMapCouldChange(env.doc, e)) resolve = buildLinkReferenceMap(env.doc.children).resolve;
+		if (lrdMapCouldChange(env.doc, e)) resolve = definitionsOf(env.doc.children).resolve;
 	});
 	return () => resolve;
 }

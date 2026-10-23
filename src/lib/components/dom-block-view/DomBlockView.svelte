@@ -15,7 +15,8 @@
 		BlockViewState,
 		ContainerSurface,
 		LeafSurface,
-		LeafViewHandle
+		LeafViewHandle,
+		RenderPrimarySurface
 	} from '../../schema/block-view';
 	import { componentPluginEditor } from '../../schema/block-kind-plugin';
 	import { tryGetBlockKindDescriptor } from '../../schema/block-kind-descriptor';
@@ -27,9 +28,14 @@
 		type EditorPolicies,
 		type EditorServices
 	} from '../../editor-keys';
-	import { assertInvariant } from '../../assert';
+	import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 	import { VIEW_TEXT_ATTR, VIEW_TEXT_HOST_ATTR } from '../../caret/block-content-selector';
-	import { checkAttachedLeaf, checkDomViewContent } from '../../invariants/dom-view-content';
+	import {
+		checkAttachedLeaf,
+		checkDomViewContent,
+		checkRenderedInTarget,
+		checkRevealAttached
+	} from '../../invariants/dom-view-content';
 	import { warnIfForeignRuntime } from '../../foreign-runtime';
 	import { createEditableLeaf } from '../blocks/editable/editable-leaf';
 	import { createContainerBlock } from '../../editor-actions/plugin/container';
@@ -51,6 +57,8 @@
 	const events = getContext<EditorServices | undefined>(EDITOR_SERVICES_KEY)?.events;
 
 	let leafEl: HTMLElement | null = $state(null);
+	let renderedEl: HTMLElement | null = $state(null);
+	let revealed = $state(false);
 	let childBox: HTMLElement | undefined = $state();
 	let handBuilt: BlockComponent | undefined = $state();
 	let generation = $state(0);
@@ -58,15 +66,21 @@
 	let mountedTarget: HTMLElement | null = null;
 
 	const blockDeps = { getNode: () => node, getIndex: () => index, getPath: () => myPath };
+	const leafDeps = { ...blockDeps, getEl: () => leafEl, onSourceEdit: afterInput };
 	const leaf =
-		view.surface === 'leaf'
+		view.surface === 'render-primary'
 			? createEditableLeaf({
-					...blockDeps,
-					getEl: () => leafEl,
-					mode: 'plain',
-					singleLine: view.singleLine
+					...leafDeps,
+					mode: 'render-primary',
+					singleLine: view.singleLine,
+					renderSource: view.renderSource,
+					reshapeSource: view.reshapeSource,
+					isRevealed: () => revealed,
+					setRevealed: (value) => (revealed = value)
 				})
-			: null;
+			: view.surface === 'leaf'
+				? createEditableLeaf({ ...leafDeps, mode: 'plain', singleLine: view.singleLine })
+				: null;
 	const container =
 		view.surface === 'container'
 			? createContainerBlock({ ...blockDeps, getBoxEl: () => childBox })
@@ -88,7 +102,8 @@
 			node,
 			path: myPath,
 			presentationMode: editorDoc.reading.mode(),
-			theme: policies.theme()
+			theme: policies.theme(),
+			revealed
 		};
 	}
 
@@ -110,24 +125,33 @@
 
 	// ── Leaf surface ──────────────────────────────────────────────────────────
 
+	function afterInput(text: string): void {
+		const after = (handle as LeafViewHandle | null)?.afterInput;
+		if (!after) return;
+		try {
+			after.call(handle, text);
+		} catch (error) {
+			report(error);
+		}
+	}
+
 	if (leaf) {
 		bindLeafSurface({
 			getEl: () => leafEl,
-			props: () => leaf.surfaceProps as unknown as Record<string | symbol, unknown>,
-			afterInput: (el) => {
-				const after = (handle as LeafViewHandle | null)?.afterInput;
-				if (!after) return;
-				try {
-					after.call(handle, el.textContent ?? '');
-				} catch (error) {
-					report(error);
-				}
-			}
+			props: () => leaf.surfaceProps as unknown as Record<string | symbol, unknown>
+		});
+	}
+	if (leaf && view.surface === 'render-primary') {
+		bindLeafSurface({
+			getEl: () => renderedEl,
+			props: () => leaf.renderProps as unknown as Record<string | symbol, unknown>
 		});
 	}
 
 	const leafSurface: LeafSurface | null = leaf && {
 		attach(el) {
+			// The editor's text leaves with it, so an element attached again holds nothing yet.
+			if (leafEl !== el) leafEl?.replaceChildren();
 			leafEl?.removeAttribute(VIEW_TEXT_ATTR);
 			el?.setAttribute(VIEW_TEXT_ATTR, '');
 			leafEl = el;
@@ -137,6 +161,15 @@
 		},
 		reveal: (offset) => leaf.reveal(offset),
 		commitSource: (text) => leaf.commitSource(text)
+	};
+	const renderPrimarySurface: RenderPrimarySurface | null = leafSurface && {
+		...leafSurface,
+		attachRendered(el) {
+			renderedEl = el;
+			assertInvariant('render-primary-attach', () =>
+				mountedTarget ? checkRenderedInTarget(mountedTarget, el) : null
+			);
+		}
 	};
 
 	// ── Container surface ─────────────────────────────────────────────────────
@@ -154,6 +187,8 @@
 
 	const containerSurface: ContainerSurface | null = container && {
 		mountChildren(box) {
+			// The box they're already in: remounting would drop the caret and every child's state.
+			if (children && box === childBox) return;
 			unmountChildren();
 			childBox = box;
 			// Passed, never inherited: a view may mount its children from an event handler.
@@ -177,6 +212,10 @@
 			target.setAttribute(VIEW_TEXT_HOST_ATTR, '');
 			return view.mount(target, viewContext({ leaf: leafSurface! }));
 		}
+		if (view.surface === 'render-primary') {
+			target.setAttribute(VIEW_TEXT_HOST_ATTR, '');
+			return view.mount(target, viewContext({ leaf: renderPrimarySurface! }));
+		}
 		if (view.surface === 'container') {
 			return view.mount(target, viewContext({ container: containerSurface! }));
 		}
@@ -194,12 +233,14 @@
 			mountedTarget = target;
 			seen = watched();
 			assertInvariant('dom-view-content', () => checkDomViewContent(target, leafEl));
+			assertInvariant('render-primary-attach', () => checkRenderedInTarget(target, renderedEl));
 			return () => {
 				const ending = handle;
 				handle = null;
 				mountedTarget = null;
 				unmountChildren();
 				leafEl = null;
+				renderedEl = null;
 				handBuilt = undefined;
 				try {
 					ending?.destroy?.();
@@ -217,6 +258,7 @@
 			myPath.join(),
 			editorDoc.reading.mode(),
 			policies.theme(),
+			revealed,
 			view.watchDocument ? editorDoc.contentVersion() : 0
 		];
 	}
@@ -228,6 +270,8 @@
 			if (!handle || now.every((value, i) => Object.is(value, seen[i]))) return;
 			seen = now;
 			if (handle.update?.(currentState()) === false) generation++;
+			else if (revealed)
+				assertInvariant('render-primary-attach', () => checkRevealAttached(leafEl));
 		});
 	});
 </script>

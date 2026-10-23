@@ -246,7 +246,7 @@ export function createContainerBlockComponent(
 			dispatchFocusAtColumn(deps.innerBlockRefs, x, from);
 		},
 		isVerticallyTransparent(): boolean {
-			return isVerticallyTransparentNode(deps.node, deps.reading.grammar);
+			return isVerticallyTransparentNode(deps.node, deps.reading);
 		},
 		enterEdgeWidget(side: 'start' | 'end'): boolean {
 			const count = deps.childList.count();

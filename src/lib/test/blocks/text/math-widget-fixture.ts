@@ -30,11 +30,17 @@ export function stampMathWidget(node: InlineNode): HTMLElement {
 	return wrapper;
 }
 
-/** Registers the math inline kind before each test and clears the mounted DOM after. */
+/** Registers the math inline kind before each test and clears the mounted DOM after. A press
+ *  measures text ranges, which jsdom can't, so a range measures as no boxes here. */
 export function installMathInline(): void {
-	beforeEach(registerMathInline);
+	const rangeRects = Range.prototype.getClientRects;
+	beforeEach(() => {
+		registerMathInline();
+		Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
+	});
 	afterEach(() => {
 		document.body.innerHTML = '';
+		Range.prototype.getClientRects = rangeRects;
 	});
 }
 

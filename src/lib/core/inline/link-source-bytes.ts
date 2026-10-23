@@ -9,7 +9,7 @@ import { encodeDestination, escapeTitle } from './destination-bytes';
 import type { Reading } from '../../schema/reading';
 import { CONTENT_VISIBILITY, renderedText } from './visibility';
 import type { InlineNode } from '../nodes';
-import { devWarn } from '../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // ── The one write path ──────────────────────────────────────────────────────
 

@@ -1,3 +1,11 @@
 'use client';
 export { Aragonite, type AragoniteProps } from './aragonite.js';
+export {
+	reactBlockView,
+	LeafContent,
+	BlockChildren,
+	type BlockViewProps,
+	type FrameworkSurface,
+	type ReactBlockViewOptions
+} from './block-view.js';
 export type { EditorHandle } from '@voithos-labs/aragonite';

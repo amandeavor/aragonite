@@ -69,6 +69,8 @@ const NON_CARET_PRESS_FILES: Record<string, string> = {
 		'swallows the press on its rows so the caret the pick writes at keeps focus',
 	'src/lib/components/menu/SelectionToolbar.svelte':
 		'swallows the press on its buttons so the selection they act on survives it; the release is only heard to place the bar',
+	'src/lib/components/blocks/text/noted-press.ts':
+		'ends a press reading when the next press starts; places no caret',
 	'src/lib/components/SearchBar.svelte':
 		'a press on the find bar between its controls focuses the field in that row; the document caret stays put',
 	'src/lib/components/editor-root/listeners.ts':
@@ -91,6 +93,8 @@ const NON_CARET_PRESS_FILES: Record<string, string> = {
 		'closes an open menu on a press outside it; the press places its own caret through the ordinary door',
 	'src/lib/components/image/ImageResizeHandles.svelte': 'starts a resize drag',
 	'src/lib/editor-actions/reorder-drag.ts': 'starts a block reorder drag off the handle',
+	'src/lib/components/dom-block-view/DomBlockView.svelte':
+		'binds the shared editable-leaf reveal handler on a render-primary view’s rendered half; the reset lives there',
 	'src/lib/plugins/details/DetailsBlock.svelte':
 		'preventDefault on the summary so the disclosure toggle takes no focus',
 	'src/lib/plugins/latex/BlockMath.svelte':

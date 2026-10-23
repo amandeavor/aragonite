@@ -27,7 +27,7 @@ import {
 	recordCaretFrameMove
 } from '../perf/instruments';
 import type { CaretLook } from './caret-look';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkDrawnCaretAgrees, checkOneCaretShowing } from '../invariants/drawn-caret';
 
 // ── Public API ──────────────────────────────────────────────────────────────

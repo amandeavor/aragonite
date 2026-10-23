@@ -1,7 +1,7 @@
 import { describeScanCases, emphasisNode, rawHtmlNode, textNode } from './scan-test-helpers';
 
-// Raw HTML (CommonMark §6.6) via the shared core/inline/html-tag-grammar.ts forms. `<`
-// claims first in the single left-to-right pass, so nothing inside a tag can fragment it.
+// Raw HTML (CommonMark §6.6). A tag is read where its `<` is reached, so nothing inside it can
+// break it up.
 
 describeScanCases('tag forms', [
 	['self-closing open tag', '<br/>', [rawHtmlNode(0, 5)]],

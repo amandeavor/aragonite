@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { mintWidgetShell } from '#lib/core/inline/widget-shell.js';
 import { parseInline } from '#lib/core/inline/index.js';

@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { serialize } from '#lib/core/serializer.js';
 import { READING_WRITE_TAG } from '#lib/editor-actions/commit/reading-write-gate.js';
-import { configureEditorEnv } from '#lib/env.js';
+import { configureEditorEnv } from '@voithos-labs/aragonite/dev-checks';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
 import { makeTopHarness } from '#lib/test/harness/editor-actions.js';

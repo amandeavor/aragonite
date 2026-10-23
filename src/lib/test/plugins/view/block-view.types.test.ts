@@ -53,7 +53,9 @@ export const internal: HandBuiltBlock = {
 	getCursorOffset: () => null,
 	focusable: true,
 	// @ts-expect-error snapping the caret at a point is the editor's own, never a view's
-	snapCaretToPoint() {}
+	readSnapAtPoint() {
+		return () => {};
+	}
 };
 
 // G3.18: a `BlockComponent` member with no source is a compile error at `MEMBER_SOURCES`; the

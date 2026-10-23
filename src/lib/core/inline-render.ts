@@ -8,7 +8,7 @@
 
 import type { InlineNode } from './nodes';
 import { buildCoreInlineWidget, type WidgetBuildOptions } from './inline/inline-widgets';
-import { codeSpanFence } from './inline/scan/code-spans';
+import { codeFenceWidth } from './inline/scan/code-span';
 import { isAllowedHrefScheme } from './url-policy';
 import { firstDisplayLine } from './lines';
 
@@ -101,7 +101,7 @@ function renderInlineCode(
 	opts: RenderInlineOptions
 ): DocumentFragment {
 	const frag = document.createDocumentFragment();
-	const fence = codeSpanFence(node);
+	const fence = codeFenceWidth(node);
 	const contentStart = node.start + fence;
 	const contentEnd = node.end - fence;
 

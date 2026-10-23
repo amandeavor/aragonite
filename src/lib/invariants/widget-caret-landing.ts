@@ -4,7 +4,7 @@
  * show (an emoji, an image), whose caret goes to the far edge.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 /** A widget in the block, with whether its kind can show its source. */
 export interface LandingWidget {

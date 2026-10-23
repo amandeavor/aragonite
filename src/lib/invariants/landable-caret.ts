@@ -8,7 +8,7 @@
 
 import { hidesMarkers, type PresentationMode } from '../presentation-mode';
 import { paintsNoLandableContent } from '../caret/widget-offset';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkLandableCaret(
 	focused: HTMLElement,

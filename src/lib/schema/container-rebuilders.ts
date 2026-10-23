@@ -10,7 +10,7 @@ import type { CstNode, TableAlignment, TableRowMetadata } from '../core/nodes';
 import { makeBlockNode, metadataOf } from '../core/nodes';
 import { generateBlockId } from '../block-id';
 import type { NodeView } from '../core/node-views';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { recordListMarkerReads } from '../perf/instruments';
 import { quoteLines } from '../core/parsers/blockquote';
 import {

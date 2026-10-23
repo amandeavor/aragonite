@@ -5,7 +5,7 @@
 
 /*! @voithos-labs/aragonite | MPL-2.0 */
 
-import { isDevChecks } from '../env';
+import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import type { CstNode, Document } from './nodes';
 import { isBlankLine, isBlankText, splitLines, type ParsedLine } from './lines';
 import { perfEnabled, recordParse } from '../perf/instruments';
@@ -15,7 +15,6 @@ import {
 	type GrammarView,
 	type OpenContext
 } from '../schema/block-openers';
-import { assertInvariant } from '../assert';
 import { parseParagraph } from './parsers/paragraph';
 import { registerTableCompleter } from './parsers/table-completion';
 
@@ -220,7 +219,7 @@ function parseNextBlock(ctx: OpenContext): BlockOpenerResult {
 			reportNonAdvancingOpener(ctx, result);
 			continue;
 		}
-		if (isDevChecks()) assertOpenerRawMatches(ctx, result);
+		if (devChecksOn) assertOpenerRawMatches(ctx, result);
 		return result;
 	}
 	// Paragraph is the total fallback; it also detects setext headings and tables.

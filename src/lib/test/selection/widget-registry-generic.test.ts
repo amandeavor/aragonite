@@ -5,7 +5,6 @@
  * `<br>`-only paragraph needs content that cannot open one, hence `<br><br>`.
  */
 
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
 import { describe, it, expect } from 'vitest';
 import type { CstNode } from '../../core/nodes';
 import { parse } from '../../core/parser';
@@ -20,21 +19,19 @@ const paragraph = (raw: string): CstNode => ({ kind: 'paragraph', leadingTrivia:
 
 describe('vertical transparency for a non-image widget', () => {
 	it('is true for a <br>-only paragraph', () => {
-		expect(isVerticallyTransparentNode(parse('<br><br>\n').children[0], defaultGrammarView)).toBe(
+		expect(isVerticallyTransparentNode(parse('<br><br>\n').children[0], fixtureReading())).toBe(
 			true
 		);
 	});
 
 	it('is true when only blank text sits between <br> widgets', () => {
-		expect(isVerticallyTransparentNode(parse('<br> <br>\n').children[0], defaultGrammarView)).toBe(
+		expect(isVerticallyTransparentNode(parse('<br> <br>\n').children[0], fixtureReading())).toBe(
 			true
 		);
 	});
 
 	it('is false once real text joins the <br>', () => {
-		expect(isVerticallyTransparentNode(parse('a<br>\n').children[0], defaultGrammarView)).toBe(
-			false
-		);
+		expect(isVerticallyTransparentNode(parse('a<br>\n').children[0], fixtureReading())).toBe(false);
 	});
 });
 

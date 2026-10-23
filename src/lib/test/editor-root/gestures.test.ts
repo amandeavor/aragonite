@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRootGestures } from '#lib/components/editor-root/gestures.js';
 import { installPressTracker } from '#lib/components/editor-root/listeners.js';
 import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import { parse } from '#lib/core/parser.js';
 import type { BlockComponent } from '#lib/block-component.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
@@ -13,7 +13,7 @@ import { asEditorX } from '#lib/caret/coordinate-spaces.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 import { bindActivationClick, createPressTracker, type LinkClick } from '#lib/activation-click.js';
 import { ACTIVATION_CLICK_CASES } from '#lib/test/support/activation-click-cases.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { registerInlineWidgetKind } from '#lib/core/inline/inline-widgets.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
 import { marksPending, pendMark } from '#lib/test/harness/pending-marks.js';
@@ -137,10 +137,16 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 	const doc = parse(
 		'---\n\nafter\n\na [link](https://example.com/) b\n\nplain words here\n\nx %%w%% y\n'
 	);
-	const refs = buildLinkReferenceMap(doc.children);
+	const refs = definitionsOf(doc.children);
 	const startDragAtPoint = vi.fn(() => true);
 	const focus = vi.fn();
-	const component = { focusable: true, focus, startDragAtPoint } as unknown as BlockComponent;
+	const readSnapAtPoint = vi.fn(() => () => {});
+	const component = {
+		focusable: true,
+		focus,
+		startDragAtPoint,
+		readSnapAtPoint
+	} as unknown as BlockComponent;
 	const activateLink = vi.fn();
 	const caretMemory = createCaretMemory();
 	const reading = fixtureReading(
@@ -192,6 +198,7 @@ function harness(opts: { mode?: PresentationMode; linkClick?: LinkClick } = {}) 
 		gestures,
 		startDragAtPoint,
 		focus,
+		readSnapAtPoint,
 		activateLink,
 		withRange,
 		press: (target: EventTarget, init?: MouseEventInit) => fire('pointerdown', target, init),
@@ -411,6 +418,15 @@ describe('editor-root gestures: the right-click press record', () => {
 			const h = harness();
 			h.press(h.widgetLink, { ...AT, button: 2 });
 			h.widgetLink.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, ...AT }));
+			expect(h.focus).toHaveBeenCalledOnce();
+		});
+
+		it('is read once, at its pointerdown, for the menu its mousedown and contextmenu follow', () => {
+			const h = harness();
+			h.press(h.widgetLink, { ...AT, button: 2 });
+			h.mouseDown(h.widgetLink, { ...AT, button: 2 });
+			h.widgetLink.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, ...AT }));
+			expect(h.readSnapAtPoint).toHaveBeenCalledOnce();
 			expect(h.focus).toHaveBeenCalledOnce();
 		});
 

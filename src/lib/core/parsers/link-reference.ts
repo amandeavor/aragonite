@@ -1,6 +1,6 @@
 /**
  * Link reference definition parser, CommonMark §4.7 (`[label]: url "title"`). The label,
- * destination and title are read by the link grammar in `inline/link-destination.ts`, and may
+ * destination and title are read by the link grammar in `inline/scan/link-grammar.ts`, and may
  * continue on the lines after the first that a paragraph would absorb. Footnote labels
  * (`[^...]:`) stay paragraphs.
  */
@@ -8,12 +8,12 @@
 import { isBlankLine, isWhitespaceChar, splitLines, type ParsedLine } from '../lines';
 import { joinRaw } from '../parser';
 import {
-	linkTitleValue,
-	parseLinkDestination,
-	scanLinkTitle,
-	scanLinkLabel,
-	SPAN_OPEN
-} from '../inline/link-destination';
+	labelEnd,
+	readDestination,
+	readTitle,
+	STILL_OPEN,
+	titleValue
+} from '../inline/scan/link-grammar';
 import { lineInterruptsParagraph, type BlockOpenerResult } from '../../schema/block-openers';
 import { matchSetextUnderline } from './paragraph';
 
@@ -32,7 +32,7 @@ export function parseLinkReferenceDefinition(
 	if (label.startsWith('^')) return null;
 
 	const destStart = skipSeparator(window, afterColon);
-	const destination = parseLinkDestination(window.text, destStart, window.text.length);
+	const destination = readDestination(window.text, destStart, window.text.length);
 	if (!destination) return null;
 
 	// §4.7: non-whitespace after the destination that isn't a well-formed title on its own line
@@ -41,10 +41,10 @@ export function parseLinkReferenceDefinition(
 	let title: string | undefined;
 	const titleStart = skipSeparator(window, destination.end);
 	if (titleStart > destination.end) {
-		const titleEnd = readSpan(window, titleStart, scanLinkTitle);
+		const titleEnd = readSpan(window, titleStart, readTitle);
 		if (titleEnd >= 0 && atLineEnd(window.text, titleEnd)) {
 			lastOffset = titleEnd;
-			title = linkTitleValue(window.text, titleStart, titleEnd);
+			title = titleValue(window.text, titleStart, titleEnd);
 		}
 	}
 	if (lastOffset < 0) {
@@ -117,11 +117,11 @@ function skipSeparator(window: DefinitionWindow, pos: number): number {
 }
 
 /** The end of the label or title opening at `pos`, joining lines until it closes, or a miss. */
-function readSpan(window: DefinitionWindow, pos: number, scan: typeof scanLinkTitle): number {
+function readSpan(window: DefinitionWindow, pos: number, scan: typeof readTitle): number {
 	let from = pos + 1;
 	for (;;) {
 		const spanEnd = scan(window.text, pos, window.text.length, from);
-		if (spanEnd !== SPAN_OPEN) return spanEnd;
+		if (spanEnd !== STILL_OPEN) return spanEnd;
 		from = window.text.length;
 		if (!window.grow()) return -1;
 	}
@@ -149,9 +149,9 @@ export function definitionReadingNotFinal(raw: string): boolean {
 	const lines = splitLines(raw);
 	const labelStart = labelOpenerOffset(lines[0].text);
 	const window = new DefinitionWindow(lines, 0, lines.length);
-	const labelEnd = readSpan(window, labelStart, scanLinkLabel);
+	const labelClose = readSpan(window, labelStart, labelEnd);
 	// A label that never closed may still close below; one followed by anything but `:` is a link.
-	if (labelEnd >= 0 && window.text[labelEnd] !== ':') return false;
+	if (labelClose >= 0 && window.text[labelClose] !== ':') return false;
 	const definition = parseLinkReferenceDefinition(lines, 0, lines.length, '');
 	return definition === null || !('title' in (definition.node.metadata ?? {}));
 }
@@ -168,10 +168,10 @@ function readLabel(
 	window: DefinitionWindow,
 	pos: number
 ): { label: string; afterColon: number } | null {
-	const labelEnd = readSpan(window, pos, scanLinkLabel);
-	if (labelEnd < 0 || window.text[labelEnd] !== ':') return null;
-	const label = window.text.slice(pos + 1, labelEnd - 1);
+	const labelClose = readSpan(window, pos, labelEnd);
+	if (labelClose < 0 || window.text[labelClose] !== ':') return null;
+	const label = window.text.slice(pos + 1, labelClose - 1);
 	// §6.6: a label holds at least one non-whitespace character, in §2.1's ASCII sense.
 	if ([...label].every(isWhitespaceChar)) return null;
-	return { label, afterColon: labelEnd + 1 };
+	return { label, afterColon: labelClose + 1 };
 }

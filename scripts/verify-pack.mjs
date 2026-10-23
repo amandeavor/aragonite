@@ -6,6 +6,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { nodeImportFailures } from './node-import.mjs';
 import { collectLeafStrings, requiredPackPaths } from './pack-manifest.mjs';
+import { verifyDevStrip } from './verify-dev-strip.mjs';
 import { verifyPrebuilt } from './verify-prebuilt.mjs';
 import { verifyTypes } from './verify-types.mjs';
 
@@ -69,6 +70,14 @@ if (FORBIDDEN.length) {
 const prebuiltFailures = await verifyPrebuilt();
 if (prebuiltFailures.length) {
 	console.error('verify-pack: the prebuilt build fails:\n  ' + prebuiltFailures.join('\n  '));
+	process.exit(1);
+}
+
+const stripFailures = await verifyDevStrip();
+if (stripFailures.length) {
+	console.error(
+		'verify-pack: a production build keeps the dev checks:\n  ' + stripFailures.join('\n  ')
+	);
 	process.exit(1);
 }
 

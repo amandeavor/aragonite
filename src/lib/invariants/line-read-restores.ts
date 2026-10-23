@@ -3,7 +3,7 @@
  * focus where it was. A focus put back by hand loses the side of the wrap the browser showed it on.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkLineReadRestored(
 	before: { node: Node; offset: number },

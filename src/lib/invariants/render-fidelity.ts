@@ -5,7 +5,7 @@
  * all of them, so only this runtime check can catch it, never a unit test.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 /** First index at which the strings differ, or -1. */
 function firstDivergence(rendered: string, expected: string): number {

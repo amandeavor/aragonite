@@ -28,7 +28,7 @@
 	import { useMountGauge } from '../perf/use-mount-gauge.svelte';
 	import { useMeasuredChild } from '../windowing/use-measured-child.svelte';
 	import { publishRefSlot, type RefSlots } from '../block-lists/child-refs';
-	import { devWarn } from '../dev-warn';
+	import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 	import { foreignRuntimeCause, warnIfForeignRuntime } from '../foreign-runtime';
 	import { stampBlockContexts } from './stamp-block-contexts';
 

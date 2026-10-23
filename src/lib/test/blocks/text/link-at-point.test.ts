@@ -4,7 +4,7 @@
 // resolves like any other, since the card is how a user fixes a blocked URL.
 import { describe, it, expect, afterEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import type { CstNode } from '#lib/core/nodes.js';
 import { createTextRender } from '#lib/components/blocks/text/text-render.js';
 import {
@@ -23,7 +23,7 @@ function mount(source: string): {
 } {
 	const doc = parse(source);
 	const node = doc.children[0];
-	const map = buildLinkReferenceMap(doc.children);
+	const map = definitionsOf(doc.children);
 	// Live, the one mode whose card edits a link.
 	const reading: Reading = fixtureReading(
 		{ resolver: map.resolve, resolverSignature: map.signature },

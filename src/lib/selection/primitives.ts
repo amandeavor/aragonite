@@ -14,7 +14,7 @@ import {
 	type CellIndex,
 	type RawOffset
 } from '../caret/coordinate-spaces';
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

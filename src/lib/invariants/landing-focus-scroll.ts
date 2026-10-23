@@ -4,7 +4,7 @@
  * second writer nobody owns.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkLandingFocusScrollsNothing(
 	before: number | null,

@@ -3,12 +3,13 @@
 	"version": "0.11.1",
 	"description": "react component for aragonite, the cute markdown editor lib",
 	"keywords": [
-		"editor",
-		"framework-agnostic",
-		"rich-text",
-		"wysiwyg",
-		"markdown",
+		"markdown-editor",
 		"react",
+		"react-component",
+		"wysiwyg",
+		"rich-text-editor",
+		"gfm",
+		"live-preview",
 		"typescript"
 	],
 	"homepage": "https://aragonite.dev",

@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { tick } from 'svelte';
-import { devWarn, setDevWarnSink } from '#lib/dev-warn.js';
+import { devWarn, setDevWarnSink } from '@voithos-labs/aragonite/dev-checks';
 import {
 	takeDevWarns,
 	allowDevWarns,
@@ -80,8 +80,8 @@ describe('warn-gate site attribution', () => {
 		const stack = [
 			'Error',
 			'    at listener (C:/a b/repo/src/lib/test/support/warn-gate.ts:70:20)',
-			'    at devWarn (C:/a b/repo/src/lib/dev-warn.ts:22:11)',
-			'    at assertInvariant (C:/a b/repo/src/lib/assert.ts:21:3)',
+			'    at devWarn (C:/a b/repo/src/lib/dev-checks.ts:62:11)',
+			'    at assertInvariant (C:/a b/repo/src/lib/dev-checks.ts:77:3)',
 			'    at check (C:/a b/repo/src/lib/tree-operations/node-ops.ts:255:3)'
 		].join('\n');
 		expect(siteFromStack(stack)).toBe('src/lib/tree-operations/node-ops.ts');

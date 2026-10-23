@@ -3,10 +3,8 @@ import { Parser } from 'commonmark';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
 import { metadataOf, type CstNode } from '#lib/core/nodes.js';
-import {
-	buildLinkReferenceMap,
-	normalizeLinkLabel
-} from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
+import { labelKey } from '#lib/core/inline/scan/link-grammar.js';
 import { loadDefinitionExamples } from './corpus';
 import { editorOutline, referenceOutline } from './block-outline';
 import baseline from './baseline.json';
@@ -26,12 +24,12 @@ function definitionLine(label: string, url: string, title: string | undefined): 
 
 function editorReading(markdown: string): Reading {
 	const doc = parse(markdown);
-	const resolve = buildLinkReferenceMap(doc.children).resolve;
+	const resolve = definitionsOf(doc.children).resolve;
 	const labels = new Set<string>();
 	const visit = (nodes: CstNode[]): void => {
 		for (const node of nodes) {
 			if (node.kind === 'linkReferenceDefinition') {
-				labels.add(normalizeLinkLabel(metadataOf(node, 'linkReferenceDefinition').label));
+				labels.add(labelKey(metadataOf(node, 'linkReferenceDefinition').label));
 			}
 			if (node.children) visit(node.children);
 		}

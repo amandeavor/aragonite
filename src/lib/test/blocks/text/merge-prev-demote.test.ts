@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, unmount, flushSync } from 'svelte';
 import TextEditableBlock from '#lib/components/blocks/text/TextEditableBlock.svelte';
 import { parse } from '#lib/core/parser.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { DIRECTIVE_LEAF, registerDirectiveKinds } from '#lib/core/directive/kinds.js';
 import { getBlockKindDescriptor } from '#lib/schema/block-kind-descriptor.js';
@@ -26,7 +26,7 @@ function mountBlock(source: string, mode: PresentationMode, caret: number) {
 	const blockEdit = makeStubBlockEdit();
 
 	// The reference map the editor root builds, so a reference construct is a construct here too.
-	const references = buildLinkReferenceMap(doc.children);
+	const references = definitionsOf(doc.children);
 	const instance = mount(TextEditableBlock, {
 		target: root,
 		props: { node: doc.children[0], index: 0, myPath: [0] },

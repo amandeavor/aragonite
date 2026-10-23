@@ -4,7 +4,7 @@
  */
 
 import type { NodeView } from '../core/node-views';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { markerWidthCounts, sameMarkerWidths } from '../core/parsers/list';
 
 export function checkListMarkerWidths(node: NodeView): InvariantViolation | null {

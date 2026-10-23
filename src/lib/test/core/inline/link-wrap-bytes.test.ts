@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import { buildLinkWrapBytes, canWrapRangeAsLink } from '#lib/core/inline/link-source-bytes.js';
 import { fixtureReading } from '../../harness/fixture-grammar';
 
@@ -51,9 +51,7 @@ describe('link wrap bytes: the join declines rather than corrupt', () => {
 
 	it('a bracket pair a definition turns into a shortcut-reference link declines', () => {
 		const display = 'see [ref] now';
-		const resolver = buildLinkReferenceMap(
-			parse(`${display}\n\n[ref]: https://e.c\n`).children
-		).resolve;
+		const resolver = definitionsOf(parse(`${display}\n\n[ref]: https://e.c\n`).children).resolve;
 		expect(
 			buildLinkWrapBytes(display, 4, 9, 'u', fixtureReading({ resolver: resolver }))
 		).toBeNull();

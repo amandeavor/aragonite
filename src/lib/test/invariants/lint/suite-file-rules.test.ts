@@ -217,12 +217,12 @@ const RULES: FileRule[] = [
 		misses: ['new URL("./x.json", import.meta.url);\nimport { DEV } from "esm-env";']
 	},
 	{
-		id: 'G4.41 no file mocks dev-warn',
-		matches: new RegExp(String.raw`vi\s*\.\s*mock\(\s*` + quotedSpecifierEnding('dev-warn')),
+		id: 'G4.41 no file mocks dev-checks',
+		matches: new RegExp(String.raw`vi\s*\.\s*mock\(\s*` + quotedSpecifierEnding('dev-checks')),
 		reason:
 			'a mocked devWarn never reaches the sink, so every guard fire in the file is invisible to the gate: assert on takeDevWarns() or declare the tag with allowDevWarns',
 		reaches: BOTH_HALVES,
-		hits: [mockCall('#lib/dev-warn.js'), mockCall('../../dev-warn')],
+		hits: [mockCall('@voithos-labs/aragonite/dev-checks'), mockCall('../../dev-checks')],
 		misses: [mockCall('esm-env')]
 	},
 	{
@@ -272,6 +272,8 @@ const RULES: FileRule[] = [
 			'src/lib/test/invariants/lint/scan-source.ts': 'the shared lexer and collector',
 			'src/lib/test/invariants/lint/spread-call-census.test.ts':
 				'walks the classes fileClasses returns, so every character it tests is code',
+			'src/lib/test/core/inline/adversarial-scan-bounds.test.ts':
+				'floods the inline parse with unclosed `<!--` openers; it reads no source',
 			'src/lib/test/invariants/lint/consumer-guide-reserved-set.test.ts':
 				'reads a printed `// Set {…}` line out of the guide’s example output, not a comment'
 		},

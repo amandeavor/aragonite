@@ -157,4 +157,22 @@ describe('a DOM container view', () => {
 		]);
 		expect(log.mounts).toHaveLength(1);
 	});
+
+	// A Vue `<BlockChildren>` calls its ref again on every re-render, with the box it already gave.
+	it('keeps its children when handed the box they are already in', async () => {
+		const editor = mountAlert(
+			defineBlockView({
+				surface: 'container',
+				mount(target, ctx) {
+					ctx.container.mountChildren(target);
+					return { update: () => ctx.container.mountChildren(target) };
+				}
+			})
+		);
+		await editor.settle();
+		const child = surfaceAt(editor, [0, 0]);
+		typeInto(child, 'firstX');
+		await editor.settle();
+		expect(surfaceAt(editor, [0, 0])).toBe(child);
+	});
 });

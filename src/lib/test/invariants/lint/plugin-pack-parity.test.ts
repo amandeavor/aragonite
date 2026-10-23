@@ -10,7 +10,7 @@ import path from 'node:path';
 import { bundledPluginDirs, collectEditorSources } from './scan-source';
 import { SOURCE_DIR } from './source-paths';
 import { requiredPackPaths } from '../../../../../scripts/pack-manifest.mjs';
-import { publishedEntryPoints } from '../../../../../scripts/lib-alias.mjs';
+import { publishedEntryPoints, SOURCE_CONDITION } from '../../../../../scripts/lib-alias.mjs';
 
 const PLUGIN_SRC = path.resolve(SOURCE_DIR.plugins);
 
@@ -107,7 +107,10 @@ describe('G4.10 plugin package/pack parity', () => {
 
 describe('G4.174 every published entry point has a source build and a prebuilt one', () => {
 	it('pairs each JavaScript export with the same path under dist/prebuilt', () => {
-		const scripts = Object.values(readPackage().exports).filter((t) => typeof t === 'object');
+		// A self-import subpath (`./dev-checks`) is resolved by the host's own conditions, not an entry.
+		const scripts = Object.values(readPackage().exports).filter(
+			(t) => typeof t === 'object' && t !== null && !(SOURCE_CONDITION in t)
+		);
 		expect(publishedEntryPoints()).toHaveLength(scripts.length);
 	});
 

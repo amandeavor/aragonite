@@ -5,7 +5,7 @@
  */
 
 import type { CstNode } from '../core/nodes';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { isBlankParagraph, readBlocks } from '../core/parser';
 import type { GrammarView } from '../schema/block-openers';
 import type { BodyParent } from '../tree-operations/node-primitives';
