@@ -1,8 +1,8 @@
 /**
  * A plugin inline handler may create a built-in kind over bytes of its own: an `![[cat.png]]`
  * that is an `image` to the whole editor. The editor's writers emit the built-in grammar, so
- * without the scan's claim record a resize re-serializes the embed as GFM. Both dispatch routes
- * get their own case: they share `tryRungs`, but only structurally.
+ * without the claim record a resize re-serializes the embed as GFM. A handler on a character the
+ * parse reads itself and one on a character it doesn't each get a case.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -10,7 +10,7 @@ import type { InlineNode } from '../../../core/nodes';
 import { parseInline } from '../../../core/inline';
 import { registerInlineSyntax, type InlineSyntaxRecognizer } from '#lib/plugin.js';
 
-// The same minimal embed stand-in `inline-ladder-bang.test.ts` drives; its extension gate
+// The same minimal embed stand-in the `!` handler checks use; its extension gate
 // is what declines the `![[a]](u)` overlap with the built-in image grammar.
 const recognizeEmbed: InlineSyntaxRecognizer = (raw, pos, end) => {
 	if (!raw.startsWith('![[', pos)) return null;
@@ -66,8 +66,7 @@ describe('a reserved-trigger prefix inline syntax handler marks what it claims',
 	});
 });
 
-// The other half of the dispatch: a bare handler on an unreserved trigger is consulted
-// from the switch's `default` branch, a different call site than the prefix handlers above.
+// The other kind of handler: a bare one on a character the parse does not read itself.
 describe('a bare unreserved-trigger inline syntax handler marks what it claims', () => {
 	it('marks a built-in kind created from the default branch', () => {
 		registerInlineSyntax('@', (raw, pos, end) => {

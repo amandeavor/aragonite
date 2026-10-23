@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { parseInline } from '#lib';
 import {
 	assertConstructCoverage,
 	assertTotalCoverage,
@@ -8,7 +7,8 @@ import {
 	emphasisNode,
 	imageNode,
 	linkNode,
-	textNode
+	textNode,
+	parsed
 } from './scan-test-helpers';
 
 // Bracket-stack semantics. Every expectation is checked against commonmark.js, the
@@ -89,7 +89,7 @@ describeScanCases('links-in-links: a matched link deactivates enclosing link ope
 describe('bracket and emphasis interaction', () => {
 	it('delimiters below the bracket floor stay untouched by the match', () => {
 		const raw = '*a [b*](c)';
-		const nodes = parseInline(raw, 0, raw.length);
+		const nodes = parsed(raw, 0, raw.length);
 		assertTotalCoverage(nodes, 0, raw.length);
 		assertConstructCoverage(nodes);
 		expect(nodes).toEqual([textNode(0, 3, '*a '), linkNode(3, 10, [textNode(4, 6, 'b*')], 'c')]);
@@ -97,7 +97,7 @@ describe('bracket and emphasis interaction', () => {
 
 	it('emphasis around a deactivated pair keeps only the innermost link', () => {
 		const raw = '[foo *[bar [baz](/uri)](/uri)*](/uri)';
-		const nodes = parseInline(raw, 0, raw.length);
+		const nodes = parsed(raw, 0, raw.length);
 		assertTotalCoverage(nodes, 0, raw.length);
 		assertConstructCoverage(nodes);
 		expect(collectKind(nodes, 'link')).toEqual([
@@ -112,7 +112,7 @@ describe('bracket and emphasis interaction', () => {
 describe('image label structure (baseline image-alt-structure)', () => {
 	it('nested image label keeps structured children and a flattened alt', () => {
 		const raw = '![[[foo](uri1)](uri2)](uri3)';
-		const nodes = parseInline(raw, 0, raw.length);
+		const nodes = parsed(raw, 0, raw.length);
 		assertTotalCoverage(nodes, 0, raw.length);
 		assertConstructCoverage(nodes);
 		expect(nodes).toEqual([
@@ -153,7 +153,7 @@ describe('unmatched brackets stay literal', () => {
 	];
 	for (const [name, input] of literalInputs) {
 		it(name, () => {
-			const nodes = parseInline(input, 0, input.length);
+			const nodes = parsed(input, 0, input.length);
 			assertTotalCoverage(nodes, 0, input.length);
 			expect(collectKind(nodes, 'link')).toEqual([]);
 			expect(collectKind(nodes, 'image')).toEqual([]);

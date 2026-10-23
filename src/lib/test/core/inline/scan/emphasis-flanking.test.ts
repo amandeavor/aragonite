@@ -13,7 +13,7 @@ import {
 	INTRA_WORD_UNDERSCORE_CASES
 } from '../../../support/flanking-corpus';
 
-// The §6.2 corpus lives in test/support/flanking-corpus.ts.
+// The §6.2 cases live in the flanking corpus.
 
 const sortedSpans = (nodes: InlineNode[], source: string): string[] =>
 	collectKind(nodes, 'emphasis')

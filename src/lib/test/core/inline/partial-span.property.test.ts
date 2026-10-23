@@ -1,5 +1,5 @@
 // A scan range inside a longer string parses as that range on its own would, moved by its start.
-// Miss-analysis: the conformance ratchet only ever parses a whole input, so a construct that read
+// Miss-analysis: the commonmark.js comparison only ever parses a whole input, so a construct that read
 // a closer past the range end, or a lookback before its start, passed it.
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';

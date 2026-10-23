@@ -8,7 +8,7 @@ import { freshOrFixedSeed } from '../../invariants/arbitraries/property-seed';
 
 // Plugin-trigger tokens interleaved with adversarial content: arbInlineSource alone rarely
 // emits `[^` (rules.md: a generator that cannot produce the bug class proves nothing), and a
-// registered `!` handler defeats the fast bail, forcing the full scan loop `[` skips.
+// registered `!` handler makes plain `!` prose a range the parse must read.
 const ladderToken = fc.constantFrom(
 	'[^1]',
 	'[^',

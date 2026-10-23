@@ -14,11 +14,11 @@ import {
 } from './scan-test-helpers';
 
 // GFM §6.9 autolinks. The conformance reference has no autolink extension, so these
-// shapes are pinned here rather than by the ratchet.
+// shapes are pinned here rather than by the commonmark.js comparison.
 
-describeScanCases('bare autolinks as the only content (fast-bail seam)', [
-	// These inputs contain no unconditional special character: if the bail
-	// probe misses its trigger, the autolink silently vanishes into plain text.
+describeScanCases('bare autolinks as the only content (plain prose)', [
+	// These inputs hold none of the characters every parse must read, so a shortcut past
+	// plain prose that misses them loses the autolink silently.
 	[
 		'https scheme probe (`://`)',
 		'https://bare.example',
@@ -54,7 +54,7 @@ describeScanCases('recognition boundaries and trimming', [
 	['bracket is not a valid leading boundary', '[www.x.com]', [textNode(0, 11, '[www.x.com]')]],
 	[
 		// ASCII case-folding is for letters only: 0x0E | 0x20 collides with `.`
-		// (the `*` defeats the fast bail so the matcher itself is exercised).
+		// (the `*` makes the range one the parse must read).
 		'control character is not a dot in the www prefix',
 		'*www' + String.fromCharCode(0x0e) + 'x.com',
 		[textNode(0, 10, '*www' + String.fromCharCode(0x0e) + 'x.com')]
@@ -103,7 +103,7 @@ describeScanCases('urls stop where claimed constructs start', [
 		'https://x.com`c`',
 		[autolinkNode(0, 13, 'https://x.com'), codeNode(13, 16, 'c')]
 	],
-	// The scan takes the tag or spec autolink before the url pass ever reaches it.
+	// A tag or angle autolink takes its bytes first, so no bare url forms inside it.
 	[
 		'raw html tag ends the url',
 		'https://x.y<br/>',
@@ -192,8 +192,8 @@ describeScanCases('autolinks interleave with emphasis and links', [
 
 describe('child walk under deep image nesting (DoS guard)', () => {
 	it('pathological nesting parses without overflow and stays near-linear', () => {
-		// A per-level recursion in the autolink child walk overflows the call stack here. The
-		// wall clock is a coarse backstop only; core/inline/image-dimensions.test.ts is exact.
+		// Recursion per nesting level overflows the call stack here; the wall clock is a coarse
+		// backstop only.
 		const depth = 20000;
 		const raw = '!['.repeat(depth) + 'a' + '](u)'.repeat(depth);
 		const startedAt = performance.now();

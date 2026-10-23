@@ -2,13 +2,13 @@
  * A plugin inline handler may not claim past the range it was given. The scan range is not
  * always a block's whole raw (a heading's excludes its closing `#` run, a table cell's the `|`),
  * so a recognizer searching the whole string swallows bytes the block still needs, and the
- * overrun leaves no trace, since the scan loop then exits as if it had finished.
+ * overrun leaves no trace, since the parse then stops as if it had finished.
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseInline } from '../../../core/inline';
 import type { InlineNode } from '../../../core/nodes';
 import { INLINE_PRIORITIES, registerInlineSyntax } from '#lib/plugin.js';
+import { parsed } from './scan/scan-test-helpers';
 
 const RAW = '@tag@ trailing';
 const SHORT_END = 5; // `@tag@` — the block offers only this much
@@ -21,12 +21,12 @@ describe('an inline syntax handler may not claim past the scan range', () => {
 			const close = raw.indexOf('g', pos + 1);
 			return close < 0 ? null : { kind: 'text', start: pos, end: close + 6, text: 'x' };
 		});
-		expect(() => parseInline(RAW, 0, SHORT_END)).toThrow(
+		expect(() => parsed(RAW, 0, SHORT_END)).toThrow(
 			/inline-syntax "@" claimed \[0, 9\), past the scan range end 5/
 		);
 	});
 
-	// Half-open `[start, end)`: `end` is the scan advance, so a claim ending exactly
+	// Half-open `[start, end)`: `end` is where the parse continues, so a claim ending exactly
 	// at the range end is the ordinary full-range case, not an overrun.
 	it('accepts a claim ending exactly at the range end', () => {
 		registerInlineSyntax('@', (raw, pos, end) => ({
@@ -35,7 +35,7 @@ describe('an inline syntax handler may not claim past the scan range', () => {
 			end,
 			text: raw.slice(pos, end)
 		}));
-		expect(parseInline(RAW, 0, SHORT_END)).toMatchObject([
+		expect(parsed(RAW, 0, SHORT_END)).toMatchObject([
 			{ kind: 'text', start: 0, end: 5, text: '@tag@' }
 		]);
 	});
@@ -49,18 +49,18 @@ describe('an inline syntax handler may not claim past the scan range', () => {
 				? null
 				: { kind: 'text', start: pos, end: close + 1, text: 'ok' };
 		});
-		expect(parseInline(RAW, 0, SHORT_END)[0]).toMatchObject({ start: 0, end: 5 });
+		expect(parsed(RAW, 0, SHORT_END)[0]).toMatchObject({ start: 0, end: 5 });
 	});
 
-	// Both dispatch routes share `tryRungs`, but only structurally: the reserved prefix
-	// handler is consulted before the switch, the bare handler from its `default` branch.
-	it('guards the pre-switch reserved-prefix route too', () => {
+	// A prefix handler on a character the parse reads itself and a bare handler on another
+	// character each get the check.
+	it('guards a prefix handler on a built-in character too', () => {
 		registerInlineSyntax(
 			'!',
 			(raw, pos): InlineNode => ({ kind: 'text', start: pos, end: raw.length, text: 'x' }),
 			{ prefix: '![[', priority: INLINE_PRIORITIES.prefixOverride }
 		);
-		expect(() => parseInline('![[a]] trailing', 0, 6)).toThrow(
+		expect(() => parsed('![[a]] trailing', 0, 6)).toThrow(
 			/inline-syntax "!\[\[" claimed \[0, 15\), past the scan range end 6/
 		);
 	});

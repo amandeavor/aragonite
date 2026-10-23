@@ -18,12 +18,12 @@ const PROSE = [...'aehilmoptwxHW .,:;/@-_#=0'.split(''), 'é', '中', '😀', '\
 const SHARP = ['!', ']', '*', '[', '<', '&', '`', '\\', '~'];
 
 // The characters a bare handler may not take, since the parser reads them itself.
-const BUILT_IN = new Set(['\\', '`', '&', '\n', '*', '_', '~', '[', ']', '!', '<']);
+const PARSED_ITSELF = new Set(['\\', '`', '&', '\n', '*', '_', '~', '[', ']', '!', '<']);
 
 // Every other one-unit character above, plus `!` through a prefix.
 function forceFullReads(): void {
 	for (const char of PROSE) {
-		if (char.length === 1 && !BUILT_IN.has(char)) registerInlineSyntax(char, () => null);
+		if (char.length === 1 && !PARSED_ITSELF.has(char)) registerInlineSyntax(char, () => null);
 	}
 	registerInlineSyntax('!', () => null, {
 		prefix: '!!',

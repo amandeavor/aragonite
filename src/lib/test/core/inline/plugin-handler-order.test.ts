@@ -2,7 +2,7 @@
 // Miss-analysis: the order was pinned only on the registry's internal sorted list, so a parse that
 // consulted handlers in another order passed every test reaching the published entries.
 import { describe, expect, it } from 'vitest';
-import { parseInline, type InlineNode } from '#lib';
+import type { InlineNode } from '#lib';
 import {
 	INLINE_PRIORITIES,
 	registerInlineSyntax,
@@ -10,6 +10,7 @@ import {
 	type InlineSyntaxRecognizer
 } from '#lib/plugin.js';
 import { resetPluginPlatformForTests } from '#lib/testing.js';
+import { parsed } from './scan/scan-test-helpers';
 
 interface Handler {
 	trigger: string;
@@ -41,7 +42,7 @@ function kindsWith(raw: string, handlers: Handler[]): string[] {
 	for (const { trigger, recognizer, options } of handlers) {
 		registerInlineSyntax(trigger, recognizer, options);
 	}
-	return parseInline(raw, 0, raw.length).map((node) => node.kind);
+	return parsed(raw, 0, raw.length).map((node) => node.kind);
 }
 
 const ORDERS = [
@@ -101,10 +102,10 @@ describe('a handler on a character the editor parses itself', () => {
 
 	it('leaves the built-in reading whole when it declines', () => {
 		const raw = '[^x](u)';
-		const builtIn = parseInline(raw, 0, raw.length);
+		const builtIn = parsed(raw, 0, raw.length);
 		const handler = declining('[', { prefix: '[^', priority: INLINE_PRIORITIES.prefixOverride });
 		registerInlineSyntax(handler.trigger, handler.recognizer, handler.options);
-		expect(parseInline(raw, 0, raw.length)).toEqual(builtIn);
+		expect(parsed(raw, 0, raw.length)).toEqual(builtIn);
 		expect(builtIn.map((node) => node.kind)).toEqual(['link']);
 	});
 
