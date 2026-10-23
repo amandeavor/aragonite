@@ -1,6 +1,6 @@
 <script lang="ts">
-	// A render-primary editable leaf whose `singleLine` and painter are props, so one fixture
-	// drives both Enter contracts and the painted source, and the cases differ in nothing else.
+	// A render-primary editable leaf whose `singleLine`, painter and source-change callback are
+	// props, so one fixture drives both Enter contracts and the painted source.
 	import { type NodeView } from '#lib/plugin.js';
 	import { createEditableLeaf } from '#lib/svelte.js';
 
@@ -9,13 +9,15 @@
 		index,
 		myPath = [],
 		singleLine = false,
-		paint
+		paint,
+		onSourceEdit
 	}: {
 		node: NodeView;
 		index: number;
 		myPath?: number[];
 		singleLine?: boolean;
 		paint?: (text: string) => DocumentFragment;
+		onSourceEdit?: (text: string) => void;
 	} = $props();
 
 	let sourceEl: HTMLDivElement | undefined = $state();
@@ -26,6 +28,8 @@
 	const oneLine = singleLine;
 	// svelte-ignore state_referenced_locally
 	const renderSource = paint;
+	// svelte-ignore state_referenced_locally
+	const reportSourceEdit = onSourceEdit;
 
 	const leaf = createEditableLeaf({
 		getNode: () => node,
@@ -35,6 +39,7 @@
 		mode: 'render-primary',
 		singleLine: oneLine,
 		renderSource,
+		onSourceEdit: reportSourceEdit,
 		isRevealed: () => revealed,
 		setRevealed: (next) => (revealed = next)
 	});

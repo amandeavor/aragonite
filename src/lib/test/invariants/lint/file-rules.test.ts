@@ -2390,6 +2390,31 @@ const TYPED_WRITE_ASKS: ManifestRule[] = [
 	}
 ];
 
+// ── G4.251 the bundled reveal blocks still drawn by Svelte ─────────────────
+
+const REVEAL_BLOCKS_IN_SVELTE: ManifestRule[] = [
+	{
+		id: 'G4.251 the bundled blocks that build a render-primary leaf in Svelte are listed',
+		population: under(SOURCE_DIR.plugins),
+		matches: /\bmode:\s*['"]render-primary['"]/,
+		declared: {
+			[SOURCE.latexBlockMath]: 'block math, with its layout toggle and live preview',
+			'src/lib/plugins/toc/TocBlock.svelte': 'the outline, whose list follows the headings',
+			'src/lib/plugins/parrot/ParrotBlock.svelte': 'the plugin guide’s quickstart block'
+		},
+		reason:
+			'a bundled block that shows a rendered view until clicked can be a `defineBlockView({ surface: "render-primary" })` view; this list is where moving them starts, and it guards nothing inside a listed file',
+		hits: [at('src/lib/plugins/x/XBlock.svelte', "mode: 'render-primary',")],
+		misses: [
+			at(
+				'src/lib/plugins/x/x-kind.ts',
+				"focus: { mode: 'implemented', via: 'render-primary reveal' },"
+			),
+			at('src/lib/plugins/x/x-view.ts', "surface: 'render-primary',")
+		]
+	}
+];
+
 // ── G4.108 one replace for every destructive gesture over a range ──────────
 
 const ROGUE_RANGE_ROUTE = `${SOURCE_DIR.crossBlock}rogue.ts`;
@@ -3143,6 +3168,7 @@ describeManifests(ITEM_PIECES, SOURCES);
 describeManifests(RANGE_REPLACE, SOURCES);
 describeManifests(RANGE_INDENT, SOURCES);
 describeManifests(TYPED_WRITE_ASKS, SOURCES);
+describeManifests(REVEAL_BLOCKS_IN_SVELTE, SOURCES);
 describeManifests(SCROLL_WRITERS, SOURCES);
 describeManifests(BARE_FOCUSES, SOURCES);
 describeFileRules([HELD_BRANDS], SOURCES);

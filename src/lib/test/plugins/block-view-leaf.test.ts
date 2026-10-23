@@ -171,6 +171,27 @@ describe('a DOM leaf view’s lifecycle', () => {
 		expect(editor.source()).toBe(SOURCE.replace('abcd', 'abcd!'));
 	});
 
+	// Miss-analysis: afterInput listened for `input`, and a delete the editor writes itself fires none.
+	it('runs afterInput once for a Backspace the editor writes itself', async () => {
+		const seen: string[] = [];
+		const editor = mountLeaf(
+			domPlainLeaf(newViewLog(), () => ({ afterInput: (text: string) => void seen.push(text) }))
+		);
+		await editor.settle();
+		const el = surfaceAt(editor, LEAF);
+		placeCaret(el, '@@ abcd'.length);
+		el.dispatchEvent(
+			new InputEvent('beforeinput', {
+				inputType: 'deleteContentBackward',
+				bubbles: true,
+				cancelable: true
+			})
+		);
+		await editor.settle();
+		expect(editor.source()).toBe(SOURCE.replace('abcd', 'abc'));
+		expect(seen).toEqual(['@@ abc']);
+	});
+
 	it('fills the element the editor made, and the text element is the block’s content', async () => {
 		const log = newViewLog();
 		const editor = mountLeaf(domPlainLeaf(log));
