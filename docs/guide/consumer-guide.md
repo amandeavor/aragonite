@@ -192,7 +192,7 @@ A template ref on it holds `handle`, the same handle `createEditor` returns (`ed
 createEditor(target: HTMLElement, options?: CreateEditorOptions): EditorHandle
 ```
 
-- `target` is the element to mount into. The editor appends itself there, and `destroy` takes it back out. Give `target` a height and the editor scrolls inside it; leave it without one and the editor grows with the document.
+- `target` is the element to mount into. The editor appends itself there, and `destroy` takes it back out. Give `target` a height and the editor scrolls inside it (or let your page scroll it, see [Host scroll mode](#host-scroll-mode)).
 - `options` are the [props](#props), with one change: `header` is an element of yours instead of a Svelte snippet.
 
 ```ts
@@ -1097,7 +1097,9 @@ Two props decide how the editor sits in your page: who owns the scroll, and what
 
 ### Host scroll mode
 
-By default the editor root is the scrollport (the box that scrolls), and it fills the element you put it in. Give that element a height and the editor scrolls inside it, or make it a flex column and the editor takes whatever room your other children leave. With no height anywhere it just grows with the document, and your page does the scrolling. `scrollMode='host'` is the embedded alternative: the root stops scrolling and grows to its content, and an ancestor of yours scrolls it. A shell that stacks several documents in one scroller (a journal, a comment thread) wants this; a whole-file editor doesn't.
+By default the editor root is the scrollport (the box that scrolls), and it fills the element you put it in. Give that element a height and the editor scrolls inside it. If the element holds more than the editor (a toolbar above it, say), make it a flex column too, and the editor takes whatever room is left.
+
+`scrollMode='host'` is the embedded alternative: the root stops scrolling and grows to its content, and an ancestor of yours scrolls it. A shell that stacks several documents in one scroller (a journal, a comment thread) wants this; a whole-file editor doesn't. It's also the one you want when your page does the scrolling. A default editor with no height anywhere grows with the document too, but it keeps every block mounted, which a long document will feel.
 
 **Virtual rendering follows the scroll.** The editor windows against whatever actually scrolls it, so a large document inside a page-scrolled shell stays as fast as a standalone one. Windowing only turns on once a document is a few screens tall, so a small embedded entry never windows.
 
