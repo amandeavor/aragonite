@@ -86,6 +86,14 @@ test.describe('wrapped text lines up under the first line', () => {
 				expect(Math.abs(lines[1].left - lines[0].left)).toBeLessThanOrEqual(HALF_PIXEL);
 			});
 		}
+
+		// Source draws the to-do's `[ ] ` past the bullet's column, and its text still hangs.
+		test(`\`- [ ]\` item beside a bullet, soft wrap, ${mode}`, async ({ page }) => {
+			await openIn(page, mode, `- a\n- [ ] ${LONG}\n`);
+			const { lines } = await blockGeometry(page, [0, 1, 0]);
+			expect(lines.length).toBeGreaterThan(1);
+			expect(Math.abs(lines[1].left - lines[0].left)).toBeLessThanOrEqual(HALF_PIXEL);
+		});
 	}
 });
 
@@ -242,12 +250,13 @@ const spread = (lefts: number[]) => Math.max(...lefts) - Math.min(...lefts);
 
 test.describe('one marker column per list', () => {
 	const LISTS = {
-		'`9.` and `10.`': '8. a\n9. b\n10. c\n',
-		'`99.` and `100.`': '99. a\n100. b\n',
-		'a bullet beside a to-do': '- a\n- [ ] b\n- c\n'
-	};
-	for (const mode of ['source', 'live', 'reading'] as const) {
-		for (const [shape, md] of Object.entries(LISTS)) {
+		'`9.` and `10.`': { md: '8. a\n9. b\n10. c\n', modes: ['source', 'live', 'reading'] },
+		'`99.` and `100.`': { md: '99. a\n100. b\n', modes: ['source', 'live', 'reading'] },
+		// Source draws a to-do's `[ ] ` past the column, so only the modes that draw a box line it up.
+		'a bullet beside a to-do': { md: '- a\n- [ ] b\n- c\n', modes: ['live', 'reading'] }
+	} as const;
+	for (const [shape, { md, modes }] of Object.entries(LISTS)) {
+		for (const mode of modes) {
 			test(`${shape} start their text in one column, ${mode}`, async ({ page }) => {
 				await openIn(page, mode, md);
 				const lefts = await textColumns(page);
@@ -257,18 +266,84 @@ test.describe('one marker column per list', () => {
 		}
 	}
 
-	for (const mode of ['source', 'live'] as const) {
-		test(`an item typed into a to-do widens the whole list's column, ${mode}`, async ({ page }) => {
-			await openIn(page, mode, '- a\n- b\n- c\n');
-			const editor = new EditorPage(page);
-			const before = await textColumns(page);
-			await editor.clickBlockAtPath([0, 1, 0], 0);
-			await page.keyboard.type('[ ] ');
-			await editor.bridge.waitForSourceEquals('- a\n- [ ] b\n- c\n');
-			await expect
-				.poll(async () => spread(await textColumns(page)))
-				.toBeLessThanOrEqual(HALF_PIXEL);
-			expect((await textColumns(page))[0]).toBeGreaterThan(before[0]);
+	test("an item typed into a to-do widens the whole list's column, live", async ({ page }) => {
+		await openIn(page, 'live', '- a\n- b\n- c\n');
+		const editor = new EditorPage(page);
+		const before = await textColumns(page);
+		await editor.clickBlockAtPath([0, 1, 0], 0);
+		await page.keyboard.type('[ ] ');
+		await editor.bridge.waitForSourceEquals('- a\n- [ ] b\n- c\n');
+		await expect.poll(async () => spread(await textColumns(page))).toBeLessThanOrEqual(HALF_PIXEL);
+		expect((await textColumns(page))[0]).toBeGreaterThan(before[0]);
+	});
+
+	test('an item typed into a to-do moves only its own text, source', async ({ page }) => {
+		await openIn(page, 'source', '- a\n- b\n- c\n');
+		const editor = new EditorPage(page);
+		const before = await textColumns(page);
+		await editor.clickBlockAtPath([0, 1, 0], 0);
+		await page.keyboard.type('[ ] ');
+		await editor.bridge.waitForSourceEquals('- a\n- [ ] b\n- c\n');
+		await expect.poll(async () => (await textColumns(page))[1]).toBeGreaterThan(before[1]);
+		const after = await textColumns(page);
+		expect(Math.abs(after[0] - before[0])).toBeLessThanOrEqual(HALF_PIXEL);
+		expect(Math.abs(after[2] - before[2])).toBeLessThanOrEqual(HALF_PIXEL);
+	});
+});
+
+interface ItemColumns {
+	text: number;
+	/** The left and right edges of a to-do's `[ ]`, absent on a plain item. */
+	box: { left: number; right: number } | null;
+}
+
+/** Each item of the document's first list, and the text column of the plain list after it. */
+function columnsWithControl(page: Page): Promise<{ items: ItemColumns[]; control: number }> {
+	return page.evaluate(() => {
+		const [first, control] = [...document.querySelectorAll('.editor .list-block')].filter(
+			(list) => !list.parentElement!.closest('.list-item-block')
+		);
+		const textOf = (item: Element) =>
+			item.querySelector(':scope > .list-item-content')!.getBoundingClientRect().left;
+		const items = [...first.querySelectorAll(':scope > .list-item-block')].map((item) => {
+			const rect = item
+				.querySelector(':scope > .list-item-marker .task-checkbox')
+				?.getBoundingClientRect();
+			return { text: textOf(item), box: rect ? { left: rect.left, right: rect.right } : null };
+		});
+		return { items, control: textOf(control.querySelector(':scope > .list-item-block')!) };
+	});
+}
+
+test.describe('a to-do’s `[ ] ` draws past the column where markers show', () => {
+	// Each list is followed by a plain one with the same widest marker, whose text column is the one
+	// the list's own markers ask for.
+	const LISTS = [
+		{
+			shape: 'bullets beside to-dos',
+			md: '- first item\n- second item\n  - nested item\n- [ ] a to-do\n- [x] a done to-do\n',
+			control: '- x\n'
+		},
+		{
+			shape: 'a to-do among `8.` to `10.`',
+			md: '8. a\n9. [ ] b\n10. c\n',
+			control: '8. x\n10. y\n'
+		},
+		{ shape: 'to-dos at `9.` and `10.`', md: '9. [ ] a\n10. [x] b\n', control: '9. x\n10. y\n' }
+	];
+	for (const { shape, md, control } of LISTS) {
+		test(`${shape}, source`, async ({ page }) => {
+			await openIn(page, 'source', `${md}\nbreak\n\n${control}`);
+			const columns = await columnsWithControl(page);
+			const todos = columns.items.filter((item) => item.box);
+			expect(todos.length).toBeGreaterThan(0);
+			for (const { text, box } of columns.items) {
+				if (!box) expect(Math.abs(text - columns.control)).toBeLessThanOrEqual(HALF_PIXEL);
+				else {
+					expect(Math.abs(box.left - columns.control)).toBeLessThanOrEqual(HALF_PIXEL);
+					expect(text).toBeGreaterThanOrEqual(box.right);
+				}
+			}
 		});
 	}
 });

@@ -102,7 +102,7 @@ describe('the cost of a list’s marker column', () => {
 
 describe('the list’s marker column', () => {
 	it('widens when an item’s marker changes in place', async () => {
-		const editor = mountEditor({ source: '- a\n- b\n', presentationMode: 'source' });
+		const editor = mountEditor({ source: '- a\n- b\n', presentationMode: 'live' });
 		await tick();
 		const before = columnOf(editor);
 
@@ -113,7 +113,7 @@ describe('the list’s marker column', () => {
 	});
 
 	it('narrows again when an undo takes the marker change back, with no recount', async () => {
-		const editor = mountEditor({ source: '- a\n- b\n', presentationMode: 'source' });
+		const editor = mountEditor({ source: '- a\n- b\n', presentationMode: 'live' });
 		await tick();
 		const before = columnOf(editor);
 		await typeInItem(editor, 0, '[ ] a');

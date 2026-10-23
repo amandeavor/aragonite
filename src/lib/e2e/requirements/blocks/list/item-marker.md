@@ -19,6 +19,7 @@ A list item draws its marker (`-`, `1.`, a to-do's box) in a cell of its own, be
 - Press the marker of an empty bullet, ordered or to-do item, then type: the letter lands in the item, in source and live modes; in live mode the press on a to-do's drawn box also checks it
   - Miss-analysis: every caret row clicked the item's text or its source-mode bytes, and none pressed the drawn bullet, where a press in live mode put the caret nowhere and dropped the typing.
 - Press the marker of `- alpha`, `1. alpha` or `10. alpha`, then type: the letter lands before `alpha`, in source and live modes
+- In source mode, press the space a to-do's `9.` is padded out to, before its `[ ]`, in `9. [ ] alpha` beside `10. b`, then type: the letter lands before `alpha` and the to-do stays unchecked
 - Press the marker of an item that opens with a table, level with its header row or a body row, then type: the letter lands before that row's first cell text (`| Xa |`, `| X1 |`), in source and live modes
   - Miss-analysis: the table rows only asked which cell a press beside the table picks, and the cells were empty, so a landing pinned to every cell's end read as right.
 - Press a to-do's drawn box in live or preview-block mode, then type: the box checks, and the letter lands at the start of the to-do's text

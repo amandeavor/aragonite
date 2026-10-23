@@ -1,8 +1,8 @@
 /**
  * The width a list gives every item's marker cell: one column per list, as wide as its widest
- * marker, so the items' text lines up whatever their numbers' digits. Sized from the marker-width
- * counts the list node keeps, so an item scrolled out of a windowed list still counts and no
- * keystroke rereads the items.
+ * list marker, so the items' text lines up whatever their numbers' digits. Where bytes show, a
+ * to-do's `[ ] ` draws past the column. Sized from the marker-width counts the list node keeps,
+ * so an item scrolled out of a windowed list still counts and no keystroke rereads the items.
  */
 
 import { widestMarkers, type MarkerWidths } from '../../../core/parsers/list';
