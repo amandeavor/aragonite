@@ -142,9 +142,8 @@ export interface RenderPrimarySurface extends LeafSurface {
 }
 
 export interface ContainerSurface {
-	/** Mount the child blocks into `box`, `target` or an element inside it, after the view's own
-	 *  children; a chord bubbling from a child resolves against the kind's keymap there. Handed
-	 *  the box they're already in, it leaves them alone. */
+	/** Mount the child blocks into `box` (`target` or inside it, after the view's children; the box
+	 *  they're already in changes nothing); a child's chord resolves against the kind's keymap. */
 	mountChildren(box: HTMLElement): void;
 	/** Commit a shallow metadata patch as one undo entry, through the kind's `rebuildRaw`. */
 	updateOwnMetadata(
