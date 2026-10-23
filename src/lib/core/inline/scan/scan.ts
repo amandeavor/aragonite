@@ -72,7 +72,7 @@ const BUILT_IN_SPECIALS = /[\\`&\n*_~[\]!<@]|[wW]{3}\.|[hH][tT]{2}[pP][sS]?:\/\/
 let specials = { version: -1, pattern: BUILT_IN_SPECIALS };
 
 /** Every position the parse may read: the built-in characters, bare url starts, and triggers. */
-export function specialPattern(): RegExp {
+function specialPattern(): RegExp {
 	if (specials.version !== registryVersion()) {
 		const triggers = [...registeredTriggers()].map((c) => c.replace(/[\\\]^-]/, '\\$&')).join('');
 		const source = triggers
@@ -81,6 +81,17 @@ export function specialPattern(): RegExp {
 		specials = { version: registryVersion(), pattern: new RegExp(source, 'g') };
 	}
 	return specials.pattern;
+}
+
+/** The next position at or after `from` the parse may read, or -1. The search stops at `end`, so
+ *  a short range of a long block costs the range, not the rest of the block. */
+export function specialFinder(raw: string, end: number): (from: number) => number {
+	const pattern = specialPattern();
+	const searched = end < raw.length ? raw.slice(0, end) : raw;
+	return (from) => {
+		pattern.lastIndex = from;
+		return pattern.exec(searched)?.index ?? -1;
+	};
 }
 
 export class Scan {
@@ -113,13 +124,8 @@ export class Scan {
 	}
 
 	run(): this {
-		const pattern = specialPattern();
-		for (let pos = this.start; pos < this.end;) {
-			pattern.lastIndex = pos;
-			const hit = pattern.exec(this.raw);
-			if (!hit || hit.index >= this.end) break;
-			pos = this.claim(hit.index) || this.read(hit.index);
-		}
+		const next = specialFinder(this.raw, this.end);
+		for (let at = next(this.start); at >= 0;) at = next(this.claim(at) || this.read(at));
 		if (this.pending < this.end) this.tokens.push(token(this.pending, this.end));
 		this.delimiters.process(null);
 		return this;

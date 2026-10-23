@@ -7,7 +7,7 @@ import type { InlineNode } from '../../nodes';
 import type { GrammarView } from '../../../schema/block-openers';
 import { buildTree } from './build';
 import type { LinkReferenceResolver } from './definitions';
-import { Scan, specialPattern } from './scan';
+import { Scan, specialFinder } from './scan';
 
 /** Both bounds are checked at runtime: a caller outside the type checker that passes only the
  *  source would get one whole-string text node, wrong output that looks like a result. */
@@ -22,16 +22,9 @@ export function readInline(
 		throw new TypeError('parseInline needs both bounds: call parseInline(src, 0, src.length)');
 	}
 	if (start >= end) return [];
-	if (isPlainText(raw, start, end))
+	// Most keystrokes land in a span with nothing to read, which then costs one search.
+	if (specialFinder(raw, end)(start) < 0)
 		return [{ kind: 'text', start, end, text: raw.slice(start, end) }];
 	const { tokens, shapes } = new Scan(raw, start, end, resolver, grammar).run();
 	return buildTree(raw, tokens, shapes);
-}
-
-// Most keystrokes land in a span with nothing to read, which then costs one search.
-function isPlainText(raw: string, start: number, end: number): boolean {
-	const pattern = specialPattern();
-	pattern.lastIndex = start;
-	const hit = pattern.exec(raw);
-	return hit === null || hit.index >= end;
 }
