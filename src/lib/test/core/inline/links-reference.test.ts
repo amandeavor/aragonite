@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { parseInline } from '../../../core/inline';
 import { parse } from '../../../core/parser';
-import { buildLinkReferenceMap } from '../../../core/inline/link-reference-resolver';
+import { definitionsOf } from '../../../core/inline/scan/definitions';
 
-// Composed-path smoke: parse → buildLinkReferenceMap → parseInline. The per-form node
+// Composed-path smoke: parse → definitionsOf → parseInline. The per-form node
 // shapes live in the scan tables; the map/resolver internals in their own suites.
 
 function inlineWithRefs(content: string, refs: string) {
 	const doc = parse(content + '\n\n' + refs);
-	const map = buildLinkReferenceMap(doc.children);
+	const map = definitionsOf(doc.children);
 	return parseInline(content, 0, content.length, map.resolve);
 }
 

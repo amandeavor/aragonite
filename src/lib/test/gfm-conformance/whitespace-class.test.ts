@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parse } from '#lib/core/parser.js';
-import { scanInline } from '#lib/core/inline/scan/index.js';
-import { normalizeLinkLabel } from '#lib/core/inline/link-reference-resolver.js';
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
+import { parse, parseInline } from '#lib';
 import { roundTripCases } from '#lib/test/support/round-trip.js';
 import { editorOutline, referenceOutline } from './block-outline';
 
@@ -36,8 +33,14 @@ const HAND_PINNED_SOURCES: { rule: string; source: string }[] = [
 
 const first = (source: string) => parse(source).children[0];
 
+/** The normalized label a full reference link records for `label`. */
+function referenceLabel(label: string): string | undefined {
+	const raw = `[x][${label}]`;
+	return parseInline(raw, 0, raw.length, () => ({ url: '/u' }))[0].label;
+}
+
 function autolinkUrls(raw: string): string[] {
-	return scanInline(raw, 0, raw.length, undefined, defaultGrammarView)
+	return parseInline(raw, 0, raw.length)
 		.filter((node) => node.kind === 'autolink')
 		.map((node) => node.url ?? '');
 }
@@ -67,8 +70,8 @@ describe('a non-breaking space is content where commonmark.js is no reference', 
 	});
 
 	it('is not collapsed when labels are matched (§6.6 collapses whitespace only)', () => {
-		expect(normalizeLinkLabel(` A \n\t b `)).toBe('a b');
-		expect(normalizeLinkLabel(`a${NBSP}b`)).not.toBe(normalizeLinkLabel('a b'));
+		expect(referenceLabel(` A \n\t b `)).toBe('a b');
+		expect(referenceLabel(`a${NBSP}b`)).toBe(`a${NBSP}b`);
 	});
 
 	it('does not end an html block tag name (§4.6 start condition 6)', () => {

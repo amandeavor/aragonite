@@ -1,200 +1,30 @@
 /**
- * Single-pass inline scanner (the CommonMark reference architecture), exported as `parseInline`
- * from ../index.ts. Contract: InlineNode[] with absolute offsets into raw, covering [start, end).
+ * The inline parse: `InlineNode[]` with absolute offsets into `raw`, each byte of `[start, end)`
+ * in exactly one top-level node. `grammar` is the editor's, so a handler whose plugin it leaves
+ * out takes no bytes. See docs/design/inline-parsing.md.
  */
-
-import { isBuiltinInlineKind, type InlineNode, type InlineSyntaxClaim } from '../../nodes';
-import type { LinkReferenceResolver } from '../link-reference-resolver';
+import type { InlineNode } from '../../nodes';
 import type { GrammarView } from '../../../schema/block-openers';
-import { resolvesIn } from '../../../schema/plugin-activation';
-import { inlineDescendants } from '../walk';
-import { handleAngle, scanGfmAutolinks } from './autolinks';
-import { handleBang, handleCloseBracket, handleOpenBracket } from './brackets';
-import { handleBacktick } from './code-spans';
-import { handleDelimiter, processEmphasis } from './emphasis';
-import {
-	appendNode,
-	createScanContext,
-	flushPendingText,
-	mergeAdjacentText,
-	type ScanContext
-} from './scan-state';
-import { handleAmpersand, handleBackslash, handleNewline } from './simple-nodes';
-import {
-	getPrefixRungs,
-	getUnreservedRungs,
-	hasInlineSyntax,
-	hasPrefixRungs,
-	hasScanProbeRungs,
-	isScanProbeTrigger,
-	type InlineRung
-} from './plugin-syntax';
-import { BUILTIN_TRIGGERS } from './triggers';
+import { buildTree } from './build';
+import type { LinkReferenceResolver } from './definitions';
+import { Scan, specialFinder } from './scan';
 
-// Every character that always sends a range through the scan loop: the built-in triggers the
-// table marks `always`, plus `@`, which anchors the GFM email lookback without a handler.
-const SPECIAL = new Uint8Array(128);
-for (const [char, { scanned }] of BUILTIN_TRIGGERS) {
-	if (scanned === 'always') SPECIAL[char.charCodeAt(0)] = 1;
-}
-SPECIAL[0x40] = 1; // @
-
-// Bare http/www autolinks hold no character above, so `:` counts only before `//` and `w`/`W`
-// only on `www.`; a lookahead past `end` costs one wasted scan, never a node.
-const PROBE_SCHEME = 2;
-const PROBE_WWW = 3;
-SPECIAL[0x3a] = PROBE_SCHEME; // :
-SPECIAL[0x57] = PROBE_WWW; // W
-SPECIAL[0x77] = PROBE_WWW; // w
-
-/** Fast bail for the per-keystroke hot path: plain prose skips the scan loop. */
-function needsScan(raw: string, start: number, end: number): boolean {
-	// Registered plugin triggers are held out of SPECIAL, so check them only when something
-	// is registered; an unregistered scan pays one always-false test per character.
-	const probePlugins = hasScanProbeRungs();
-	for (let i = start; i < end; i++) {
-		const code = raw.charCodeAt(i);
-		if (code >= 128) {
-			if (probePlugins && isScanProbeTrigger(raw[i])) return true;
-			continue;
-		}
-		const cls = SPECIAL[code];
-		if (cls === 0) {
-			if (probePlugins && isScanProbeTrigger(raw[i])) return true; // registered '!' lands here
-			continue;
-		}
-		if (cls === 1) return true;
-		if (cls === PROBE_SCHEME) {
-			if (raw.charCodeAt(i + 1) === 0x2f && raw.charCodeAt(i + 2) === 0x2f) return true; // ://
-			if (probePlugins && isScanProbeTrigger(raw[i])) return true; // registered ':'
-		} else {
-			if (
-				(raw.charCodeAt(i + 1) | 0x20) === 0x77 &&
-				(raw.charCodeAt(i + 2) | 0x20) === 0x77 &&
-				raw.charCodeAt(i + 3) === 0x2e
-			) {
-				return true; // www.
-			}
-			if (probePlugins && isScanProbeTrigger(raw[i])) return true; // registered 'w'/'W'
-		}
-	}
-	return false;
-}
-
-// The first handler whose prefix matches at `ctx.pos`, whose plugin this editor lists and whose
-// recognizer returns a node wins; that node is checked here, once for both dispatch paths.
-function tryRungs(
-	ctx: ScanContext,
-	rungs: InlineRung[] | undefined,
-	grammar: GrammarView
-): InlineNode | null {
-	if (!rungs) return null;
-	const { raw, pos, end } = ctx;
-	for (const rung of rungs) {
-		if (!raw.startsWith(rung.prefix, pos) || !resolvesIn(grammar.activation, rung.owner)) continue;
-		const node = rung.recognizer(raw, pos, end, grammar);
-		if (!node) continue;
-		if (node.start !== pos) {
-			throw new Error(`inline-syntax "${rung.prefix}" started at ${node.start}, expected ${pos}`);
-		}
-		if (node.end <= pos) {
-			throw new Error(`inline-syntax "${rung.prefix}" did not advance`);
-		}
-		// A block's scan range is not always its whole raw (a setext heading's stops before its
-		// underline), so a recognizer that reads past `end` takes bytes the block still needs.
-		if (node.end > end) {
-			throw new Error(
-				`inline-syntax "${rung.prefix}" claimed [${node.start}, ${node.end}), past the scan ` +
-					`range end ${end}: a recognizer must bound its search by the \`end\` it is given`
-			);
-		}
-		stampClaim(node, rung);
-		return node;
-	}
-	return null;
-}
-
-// A built-in node a plugin handler created (an `image` over `![[cat.png]]`) is marked with that
-// handler, so the editor's writers re-serialize it in the plugin's syntax rather than GFM.
-function stampClaim(node: InlineNode, claim: InlineSyntaxClaim): void {
-	for (const inline of inlineDescendants([node])) {
-		if (isBuiltinInlineKind(inline.kind)) inline.syntaxClaim = claim;
-	}
-}
-
-/** `grammar` is the editor's: a handler whose plugin it leaves out never runs, so its bytes stay text. */
-export function scanInline(
+/** Both bounds are checked at runtime: a caller outside the type checker that passes only the
+ *  source would get one whole-string text node, wrong output that looks like a result. */
+export function readInline(
 	raw: string,
 	start: number,
 	end: number,
 	resolver: LinkReferenceResolver | undefined,
 	grammar: GrammarView
 ): InlineNode[] {
+	if (!Number.isFinite(start) || !Number.isFinite(end)) {
+		throw new TypeError('parseInline needs both bounds: call parseInline(src, 0, src.length)');
+	}
 	if (start >= end) return [];
-	if (!needsScan(raw, start, end)) {
+	// Most keystrokes land in a span with nothing to read, which then costs one search.
+	if (specialFinder(raw, end)(start) < 0)
 		return [{ kind: 'text', start, end, text: raw.slice(start, end) }];
-	}
-
-	const ctx = createScanContext(raw, start, end, resolver);
-	// Plugin handlers on a built-in trigger run before the switch, whose handler consumes the
-	// trigger (`handleBang` eats `![` whole); hoisted so an empty registry costs nothing.
-	const consultPrefixRungs = hasPrefixRungs();
-	while (ctx.pos < ctx.end) {
-		if (consultPrefixRungs) {
-			const node = tryRungs(ctx, getPrefixRungs(raw[ctx.pos]), grammar);
-			if (node) {
-				appendNode(ctx, node);
-				continue;
-			}
-		}
-		// A switch with direct calls, not a lookup in the trigger table: an indirect call per
-		// trigger measured slower. A test holds the cases equal to the table's rows.
-		switch (raw[ctx.pos]) {
-			case '\\':
-				handleBackslash(ctx);
-				break;
-			case '`':
-				handleBacktick(ctx);
-				break;
-			case '&':
-				handleAmpersand(ctx);
-				break;
-			case '\n':
-				handleNewline(ctx);
-				break;
-			case '*':
-			case '_':
-			case '~':
-				handleDelimiter(ctx);
-				break;
-			case '[':
-				handleOpenBracket(ctx);
-				break;
-			case ']':
-				handleCloseBracket(ctx);
-				break;
-			case '!':
-				handleBang(ctx);
-				break;
-			case '<':
-				handleAngle(ctx);
-				break;
-			default: {
-				if (hasInlineSyntax()) {
-					const node = tryRungs(ctx, getUnreservedRungs(raw[ctx.pos]), grammar);
-					if (node) {
-						appendNode(ctx, node);
-						break;
-					}
-				}
-				ctx.pos++;
-			}
-		}
-	}
-	flushPendingText(ctx, ctx.end);
-	// GFM bare autolinks claim their bytes before emphasis pairs: a delimiter
-	// absorbed into a URL must not pair.
-	scanGfmAutolinks(ctx);
-	processEmphasis(ctx, 0);
-	return mergeAdjacentText(ctx.nodes);
+	const { tokens, shapes } = new Scan(raw, start, end, resolver, grammar).run();
+	return buildTree(raw, tokens, shapes);
 }

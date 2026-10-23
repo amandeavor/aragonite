@@ -3,7 +3,7 @@ import { inlineOf } from './inline-test-helpers';
 
 /**
  * GFM §6.9's extended email autolink. The domain half and the `mailto:`/`xmpp:` prefixes answer
- * to cmark-gfm, which is what GitHub runs and what settles the corners the spec's prose leaves
+ * to cmark-gfm, which is what GitHub runs and what decides the corners the spec's prose leaves
  * loose. The one place this module keeps the spec against cmark-gfm is the leading boundary: the
  * boundary rows below link on GitHub, which guards only the `www.` form.
  */
@@ -78,7 +78,7 @@ describe('bare email autolink (GFM §6.9)', () => {
 	});
 });
 
-// Three domain-scan corners no spec example settles, so each is pinned against the
+// Three domain-scan corners no spec example decides, so each is pinned against the
 // implementation GitHub runs rather than against the prose.
 describe('email domain corners the spec prose leaves to cmark-gfm', () => {
 	it.each([

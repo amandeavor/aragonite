@@ -8,7 +8,7 @@ import type { InlineMenuItem, InlineMenuSource } from '#lib/inline-menu/types.js
 import type { PresentationMode } from '#lib/presentation-mode.js';
 import { definePlugin, installPlugins } from '#lib/schema/plugin-install.js';
 import { declarePluginInlineKind } from '#lib/schema/plugin-kind.js';
-import { registerInlineSyntax } from '#lib/core/inline/scan/plugin-syntax.js';
+import { registerInlineSyntax } from '#lib/plugin.js';
 import { fixtureReading } from '../harness/fixture-grammar';
 import { grammarListing } from '../plugins/activation/grammar-listing';
 import { createDraftRegistry } from '#lib/components/draft-registry.js';

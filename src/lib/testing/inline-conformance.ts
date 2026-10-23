@@ -1,5 +1,5 @@
 /**
- * The conformance kit for an inline syntax handler (`InlineRung`), published at
+ * The conformance kit for an inline syntax handler (`InlineHandler`), published at
  * `@voithos-labs/aragonite/testing`. It reads the live registry, so it works across
  * `resetPluginPlatformForTests()` cycles. The four cells a profile declares are required because
  * byte round-trip sees none of them, and the kit disproves an exemption where it can.
@@ -23,10 +23,10 @@ import {
 } from '../core/inline/inline-widgets';
 import {
 	INLINE_PRIORITIES,
-	getInlineRungs,
-	isReservedInlineTrigger,
-	isScanProbeTrigger,
-	type InlineRung
+	handlersFor,
+	isBuiltInTrigger,
+	isWatchedTrigger,
+	type InlineHandler
 } from '../core/inline/scan/plugin-syntax';
 import {
 	assert,
@@ -88,7 +88,7 @@ export interface InlineConformanceReport {
 interface InlineRun {
 	profile: InlineConformanceProfile;
 	prefix: string;
-	rung: InlineRung;
+	rung: InlineHandler;
 }
 
 const INLINE_CELLS: readonly KitCell<InlineConformanceCell, InlineRun>[] = [
@@ -155,7 +155,7 @@ function validateProfile(profile: InlineConformanceProfile, prefix: string): voi
 
 	// A prefix handler is consulted before the built-in case it shadows, so the overlap
 	// always exists and there is nothing to excuse.
-	if (isReservedInlineTrigger(profile.trigger) && profile.overlapDecline.mode !== 'assert') {
+	if (isBuiltInTrigger(profile.trigger) && profile.overlapDecline.mode !== 'assert') {
 		fail(
 			`${JSON.stringify(profile.trigger)} is claimed by the built-in scanner, so this rung is ` +
 				`consulted ahead of it and MUST decline the overlap — overlapDecline cannot be ` +
@@ -179,8 +179,8 @@ function assertSingleLine(source: string, label: string): void {
 	);
 }
 
-function locateRung(profile: InlineConformanceProfile, prefix: string): InlineRung {
-	const matches = getInlineRungs(profile.trigger).filter(
+function locateRung(profile: InlineConformanceProfile, prefix: string): InlineHandler {
+	const matches = handlersFor(profile.trigger).filter(
 		(r) =>
 			r.prefix === prefix && (profile.priority === undefined || r.priority === profile.priority)
 	);
@@ -207,7 +207,7 @@ function locateRung(profile: InlineConformanceProfile, prefix: string): InlineRu
 function mintedNodes(
 	source: string,
 	profile: InlineConformanceProfile,
-	rung: InlineRung
+	rung: InlineHandler
 ): InlineNode[] {
 	const out: InlineNode[] = [];
 	const visit = (nodes: InlineNode[]) => {
@@ -227,7 +227,7 @@ function mintedNodes(
 function claimsIn(
 	fixture: string,
 	profile: InlineConformanceProfile,
-	rung: InlineRung
+	rung: InlineHandler
 ): InlineNode[] {
 	const minted = mintedNodes(fixture, profile, rung);
 	assert(
@@ -242,7 +242,7 @@ function claimsIn(
  *  never reports `asserted` over only the built-in nodes the handler claimed. */
 function claimsOfKind(
 	profile: InlineConformanceProfile,
-	rung: InlineRung,
+	rung: InlineHandler,
 	kind: AnyInlineKind
 ): { fixture: string; node: InlineNode }[] {
 	const claims = profile.fixtures.flatMap((fixture) =>
@@ -260,7 +260,7 @@ function claimsOfKind(
 
 // ── claims ───────────────────────────────────────────────────────────────────
 
-function checkClaimsItsFixtures(profile: InlineConformanceProfile, rung: InlineRung): string {
+function checkClaimsItsFixtures(profile: InlineConformanceProfile, rung: InlineHandler): string {
 	let claims = 0;
 	for (const fixture of profile.fixtures) {
 		for (const node of claimsIn(fixture, profile, rung)) {
@@ -307,7 +307,7 @@ function openerWidth(fixture: string, prefix: string): number {
 	return at < 0 ? prefix.length : at + prefix.length;
 }
 
-function checkRoundTrip(profile: InlineConformanceProfile, rung: InlineRung): string {
+function checkRoundTrip(profile: InlineConformanceProfile, rung: InlineHandler): string {
 	let count = 0;
 	for (const fixture of profile.fixtures) {
 		for (const source of interleavings(fixture, profile.trigger)) {
@@ -354,7 +354,7 @@ function assertScanTiles(raw: string, end: number): void {
 
 /** At every position the scan would consult this handler the recognizer returns null, so the
  *  built-in construct sees byte-identical input. */
-function checkOverlapDecline(profile: InlineConformanceProfile, rung: InlineRung): string {
+function checkOverlapDecline(profile: InlineConformanceProfile, rung: InlineHandler): string {
 	const fixtures = profile.overlapFixtures ?? [];
 	let consulted = 0;
 	for (const source of fixtures) {
@@ -399,7 +399,7 @@ function checkOverlapDecline(profile: InlineConformanceProfile, rung: InlineRung
 
 /** The widget's shell (the element carrying its bytes and the editor's attributes) is the editor's
  *  own, so what the kind can get wrong is which bytes it claims. */
-function checkWidgetAtomicity(profile: InlineConformanceProfile, rung: InlineRung): string {
+function checkWidgetAtomicity(profile: InlineConformanceProfile, rung: InlineHandler): string {
 	const kind = profile.kind;
 	assert(
 		kind !== undefined,
@@ -436,7 +436,7 @@ function assertSelfDelimiting(fixture: string, node: InlineNode, kind: AnyInline
  * A policy field outside the caret-edge dispatch's vocabulary is read as absent and the
  * kind silently takes the default, with no byte differing.
  */
-function checkEditingPolicy(profile: InlineConformanceProfile, rung: InlineRung): string {
+function checkEditingPolicy(profile: InlineConformanceProfile, rung: InlineHandler): string {
 	const kind = profile.kind;
 	assert(kind !== undefined, 'the editingPolicy cell asserts but the profile names no kind');
 	const policy = getInlineWidgetEditing(kind, defaultGrammarView);
@@ -502,7 +502,7 @@ function assertPolicyVocabulary(policy: InlineWidgetEditingPolicy, kind: AnyInli
 
 /** A handler producing a built-in kind borrows the editor's model for its own bytes, so without
  *  `rewriteImage` a resize writes `![[cat.png|300]]` back as GFM, which still round-trips. */
-function checkImageClaimStamp(profile: InlineConformanceProfile, rung: InlineRung): string {
+function checkImageClaimStamp(profile: InlineConformanceProfile, rung: InlineHandler): string {
 	let stamped = 0;
 	for (const fixture of profile.fixtures) {
 		for (const node of mintedNodes(fixture, profile, rung)) {
@@ -538,7 +538,11 @@ function checkImageClaimStamp(profile: InlineConformanceProfile, rung: InlineRun
 
 /** The hook must re-emit the node it was handed unedited; the commit drops a byte-identical
  *  result, so a hook that cannot reproduce its input shows up as an edit that does nothing. */
-function assertRewriteReproducesSource(fixture: string, node: InlineNode, rung: InlineRung): void {
+function assertRewriteReproducesSource(
+	fixture: string,
+	node: InlineNode,
+	rung: InlineHandler
+): void {
 	assert(
 		rung.rewriteImage !== undefined,
 		`the "${rung.prefix}" rung mints a built-in image but registers no rewriteImage — every ` +
@@ -567,12 +571,12 @@ function assertRewriteReproducesSource(fixture: string, node: InlineNode, rung: 
 function checkRegistrationHygiene(
 	profile: InlineConformanceProfile,
 	prefix: string,
-	rung: InlineRung
+	rung: InlineHandler
 ): string {
-	const reserved = isReservedInlineTrigger(profile.trigger);
+	const reserved = isBuiltInTrigger(profile.trigger);
 	// Two handlers may share a prefix at different priorities (emoji and directive text both
 	// live on `:`), but two at the same priority could not be ordered by the dispatch.
-	const sameRung = getInlineRungs(profile.trigger).filter(
+	const sameRung = handlersFor(profile.trigger).filter(
 		(r) => r.prefix === prefix && r.priority === rung.priority
 	);
 	assertIs(
@@ -589,17 +593,16 @@ function checkRegistrationHygiene(
 				`(${INLINE_PRIORITIES.builtin}) so its prefix outranks the built-in case; got ${rung.priority}`
 		);
 	} else {
-		// The scan's fast bail skips an unreserved trigger unless a registration turns its
-		// per-character check on; without that the recognizer never runs in prose.
+		// The parse reads a character in plain prose only while a bare handler is registered on it.
 		assert(
-			isScanProbeTrigger(profile.trigger),
-			`the scan's fast bail visits ${JSON.stringify(profile.trigger)} — a trigger it skips ` +
-				`makes the recognizer unreachable in plain text`
+			isWatchedTrigger(profile.trigger),
+			`the parse visits ${JSON.stringify(profile.trigger)} in plain text — a trigger it skips ` +
+				`makes the recognizer unreachable there`
 		);
 	}
 	return reserved
 		? `prefix rung at priority ${rung.priority}, below the built-in boundary`
-		: `bare rung at priority ${rung.priority} on a scan-probed trigger`;
+		: `bare rung at priority ${rung.priority} on a trigger the parse visits`;
 }
 
 // ── Falsifiable excuses ──────────────────────────────────────────────────────
@@ -613,7 +616,7 @@ function refuseExcusedOverlap(profile: InlineConformanceProfile): void {
 	);
 }
 
-function refuseExcusedWidget(profile: InlineConformanceProfile, rung: InlineRung): void {
+function refuseExcusedWidget(profile: InlineConformanceProfile, rung: InlineHandler): void {
 	if (profile.kind === undefined) return;
 	const claimed = profile.fixtures
 		.flatMap((f) => mintedNodes(f, profile, rung).map((n) => ({ f, n })))
@@ -636,7 +639,7 @@ function refuseExcusedEditingPolicy(profile: InlineConformanceProfile): void {
 	}
 }
 
-function refuseExcusedImageClaim(profile: InlineConformanceProfile, rung: InlineRung): void {
+function refuseExcusedImageClaim(profile: InlineConformanceProfile, rung: InlineHandler): void {
 	const stamped = profile.fixtures
 		.flatMap((f) => mintedNodes(f, profile, rung))
 		.find((n) => n.syntaxClaim?.prefix === rung.prefix);

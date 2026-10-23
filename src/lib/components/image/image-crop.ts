@@ -5,7 +5,7 @@
  */
 
 import type { ImageCrop } from '../../core/nodes';
-import { MAX_CROP_ZOOM } from '../../core/inline/image-dimensions';
+import { MAX_ZOOM } from '../../core/inline/scan/size-hint';
 
 export const DEFAULT_CROP: ImageCrop = { x: 50, y: 50, z: 1 };
 
@@ -18,7 +18,7 @@ export function clampCrop(crop: ImageCrop): ImageCrop {
 	return {
 		x: Math.min(100, Math.max(0, crop.x)),
 		y: Math.min(100, Math.max(0, crop.y)),
-		z: Math.min(MAX_CROP_ZOOM, Math.max(1, crop.z))
+		z: Math.min(MAX_ZOOM, Math.max(1, crop.z))
 	};
 }
 

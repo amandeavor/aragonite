@@ -34,7 +34,7 @@ unguarded.
 | G4.15  | Coordinate brands are created only at their home modules                                         | L       |
 | G4.16  | Bundled plugins import only the public authoring barrels                                         | L       |
 | G4.17  | No spec is collected by two Playwright projects                                                  | L       |
-| G4.18  | The scan switch matches the trigger table; prefix handlers run from one site                     | L       |
+| G4.18  | _Retired_: the inline handler-order and registration rows hold what the trigger table did        | L       |
 | G4.19  | _Retired upward_: reading mode is refused where bytes are written, not per dispatch site (G4.52) | L       |
 | G4.20  | A new line takes the document's ending; per-line work reads no `\r`                              | L·N     |
 | G4.21  | Image bytes are written only through the one image byte module                                   | L       |
@@ -300,13 +300,6 @@ or comment is no edge. `lint/plugin-import-boundary.test.ts`.
 **G4.17 · One Playwright project per spec.** No spec file is collected by two Playwright projects. The scan reads what `playwright test --list` reports, so the glob
 depth rules are Playwright's own; a spec no project collects is G4.23's.
 `e2e/lint/project-partition.test.ts`.
-
-**G4.18 · Inline-trigger parity.** The characters the inline scanner handles itself live in
-`BUILTIN_TRIGGERS` (`core/inline/scan/triggers.ts`): a handler per row, plus when the fast bail
-(which lets plain prose skip the scan) looks for it. A new built-in trigger is one row there and one
-case in the scan loop's `switch` (a lookup measured slower). `builtin-trigger-dispatch.test.ts`
-checks each ASCII character runs its row's handler; `lint/inline-prefix-consultation.test.ts` keeps
-the plugin prefix check before the switch, at one site.
 
 **G4.20 · One document line ending.** New lines take `documentLineEnding` (the document's first
 break), and per-line work reads lines without endings (`displayLines`, both `core/lines.ts`).

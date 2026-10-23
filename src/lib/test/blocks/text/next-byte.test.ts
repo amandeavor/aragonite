@@ -17,10 +17,8 @@ import { createPendingMarks } from '#lib/caret/pending-marks.js';
 import { resolveMarkedInsertion } from '#lib/components/blocks/text/pending-mark-insert.js';
 import { parseInline } from '#lib/core/inline/index.js';
 import { fixtureReading } from '#lib/test/harness/fixture-grammar.js';
-import {
-	normalizeLinkLabel,
-	type LinkReferenceResolver
-} from '#lib/core/inline/link-reference-resolver.js';
+import { labelKey } from '#lib/core/inline/scan/link-grammar.js';
+import { type LinkReferenceResolver } from '#lib/core/inline/scan/definitions.js';
 import type { InlineMarkKind } from '#lib/schema/inline-construct-policy.js';
 
 describe('typesInPlace', () => {
@@ -93,7 +91,7 @@ function countedPreview(records: InsertionRecord[] = []): {
 
 /** A document defining one reference label, `foo*`. */
 const DEFINES_FOO: LinkReferenceResolver = (label) =>
-	normalizeLinkLabel(label) === 'foo*' ? { url: '/u' } : undefined;
+	labelKey(label) === 'foo*' ? { url: '/u' } : undefined;
 
 function answer(
 	display: string,
@@ -141,7 +139,7 @@ describe('nextByte', () => {
 	const defining =
 		(defined: string): LinkReferenceResolver =>
 		(label) =>
-			normalizeLinkLabel(label) === defined ? { url: '/u' } : undefined;
+			labelKey(label) === defined ? { url: '/u' } : undefined;
 
 	// Miss-analysis: the open-span check copied the closer rule and missed its exceptions, a `>` in
 	// a quoted attribute, an escaped `]`, a `]` in a code span.

@@ -3,7 +3,7 @@
 // mode from a caret or a range.
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { createInlineRangeCommit } from '#lib/editor-actions/inline-range-commit.js';
 import { createLinkCardCommitter } from '#lib/components/link-card/link-card-commit.js';
@@ -28,7 +28,7 @@ describe('commit', () => {
 
 	function makeCard(source: string) {
 		const harness = makeEditorActionsDeps(parse(source).children);
-		const map = buildLinkReferenceMap(harness.doc.children);
+		const map = definitionsOf(harness.doc.children);
 		const controller = createUndoController(harness.deps);
 		const committer = createLinkCardCommitter({
 			getDoc: () => harness.doc,

@@ -2,12 +2,9 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { encodeDestination, escapeTitle } from '#lib/core/inline/destination-bytes.js';
-import { parseLinkDestination, parseLinkTitle } from '#lib/core/inline/link-destination.js';
-import {
-	percentEncodeUri,
-	processDestination,
-	unescapeSpecString
-} from '#lib/core/inline/scan/url.js';
+import { readDestination, readTitle, titleValue } from '#lib/core/inline/scan/link-grammar.js';
+import { unescape } from '#lib/core/inline/scan/entities.js';
+import { encodeUrl } from '#lib/core/inline/scan/url.js';
 import { parseInline } from '#lib/core/inline/index.js';
 import { freshOrFixedSeed } from '../../invariants/arbitraries';
 
@@ -43,28 +40,32 @@ const arbSource = fc
 	)
 	.map((parts) => parts.join(''));
 
-function readTitle(value: string): string | undefined {
+function titleReadBack(value: string): string | undefined {
 	const bytes = `"${escapeTitle(value)}"`;
-	return parseLinkTitle(bytes, 0, bytes.length)?.title;
+	const end = readTitle(bytes, 0, bytes.length);
+	return end > 0 ? titleValue(bytes, 0, end) : undefined;
 }
 
-function readDestination(value: string): string | undefined {
+function destinationReadBack(value: string): string | undefined {
 	// The `)` an inline link closes on, which lets an empty destination read.
 	const bytes = encodeDestination(value) + ')';
-	return parseLinkDestination(bytes, 0, bytes.length)?.url;
+	return readDestination(bytes, 0, bytes.length)?.url;
 }
 
 describe('the destination and title writers read back through the link grammar', () => {
 	it('a title value survives a write and a read', () => {
 		fc.assert(
-			fc.property(arbSource.map(unescapeSpecString), (value) => readTitle(value) === value),
+			fc.property(arbSource.map(unescape), (value) => titleReadBack(value) === value),
 			PARAMS
 		);
 	});
 
 	it('a destination value survives a write and a read', () => {
 		fc.assert(
-			fc.property(arbSource.map(processDestination), (value) => readDestination(value) === value),
+			fc.property(
+				arbSource.map((text) => encodeUrl(unescape(text))),
+				(value) => destinationReadBack(value) === value
+			),
 			PARAMS
 		);
 	});
@@ -72,7 +73,7 @@ describe('the destination and title writers read back through the link grammar',
 	// A url typed into the link card reads back percent-encoded, as `readDestination` returns it.
 	it('any destination text reads back as the reader would encode it', () => {
 		fc.assert(
-			fc.property(arbSource, (text) => readDestination(text) === percentEncodeUri(text)),
+			fc.property(arbSource, (text) => destinationReadBack(text) === encodeUrl(text)),
 			PARAMS
 		);
 	});
@@ -84,12 +85,12 @@ describe('the destination and title writers read back through the link grammar',
 	});
 
 	it('a title holding entity text keeps it as text', () => {
-		expect(readTitle('&copy;')).toBe('&copy;');
-		expect(readTitle('a &amp; b')).toBe('a &amp; b');
+		expect(titleReadBack('&copy;')).toBe('&copy;');
+		expect(titleReadBack('a &amp; b')).toBe('a &amp; b');
 	});
 
 	it('a destination holding entity text keeps it as text', () => {
-		expect(readDestination('/a?b&copy;')).toBe('/a?b&copy;');
+		expect(destinationReadBack('/a?b&copy;')).toBe('/a?b&copy;');
 	});
 
 	it('a bare ampersand is written as it is', () => {

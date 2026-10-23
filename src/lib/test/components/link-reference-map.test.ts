@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { advanceSignatureEpoch, lrdMapCouldChange } from '#lib/components/link-reference-map.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import type { EditEvent } from '#lib/editor-events.js';
 
 function event(op: EditEvent['op'], path: number[], detail?: unknown): EditEvent {
@@ -49,7 +49,7 @@ describe('lrdMapCouldChange', () => {
 });
 
 describe('advanceSignatureEpoch', () => {
-	const sigOf = (src: string) => buildLinkReferenceMap(parse(src).children).signature;
+	const sigOf = (src: string) => definitionsOf(parse(src).children).signature;
 
 	it('holds the epoch when a rebuild yields an identical signature', () => {
 		// A counter that bumped on every rebuild would invalidate every block containing a bracket

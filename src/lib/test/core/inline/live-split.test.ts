@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { parse } from '#lib/core/parser.js';
 import { parsesBack, rebalanceLiveSplit } from '#lib/core/inline/live-edit/live-split.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import { getContentRange, parseInline } from '#lib/core/inline/index.js';
 import { CONTENT_VISIBILITY, renderedText } from '#lib/core/inline/visibility.js';
 import { fixtureReading, renderOptions, topLevelSplit } from '../../harness/fixture-grammar';
@@ -294,7 +294,7 @@ describe('a reference form rebalances only when the resolver reaches the join', 
 		const doc = parse(DOC);
 		const node = doc.children[0];
 		const raw = node.raw;
-		const map = buildLinkReferenceMap(doc.children);
+		const map = definitionsOf(doc.children);
 		return rebalanceLiveSplit(
 			node,
 			offset,

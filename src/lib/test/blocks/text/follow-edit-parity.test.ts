@@ -5,7 +5,7 @@
 // asked whether everything a click follows could be edited, so a bare URL had no Edit link.
 import { describe, it, expect, afterEach } from 'vitest';
 import { parse } from '#lib/core/parser.js';
-import { buildLinkReferenceMap } from '#lib/core/inline/link-reference-resolver.js';
+import { definitionsOf } from '#lib/core/inline/scan/definitions.js';
 import { inlineDescendants } from '#lib/core/inline/index.js';
 import { resolvedInlineContent } from '#lib/core/inline/inline-cache.js';
 import type { InlineNodeKind } from '#lib/core/nodes.js';
@@ -43,7 +43,7 @@ const SHAPES: [string, InlineNodeKind, string][] = [
 function mountLive(source: string) {
 	const doc = parse(source);
 	const node = doc.children[0];
-	const map = buildLinkReferenceMap(doc.children);
+	const map = definitionsOf(doc.children);
 	const reading = fixtureReading(
 		{ resolver: map.resolve, resolverSignature: map.signature },
 		'live'

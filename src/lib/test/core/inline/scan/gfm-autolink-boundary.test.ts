@@ -1,7 +1,6 @@
 // Miss-analysis: no boundary case put a url right after an inline construct.
 import { describe, expect, it } from 'vitest';
-import { defaultGrammarView } from '#lib/schema/block-openers.js';
-import { scanInline } from '#lib/core/inline/scan/index.js';
+import { parseInline } from '#lib';
 import {
 	angleAutolinkNode,
 	autolinkNode,
@@ -57,8 +56,6 @@ describeScanCases('the boundaries GFM allows still link', [
 describe('the scan range start', () => {
 	it('counts as the start of the line, whatever byte precedes it in the block', () => {
 		const raw = '> www.a.com';
-		expect(scanInline(raw, 2, raw.length, undefined, defaultGrammarView)).toEqual([
-			autolinkNode(2, 11, 'http://www.a.com')
-		]);
+		expect(parseInline(raw, 2, raw.length)).toEqual([autolinkNode(2, 11, 'http://www.a.com')]);
 	});
 });
