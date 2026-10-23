@@ -1275,6 +1275,18 @@ const RULES: FileRule[] = [
 		misses: ['grammars.registerCore(key, language);', 'registerAsCoreLater();']
 	},
 	{
+		id: 'G4.249 a measured height enters the height table and the estimator only through applyMeasured',
+		matches: /\.(?:recordMeasured|setHeight)\s*\(/,
+		allowed: {
+			'src/lib/windowing/list-windowing.svelte.ts':
+				'`applyMeasured`, which holds a height within a pixel of its record as that record'
+		},
+		reason:
+			'a height written around it skips the sub-pixel noise rule, and a block that remounts a fraction of a pixel off moves the scroll under the reader: call the list’s `applyHeight`',
+		hits: ['deps.oracle.recordMeasured(id, h);', 'table.model.setHeight (i, h);'],
+		misses: ['recordMeasured(id: string, height: number): void;', 'oracle.measured(id);']
+	},
+	{
 		id: 'G4.78 the editor’s built-in bootstraps run only through registerEditorBuiltIns',
 		matches:
 			/\b(?:registerBuiltInBlocks|bootstrapCodeLanguages|registerDefaultContextActions)\s*\(/,

@@ -203,6 +203,7 @@ unguarded.
 | G4.241 | Only the fix-up in `settle.ts` lays out blank runs and checks joins                              | L       |
 | G4.243 | Only the caret writer calls `Selection.modify`; a caret's line is read through one step          | L       |
 | G4.245 | A kind's write rule is run through `kindWriteRule`                                               | L       |
+| G4.249 | A measured height enters the height table only through `applyMeasured`                           | L       |
 
 ### The entries
 
@@ -1365,3 +1366,8 @@ wrong at a wrap is harmless or a known gap. `lint/file-rules.test.ts`.
 `tree-operations/node-primitives.ts :: kindWriteRule`, which checks every run against G1.143. The
 leaf-text reader (it reads the rule's `text`) and the conformance kit are the listed exceptions.
 `lint/file-rules.test.ts`.
+
+**G4.249 · One way into the height table.** A block's measured height is written to the list's
+height table and the estimator only by `windowing/list-windowing.svelte.ts :: applyMeasured`, which
+holds a height within a pixel of its record as that record, so a block remounting a fraction of a
+pixel off moves no scroll. `lint/file-rules.test.ts`.
