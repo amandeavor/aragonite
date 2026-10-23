@@ -1,6 +1,10 @@
 # Shipping it
 
-Part of the [consumer guide](../consumer-guide.md). What changes once the editor leaves your dev browser: inside a desktop shell, and in the hands of a user who just hit a bug.
+Part of the [consumer guide](../consumer-guide.md). What changes once the editor leaves your dev browser: in your production build, inside a desktop shell, and in the hands of a user who just hit a bug.
+
+## A production build
+
+Build for production and the editor's dev checks drop out, about 15 KB gzipped: the invariant checks and the `[aragonite:…]` console warnings a dev build gives you. That takes a bundler that resolves the `production` export condition. Vite and webpack 5 do on their own; with esbuild or Rollup, add `production` to its conditions. A build that doesn't still works, it just ships the checks, normally switched off at runtime. The swap rides on a package `exports` subpath the editor imports by its own name (`@voithos-labs/aragonite/dev-checks`, the editor's and not one to import yourself), so your toolchain has to read `exports` maps, which any bundler from the last few years does.
 
 ## Embedding in a webview shell
 

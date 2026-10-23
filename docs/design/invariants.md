@@ -111,9 +111,9 @@ comes back, the runtime side prints it as one tagged console warning, tag first:
 ```
 
 `assertInvariant` lives in `src/lib/dev-checks.ts`, which every subsystem imports by its package
-name, `@voithos-labs/aragonite/dev-checks`.
-It's dev-only and it **never throws**, because a false positive mustn't crash a real editor; in
-production it returns before calling the predicate. Scope a per-commit check to the nodes the commit
+name, `@voithos-labs/aragonite/dev-checks`. It's dev-only and it **never throws**, because a false
+positive mustn't crash a real editor. A production build gets an empty copy of the module instead
+(G4.247), so the call and its predicate compile out. Scope a per-commit check to the nodes the commit
 touched, never the whole document, or it stops being safe on a 10 MB file.
 
 That `[aragonite:invariant:<tag>]` string is what every gate watches

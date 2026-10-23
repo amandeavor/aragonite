@@ -203,6 +203,8 @@ unguarded.
 | G4.241 | Only the fix-up in `settle.ts` lays out blank runs and checks joins                              | L       |
 | G4.243 | Only the caret writer calls `Selection.modify`; a caret's line is read through one step          | L       |
 | G4.245 | A kind's write rule is run through `kindWriteRule`                                               | L       |
+| G4.247 | A production build of the published package carries no dev check                                 | harness |
+| G4.248 | Dev-only code reads one switch, in `dev-checks.ts`, imported by its package name                 | L       |
 
 ### The entries
 
@@ -1365,3 +1367,16 @@ wrong at a wrap is harmless or a known gap. `lint/file-rules.test.ts`.
 `tree-operations/node-primitives.ts :: kindWriteRule`, which checks every run against G1.143. The
 leaf-text reader (it reads the rule's `text`) and the conformance kit are the listed exceptions.
 `lint/file-rules.test.ts`.
+
+**G4.247 · A production build carries no dev check.** Under the `production` condition the editor's
+dev-checks import gets `dev-checks-stripped.ts`: a constant-`false` switch and empty reporters.
+`scripts/verify-dev-strip.mjs` (run by verify-pack) builds a page through both builds with Vite and
+fails on any check tag the production build keeps; the page imports `configureEditorEnv`, so only
+the swap can prove the switch off. `test/dev-checks-stripped.test.ts` holds the copy to the real
+module's names and to the side-effect annotations esbuild needs.
+
+**G4.248 · One dev-check switch, imported by name.** `esm-env` is imported only by
+`src/lib/dev-checks.ts`, and every module reaches it as `@voithos-labs/aragonite/dev-checks`.
+`svelte-package` rewrites a relative or `#lib` spelling into a file path, which the production
+swap never sees. The repo's own Vite, Vitest, svelte-check and Playwright resolve the name to the
+source file through the `aragonite-source` condition. `lint/file-rules.test.ts`.
