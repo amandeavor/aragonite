@@ -101,10 +101,11 @@ and checks only its row moved. `rebuild-keeps-bytes.property.test.ts`. The row w
 the reader does (`cellText`); a dev check (`table-row-reads-back`) fails a fallback that misreads.
 
 **G2.16 · An edit moves only its own lines.** Writing a leaf the bytes it already holds leaves the
-document byte for byte as it was, and one letter typed through the keystroke's route changes one
-line of the document and leaves a tree that reloads as itself. Both draw the blank-separated
-corpus and the respelled quotes and lists, and a named row pins the retype of a tab-indented item
-holding a table. `shape-fixed-point.property.test.ts`.
+document as it was, and one letter typed through the keystroke's route changes one line and leaves a
+tree that reloads as itself. Both draw the blank-separated corpus and the respelled quotes and lists;
+a named row pins the retype of a tab-indented item holding a table. Core kinds only: a plugin
+container's `rebuildRaw` decides its own lines, and the kit holds it to its fixture's bytes.
+`shape-fixed-point.property.test.ts`.
 
 **G2.17 · A throwing commit changes nothing.** A commit mutation that throws publishes no partial
 tree, leaves the undo and redo stacks as they were (`UndoManager.restoreStacks`), puts back each
