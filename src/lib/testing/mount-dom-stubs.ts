@@ -10,7 +10,7 @@ class NoopResizeObserver {
 
 /**
  * Fills the jsdom gaps a mounted editor hits (`ResizeObserver`, `scrollIntoView`, a range's
- * rects) where they are missing; call once before the first mount. jsdom's viewport has no
+ * rects, the point lookup a press reads) where they are missing; call once before the first mount. jsdom's viewport has no
  * height, so only a few blocks mount: keep fixture documents small when a test asserts a block is
  * mounted.
  */
@@ -23,5 +23,9 @@ export function installEditorDomStubsForTests(): void {
 	if (typeof Range !== 'undefined' && !Range.prototype.getClientRects) {
 		Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
 		Range.prototype.getBoundingClientRect = () => new DOMRect();
+	}
+	// jsdom lays nothing out, so a point names no element.
+	if (typeof document !== 'undefined' && typeof document.elementFromPoint !== 'function') {
+		document.elementFromPoint = () => null;
 	}
 }
