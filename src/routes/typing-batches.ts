@@ -4,7 +4,7 @@
  * the page's 250 ms timer. Installed only where dev checks run, so a production build has none.
  */
 
-import { isDevChecks } from '#lib/env.js';
+import { devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import {
 	endTypingBatchesForTests,
 	holdTypingPausesForTests,
@@ -14,7 +14,7 @@ import {
 import type { TypingBatchHandle } from '#lib/e2e/typing-batch.js';
 
 export function installTypingBatchHandle(): void {
-	if (typeof window === 'undefined' || !isDevChecks()) return;
+	if (typeof window === 'undefined' || !devChecksOn) return;
 	const handle: TypingBatchHandle = {
 		hold: holdTypingPausesForTests,
 		end: endTypingBatchesForTests,

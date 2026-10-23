@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { EditorEvents } from '../../editor-events';
 	import { clampWidth, snapWidth, resolveDraggedHeight, MIN_WIDTH } from './image-resize';
-	import { devWarn } from '../../dev-warn';
+	import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 	let {
 		getWidgetEl,

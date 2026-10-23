@@ -1,6 +1,6 @@
 /** One editor's decoration sources, their merged results, and the per-path lookups the
  *  overlays and inline widgets read. A source never runs inside a commit. */
-import { isDevChecks } from '../env';
+import { assertInvariant, devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { tick } from 'svelte';
 import type { DocumentView, NodeView } from '../core/node-views';
 import {
@@ -20,11 +20,9 @@ import type {
 	ReplaceDecoration,
 	WidgetDecoration
 } from './types';
-import { assertInvariant } from '../assert';
 import { isCommitInProgress } from '../invariants/commit-scope';
 import { contentLengthOf, isProseKind } from '../core/inline';
 import { isBlockNode, nodeAt } from '../tree-operations/node-primitives';
-import { devWarn } from '../dev-warn';
 import { recordDecorationRun } from '../perf/instruments';
 
 const EMPTY_MARKS: IndexedDecoration<MarkDecoration>[] = [];
@@ -134,7 +132,7 @@ export function createDecorationEngine(deps: DecorationEngineDeps): DecorationEn
 	}
 
 	function warnUnrenderableIslands(sourceName: string, decs: Decoration[]): void {
-		if (!isDevChecks()) return;
+		if (!devChecksOn) return;
 		const doc = deps.getDoc();
 		for (const dec of decs) {
 			if (dec.type !== 'widget' && dec.type !== 'replace') continue;

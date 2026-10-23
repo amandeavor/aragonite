@@ -36,7 +36,7 @@ import { applyInlineResult, applyStructuralResult } from './apply';
 import { normalizeClipboardForBody } from './body-write';
 import { applyContainerMatchingPaste, findContainerMatchingUnwrap } from './container-match';
 import { defaultInlineHook, defaultStructuralHook } from './hooks';
-import { devWarn } from '../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { applyListAbsorb, findListAbsorb } from './list-absorb';
 import { applyListBreakOut, findListBreakOut } from './list-break-out';
 import type { PasteCommitCoordinator } from './paste-deps';

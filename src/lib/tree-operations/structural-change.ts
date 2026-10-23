@@ -10,7 +10,7 @@ import type { CstNode } from '../core/nodes';
 import type { SharingState } from './sharing';
 import { generateBlockId, assignChildIdsDeep, assignIds } from '../block-id';
 import { spliceMany } from './splice-many';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkStructuralDescriptor } from '../invariants/structural-descriptor';
 
 export type StructuralChange =

@@ -1,4 +1,7 @@
 import { defineConfig, type Project } from '@playwright/test';
+import { resolveSelfImportsFromSource } from './scripts/lib-alias.mjs';
+
+resolveSelfImportsFromSource();
 
 declare const process: { env: Record<string, string | undefined> };
 const PROD = !!process.env.PERF_PROD;

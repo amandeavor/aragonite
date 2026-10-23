@@ -3,8 +3,7 @@
  * the editor mounts it, so a dev build can name that cause instead of a generic failure.
  */
 
-import { devWarn } from './dev-warn';
-import { isDevChecks } from './env';
+import { devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // A second runtime's first mount calls `.call` on its unset `*_getter`, a later one reads `nodes`
 // off a null effect; V8 names no variable, so there a plugin's own `undefined.call` matches too.
@@ -30,7 +29,7 @@ export function isForeignRuntimeError(error: unknown): boolean {
 
 /** In dev, the cause to show for a mount failure from another runtime; null otherwise. */
 export function foreignRuntimeCause(error: unknown): string | null {
-	return isDevChecks() && isForeignRuntimeError(error)
+	return devChecksOn && isForeignRuntimeError(error)
 		? 'its component was compiled against a different Svelte runtime'
 		: null;
 }

@@ -3,7 +3,7 @@
  * callbacks, so one that ignores a cause would stay on screen after the editor closed it.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkMenuClosed(stillMounted: boolean, cause: string): InvariantViolation | null {
 	if (!stillMounted) return null;

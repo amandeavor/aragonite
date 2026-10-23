@@ -5,7 +5,7 @@
  */
 
 import { decidedDelete, type DeleteVerdict } from '../caret/delete-extent';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkDeleteDecided(
 	inputType: string,

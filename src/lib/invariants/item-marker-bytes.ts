@@ -4,7 +4,7 @@
  * rewrite that moves the metadata without the bytes would draw a marker the file doesn't hold.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkItemMarkerBytes(raw: string, drawn: string): InvariantViolation | null {
 	const bytes = raw.replace(/^ {0,3}/, '');

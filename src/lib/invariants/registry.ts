@@ -1,5 +1,5 @@
 import type { AnyBlockKind, AnyInlineKind, BlockKind } from '../core/nodes';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import type { SplitBehavior } from '../schema/inline-construct-policy';
 
 /**

@@ -8,7 +8,7 @@
 import { tick } from 'svelte';
 import type { HistoryActions } from '../../action-contracts';
 import type { UndoEntry } from '../../undo/types';
-import { assertInvariant } from '../../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkSnapshotIntegrity } from '../../invariants/snapshot-integrity';
 import { admitsWrite } from './reading-write-gate';
 import type { EditorActionsDeps, UndoController } from '../deps';

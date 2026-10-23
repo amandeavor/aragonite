@@ -6,7 +6,7 @@
 import type { EditorError } from '../editor-events';
 import type { DecorationEngine } from './decoration-state.svelte';
 import type { BlockDecoration, DecorationWidgetSpec } from './types';
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { acceptedBlockAttrs } from './reserved-attrs';
 import { mountDecorationWidget, type MountedDecorationWidget } from './widget-dom';
 

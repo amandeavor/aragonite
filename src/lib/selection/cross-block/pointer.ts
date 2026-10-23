@@ -9,7 +9,7 @@ import { applyCollapsedCaret, nativeRangeIn, readNativeSelection } from '../nati
 import type { CaretWriter } from '../../caret/widget-offset';
 import { isInPaddingRow, offsetFromViewportPoint } from '../../caret/point-offset';
 import { installDragListener } from '../drag-pointer';
-import { devWarn } from '../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { isWholeBlockInputProxy } from '../../editor-actions/whole-block-focus-surface';
 
 // ── Public API ─────────────────────────────────────────────────────────────

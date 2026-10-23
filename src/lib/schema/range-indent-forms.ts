@@ -9,7 +9,7 @@ import type { AnyCommandId } from './command-id';
 import type { PluginActivation } from './plugin-activation';
 import { createPluginRegistry } from './plugin-registry';
 import { tryGetBlockKindDescriptor } from './block-kind-descriptor';
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // ── Public API ─────────────────────────────────────────────────────────────
 

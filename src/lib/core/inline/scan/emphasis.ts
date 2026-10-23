@@ -6,7 +6,7 @@
  */
 
 import type { InlineNode } from '../../nodes';
-import { assertInvariant } from '../../../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { appendNode, type Delimiter, type ScanContext } from './scan-state';
 import { isHighSurrogate, isLowSurrogate } from '../../lines';
 

@@ -9,7 +9,7 @@ import {
 	type InlineConstructPolicy,
 	type InlineMarkKind
 } from '#lib/schema/inline-construct-policy.js';
-import { configureEditorEnv } from '#lib/env.js';
+import { configureEditorEnv } from '@voithos-labs/aragonite/dev-checks';
 import { registerAsCore } from '#lib/schema/plugin-install.js';
 import { takeDevWarns } from '../../support/warn-gate';
 import type { InlineNode } from '#lib/core/nodes.js';

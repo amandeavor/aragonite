@@ -23,7 +23,7 @@ import type { UndoController } from './deps';
 import type { StructuralChange } from '../tree-operations/structural-change';
 import type { BlockListState } from '../block-lists/block-list-state.svelte';
 import { scopeStateFor } from '../block-lists/state-registry';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import {
 	columnAligned,
 	COLUMN_ALIGNMENT_CLEARED,

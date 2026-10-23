@@ -103,14 +103,15 @@ assertInvariant('stale-raw', () => checkStaleRaw(node));
 expect(checkStaleRaw(parse('> hello\n> world\n').children[0])).toBeNull();
 ```
 
-A violation is `{ code, message, detail? }` (`InvariantViolation`, in `src/lib/assert.ts`). When one
+A violation is `{ code, message, detail? }` (`InvariantViolation`, in `src/lib/dev-checks.ts`). When one
 comes back, the runtime side prints it as one tagged console warning, tag first:
 
 ```
 [aragonite:invariant:stale-raw] blockquote raw is stale relative to its children {kind: 'blockquote', raw: '> hello\n'}
 ```
 
-`assertInvariant` lives in `src/lib/assert.ts`, a dependency-free file every subsystem can import.
+`assertInvariant` lives in `src/lib/dev-checks.ts`, which every subsystem imports by its package
+name, `@voithos-labs/aragonite/dev-checks`.
 It's dev-only and it **never throws**, because a false positive mustn't crash a real editor; in
 production it returns before calling the predicate. Scope a per-commit check to the nodes the commit
 touched, never the whole document, or it stops being safe on a 10 MB file.

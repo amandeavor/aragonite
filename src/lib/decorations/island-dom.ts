@@ -5,7 +5,7 @@
  * this pass cannot place drops silently; `decoration-state.svelte.ts` warns about it.
  */
 
-import { isDevChecks } from '../env';
+import { devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import type { ContentLength } from '../core/inline';
 import {
 	rawOfWalkOffset,
@@ -14,7 +14,6 @@ import {
 	walkOffsetOfRaw,
 	widgetSpanContainingOffset
 } from '../caret/widget-offset';
-import { devWarn } from '../dev-warn';
 import type { IndexedDecoration } from './buckets';
 import type {
 	Decoration,
@@ -131,7 +130,7 @@ export function applyIslandDecorations(
 			return;
 		}
 		const extracted = range.extractContents();
-		if (isDevChecks()) {
+		if (devChecksOn) {
 			const displaced = rawTextOfNode(extracted, raw);
 			if (displaced !== raw.slice(start, end)) {
 				devWarn('decorations', 'replace decoration span disagrees with the displaced DOM bytes', {

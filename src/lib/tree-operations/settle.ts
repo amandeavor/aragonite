@@ -12,7 +12,7 @@ import type { LineEnding } from '../core/lines';
 import type { GrammarView } from '../schema/block-openers';
 import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
 import { recordSettlePass } from '../perf/instruments';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkStructuralDescriptor } from '../invariants/structural-descriptor';
 import { noteBodySettled } from '../invariants/settle-once';
 import { checkBlankRunsLaidOut } from '../invariants/blank-runs';

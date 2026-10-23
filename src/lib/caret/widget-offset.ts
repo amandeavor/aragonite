@@ -34,7 +34,7 @@ import {
 } from './coordinate-spaces';
 import { domDescendants } from './dom-walk';
 import { placeholderBreakOf } from './placeholder-break';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkCaretBeforeBreak } from '../invariants/caret-before-break';
 import { checkCaretOutsideLineEndingPair } from '../invariants/line-ending-pairs';
 import { checkLineReadRestored } from '../invariants/line-read-restores';

@@ -4,7 +4,7 @@
  * leaf's text element sits inside it and holds no element of its own: the editor owns its text.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { BLOCK_CONTENT_SELECTOR } from '../caret/block-content-selector';
 
 const violation = (message: string): InvariantViolation => ({ code: 'dom-view-content', message });

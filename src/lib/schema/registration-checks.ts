@@ -11,7 +11,7 @@ import {
 	type AnyInlineKind
 } from '../core/nodes';
 import type { ClosureCell } from './closure';
-import { assertInvariant, type InvariantViolation } from '../assert';
+import { assertInvariant, type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import {
 	checkRegistryCompleteness,
 	checkOpenerRegistry,

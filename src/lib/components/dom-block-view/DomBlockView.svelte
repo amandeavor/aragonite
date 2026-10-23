@@ -27,7 +27,7 @@
 		type EditorPolicies,
 		type EditorServices
 	} from '../../editor-keys';
-	import { assertInvariant } from '../../assert';
+	import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 	import { VIEW_TEXT_ATTR, VIEW_TEXT_HOST_ATTR } from '../../caret/block-content-selector';
 	import { checkAttachedLeaf, checkDomViewContent } from '../../invariants/dom-view-content';
 	import { warnIfForeignRuntime } from '../../foreign-runtime';

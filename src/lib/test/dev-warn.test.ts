@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
+	configureEditorEnv,
 	devWarn,
 	setDevWarnSink,
-	warnTagOfLine,
 	type DevWarnEntry,
 	type DevWarnSink
-} from '../dev-warn';
-import { configureEditorEnv } from '../env';
+} from '@voithos-labs/aragonite/dev-checks';
+import { warnTagOfLine } from '../warn-tags';
 
 // The console branch is what the e2e watchers read, so it is tested with the unit suite's own
 // callback detached: a registered callback takes over reporting and the console line never runs.

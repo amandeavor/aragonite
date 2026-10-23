@@ -18,7 +18,7 @@ import { mintWidgetShell } from '../../core/inline/widget-shell';
 import type { ActivationClick, ClickInput } from '../../activation-click';
 import type { Reading } from '../../schema/reading';
 import { tracePoolPass } from '../../debug/interaction-trace';
-import { assertInvariant } from '../../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkPoolBracket } from '../../invariants/inline-transitions';
 import { mountPluginView, type MountedPluginView } from '../../plugin-view';
 

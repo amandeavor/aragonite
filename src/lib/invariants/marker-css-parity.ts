@@ -6,7 +6,7 @@
  * (jsdom, source mode) it does nothing, and the presentation e2e battery asserts instead.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { familyHidesText, markerFamilyOf, type VisibilityContext } from '../core/inline/visibility';
 import { CONTENT_EMPTY_ATTR, isHiddenMarkerRoot, screenVisibilityOf } from '../caret/widget-offset';
 

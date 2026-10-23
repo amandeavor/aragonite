@@ -1,7 +1,7 @@
 import type { AmbientPrefix } from '../../../block-component';
 import { metadataOf, type ListItemMetadata } from '../../../core/nodes';
 import type { NodeView } from '../../../core/node-views';
-import { devWarn } from '../../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 function isTaskMarkerChecked(taskMarker: string): boolean {
 	const c = taskMarker[1];

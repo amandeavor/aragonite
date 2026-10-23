@@ -1,7 +1,7 @@
 /** CST node types for the GFM parser: mutable plain objects. Spec: docs/design/syntax-tree.md. */
 
 import type { BytesView, NodeView } from './node-views';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 
 // ── Node Kinds ──────────────────────────────────────────────────────────────
 

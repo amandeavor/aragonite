@@ -5,8 +5,7 @@
  */
 
 import type { AnyBlockKind } from './core/nodes';
-import { devWarn } from './dev-warn';
-import { editorEnv } from './env';
+import { devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import type { PresentationMode } from './presentation-mode';
 import type { EditorSelection } from './selection/primitives';
 import type { OpDescriptor, OperationDetailMap, OperationKind } from './schema/operations';
@@ -124,7 +123,7 @@ export function createEditorEvents(): EditorEventChannel {
 				// which would loop. Anything the channel cannot report fails a gate instead.
 				if (event !== 'error' && handlers.error?.size) {
 					emit('error', { origin: 'subscriber', error: err });
-				} else if (editorEnv.isDev) {
+				} else if (devChecksOn) {
 					devWarn('events', `${event} subscriber threw`, err);
 				} else {
 					// `devWarn` is silent in production, and swallowing here would hide an exception

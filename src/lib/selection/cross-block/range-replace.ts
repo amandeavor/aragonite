@@ -35,9 +35,7 @@ import { dispatchKeyCommand } from '../../schema/block-commands';
 import { docPathFrom } from '../../caret/coordinate-spaces';
 import { scopeStateFor } from '../../block-lists/state-registry';
 import { emitClipboardError } from '../../editor-events';
-import { assertInvariant } from '../../assert';
-import { devWarn } from '../../dev-warn';
-import { isDevChecks } from '../../env';
+import { assertInvariant, devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { checkCommandLanding } from '../../invariants/command-key-landing';
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -138,9 +136,7 @@ async function replaceInStep(
 	}
 
 	const claimed =
-		insertion.kind === 'command' && isDevChecks()
-			? commandLandingKind(ctx.getDoc(), coverage)
-			: null;
+		insertion.kind === 'command' && devChecksOn ? commandLandingKind(ctx.getDoc(), coverage) : null;
 	const [removed, removalCaret] = await ctx.controller.holdLandings(() =>
 		removeRange(ctx, coverage, removal, insertion)
 	);

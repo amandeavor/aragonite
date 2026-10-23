@@ -36,7 +36,7 @@ import {
 	type PluginBlockKind,
 	type PluginInlineKind
 } from '#lib/plugin.js';
-import { devWarn } from '#lib/dev-warn.js';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { installPlugins, onEditorCallbacks } from '#lib/schema/plugin-install.js';
 import { pluginGlobalBinding } from '#lib/schema/commands.js';
 import { getBlockCommand } from '#lib/schema/block-commands.js';

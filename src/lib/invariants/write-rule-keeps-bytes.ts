@@ -6,7 +6,7 @@
  */
 
 import type { NodeView } from '../core/node-views';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { structuralSuffix } from '../core/inline';
 import { isBlankLine, ownTrailingLineEnding, trimTrailingLineEnding } from '../core/lines';
 import { writtenSpan } from '../core/written-span';

@@ -5,7 +5,7 @@
  */
 
 import { lineEndingCounts, splitsLineEndingPair } from '../core/line-ending-pairs';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export type LineEndingCounts = ReturnType<typeof lineEndingCounts>;
 

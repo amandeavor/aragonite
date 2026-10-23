@@ -49,7 +49,7 @@ it(
 // The other route in: the parser's own first read registers the built-ins, with nothing else loaded.
 it('registers the built-ins from the first grammar read with dev on and no test flag', async () => {
 	vi.resetModules();
-	const { configureEditorEnv } = await import('#lib/env.js');
+	const { configureEditorEnv } = await import('@voithos-labs/aragonite/dev-checks');
 	configureEditorEnv({ isDev: true, isTest: false });
 	const { parse } = await import('#lib/core/parser.js');
 	expect(parse('# h\n\n- a\n').children.map((c) => c.kind)).toEqual(['heading', 'list']);

@@ -9,12 +9,12 @@
 import { afterAll, afterEach, expect } from 'vitest';
 import { tick } from 'svelte';
 import {
+	resetEditorEnv,
 	setDevWarnSink,
-	warnTagOfLine,
 	type DevWarnEntry,
 	type DevWarnSink
-} from '#lib/dev-warn.js';
-import { resetEditorEnv } from '#lib/env.js';
+} from '@voithos-labs/aragonite/dev-checks';
+import { warnTagOfLine } from '#lib/warn-tags.js';
 import allowlist from './warn-allowlist.json';
 
 export interface AllowedWarn {
@@ -102,7 +102,7 @@ export function siteFromStack(stack: string | undefined): string {
 const FRAME_SITE = /\/(src\/lib\/[^\s:?]+\.(?:ts|svelte))(?:\?[^\s:]*)?:\d+:\d+/;
 
 /** Frames that pass a warning along rather than emit it; the interesting file sits below them. */
-const RELAYS = new Set(['src/lib/dev-warn.ts', 'src/lib/assert.ts']);
+const RELAYS = new Set(['src/lib/dev-checks.ts']);
 
 let recorded: DevWarnRecord[] = [];
 

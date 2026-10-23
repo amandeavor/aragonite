@@ -272,12 +272,15 @@ describe('the perf switch reads the editor environment', () => {
 
 	async function freshInstruments(): Promise<{
 		perf: typeof import('../../perf/instruments');
-		env: typeof import('../../env');
+		env: typeof import('@voithos-labs/aragonite/dev-checks');
 	}> {
 		vi.stubEnv('VITEST', '');
 		vi.resetModules();
 		vi.doMock('esm-env', () => ({ DEV: false }));
-		return { perf: await import('../../perf/instruments'), env: await import('../../env') };
+		return {
+			perf: await import('../../perf/instruments'),
+			env: await import('@voithos-labs/aragonite/dev-checks')
+		};
 	}
 
 	it('stays off on a production build outside a declared test runner', async () => {

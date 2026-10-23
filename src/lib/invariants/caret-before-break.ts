@@ -4,7 +4,7 @@
  * `compositionend`, so the composed text is lost or doubled.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { placeholderBreakOf } from '../caret/placeholder-break';
 
 export function checkCaretBeforeBreak(position: {

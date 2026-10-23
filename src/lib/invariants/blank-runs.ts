@@ -3,7 +3,7 @@
  * tree holds it, with the same blank blocks and each hidden line on the slot a reload puts it in.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import type { GrammarView } from '../schema/block-openers';
 import type { BodyParent } from '../tree-operations/node-primitives';
 import { describeUnlaidRun } from '../tree-operations/blank-runs';

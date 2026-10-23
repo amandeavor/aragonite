@@ -152,7 +152,7 @@
 	import { createInlineRangeCommit } from '../editor-actions/inline-range-commit';
 	import { createLinkCardState } from './link-card/link-card-state.svelte';
 	import { runStartupInvariantChecks } from '../invariants/install';
-	import { assertInvariant } from '../assert';
+	import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 	import { checkMarkerCssParity } from '../invariants/marker-css-parity';
 	import { checkHostColorsResolve } from '../invariants/theme-stylesheet';
 	import { registerEditorBuiltIns } from './editor-built-ins';

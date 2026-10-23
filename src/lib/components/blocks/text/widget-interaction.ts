@@ -37,7 +37,7 @@ import {
 	traceRevealFold,
 	type RevealFoldReason
 } from '../../../debug/interaction-trace';
-import { assertInvariant } from '../../../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkWidgetCaretLanding } from '../../../invariants/widget-caret-landing';
 import { checkMotionLeftWidget } from '../../../invariants/selected-widget-motion';
 import type { RevealFold } from '../editable/surface-clipboard';

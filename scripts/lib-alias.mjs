@@ -1,7 +1,9 @@
 // How code names the library: the `#lib` alias package.json `imports` declares for source files,
-// and the entry points its `exports` publishes. The source scans and the consumer plugin sync read
-// both through here, so each is spelled in package.json alone.
+// the entry points its `exports` publishes, and the subpaths the library imports by its own name.
+// The source scans and the consumer plugin sync read all three through here, so each is spelled in
+// package.json alone.
 import { readFileSync } from 'node:fs';
+import { registerHooks } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,29 +16,63 @@ const IMPORTS = PACKAGE.imports ?? {};
 
 const repoPath = (/** @type {string} */ target) => target.replace(/^\.\//, '');
 
+/** The export condition the repo's own toolchain resolves, so a library import by package name
+ *  reaches the source file rather than a build. */
+export const SOURCE_CONDITION = 'aragonite-source';
+
+/** Each subpath the library imports by its own package name (an `exports` entry carrying the
+ *  source condition), from specifier to source file. */
+const SELF_IMPORTS = new Map(
+	Object.entries(PACKAGE.exports ?? {}).flatMap(([subpath, target]) =>
+		typeof target === 'object' && typeof target[SOURCE_CONDITION] === 'string'
+			? [[`${PACKAGE.name}${subpath.slice(1)}`, repoPath(target[SOURCE_CONDITION])]]
+			: []
+	)
+);
+
+/** Make this Node process resolve the source condition too, so a test runner that loads library
+ *  source outside Vite (Playwright) reaches the self-imports' source files. */
+export function resolveSelfImportsFromSource() {
+	// Vitest resolves the condition through its own config, and refuses Node's hooks.
+	if (process.env.VITEST) return;
+	registerHooks({
+		resolve: (specifier, context, nextResolve) =>
+			nextResolve(specifier, { ...context, conditions: [...context.conditions, SOURCE_CONDITION] })
+	});
+}
+
+/** The specifiers the library imports itself by (`@voithos-labs/aragonite/dev-checks`). */
+export function selfImportSpecifiers() {
+	return [...SELF_IMPORTS.keys()];
+}
+
 /** Node refuses a `*` match with a `.`, `..` or `node_modules` path segment. */
 const isValidMatch = (/** @type {string} */ middle) =>
 	middle.split(/[/\\]/).every((part) => !['.', '..', 'node_modules'].includes(part.toLowerCase()));
 
 /**
- * Whether a specifier is spelled with a package.json `imports` key, whether or not it maps to a
- * file (`#lib/x.js` is, `#fff` isn't).
+ * Whether a specifier names library source: a package.json `imports` key, whether or not it maps
+ * to a file (`#lib/x.js` is, `#fff` isn't), or a subpath the library imports by its own name.
  * @param {string} specifier
  * @returns {boolean}
  */
 export function isAliasSpelling(specifier) {
+	if (SELF_IMPORTS.has(specifier)) return true;
 	return Object.keys(IMPORTS).some((key) =>
 		key.includes('*') ? specifier.startsWith(key.split('*')[0]) : specifier === key
 	);
 }
 
 /**
- * The repo path a `#` specifier names (`#lib/core/parser.js` names `src/lib/core/parser.js`), or
- * null when no `imports` key matches it Node's way or its `*` part has a segment Node refuses.
+ * The repo path a `#` specifier or a self-import names (`#lib/core/parser.js` names
+ * `src/lib/core/parser.js`), or null when no `imports` key matches it Node's way or its `*` part
+ * has a segment Node refuses.
  * @param {string} specifier
  * @returns {string | null}
  */
 export function aliasPath(specifier) {
+	const selfImport = SELF_IMPORTS.get(specifier);
+	if (selfImport !== undefined) return selfImport;
 	if (!specifier.startsWith('#')) return null;
 	if (!specifier.includes('*') && Object.hasOwn(IMPORTS, specifier)) {
 		return repoPath(IMPORTS[specifier]);
@@ -85,7 +121,8 @@ export function aliasSpecifier(relPath) {
  */
 
 /**
- * Each published JavaScript entry point in package.json `exports`, with both of its builds. Throws on
+ * Each published JavaScript entry point in package.json `exports`, with both of its builds (a
+ * self-import subpath is not one). Throws on
  * an entry whose `default` is not its `svelte` path moved under `dist/prebuilt/` (G4.174).
  * @returns {EntryPoint[]}
  */
@@ -93,7 +130,7 @@ export function publishedEntryPoints() {
 	/** @type {EntryPoint[]} */
 	const out = [];
 	for (const [subpath, target] of Object.entries(PACKAGE.exports ?? {})) {
-		if (typeof target !== 'object') continue;
+		if (typeof target !== 'object' || SOURCE_CONDITION in target) continue;
 		const svelte = repoPath(target.svelte ?? '');
 		const prebuilt = repoPath(target.default ?? '');
 		const built = /^dist\/(.+)\.js$/.exec(svelte);

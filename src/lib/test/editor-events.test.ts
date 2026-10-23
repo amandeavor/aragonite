@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createEditorEvents, emitCommandError, type EditorError } from '#lib/editor-events.js';
 import { takeDevWarns } from './support/warn-gate';
-import { configureEditorEnv } from '#lib/env.js';
+import { configureEditorEnv } from '@voithos-labs/aragonite/dev-checks';
 import { asDocPath } from '#lib/selection/path-math.js';
 import { makeNestedHarness } from './harness/editor-actions';
 import type { AnyBlockKind } from '#lib/core/nodes.js';
