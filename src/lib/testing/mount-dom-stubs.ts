@@ -10,9 +10,9 @@ class NoopResizeObserver {
 
 /**
  * Fills the jsdom gaps a mounted editor hits (`ResizeObserver`, `scrollIntoView`, a range's
- * rects, the point lookup a press reads) where they are missing; call once before the first mount. jsdom's viewport has no
- * height, so only a few blocks mount: keep fixture documents small when a test asserts a block is
- * mounted.
+ * rects, the point lookup a press reads) where they are missing; call once before the first
+ * mount. jsdom's viewport has no height, so only a few blocks mount: keep fixture documents small
+ * when a test asserts a block is mounted.
  */
 export function installEditorDomStubsForTests(): void {
 	const globals = globalThis as StubbableGlobals;

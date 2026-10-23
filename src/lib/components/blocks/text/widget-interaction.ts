@@ -428,7 +428,6 @@ export function createWidgetInteraction(deps: WidgetInteractionDeps): WidgetInte
 		const painted = revealWidgetFromDom(el, x, y);
 		if (painted) return painted;
 		// The box test, for a point the DOM cannot answer, such as a synthetic call.
-
 		for (const inline of widgetsOf()) {
 			if (!widgetEditing(inline.kind)?.revealSource) continue;
 			const widget = widgetElByStart(el, inline.start);

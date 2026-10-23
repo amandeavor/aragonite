@@ -42,7 +42,11 @@ Every editable surface's pointer-down, a plugin's included, goes through `handle
 
 A text block's own pointer-down (`src/lib/components/blocks/text/TextEditableBlock.svelte`) also reads what the press means for stage 4, and on a widget that shows its source when clicked (an inline formula) it suppresses the browser's caret, so the reveal is the only thing placing one.
 
-Every press is read at the press, never at the click or the menu that follows it. The press itself can move the caret out of a shown formula source, which closes it, so the formula draws again and the rest of the line moves; by the click, the pixel under the pointer is something else. Firefox always gets there first, and Chromium does on any press held as long as a person holds one. So the text block's reading (`widget-interaction.ts` :: `notePress`, G4.252), the root's right-click record (`gestures.ts` :: `notePress`) and the dead-space click (`dead-space-caret.ts` :: `planAtPoint`, which also reads the block's snap before it places a caret) all measure at pointer-down and act later.
+A press is read when it goes down, not at the click or the menu that comes after it. The press itself can move the caret out of an open formula source, which closes it. The formula draws again, the rest of the line shifts, and by the time the click arrives there's something else under the pointer. Firefox always closes the source before the click, and Chromium does too when the press is held about as long as a person holds one. Three places measure at pointer-down and act later:
+
+- the text block's reading for stage 4 (`widget-interaction.ts` :: `notePress`, guarded by G4.252);
+- the root's right-click record (`gestures.ts` :: `notePress`), which places the menu's caret;
+- the dead-space click (`dead-space-caret.ts` :: `planAtPoint`), which also reads the block's own snap before it places a caret.
 
 ## 2. Which block, and where in it
 

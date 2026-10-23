@@ -229,7 +229,7 @@ const RULES: CallSiteRule[] = [
 			[`${WIDGETS} :: islandDragAnchor`]: 'reads where a drag anchors, at its pointerdown'
 		},
 		reason:
-			'by the click, the press may have moved the caret out of a shown source, which redraws the line under the point; read it in `readPress` (`caret-placement.md` § 4)',
+			'by the click, the press may have moved the caret out of a shown source, which redraws the line under the point; read it in `readPress` (`caret-placement.md` § 1)',
 		hits: [
 			at(WIDGETS, 'function snapToPress(el) {\n\tconst hit = hitTestRevealWidget(el, x, y);\n}'),
 			at(
