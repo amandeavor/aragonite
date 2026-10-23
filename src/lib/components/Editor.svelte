@@ -183,8 +183,11 @@
 		scrollMode = 'self',
 		plugins,
 		syntax,
-		__registryEnablement
+		__registryEnablement,
+		..._unlisted
 	}: EditorProps & { __registryEnablement?: KindEnablement } = $props();
+	// Every option is named above: an option missing from that list fails to compile here.
+	void ({} satisfies { [K in keyof typeof _unlisted]-?: never });
 
 	// Read once: `scrollMode` is fixed at mount, and a live read would join windowing's hottest path.
 	// svelte-ignore state_referenced_locally
