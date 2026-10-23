@@ -5,7 +5,7 @@
  * own bytes (a table row's padding, a quote's paragraph), not only the top-level raw.
  */
 import type { CstNode, Document } from '../core/nodes';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 /** The part of an undo entry this check needs, so the file imports nothing from `undo/`. */
 export interface SnapshotEntry {

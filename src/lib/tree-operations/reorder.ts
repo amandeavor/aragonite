@@ -3,7 +3,7 @@ import type { SharingState } from './sharing';
 import { ensureUnsharedChild } from './unshare';
 import type { BodyParent } from './node-primitives';
 import type { StructuralChange } from './structural-change';
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // A stale index (a mid-drag delete shrank the array) would splice `undefined` into the
 // $state tree, so both entry points check the bounds before any copy or write.

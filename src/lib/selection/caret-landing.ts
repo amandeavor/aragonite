@@ -5,14 +5,13 @@
  */
 
 import { tick } from 'svelte';
-import { assertInvariant } from '../assert';
+import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import { CURSOR_START, type BlockComponent } from '../block-component';
 import type { DocumentView } from '../core/node-views';
 import type { CaretMemory } from '../caret/caret-memory';
 import { docPathFrom } from '../caret/coordinate-spaces';
 import type { ScrollOwner } from '../windowing/scroll-owner';
 import type { BlockElLookup } from '../caret/block-el-lookup';
-import { isDevChecks } from '../env';
 import { checkLandingFocusScrollsNothing } from '../invariants/landing-focus-scroll';
 import { checkReadingLandingLeavesNoCaret } from '../invariants/reading-landing-caret';
 import { widgetTabStopEndingAt } from '../core/inline/inline-widgets';
@@ -127,7 +126,7 @@ export function createCaretLanding(deps: CaretLandingDeps): CaretLanding {
 
 	/** Runs the landing's focus and DOM placement, which scroll nothing (G1.45). */
 	function placeWithoutScrolling<T>(place: () => T): T {
-		if (!isDevChecks()) return place();
+		if (!devChecksOn) return place();
 		const port = deps.scroll?.port();
 		const before = port?.scrollTop() ?? null;
 		const placed = place();

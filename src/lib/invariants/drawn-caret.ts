@@ -3,7 +3,7 @@
  * attribute hiding the browser's caret sits on exactly the editable the bar draws for.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { hidesBrowserCaret, type DrawnCaretTarget } from '../caret/drawn-caret-target';
 
 interface CaretAt {

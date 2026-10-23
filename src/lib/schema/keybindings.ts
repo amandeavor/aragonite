@@ -4,7 +4,7 @@
  * single letters uppercased. Shifted-symbol keys (Shift+1 -> '!') are not modeled.
  */
 import type { AnyCommandId } from './command-id';
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 export interface KeyBinding {
 	chord: string;

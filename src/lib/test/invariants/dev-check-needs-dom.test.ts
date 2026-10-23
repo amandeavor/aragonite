@@ -2,7 +2,7 @@
 // instead of passing with its DOM half skipped. Miss: `kit-report-vocabulary` ran the widget cell
 // without a DOM and checked only that its status was a valid word, so a quiet `boundary` passed.
 import { describe, expect, it } from 'vitest';
-import { documentForCheck } from '#lib/assert.js';
+import { documentForCheck } from '@voithos-labs/aragonite/dev-checks';
 import { takeDevWarns } from '../support/warn-gate';
 
 describe('a dev check with no DOM to read reports that it did not run', () => {

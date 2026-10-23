@@ -1,6 +1,6 @@
 import type { CstNode } from '../core/nodes';
 import type { StructuralChange } from '../tree-operations/structural-change';
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 /** G1.36, the writing half: a descriptor's range fits the array it keeps in step and never asks
  *  for a negative count, which `Array.from({length: -1})` would silently turn into `[]`. */

@@ -6,7 +6,7 @@
  * value holding a live DOM node, which cannot be in two places at once.
  */
 
-import { devWarn } from './dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 export interface BoundedMemoOptions<V> {
 	/** Maximum live entries; the least-recently-used is evicted past it. */

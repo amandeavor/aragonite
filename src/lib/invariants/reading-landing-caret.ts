@@ -4,7 +4,7 @@
  * Tab goes. Only the landed block counts, so a click elsewhere while the jump scrolls passes.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkReadingLandingLeavesNoCaret(
 	landedEl: Node | null,

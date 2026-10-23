@@ -24,7 +24,7 @@ import {
 import { normalizeCharEndpoint } from './char-endpoint-snap';
 import { comparePaths, pathsEqual } from './path-math';
 import { displayLength } from '../core/lines';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkCrossBlockEndpointCoordinates } from '../invariants/selection-endpoints';
 import { isWholeBlockUnit } from '../schema/whole-block-unit';
 

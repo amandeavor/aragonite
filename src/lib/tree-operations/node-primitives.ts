@@ -11,8 +11,7 @@ import { readBlocks } from '../core/parser';
 import type { GrammarView } from '../schema/block-openers';
 import { documentLineEnding, type LineEnding } from '../core/lines';
 import { tryGetBlockKindDescriptor, type WriteRule } from '../schema/block-kind-descriptor';
-import { assertInvariant } from '../assert';
-import { isDevChecks } from '../env';
+import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import { checkWriteRuleKeepsBytes } from '../invariants/write-rule-keeps-bytes';
 import { adoptParsedMetadata } from '../schema/container-raw';
 
@@ -101,7 +100,7 @@ export const forBody = (parent: BodyParentArg, raw: string): string =>
 export function kindWriteRule(node: NodeView): WriteRule | undefined {
 	const rule = tryGetBlockKindDescriptor(node.kind)?.rawWrite;
 	// A production build runs the rule bare, so a keystroke pays nothing for the check.
-	if (!rule || !isDevChecks()) return rule;
+	if (!rule || !devChecksOn) return rule;
 	return {
 		...rule,
 		normalize: (raw, ctx) => {

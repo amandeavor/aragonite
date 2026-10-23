@@ -4,12 +4,12 @@ import { error, json } from '@sveltejs/kit';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { readInputRecording } from '#lib/debug/input-recording.js';
-import { isDevChecks } from '#lib/env.js';
+import { devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 
 const INBOX = 'recordings-inbox';
 
 export async function POST({ request }) {
-	if (!isDevChecks()) error(404);
+	if (!devChecksOn) error(404);
 	let recording;
 	try {
 		recording = readInputRecording(await request.text());

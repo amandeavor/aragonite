@@ -171,7 +171,8 @@ describe('resolveSpecifier', () => {
 	it('resolves the spellings the library writes', () => {
 		expect(resolveSpecifier(from, '#lib/plugin.js')).toBe(SOURCE.pluginBarrel);
 		expect(resolveSpecifier(from, '#lib')).toBe(SOURCE.publicBarrel);
-		expect(resolveSpecifier(from, './env')).toBe(SOURCE.envFlags);
+		expect(resolveSpecifier(from, './dev-checks')).toBe(SOURCE.devChecks);
+		expect(resolveSpecifier(from, '@voithos-labs/aragonite/dev-checks')).toBe(SOURCE.devChecks);
 		expect(resolveSpecifier(from, aliasSpecifier(SOURCE.blockList))).toBe(SOURCE.blockList);
 		expect(resolveSpecifier(`${SOURCE_DIR.treeOperations}x.ts`, '.')).toBe(
 			SOURCE.treeOperationsBarrel
@@ -185,7 +186,7 @@ describe('resolveSpecifier', () => {
 		const layout = SOURCE.layoutState.slice(SOURCE_DIR.library.length, -'.ts'.length);
 		expect(resolveSpecifier(from, `#lib/${layout}.js`)).toBe(SOURCE.layoutState);
 		expect(resolveSpecifier(from, `./${layout}`)).toBe(SOURCE.layoutState);
-		expect(resolveSpecifier(from, './env?raw')).toBe(SOURCE.envFlags);
+		expect(resolveSpecifier(from, './dev-checks?raw')).toBe(SOURCE.devChecks);
 	});
 
 	it('returns null for a package, a path with no file behind it, and the retired `$lib`', () => {
@@ -219,12 +220,8 @@ describe('the #lib alias', () => {
 	});
 
 	it('counts an alias or relative import as library source, anything else as a package', () => {
-		expect(['#lib', '#lib/plugin.js', './env', '../core/nodes'].map(isLibrarySpecifier)).toEqual([
-			true,
-			true,
-			true,
-			true
-		]);
+		const library = ['#lib', '#lib/plugin.js', './dev-checks', '../core/nodes'];
+		expect([...library, '@voithos-labs/aragonite/dev-checks'].every(isLibrarySpecifier)).toBe(true);
 		expect(['svelte', 'katex/dist/katex.min.css', '$app/paths'].map(isLibrarySpecifier)).toEqual([
 			false,
 			false,

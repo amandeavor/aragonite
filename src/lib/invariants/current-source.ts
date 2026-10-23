@@ -3,7 +3,7 @@
  * serialization. A byte writer that skipped the version bump would leave `getSource()` stale.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import type { Document } from '../core/nodes';
 import { serialize } from '../core/serializer';
 

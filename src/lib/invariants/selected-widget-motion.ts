@@ -3,7 +3,7 @@
  * first. The move that runs next reads the native selection, which selecting the widget cleared.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 export function checkMotionLeftWidget(
 	key: string,

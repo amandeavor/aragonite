@@ -5,7 +5,7 @@
  * new compositionstart) and about an opening at each beforeinput, or the two drift apart.
  */
 
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 /** What a composing-flag holder heard: the event, or `compositionstart` where it gets none. */
 export type CompositionSignal = Event | 'compositionstart';

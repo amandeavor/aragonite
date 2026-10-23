@@ -650,16 +650,37 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
-		id: 'every dev-only check reads the build flag through env.ts',
-		matches: /from\s*['"]esm-env['"]/,
+		id: 'G4.248 every dev-only check reads the build flag through the dev-checks module',
+		matches: /from\s*['"]esm-env['"]|\bNODE_ENV\b/,
 		allowed: {
-			'src/lib/env.ts': 'the one reader: isDevChecks() answers for every dev-only check'
+			[SOURCE.devChecks]: 'the one reader: devChecksOn answers for every dev-only check'
 		},
 		reason:
-			'a check reading DEV itself stays off under configureEditorEnv({ isDev: true }), so a suite on a toolchain resolving no export conditions runs without it: call isDevChecks()',
-		reaches: [SOURCE.envFlags],
-		hits: ["import { DEV } from 'esm-env';", 'import { BROWSER, DEV } from "esm-env";'],
-		misses: ["import { isDevChecks } from '../env';"]
+			'a check reading DEV or NODE_ENV itself ships in a production build and stays off under configureEditorEnv({ isDev: true }): read devChecksOn from @voithos-labs/aragonite/dev-checks',
+		reaches: [SOURCE.devChecks],
+		hits: [
+			"import { DEV } from 'esm-env';",
+			'import { BROWSER, DEV } from "esm-env";',
+			"if (process.env.NODE_ENV !== 'production') warn();"
+		],
+		misses: ["import { devChecksOn } from '@voithos-labs/aragonite/dev-checks';"]
+	},
+	{
+		id: 'G4.248 the dev-checks module is imported by its package name alone',
+		matches:
+			/['"`](?:(?:\.{1,2}\/[^'"`]*|#lib\/)dev-checks|[^'"`]*dev-checks-stripped)(?:\.(?:js|ts))?['"`]/,
+		reason:
+			'svelte-package turns a relative or #lib spelling into a file path, so a production build never swaps in the stripped copy and ships every check: import @voithos-labs/aragonite/dev-checks',
+		atLeast: 100,
+		hits: [
+			"import { devWarn } from '../dev-checks';",
+			"import { devWarn } from '#lib/dev-checks.js';",
+			"import { devChecksOn } from './dev-checks-stripped';"
+		],
+		misses: [
+			"import { devWarn } from '@voithos-labs/aragonite/dev-checks';",
+			"import { x } from './dev-checks-panel';"
+		]
 	},
 	{
 		id: 'the document is handed to a write as a body in one place',

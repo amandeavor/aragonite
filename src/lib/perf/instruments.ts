@@ -4,7 +4,7 @@
  * turns on only in a dev build or a test run, leaving production one boolean check per record
  * call. Internal: never exported from the editor barrel.
  */
-import { editorEnv, isDevChecks } from '../env';
+import { devChecksOn, isTestProcess } from '@voithos-labs/aragonite/dev-checks';
 import type { DocumentView } from '../core/node-views';
 
 export interface PerfSnapshot {
@@ -133,7 +133,7 @@ function emptySnapshot(): PerfSnapshot {
 // ── Switch and readout ──────────────────────────────────────────────────────
 
 export function enablePerfInstruments(): void {
-	if (isDevChecks() || editorEnv.isTest) enabled = true;
+	if (devChecksOn || isTestProcess) enabled = true;
 }
 
 export function disablePerfInstruments(): void {

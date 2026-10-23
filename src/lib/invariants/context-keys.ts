@@ -1,4 +1,4 @@
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 /** G1.4: a container may not provide `HISTORY_KEY` to its descendants: history reaches nested
  *  action contexts from the root, and shadowing the key would split the undo stack. */

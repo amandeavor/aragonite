@@ -217,12 +217,12 @@ const RULES: FileRule[] = [
 		misses: ['new URL("./x.json", import.meta.url);\nimport { DEV } from "esm-env";']
 	},
 	{
-		id: 'G4.41 no file mocks dev-warn',
-		matches: new RegExp(String.raw`vi\s*\.\s*mock\(\s*` + quotedSpecifierEnding('dev-warn')),
+		id: 'G4.41 no file mocks dev-checks',
+		matches: new RegExp(String.raw`vi\s*\.\s*mock\(\s*` + quotedSpecifierEnding('dev-checks')),
 		reason:
 			'a mocked devWarn never reaches the sink, so every guard fire in the file is invisible to the gate: assert on takeDevWarns() or declare the tag with allowDevWarns',
 		reaches: BOTH_HALVES,
-		hits: [mockCall('#lib/dev-warn.js'), mockCall('../../dev-warn')],
+		hits: [mockCall('@voithos-labs/aragonite/dev-checks'), mockCall('../../dev-checks')],
 		misses: [mockCall('esm-env')]
 	},
 	{

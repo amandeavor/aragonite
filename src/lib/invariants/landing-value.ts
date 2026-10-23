@@ -3,7 +3,7 @@
  * itself, so a landing function that focuses or selects is placing a second caret behind its back.
  */
 
-import type { InvariantViolation } from '../assert';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 
 /** Where focus and the selection's anchor are, compared by identity. */
 export interface CaretWhereabouts {

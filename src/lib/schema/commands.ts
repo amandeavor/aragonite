@@ -6,7 +6,7 @@
  */
 import type { AnyBlockKind } from '../core/nodes';
 import type { AnyCommandId } from './command-id';
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import { enrollTestReset } from './registry-reset';
 import { createPluginRegistry } from './plugin-registry';
 import { getAllRegisteredKinds, tryGetBlockKindDescriptor } from './block-kind-descriptor';

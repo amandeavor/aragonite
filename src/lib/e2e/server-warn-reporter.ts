@@ -1,5 +1,5 @@
 import type { FullResult, Reporter, TestCase } from '@playwright/test/reporter';
-import { warnTagOfLine } from '../dev-warn';
+import { warnTagOfLine } from '../warn-tags';
 
 /**
  * Fails the run when the app server's own console carries a dev-warning line: a check or a

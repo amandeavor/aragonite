@@ -15,8 +15,8 @@ export const SOURCE = {
 	editorProps: 'src/lib/editor-props.ts',
 	blockComponentApi: 'src/lib/block-component.ts',
 	actionContracts: 'src/lib/action-contracts.ts',
-	envFlags: 'src/lib/env.ts',
-	devChecks: 'src/lib/assert.ts',
+	devChecks: 'src/lib/dev-checks.ts',
+	devChecksStripped: 'src/lib/dev-checks-stripped.ts',
 	pluginView: 'src/lib/plugin-view.ts',
 
 	// ── Parsing and the inline pipeline ─────────────────────────────────────
@@ -169,8 +169,8 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	editorProps: 'export interface EditorOptions',
 	blockComponentApi: 'export interface BlockComponent ',
 	actionContracts: 'export type CommitSnapshotArg',
-	envFlags: 'export const editorEnv',
-	devChecks: 'export function documentForCheck',
+	devChecks: 'export let devChecksOn',
+	devChecksStripped: 'export const devChecksOn',
 	pluginView: 'export function mountPluginView',
 
 	// ── Parsing and the inline pipeline ─────────────────────────────────────

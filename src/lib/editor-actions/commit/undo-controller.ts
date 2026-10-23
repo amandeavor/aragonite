@@ -5,7 +5,7 @@
  * structural-commit.ts.
  */
 
-import { isDevChecks } from '../../env';
+import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import { tick } from 'svelte';
 import type { Document } from '../../core/nodes';
 import type { EditorSelection, Landing } from '../../selection/primitives';
@@ -15,7 +15,6 @@ import type { SelectionPoint } from '../../selection/primitives';
 import { digestDoc } from '../../invariants/snapshot-integrity';
 import { readCurrentSelection } from '../../selection/native-bridge';
 import { asDocPath, pathsEqual } from '../../selection/path-math';
-import { assertInvariant } from '../../assert';
 import { checkLandingIsAValue, readCaretWhereabouts } from '../../invariants/landing-value';
 import { beginCommit, endCommit } from '../../invariants/commit-scope';
 import { blockNodeAt } from '../../tree-operations/node-primitives';
@@ -76,7 +75,7 @@ export function createUndoController(
 			children: [...deps.doc.children],
 			suffix: deps.doc.suffix
 		};
-		return { snapshot, integrity: isDevChecks() ? digestDoc(snapshot) : undefined };
+		return { snapshot, integrity: devChecksOn ? digestDoc(snapshot) : undefined };
 	}
 
 	function recordSnapshotPerf(): void {
@@ -273,7 +272,7 @@ export function createUndoController(
 		deps.caretMemory.forget();
 		textBatch.interrupt();
 
-		if (isDevChecks()) {
+		if (devChecksOn) {
 			// Both declared paths must be document-absolute; `invariants` imports nothing at
 			// runtime, so the number[] to DocPath conversion lives here.
 			assertCommitPaths(
@@ -301,7 +300,7 @@ export function createUndoController(
 				// The mutation ran but no scope changed: unwind as a throw would.
 				rollback.restore();
 				discarded = true;
-			} else if (isDevChecks()) {
+			} else if (devChecksOn) {
 				const written = args.written();
 				assertCommittedNodes(written.nodes, deps.reading.grammar);
 				assertLastLineKept(deps.doc, wasOpen);
@@ -310,7 +309,7 @@ export function createUndoController(
 				assertReadsBack(written.tops, deps.reading.grammar);
 				assertListMarkerWidths(written.tops);
 			}
-			if (!discarded && isDevChecks()) {
+			if (!discarded && devChecksOn) {
 				// A missed copy before write corrupts the newest undo entry, so the commit catches it
 				// rather than some distant undo (G1.9). Never throws.
 				assertUndoTopIntegrity(deps.undoManager.peekUndo() ?? undefined);
@@ -320,7 +319,7 @@ export function createUndoController(
 			reportCommitError(args, err);
 			// Loud in dev; production swallows it so one failed edit does not kill the editor.
 			// The tree is intact either way: rolled back, or never installed.
-			if (isDevChecks()) throw err;
+			if (devChecksOn) throw err;
 			return 'failed';
 		}
 
@@ -343,7 +342,7 @@ export function createUndoController(
 	/** The commit's landing, checked in dev to have moved no caret while it was read. */
 	function readLanding(landing: CommitLanding | undefined): Landing | null {
 		if (!landing) return null;
-		if (!isDevChecks()) return landing();
+		if (!devChecksOn) return landing();
 		const before = readCaretWhereabouts();
 		const value = landing();
 		assertInvariant('landing-is-a-value', () =>

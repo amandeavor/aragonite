@@ -3,7 +3,7 @@ import { installPlugins, parse, serialize } from '#lib';
 import { admonitionsPlugin } from '#lib/plugins/admonitions/index.js';
 import { takeDevWarns } from '#lib/test/support/warn-gate.js';
 import { createHistoryActions } from '#lib/editor-actions/commit/history.js';
-import { configureEditorEnv } from '#lib/env.js';
+import { configureEditorEnv } from '@voithos-labs/aragonite/dev-checks';
 import type { EditorError } from '#lib/editor-events.js';
 import {
 	makeNestedHarness,

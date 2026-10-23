@@ -18,7 +18,7 @@ import {
 	type CellRect
 } from '../caret/coordinate-spaces';
 import { comparePaths } from './path-math';
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 /** The one conversion into cell space, which `SelectionState` applies to every incoming point: an
  *  endpoint on or inside a table becomes the table path plus a flagged row-major cell index. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { InvariantViolation } from '#lib/assert.js';
+import { type InvariantViolation } from '@voithos-labs/aragonite/dev-checks';
 import { parse } from '#lib/core/parser.js';
 import { hasOwnOpener, isBlockKindRegistered } from '#lib/schema/block-kind-descriptor.js';
 import { declaredPluginKind } from '#lib/schema/plugin-kind.js';

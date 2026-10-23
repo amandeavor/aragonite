@@ -3,7 +3,7 @@
  * URLs cannot smuggle script execution into the DOM. `defaultLinkActivation` is the one DOM sink.
  */
 
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // `xmpp` hands the address to a chat client the way `mailto` hands it to a mail client.
 const ALLOWED_HREF_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'xmpp']);

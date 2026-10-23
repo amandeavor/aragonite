@@ -14,7 +14,7 @@
 		sameLineSuffix,
 		structuralSuffix
 	} from '../../../core/inline';
-	import { devWarn } from '../../../dev-warn';
+	import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 	import { resolvedInlineContent } from '../../../core/inline/inline-cache';
 	import { trimTrailingLineEnding } from '../../../core/lines';
 	import { widgetEdgeBox } from '../../../caret/drawn-caret-measure';

@@ -40,7 +40,7 @@ import {
 import { lineEdgeOffset } from '../../../caret/visual-lines';
 import { isAtMostOneCharacter } from '../../../core/text-units';
 import { nativeRangeIn, parkFocusOnEditorRoot } from '../../../selection/native-bridge';
-import { assertInvariant } from '../../../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkRenderedTextFidelity } from '../../../invariants/render-fidelity';
 import { resetForPointerDown } from '../../../selection/cross-block/pointer';
 import { placeCaret } from '../../../selection/place-caret';

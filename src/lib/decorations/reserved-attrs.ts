@@ -5,7 +5,7 @@
  * never set. `reserved-block-attrs.test.ts` derives this list from the source and holds it to it.
  */
 
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 export const RESERVED_BLOCK_ATTRS: ReadonlySet<string> = new Set([
 	'data-block-kind',

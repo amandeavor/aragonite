@@ -1,5 +1,4 @@
-import { devWarn } from '../dev-warn';
-import { editorEnv, isDevChecks } from '../env';
+import { devChecksOn, devWarn, isTestProcess } from '@voithos-labs/aragonite/dev-checks';
 import { isValidPluginName } from './plugin-name';
 import { enrollTestReset } from './registry-reset';
 // Type-only: `editor-events` already imports this module at runtime, so importing a value back
@@ -211,7 +210,7 @@ export function registerAsCore(register: () => void): void {
  * bootstraps: a plugin registers only from `definePlugin`'s setup. A test run is exempt.
  */
 export function rejectRegistrationOutsideSetup(entry: string): void {
-	if (installing !== null || coreDepth > 0 || !isDevChecks() || editorEnv.isTest) return;
+	if (installing !== null || coreDepth > 0 || !devChecksOn || isTestProcess) return;
 	throw new Error(
 		`${entry}: called outside a plugin's setup. Register inside definePlugin({ name, setup }) and ` +
 			"install the plugin through the editor's `plugins` prop or installPlugins. A test runner " +

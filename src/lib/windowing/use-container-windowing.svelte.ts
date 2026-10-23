@@ -10,7 +10,7 @@ import {
 import type { NodeView } from '../core/node-views';
 import type { RootListScroll } from './scroll-owner';
 import { observeResize } from './observe-resize';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { checkMeasuresInOwnList } from '../invariants/measures-in-own-list';
 import {
 	createListWindowing,

@@ -4,7 +4,7 @@
 import { encodeDestination, escapeTitle } from './destination-bytes';
 import type { ImageFields, InlineNode } from '../nodes';
 import { buildDimSuffix } from './image-dimensions';
-import { devWarn } from '../../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // ── Where the bytes are written ─────────────────────────────────────────────
 

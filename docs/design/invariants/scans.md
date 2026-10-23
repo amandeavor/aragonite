@@ -57,7 +57,7 @@ unguarded.
 | G4.38  | Every editable surface publishes each of `EDITABLE_SURFACE_MEMBERS`                              | L       |
 | G4.39  | Every text-surface component publishes `runCommand`                                              | L       |
 | G4.40  | The three rewrite-claim lists are one set                                                        | N       |
-| G4.41  | No test file mocks `dev-warn` or spies `console.warn`                                            | L       |
+| G4.41  | No test file mocks `dev-checks` or spies `console.warn`                                          | L       |
 | G4.42  | No module writes a sibling's `leadingTrivia` by hand                                             | L       |
 | G4.43  | Every `splitNode` call reads the index the split returned                                        | L       |
 | G4.44  | Every prose surface resolves native ranged edits through the one resolver                        | L       |
@@ -203,6 +203,8 @@ unguarded.
 | G4.241 | Only the fix-up in `settle.ts` lays out blank runs and checks joins                              | L       |
 | G4.243 | Only the caret writer calls `Selection.modify`; a caret's line is read through one step          | L       |
 | G4.245 | A kind's write rule is run through `kindWriteRule`                                               | L       |
+| G4.247 | A production build of the published package carries no dev check                                 | harness |
+| G4.248 | Dev-only code reads one switch, in `dev-checks.ts`, imported by its package name                 | L       |
 | G4.249 | A measured height enters the height table only through `applyMeasured`                           | L       |
 
 ### The entries
@@ -337,8 +339,8 @@ went through `legalizeWrite`, or plain text it runs through it.
 
 **G4.25 · No `import.meta` env reads.** Nowhere under `src/lib`, test tree included: it's
 Vite-only, so the library wouldn't load under another bundler (and `svelte-package` warns on it
-wherever it sits). Toolchain flags come from `esm-env`, imported only by `src/lib/env.ts` (a row of
-`lint/file-rules.test.ts`), and every dev-only check asks `isDevChecks()`, so
+wherever it sits). Toolchain flags come from `esm-env`, imported only by `src/lib/dev-checks.ts`
+(G4.248), and every dev-only check reads `devChecksOn` from there, so
 `configureEditorEnv({ isDev: true })` turns the checks and the dev warnings on together. The
 reference plugins and the consumer example are Vite apps and exempt. `lint/suite-file-rules.test.ts`.
 
@@ -442,7 +444,7 @@ and the chords `selection/cross-block/keydown.ts` claims; each rewrite id sits o
 two dispatch lists. Membership is listed by hand, not by prefix (`link.openCard` isn't `format.`).
 `test/selection/cross-block/rewrite-claim-parity.test.ts`.
 
-**G4.41 · Warn-gate bypasses.** No file under `src/lib` mocks `dev-warn` or spies `console.warn`:
+**G4.41 · Warn-gate bypasses.** No file under `src/lib` mocks `dev-checks` or spies `console.warn`:
 a mocked `devWarn` never reaches the sink, a console spy reads a channel the sink silences, and a
 spy that swallows the call hides Svelte's runtime warnings too, so the gate goes blind for that file.
 The one file whose subject is `devWarn`'s console output is allowlisted.
@@ -901,7 +903,7 @@ bare-package `import()` under `src/lib` or `src/routes` missing from the list.
 
 **G4.127 · A check that skips without a DOM says so.** Most unit tests run in plain Node with no
 `document`, so code asking whether one exists picks what they run. A dev check that would do more
-with a DOM asks `documentForCheck` (`src/lib/assert.ts`), which warns `needs-dom` and fails the test
+with a DOM asks `documentForCheck` (`src/lib/dev-checks.ts`), which warns `needs-dom` and fails the test
 (add the jsdom docblock). Any other DOM branch gets a row in this id's table in
 `lint/file-rules.test.ts`, by file and function, saying what runs without one; it fails when a
 function's count of DOM tests (`typeof document` and the like) moves off its row.
@@ -1366,6 +1368,20 @@ wrong at a wrap is harmless or a known gap. `lint/file-rules.test.ts`.
 `tree-operations/node-primitives.ts :: kindWriteRule`, which checks every run against G1.143. The
 leaf-text reader (it reads the rule's `text`) and the conformance kit are the listed exceptions.
 `lint/file-rules.test.ts`.
+
+**G4.247 · A production build carries no dev check.** Under the `production` condition the editor's
+dev-checks import gets `dev-checks-stripped.ts`: a constant-`false` switch and empty reporters.
+`scripts/verify-dev-strip.mjs` (run by verify-pack) builds a page through both builds with Vite and
+fails on any check tag the production build keeps; the page imports `configureEditorEnv`, so only
+the swap can prove the switch off. `test/dev-checks-stripped.test.ts` holds the copy to the real
+module's names and to the side-effect annotations esbuild needs.
+
+**G4.248 · One dev-check switch, imported by name.** Nothing reads `NODE_ENV`, `esm-env` is
+imported only by `src/lib/dev-checks.ts`, and every module reaches that as
+`@voithos-labs/aragonite/dev-checks`: `svelte-package` turns a relative or `#lib` spelling into a
+path the production swap never sees. The repo's tools resolve the name to source through the
+`aragonite-source` condition, the entry's first key (`scripts/lib-alias.mjs` refuses to load
+otherwise). `lint/file-rules.test.ts`.
 
 **G4.249 · One way into the height table.** A block's measured height is written to the list's
 height table and the estimator only by `windowing/list-windowing.svelte.ts :: applyMeasured`, which

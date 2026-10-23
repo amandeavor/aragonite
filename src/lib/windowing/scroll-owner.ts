@@ -5,7 +5,7 @@
  * page still while heights change.
  */
 import { tick } from 'svelte';
-import { devWarn } from '../dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 import type { BlockElLookup } from '../caret/block-el-lookup';
 import type { UserScrollport } from './scroll-ancestors';
 import { createScrollport, type Scrollport, type ScrollportReader } from './scrollport';

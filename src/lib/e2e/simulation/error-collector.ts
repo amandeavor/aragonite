@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { warnTagOfLine } from '../../dev-warn';
+import { warnTagOfLine } from '../../warn-tags';
 
 export interface ErrorCollector {
 	/** Call once at session start, before any gesture. */

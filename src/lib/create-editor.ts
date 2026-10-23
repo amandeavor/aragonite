@@ -9,7 +9,7 @@ import Editor from './components/Editor.svelte';
 import { EDITOR_OPTION_SPECS, type EditorInstance, type EditorOptions } from './editor-props';
 import type { EditorProps } from './components/editor-component-props';
 import { createReactiveProps } from './reactive-props';
-import { devWarn } from './dev-warn';
+import { devWarn } from '@voithos-labs/aragonite/dev-checks';
 
 // ── Public API ──────────────────────────────────────────────────────────────
 

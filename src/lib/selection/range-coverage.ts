@@ -8,7 +8,7 @@
 import type { DocumentView, NodeView } from '../core/node-views';
 import { displayLength } from '../core/lines';
 import { metadataOf } from '../core/nodes';
-import { assertInvariant } from '../assert';
+import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
 import { cellIndexOf, normalize, type SelectionPoint } from './primitives';
 import { snapCrossBlockTableEndpoints } from './table-endpoint-snap';
 import { collapsedContainerHiding } from './path-lookup';
