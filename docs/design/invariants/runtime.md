@@ -104,6 +104,7 @@ These checks run in three kinds of place:
 | G1.143 | A kind's write rule never deletes bytes outside the written span, but an emptied marker    | A·N     |
 | G1.145 | The blocks a fix-up re-divided read back as themselves, with the block after them          | A·N     |
 | G1.147 | A render-primary DOM view's rendered half sits in its element; its text comes in time      | A·N     |
+| G1.149 | The editor fills a host with a height on every mount route, and grows in one without       | harness |
 
 ### The entries
 
@@ -620,3 +621,10 @@ it was given, since that's where a click opens the text and a chord runs at the 
 element arrives inside the `update` that reveals it. One that arrives later still gets the caret,
 but only when it attaches, so dev warns. `checkRenderedInTarget`, `checkRevealAttached` ·
 `DomBlockView.svelte` · `block-view-render-primary.test.ts`.
+
+**G1.149 · The editor fills its host.** Every mount route (the Svelte component, `createEditor`, the
+React and Vue wrappers) puts the editor root straight into an element the consumer owns, so the
+root's own rule is the one place a host's height can reach it: `height: 100%` beside `flex: 1`, and
+`height: auto` in host scroll mode. A sized host keeps the scroll and windowing inside it.
+`Editor.svelte` · `e2e/tests/host-fill.spec.ts` (Svelte, `createEditor`),
+`examples/adapter-suite/tests/host-fill.spec.ts` (every framework app).

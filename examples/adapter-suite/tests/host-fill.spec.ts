@@ -1,6 +1,6 @@
 import { test, expect, LONG_BLOCKS } from './fixtures';
 
-// The framework component fills the height its `style` gives it. Requirements: host-fill.md.
+// The framework component fills the height its `style` gives it (G1.149). Requirements: host-fill.md.
 
 test('a sized host keeps the scroll inside it, with windowing on', async ({ page }) => {
 	await page.goto('/');

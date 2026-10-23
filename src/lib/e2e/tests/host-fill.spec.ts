@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { gotoReady } from '../goto-ready';
 
-// The editor fills the box it's mounted in, through every way a Svelte app can mount it.
+// The editor fills the box it's mounted in, through every way a Svelte app can mount it (G1.149).
 // Requirements: e2e/requirements/host-fill.md.
 
 const HOSTS = ['svelte', 'create-editor'] as const;
