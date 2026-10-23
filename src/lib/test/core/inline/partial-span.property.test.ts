@@ -4,7 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { parseInline, type InlineNode } from '#lib';
-import { arbInlineSource, freshOrFixedSeed } from '../../invariants/arbitraries';
+import { arbInlineSource } from '../../invariants/arbitraries/inline';
+import { freshOrFixedSeed } from '../../invariants/arbitraries/property-seed';
 
 const PARAMS = { numRuns: 1000, seed: freshOrFixedSeed(20261023) } as const;
 

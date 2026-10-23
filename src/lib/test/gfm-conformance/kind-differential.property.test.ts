@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { diffInput, type Divergence } from './differ';
 import { explainDivergence, NEUTRALIZATIONS_TRIED, type DivergenceClass } from './excuses';
-import { arbInlineSource, freshOrFixedSeed } from '../invariants/arbitraries';
+import { arbInlineSource } from '../invariants/arbitraries/inline';
+import { freshOrFixedSeed } from '../invariants/arbitraries/property-seed';
 
 // Checks inline node kinds, which byte conservation and offset tiling cannot: emphasis with the
 // wrong kind still tiles. `excuses.ts` classes each divergence by rule, since a random input is

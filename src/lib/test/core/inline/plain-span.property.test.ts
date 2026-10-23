@@ -8,7 +8,7 @@ import fc from 'fast-check';
 import { parseInline } from '#lib';
 import { INLINE_PRIORITIES, registerInlineSyntax } from '#lib/plugin.js';
 import { resetPluginPlatformForTests } from '#lib/testing.js';
-import { freshOrFixedSeed } from '../../invariants/arbitraries';
+import { freshOrFixedSeed } from '../../invariants/arbitraries/property-seed';
 
 const PARAMS = { numRuns: 2000, seed: freshOrFixedSeed(20261024) } as const;
 

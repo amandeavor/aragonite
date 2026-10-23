@@ -3,7 +3,8 @@ import { parseInline } from '#lib';
 import fc from 'fast-check';
 import { INLINE_PRIORITIES, registerInlineSyntax } from '#lib/plugin.js';
 import { resetPluginPlatformForTests } from '#lib/testing.js';
-import { arbInlineSource, freshOrFixedSeed } from '../../invariants/arbitraries';
+import { arbInlineSource } from '../../invariants/arbitraries/inline';
+import { freshOrFixedSeed } from '../../invariants/arbitraries/property-seed';
 
 // Plugin-trigger tokens interleaved with adversarial content: arbInlineSource alone rarely
 // emits `[^` (rules.md: a generator that cannot produce the bug class proves nothing), and a
