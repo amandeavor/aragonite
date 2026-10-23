@@ -36,8 +36,9 @@ const SELF_IMPORTS = new Map(
 /** Make this Node process resolve the source condition too, so a test runner that loads library
  *  source outside Vite (Playwright) reaches the self-imports' source files. */
 export function resolveSelfImportsFromSource() {
-	// Vitest resolves the condition through its own config, and refuses Node's hooks.
-	if (process.env.VITEST) return;
+	// Vitest resolves the condition through its own config and refuses Node's hooks. A process it
+	// spawns inherits VITEST, so the check asks whether this process is a Vitest worker.
+	if ('__vitest_worker__' in globalThis) return;
 	registerHooks({
 		resolve: (specifier, context, nextResolve) =>
 			nextResolve(specifier, { ...context, conditions: [...context.conditions, SOURCE_CONDITION] })
