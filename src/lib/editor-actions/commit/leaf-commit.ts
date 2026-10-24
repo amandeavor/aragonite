@@ -31,7 +31,12 @@ import {
 	type ContainerReclassification
 } from '../../tree-operations/chain-rebuild';
 import { attachedChainPrefix } from '../../tree-operations/node-primitives';
-import { publishAncestryFolds, publishScopeChange, restoreFoldedChildren } from '../ancestry-folds';
+import {
+	foldLandingFor,
+	publishAncestryFolds,
+	publishScopeChange,
+	restoreFoldedChildren
+} from '../ancestry-folds';
 import { saveBytes } from './saved-bytes';
 import type { EditorActionsDeps } from '../deps';
 import type { FrameOutcome, FrameWrite } from './commit-frame';
@@ -207,19 +212,13 @@ function relandingAfter(deps: EditorActionsDeps, written: InPlaceWritten): Relan
 	const byteIn = (level: number) =>
 		rawOffsetOfLeaf(written.chain[level], settledPath.slice(level + 1), leafAt.offset);
 
-	// A same-kind write's separator keeps a folded container from merging into the block above,
-	// so a fold leaves every container on the leaf's path where it stood (G1.152).
-	assertInvariant('keystroke-fold-in-place', () => {
-		const moved = written.folds.find(
-			(f) => f.landing.index !== leafPath[f.depth] || f.landing.offset !== 0
-		);
-		return moved
-			? {
-					code: 'keystroke-fold-in-place',
-					message: `typeLeaf: a fold moved a container at depth ${moved.depth}`
-				}
-			: null;
-	});
+	// A container that read its bytes again holds the caret by its byte position, the leaf's offset
+	// having moved with whatever the re-read took (a space a widened marker swallowed).
+	const fold = written.folds.at(-1);
+	const foldLanding = foldLandingFor(written.folds, parentPath);
+	if (fold && foldLanding) {
+		return resolved(deps, foldLanding.path, foldLanding.offset + (byteIn(fold.depth) ?? 0), 1);
+	}
 	const outermost = written.reclassified.at(-1);
 	const level = outermost ? written.chain.indexOf(outermost.previous) : -1;
 	if (level >= 0) return resolved(deps, leafPath.slice(0, level + 1), byteIn(level) ?? 0, 1);
