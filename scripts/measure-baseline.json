@@ -1,7 +1,7 @@
 {
 	"rows": {
 		"productionCodeLines": {
-			"baseline": 73684,
+			"baseline": 73683,
 			"tolerance": 370,
 			"unit": "lines"
 		},
@@ -11,7 +11,7 @@
 			"unit": "lines"
 		},
 		"unitTestsInternal": {
-			"baseline": 1309,
+			"baseline": 1310,
 			"tolerance": 3,
 			"unit": "files"
 		},

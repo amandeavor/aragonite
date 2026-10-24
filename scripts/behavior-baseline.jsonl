@@ -7776,7 +7776,7 @@
 {"in":"seq source 101 nested-list step 20","do":"[0,1,0]@3 >","took":"inserted","bytes":"- a[**a\n- \\\n  #>->\n\n  - [``>[*\\#\n    *b\n","caret":"0.1.0:4"}
 {"in":"seq source 101 nested-list step 21","do":"[0,1,1,0,0]@4 `","took":"beforeinput","bytes":"- a[**a\n- \\\n  #>->\n\n  - [``>``[*\\#\n    *b\n","caret":"0.1.1.0.0:5"}
 {"in":"seq source 101 nested-list step 22","do":"[0,0,0]@2 Enter","took":"keydown","bytes":"- a[\n- **a\n- \\\n  #>->\n\n  - [``>``[*\\#\n    *b\n","caret":"0.1.0:0"}
-{"in":"seq source 101 nested-list step 23","do":"[0,2,0]@0 Space","took":"inserted","bytes":"- a[\n- **a\n-  \\\n  #>->\n\n  - [``>``[*\\#\n    *b\n","caret":"0.2.0:1"}
+{"in":"seq source 101 nested-list step 23","do":"[0,2,0]@0 Space","took":"inserted","bytes":"- a[\n- **a\n-  \\\n  #>->\n\n  - [``>``[*\\#\n    *b\n","caret":"0.2.0:0"}
 {"in":"seq source 101 nested-list step 24","do":"[1,0,0]@1 Shift+Enter","took":"keydown","bytes":"- a[\n- **a\n-  \\\n  #>->\n\n  - [\\\n    ``>``[*\\#\n    *b\n","caret":"1.0.0:3"}
 {"in":"seq source 101 nested-list unwind","do":"undo changed the bytes 24 times, redo 24"}
 {"in":"seq source 102 quote step 00","do":"[0,0]@2 Shift+Enter","took":"keydown","bytes":"> a\n> \\\n> b\n","caret":"0.0:4"}
