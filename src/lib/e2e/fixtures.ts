@@ -2,6 +2,7 @@ import { test as base, expect, type ConsoleMessage } from '@playwright/test';
 import { getContainerParityMismatches } from './container-parity';
 import { warnTagOfLine } from '../warn-tags';
 import { installClipboard } from './clipboard-arm';
+import { withFixmeRerun } from './fixme-rerun';
 
 // The shared e2e `test`, with two checks at teardown. Every tagged console warning or uncaught
 // page error must be one the spec declares below, and each declared one must fire. The
@@ -52,7 +53,7 @@ function fireOf(m: ConsoleMessage): { tag: string; text: string } | null {
 	return { tag, text: `${text}${origin}` };
 }
 
-export const test = base.extend<WarnFixtures>({
+const watchedTest = base.extend<WarnFixtures>({
 	expectInvariants: [[], { option: true }],
 	expectWarns: [[], { option: true }],
 	expectSvelteWarns: [[], { option: true }],
@@ -122,5 +123,7 @@ export const test = base.extend<WarnFixtures>({
 		}
 	}
 });
+
+export const test = withFixmeRerun(watchedTest, process.env);
 
 export { expect };

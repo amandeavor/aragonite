@@ -8,7 +8,7 @@ backs it.
 
 Scans over the library live in `test/invariants/lint/` and ride `npm run test:editor:invariants`.
 Scans over the e2e tree live in `e2e/lint/` (G4.17, G4.22, G4.23, G4.49, G4.133, G4.211,
-G4.212, G4.213, G4.226, G4.228, G4.232, G4.237) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
+G4.212, G4.213, G4.226, G4.228, G4.232, G4.237, G4.255) and **don't** ride that script; run them with `npx vitest run src/lib/e2e/lint/` (same in
 bash and PowerShell), and `npm test` runs both.
 
 This is the catalogued set, not the whole of `test/invariants/lint/`: a scan holding one module's
@@ -208,6 +208,7 @@ unguarded.
 | G4.249 | A measured height enters the height table only through `applyMeasured`                           | L       |
 | G4.251 | The bundled blocks that build a render-primary leaf in Svelte are listed                         | L       |
 | G4.252 | A press's point is read at the press, in `readPress`                                             | L       |
+| G4.255 | Every `test.fixme` reason names its issue as `#<n>: `                                            | L       |
 
 ### The entries
 
@@ -1389,3 +1390,7 @@ outline and the parrot. It's there so moving them onto `defineBlockView` starts 
 a grep, and it guards nothing inside a listed file. `lint/file-rules.test.ts`.
 
 **G4.252 · A press is read at the press.** The prose blocks' point readers (the widget hit, the source offset it names, the click side, the nearest widget edge, the shown-source test) are called only in `widget-interaction.ts` :: `readPress` and `islandDragAnchor`, which a press runs at pointer-down (`readPress` also serves `placeCaretAtPoint` and the keyboard menu, where no press moves anything). By the click, the press may have closed a shown source and moved the line under the point. `lint/call-site-rules.test.ts`.
+
+**G4.255 · A fixme names its issue.** Every `test.fixme` and `test.describe.fixme` in an e2e spec
+carries a reason starting `#<issue>: `, so when `npm run release:fixme-recheck` lists a row that
+passes again, it also says which issue to look at. `e2e/lint/fixme-names-issue.test.ts`.

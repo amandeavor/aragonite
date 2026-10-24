@@ -1,8 +1,8 @@
 // A host's production build carries none of the editor's dev checks (G4.247). Vite builds a page that
 // imports the editor, through the Svelte build and through the prebuilt one, in development and in
 // production: every check tag the development build carries must be gone from the production one.
-// Run by verify-pack.mjs after `npm run package`; `node scripts/verify-dev-strip.mjs [root]` checks
-// the package at `root` and prints each build's gzipped size.
+// The production page's gzipped size is a budget row in `measure-baseline.json`. Run by
+// verify-pack.mjs after `npm run package`; `node scripts/verify-dev-strip.mjs [root] [--bless]`.
 import {
 	mkdirSync,
 	mkdtempSync,
@@ -18,6 +18,7 @@ import { pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { build } from 'vite';
+import { blessBudgets, checkBudgets, readBaseline } from './measure-baseline.mjs';
 
 /** Fewer reached tags than this means the page stopped reaching the editor, not that it's clean. */
 const REACHED_FLOOR = 40;
@@ -25,20 +26,27 @@ const REACHED_FLOOR = 40;
 const CHECK_CALL = /\b(?:assertInvariant|devWarn)\(\s*(['"`])([^'"`$\\]+)\1/g;
 const QUOTED = /(['"`])([^'"`$\\\n]+)\1/g;
 
+/** What the reader runs to accept the page's new size. */
+export const BLESS_COMMAND = 'node scripts/verify-dev-strip.mjs --bless';
+
 /**
- * Every failure, as a message; an empty list means each production build is clean.
+ * Every failure, as a message (an empty list means each production build is clean), and each
+ * production page's gzipped size as its `measure-baseline.json` row.
  * @param {string} [root] The package root, holding package.json, src and dist.
- * @returns {Promise<string[]>}
  */
 export async function verifyDevStrip(root = '.') {
 	const tags = checkTags(path.join(root, 'src/lib'));
 	const failures = [];
+	/** @type {Record<string, number>} */
+	const sizes = {};
 	const page = mkdtempSync(path.join(tmpdir(), 'dev-strip-'));
 	try {
 		writePage(page, path.resolve(root));
 		for (const route of ['svelte', 'prebuilt']) {
 			const development = await buildPage(page, route, 'development');
 			const production = await buildPage(page, route, 'production');
+			sizes[route === 'svelte' ? 'minimalAppSvelteGzip' : 'minimalAppPrebuiltGzip'] =
+				production.gzipped;
 			const reached = tags.filter((tag) => carries(development.code, tag));
 			console.log(
 				`verify-dev-strip: ${route} ${production.gzipped} B gzipped in production, ` +
@@ -59,7 +67,7 @@ export async function verifyDevStrip(root = '.') {
 	} finally {
 		rmSync(page, { recursive: true, force: true });
 	}
-	return failures;
+	return { failures, sizes };
 }
 
 // ── The tags ─────────────────────────────────────────────────────────────────
@@ -148,7 +156,10 @@ async function buildPage(page, route, mode) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-	const failures = await verifyDevStrip(process.argv[2]);
+	const args = process.argv.slice(2);
+	const { failures, sizes } = await verifyDevStrip(args.find((arg) => !arg.startsWith('--')));
+	if (args.includes('--bless')) blessBudgets(sizes);
+	else failures.push(...checkBudgets(sizes, readBaseline(), BLESS_COMMAND));
 	if (failures.length > 0) {
 		console.error('verify-dev-strip:\n  ' + failures.join('\n  '));
 		process.exit(1);
