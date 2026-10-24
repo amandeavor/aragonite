@@ -62,6 +62,31 @@ test.describe('a keystroke inside a container whose rebuild throws', () => {
 		await expect(leafText(page)).toHaveText('ab');
 	});
 
+	// Each kind of editable element repaints itself, so each gets the typed-key row.
+	for (const [kind, source, path, offset, kept] of [
+		['code block', '> ```\n> ab\n> ```\n', [0, 0], 6, 'ab'],
+		['table cell', '> | a | b |\n> | - | - |\n> | cd | e |\n', [0, 0, 1, 0], 1, 'cd']
+	] as const) {
+		test(`a key typed in a ${kind} inside the quote leaves the source and the text`, async ({
+			page
+		}) => {
+			await editor.loadContent(source);
+			await editor.clickBlockAtPath([...path], offset);
+			await throwOnQuoteRebuild(page, true);
+
+			await editor.typeSlowly('x');
+
+			await expect.poll(() => capturedErrors(page)).toContain('commit');
+			expect(await editor.bridge.getSource()).toBe(source);
+			const shown =
+				kind === 'table cell'
+					? page.getByRole('row').nth(1).getByRole('cell').first()
+					: page.locator(`[data-block-path='${JSON.stringify(path)}'] [contenteditable]`);
+			await expect(shown).toContainText(kept);
+			await expect(shown).not.toContainText('x');
+		});
+	}
+
 	test('an IME commit reports the throw and leaves the source and the text as they were', async ({
 		page
 	}) => {

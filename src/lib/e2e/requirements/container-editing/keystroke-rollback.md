@@ -11,6 +11,9 @@ drew goes away, because the block repaints from the tree.
   origin `commit`, the source stays `> ab`, and the paragraph shows `ab`
 - Then stop the throw and type `y`: the source becomes `> aby`, and one Ctrl+Z gives back `> ab`
   with the paragraph showing `ab`
+- Type `x` in a code block inside the quote, then in a table cell inside it, while the rebuild
+  throws: the source stays as it was and neither shows the `x`, since each kind of element
+  repaints itself
 
 ## User interactions
 
@@ -21,3 +24,5 @@ drew goes away, because the block repaints from the tree.
 
 - A keystroke written in place had no rollback, so a throwing rebuild left a half-written chain and
   no event. Every rollback test drove a structural commit; none typed into a container.
+- The code block and the table cell repaint through their own functions, and only the paragraph
+  had a row, so either could drop its repaint with every suite green.

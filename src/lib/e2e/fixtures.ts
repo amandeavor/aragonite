@@ -34,10 +34,14 @@ function relayWindowErrors(): void {
 	});
 }
 
-/** The claimed message an uncaught error carries, else its own: WebKit reports a rejection as
- *  `Unhandled Promise Rejection: Error: <message>`, the other engines the message alone. */
+/** WebKit puts an uncaught rejection's error name in front of its message (`Error: <message>`),
+ *  the other engines report the message alone. */
+const WEBKIT_REJECTION = /^\w*Error: /;
+
+/** The claimed message an uncaught error carries, else its own. */
 function claimedMessage(message: string, claimed: readonly string[]): string {
-	return claimed.find((m) => message === m || message.endsWith(`: ${m}`)) ?? message;
+	const own = message.replace(WEBKIT_REJECTION, '');
+	return claimed.includes(own) ? own : message;
 }
 
 /** A prefix `expectWarns` may not carry: each of these has its own list. */
