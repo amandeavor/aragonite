@@ -1133,7 +1133,7 @@ letter, a space and a newline) and checks each one.
 
 In `npm test` the three take a few seconds. `npm run test:exhaustive` takes several minutes, nearly
 all of it the length-7 round trip. A branch that touches the parser or the commit runs it once and
-says so in its report. Before a release, raise the edits to length 4 (about a quarter of an hour):
+says so in its report. Before a release, raise the edits to length 4 (about five more minutes):
 
 ```bash
 node scripts/run-with-env.mjs EXHAUSTIVE_FULL=1 EXHAUSTIVE_EDIT_LENGTH=4 -- vitest run src/lib/test/exhaustive
@@ -1143,4 +1143,5 @@ Some inputs already fail, and `src/lib/test/exhaustive/known-failures.txt` lists
 line waiting on its fix. A suite fails on a failure the file doesn't list, and on a listed one
 (within the lengths it ran) that passes now, so a fix takes its own lines out. After a deliberate
 change, put `EXHAUSTIVE_BLESS=1` in front of the run (through `run-with-env.mjs`, as above) and it
-rewrites the file.
+rewrites the file. The file only goes to length 3, so a length-4 run lists the longer failures as
+new (so far the same few defects, with more inputs reaching them).
