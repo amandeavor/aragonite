@@ -56,6 +56,23 @@ describe('a keystroke whose ancestor rebuild throws', () => {
 		expect(h.contentVersion()).toBe(version);
 	});
 
+	// Indented text written on the blank line makes the list above absorb it, before the rebuild throws.
+	const MERGES = '> - a\n>\n>\n> zz\n';
+
+	it('puts back the blocks its fix-up merged', async () => {
+		const h = quoteHarness(MERGES);
+		const blocks = () => h.getNode().children!.map((c) => [c.kind, c.leadingTrivia, c.raw]);
+		const before = blocks();
+		throwOnQuoteRebuild();
+
+		await expect(
+			h.bundle.blockEdit.updateBlockContent(1, '  b\n', 'authored', 'join-typing', 0)
+		).rejects.toThrow('plugin rebuildRaw blew up');
+
+		expect(serialize(h.deps.doc)).toBe(MERGES);
+		expect(blocks()).toEqual(before);
+	});
+
 	it('takes back the undo entry its own typing push opened', async () => {
 		const h = quoteHarness();
 		const before = h.deps.undoManager.getStacks().undo.length;
