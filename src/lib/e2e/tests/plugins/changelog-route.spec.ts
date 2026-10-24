@@ -21,10 +21,14 @@ function outlineRaw(page: Page): Promise<string> {
 	});
 }
 
-// The page around the editor, read as light or dark from its background's luminance.
-function pageTheme(page: Page, wrapper: string): Promise<'light' | 'dark'> {
+// The page around the editor, read as light or dark from its background's luminance; `unstyled`
+// while no stylesheet has painted it, so a transparent wrapper never reads as dark.
+function pageTheme(page: Page, wrapper: string): Promise<'light' | 'dark' | 'unstyled'> {
 	return page.locator(wrapper).evaluate((el) => {
-		const [r, g, b] = (getComputedStyle(el).backgroundColor.match(/\d+/g) ?? []).map(Number);
+		const [r, g, b, alpha = 1] = (getComputedStyle(el).backgroundColor.match(/[\d.]+/g) ?? []).map(
+			Number
+		);
+		if (r === undefined || alpha === 0) return 'unstyled';
 		return 0.2126 * r + 0.7152 * g + 0.0722 * b < 128 ? 'dark' : 'light';
 	});
 }
@@ -230,7 +234,7 @@ test.describe('the stored theme on a fresh load', () => {
 
 			await gotoUnhydrated(page, route);
 			await expect(page.locator(`${wrapper} .editor`)).toHaveAttribute('data-editor-theme', 'dark');
-			expect(await pageTheme(page, wrapper)).toBe('dark');
+			await expect.poll(() => pageTheme(page, wrapper)).toBe('dark');
 		});
 	}
 });
