@@ -21,23 +21,30 @@ const PRIVATE = [
 
 const COMMIT_HOMES = ['src/lib/editor-actions/commit/', 'src/lib/invariants/'];
 
-/** The files outside the commit that run one of its steps, by the step's file, with why. */
-const OUTSIDE: Record<string, { imports: string[]; why: string }> = {
+/** The files outside the commit that run one of its steps, by the step's file: why, and what has
+ *  to land before the import can go. */
+const OUTSIDE: Record<string, { imports: string[]; why: string; until: string }> = {
 	'src/lib/tree-operations/content-write.ts': {
 		imports: ['src/lib/tree-operations/settle.ts', 'src/lib/tree-operations/neighbour-merge.ts'],
-		why: 'the content write runs its own slot’s fix-up inside the task-marker reconcile, and only the commit names that entry, `updateNodeContent` (G4.75)'
+		why: 'the content write runs its own slot’s fix-up inside the task-marker reconcile, and only the commit names that entry, `updateNodeContent` (G4.75)',
+		until:
+			'the keystroke drops its trial write and a paste writes its residue through the commit scope, so `updateNodeContent` moves into the commit'
 	},
 	'src/lib/tree-operations/node-ops.ts': {
 		imports: ['src/lib/tree-operations/neighbour-merge.ts'],
-		why: 'a split re-reads its second half’s seam where the caret cut it, a position only the split knows'
+		why: 'a split re-reads its second half’s seam where the caret cut it, a position only the split knows',
+		until:
+			'the commit’s fix-up can follow the seam into the new list item a split moves its second half to'
 	},
 	'src/lib/editor-actions/search-replace.ts': {
 		imports: ['src/lib/tree-operations/chain-rebuild.ts'],
-		why: 'replace-all rebuilds a private clone before its commits; it moves onto the commit’s write in L2 step 4'
+		why: 'replace-all rebuilds a private clone before its commits',
+		until: 'replace-all writes each matched leaf through one commit’s `writeLeaf`'
 	},
 	'src/lib/testing/container-conformance.ts': {
 		imports: ['src/lib/tree-operations/chain-rebuild.ts', 'src/lib/tree-operations/open-tail.ts'],
-		why: 'the published kit checks a plugin’s `rebuildRaw` alone, driving the rebuild and the last-line walk outside any commit'
+		why: 'the published kit checks a plugin’s `rebuildRaw` alone, driving the rebuild and the last-line walk outside any commit',
+		until: 'never: the kit tests a plugin’s rebuild with no editor around it'
 	}
 };
 

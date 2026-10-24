@@ -59,9 +59,9 @@ export interface HangingIndent {
 	opener: string;
 	/** The column every later line's text starts at, a tab reaching the next multiple of four. */
 	column: number;
-	/** The marker `line` opens with, or null when it opens no such container; `opener` alone
-	 *  by default. */
-	readOpener?: (line: string) => string | null;
+	/** The marker `line` opens with, read the way the parser reads it, or null when it opens no
+	 *  such container. */
+	readOpener: (line: string) => string | null;
 	/** Whether the parser takes `line` as continuing the paragraph `above` leaves open; by default
 	 *  when neither is blank or interrupts a paragraph, and `line` opens no block. */
 	continuesLazily?: LineCodec['continuesLazily'];
@@ -70,9 +70,7 @@ export interface HangingIndent {
 /** The line syntax of a container written like a list item: a blank separator stays bare, and a
  *  blank line ending the body is indented, or a reload would read it outside the container. */
 export function hangingIndentLines(shape: HangingIndent): LineCodec {
-	const { opener, column } = shape;
-	const readOpener =
-		shape.readOpener ?? ((line: string) => (line.startsWith(opener) ? opener : null));
+	const { opener, column, readOpener } = shape;
 	const pad = ' '.repeat(column);
 	return {
 		read(line, place) {
