@@ -65,8 +65,8 @@ export function mountChangelogBar(
 				el(
 					'span',
 					{ class: 'changelog-hint' },
-					'search',
-					el('span', { class: 'showcase-kbd' }, el('kbd', {}, modKey()), el('kbd', {}, 'F'))
+					el('span', { class: 'showcase-kbd' }, el('kbd', {}, modKey()), el('kbd', {}, 'F')),
+					'to search'
 				),
 				el('a', { class: 'showcase-link changelog-link', href: options.showcaseHref }, 'showcase'),
 				el('span', { class: 'showcase-sep', 'aria-hidden': 'true' }),
