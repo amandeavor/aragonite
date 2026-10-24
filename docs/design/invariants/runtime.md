@@ -107,6 +107,7 @@ These checks run in three kinds of place:
 | G1.149 | The editor fills a host with a height on every mount route, and grows in one without       | harness |
 | G1.150 | A block repaints from its bytes after an input the tree took back                          | A·N     |
 | G1.151 | A keystroke written in place leaves no node it wrote shared with an undo entry             | A·N     |
+| G1.152 | A keystroke’s fold leaves every container on the leaf’s path where it stood                | A       |
 
 ### The entries
 
@@ -642,3 +643,8 @@ place, no node it wrote (the leaf and its ancestors) is still shared with an und
 write through a shared node rewrites history (G1.9). It runs on every key, over the nodes that key
 wrote; the whole-entry digest still runs at the next commit. `checkWrittenUnshared` · `leaf-commit.ts` ·
 `keystroke-commit-frame.test.ts`.
+
+**G1.152 · A keystroke's fold stays put** (`keystroke-fold-in-place`). When a keystroke's new bytes
+make a container fold a neighbour in, the fold lands at that container's own index: the write rule's
+blank separator keeps it from merging into the block above. So the keystroke relands its caret off
+the leaf's settled path alone, and a fold that moved would put it in the wrong block. `leaf-commit.ts`.

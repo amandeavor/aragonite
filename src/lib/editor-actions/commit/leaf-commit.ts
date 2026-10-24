@@ -31,12 +31,7 @@ import {
 	type ContainerReclassification
 } from '../../tree-operations/chain-rebuild';
 import { attachedChainPrefix } from '../../tree-operations/node-primitives';
-import {
-	foldLandingFor,
-	publishAncestryFolds,
-	publishScopeChange,
-	restoreFoldedChildren
-} from '../ancestry-folds';
+import { publishAncestryFolds, publishScopeChange, restoreFoldedChildren } from '../ancestry-folds';
 import { saveBytes } from './saved-bytes';
 import type { EditorActionsDeps } from '../deps';
 import type { FrameOutcome, FrameWrite } from './commit-frame';
@@ -212,11 +207,19 @@ function relandingAfter(deps: EditorActionsDeps, written: InPlaceWritten): Relan
 	const byteIn = (level: number) =>
 		rawOffsetOfLeaf(written.chain[level], settledPath.slice(level + 1), leafAt.offset);
 
-	const fold = written.folds.at(-1);
-	const foldLanding = foldLandingFor(written.folds, parentPath);
-	if (fold && foldLanding) {
-		return resolved(deps, foldLanding.path, foldLanding.offset + (byteIn(fold.depth) ?? 0), 1);
-	}
+	// The write rule's separator keeps a folded container from merging into the block above it, so
+	// a fold leaves every container on the leaf's path where it stood (G1.152).
+	assertInvariant('keystroke-fold-in-place', () => {
+		const moved = written.folds.find(
+			(f) => f.landing.index !== leafPath[f.depth] || f.landing.offset !== 0
+		);
+		return moved
+			? {
+					code: 'keystroke-fold-in-place',
+					message: `typeLeaf: a fold at depth ${moved.depth} moved the leaf's container to ${moved.landing.index}`
+				}
+			: null;
+	});
 	const outermost = written.reclassified.at(-1);
 	const level = outermost ? written.chain.indexOf(outermost.previous) : -1;
 	if (level >= 0) return resolved(deps, leafPath.slice(0, level + 1), byteIn(level) ?? 0, 1);
