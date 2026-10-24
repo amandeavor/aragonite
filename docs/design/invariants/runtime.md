@@ -639,6 +639,6 @@ drawn character is gone. `checkRepaintReadsTree` · `editable-surface.ts` ·
 
 **G1.151 · A keystroke owns what it wrote** (`written-unshared`). After a keystroke written in
 place, no node it wrote (the leaf and its ancestors) is still shared with an undo entry, since a
-write through a shared node rewrites history (G1.9). It runs on every key, over that key's chain;
-the whole-entry digest still runs at the next commit. `checkWrittenUnshared` · `leaf-commit.ts` ·
+write through a shared node rewrites history (G1.9). It runs on every key, over the nodes that key
+wrote; the whole-entry digest still runs at the next commit. `checkWrittenUnshared` · `leaf-commit.ts` ·
 `keystroke-commit-frame.test.ts`.
