@@ -686,6 +686,8 @@ export function containerBundleOver(
 			getNode,
 			path: containerPath,
 			reading: deps.reading,
+			// The root's, as the editor hands both the same one; a fresh one would be an unread spy.
+			caretMemory: deps.caretMemory,
 			parent: {
 				// Plain stubs where no caller can read a spy, since a `vi.fn` lives until the file ends.
 				blockEdit: stubBlockEdit(),

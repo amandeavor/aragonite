@@ -7028,7 +7028,7 @@
 {"in":"seq live 100 tasks step 22","do":"[0,0,0]@10 Delete","took":"beforeinput","bytes":"- [ ] \\\n  -\\\n  ``$$#``a\n- [x] b*\n  - [ ] ``\n- [ ] >`` -\n","caret":"0.0.0:10"}
 {"in":"seq live 100 tasks step 23","do":"[0,1,0]@2 $","took":"beforeinput","bytes":"- [ ] \\\n  -\\\n  ``$$#``a\n- [x] b*$$\n  - [ ] ``\n- [ ] >`` -\n","caret":"0.1.0:3"}
 {"in":"seq live 100 tasks step 24","do":"[0,1,0]@1 Delete","took":"beforeinput","bytes":"- [ ] \\\n  -\\\n  ``$$#``a\n- [x] b$$\n  - [ ] ``\n- [ ] >`` -\n","caret":"0.1.0:1"}
-{"in":"seq live 100 tasks unwind","do":"22 undo steps changed the bytes"}
+{"in":"seq live 100 tasks unwind","do":"undo changed the bytes 22 times, redo 22"}
 {"in":"seq live 101 nested-list step 00","do":"[0,0,0]@1 -","took":"inserted","bytes":"- a-\n  - b\n","caret":"0.0.0:2"}
 {"in":"seq live 101 nested-list step 01","do":"[0,0,1,0,0]@0 Enter","took":"keydown","bytes":"- a-\n\n  - \n  - b\n","caret":"0.0.1.1.0:0"}
 {"in":"seq live 101 nested-list step 02","do":"[0,0,1,0,0]@0 `","took":"beforeinput","bytes":"- a-\n\n  - ``\n  - b\n","caret":"0.0.1.0.0:1"}
@@ -7054,7 +7054,7 @@
 {"in":"seq live 101 nested-list step 22","do":"[0,0,0]@2 Enter","took":"keydown","bytes":"- a[\n- **a\n- \\\n  #>->\n\n  - [``>``[*#\\\n    *b\n","caret":"0.1.0:0"}
 {"in":"seq live 101 nested-list step 23","do":"[0,2,0]@0 Space","took":"inserted","bytes":"- a[\n- **a\n-  \\\n  #>->\n\n  - [``>``[*#\\\n    *b\n","caret":"0.2.0:1"}
 {"in":"seq live 101 nested-list step 24","do":"[1,0,0]@1 Shift+Enter","took":"keydown","bytes":"- a[\n- **a\n-  \\\n  #>->\n\n  - [\\\n    ``>``[*#\\\n    *b\n","caret":"1.0.0:3"}
-{"in":"seq live 101 nested-list unwind","do":"24 undo steps changed the bytes"}
+{"in":"seq live 101 nested-list unwind","do":"undo changed the bytes 24 times, redo 24"}
 {"in":"seq live 102 quote step 00","do":"[0,0]@2 Shift+Enter","took":"keydown","bytes":"> a\n> \\\n> b\n","caret":"0.0:4"}
 {"in":"seq live 102 quote step 01","do":"[0,0]@5 Enter","took":"keydown","bytes":"> a\n> \\\n> b\n>\n>\n","caret":"0.1:0"}
 {"in":"seq live 102 quote step 02","do":"[0,1]@0 >","took":"inserted","bytes":"> a\n> \\\n> b\n>\n> >\n","caret":"0.1.0:0"}
@@ -7080,7 +7080,7 @@
 {"in":"seq live 102 quote step 22","do":"[0,3,1]@3 -","took":"inserted","bytes":"> a >\n>\n> >b*# \n>\n> > ``\n>\n> >$$[\n> >\n> > \t`$-`\n","caret":"0.3.1:4"}
 {"in":"seq live 102 quote step 23","do":"[0,3,0]@2 Space","took":"inserted","bytes":"> a >\n>\n> >b*# \n>\n> > ``\n>\n> >$$ [\n> >\n> > \t`$-`\n","caret":"0.3.0:3"}
 {"in":"seq live 102 quote step 24","do":"[0,3,0]@2 Space","took":"inserted","bytes":"> a >\n>\n> >b*# \n>\n> > ``\n>\n> >$$  [\n> >\n> > \t`$-`\n","caret":"0.3.0:3"}
-{"in":"seq live 102 quote unwind","do":"22 undo steps changed the bytes"}
+{"in":"seq live 102 quote unwind","do":"undo changed the bytes 22 times, redo 22"}
 {"in":"seq live 103 quote-list step 00","do":"[0,0,0,0]@1 Space","took":"inserted","bytes":"> - a \n","caret":"0.0.0.0:2"}
 {"in":"seq live 103 quote-list step 01","do":"[0,0,0,0]@0 *","took":"beforeinput","bytes":"> - **a \n","caret":"0.0.0.0:1"}
 {"in":"seq live 103 quote-list step 02","do":"[0,0,0,0]@0 Shift+Enter","took":"keydown","bytes":"> - \\\n>   **a \n","caret":"0.0.0.0:2"}
@@ -7106,7 +7106,7 @@
 {"in":"seq live 103 quote-list step 22","do":"[0,0]@1 $","took":"inserted","bytes":"> $$$#**a**\n>\n> **\\\n> #\\\n> \\\n> ** [a\n>\n>  \n","caret":"0.0:2"}
 {"in":"seq live 103 quote-list step 23","do":"[0,0]@6 #","took":"inserted","bytes":"> $$$##**a**\n>\n> **\\\n> #\\\n> \\\n> ** [a\n>\n>  \n","caret":"0.0:5"}
 {"in":"seq live 103 quote-list step 24","do":"[0,1]@9 >","took":"inserted","bytes":"> $$$##**a**\n>\n> **\\\n> #\\\n> \\\n> >** [a\n>\n>  \n","caret":"0.2.0:0"}
-{"in":"seq live 103 quote-list unwind","do":"18 undo steps changed the bytes","undo":"undo > - a\n | redo > -   \\\n>\n>     \n> -   **a \n"}
+{"in":"seq live 103 quote-list unwind","do":"undo changed the bytes 18 times, redo 5","undo":"undo > - a\n | redo > -   \\\n>\n>     \n> -   **a \n"}
 {"in":"seq live 104 fence step 00","do":"[0]@11 Shift+Enter","took":"keydown","bytes":"```js\nx\n\n```\n","caret":"0:8"}
 {"in":"seq live 104 fence step 01","do":"[0]@5 a","took":"inserted","bytes":"```js\nax\n\n```\n","caret":"0:7"}
 {"in":"seq live 104 fence step 02","do":"[0]@7 *","took":"inserted","bytes":"```js\na*x\n\n```\n","caret":"0:8"}
@@ -7132,7 +7132,7 @@
 {"in":"seq live 104 fence step 22","do":"[0]@15 Tab","took":"keydown","bytes":"```js\n#a\t* \ta-\n\t\t**\tx\t$-\n\n\n\n```\n","caret":"0:16"}
 {"in":"seq live 104 fence step 23","do":"[0]@14 $","took":"inserted","bytes":"```js\n#a\t* \ta-$\n\t\t**\tx\t$-\n\n\n\n```\n","caret":"0:15"}
 {"in":"seq live 104 fence step 24","do":"[0]@22 #","took":"inserted","bytes":"```js\n#a\t* \ta-$\n\t\t**\tx#\t$-\n\n\n\n```\n","caret":"0:23"}
-{"in":"seq live 104 fence unwind","do":"1 undo steps changed the bytes"}
+{"in":"seq live 104 fence unwind","do":"undo changed the bytes 1 times, redo 1"}
 {"in":"seq live 105 thematic-break step 00","do":"[0]@0 Tab","took":"keydown","bytes":"\ta\n\n---\n\nb\n","caret":"0:1"}
 {"in":"seq live 105 thematic-break step 01","do":"[2]@1 $","took":"beforeinput","bytes":"\ta\n\n---\n\nb$$\n","caret":"2:2"}
 {"in":"seq live 105 thematic-break step 02","do":"[2]@3 [","took":"inserted","bytes":"\ta\n\n---\n\nb$$[\n","caret":"2:4"}
@@ -7158,7 +7158,7 @@
 {"in":"seq live 105 thematic-break step 22","do":"[0]@1 Tab","took":"keydown","bytes":"\t\ta`>\n* \\\n  -\n\nb\t**``$$[>\n","caret":"0:2"}
 {"in":"seq live 105 thematic-break step 23","do":"[1,0,0]@2 *","took":"inserted","bytes":"\t\ta`>\n* \\\n  -*\n\nb\t**``$$[>\n","caret":"1.0.0:4"}
 {"in":"seq live 105 thematic-break step 24","do":"[0]@5 `","took":"beforeinput","bytes":"\t\ta`>`\n* \\\n  -*\n\nb\t**``$$[>\n","caret":"0:6"}
-{"in":"seq live 105 thematic-break unwind","do":"18 undo steps changed the bytes"}
+{"in":"seq live 105 thematic-break unwind","do":"undo changed the bytes 18 times, redo 18"}
 {"in":"seq live 106 table step 00","do":"[0,0,0]@1 Space","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
 {"in":"seq live 106 table step 01","do":"[0,1,1]@0 -","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
 {"in":"seq live 106 table step 02","do":"[0,1,1]@1 a","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
@@ -7184,7 +7184,7 @@
 {"in":"seq live 106 table step 22","do":"[0,0,0]@1 #","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
 {"in":"seq live 106 table step 23","do":"[0,0,0]@0 Space","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
 {"in":"seq live 106 table step 24","do":"[0,0,1]@1 `","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
-{"in":"seq live 106 table unwind","do":"0 undo steps changed the bytes"}
+{"in":"seq live 106 table unwind","do":"undo changed the bytes 0 times, redo 0"}
 {"in":"seq live 107 math step 00","do":"[0]@2 Enter","took":"keydown","bytes":"a \n\n$x$ b\n","caret":"1:0"}
 {"in":"seq live 107 math step 01","do":"[1]@5 $","took":"beforeinput","bytes":"a \n\n$x$ b$$\n","caret":"1:6"}
 {"in":"seq live 107 math step 02","do":"[0]@2 *","took":"beforeinput","bytes":"a **\n\n$x$ b$$\n","caret":"0:3"}
@@ -7210,7 +7210,7 @@
 {"in":"seq live 107 math step 22","do":"[2,0]@7 Backspace","took":"beforeinput","bytes":"$\t#[$\n\n``**-a a\n\n>$x$[ a$a$**`\n","caret":"2.0:6"}
 {"in":"seq live 107 math step 23","do":"[1]@0 -","took":"inserted","bytes":"$\t#[$\n\n-``**-a a\n\n>$x$[ a$a$**`\n","caret":"1:1"}
 {"in":"seq live 107 math step 24","do":"[2,0]@8 $","took":"beforeinput","bytes":"$\t#[$\n\n-``**-a a\n\n>$x$[ a$a$$$**`\n","caret":"2.0:10"}
-{"in":"seq live 107 math unwind","do":"5 undo steps changed the bytes","undo":"undo $\t$\n\n``**-a a\n\n>$x$[ ab$a$`\n | redo $\t$\n\n``**-a a\n\n>$x$[ ab$a$`\n"}
+{"in":"seq live 107 math unwind","do":"undo changed the bytes 17 times, redo 17"}
 {"in":"seq live 108 math-block step 00","do":"[0]@2 Shift+Enter","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
 {"in":"seq live 108 math-block step 01","do":"[0]@4 `","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
 {"in":"seq live 108 math-block step 02","do":"[0]@3 Space","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
@@ -7236,7 +7236,7 @@
 {"in":"seq live 108 math-block step 22","do":"[0]@5 Tab","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
 {"in":"seq live 108 math-block step 23","do":"[0]@5 Delete","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
 {"in":"seq live 108 math-block step 24","do":"[0]@5 `","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
-{"in":"seq live 108 math-block unwind","do":"0 undo steps changed the bytes"}
+{"in":"seq live 108 math-block unwind","do":"undo changed the bytes 0 times, redo 0"}
 {"in":"seq live 109 alert step 00","do":"[0,0]@1 [","took":"inserted","bytes":"> [!NOTE]\n> a[\n","caret":"0.0:2"}
 {"in":"seq live 109 alert step 01","do":"[0,0]@0 -","took":"inserted","bytes":"> [!NOTE]\n> -a[\n","caret":"0.0:1"}
 {"in":"seq live 109 alert step 02","do":"[0,0]@0 #","took":"inserted","bytes":"> [!NOTE]\n> #-a[\n","caret":"0.0:1"}
@@ -7262,7 +7262,7 @@
 {"in":"seq live 109 alert step 22","do":"[0,1]@7 Backspace","took":"beforeinput","bytes":"> [!NOTE]\n> `\t#-\n>\n> *$$$*`` a#a[[ ``\n","caret":"0.1:4"}
 {"in":"seq live 109 alert step 23","do":"[0,0]@4 Enter","took":"keydown","bytes":"> [!NOTE]\n> `\t#-\n>\n>\n> *$$$*`` a#a[[ ``\n","caret":"0.1:0"}
 {"in":"seq live 109 alert step 24","do":"[0,1]@0 a","took":"inserted","bytes":"> [!NOTE]\n> `\t#-\n>\n> a\n>\n> *$$$*`` a#a[[ ``\n","caret":"0.1:1"}
-{"in":"seq live 109 alert unwind","do":"10 undo steps changed the bytes"}
+{"in":"seq live 109 alert unwind","do":"undo changed the bytes 10 times, redo 10"}
 {"in":"seq live 110 directive step 00","do":"[0,0]@0 Backspace","took":"keydown","bytes":":::note\na\n:::\n","caret":"0.0:0"}
 {"in":"seq live 110 directive step 01","do":"[0,1]@0 #","took":"inserted","bytes":":::note\n#a\n:::\n","caret":"0.1:1"}
 {"in":"seq live 110 directive step 02","do":"[0,1]@0 Backspace","took":"keydown","bytes":":::note\n#a\n:::\n","caret":"0.0:0"}
@@ -7288,7 +7288,7 @@
 {"in":"seq live 110 directive step 22","do":"[0,0]@2 Space","took":"inserted","bytes":":::note `  `[\n \t`> a->#\\\n**a\n:::\n","caret":"0.0:3"}
 {"in":"seq live 110 directive step 23","do":"[0,0]@2 Tab","took":"browser","bytes":":::note `  `[\n \t`> a->#\\\n**a\n:::\n","caret":"0.0:2"}
 {"in":"seq live 110 directive step 24","do":"[0,1]@5 Shift+Enter","took":"keydown","bytes":":::note `  `[\n \t`> \\\na->#\\\n**a\n:::\n","caret":"0.2:0"}
-{"in":"seq live 110 directive unwind","do":"11 undo steps changed the bytes"}
+{"in":"seq live 110 directive unwind","do":"undo changed the bytes 11 times, redo 11"}
 {"in":"seq live 111 footnote step 00","do":"[1,0]@1 Space","took":"inserted","bytes":"a[^1]\n\n[^1]: b \n","caret":"1.0:2"}
 {"in":"seq live 111 footnote step 01","do":"[0]@5 Shift+Enter","took":"keydown","bytes":"a[^1]\n\n[^1]: b \n","caret":"0:5"}
 {"in":"seq live 111 footnote step 02","do":"[0]@2 *","took":"keydown","bytes":"a[^1]\\\n*\n\n[^1]: b \n","caret":"0:8"}
@@ -7314,7 +7314,7 @@
 {"in":"seq live 111 footnote step 22","do":"[2,1]@0 Delete","took":"beforeinput","bytes":"a[^1]\n\n>a*\\\n*\n\n[^1]: >\\\n    b >\\\n    ` **`\t\n\n    *$$ \n","caret":"2.1:0"}
 {"in":"seq live 111 footnote step 23","do":"[2,0,0]@11 a","took":"inserted","bytes":"a[^1]\n\n>a*\\\n*\n\n[^1]: >\\\n    b >\\\n    ` **a`\t\n\n    *$$ \n","caret":"2.0.0:12"}
 {"in":"seq live 111 footnote step 24","do":"[0]@0 Space","took":"inserted","bytes":" a[^1]\n\n>a*\\\n*\n\n[^1]: >\\\n    b >\\\n    ` **a`\t\n\n    *$$ \n","caret":"0:1"}
-{"in":"seq live 111 footnote unwind","do":"19 undo steps changed the bytes"}
+{"in":"seq live 111 footnote unwind","do":"undo changed the bytes 19 times, redo 19"}
 {"in":"seq live 112 empty step 00","do":"[0]@0 -","took":"inserted","bytes":"-\n","caret":"0:1"}
 {"in":"seq live 112 empty step 01","do":"[0]@0 Enter","took":"keydown","bytes":"\n-\n","caret":"1:0"}
 {"in":"seq live 112 empty step 02","do":"[0]@0 Enter","took":"keydown","bytes":"\n\n-\n","caret":"1:0"}
@@ -7340,7 +7340,7 @@
 {"in":"seq live 112 empty step 22","do":"[2]@4 `","took":"beforeinput","bytes":" **a``\n\n\t-`  `*`\n\n`\t`$``$>-\n","caret":"2:5"}
 {"in":"seq live 112 empty step 23","do":"[2]@8 #","took":"inserted","bytes":" **a``\n\n\t-`  `*`\n\n`\t`$``$>#-\n","caret":"2:9"}
 {"in":"seq live 112 empty step 24","do":"[1]@5 [","took":"inserted","bytes":" **a``\n\n\t-`  [`*`\n\n`\t`$``$>#-\n","caret":"1:6"}
-{"in":"seq live 112 empty unwind","do":"15 undo steps changed the bytes"}
+{"in":"seq live 112 empty unwind","do":"undo changed the bytes 15 times, redo 15"}
 {"in":"seq live 113 paragraph step 00","do":"[0]@7 >","took":"inserted","bytes":"plain t>ext\n","caret":"0:8"}
 {"in":"seq live 113 paragraph step 01","do":"[0]@5 Space","took":"inserted","bytes":"plain  t>ext\n","caret":"0:6"}
 {"in":"seq live 113 paragraph step 02","do":"[0]@9 Backspace","took":"beforeinput","bytes":"plain  text\n","caret":"0:8"}
@@ -7366,7 +7366,7 @@
 {"in":"seq live 113 paragraph step 22","do":"[0]@7 `","took":"beforeinput","bytes":"p$$l[-a``n  a[t---t``*\\\na\n","caret":"0:9"}
 {"in":"seq live 113 paragraph step 23","do":"[0]@14 `","took":"beforeinput","bytes":"p$$l[-a``n  a[``t---t``*\\\na\n","caret":"0:16"}
 {"in":"seq live 113 paragraph step 24","do":"[0]@6 *","took":"beforeinput","bytes":"p$$l[-**a``n  a[``t---t``*\\\na\n","caret":"0:7"}
-{"in":"seq live 113 paragraph unwind","do":"3 undo steps changed the bytes"}
+{"in":"seq live 113 paragraph unwind","do":"undo changed the bytes 3 times, redo 3"}
 {"in":"seq live 114 two-paragraphs step 00","do":"[0]@1 Shift+Enter","took":"keydown","bytes":"o\\\nne\n\ntwo\n","caret":"0:3"}
 {"in":"seq live 114 two-paragraphs step 01","do":"[1]@1 -","took":"inserted","bytes":"o\\\nne\n\nt-wo\n","caret":"1:2"}
 {"in":"seq live 114 two-paragraphs step 02","do":"[1]@4 [","took":"inserted","bytes":"o\\\nne\n\nt-wo[\n","caret":"1:5"}
@@ -7392,7 +7392,7 @@
 {"in":"seq live 114 two-paragraphs step 22","do":"[0]@18 #","took":"inserted","bytes":"$$ o[*\t\\\nne**at-# # -a ao\t-\n","caret":"0:19"}
 {"in":"seq live 114 two-paragraphs step 23","do":"[0]@8 >","took":"inserted","bytes":"$$ o[*\t>\\\nne**at-# # -a ao\t-\n","caret":"0:8"}
 {"in":"seq live 114 two-paragraphs step 24","do":"[0]@23 #","took":"inserted","bytes":"$$ o[*\t>\\\nne**at-# # -a# ao\t-\n","caret":"0:24"}
-{"in":"seq live 114 two-paragraphs unwind","do":"12 undo steps changed the bytes"}
+{"in":"seq live 114 two-paragraphs unwind","do":"undo changed the bytes 12 times, redo 12"}
 {"in":"seq live 12 strikethrough step 00","do":"[0]@0 [","took":"inserted","bytes":"~~[s~~ t\n","caret":"0:3"}
 {"in":"seq live 12 strikethrough step 01","do":"[0]@1 a","took":"inserted","bytes":"~~a[s~~ t\n","caret":"0:3"}
 {"in":"seq live 12 strikethrough step 02","do":"[0]@6 -","took":"inserted","bytes":"~~a[s-~~ t\n","caret":"0:6"}
@@ -7418,7 +7418,7 @@
 {"in":"seq live 12 strikethrough step 22","do":"[0]@16 -","took":"inserted","bytes":"~\\\n#[#a-#~$#$**$-**-[>s#a\\\n~~ t\n","caret":"0:17"}
 {"in":"seq live 12 strikethrough step 23","do":"[0]@24 `","took":"beforeinput","bytes":"~\\\n#[#a-#~$#$**$-**-[>s#``a\\\n~~ t\n","caret":"0:25"}
 {"in":"seq live 12 strikethrough step 24","do":"[0]@26 $","took":"beforeinput","bytes":"~\\\n#[#a-#~$#$**$-**-[>s#``$a\\\n~~ t\n","caret":"0:27"}
-{"in":"seq live 12 strikethrough unwind","do":"5 undo steps changed the bytes"}
+{"in":"seq live 12 strikethrough unwind","do":"undo changed the bytes 5 times, redo 5"}
 {"in":"seq live 19 quote-list step 00","do":"[0,0,0,0]@0 >","took":"inserted","bytes":"> - >a\n","caret":"0.0.0.0.0:0"}
 {"in":"seq live 19 quote-list step 01","do":"[0,0,0,0,0]@1 $","took":"beforeinput","bytes":"> - >a$$\n","caret":"0.0.0.0.0:2"}
 {"in":"seq live 19 quote-list step 02","do":"[0,0,0,0,0]@2 -","took":"inserted","bytes":"> - >a$-$\n","caret":"0.0.0.0.0:3"}
@@ -7444,7 +7444,7 @@
 {"in":"seq live 19 quote-list step 22","do":"[0,0,0,0,0,0]@0 Enter","took":"keydown","bytes":"> - > >\n>   >> -a\n>   > >\n>   > > a[-*#*$-$-\n","caret":"0.0.0.0.0.1:0"}
 {"in":"seq live 19 quote-list step 23","do":"[0,0,0,0,0,2]@1 [","took":"inserted","bytes":"> - > >\n>   >> -a\n>   > >\n>   > > a[[-*#*$-$-\n","caret":"0.0.0.0.0.2:2"}
 {"in":"seq live 19 quote-list step 24","do":"[0,0,0,0,0,1]@1 [","took":"inserted","bytes":"> - > >\n>   >> -[a\n>   > >\n>   > > a[[-*#*$-$-\n","caret":"0.0.0.0.0.1:2"}
-{"in":"seq live 19 quote-list unwind","do":"13 undo steps changed the bytes"}
+{"in":"seq live 19 quote-list unwind","do":"undo changed the bytes 13 times, redo 13"}
 {"in":"seq live 2 two-paragraphs step 00","do":"[1]@1 `","took":"beforeinput","bytes":"one\n\nt``wo\n","caret":"1:2"}
 {"in":"seq live 2 two-paragraphs step 01","do":"[1]@5 [","took":"inserted","bytes":"one\n\nt``wo[\n","caret":"1:6"}
 {"in":"seq live 2 two-paragraphs step 02","do":"[0]@1 Shift+Enter","took":"keydown","bytes":"o\\\nne\n\nt``wo[\n","caret":"0:3"}
@@ -7470,7 +7470,7 @@
 {"in":"seq live 2 two-paragraphs step 22","do":"[0]@10 $","took":"beforeinput","bytes":"o*a\\\nn*\t#>$$\n\n``\ta\t$$wo-[a``\n","caret":"0:11"}
 {"in":"seq live 2 two-paragraphs step 23","do":"[0]@10 Delete","took":"beforeinput","bytes":"o*a\\\nn*\t#>$\n\n``\ta\t$$wo-[a``\n","caret":"0:10"}
 {"in":"seq live 2 two-paragraphs step 24","do":"[1]@6 *","took":"beforeinput","bytes":"o*a\\\nn*\t#>$\n\n``\ta\t$**$wo-[a``\n","caret":"1:7"}
-{"in":"seq live 2 two-paragraphs unwind","do":"18 undo steps changed the bytes"}
+{"in":"seq live 2 two-paragraphs unwind","do":"undo changed the bytes 18 times, redo 18"}
 {"in":"seq live 3 soft-break step 00","do":"[0]@0 >","took":"inserted","bytes":">one\ntwo\n","caret":"0.0:0"}
 {"in":"seq live 3 soft-break step 01","do":"[0,0]@6 >","took":"inserted","bytes":">one\ntw>o\n","caret":"0.0:7"}
 {"in":"seq live 3 soft-break step 02","do":"[0,0]@1 `","took":"beforeinput","bytes":">o``ne\ntw>o\n","caret":"0.0:2"}
@@ -7496,7 +7496,7 @@
 {"in":"seq live 3 soft-break step 22","do":"[0,3]@0 -","took":"inserted","bytes":">>-o-\\\n> ` `-\n>\n> e\n\t\\\n> \\\n> t\n>\n> aw>[#>>\n>\n> -o\n","caret":"0.3:1"}
 {"in":"seq live 3 soft-break step 23","do":"[0,1]@4 -","took":"inserted","bytes":">>-o-\\\n> ` `-\n>\n> e\n\t-\\\n> \\\n> t\n>\n> aw>[#>>\n>\n> -o\n","caret":"0.1:4"}
 {"in":"seq live 3 soft-break step 24","do":"[0,2]@3 Shift+Enter","took":"keydown","bytes":">>-o-\\\n> ` `-\n>\n> e\n\t-\\\n> \\\n> t\n>\n> aw>\\\n> [#>>\n>\n> -o\n","caret":"0.2:5"}
-{"in":"seq live 3 soft-break unwind","do":"19 undo steps changed the bytes"}
+{"in":"seq live 3 soft-break unwind","do":"undo changed the bytes 19 times, redo 19"}
 {"in":"seq live 5 heading step 00","do":"[0]@6 `","took":"beforeinput","bytes":"# Titl``e\n","caret":"0:7"}
 {"in":"seq live 5 heading step 01","do":"[0]@0 [","took":"inserted","bytes":"[# Titl``e\n","caret":"0:1"}
 {"in":"seq live 5 heading step 02","do":"[0]@5 Delete","took":"beforeinput","bytes":"[# Til``e\n","caret":"0:5"}
@@ -7522,7 +7522,7 @@
 {"in":"seq live 5 heading step 22","do":"[0,0]@13 `","took":"inserted","bytes":"> [ >#  \\\n> ##Ti``\\\n`$**$$\\\n> ea\n","caret":"0.0:13"}
 {"in":"seq live 5 heading step 23","do":"[0,0]@1 Shift+Enter","took":"keydown","bytes":"> [\\\n>  >#  \\\n> ##Ti``\\\n`$**$$\\\n> ea\n","caret":"0.1.0:2"}
 {"in":"seq live 5 heading step 24","do":"[0,2]@5 -","took":"inserted","bytes":"> [\\\n>  >#  \\\n> ##Ti`-`\\\n`$**$$\\\n> ea\n","caret":"0.2:6"}
-{"in":"seq live 5 heading unwind","do":"13 undo steps changed the bytes"}
+{"in":"seq live 5 heading unwind","do":"undo changed the bytes 13 times, redo 13"}
 {"in":"seq source 100 tasks step 00","do":"[0,0,0]@0 -","took":"inserted","bytes":"- [ ] -a\n- [x] b\n","caret":"0.0.0:1"}
 {"in":"seq source 100 tasks step 01","do":"[0,1,0]@1 Enter","took":"keydown","bytes":"- [ ] -a\n- [x] b\n- [ ] \n","caret":"0.2.0:0"}
 {"in":"seq source 100 tasks step 02","do":"[0,0,0]@1 `","took":"beforeinput","bytes":"- [ ] -``a\n- [x] b\n- [ ] \n","caret":"0.0.0:2"}
@@ -7548,7 +7548,7 @@
 {"in":"seq source 100 tasks step 22","do":"[0,0,0]@10 Delete","took":"beforeinput","bytes":"- [ ] \\\n  -\\\n  ``$$#`aa\n- [x] b*\n  - [ ] ``\n- [ ] >`` -\n","caret":"0.0.0:10"}
 {"in":"seq source 100 tasks step 23","do":"[0,1,0]@2 $","took":"beforeinput","bytes":"- [ ] \\\n  -\\\n  ``$$#`aa\n- [x] b*$$\n  - [ ] ``\n- [ ] >`` -\n","caret":"0.1.0:3"}
 {"in":"seq source 100 tasks step 24","do":"[0,1,0]@1 Delete","took":"beforeinput","bytes":"- [ ] \\\n  -\\\n  ``$$#`aa\n- [x] b$$\n  - [ ] ``\n- [ ] >`` -\n","caret":"0.1.0:1"}
-{"in":"seq source 100 tasks unwind","do":"22 undo steps changed the bytes"}
+{"in":"seq source 100 tasks unwind","do":"undo changed the bytes 22 times, redo 22"}
 {"in":"seq source 101 nested-list step 00","do":"[0,0,0]@1 -","took":"inserted","bytes":"- a-\n  - b\n","caret":"0.0.0:2"}
 {"in":"seq source 101 nested-list step 01","do":"[0,0,1,0,0]@0 Enter","took":"keydown","bytes":"- a-\n\n  - \n  - b\n","caret":"0.0.1.1.0:0"}
 {"in":"seq source 101 nested-list step 02","do":"[0,0,1,0,0]@0 `","took":"beforeinput","bytes":"- a-\n\n  - ``\n  - b\n","caret":"0.0.1.0.0:1"}
@@ -7574,7 +7574,7 @@
 {"in":"seq source 101 nested-list step 22","do":"[0,0,0]@2 Enter","took":"keydown","bytes":"- a[\n- **a\n- \\\n  #>->\n\n  - [``>``[*\\#\n    *b\n","caret":"0.1.0:0"}
 {"in":"seq source 101 nested-list step 23","do":"[0,2,0]@0 Space","took":"inserted","bytes":"- a[\n- **a\n-  \\\n  #>->\n\n  - [``>``[*\\#\n    *b\n","caret":"0.2.0:0"}
 {"in":"seq source 101 nested-list step 24","do":"[1,0,0]@1 Shift+Enter","took":"keydown","bytes":"- a[\n- **a\n-  \\\n  #>->\n\n  - [\\\n    ``>``[*\\#\n    *b\n","caret":"1.0.0:3"}
-{"in":"seq source 101 nested-list unwind","do":"24 undo steps changed the bytes"}
+{"in":"seq source 101 nested-list unwind","do":"undo changed the bytes 24 times, redo 24"}
 {"in":"seq source 102 quote step 00","do":"[0,0]@2 Shift+Enter","took":"keydown","bytes":"> a\n> \\\n> b\n","caret":"0.0:4"}
 {"in":"seq source 102 quote step 01","do":"[0,0]@5 Enter","took":"keydown","bytes":"> a\n> \\\n> b\n>\n>\n","caret":"0.1:0"}
 {"in":"seq source 102 quote step 02","do":"[0,1]@0 >","took":"inserted","bytes":"> a\n> \\\n> b\n>\n> >\n","caret":"0.1.0:0"}
@@ -7600,7 +7600,7 @@
 {"in":"seq source 102 quote step 22","do":"[0,3,1]@5 -","took":"inserted","bytes":"> a >\n>\n> >\\#**b \n>\n> > ``\n>\n> >$$[\n> >\n> > \\\n> > $$`-`\n","caret":"0.3.1:6"}
 {"in":"seq source 102 quote step 23","do":"[0,3,0]@2 Space","took":"inserted","bytes":"> a >\n>\n> >\\#**b \n>\n> > ``\n>\n> >$$ [\n> >\n> > \\\n> > $$`-`\n","caret":"0.3.0:3"}
 {"in":"seq source 102 quote step 24","do":"[0,3,0]@2 Space","took":"inserted","bytes":"> a >\n>\n> >\\#**b \n>\n> > ``\n>\n> >$$  [\n> >\n> > \\\n> > $$`-`\n","caret":"0.3.0:3"}
-{"in":"seq source 102 quote unwind","do":"6 undo steps changed the bytes","undo":"undo > a >\n>\n> >\\#b \n>\n> > ``\n>\n> >[\\\n> > ``\n | redo > a >\n>\n> >\\#b \n>\n> > ``\n>\n> >[\\\n> > ``\n"}
+{"in":"seq source 102 quote unwind","do":"undo changed the bytes 21 times, redo 21"}
 {"in":"seq source 103 quote-list step 00","do":"[0,0,0,0]@1 Space","took":"inserted","bytes":"> - a \n","caret":"0.0.0.0:2"}
 {"in":"seq source 103 quote-list step 01","do":"[0,0,0,0]@0 *","took":"beforeinput","bytes":"> - **a \n","caret":"0.0.0.0:1"}
 {"in":"seq source 103 quote-list step 02","do":"[0,0,0,0]@0 Shift+Enter","took":"keydown","bytes":"> - \\\n>   **a \n","caret":"0.0.0.0:2"}
@@ -7626,7 +7626,7 @@
 {"in":"seq source 103 quote-list step 22","do":"[0,0]@0 $","took":"beforeinput","bytes":"> $$\\$**#\n>\n> a\n> #*\\\n> * [\\\n>   a\n>\n>  \n","caret":"0.0:1"}
 {"in":"seq source 103 quote-list step 23","do":"[0,0]@5 #","took":"inserted","bytes":"> $$\\$*#*#\n>\n> a\n> #*\\\n> * [\\\n>   a\n>\n>  \n","caret":"0.0:6"}
 {"in":"seq source 103 quote-list step 24","do":"[0,1]@3 >","took":"inserted","bytes":"> $$\\$*#*#\n>\n> a\n> #>*\\\n> * [\\\n>   a\n>\n>  \n","caret":"0.1:4"}
-{"in":"seq source 103 quote-list unwind","do":"18 undo steps changed the bytes","undo":"undo > - a\n | redo > -   \\\n>\n>     \n> -   **a \n"}
+{"in":"seq source 103 quote-list unwind","do":"undo changed the bytes 18 times, redo 5","undo":"undo > - a\n | redo > -   \\\n>\n>     \n> -   **a \n"}
 {"in":"seq source 104 fence step 00","do":"[0]@11 Shift+Enter","took":"keydown","bytes":"```js\nx\n\n```\n","caret":"0:8"}
 {"in":"seq source 104 fence step 01","do":"[0]@5 a","took":"inserted","bytes":"```jsa\nx\n\n```\n","caret":"0:6"}
 {"in":"seq source 104 fence step 02","do":"[0]@7 *","took":"inserted","bytes":"```jsa\n*x\n\n```\n","caret":"0:8"}
@@ -7652,7 +7652,7 @@
 {"in":"seq source 104 fence step 22","do":"[2,0,0]@3 Tab","took":"keydown","bytes":"#\ta`` `j\\\na\n*\t**x\n-\n\n`\t*`\t-`\n```$`\n","caret":"2.0.0:3"}
 {"in":"seq source 104 fence step 23","do":"[0]@4 $","took":"beforeinput","bytes":"#\ta`$$` `j\\\na\n*\t**x\n-\n\n`\t*`\t-`\n```$`\n","caret":"0:5"}
 {"in":"seq source 104 fence step 24","do":"[2,0,0]@4 #","took":"inserted","bytes":"#\ta`$$` `j\\\na\n*\t**x\n#-\n\n`\t*`\t-`\n```$`\n","caret":"2.0.0:5"}
-{"in":"seq source 104 fence unwind","do":"11 undo steps changed the bytes"}
+{"in":"seq source 104 fence unwind","do":"undo changed the bytes 11 times, redo 11"}
 {"in":"seq source 105 thematic-break step 00","do":"[0]@0 Tab","took":"keydown","bytes":"\ta\n\n---\n\nb\n","caret":"0:1"}
 {"in":"seq source 105 thematic-break step 01","do":"[2]@1 $","took":"beforeinput","bytes":"\ta\n\n---\n\nb$$\n","caret":"2:2"}
 {"in":"seq source 105 thematic-break step 02","do":"[2]@3 [","took":"inserted","bytes":"\ta\n\n---\n\nb$$[\n","caret":"2:4"}
@@ -7678,7 +7678,7 @@
 {"in":"seq source 105 thematic-break step 22","do":"[0]@1 Tab","took":"keydown","bytes":"\t\ta`>\n* \\\n  -\n\nb\t**``$$[>\n","caret":"0:2"}
 {"in":"seq source 105 thematic-break step 23","do":"[1,0,0]@2 *","took":"inserted","bytes":"\t\ta`>\n* \\\n  *-\n\nb\t**``$$[>\n","caret":"1.0.0:3"}
 {"in":"seq source 105 thematic-break step 24","do":"[0]@5 `","took":"beforeinput","bytes":"\t\ta`>`\n* \\\n  *-\n\nb\t**``$$[>\n","caret":"0:6"}
-{"in":"seq source 105 thematic-break unwind","do":"18 undo steps changed the bytes"}
+{"in":"seq source 105 thematic-break unwind","do":"undo changed the bytes 18 times, redo 18"}
 {"in":"seq source 106 table step 00","do":"[0,0,0]@1 Space","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
 {"in":"seq source 106 table step 01","do":"[0,1,1]@0 -","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
 {"in":"seq source 106 table step 02","do":"[0,1,1]@1 a","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
@@ -7704,7 +7704,7 @@
 {"in":"seq source 106 table step 22","do":"[0,0,0]@1 #","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
 {"in":"seq source 106 table step 23","do":"[0,0,0]@0 Space","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
 {"in":"seq source 106 table step 24","do":"[0,0,1]@1 `","took":"no caret","bytes":"| a | b |\n|---|---|\n| 1 | 2 |\n","caret":"none"}
-{"in":"seq source 106 table unwind","do":"0 undo steps changed the bytes"}
+{"in":"seq source 106 table unwind","do":"undo changed the bytes 0 times, redo 0"}
 {"in":"seq source 107 math step 00","do":"[0]@2 Enter","took":"keydown","bytes":"a \n\n$x$ b\n","caret":"1:0"}
 {"in":"seq source 107 math step 01","do":"[1]@5 $","took":"beforeinput","bytes":"a \n\n$x$ b$$\n","caret":"1:6"}
 {"in":"seq source 107 math step 02","do":"[0]@2 *","took":"beforeinput","bytes":"a **\n\n$x$ b$$\n","caret":"0:3"}
@@ -7730,7 +7730,7 @@
 {"in":"seq source 107 math step 22","do":"[2,0]@7 Backspace","took":"beforeinput","bytes":"$\t#[$\n\n``**-a a\n\n>$x$[ a$a$**`\n","caret":"2.0:6"}
 {"in":"seq source 107 math step 23","do":"[1]@0 -","took":"inserted","bytes":"$\t#[$\n\n-``**-a a\n\n>$x$[ a$a$**`\n","caret":"1:1"}
 {"in":"seq source 107 math step 24","do":"[2,0]@8 $","took":"beforeinput","bytes":"$\t#[$\n\n-``**-a a\n\n>$x$[ a$a$$$**`\n","caret":"2.0:10"}
-{"in":"seq source 107 math unwind","do":"5 undo steps changed the bytes","undo":"undo $\t$\n\n``**-a a\n\n>$x$[ ab$a$`\n | redo $\t$\n\n``**-a a\n\n>$x$[ ab$a$`\n"}
+{"in":"seq source 107 math unwind","do":"undo changed the bytes 17 times, redo 17"}
 {"in":"seq source 108 math-block step 00","do":"[0]@2 Shift+Enter","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
 {"in":"seq source 108 math-block step 01","do":"[0]@4 `","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
 {"in":"seq source 108 math-block step 02","do":"[0]@3 Space","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
@@ -7756,7 +7756,7 @@
 {"in":"seq source 108 math-block step 22","do":"[0]@5 Tab","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
 {"in":"seq source 108 math-block step 23","do":"[0]@5 Delete","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
 {"in":"seq source 108 math-block step 24","do":"[0]@5 `","took":"no caret","bytes":"$$\nx\n$$\n","caret":"none"}
-{"in":"seq source 108 math-block unwind","do":"0 undo steps changed the bytes"}
+{"in":"seq source 108 math-block unwind","do":"undo changed the bytes 0 times, redo 0"}
 {"in":"seq source 109 alert step 00","do":"[0,0]@1 [","took":"inserted","bytes":"> [!NOTE]\n> a[\n","caret":"0.0:2"}
 {"in":"seq source 109 alert step 01","do":"[0,0]@0 -","took":"inserted","bytes":"> [!NOTE]\n> -a[\n","caret":"0.0:1"}
 {"in":"seq source 109 alert step 02","do":"[0,0]@0 #","took":"inserted","bytes":"> [!NOTE]\n> #-a[\n","caret":"0.0:1"}
@@ -7782,7 +7782,7 @@
 {"in":"seq source 109 alert step 22","do":"[0,1]@7 Backspace","took":"beforeinput","bytes":"> [!NOTE]\n> `\t#-\n>\n> `$$$ [*aa#\\\n> [[` \n","caret":"0.1:6"}
 {"in":"seq source 109 alert step 23","do":"[0,0]@4 Enter","took":"keydown","bytes":"> [!NOTE]\n> `\t#-\n>\n>\n> `$$$ [*aa#\\\n> [[` \n","caret":"0.1:0"}
 {"in":"seq source 109 alert step 24","do":"[0,1]@0 a","took":"inserted","bytes":"> [!NOTE]\n> `\t#-\n>\n> a\n>\n> `$$$ [*aa#\\\n> [[` \n","caret":"0.1:1"}
-{"in":"seq source 109 alert unwind","do":"11 undo steps changed the bytes"}
+{"in":"seq source 109 alert unwind","do":"undo changed the bytes 11 times, redo 11"}
 {"in":"seq source 110 directive step 00","do":"[0,0]@0 Backspace","took":"keydown","bytes":":::note\na\n:::\n","caret":"0.0:0"}
 {"in":"seq source 110 directive step 01","do":"[0,1]@0 #","took":"inserted","bytes":":::note\n#a\n:::\n","caret":"0.1:1"}
 {"in":"seq source 110 directive step 02","do":"[0,1]@0 Backspace","took":"keydown","bytes":":::note\n#a\n:::\n","caret":"0.0:0"}
@@ -7808,7 +7808,7 @@
 {"in":"seq source 110 directive step 22","do":"[0,0]@2 Space","took":"inserted","bytes":":::note `  `[\n \t`> a->#\\\n**a\n:::\n","caret":"0.0:3"}
 {"in":"seq source 110 directive step 23","do":"[0,0]@2 Tab","took":"browser","bytes":":::note `  `[\n \t`> a->#\\\n**a\n:::\n","caret":"0.0:2"}
 {"in":"seq source 110 directive step 24","do":"[0,1]@5 Shift+Enter","took":"keydown","bytes":":::note `  `[\n \t`> \\\na->#\\\n**a\n:::\n","caret":"0.2:0"}
-{"in":"seq source 110 directive unwind","do":"11 undo steps changed the bytes"}
+{"in":"seq source 110 directive unwind","do":"undo changed the bytes 11 times, redo 11"}
 {"in":"seq source 111 footnote step 00","do":"[1,0]@1 Space","took":"inserted","bytes":"a[^1]\n\n[^1]: b \n","caret":"1.0:2"}
 {"in":"seq source 111 footnote step 01","do":"[0]@5 Shift+Enter","took":"keydown","bytes":"a[^1]\n\n[^1]: b \n","caret":"0:5"}
 {"in":"seq source 111 footnote step 02","do":"[0]@2 *","took":"keydown","bytes":"a[^1]\\\n*\n\n[^1]: b \n","caret":"0:8"}
@@ -7834,7 +7834,7 @@
 {"in":"seq source 111 footnote step 22","do":"[2,1]@0 Delete","took":"beforeinput","bytes":"a[^1]\n\n>a\\*\n*\n\n[^1]: >\\\n    b >\\\n    ` **`\t\n\n    *$$ \n","caret":"2.1:0"}
 {"in":"seq source 111 footnote step 23","do":"[2,0,0]@11 a","took":"inserted","bytes":"a[^1]\n\n>a\\*\n*\n\n[^1]: >\\\n    b >\\\n    ` **a`\t\n\n    *$$ \n","caret":"2.0.0:12"}
 {"in":"seq source 111 footnote step 24","do":"[0]@0 Space","took":"inserted","bytes":" a[^1]\n\n>a\\*\n*\n\n[^1]: >\\\n    b >\\\n    ` **a`\t\n\n    *$$ \n","caret":"0:1"}
-{"in":"seq source 111 footnote unwind","do":"19 undo steps changed the bytes"}
+{"in":"seq source 111 footnote unwind","do":"undo changed the bytes 19 times, redo 19"}
 {"in":"seq source 112 empty step 00","do":"[0]@0 -","took":"inserted","bytes":"-\n","caret":"0:1"}
 {"in":"seq source 112 empty step 01","do":"[0]@0 Enter","took":"keydown","bytes":"\n-\n","caret":"1:0"}
 {"in":"seq source 112 empty step 02","do":"[0]@0 Enter","took":"keydown","bytes":"\n\n-\n","caret":"1:0"}
@@ -7860,7 +7860,7 @@
 {"in":"seq source 112 empty step 22","do":"[1]@4 `","took":"beforeinput","bytes":"* *\\`a`\n\n\t-`  `*`\n\n`\t`$``$>-\n","caret":"1:5"}
 {"in":"seq source 112 empty step 23","do":"[1]@8 #","took":"inserted","bytes":"* *\\`a`\n\n\t-`  `*`\n\n`\t`$``$>#-\n","caret":"1:9"}
 {"in":"seq source 112 empty step 24","do":"[0,0,1]@6 [","took":"inserted","bytes":"* *\\`a`\n\n    -`  [`*`\n\n`\t`$``$>#-\n","caret":"0.0.1:7"}
-{"in":"seq source 112 empty unwind","do":"16 undo steps changed the bytes"}
+{"in":"seq source 112 empty unwind","do":"undo changed the bytes 16 times, redo 16"}
 {"in":"seq source 113 paragraph step 00","do":"[0]@7 >","took":"inserted","bytes":"plain t>ext\n","caret":"0:8"}
 {"in":"seq source 113 paragraph step 01","do":"[0]@5 Space","took":"inserted","bytes":"plain  t>ext\n","caret":"0:6"}
 {"in":"seq source 113 paragraph step 02","do":"[0]@9 Backspace","took":"beforeinput","bytes":"plain  text\n","caret":"0:8"}
@@ -7886,7 +7886,7 @@
 {"in":"seq source 113 paragraph step 22","do":"[0]@7 `","took":"beforeinput","bytes":"p$$l[-a``n  a[t---t``*\\\na\n","caret":"0:8"}
 {"in":"seq source 113 paragraph step 23","do":"[0]@14 `","took":"beforeinput","bytes":"p$$l[-a``n  a[``t---t``*\\\na\n","caret":"0:15"}
 {"in":"seq source 113 paragraph step 24","do":"[0]@6 *","took":"beforeinput","bytes":"p$$l[-**a``n  a[``t---t``*\\\na\n","caret":"0:7"}
-{"in":"seq source 113 paragraph unwind","do":"3 undo steps changed the bytes"}
+{"in":"seq source 113 paragraph unwind","do":"undo changed the bytes 3 times, redo 3"}
 {"in":"seq source 114 two-paragraphs step 00","do":"[0]@1 Shift+Enter","took":"keydown","bytes":"o\\\nne\n\ntwo\n","caret":"0:3"}
 {"in":"seq source 114 two-paragraphs step 01","do":"[1]@1 -","took":"inserted","bytes":"o\\\nne\n\nt-wo\n","caret":"1:2"}
 {"in":"seq source 114 two-paragraphs step 02","do":"[1]@4 [","took":"inserted","bytes":"o\\\nne\n\nt-wo[\n","caret":"1:5"}
@@ -7912,7 +7912,7 @@
 {"in":"seq source 114 two-paragraphs step 22","do":"[0]@18 #","took":"inserted","bytes":"$$ o[*\\\t\nne**at-# # -a ao\t-\n","caret":"0:19"}
 {"in":"seq source 114 two-paragraphs step 23","do":"[0]@8 >","took":"inserted","bytes":"$$ o[*\\\t>\nne**at-# # -a ao\t-\n","caret":"0:9"}
 {"in":"seq source 114 two-paragraphs step 24","do":"[0]@23 #","took":"inserted","bytes":"$$ o[*\\\t>\nne**at-# # -a# ao\t-\n","caret":"0:24"}
-{"in":"seq source 114 two-paragraphs unwind","do":"12 undo steps changed the bytes"}
+{"in":"seq source 114 two-paragraphs unwind","do":"undo changed the bytes 12 times, redo 12"}
 {"in":"seq source 12 strikethrough step 00","do":"[0]@0 [","took":"inserted","bytes":"[~~s~~ t\n","caret":"0:1"}
 {"in":"seq source 12 strikethrough step 01","do":"[0]@1 a","took":"inserted","bytes":"[a~~s~~ t\n","caret":"0:2"}
 {"in":"seq source 12 strikethrough step 02","do":"[0]@6 -","took":"inserted","bytes":"[a~~s~-~ t\n","caret":"0:7"}
@@ -7938,7 +7938,7 @@
 {"in":"seq source 12 strikethrough step 22","do":"[0]@16 -","took":"inserted","bytes":"a\\\n#[#a~#-$#$**$-**-~>s#a~\n-~ t\n","caret":"0:17"}
 {"in":"seq source 12 strikethrough step 23","do":"[0]@24 `","took":"beforeinput","bytes":"a\\\n#[#a~#-$#$**$-**-~>s#``a~\n-~ t\n","caret":"0:25"}
 {"in":"seq source 12 strikethrough step 24","do":"[0]@26 $","took":"beforeinput","bytes":"a\\\n#[#a~#-$#$**$-**-~>s#``$a~\n-~ t\n","caret":"0:27"}
-{"in":"seq source 12 strikethrough unwind","do":"5 undo steps changed the bytes"}
+{"in":"seq source 12 strikethrough unwind","do":"undo changed the bytes 5 times, redo 5"}
 {"in":"seq source 19 quote-list step 00","do":"[0,0,0,0]@0 >","took":"inserted","bytes":"> - >a\n","caret":"0.0.0.0.0:0"}
 {"in":"seq source 19 quote-list step 01","do":"[0,0,0,0,0]@1 $","took":"beforeinput","bytes":"> - >a$$\n","caret":"0.0.0.0.0:2"}
 {"in":"seq source 19 quote-list step 02","do":"[0,0,0,0,0]@2 -","took":"inserted","bytes":"> - >a$-$\n","caret":"0.0.0.0.0:3"}
@@ -7964,7 +7964,7 @@
 {"in":"seq source 19 quote-list step 22","do":"[0,0,0,0,0,0]@0 Enter","took":"keydown","bytes":"> - > >\n>   >> -a\n>   > >\n>   > > a[*-#*$-$-\n","caret":"0.0.0.0.0.1:0"}
 {"in":"seq source 19 quote-list step 23","do":"[0,0,0,0,0,2]@1 [","took":"inserted","bytes":"> - > >\n>   >> -a\n>   > >\n>   > > a[[*-#*$-$-\n","caret":"0.0.0.0.0.2:2"}
 {"in":"seq source 19 quote-list step 24","do":"[0,0,0,0,0,1]@1 [","took":"inserted","bytes":"> - > >\n>   >> -[a\n>   > >\n>   > > a[[*-#*$-$-\n","caret":"0.0.0.0.0.1:2"}
-{"in":"seq source 19 quote-list unwind","do":"13 undo steps changed the bytes"}
+{"in":"seq source 19 quote-list unwind","do":"undo changed the bytes 13 times, redo 13"}
 {"in":"seq source 2 two-paragraphs step 00","do":"[1]@1 `","took":"beforeinput","bytes":"one\n\nt``wo\n","caret":"1:2"}
 {"in":"seq source 2 two-paragraphs step 01","do":"[1]@5 [","took":"inserted","bytes":"one\n\nt``wo[\n","caret":"1:6"}
 {"in":"seq source 2 two-paragraphs step 02","do":"[0]@1 Shift+Enter","took":"keydown","bytes":"o\\\nne\n\nt``wo[\n","caret":"0:3"}
@@ -7990,7 +7990,7 @@
 {"in":"seq source 2 two-paragraphs step 22","do":"[0]@10 $","took":"beforeinput","bytes":"o*\\a\nn*\t#>$$\n\na\n``w$$o\t[-`a`\n","caret":"0:11"}
 {"in":"seq source 2 two-paragraphs step 23","do":"[0]@10 Delete","took":"beforeinput","bytes":"o*\\a\nn*\t#>$\n\na\n``w$$o\t[-`a`\n","caret":"0:10"}
 {"in":"seq source 2 two-paragraphs step 24","do":"[1]@6 *","took":"beforeinput","bytes":"o*\\a\nn*\t#>$\n\na\n``w$**$o\t[-`a`\n","caret":"1:7"}
-{"in":"seq source 2 two-paragraphs unwind","do":"18 undo steps changed the bytes"}
+{"in":"seq source 2 two-paragraphs unwind","do":"undo changed the bytes 18 times, redo 18"}
 {"in":"seq source 3 soft-break step 00","do":"[0]@0 >","took":"inserted","bytes":">one\ntwo\n","caret":"0.0:0"}
 {"in":"seq source 3 soft-break step 01","do":"[0,0]@6 >","took":"inserted","bytes":">one\ntw>o\n","caret":"0.0:7"}
 {"in":"seq source 3 soft-break step 02","do":"[0,0]@1 `","took":"beforeinput","bytes":">o``ne\ntw>o\n","caret":"0.0:2"}
@@ -8016,7 +8016,7 @@
 {"in":"seq source 3 soft-break step 22","do":"[0,3]@0 -","took":"inserted","bytes":">>-o\\-\n> `- \n>\n> `e\t\n> \\\n> \\\nt\n>\n> aw>[#>>\n>\n> -o\n","caret":"0.3:1"}
 {"in":"seq source 3 soft-break step 23","do":"[0,1]@4 -","took":"inserted","bytes":">>-o\\-\n> `- \n>\n> `e\t\n> -\\\n> \\\nt\n>\n> aw>[#>>\n>\n> -o\n","caret":"0.1:5"}
 {"in":"seq source 3 soft-break step 24","do":"[0,2]@3 Shift+Enter","took":"keydown","bytes":">>-o\\-\n> `- \n>\n> `e\t\n> -\\\n> \\\nt\n>\n> aw>\\\n> [#>>\n>\n> -o\n","caret":"0.2:5"}
-{"in":"seq source 3 soft-break unwind","do":"19 undo steps changed the bytes"}
+{"in":"seq source 3 soft-break unwind","do":"undo changed the bytes 19 times, redo 19"}
 {"in":"seq source 5 heading step 00","do":"[0]@6 `","took":"beforeinput","bytes":"# Titl``e\n","caret":"0:7"}
 {"in":"seq source 5 heading step 01","do":"[0]@0 [","took":"inserted","bytes":"[# Titl``e\n","caret":"0:1"}
 {"in":"seq source 5 heading step 02","do":"[0]@5 Delete","took":"beforeinput","bytes":"[# Til``e\n","caret":"0:5"}
@@ -8042,4 +8042,4 @@
 {"in":"seq source 5 heading step 22","do":"[0,0]@14 `","took":"beforeinput","bytes":"> [ #[  #\\\n> T#il\\`\n``**$$\\\n> $ea\n","caret":"0.0:15"}
 {"in":"seq source 5 heading step 23","do":"[0,0]@1 Shift+Enter","took":"keydown","bytes":"> [\\\n>  #[  #\\\n> T#il\\`\n``**$$\\\n> $ea\n","caret":"0.0:3"}
 {"in":"seq source 5 heading step 24","do":"[0,0]@8 -","took":"inserted","bytes":"> [\\\n>  #[  -#\\\n> T#il\\`\n``**$$\\\n> $ea\n","caret":"0.0:9"}
-{"in":"seq source 5 heading unwind","do":"13 undo steps changed the bytes"}
+{"in":"seq source 5 heading unwind","do":"undo changed the bytes 13 times, redo 13"}

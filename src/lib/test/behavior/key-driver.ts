@@ -153,7 +153,7 @@ const tagsTaken = () => takeDevWarns().map((record) => record.tag);
 
 // ── Seeded sequences ─────────────────────────────────────────────────────────
 
-/** Bounds the unwind; a sequence of `steps` keys makes at most that many undo entries. */
+/** More runs than a sequence's keys can make undo entries. */
 const UNWIND_LIMIT = 60;
 
 /** `steps` keys drawn from `seed` into one mount of `source`, a row per key, then a row for
@@ -189,29 +189,29 @@ export async function sequenceRows(
 	const edited = editor.source();
 	// The undo command needs a focused block, and the last key may have left none.
 	placeAt(editor, { path: leaves(parse(edited).children, [])[0].path, start: 0, end: 0 }, 0);
-	const entries = await repeat(editor, 'history.undo');
+	const undo = await repeat(editor, 'history.undo');
 	const undone = editor.source();
-	await repeat(editor, 'history.redo');
+	const redo = await repeat(editor, 'history.redo');
 	const redone = editor.source();
 	await editor.destroy();
 	rows.push({
 		in: `${label} unwind`,
-		do: `${entries} undo steps changed the bytes`,
+		do: `undo changed the bytes ${undo} times, redo ${redo}`,
 		undo: undoField(source, edited, undone, redone),
 		warns: warnsField(tagsTaken())
 	});
 	return rows;
 }
 
-/** Runs `command` until the bytes stop changing; how many runs changed them. */
+/** How many of `UNWIND_LIMIT` runs of `command` changed the bytes. A fixed count, since the
+ *  command stays enabled on an empty stack and an undo step may leave the bytes alone. */
 async function repeat(editor: MountedEditor, command: string): Promise<number> {
 	let changed = 0;
-	for (let i = 0; i < UNWIND_LIMIT; i++) {
+	for (let run = 0; run < UNWIND_LIMIT; run++) {
 		const before = editor.source();
 		editor.instance.runCommand(command);
 		await editor.settle();
-		if (editor.source() === before) break;
-		changed++;
+		if (editor.source() !== before) changed++;
 	}
 	return changed;
 }
