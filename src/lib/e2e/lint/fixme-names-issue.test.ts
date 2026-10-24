@@ -1,7 +1,7 @@
 /**
- * Every `test.fixme` names the open issue it waits on, as a reason starting `#<number>: `, so the
- * release step that re-runs fixme rows (`scripts/fixme-recheck.mjs`) can say which issue a
- * passing row closes.
+ * G4.255: every `test.fixme` names the issue it waits on, as a reason starting `#<number>: `, so
+ * the release step that re-runs fixme rows (`scripts/fixme-recheck.mjs`) can say which issue a
+ * passing row belongs to.
  */
 import { describe, it, expect } from 'vitest';
 import ts from 'typescript';
@@ -34,7 +34,7 @@ function fixmeCalls(file: string, text: string) {
 	return calls;
 }
 
-describe('a fixme row names its issue', () => {
+describe('G4.255 a fixme row names its issue', () => {
 	const calls = collectFiles('src/lib/e2e/tests', { extensions: ['.ts'] })
 		.map(readSource)
 		.flatMap(({ relPath, text }) => fixmeCalls(relPath, text));
