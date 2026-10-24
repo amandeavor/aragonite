@@ -2,6 +2,7 @@ import { test as base, expect, type ConsoleMessage } from '@playwright/test';
 import { getContainerParityMismatches } from './container-parity';
 import { warnTagOfLine } from '../warn-tags';
 import { installClipboard } from './clipboard-arm';
+import { withFixmeRerun } from './fixme-rerun';
 
 // The shared e2e `test`, with two checks at teardown. Every tagged console warning or uncaught
 // page error must be one the spec declares below, and each declared one must fire. The
@@ -123,27 +124,6 @@ const watchedTest = base.extend<WarnFixtures>({
 	}
 });
 
-// What `scripts/fixme-recheck.mjs` reads off a fixme row that ran anyway.
-const FIXME_RERUN = 'fixme-rerun';
-
-/** Under `E2E_RERUN_FIXME`, an in-test `test.fixme(condition, reason)` records its reason and lets
- *  the test run; every other form of `test.fixme` keeps Playwright's behavior. */
-function runningFixmeRows(test: typeof watchedTest): typeof watchedTest {
-	const fixme = test.fixme as (...args: unknown[]) => void;
-	const insideTest = () => {
-		try {
-			return test.info() !== undefined;
-		} catch {
-			return false;
-		}
-	};
-	test.fixme = ((...args: unknown[]) => {
-		if (typeof args[0] !== 'boolean' || !insideTest()) return fixme(...args);
-		if (args[0]) test.info().annotations.push({ type: FIXME_RERUN, description: String(args[1]) });
-	}) as typeof test.fixme;
-	return test;
-}
-
-export const test = process.env.E2E_RERUN_FIXME ? runningFixmeRows(watchedTest) : watchedTest;
+export const test = withFixmeRerun(watchedTest, process.env);
 
 export { expect };

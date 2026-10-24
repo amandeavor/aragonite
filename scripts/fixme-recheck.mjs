@@ -11,7 +11,7 @@ import path from 'node:path';
 
 const ENGINES = ['chromium', 'firefox', 'webkit'];
 const SPECS = 'src/lib/e2e/tests';
-// The annotation `src/lib/e2e/fixtures.ts` records on a fixme row it ran anyway.
+// The annotation `src/lib/e2e/fixme-rerun.ts` records on a fixme row it ran anyway.
 const FIXME_RERUN = 'fixme-rerun';
 const PLAYWRIGHT = createRequire(import.meta.url).resolve('@playwright/test/cli');
 
@@ -72,7 +72,7 @@ if (broken.length > 0 || all.length === 0) {
 		'fixme-recheck: ' +
 			(broken.length > 0
 				? broken.join('; ')
-				: `no row recorded ${FIXME_RERUN}; does src/lib/e2e/fixtures.ts still run fixme rows?`)
+				: `no row recorded ${FIXME_RERUN}; does src/lib/e2e/fixme-rerun.ts still run fixme rows?`)
 	);
 	process.exit(1);
 }
