@@ -26,6 +26,7 @@ export interface BodyLine {
 	lazy: boolean;
 }
 
+/** A line-prefixed container's line syntax, which its parser and `rebuildStripRaw` both read. */
 export interface LineCodec {
 	/** The body line `line` holds at `place`, or null when it holds none there. */
 	read(line: string, place: LinePlace): BodyLine | null;
