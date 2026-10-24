@@ -28,8 +28,8 @@ import type { CommandRun } from './schema/block-commands';
  */
 export type CommitSnapshotArg = { path: DocPath; offset: number };
 
-/** How a write groups in the undo history: an entry of its own (a commit's default), or the one
- *  the keystroke's typing push already holds (a key that reparses into several blocks). */
+/** How a write groups in the undo history: `entry` takes one of its own (a commit's default);
+ *  `join-typing` joins the typing burst, the entry the keystroke's typing push already holds. */
 export type UndoGrouping = 'entry' | 'join-typing';
 
 /**
