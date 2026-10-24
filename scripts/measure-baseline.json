@@ -1,17 +1,17 @@
 {
 	"rows": {
 		"productionCodeLines": {
-			"baseline": 73325,
+			"baseline": 73558,
 			"tolerance": 370,
 			"unit": "lines"
 		},
 		"productionCommentLines": {
-			"baseline": 15573,
+			"baseline": 15602,
 			"tolerance": 80,
 			"unit": "lines"
 		},
 		"unitTestsInternal": {
-			"baseline": 1299,
+			"baseline": 1301,
 			"tolerance": 3,
 			"unit": "files"
 		},
@@ -21,7 +21,7 @@
 			"unit": "files"
 		},
 		"activeSourceScans": {
-			"baseline": 187,
+			"baseline": 185,
 			"tolerance": 2,
 			"unit": "scans"
 		},
