@@ -277,8 +277,12 @@ function loadedSpecifier(/** @type {ts.Node} */ node) {
 	return loads ? node.arguments[0] : undefined;
 }
 
-/** `A` of the qualified name `A.B.C`. */
-function leftmostName(/** @type {ts.EntityName} */ name) {
+/**
+ * `A` of the qualified name `A.B.C`.
+ * @param {ts.EntityName} name
+ * @returns {string}
+ */
+function leftmostName(name) {
 	return ts.isIdentifier(name) ? name.text : leftmostName(name.left);
 }
 
