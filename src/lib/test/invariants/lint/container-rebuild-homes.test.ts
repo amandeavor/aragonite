@@ -60,7 +60,7 @@ const PINNED: Record<string, Pin> = {
 	'src/lib/testing/container-conformance.ts': {
 		calls: {
 			rebuildContainerRawIfContainer: 1,
-			'.rebuildRaw': 8
+			'.rebuildRaw': 9
 		},
 		why: 'the conformance kit drives rebuilds directly, outside any commit'
 	},

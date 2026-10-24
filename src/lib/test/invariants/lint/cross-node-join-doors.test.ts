@@ -32,8 +32,6 @@ const JOIN_INTO_LEAF_CALLERS: Record<string, string> = {
 /** Files whose byte expressions concatenate several sources without a destructive join, each with
  *  the reason; a kind re-emitting its own bytes from its own children joins nothing. */
 const NON_JOIN_CONCATENATIONS: Record<string, string> = {
-	'src/lib/plugins/admonitions/github-alert-kind.ts':
-		"the alert's own rebuildRaw: its marker meets its own body",
 	'src/lib/plugins/mermaid/mermaid-kind.ts': "the mermaid leaf's own rebuildRaw, fence and code",
 	'src/lib/tree-operations/list/reconcile-task.ts':
 		"moves the task marker between the item's metadata and its own first line — one node's bytes, re-split",

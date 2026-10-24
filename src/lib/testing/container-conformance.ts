@@ -555,6 +555,7 @@ export function checkDeclarationSanity(
 	assertLastLineChildHoldsIt(kind, node);
 	assertOwnLastLineHoldsIt(kind, descriptor, profile.deepNesting.source);
 	assertRebuildKeepsParsedBytes(descriptor, node, kind);
+	assertUntouchedLinesKept(kind, descriptor, profile.deepNesting.source);
 	assertHintedRebuildMatchesFull(kind, descriptor, node);
 	assertBodyWrapMatchesParse(kind, descriptor);
 	assertContentStartSpaceIsRebuilt(kind, descriptor);
@@ -591,6 +592,38 @@ function assertOwnLastLineHoldsIt(
 		released,
 		`${kind} answers that its own bytes hold its last line, but a rebuild after that line ` +
 			`gives its ending up writes the ending back`
+	);
+}
+
+/** An edit to one child rewrites that child's lines alone: every other line of the container keeps
+ *  its bytes, however `deepNesting.source` spells them. */
+function assertUntouchedLinesKept(
+	kind: AnyBlockKind,
+	descriptor: BlockKindDescriptor,
+	source: string
+): void {
+	const node = subjectNode(parse(source), kind, 'first', 'deepNesting');
+	const children = node.children;
+	if (!children?.length) return;
+	const before = splitLines(node.raw).map((line) => line.raw);
+	const index = children.length - 1;
+	const previousRaw = children[index].raw;
+	children[index].raw = previousRaw.repeat(2);
+	descriptor.rebuildRaw!(node, { index, previousRaw });
+	const after = splitLines(node.raw).map((line) => line.raw);
+	let head = 0;
+	while (head < before.length && before[head] === after[head]) head++;
+	let tail = 0;
+	while (
+		tail < before.length - head &&
+		before[before.length - 1 - tail] === after[after.length - 1 - tail]
+	)
+		tail++;
+	const own = splitLines(children[index].leadingTrivia + previousRaw).length;
+	assert(
+		head + tail >= before.length - own,
+		`${kind} rebuildRaw rewrote lines outside the child it was told changed: line ${head + 1} ` +
+			`"${before[head]}" became "${after[head]}"`
 	);
 }
 

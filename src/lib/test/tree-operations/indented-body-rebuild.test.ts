@@ -72,11 +72,11 @@ describe('typing into a body that ends in an empty paragraph after a bare separa
 	});
 });
 
-// A list item rebuild keeps the indented separator's bytes; the footnote still writes it bare.
+// A list item's or a footnote's rebuild keeps the indented separator's bytes.
 describe('typing into a body whose separator line was indented', () => {
 	it.each([
 		['a list item', '- a\n  \n  \n- c\n', [0, 0, 0], '- ax\n  \n  \n- c\n'],
-		['a footnote', '[^1]: a\n    \n    \nnext\n', [0, 0], '[^1]: ax\n\n    \nnext\n'],
+		['a footnote', '[^1]: a\n    \n    \nnext\n', [0, 0], '[^1]: ax\n    \n    \nnext\n'],
 		[
 			'a nested item',
 			'- a\n  - b\n    \n    \n- c\n',

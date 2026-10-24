@@ -519,6 +519,8 @@ The optional `changed` argument (`ChildRawChange`, shaped `{ index, previousRaw 
 - Keep those offsets in `node.childSpans` (a start and an end offset per child). It's the one cache the editor clears for you when its own edits move a sibling's bytes, and a span that no longer matches falls back to the full rebuild. Offsets you cache anywhere else are yours to invalidate.
 - The conformance kit compares the two paths for your kind, so a fast path that drifts from the full rebuild fails your tests.
 
+One rule holds either way: an edit to one child rewrites that child's lines and nobody else's. If your author wrote `>b` with no space, it stays `>b` when they type somewhere else in the container (people have strong feelings about their spacing, and they're allowed to). The kit holds you to it with your profile's `deepNesting` source, so spell that one the way your rebuild wouldn't. For a container that puts a prefix on every line, `rebuildStripRaw` handles all of it, the changed-child shortcut included: hand it `quoteLines` for `>`, or `hangingIndentLines` for a marker and an indent, the way the bundled alert and footnote do ([the API table](plugin-api.md#container-authoring)).
+
 ## What a plugin may and may not do
 
 **An editor plugin isn't an app plugin.** If you're extending an app that embeds aragonite, that app almost certainly has a plugin layer of its own, and the two own different halves:

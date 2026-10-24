@@ -75,8 +75,8 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: 'the concat container shape re-emitting its own bytes from its children: its span-seeding rebuild and the one-region splice; and a marker gaining its space in its own line'
 	},
 	'src/lib/schema/strip-rebuild.ts': {
-		count: 2,
-		why: 'the strip container shape re-emitting its own bytes from its children: its span-seeding rebuild and the whole-body fallback'
+		count: 4,
+		why: 'the strip container shape re-emitting its own bytes from its children: its span-seeding rebuild, the whole-body fallback, and the opener line set aside and put back around them'
 	},
 	'src/lib/core/directive/kinds.ts': { count: 1, why: "the directive container's own rebuildRaw" },
 	'src/lib/editor-actions/plugin/directive-container.ts': {
@@ -84,16 +84,12 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: 'the titled-directive rebuildRaw factory'
 	},
 	'src/lib/plugins/admonitions/github-alert-kind.ts': {
-		count: 2,
-		why: "the alert's own rebuildRaw, empty-body and filled branches"
+		count: 1,
+		why: "the alert's own rebuildRaw for an empty body; a filled one rebuilds through `rebuildStripRaw`"
 	},
 	'src/lib/plugins/details/details-kind.ts': {
 		count: 1,
 		why: "the details container's rebuildRaw"
-	},
-	'src/lib/plugins/footnotes/footnote-definition.ts': {
-		count: 1,
-		why: "the definition's own rebuildRaw"
 	},
 	'src/lib/plugins/mermaid/mermaid-kind.ts': {
 		count: 1,
@@ -136,7 +132,7 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: "adds or drops the ending of a block's last line in each node down to the one that owns it: the descent stops above a grid cell or an opaque body, whose bytes sit inside a line their container emits, and an opaque container re-reads its metadata after the write; an ending terminates a line rather than restructuring one"
 	},
 	'src/lib/testing/container-conformance.ts': {
-		count: 6,
+		count: 7,
 		why: "the published kit's own fixture bytes, written into a throwaway parse"
 	},
 	'src/lib/testing/kind-conformance.ts': {
