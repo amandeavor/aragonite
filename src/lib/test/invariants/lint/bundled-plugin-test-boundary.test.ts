@@ -248,8 +248,7 @@ const ALLOWLIST: Record<string, Exemption> = {
 		specifiers: [
 			'#lib/tree-operations/node-primitives.js',
 			'#lib/selection/range-delete.js',
-			'#lib/selection/range-coverage.js',
-			'#lib/tree-operations/sharing.js'
+			'#lib/selection/range-coverage.js'
 		],
 		reason: 'nothing published applies a kind’s rawWrite or range-deletes a parsed document'
 	},

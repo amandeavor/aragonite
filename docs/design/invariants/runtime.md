@@ -494,8 +494,8 @@ event); dev warns `invariant:metadata-without-rebuild` naming the kind, and ever
 mutation writes with `writeNodeContent`, reports through its scope's `describeEdit`, and leaves the
 fix-up to the commit; one using `updateNodeContent` and reporting there gets it twice, and dev warns
 `invariant:settle-once`. Unseen: two edits calling a separator helper by hand (codebase-map § Blank
-lines and separators). The multi-block format toggle fixes up its own writes and says
-`fixesUpOwnWrites` (G4.208). `settle-once.test.ts`, `settle-passes.test.ts`.
+lines and separators). A scope's `writeLeaf` fixes up its slot as it lands and the commit the rest,
+so the check skips its lists. `settle-once.test.ts`, `settle-passes.test.ts`.
 
 **G1.113 · The marker is the item's bytes.** A list item draws its marker in a cell of its own,
 built from its metadata, and source mode shows that cell as the item's first bytes, so its text must

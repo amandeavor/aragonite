@@ -90,14 +90,6 @@ const KIND_REPORTING_CALLERS: Record<string, string> = {
 	'src/lib/editor-actions/reorder-action.ts': 'both moves report `moved`'
 };
 
-/** The commits whose mutation fixes up its own writes, so the settle-once check skips them. */
-const OWN_FIX_UP_COMMITS: Record<string, string> = {
-	'src/lib/action-contracts.ts': 'declares the field',
-	'src/lib/editor-actions/commit/structural-commit.ts': 'reads it',
-	'src/lib/selection/cross-block/format-toggle.ts':
-		'a format toggle writes several leaves at any depth and rebuilds their chains inside its mutation, so it settles each write there'
-};
-
 const writesTrivia = /\.leadingTrivia\s*\+?=(?!=)/;
 
 const namesHandSettle =
@@ -168,15 +160,6 @@ describeManifests(
 				"import { normalizeBlankRuns } from '../tree-operations/blank-runs';"
 			],
 			misses: ['// resolveJoin reads the flush pair', 'const resolveJoinLater = 1;']
-		},
-		{
-			id: 'G4.208 a commit skips the settle-once check only where its mutation fixes up its own writes',
-			matches: /(?<![\w'"])fixesUpOwnWrites\b/,
-			declared: OWN_FIX_UP_COMMITS,
-			reason:
-				'a commit claims its mutation fixes up its own writes, which lets the commit settle those bodies twice: report the writes instead, or declare why it can’t',
-			hits: ['landing: () => restored,\n\tfixesUpOwnWrites: true'],
-			misses: ['// fixesUpOwnWrites is the format toggle’s']
 		}
 	],
 	collectEditorSources()

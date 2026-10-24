@@ -278,9 +278,10 @@ Almost nothing calls them by hand. An edit splices and writes, and the fix-up af
   the body gets fixed up twice (G1.112 catches that in dev).
 - **`updateNodeContent`** in `src/lib/tree-operations/content-write.ts`, the content write plus
   the write's own part of the fix-up, for a write no commit settles: the keystroke written in
-  place, its trial reparse, a write into a body below the commit's scope.
-- **`spliceChildrenSettled`**, which the path-addressed helpers in
-  `src/lib/tree-operations/path-mutate.ts` and `src/lib/tree-operations/cleanup.ts` splice through.
+  place, its trial reparse, and a commit scope's `writeLeaf` into a list below the scope.
+- **`spliceChildrenSettled`**, which a commit scope's `splice` runs for a list below the scope
+  (`src/lib/editor-actions/commit/scope-writes.ts`). The range delete's cleanup of the containers
+  it emptied (`src/lib/tree-operations/cleanup.ts`) goes through it too.
 
 The one caller that still runs a step by hand, with the reason at the call site:
 

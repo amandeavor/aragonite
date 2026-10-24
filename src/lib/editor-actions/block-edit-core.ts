@@ -25,7 +25,6 @@ import {
 	mergeIntoPrevDeepLeaf,
 	deleteNode as performDelete,
 	normalizeReplacementTrivia,
-	rebuildUnsharedChain,
 	restoreSeparatorOnFill,
 	emptyParagraph,
 	paragraphNode,
@@ -57,7 +56,6 @@ import type {
 import {
 	legalizeWrite,
 	settledCaretPosition,
-	writeNodeContent,
 	type LegalWrite,
 	type SettledContent
 } from '../tree-operations/content-write';
@@ -181,27 +179,15 @@ export async function commitLeafText(
 			replaced: change.op !== 'noop'
 		};
 	};
-	// A same-kind write reports `noop`, so the stale-raw check needs the leaf named.
-	const touchedNodes: CstNode[] = [];
 	const wrote = await scope.commit({
 		snapshot: { index, offset: opts.snapshotOffset },
 		eventTarget: index,
 		op: { kind: 'updateContent', detail: { length: write.text.length } },
-		touchedNodes,
 		mutate: (view) => {
-			view.unshareChild(index);
-			const { change, written } = writeNodeContent(
-				view.body,
-				index,
-				write,
-				view.reading.grammar,
-				view.sharing
-			);
-			const settled = view.describeEdit({ written });
-			readSettled = () => settled()?.written ?? null;
-			touchedNodes.push(view.body.children[index]);
-			stampStructuralChange(view.body.children, change, view.sharing);
-			return change;
+			const settled = view.writeLeaf([index], write);
+			readSettled = () => settled;
+			stampStructuralChange(view.body.children, settled.change, view.sharing);
+			return settled.change;
 		},
 		landing: () => {
 			landed ??= readLanded();
@@ -477,27 +463,15 @@ export function createBlockEditCore(scope: CommitScope): BlockEditCore {
 				refuseLeafMetadata(scope, i, children[i].kind);
 				return false;
 			}
-			// `mutate` returns noop, so the stale-raw check needs the changed node named; the copy
-			// exists only after unshareChild, so the commit reads this array after mutate.
-			const touchedNodes: CstNode[] = [];
 			return scope.commit({
 				snapshot: { index: i, offset: 0 },
 				eventTarget: i,
 				op: { kind: 'metadataUpdate', detail: { fields } },
-				touchedNodes,
 				mutate: (view) => {
-					const node = view.unshareChild(i);
+					// Owned, so the commit rebuilds it and re-derives its kind: metadata can rewrite the
+					// opener line (an alert's type).
+					const [node] = view.own([i]);
 					node.metadata = { ...(node.metadata ?? {}), ...metadata } as typeof node.metadata;
-					// The chain rebuild re-derives the kind, since metadata can rewrite the opener
-					// line (an alert's type). No collapses: this mutate reports `noop` for the list.
-					const [reclassified] = rebuildUnsharedChain(
-						{ children: view.body.children },
-						[node],
-						view.sharing,
-						null,
-						view.reading.grammar
-					);
-					touchedNodes.push(reclassified?.replacement ?? node);
 					return { op: 'noop' };
 				},
 				landing: () => {

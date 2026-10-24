@@ -10,7 +10,7 @@ import type { StructuralChange } from './tree-operations/structural-change';
 import type { TrackedPosition } from './tree-operations/neighbour-merge';
 import type { SharingState } from './tree-operations/sharing';
 import type { BodyParent } from './tree-operations/node-primitives';
-import type { EditKind, SettledEdit } from './tree-operations/settle';
+import type { EditKind, SettledContent, SettledEdit } from './tree-operations/settle';
 import type { BlockComponent, FocusPosition } from './block-component';
 import type { OperationDetailMap, OperationKind, ScopedOpDescriptor } from './schema/operations';
 import type { WriteMode } from './schema/block-kind-descriptor';
@@ -192,7 +192,18 @@ export interface ContainerScope {
 	/** Tells the commit's fix-up what the mutation did beyond its splice (a content write, a move, a
 	 *  removal); the reader returns the fix-up's result for this list once the commit has run. */
 	describeEdit(edit: EditKind): () => SettledEdit | null;
+	/** Copies the path `rel` below `node` and returns its nodes, `node`'s child first; the commit
+	 *  rebuilds every container on it once the mutation returns. */
+	own(rel: readonly number[]): CstNode[];
+	/** Writes the leaf at `rel` below `node` and fixes up the list holding it; owns its path. */
+	writeLeaf(rel: readonly number[], write: string | LegalWrite): SettledContent;
+	/** Splices the list at `rel` below `node` and fixes up its blank lines, copying the path but
+	 *  rebuilding nothing; a caller that needs the containers above rebuilt owns them. */
+	splice(rel: readonly number[], at: number, count: number, add: CstNode[]): void;
 }
+
+/** What an op handed a commit scope needs to write below it. */
+export type ScopeWrites = Pick<ContainerScope, 'sharing' | 'own' | 'splice' | 'writeLeaf'>;
 
 // ── Multi-scope commit ──────────────────────────────────────────────────────
 // Single-sourced here so the commit/undo and paste layers share one definition.
@@ -233,9 +244,6 @@ export interface CommitMultiScopeArgs<
 	/** Caret positions each list's fix-up updates in place, parallel to `scopes`, since a collapsing
 	 *  container moves the bytes under them; the landing reads them back off the same objects. */
 	trackCaret?: readonly (TrackedPosition | undefined)[];
-	/** The mutation fixes up each leaf it writes itself, at any depth, before the commit's own pass
-	 *  runs over the same lists: a format toggle's several writes. The settle-once check skips it. */
-	fixesUpOwnWrites?: true;
 }
 
 export interface CommitStructuralArgs {
@@ -245,8 +253,6 @@ export interface CommitStructuralArgs {
 	landing?: CommitLanding;
 	reveal?: RevealPolicy;
 	announce?: CommitAnnouncement;
-	/** Leaves for the dev invariant check when `mutate` returns `noop` (an in-place kind change). */
-	touchedNodes?: CstNode[];
 	discardIfNoop?: DiscardIfNoop;
 	history?: UndoGrouping;
 	/** A caret position the document's fix-up updates in place; the landing reads it back. */

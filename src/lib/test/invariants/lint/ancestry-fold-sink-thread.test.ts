@@ -43,40 +43,10 @@ const SITES: Record<string, SiteStance> = {
 		sinks: 1,
 		why: 'the ancestry wrapper threads its own parameter through, so its caller states a stance rather than inheriting one'
 	},
-	'src/lib/editor-actions/block-edit-core.ts': {
+	'src/lib/editor-actions/commit/scope-writes.ts': {
 		declines: 1,
 		sinks: 0,
-		why: 'a decision, not a constraint: the rebuild root is itself the scope whose descriptor the commit sequence publishes, so a fold there would ride that descriptor. Declining because a metadata write that changes what a container interrupts has no producer'
-	},
-	'src/lib/selection/cross-block/format-range.ts': {
-		declines: 1,
-		sinks: 0,
-		why: 'a byte write inside the content range: no opener or closer line moves, so no fold a parent scope would have to reconcile can be produced'
-	},
-	'src/lib/selection/range-delete.ts': {
-		declines: 2,
-		sinks: 0,
-		why: 'the cross-block delete family: byte-correctness passes inside a commit sequence that owns the registers elsewhere and splices the containers it empties itself. Their chains can run deeper than that commit’s scope, which is a recorded residual rather than a reconciliation'
-	},
-	'src/lib/selection/range-delete-ceremony.ts': {
-		declines: 2,
-		sinks: 0,
-		why: 'same family: the removed subtrees’ parent chains and the chrome-clear rebuild passes'
-	},
-	'src/lib/selection/range-delete-chrome.ts': {
-		declines: 2,
-		sinks: 0,
-		why: 'same family: both kept edges of a range that merges nothing'
-	},
-	'src/lib/selection/range-delete-table.ts': {
-		declines: 2,
-		sinks: 0,
-		why: 'same family: the cleared table, and each kept edge of a table range'
-	},
-	'src/lib/tree-operations/paste/container-match.ts': {
-		declines: 2,
-		sinks: 0,
-		why: 'the merged leaf sits below the commit scope, and the deeper levels are listItem/list joins the absorb’s same-kind window test cannot satisfy'
+		why: 'the paths a mutation owned below its scope, rebuilt before the fix-up: a fold there would splice a list whose ids the commit publishes from the change the mutation already reported, and no write that owns a path moves an opener or closer a neighbour joins across'
 	},
 	'src/lib/editor-actions/search-replace.ts': {
 		declines: 1,

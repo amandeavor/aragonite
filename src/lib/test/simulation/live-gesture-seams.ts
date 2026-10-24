@@ -55,10 +55,10 @@ import {
 } from '#lib/test/harness/editor-actions.js';
 import { proseLeaves, type ProseLeaf } from './live-screen-reading';
 import { fixtureReading, renderOptions } from '../harness/fixture-grammar';
-import { documentBody } from '#lib/tree-operations/node-primitives.js';
 import { createInsertionRecords } from '#lib/caret/next-insertion.js';
 import { testCaretWriter } from '#lib/test/harness/caret-writer.js';
 import { deleteRange } from '../harness/range-delete';
+import { writtenBelow } from '#lib/test/harness/settle-funnel.js';
 
 export type GestureKind =
 	| 'type'
@@ -651,7 +651,13 @@ function acrossLeaves(
 	);
 	// A toggle the planner turns down writes nothing, which is that code's own answer rather than
 	// a gesture the fuzzer failed to apply.
-	if (plan) applyCrossBlockFormat(documentBody(h.doc), plan, h.sharing, defaultGrammarView);
+	if (plan)
+		writtenBelow(
+			h.doc,
+			(scope) => applyCrossBlockFormat(scope, plan),
+			defaultGrammarView,
+			h.sharing
+		);
 	return true;
 }
 

@@ -8,9 +8,16 @@
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import {
 	asBody,
+	documentBody,
 	type BodyParent,
 	type BodyParentArg
 } from '#lib/tree-operations/node-primitives.js';
+import { documentLineEnding } from '#lib/core/lines.js';
+import {
+	createScopeWriter,
+	rebuildOwnedChains,
+	type ScopeWriter
+} from '#lib/editor-actions/commit/scope-writes.js';
 import {
 	deleteNode,
 	settleEdit,
@@ -138,4 +145,18 @@ export function reorderSettled(
 		sharing
 	);
 	return { change: settled.change, landing: settled.moved ?? landing };
+}
+
+/** Runs `write` against the document's commit-scope writes, then the commit's rebuild of every
+ *  path it owned, for suites driving an op that writes below a scope. */
+export function writtenBelow<T>(
+	doc: Document,
+	write: (scope: ScopeWriter & { sharing: SharingState }) => T,
+	grammar: GrammarView = defaultGrammarView,
+	sharing: SharingState = createSharingState()
+): T {
+	const writer = createScopeWriter(documentBody(doc), sharing, grammar, documentLineEnding(doc));
+	const result = write({ ...writer, sharing });
+	rebuildOwnedChains([writer], sharing, grammar);
+	return result;
 }

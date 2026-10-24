@@ -1161,12 +1161,11 @@ an `@supports` block after a plain fallback, as the selection tints in `editor-t
 `lint/safari-floor-css.test.ts` reads every shipped stylesheet and component `<style>` block and
 names the `path:line` of any use outside one.
 
-**G4.208 · Who runs the fix-up.** Three rows hold the names to their callers: `settleEdit` and
-`settleContentWrite` to `settle.ts`, the commit and `updateNodeContent`; the ops whose fix-up runs a
-step of its own (`writeNodeContent`, `deleteNode`, the join and the move) to the mutations that
-report that kind through `describeEdit`, since the commit skips a step nobody reported; and
-`fixesUpOwnWrites` to the format toggle, the one commit G1.112 skips. A new caller of any of them
-is a fix-up doubled or dropped in the making. `lint/separator-write-doors.test.ts`.
+**G4.208 · Who runs the fix-up.** Two rows hold the names to their callers: `settleEdit` and
+`settleContentWrite` to `settle.ts`, the commit and `updateNodeContent`; and the ops whose fix-up
+runs a step of its own (`writeNodeContent`, `deleteNode`, the join and the move) to the mutations
+that report that kind through `describeEdit`, since the commit skips a step nobody reported. A new
+caller is a fix-up doubled or dropped in the making. `lint/separator-write-doors.test.ts`.
 
 **G4.209 · The list item's marker stays in its cell.** A prefix handed to a child block paints only
 on text, so an item that opened with a code block, a table or another list once drew no marker and

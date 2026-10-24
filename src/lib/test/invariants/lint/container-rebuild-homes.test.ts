@@ -47,37 +47,21 @@ const PINNED: Record<string, Pin> = {
 		calls: { '.rebuild': 2 },
 		why: 'a Tab’s new sublist and a lifted item that took the blocks after it sit below the commit’s chain, which never rebuilds them, and the blank-line rule reads their bytes before the commit returns'
 	},
+	'src/lib/editor-actions/commit/scope-writes.ts': {
+		calls: { rebuildUnsharedChain: 1 },
+		why: 'the commit’s one rebuild of the paths a mutation owned below its scope'
+	},
 	'src/lib/editor-actions/commit/leaf-commit.ts': {
 		calls: { rebuildUnsharedChain: 1 },
 		why: 'a keystroke written in place, whose frame runs no structural commit'
-	},
-	'src/lib/editor-actions/block-edit-core.ts': {
-		calls: { rebuildUnsharedChain: 1 },
-		why: 'a metadata update rewrites a child below the scope, which the commit’s chain never reaches'
 	},
 	'src/lib/editor-actions/search-replace.ts': {
 		calls: { rebuildUnsharedChain: 1, rebuildContainerRaw: 1 },
 		why: 'rebuilds a scratch clone to read the replacement back before any commit'
 	},
-	'src/lib/selection/cross-block/format-range.ts': {
-		calls: { rebuildUnsharedChain: 1 },
-		why: 'the document scope has no chain, so each written leaf’s ancestors are rebuilt here'
-	},
-	'src/lib/selection/range-delete.ts': {
-		calls: { rebuildUnsharedAncestry: 2 },
-		why: 'the range delete rebuilds the joined start’s chain: the only rebuild under the top-level delete, a repeat of the commit’s scopes under the cross-container one, which keeps bytes and so writes the same (T18 slice 5 retires it)'
-	},
-	'src/lib/selection/range-delete-ceremony.ts': {
-		calls: { rebuildUnsharedChain: 2 },
-		why: 'the same range delete, for what is left of each removed subtree’s parents and a cleared title line’s container (T18 slice 5 retires it)'
-	},
-	'src/lib/selection/range-delete-chrome.ts': {
-		calls: { rebuildUnsharedChain: 2 },
-		why: 'the same range delete, for the endpoints it truncates without joining them (T18 slice 5 retires it)'
-	},
 	'src/lib/selection/range-delete-table.ts': {
-		calls: { rebuildUnsharedChain: 2, rebuildTableRowRaw: 1 },
-		why: 'the same range delete, for the rows a pair inside one table clears (which keep their bytes) and each kept edge’s chain (T18 slice 5)'
+		calls: { rebuildTableRowRaw: 1 },
+		why: 'the rows a pair inside one table clears, below the table the delete owns and the commit rebuilds'
 	},
 	'src/lib/selection/selection-drop.ts': {
 		calls: { rebuildAncestryRaw: 1 },
@@ -136,8 +120,8 @@ const PINNED: Record<string, Pin> = {
 		why: 'a join rewrites the ancestors of the joined leaf below its parent'
 	},
 	'src/lib/tree-operations/paste/container-match.ts': {
-		calls: { rebuildUnsharedChain: 2, rebuildContainerRaw: 1 },
-		why: 'the merged leaf’s whole chain, which the paste’s commit rebuilds again from the scope up, writing the same bytes now that rebuilds keep them, and the last pasted item (T18 slice 6 retires it)'
+		calls: { rebuildContainerRaw: 1 },
+		why: 'the last pasted item, a node no commit has seen until the splice after it'
 	},
 	'src/lib/tree-operations/paste/table-slice.ts': {
 		calls: { rebuildTableRaw: 2 },
