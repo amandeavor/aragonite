@@ -33,7 +33,7 @@ export function publishAncestryFolds(
 ): () => void {
 	const restores: (() => void)[] = [];
 	for (const fold of folds) {
-		restores.push(fold.owner ? publishContainerFold(deps, fold) : publishDocFold(deps, fold));
+		restores.push(publishFold(deps, fold));
 	}
 	return () => {
 		for (let i = restores.length - 1; i >= 0; i--) restores[i]();
@@ -54,18 +54,31 @@ export function foldLandingFor(
 	};
 }
 
-/**
- * A splice made outside a commit, written to state the way a commit writes the change its
- * mutate returns. `owner` is the container whose children moved, or undefined for the document.
- */
-export function publishScopeFold(
+/** A splice made outside a structural commit, written to ids and refs as a commit writes its
+ *  change; returns their undo. `owner` is the container whose children moved, or none. */
+export function publishScopeChange(
 	deps: EditorActionsDeps,
 	owner: CstNode | undefined,
 	change: StructuralChange
-): void {
-	if (change.op === 'noop') return;
-	if (owner) publishContainerScope(owner, change);
-	else publishDocScope(deps, change);
+): () => void {
+	if (change.op === 'noop') return () => {};
+	if (!owner) {
+		const savedIds = [...deps.blockIds];
+		const savedRefs = [...deps.blockRefs];
+		publishDocScope(deps, change);
+		return () => {
+			deps.setBlockIds(savedIds);
+			deps.setBlockRefs(savedRefs);
+		};
+	}
+	const state = getStateForNode(owner);
+	const savedIds = owner.childIds;
+	const savedRefs: (BlockComponent | undefined)[] = state ? [...state.innerBlockRefs] : [];
+	publishContainerScope(owner, change);
+	return () => {
+		owner.childIds = savedIds;
+		if (state) replaceRefs(state.innerBlockRefs, savedRefs);
+	};
 }
 
 function publishDocScope(deps: EditorActionsDeps, change: StructuralChange): void {
@@ -95,26 +108,10 @@ function publishContainerScope(owner: CstNode, change: StructuralChange): void {
 	if (state) replaceRefs(state.innerBlockRefs, refs);
 }
 
-function publishDocFold(deps: EditorActionsDeps, fold: AncestrySeamFold): () => void {
-	const savedIds = [...deps.blockIds];
-	const savedRefs = [...deps.blockRefs];
-	publishScopeFold(deps, undefined, fold.change);
+function publishFold(deps: EditorActionsDeps, fold: AncestrySeamFold): () => void {
+	const unpublish = publishScopeChange(deps, fold.owner ?? undefined, fold.change);
 	return () => {
-		deps.setBlockIds(savedIds);
-		deps.setBlockRefs(savedRefs);
-		restoreChildren(fold);
-	};
-}
-
-function publishContainerFold(deps: EditorActionsDeps, fold: AncestrySeamFold): () => void {
-	const owner = fold.owner!;
-	const state = getStateForNode(owner);
-	const savedIds = owner.childIds;
-	const savedRefs: (BlockComponent | undefined)[] = state ? [...state.innerBlockRefs] : [];
-	publishScopeFold(deps, owner, fold.change);
-	return () => {
-		owner.childIds = savedIds;
-		if (state) replaceRefs(state.innerBlockRefs, savedRefs);
+		unpublish();
 		restoreChildren(fold);
 	};
 }

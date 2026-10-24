@@ -48,7 +48,7 @@ import {
 import type { BlockListState } from '../../block-lists/block-list-state.svelte';
 import { assertIdsInLockstep, assertTopLevelUntouched } from '../../invariants/install';
 import { checkSettledOnce, startCommitSettles } from '../../invariants/settle-once';
-import { dropChildSpans } from '../../schema/child-spans';
+import { saveBytes } from './saved-bytes';
 import { perfEnabled } from '../../perf/instruments';
 import type { WrittenNodes } from './commit-frame';
 
@@ -165,31 +165,12 @@ export function createStructuralCommit(
 		/** publishScopeView writes the mutated ids and refs before the ancestor rebuild can throw. */
 		savedStateIds: string[];
 		savedStateRefs: (BlockComponent | undefined)[];
-		/** The bytes before mutate; without them `serialize()` emits a half-applied document. None at
-		 *  the document, whose rollback is its saved array, so a commit there costs no per-block copy. */
-		savedRaws: SavedRaw[];
+		/** Puts back the bytes before mutate; without it `serialize()` emits a half-applied document.
+		 *  Nothing at the document, whose rollback is its saved array, so it costs no per-block copy. */
+		restoreBytes: () => void;
 		/** What the mutation said it did beyond its splice, and the fix-up's result once it ran. */
 		edit: EditKind;
 		settled: SettledEdit | null;
-	}
-
-	interface SavedRaw {
-		node: CstNode;
-		raw: string;
-		metadata: CstNode['metadata'];
-		markerWidths: CstNode['markerWidths'];
-	}
-
-	/** The bytes at risk, with the metadata and marker counts a rebuild re-reads from them: the
-	 *  copied ancestors plus direct children, matching `savedChildren`. */
-	function captureScopeRaws(chain: CstNode[], owned: CstNode): SavedRaw[] {
-		const save = (node: CstNode): SavedRaw => ({
-			node,
-			raw: node.raw,
-			metadata: node.metadata,
-			markerWidths: node.markerWidths
-		});
-		return [...chain.map(save), ...(owned.children ?? []).map(save)];
 	}
 
 	/**
@@ -256,7 +237,8 @@ export function createStructuralCommit(
 		const savedStateRefs = [...s.state.innerBlockRefs];
 		const savedChildren = isDoc ? topLevelBefore : owned.children;
 		const savedChildIds = owned.childIds;
-		const savedRaws = isDoc ? [] : captureScopeRaws(chain, owned);
+		// The copied ancestors plus direct children, matching `savedChildren`.
+		const restoreBytes = isDoc ? () => {} : saveBytes([...chain, ...(owned.children ?? [])]);
 		if (!isDoc) owned.children = [...(owned.children ?? [])];
 		// Off the tree's `$state` proxy, where every index a splice shifts is a tracked write.
 		const children = isDoc ? [...topLevelBefore] : owned.children!;
@@ -295,7 +277,7 @@ export function createStructuralCommit(
 			savedChildIds,
 			savedStateIds,
 			savedStateRefs,
-			savedRaws,
+			restoreBytes,
 			edit: {},
 			settled: null
 		};
@@ -504,12 +486,7 @@ export function createStructuralCommit(
 					p.owned.childIds = p.savedChildIds;
 					// The chain rebuild rewrote these bytes and what it read from them, and all of it has to
 					// match the children restored above.
-					for (const { node, raw, metadata, markerWidths } of p.savedRaws) {
-						node.raw = raw;
-						node.metadata = metadata;
-						if (node.markerWidths !== markerWidths) node.markerWidths = markerWidths;
-						dropChildSpans(node);
-					}
+					p.restoreBytes();
 					// Without this, the ids and refs written before the throw keep reflecting it.
 					if (p.isDoc) p.target.state.innerBlockIds = p.savedStateIds;
 					replaceRefs(p.target.state.innerBlockRefs, p.savedStateRefs);

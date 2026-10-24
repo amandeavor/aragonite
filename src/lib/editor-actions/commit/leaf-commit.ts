@@ -25,18 +25,14 @@ import { rawOffsetOfLeaf } from '../../tree-operations/container-offsets';
 import { keepOpenTail } from '../../tree-operations/open-tail';
 import { keepOneBlock } from '../../tree-operations/keep-one-block';
 import { spliceMany } from '../../tree-operations/splice-many';
-import { dropChildSpans } from '../../schema/child-spans';
 import {
 	attachedChainPrefix,
 	rebuildUnsharedChain,
 	type AncestrySeamFold,
 	type ContainerReclassification
 } from '../../tree-operations/chain-rebuild';
-import type { StructuralChange } from '../../tree-operations/structural-change';
-import { getStateForNode } from '../../block-lists/state-registry';
-import { replaceRefs } from '../../block-lists/child-refs';
-import type { BlockComponent } from '../../block-component';
-import { foldLandingFor, publishAncestryFolds, publishScopeFold } from '../ancestry-folds';
+import { foldLandingFor, publishAncestryFolds, publishScopeChange } from '../ancestry-folds';
+import { saveBytes } from './saved-bytes';
 import type { EditorActionsDeps } from '../deps';
 import type { FrameOutcome, FrameWrite } from './commit-frame';
 
@@ -107,7 +103,7 @@ export function createLeafCommit(
 					// ancestor, so a later throw leaves the settled write standing.
 					if (settled.change.op !== 'noop') restoreChain = null;
 				}
-				restoreIds = publishLeafScope(deps, owner, settled.change);
+				restoreIds = publishScopeChange(deps, owner, settled.change);
 				// The top level has no ancestors to rebuild, which keeps the keystroke there cheap.
 				if (depth > 1) {
 					reclassified = rebuildUnsharedChain(
@@ -152,8 +148,8 @@ export function createLeafCommit(
 // ── Rollback ─────────────────────────────────────────────────────────────────
 
 /**
- * What a rolled-back keystroke puts back: the bytes along the chain and what a rebuild reads from
- * them (O(depth)), each chain node in its slot, and inside a container its parent's children.
+ * What a rolled-back keystroke puts back: the chain's bytes (O(depth)), each chain node in its
+ * slot, and inside a container its parent's children.
  */
 function saveChain(
 	deps: EditorActionsDeps,
@@ -161,27 +157,19 @@ function saveChain(
 	chain: CstNode[],
 	owner: CstNode | undefined
 ): () => void {
-	const saved = chain.map((node) => ({
-		node,
-		raw: node.raw,
-		metadata: node.metadata,
-		markerWidths: node.markerWidths,
-		children: node.children
-	}));
+	const restoreBytes = saveBytes(chain);
 	const siblings = owner ? owner.children!.slice() : null;
+	// A write that reads the leaf as another kind in place swaps its children for the new reading's.
+	const leaf = chain[chain.length - 1];
+	const leafChildren = leaf.children;
 	return () => {
+		if (leaf.children !== leafChildren) leaf.children = leafChildren;
 		if (owner && siblings) spliceMany(owner.children!, 0, owner.children!.length, siblings);
 		for (let i = 0; i < chain.length; i++) {
 			const parent = i === 0 ? deps.doc.children : chain[i - 1].children!;
 			if (parent[leafPath[i]] !== chain[i]) parent[leafPath[i]] = chain[i];
 		}
-		for (const { node, raw, metadata, markerWidths, children } of saved) {
-			node.raw = raw;
-			node.metadata = metadata;
-			if (node.markerWidths !== markerWidths) node.markerWidths = markerWidths;
-			if (node.children !== children) node.children = children;
-			dropChildSpans(node);
-		}
+		restoreBytes();
 	};
 }
 
@@ -190,32 +178,6 @@ function unwindUnpublished(folds: readonly AncestrySeamFold[]): void {
 		const fold = folds[i];
 		spliceMany(fold.siblings, 0, fold.siblings.length, fold.before);
 	}
-}
-
-/** The ids and refs a structural change wrote for the leaf's parent list, with their undo. */
-function publishLeafScope(
-	deps: EditorActionsDeps,
-	owner: CstNode | undefined,
-	change: StructuralChange
-): () => void {
-	if (change.op === 'noop') return () => {};
-	if (!owner) {
-		const ids = deps.blockIds;
-		const refs = deps.blockRefs;
-		publishScopeFold(deps, undefined, change);
-		return () => {
-			deps.setBlockIds(ids);
-			deps.setBlockRefs(refs);
-		};
-	}
-	const ids = owner.childIds;
-	const state = getStateForNode(owner);
-	const refs: (BlockComponent | undefined)[] = state ? [...state.innerBlockRefs] : [];
-	publishScopeFold(deps, owner, change);
-	return () => {
-		owner.childIds = ids;
-		if (state) replaceRefs(state.innerBlockRefs, refs);
-	};
 }
 
 // ── Where the caret goes after an in-place write ─────────────────────────────

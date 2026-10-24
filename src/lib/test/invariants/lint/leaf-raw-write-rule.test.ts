@@ -107,13 +107,9 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		count: 1,
 		why: 'find and replace installs the bytes `legalizeWrite` returned into a private copy, which it then reparses whole'
 	},
-	'src/lib/editor-actions/commit/structural-commit.ts': {
+	'src/lib/editor-actions/commit/saved-bytes.ts': {
 		count: 1,
-		why: 'the rollback restores raws the tree already held; nothing new is created'
-	},
-	'src/lib/editor-actions/commit/leaf-commit.ts': {
-		count: 1,
-		why: 'a rolled-back keystroke restores the raws its chain held; nothing new is created'
+		why: 'a rollback restores raws the tree already held; nothing new is created'
 	},
 	'src/lib/selection/range-delete-ceremony.ts': {
 		count: 4,
