@@ -10,9 +10,12 @@
 </script>
 
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { type PresentationMode } from '#lib';
 	import { Editor } from '#lib/svelte.js';
+	import { INITIAL_STATE } from '../../../examples/showcase/controls';
+	import { readTheme } from '../../../examples/showcase/theme';
 	import { CHANGELOG_FAMILIES } from './changelog-content';
 	import { trackParityDocument } from '../parity-documents.svelte';
 
@@ -20,6 +23,10 @@
 	// rendered or as styled source. Reading is the default, since this is a document to read.
 	const MODES: PresentationMode[] = ['reading', 'source'];
 	let presentationMode = $state<PresentationMode>('reading');
+
+	// The showcase's theme, so the two pages match; stored after hydration, as on the showcase.
+	let theme = $state(INITIAL_STATE.theme);
+	onMount(() => (theme = readTheme()));
 
 	// The changelog ships one file per release family; the picker is a `source` prop swap.
 	let familyId = $state(CHANGELOG_FAMILIES[0].id);
@@ -33,7 +40,7 @@
 	trackParityDocument(() => editor);
 </script>
 
-<div class="changelog aragonite-editor-theme">
+<div class="changelog aragonite-editor-theme" data-editor-theme={theme}>
 	<header class="changelog-header">
 		<span class="changelog-title">aragonite</span>
 		<span class="changelog-tag">changelog</span>
@@ -72,6 +79,7 @@
 			source={family.document}
 			plugins={changelogPlugins}
 			{presentationMode}
+			{theme}
 		/>
 	</div>
 </div>
@@ -82,9 +90,9 @@
 		height: 100vh;
 		display: flex;
 		flex-direction: column;
-		/* The wrapper holds the theme tokens, so the page around the editor matches it. */
-		background: var(--color-surface, #1b1c21);
-		color: var(--color-text-secondary, #d6d9e0);
+		/* The wrapper holds the theme tokens, so the page around the editor switches with it. */
+		background: var(--color-bg, #2c2c2a);
+		color: var(--color-text-secondary, #cfcfca);
 	}
 	.changelog-header {
 		flex: 0 0 auto;

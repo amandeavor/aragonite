@@ -10,8 +10,9 @@
 	import { Editor } from '#lib/svelte.js';
 	import SHOWCASE_DOCUMENT from '../../examples/showcase/showcase-content.md?raw';
 	import '../../examples/showcase/tag-marks.css';
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { INITIAL_STATE, showsSelectionMenu } from '../../examples/showcase/controls';
+	import { readTheme, toggleTheme } from '../../examples/showcase/theme';
 	import {
 		mountShowcaseBar,
 		type ShowcaseBar,
@@ -29,6 +30,8 @@
 	// Props that can change while the editor runs: the toggles set these in place, no remount.
 	let presentationMode = $state(INITIAL_STATE.presentationMode);
 	let theme = $state(INITIAL_STATE.theme);
+	// The stored theme lands after hydration, since the prerendered page is served in the default.
+	onMount(() => (theme = readTheme()));
 
 	// The showcase installs no test probes, so `trackParityDocument` is the only thing putting
 	// its container-heavy document under the teardown parity check.
@@ -49,7 +52,7 @@
 	]);
 
 	const TOGGLE: Partial<Record<ToggleKey, () => void>> = {
-		theme: () => (theme = theme === 'dark' ? 'light' : 'dark'),
+		theme: () => (theme = toggleTheme(theme)),
 		dragHandles: () => {
 			if (editor) source = editor.getSource();
 			dragHandles = !dragHandles;

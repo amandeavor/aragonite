@@ -37,6 +37,14 @@ project; this spec only pins that the route's toggle drives the prop.
   in reading mode and no block holding a caret
 - the header's showcase link navigates to `/` and lands on the showcase page itself rather than
   a 404, which is what the `resolve()` call buys under a configured base path
+- the route opens in the showcase's own default theme, light, on both the editor
+  (`data-editor-theme`) and the page around it (the wrapper's background reads light)
+- the theme a visitor picks on the showcase is the theme the changelog opens in: dark carries
+  across the showcase's changelog link, and so does light, reached through dark and back. Dark
+  also holds on a fresh load of `/changelog`, so the choice is stored, not just kept in memory
+  across a client-side navigation. Miss-analysis: the theme rows asserted the showcase alone, and
+  nothing ever loaded `/changelog` in light, so a route that passed no `theme` sat on the editor's
+  dark default whatever the visitor had picked
 
 ## Edge cases
 
