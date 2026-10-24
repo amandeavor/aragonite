@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 // Every block edit at every offset of every short string over the Markdown alphabet: a typed
 // character, a delete either side of the caret (a merge at the leaf's edge), and a split. Each
-// must leave the tree a reload of its bytes would build, fire no dev check, and undo to the
-// original bytes and redo to the edit.
+// must change the bytes, leave the tree a reload of them would build, fire no dev check, and undo
+// to the original bytes and redo to the edit.
 import { it } from 'vitest';
 import type { BlockEditActions } from '#lib/action-contracts.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
@@ -38,7 +38,8 @@ type Harness = ReturnType<typeof harnessOver>;
 
 interface Edit {
 	name: string;
-	/** Runs the edit; false where it doesn't apply at this offset, so nothing is checked. */
+	/** Runs the edit; false where it doesn't apply at this offset or wrote nothing, so nothing is
+	 *  checked. */
 	apply(
 		blockEdit: BlockEditActions,
 		index: number,
@@ -60,42 +61,41 @@ const EDITS: Edit[] = [
 		name: `type ${JSON.stringify(char)}`,
 		apply: async (blockEdit: BlockEditActions, index: number, node: CstNode, offset: number) => {
 			const raw = node.raw;
-			await write(
+			// A newline at the leaf's end is the line ending the leaf already has; Enter splits.
+			if (char === '\n' && offset === trimTrailingLineEnding(raw).length) return false;
+			return write(
 				blockEdit,
 				index,
 				raw.slice(0, offset) + char + raw.slice(offset),
 				offset,
 				offset + 1
 			);
-			return true;
 		}
 	})),
 	{
 		name: 'delete before',
 		apply: async (blockEdit, index, node, offset) => {
-			if (offset === 0) return index > 0 && blockEdit.mergeWithPrevious(index);
-			await write(
+			if (offset === 0) return blockEdit.mergeWithPrevious(index);
+			return write(
 				blockEdit,
 				index,
 				node.raw.slice(0, offset - 1) + node.raw.slice(offset),
 				offset,
 				offset - 1
 			);
-			return true;
 		}
 	},
 	{
 		name: 'delete after',
 		apply: async (blockEdit, index, node, offset) => {
 			if (offset === trimTrailingLineEnding(node.raw).length) return blockEdit.mergeWithNext(index);
-			await write(
+			return write(
 				blockEdit,
 				index,
 				node.raw.slice(0, offset) + node.raw.slice(offset + 1),
 				offset,
 				offset
 			);
-			return true;
 		}
 	},
 	{
@@ -113,10 +113,13 @@ function leafPaths(nodes: readonly CstNode[], prefix: number[] = []): number[][]
 	);
 }
 
-/** The block-edit bundle that writes the leaf at `path`: the document's, or its container's. */
+/** The block-edit bundle that writes the leaf at `path`: the document's, or its container's over
+ *  its parent's, so a merge at a container's edge reaches the blocks around the container. */
 function blockEditAt(h: Harness, path: number[]): BlockEditActions {
 	if (path.length === 1) return h.blockEdit;
-	return containerBundleOver(h.deps, h.controller, path.slice(0, -1)).bundle.blockEdit;
+	const container = path.slice(0, -1);
+	const parent = blockEditAt(h, container);
+	return containerBundleOver(h.deps, h.controller, container, undefined, parent).bundle.blockEdit;
 }
 
 function leafAt(nodes: readonly CstNode[], path: number[]): CstNode {
@@ -153,6 +156,7 @@ async function editFailure(source: string, path: number[], offset: number, edit:
 		const applied = await edit.apply(blockEditAt(h, path), path.at(-1)!, leaf, offset);
 		if (!applied) return null;
 		const edited = serialize(h.deps.doc);
+		if (edited === source) return 'landed, but the bytes are the input';
 		const diverged = edited === '' ? null : reloadDivergence(h.deps.doc, edited);
 		if (diverged) return `${JSON.stringify(edited)} differs from a reload: ${diverged}`;
 		const history = createHistoryActions(h.deps, h.controller);

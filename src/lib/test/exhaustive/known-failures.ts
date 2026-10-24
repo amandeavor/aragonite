@@ -50,6 +50,13 @@ export const KNOWN_DEFECTS: readonly KnownDefect[] = [
 	},
 	{
 		suite: 'edits',
+		defect:
+			"a merge out of a quote's first line above a whitespace-only last line fires the last-line check",
+		from: 3,
+		lines: re(String.raw`^${STR} \[[\d,]*,0\]@0 delete before: `, 'fired invariant:last-line-kept$')
+	},
+	{
+		suite: 'edits',
 		defect: "a split on an unclosed fence opener's line leaves more blocks than a reload reads",
 		from: 3,
 		lines: re(
@@ -87,6 +94,20 @@ export const KNOWN_DEFECTS: readonly KnownDefect[] = [
 			'a list marker typed onto a whitespace-only line above another fires the task-slot check',
 		from: 4,
 		lines: re(at('type "[*-]"'), '.*fired invariant:task-marker-slot')
+	},
+	{
+		suite: 'edits',
+		defect: "a delete off an empty quote's line above a blank line leaves the quote with no block",
+		from: 4,
+		lines: re(at('delete after'), '.*live has 0 children.*fired invariant:keeps-a-block')
+	},
+	{
+		suite: 'edits',
+		defect: 'a space typed at the start of a one-cell table row writes no bytes',
+		from: 4,
+		lines: re(
+			String.raw`^"[^"]*\|[^"]*" \[\d+,\d+,\d+\]@0 type " ": landed, but the bytes are the input$`
+		)
 	}
 ];
 

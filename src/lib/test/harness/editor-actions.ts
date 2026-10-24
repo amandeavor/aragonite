@@ -672,13 +672,14 @@ export function makeContainerHarness(
 	return { ...harness, controller, bundle, state, getNode, focus, edits };
 }
 
-/** The action bundle of the container at `containerPath` over deps a caller already holds, so
- *  one document takes writes at the top level and inside a container alike. */
+/** The bundle of the container at `containerPath` over deps a caller already holds. A merge off
+ *  its edge goes to `parentBlockEdit`, which writes nothing unless the caller passes the parent's. */
 export function containerBundleOver(
 	deps: EditorActionsDeps,
 	controller: UndoController,
 	containerPath: number[],
-	focus: FocusActions = recordingFocus()
+	focus: FocusActions = recordingFocus(),
+	parentBlockEdit: BlockEditActions = stubBlockEdit()
 ) {
 	// Once an edit takes the container, its state keeps the node it was built on, as an unmounted
 	// container's state would.
@@ -695,8 +696,7 @@ export function containerBundleOver(
 			// The root's, as the editor hands both the same one; a fresh one would be an unread spy.
 			caretMemory: deps.caretMemory,
 			parent: {
-				// Plain stubs where no caller can read a spy, since a `vi.fn` lives until the file ends.
-				blockEdit: stubBlockEdit(),
+				blockEdit: parentBlockEdit,
 				focus,
 				containerEdit: createContainerEditActions(deps, controller)
 			}
