@@ -2,7 +2,6 @@ import { test, expect } from '../../fixtures';
 import { gotoReady } from '../../goto-ready';
 import { findInput } from '../search/helpers';
 import type { Page } from '@playwright/test';
-import { clickModeButton } from '../../mode-switch';
 import { clickInPlace } from '../../click-in-place';
 import { clickShowcaseSetting } from '../../showcase-settings';
 
@@ -45,6 +44,7 @@ test.describe('/changelog route', () => {
 		// The family file's own title, not a version number: the one landmark a release cannot
 		// move. Reading mode hides the `#` marker with `display: none`, so it stays in textContent.
 		await expect(page.locator('[data-block-kind="heading"]').first()).toContainText('Changelog');
+		await expect(page.locator('.editor')).toHaveAttribute('data-presentation', 'reading');
 		// A floor well below the mounted window, robust to it shifting.
 		await expect.poll(() => page.locator('.block-host').count()).toBeGreaterThan(5);
 
@@ -117,7 +117,7 @@ test.describe('/changelog route', () => {
 
 	test('the family picker swaps the document to another release family', async ({ page }) => {
 		const heading = page.locator('[data-block-kind="heading"]').first();
-		const active = page.locator('.changelog-family.active');
+		const active = page.locator('.changelog-family[aria-pressed="true"]');
 		const current = (await active.getAttribute('data-family')) ?? '';
 		await expect(heading).toContainText(`Changelog ${current}`);
 
@@ -146,17 +146,26 @@ test.describe('/changelog route', () => {
 		await expectTheme(page, '.changelog', 'light');
 	});
 
-	test('the header toggle flips the document between reading and source', async ({ page }) => {
-		const editor = page.locator('.editor');
-		const marker = page.locator('.text-editable-block .md-marker').first();
-		await expect(editor).toHaveAttribute('data-presentation', 'reading');
-		await expect(marker).toBeHidden();
+	test('the header theme toggle flips the editor and the page, and back', async ({ page }) => {
+		const toggle = page.getByTestId('theme-toggle');
+		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
-		await clickModeButton(page, 'source');
-		await expect(marker).toBeVisible();
+		await clickInPlace(toggle);
+		await expectTheme(page, '.changelog', 'dark');
+		await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 
-		await clickModeButton(page, 'reading');
-		await expect(marker).toBeHidden();
+		await clickInPlace(toggle);
+		await expectTheme(page, '.changelog', 'light');
+		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+	});
+
+	test('a dark theme chosen here carries to the showcase', async ({ page }) => {
+		await clickInPlace(page.getByTestId('theme-toggle'));
+		await expectTheme(page, '.changelog', 'dark');
+
+		await clickInPlace(page.getByRole('link', { name: 'showcase' }));
+		await expect(page).toHaveURL(/\/$/);
+		await expectTheme(page, '.showcase', 'dark');
 	});
 
 	test('the header link navigates back to the showcase', async ({ page }) => {

@@ -365,9 +365,8 @@ describeManifests(
 		},
 		{
 			id: 'G4.133 every e2e mode toggle or mode button click waits for the mode to apply',
-			// The test route's header checkboxes, and the showcase's and changelog's mode buttons.
-			matches:
-				/\b(?:presentation|live|preview-block|preview-inline)-toggle\b|\b(?:showcase|changelog)-mode\b/,
+			// The test route's header checkboxes, and the showcase's mode buttons.
+			matches: /\b(?:presentation|live|preview-block|preview-inline)-toggle\b|\bshowcase-mode\b/,
 			declared: {
 				[CONTROL_HOME]: 'clickModeToggle and clickModeButton, which wait for the mode',
 				'src/lib/e2e/tests/keybinding-multi-editor.spec.ts':
@@ -380,8 +379,7 @@ describeManifests(
 				`page.getByTestId('live-${'toggle'}')`,
 				`['reading', 'presentation-${'toggle'}']`,
 				`testid: 'preview-inline-${'toggle'}'`,
-				`page.locator('.showcase-${'mode'}[data-mode="live"]')`,
-				`page.locator('.changelog-${'mode'}')`
+				`page.locator('.showcase-${'mode'}[data-mode="live"]')`
 			],
 			misses: [
 				`page.getByTestId('theme-${'toggle'}')`,
