@@ -26,17 +26,12 @@ import { keepOpenTail } from '../../tree-operations/open-tail';
 import { keepOneBlock } from '../../tree-operations/keep-one-block';
 import { spliceMany } from '../../tree-operations/splice-many';
 import {
-	attachedChainPrefix,
 	rebuildUnsharedChain,
 	type AncestrySeamFold,
 	type ContainerReclassification
 } from '../../tree-operations/chain-rebuild';
-import {
-	foldLandingFor,
-	publishAncestryFolds,
-	publishScopeChange,
-	restoreFoldedChildren
-} from '../ancestry-folds';
+import { attachedChainPrefix } from '../../tree-operations/node-primitives';
+import { publishAncestryFolds, publishScopeChange, restoreFoldedChildren } from '../ancestry-folds';
 import { saveBytes } from './saved-bytes';
 import type { EditorActionsDeps } from '../deps';
 import type { FrameOutcome, FrameWrite } from './commit-frame';
@@ -83,10 +78,12 @@ export function createLeafCommit(
 			apply(wasOpen) {
 				const owner = depth > 1 ? chain[depth - 2] : undefined;
 				// The chain reached the leaf through the owner's children, so below the root they exist.
-				const siblings = copiedOnWrite(owner ? owner.children! : deps.doc.children);
+				const siblings = savedOnWrite(owner ? owner.children! : deps.doc.children);
 				body = owner
-					? { children: siblings.children, owner, lineEnding: documentLineEnding(deps.doc) }
-					: documentBody(deps.doc, siblings.children);
+					? { children: siblings.list, owner, lineEnding: documentLineEnding(deps.doc) }
+					: documentBody(deps.doc, siblings.list);
+				// The fix-up writes the leaf's list only through `spliceList`, which calls this first.
+				body.beforeWrite = siblings.save;
 				restoreChain = saveChain(deps, leafPath, chain, siblings.restore);
 				// Read before the write: the ancestors' rebuild locates the leaf's region by these bytes.
 				leafPreviousRaw = chain[depth - 1].raw;
@@ -174,22 +171,16 @@ function saveChain(
 	};
 }
 
-/** The leaf's list, copied only at the fix-up's first splice; the wrapper stays in the write's
- *  body, never in a node or anything keyed by identity. */
-function copiedOnWrite(target: CstNode[]): { children: CstNode[]; restore(): void } {
+/** The leaf's list, copied at the fix-up's first write to it and put back by `restore`. */
+function savedOnWrite(list: CstNode[]): { list: CstNode[]; save(): void; restore(): void } {
 	let before: CstNode[] | null = null;
-	const copyFirst = () => {
-		before ??= target.slice();
-	};
-	const children = new Proxy(target, {
-		set: (list, key, value) => (copyFirst(), Reflect.set(list, key, value)),
-		deleteProperty: (list, key) => (copyFirst(), Reflect.deleteProperty(list, key)),
-		defineProperty: (list, key, field) => (copyFirst(), Reflect.defineProperty(list, key, field))
-	});
 	return {
-		children,
+		list,
+		save: () => {
+			before ??= list.slice();
+		},
 		restore: () => {
-			if (before) spliceMany(target, 0, target.length, before);
+			if (before) spliceMany(list, 0, list.length, before);
 		}
 	};
 }
@@ -216,11 +207,19 @@ function relandingAfter(deps: EditorActionsDeps, written: InPlaceWritten): Relan
 	const byteIn = (level: number) =>
 		rawOffsetOfLeaf(written.chain[level], settledPath.slice(level + 1), leafAt.offset);
 
-	const fold = written.folds.at(-1);
-	const foldLanding = foldLandingFor(written.folds, parentPath);
-	if (fold && foldLanding) {
-		return resolved(deps, foldLanding.path, foldLanding.offset + (byteIn(fold.depth) ?? 0), 1);
-	}
+	// A same-kind write's separator keeps a folded container from merging into the block above,
+	// so a fold leaves every container on the leaf's path where it stood (G1.152).
+	assertInvariant('keystroke-fold-in-place', () => {
+		const moved = written.folds.find(
+			(f) => f.landing.index !== leafPath[f.depth] || f.landing.offset !== 0
+		);
+		return moved
+			? {
+					code: 'keystroke-fold-in-place',
+					message: `typeLeaf: a fold moved a container at depth ${moved.depth}`
+				}
+			: null;
+	});
 	const outermost = written.reclassified.at(-1);
 	const level = outermost ? written.chain.indexOf(outermost.previous) : -1;
 	if (level >= 0) return resolved(deps, leafPath.slice(0, level + 1), byteIn(level) ?? 0, 1);

@@ -102,9 +102,9 @@ the reader does (`cellText`); a dev check (`table-row-reads-back`) fails a fallb
 
 **G2.16 · An edit moves only its own lines.** Writing a leaf the bytes it already holds leaves the
 document as it was, and one letter typed through the keystroke's route changes one line and leaves a
-tree that reloads as itself. Both draw the blank-separated corpus and the respelled quotes and lists;
-a named row pins the retype of a tab-indented item holding a table. Core kinds only: a plugin
-container's `rebuildRaw` decides its own lines, and the kit holds it to its fixture's bytes.
+tree that reloads as itself. Both draw the blank-separated corpus and the respelled quotes and lists,
+the keystroke the bundled alert and footnote too; a named row pins the retype of a tab-indented item
+holding a table. The container kit holds a third-party `rebuildRaw` to the same rule.
 `shape-fixed-point.property.test.ts`.
 
 **G2.17 · A throwing commit changes nothing.** A commit mutation that throws publishes no partial

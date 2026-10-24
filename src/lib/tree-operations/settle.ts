@@ -20,14 +20,14 @@ import { checkSettledWindowReadsBack } from '../invariants/settled-window-reads-
 import { endWindowLines } from './open-tail';
 import type { SharingState } from './sharing';
 import { lacksSublistSeparator } from './list/sublist-separator';
-import { holdOrderedNumbering, itemsShareList } from './list/ordered-markers';
+import { itemsShareList } from './list/ordered-markers';
 import { spliceChildren } from './children';
 import { applyStructuralChangeToIdsRefs, type StructuralChange } from './structural-change';
-import { asBody, bodyUnder, type BodyParent, type BodyParentArg } from './node-primitives';
+import { bodyUnder, type BodyParent } from './node-primitives';
 import {
 	bodyStartIndex,
 	mintSeparator,
-	retireChildSpans,
+	restoreSeparatorOnFill,
 	writeSeparator,
 	writeWrapSlot
 } from './separator-writes';
@@ -47,20 +47,6 @@ import {
 } from './unfinished-readings';
 
 // ── Separators ──
-
-/**
- * The separator a block takes back when it stops being blank: its own blank line was what stood
- * between it and a non-blank predecessor. Call when the block is filled.
- */
-export function restoreSeparatorOnFill(
-	body: BodyParent,
-	index: number,
-	sharing: SharingState
-): void {
-	const node = body.children[index];
-	if (!node || node.leadingTrivia !== '' || isBlankParagraph(node)) return;
-	mintSeparator(body, index, sharing);
-}
 
 /**
  * The separator the block below a consumed blank line takes back, skipped for a blank block whose
@@ -643,22 +629,4 @@ export function spliceChildrenSettled(
 	recordSettlePass();
 	const ids = (parent as CstNode).childIds;
 	if (ids) applyStructuralChangeToIdsRefs(settled, ids, new Array(ids.length));
-}
-
-// ── Delete ──
-
-/** Remove the node at `blockIndex`, an ordered list's numbers kept consecutive; the fix-up that
- *  leaves its successor separated once is the commit's. A whole document reads as its own body. */
-export function deleteNode(
-	parent: BodyParentArg,
-	blockIndex: number,
-	sharing: SharingState
-): StructuralChange {
-	const body = asBody(parent);
-	if (blockIndex < 0 || blockIndex >= body.children.length) return { op: 'noop' };
-	retireChildSpans(body);
-	const renumber = body.owner ? holdOrderedNumbering(body.owner) : undefined;
-	body.children.splice(blockIndex, 1);
-	renumber?.(sharing);
-	return { op: 'delete', at: blockIndex, count: 1 };
 }

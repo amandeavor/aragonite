@@ -8,10 +8,9 @@ import type { CstNode, Document } from '../core/nodes';
 import { firstLineEnding } from '../core/lines';
 import { assignChildIdsDeep, idsAcrossReread } from '../block-id';
 import type { SharingState } from './sharing';
-import { documentBody, type BodyParent, type NodeParent } from './node-primitives';
+import { documentBody, spliceList, type BodyParent, type NodeParent } from './node-primitives';
 import { ensureEditableContainers } from '../schema/opened-reading';
 import { replacePreservingFirst, type StructuralChange } from './structural-change';
-import { spliceMany } from './splice-many';
 import { dropChildSpans, type ChildRawChange } from '../schema/child-spans';
 import type { GrammarView } from '../schema/block-openers';
 import { firstLine, followBytes, lastLine } from '../schema/container-raw';
@@ -21,19 +20,6 @@ import { rebuildOwnedContainer, walkUnsharing } from './unshare';
 import { absorbWindowSeams, type TrackedPosition } from './neighbour-merge';
 import { installReading } from './content-write';
 import { settleSublistSeparator } from './list/sublist-separator';
-
-/**
- * Longest prefix of `chain` still attached under `root`: a node spliced out mid-commit would
- * rebuild against its emptied children to `raw: ''`, while the ancestors above it still rebuild.
- */
-export function attachedChainPrefix(root: NodeParent, chain: CstNode[]): CstNode[] {
-	let parentChildren = root.children;
-	for (let i = 0; i < chain.length; i++) {
-		if (!parentChildren.includes(chain[i])) return chain.slice(0, i);
-		parentChildren = chain[i].children ?? [];
-	}
-	return chain;
-}
 
 /**
  * One container position a rebuild gave a new kind. `previous` is what a rollback restores: a
@@ -201,7 +187,7 @@ function spliceSpill(spill: Spill, sharing: SharingState, folds: AncestrySeamFol
 	}
 	blocks[0].leadingTrivia = node.leadingTrivia;
 	const before = siblings.slice();
-	spliceMany(siblings, index, 1, blocks);
+	spliceList({ children: siblings }, index, 1, blocks);
 	for (let k = 0; k < blocks.length; k++) sharing.stamp(siblings[index + k]);
 	folds.push({
 		depth: 0,

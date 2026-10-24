@@ -32,11 +32,12 @@ describe('fix-up passes per gesture', () => {
 		expect(passes).toBe(2);
 	});
 
-	it('a keystroke that changes the kind runs two: the trial, then its commit', async () => {
+	// The commit's write fixes up the written slot as it lands, and the commit the window after.
+	it('a keystroke that changes the kind runs three: the trial, its write, its commit', async () => {
 		const passes = await passesOf('one\n\ntwo\n', (h) =>
 			h.actions.updateBlockContent(0, '# one\n', 'authored', 'join-typing', 0, 2)
 		);
-		expect(passes).toBe(2);
+		expect(passes).toBe(3);
 	});
 
 	it('Enter mid-paragraph runs two: the split’s own lower join, then its commit', async () => {

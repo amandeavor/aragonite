@@ -62,6 +62,7 @@ import type { BlockListState } from '#lib/block-lists/block-list-state.svelte.js
 import { getStateForNode, expectStateForNode } from '#lib/block-lists/state-registry.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { nodeAt } from '#lib/tree-operations/node-primitives.js';
+import { createScopeWriter, rebuildOwnedChains } from '#lib/editor-actions/commit/scope-writes.js';
 import { createPasteCoordinator } from '#lib/editor-actions/paste-coordinator.js';
 import {
 	createInlineRangeCommit,
@@ -184,7 +185,9 @@ export function makeCommitScopeStub(
 		collapseEmptyReplaceToDelete: opts.collapse ?? true,
 		async commit(args) {
 			commits.push(args);
-			const body = { children, owner: opts.owner, lineEnding: lineEnding() };
+			const list = { kind: 'document' as const, prefix: '', suffix: '', children };
+			const body = { ...list, owner: opts.owner, lineEnding: lineEnding() };
+			const writer = createScopeWriter(body, sharing, fixtureReading().grammar, body.lineEnding);
 			const before = [...children];
 			let kind: EditKind = {};
 			let settled: SettledEdit | null = null;
@@ -196,8 +199,11 @@ export function makeCommitScopeStub(
 				describeEdit: (edit) => {
 					kind = { ...kind, ...edit };
 					return () => settled;
-				}
+				},
+				own: writer.own,
+				writeLeaf: writer.writeLeaf
 			});
+			rebuildOwnedChains([writer], sharing, fixtureReading().grammar);
 			if (opts.settle) {
 				const edit = { change, before, ...kind };
 				const grammar = fixtureReading().grammar;

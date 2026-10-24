@@ -1,7 +1,9 @@
+import { deleteNode } from '#lib/tree-operations/node-ops.js';
+import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { deleteNode, splitNode, updateNodeContent } from '../../tree-operations';
+import { splitNode } from '../../tree-operations';
 import { documentBody, emptyParagraph } from '../../tree-operations/node-primitives';
 import { normalizeBlankRuns } from '../../tree-operations/blank-runs';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
