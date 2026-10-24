@@ -1,5 +1,5 @@
 /**
- * How the showcase bar's popovers open and close. A popover closes on Escape (focus goes back to
+ * How the demo site's bar popovers open and close. A popover closes on Escape (focus goes back to
  * the trigger), a press outside its anchor, or focus moving out of it; the anchor holds both the
  * trigger and the popover.
  */
