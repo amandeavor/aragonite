@@ -36,21 +36,27 @@ function mount(source: string, mode: PresentationMode): MountedEditor {
 	return mountEditor({ source, presentationMode: mode, plugins: SYNTAX_PLUGINS });
 }
 
-/** Every leaf block of `source`, and each cell of each table, read off a mount so a cell's text
- *  length is what the cell renders. */
+/** Every leaf block of `source`, and each cell of each table, read off a mount only where a table
+ *  needs it, since a cell's text length is what the cell renders. */
 export async function sitesOf(source: string, mode: PresentationMode): Promise<Site[]> {
+	const blocks = leaves(parse(source).children, []);
+	if (!blocks.some(({ node }) => node.kind === 'table')) {
+		return blocks.map(({ path, node }) => leafSite(path, node));
+	}
 	const editor = mount(source, mode);
 	await editor.settle();
-	const sites: Site[] = [];
-	for (const { path, node } of leaves(parse(source).children, [])) {
-		const cells = node.kind === 'table' ? tableCells(editor, path) : [];
-		if (cells.length === 0) sites.push(leafSite(path, node));
-		for (const cell of cells) sites.push(cell);
-	}
+	const sites = sitesIn(editor, blocks);
 	await editor.destroy();
 	// Each key's own mount fires whatever this one did, and its row lists it.
 	takeDevWarns();
 	return sites;
+}
+
+function sitesIn(editor: MountedEditor, blocks: ReturnType<typeof leaves>): Site[] {
+	return blocks.flatMap(({ path, node }) => {
+		const cells = node.kind === 'table' ? tableCells(editor, path) : [];
+		return cells.length ? cells : [leafSite(path, node)];
+	});
 }
 
 const leafSite = (path: number[], node: CstNode): Site => ({
@@ -59,11 +65,12 @@ const leafSite = (path: number[], node: CstNode): Site => ({
 	end: trimTrailingLineEnding(node.raw).length
 });
 
+/** The leaf blocks, a table counted as one: its rows and cells take a caret only as cells. */
 function leaves(nodes: readonly CstNode[], prefix: number[]) {
 	const found: { path: number[]; node: CstNode }[] = [];
 	nodes.forEach((node, i) => {
 		const path = [...prefix, i];
-		if (node.children) found.push(...leaves(node.children, path));
+		if (node.children && node.kind !== 'table') found.push(...leaves(node.children, path));
 		else found.push({ path, node });
 	});
 	return found;
@@ -153,9 +160,6 @@ const tagsTaken = () => takeDevWarns().map((record) => record.tag);
 
 // ── Seeded sequences ─────────────────────────────────────────────────────────
 
-/** More runs than a sequence's keys can make undo entries. */
-const UNWIND_LIMIT = 60;
-
 /** `steps` keys drawn from `seed` into one mount of `source`, a row per key, then a row for
  *  undoing every entry and redoing them all: the grouping of a typing run shows only there. */
 export async function sequenceRows(
@@ -171,7 +175,7 @@ export async function sequenceRows(
 	const rows: Row[] = [];
 	for (let step = 0; step < steps; step++) {
 		const before = editor.source();
-		const sites = leaves(parse(before).children, []).map(({ path, node }) => leafSite(path, node));
+		const sites = sitesIn(editor, leaves(parse(before).children, []));
 		const site = rng.pick(sites);
 		const offset = rng.int(0, site.end + 1);
 		const key = rng.pick(KEYS);
@@ -189,9 +193,11 @@ export async function sequenceRows(
 	const edited = editor.source();
 	// The undo command needs a focused block, and the last key may have left none.
 	placeAt(editor, { path: leaves(parse(edited).children, [])[0].path, start: 0, end: 0 }, 0);
-	const undo = await repeat(editor, 'history.undo');
+	// A key makes one undo entry at most, so a count past `steps` shows a key that made more.
+	const runs = steps + 5;
+	const undo = await repeat(editor, 'history.undo', runs);
 	const undone = editor.source();
-	const redo = await repeat(editor, 'history.redo');
+	const redo = await repeat(editor, 'history.redo', runs);
 	const redone = editor.source();
 	await editor.destroy();
 	rows.push({
@@ -203,11 +209,11 @@ export async function sequenceRows(
 	return rows;
 }
 
-/** How many of `UNWIND_LIMIT` runs of `command` changed the bytes. A fixed count, since the
- *  command stays enabled on an empty stack and an undo step may leave the bytes alone. */
-async function repeat(editor: MountedEditor, command: string): Promise<number> {
+/** How many of `runs` runs of `command` changed the bytes. A fixed count, since the command stays
+ *  enabled on an empty stack and an undo step may leave the bytes alone. */
+async function repeat(editor: MountedEditor, command: string, runs: number): Promise<number> {
 	let changed = 0;
-	for (let run = 0; run < UNWIND_LIMIT; run++) {
+	for (let run = 0; run < runs; run++) {
 		const before = editor.source();
 		editor.instance.runCommand(command);
 		await editor.settle();

@@ -2,6 +2,7 @@
 // keys pressed there, the first-party plugins whose syntax the documents use, and the long
 // documents (the showcase, the changelog) cut into adjacent block pairs.
 
+import { createHash } from 'node:crypto';
 import type { CstNode } from '#lib/core/nodes.js';
 import type { EditorPlugin } from '#lib/plugin.js';
 import { parse } from '#lib/core/parser.js';
@@ -100,20 +101,26 @@ export interface LongDocument {
 }
 
 /** The documents the showcase page and the changelog page mount, read through the pages' own
- *  imports. */
+ *  imports. The newest changelog family is left out: its entry gains lines at every landing. */
 export const LONG_DOCUMENTS: readonly LongDocument[] = [
 	{ id: 'showcase', source: SHOWCASE_DOCUMENT },
-	...CHANGELOG_FAMILIES.map((family) => ({ id: `changelog/${family.id}`, source: family.document }))
+	...CHANGELOG_FAMILIES.slice(1).map((family) => ({
+		id: `changelog/${family.id}`,
+		source: family.document
+	}))
 ];
 
-/** Each pair of adjacent top-level blocks as a document of its own: a long document mounts only
- *  a window in jsdom, and a pair still holds the join between two real blocks. */
+/** Each distinct pair of adjacent top-level blocks as a document, since jsdom mounts only a window
+ *  of a long one. Named by a hash of its bytes, so an edit elsewhere renames no pair. */
 export function blockPairs(doc: LongDocument): { id: string; source: string }[] {
 	const blocks: CstNode[] = parse(doc.source).children;
-	return blocks.slice(1).map((second, i) => ({
-		id: `${doc.id} ${i}`,
-		source: blocks[i].raw + second.leadingTrivia + second.raw
-	}));
+	const pairs = new Map<string, string>();
+	blocks.slice(1).forEach((second, i) => {
+		const source = blocks[i].raw + second.leadingTrivia + second.raw;
+		const hash = createHash('sha1').update(source).digest('hex').slice(0, 8);
+		pairs.set(`${doc.id} ${hash}`, source);
+	});
+	return [...pairs].map(([id, source]) => ({ id, source }));
 }
 
 function range(from: number, to: number): number[] {
