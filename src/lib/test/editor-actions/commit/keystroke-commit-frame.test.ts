@@ -36,7 +36,7 @@ function quoteHarness(source = '> ab\n') {
 
 /** A same-kind keystroke inside the quote, which takes the in-place route. */
 function typeX(h: ReturnType<typeof quoteHarness>): Promise<boolean> {
-	return h.bundle.blockEdit.updateBlockContent(0, 'abx\n', 'authored', 2, 3);
+	return h.bundle.blockEdit.updateBlockContent(0, 'abx\n', 'authored', 'join-typing', 2, 3);
 }
 
 describe('a keystroke whose ancestor rebuild throws', () => {
@@ -85,7 +85,7 @@ describe('a keystroke written in place announces its edit inside the commit brac
 		const seen: boolean[] = [];
 		h.events.on('edit', () => seen.push(isCommitInProgress()));
 
-		await h.actions.updateBlockContent(0, 'abx\n', 'authored', 2, 3);
+		await h.actions.updateBlockContent(0, 'abx\n', 'authored', 'join-typing', 2, 3);
 
 		expect(seen).toEqual([true]);
 	});

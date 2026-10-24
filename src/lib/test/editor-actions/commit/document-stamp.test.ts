@@ -35,7 +35,7 @@ describe('a write made for a swapped-out document', () => {
 		const h = stampedTop('a\n');
 		h.stamps.retire();
 
-		const write = h.stamped.updateBlockContent(0, 'ab\n', 'authored', 1);
+		const write = h.stamped.updateBlockContent(0, 'ab\n', 'authored', 'join-typing', 1);
 		await write;
 
 		expect(write.admitted).toBe(false);
@@ -56,9 +56,9 @@ describe('a write made for a swapped-out document', () => {
 
 	it('lands when made for the document in place, stamped or not', async () => {
 		const h = stampedTop('a\n');
-		await h.stamped.updateBlockContent(0, 'ab\n', 'authored', 1);
+		await h.stamped.updateBlockContent(0, 'ab\n', 'authored', 'join-typing', 1);
 		h.stamps.retire();
-		await h.actions.updateBlockContent(0, 'abc\n', 'authored', 2);
+		await h.actions.updateBlockContent(0, 'abc\n', 'authored', 'join-typing', 2);
 
 		expect(serialize(h.deps.doc)).toBe('abc\n');
 		expect(takeDevWarns()).toEqual([]);
@@ -70,7 +70,7 @@ describe('a write made after the editor unmounted', () => {
 		const h = stampedTop('a\n');
 		h.stamps.end();
 
-		const stamped = h.stamped.updateBlockContent(0, 'ab\n', 'authored', 1);
+		const stamped = h.stamped.updateBlockContent(0, 'ab\n', 'authored', 'join-typing', 1);
 		await stamped;
 		expect(await h.actions.splitBlock(0, 1)).toBe(false);
 

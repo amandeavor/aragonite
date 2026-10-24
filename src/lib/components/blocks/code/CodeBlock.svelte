@@ -67,7 +67,6 @@
 	const {
 		blockEdit,
 		focusActions,
-		controller,
 		caretMemory,
 		caretWriter,
 		getDoc,
@@ -153,7 +152,16 @@
 		source: string,
 		intent: WriteIntent = 'typed'
 	): ContentWrite {
-		return editableSurface.writeText({ text, caretAfter, intent, mode: 'authored', source });
+		// A cut is a command, so it is an undo step of its own.
+		const history = intent === 'command' ? 'entry' : 'join-typing';
+		return editableSurface.writeText({
+			text,
+			caretAfter,
+			intent,
+			history,
+			mode: 'authored',
+			source
+		});
 	}
 
 	/** Selects `range` after its write, moved by however far the fence rule moved its start. */
@@ -169,6 +177,7 @@
 			text,
 			caretAfter,
 			intent: 'typed',
+			history: 'join-typing',
 			mode: 'authored',
 			source: 'fence-exit',
 			leavesCaret: true
@@ -304,18 +313,16 @@
 		const written = writeFenceInfo(display, info, fenceShapeOf(node));
 		const bodyStart = clampCaretToBody(node, 0);
 		if (written !== null && written !== display) {
-			controller.isolateUndoEntry(
-				() =>
-					void editableSurface.writeText({
-						text: written,
-						caretAfter: bodyStart,
-						intent: 'command',
-						mode: 'authored',
-						source: 'language',
-						// The caret is in the language field, so undo returns it to the body start.
-						sessionAnchor: bodyStart
-					})
-			);
+			void editableSurface.writeText({
+				text: written,
+				caretAfter: bodyStart,
+				intent: 'command',
+				history: 'entry',
+				mode: 'authored',
+				source: 'language',
+				// The caret is in the language field, so undo returns it to the body start.
+				sessionAnchor: bodyStart
+			});
 		}
 		returnCaretToBody();
 	}

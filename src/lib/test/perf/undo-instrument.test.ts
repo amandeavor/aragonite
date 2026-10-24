@@ -11,6 +11,7 @@ import {
 	perfSnapshot,
 	resetPerfInstruments
 } from '../../perf/instruments';
+import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
 
 function para(raw: string): CstNode {
 	return { kind: 'paragraph', leadingTrivia: '', raw };
@@ -62,7 +63,13 @@ describe('undo snapshot instrumentation', () => {
 		const { deps, doc } = makeEditorActionsDeps([para('hi\n')]);
 		const controller = createUndoController(deps);
 
-		controller.pushUndoSnapshotDebounced([0], 1);
+		void controller.typingKeystroke(
+			docPathFrom([0]),
+			1,
+			'leaf',
+			'join-typing',
+			async () => undefined
+		);
 		controller.flushDebouncedCheckpoint();
 
 		const snap = perfSnapshot();

@@ -27,14 +27,14 @@ afterEach(() => disablePerfInstruments());
 describe('fix-up passes per gesture', () => {
 	it('a typed character runs two: the trial before the write, then the write in place', async () => {
 		const passes = await passesOf('one\n\ntwo\n', (h) =>
-			h.actions.updateBlockContent(0, 'onex\n', 'authored', 3, 4)
+			h.actions.updateBlockContent(0, 'onex\n', 'authored', 'join-typing', 3, 4)
 		);
 		expect(passes).toBe(2);
 	});
 
 	it('a keystroke that changes the kind runs two: the trial, then its commit', async () => {
 		const passes = await passesOf('one\n\ntwo\n', (h) =>
-			h.actions.updateBlockContent(0, '# one\n', 'authored', 0, 2)
+			h.actions.updateBlockContent(0, '# one\n', 'authored', 'join-typing', 0, 2)
 		);
 		expect(passes).toBe(2);
 	});

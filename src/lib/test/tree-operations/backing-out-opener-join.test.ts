@@ -250,7 +250,7 @@ describe('an opener made by a write inside a quote', () => {
 	])('reads down %s', async (_l, source, count) => {
 		const h = makeNestedHarness(source, { index: 0 });
 		const raw = h.deps.doc.children[0].children![0].raw;
-		await h.bundle.blockEdit.updateBlockContent(0, raw.slice(1), 'authored', 1, 0);
+		await h.bundle.blockEdit.updateBlockContent(0, raw.slice(1), 'authored', 'join-typing', 1, 0);
 		expect(h.deps.doc.children[0].children).toHaveLength(count);
 		expectParseConverged(h.deps.doc);
 	});

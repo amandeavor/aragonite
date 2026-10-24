@@ -11,7 +11,8 @@ import type {
 	ContainerEditActions,
 	ContainerScope,
 	InPlaceResult,
-	MultiScopeTarget
+	MultiScopeTarget,
+	UndoGrouping
 } from '../action-contracts';
 import { blockNodeAt, documentBody, type BodyParent } from '../tree-operations/node-primitives';
 import type { CstNode } from '../core/nodes';
@@ -34,7 +35,6 @@ import { getStateForNode } from '../block-lists/state-registry';
 import type { EditorActionsDeps, EditorRoot, UndoController } from './deps';
 import type { NestedActionsDeps } from './nested/nested-actions';
 import type { BlockListState } from '../block-lists/block-list-state.svelte';
-import { createLeafTyping } from './leaf-write';
 import { createContainerEditActions } from './container-edit';
 
 /** The copied children the core's `mutate` writes through, the same shape at both levels. */
@@ -67,6 +67,8 @@ export interface ScopeCommitArgs {
 	/** A structural edit that can change nothing, so the commit discards its snapshot. Never on
 	 *  content or metadata commits, whose `noop` still carries a byte change (`DiscardIfNoop`). */
 	discardIfNoop?: boolean;
+	/** `join-typing` for a keystroke's own commit, which joins the entry its `typeIn` pushed. */
+	history?: UndoGrouping;
 	/** A local position the list's fix-up updates in place, read back by the landing. */
 	trackCaret?: TrackedPosition;
 }
@@ -93,9 +95,14 @@ export interface CommitScope {
 	collapseEmptyReplaceToDelete: boolean;
 	/** Resolves to whether bytes landed. */
 	commit(args: ScopeCommitArgs): Promise<boolean>;
-	/** One keystroke into child `i`, grouped with its typing burst: the burst's undo entry is on
-	 *  the stack before `work` starts, and whatever `work` commits before it first yields joins it. */
-	typeIn<T>(i: number, preEditOffset: number, work: () => Promise<T>): Promise<T>;
+	/** One keystroke into child `i`: its undo entry (`history` says whose) is pushed before `work`
+	 *  starts, and what `work` commits before its first await joins it. */
+	typeIn<T>(
+		i: number,
+		preEditOffset: number,
+		history: UndoGrouping,
+		work: () => Promise<T>
+	): Promise<T>;
 	/** The keystroke's in-place write, for a write the trial reparse keeps in its block. */
 	typeLeaf(i: number, write: LegalWrite, caret: number): InPlaceResult;
 	/** A position below child `i`. */
@@ -112,7 +119,6 @@ export function createTopLevelScope(
 	deps: EditorActionsDeps,
 	controller: UndoController
 ): CommitScope {
-	const typing = createLeafTyping(controller);
 	return {
 		path: asDocPath([]),
 		get reading() {
@@ -134,6 +140,7 @@ export function createTopLevelScope(
 			reveal,
 			touchedNodes,
 			discardIfNoop,
+			history,
 			trackCaret
 		}): Promise<boolean> {
 			return controller.commitStructural({
@@ -151,12 +158,13 @@ export function createTopLevelScope(
 				reveal,
 				touchedNodes,
 				discardIfNoop,
+				history,
 				trackCaret
 			});
 		},
-		typeIn: (i, preEditOffset, work) =>
-			typing.typeInLeaf(docPathFrom([i]), preEditOffset, deps.blockIds[i], work),
-		typeLeaf: (i, write, caret) => typing.typeLeaf(docPathFrom([i]), write, caret),
+		typeIn: (i, preEditOffset, history, work) =>
+			controller.typingKeystroke(docPathFrom([i]), preEditOffset, deps.blockIds[i], history, work),
+		typeLeaf: (i, write, caret) => controller.typeLeaf(docPathFrom([i]), write, caret),
 		at: (i, subPath, offset) => ({ path: docPathFrom([i, ...subPath]), offset }),
 		land: (pos) => deps.caretLanding.land(pos),
 		reportCommitError: (error, op, i) => emitCommitError(deps.events, { error, op, path: [i] })
@@ -237,6 +245,7 @@ function containerScope(parts: ContainerParts): CommitScope {
 			landing,
 			reveal,
 			discardIfNoop,
+			history,
 			trackCaret
 		}): Promise<boolean> {
 			return parts.containerEdit.commitContainer({
@@ -256,14 +265,16 @@ function containerScope(parts: ContainerParts): CommitScope {
 				landing,
 				reveal,
 				discardIfNoop,
+				history,
 				trackCaret
 			});
 		},
-		typeIn: (i, preEditOffset, work) =>
-			parts.containerEdit.typeInLeaf(
+		typeIn: (i, preEditOffset, history, work) =>
+			parts.containerEdit.typingKeystroke(
 				extendDocPath(parts.path(), i),
 				preEditOffset,
 				parts.state.innerBlockIds[i],
+				history,
 				work
 			),
 		typeLeaf: (i, write, caret) =>

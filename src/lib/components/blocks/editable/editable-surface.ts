@@ -516,6 +516,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			text: display.slice(0, offset) + text + display.slice(offset),
 			caretAfter: offset + text.length,
 			intent: 'typed',
+			history: 'join-typing',
 			mode: 'authored',
 			source: 'typed-over-range'
 		});
@@ -570,9 +571,16 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// them open the way Shift+Enter opened them, whichever route in the block wrote it.
 	const blockEdit: BlockEditActions = {
 		...deps.blockEdit,
-		updateBlockContent(index, text, mode, preEditOffset, caret) {
+		updateBlockContent(index, text, mode, history, preEditOffset, caret) {
 			const open = droppedOpenLines(deps.getNode(), text);
-			const written = deps.blockEdit.updateBlockContent(index, text, mode, preEditOffset, caret);
+			const written = deps.blockEdit.updateBlockContent(
+				index,
+				text,
+				mode,
+				history,
+				preEditOffset,
+				caret
+			);
 			if (open && caret === open.end && written.admitted) {
 				void written.then((wrote) => wrote && openBreakAtEnd(open.lines));
 			}
@@ -752,6 +760,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			text: rewritten?.raw ?? text,
 			caretAfter: rewritten?.caret ?? savedOffset,
 			intent: 'typed',
+			history: 'join-typing',
 			mode: 'authored',
 			source: fromComposition ? 'composition' : 'input',
 			...(rewritten ? { inPlace: true } : {}),

@@ -51,7 +51,7 @@ type ReadingCheck = 'admitsWrite' | 'admitsSnapshot';
 const READING_CHECKED: Record<string, Partial<Record<ReadingCheck, string[]>>> = {
 	'src/lib/editor-actions/commit/commit-frame.ts': { admitsWrite: ['runFrame'] },
 	'src/lib/editor-actions/commit/undo-controller.ts': {
-		admitsSnapshot: ['pushCommitSnapshot', 'pushUndoSnapshotDebounced']
+		admitsSnapshot: ['pushCommitSnapshot', 'typingKeystroke']
 	},
 	'src/lib/editor-actions/commit/history.ts': { admitsWrite: ['requestUndo', 'requestRedo'] }
 };

@@ -67,7 +67,7 @@ unguarded.
 | G4.48  | Wall-clock budgets outside the perf projects use the growth harness                              | L       |
 | G4.49  | E2E composition rides the shared IME driver                                                      | L       |
 | G4.50  | Every block command id is classified for cross-block ranges                                      | L       |
-| G4.51  | A typing-checkpoint push always arms the pause window                                            | L       |
+| G4.51  | _Retired upward_: the typing push and its pause are one controller call, `typingKeystroke`       | T       |
 | G4.52  | The content version is announced at every place that writes document bytes                       | L       |
 | G4.53  | The descriptor type and the published field table are one set                                    | L       |
 | G4.54  | A published entry barrel is never imported by its own import closure                             | L       |
@@ -167,7 +167,7 @@ unguarded.
 | G4.188 | Every wrapper entry imports in Node with no DOM, as a server render does                         | harness |
 | G4.189 | A host color read inside the editor carries no fallback, and the root reads the resolved one     | L       |
 | G4.194 | A block reaches the clipboard steps and its inline paste only through its editable surface       | L       |
-| G4.195 | A paragraph's or a table cell's command takes its own undo step in one place                     | L       |
+| G4.195 | _Retired upward_: every write declares its undo grouping (`history`), a command's as `entry`     | T       |
 | G4.197 | A parse finds every built-in kind whichever module a host imports first                          | harness |
 | G4.200 | Whether a block hides markers at the caret, with the screen it reads, is asked in one place      | L       |
 | G4.201 | One painter puts the selection tint on an inline widget                                          | L       |
@@ -495,10 +495,6 @@ exemption and a deleted hand-fired branch each fail. `e2e/lint/e2e-drivers.test.
 cross-block branch, or is recorded range-safe with its reason; the decline is what stops a command
 spending one block's offsets against a multi-block range. `lint/range-command-census.test.ts`.
 
-**G4.51 · Debounced-checkpoint pairing.** A file pushing a typing checkpoint also arms the pause
-window; a push with no arm leaves a batch no pause can end, and one Ctrl+Z unwinds the session.
-`lint/file-rules.test.ts`.
-
 **G4.52 · Content-version announcements.** Each place that writes document bytes announces the
 content version (never derived from a walk), so the writers are a declared set: the commit frame
 covers every commit and every keystroke written in place; the history swap and the `source` swap
@@ -650,7 +646,6 @@ of files allowed to name it (an aliased import counts):
 - the document as an owner-less body (`documentBody`), plus the trial reparse's throwaway copy
 - the task-marker reconcile: the content write, the join and `replaceBlock`
 - a replacement's escape for its container: `replaceBlock` alone
-- the typing batch (push, join, pause): `typeInLeaf` alone
 - the chain-depth check (G1.20): the in-place write alone
 
 A route copying any step fails with that step's reason. The content version and the join have their
@@ -1140,12 +1135,6 @@ check, caret memory, the image hook, a cross-block copy and cut), and pastes int
 through `pasteInline`, which puts the caret where the paste left it. A block's own copies would
 drift. `lint/file-rules.test.ts` fails a `createClipboardHandlers` or `pasteDispatch` call outside
 the surface, `surface-clipboard.ts` and the cross-block range replace.
-
-**G4.195 · One place makes a command its own undo step.** A command isn't typing, so one Ctrl+Z
-should undo the command and nothing around it. A paragraph and a table cell both run their commands
-through `components/blocks/text/inline-commands.ts :: perform`, which waits for a shown source to
-close and then isolates the write. `lint/file-rules.test.ts` fails an `isolateUndoEntry` call
-anywhere else but the code block's language field.
 
 **G4.197 · Built-ins register on the first grammar read.** The block parser's modules import each
 other in a loop, so a built-in registered at a module's top level runs before that module finishes

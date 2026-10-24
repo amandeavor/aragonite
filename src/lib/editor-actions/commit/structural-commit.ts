@@ -37,7 +37,8 @@ import type {
 	CommitSnapshotArg,
 	CommitStructuralArgs,
 	ContainerScope,
-	MultiScopeTarget
+	MultiScopeTarget,
+	UndoGrouping
 } from '../../action-contracts';
 import type { ScopedOpDescriptor } from '../../schema/operations';
 import {
@@ -101,6 +102,7 @@ export interface CommitArgs {
 	/** Restores what `mutate` wrote, the top-level array included. */
 	rollback: () => void;
 	discardIfNoop?: boolean;
+	history?: UndoGrouping;
 }
 
 export function createStructuralCommit(
@@ -124,6 +126,7 @@ export function createStructuralCommit(
 			reveal: args.reveal,
 			announce: args.announce,
 			discardIfNoop: args.discardIfNoop,
+			history: args.history,
 			trackCaret: [args.trackCaret],
 			touchedNodes: args.touchedNodes
 		});
@@ -140,6 +143,7 @@ export function createStructuralCommit(
 			reveal: args.reveal,
 			announce: args.announce,
 			discardIfNoop,
+			history: args.history,
 			trackCaret: [args.trackCaret]
 		});
 	}
@@ -449,6 +453,7 @@ export function createStructuralCommit(
 			reveal: args.reveal,
 			announce: args.announce,
 			discardIfNoop,
+			history: args.history,
 			written: () => {
 				const nodes: CstNode[] = [];
 				// A set: a doc scope's caller can name a block the scope's change already placed.

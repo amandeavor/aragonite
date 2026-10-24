@@ -151,7 +151,14 @@ describe('erasing a setext underline inside a container', () => {
 					for (let left = underline.length - 1; left >= 0; left--) {
 						const caret = 5 + left;
 						const text = `Plan\n${underline.slice(0, left)}\n`;
-						await h.bundle.blockEdit.updateBlockContent(0, text, 'authored', caret + 1, caret);
+						await h.bundle.blockEdit.updateBlockContent(
+							0,
+							text,
+							'authored',
+							'join-typing',
+							caret + 1,
+							caret
+						);
 					}
 
 					expect(nodeAt(h.deps.doc, [...path, 0])?.kind).toBe('paragraph');

@@ -124,7 +124,6 @@ function stubbedServices(getDoc: () => DocumentView): EditorServices {
 		// cast.
 		controller: {
 			flushDebouncedCheckpoint: () => {},
-			isolateUndoEntry: (write: () => void) => write(),
 			undoStep: async (_seed: unknown, run: () => Promise<unknown>) => void (await run()),
 			endContinuedBurst: () => {}
 		} as EditorServices['controller'],

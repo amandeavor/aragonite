@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createHistoryActions } from '#lib/editor-actions/commit/history.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
 import { makeEditorActionsDeps, makeNode } from '#lib/test/harness/editor-actions.js';
+import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
 
 function makeSetup() {
 	const { deps, events } = makeEditorActionsDeps([makeNode('paragraph', 'aaa\n')]);
@@ -152,14 +153,25 @@ describe('history swap: the typing batch ends', () => {
 			const ops: string[] = [];
 			events.on('edit', (e) => ops.push(e.op));
 
-			controller.pushUndoSnapshotDebounced([0], 1);
-			controller.armUndoPause();
+			void controller.typingKeystroke(
+				docPathFrom([0]),
+				1,
+				'leaf',
+				'join-typing',
+				async () => undefined
+			);
 			await history.requestUndo();
 			vi.advanceTimersByTime(1000);
 			expect(ops).toEqual(['undo']);
 			expect(deps.undoManager.canUndo).toBe(false);
 
-			controller.pushUndoSnapshotDebounced([0], 1);
+			void controller.typingKeystroke(
+				docPathFrom([0]),
+				1,
+				'leaf',
+				'join-typing',
+				async () => undefined
+			);
 			expect(deps.undoManager.canUndo).toBe(true);
 		} finally {
 			vi.useRealTimers();

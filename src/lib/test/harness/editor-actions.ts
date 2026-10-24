@@ -207,7 +207,7 @@ export function makeCommitScopeStub(
 			if (landing && 'path' in landing) await scope.land(landing);
 			return true;
 		},
-		typeIn: (_i, _offset, work) => work(),
+		typeIn: (_i, _offset, _history, work) => work(),
 		typeLeaf: () => ({ wrote: false }),
 		at: (i, subPath, offset) => ({ path: docPathFrom([i, ...subPath]), offset }),
 		// No render window here: every ref counts as mounted.
@@ -324,7 +324,7 @@ export function makeStubContainerEdit(): ContainerEditActions {
 	return {
 		commitContainer: vi.fn(),
 		lineEnding: () => '\n',
-		typeInLeaf: vi.fn((_path, _offset, _key, work) => work()),
+		typingKeystroke: vi.fn((_path, _offset, _key, _history, work) => work()),
 		typeLeaf: vi.fn(() => ({ wrote: false as const })),
 		land: vi.fn(async () => 'placed' as const),
 		survivorAfterRemoval: vi.fn(() => null),
@@ -335,12 +335,13 @@ export function makeStubContainerEdit(): ContainerEditActions {
 export function makeStubController(): UndoController & PasteCommitCoordinator {
 	return {
 		sharing: createSharingState(),
-		pushUndoSnapshotDebounced: vi.fn(),
+		// Runs the work: the undo entry is the stubbed half, the bytes are not.
+		typingKeystroke: vi.fn(
+			(_path: unknown, _offset: number, _key: string, _history: unknown, work: () => unknown) =>
+				work()
+		),
 		flushDebouncedCheckpoint: vi.fn(),
-		// Runs the write: the batch breaks are the stubbed half, the bytes are not.
-		isolateUndoEntry: vi.fn((write: () => void) => write()),
 		undoStep: vi.fn(async (_seed: unknown, run: () => Promise<unknown>) => void (await run())),
-		joinTypingBatch: vi.fn((write: () => unknown) => write()),
 		endUndoStep: vi.fn(),
 		commitStructural: vi.fn(),
 		commitContainerStructural: vi.fn(),
@@ -735,7 +736,7 @@ export function recordingWrite(
 ): (
 	...args: Parameters<BlockEditActions['updateBlockContent']>
 ) => ReturnType<typeof withStoredCaret> {
-	return (index, raw, mode, before, after) => {
+	return (index, raw, mode, _history, before, after) => {
 		record({ index, raw, mode, before, after });
 		return withStoredCaret(Promise.resolve(true), after ?? before);
 	};

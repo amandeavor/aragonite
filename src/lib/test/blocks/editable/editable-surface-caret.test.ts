@@ -80,6 +80,7 @@ describe('pre-edit caret', () => {
 						text: 'written',
 						caretAfter: 9,
 						intent: 'typed',
+						history: 'join-typing',
 						mode: 'authored',
 						source: 'key'
 					});
@@ -99,6 +100,7 @@ describe('pre-edit caret', () => {
 					text: 'tab',
 					caretAfter: 3,
 					intent: 'typed',
+					history: 'join-typing',
 					mode: 'authored',
 					source: 'command'
 				})

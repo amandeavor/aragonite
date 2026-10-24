@@ -345,6 +345,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 			text: edited,
 			caretAfter: edited.length,
 			intent: 'command',
+			history: 'entry',
 			mode: 'authored',
 			source: 'source-commit'
 		});

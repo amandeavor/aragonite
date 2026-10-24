@@ -131,7 +131,7 @@ describe('G1.55 runs on the keystroke and the commit, bounded by size', () => {
 	it('reads the top-level leaf a commit wrote', async () => {
 		const h = makeTopHarness('intro\n\nnext\n');
 
-		await h.actions.updateBlockContent(0, '# intro\n', 'authored', 0, 2);
+		await h.actions.updateBlockContent(0, '# intro\n', 'authored', 'join-typing', 0, 2);
 
 		expect(h.deps.doc.children[0].kind).toBe('heading');
 		expect(takeReadBackBytes()).toBe(h.deps.doc.children[0].raw.length);
@@ -141,7 +141,14 @@ describe('G1.55 runs on the keystroke and the commit, bounded by size', () => {
 		installPlugins([admonitionsPlugin()]);
 		const h = makeContainerHarness('> x\n', [0]);
 
-		await h.bundle.blockEdit.updateBlockContent(0, '[!TIP]\n\nbody\n', 'authored', 1, 13);
+		await h.bundle.blockEdit.updateBlockContent(
+			0,
+			'[!TIP]\n\nbody\n',
+			'authored',
+			'join-typing',
+			1,
+			13
+		);
 
 		expect(h.deps.doc.children[0].kind).toBe('githubAlert');
 		expect(takeReadBackBytes()).toBe(h.deps.doc.children[0].raw.length);

@@ -18,10 +18,16 @@ import { checkLandingIsAValue, readCaretWhereabouts } from '../../invariants/lan
 import { createTextBatch } from './text-batch';
 import { createStructuralCommit, type CommitArgs } from './structural-commit';
 import { admitsSnapshot, admitsWrite } from './reading-write-gate';
-import { createCommitFrame } from './commit-frame';
+import { createCommitFrame, type FrameHistory } from './commit-frame';
 import { createLeafCommit } from './leaf-commit';
 import type { EditorActionsDeps, UndoController } from '../deps';
-import type { CommitLanding, HeldLanding, CommitSnapshotArg } from '../../action-contracts';
+import type {
+	CommitLanding,
+	HeldLanding,
+	CommitSnapshotArg,
+	UndoGrouping
+} from '../../action-contracts';
+import type { DocPath } from '../../selection/path-math';
 import { emitCommitError } from '../../editor-events';
 import {
 	assertLineEndingPairsKept,
@@ -103,10 +109,8 @@ export function createUndoController(
 	let stepPushed = false;
 	// Set by the author's input while a step is open; until it closes, writes push alone.
 	let stepEnded = false;
-	// The entry the typing batch's first keystroke went into, and whether a keystroke's own
-	// commit is being called, which joins it.
+	// The entry the typing batch's first keystroke went into, which a keystroke's own commit joins.
 	let typingEntry: UndoEntry | null = null;
-	let joiningTyping = false;
 	// The entry the newest commit wrote (null when it was refused), and the one the next typing
 	// write joins instead of pushing its own, until a composition or the typing batch ends.
 	let lastCommitEntry: UndoEntry | null = null;
@@ -117,7 +121,8 @@ export function createUndoController(
 		entry !== null && deps.undoManager.peekUndo() === entry;
 
 	const joinsStep = () => inOpenStep() && isTop(stepEntry);
-	const isJoinedPush = () => (joiningTyping && isTop(typingEntry)) || joinsStep();
+	const isJoinedPush = (history: FrameHistory) =>
+		(history === 'join-typing' && isTop(typingEntry)) || joinsStep();
 
 	function pushEntry(entry: UndoEntry): void {
 		continued = null;
@@ -157,18 +162,6 @@ export function createUndoController(
 		}
 	}
 
-	// Synchronous: a commit pushes as it is called, so this covers the call, not the awaited tail.
-	// Safe because `updateBlockContent` pushes the keystroke's batch entry before its commit.
-	function joinTypingBatch<T>(write: () => T): T {
-		const outer = joiningTyping;
-		joiningTyping = true;
-		try {
-			return write();
-		} finally {
-			joiningTyping = outer;
-		}
-	}
-
 	function endUndoStep(): void {
 		if (stepDepth === 0) return;
 		stepEnded = true;
@@ -179,12 +172,29 @@ export function createUndoController(
 		continued = lastCommitEntry;
 	}
 
+	function typingKeystroke<T>(
+		leafPath: DocPath,
+		preEditOffset: number,
+		batchKey: string,
+		history: UndoGrouping,
+		work: () => Promise<T>
+	): Promise<T> {
+		burstStacks = null;
+		// An entry of its own ends the burst on both sides, so one Ctrl+Z takes it back alone.
+		if (history === 'entry') textBatch.interrupt();
+		if (admitsSnapshot(deps)) textBatch.keystroke(leafPath, preEditOffset, batchKey);
+		if (history === 'entry') textBatch.interrupt();
+		// A batch whose pause timer never started never ends on a pause, so the timer starts even
+		// when the keystroke's work throws.
+		return work().finally(textBatch.armPause);
+	}
+
 	// ── Entry pushes ─────────────────────────────────────────────────────────
 
 	// A push inside a step after its first returns before the snapshot, so it neither marks the
 	// tree shared nor clears the redo stack.
-	function pushCommitSnapshot(fallbackPath: number[], offset: number): void {
-		if (isJoinedPush() || !admitsSnapshot(deps)) return;
+	function pushCommitSnapshot(fallbackPath: number[], offset: number, history: FrameHistory): void {
+		if (isJoinedPush(history) || !admitsSnapshot(deps)) return;
 		pushEntry({
 			...shareSnapshot(),
 			blockIds: [...deps.blockIds],
@@ -240,11 +250,11 @@ export function createUndoController(
 		endTypingBurst: textBatch.interrupt,
 		stacksToRestore: (history) => {
 			if (history === 'burst') return burstStacks;
-			return isJoinedPush() ? null : deps.undoManager.getStacks();
+			return isJoinedPush(history) ? null : deps.undoManager.getStacks();
 		},
 		push: (snapshot, history) => {
 			if (history === 'burst') return;
-			pushCommitSnapshot(snapshot.path, snapshot.offset);
+			pushCommitSnapshot(snapshot.path, snapshot.offset, history);
 			lastCommitEntry = deps.undoManager.peekUndo() ?? null;
 		},
 		restoreStacks: (stacks) => {
@@ -276,7 +286,7 @@ export function createUndoController(
 			entry: args.entry,
 			op: args.op,
 			snapshot: args.snapshot,
-			history: 'entry',
+			history: args.history ?? 'entry',
 			apply: (wasOpen) => {
 				endings = documentLineEndings(deps.doc);
 				return args.mutate(wasOpen);
@@ -364,12 +374,8 @@ export function createUndoController(
 	}
 
 	return {
-		pushUndoSnapshotDebounced: (leafPath, offset, batchKey) => {
-			burstStacks = null;
-			if (admitsSnapshot(deps)) textBatch.keystroke(leafPath, offset, batchKey);
-		},
+		typingKeystroke,
 		typeLeaf: createLeafCommit(deps, runFrame),
-		armUndoPause: textBatch.armPause,
 		commitStructural,
 		commitContainerStructural,
 		commitMultiScope,
@@ -377,7 +383,6 @@ export function createUndoController(
 		captureCurrentState,
 		flushDebouncedCheckpoint: textBatch.interrupt,
 		undoStep,
-		joinTypingBatch,
 		endUndoStep,
 		continueTypingBurst,
 		endContinuedBurst: () => {
@@ -385,13 +390,6 @@ export function createUndoController(
 		},
 		holdLandings,
 		// The snapshot's answer is the write gate's, with no warning.
-		admitsGesture: (op) => (op === null ? admitsSnapshot(deps) : admitsWrite(deps, op)),
-		isolateUndoEntry: (write) => {
-			// Both sides: the first break makes the write push its own snapshot instead of
-			// joining the burst before it, the second keeps the next keystroke out of it.
-			textBatch.interrupt();
-			write();
-			textBatch.interrupt();
-		}
+		admitsGesture: (op) => (op === null ? admitsSnapshot(deps) : admitsWrite(deps, op))
 	};
 }

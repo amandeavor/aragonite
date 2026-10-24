@@ -68,7 +68,7 @@ describe('a strip container’s first line, property', () => {
 				// The keystroke's own route: the trial reparse sends a kind change to a commit.
 				const type: TypeFn = (at, text) => {
 					const scope = createPathScope(root, docPathFrom(at.slice(0, -1)))!;
-					return contentUpdate(scope)(at[at.length - 1], text, 'authored', 0, 0);
+					return contentUpdate(scope)(at[at.length - 1], text, 'authored', 'join-typing', 0, 0);
 				};
 				for (const pieces of lines) {
 					if (!(await typeFirstLine(deps.doc, path, pieces.join(''), type))) break;
