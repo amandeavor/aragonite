@@ -26,8 +26,8 @@
 	white-space: nowrap;
 }
 
-/* The families fold at a wider bar than the modes: their segments and the bar's ends measure
-   about 1040px today, and each new family adds about 46. */
+/* The families fold at a wider bar than the modes, having twice as many segments; the changelog
+   spec's desktop-width row fails once they outgrow it. */
 @container showcase-bar (max-width: 1100px) {
 	.changelog-families {
 		display: none;

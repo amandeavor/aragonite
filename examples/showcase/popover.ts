@@ -45,7 +45,7 @@ export function mountPopover(
 	return popover;
 }
 
-export function dismissPopover(anchor: HTMLElement, close: () => void): () => void {
+function dismissPopover(anchor: HTMLElement, close: () => void): () => void {
 	const releaseEscape = closeOnEscape(anchor, close);
 	const onPointerDown = (event: PointerEvent) => {
 		if (!anchor.contains(event.target as Node)) close();

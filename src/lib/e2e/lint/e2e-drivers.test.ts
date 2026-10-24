@@ -418,8 +418,8 @@ describeManifests(
 	files
 );
 
-it('the navigation helper wraps exactly a goto and a reload', () => {
+it('the navigation helper wraps exactly two gotos and a reload', () => {
 	const helper = files.find((file) => file.relPath === NAVIGATION_HELPER);
 	const calls = [...(helper?.code ?? '').matchAll(/\.\s*(goto|reload|goBack|goForward)\s*\(/g)];
-	expect(calls.map((m) => m[1])).toEqual(['goto', 'reload']);
+	expect(calls.map((m) => m[1])).toEqual(['goto', 'goto', 'reload']);
 });

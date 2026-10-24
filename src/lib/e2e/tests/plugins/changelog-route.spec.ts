@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures';
-import { gotoReady } from '../../goto-ready';
+import { gotoReady, gotoUnhydrated } from '../../goto-ready';
 import { findInput } from '../search/helpers';
 import type { Page } from '@playwright/test';
 import { clickInPlace } from '../../click-in-place';
@@ -168,6 +168,13 @@ test.describe('/changelog route', () => {
 		await expectTheme(page, '.showcase', 'dark');
 	});
 
+	test('at desktop width the families sit in one track and the bar fits', async ({ page }) => {
+		await expect(page.locator('.changelog-families')).toBeVisible();
+		await expect(page.locator('.changelog-family-picker')).toBeHidden();
+		const bar = page.locator('.changelog-header .showcase-bar');
+		expect(await bar.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
+	});
+
 	test('the header link navigates back to the showcase', async ({ page }) => {
 		// `resolve()` under a configured base path: a wrong href lands on a 404 with the URL still
 		// looking plausible, so what the destination page itself shows is the real assertion.
@@ -198,8 +205,8 @@ test.describe('/changelog theme, chosen on the showcase', () => {
 	}
 });
 
-// No beforeEach: the row is two full page loads, which is what a stored choice has to survive.
-test.describe('/changelog theme on a fresh load', () => {
+// No beforeEach: each row is two full page loads, which is what a stored choice has to survive.
+test.describe('the stored theme on a fresh load', () => {
 	test('a dark theme chosen on the showcase holds on a fresh load of the changelog', async ({
 		page
 	}) => {
@@ -210,4 +217,20 @@ test.describe('/changelog theme on a fresh load', () => {
 		await gotoReady(page, '/changelog');
 		await expectTheme(page, '.changelog', 'dark');
 	});
+
+	// Both routes are prerendered light, so a stored dark has to land before the app's scripts do.
+	for (const [route, wrapper] of [
+		['/', '.showcase'],
+		['/changelog', '.changelog']
+	] as const) {
+		test(`a returning dark visitor sees ${route} dark before it hydrates`, async ({ page }) => {
+			await gotoReady(page, '/');
+			await clickShowcaseSetting(page, 'theme-toggle');
+			await expectTheme(page, '.showcase', 'dark');
+
+			await gotoUnhydrated(page, route);
+			await expect(page.locator(`${wrapper} .editor`)).toHaveAttribute('data-editor-theme', 'dark');
+			expect(await pageTheme(page, wrapper)).toBe('dark');
+		});
+	}
 });

@@ -10,20 +10,18 @@
 </script>
 
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { Editor } from '#lib/svelte.js';
-	import { INITIAL_STATE } from '../../../examples/showcase/controls';
-	import { readTheme, toggleTheme } from '../../../examples/showcase/theme';
+	import { STORED_THEME_SCRIPT, readTheme, toggleTheme } from '../../../examples/showcase/theme';
 	import '../../../examples/showcase/showcase-bar.css';
 	import { CHANGELOG_FAMILIES } from './changelog-content';
 	import { mountChangelogBar, type ChangelogBarState } from './changelog-bar';
 	import './changelog-bar.css';
 	import { trackParityDocument } from '../parity-documents.svelte';
 
-	// The showcase's theme, so the two pages match; stored after hydration, as on the showcase.
-	let theme = $state(INITIAL_STATE.theme);
-	onMount(() => (theme = readTheme()));
+	// The showcase's theme, so the two pages match.
+	let theme = $state(readTheme());
 
 	// The changelog ships one file per release family; the picker is a `source` prop swap.
 	let familyId = $state(CHANGELOG_FAMILIES[0].id);
@@ -66,6 +64,8 @@
 			{theme}
 		/>
 	</div>
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -- a constant of ours, not user content -->
+	{@html STORED_THEME_SCRIPT}
 </div>
 
 <style>

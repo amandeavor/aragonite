@@ -55,6 +55,15 @@ export function gotoReady(page: Page, url: RouteUrl): Promise<void> {
 	);
 }
 
+/** Loads `url` with every script request held unanswered, so a spec reads the page as served,
+ *  before the app hydrates it; inline scripts in the markup still run. */
+export async function gotoUnhydrated(page: Page, url: RouteUrl): Promise<void> {
+	await page.route('**/*', (route) =>
+		route.request().resourceType() === 'script' ? undefined : route.continue()
+	);
+	await page.goto(url, { waitUntil: NAVIGATED });
+}
+
 export function reloadReady(page: Page): Promise<void> {
 	const url = page.url();
 	const route = new URL(url).pathname;

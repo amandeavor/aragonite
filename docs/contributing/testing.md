@@ -575,6 +575,8 @@ await gotoReady(page, '/test/syntax'); // waits for window.__syntax, then the fo
 It lives in `src/lib/e2e/goto-ready.ts` and waits for the global the route sets once it's
 hydrated, since the server-rendered markup shows up well before any click handler does.
 `reloadReady(page)` is the reload version, and `editor.goto()` already calls `gotoReady` for you.
+To check what a page shows before it hydrates, `gotoUnhydrated(page, url)` loads it with every
+script request held back.
 A raw `page.goto` or `page.reload` fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
 One navigation per test, though. If a test wants a different URL than its `beforeEach` gave it

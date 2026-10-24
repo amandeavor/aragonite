@@ -32,6 +32,9 @@ is where the presentation modes are shown, so this route has none.
   serves the document on screen rather than the one it was first built for
 - pressing the platform Find chord opens the find bar and focuses its input, with the document
   in reading mode and no block holding a caret
+- at desktop width the release families sit in one segmented track and the header fits without
+  overflowing: the families fold into a chip at a wider bar than the showcase's modes, so a new
+  family can push the track past the bar
 - the header's showcase link navigates to `/` and lands on the showcase page itself rather than
   a 404, which is what the `resolve()` call buys under a configured base path
 - the route opens in the showcase's own default theme, light, on both the editor
@@ -45,6 +48,10 @@ is where the presentation modes are shown, so this route has none.
   across a client-side navigation. Miss-analysis: the theme rows asserted the showcase alone, and
   nothing ever loaded `/changelog` in light, so a route that passed no `theme` sat on the editor's
   dark default whatever the visitor had picked
+- a returning visitor who picked dark sees `/` and `/changelog` dark before either hydrates: both
+  are prerendered in the light default, so the stored choice is applied by an inline script at
+  the end of the themed wrapper, read here with the app's scripts held back. Miss-analysis: every
+  theme row waited for hydration, so none could see the light page painted before it
 
 ## Edge cases
 

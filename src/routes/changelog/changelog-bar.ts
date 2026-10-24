@@ -5,7 +5,7 @@
  */
 import { el, icon, setAttrs } from '../../../examples/showcase/bar-dom';
 import { modKey, segmentedPicker, wordmark } from '../../../examples/showcase/bar-parts';
-import type { ShowcaseTheme } from '../../../examples/showcase/controls';
+import { TOGGLES, type ShowcaseTheme } from '../../../examples/showcase/controls';
 
 export interface ChangelogBarState {
 	family: string;
@@ -41,9 +41,9 @@ export function mountChangelogBar(
 	const themeToggle = el('button', {
 		type: 'button',
 		class: 'showcase-icon-btn',
-		'data-testid': 'theme-toggle',
-		'aria-label': 'dark mode',
-		title: 'dark mode'
+		'data-testid': TOGGLES.theme.testId,
+		'aria-label': TOGGLES.theme.label,
+		title: TOGGLES.theme.label
 	});
 	themeToggle.addEventListener('click', options.onTheme);
 

@@ -14,6 +14,10 @@ export function readTheme(): ShowcaseTheme {
 	return INITIAL_STATE.theme;
 }
 
+/** An inline script for the end of a prerendered page's themed wrapper: it sets the stored theme
+ *  on the wrapper and everything in it before the page first paints, ahead of hydration. */
+export const STORED_THEME_SCRIPT = `<script>try{const t=localStorage.getItem(${JSON.stringify(STORAGE_KEY)});if(t==='light'||t==='dark'){const w=document.currentScript.parentElement;for(const e of [w,...w.querySelectorAll('[data-editor-theme]')])e.setAttribute('data-editor-theme',t)}}catch{}</script>`;
+
 /** Flips `current`, remembers the result and returns it. */
 export function toggleTheme(current: ShowcaseTheme): ShowcaseTheme {
 	const next = current === 'dark' ? 'light' : 'dark';
