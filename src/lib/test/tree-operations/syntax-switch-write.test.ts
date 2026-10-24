@@ -1,13 +1,10 @@
 // Miss-analysis: every write test ran in the global grammar, never with a syntax switched off.
+import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { describe, it, expect } from 'vitest';
 import type { Document } from '#lib/core/nodes.js';
 import { parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import {
-	cascadeCleanupEmptyAncestors,
-	splitNode,
-	updateNodeContent
-} from '#lib/tree-operations/index.js';
+import { cascadeCleanupEmptyAncestors, splitNode } from '#lib/tree-operations/index.js';
 import { createSharingState } from '#lib/tree-operations/sharing.js';
 import { createRegistryView } from '#lib/schema/registry-view.js';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';

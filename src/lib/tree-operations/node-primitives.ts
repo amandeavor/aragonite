@@ -21,6 +21,19 @@ import { adoptParsedMetadata } from '../schema/container-raw';
 export type NodeParent = { children: CstNode[] };
 
 /**
+ * Longest prefix of `chain` still attached under `root`: a node spliced out mid-commit would
+ * rebuild against its emptied children to `raw: ''`, while the ancestors above it still rebuild.
+ */
+export function attachedChainPrefix(root: NodeParent, chain: CstNode[]): CstNode[] {
+	let parentChildren = root.children;
+	for (let i = 0; i < chain.length; i++) {
+		if (!parentChildren.includes(chain[i])) return chain.slice(0, i);
+		parentChildren = chain[i].children ?? [];
+	}
+	return chain;
+}
+
+/**
  * A {@link NodeParent} that names the container owning it, for the owner's `bodyWrite` rule and
  * `innerPrefix`/`innerSuffix`. Nullable, not optional: leaving the owner out is a compile error.
  */

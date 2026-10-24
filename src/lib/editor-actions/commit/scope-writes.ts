@@ -15,11 +15,11 @@ import { spliceChildrenSettled } from '../../tree-operations/settle';
 import { updateNodeContent } from '../../tree-operations/content-write';
 import { recordChildIdsChange } from '../../tree-operations/structural-change';
 import {
-	attachedChainPrefix,
 	rebuildUnsharedChain,
 	sharedChainLevels,
 	type ContainerReclassification
 } from '../../tree-operations/chain-rebuild';
+import { attachedChainPrefix } from '../../tree-operations/node-primitives';
 
 export interface ScopeWriter extends Pick<ContainerScope, 'own' | 'writeLeaf' | 'splice'> {
 	/** The scope's list, which every path below it starts from. */

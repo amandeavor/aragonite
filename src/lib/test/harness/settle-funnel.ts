@@ -5,6 +5,7 @@
  * proves little.
  */
 
+import { deleteNode } from '#lib/tree-operations/node-ops.js';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import {
 	asBody,
@@ -19,7 +20,6 @@ import {
 	type ScopeWriter
 } from '#lib/editor-actions/commit/scope-writes.js';
 import {
-	deleteNode,
 	settleEdit,
 	type BodyEdit,
 	type EditKind,

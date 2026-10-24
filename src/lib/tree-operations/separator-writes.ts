@@ -59,3 +59,17 @@ export function bodyStartIndex(body: BodyParent): number {
 export function retireChildSpans(body: BodyParent): void {
 	if (body.owner) dropChildSpans(body.owner);
 }
+
+/**
+ * The separator a block takes back when it stops being blank: its own blank line was what stood
+ * between it and a non-blank predecessor. Call when the block is filled.
+ */
+export function restoreSeparatorOnFill(
+	body: BodyParent,
+	index: number,
+	sharing: SharingState
+): void {
+	const node = body.children[index];
+	if (!node || node.leadingTrivia !== '' || isBlankParagraph(node)) return;
+	mintSeparator(body, index, sharing);
+}

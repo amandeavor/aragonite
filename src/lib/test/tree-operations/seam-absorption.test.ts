@@ -1,7 +1,8 @@
+import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
 import { serialize } from '../../core/serializer';
-import { mergeWithNext, splitNode, updateNodeContent } from '../../tree-operations';
+import { mergeWithNext, splitNode } from '../../tree-operations';
 import { describeConvergence } from '#lib/test/harness/parse-converged.js';
 import { settled, deleteSettled } from '#lib/test/harness/settle-funnel.js';
 import type { SettledContent } from '#lib/tree-operations/content-write.js';

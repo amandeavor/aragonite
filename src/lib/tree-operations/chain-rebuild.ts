@@ -23,19 +23,6 @@ import { installReading } from './content-write';
 import { settleSublistSeparator } from './list/sublist-separator';
 
 /**
- * Longest prefix of `chain` still attached under `root`: a node spliced out mid-commit would
- * rebuild against its emptied children to `raw: ''`, while the ancestors above it still rebuild.
- */
-export function attachedChainPrefix(root: NodeParent, chain: CstNode[]): CstNode[] {
-	let parentChildren = root.children;
-	for (let i = 0; i < chain.length; i++) {
-		if (!parentChildren.includes(chain[i])) return chain.slice(0, i);
-		parentChildren = chain[i].children ?? [];
-	}
-	return chain;
-}
-
-/**
  * One container position a rebuild gave a new kind. `previous` is what a rollback restores: a
  * commit unwinding after the swap has already written `replacement` into a live children array.
  */

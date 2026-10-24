@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
+import { updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import type { CstNode, Document } from '#lib/core/nodes.js';
 import { isBlankParagraph, parse } from '#lib/core/parser.js';
 import { serialize } from '#lib/core/serializer.js';
-import { mergeWithNext, splitNode, updateNodeContent } from '#lib/tree-operations/index.js';
+import { mergeWithNext, splitNode } from '#lib/tree-operations/index.js';
 import { isMergeEligible } from '#lib/schema/merge-rules.js';
 import { describeConvergence, describeRunDivergence } from '#lib/test/harness/parse-converged.js';
 import { settled, mergePrevSettled, deleteSettled } from '#lib/test/harness/settle-funnel.js';

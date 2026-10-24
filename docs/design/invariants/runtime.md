@@ -320,7 +320,7 @@ bootstrap · `test/invariants/builtin-presentation-facts.test.ts`.
 ending, and a structural edit keeps that as it found it unless the new last line is blank. The check
 fails an open file that gained a break on a text line, a closed one that lost it, and an unended
 line above the last at any depth. `lastLineChild` names the child holding a kind's last line. The
-commit owns the rule (`open-tail.ts`); no edit writes the tail by hand (G4.74). `checkLastLineKept`
+commit owns the rule (`open-tail.ts`); no edit writes the tail by hand (G4.258). `checkLastLineKept`
 · `last-line-kept.test.ts`, `open-last-line.test.ts`, `open-last-line.property.test.ts`.
 
 **G1.42 · A list item's checkbox and blocks say what its reload reads** (`task-marker-slot`). The

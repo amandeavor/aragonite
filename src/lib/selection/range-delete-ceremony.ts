@@ -31,7 +31,7 @@ import { cleanJoinedRaw } from '../tree-operations/leaf-range';
 import { storedAsAt } from '../tree-operations/stored-as';
 import { cutBeforeSuffix } from '../tree-operations/structural-suffix';
 import { structuralSuffix } from '../core/inline';
-import { attachedChainPrefix } from '../tree-operations/chain-rebuild';
+import { attachedChainPrefix } from '../tree-operations/node-primitives';
 import { slotReaderAt } from '../tree-operations/list/task-paragraph';
 import {
 	taskMarkerCaretShift,

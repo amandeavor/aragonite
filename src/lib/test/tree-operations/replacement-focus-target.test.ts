@@ -1,6 +1,6 @@
+import { focusTargetInReplacement } from '#lib/tree-operations/neighbour-merge.js';
 import { describe, it, expect } from 'vitest';
 import { parse } from '../../core/parser';
-import { focusTargetInReplacement } from '../../tree-operations';
 import { settledCaretPosition } from '../../tree-operations/content-write';
 import { caretTargetFor } from '../../selection/caret-target';
 import { docPathFrom } from '../../caret/coordinate-spaces';

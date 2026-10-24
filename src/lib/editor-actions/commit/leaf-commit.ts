@@ -26,11 +26,11 @@ import { keepOpenTail } from '../../tree-operations/open-tail';
 import { keepOneBlock } from '../../tree-operations/keep-one-block';
 import { spliceMany } from '../../tree-operations/splice-many';
 import {
-	attachedChainPrefix,
 	rebuildUnsharedChain,
 	type AncestrySeamFold,
 	type ContainerReclassification
 } from '../../tree-operations/chain-rebuild';
+import { attachedChainPrefix } from '../../tree-operations/node-primitives';
 import {
 	foldLandingFor,
 	publishAncestryFolds,

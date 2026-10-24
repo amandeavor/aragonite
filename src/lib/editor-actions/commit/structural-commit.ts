@@ -21,12 +21,12 @@ import { keepOneBlock } from '../../tree-operations/keep-one-block';
 import { ensureUnsharedPath, rebuildOwnedContainer } from '../../tree-operations/unshare';
 import type { SharingState } from '../../tree-operations/sharing';
 import {
-	attachedChainPrefix,
 	rebuildUnsharedChain,
 	sharedChainLevels,
 	type AncestrySeamFold,
 	type ContainerReclassification
 } from '../../tree-operations/chain-rebuild';
+import { attachedChainPrefix } from '../../tree-operations/node-primitives';
 import { foldLandingFor, publishAncestryFolds, type FoldLanding } from '../ancestry-folds';
 import type { EditorActionsDeps, UndoController } from '../deps';
 import type {

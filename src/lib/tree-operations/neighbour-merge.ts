@@ -138,6 +138,8 @@ export type JoinReading = 'stands' | 'folds' | 'separate' | 'merge';
 export type JoinOrigin = 'placed' | 'uncovered';
 
 function resolveJoin(prev: CstNode, next: CstNode, grammar: GrammarView): JoinReading {
+	// A table ends where its next line can't be a row, so the pair stands with no parse of either.
+	if (prev.kind === 'table' && !tableTakesFirstLine(next, grammar)) return 'stands';
 	const read = (bytes: string) => readBlocks(bytes, { grammar, scope: 'fragment' }).children;
 	const flush = read(prev.raw + next.raw);
 	if (readsAsPair(flush, prev, next)) return 'stands';
@@ -240,12 +242,16 @@ function separateTableFollower(
 ): boolean {
 	const follower = body.children[index];
 	if (body.children[index - 1]?.kind !== 'table' || follower.leadingTrivia !== '') return false;
-	// All of the follower's lines, not its first alone: an opener can need a later one to open.
-	const lines = splitLines(follower.raw);
-	if (lines.length === 0) return false;
-	if (!tableTakesLine(lines, 0, lines.length, grammar)) return false;
+	if (!tableTakesFirstLine(follower, grammar)) return false;
 	mintSeparator(body, index, sharing);
 	return true;
+}
+
+/** Whether a table above `block` would take its first line as one more row. All of its lines
+ *  go along, since an opener can need a later one to open. */
+function tableTakesFirstLine(block: CstNode, grammar: GrammarView): boolean {
+	const lines = splitLines(block.raw);
+	return lines.length > 0 && tableTakesLine(lines, 0, lines.length, grammar);
 }
 
 const contentCount = (nodes: readonly CstNode[]): number =>

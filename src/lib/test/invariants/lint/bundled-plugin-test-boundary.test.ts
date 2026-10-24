@@ -58,7 +58,7 @@ const ALLOWLIST: Record<string, Exemption> = {
 	},
 	'src/lib/test/plugins/admonitions/github-alert-empty-body.test.ts': {
 		specifiers: [
-			'#lib/tree-operations/index.js',
+			'#lib/tree-operations/content-write.js',
 			'#lib/tree-operations/sharing.js',
 			'#lib/invariants/node-shape.js'
 		],

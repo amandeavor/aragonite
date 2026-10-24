@@ -42,7 +42,6 @@ const RULES: FileRule[] = [
 		matches: /\bupdateNodeContent\b/,
 		allowed: {
 			[CONTENT_WRITE]: 'defines it',
-			[TREE_OPS_BARREL]: BARREL_REASON,
 			[LEAF_COMMIT]: '`typeLeaf`, the keystroke written in place at every depth',
 			'src/lib/editor-actions/replacement-focus.ts':
 				'the keystroke’s trial reparse, on a copy that is never installed',

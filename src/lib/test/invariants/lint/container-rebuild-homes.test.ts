@@ -14,9 +14,7 @@ const KIND_FREE = [
 	'rebuildContainerRaw',
 	'rebuildContainerRawIfContainer',
 	'rebuildAncestryRaw',
-	'rebuildOwnedContainer',
-	'rebuildUnsharedChain',
-	'rebuildUnsharedAncestry'
+	'rebuildOwnedContainer'
 ];
 
 /** The built-in rebuilders the registration read below must find. */
@@ -40,23 +38,15 @@ interface Pin {
 /** Every other file that rebuilds, with its exact call count and why no commit repeats it. */
 const PINNED: Record<string, Pin> = {
 	'src/lib/editor-actions/commit/structural-commit.ts': {
-		calls: { rebuildUnsharedChain: 1, rebuildOwnedContainer: 1 },
-		why: 'the commit’s own chain rebuild, and the scope’s `rebuild` it hands the mutation'
+		calls: { rebuildOwnedContainer: 1 },
+		why: 'the scope’s `rebuild` the commit hands the mutation'
 	},
 	'src/lib/tree-operations/list/item-moves.ts': {
 		calls: { '.rebuild': 2 },
 		why: 'a Tab’s new sublist and a lifted item that took the blocks after it sit below the commit’s chain, which never rebuilds them, and the blank-line rule reads their bytes before the commit returns'
 	},
-	'src/lib/editor-actions/commit/scope-writes.ts': {
-		calls: { rebuildUnsharedChain: 1 },
-		why: 'the commit’s one rebuild of the paths a mutation owned below its scope'
-	},
-	'src/lib/editor-actions/commit/leaf-commit.ts': {
-		calls: { rebuildUnsharedChain: 1 },
-		why: 'a keystroke written in place, whose frame runs no structural commit'
-	},
 	'src/lib/editor-actions/search-replace.ts': {
-		calls: { rebuildUnsharedChain: 1, rebuildContainerRaw: 1 },
+		calls: { rebuildContainerRaw: 1 },
 		why: 'rebuilds a scratch clone to read the replacement back before any commit'
 	},
 	'src/lib/selection/range-delete-table.ts': {
@@ -69,7 +59,6 @@ const PINNED: Record<string, Pin> = {
 	},
 	'src/lib/testing/container-conformance.ts': {
 		calls: {
-			rebuildUnsharedAncestry: 2,
 			rebuildContainerRawIfContainer: 1,
 			'.rebuildRaw': 8
 		},
@@ -117,7 +106,7 @@ const PINNED: Record<string, Pin> = {
 	},
 	'src/lib/tree-operations/node-ops.ts': {
 		calls: { rebuildAncestryRaw: 1 },
-		why: 'a join rewrites the ancestors of the joined leaf below its parent'
+		why: 'the deep Backspace join reads its caret offset off the rebuilt ancestors inside its mutation, before the commit could rebuild them; it goes once the commit places a tracked caret after rebuilding what the mutation owned'
 	},
 	'src/lib/tree-operations/paste/container-match.ts': {
 		calls: { rebuildContainerRaw: 1 },

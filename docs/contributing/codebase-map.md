@@ -314,9 +314,9 @@ so a half-typed construct doesn't swallow the lines below it.
 The one join no scope can see is a container's own slot in its parent, since a change inside a
 container changes what it interrupts. `src/lib/tree-operations/chain-rebuild.ts` ::
 `rebuildUnsharedChain` asks it on the way out of the ancestor rebuild, and
-`src/lib/editor-actions/ancestry-folds.ts` publishes the scope that collapse changed. A caller
-that can't reconcile that splice passes `null` and declines; which caller takes which stance is
-listed in `src/lib/test/invariants/lint/ancestry-fold-sink-thread.test.ts`.
+`src/lib/editor-actions/ancestry-folds.ts` publishes the scope that collapse changed. Only the
+commit runs it: its scope chains take the collapse, and the paths a mutation owned below a scope
+decline it, since their list's ids come from the change the mutation reported.
 
 ## Keeping this map fresh
 
