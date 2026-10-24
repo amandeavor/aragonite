@@ -63,7 +63,13 @@ export default defineConfig({
 				test: {
 					name: 'unit',
 					include: ['src/lib/test/**/*.test.ts', 'src/lib/e2e/lint/**/*.test.ts'],
-					exclude: [...configDefaults.exclude, DEEP_STACK, ...NODE_REALM]
+					exclude: [
+						...configDefaults.exclude,
+						DEEP_STACK,
+						...NODE_REALM,
+						// The behavior differential reads a locally recorded baseline, so it runs on demand.
+						...(process.env.BEHAVIOR ? [] : ['src/lib/test/behavior/**'])
+					]
 				}
 			},
 			{

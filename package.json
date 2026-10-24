@@ -180,7 +180,7 @@
 		"test:editor:invariants": "vitest run src/lib/test/invariants",
 		"test:editor:search": "vitest run src/lib/test/search",
 		"test:editor:perf": "vitest run src/lib/test/perf",
-		"test:editor:behavior": "vitest run src/lib/test/behavior",
+		"test:editor:behavior": "node scripts/run-with-env.mjs BEHAVIOR=1 -- vitest run src/lib/test/behavior",
 		"test:editor:exhaustive": "vitest run src/lib/test/exhaustive",
 		"test:e2e": "playwright test",
 		"test:e2e:top": "playwright test --project=e2e-top",

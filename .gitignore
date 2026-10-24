@@ -57,5 +57,6 @@ docs/contributing/releasing.md
 # Input recordings the debug panel sends to the dev server (`src/routes/test/recordings`)
 recordings-inbox/
 
-# The behavior differential's full list of changed inputs; the curated rows live in scripts/behavior-baseline.jsonl
+# The behavior differential's local record and its full list of changed inputs
+scripts/behavior-baseline.jsonl
 behavior-results/

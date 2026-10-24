@@ -29,7 +29,7 @@ Where to jump:
 - [Size budgets](#size-budgets): the numbers that say how heavy the repo is, what reds when one
   moves, and how to accept a move on purpose.
 - [The behavior differential](#the-behavior-differential): every key at every offset of a set of
-  documents, held to a committed record, so a refactor can show it changed nothing.
+  documents, compared before and after your change, so a refactor can show it changed nothing.
 - [Every short input](#every-short-input): every string up to a few characters long, parsed,
   round-tripped and edited at every offset.
 - The performance harness (fixtures, instruments, threshold policy) lives in
@@ -141,7 +141,7 @@ Test files take turns in a shared Node process, which bites in three ways:
 | `test:editor:invariants`     | Invariant catalog: property/fuzz tests + source-scan guards                                                 |
 | `test:editor:debug`          | Debug engine helpers and operations log                                                                     |
 | `test:editor:perf`           | Perf commit gate: counter ceilings, amplification report, fixture goldens                                   |
-| `test:editor:behavior`       | The behavior differential, held to its committed record                                                     |
+| `test:editor:behavior`       | The behavior differential, against your local record                                                        |
 | `test:editor:exhaustive`     | Every short input, at the lengths `npm test` runs                                                           |
 
 The inline-scanner suite (`test/core/inline/scan/`) and the directive suite
@@ -1059,7 +1059,9 @@ CI time is too noisy to gate on.
 A refactor is supposed to change nothing anyone can see, and "the tests are green" only says the
 inputs somebody wrote down still pass. The differential asks the wider question: it presses keys in
 the mounted editor (jsdom, the same mount the unit suites use), writes down what every key did,
-and holds that to a record committed in `scripts/behavior-baseline.jsonl`. One line per input:
+and holds that to a record in `scripts/behavior-baseline.jsonl`, which you record locally (it's
+gitignored: `npm run behavior -- --record` on the base, then compare your branch with `--against`
+that file, or run `npm run test:editor:behavior`). One line per input:
 
 ```
 {"in":"keys live bullets [0,1,0]@0 Backspace","took":"keydown","bytes":"- ab\n","caret":"0.0.0:1"}
@@ -1092,19 +1094,18 @@ The documents mount with the bundled plugins that add syntax (math with a stub r
 admonitions, details, the table of contents, footnotes, emoji), so `$x$` and `:::note` mean what the
 showcase means by them.
 
-It runs inside `npm run test:editor` (it adds about half a minute to the run) and fails on any
-row the record doesn't hold. So a change that means to change behavior re-blesses in its own
-commit, and that commit's diff of the record is the list of inputs it changed. A refactor's list
-is empty.
+It doesn't run inside `npm run test:editor`: the record is a local, gitignored file, so you make
+one on the commit you started from and compare your branch against it. A change that means to
+change behavior lists exactly the inputs it meant to change. A refactor's list is empty.
 
 ```bash
-npm run behavior                                          # this checkout against the committed record
-npm run behavior -- --against $(git merge-base HEAD dev)  # against the record your branch left dev with
-npm run behavior:bless                                    # accept the rows as they are now; commit the file
+git switch --detach $(git merge-base HEAD dev)            # the commit your branch started from
+npm run behavior -- --record                              # writes scripts/behavior-baseline.jsonl
+git switch -                                              # back to your branch
+npm run behavior                                          # this checkout against that record
 ```
 
-Same commands in PowerShell. `--against <ref>` reads the record as committed at that ref and doesn't
-run the ref's code; the gate is what makes that record the ref's behavior. A branch reports the
+Same commands in PowerShell. A branch reports the
 first line and the changed inputs under it:
 
 ```
@@ -1117,11 +1118,9 @@ behavior --against …: … rows compared, 1 changed (bytes 1, caret 1), 0 added
 It prints the first 20, and writes the full list to `behavior-results/diff.txt`. To compare two checkouts
 by hand, `--record <file>` writes this checkout's rows and `--against <file>` diffs against a file.
 
-Rows that moved and nothing in your diff explains? Prob the machine, not you. A new OS, Node
-version or dependency install can move a row too, so run `npm run behavior` on a clean checkout of
-the commit that last blessed the record, on the same machine. Rows that move there too are the
-machine's; bless those in a commit of their own. Rows that only move on your branch are your
-change.
+Rows that moved and nothing in your diff explains? Prob the machine, not you: a dependency install
+between the two runs can move a row. Record and compare on the same machine with the same install,
+and re-record the base if you reinstalled.
 
 Two limits. It's jsdom, so where the editor hands a key back to the browser nothing happens and the
 row says `browser`: the editor's own handling is real, Chromium's isn't. And the note-taking
