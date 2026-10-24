@@ -174,10 +174,8 @@ function saveChain(
 	};
 }
 
-/**
- * The leaf's list for the write to splice, copied only when the fix-up first changes it (a merge,
- * a blank run), so an ordinary keystroke never copies its siblings.
- */
+/** The leaf's list, copied only at the fix-up's first splice; the wrapper stays in the write's
+ *  body, never in a node or anything keyed by identity. */
 function copiedOnWrite(target: CstNode[]): { children: CstNode[]; restore(): void } {
 	let before: CstNode[] | null = null;
 	const copyFirst = () => {
