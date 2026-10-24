@@ -474,8 +474,10 @@ the issue closes, the `fixme` goes with it.
 
 A `fixme` reason has to start with `#<issue>: `, or `src/lib/e2e/lint/fixme-names-issue.test.ts`
 fails. That's what makes the release step useful: `npm run release:fixme-recheck` runs every
-`fixme` row on all three engines as if it weren't marked and lists the ones that pass now, next to
-the issue each one names. It never edits a spec, so un-fixme'ing a row is still your call.
+`fixme` row written the way above (inside the test, with a condition) on all three engines as if it
+weren't marked, and lists the ones that pass now next to the issue each one names. A
+`test.fixme('title', ...)` or `test.describe.fixme` stays skipped, so the recheck never sees it. It
+never edits a spec either, so un-fixme'ing a row is still your call.
 
 **Helpers that branch on the engine.** The clipboard and IME helpers keep one signature across
 engines, so a spec never needs to know which one it got. Every clipboard touch goes through them:
@@ -1012,12 +1014,12 @@ without anybody deciding it should. They live in `scripts/measure-baseline.json`
 baseline and a tolerance (how far it may move before anything complains, sized to about one normal
 change).
 
-| Number                                       | What it counts                                                                                                                                                                                                                                                                                                         | Checked by                                                                                                         |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Production code and comment lines            | Non-blank lines of `.ts`, `.svelte` and `.js` under `src/lib`, tests aside. A line that opens a comment or sits inside one is a comment line                                                                                                                                                                           | `npm run lint`                                                                                                     |
-| Unit test files, internal and published-only | A unit test file is internal when it, or a helper under `test/` it imports, takes anything the package doesn't publish (published means reachable from an entry point in `package.json` `exports`). A published-only test keeps passing through any rewrite behind the entry points, which is the kind we want more of | `npm run lint`                                                                                                     |
-| Active source scans                          | Rows in `docs/design/invariants/scans.md` that aren't marked retired                                                                                                                                                                                                                                                   | `npm run lint`                                                                                                     |
-| The minimal app, gzipped                     | A page that imports `createEditor`, built minified for production, once through the Svelte build and once through the prebuilt one                                                                                                                                                                                     | `scripts/verify-dev-strip.mjs`, which runs inside `verify-pack.mjs` (before a publish, and in CI's consumer smoke) |
+| Number                                       | What it counts                                                                                                                                                                                                                                                                                                                                       | Checked by                                                                                                         |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Production code and comment lines            | Non-blank lines of `.ts`, `.svelte` and `.js` under `src/lib`, tests aside. A line that opens a comment or sits inside one is a comment line                                                                                                                                                                                                         | `npm run lint`                                                                                                     |
+| Unit test files, internal and published-only | A unit test file is internal when it, or a helper under `test/` it imports, imports, names a type from or mocks anything the package doesn't publish (published means reachable from an entry point in `package.json` `exports`). A published-only test keeps passing through any rewrite behind the entry points, which is the kind we want more of | `npm run lint`                                                                                                     |
+| Active source scans                          | Rows in `docs/design/invariants/scans.md` that aren't marked retired                                                                                                                                                                                                                                                                                 | `npm run lint`                                                                                                     |
+| The minimal app, gzipped                     | A page that imports `createEditor`, built minified for production, once through the Svelte build and once through the prebuilt one                                                                                                                                                                                                                   | `scripts/verify-dev-strip.mjs`, which runs inside `verify-pack.mjs` (before a publish, and in CI's consumer smoke) |
 
 A number fails when it moves past its tolerance in either direction. Growing past it means more
 than one change's worth landed. Shrinking past it means the baseline is stale: bless it, so the
@@ -1025,21 +1027,21 @@ next change can't quietly spend what you saved. Blessing writes the current numb
 baselines, and the tolerances stay put.
 
 ```bash
-npm run measure                             # every number, per directory, plus the test helpers that import internals
-npm run measure -- --against <base>         # how far each one moved since <base>
-npm run measure:bless                       # accept the lines, tests and scans as they are now
-node scripts/verify-dev-strip.mjs --bless   # accept the app sizes (after `npm run package`)
+npm run measure                                          # every number, per directory, plus the test helpers that import internals
+npm run measure -- --against $(git merge-base HEAD dev)  # how far each one moved since your branch left dev
+npm run measure:bless                                    # accept the lines, tests and scans as they are now
+node scripts/verify-dev-strip.mjs --bless                # accept the app sizes (after `npm run package`)
 ```
 
-Same commands in PowerShell. A branch reports what it did to the numbers as the `--against`
-deltas from the commit it started from, so a bless along the way never hides one.
+Same commands in PowerShell. When a branch reports what it did to the numbers, it reports the
+`--against` deltas. Those measure the old commit directly, so a bless along the way doesn't hide
+anything.
 
 The test split is a cheap stand-in for "this test guards behavior". The real check is whether a
 module's behavior suites (the e2e specs and property tests that judge it) stay green while its
-insides change shape; nobody has scripted that one yet. When a module gets rebuilt, it'll want a
-switch in its test support that flips the internal shape, and those suites run under it.
+insides change shape, and nobody has scripted that one yet.
 
 Each prebuilt entry point also has a gzipped budget of its own, in `scripts/verify-prebuilt.mjs`,
 edited by hand. And for how long CI takes, `node scripts/ci-time.mjs` prints the latest dev push's
-wall time and runner minutes, against the median of the last five. That one's report-only, CI
-time is too noisy to gate on.
+wall time and runner minutes, against the median of the last five. That one's report-only, since
+CI time is too noisy to gate on.

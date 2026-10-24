@@ -84,7 +84,8 @@ if (strip.failures.length) {
 const sizeFailures = checkBudgets(strip.sizes, readBaseline(), BLESS_COMMAND);
 if (sizeFailures.length) {
 	console.error(
-		'verify-pack: a minimal app is over its size budget:\n  ' + sizeFailures.join('\n  ')
+		'verify-pack: a minimal app moved past its size budget (docs/contributing/testing.md § Size budgets):\n  ' +
+			sizeFailures.join('\n  ')
 	);
 	process.exit(1);
 }

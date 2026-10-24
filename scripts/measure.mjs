@@ -239,7 +239,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
 		const failures = checkBudgets(gatedRows(now), readBaseline(), 'npm run measure:bless');
 		if (failures.length > 0) {
 			console.error(
-				'measure: over budget (docs/contributing/testing.md § Size budgets):\n  ' +
+				'measure: moved past its tolerance (docs/contributing/testing.md § Size budgets):\n  ' +
 					failures.join('\n  ')
 			);
 			process.exit(1);
