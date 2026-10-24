@@ -1,9 +1,8 @@
 // Which unit test files reach the library only through what it publishes. A file importing an
 // unpublished symbol is pinned to internal shape; one importing only published symbols would
 // survive a rewrite behind the entry points. A test helper's imports count as its tests' own.
-import path from 'node:path';
 import ts from 'typescript';
-import { aliasPath, publishedEntryPoints } from './lib-alias.mjs';
+import { aliasPath, importedFile, publishedEntryPoints } from './lib-alias.mjs';
 
 /**
  * A source tree read by repo-relative POSIX path: the working tree, or a commit.
@@ -14,7 +13,7 @@ import { aliasPath, publishedEntryPoints } from './lib-alias.mjs';
 
 /**
  * One reference from a file to library source: the imported name (`default`, `*` for a namespace
- * or a re-export of everything, `<load>` for a side-effect or dynamic import) and the file
+ * or a re-export of everything, `<load>` for a side-effect, dynamic or mocked import) and the file
  * exporting it under that name.
  * @typedef {{ target: string, name: string }} Ref
  */
@@ -158,7 +157,11 @@ function publishedRefs(entries, refsOf) {
 		if (visited.has(key)) continue;
 		visited.add(key);
 		for (const { target, from, as } of refsOf(file).exports ?? []) {
-			if (from === '*') {
+			if (from === '*' && as !== '*') {
+				if (names !== null && !names.has(as)) continue;
+				published.add(`${target}\0*`);
+				queue.push([target, null]);
+			} else if (from === '*') {
 				if (names === null) published.add(`${target}\0*`);
 				else names.forEach((name) => published.add(`${target}\0${name}`));
 				queue.push([target, names]);
@@ -220,7 +223,7 @@ function readRefs(tree, fileSet, file, selfImports) {
 			if (statement.moduleSpecifier && target === null) continue;
 			if (target !== null && (!clause || ts.isNamespaceExport(clause))) {
 				refs.push({ target, name: '*' });
-				refs.exports.push({ target, from: '*', as: '*' });
+				refs.exports.push({ target, from: '*', as: clause ? clause.name.text : '*' });
 			} else if (clause && ts.isNamedExports(clause)) {
 				for (const element of clause.elements) {
 					const local = (element.propertyName ?? element.name).text;
@@ -237,18 +240,46 @@ function readRefs(tree, fileSet, file, selfImports) {
 		}
 	}
 	const visit = (/** @type {ts.Node} */ node) => {
-		if (
-			ts.isCallExpression(node) &&
-			node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-			node.arguments.length > 0
-		) {
-			const target = resolve(node.arguments[0]);
-			if (target !== null) refs.push({ target, name: '<load>' });
+		const loaded = loadedSpecifier(node);
+		const target = loaded ? resolve(loaded) : null;
+		if (target !== null) refs.push({ target, name: '<load>' });
+		if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+			const typeTarget = resolve(node.argument.literal);
+			const name = node.qualifier ? leftmostName(node.qualifier) : '*';
+			if (typeTarget !== null) refs.push({ target: typeTarget, name });
 		}
 		ts.forEachChild(node, visit);
 	};
 	visit(ast);
 	return refs;
+}
+
+// A test that mocks a module is tied to that file as surely as one importing it.
+const MODULE_CALLS = new Set([
+	'mock',
+	'doMock',
+	'unmock',
+	'doUnmock',
+	'importActual',
+	'importMock'
+]);
+
+/** The specifier a call loads: `import('x')`, or `vi.mock('x')` and its siblings. */
+function loadedSpecifier(/** @type {ts.Node} */ node) {
+	if (!ts.isCallExpression(node) || node.arguments.length === 0) return undefined;
+	const callee = node.expression;
+	const loads =
+		callee.kind === ts.SyntaxKind.ImportKeyword ||
+		(ts.isPropertyAccessExpression(callee) &&
+			ts.isIdentifier(callee.expression) &&
+			callee.expression.text === 'vi' &&
+			MODULE_CALLS.has(callee.name.text));
+	return loads ? node.arguments[0] : undefined;
+}
+
+/** `A` of the qualified name `A.B.C`. */
+function leftmostName(/** @type {ts.EntityName} */ name) {
+	return ts.isIdentifier(name) ? name.text : leftmostName(name.left);
 }
 
 /** @param {Ref[]} refs @param {Map<string, Ref>} locals @param {string} local @param {Ref} ref */
@@ -273,15 +304,12 @@ function svelteScripts(/** @type {string} */ source) {
  * @param {Map<string, string>} selfImports
  */
 function resolveSpecifier(importer, specifier, fileSet, selfImports) {
-	const base = specifier.startsWith('.')
-		? path.posix.join(path.posix.dirname(importer), specifier)
-		: specifier.startsWith('#')
-			? aliasPath(specifier)
-			: (selfImports.get(specifier) ?? null);
-	if (base === null) return null;
-	const stem = base.replace(/\.js$/, '');
-	const candidates = [base, `${stem}.ts`, `${base}.ts`, `${base}.svelte.ts`, `${base}/index.ts`];
-	return candidates.find((candidate) => fileSet.has(candidate)) ?? null;
+	return importedFile(
+		importer,
+		specifier,
+		(candidate) => fileSet.has(candidate),
+		(bare) => (bare.startsWith('#') ? aliasPath(bare) : (selfImports.get(bare) ?? null))
+	);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

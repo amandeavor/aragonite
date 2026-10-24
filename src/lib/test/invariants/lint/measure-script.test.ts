@@ -17,7 +17,8 @@ const PACKAGE = {
 	}
 };
 
-/** A library whose two entries publish `parse`, `Node`, `Kind`, `Row`, `picked` and all of `star.ts`. */
+/** A library whose two entries publish `parse`, `Node`, `Kind`, `Row`, `picked`, and all of
+ *  `star.ts`, `named.ts` and `spread.ts`. */
 const LIBRARY: Record<string, string> = {
 	'package.json': JSON.stringify(PACKAGE),
 	'docs/design/invariants/scans.md': '',
@@ -25,11 +26,18 @@ const LIBRARY: Record<string, string> = {
 		"export { parse } from './core/parser.js';",
 		"export type { Node } from './core/nodes.js';",
 		"export * from './star.js';",
+		"export * as named from './named.js';",
 		"import { rowOf } from './table/rows.svelte.js';",
 		'export { rowOf as Row };'
 	].join('\n'),
-	'src/lib/plugin.ts':
-		"export { Kind as PluginKind } from './schema';\nexport { picked } from './barrel.js';",
+	'src/lib/plugin.ts': [
+		"export { Kind as PluginKind } from './schema';",
+		"export { picked } from './barrel.js';",
+		"export { spreadNs } from './mid.js';"
+	].join('\n'),
+	'src/lib/mid.ts': "import * as spreadNs from './spread.js';\nexport { spreadNs };",
+	'src/lib/spread.ts': 'export const spread = 1;',
+	'src/lib/named.ts': 'export const fromNamed = 1;',
 	'src/lib/barrel.ts': "export * from './many.js';",
 	'src/lib/many.ts': 'export const picked = 1;\nexport const unpicked = 2;',
 	'src/lib/schema/index.ts': "export { Kind, hidden } from './kinds.js';",
@@ -70,6 +78,8 @@ describe('measure: a unit test reaching only published symbols', () => {
 		['a chain through a directory index', "import { Kind } from '#lib/schema/kinds.js';"],
 		['a name picked through a barrel', "import { picked } from '#lib/many.js';"],
 		['the package by name', "import { PluginKind } from '@voithos-labs/aragonite/plugin';"],
+		['a file re-exported as a namespace', "import { fromNamed } from '#lib/named.js';"],
+		['a namespace re-exported by name', "import { spread } from '#lib/spread.js';"],
 		['a published-only helper', "import '../test/harness/clean.js';"]
 	])('%s counts as published', (_, source) => {
 		expect(isPublishedOnly(source)).toBe(true);
@@ -85,6 +95,11 @@ describe('measure: a unit test reaching only published symbols', () => {
 			"import * as rows from '#lib/table/rows.svelte.js';"
 		],
 		['a dynamic import of an internal file', "await import('#lib/core/parser.js');"],
+		['a type naming an internal file', "type Parser = typeof import('#lib/core/parser.js');"],
+		[
+			'a mock of an internal file',
+			"import { parse } from '#lib';\nvi.mock('#lib/core/parser.js');"
+		],
 		['a helper importing an internal', "import { mount } from './harness/mount.js';"],
 		['a Svelte helper importing an internal', "import Fixture from './harness/Fixture.svelte';"]
 	])('%s counts as internal', (_, source) => {
