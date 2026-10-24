@@ -24,6 +24,8 @@ Collapsed, single-block, and cross-block selections all use that one `selection`
 
 **Triggers.** An entry is pushed before every structural operation and before every cut or paste (a copy writes nothing, so it pushes nothing). Text input is batched: consecutive keystrokes in one block group into a single entry, broken by pauses, focus changes, structural ops, and any cut or paste.
 
+Every write to a block's text says which of those it is, as its `history`. Typing is `'join-typing'` (a Tab, and a key typed over a selection, count as typing). A command is `'entry'`: a format chord, a heading cycle, the code fence's language, a plugin source's commit. An `'entry'` write ends the burst before and after itself, so one Ctrl+Z takes back the command and leaves the typing on both sides. It's a required argument of `updateBlockContent` and of `writeText`, so a new write can't forget to pick.
+
 **Where undo puts the caret.** The snapshot's selection path is read live from the focused leaf, so undo lands the caret on the exact leaf that was being typed in, including deep inside nested containers. The offset on that leaf is the one the caller supplies rather than the live (post-edit) one, so the caret goes back to where the edit began:
 
 - For typed text a block reads that position at `beforeinput`, which every input route fires (a composition reads it where the composition starts), so dictation or a soft keyboard undoes in place like a keystroke.
@@ -37,7 +39,7 @@ Collapsed, single-block, and cross-block selections all use that one `selection`
 - Every later write in the step joins that entry, and a step that writes nothing leaves nothing.
 - The step ends when the gesture's own work finishes, or earlier at the author's next input in that editor (a key other than a bare modifier, a keyless `beforeinput`, a paste, a cut or a drop), so typing while a plugin's commit waits gets its own entry.
 
-A gesture can't push an entry ahead of its write; all it gets is the step. The code keeps that rule rather than the types forcing it, though. A commit outside a step still pushes its own entry, and the typing batch pushes at a burst's first keystroke, before the keystroke writes. A keystroke that changes its block (a new kind, or several blocks) commits, and that commit lands in the entry its typing batch already holds, ending the burst. The join holds only because nothing awaits between the batch push and the commit call.
+A gesture can't push an entry ahead of its write; all it gets is the step. The code keeps that rule rather than the types forcing it, though. A commit outside a step still pushes its own entry, and the typing batch pushes at a burst's first keystroke, before the keystroke writes. A keystroke that changes its block (a new kind, or several blocks) commits with `history: 'join-typing'`, so that commit lands in the entry the keystroke already pushed, ending the burst. The join holds only because nothing awaits between the batch push and the commit call.
 
 The other way round works too: after a commit, `CommitController`'s `continueTypingBurst()` makes the next typing write join the entry that commit wrote. A composition over a range is the one user, so the composed text lands in the entry its removal opened (compositionend ends the continuation with `endContinuedBurst`).
 
