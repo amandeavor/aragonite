@@ -83,18 +83,16 @@ export function createLeafCommit(
 			apply(wasOpen) {
 				const owner = depth > 1 ? chain[depth - 2] : undefined;
 				// The chain reached the leaf through the owner's children, so below the root they exist.
+				const siblings = copiedOnWrite(owner ? owner.children! : deps.doc.children);
 				body = owner
-					? { children: owner.children!, owner, lineEnding: documentLineEnding(deps.doc) }
-					: documentBody(deps.doc);
-				restoreChain = saveChain(deps, leafPath, chain, owner);
+					? { children: siblings.children, owner, lineEnding: documentLineEnding(deps.doc) }
+					: documentBody(deps.doc, siblings.children);
+				restoreChain = saveChain(deps, leafPath, chain, siblings.restore);
 				// Read before the write: the ancestors' rebuild locates the leaf's region by these bytes.
 				leafPreviousRaw = chain[depth - 1].raw;
 				settled = updateNodeContent(body, index, write, deps.reading.grammar, deps.sharing);
 				if (!owner) {
 					settled = { ...settled, change: keepOneBlock(body, settled.change, deps.sharing) };
-					// A top-level splice has no saved array to restore, and nothing after it rebuilds an
-					// ancestor, so a later throw leaves the settled write standing.
-					if (settled.change.op !== 'noop') restoreChain = null;
 				}
 				restoreIds = publishScopeChange(deps, owner, settled.change);
 				// The top level has no ancestors to rebuild, which keeps the keystroke there cheap.
@@ -152,28 +150,47 @@ export function createLeafCommit(
 // ── Rollback ─────────────────────────────────────────────────────────────────
 
 /**
- * What a rolled-back keystroke puts back: the chain's bytes (O(depth)), each chain node in its
- * slot, and inside a container its parent's children.
+ * What a rolled-back keystroke puts back: the chain's bytes and each chain node in its slot
+ * (O(depth)), and the leaf's list as `restoreSiblings` saved it.
  */
 function saveChain(
 	deps: EditorActionsDeps,
 	leafPath: DocPath,
 	chain: CstNode[],
-	owner: CstNode | undefined
+	restoreSiblings: () => void
 ): () => void {
 	const restoreBytes = saveBytes(chain);
-	const siblings = owner ? owner.children!.slice() : null;
 	// A write that reads the leaf as another kind in place swaps its children for the new reading's.
 	const leaf = chain[chain.length - 1];
 	const leafChildren = leaf.children;
 	return () => {
 		if (leaf.children !== leafChildren) leaf.children = leafChildren;
-		if (owner && siblings) spliceMany(owner.children!, 0, owner.children!.length, siblings);
+		restoreSiblings();
 		for (let i = 0; i < chain.length; i++) {
 			const parent = i === 0 ? deps.doc.children : chain[i - 1].children!;
 			if (parent[leafPath[i]] !== chain[i]) parent[leafPath[i]] = chain[i];
 		}
 		restoreBytes();
+	};
+}
+
+/** The leaf's list, copied only at the fix-up's first splice; the wrapper stays in the write's
+ *  body, never in a node or anything keyed by identity. */
+function copiedOnWrite(target: CstNode[]): { children: CstNode[]; restore(): void } {
+	let before: CstNode[] | null = null;
+	const copyFirst = () => {
+		before ??= target.slice();
+	};
+	const children = new Proxy(target, {
+		set: (list, key, value) => (copyFirst(), Reflect.set(list, key, value)),
+		deleteProperty: (list, key) => (copyFirst(), Reflect.deleteProperty(list, key)),
+		defineProperty: (list, key, field) => (copyFirst(), Reflect.defineProperty(list, key, field))
+	});
+	return {
+		children,
+		restore: () => {
+			if (before) spliceMany(target, 0, target.length, before);
+		}
 	};
 }
 
