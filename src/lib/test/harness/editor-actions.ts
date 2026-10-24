@@ -72,6 +72,7 @@ import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import type { GapStopScope } from '#lib/selection/gap-caret.js';
 import {
 	createHeadlessActions,
+	recordingFocus,
 	stubBlockComponent,
 	stubBlockEdit,
 	stubCaretMemory,
@@ -671,15 +672,19 @@ export function makeContainerHarness(
 	return { ...harness, controller, bundle, state, getNode, focus, edits };
 }
 
-/** The action bundle of the container at `containerPath` over deps a caller already holds, so
- *  one document takes writes at the top level and inside a container alike. */
+/** The bundle of the container at `containerPath` over deps a caller already holds. A merge off
+ *  its edge goes to `parentBlockEdit`, which writes nothing unless the caller passes the parent's. */
 export function containerBundleOver(
 	deps: EditorActionsDeps,
 	controller: UndoController,
 	containerPath: number[],
-	focus: FocusActions = makeStubFocus()
+	focus: FocusActions = recordingFocus(),
+	parentBlockEdit: BlockEditActions = stubBlockEdit()
 ) {
-	const getNode = () => nodeAt(deps.doc, containerPath) as CstNode;
+	// Once an edit takes the container, its state keeps the node it was built on, as an unmounted
+	// container's state would.
+	const built = nodeAt(deps.doc, containerPath) as CstNode;
+	const getNode = () => (nodeAt(deps.doc, containerPath) as CstNode | null) ?? built;
 	const state = makeBlockListState(getNode);
 	const bundle = createStandardNestedActions(
 		state,
@@ -688,8 +693,10 @@ export function containerBundleOver(
 			getNode,
 			path: containerPath,
 			reading: deps.reading,
+			// The root's, as the editor hands both the same one; a fresh one would be an unread spy.
+			caretMemory: deps.caretMemory,
 			parent: {
-				blockEdit: makeStubBlockEdit(),
+				blockEdit: parentBlockEdit,
 				focus,
 				containerEdit: createContainerEditActions(deps, controller)
 			}

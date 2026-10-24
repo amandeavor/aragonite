@@ -11,12 +11,12 @@
 			"unit": "lines"
 		},
 		"unitTestsInternal": {
-			"baseline": 1304,
+			"baseline": 1309,
 			"tolerance": 3,
 			"unit": "files"
 		},
 		"unitTestsPublishedOnly": {
-			"baseline": 91,
+			"baseline": 93,
 			"tolerance": 3,
 			"unit": "files"
 		},

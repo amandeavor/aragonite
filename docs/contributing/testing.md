@@ -28,6 +28,10 @@ Where to jump:
   over React, Next, Vue and Nuxt apps.
 - [Size budgets](#size-budgets): the numbers that say how heavy the repo is, what reds when one
   moves, and how to accept a move on purpose.
+- [The behavior differential](#the-behavior-differential): every key at every offset of a set of
+  documents, held to a committed record, so a refactor can show it changed nothing.
+- [Every short input](#every-short-input): every string up to a few characters long, parsed,
+  round-tripped and edited at every offset.
 - The performance harness (fixtures, instruments, threshold policy) lives in
   `docs/design/performance.md` § The numbers and the gate.
 - The debug panel, its console helpers, and dumping editor state inside a test are in
@@ -137,6 +141,8 @@ Test files take turns in a shared Node process, which bites in three ways:
 | `test:editor:invariants`     | Invariant catalog: property/fuzz tests + source-scan guards                                                 |
 | `test:editor:debug`          | Debug engine helpers and operations log                                                                     |
 | `test:editor:perf`           | Perf commit gate: counter ceilings, amplification report, fixture goldens                                   |
+| `test:editor:behavior`       | The behavior differential, held to its committed record                                                     |
+| `test:editor:exhaustive`     | Every short input, at the lengths `npm test` runs                                                           |
 
 The inline-scanner suite (`test/core/inline/scan/`) and the directive suite
 (`test/core/directive/`) fold under `test:editor:core`. Anything without a script of its own
@@ -1047,3 +1053,104 @@ Each prebuilt entry point also has a gzipped budget of its own, in `scripts/veri
 edited by hand. And for how long CI takes, `node scripts/ci-time.mjs` prints the latest dev push's
 wall time and runner minutes, against the median of the last five. That one's report-only, since
 CI time is too noisy to gate on.
+
+## The behavior differential
+
+A refactor is supposed to change nothing anyone can see, and "the tests are green" only says the
+inputs somebody wrote down still pass. The differential asks the wider question: it presses keys in
+the mounted editor (jsdom, the same mount the unit suites use), writes down what every key did,
+and holds that to a record committed in `scripts/behavior-baseline.jsonl`. One line per input:
+
+```
+{"in":"keys live bullets [0,1,0]@0 Backspace","took":"keydown","bytes":"- ab\n","caret":"0.0.0:1"}
+```
+
+| Field           | What it holds                                                                                                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `in`            | The input: which family, the mode, the document, where the caret was (the leaf's CST path, then `@` and the offset) and the key                                                                  |
+| `took`          | Who acted on the key: the editor at `keydown` or at `beforeinput`, the browser's insert of a typed character (`inserted`), or a default action jsdom has no engine for (`browser`, a delete say) |
+| `bytes`         | `getSource()` after the key. Past 100 characters it's a hash, where it first differs from the input, and the text around there                                                                   |
+| `caret`         | `getSelection()` after the key, as `path:offset`                                                                                                                                                 |
+| `undo`          | Only there when undo, then redo, doesn't give back the input and then the edit                                                                                                                   |
+| `warns`         | The dev checks that fired                                                                                                                                                                        |
+| `do`, `outline` | A seeded run's key, drawn from its seed; a document's block and inline kinds as parsed                                                                                                           |
+
+What it runs, in four files under `src/lib/test/behavior/`:
+
+- every key (a few printable markers, Enter, Shift+Enter, Backspace, Delete, Tab) at every offset of
+  about thirty small documents, one per block kind, container and inline construct, in source and
+  live mode
+- seeded runs of keys into one document, with the simulation's seeds, then undo everything and redo
+  it all (how a typing run groups into undo steps only shows up here)
+- how the CommonMark spec examples parse, and the documents the showcase and changelog pages mount,
+  plus a few keys at the join of every pair of adjacent blocks in those. Whole, they'd mount only a
+  window in jsdom, which is great for a real editor and useless here. The newest changelog family
+  sits out, since every landing adds to it; editing the showcase or an older family moves the rows
+  of the pairs you touched, so bless with the edit
+
+The documents mount with the bundled plugins that add syntax (math with a stub renderer,
+admonitions, details, the table of contents, footnotes, emoji), so `$x$` and `:::note` mean what the
+showcase means by them.
+
+It runs inside `npm run test:editor` (it adds about half a minute to the run) and fails on any
+row the record doesn't hold. So a change that means to change behavior re-blesses in its own
+commit, and that commit's diff of the record is the list of inputs it changed. A refactor's list
+is empty.
+
+```bash
+npm run behavior                                          # this checkout against the committed record
+npm run behavior -- --against $(git merge-base HEAD dev)  # against the record your branch left dev with
+npm run behavior:bless                                    # accept the rows as they are now; commit the file
+```
+
+Same commands in PowerShell. `--against <ref>` reads the record as committed at that ref and doesn't
+run the ref's code; the gate is what makes that record the ref's behavior. A branch reports the
+first line and the changed inputs under it:
+
+```
+behavior --against …: … rows compared, 1 changed (bytes 1, caret 1), 0 added, 0 removed
+  changed keys live bullets [0,1,0]@0 Backspace
+    bytes: "- ab\n" -> "- a\nb\n"
+    caret: "0.0.0:1" -> "1:0"
+```
+
+It prints the first 20, and writes the full list to `behavior-results/diff.txt`. To compare two checkouts
+by hand, `--record <file>` writes this checkout's rows and `--against <file>` diffs against a file.
+
+Rows that moved and nothing in your diff explains? Prob the machine, not you. A new OS, Node
+version or dependency install can move a row too, so run `npm run behavior` on a clean checkout of
+the commit that last blessed the record, on the same machine. Rows that move there too are the
+machine's; bless those in a commit of their own. Rows that only move on your branch are your
+change.
+
+Two limits. It's jsdom, so where the editor hands a key back to the browser nothing happens and the
+row says `browser`: the editor's own handling is real, Chromium's isn't. And the note-taking
+simulation's browser sessions aren't in it yet; a trace mode for those is a later job.
+
+## Every short input
+
+Random generators keep missing the tiny inputs, a `>` and a newline and nothing else. So
+`src/lib/test/exhaustive/` doesn't sample. It takes every string up to a length over 15 characters
+that change how Markdown reads (`#`, `>`, `-`, `*`, `_`, `[`, `]`, `|`, a backtick, `$`, `:`, `!`, a
+letter, a space and a newline) and checks each one.
+
+| Suite          | Checks                                                                                                                                                                                                                                                   | `npm test` | `npm run test:exhaustive`                |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------- |
+| `round-trip`   | Parsing never throws, and serializing gives back the input, with the built-in syntax and with the bundled plugins                                                                                                                                        | length 5   | 7 with plugins (183M strings), 6 without |
+| `inline-parse` | Reading inline never throws, and each leaf's inline nodes cover its content with no gap or overlap                                                                                                                                                       | length 5   | 6 (12M strings)                          |
+| `block-edits`  | Every edit at every offset (type each character, delete on either side, which merges at a leaf's edge and out of a container, split) changes the bytes, leaves the tree the editor would build reopening them, fires no dev check, and undoes and redoes | length 2   | 3                                        |
+
+In `npm test` the three take a few seconds. `npm run test:exhaustive` takes several minutes, nearly
+all of it the length-7 round trip. A branch that touches the parser or the commit runs it once and
+says so in its report. Before a release, raise the edits to length 4 (about five more minutes):
+
+```bash
+node scripts/run-with-env.mjs EXHAUSTIVE_FULL=1 EXHAUSTIVE_EDIT_LENGTH=4 -- vitest run src/lib/test/exhaustive
+```
+
+Some inputs already fail, and `KNOWN_DEFECTS` in `src/lib/test/exhaustive/known-failures.ts` names
+the defects behind them, one entry each: what's broken, the shortest input length that reaches it,
+and a pattern over its failure lines. A suite fails on a failure no entry matches, and on an entry
+nothing matched in a run long enough to reach it. So a fix deletes one entry however many inputs it
+covered, and a longer run reaching a known defect from more inputs passes as is. A failure no entry
+matches is a new defect: name it in a new entry (or fix it).
