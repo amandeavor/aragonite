@@ -11,7 +11,7 @@
 			"unit": "lines"
 		},
 		"unitTestsInternal": {
-			"baseline": 1303,
+			"baseline": 1307,
 			"tolerance": 3,
 			"unit": "files"
 		},
