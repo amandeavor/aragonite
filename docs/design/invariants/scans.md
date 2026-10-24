@@ -1372,7 +1372,7 @@ passes again, it also says which issue to look at. `e2e/lint/fixme-names-issue.t
 rebuild, the open last line, keep-a-block and the fold publish are imported at runtime only by
 `editor-actions/commit/` and `invariants/`. A mutation writes below its scope through `own`,
 `writeLeaf` and `splice`, and the commit rebuilds what it owned once. The few files that still call a
-step say why. `lint/commit-private-steps.test.ts`.
+step say why, and what has to land before they stop. `lint/commit-private-steps.test.ts`.
 
 **G4.259 · One write to a list of blocks.** The fix-up's files, the content write and the copy before
 a write change a list of blocks only through `tree-operations/node-primitives.ts :: spliceList`,
