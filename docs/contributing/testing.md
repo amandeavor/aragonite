@@ -575,6 +575,8 @@ await gotoReady(page, '/test/syntax'); // waits for window.__syntax, then the fo
 It lives in `src/lib/e2e/goto-ready.ts` and waits for the global the route sets once it's
 hydrated, since the server-rendered markup shows up well before any click handler does.
 `reloadReady(page)` is the reload version, and `editor.goto()` already calls `gotoReady` for you.
+To check what a page shows before it hydrates, `gotoUnhydrated(page, url)` loads it with every
+script request held back.
 A raw `page.goto` or `page.reload` fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
 One navigation per test, though. If a test wants a different URL than its `beforeEach` gave it
@@ -589,8 +591,8 @@ usual value. If the specs read a global the route sets for them (`__syntax`, say
 instead.
 
 To switch the presentation mode, call `editor.setPresentationMode(mode)`, or click the header
-toggle with `clickModeToggle(page, mode)` from `src/lib/e2e/mode-switch.ts` (the showcase's and
-the changelog's buttons take `clickModeButton`). Each one waits until the editor shows the mode.
+toggle with `clickModeToggle(page, mode)` from `src/lib/e2e/mode-switch.ts` (the showcase's
+buttons take `clickModeButton`). Each one waits until the editor shows the mode.
 A mode that never applied leaves you in source mode, where most live-mode assertions pass anyway,
 so a raw bridge call or toggle click fails `src/lib/e2e/lint/e2e-drivers.test.ts`.
 
