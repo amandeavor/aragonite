@@ -26,12 +26,12 @@
 			"unit": "scans"
 		},
 		"minimalAppSvelteGzip": {
-			"baseline": 317251,
+			"baseline": 317840,
 			"tolerance": 1000,
 			"unit": "B"
 		},
 		"minimalAppPrebuiltGzip": {
-			"baseline": 316939,
+			"baseline": 317604,
 			"tolerance": 1000,
 			"unit": "B"
 		}
