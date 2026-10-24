@@ -12,7 +12,7 @@ import { SOURCE } from './source-paths';
 const CONTENT_WRITE = SOURCE.contentWrite;
 const NODE_PRIMITIVES = SOURCE.nodePrimitives;
 const BLOCK_EDIT_CORE = SOURCE.blockEditCore;
-const LEAF_WRITE = SOURCE.leafWrite;
+const LEAF_COMMIT = SOURCE.leafCommit;
 const TREE_OPS_BARREL = SOURCE.treeOperationsBarrel;
 const BARREL_REASON = 'the tree-operations barrel re-exports it';
 
@@ -43,7 +43,7 @@ const RULES: FileRule[] = [
 		allowed: {
 			[CONTENT_WRITE]: 'defines it',
 			[TREE_OPS_BARREL]: BARREL_REASON,
-			[LEAF_WRITE]: '`writeLeafInPlace`, the keystroke written in place at every depth',
+			[LEAF_COMMIT]: '`typeLeaf`, the keystroke written in place at every depth',
 			'src/lib/editor-actions/replacement-focus.ts':
 				'the keystroke’s trial reparse, on a copy that is never installed',
 			'src/lib/tree-operations/paste/container-match.ts':
@@ -174,28 +174,10 @@ const RULES: FileRule[] = [
 		misses: ['const body = normalizeBodyWrite(owner, raw, lineEnding);']
 	},
 	{
-		id: 'G4.75 one keystroke route opens, joins and pauses the typing batch',
-		matches: /\b(?:pushUndoSnapshotDebounced|joinTypingBatch|armUndoPause)\b/,
-		allowed: {
-			'src/lib/editor-actions/commit/undo-controller.ts': 'defines the typing batch',
-			'src/lib/editor-actions/deps.ts': 'declares `joinTypingBatch` on the controller',
-			'src/lib/action-contracts.ts': 'declares the batch push and the pause on the controller',
-			[LEAF_WRITE]: '`typeInLeaf`, which every depth’s keystroke calls'
-		},
-		reason:
-			'a keystroke’s undo grouping comes from `CommitScope.typeIn`; a second caller of the batch groups one level differently from the rest',
-		hits: [
-			'controller.pushUndoSnapshotDebounced([0], 0, id);',
-			'return controller.joinTypingBatch(() => commit());',
-			'deps.controller.armUndoPause();'
-		],
-		misses: ['controller.pushCommitSnapshot(snapshot);', 'textBatch.armPause();']
-	},
-	{
 		id: 'G4.75 the in-place write checks the depth of the chain it copied',
 		matches: /['"]unshared-spine-depth['"]/,
 		allowed: {
-			[LEAF_WRITE]: '`writeLeafInPlace`, the one in-place write (G1.20)'
+			[LEAF_COMMIT]: '`typeLeaf`, the one in-place write (G1.20)'
 		},
 		reason:
 			'the chain-depth check belongs to the in-place write itself, so a caller never repeats it',

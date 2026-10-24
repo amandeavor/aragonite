@@ -28,6 +28,10 @@ import type { CommandRun } from './schema/block-commands';
  */
 export type CommitSnapshotArg = { path: DocPath; offset: number };
 
+/** How a write groups in the undo history: `entry` takes one of its own (a commit's default);
+ *  `join-typing` joins the typing burst, the entry the keystroke's typing push already holds. */
+export type UndoGrouping = 'entry' | 'join-typing';
+
 /**
  * Opt-in for structural commits that may legitimately do nothing. The commit then throws
  * away the snapshot it took first: no undo entry, no edit event, nothing written to state
@@ -105,12 +109,13 @@ export interface BlockEditActions {
 	/** Remove the block; the caret lands once, on the side `gesture` points
 	 *  (`selection/caret-target.ts :: survivorAfterRemoval`), and the caller places none. */
 	deleteBlock(blockIndex: number, gesture: RemovalGesture): Promise<boolean>;
-	/** Write `text` as the block's bytes through its kind's and this list's write rules. Undo
-	 *  returns to `preEditOffset`, where the edit began; `caret` maps `postEditFocusOffset`. */
+	/** Write `text` as the block's bytes through its kind's and this list's write rules, in the undo
+	 *  entry `history` names, which undo rewinds to `preEditOffset`; `caret` maps the focus after. */
 	updateBlockContent(
 		blockIndex: number,
 		text: string,
 		mode: WriteMode,
+		history: UndoGrouping,
 		preEditOffset: number,
 		postEditFocusOffset?: number
 	): ContentWrite;
@@ -224,6 +229,7 @@ export interface CommitMultiScopeArgs<
 	reveal?: RevealPolicy;
 	announce?: CommitAnnouncement;
 	discardIfNoop?: DiscardIfNoop;
+	history?: UndoGrouping;
 	/** Caret positions each list's fix-up updates in place, parallel to `scopes`, since a collapsing
 	 *  container moves the bytes under them; the landing reads them back off the same objects. */
 	trackCaret?: readonly (TrackedPosition | undefined)[];
@@ -242,6 +248,7 @@ export interface CommitStructuralArgs {
 	/** Leaves for the dev invariant check when `mutate` returns `noop` (an in-place kind change). */
 	touchedNodes?: CstNode[];
 	discardIfNoop?: DiscardIfNoop;
+	history?: UndoGrouping;
 	/** A caret position the document's fix-up updates in place; the landing reads it back. */
 	trackCaret?: TrackedPosition;
 }
@@ -264,6 +271,7 @@ export interface CommitContainerStructuralArgs {
 	reveal?: RevealPolicy;
 	announce?: CommitAnnouncement;
 	discardIfNoop?: DiscardIfNoop;
+	history?: UndoGrouping;
 	/** A caret position the container's fix-up updates in place; the landing reads it back. */
 	trackCaret?: TrackedPosition;
 }
@@ -274,11 +282,15 @@ export interface CommitContainerStructuralArgs {
  * (editor-actions/deps) adds the two selection-typed members.
  */
 export interface CommitController {
-	/** Debounced typing snapshot; `leafPath` is the edited leaf's document-absolute path. */
-	pushUndoSnapshotDebounced(leafPath: number[], offset: number, batchKey?: string | number): void;
-	/** Start the batch's pause timer, once the keystroke's own edit is done. Paired with
-	 *  every `pushUndoSnapshotDebounced`, or the batch never ends on a pause. */
-	armUndoPause(): void;
+	/** A keystroke's undo entry (the burst of the leaf whose id is `batchKey`, or its own), then
+	 *  `work`, whose commit before its first await joins that entry. */
+	typingKeystroke<T>(
+		leafPath: DocPath,
+		preEditOffset: number,
+		batchKey: string,
+		history: UndoGrouping,
+		work: () => Promise<T>
+	): Promise<T>;
 	/** Each commit resolves to whether bytes landed: false when declined, rolled back or a no-op
 	 *  it discarded. */
 	commitStructural(args: CommitStructuralArgs): Promise<boolean>;
@@ -292,9 +304,6 @@ export interface CommitController {
 	/** End the keystroke batch and its pause timer, so the next keystroke opens its own undo
 	 *  entry. */
 	flushDebouncedCheckpoint(): void;
-	/** Run a command's byte write as its own undo entry. A command is not typing, so the
-	 *  keystroke batch breaks on both sides: one Ctrl+Z takes back the command alone. */
-	isolateUndoEntry(write: () => void): void;
 	/** Make every write made while `run` is pending one undo entry, restoring the selection the step
 	 *  opened with (`seed` when unfocused). Ends when `run` settles or at the author's next input. */
 	undoStep(seed: CommitSnapshotArg, run: () => Promise<unknown>): Promise<void>;
@@ -312,26 +321,24 @@ export interface CommitController {
 	/** Whether a gesture may write now: false in reading mode, or for a document a `source` swap
 	 *  replaced. A reading-mode refusal names `op` in a dev warning; a null `op` is refused quietly. */
 	admitsGesture(op: string | null): boolean;
+	/** The keystroke that keeps its leaf's kind, written in place through the commit frame;
+	 *  `relanding` is null when the browser's caret stays where it is. */
+	typeLeaf(leafPath: DocPath, write: LegalWrite, caret: number): InPlaceResult;
 }
 
 /** What a container reaches the editor root for, forwarded unchanged through nested containers.
- *  A keystroke runs `typeInLeaf`, then a commit or `writeLeafInPlace` (`leaf-write.ts`). */
+ *  A keystroke runs `typingKeystroke`, then a commit or `typeLeaf`. */
 export interface ContainerEditActions {
 	/** The document's line ending, which every line a write below the root creates takes. */
 	lineEnding(): LineEnding;
 	/** Change a container's structure as one undo entry. `mutate` receives the copied container
 	 *  with its working children attached; write through it, never through a captured node. */
 	commitContainer(args: CommitContainerStructuralArgs): Promise<boolean>;
-	/** Push the typing burst's undo entry for the leaf at `leafPath`, then run `work` joined to
-	 *  it; `batchKey` is the leaf's id, so a move to a sibling leaf starts a new burst. */
-	typeInLeaf<T>(
-		leafPath: DocPath,
-		preEditOffset: number,
-		batchKey: string,
-		work: () => Promise<T>
-	): Promise<T>;
-	/** The keystroke's write outside a commit, for a write that keeps the leaf's kind. */
-	writeLeafInPlace(leafPath: DocPath, write: LegalWrite, caret: number): InPlaceResult;
+	/** The controller's `typingKeystroke`, for a leaf below the root. */
+	typingKeystroke: CommitController['typingKeystroke'];
+	/** The keystroke's write in place, through the commit frame, for a write that keeps the
+	 *  leaf's kind. */
+	typeLeaf(leafPath: DocPath, write: LegalWrite, caret: number): InPlaceResult;
 	/** Put the caret at a document position through the editor's caret landing, for an edit that
 	 *  moves the caret without a commit. */
 	land(pos: CaretPosition): Promise<LandingOutcome>;

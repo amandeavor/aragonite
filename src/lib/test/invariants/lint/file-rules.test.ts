@@ -153,28 +153,6 @@ const SELECTOR_READ_RE =
 /** `document.activeElement` compared by identity, which the host taking focus silently falsifies. */
 const ACTIVE_IDENTITY_RE = /document\.activeElement\s*[!=]==|[!=]==\s*document\.activeElement/;
 
-// ── G4.51 debounced checkpoints ──────────────────────────────────────────────
-
-/** The definition sites declare the members rather than spending them as a pair. */
-const CHECKPOINT_DECLARATIONS: string[] = [SOURCE.actionContracts, SOURCE.undoController];
-
-function pairing(
-	id: string,
-	push: RegExp,
-	arm: RegExp,
-	pushCall: string,
-	armCall: string
-): FileRule {
-	return {
-		id,
-		population: (file) => !CHECKPOINT_DECLARATIONS.includes(file.relPath) && push.test(file.code),
-		matches: (file) => !arm.test(file.code),
-		reason: 'a checkpoint push must arm the matching pause once its edit settles (#71)',
-		hits: [`controller.${pushCall}([0], 0);`],
-		misses: [`controller.${pushCall}([0], 0); controller.${armCall}();`]
-	};
-}
-
 // ── G4.71 / G4.72 Markdown whitespace ────────────────────────────────────────
 
 /** `x.trim() === ''`, `x.trim().length === 0` and `!x.trim()`: an emptiness test by `trim()`. */
@@ -495,23 +473,6 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
-		id: 'G4.195 a block command takes its own undo step in one place',
-		matches: /\.\s*isolateUndoEntry\s*\(/,
-		allowed: {
-			'src/lib/components/blocks/text/inline-commands.ts':
-				'`perform`: every command of a paragraph and a table cell, once a shown source is written',
-			'src/lib/components/blocks/code/CodeBlock.svelte':
-				'the language field’s write, a command with no chord behind it'
-		},
-		reason:
-			'a command is not typing, so its write is an undo step of its own; a block that isolates its own writes keeps a second copy of that rule, which drifts from `createInlineCommands :: perform`',
-		hits: [
-			'controller.isolateUndoEntry(() => write());',
-			'deps.controller\n\t.isolateUndoEntry(w);'
-		],
-		misses: ['isolateUndoEntry(write: () => void): void;', 'isolateUndoEntry: (write) => {']
-	},
-	{
 		id: 'G4.201 one painter puts the selection wash on a widget',
 		matches: /(['"`])md-widget-selected\1|\bclass:md-widget-selected\b/,
 		allowed: {
@@ -820,13 +781,6 @@ const RULES: FileRule[] = [
 			'port.setScrollTop(listTopInPort(port, listEl) + model.offsetOf(index));'
 		]
 	},
-	pairing(
-		'G4.51 the controller: no file pushes a debounced checkpoint without arming the pause',
-		/\bpushUndoSnapshotDebounced\s*\(/,
-		/\barmUndoPause\s*\(/,
-		'pushUndoSnapshotDebounced',
-		'armUndoPause'
-	),
 	{
 		id: 'G4.15 every bare `as <Brand>` cast lives in the brand’s home module',
 		matches: (file) =>
@@ -854,8 +808,8 @@ const RULES: FileRule[] = [
 				'SelectionPoint accessors brand RawOffset/CellIndex for the char/cell branch reads',
 			'src/lib/editor-actions/block-edit-scope.ts':
 				'DocPath home: the scope factories brand the commit args’ document-absolute paths',
-			'src/lib/editor-actions/commit/undo-controller.ts':
-				'DocPath at the commit sequence, gating the G1.16 guard entry',
+			'src/lib/editor-actions/commit/commit-frame.ts':
+				'DocPath at the commit frame, gating the G1.16 guard entry',
 			// Public boundaries, where plain-number offsets are branded on entry.
 			'src/lib/components/blocks/editable/editable-surface.ts':
 				'BlockComponent boundary: public number offsets branded at entry',

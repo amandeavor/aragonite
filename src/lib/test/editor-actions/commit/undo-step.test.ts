@@ -81,9 +81,9 @@ describe('undoStep: the entry it records', () => {
 
 		await controller.undoStep(SEED, async () => {
 			await blockEdit.insertParagraph(1, 'b');
-			await blockEdit.updateBlockContent(1, 'bc\n', 'authored', 1);
+			await blockEdit.updateBlockContent(1, 'bc\n', 'authored', 'join-typing', 1);
 		});
-		await blockEdit.updateBlockContent(1, 'bcd\n', 'authored', 2);
+		await blockEdit.updateBlockContent(1, 'bcd\n', 'authored', 'join-typing', 2);
 
 		expect(undoDepth(deps)).toBe(2);
 		controller.flushDebouncedCheckpoint();
@@ -94,8 +94,8 @@ describe('joinTypingBatch', () => {
 	it('keeps a keystroke that reparses into several blocks in the burst it ends', async () => {
 		const { deps, controller, blockEdit } = makeEditor('ab\n');
 
-		await blockEdit.updateBlockContent(0, 'abc\n', 'authored', 2);
-		await blockEdit.updateBlockContent(0, 'abc\n\nd\n', 'authored', 3);
+		await blockEdit.updateBlockContent(0, 'abc\n', 'authored', 'join-typing', 2);
+		await blockEdit.updateBlockContent(0, 'abc\n\nd\n', 'authored', 'join-typing', 3);
 
 		const undo = deps.undoManager.getStacks().undo;
 		expect(deps.doc.children).toHaveLength(2);

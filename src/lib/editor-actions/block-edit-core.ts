@@ -51,7 +51,8 @@ import type {
 	LeafWriteResult,
 	ReplaceFocus,
 	ReplaceOptions,
-	ReplaceSource
+	ReplaceSource,
+	UndoGrouping
 } from '../action-contracts';
 import {
 	legalizeWrite,
@@ -106,12 +107,10 @@ async function handleIneligibleNeighbor(
 
 // ── The keystroke ────────────────────────────────────────────────────────────
 
-/**
- * Every level's `updateBlockContent`: a commit when the trial reparse sees the block change, an
- * in-place write otherwise. Awaiting between the typing burst's undo entry and the commit splits it.
- */
+/** Every level's `updateBlockContent`: a commit when the trial reparse sees the block change, an
+ *  in-place write otherwise, both in the entry `typeIn` pushed before the work's first await. */
 export function contentUpdate(scope: CommitScope): BlockEditActions['updateBlockContent'] {
-	return (index, text, mode, preEditOffset, postEditFocusOffset) => {
+	return (index, text, mode, history, preEditOffset, postEditFocusOffset) => {
 		scope.caretMemory.forget();
 		const kind = () => scope.children()[index]?.kind;
 		if (!admitsWrite(scope, 'updateContent', kind)) return refusedWrite();
@@ -119,17 +118,18 @@ export function contentUpdate(scope: CommitScope): BlockEditActions['updateBlock
 		const caret = write.storedOffset(postEditFocusOffset ?? preEditOffset);
 		// Decided before `work` first yields, which `typeIn` runs up to before it returns.
 		let keepsCaret = false;
-		const done = scope.typeIn(index, preEditOffset, async () => {
+		const done = scope.typeIn(index, preEditOffset, history, async () => {
 			const trial = previewContentReparse(scope.target(), index, write, scope.reading.grammar);
 			if (trial.op !== 'noop') {
 				const landed = await commitLeafText(scope, index, write, {
 					snapshotOffset: preEditOffset,
 					caret,
-					landing: unlessFocusMoved
+					landing: unlessFocusMoved,
+					history: 'join-typing'
 				});
 				return landed.wrote;
 			}
-			const written = scope.writeInPlace(index, write, caret);
+			const written = scope.typeLeaf(index, write, caret);
 			if (!written.wrote) return false;
 			keepsCaret = !written.relanding;
 			if (!written.relanding) return true;
@@ -158,6 +158,8 @@ export async function commitLeafText(
 		/** Where the caret goes, from where the write left it; a collapsed ancestor overrides it. */
 		landing?: (landed: LeafWriteLanded) => Landing | null;
 		reveal?: RevealPolicy;
+		/** `join-typing` for a keystroke, whose typing push already made the entry. */
+		history?: UndoGrouping;
 	}
 ): Promise<LeafWriteResult> {
 	let readSettled = (): SettledContent | null => null;
@@ -205,7 +207,8 @@ export async function commitLeafText(
 			landed ??= readLanded();
 			return opts.landing?.(landed) ?? null;
 		},
-		reveal: opts.reveal
+		reveal: opts.reveal,
+		history: opts.history
 	});
 	// The result comes from the commit, not the landing: a collapsed ancestor's landing replaces
 	// this one without calling it.

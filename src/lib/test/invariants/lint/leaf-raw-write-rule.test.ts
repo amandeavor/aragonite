@@ -107,9 +107,9 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		count: 1,
 		why: 'find and replace installs the bytes `legalizeWrite` returned into a private copy, which it then reparses whole'
 	},
-	'src/lib/editor-actions/commit/structural-commit.ts': {
+	'src/lib/editor-actions/commit/saved-bytes.ts': {
 		count: 1,
-		why: 'the rollback restores raws the tree already held; nothing new is created'
+		why: 'a rollback restores raws the tree already held; nothing new is created'
 	},
 	'src/lib/selection/range-delete-ceremony.ts': {
 		count: 4,
@@ -136,7 +136,7 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: "adds or drops the ending of a block's last line in each node down to the one that owns it: the descent stops above a grid cell or an opaque body, whose bytes sit inside a line their container emits, and an opaque container re-reads its metadata after the write; an ending terminates a line rather than restructuring one"
 	},
 	'src/lib/testing/container-conformance.ts': {
-		count: 7,
+		count: 6,
 		why: "the published kit's own fixture bytes, written into a throwaway parse"
 	},
 	'src/lib/testing/kind-conformance.ts': {

@@ -16,7 +16,8 @@ interface WarnFixtures {
 	expectWarns: string[];
 	/** Svelte runtime warning codes this spec deliberately triggers, e.g. `['derived_inert']`. */
 	expectSvelteWarns: string[];
-	/** `window.onerror` messages this spec deliberately triggers, matched whole. */
+	/** `window.onerror` messages and uncaught errors this spec deliberately triggers, matched whole
+	 *  (an uncaught one also behind an engine's own prefix). */
 	expectPageErrors: string[];
 }
 
@@ -31,6 +32,16 @@ function relayWindowErrors(): void {
 	window.addEventListener('error', (e) => {
 		if (e.error == null) console.error(`[onerror] ${e.message}`);
 	});
+}
+
+/** WebKit puts an uncaught rejection's error name in front of its message (`Error: <message>`),
+ *  the other engines report the message alone. */
+const WEBKIT_REJECTION = /^\w*Error: /;
+
+/** The claimed message an uncaught error carries, else its own. */
+function claimedMessage(message: string, claimed: readonly string[]): string {
+	const own = message.replace(WEBKIT_REJECTION, '');
+	return claimed.includes(own) ? own : message;
 }
 
 /** A prefix `expectWarns` may not carry: each of these has its own list. */
@@ -78,7 +89,10 @@ const watchedTest = base.extend<WarnFixtures>({
 		};
 		// An uncaught exception or rejection reaches Playwright here and never as a console line.
 		const onPageError = (e: Error) =>
-			fires.push({ tag: 'pageerror', text: `pageerror: ${e.stack || e.message || String(e)}` });
+			fires.push({
+				tag: `onerror:${claimedMessage(e.message, expectPageErrors)}`,
+				text: `pageerror: ${e.stack || e.message || String(e)}`
+			});
 		page.on('console', onConsole);
 		page.on('pageerror', onPageError);
 		await page.addInitScript(relayWindowErrors);

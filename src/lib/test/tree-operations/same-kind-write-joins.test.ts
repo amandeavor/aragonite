@@ -3,7 +3,6 @@ import type { CstNode } from '#lib/core/nodes.js';
 import { parse } from '#lib/core/parser.js';
 import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createLeafTyping } from '#lib/editor-actions/leaf-write.js';
 import { legalizeWrite, updateNodeContent } from '#lib/tree-operations/content-write.js';
 import { blockNodeAt } from '#lib/tree-operations/node-primitives.js';
 import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
@@ -28,12 +27,12 @@ const kinds = (source: string, index: number, text: string): string[] => {
 /** The document after `text` is written over the leaf at `leaf` through the keystroke route. */
 function typedInPlace(source: string, leaf: number[], text: string) {
 	const { deps } = makeEditorActionsDeps(source);
-	const typing = createLeafTyping(deps, createUndoController(deps));
+	const typing = createUndoController(deps);
 	const owner = leaf.length > 1 ? (blockNodeAt(deps.doc, leaf.slice(0, -1)) as CstNode) : null;
 	const target = owner ? { children: owner.children!, owner, lineEnding: '\n' as const } : deps.doc;
 	const write = legalizeWrite(target, leaf[leaf.length - 1], text, 'authored');
 
-	expect(typing.writeLeafInPlace(docPathFrom(leaf), write, 0).wrote).toBe(true);
+	expect(typing.typeLeaf(docPathFrom(leaf), write, 0).wrote).toBe(true);
 	expectParseConverged(deps.doc);
 	return deps.doc;
 }

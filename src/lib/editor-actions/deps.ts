@@ -50,9 +50,6 @@ export interface EditorActionsDeps {
  * `action-contracts` keeps no import from `undo/`.
  */
 export interface UndoController extends CommitController {
-	/** Call a keystroke's commit into the undo entry its typing batch already holds, so a key that
-	 *  reparses into several blocks undoes with the typing around it. Covers the call only. */
-	joinTypingBatch<T>(write: () => T): T;
 	captureCurrentState(): UndoEntry;
 }
 

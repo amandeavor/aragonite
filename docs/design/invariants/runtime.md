@@ -105,6 +105,8 @@ These checks run in three kinds of place:
 | G1.145 | The blocks a fix-up re-divided read back as themselves, with the block after them          | A·N     |
 | G1.147 | A render-primary DOM view's rendered half sits in its element; its text comes in time      | A·N     |
 | G1.149 | The editor fills a host with a height on every mount route, and grows in one without       | harness |
+| G1.150 | A block repaints from its bytes after an input the tree took back                          | A·N     |
+| G1.151 | A keystroke written in place leaves no node it wrote shared with an undo entry             | A·N     |
 
 ### The entries
 
@@ -206,7 +208,7 @@ rebuild the wrong spine. Inline closure, watcher-netted. In `editor-actions/comm
 
 **G1.20 · Unshared-spine depth.** The chain the keystroke's in-place write copies is as deep as
 the leaf path it was given; a short chain means the write would change a node it doesn't own, so it
-writes nothing. Inline closure, watcher-netted. In `editor-actions/leaf-write.ts`.
+writes nothing. Inline closure, watcher-netted. In `editor-actions/commit/leaf-commit.ts`.
 
 **G1.21 · Column-scope alignment.** Each row scope in a column edit IS the corresponding child of
 the owned table, so the id/ref sync lands on the rows the splice actually walked. Its tag is
@@ -378,7 +380,7 @@ every commit, dev reads each top-level block the edit names alone, as a file ope
 so a bare `- ` keeps its empty paragraph), and compares kinds, child counts and metadata: a dropped
 space that re-nests a list, a paragraph that reloads as a heading, or a container left with no bytes
 fails. Skipped: a top-level keystroke (it takes the reparsed kind), a block over 16K characters,
-perf-timed runs. `checkReadsBack` · `leaf-write.ts`, `undo-controller.ts` · `reads-back.test.ts`.
+perf-timed runs. `checkReadsBack` · `commit-frame.ts` · `reads-back.test.ts`.
 
 **G1.58 · An indent key over a range keeps every word, in order** (`range-indent-keeps-text`). Tab,
 Shift+Tab or a rebound indent key over a range moves list items, shifts code lines, or does what a
@@ -628,3 +630,15 @@ root's own rule is the one place a host's height can reach it: `height: 100%` be
 `height: auto` in host scroll mode. A sized host keeps the scroll and windowing inside it.
 `Editor.svelte` · `e2e/tests/host-fill.spec.ts` (Svelte, `createEditor`),
 `examples/adapter-suite/tests/host-fill.spec.ts` (every framework app).
+
+**G1.150 · A rolled-back input repaints from the tree** (`repaint-reads-tree`). When an input the
+browser already drew writes nothing (a keystroke the tree rolled back after a container's rebuild
+threw), the block repaints from its bytes, and its element then reads back as those bytes, so the
+drawn character is gone. `checkRepaintReadsTree` · `editable-surface.ts` ·
+`keystroke-rollback.spec.ts`.
+
+**G1.151 · A keystroke owns what it wrote** (`written-unshared`). After a keystroke written in
+place, no node it wrote (the leaf and its ancestors) is still shared with an undo entry, since a
+write through a shared node rewrites history (G1.9). It runs on every key, over the nodes that key
+wrote; the whole-entry digest still runs at the next commit. `checkWrittenUnshared` · `leaf-commit.ts` ·
+`keystroke-commit-frame.test.ts`.

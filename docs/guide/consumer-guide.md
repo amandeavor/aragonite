@@ -613,7 +613,7 @@ events.on('error', (err) => err);
 | Origin       | `context`                                                                                                                           |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `render`     | `path` of the block                                                                                                                 |
-| `commit`     | `op` and `path`                                                                                                                     |
+| `commit`     | `op` and `path`; `op: 'input'` for a keystroke the editor rolled back, whose typed character it took off the screen too             |
 | `command`    | `kind`, `command`, and `plugin` when a plugin owns the command                                                                      |
 | `decoration` | `source`, the decoration source's name; `path` instead when one of a mark's own handlers (`onClick`, `onHover`, `onActivate`) threw |
 | `clipboard`  | `path` the paste was aimed at, when it was aimed at a range                                                                         |

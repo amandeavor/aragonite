@@ -80,7 +80,7 @@ export function stubBlockEdit(): BlockEditActions {
 		mergeWithPrevious: wroteNothing,
 		mergeWithNext: wroteNothing,
 		deleteBlock: wroteNothing,
-		updateBlockContent: (_index, _text, _mode, preEditOffset, postEditFocusOffset) =>
+		updateBlockContent: (_index, _text, _mode, _history, preEditOffset, postEditFocusOffset) =>
 			withStoredCaret(Promise.resolve(false), postEditFocusOffset ?? preEditOffset),
 		completeLineOnType: wroteNothing,
 		completeMarker: wroteNothing,

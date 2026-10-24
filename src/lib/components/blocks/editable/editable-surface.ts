@@ -103,6 +103,7 @@ import {
 	traceKeydownVerdict
 } from '../../../debug/interaction-trace';
 import { assertInvariant } from '@voithos-labs/aragonite/dev-checks';
+import { checkRepaintReadsTree } from '../../../invariants/repaint-reads-tree';
 import { checkCompositionEndPaired } from '../../../invariants/inline-transitions';
 import { checkDeleteDecided } from '../../../invariants/collapsed-delete';
 import type {
@@ -268,6 +269,9 @@ export interface EditableSurfaceDeps {
 	// ── Input handling (per block) ────────────────────────────────────────────
 	/** Read the current DOM content as the block's displayed text, for the input commit. */
 	readText: () => string;
+	/** Rebuild the element from the block's bytes, for an input the tree took back after the
+	 *  browser had already drawn it. */
+	repaint: () => void;
 	/** The selection a composition opened over, captured at its start, which the run it commits
 	 *  replaces; omitted where a commit writes the text as read. */
 	compositionSeat?: CompositionSeat;
@@ -512,6 +516,7 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			text: display.slice(0, offset) + text + display.slice(offset),
 			caretAfter: offset + text.length,
 			intent: 'typed',
+			history: 'join-typing',
 			mode: 'authored',
 			source: 'typed-over-range'
 		});
@@ -566,9 +571,16 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 	// them open the way Shift+Enter opened them, whichever route in the block wrote it.
 	const blockEdit: BlockEditActions = {
 		...deps.blockEdit,
-		updateBlockContent(index, text, mode, preEditOffset, caret) {
+		updateBlockContent(index, text, mode, history, preEditOffset, caret) {
 			const open = droppedOpenLines(deps.getNode(), text);
-			const written = deps.blockEdit.updateBlockContent(index, text, mode, preEditOffset, caret);
+			const written = deps.blockEdit.updateBlockContent(
+				index,
+				text,
+				mode,
+				history,
+				preEditOffset,
+				caret
+			);
 			if (open && caret === open.end && written.admitted) {
 				void written.then((wrote) => wrote && openBreakAtEnd(open.lines));
 			}
@@ -744,15 +756,34 @@ export function createEditableSurface(deps: EditableSurfaceDeps): EditableSurfac
 			fromComposition && revealsNoMarkers(el) && !held?.waitsAt(preEditOffset)
 				? (deps.compositionSeat?.relocate(text) ?? null)
 				: null;
-		void writeText({
+		const written = writeText({
 			text: rewritten?.raw ?? text,
 			caretAfter: rewritten?.caret ?? savedOffset,
 			intent: 'typed',
+			history: 'join-typing',
 			mode: 'authored',
 			source: fromComposition ? 'composition' : 'input',
 			...(rewritten ? { inPlace: true } : {}),
 			...(held ? { held } : {})
 		});
+		// The browser already changed the element, so a write the tree took back leaves that change
+		// on screen until the block repaints from its bytes.
+		if (written.admitted) {
+			void written.then(
+				(wrote) => wrote || repaintFromTree(),
+				(error: unknown) => {
+					repaintFromTree();
+					throw error;
+				}
+			);
+		}
+	}
+
+	function repaintFromTree(): void {
+		deps.repaint();
+		assertInvariant('repaint-reads-tree', () =>
+			checkRepaintReadsTree(deps.readText(), trimTrailingLineEnding(deps.getNode().raw))
+		);
 	}
 
 	// Held from the composition's opening to its commit.

@@ -34,12 +34,11 @@ import type {
 	CommitLanding,
 	CommitContainerStructuralArgs,
 	CommitMultiScopeArgs,
-	CommitSnapshotArg,
 	CommitStructuralArgs,
 	ContainerScope,
-	MultiScopeTarget
+	MultiScopeTarget,
+	UndoGrouping
 } from '../../action-contracts';
-import type { ScopedOpDescriptor } from '../../schema/operations';
 import {
 	applyStructuralChangeToIdsRefs,
 	type StructuralChange
@@ -47,17 +46,11 @@ import {
 import type { BlockListState } from '../../block-lists/block-list-state.svelte';
 import { assertIdsInLockstep, assertTopLevelUntouched } from '../../invariants/install';
 import { checkSettledOnce, startCommitSettles } from '../../invariants/settle-once';
-import { dropChildSpans } from '../../schema/child-spans';
+import { saveBytes } from './saved-bytes';
 import { perfEnabled } from '../../perf/instruments';
+import type { FrameWrite } from './commit-frame';
 
 // ── Dev invariant scoping (dev-only paths) ────────────────────────────────────
-
-/** What a commit wrote, for the dev checks: `tops` are the top-level blocks holding it, so the
- *  read-back check never searches the document for them. */
-export interface WrittenNodes {
-	nodes: CstNode[];
-	tops: CstNode[];
-}
 
 /** Direct children go along: a container's rebuild concatenates them into its raw. */
 function withDirectChildren(containers: readonly CstNode[]): CstNode[] {
@@ -90,23 +83,14 @@ function writtenTopLevel(
 	return [...written];
 }
 
-/** What the commit sequence runs; `commitScopes` builds it for every entry point. */
-export interface CommitArgs {
-	/** Names the write in a reading-mode refusal when there is no `op`. */
+/** The frame's write plus where the caret lands after it; `commitScopes` builds it for every
+ *  entry point. */
+export interface CommitArgs extends Omit<FrameWrite, 'prepare' | 'check'> {
 	entry: 'commitStructural' | 'commitMultiScope';
-	snapshot: CommitSnapshotArg;
-	/** False when every scope changed nothing; `wasOpen` is whether the document ended with no
-	 *  final line break before it. */
-	mutate: (wasOpen: boolean) => boolean;
-	op?: ScopedOpDescriptor;
+	history: UndoGrouping;
 	landing?: CommitLanding;
 	reveal?: RevealPolicy;
 	announce?: CommitAnnouncement;
-	/** A function, since the copied nodes only exist once `mutate` has made them. */
-	written: () => WrittenNodes;
-	/** Restores what `mutate` wrote, the top-level array included. */
-	rollback: () => void;
-	discardIfNoop?: boolean;
 }
 
 export function createStructuralCommit(
@@ -130,6 +114,7 @@ export function createStructuralCommit(
 			reveal: args.reveal,
 			announce: args.announce,
 			discardIfNoop: args.discardIfNoop,
+			history: args.history,
 			trackCaret: [args.trackCaret],
 			touchedNodes: args.touchedNodes
 		});
@@ -146,6 +131,7 @@ export function createStructuralCommit(
 			reveal: args.reveal,
 			announce: args.announce,
 			discardIfNoop,
+			history: args.history,
 			trackCaret: [args.trackCaret]
 		});
 	}
@@ -167,31 +153,12 @@ export function createStructuralCommit(
 		/** publishScopeView writes the mutated ids and refs before the ancestor rebuild can throw. */
 		savedStateIds: string[];
 		savedStateRefs: (BlockComponent | undefined)[];
-		/** The bytes before mutate; without them `serialize()` emits a half-applied document. None at
-		 *  the document, whose rollback is its saved array, so a commit there costs no per-block copy. */
-		savedRaws: SavedRaw[];
+		/** Puts back the bytes before mutate; without it `serialize()` emits a half-applied document.
+		 *  Nothing at the document, whose rollback is its saved array, so it costs no per-block copy. */
+		restoreBytes: () => void;
 		/** What the mutation said it did beyond its splice, and the fix-up's result once it ran. */
 		edit: EditKind;
 		settled: SettledEdit | null;
-	}
-
-	interface SavedRaw {
-		node: CstNode;
-		raw: string;
-		metadata: CstNode['metadata'];
-		markerWidths: CstNode['markerWidths'];
-	}
-
-	/** The bytes at risk, with the metadata and marker counts a rebuild re-reads from them: the
-	 *  copied ancestors plus direct children, matching `savedChildren`. */
-	function captureScopeRaws(chain: CstNode[], owned: CstNode): SavedRaw[] {
-		const save = (node: CstNode): SavedRaw => ({
-			node,
-			raw: node.raw,
-			metadata: node.metadata,
-			markerWidths: node.markerWidths
-		});
-		return [...chain.map(save), ...(owned.children ?? []).map(save)];
 	}
 
 	/**
@@ -258,7 +225,8 @@ export function createStructuralCommit(
 		const savedStateRefs = [...s.state.innerBlockRefs];
 		const savedChildren = isDoc ? topLevelBefore : owned.children;
 		const savedChildIds = owned.childIds;
-		const savedRaws = isDoc ? [] : captureScopeRaws(chain, owned);
+		// The copied ancestors plus direct children, matching `savedChildren`.
+		const restoreBytes = isDoc ? () => {} : saveBytes([...chain, ...(owned.children ?? [])]);
 		if (!isDoc) owned.children = [...(owned.children ?? [])];
 		// Off the tree's `$state` proxy, where every index a splice shifts is a tracked write.
 		const children = isDoc ? [...topLevelBefore] : owned.children!;
@@ -297,7 +265,7 @@ export function createStructuralCommit(
 			savedChildIds,
 			savedStateIds,
 			savedStateRefs,
-			savedRaws,
+			restoreBytes,
 			edit: {},
 			settled: null
 		};
@@ -364,7 +332,7 @@ export function createStructuralCommit(
 		return __commit({
 			entry: args.entry,
 			snapshot,
-			mutate: (wasOpen) => {
+			apply: (wasOpen) => {
 				startCommitSettles();
 				for (const s of scopes) {
 					assertScopeStateMounted(s);
@@ -455,6 +423,7 @@ export function createStructuralCommit(
 			reveal: args.reveal,
 			announce: args.announce,
 			discardIfNoop,
+			history: args.history ?? 'entry',
 			written: () => {
 				const nodes: CstNode[] = [];
 				// A set: a doc scope's caller can name a block the scope's change already placed.
@@ -505,12 +474,7 @@ export function createStructuralCommit(
 					p.owned.childIds = p.savedChildIds;
 					// The chain rebuild rewrote these bytes and what it read from them, and all of it has to
 					// match the children restored above.
-					for (const { node, raw, metadata, markerWidths } of p.savedRaws) {
-						node.raw = raw;
-						node.metadata = metadata;
-						if (node.markerWidths !== markerWidths) node.markerWidths = markerWidths;
-						dropChildSpans(node);
-					}
+					p.restoreBytes();
 					// Without this, the ids and refs written before the throw keep reflecting it.
 					if (p.isDoc) p.target.state.innerBlockIds = p.savedStateIds;
 					replaceRefs(p.target.state.innerBlockRefs, p.savedStateRefs);
