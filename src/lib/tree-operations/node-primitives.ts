@@ -14,11 +14,28 @@ import { tryGetBlockKindDescriptor, type WriteRule } from '../schema/block-kind-
 import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
 import { checkWriteRuleKeepsBytes } from '../invariants/write-rule-keeps-bytes';
 import { adoptParsedMetadata } from '../schema/container-raw';
+import { spliceMany } from './splice-many';
 
 // ── Parent shapes and the kind's write rules ──
 
 /** A children array an op mutates structurally: splice, delete, reorder. */
-export type NodeParent = { children: CstNode[] };
+export type NodeParent = {
+	children: CstNode[];
+	/** Called before each write through {@link spliceList}; a keystroke saves its list here. */
+	beforeWrite?: () => void;
+};
+
+/** The one write to a list of blocks on the fix-up's path (G4.259): `count` blocks at `at`
+ *  replaced by `add`, after telling the list's watcher. */
+export function spliceList(
+	parent: { children?: CstNode[]; beforeWrite?: () => void },
+	at: number,
+	count: number,
+	add: readonly CstNode[]
+): void {
+	parent.beforeWrite?.();
+	spliceMany((parent.children ??= []), at, count, add);
+}
 
 /**
  * Longest prefix of `chain` still attached under `root`: a node spliced out mid-commit would

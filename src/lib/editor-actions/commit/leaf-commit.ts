@@ -83,10 +83,12 @@ export function createLeafCommit(
 			apply(wasOpen) {
 				const owner = depth > 1 ? chain[depth - 2] : undefined;
 				// The chain reached the leaf through the owner's children, so below the root they exist.
-				const siblings = copiedOnWrite(owner ? owner.children! : deps.doc.children);
+				const siblings = savedOnWrite(owner ? owner.children! : deps.doc.children);
 				body = owner
-					? { children: siblings.children, owner, lineEnding: documentLineEnding(deps.doc) }
-					: documentBody(deps.doc, siblings.children);
+					? { children: siblings.list, owner, lineEnding: documentLineEnding(deps.doc) }
+					: documentBody(deps.doc, siblings.list);
+				// The fix-up writes the leaf's list only through `spliceList`, which calls this first.
+				body.beforeWrite = siblings.save;
 				restoreChain = saveChain(deps, leafPath, chain, siblings.restore);
 				// Read before the write: the ancestors' rebuild locates the leaf's region by these bytes.
 				leafPreviousRaw = chain[depth - 1].raw;
@@ -174,22 +176,16 @@ function saveChain(
 	};
 }
 
-/** The leaf's list, copied only at the fix-up's first splice; the wrapper stays in the write's
- *  body, never in a node or anything keyed by identity. */
-function copiedOnWrite(target: CstNode[]): { children: CstNode[]; restore(): void } {
+/** The leaf's list, copied at the fix-up's first write to it and put back by `restore`. */
+function savedOnWrite(list: CstNode[]): { list: CstNode[]; save(): void; restore(): void } {
 	let before: CstNode[] | null = null;
-	const copyFirst = () => {
-		before ??= target.slice();
-	};
-	const children = new Proxy(target, {
-		set: (list, key, value) => (copyFirst(), Reflect.set(list, key, value)),
-		deleteProperty: (list, key) => (copyFirst(), Reflect.deleteProperty(list, key)),
-		defineProperty: (list, key, field) => (copyFirst(), Reflect.defineProperty(list, key, field))
-	});
 	return {
-		children,
+		list,
+		save: () => {
+			before ??= list.slice();
+		},
 		restore: () => {
-			if (before) spliceMany(target, 0, target.length, before);
+			if (before) spliceMany(list, 0, list.length, before);
 		}
 	};
 }

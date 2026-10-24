@@ -8,10 +8,9 @@ import type { CstNode, Document } from '../core/nodes';
 import { firstLineEnding } from '../core/lines';
 import { assignChildIdsDeep, idsAcrossReread } from '../block-id';
 import type { SharingState } from './sharing';
-import { documentBody, type BodyParent, type NodeParent } from './node-primitives';
+import { documentBody, spliceList, type BodyParent, type NodeParent } from './node-primitives';
 import { ensureEditableContainers } from '../schema/opened-reading';
 import { replacePreservingFirst, type StructuralChange } from './structural-change';
-import { spliceMany } from './splice-many';
 import { dropChildSpans, type ChildRawChange } from '../schema/child-spans';
 import type { GrammarView } from '../schema/block-openers';
 import { firstLine, followBytes, lastLine } from '../schema/container-raw';
@@ -188,7 +187,7 @@ function spliceSpill(spill: Spill, sharing: SharingState, folds: AncestrySeamFol
 	}
 	blocks[0].leadingTrivia = node.leadingTrivia;
 	const before = siblings.slice();
-	spliceMany(siblings, index, 1, blocks);
+	spliceList({ children: siblings }, index, 1, blocks);
 	for (let k = 0; k < blocks.length; k++) sharing.stamp(siblings[index + k]);
 	folds.push({
 		depth: 0,

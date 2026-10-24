@@ -210,6 +210,7 @@ unguarded.
 | G4.252 | A press's point is read at the press, in `readPress`                                             | L       |
 | G4.255 | Every `test.fixme` reason names its issue as `#<n>: `                                            | L       |
 | G4.258 | The fix-up, the chain rebuild and the open tail are imported only by the commit                  | L       |
+| G4.259 | On the fix-up’s path a list of blocks is written only through `spliceList`                       | L       |
 
 ### The entries
 
@@ -1372,3 +1373,9 @@ rebuild, the open last line, keep-a-block and the fold publish are imported at r
 `editor-actions/commit/` and `invariants/`. A mutation writes below its scope through `own`,
 `writeLeaf` and `splice`, and the commit rebuilds what it owned once. The few files that still call a
 step say why. `lint/commit-private-steps.test.ts`.
+
+**G4.259 · One write to a list of blocks.** The fix-up's files, the content write and the copy before
+a write change a list of blocks only through `tree-operations/node-primitives.ts :: spliceList`,
+which calls the list's `beforeWrite` first. A keystroke saves its leaf's list there, so its rollback
+puts back what the fix-up merged; a direct write would survive a rolled-back key.
+`lint/one-list-writer.test.ts`, `keystroke-commit-frame.test.ts`.

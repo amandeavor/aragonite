@@ -19,9 +19,8 @@ import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
 import { blockReadingNotFinal, readsOnIn, type GrammarView } from '../schema/block-openers';
 import { ensureEditableContainers } from '../schema/opened-reading';
 import type { SharingState } from './sharing';
-import { spliceMany } from './splice-many';
 import type { StructuralChange } from './structural-change';
-import type { BodyParent } from './node-primitives';
+import { spliceList, type BodyParent } from './node-primitives';
 import { mintSeparator, retireChildSpans, writeSeparator } from './separator-writes';
 
 /** What a merge of neighbours absorbed; `span + eaten` is the block count before the merge, the
@@ -122,7 +121,7 @@ function installReading(
 	if (tracked) retrackThroughFold(tracked, at, window, blocks);
 	// The merge re-divides the owner's children, which its child spans are laid out against.
 	retireChildSpans(body);
-	spliceMany(body.children, at, window.length, blocks);
+	spliceList(body, at, window.length, blocks);
 }
 
 // ── The join question ──

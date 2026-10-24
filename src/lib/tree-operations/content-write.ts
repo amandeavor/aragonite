@@ -36,7 +36,6 @@ import {
 } from '../schema/block-kind-descriptor';
 import type { SharingState } from './sharing';
 import { resyncChildIds } from './children';
-import { spliceMany } from './splice-many';
 import { replacePreservingFirst, type StructuralChange } from './structural-change';
 import { taskMarkerCaretShift, writeKeepingTaskMarker } from './list/reconcile-task';
 import { fragmentReaderAt, type FragmentReader } from './list/task-paragraph';
@@ -47,7 +46,8 @@ import {
 	kindWriteRule,
 	type BodyParent,
 	type BodyParentArg,
-	type NodeParent
+	type NodeParent,
+	spliceList
 } from './node-primitives';
 import { ensureEditableContainers } from '../schema/opened-reading';
 import { settleContentWrite, type SettledContent, type WrittenSlot } from './settle';
@@ -300,7 +300,7 @@ function writeParsedContent(
 		// The trailing blank line the parse split off has no follower inside the splice, so it
 		// stays in raw.
 		rest[rest.length - 1].raw += reparsed.suffix;
-		spliceMany(parent.children, blockIndex, 1, parsed);
+		spliceList(parent, blockIndex, 1, parsed);
 		return replacePreservingFirst(blockIndex, 1, parsed.length);
 	}
 
@@ -319,7 +319,7 @@ function writeParsedContent(
 	replacement.raw = newText;
 	replacement.leadingTrivia = node.leadingTrivia;
 	if (firstBackfilled) rebuildContainerRaw(replacement, grammar);
-	parent.children.splice(blockIndex, 1, replacement);
+	spliceList(parent, blockIndex, 1, [replacement]);
 	return replacePreservingFirst(blockIndex, 1, 1);
 }
 
@@ -417,7 +417,7 @@ function installReplacement(
 	// A freshly parsed node carries no `childIds`, and the swap reuses the position's component,
 	// so undefined keys would reach its nested keyed `{#each}`.
 	assignChildIdsDeep(replacement);
-	parent.children[index] = replacement;
+	spliceList(parent, index, 1, [replacement]);
 	// Write, then re-read through the tree (`unshare.ts` header).
 	return parent.children[index];
 }
