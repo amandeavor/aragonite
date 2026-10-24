@@ -1084,15 +1084,18 @@ What it runs, in four files under `src/lib/test/behavior/`:
   it all (how a typing run groups into undo steps only shows up here)
 - how the CommonMark spec examples parse, and the documents the showcase and changelog pages mount,
   plus a few keys at the join of every pair of adjacent blocks in those. Whole, they'd mount only a
-  window in jsdom, which is great for a real editor and useless here
+  window in jsdom, which is great for a real editor and useless here. The newest changelog family
+  sits out, since every landing adds to it; editing the showcase or an older family moves the rows
+  of the pairs you touched, so bless with the edit
 
 The documents mount with the bundled plugins that add syntax (math with a stub renderer,
 admonitions, details, the table of contents, footnotes, emoji), so `$x$` and `:::note` mean what the
 showcase means by them.
 
-It runs inside `npm run test:editor`, about 50 seconds a file at four workers, and fails on any row
-the record doesn't hold. So a change that means to change behavior re-blesses in its own commit, and
-that commit's diff of the record is the list of inputs it changed. A refactor's list is empty.
+It runs inside `npm run test:editor` (it adds about half a minute to the run) and fails on any
+row the record doesn't hold. So a change that means to change behavior re-blesses in its own
+commit, and that commit's diff of the record is the list of inputs it changed. A refactor's list
+is empty.
 
 ```bash
 npm run behavior                                          # this checkout against the committed record
@@ -1113,6 +1116,12 @@ behavior --against …: … rows compared, 1 changed (bytes 1, caret 1), 0 added
 
 It prints the first 20, and writes the full list to `behavior-results/diff.txt`. To compare two checkouts
 by hand, `--record <file>` writes this checkout's rows and `--against <file>` diffs against a file.
+
+Rows that moved and nothing in your diff explains? Prob the machine, not you. A new OS, Node
+version or dependency install can move a row too, so run `npm run behavior` on a clean checkout of
+the commit that last blessed the record, on the same machine. Rows that move there too are the
+machine's; bless those in a commit of their own. Rows that only move on your branch are your
+change.
 
 Two limits. It's jsdom, so where the editor hands a key back to the browser nothing happens and the
 row says `browser`: the editor's own handling is real, Chromium's isn't. And the note-taking
@@ -1139,9 +1148,9 @@ says so in its report. Before a release, raise the edits to length 4 (about five
 node scripts/run-with-env.mjs EXHAUSTIVE_FULL=1 EXHAUSTIVE_EDIT_LENGTH=4 -- vitest run src/lib/test/exhaustive
 ```
 
-Some inputs already fail, and `src/lib/test/exhaustive/known-failures.txt` lists them, one defect per
-line waiting on its fix. A suite fails on a failure the file doesn't list, and on a listed one
-(within the lengths it ran) that passes now, so a fix takes its own lines out. After a deliberate
-change, put `EXHAUSTIVE_BLESS=1` in front of the run (through `run-with-env.mjs`, as above) and it
-rewrites the file. The file only goes to length 3, so a length-4 run lists the longer failures as
-new (so far the same few defects, with more inputs reaching them).
+Some inputs already fail, and `KNOWN_DEFECTS` in `src/lib/test/exhaustive/known-failures.ts` names
+the defects behind them, one entry each: what's broken, the shortest input length that reaches it,
+and a pattern over its failure lines. A suite fails on a failure no entry matches, and on an entry
+nothing matched in a run long enough to reach it. So a fix deletes one entry however many inputs it
+covered, and a longer run reaching a known defect from more inputs passes as is. A failure no entry
+matches is a new defect: name it in a new entry (or fix it).

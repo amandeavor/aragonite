@@ -79,6 +79,9 @@ export function holdRowsToBaseline(prefix: string, rows: Row[]): void {
 	expect(
 		moved,
 		`${formatDiff(`behavior ${prefix} against ${BASELINE_PATH}`, diff, 20)}\n` +
-			'An intended change: `npm run behavior:bless`, and commit the baseline with it.'
+			'An intended change: `npm run behavior:bless`, and commit the baseline with it.\n' +
+			'Moved rows nothing in your diff explains: run `npm run behavior` on a clean checkout of\n' +
+			'the commit that last blessed the baseline, on this machine. Rows that move there too come\n' +
+			'from the machine (Node, the installed dependencies, the OS), not from your change.'
 	).toBe(0);
 }
