@@ -71,6 +71,7 @@ import { createSelectionState } from '#lib/selection/selection-state.svelte.js';
 import type { GapStopScope } from '#lib/selection/gap-caret.js';
 import {
 	createHeadlessActions,
+	recordingFocus,
 	stubBlockComponent,
 	stubBlockEdit,
 	stubCaretMemory,
@@ -671,9 +672,12 @@ export function containerBundleOver(
 	deps: EditorActionsDeps,
 	controller: UndoController,
 	containerPath: number[],
-	focus: FocusActions = makeStubFocus()
+	focus: FocusActions = recordingFocus()
 ) {
-	const getNode = () => nodeAt(deps.doc, containerPath) as CstNode;
+	// Once an edit takes the container, its state keeps the node it was built on, as an unmounted
+	// container's state would.
+	const built = nodeAt(deps.doc, containerPath) as CstNode;
+	const getNode = () => (nodeAt(deps.doc, containerPath) as CstNode | null) ?? built;
 	const state = makeBlockListState(getNode);
 	const bundle = createStandardNestedActions(
 		state,
@@ -683,7 +687,8 @@ export function containerBundleOver(
 			path: containerPath,
 			reading: deps.reading,
 			parent: {
-				blockEdit: makeStubBlockEdit(),
+				// Plain stubs where no caller can read a spy, since a `vi.fn` lives until the file ends.
+				blockEdit: stubBlockEdit(),
 				focus,
 				containerEdit: createContainerEditActions(deps, controller)
 			}
