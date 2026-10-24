@@ -256,6 +256,7 @@ export function createEditableLeaf(deps: EditableLeafDeps): EditableLeaf {
 		getFocusOffset: backend.getFocusOffset,
 		getTextLen: () => plainTextOf(deps.getEl()).length,
 		readText: () => plainTextOf(deps.getEl()),
+		repaint: syncSource,
 		handleKeydown,
 		localHistory: (e) =>
 			(e.inputType === 'historyUndo' || e.inputType === 'historyRedo') &&

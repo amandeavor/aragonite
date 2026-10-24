@@ -111,6 +111,10 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		count: 1,
 		why: 'the rollback restores raws the tree already held; nothing new is created'
 	},
+	'src/lib/editor-actions/commit/leaf-commit.ts': {
+		count: 1,
+		why: 'a rolled-back keystroke restores the raws its chain held; nothing new is created'
+	},
 	'src/lib/selection/range-delete-ceremony.ts': {
 		count: 4,
 		why: 'the chrome-clear and the truncation atoms’ two chrome-endpoint branches, reserved-chrome slots no leaf kind declaring a rule can occupy; and the endpoint reparse re-attaching the blank line that parse stripped (GH #97)'
@@ -136,7 +140,7 @@ const BARE_RAW_WRITE_ALLOWLIST: Record<string, { count: number; why: string }> =
 		why: "adds or drops the ending of a block's last line in each node down to the one that owns it: the descent stops above a grid cell or an opaque body, whose bytes sit inside a line their container emits, and an opaque container re-reads its metadata after the write; an ending terminates a line rather than restructuring one"
 	},
 	'src/lib/testing/container-conformance.ts': {
-		count: 7,
+		count: 6,
 		why: "the published kit's own fixture bytes, written into a throwaway parse"
 	},
 	'src/lib/testing/kind-conformance.ts': {

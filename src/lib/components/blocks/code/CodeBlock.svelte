@@ -112,6 +112,7 @@
 		getFocusOffset: backend.getFocusOffset,
 		getTextLen: () => plainTextOf(el).length,
 		readText: () => plainTextOf(el),
+		repaint: paintCode,
 		handleKeydown: onKeyDown,
 		handleBeforeInput: onBeforeInput,
 		deleteAtCaret: deleteCodeAt,
@@ -174,17 +175,22 @@
 		});
 	}
 
-	$effect(() => {
+	function paintCode(): void {
 		if (!el) return;
-		if (node.raw === lastRenderedRaw && pendingCursorOffset === null && pendingSelection === null)
-			return;
-
 		el.replaceChildren(renderCodeBlock(node, activePlugins));
 		anchorTrailingNewline(el);
 		// The marker-hiding CSS and the caret traversal read this attribute; the side gutter does
 		// not, since an empty fence gets one either way.
 		el.toggleAttribute(CONTENT_EMPTY_ATTR, holdsOnlyMarkerChrome(el));
 		lastRenderedRaw = node.raw;
+	}
+
+	$effect(() => {
+		if (!el) return;
+		if (node.raw === lastRenderedRaw && pendingCursorOffset === null && pendingSelection === null)
+			return;
+
+		paintCode();
 
 		// Restore only while this block holds focus: an edit reparsing into several blocks moves
 		// the caret to the split-off sibling. The pending fields clear either way.

@@ -47,9 +47,9 @@ const PINNED: Record<string, Pin> = {
 		calls: { '.rebuild': 2 },
 		why: 'a Tab’s new sublist and a lifted item that took the blocks after it sit below the commit’s chain, which never rebuilds them, and the blank-line rule reads their bytes before the commit returns'
 	},
-	'src/lib/editor-actions/leaf-write.ts': {
+	'src/lib/editor-actions/commit/leaf-commit.ts': {
 		calls: { rebuildUnsharedChain: 1 },
-		why: 'a keystroke written in place, which no commit follows'
+		why: 'a keystroke written in place, whose frame runs no structural commit'
 	},
 	'src/lib/editor-actions/block-edit-core.ts': {
 		calls: { rebuildUnsharedChain: 1 },
@@ -86,7 +86,6 @@ const PINNED: Record<string, Pin> = {
 	'src/lib/testing/container-conformance.ts': {
 		calls: {
 			rebuildUnsharedAncestry: 2,
-			rebuildUnsharedChain: 1,
 			rebuildContainerRawIfContainer: 1,
 			'.rebuildRaw': 8
 		},

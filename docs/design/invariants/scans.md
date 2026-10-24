@@ -500,9 +500,9 @@ window; a push with no arm leaves a batch no pause can end, and one Ctrl+Z unwin
 `lint/file-rules.test.ts`.
 
 **G4.52 · Content-version announcements.** Each place that writes document bytes announces the
-content version (never derived from a walk), so the writers are a declared set: the commit covers
-its structural writers; the typing writes, the history swap and the `source` swap answer for
-themselves. A silent writer serves every whole-document memo a stale answer. Every writer but the
+content version (never derived from a walk), so the writers are a declared set: the commit frame
+covers every commit and every keystroke written in place; the history swap and the `source` swap
+answer for themselves. A silent writer serves every whole-document memo a stale answer. Every writer but the
 `source` swap also asks the reading-mode check (`reading-write-gate.ts`) in each function that
 writes. `lint/content-version-doors.test.ts`.
 
@@ -639,7 +639,7 @@ copy. `lint/file-rules.test.ts`.
 
 **G4.75 · One leaf write.** New text for a leaf is written one way at every depth: a commit through
 `src/lib/editor-actions/block-edit-core.ts` :: `commitLeafText`, or the keystroke's in-place write,
-`src/lib/editor-actions/leaf-write.ts` :: `writeLeafInPlace`. Each step of the write has a short list
+`src/lib/editor-actions/commit/leaf-commit.ts` :: `createLeafCommit`. Each step of the write has a short list
 of files allowed to name it (an aliased import counts):
 
 - the content write with its fix-up (`updateNodeContent`): the in-place write, the keystroke's
@@ -814,12 +814,12 @@ the `typed` intent. `lint/file-rules.test.ts` fails an `afterTypedWrite` or `com
 under `components/` or `selection/` anywhere else, and `blocks/editable/surface-write-intent.test.ts` checks
 which intents ask.
 
-**G4.107 · An `edit` fires at its write.** A commit, a keystroke written in place, undo and redo,
-and a replace-all each emit `edit` as their bytes land; nothing holds one back, since a held one fires
-against whatever document is there by then. `input` also promises the block kept its kind
-(`components/link-reference-map.ts` relies on it), so only the in-place write
-(`editor-actions/leaf-write.ts`) declares it. `lint/edit-emitters.test.ts` keys each emit on its
-function.
+**G4.107 · An `edit` fires at its write.** The commit frame (every commit and every keystroke
+written in place), undo and redo, and a replace-all each emit `edit` as their bytes land; a held one
+would fire against whatever document is there by then. `input` also promises the block kept its
+kind (`components/link-reference-map.ts` relies on it), so only the in-place write
+(`editor-actions/commit/leaf-commit.ts`) declares it. `lint/edit-emitters.test.ts` keys each emit on
+its function.
 
 **G4.108 · One replace for every destructive gesture over a range.** Backspace, Delete, cut, typing,
 an IME composition, paste and a command key over a cross-block range all go through

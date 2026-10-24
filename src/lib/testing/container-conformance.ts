@@ -38,8 +38,9 @@ import {
 	rebuildContainerRawIfContainer
 } from '../schema/container-raw';
 import { createSharingState } from '../tree-operations/sharing';
-import { rebuildUnsharedAncestry, rebuildUnsharedChain } from '../tree-operations/chain-rebuild';
-import { walkUnsharing } from '../tree-operations/unshare';
+import { rebuildUnsharedAncestry } from '../tree-operations/chain-rebuild';
+import { legalizeWrite } from '../tree-operations/content-write';
+import { docPathFrom } from '../caret/coordinate-spaces';
 import { assertParseConverged } from './parse-convergence';
 import { mountBlockListState } from './headless-block-list.svelte';
 import {
@@ -491,7 +492,7 @@ function checkTitleRowFeedsNoMetadata(kind: AnyBlockKind): CellOutcome {
 	if (fixture === undefined) {
 		fail(`${kind} declares a title row but carries no conformanceFixture to write it in`);
 	}
-	const doc = parse(fixture);
+	const { deps, doc } = createHeadlessActions(fixture);
 	const leafPath = [...subjectPath(doc, kind, 'first', `${kind} conformanceFixture`), 0];
 	const title = nodeAtPath(doc, leafPath);
 	assertIs(
@@ -500,14 +501,13 @@ function checkTitleRowFeedsNoMetadata(kind: AnyBlockKind): CellOutcome {
 		`${kind} conformanceFixture opens a "${kind}" with its title row`
 	);
 
-	const leafPreviousRaw = title.raw;
-	title.raw = TITLE_PROBE + trailingLineEnding(title.raw, documentLineEnding(doc));
-	const sharing = createSharingState();
-	const chain = walkUnsharing(doc, leafPath, sharing, false);
-	rebuildUnsharedChain(doc, chain, sharing, null, defaultGrammarView, {
-		path: leafPath,
-		leafPreviousRaw
-	});
+	const owner = nodeAtPath(doc, leafPath.slice(0, -1));
+	const lineEnding = documentLineEnding(doc);
+	const body = { children: owner.children!, owner, lineEnding };
+	const text = TITLE_PROBE + trailingLineEnding(title.raw, lineEnding);
+	const write = legalizeWrite(body, 0, text, 'authored');
+	const typed = createUndoController(deps).typeLeaf(docPathFrom(leafPath), write, 0);
+	assert(typed.wrote, `${kind} takes a keystroke in its title row`);
 	assertParseConverged(doc, `${kind} after a keystroke in its title row`);
 }
 

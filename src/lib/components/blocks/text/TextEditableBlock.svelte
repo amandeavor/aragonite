@@ -233,6 +233,7 @@
 		stepEdge: edgeStep.step,
 		inlineUnits: () => edgeDispatch.inlineUnits,
 		readText: () => readRawText(),
+		repaint: () => textRender.render({ forceRebuild: true }),
 		compositionSeat,
 		placement: typedPlacement,
 		getInlines: () => resolvedInlineContent(node, reading),

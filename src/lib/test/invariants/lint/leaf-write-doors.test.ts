@@ -13,6 +13,7 @@ const CONTENT_WRITE = SOURCE.contentWrite;
 const NODE_PRIMITIVES = SOURCE.nodePrimitives;
 const BLOCK_EDIT_CORE = SOURCE.blockEditCore;
 const LEAF_WRITE = SOURCE.leafWrite;
+const LEAF_COMMIT = SOURCE.leafCommit;
 const TREE_OPS_BARREL = SOURCE.treeOperationsBarrel;
 const BARREL_REASON = 'the tree-operations barrel re-exports it';
 
@@ -43,7 +44,7 @@ const RULES: FileRule[] = [
 		allowed: {
 			[CONTENT_WRITE]: 'defines it',
 			[TREE_OPS_BARREL]: BARREL_REASON,
-			[LEAF_WRITE]: '`writeLeafInPlace`, the keystroke written in place at every depth',
+			[LEAF_COMMIT]: '`typeLeaf`, the keystroke written in place at every depth',
 			'src/lib/editor-actions/replacement-focus.ts':
 				'the keystroke’s trial reparse, on a copy that is never installed',
 			'src/lib/tree-operations/paste/container-match.ts':
@@ -195,7 +196,7 @@ const RULES: FileRule[] = [
 		id: 'G4.75 the in-place write checks the depth of the chain it copied',
 		matches: /['"]unshared-spine-depth['"]/,
 		allowed: {
-			[LEAF_WRITE]: '`writeLeafInPlace`, the one in-place write (G1.20)'
+			[LEAF_COMMIT]: '`typeLeaf`, the one in-place write (G1.20)'
 		},
 		reason:
 			'the chain-depth check belongs to the in-place write itself, so a caller never repeats it',

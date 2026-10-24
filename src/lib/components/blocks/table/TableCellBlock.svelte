@@ -193,6 +193,7 @@
 		stepEdge: edgeStep.step,
 		inlineUnits: () => edgeDispatch.inlineUnits,
 		readText: () => readCellText(),
+		repaint: () => cellRender.render({ forceRebuild: true }),
 		placement: typedPlacement,
 		getInlines: () => resolvedInlineContent(node, reading),
 		handleKeydown: onKeyDown,

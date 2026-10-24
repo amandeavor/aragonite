@@ -33,7 +33,7 @@ const SITES: Record<string, SiteStance> = {
 		sinks: 1,
 		why: 'the multi-scope commit sequence owns the doc-level ids/refs and every prepared scope’s state, so it reconciles and publishes the fold’s unwind'
 	},
-	'src/lib/editor-actions/leaf-write.ts': {
+	'src/lib/editor-actions/commit/leaf-commit.ts': {
 		declines: 0,
 		sinks: 1,
 		why: 'the keystroke written in place; it publishes no descriptor of its own, so it reconciles the splice directly'
@@ -84,7 +84,7 @@ const SITES: Record<string, SiteStance> = {
 		why: 'the rebuild runs on a private clone that is reparsed whole afterwards, so any fold the chain could produce is read again by that parse and by the commit’s own settle'
 	},
 	'src/lib/testing/container-conformance.ts': {
-		declines: 3,
+		declines: 2,
 		sinks: 0,
 		why: 'the published kit owns neither ids nor refs, so there is no parent scope for it to reconcile'
 	}

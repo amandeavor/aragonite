@@ -1,8 +1,7 @@
 /**
- * The commit sequence (`runCommitCeremony`): undo snapshot, copy before write, mutate,
- * rollback on failure. A node shared with an undo snapshot stays read-only until the commit
- * copies it (G1.9). Keystroke batching is in text-batch.ts, the commit over block lists in
- * structural-commit.ts.
+ * The undo controller: the undo entries every write goes into, and the two entries of the one
+ * commit frame (`commit-frame.ts`), the structural commit and the keystroke written in place. A
+ * node shared with an undo snapshot stays read-only until the write copies it (G1.9).
  */
 
 import { assertInvariant, devChecksOn } from '@voithos-labs/aragonite/dev-checks';
@@ -14,25 +13,18 @@ import type { UndoEntry } from '../../undo/types';
 import type { SelectionPoint } from '../../selection/primitives';
 import { digestDoc } from '../../invariants/snapshot-integrity';
 import { readCurrentSelection } from '../../selection/native-bridge';
-import { asDocPath, pathsEqual } from '../../selection/path-math';
+import { pathsEqual } from '../../selection/path-math';
 import { checkLandingIsAValue, readCaretWhereabouts } from '../../invariants/landing-value';
-import { beginCommit, endCommit } from '../../invariants/commit-scope';
-import { blockNodeAt } from '../../tree-operations/node-primitives';
-import { endsOpen } from '../../tree-operations/open-tail';
 import { createTextBatch } from './text-batch';
 import { createStructuralCommit, type CommitArgs } from './structural-commit';
 import { admitsSnapshot, admitsWrite } from './reading-write-gate';
+import { createCommitFrame } from './commit-frame';
+import { createLeafCommit } from './leaf-commit';
 import type { EditorActionsDeps, UndoController } from '../deps';
 import type { CommitLanding, HeldLanding, CommitSnapshotArg } from '../../action-contracts';
-import { emitCommitError, toEditEvent } from '../../editor-events';
+import { emitCommitError } from '../../editor-events';
 import {
-	assertCommitPaths,
-	assertCommittedNodes,
-	assertKeepsABlock,
-	assertLastLineKept,
 	assertLineEndingPairsKept,
-	assertListMarkerWidths,
-	assertReadsBack,
 	documentLineEndings,
 	assertUndoTopIntegrity
 } from '../../invariants/install';
@@ -226,6 +218,7 @@ export function createUndoController(
 				: collapsedSelectionAtPath(leafPath, offset);
 		});
 		const entry = { ...shareSnapshot(), blockIds: [...deps.blockIds], selection };
+		burstStacks = deps.undoManager.getStacks();
 		pushEntry(entry);
 		typingEntry = entry;
 	}
@@ -237,107 +230,29 @@ export function createUndoController(
 		}
 	});
 
-	// ── Internal commit primitive ────────────────────────────────────────────
+	// ── The commit frame ──────────────────────────────────────────────────────
 
-	interface RollbackFrame {
-		restore(): void;
-	}
+	// The stacks from before the current keystroke's typing push, when that push opened an entry:
+	// what a keystroke rolled back in place puts back.
+	let burstStacks: ReturnType<typeof deps.undoManager.getStacks> | null = null;
 
-	/** Everything a commit that throws or bails on discardIfNoop restores; the scopes' state exists
-	 *  only once `mutate` has copied it, so restore() hands that to `rollback`. */
-	function captureRollbackFrame(args: CommitArgs, pushes: boolean): RollbackFrame {
-		// A whole-stack restore, not a pop: the push may evict the oldest entry at the cap. A
-		// commit that joins its step's entry pushes nothing, so it has no stacks to restore.
-		const savedStacks = pushes ? deps.undoManager.getStacks() : null;
-		// The trailing-line fix-up can consume the document's suffix, which no scope holds.
-		const savedDocSuffix = deps.doc.suffix;
-		return {
-			restore() {
-				if (savedStacks) deps.undoManager.restoreStacks(savedStacks);
-				deps.doc.suffix = savedDocSuffix;
-				args.rollback();
-			}
-		};
-	}
-
-	/** The one path to the `error` event, so every throw site reports alike (`docs/design/commit-and-undo.md` § The event channel). */
-	function reportCommitError(args: CommitArgs, error: unknown): void {
-		emitCommitError(deps.events, { error, op: args.op?.kind, path: args.op?.eventPath });
-	}
-
-	/** `discarded` is a `discardIfNoop` commit that changed nothing: no write, but it still lands. */
-	type CommitOutcome = 'written' | 'discarded' | 'failed';
-
-	function runCommitCeremony(args: CommitArgs): CommitOutcome {
-		deps.caretMemory.forget();
-		textBatch.interrupt();
-
-		if (devChecksOn) {
-			// Both declared paths must be document-absolute; `invariants` imports nothing at
-			// runtime, so the number[] to DocPath conversion lives here.
-			assertCommitPaths(
-				deps.doc,
-				asDocPath(args.snapshot.path),
-				args.op?.eventPath ? asDocPath(args.op.eventPath) : null
-			);
-		}
-
-		// Outside the try: the stacks must be saved before the push below.
-		const rollback = captureRollbackFrame(args, !isJoinedPush());
-
-		// A `discardIfNoop` commit that changed nothing takes the throw path's restore minus
-		// the error event.
-		let discarded = false;
-		try {
-			// Inside the try: readCurrentSelection walks live block refs, plugin leaves included,
-			// so it can throw like every other step.
-			pushCommitSnapshot(args.snapshot.path, args.snapshot.offset);
+	const runFrame = createCommitFrame(deps, {
+		endTypingBurst: textBatch.interrupt,
+		stacksToRestore: (history) => {
+			if (history === 'burst') return burstStacks;
+			return isJoinedPush() ? null : deps.undoManager.getStacks();
+		},
+		push: (snapshot, history) => {
+			if (history === 'burst') return;
+			pushCommitSnapshot(snapshot.path, snapshot.offset);
 			lastCommitEntry = deps.undoManager.peekUndo() ?? null;
-			const wasOpen = endsOpen(deps.doc);
-			const endings = documentLineEndings(deps.doc);
-			const changed = args.mutate(wasOpen);
-			if (args.discardIfNoop && !changed) {
-				// The mutation ran but no scope changed: unwind as a throw would.
-				rollback.restore();
-				discarded = true;
-			} else if (devChecksOn) {
-				const written = args.written();
-				assertCommittedNodes(written.nodes, deps.reading.grammar);
-				assertLastLineKept(deps.doc, wasOpen);
-				assertLineEndingPairsKept(deps.doc, endings);
-				assertKeepsABlock(deps.doc, written.nodes);
-				assertReadsBack(written.tops, deps.reading.grammar);
-				assertListMarkerWidths(written.tops);
-			}
-			if (!discarded && devChecksOn) {
-				// A missed copy before write corrupts the newest undo entry, so the commit catches it
-				// rather than some distant undo (G1.9). Never throws.
-				assertUndoTopIntegrity(deps.undoManager.peekUndo() ?? undefined);
-			}
-		} catch (err) {
-			rollback.restore();
-			reportCommitError(args, err);
-			// Loud in dev; production swallows it so one failed edit does not kill the editor.
-			// The tree is intact either way: rolled back, or never installed.
-			if (devChecksOn) throw err;
-			return 'failed';
+		},
+		restoreStacks: (stacks) => {
+			deps.undoManager.restoreStacks(stacks);
+			// The entry the burst opened is gone, so the next keystroke opens it again.
+			textBatch.interrupt();
 		}
-
-		if (!discarded) {
-			// After the result is installed, so nothing caches the new version against a
-			// half-installed tree; a discarded commit rolled back, so it announces nothing.
-			deps.bumpContentVersion();
-			// A commit moves what the gap caret's boundary index names, and nothing can say which
-			// boundary the user meant; after the push, so the stored entry keeps the gap.
-			deps.selectionState.clearGapCaret();
-		}
-
-		if (!discarded && args.op) {
-			deps.events.emit('edit', toEditEvent(args.op, args.op.eventPath, Date.now()));
-		}
-
-		return discarded ? 'discarded' : 'written';
-	}
+	});
 
 	/** The commit's landing, checked in dev to have moved no caret while it was read. */
 	function readLanding(landing: CommitLanding | undefined): Landing | null {
@@ -351,25 +266,33 @@ export function createUndoController(
 		return value;
 	}
 
-	// Bracket the synchronous commit so the decorations never read a half-applied tree.
-	// Cleared before the first await. Resolves to whether bytes landed.
+	// Resolves to whether bytes landed; the frame runs before the first await.
 	async function __commit(args: CommitArgs): Promise<boolean> {
-		const op = args.op?.kind ?? args.entry;
-		const target = args.op?.eventPath ?? args.snapshot.path;
 		lastCommitEntry = null;
-		// A refused write lands nothing, while a discarded no-op still lands: whether a commit
-		// lands is its own question, not whether it wrote.
-		if (!admitsWrite(deps, op, () => blockNodeAt(deps.doc, target)?.kind)) return false;
 		// Read before any await, so an undo or swap during the landing's mount makes it give up.
 		const stamp = deps.caretLanding.generation();
-		beginCommit();
-		let outcome: CommitOutcome;
-		try {
-			outcome = runCommitCeremony(args);
-		} finally {
-			endCommit();
-		}
-		if (outcome === 'failed') return false;
+		let endings: ReturnType<typeof documentLineEndings> = null;
+		const outcome = runFrame({
+			entry: args.entry,
+			op: args.op,
+			snapshot: args.snapshot,
+			history: 'entry',
+			apply: (wasOpen) => {
+				endings = documentLineEndings(deps.doc);
+				return args.mutate(wasOpen);
+			},
+			discardIfNoop: args.discardIfNoop,
+			written: args.written,
+			check: () => {
+				assertLineEndingPairsKept(deps.doc, endings);
+				// A missed copy before write corrupts the newest undo entry, so the commit catches it
+				// rather than some distant undo (G1.9). Never throws.
+				assertUndoTopIntegrity(deps.undoManager.peekUndo() ?? undefined);
+			},
+			rollback: args.rollback
+		});
+		// A refused write lands nothing, while a discarded no-op still lands.
+		if (outcome === 'refused' || outcome === 'failed') return false;
 		await tick();
 		// Awaited, so the promise every caller holds means "the caret is placed". No rollback on a
 		// throw: the commit succeeded and the tree is correct, so it is reported and the next runs.
@@ -384,6 +307,11 @@ export function createUndoController(
 		if (outcome !== 'written') return false;
 		if (args.announce) announceEdit(args.announce());
 		return true;
+	}
+
+	/** The one path to the `error` event for what runs after the frame. */
+	function reportCommitError(args: CommitArgs, error: unknown): void {
+		emitCommitError(deps.events, { error, op: args.op?.kind, path: args.op?.eventPath });
 	}
 
 	function placementOf(args: CommitArgs, landing: Landing, stamp: number): HeldLanding {
@@ -437,8 +365,10 @@ export function createUndoController(
 
 	return {
 		pushUndoSnapshotDebounced: (leafPath, offset, batchKey) => {
+			burstStacks = null;
 			if (admitsSnapshot(deps)) textBatch.keystroke(leafPath, offset, batchKey);
 		},
+		typeLeaf: createLeafCommit(deps, runFrame),
 		armUndoPause: textBatch.armPause,
 		commitStructural,
 		commitContainerStructural,

@@ -28,7 +28,6 @@ import {
 } from '#lib/core/lines.js';
 import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createLeafTyping } from '#lib/editor-actions/leaf-write.js';
 import { legalizeWrite } from '#lib/tree-operations/content-write.js';
 import { blockNodeAt, documentBody } from '#lib/tree-operations/node-primitives.js';
 import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
@@ -219,7 +218,7 @@ function keystrokeMovesOneLine(source: string, pick: number, offset: number): vo
 		'authored'
 	);
 	const before = splitLines(serialize(deps.doc)).map((line) => line.raw);
-	createLeafTyping(deps, createUndoController(deps)).writeLeafInPlace(docPathFrom(leaf), write, at);
+	createUndoController(deps).typeLeaf(docPathFrom(leaf), write, at);
 
 	const after = splitLines(serialize(deps.doc)).map((line) => line.raw);
 	const moved = after.flatMap((line, i) => (line === before[i] ? [] : [i]));

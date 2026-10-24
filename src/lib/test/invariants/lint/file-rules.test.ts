@@ -854,8 +854,8 @@ const RULES: FileRule[] = [
 				'SelectionPoint accessors brand RawOffset/CellIndex for the char/cell branch reads',
 			'src/lib/editor-actions/block-edit-scope.ts':
 				'DocPath home: the scope factories brand the commit args’ document-absolute paths',
-			'src/lib/editor-actions/commit/undo-controller.ts':
-				'DocPath at the commit sequence, gating the G1.16 guard entry',
+			'src/lib/editor-actions/commit/commit-frame.ts':
+				'DocPath at the commit frame, gating the G1.16 guard entry',
 			// Public boundaries, where plain-number offsets are branded on entry.
 			'src/lib/components/blocks/editable/editable-surface.ts':
 				'BlockComponent boundary: public number offsets branded at entry',

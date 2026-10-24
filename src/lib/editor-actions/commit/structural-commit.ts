@@ -49,15 +49,9 @@ import { assertIdsInLockstep, assertTopLevelUntouched } from '../../invariants/i
 import { checkSettledOnce, startCommitSettles } from '../../invariants/settle-once';
 import { dropChildSpans } from '../../schema/child-spans';
 import { perfEnabled } from '../../perf/instruments';
+import type { WrittenNodes } from './commit-frame';
 
 // ── Dev invariant scoping (dev-only paths) ────────────────────────────────────
-
-/** What a commit wrote, for the dev checks: `tops` are the top-level blocks holding it, so the
- *  read-back check never searches the document for them. */
-export interface WrittenNodes {
-	nodes: CstNode[];
-	tops: CstNode[];
-}
 
 /** Direct children go along: a container's rebuild concatenates them into its raw. */
 function withDirectChildren(containers: readonly CstNode[]): CstNode[] {

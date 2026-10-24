@@ -16,7 +16,7 @@ interface WarnFixtures {
 	expectWarns: string[];
 	/** Svelte runtime warning codes this spec deliberately triggers, e.g. `['derived_inert']`. */
 	expectSvelteWarns: string[];
-	/** `window.onerror` messages this spec deliberately triggers, matched whole. */
+	/** `window.onerror` messages and uncaught errors this spec deliberately triggers, matched whole. */
 	expectPageErrors: string[];
 }
 
@@ -78,7 +78,10 @@ const watchedTest = base.extend<WarnFixtures>({
 		};
 		// An uncaught exception or rejection reaches Playwright here and never as a console line.
 		const onPageError = (e: Error) =>
-			fires.push({ tag: 'pageerror', text: `pageerror: ${e.stack || e.message || String(e)}` });
+			fires.push({
+				tag: `onerror:${e.message}`,
+				text: `pageerror: ${e.stack || e.message || String(e)}`
+			});
 		page.on('console', onConsole);
 		page.on('pageerror', onPageError);
 		await page.addInitScript(relayWindowErrors);

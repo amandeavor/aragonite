@@ -28,6 +28,9 @@ import type { CommandRun } from './schema/block-commands';
  */
 export type CommitSnapshotArg = { path: DocPath; offset: number };
 
+/** How a write groups in the undo history: an entry of its own, or the typing burst's. */
+export type UndoGrouping = 'entry' | 'join-typing';
+
 /**
  * Opt-in for structural commits that may legitimately do nothing. The commit then throws
  * away the snapshot it took first: no undo entry, no edit event, nothing written to state
@@ -312,10 +315,13 @@ export interface CommitController {
 	/** Whether a gesture may write now: false in reading mode, or for a document a `source` swap
 	 *  replaced. A reading-mode refusal names `op` in a dev warning; a null `op` is refused quietly. */
 	admitsGesture(op: string | null): boolean;
+	/** The keystroke that keeps its leaf's kind, written in place through the commit frame;
+	 *  `relanding` is null when the browser's caret stays where it is. */
+	typeLeaf(leafPath: DocPath, write: LegalWrite, caret: number): InPlaceResult;
 }
 
 /** What a container reaches the editor root for, forwarded unchanged through nested containers.
- *  A keystroke runs `typeInLeaf`, then a commit or `writeLeafInPlace` (`leaf-write.ts`). */
+ *  A keystroke runs `typeInLeaf`, then a commit or `typeLeaf`. */
 export interface ContainerEditActions {
 	/** The document's line ending, which every line a write below the root creates takes. */
 	lineEnding(): LineEnding;
@@ -330,8 +336,9 @@ export interface ContainerEditActions {
 		batchKey: string,
 		work: () => Promise<T>
 	): Promise<T>;
-	/** The keystroke's write outside a commit, for a write that keeps the leaf's kind. */
-	writeLeafInPlace(leafPath: DocPath, write: LegalWrite, caret: number): InPlaceResult;
+	/** The keystroke's write in place, through the commit frame, for a write that keeps the
+	 *  leaf's kind. */
+	typeLeaf(leafPath: DocPath, write: LegalWrite, caret: number): InPlaceResult;
 	/** Put the caret at a document position through the editor's caret landing, for an edit that
 	 *  moves the caret without a commit. */
 	land(pos: CaretPosition): Promise<LandingOutcome>;

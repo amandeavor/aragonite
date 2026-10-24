@@ -208,7 +208,7 @@ export function makeCommitScopeStub(
 			return true;
 		},
 		typeIn: (_i, _offset, work) => work(),
-		writeInPlace: () => ({ wrote: false }),
+		typeLeaf: () => ({ wrote: false }),
 		at: (i, subPath, offset) => ({ path: docPathFrom([i, ...subPath]), offset }),
 		// No render window here: every ref counts as mounted.
 		async land(pos) {
@@ -325,7 +325,7 @@ export function makeStubContainerEdit(): ContainerEditActions {
 		commitContainer: vi.fn(),
 		lineEnding: () => '\n',
 		typeInLeaf: vi.fn((_path, _offset, _key, work) => work()),
-		writeLeafInPlace: vi.fn(() => ({ wrote: false as const })),
+		typeLeaf: vi.fn(() => ({ wrote: false as const })),
 		land: vi.fn(async () => 'placed' as const),
 		survivorAfterRemoval: vi.fn(() => null),
 		reportCommitError: vi.fn()

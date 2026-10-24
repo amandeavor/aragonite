@@ -68,6 +68,8 @@ export const SOURCE = {
 	structuralCommit: 'src/lib/editor-actions/commit/structural-commit.ts',
 	blockEditCore: 'src/lib/editor-actions/block-edit-core.ts',
 	leafWrite: 'src/lib/editor-actions/leaf-write.ts',
+	leafCommit: 'src/lib/editor-actions/commit/leaf-commit.ts',
+	commitFrame: 'src/lib/editor-actions/commit/commit-frame.ts',
 	containerBlockComponent: 'src/lib/editor-actions/container-block-component.ts',
 	pluginContainer: 'src/lib/editor-actions/plugin/container.ts',
 
@@ -221,6 +223,8 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	structuralCommit: 'export function createStructuralCommit',
 	blockEditCore: 'export function contentUpdate',
 	leafWrite: 'export type LeafTyping',
+	leafCommit: 'export function createLeafCommit',
+	commitFrame: 'export function createCommitFrame',
 	containerBlockComponent: 'export function dispatchWholeBlockGlobalChord',
 	pluginContainer: 'export interface ContainerBlockDeps',
 

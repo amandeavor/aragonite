@@ -129,7 +129,7 @@ export function contentUpdate(scope: CommitScope): BlockEditActions['updateBlock
 				});
 				return landed.wrote;
 			}
-			const written = scope.writeInPlace(index, write, caret);
+			const written = scope.typeLeaf(index, write, caret);
 			if (!written.wrote) return false;
 			keepsCaret = !written.relanding;
 			if (!written.relanding) return true;

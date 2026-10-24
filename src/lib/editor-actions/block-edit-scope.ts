@@ -97,7 +97,7 @@ export interface CommitScope {
 	 *  the stack before `work` starts, and whatever `work` commits before it first yields joins it. */
 	typeIn<T>(i: number, preEditOffset: number, work: () => Promise<T>): Promise<T>;
 	/** The keystroke's in-place write, for a write the trial reparse keeps in its block. */
-	writeInPlace(i: number, write: LegalWrite, caret: number): InPlaceResult;
+	typeLeaf(i: number, write: LegalWrite, caret: number): InPlaceResult;
 	/** A position below child `i`. */
 	at(i: number, subPath: readonly number[], offset: number): CaretPosition;
 	/** Put the caret at `pos` through the editor's caret landing, for an edit with no commit. */
@@ -112,7 +112,7 @@ export function createTopLevelScope(
 	deps: EditorActionsDeps,
 	controller: UndoController
 ): CommitScope {
-	const typing = createLeafTyping(deps, controller);
+	const typing = createLeafTyping(controller);
 	return {
 		path: asDocPath([]),
 		get reading() {
@@ -156,7 +156,7 @@ export function createTopLevelScope(
 		},
 		typeIn: (i, preEditOffset, work) =>
 			typing.typeInLeaf(docPathFrom([i]), preEditOffset, deps.blockIds[i], work),
-		writeInPlace: (i, write, caret) => typing.writeLeafInPlace(docPathFrom([i]), write, caret),
+		typeLeaf: (i, write, caret) => typing.typeLeaf(docPathFrom([i]), write, caret),
 		at: (i, subPath, offset) => ({ path: docPathFrom([i, ...subPath]), offset }),
 		land: (pos) => deps.caretLanding.land(pos),
 		reportCommitError: (error, op, i) => emitCommitError(deps.events, { error, op, path: [i] })
@@ -266,8 +266,8 @@ function containerScope(parts: ContainerParts): CommitScope {
 				parts.state.innerBlockIds[i],
 				work
 			),
-		writeInPlace: (i, write, caret) =>
-			parts.containerEdit.writeLeafInPlace(extendDocPath(parts.path(), i), write, caret),
+		typeLeaf: (i, write, caret) =>
+			parts.containerEdit.typeLeaf(extendDocPath(parts.path(), i), write, caret),
 		at: (i, subPath, offset) => ({ path: docPathFrom([...parts.path(), i, ...subPath]), offset }),
 		// Through the editor root rather than this list's refs: a write that changed this
 		// container's kind replaced its component, and its refs with it.

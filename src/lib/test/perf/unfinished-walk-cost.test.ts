@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { docPathFrom } from '#lib/caret/coordinate-spaces.js';
 import { createUndoController } from '#lib/editor-actions/commit/undo-controller.js';
-import { createLeafTyping } from '#lib/editor-actions/leaf-write.js';
 import { legalizeWrite } from '#lib/tree-operations/content-write.js';
 import { makeEditorActionsDeps } from '#lib/test/harness/editor-actions.js';
 import { installPlugins } from '#lib';
@@ -25,11 +24,11 @@ const BODY = Array.from({ length: BLOCKS }, (_, i) => `paragraph ${i}\n`).join('
 /** The walks and the blocks they read when `text` is written in place over block `index`. */
 function walkOf(text: string, index = BLOCKS - 1, body = BODY): { walks: number; blocks: number } {
 	const { deps } = makeEditorActionsDeps(body);
-	const typing = createLeafTyping(deps, createUndoController(deps));
+	const typing = createUndoController(deps);
 	const write = legalizeWrite(deps.doc, index, text, 'authored');
 	enablePerfInstruments();
 	resetPerfInstruments();
-	expect(typing.writeLeafInPlace(docPathFrom([index]), write, 0).wrote).toBe(true);
+	expect(typing.typeLeaf(docPathFrom([index]), write, 0).wrote).toBe(true);
 	const { unfinishedWalks, unfinishedBlocksAsked } = perfSnapshot();
 	return { walks: unfinishedWalks, blocks: unfinishedBlocksAsked };
 }
@@ -66,11 +65,11 @@ describe('the walk for a construct a keystroke could finish, over a 5,000-block 
 	it('an opener broken above the body reads the body into its closer in one pass', () => {
 		const source = `\`\`\`js\ncode\n\`\`\`\n\n${BODY}`;
 		const { deps } = makeEditorActionsDeps(source);
-		const typing = createLeafTyping(deps, createUndoController(deps));
+		const typing = createUndoController(deps);
 		const write = legalizeWrite(deps.doc, 0, '``js\ncode\n```\n', 'authored');
 		enablePerfInstruments();
 		resetPerfInstruments();
-		typing.writeLeafInPlace(docPathFrom([0]), write, 0);
+		typing.typeLeaf(docPathFrom([0]), write, 0);
 
 		expect(deps.doc.children).toHaveLength(2);
 		expect(perfSnapshot().parseBytes).toBeLessThan(4 * source.length);

@@ -16,12 +16,12 @@ export function createContainerEditActions(
 	deps: EditorActionsDeps,
 	controller: UndoController
 ): ContainerEditActions {
-	const { typeInLeaf, writeLeafInPlace } = createLeafTyping(deps, controller);
+	const { typeInLeaf, typeLeaf } = createLeafTyping(controller);
 	return {
 		lineEnding: () => documentLineEnding(deps.doc),
 		commitContainer: (args) => controller.commitContainerStructural(args),
 		typeInLeaf,
-		writeLeafInPlace,
+		typeLeaf,
 		land: (pos) => deps.caretLanding.land(pos),
 		survivorAfterRemoval: (removedPath, gesture) =>
 			survivorAfterRemoval(deps.doc, removedPath, gesture),
