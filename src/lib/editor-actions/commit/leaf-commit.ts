@@ -207,8 +207,8 @@ function relandingAfter(deps: EditorActionsDeps, written: InPlaceWritten): Relan
 	const byteIn = (level: number) =>
 		rawOffsetOfLeaf(written.chain[level], settledPath.slice(level + 1), leafAt.offset);
 
-	// The write rule's separator keeps a folded container from merging into the block above it, so
-	// a fold leaves every container on the leaf's path where it stood (G1.152).
+	// A same-kind write's separator keeps a folded container from merging into the block above,
+	// so a fold leaves every container on the leaf's path where it stood (G1.152).
 	assertInvariant('keystroke-fold-in-place', () => {
 		const moved = written.folds.find(
 			(f) => f.landing.index !== leafPath[f.depth] || f.landing.offset !== 0
