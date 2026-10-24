@@ -1,6 +1,6 @@
 /**
- * Split and merge, the two operations that re-divide a body's blocks around a caret. They mutate
- * and report; the commit recomputes the separators around them.
+ * Split, merge and delete, the operations that re-divide a body's blocks around a caret. They
+ * mutate and report; the commit recomputes the separators around them.
  */
 
 import { assertInvariant, devChecksOn, devWarn } from '@voithos-labs/aragonite/dev-checks';
@@ -41,7 +41,8 @@ import {
 	type BodyParentArg
 } from './node-primitives';
 import { ensureEditableContainers } from '../schema/opened-reading';
-import { deleteNode } from './settle';
+import { retireChildSpans } from './separator-writes';
+import { holdOrderedNumbering } from './list/ordered-markers';
 import { absorbSeamReading, type TrackedPosition } from './neighbour-merge';
 import { cutKeepingStructure } from './structural-suffix';
 import { leafAtRawOffset, rawOffsetOfLeaf } from './container-offsets';
@@ -486,4 +487,22 @@ function reparseAsNodes(
 	doc.children[0].leadingTrivia = leadingTrivia;
 	for (const node of doc.children) ensureEditableContainers(node, ending);
 	return { nodes: doc.children, suffix: doc.suffix };
+}
+
+// ── Delete ──────────────────────────────────────────────────────────────────
+
+/** Remove the node at `blockIndex`, an ordered list's numbers kept consecutive; the fix-up that
+ *  leaves its successor separated once is the commit's. A whole document reads as its own body. */
+export function deleteNode(
+	parent: BodyParentArg,
+	blockIndex: number,
+	sharing: SharingState
+): StructuralChange {
+	const body = asBody(parent);
+	if (blockIndex < 0 || blockIndex >= body.children.length) return { op: 'noop' };
+	retireChildSpans(body);
+	const renumber = body.owner ? holdOrderedNumbering(body.owner) : undefined;
+	body.children.splice(blockIndex, 1);
+	renumber?.(sharing);
+	return { op: 'delete', at: blockIndex, count: 1 };
 }

@@ -42,14 +42,13 @@ const RULES: FileRule[] = [
 		matches: /\bupdateNodeContent\b/,
 		allowed: {
 			[CONTENT_WRITE]: 'defines it',
-			[TREE_OPS_BARREL]: BARREL_REASON,
 			[LEAF_COMMIT]: '`typeLeaf`, the keystroke written in place at every depth',
 			'src/lib/editor-actions/replacement-focus.ts':
 				'the keystroke’s trial reparse, on a copy that is never installed',
+			'src/lib/editor-actions/commit/scope-writes.ts':
+				'`writeLeaf`, the commit scope’s write of a leaf below it',
 			'src/lib/tree-operations/paste/container-match.ts':
-				'the container-matching paste’s merged leaf and its residue, written inside the paste’s own commit',
-			'src/lib/selection/cross-block/format-range.ts':
-				'a format toggle’s writes over several blocks, inside the toggle’s own commit'
+				'the container-matching paste’s residue, written into a pasted item before it is spliced in'
 		},
 		reason:
 			'a leaf’s new text is written by `commitLeafText` or the in-place keystroke write; call one of them rather than the content write, which fixes up its own body and so must stay out of a commit that settles that body again',

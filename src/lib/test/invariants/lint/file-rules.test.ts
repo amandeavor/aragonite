@@ -283,14 +283,12 @@ const holdsLiveRewrites = (file: SourceFile): boolean =>
 const LIST_MARKER_READ =
 	/\{\s*marker\?:\s*string\s*\}|'listItem'\)\??\.marker\b|\b\w*[mM]eta(?:data)?\??\.marker\b/;
 
-// ── G4.34 / G4.74 private writers ────────────────────────────────────────────
+// ── G4.34 private writer ─────────────────────────────────────────────────────
 
 /** Writers whose callers are their own module: unexported today, held here so one `export`
  *  keyword can't hand them a second caller. */
 const PRIVATE_WRITER_HOMES: Record<string, string> = {
-	buildLinkSourceBytes: SOURCE.linkSourceBytes,
-	terminateLastLine: SOURCE.openTail,
-	releaseLastLine: SOURCE.openTail
+	buildLinkSourceBytes: SOURCE.linkSourceBytes
 };
 
 // ── G4.175 runes mode ────────────────────────────────────────────────────────
@@ -1175,23 +1173,15 @@ const RULES: FileRule[] = [
 		]
 	},
 	{
-		id: 'G4.34 G4.74 the link serializer and the last-line walk are named only in their own files',
+		id: 'G4.34 the link serializer is named only in its own file',
 		matches: (file) =>
 			Object.entries(PRIVATE_WRITER_HOMES).some(
 				([name, home]) => file.relPath !== home && new RegExp(`\\b${name}\\b`).test(file.code)
 			),
 		reason:
-			're-emitting a link’s fields as GFM replaces an author’s own syntax, and a route that ends the last line itself is a second copy of the commit’s rule: call the byte writer or let the commit end the line',
-		hits: [
-			at(SOURCE.nodePrimitives, 'releaseLastLine(tail, sharing, grammar);'),
-			at(SOURCE.openTail, 'buildLinkSourceBytes(fields);'),
-			'terminateLastLine(node, ending, sharing, grammar);'
-		],
-		misses: [
-			at(SOURCE.openTail, 'terminateLastLine(node, ending, sharing, grammar);'),
-			at(SOURCE.linkSourceBytes, 'return buildLinkSourceBytes(fields);'),
-			'endWindowLines(body, change, sharing, grammar);\ntext = terminateLine(text, ending);'
-		]
+			're-emitting a link’s fields as GFM replaces an author’s own syntax: call the byte writer',
+		hits: [at(SOURCE.openTail, 'buildLinkSourceBytes(fields);')],
+		misses: [at(SOURCE.linkSourceBytes, 'return buildLinkSourceBytes(fields);')]
 	},
 	{
 		id: 'a value the editor owns is read through its getter, never optional-chained into a default',

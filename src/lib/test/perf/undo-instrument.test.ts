@@ -21,8 +21,7 @@ function para(raw: string): CstNode {
 function commitNothing(controller: UndoController, index: number): Promise<boolean> {
 	return controller.commitStructural({
 		snapshot: { path: asDocPath([index]), offset: 0 },
-		mutate: () => ({ op: 'noop' }),
-		touchedNodes: []
+		mutate: () => ({ op: 'noop' })
 	});
 }
 

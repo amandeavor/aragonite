@@ -14,7 +14,7 @@ import type {
 	MultiScopeTarget,
 	UndoGrouping
 } from '../action-contracts';
-import { blockNodeAt, documentBody, type BodyParent } from '../tree-operations/node-primitives';
+import { blockNodeAt, type BodyParent } from '../tree-operations/node-primitives';
 import type { CstNode } from '../core/nodes';
 import type { NodeView } from '../core/node-views';
 import type { StructuralChange } from '../tree-operations/structural-change';
@@ -48,6 +48,8 @@ export interface MutationView {
 	unshareChild(i: number): CstNode;
 	/** Tells the commit's fix-up what the mutation did beyond its splice; see `ContainerScope`. */
 	describeEdit: ContainerScope['describeEdit'];
+	own: ContainerScope['own'];
+	writeLeaf: ContainerScope['writeLeaf'];
 }
 
 export interface ScopeCommitArgs {
@@ -61,9 +63,6 @@ export interface ScopeCommitArgs {
 	landing?: CommitLanding;
 	/** How far the landing moves the viewport; `'into-view'` when absent. */
 	reveal?: RevealPolicy;
-	/** Filled by `mutate` for the dev-mode stale-raw check when it returns `noop`; only the root
-	 *  reads them, since a container's commit checks its whole copied container. */
-	touchedNodes?: CstNode[];
 	/** A structural edit that can change nothing, so the commit discards its snapshot. Never on
 	 *  content or metadata commits, whose `noop` still carries a byte change (`DiscardIfNoop`). */
 	discardIfNoop?: boolean;
@@ -138,7 +137,6 @@ export function createTopLevelScope(
 			mutate,
 			landing,
 			reveal,
-			touchedNodes,
 			discardIfNoop,
 			history,
 			trackCaret
@@ -147,16 +145,17 @@ export function createTopLevelScope(
 				snapshot: { path: asDocPath([snapshot.index]), offset: snapshot.offset },
 				mutate: (children, docScope) =>
 					mutate({
-						body: documentBody(deps.doc, children),
+						body: docScope.body,
 						sharing: deps.sharing,
 						reading: deps.reading,
 						unshareChild: (i) => ensureUnsharedPath({ children }, [i], deps.sharing)[0],
-						describeEdit: docScope.describeEdit
+						describeEdit: docScope.describeEdit,
+						own: docScope.own,
+						writeLeaf: docScope.writeLeaf
 					}),
 				op: { ...op, eventPath: asDocPath([eventTarget]) },
 				landing,
 				reveal,
-				touchedNodes,
 				discardIfNoop,
 				history,
 				trackCaret
@@ -259,7 +258,9 @@ function containerScope(parts: ContainerParts): CommitScope {
 						sharing: view.sharing,
 						reading: parts.reading(),
 						unshareChild: (i) => ensureUnsharedChild(view.node, i, view.sharing),
-						describeEdit: view.describeEdit
+						describeEdit: view.describeEdit,
+						own: view.own,
+						writeLeaf: view.writeLeaf
 					}),
 				op: { ...op, eventPath: extendDocPath(parts.path(), eventTarget) },
 				landing,

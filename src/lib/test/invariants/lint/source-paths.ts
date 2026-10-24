@@ -204,7 +204,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	containerRebuilders: 'export function rebuildTableRaw(',
 
 	// ── Tree operations ─────────────────────────────────────────────────────
-	treeOperationsBarrel: 'export { updateNodeContent, reclassifyContainer }',
+	treeOperationsBarrel: 'export { reclassifyContainer }',
 	nodePrimitives: 'export type BodyParent',
 	openTail: 'export function keepOpenTail',
 	unshare: 'export function walkUnsharing',
@@ -213,7 +213,7 @@ export const SOURCE_ANCHORS: Record<keyof typeof SOURCE, string> = {
 	settle: 'export function settleEdit',
 	contentWrite: 'export interface LegalWrite',
 	nodeOps: 'export interface SplitResult',
-	chainRebuild: 'export function attachedChainPrefix',
+	chainRebuild: 'export function rebuildUnsharedChain',
 	blockquoteOps: 'export function plainQuote',
 	listItemMoves: 'export type ItemMoveCommits',
 

@@ -6,6 +6,10 @@ A word on the numbers. Everything before 0.10.1 was a working number: the label 
 
 **Style:** one tight entry per version, newest first; the entries live in a per-family file under `changelog/`, and this page is the index. **Product changes only:** behavior, API, plugins; never repo meta-work (conventions, comment or docs hygiene, tooling, process).
 
+## [0.12](changelog/0.12.md)
+
+- [0.12.0](changelog/0.12.md#0120-plugins-that-cant-half-write-your-document-and-alerts-that-keep-your-spelling): plugins that can't half-write your document on a keystroke, alerts and footnotes that keep the lines you didn't touch, and line codecs for plugin containers
+
 ## [0.11](changelog/0.11.md)
 
 - [0.11.2](changelog/0.11.md#0112-plugin-blocks-in-react-and-vue-an-editor-that-fills-its-box-and-clicks-that-land-where-you-pressed): plugin blocks drawn with React or Vue components, click-to-edit blocks without Svelte, an editor that stays as tall as its host, clicks that land where you pressed, a CommonMark-faithful inline parser that no paste can freeze, and production builds without the dev checks

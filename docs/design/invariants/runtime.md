@@ -107,6 +107,7 @@ These checks run in three kinds of place:
 | G1.149 | The editor fills a host with a height on every mount route, and grows in one without       | harness |
 | G1.150 | A block repaints from its bytes after an input the tree took back                          | A·N     |
 | G1.151 | A keystroke written in place leaves no node it wrote shared with an undo entry             | A·N     |
+| G1.152 | A same-kind keystroke’s fold leaves every container on the leaf’s path where it stood      | A       |
 
 ### The entries
 
@@ -320,7 +321,7 @@ bootstrap · `test/invariants/builtin-presentation-facts.test.ts`.
 ending, and a structural edit keeps that as it found it unless the new last line is blank. The check
 fails an open file that gained a break on a text line, a closed one that lost it, and an unended
 line above the last at any depth. `lastLineChild` names the child holding a kind's last line. The
-commit owns the rule (`open-tail.ts`); no edit writes the tail by hand (G4.74). `checkLastLineKept`
+commit owns the rule (`open-tail.ts`); no edit writes the tail by hand (G4.258). `checkLastLineKept`
 · `last-line-kept.test.ts`, `open-last-line.test.ts`, `open-last-line.property.test.ts`.
 
 **G1.42 · A list item's checkbox and blocks say what its reload reads** (`task-marker-slot`). The
@@ -494,8 +495,8 @@ event); dev warns `invariant:metadata-without-rebuild` naming the kind, and ever
 mutation writes with `writeNodeContent`, reports through its scope's `describeEdit`, and leaves the
 fix-up to the commit; one using `updateNodeContent` and reporting there gets it twice, and dev warns
 `invariant:settle-once`. Unseen: two edits calling a separator helper by hand (codebase-map § Blank
-lines and separators). The multi-block format toggle fixes up its own writes and says
-`fixesUpOwnWrites` (G4.208). `settle-once.test.ts`, `settle-passes.test.ts`.
+lines and separators). A scope's `writeLeaf` fixes up its slot as it lands and the commit the rest,
+so the check skips its lists. `settle-once.test.ts`, `settle-passes.test.ts`.
 
 **G1.113 · The marker is the item's bytes.** A list item draws its marker in a cell of its own,
 built from its metadata, and source mode shows that cell as the item's first bytes, so its text must
@@ -642,3 +643,9 @@ place, no node it wrote (the leaf and its ancestors) is still shared with an und
 write through a shared node rewrites history (G1.9). It runs on every key, over the nodes that key
 wrote; the whole-entry digest still runs at the next commit. `checkWrittenUnshared` · `leaf-commit.ts` ·
 `keystroke-commit-frame.test.ts`.
+
+**G1.152 · A keystroke's fold stays put** (`keystroke-fold-in-place`). When a key that keeps its
+block's kind makes a container fold a neighbour in, the fold lands at that container's own index: the
+write rule's blank separator keeps it from merging into the block above. So the keystroke relands its
+caret off the leaf's settled path alone. A key that changes the kind can move a fold, which is why it
+commits with the commit's fold landing instead. `leaf-commit.ts`.

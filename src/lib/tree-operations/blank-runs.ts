@@ -13,7 +13,7 @@ import { tryGetBlockKindDescriptor } from '../schema/block-kind-descriptor';
 import type { GrammarView } from '../schema/block-openers';
 import type { SharingState } from './sharing';
 import type { StructuralChange } from './structural-change';
-import type { BodyParent } from './node-primitives';
+import { spliceList, type BodyParent } from './node-primitives';
 import { fragmentReaderAt } from './list/task-paragraph';
 import {
 	bodyStartIndex,
@@ -275,7 +275,7 @@ function appendBlankBlocks(
 	for (const raw of lines) {
 		const block: CstNode = { kind: 'paragraph', leadingTrivia: '', raw };
 		sharing.stamp(block);
-		body.children.push(block);
+		spliceList(body, body.children.length, 0, [block]);
 	}
 }
 
