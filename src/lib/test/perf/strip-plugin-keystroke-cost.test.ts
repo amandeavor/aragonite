@@ -29,8 +29,9 @@ const CONTAINERS: { name: string; source: (paragraphs: number) => string }[] = [
 	},
 	{
 		name: 'a footnote definition',
+		// Tab-indented, a spelling the rebuild doesn't write, so every line it rewrites is read.
 		source: (n) =>
-			'[^1]: line 0\n' + Array.from({ length: n - 1 }, (_, i) => `\n     line ${i + 1}\n`).join('')
+			'[^1]: line 0\n' + Array.from({ length: n - 1 }, (_, i) => `\n\tline ${i + 1}\n`).join('')
 	}
 ];
 

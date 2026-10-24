@@ -8,7 +8,12 @@
 import type { ContainerEditActions, FocusActions } from '../action-contracts';
 import type { AnyBlockKind, CstNode, Document } from '../core/nodes';
 import { keepOpenTail } from '../tree-operations/open-tail';
-import { documentLineEnding, splitLines, trailingLineEnding } from '../core/lines';
+import {
+	documentLineEnding,
+	ownTrailingLineEnding,
+	splitLines,
+	trailingLineEnding
+} from '../core/lines';
 import { parse } from '../core/parser';
 import { ancestorsOf } from '../core/paths';
 import { createContainerEditActions } from '../editor-actions/container-edit';
@@ -595,6 +600,9 @@ function assertOwnLastLineHoldsIt(
 	);
 }
 
+/** Text no fixture holds, which the untouched-lines check writes on the edited child's new line. */
+const EDIT_MARK = '§edited';
+
 /** An edit to one child rewrites that child's lines alone: every other line of the container keeps
  *  its bytes, however `deepNesting.source` spells them. */
 function assertUntouchedLinesKept(
@@ -602,28 +610,32 @@ function assertUntouchedLinesKept(
 	descriptor: BlockKindDescriptor,
 	source: string
 ): void {
+	// A grid writes each row from its cells, so a row's own bytes carry no edit to find.
+	if (isGridDescriptor(descriptor)) return;
 	const node = subjectNode(parse(source), kind, 'first', 'deepNesting');
 	const children = node.children;
 	if (!children?.length) return;
 	const before = splitLines(node.raw).map((line) => line.raw);
 	const index = children.length - 1;
 	const previousRaw = children[index].raw;
-	children[index].raw = previousRaw.repeat(2);
+	// The edit adds a marked line, so the lines after the mark are the ones below the child.
+	children[index].raw = previousRaw + EDIT_MARK + ownTrailingLineEnding(previousRaw);
 	descriptor.rebuildRaw!(node, { index, previousRaw });
 	const after = splitLines(node.raw).map((line) => line.raw);
-	let head = 0;
-	while (head < before.length && before[head] === after[head]) head++;
-	let tail = 0;
-	while (
-		tail < before.length - head &&
-		before[before.length - 1 - tail] === after[after.length - 1 - tail]
-	)
-		tail++;
-	const own = splitLines(children[index].leadingTrivia + previousRaw).length;
+	let mark = after.length - 1;
+	while (mark >= 0 && !after[mark].includes(EDIT_MARK)) mark--;
+	const below = after.length - 1 - mark;
+	const above =
+		before.length - below - splitLines(children[index].leadingTrivia + previousRaw).length;
+	const at = (i: number) => (i < above ? i : i + after.length - before.length);
+	const moved = before.findIndex(
+		(line, i) => (i < above || i >= before.length - below) && line !== after[at(i)]
+	);
+	assert(mark >= 0, `${kind} rebuildRaw dropped the line the edit added to its last child`);
 	assert(
-		head + tail >= before.length - own,
-		`${kind} rebuildRaw rewrote lines outside the child it was told changed: line ${head + 1} ` +
-			`"${before[head]}" became "${after[head]}"`
+		moved < 0,
+		`${kind} rebuildRaw rewrote lines outside the child it was told changed: line ${moved + 1} ` +
+			`"${before[moved]}" became "${after[at(moved)]}"`
 	);
 }
 

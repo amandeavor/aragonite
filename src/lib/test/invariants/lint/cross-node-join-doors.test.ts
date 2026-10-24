@@ -33,6 +33,8 @@ const JOIN_INTO_LEAF_CALLERS: Record<string, string> = {
  *  the reason; a kind re-emitting its own bytes from its own children joins nothing. */
 const NON_JOIN_CONCATENATIONS: Record<string, string> = {
 	'src/lib/plugins/mermaid/mermaid-kind.ts': "the mermaid leaf's own rebuildRaw, fence and code",
+	'src/lib/testing/container-conformance.ts':
+		'the conformance kit adds a marked line to a fixture leaf to find it after a rebuild: no join',
 	'src/lib/tree-operations/list/reconcile-task.ts':
 		"moves the task marker between the item's metadata and its own first line — one node's bytes, re-split",
 	'src/lib/tree-operations/list/list-builders.ts':

@@ -301,16 +301,28 @@ describe('the kit holds an edit to the lines it changed', () => {
 		).not.toThrow();
 	});
 
-	it('fails a rebuild that respells the lines an edit left alone', () => {
+	// Miss-analysis: the edit doubled the last child, so a tail compared against the copy hid one
+	// respelled line above it.
+	it.each([
+		{
+			name: 'every line',
+			respell: (raw: string) => raw.replace(/^>(?! |\[)/gm, '> '),
+			source: '> [!NOTE]\n>a\n>\n>b\n'
+		},
+		{
+			name: 'one line above the edited child',
+			respell: (raw: string) => raw.replace('>a\n', '> a\n'),
+			source: '> [!NOTE]\n>a\n>\n>  b\n'
+		}
+	])('fails a rebuild that respells $name an edit left alone', ({ respell, source }) => {
 		const alert = declaredPluginKind(GITHUB_ALERT);
 		const keeps = getBlockKindDescriptor(alert).rebuildRaw!;
 		augmentBlockKind(alert, {
 			container: {
 				// Keeps the bytes it parsed, so only the edit row can see the respell.
 				rebuildRaw: (node, changed) => {
-					if (!changed) return keeps(node);
-					const body = node.children!.map((c) => c.leadingTrivia + c.raw).join('');
-					node.raw = '> [!NOTE]\n' + body.replace(/^.+$/gm, (line) => `> ${line}`);
+					keeps(node, changed);
+					if (changed) node.raw = respell(node.raw);
 				}
 			}
 		});
@@ -318,7 +330,7 @@ describe('the kit holds an edit to the lines it changed', () => {
 		expect(() =>
 			checkDeclarationSanity(alert, {
 				...calloutProfile,
-				deepNesting: { source: '> [!NOTE]\n>a\n>\n>b\n', leafPath: [0, 0] }
+				deepNesting: { source, leafPath: [0, 0] }
 			})
 		).toThrow(/rewrote lines outside the child it was told changed/);
 	});
