@@ -51,7 +51,7 @@ export function createScopeWriter(
 		const chain = ensureUnsharedPath({ children }, [...rel], sharing);
 		// A short chain stops above a node an undo entry may still share, so nothing is written there.
 		if (chain.length !== rel.length) {
-			throw new Error(`commit scope: [${rel.join(',')}] does not resolve below the scope`);
+			throw new Error(`commit scope: no node at [${rel.join(',')}]`);
 		}
 		return chain;
 	};

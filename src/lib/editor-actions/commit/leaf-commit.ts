@@ -216,7 +216,7 @@ function relandingAfter(deps: EditorActionsDeps, written: InPlaceWritten): Relan
 		return moved
 			? {
 					code: 'keystroke-fold-in-place',
-					message: `typeLeaf: a fold at depth ${moved.depth} moved the leaf's container to ${moved.landing.index}`
+					message: `typeLeaf: a fold moved a container at depth ${moved.depth}`
 				}
 			: null;
 	});

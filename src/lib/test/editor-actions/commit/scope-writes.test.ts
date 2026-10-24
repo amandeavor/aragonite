@@ -108,7 +108,7 @@ describe('a commit scope write on a path not below the scope', () => {
 			'\n'
 		);
 
-		expect(() => write(writer)).toThrow(/does not resolve below/);
+		expect(() => write(writer)).toThrow(/commit scope: no node at/);
 
 		expect(takeDevWarns().map((w) => w.tag)).toEqual(['invariant:unshare-path-in-range']);
 		expect(writer.owned).toEqual([]);
