@@ -31,13 +31,22 @@ export function publishAncestryFolds(
 	deps: EditorActionsDeps,
 	folds: readonly AncestrySeamFold[]
 ): () => void {
-	const restores: (() => void)[] = [];
-	for (const fold of folds) {
-		restores.push(publishFold(deps, fold));
-	}
+	const unpublish = folds.map((fold) =>
+		publishScopeChange(deps, fold.owner ?? undefined, fold.change)
+	);
 	return () => {
-		for (let i = restores.length - 1; i >= 0; i--) restores[i]();
+		for (let i = unpublish.length - 1; i >= 0; i--) unpublish[i]();
+		restoreFoldedChildren(folds);
 	};
+}
+
+/** Puts back every array the collapses spliced, newest first; alone, for a rollback that runs
+ *  before their publish. A collapse recreates several nodes, so nothing narrower restores them. */
+export function restoreFoldedChildren(folds: readonly AncestrySeamFold[]): void {
+	for (let i = folds.length - 1; i >= 0; i--) {
+		const fold = folds[i];
+		spliceMany(fold.siblings, 0, fold.siblings.length, fold.before);
+	}
 }
 
 /** Where the caret goes after a collapse recreated the blocks in its range. The last collapse is
@@ -106,18 +115,4 @@ function publishContainerScope(owner: CstNode, change: StructuralChange): void {
 	applyStructuralChangeToIdsRefs(change, ids, refs);
 	owner.childIds = ids;
 	if (state) replaceRefs(state.innerBlockRefs, refs);
-}
-
-function publishFold(deps: EditorActionsDeps, fold: AncestrySeamFold): () => void {
-	const unpublish = publishScopeChange(deps, fold.owner ?? undefined, fold.change);
-	return () => {
-		unpublish();
-		restoreChildren(fold);
-	};
-}
-
-/** The whole pre-splice array: a collapse recreates several nodes, so nothing narrower
- *  restores them. */
-function restoreChildren(fold: AncestrySeamFold): void {
-	spliceMany(fold.siblings, 0, fold.siblings.length, fold.before);
 }

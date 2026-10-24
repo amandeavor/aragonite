@@ -57,7 +57,7 @@ export interface FrameWrite {
 	discardIfNoop?: boolean;
 	written(): WrittenNodes;
 	/** The dev checks only this write can scope, run after the frame's own. */
-	check?(): void;
+	check?(written: WrittenNodes): void;
 	/** Restores what `apply` wrote. */
 	rollback(): void;
 }
@@ -76,14 +76,19 @@ export interface FrameUndo {
 	restoreStacks(stacks: UndoStacks): void;
 }
 
+/** The one path to the `error` event for a write, so every throw site reports alike. */
+export function reportWriteError(
+	deps: EditorActionsDeps,
+	write: Pick<FrameWrite, 'op'>,
+	error: unknown
+): void {
+	emitCommitError(deps.events, { error, op: write.op?.kind, path: write.op?.eventPath });
+}
+
 export function createCommitFrame(
 	deps: EditorActionsDeps,
 	undo: FrameUndo
 ): (write: FrameWrite) => FrameOutcome {
-	function report(write: FrameWrite, error: unknown): void {
-		emitCommitError(deps.events, { error, op: write.op?.kind, path: write.op?.eventPath });
-	}
-
 	function run(write: FrameWrite): FrameOutcome {
 		deps.caretMemory.forget();
 		if (write.history !== 'burst') undo.endTypingBurst();
@@ -120,11 +125,11 @@ export function createCommitFrame(
 				assertKeepsABlock(deps.doc, written.nodes);
 				assertReadsBack(written.tops, deps.reading.grammar);
 				assertListMarkerWidths(written.tops);
-				write.check?.();
+				write.check?.(written);
 			}
 		} catch (err) {
 			restore();
-			report(write, err);
+			reportWriteError(deps, write, err);
 			// Loud in dev; production swallows it so one failed edit does not kill the editor.
 			if (devChecksOn) throw err;
 			return 'failed';

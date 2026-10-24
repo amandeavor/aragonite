@@ -31,7 +31,12 @@ import {
 	type AncestrySeamFold,
 	type ContainerReclassification
 } from '../../tree-operations/chain-rebuild';
-import { foldLandingFor, publishAncestryFolds, publishScopeChange } from '../ancestry-folds';
+import {
+	foldLandingFor,
+	publishAncestryFolds,
+	publishScopeChange,
+	restoreFoldedChildren
+} from '../ancestry-folds';
 import { saveBytes } from './saved-bytes';
 import type { EditorActionsDeps } from '../deps';
 import type { FrameOutcome, FrameWrite } from './commit-frame';
@@ -54,18 +59,6 @@ export function createLeafCommit(
 		let restoreChain: (() => void) | null = null;
 		let restoreIds = () => {};
 		let unwindFolds: (() => void) | null = null;
-
-		// The ancestors still in the tree, any a kind change swapped in, and the leaf where it settled;
-		// the top block reads back only above a container, as a top-level leaf's write keeps its kind.
-		const written = () => {
-			const top = deps.doc.children[leafPath[0]];
-			const leaf = body.children[settledCaretPosition(settled, index, caret, body.children).index];
-			const ancestors = attachedChainPrefix(deps.doc, chain.slice(0, -1));
-			return {
-				nodes: [...ancestors, ...reclassified.map((r) => r.replacement), ...(leaf ? [leaf] : [])],
-				tops: depth > 1 && top ? [top] : []
-			};
-		};
 
 		const outcome = runFrame({
 			entry: 'updateContent',
@@ -121,15 +114,26 @@ export function createLeafCommit(
 				if (depth > 1) deps.doc.children = [...deps.doc.children];
 				return settled.change.op !== 'noop' || folds.length > 0 || reclassified.length > 0;
 			},
-			written,
-			check() {
+			// The ancestors still in the tree, any a kind change swapped in, and the leaf where it
+			// settled; the top block reads back only above a container, as a top-level leaf keeps its kind.
+			written() {
+				const top = deps.doc.children[leafPath[0]];
+				const leaf =
+					body.children[settledCaretPosition(settled, index, caret, body.children).index];
+				const ancestors = attachedChainPrefix(deps.doc, chain.slice(0, -1));
+				return {
+					nodes: [...ancestors, ...reclassified.map((r) => r.replacement), ...(leaf ? [leaf] : [])],
+					tops: depth > 1 && top ? [top] : []
+				};
+			},
+			check({ nodes }) {
 				assertLeafLineEndingPairsKept(leafPreviousRaw, write.text);
-				assertWrittenUnshared(written().nodes, deps.sharing);
+				assertWrittenUnshared(nodes, deps.sharing);
 			},
 			rollback() {
 				// Collapses first, as the structural commit unwinds: each restores a whole parent array.
 				if (unwindFolds) unwindFolds();
-				else unwindUnpublished(folds);
+				else restoreFoldedChildren(folds);
 				restoreIds();
 				restoreChain?.();
 			}
@@ -171,13 +175,6 @@ function saveChain(
 		}
 		restoreBytes();
 	};
-}
-
-function unwindUnpublished(folds: readonly AncestrySeamFold[]): void {
-	for (let i = folds.length - 1; i >= 0; i--) {
-		const fold = folds[i];
-		spliceMany(fold.siblings, 0, fold.siblings.length, fold.before);
-	}
 }
 
 // ── Where the caret goes after an in-place write ─────────────────────────────

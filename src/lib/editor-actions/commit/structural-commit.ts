@@ -34,13 +34,11 @@ import type {
 	CommitLanding,
 	CommitContainerStructuralArgs,
 	CommitMultiScopeArgs,
-	CommitSnapshotArg,
 	CommitStructuralArgs,
 	ContainerScope,
 	MultiScopeTarget,
 	UndoGrouping
 } from '../../action-contracts';
-import type { ScopedOpDescriptor } from '../../schema/operations';
 import {
 	applyStructuralChangeToIdsRefs,
 	type StructuralChange
@@ -50,7 +48,7 @@ import { assertIdsInLockstep, assertTopLevelUntouched } from '../../invariants/i
 import { checkSettledOnce, startCommitSettles } from '../../invariants/settle-once';
 import { saveBytes } from './saved-bytes';
 import { perfEnabled } from '../../perf/instruments';
-import type { WrittenNodes } from './commit-frame';
+import type { FrameWrite } from './commit-frame';
 
 // ── Dev invariant scoping (dev-only paths) ────────────────────────────────────
 
@@ -85,24 +83,14 @@ function writtenTopLevel(
 	return [...written];
 }
 
-/** What the commit sequence runs; `commitScopes` builds it for every entry point. */
-export interface CommitArgs {
-	/** Names the write in a reading-mode refusal when there is no `op`. */
+/** The frame's write plus where the caret lands after it; `commitScopes` builds it for every
+ *  entry point. */
+export interface CommitArgs extends Omit<FrameWrite, 'prepare' | 'check'> {
 	entry: 'commitStructural' | 'commitMultiScope';
-	snapshot: CommitSnapshotArg;
-	/** False when every scope changed nothing; `wasOpen` is whether the document ended with no
-	 *  final line break before it. */
-	mutate: (wasOpen: boolean) => boolean;
-	op?: ScopedOpDescriptor;
+	history: UndoGrouping;
 	landing?: CommitLanding;
 	reveal?: RevealPolicy;
 	announce?: CommitAnnouncement;
-	/** A function, since the copied nodes only exist once `mutate` has made them. */
-	written: () => WrittenNodes;
-	/** Restores what `mutate` wrote, the top-level array included. */
-	rollback: () => void;
-	discardIfNoop?: boolean;
-	history?: UndoGrouping;
 }
 
 export function createStructuralCommit(
@@ -344,7 +332,7 @@ export function createStructuralCommit(
 		return __commit({
 			entry: args.entry,
 			snapshot,
-			mutate: (wasOpen) => {
+			apply: (wasOpen) => {
 				startCommitSettles();
 				for (const s of scopes) {
 					assertScopeStateMounted(s);
@@ -435,7 +423,7 @@ export function createStructuralCommit(
 			reveal: args.reveal,
 			announce: args.announce,
 			discardIfNoop,
-			history: args.history,
+			history: args.history ?? 'entry',
 			written: () => {
 				const nodes: CstNode[] = [];
 				// A set: a doc scope's caller can name a block the scope's change already placed.

@@ -18,7 +18,7 @@ import { checkLandingIsAValue, readCaretWhereabouts } from '../../invariants/lan
 import { createTextBatch } from './text-batch';
 import { createStructuralCommit, type CommitArgs } from './structural-commit';
 import { admitsSnapshot, admitsWrite } from './reading-write-gate';
-import { createCommitFrame, type FrameHistory } from './commit-frame';
+import { createCommitFrame, reportWriteError, type FrameHistory } from './commit-frame';
 import { createLeafCommit } from './leaf-commit';
 import type { EditorActionsDeps, UndoController } from '../deps';
 import type {
@@ -28,7 +28,6 @@ import type {
 	UndoGrouping
 } from '../../action-contracts';
 import type { DocPath } from '../../selection/path-math';
-import { emitCommitError } from '../../editor-events';
 import {
 	assertLineEndingPairsKept,
 	documentLineEndings,
@@ -283,23 +282,17 @@ export function createUndoController(
 		const stamp = deps.caretLanding.generation();
 		let endings: ReturnType<typeof documentLineEndings> = null;
 		const outcome = runFrame({
-			entry: args.entry,
-			op: args.op,
-			snapshot: args.snapshot,
-			history: args.history ?? 'entry',
+			...args,
 			apply: (wasOpen) => {
 				endings = documentLineEndings(deps.doc);
-				return args.mutate(wasOpen);
+				return args.apply(wasOpen);
 			},
-			discardIfNoop: args.discardIfNoop,
-			written: args.written,
 			check: () => {
 				assertLineEndingPairsKept(deps.doc, endings);
 				// A missed copy before write corrupts the newest undo entry, so the commit catches it
 				// rather than some distant undo (G1.9). Never throws.
 				assertUndoTopIntegrity(deps.undoManager.peekUndo() ?? undefined);
-			},
-			rollback: args.rollback
+			}
 		});
 		// A refused write lands nothing, while a discarded no-op still lands.
 		if (outcome === 'refused' || outcome === 'failed') return false;
@@ -312,16 +305,11 @@ export function createUndoController(
 			if (placement && heldDepth > 0) held = placement;
 			else if (placement) await placement.place();
 		} catch (err) {
-			reportCommitError(args, err);
+			reportWriteError(deps, args, err);
 		}
 		if (outcome !== 'written') return false;
 		if (args.announce) announceEdit(args.announce());
 		return true;
-	}
-
-	/** The one path to the `error` event for what runs after the frame. */
-	function reportCommitError(args: CommitArgs, error: unknown): void {
-		emitCommitError(deps.events, { error, op: args.op?.kind, path: args.op?.eventPath });
 	}
 
 	function placementOf(args: CommitArgs, landing: Landing, stamp: number): HeldLanding {
@@ -332,7 +320,7 @@ export function createUndoController(
 					if ('anchor' in landing) await deps.caretLanding.restore(landing, opts);
 					else await deps.caretLanding.land(landing, opts);
 				} catch (err) {
-					reportCommitError(args, err);
+					reportWriteError(deps, args, err);
 				}
 			}
 		};

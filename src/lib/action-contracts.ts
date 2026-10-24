@@ -28,7 +28,8 @@ import type { CommandRun } from './schema/block-commands';
  */
 export type CommitSnapshotArg = { path: DocPath; offset: number };
 
-/** How a write groups in the undo history: an entry of its own, or the typing burst's. */
+/** How a write groups in the undo history: an entry of its own (a commit's default), or the one
+ *  the keystroke's typing push already holds (a key that reparses into several blocks). */
 export type UndoGrouping = 'entry' | 'join-typing';
 
 /**
@@ -228,8 +229,6 @@ export interface CommitMultiScopeArgs<
 	reveal?: RevealPolicy;
 	announce?: CommitAnnouncement;
 	discardIfNoop?: DiscardIfNoop;
-	/** `join-typing` joins the entry the keystroke's typing push already holds (a key that reparses
-	 *  into several blocks); `entry`, the default, takes one of its own. */
 	history?: UndoGrouping;
 	/** Caret positions each list's fix-up updates in place, parallel to `scopes`, since a collapsing
 	 *  container moves the bytes under them; the landing reads them back off the same objects. */
@@ -249,8 +248,6 @@ export interface CommitStructuralArgs {
 	/** Leaves for the dev invariant check when `mutate` returns `noop` (an in-place kind change). */
 	touchedNodes?: CstNode[];
 	discardIfNoop?: DiscardIfNoop;
-	/** `join-typing` joins the entry the keystroke's typing push already holds (a key that reparses
-	 *  into several blocks); `entry`, the default, takes one of its own. */
 	history?: UndoGrouping;
 	/** A caret position the document's fix-up updates in place; the landing reads it back. */
 	trackCaret?: TrackedPosition;
@@ -274,8 +271,6 @@ export interface CommitContainerStructuralArgs {
 	reveal?: RevealPolicy;
 	announce?: CommitAnnouncement;
 	discardIfNoop?: DiscardIfNoop;
-	/** `join-typing` joins the entry the keystroke's typing push already holds (a key that reparses
-	 *  into several blocks); `entry`, the default, takes one of its own. */
 	history?: UndoGrouping;
 	/** A caret position the container's fix-up updates in place; the landing reads it back. */
 	trackCaret?: TrackedPosition;
