@@ -1,7 +1,8 @@
 /**
  * A step run before the DOM updates for a new value, and its partner run once the update is done.
- * Each `after` follows its own `before`, even when the value moves again inside one flush, which two
- * hand-written effects over the same getter can't promise. Call during component init.
+ * Each `after` follows its own `before` with the value that `before` saw, even when the value moves
+ * again inside one flush, which two hand-written effects over one getter can't promise. Only `read`
+ * is tracked. Call during component init.
  */
 
 import { untrack } from 'svelte';

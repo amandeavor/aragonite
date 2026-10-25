@@ -25,8 +25,6 @@ that resized with its bytes unchanged was never run (issue #546).
 ## Error cases
 
 - no page errors surface during the load or the click, on every engine
-  - Miss-analysis (#750): the Firefox fixme came off after a green run on Windows while Linux
-    Firefox still logged the loop, so a fixme for one engine was cleared on another platform's
-    build. The loop was the table's minimum height, left set from the load and cleared by the
-    click's remeasure inside a size report; the unit test for that minimum height never moved
-    the window twice in one render
+  - Miss-analysis (#750): the Firefox fixme came off on a green Windows run while Linux Firefox
+    still logged the loop, and the table's minimum height, left set from the load, had no unit
+    test that moved the window twice in one render

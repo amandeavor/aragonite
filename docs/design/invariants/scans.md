@@ -1383,6 +1383,6 @@ puts back what the fix-up merged; a direct write would survive a rolled-back key
 
 **G4.260 · A render step and its partner run as a pair.** A step that runs before the DOM updates
 for a new value, with a partner that runs once it has, goes through
-`around-render.svelte.ts :: aroundRender`. Two effects over one value lose the partner when another effect moves the value
-again inside the flush. A window floor left held that way shrinks its list inside a later size
-report, which the browser reports as a loop. `lint/file-rules.test.ts`.
+`around-render.svelte.ts :: aroundRender`. Two effects over one value lose the partner when another
+effect moves the value again inside the flush. A window floor left held that way shrinks its list
+inside a later size report, which the browser reports as a loop. `lint/file-rules.test.ts`.
