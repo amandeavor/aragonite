@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 // How the spec examples, the showcase and the changelog parse, and keys at each join of their
-// adjacent blocks, held to the committed rows.
+// adjacent blocks, recorded as rows.
 import { beforeAll, it } from 'vitest';
 import { installLayoutStubs } from '#lib/test/harness/mount-editor.svelte.js';
 import { documentRows } from './strata';
-import { holdRowsToBaseline } from './rows';
+import { recordRows } from './rows';
 
 beforeAll(installLayoutStubs);
 
-it('reads and edits the documents the way the committed baseline says', async () => {
-	holdRowsToBaseline('docs', await documentRows());
+it('records how the documents read and edit', async () => {
+	recordRows('docs', await documentRows());
 }, 600_000);

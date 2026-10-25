@@ -1,8 +1,6 @@
 // The behavior differential's rows: one JSON object per line, keyed by `in` (the input), sorted,
-// fields in a fixed order. Shared by the unit gate that holds the tip to the committed baseline
-// and by `scripts/behavior.mjs`, which records a checkout and diffs it against any baseline.
-
-export const BASELINE_PATH = 'scripts/behavior-baseline.jsonl';
+// fields in a fixed order. The behavior suites write them and `scripts/behavior.mjs` diffs two
+// records of them.
 
 /** Field order in a line; a field a row doesn't have is left out. */
 const FIELDS = ['in', 'do', 'took', 'bytes', 'caret', 'undo', 'warns', 'outline'];
@@ -10,7 +8,7 @@ const FIELDS = ['in', 'do', 'took', 'bytes', 'caret', 'undo', 'warns', 'outline'
 /** @typedef {{ in: string } & Record<string, string | string[] | undefined>} Row */
 
 /**
- * The rows as baseline text: sorted by input, one line each, ending in a newline.
+ * The rows as record text: sorted by input, one line each, ending in a newline.
  * @param {Row[]} rows
  */
 export function formatRows(rows) {

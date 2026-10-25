@@ -1,23 +1,14 @@
-// How a behavior row writes what an input did, and the check that holds a suite's rows to the
-// committed baseline. With `BEHAVIOR_RECORD` set to a folder, a suite writes its rows there
-// instead of checking them, which is how `scripts/behavior.mjs` records a checkout.
+// How a behavior row writes what an input did, and how a suite writes its rows into the
+// `BEHAVIOR_RECORD` folder for `scripts/behavior.mjs`, which diffs them against a base.
 
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { expect } from 'vitest';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import type { EditorSelection } from '#lib/selection/primitives.js';
-import {
-	BASELINE_PATH,
-	diffRows,
-	formatDiff,
-	formatRows,
-	parseRows,
-	type Row
-} from '../../../../scripts/behavior-rows.mjs';
+import { formatRows, type Row } from '../../../../scripts/behavior-rows.mjs';
 
 export type { Row };
 
-/** Longer text is stored as a hash and an excerpt, which keeps the baseline file small. */
+/** Longer text is stored as a hash and an excerpt, which keeps a record small. */
 const VERBATIM_LIMIT = 100;
 const EXCERPT_BEFORE = 16;
 const EXCERPT_AFTER = 24;
@@ -60,28 +51,13 @@ export function warnsField(tags: readonly string[]): string[] {
 	return [...new Set(tags)].sort();
 }
 
-/** Fails, listing every changed input, when `rows` differ from the baseline rows under `prefix`;
- *  writes them out instead under `BEHAVIOR_RECORD`. */
-export function holdRowsToBaseline(prefix: string, rows: Row[]): void {
+/** Writes `rows` under `BEHAVIOR_RECORD`, one file per suite. */
+export function recordRows(prefix: string, rows: Row[]): void {
 	for (const row of rows) {
 		if (!row.in.startsWith(`${prefix} `)) throw new Error(`row ${row.in} is outside ${prefix}`);
 	}
 	const recordTo = process.env.BEHAVIOR_RECORD;
-	if (recordTo) {
-		mkdirSync(recordTo, { recursive: true });
-		writeFileSync(`${recordTo}/${prefix.replace(/\W+/g, '-')}.jsonl`, formatRows(rows));
-		return;
-	}
-	const committed = existsSync(BASELINE_PATH) ? parseRows(readFileSync(BASELINE_PATH, 'utf8')) : [];
-	const base = committed.filter((row) => row.in.startsWith(`${prefix} `));
-	const diff = diffRows(base, rows);
-	const moved = diff.changed.length + diff.added.length + diff.removed.length;
-	expect(
-		moved,
-		`${formatDiff(`behavior ${prefix} against ${BASELINE_PATH}`, diff, 20)}\n` +
-			'An intended change: `npm run behavior:bless`, and commit the baseline with it.\n' +
-			'Moved rows nothing in your diff explains: run `npm run behavior` on a clean checkout of\n' +
-			'the commit that last blessed the baseline, on this machine. Rows that move there too come\n' +
-			'from the machine (Node, the installed dependencies, the OS), not from your change.'
-	).toBe(0);
+	if (!recordTo) throw new Error('the behavior suites only record rows: run `npm run behavior`');
+	mkdirSync(recordTo, { recursive: true });
+	writeFileSync(`${recordTo}/${prefix.replace(/\W+/g, '-')}.jsonl`, formatRows(rows));
 }
