@@ -133,9 +133,8 @@ export function cacheFile(sha, install) {
 export function baseRows({ root, sha, install, record = recordFreshCheckout }) {
 	const cached = join(root, cacheFile(sha, install));
 	if (existsSync(cached)) return readFileSync(cached, 'utf8');
-	try {
-		git(root, ['cat-file', '-e', `${sha}:${SUITES}`]);
-	} catch {
+	const suites = git(root, ['ls-tree', '-r', '--name-only', sha, SUITES]);
+	if (!/\.test\.ts$/m.test(suites)) {
 		throw new BehaviorError(`behavior: ${sha.slice(0, 9)} has no behavior suites (${SUITES})`);
 	}
 	clearLeftovers(root);

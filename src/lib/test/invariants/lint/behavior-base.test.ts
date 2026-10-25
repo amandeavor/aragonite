@@ -88,8 +88,11 @@ describe('behavior: what --against names', () => {
 });
 
 describe('behavior: the base record', () => {
-	it('refuses a commit with no behavior suites before making a worktree', () => {
-		const sha = commit({ 'readme.txt': 'old' });
+	it.each([
+		['no behavior folder', { 'readme.txt': 'old' }],
+		['a behavior folder of helpers only', { [`${SUITES}/rows.ts`]: 'helpers' }]
+	])('refuses a commit with %s before making a worktree', (_, files) => {
+		const sha = commit(files);
 		let recorded = false;
 		const record = () => ((recorded = true), '');
 		expect(() => baseRows({ root, sha, install: 'i', record })).toThrow(/has no behavior suites/);
