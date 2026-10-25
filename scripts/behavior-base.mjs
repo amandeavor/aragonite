@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 export const SUITES = 'src/lib/test/behavior';
 export const RESULTS = 'behavior-results';
 const WORKTREE = /^worktree-(\d+)$/;
-// Far past a normal run, so only a hung suite hits it.
+// The suites' time limit sits far past a normal run, so only a hung suite hits it.
 const RECORD_TIMEOUT_MS = 20 * 60_000;
 // Windows can hold a file open for a moment after the process using it exits.
 const REMOVE = { recursive: true, force: true, maxRetries: 5, retryDelay: 200 };
