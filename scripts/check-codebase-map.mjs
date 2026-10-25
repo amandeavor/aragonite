@@ -6,7 +6,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { corpusFiles, ignoredPaths, isIgnoredBy } from './doc-corpus.mjs';
+import { citationProblem, corpusFiles, ignoredPaths } from './doc-corpus.mjs';
 
 const DOC_DIRS = ['docs/design', 'docs/contributing'];
 const REFERENCE_ROOT = /^(?:src|docs|scripts)\//;
@@ -142,16 +142,13 @@ function symbolPattern(symbol) {
 export function referenceFailures(references) {
 	/** @type {string[]} */
 	const failures = [];
-	const ignored = ignoredPaths(['src', 'docs', 'scripts']);
+	const ignored = ignoredPaths(['.']);
 	for (const { file, path: target, symbol } of references) {
 		const checked = concretePrefix(target);
-		const detail = checked === target ? '' : ` (\`${checked}\`)`;
-		if (!existsSync(checked)) {
-			failures.push(`${file}: ${target}${detail} — no such file or directory`);
-			continue;
-		}
-		if (isIgnoredBy(ignored, checked) || isIgnoredBy(ignored, `${checked}/`)) {
-			failures.push(`${file}: ${target}${detail} — gitignored, so it exists only on this machine`);
+		const problem = citationProblem(checked, ignored);
+		if (problem) {
+			const detail = checked === target ? '' : ` (\`${checked}\`)`;
+			failures.push(`${file}: ${target}${detail} — ${problem}`);
 			continue;
 		}
 		if (symbol === undefined || checked !== target) continue;
