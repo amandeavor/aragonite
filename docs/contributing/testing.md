@@ -1059,9 +1059,9 @@ CI time is too noisy to gate on.
 A refactor is supposed to change nothing anyone can see, and "the tests are green" only says the
 inputs somebody wrote down still pass. The differential asks the wider question: it presses keys in
 the mounted editor (jsdom, the same mount the unit suites use), writes down what every key did,
-and holds that to a record in `scripts/behavior-baseline.jsonl`, which you record locally (it's
-gitignored: `npm run behavior -- --record` on the base, then compare your branch with `--against`
-that file, or run `npm run test:editor:behavior`). One line per input:
+and holds that to a record you keep on your own machine (a gitignored file:
+`npm run behavior -- --record` on the base, then compare your branch with `--against` that file,
+or run `npm run test:editor:behavior`). One line per input:
 
 ```
 {"in":"keys live bullets [0,1,0]@0 Backspace","took":"keydown","bytes":"- ab\n","caret":"0.0.0:1"}
