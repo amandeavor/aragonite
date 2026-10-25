@@ -67,8 +67,8 @@ export default defineConfig({
 						...configDefaults.exclude,
 						DEEP_STACK,
 						...NODE_REALM,
-						// The behavior differential reads a locally recorded baseline, so it runs on demand.
-						...(process.env.BEHAVIOR ? [] : ['src/lib/test/behavior/**'])
+						// The behavior suites only record rows, for `npm run behavior`.
+						...(process.env.BEHAVIOR_RECORD ? [] : ['src/lib/test/behavior/**'])
 					]
 				}
 			},

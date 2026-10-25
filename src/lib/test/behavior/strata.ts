@@ -1,5 +1,5 @@
 // The differential's row families, each built from the corpus by one call so a suite file only
-// picks a family and holds it to the baseline.
+// picks a family and records it.
 
 import type { CstNode, InlineNode } from '#lib/core/nodes.js';
 import type { PresentationMode } from '#lib/presentation-mode.js';

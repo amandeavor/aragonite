@@ -141,7 +141,6 @@ Test files take turns in a shared Node process, which bites in three ways:
 | `test:editor:invariants`     | Invariant catalog: property/fuzz tests + source-scan guards                                                 |
 | `test:editor:debug`          | Debug engine helpers and operations log                                                                     |
 | `test:editor:perf`           | Perf commit gate: counter ceilings, amplification report, fixture goldens                                   |
-| `test:editor:behavior`       | The behavior differential, against your local record                                                        |
 | `test:editor:exhaustive`     | Every short input, at the lengths `npm test` runs                                                           |
 
 The inline-scanner suite (`test/core/inline/scan/`) and the directive suite
@@ -1059,9 +1058,7 @@ CI time is too noisy to gate on.
 A refactor is supposed to change nothing anyone can see, and "the tests are green" only says the
 inputs somebody wrote down still pass. The differential asks the wider question: it presses keys in
 the mounted editor (jsdom, the same mount the unit suites use), writes down what every key did,
-and holds that to a record you keep on your own machine (a gitignored file:
-`npm run behavior -- --record` on the base, then compare your branch with `--against` that file,
-or run `npm run test:editor:behavior`). One line per input:
+and compares that with the same run on the commit your branch started from. One line per input:
 
 ```
 {"in":"keys live bullets [0,1,0]@0 Backspace","took":"keydown","bytes":"- ab\n","caret":"0.0.0:1"}
@@ -1088,39 +1085,41 @@ What it runs, in four files under `src/lib/test/behavior/`:
   plus a few keys at the join of every pair of adjacent blocks in those. Whole, they'd mount only a
   window in jsdom, which is great for a real editor and useless here. The newest changelog family
   sits out, since every landing adds to it; editing the showcase or an older family moves the rows
-  of the pairs you touched, so bless with the edit
+  of the pairs you touched, so expect those in your list
 
 The documents mount with the bundled plugins that add syntax (math with a stub renderer,
 admonitions, details, the table of contents, footnotes, emoji), so `$x$` and `:::note` mean what the
 showcase means by them.
 
-It doesn't run inside `npm run test:editor`: the record is a local, gitignored file, so you make
-one on the commit you started from and compare your branch against it. A change that means to
-change behavior lists exactly the inputs it meant to change. A refactor's list is empty.
+It doesn't run inside `npm run test:editor`, since it needs two checkouts. One command does both:
 
 ```bash
-git switch --detach $(git merge-base HEAD dev)            # the commit your branch started from
-npm run behavior -- --record                              # writes scripts/behavior-baseline.jsonl
-git switch -                                              # back to your branch
-npm run behavior                                          # this checkout against that record
+npm run behavior                                          # against where your branch left dev
+npm run behavior -- --against <ref>                       # against any commit
 ```
 
-Same commands in PowerShell. A branch reports the
-first line and the changed inputs under it:
+Same commands in PowerShell. It checks the base out into a temporary worktree under
+`behavior-results/` (gitignored), records its rows with that commit's own suites, records yours,
+and diffs the two. The worktree goes away when the run ends, fails or gets a Ctrl+C. The base's
+rows are cached by commit, Node version and installed dependencies, so a second run against the
+same base only records your side, which takes about half as long.
+
+A change that means to change behavior lists exactly the inputs it meant to change. A refactor's
+list is empty, and any other list exits 1. A branch reports which base it picked, then the counts
+and the changed inputs under them:
 
 ```
-behavior --against …: … rows compared, 1 changed (bytes 1, caret 1), 0 added, 0 removed
+behavior: base merge-base HEAD dev (…)
+behavior against merge-base HEAD dev (…): … rows compared, 1 changed (bytes 1, caret 1), 0 added, 0 removed
   changed keys live bullets [0,1,0]@0 Backspace
     bytes: "- ab\n" -> "- a\nb\n"
     caret: "0.0.0:1" -> "1:0"
 ```
 
-It prints the first 20, and writes the full list to `behavior-results/diff.txt`. To compare two checkouts
-by hand, `--record <file>` writes this checkout's rows and `--against <file>` diffs against a file.
-
-Rows that moved and nothing in your diff explains? Prob the machine, not you: a dependency install
-between the two runs can move a row. Record and compare on the same machine with the same install,
-and re-record the base if you reinstalled.
+It prints the first 20, and writes the full list to `behavior-results/diff.txt`. To compare with
+another machine, `--record <file>` writes this checkout's rows there and `--against <file>` diffs
+against such a file. Expect a few rows to move that aren't yours, though: a different Node or
+dependency install can move a row, which is why the cache keys on both.
 
 Two limits. It's jsdom, so where the editor hands a key back to the browser nothing happens and the
 row says `browser`: the editor's own handling is real, Chromium's isn't. And the note-taking
