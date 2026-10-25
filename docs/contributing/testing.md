@@ -1105,8 +1105,8 @@ rows are cached by commit, Node version and installed dependencies, so a second 
 same base only records your side, which takes about half as long.
 
 A change that means to change behavior lists exactly the inputs it meant to change. A refactor's
-list is empty, and any other list exits 1. A branch reports which base it picked, then the counts
-and the changed inputs under them:
+list is empty. The command exits 1 whenever the list isn't. A branch reports which base it picked,
+then the counts and the changed inputs under them:
 
 ```
 behavior: base merge-base HEAD dev (…)
@@ -1118,8 +1118,8 @@ behavior against merge-base HEAD dev (…): … rows compared, 1 changed (bytes 
 
 It prints the first 20, and writes the full list to `behavior-results/diff.txt`. To compare with
 another machine, `--record <file>` writes this checkout's rows there and `--against <file>` diffs
-against such a file. Expect a few rows to move that aren't yours, though: a different Node or
-dependency install can move a row, which is why the cache keys on both.
+against such a file. Expect a few rows to move that aren't yours, though, since a different Node
+or dependency install can move a row.
 
 Two limits. It's jsdom, so where the editor hands a key back to the browser nothing happens and the
 row says `browser`: the editor's own handling is real, Chromium's isn't. And the note-taking

@@ -156,4 +156,19 @@ describe('behavior: worktrees left by other runs', () => {
 		expect(existsSync(worktreeOf(dead))).toBe(false);
 		expect(existsSync(worktreeOf(live))).toBe(true);
 	});
+
+	it('refuses to clear a dead run’s folder that is itself a link', () => {
+		const dead = spawnSync(process.execPath, ['-e', '']).pid;
+		const outside = mkdtempSync(join(tmpdir(), 'behavior-install-'));
+		writeFileSync(join(outside, 'kept.txt'), 'kept');
+		mkdirSync(join(root, 'behavior-results'));
+		symlinkSync(outside, worktreeOf(dead), 'junction');
+		try {
+			expect(() => clearLeftovers(root)).toThrow(/refusing to remove/);
+			expect(existsSync(join(outside, 'kept.txt'))).toBe(true);
+		} finally {
+			if (existsSync(worktreeOf(dead))) unlinkSync(worktreeOf(dead));
+			rmSync(outside, { recursive: true, force: true });
+		}
+	});
 });

@@ -21,6 +21,10 @@ import { dirname, join } from 'node:path';
 export const SUITES = 'src/lib/test/behavior';
 export const RESULTS = 'behavior-results';
 const WORKTREE = /^worktree-(\d+)$/;
+// Far past a normal run, so only a hung suite hits it.
+const RECORD_TIMEOUT_MS = 20 * 60_000;
+// Windows can hold a file open for a moment after the process using it exits.
+const REMOVE = { recursive: true, force: true, maxRetries: 5, retryDelay: 200 };
 
 /** A failure the driver prints as one line, without a stack. */
 export class BehaviorError extends Error {}
@@ -85,14 +89,20 @@ export function recordSuites(dir) {
 		const result = spawnSync(process.execPath, [vitest, 'run', SUITES, '--maxWorkers=4'], {
 			cwd: dir,
 			stdio: ['ignore', 'ignore', 'inherit'],
-			env
+			env,
+			timeout: RECORD_TIMEOUT_MS
 		});
+		if (/** @type {NodeJS.ErrnoException | undefined} */ (result.error)?.code === 'ETIMEDOUT') {
+			throw new BehaviorError(
+				`behavior: the suites ran past ${RECORD_TIMEOUT_MS / 60_000} min in ${dir}`
+			);
+		}
 		if (result.status !== 0) throw new BehaviorError(`behavior: the suites failed in ${dir}`);
 		const files = readdirSync(folder).filter((file) => file.endsWith('.jsonl'));
 		if (files.length === 0) throw new BehaviorError(`behavior: ${dir} recorded no rows`);
 		return files.map((file) => readFileSync(join(folder, file), 'utf8')).join('');
 	} finally {
-		rmSync(folder, { recursive: true, force: true });
+		rmSync(folder, REMOVE);
 	}
 }
 
@@ -138,6 +148,7 @@ export function baseRows({ root, sha, install, record = recordFreshCheckout }) {
 		throw new BehaviorError(`behavior: ${sha.slice(0, 9)} has no behavior suites (${SUITES})`);
 	}
 	clearLeftovers(root);
+	git(root, ['worktree', 'prune']);
 	const dir = join(root, RESULTS, `worktree-${process.pid}`);
 	let text;
 	try {
@@ -187,13 +198,13 @@ function isAlive(pid) {
  */
 export function removeWorktree(root, dir) {
 	if (existsSync(dir)) {
-		const links = linksUnder(dir);
+		const links = lstatSync(dir).isSymbolicLink() ? [dir] : linksUnder(dir);
 		if (links.length) {
 			throw new BehaviorError(
-				`behavior: refusing to remove ${dir}, it holds links: ${links.join(', ')}`
+				`behavior: refusing to remove ${dir}, these are links: ${links.join(', ')}`
 			);
 		}
-		rmSync(dir, { recursive: true, force: true });
+		rmSync(dir, REMOVE);
 	}
 	git(root, ['worktree', 'prune']);
 }
